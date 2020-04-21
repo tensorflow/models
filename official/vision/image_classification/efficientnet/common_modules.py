@@ -19,15 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-
+import tensorflow as tf
 import tensorflow.compat.v1 as tf1
-import tensorflow.compat.v2 as tf
 from typing import Text, Optional
 
 from tensorflow.python.tpu import tpu_function
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class TpuBatchNormalization(tf.keras.layers.BatchNormalization):
   """Cross replica batch normalization."""
 
@@ -98,3 +97,21 @@ def count_params(model, trainable_only=True):
   else:
     return int(np.sum([tf.keras.backend.count_params(p)
                        for p in model.trainable_weights]))
+
+
+def load_weights(model: tf.keras.Model,
+                 model_weights_path: Text,
+                 weights_format: Text = 'saved_model'):
+  """Load model weights from the given file path.
+
+  Args:
+    model: the model to load weights into
+    model_weights_path: the path of the model weights
+    weights_format: the model weights format. One of 'saved_model', 'h5',
+       or 'checkpoint'.
+  """
+  if weights_format == 'saved_model':
+    loaded_model = tf.keras.models.load_model(model_weights_path)
+    model.set_weights(loaded_model.get_weights())
+  else:
+    model.load_weights(model_weights_path)

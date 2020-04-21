@@ -40,7 +40,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
 
     # When using static positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions save batch.
-    expected_output_shape = [1, sequence_length, width]
+    expected_output_shape = [None, sequence_length, width]
     self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
     # The default output dtype for this layer should be tf.float32.
     self.assertEqual(tf.float32, output_tensor.dtype)
@@ -55,7 +55,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
 
     # When using static positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions save batch.
-    expected_output_shape = [1, sequence_length, width]
+    expected_output_shape = [None, sequence_length, width]
     self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
     # The default output dtype for this layer should be tf.float32.
     self.assertEqual(tf.float16, output_tensor.dtype)
@@ -72,7 +72,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     # When using dynamic positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions - but may be None if
     # the input shape is None there.
-    expected_output_shape = [1, None, width]
+    expected_output_shape = [None, None, width]
     self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
 
   def test_dynamic_layer_slicing(self):

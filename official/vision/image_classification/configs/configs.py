@@ -45,8 +45,6 @@ class EfficientNetImageNetConfig(base_configs.ExperimentConfig):
       dataset_factory.ImageNetConfig(split='train')
   validation_dataset: dataset_factory.DatasetConfig = \
       dataset_factory.ImageNetConfig(split='validation')
-  test_dataset: dataset_factory.DatasetConfig = \
-      dataset_factory.ImageNetConfig(split='validation')
   train: base_configs.TrainConfig = base_configs.TrainConfig(
       resume_checkpoint=True,
       epochs=500,
@@ -54,8 +52,10 @@ class EfficientNetImageNetConfig(base_configs.ExperimentConfig):
       callbacks=base_configs.CallbacksConfig(enable_checkpoint_and_export=True,
                                              enable_tensorboard=True),
       metrics=['accuracy', 'top_5'],
+      time_history=base_configs.TimeHistoryConfig(log_steps=100),
       tensorboard=base_configs.TensorboardConfig(track_lr=True,
-                                                 write_model_weights=False))
+                                                 write_model_weights=False),
+      steps_per_loop=1)
   evaluation: base_configs.EvalConfig = base_configs.EvalConfig(
       epochs_between_evals=1,
       steps=None)
@@ -78,11 +78,6 @@ class ResNetImagenetConfig(base_configs.ExperimentConfig):
                                      one_hot=False,
                                      mean_subtract=True,
                                      standardize=True)
-  test_dataset: dataset_factory.DatasetConfig = \
-      dataset_factory.ImageNetConfig(split='validation',
-                                     one_hot=False,
-                                     mean_subtract=True,
-                                     standardize=True)
   train: base_configs.TrainConfig = base_configs.TrainConfig(
       resume_checkpoint=True,
       epochs=90,
@@ -90,8 +85,10 @@ class ResNetImagenetConfig(base_configs.ExperimentConfig):
       callbacks=base_configs.CallbacksConfig(enable_checkpoint_and_export=True,
                                              enable_tensorboard=True),
       metrics=['accuracy', 'top_5'],
+      time_history=base_configs.TimeHistoryConfig(log_steps=100),
       tensorboard=base_configs.TensorboardConfig(track_lr=True,
-                                                 write_model_weights=False))
+                                                 write_model_weights=False),
+      steps_per_loop=1)
   evaluation: base_configs.EvalConfig = base_configs.EvalConfig(
       epochs_between_evals=1,
       steps=None)

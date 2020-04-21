@@ -30,7 +30,7 @@ from typing import Any, Dict, Optional, Text, Tuple
 
 from absl import logging
 from dataclasses import dataclass
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
@@ -104,6 +104,8 @@ MODEL_CONFIGS = {
     'efficientnet-b5': ModelConfig.from_args(1.6, 2.2, 456, 0.4),
     'efficientnet-b6': ModelConfig.from_args(1.8, 2.6, 528, 0.5),
     'efficientnet-b7': ModelConfig.from_args(2.0, 3.1, 600, 0.5),
+    'efficientnet-b8': ModelConfig.from_args(2.2, 3.6, 672, 0.5),
+    'efficientnet-l2': ModelConfig.from_args(4.3, 5.3, 800, 0.5),
 }
 
 CONV_KERNEL_INITIALIZER = {
@@ -166,7 +168,7 @@ def conv2d_block(inputs: tf.Tensor,
   batch_norm = common_modules.get_batch_norm(config.batch_norm)
   bn_momentum = config.bn_momentum
   bn_epsilon = config.bn_epsilon
-  data_format = config.data_format
+  data_format = tf.keras.backend.image_data_format()
   weight_decay = config.weight_decay
 
   name = name or ''
@@ -223,7 +225,7 @@ def mb_conv_block(inputs: tf.Tensor,
   use_se = config.use_se
   activation = tf_utils.get_activation(config.activation)
   drop_connect_rate = config.drop_connect_rate
-  data_format = config.data_format
+  data_format = tf.keras.backend.image_data_format()
   use_depthwise = block.conv_type != 'no_depthwise'
   prefix = prefix or ''
 
@@ -346,12 +348,14 @@ def efficientnet(image_input: tf.keras.layers.Input,
   num_classes = config.num_classes
   input_channels = config.input_channels
   rescale_input = config.rescale_input
-  data_format = config.data_format
+  data_format = tf.keras.backend.image_data_format()
   dtype = config.dtype
   weight_decay = config.weight_decay
 
   x = image_input
-
+  if data_format == 'channels_first':
+    # Happens on GPU/TPU if available.
+    x = tf.keras.layers.Permute((3, 1, 2))(x)
   if rescale_input:
     x = preprocessing.normalize_images(x,
                                        num_channels=input_channels,
@@ -463,7 +467,7 @@ class EfficientNet(tf.keras.Model):
   def from_name(cls,
                 model_name: Text,
                 model_weights_path: Text = None,
-                copy_to_local: bool = False,
+                weights_format: Text = 'saved_model',
                 overrides: Dict[Text, Any] = None):
     """Construct an EfficientNet model from a predefined model name.
 
@@ -472,7 +476,8 @@ class EfficientNet(tf.keras.Model):
     Args:
       model_name: the predefined model name
       model_weights_path: the path to the weights (h5 file or saved model dir)
-      copy_to_local: copy the weights to a local tmp dir
+      weights_format: the model weights format. One of 'saved_model', 'h5',
+       or 'checkpoint'.
       overrides: (optional) a dict containing keys that can override config
 
     Returns:
@@ -492,12 +497,8 @@ class EfficientNet(tf.keras.Model):
     model = cls(config=config, overrides=overrides)
 
     if model_weights_path:
-      if copy_to_local:
-        tmp_file = os.path.join('/tmp', model_name + '.h5')
-        model_weights_file = os.path.join(model_weights_path, 'model.h5')
-        tf.io.gfile.copy(model_weights_file, tmp_file, overwrite=True)
-        model_weights_path = tmp_file
-
-      model.load_weights(model_weights_path)
+      common_modules.load_weights(model,
+                                  model_weights_path,
+                                  weights_format=weights_format)
 
     return model

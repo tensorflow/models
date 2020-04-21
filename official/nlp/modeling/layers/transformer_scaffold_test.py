@@ -54,6 +54,10 @@ class ValidatedAttentionLayer(attention.MultiHeadAttention):
 @keras_parameterized.run_all_keras_modes
 class TransformerLayerTest(keras_parameterized.TestCase):
 
+  def tearDown(self):
+    super(TransformerLayerTest, self).tearDown()
+    tf.keras.mixed_precision.experimental.set_policy('float32')
+
   def test_layer_creation(self):
     sequence_length = 21
     width = 80
@@ -212,6 +216,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     self.assertTrue(call_list[0], "The passed layer class wasn't instantiated.")
 
   def test_layer_invocation_with_float16_dtype(self):
+    tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
     sequence_length = 21
     width = 80
 
@@ -226,12 +231,10 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
         intermediate_size=2048,
-        intermediate_activation='relu',
-        dtype='float16')
+        intermediate_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(
-        shape=(sequence_length, width), dtype=tf.float16)
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
     mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
@@ -243,7 +246,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     # (the NN is too complex) but this will rule out structural runtime errors.
     batch_size = 6
     input_data = (10 * np.random.random_sample(
-        (batch_size, sequence_length, width))).astype(np.float16)
+        (batch_size, sequence_length, width)))
     # The attention mask should be of shape (batch, from_seq_len, to_seq_len),
     # which here is (batch, sequence_length, sequence_length)
     mask_data = np.random.randint(

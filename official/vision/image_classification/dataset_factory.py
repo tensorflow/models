@@ -23,7 +23,7 @@ import os
 from typing import Any, List, Optional, Tuple, Mapping, Union
 from absl import logging
 from dataclasses import dataclass
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from official.modeling.hyperparams import base_config
@@ -84,11 +84,10 @@ class DatasetConfig(base_config.Config):
     use_per_replica_batch_size: Whether to scale the batch size based on
       available resources. If set to `True`, the dataset builder will return
       batch_size multiplied by `num_devices`, the number of device replicas
-      (e.g., the number of GPUs or TPU cores).
+      (e.g., the number of GPUs or TPU cores). This setting should be `True` if
+      the strategy argument is passed to `build()` and `num_devices > 1`.
     num_devices: The number of replica devices to use. This should be set by
       `strategy.num_replicas_in_sync` when using a distribution strategy.
-    data_format: The data format of the images. Should be 'channels_last' or
-      'channels_first'.
     dtype: The desired dtype of the dataset. This will be set during
       preprocessing.
     one_hot: Whether to apply one hot encoding. Set to `True` to be able to use
@@ -118,9 +117,8 @@ class DatasetConfig(base_config.Config):
   num_channels: Union[int, str] = 'infer'
   num_examples: Union[int, str] = 'infer'
   batch_size: int = 128
-  use_per_replica_batch_size: bool = False
+  use_per_replica_batch_size: bool = True
   num_devices: int = 1
-  data_format: str = 'channels_last'
   dtype: str = 'float32'
   one_hot: bool = True
   augmenter: AugmentConfig = AugmentConfig()
@@ -188,20 +186,52 @@ class DatasetBuilder:
   def batch_size(self) -> int:
     """The batch size, multiplied by the number of replicas (if configured)."""
     if self.config.use_per_replica_batch_size:
-      return self.global_batch_size
+      return self.config.batch_size * self.config.num_devices
     else:
       return self.config.batch_size
 
   @property
   def global_batch_size(self):
     """The global batch size across all replicas."""
-    return self.config.batch_size * self.config.num_devices
+    return self.batch_size
+
+  @property
+  def local_batch_size(self):
+    """The base unscaled batch size."""
+    if self.config.use_per_replica_batch_size:
+      return self.config.batch_size
+    else:
+      return self.config.batch_size // self.config.num_devices
 
   @property
   def num_steps(self) -> int:
     """The number of steps (batches) to exhaust this dataset."""
     # Always divide by the global batch size to get the correct # of steps
     return self.num_examples // self.global_batch_size
+
+  @property
+  def dtype(self) -> tf.dtypes.DType:
+    """Converts the config's dtype string to a tf dtype.
+
+    Returns:
+      A mapping from string representation of a dtype to the `tf.dtypes.DType`.
+
+    Raises:
+      ValueError if the config's dtype is not supported.
+
+    """
+    dtype_map = {
+        'float32': tf.float32,
+        'bfloat16': tf.bfloat16,
+        'float16': tf.float16,
+        'fp32': tf.float32,
+        'bf16': tf.bfloat16,
+    }
+    try:
+      return dtype_map[self.config.dtype]
+    except:
+      raise ValueError('Invalid DType provided. Supported types: {}'.format(
+          dtype_map.keys()))
 
   @property
   def image_size(self) -> int:
@@ -243,19 +273,42 @@ class DatasetBuilder:
       self.builder_info = tfds.builder(self.config.name).info
     return self.builder_info
 
-  def build(self, input_context: tf.distribute.InputContext = None
-           ) -> tf.data.Dataset:
-    """Construct a dataset end-to-end and return it.
+  def build(self, strategy: tf.distribute.Strategy = None) -> tf.data.Dataset:
+    """Construct a dataset end-to-end and return it using an optional strategy.
 
     Args:
-      input_context: An optional context provided by `tf.distribute` for
-        cross-replica training. This isn't necessary if using Keras
-        compile/fit.
+      strategy: a strategy that, if passed, will distribute the dataset
+        according to that strategy. If passed and `num_devices > 1`,
+        `use_per_replica_batch_size` must be set to `True`.
 
     Returns:
       A TensorFlow dataset outputting batched images and labels.
     """
+    if strategy:
+      if strategy.num_replicas_in_sync != self.config.num_devices:
+        logging.warn('Passed a strategy with %d devices, but expected'
+                     '%d devices.',
+                     strategy.num_replicas_in_sync,
+                     self.config.num_devices)
 
+      dataset = strategy.experimental_distribute_datasets_from_function(
+          self._build)
+    else:
+      dataset = self._build()
+
+    return dataset
+
+  def _build(self, input_context: tf.distribute.InputContext = None
+             ) -> tf.data.Dataset:
+    """Construct a dataset end-to-end and return it.
+
+    Args:
+      input_context: An optional context provided by `tf.distribute` for
+        cross-replica training.
+
+    Returns:
+      A TensorFlow dataset outputting batched images and labels.
+    """
     builders = {
         'tfds': self.load_tfds,
         'records': self.load_records,
@@ -326,7 +379,7 @@ class DatasetBuilder:
 
     def generate_data(_):
       image = tf.zeros([self.image_size, self.image_size, self.num_channels],
-                       dtype=self.config.dtype)
+                       dtype=self.dtype)
       label = tf.zeros([1], dtype=tf.int32)
       return image, label
 
@@ -345,8 +398,8 @@ class DatasetBuilder:
     Args:
       dataset: A `tf.data.Dataset` that loads raw files.
       input_context: An optional context provided by `tf.distribute` for
-        cross-replica training. This isn't necessary if using Keras
-        compile/fit.
+        cross-replica training. If set with more than one replica, this
+        function assumes `use_per_replica_batch_size=True`.
 
     Returns:
       A TensorFlow dataset outputting batched images and labels.
@@ -366,8 +419,6 @@ class DatasetBuilder:
           cycle_length=16,
           num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    dataset = dataset.prefetch(self.global_batch_size)
-
     if self.config.cache:
       dataset = dataset.cache()
 
@@ -383,13 +434,25 @@ class DatasetBuilder:
     dataset = dataset.map(preprocess,
                           num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    dataset = dataset.batch(self.batch_size, drop_remainder=self.is_training)
+    if input_context and self.config.num_devices > 1:
+      if not self.config.use_per_replica_batch_size:
+        raise ValueError(
+            'The builder does not support a global batch size with more than '
+            'one replica. Got {} replicas. Please set a '
+            '`per_replica_batch_size` and enable '
+            '`use_per_replica_batch_size=True`.'.format(
+                self.config.num_devices))
 
-    # Note: we could do image normalization here, but we defer it to the model
-    # which can perform it much faster on a GPU/TPU
-    # TODO(dankondratyuk): if we fix prefetching, we can do it here
+      # The batch size of the dataset will be multiplied by the number of
+      # replicas automatically when strategy.distribute_datasets_from_function
+      # is called, so we use local batch size here.
+      dataset = dataset.batch(self.local_batch_size,
+                              drop_remainder=self.is_training)
+    else:
+      dataset = dataset.batch(self.global_batch_size,
+                              drop_remainder=self.is_training)
 
-    if self.is_training and self.config.deterministic_train is not None:
+    if self.is_training:
       options = tf.data.Options()
       options.experimental_deterministic = self.config.deterministic_train
       options.experimental_slack = self.config.use_slack
@@ -400,9 +463,7 @@ class DatasetBuilder:
       dataset = dataset.with_options(options)
 
     # Prefetch overlaps in-feed with training
-    # Note: autotune here is not recommended, as this can lead to memory leaks.
-    # Instead, use a constant prefetch size like the the number of devices.
-    dataset = dataset.prefetch(self.config.num_devices)
+    dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
     return dataset
 
@@ -451,7 +512,7 @@ class DatasetBuilder:
           image_size=self.image_size,
           mean_subtract=self.config.mean_subtract,
           standardize=self.config.standardize,
-          dtype=self.config.dtype,
+          dtype=self.dtype,
           augmenter=self.augmenter)
     else:
       image = preprocessing.preprocess_for_eval(
@@ -460,7 +521,7 @@ class DatasetBuilder:
           num_channels=self.num_channels,
           mean_subtract=self.config.mean_subtract,
           standardize=self.config.standardize,
-          dtype=self.config.dtype)
+          dtype=self.dtype)
 
     label = tf.cast(label, tf.int32)
     if self.config.one_hot:

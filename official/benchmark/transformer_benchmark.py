@@ -22,12 +22,11 @@ import time
 
 from absl import flags
 import tensorflow as tf
-
+from official.benchmark import benchmark_wrappers
+from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.nlp.transformer import misc
 from official.nlp.transformer import transformer_main as transformer_main
 from official.utils.flags import core as flags_core
-from official.utils.testing import benchmark_wrappers
-from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
 
 TRANSFORMER_EN2DE_DATA_DIR_NAME = 'wmt32k-en2de-official'
 EN2DE_2014_BLEU_DATA_DIR_NAME = 'newstest2014'
@@ -44,7 +43,6 @@ class TransformerBenchmark(PerfZeroBenchmark):
 
   def __init__(self, output_dir=None, default_flags=None, root_data_dir=None,
                flag_methods=None):
-    assert tf.version.VERSION.startswith('2.')
     root_data_dir = root_data_dir if root_data_dir else ''
 
     self.train_data_dir = os.path.join(root_data_dir,

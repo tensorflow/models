@@ -24,7 +24,7 @@ import os
 from absl import app
 from absl import flags
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.image_classification.resnet import imagenet_preprocessing
 from official.vision.image_classification.resnet import resnet_model
@@ -59,7 +59,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
 
-  assert tf.version.VERSION.startswith('2.')
   export_tfhub(FLAGS.model_path, FLAGS.export_path)
 
 

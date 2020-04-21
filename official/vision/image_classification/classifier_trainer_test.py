@@ -30,7 +30,7 @@ from typing import Any, Callable, Iterable, Mapping, MutableMapping, Optional, T
 
 from absl import flags
 from absl.testing import parameterized
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -67,7 +67,7 @@ def get_params_override(params_override: Mapping[str, Any]) -> str:
   return '--params_override=' + json.dumps(params_override)
 
 
-def basic_params_override() -> MutableMapping[str, Any]:
+def basic_params_override(dtype: str = 'float32') -> MutableMapping[str, Any]:
   """Returns a basic parameter configuration for testing."""
   return {
       'train_dataset': {
@@ -75,18 +75,14 @@ def basic_params_override() -> MutableMapping[str, Any]:
           'use_per_replica_batch_size': True,
           'batch_size': 1,
           'image_size': 224,
+          'dtype': dtype,
       },
       'validation_dataset': {
           'builder': 'synthetic',
           'batch_size': 1,
           'use_per_replica_batch_size': True,
           'image_size': 224,
-      },
-      'test_dataset': {
-          'builder': 'synthetic',
-          'batch_size': 1,
-          'use_per_replica_batch_size': True,
-          'image_size': 224,
+          'dtype': dtype,
       },
       'train': {
           'steps': 1,
@@ -152,7 +148,7 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
     tf.io.gfile.rmtree(self.get_temp_dir())
 
   @combinations.generate(distribution_strategy_combinations())
-  def test_end_to_end_train_and_eval_export(self, distribution, model, dataset):
+  def test_end_to_end_train_and_eval(self, distribution, model, dataset):
     """Test train_and_eval and export for Keras classifier models."""
     # Some parameters are not defined as flags (e.g. cannot run
     # classifier_train.py --batch_size=...) by design, so use
@@ -165,6 +161,41 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
     ]
     train_and_eval_flags = base_flags + [
         get_params_override(basic_params_override()),
+        '--mode=train_and_eval',
+    ]
+
+    run = functools.partial(classifier_trainer.run,
+                            strategy_override=distribution)
+    run_end_to_end(main=run,
+                   extra_flags=train_and_eval_flags,
+                   model_dir=model_dir)
+
+  @combinations.generate(
+      combinations.combine(
+          distribution=[
+              strategy_combinations.one_device_strategy_gpu,
+          ],
+          model=[
+              'efficientnet',
+              'resnet',
+          ],
+          mode='eager',
+          dataset='imagenet',
+          dtype='float16',
+      ))
+  def test_gpu_train(self, distribution, model, dataset, dtype):
+    """Test train_and_eval and export for Keras classifier models."""
+    # Some parameters are not defined as flags (e.g. cannot run
+    # classifier_train.py --batch_size=...) by design, so use
+    # "--params_override=..." instead
+    model_dir = self.get_temp_dir()
+    base_flags = [
+        '--data_dir=not_used',
+        '--model_type=' + model,
+        '--dataset=' + dataset,
+    ]
+    train_and_eval_flags = base_flags + [
+        get_params_override(basic_params_override(dtype)),
         '--mode=train_and_eval',
     ]
 
@@ -186,6 +217,41 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
                    extra_flags=export_flags,
                    model_dir=model_dir)
     self.assertTrue(os.path.exists(export_path))
+
+  @combinations.generate(
+      combinations.combine(
+      distribution=[
+          strategy_combinations.tpu_strategy,
+      ],
+      model=[
+          'efficientnet',
+          'resnet',
+      ],
+      mode='eager',
+      dataset='imagenet',
+      dtype='bfloat16',
+  ))
+  def test_tpu_train(self, distribution, model, dataset, dtype):
+    """Test train_and_eval and export for Keras classifier models."""
+    # Some parameters are not defined as flags (e.g. cannot run
+    # classifier_train.py --batch_size=...) by design, so use
+    # "--params_override=..." instead
+    model_dir = self.get_temp_dir()
+    base_flags = [
+        '--data_dir=not_used',
+        '--model_type=' + model,
+        '--dataset=' + dataset,
+    ]
+    train_and_eval_flags = base_flags + [
+        get_params_override(basic_params_override(dtype)),
+        '--mode=train_and_eval',
+    ]
+
+    run = functools.partial(classifier_trainer.run,
+                            strategy_override=distribution)
+    run_end_to_end(main=run,
+                   extra_flags=train_and_eval_flags,
+                   model_dir=model_dir)
 
   @combinations.generate(distribution_strategy_combinations())
   def test_end_to_end_invalid_mode(self, distribution, model, dataset):
@@ -239,8 +305,8 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
   )
   def test_get_loss_scale(self, loss_scale, dtype, expected):
     config = base_configs.ExperimentConfig(
-        model=base_configs.ModelConfig(
-            loss=base_configs.LossConfig(loss_scale=loss_scale)),
+        runtime=base_configs.RuntimeConfig(
+            loss_scale=loss_scale),
         train_dataset=dataset_factory.DatasetConfig(dtype=dtype))
     ls = classifier_trainer.get_loss_scale(config, fp16_default=128)
     self.assertEqual(ls, expected)
@@ -252,19 +318,23 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
   def test_initialize(self, dtype):
     config = base_configs.ExperimentConfig(
         runtime=base_configs.RuntimeConfig(
-            enable_eager=False,
+            run_eagerly=False,
             enable_xla=False,
-            gpu_threads_enabled=True,
             per_gpu_thread_count=1,
             gpu_thread_mode='gpu_private',
             num_gpus=1,
             dataset_num_private_threads=1,
         ),
         train_dataset=dataset_factory.DatasetConfig(dtype=dtype),
-        model=base_configs.ModelConfig(
-            loss=base_configs.LossConfig(loss_scale='dynamic')),
+        model=base_configs.ModelConfig(),
     )
-    classifier_trainer.initialize(config)
+
+    class EmptyClass:
+      pass
+    fake_ds_builder = EmptyClass()
+    fake_ds_builder.dtype = dtype
+    fake_ds_builder.config = EmptyClass()
+    classifier_trainer.initialize(config, fake_ds_builder)
 
   def test_resume_from_checkpoint(self):
     """Tests functionality for resuming from checkpoint."""
@@ -313,5 +383,4 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
     tf.io.gfile.rmtree(model_dir)
 
 if __name__ == '__main__':
-  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

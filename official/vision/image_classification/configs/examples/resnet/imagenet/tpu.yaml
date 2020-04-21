@@ -1,15 +1,13 @@
 # Training configuration for ResNet trained on ImageNet on TPUs.
-# Takes ~2 minutes, 43 seconds per epoch for a v3-32.
-# Reaches ~76.1% within 90 epochs.
+# Takes ~4 minutes, 30 seconds seconds per epoch for a v3-32.
+# Reaches > 76.1% within 90 epochs.
 # Note: This configuration uses a scaled per-replica batch size based on the number of devices.
 runtime:
-  model_dir: null
-  mode: 'train_and_eval'
   distribution_strategy: 'tpu'
 train_dataset:
   name: 'imagenet2012'
   data_dir: null
-  builder: 'records'
+  builder: 'tfds'
   split: 'train'
   one_hot: False
   image_size: 224
@@ -23,7 +21,7 @@ train_dataset:
 validation_dataset:
   name: 'imagenet2012'
   data_dir: null
-  builder: 'records'
+  builder: 'tfds'
   split: 'validation'
   one_hot: False
   image_size: 224
@@ -35,7 +33,7 @@ validation_dataset:
   standardize: True
   dtype: 'bfloat16'
 model:
-  model_name: 'resnet'
+  name: 'resnet'
   model_params:
     rescale_inputs: False
   optimizer:

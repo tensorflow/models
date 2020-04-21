@@ -22,7 +22,6 @@ import functools
 
 from absl.testing import parameterized
 import tensorflow as tf
-import tensorflow_datasets as tfds
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
@@ -88,5 +87,4 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
 
 
 if __name__ == "__main__":
-  tf.compat.v1.enable_v2_behavior()
   tf.test.main()

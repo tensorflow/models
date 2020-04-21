@@ -18,7 +18,7 @@
 import copy
 import functools
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import slim as contrib_slim
 
 from deeplab.core import nas_network
@@ -31,10 +31,13 @@ from nets.mobilenet import mobilenet_v3
 
 slim = contrib_slim
 
-# Default end point for MobileNetv2.
+# Default end point for MobileNetv2 (one-based indexing).
 _MOBILENET_V2_FINAL_ENDPOINT = 'layer_18'
+# Default end point for MobileNetv3.
 _MOBILENET_V3_LARGE_FINAL_ENDPOINT = 'layer_17'
 _MOBILENET_V3_SMALL_FINAL_ENDPOINT = 'layer_13'
+# Default end point for EdgeTPU Mobilenet.
+_MOBILENET_EDGETPU = 'layer_24'
 
 
 def _mobilenet_v2(net,
@@ -170,6 +173,29 @@ def mobilenet_v3_large_seg(net,
       final_endpoint=_MOBILENET_V3_LARGE_FINAL_ENDPOINT)
 
 
+def mobilenet_edgetpu(net,
+                      depth_multiplier,
+                      output_stride,
+                      divisible_by=None,
+                      reuse=None,
+                      scope=None,
+                      final_endpoint=None):
+  """EdgeTPU version of mobilenet model for segmentation task."""
+  del divisible_by
+  del final_endpoint
+  conv_defs = copy.deepcopy(mobilenet_v3.V3_EDGETPU)
+
+  return _mobilenet_v3(
+      net,
+      depth_multiplier=depth_multiplier,
+      output_stride=output_stride,
+      divisible_by=8,
+      conv_defs=conv_defs,
+      reuse=reuse,
+      scope=scope,  # the scope is 'MobilenetEdgeTPU'
+      final_endpoint=_MOBILENET_EDGETPU)
+
+
 def mobilenet_v3_small_seg(net,
                            depth_multiplier,
                            output_stride,
@@ -205,6 +231,7 @@ def mobilenet_v3_small_seg(net,
 # A map from network name to network function.
 networks_map = {
     'mobilenet_v2': _mobilenet_v2,
+    'mobilenet_edgetpu': mobilenet_edgetpu,
     'mobilenet_v3_large_seg': mobilenet_v3_large_seg,
     'mobilenet_v3_small_seg': mobilenet_v3_small_seg,
     'resnet_v1_18': resnet_v1_beta.resnet_v1_18,
@@ -294,6 +321,7 @@ def mobilenet_v2_arg_scope(is_training=True,
 # A map from network name to network arg scope.
 arg_scopes_map = {
     'mobilenet_v2': mobilenet_v2.training_scope,
+    'mobilenet_edgetpu': mobilenet_v2_arg_scope,
     'mobilenet_v3_large_seg': mobilenet_v2_arg_scope,
     'mobilenet_v3_small_seg': mobilenet_v2_arg_scope,
     'resnet_v1_18': resnet_v1_beta.resnet_arg_scope,
@@ -427,6 +455,7 @@ networks_to_feature_maps = {
 # ImageNet pretrained versions of these models.
 name_scope = {
     'mobilenet_v2': 'MobilenetV2',
+    'mobilenet_edgetpu': 'MobilenetEdgeTPU',
     'mobilenet_v3_large_seg': 'MobilenetV3',
     'mobilenet_v3_small_seg': 'MobilenetV3',
     'resnet_v1_18': 'resnet_v1_18',
@@ -464,6 +493,7 @@ def _preprocess_zero_mean_unit_range(inputs, dtype=tf.float32):
 
 _PREPROCESS_FN = {
     'mobilenet_v2': _preprocess_zero_mean_unit_range,
+    'mobilenet_edgetpu': _preprocess_zero_mean_unit_range,
     'mobilenet_v3_large_seg': _preprocess_zero_mean_unit_range,
     'mobilenet_v3_small_seg': _preprocess_zero_mean_unit_range,
     'resnet_v1_18': _preprocess_subtract_imagenet_mean,

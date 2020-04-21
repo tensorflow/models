@@ -59,6 +59,17 @@ class MetricsConfig(base_config.Config):
 
 
 @dataclasses.dataclass
+class TimeHistoryConfig(base_config.Config):
+  """Configuration for the TimeHistory callback.
+
+  Attributes:
+    log_steps: Interval of steps between logging of batch level stats.
+
+  """
+  log_steps: int = None
+
+
+@dataclasses.dataclass
 class TrainConfig(base_config.Config):
   """Configuration for training.
 
@@ -71,14 +82,18 @@ class TrainConfig(base_config.Config):
     callbacks: An instance of CallbacksConfig.
     metrics: An instance of MetricsConfig.
     tensorboard: An instance of TensorboardConfig.
+    steps_per_loop: The number of batches to run during each `tf.function`
+      call during training, which can increase training speed.
 
   """
   resume_checkpoint: bool = None
   epochs: int = None
   steps: int = None
   callbacks: CallbacksConfig = CallbacksConfig()
-  metrics: List[str] = None
+  metrics: MetricsConfig = None
   tensorboard: TensorboardConfig = TensorboardConfig()
+  time_history: TimeHistoryConfig = TimeHistoryConfig()
+  steps_per_loop: int = None
 
 
 @dataclasses.dataclass
@@ -91,10 +106,12 @@ class EvalConfig(base_config.Config):
     steps: The number of eval steps to run during evaluation. If None, this will
       be inferred based on the number of images and batch size. Defaults to
       None.
+    skip_eval: Whether or not to skip evaluation.
 
   """
   epochs_between_evals: int = None
   steps: int = None
+  skip_eval: bool = False
 
 
 @dataclasses.dataclass
@@ -103,13 +120,11 @@ class LossConfig(base_config.Config):
 
   Attributes:
     name: The name of the loss. Defaults to None.
-    loss_scale: The type of loss scale
     label_smoothing: Whether or not to apply label smoothing to the loss. This
       only applies to 'categorical_cross_entropy'.
 
   """
   name: str = None
-  loss_scale: str = None
   label_smoothing: float = None
 
 
@@ -164,6 +179,7 @@ class LearningRateConfig(base_config.Config):
     multipliers: multipliers used in piecewise constant decay with warmup.
     scale_by_batch_size: Scale the learning rate by a fraction of the batch
       size. Set to 0 for no scaling (default).
+    staircase: Apply exponential decay at discrete values instead of continuous.
 
   """
   name: str = None
@@ -175,6 +191,7 @@ class LearningRateConfig(base_config.Config):
   boundaries: List[int] = None
   multipliers: List[float] = None
   scale_by_batch_size: float = 0.
+  staircase: bool = None
 
 
 @dataclasses.dataclass
@@ -190,7 +207,7 @@ class ModelConfig(base_config.Config):
 
   """
   name: str = None
-  model_params: Mapping[str, Any] = None
+  model_params: base_config.Config = None
   num_classes: int = None
   loss: LossConfig = None
   optimizer: OptimizerConfig = None
@@ -216,7 +233,6 @@ class ExperimentConfig(base_config.Config):
   runtime: RuntimeConfig = None
   train_dataset: Any = None
   validation_dataset: Any = None
-  test_dataset: Any = None
   train: TrainConfig = None
   evaluation: EvalConfig = None
   model: ModelConfig = None

@@ -164,6 +164,18 @@ def get_profiler_callback(model_dir, profile_steps, enable_tensorboard,
   return ProfilerCallback(model_dir, start_step, stop_step, steps_per_epoch)
 
 
+class SimpleCheckpoint(tf.keras.callbacks.Callback):
+  """Keras callback to save tf.train.Checkpoints."""
+
+  def __init__(self, checkpoint_manager):
+    super(SimpleCheckpoint, self).__init__()
+    self.checkpoint_manager = checkpoint_manager
+
+  def on_epoch_end(self, epoch, logs=None):
+    step_counter = self.checkpoint_manager._step_counter.numpy()  # pylint: disable=protected-access
+    self.checkpoint_manager.save(checkpoint_number=step_counter)
+
+
 class ProfilerCallback(tf.keras.callbacks.Callback):
   """Save profiles in specified step range to log directory."""
 

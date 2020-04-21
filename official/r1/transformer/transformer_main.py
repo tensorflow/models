@@ -562,6 +562,36 @@ def construct_estimator(flags_obj, params, schedule_manager):
       },
       config=run_config)
 
+def per_replica_batch_size(batch_size, num_gpus):
+  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
+
+
+  Note that distribution strategy handles this automatically when used with
+  Keras. For using with Estimator, we need to get per GPU batch.
+
+  Args:
+    batch_size: Global batch size to be divided among devices. This should be
+      equal to num_gpus times the single-GPU batch_size for multi-gpu training.
+    num_gpus: How many GPUs are used with DistributionStrategies.
+
+  Returns:
+    Batch size per device.
+
+  Raises:
+    ValueError: if batch_size is not divisible by number of devices
+  """
+  if num_gpus <= 1:
+    return batch_size
+
+  remainder = batch_size % num_gpus
+  if remainder:
+    err = ('When running with multiple GPUs, batch size '
+           'must be a multiple of the number of available GPUs. Found {} '
+           'GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
+    raise ValueError(err)
+  return int(batch_size / num_gpus)
+
 
 def run_transformer(flags_obj):
   """Create tf.Estimator to train and evaluate transformer model.
@@ -605,8 +635,8 @@ def run_transformer(flags_obj):
 
   total_batch_size = params["batch_size"]
   if not params["use_tpu"]:
-    params["batch_size"] = distribution_utils.per_replica_batch_size(
-        params["batch_size"], num_gpus)
+    params["batch_size"] = per_replica_batch_size(params["batch_size"],
+                                                  num_gpus)
 
   schedule_manager = schedule.Manager(
       train_steps=flags_obj.train_steps,

@@ -85,13 +85,14 @@ class InputFn(object):
 
     if self._input_sharding and ctx and ctx.num_input_pipelines > 1:
       dataset = dataset.shard(ctx.num_input_pipelines, ctx.input_pipeline_id)
+    dataset = dataset.cache()
+
     if self._is_training:
       dataset = dataset.repeat()
 
     dataset = dataset.interleave(
         map_func=lambda file_name: self._dataset_fn(file_name), cycle_length=32,
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    dataset = dataset.cache()
 
     if self._is_training:
       # Large shuffle size is critical for 2vm input pipeline. Can use small

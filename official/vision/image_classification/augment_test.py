@@ -21,7 +21,7 @@ from __future__ import print_function
 
 from absl.testing import parameterized
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.image_classification import augment
 
@@ -52,14 +52,21 @@ class TransformsTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(augment.transform(image, transforms=[1]*8),
                         [[4, 4], [4, 4]])
 
-  def disable_test_translate(self, dtype):
+  def test_translate(self, dtype):
     image = tf.constant(
-        [[1, 0, 1, 0], [0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 1]],
+        [[1, 0, 1, 0],
+         [0, 1, 0, 1],
+         [1, 0, 1, 0],
+         [0, 1, 0, 1]],
         dtype=dtype)
     translations = [-1, -1]
     translated = augment.translate(image=image,
                                    translations=translations)
-    expected = [[1, 0, 1, 0], [0, 1, 0, 0], [1, 0, 1, 0], [0, 0, 0, 0]]
+    expected = [
+        [1, 0, 1, 1],
+        [0, 1, 0, 0],
+        [1, 0, 1, 1],
+        [1, 0, 1, 1]]
     self.assertAllEqual(translated, expected)
 
   def test_translate_shapes(self, dtype):
@@ -133,5 +140,4 @@ class AutoaugmentTest(tf.test.TestCase):
     self.assertEqual((224, 224, 3), image.shape)
 
 if __name__ == '__main__':
-  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import functools
 import json
+import os
 
 from absl import app
 from absl import flags
@@ -191,6 +192,7 @@ def main(_):
   else:
     input_meta_data = generate_squad_dataset()
 
+  tf.io.gfile.makedirs(os.path.dirname(FLAGS.meta_data_file_path))
   with tf.io.gfile.GFile(FLAGS.meta_data_file_path, "w") as writer:
     writer.write(json.dumps(input_meta_data, indent=4) + "\n")
 

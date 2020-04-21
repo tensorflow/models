@@ -14,8 +14,14 @@ If `from_tensor` and `to_tensor` are the same, then this is self-attention.
 * [CachedAttention](attention.py) implements an attention layer with cache used
 for auto-agressive decoding.
 
+* [TalkingHeadsAttention](talking_heads_attention.py) implements the talking
+heads attention, as decribed in ["Talking-Heads Attention"](https://arxiv.org/abs/2003.02436).
+
 * [Transformer](transformer.py) implements an optionally masked transformer as
 described in ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
+
+* [ReZeroTransformer](rezero_transformer.py) implements Transformer with ReZero
+described in ["ReZero is All You Need: Fast Convergence at Large Depth"](https://arxiv.org/abs/2003.04887).
 
 * [OnDeviceEmbedding](on_device_embedding.py) implements efficient embedding lookups designed for TPU-based models.
 

@@ -47,6 +47,8 @@ flags.DEFINE_integer('num_steps_per_epoch', 1000,
                      'Total number of training steps to run per epoch.')
 flags.DEFINE_float('warmup_steps', 10000,
                    'Warmup steps for Adam weight decay optimizer.')
+flags.DEFINE_bool('use_next_sentence_label', True,
+                  'Whether to use next sentence label to compute final loss.')
 
 common_flags.define_common_bert_flags()
 common_flags.define_gin_flags()
@@ -55,7 +57,8 @@ FLAGS = flags.FLAGS
 
 
 def get_pretrain_dataset_fn(input_file_pattern, seq_length,
-                            max_predictions_per_seq, global_batch_size):
+                            max_predictions_per_seq, global_batch_size,
+                            use_next_sentence_label=True):
   """Returns input dataset from input file string."""
   def _dataset_fn(ctx=None):
     """Returns tf.data.Dataset for distributed BERT pretraining."""
@@ -67,7 +70,8 @@ def get_pretrain_dataset_fn(input_file_pattern, seq_length,
         max_predictions_per_seq,
         batch_size,
         is_training=True,
-        input_pipeline_context=ctx)
+        input_pipeline_context=ctx,
+        use_next_sentence_label=use_next_sentence_label)
     return train_dataset
 
   return _dataset_fn
@@ -92,20 +96,26 @@ def run_customized_training(strategy,
                             epochs,
                             initial_lr,
                             warmup_steps,
+                            end_lr,
+                            optimizer_type,
                             input_files,
-                            train_batch_size):
+                            train_batch_size,
+                            use_next_sentence_label=True):
   """Run BERT pretrain model training using low-level API."""
 
   train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
                                            max_predictions_per_seq,
-                                           train_batch_size)
+                                           train_batch_size,
+                                           use_next_sentence_label)
 
   def _get_pretrain_model():
     """Gets a pretraining model."""
     pretrain_model, core_model = bert_models.pretrain_model(
-        bert_config, max_seq_length, max_predictions_per_seq)
+        bert_config, max_seq_length, max_predictions_per_seq,
+        use_next_sentence_label=use_next_sentence_label)
     optimizer = optimization.create_optimizer(
-        initial_lr, steps_per_epoch * epochs, warmup_steps)
+        initial_lr, steps_per_epoch * epochs, warmup_steps,
+        end_lr, optimizer_type)
     pretrain_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),
@@ -151,8 +161,11 @@ def run_bert_pretrain(strategy):
       FLAGS.num_train_epochs,
       FLAGS.learning_rate,
       FLAGS.warmup_steps,
+      FLAGS.end_lr,
+      FLAGS.optimizer_type,
       FLAGS.input_files,
-      FLAGS.train_batch_size)
+      FLAGS.train_batch_size,
+      FLAGS.use_next_sentence_label)
 
 
 def main(_):

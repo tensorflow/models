@@ -1,16 +1,13 @@
 # Training configuration for ResNet trained on ImageNet on GPUs.
-# Takes ~3 minutes, 15 seconds per epoch for 8 V100s.
-# Reaches ~76.1% within 90 epochs.
+# Reaches > 76.1% within 90 epochs.
 # Note: This configuration uses a scaled per-replica batch size based on the number of devices.
 runtime:
-  model_dir: null
-  mode: 'train_and_eval'
   distribution_strategy: 'mirrored'
   num_gpus: 1
 train_dataset:
   name: 'imagenet2012'
   data_dir: null
-  builder: 'records'
+  builder: 'tfds'
   split: 'train'
   image_size: 224
   num_classes: 1000
@@ -23,7 +20,7 @@ train_dataset:
 validation_dataset:
   name: 'imagenet2012'
   data_dir: null
-  builder: 'records'
+  builder: 'tfds'
   split: 'validation'
   image_size: 224
   num_classes: 1000
@@ -34,7 +31,7 @@ validation_dataset:
   mean_subtract: True
   standardize: True
 model:
-  model_name: 'resnet'
+  name: 'resnet'
   model_params:
     rescale_inputs: False
   optimizer:

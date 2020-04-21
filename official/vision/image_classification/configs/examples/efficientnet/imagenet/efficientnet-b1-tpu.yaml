@@ -2,8 +2,6 @@
 # Takes ~3 minutes, 15 seconds per epoch for v3-32.
 # Note: This configuration uses a scaled per-replica batch size based on the number of devices.
 runtime:
-  model_dir: null
-  mode: 'train_and_eval'
   distribution_strategy: 'tpu'
 train_dataset:
   name: 'imagenet2012'
@@ -34,10 +32,13 @@ model:
       num_classes: 1000
       batch_norm: 'tpu'
       dtype: 'bfloat16'
+      activation: 'swish'
   optimizer:
     name: 'rmsprop'
     momentum: 0.9
     decay: 0.9
+    moving_average_decay: 0.0
+    lookahead: false
   learning_rate:
     name: 'exponential'
   loss:

@@ -24,11 +24,10 @@ from absl import flags
 from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
-
+from official.benchmark import benchmark_wrappers
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main
 from official.utils.flags import core
-from official.utils.testing import benchmark_wrappers
 
 FLAGS = flags.FLAGS
 NCF_DATA_DIR_NAME = 'movielens_data'
@@ -50,7 +49,6 @@ class NCFKerasBenchmarkBase(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    assert tf.version.VERSION.startswith('2.')
     logging.set_verbosity(logging.INFO)
     if NCFKerasBenchmarkBase.local_flags is None:
       ncf_common.define_ncf_flags()

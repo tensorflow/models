@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import collections
 import csv
+import importlib
 import os
 
 from absl import logging
@@ -403,6 +404,7 @@ class TfdsProcessor(DataProcessor):
   (TFDS) for the meaning of individual parameters):
     dataset: Required dataset name (potentially with subset and version number).
     data_dir: Optional TFDS source root directory.
+    module_import: Optional Dataset module to import.
     train_split: Name of the train split (defaults to `train`).
     dev_split: Name of the dev split (defaults to `validation`).
     test_split: Name of the test split (defaults to `test`).
@@ -418,6 +420,9 @@ class TfdsProcessor(DataProcessor):
                process_text_fn=tokenization.convert_to_unicode):
     super(TfdsProcessor, self).__init__(process_text_fn)
     self._process_tfds_params_str(tfds_params)
+    if self.module_import:
+      importlib.import_module(self.module_import)
+
     self.dataset, info = tfds.load(self.dataset_name, data_dir=self.data_dir,
                                    with_info=True)
     self._labels = list(range(info.features[self.label_key].num_classes))
@@ -428,6 +433,7 @@ class TfdsProcessor(DataProcessor):
     d = {k.strip(): v.strip() for k, v in tuples}
     self.dataset_name = d["dataset"]  # Required.
     self.data_dir = d.get("data_dir", None)
+    self.module_import = d.get("module_import", None)
     self.train_split = d.get("train_split", "train")
     self.dev_split = d.get("dev_split", "validation")
     self.test_split = d.get("test_split", "test")
@@ -578,6 +584,7 @@ def file_based_convert_examples_to_features(examples, label_list,
                                             output_file):
   """Convert a set of `InputExample`s to a TFRecord file."""
 
+  tf.io.gfile.makedirs(os.path.dirname(output_file))
   writer = tf.io.TFRecordWriter(output_file)
 
   for (ex_index, example) in enumerate(examples):

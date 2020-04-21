@@ -20,10 +20,10 @@ import functools
 import time
 
 from absl import flags
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 import tensorflow_hub as hub
 
-from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
+from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 
 FLAGS = flags.FLAGS
 

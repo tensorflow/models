@@ -186,14 +186,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 class CachedAttention(MultiHeadAttention):
   """Attention layer with cache used for auto-agressive decoding.
 
-  Arguments:
-    num_heads: Number of attention heads.
-    head_size: Size of each attention head.
-    **kwargs: Other keyword arguments inherit from `Attention` class.
+  Arguments are the same as `MultiHeadAttention` layer.
   """
-
-  def __init__(self, num_heads, head_size, **kwargs):
-    super(CachedAttention, self).__init__(num_heads, head_size, **kwargs)
 
   def _update_cache(self, key_tensor, value_tensor, cache, decode_loop_step):
     """Updates cache states and gets full-length key/value tensors."""

@@ -33,7 +33,7 @@ from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.nlp.bert import run_squad
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-from official.utils.testing import benchmark_wrappers
+from official.benchmark import benchmark_wrappers
 
 
 # pylint: disable=line-too-long
@@ -104,7 +104,6 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _train_squad(self, run_eagerly=False, ds_type='mirrored'):
     """Runs BERT SQuAD training. Uses mirrored strategy by default."""
-    assert tf.version.VERSION.startswith('2.')
     self._init_gpu_and_data_threads()
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(ds_type)
@@ -118,7 +117,6 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   @flagsaver.flagsaver
   def _evaluate_squad(self, ds_type='mirrored'):
     """Runs BERT SQuAD evaluation. Uses mirrored strategy by default."""
-    assert tf.version.VERSION.startswith('2.')
     self._init_gpu_and_data_threads()
     input_meta_data = self._read_input_meta_data_from_file()
     strategy = self._get_distribution_strategy(ds_type)
@@ -128,7 +126,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     eval_metrics = run_squad.eval_squad(strategy=strategy,
                                         input_meta_data=input_meta_data)
     # Use F1 score as reported evaluation metric.
-    self.eval_metrics = eval_metrics['f1']
+    self.eval_metrics = eval_metrics['final_f1']
 
 
 class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
@@ -254,7 +252,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     self.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squad')
-    FLAGS.train_batch_size = 32
+    FLAGS.train_batch_size = 24
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
 
     self._run_and_report_benchmark()

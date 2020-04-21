@@ -39,7 +39,6 @@ def define_common_bert_flags():
       stop_threshold=False,
       batch_size=False,
       num_gpu=True,
-      hooks=False,
       export_dir=False,
       distribution_strategy=True,
       run_eagerly=True)
@@ -63,6 +62,10 @@ def define_common_bert_flags():
       'inside.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
+  flags.DEFINE_float('end_lr', 0.0,
+                     'The end learning rate for learning rate decay.')
+  flags.DEFINE_string('optimizer_type', 'adamw',
+                      'The type of optimizer to use for training (adamw|lamb)')
   flags.DEFINE_boolean(
       'scale_loss', False,
       'Whether to divide the loss by number of replica inside the per-replica '

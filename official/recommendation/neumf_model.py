@@ -126,7 +126,6 @@ def neumf_model_fn(features, labels, mode, params):
         weights=tf.cast(valid_pt_mask, tf.float32)
     )
 
-    # This tensor is used by logging hooks.
     tf.identity(loss, name="cross_entropy")
 
     global_step = tf.compat.v1.train.get_global_step()

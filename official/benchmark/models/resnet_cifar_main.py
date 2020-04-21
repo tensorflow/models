@@ -23,12 +23,13 @@ from absl import flags
 from absl import logging
 import numpy as np
 import tensorflow as tf
+from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_model
+from official.benchmark.models import synthetic_util
 from official.utils.flags import core as flags_core
 from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-from official.vision.image_classification.resnet import cifar_preprocessing
 from official.vision.image_classification.resnet import common
 
 
@@ -159,7 +160,7 @@ def run(flags_obj):
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
   if flags_obj.use_synthetic_data:
-    distribution_utils.set_up_synthetic_data()
+    synthetic_util.set_up_synthetic_data()
     input_fn = common.get_synth_input_fn(
         height=cifar_preprocessing.HEIGHT,
         width=cifar_preprocessing.WIDTH,
@@ -168,7 +169,7 @@ def run(flags_obj):
         dtype=flags_core.get_tf_dtype(flags_obj),
         drop_remainder=True)
   else:
-    distribution_utils.undo_set_up_synthetic_data()
+    synthetic_util.undo_set_up_synthetic_data()
     input_fn = cifar_preprocessing.input_fn
 
   train_input_dataset = input_fn(

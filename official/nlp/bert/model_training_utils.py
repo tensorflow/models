@@ -153,7 +153,8 @@ def run_customized_training_loop(
         `model_fn`.
       custom_callbacks: A list of Keras Callbacks objects to run during
         training. More specifically, `on_batch_begin()`, `on_batch_end()`,
-        methods are invoked during training.
+        `on_epoch_begin()`, `on_epoch_end()` methods are invoked during
+        training.  Note that some metrics may be missing from `logs`.
       run_eagerly: Whether to run model training in pure eager execution. This
         should be disable for TPUStrategy.
       sub_model_export_name: If not None, will export `sub_model` returned by
@@ -224,6 +225,8 @@ def run_customized_training_loop(
   if metric_fn and not callable(metric_fn):
     raise ValueError(
         'if `metric_fn` is specified, metric_fn must be a callable.')
+
+  callback_list = tf.keras.callbacks.CallbackList(custom_callbacks)
 
   total_training_steps = steps_per_epoch * epochs
   train_iterator = _get_input_iterator(train_input_fn, strategy)
@@ -361,37 +364,37 @@ def run_customized_training_loop(
       test_step = tf.function(test_step)
 
     def _run_evaluation(current_training_step, test_iterator):
-      """Runs validation steps and aggregate metrics."""
+      """Runs validation steps and aggregate metrics.
+
+      Args:
+        current_training_step: tf.int32 tensor containing the current step.
+        test_iterator: distributed iterator of test datasets.
+
+      Returns:
+        A dict of metic names and values.
+      """
       for _ in range(eval_steps):
         test_step(test_iterator)
 
+      logs = {}
       with eval_summary_writer.as_default():
         for metric in eval_metrics + model.metrics:
           metric_value = _float_metric_value(metric)
+          logs[metric.name] = metric_value
           logging.info('Step: [%d] Validation %s = %f', current_training_step,
                        metric.name, metric_value)
           tf.summary.scalar(
               metric.name, metric_value, step=current_training_step)
         eval_summary_writer.flush()
 
-    def _run_callbacks_on_batch_begin(batch):
-      """Runs custom callbacks at the start of every step."""
-      if not custom_callbacks:
-        return
-      for callback in custom_callbacks:
-        callback.on_batch_begin(batch)
-
-    def _run_callbacks_on_batch_end(batch, logs):
-      """Runs custom callbacks at the end of every step."""
-      if not custom_callbacks:
-        return
-      for callback in custom_callbacks:
-        callback.on_batch_end(batch, logs)
+      return logs
 
     # Training loop starts here.
-    checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
+    checkpoint = tf.train.Checkpoint(
+        model=model, optimizer=optimizer, global_step=optimizer.iterations)
     sub_model_checkpoint = tf.train.Checkpoint(
-        model=sub_model) if sub_model_export_name else None
+        model=sub_model,
+        global_step=optimizer.iterations) if sub_model_export_name else None
 
     latest_checkpoint_file = tf.train.latest_checkpoint(model_dir)
     if latest_checkpoint_file:
@@ -405,13 +408,16 @@ def run_customized_training_loop(
     checkpoint_name = 'ctl_step_{step}.ckpt'
 
     while current_step < total_training_steps:
+      if current_step % steps_per_epoch == 0:
+        callback_list.on_epoch_begin(int(current_step / steps_per_epoch) + 1)
+
       # Training loss/metric are taking average over steps inside micro
       # training loop. We reset the their values before each round.
       train_loss_metric.reset_states()
       for metric in train_metrics + model.metrics:
         metric.reset_states()
 
-      _run_callbacks_on_batch_begin(current_step)
+      callback_list.on_batch_begin(current_step)
       # Runs several steps in the host while loop.
       steps = steps_to_run(current_step, steps_per_epoch, steps_per_loop)
 
@@ -426,7 +432,7 @@ def run_customized_training_loop(
                     tf.convert_to_tensor(steps, dtype=tf.int32))
       train_loss = _float_metric_value(train_loss_metric)
       current_step += steps
-      _run_callbacks_on_batch_end(current_step - 1, {'loss': train_loss})
+      callback_list.on_batch_end(current_step - 1, {'loss': train_loss})
 
       # Updates training logging.
       training_status = 'Train Step: %d/%d  / loss = %s' % (
@@ -443,35 +449,43 @@ def run_customized_training_loop(
           train_summary_writer.flush()
       logging.info(training_status)
 
-      # Saves model checkpoints and run validation steps at every epoch end.
       if current_step % steps_per_epoch == 0:
-        # To avoid repeated model saving, we do not save after the last
-        # step of training.
+        # Save a submodel with the step in the file name after each epoch.
+        if sub_model_export_name:
+          _save_checkpoint(
+              strategy, sub_model_checkpoint, model_dir,
+              '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
+
+        # Save model checkpoints and run validation steps after each epoch
+        # (with the exception of the final epoch which is handled after the
+        # training loop).
         if current_step < total_training_steps:
           _save_checkpoint(strategy, checkpoint, model_dir,
                            checkpoint_name.format(step=current_step))
-          if sub_model_export_name:
-            _save_checkpoint(
-                strategy, sub_model_checkpoint, model_dir,
-                '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
-        if eval_input_fn:
-          logging.info('Running evaluation after step: %s.', current_step)
-          _run_evaluation(current_step,
-                          _get_input_iterator(eval_input_fn, strategy))
-          # Re-initialize evaluation metric.
-          for metric in eval_metrics + model.metrics:
-            metric.reset_states()
+          logs = None
+          if eval_input_fn:
+            logging.info('Running evaluation after step: %s.', current_step)
+            logs = _run_evaluation(current_step,
+                                   _get_input_iterator(eval_input_fn, strategy))
+            # Re-initialize evaluation metric.
+            for metric in eval_metrics + model.metrics:
+              metric.reset_states()
 
-    _save_checkpoint(strategy, checkpoint, model_dir,
-                     checkpoint_name.format(step=current_step))
+          callback_list.on_epoch_end(int(current_step / steps_per_epoch), logs)
+
     if sub_model_export_name:
       _save_checkpoint(strategy, sub_model_checkpoint, model_dir,
                        '%s.ckpt' % sub_model_export_name)
 
+    _save_checkpoint(strategy, checkpoint, model_dir,
+                     checkpoint_name.format(step=current_step))
+    logs = None
     if eval_input_fn:
       logging.info('Running final evaluation after training is complete.')
-      _run_evaluation(current_step,
-                      _get_input_iterator(eval_input_fn, strategy))
+      logs = _run_evaluation(current_step,
+                             _get_input_iterator(eval_input_fn, strategy))
+
+    callback_list.on_epoch_end(int(current_step / steps_per_epoch), logs)
 
     training_summary = {
         'total_training_steps': total_training_steps,

@@ -34,7 +34,7 @@ from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.nlp.bert import configs
 from official.nlp.bert import run_classifier
 from official.utils.misc import distribution_utils
-from official.utils.testing import benchmark_wrappers
+from official.benchmark import benchmark_wrappers
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
@@ -56,6 +56,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     self.num_epochs = None
     self.num_steps_per_epoch = None
     self.tpu = tpu
+    FLAGS.steps_per_loop = 50
 
   @flagsaver.flagsaver
   def _run_bert_classifier(self, callbacks=None, use_ds=True):
@@ -81,8 +82,6 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
           distribution_strategy='mirrored' if use_ds else 'off',
           num_gpus=self.num_gpus)
 
-    steps_per_loop = 50
-
     max_seq_length = input_meta_data['max_seq_length']
     train_input_fn = run_classifier.get_dataset_fn(
         FLAGS.train_data_path,
@@ -101,7 +100,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
         FLAGS.model_dir,
         epochs,
         steps_per_epoch,
-        steps_per_loop,
+        FLAGS.steps_per_loop,
         eval_steps,
         warmup_steps,
         FLAGS.learning_rate,
