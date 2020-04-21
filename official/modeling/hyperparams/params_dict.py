@@ -125,6 +125,25 @@ class ParamsDict(object):
     """Accesses through built-in dictionary get method."""
     return self.__dict__.get(key, value)
 
+  def __delattr__(self, k):
+    """Deletes the key and removes its values.
+
+    Args:
+      k: the key string.
+
+    Raises:
+      AttributeError: if k is reserverd or not defined in the ParamsDict.
+      ValueError: if the ParamsDict instance has been locked.
+    """
+    if k in ParamsDict.RESERVED_ATTR:
+      raise AttributeError('The key `{}` is reserved. No change is allowes. '
+                           .format(k))
+    if k not in self.__dict__.keys():
+      raise AttributeError('The key `{}` does not exist. '.format(k))
+    if self._locked:
+      raise ValueError('The ParamsDict has been locked. No change is allowed.')
+    del self.__dict__[k]
+
   def override(self, override_params, is_strict=True):
     """Override the ParamsDict with a set of given params.
 
@@ -286,7 +305,6 @@ def read_yaml_to_params_dict(file_path):
 def save_params_dict_to_yaml(params, file_path):
   """Saves the input ParamsDict to a YAML file."""
   with tf.io.gfile.GFile(file_path, 'w') as f:
-
     def _my_list_rep(dumper, data):
       # u'tag:yaml.org,2002:seq' is the YAML internal tag for sequence.
       return dumper.represent_sequence(
