@@ -68,16 +68,6 @@ def config_benchmark_logger(flag_obj=None):
       _benchmark_logger = BaseBenchmarkLogger()
     elif flag_obj.benchmark_logger_type == "BenchmarkFileLogger":
       _benchmark_logger = BenchmarkFileLogger(flag_obj.benchmark_log_dir)
-    elif flag_obj.benchmark_logger_type == "BenchmarkBigQueryLogger":
-      from official.benchmark import benchmark_uploader as bu  # pylint: disable=g-import-not-at-top
-      bq_uploader = bu.BigQueryUploader(gcp_project=flag_obj.gcp_project)
-      _benchmark_logger = BenchmarkBigQueryLogger(
-          bigquery_uploader=bq_uploader,
-          bigquery_data_set=flag_obj.bigquery_data_set,
-          bigquery_run_table=flag_obj.bigquery_run_table,
-          bigquery_run_status_table=flag_obj.bigquery_run_status_table,
-          bigquery_metric_table=flag_obj.bigquery_metric_table,
-          run_id=str(uuid.uuid4()))
     else:
       raise ValueError("Unrecognized benchmark_logger_type: %s"
                        % flag_obj.benchmark_logger_type)
@@ -217,86 +207,6 @@ class BenchmarkFileLogger(BaseBenchmarkLogger):
   def on_finish(self, status):
     self._metric_file_handler.flush()
     self._metric_file_handler.close()
-
-
-class BenchmarkBigQueryLogger(BaseBenchmarkLogger):
-  """Class to log the benchmark information to BigQuery data store."""
-
-  def __init__(self,
-               bigquery_uploader,
-               bigquery_data_set,
-               bigquery_run_table,
-               bigquery_run_status_table,
-               bigquery_metric_table,
-               run_id):
-    super(BenchmarkBigQueryLogger, self).__init__()
-    self._bigquery_uploader = bigquery_uploader
-    self._bigquery_data_set = bigquery_data_set
-    self._bigquery_run_table = bigquery_run_table
-    self._bigquery_run_status_table = bigquery_run_status_table
-    self._bigquery_metric_table = bigquery_metric_table
-    self._run_id = run_id
-
-  def log_metric(self, name, value, unit=None, global_step=None, extras=None):
-    """Log the benchmark metric information to bigquery.
-
-    Args:
-      name: string, the name of the metric to log.
-      value: number, the value of the metric. The value will not be logged if it
-        is not a number type.
-      unit: string, the unit of the metric, E.g "image per second".
-      global_step: int, the global_step when the metric is logged.
-      extras: map of string:string, the extra information about the metric.
-    """
-    metric = _process_metric_to_json(name, value, unit, global_step, extras)
-    if metric:
-      # Starting new thread for bigquery upload in case it might take long time
-      # and impact the benchmark and performance measurement. Starting a new
-      # thread might have potential performance impact for model that run on
-      # CPU.
-      thread.start_new_thread(
-          self._bigquery_uploader.upload_benchmark_metric_json,
-          (self._bigquery_data_set,
-           self._bigquery_metric_table,
-           self._run_id,
-           [metric]))
-
-  def log_run_info(self, model_name, dataset_name, run_params, test_id=None):
-    """Collect most of the TF runtime information for the local env.
-
-    The schema of the run info follows official/benchmark/datastore/schema.
-
-    Args:
-      model_name: string, the name of the model.
-      dataset_name: string, the name of dataset for training and evaluation.
-      run_params: dict, the dictionary of parameters for the run, it could
-        include hyperparameters or other params that are important for the run.
-      test_id: string, the unique name of the test run by the combination of key
-        parameters, eg batch size, num of GPU. It is hardware independent.
-    """
-    run_info = _gather_run_info(model_name, dataset_name, run_params, test_id)
-    # Starting new thread for bigquery upload in case it might take long time
-    # and impact the benchmark and performance measurement. Starting a new
-    # thread might have potential performance impact for model that run on CPU.
-    thread.start_new_thread(
-        self._bigquery_uploader.upload_benchmark_run_json,
-        (self._bigquery_data_set,
-         self._bigquery_run_table,
-         self._run_id,
-         run_info))
-    thread.start_new_thread(
-        self._bigquery_uploader.insert_run_status,
-        (self._bigquery_data_set,
-         self._bigquery_run_status_table,
-         self._run_id,
-         RUN_STATUS_RUNNING))
-
-  def on_finish(self, status):
-    self._bigquery_uploader.update_run_status(
-        self._bigquery_data_set,
-        self._bigquery_run_status_table,
-        self._run_id,
-        status)
 
 
 def _gather_run_info(model_name, dataset_name, run_params, test_id):

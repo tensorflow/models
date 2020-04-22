@@ -67,14 +67,6 @@ class BenchmarkLoggerTest(tf.test.TestCase):
         self.assertIsInstance(logger.get_benchmark_logger(),
                               logger.BenchmarkFileLogger)
 
-  @unittest.skipIf(bigquery is None, "Bigquery dependency is not installed.")
-  @mock.patch.object(bigquery, "Client")
-  def test_config_benchmark_bigquery_logger(self, mock_bigquery_client):
-    with flagsaver.flagsaver(benchmark_logger_type="BenchmarkBigQueryLogger"):
-      logger.config_benchmark_logger()
-      self.assertIsInstance(logger.get_benchmark_logger(),
-                            logger.BenchmarkBigQueryLogger)
-
   @mock.patch("official.utils.logs.logger.config_benchmark_logger")
   def test_benchmark_context(self, mock_config_benchmark_logger):
     mock_logger = mock.MagicMock()
@@ -297,69 +289,6 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
     logger._collect_memory_info(run_info)
     self.assertIsNotNone(run_info["machine_config"]["memory_total"])
     self.assertIsNotNone(run_info["machine_config"]["memory_available"])
-
-
-@unittest.skipIf(bigquery is None, "Bigquery dependency is not installed.")
-class BenchmarkBigQueryLoggerTest(tf.test.TestCase):
-
-  def setUp(self):
-    super(BenchmarkBigQueryLoggerTest, self).setUp()
-    # Avoid pulling extra env vars from test environment which affects the test
-    # result, eg. Kokoro test has a TF_PKG env which affect the test case
-    # test_collect_tensorflow_environment_variables()
-    self.original_environ = dict(os.environ)
-    os.environ.clear()
-
-    self.mock_bq_uploader = mock.MagicMock()
-    self.logger = logger.BenchmarkBigQueryLogger(
-        self.mock_bq_uploader, "dataset", "run_table", "run_status_table",
-        "metric_table", "run_id")
-
-  def tearDown(self):
-    super(BenchmarkBigQueryLoggerTest, self).tearDown()
-    tf.io.gfile.rmtree(self.get_temp_dir())
-    os.environ.clear()
-    os.environ.update(self.original_environ)
-
-  def test_log_metric(self):
-    self.logger.log_metric(
-        "accuracy", 0.999, global_step=1e4, extras={"name": "value"})
-    expected_metric_json = [{
-        "name": "accuracy",
-        "value": 0.999,
-        "unit": None,
-        "global_step": 1e4,
-        "timestamp": mock.ANY,
-        "extras": [{"name": "name", "value": "value"}]
-    }]
-    # log_metric will call upload_benchmark_metric_json in a separate thread.
-    # Give it some grace period for the new thread before assert.
-    time.sleep(1)
-    self.mock_bq_uploader.upload_benchmark_metric_json.assert_called_once_with(
-        "dataset", "metric_table", "run_id", expected_metric_json)
-
-  @mock.patch("official.utils.logs.logger._gather_run_info")
-  def test_log_run_info(self, mock_gather_run_info):
-    run_info = {"model_name": "model_name",
-                "dataset": "dataset_name",
-                "run_info": "run_value"}
-    mock_gather_run_info.return_value = run_info
-    self.logger.log_run_info("model_name", "dataset_name", {})
-    # log_metric will call upload_benchmark_metric_json in a separate thread.
-    # Give it some grace period for the new thread before assert.
-    time.sleep(1)
-    self.mock_bq_uploader.upload_benchmark_run_json.assert_called_once_with(
-        "dataset", "run_table", "run_id", run_info)
-    self.mock_bq_uploader.insert_run_status.assert_called_once_with(
-        "dataset", "run_status_table", "run_id", "running")
-
-  def test_on_finish(self):
-    self.logger.on_finish(logger.RUN_STATUS_SUCCESS)
-    # log_metric will call upload_benchmark_metric_json in a separate thread.
-    # Give it some grace period for the new thread before assert.
-    time.sleep(1)
-    self.mock_bq_uploader.update_run_status.assert_called_once_with(
-        "dataset", "run_status_table", "run_id", logger.RUN_STATUS_SUCCESS)
 
 
 if __name__ == "__main__":
