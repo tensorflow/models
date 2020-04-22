@@ -24,6 +24,7 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
+import gin
 import tensorflow as tf
 from official.modeling import performance
 from official.nlp import optimization
@@ -404,6 +405,8 @@ def custom_main(custom_callbacks=None):
   Args:
     custom_callbacks: list of tf.keras.Callbacks passed to training loop.
   """
+  gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
+
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
 
