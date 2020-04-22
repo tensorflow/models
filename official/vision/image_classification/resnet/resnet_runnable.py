@@ -72,7 +72,6 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
 
     self.model = resnet_model.resnet50(
         num_classes=imagenet_preprocessing.NUM_CLASSES,
-        batch_size=flags_obj.batch_size,
         use_l2_regularizer=not flags_obj.single_l2_loss_op)
 
     lr_schedule = common.PiecewiseConstantDecayWithWarmup(
