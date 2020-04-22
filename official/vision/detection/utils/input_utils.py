@@ -15,7 +15,7 @@
 """Utility functions for input processing."""
 
 import math
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.utils import box_utils
 from official.vision.detection.utils.object_detection import preprocessor
@@ -36,7 +36,7 @@ def pad_to_fixed_size(input_tensor, size, constant_values=0):
   padding_shape = []
 
   # Computes the padding length on the first dimension.
-  padding_length = size - tf.shape(input=input_tensor)[0]
+  padding_length = tf.maximum(0, size - tf.shape(input_tensor)[0])
   assert_length = tf.Assert(
       tf.greater_equal(padding_length, 0), [padding_length])
   with tf.control_dependencies([assert_length]):
