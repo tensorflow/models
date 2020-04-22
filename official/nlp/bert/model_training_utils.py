@@ -491,6 +491,8 @@ def run_customized_training_loop(
         'total_training_steps': total_training_steps,
         'train_loss': _float_metric_value(train_loss_metric),
     }
+    for metric in model.metrics:
+      training_summary[metric.name] = _float_metric_value(metric)
     if eval_metrics:
       # TODO(hongkuny): Cleans up summary reporting in text.
       training_summary['last_train_metrics'] = _float_metric_value(
