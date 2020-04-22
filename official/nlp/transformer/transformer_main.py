@@ -363,7 +363,8 @@ class TransformerTask(object):
 
     stats = ({
         "loss": train_loss
-    } if history is None else misc.build_stats(history, callbacks))
+    } if history is None else {})
+    misc.update_stats(history, stats, callbacks)
     if uncased_score and cased_score:
       stats["bleu_uncased"] = uncased_score
       stats["bleu_cased"] = cased_score
