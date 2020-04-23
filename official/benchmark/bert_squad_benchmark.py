@@ -55,8 +55,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
 
   def __init__(self, output_dir=None, tpu=None):
-    super(BertSquadBenchmarkBase, self).__init__(output_dir=output_dir)
-    self.tpu = tpu
+    super(BertSquadBenchmarkBase, self).__init__(output_dir=output_dir, tpu=tpu)
 
   def _read_training_summary_from_file(self):
     """Reads the training summary from a file."""
@@ -80,9 +79,9 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     Returns:
       A `tf.distribute.DistibutionStrategy` object.
     """
-    if self.tpu or ds_type == 'tpu':
+    if FLAGS.tpu or ds_type == 'tpu':
       return distribution_utils.get_distribution_strategy(
-          distribution_strategy='tpu', tpu_address=self.tpu)
+          distribution_strategy='tpu', tpu_address=FLAGS.tpu)
     elif ds_type == 'multi_worker_mirrored':
       # Configures cluster spec for multi-worker distribution strategy.
       _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
@@ -387,7 +386,13 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu')
     FLAGS.train_batch_size = 48
-
+    FLAGS.predict_batch_size = 48
+    FLAGS.mode = 'train'
+    FLAGS.learning_rate = 8e-5
+    FLAGS.num_train_epochs = 1
+    FLAGS.steps_per_loop = 100
+    FLAGS.do_lower_case = True
+    FLAGS.init_checkpoint = PRETRAINED_CHECKPOINT_PATH
     self._run_and_report_benchmark()
 
 
