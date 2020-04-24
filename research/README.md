@@ -65,7 +65,7 @@ The research models are maintained by their respective authors.
 | [qa_kg](qa_kg) | [Learning to Reason](https://arxiv.org/abs/1704.05526) | End-to-End Module Networks for Visual Question Answering | yuyuz |
 | [real_nvp](real_nvp) | [Density estimation using Real NVP](https://arxiv.org/abs/1605.08803) | | laurent-dinh |
 | [rebar](rebar) | [REBAR](https://arxiv.org/abs/1703.07370) | Low-variance, unbiased gradient estimates for discrete latent variable models | gjtucker |
-| [sentiment<br />_analysis](sentiment_analysis)| [Effective Use of Word Order for Text Categorization with Convolutional Neural Networks](https://arxiv.org/abs/1412.1058) | | sculd |
+| [sentiment<br />_analysis](sentiment_analysis)| [Effective Use of Word Order for Text Categorization with Convolutional Neural Networks](https://arxiv.org/abs/1412.1058) | A simple model to classify a document's sentiment | sculd |
 | [seq2species](seq2species) | [Seq2Species: A deep learning approach to pattern recognition for short DNA sequences](https://doi.org/10.1101/353474) | Neural Network Models for Species Classification| apbusia, depristo |
 | [skip_thoughts](skip_thoughts) | [Skip-Thought Vectors](https://arxiv.org/abs/1506.06726) | Recurrent neural network sentence-to-vector encoder | cshallue|
 | [steve](steve) | [Sample-Efficient Reinforcement Learning with Stochastic Ensemble Value Expansion](https://arxiv.org/abs/1807.01675) | A hybrid model-based/model-free reinforcement learning algorithm for sample-efficient continuous control | buckman-google |
