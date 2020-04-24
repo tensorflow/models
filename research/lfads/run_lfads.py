@@ -577,7 +577,8 @@ def build_hyperparameter_dict(flags):
   d['kl_increase_steps'] = flags.kl_increase_steps
   d['l2_start_step'] = flags.l2_start_step
   d['l2_increase_steps'] = flags.l2_increase_steps
-
+  d['_clip_value'] = 80 # bounds the tf.exp to avoid INF 
+  
   return d
 
 
