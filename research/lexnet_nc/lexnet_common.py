@@ -55,30 +55,18 @@ DIRS = '_^V<>'
 DIR_TO_ID = {dir: did for did, dir in enumerate(DIRS)}
 
 
-def load_word_embeddings(word_embeddings_dir, word_embeddings_file):
+def load_word_embeddings(embedding_filename):
   """Loads pretrained word embeddings from a binary file and returns the matrix.
 
+  Adds the <PAD>, <UNK>, <X>, and <Y> tokens to the beginning of the vocab.
+
   Args:
-    word_embeddings_dir: The directory for the word embeddings.
-    word_embeddings_file: The pretrained word embeddings text file.
+    embedding_filename: filename of the binary NPY data
 
   Returns:
     The word embeddings matrix
   """
-  embedding_file = os.path.join(word_embeddings_dir, word_embeddings_file)
-  vocab_file = os.path.join(
-      word_embeddings_dir, os.path.dirname(word_embeddings_file), 'vocab.txt')
-
-  with open(vocab_file) as f_in:
-    vocab = [line.strip() for line in f_in]
-
-  vocab_size = len(vocab)
-
-  print('Embedding file "%s" has %d tokens' % (embedding_file, vocab_size))
-
-  with open(embedding_file) as f_in:
-    embeddings = np.load(f_in)
-
+  embeddings = np.load(embedding_filename)
   dim = embeddings.shape[1]
 
   # Four initially random vectors for the special tokens: <PAD>, <UNK>, <X>, <Y>
