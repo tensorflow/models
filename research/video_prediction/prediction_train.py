@@ -58,7 +58,7 @@ flags.DEFINE_string('model', 'CDNA',
                     'model architecture to use - CDNA, DNA, or STP')
 
 flags.DEFINE_integer('num_masks', 10,
-                     'number of masks, usually 1 for DNA, 10 for CDNA, STN.')
+                     'number of masks, usually 1 for DNA, 10 for CDNA, STP.')
 flags.DEFINE_float('schedsamp_k', 900.0,
                    'The k hyperparameter for scheduled sampling,'
                    '-1 for no scheduled sampling.')
