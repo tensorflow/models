@@ -179,7 +179,7 @@ format.
 
 The TFRecord format consists of a set of sharded files where each entry is a serialized `tf.Example` proto. Each `tf.Example` proto contains the ImageNet image (JPEG encoded) as well as metadata such as label and bounding box information.
 
-We provide a single [script](datasets/download_and_preprocess_imagenet.sh) for
+We provide a single [script](datasets/download_and_convert_imagenet.sh) for
 downloading and converting ImageNet data to TFRecord format. Downloading and
 preprocessing the data may take several hours (up to half a day) depending on
 your network and computer speed. Please be patient.
