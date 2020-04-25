@@ -26,7 +26,7 @@ The research models are maintained by their respective authors.
 | [adversarial_crypto](adversarial_crypto) | [Learning to Protect Communications with Adversarial Neural Cryptography](https://arxiv.org/abs/1610.06918) | Code to train encoder/decoder/adversary network triplets and evaluate their effectiveness on randomly generated input and key pairs | dave-andersen |
 | [adversarial<br />_logit_pairing](adversarial_logit_pairing)   | [Adversarial Logit Pairing](https://arxiv.org/abs/1803.06373) | Implementation of Adversarial logit pairing paper as well as few models pre-trained on ImageNet and Tiny ImageNet   | alexeykurakin |
 | [adversarial_text](adversarial_text) | [1] [Adversarial Training Methods for Semi-Supervised Text](https://arxiv.org/abs/1605.07725) Classification<br/>[2] [Semi-supervised Sequence Learning](https://arxiv.org/abs/1511.01432) | Adversarial Training Methods for Semi-Supervised Text Classification| rsepassi, a-dai |
-| [attention_ocr](attention_ocr)   | [Attention-based Extraction of Structured Information from Street View Imagery](https://arxiv.org/abs/1704.03549) | | alexgorban |
+| [attention_ocr](attention_ocr)   | [Attention-based Extraction of Structured Information from Street View Imagery](https://arxiv.org/abs/1704.03549) | | xavigibert |
 | [audioset](audioset) | Models for AudioSet: A Large Scale Dataset of Audio Events | | plakal, dpwe |
 | [autoaugment](autoaugment) | [1] [AutoAugment](https://arxiv.org/abs/1805.09501)<br/>[2] [Wide Residual Networks](https://arxiv.org/abs/1605.07146)<br/>[3] [Shake-Shake regularization](https://arxiv.org/abs/1705.07485)<br/>[4] [ShakeDrop Regularization for Deep Residual Learning](https://arxiv.org/abs/1802.02375) | Train Wide-ResNet, Shake-Shake and ShakeDrop models on CIFAR-10 and CIFAR-100 dataset with AutoAugment | barretzoph |
 | [autoencoder](autoencoder) | Various autoencoders | | snurkabill |
@@ -55,7 +55,7 @@ The research models are maintained by their respective authors.
 | [lm_commonsense](lm_commonsense) | [A Simple Method for Commonsense Reasoning](https://arxiv.org/abs/1806.02847) | Commonsense reasoning using language models | thtrieu |
 | [lstm_object_detection](lstm_object_detection) | [Mobile Video Object Detection with Temporally-Aware Feature Maps](https://arxiv.org/abs/1711.06368) | | dreamdragon, masonliuw, yinxiaoli, yongzhe2160 |
 | [marco](marco) | [Classification of crystallization outcomes using deep convolutional neural networks](https://arxiv.org/abs/1803.10342) | | vincentvanhoucke |
-| [maskgan](maskgan)| [MaskGAN: Better Text Generation via Filling in the______](https://arxiv.org/abs/1801.07736) | Text generation with GANs | a-dai |
+| [maskgan](maskgan)| [MaskGAN: Better Text Generation via Filling in the______](https://arxiv.org/abs/1801.07736) | Text generation with GANs | liamb315, a-dai |
 | [namignizer](namignizer)| Namignizer | Recognize and generate names | knathanieltucker |
 | [neural_gpu](neural_gpu)| [Neural GPUs Learn Algorithms](https://arxiv.org/abs/1511.08228) | Highly parallel neural computer | lukaszkaiser |
 | [neural_programmer](neural_programmer) | [Learning a Natural Language Interface with Neural Programmer](https://arxiv.org/abs/1611.08945) | Neural network augmented with logic and mathematic operations| arvind2505 |
@@ -65,7 +65,7 @@ The research models are maintained by their respective authors.
 | [qa_kg](qa_kg) | [Learning to Reason](https://arxiv.org/abs/1704.05526) | End-to-End Module Networks for Visual Question Answering | yuyuz |
 | [real_nvp](real_nvp) | [Density estimation using Real NVP](https://arxiv.org/abs/1605.08803) | | laurent-dinh |
 | [rebar](rebar) | [REBAR](https://arxiv.org/abs/1703.07370) | Low-variance, unbiased gradient estimates for discrete latent variable models | gjtucker |
-| [sentiment<br />_analysis](sentiment_analysis)| [Effective Use of Word Order for Text Categorization with Convolutional Neural Networks](https://arxiv.org/abs/1412.1058) | | sculd |
+| [sentiment<br />_analysis](sentiment_analysis)| [Effective Use of Word Order for Text Categorization with Convolutional Neural Networks](https://arxiv.org/abs/1412.1058) | A simple model to classify a document's sentiment | sculd |
 | [seq2species](seq2species) | [Seq2Species: A deep learning approach to pattern recognition for short DNA sequences](https://doi.org/10.1101/353474) | Neural Network Models for Species Classification| apbusia, depristo |
 | [skip_thoughts](skip_thoughts) | [Skip-Thought Vectors](https://arxiv.org/abs/1506.06726) | Recurrent neural network sentence-to-vector encoder | cshallue|
 | [steve](steve) | [Sample-Efficient Reinforcement Learning with Stochastic Ensemble Value Expansion](https://arxiv.org/abs/1807.01675) | A hybrid model-based/model-free reinforcement learning algorithm for sample-efficient continuous control | buckman-google |

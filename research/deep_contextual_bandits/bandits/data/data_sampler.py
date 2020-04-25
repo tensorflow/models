@@ -71,7 +71,7 @@ def sample_mushroom_data(file_name,
       size=num_contexts)
   eat_reward = r_eat_safe * df.iloc[ind, 0]
   eat_reward += np.multiply(random_poison, df.iloc[ind, 1])
-  eat_reward = eat_reward.reshape((num_contexts, 1))
+  eat_reward = eat_reward.values.reshape((num_contexts, 1))
 
   # compute optimal expected reward and optimal actions
   exp_eat_poison_reward = r_eat_poison_bad * prob_poison_bad

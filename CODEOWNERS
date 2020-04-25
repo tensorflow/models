@@ -5,7 +5,7 @@
 /research/adversarial_crypto/ @dave-andersen
 /research/adversarial_logit_pairing/ @alexeykurakin
 /research/adversarial_text/ @rsepassi @a-dai
-/research/attention_ocr/ @alexgorban
+/research/attention_ocr/ @xavigibert
 /research/audioset/ @plakal @dpwe
 /research/autoaugment/* @barretzoph
 /research/autoencoders/ @snurkabill
@@ -34,12 +34,12 @@
 /research/lm_commonsense/ @thtrieu
 /research/lstm_object_detection/ @dreamdragon @masonliuw @yinxiaoli @yongzhe2160
 /research/marco/ @vincentvanhoucke
-/research/maskgan/ @a-dai
+/research/maskgan/ @liamb315 @a-dai
 /research/namignizer/ @knathanieltucker
 /research/neural_gpu/ @lukaszkaiser
 /research/neural_programmer/ @arvind2505
 /research/next_frame_prediction/ @panyx0718
-/research/object_detection/ @jch1 @tombstone @derekjchow @jesu9 @dreamdragon @pkulzc
+/research/object_detection/ @jch1 @tombstone @ronnyvotel @derekjchow @jesu9 @dreamdragon @afathi3 @pkulzc
 /research/pcl_rl/ @ofirnachum
 /research/ptn/ @xcyan @arkanath @hellojas @honglaklee
 /research/qa_kg/ @yuyuz

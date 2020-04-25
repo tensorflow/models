@@ -133,7 +133,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
       self.remove_idx = idxs[-1] + 1 - self.init_length
     elif self.eviction_strategy == 'rank':
       # remove lowest-priority indices
-      idxs = np.argpartition(self.priorities, n)[:n]
+      idxs = np.argpartition(self.priorities, n-1)[:n]
 
     return idxs
 

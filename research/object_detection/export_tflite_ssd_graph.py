@@ -55,7 +55,7 @@ else:
 
 Example Usage:
 --------------
-python object_detection/export_tflite_ssd_graph \
+python object_detection/export_tflite_ssd_graph.py \
     --pipeline_config_path path/to/ssd_mobilenet.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
     --output_directory path/to/exported_model_directory
@@ -73,7 +73,7 @@ eval config.
 
 Example Usage (in which we change the NMS iou_threshold to be 0.5 and
 NMS score_threshold to be 0.0):
-python object_detection/export_tflite_ssd_graph \
+python object_detection/export_tflite_ssd_graph.py \
     --pipeline_config_path path/to/ssd_mobilenet.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
     --output_directory path/to/exported_model_directory

@@ -691,7 +691,8 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu')
     FLAGS.train_steps = 300
-    FLAGS.log_steps = 300
+    FLAGS.log_steps = 150
+    FLAGS.steps_between_evals = 150
     FLAGS.distribution_strategy = 'tpu'
     FLAGS.static_batch = True
     FLAGS.use_ctl = True
@@ -711,7 +712,8 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu')
     FLAGS.train_steps = 300
-    FLAGS.log_steps = 300
+    FLAGS.log_steps = 150
+    FLAGS.steps_between_evals = 150
     FLAGS.distribution_strategy = 'tpu'
     FLAGS.static_batch = True
     FLAGS.use_ctl = True

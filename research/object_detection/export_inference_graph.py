@@ -62,7 +62,7 @@ Notes:
 
 Example Usage:
 --------------
-python export_inference_graph \
+python export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path path/to/ssd_inception_v2.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
@@ -87,7 +87,7 @@ eval config.
 Example Usage (in which we change the second stage post-processing score
 threshold to be 0.5):
 
-python export_inference_graph \
+python export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path path/to/ssd_inception_v2.config \
     --trained_checkpoint_prefix path/to/model.ckpt \

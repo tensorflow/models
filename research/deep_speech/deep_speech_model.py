@@ -22,9 +22,9 @@ import tensorflow as tf
 
 # Supported rnn cells.
 SUPPORTED_RNNS = {
-    "lstm": tf.nn.rnn_cell.BasicLSTMCell,
-    "rnn": tf.nn.rnn_cell.RNNCell,
-    "gru": tf.nn.rnn_cell.GRUCell,
+    "lstm": tf.contrib.rnn.BasicLSTMCell,
+    "rnn": tf.contrib.rnn.RNNCell,
+    "gru": tf.contrib.rnn.GRUCell,
 }
 
 # Parameters for batch normalization.

@@ -62,6 +62,7 @@ citing the following paper:
     mkdir -p deps
     git clone --recursive https://github.com/google/swiftshader.git deps/swiftshader-src
     cd deps/swiftshader-src && git checkout 91da6b00584afd7dcaed66da88e2b617429b3950
+    git submodule update
     mkdir build && cd build && cmake .. && make -j 16 libEGL libGLESv2
     cd ../../../
     cp deps/swiftshader-src/build/libEGL* libEGL.so.1
