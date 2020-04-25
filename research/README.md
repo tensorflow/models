@@ -55,7 +55,7 @@ The research models are maintained by their respective authors.
 | [lm_commonsense](lm_commonsense) | [A Simple Method for Commonsense Reasoning](https://arxiv.org/abs/1806.02847) | Commonsense reasoning using language models | thtrieu |
 | [lstm_object_detection](lstm_object_detection) | [Mobile Video Object Detection with Temporally-Aware Feature Maps](https://arxiv.org/abs/1711.06368) | | dreamdragon, masonliuw, yinxiaoli, yongzhe2160 |
 | [marco](marco) | [Classification of crystallization outcomes using deep convolutional neural networks](https://arxiv.org/abs/1803.10342) | | vincentvanhoucke |
-| [maskgan](maskgan)| [MaskGAN: Better Text Generation via Filling in the______](https://arxiv.org/abs/1801.07736) | Text generation with GANs | a-dai |
+| [maskgan](maskgan)| [MaskGAN: Better Text Generation via Filling in the______](https://arxiv.org/abs/1801.07736) | Text generation with GANs | liamb315, a-dai |
 | [namignizer](namignizer)| Namignizer | Recognize and generate names | knathanieltucker |
 | [neural_gpu](neural_gpu)| [Neural GPUs Learn Algorithms](https://arxiv.org/abs/1511.08228) | Highly parallel neural computer | lukaszkaiser |
 | [neural_programmer](neural_programmer) | [Learning a Natural Language Interface with Neural Programmer](https://arxiv.org/abs/1611.08945) | Neural network augmented with logic and mathematic operations| arvind2505 |
