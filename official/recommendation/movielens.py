@@ -31,14 +31,13 @@ import numpy as np
 import pandas as pd
 import six
 from six.moves import urllib  # pylint: disable=redefined-builtin
-from absl import app as absl_app
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
-
 
 
 ML_1M = "ml-1m"
@@ -306,4 +305,4 @@ def main(_):
 if __name__ == "__main__":
   define_data_download_flags()
   FLAGS = flags.FLAGS
-  absl_app.run(main)
+  app.run(main)
