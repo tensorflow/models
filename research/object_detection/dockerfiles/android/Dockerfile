@@ -129,8 +129,24 @@ RUN cd /opt && \
     rm -f android-ndk.zip
 
 # Configure the build to use the things we just downloaded
-RUN cd /tensorflow && \
-    printf '\n\nn\ny\nn\nn\nn\ny\nn\nn\nn\nn\nn\nn\n\ny\n%s\n\n\n' ${ANDROID_HOME}|./configure
-
+RUN cd /tensorflow &&\
+  # Each configuration parameter is followed by a comment
+  printf ' // default python binary location\n\
+ // default python library location\n\
+y // XLA JIT support\n\
+n // OpenCL SYCL support\n\
+n // ROCm support\n\
+n // CUDA support\n\
+n // fresh clang install\n\
+n // MPI support\n\
+ // default optimization flags\n\
+y // configure Android builds\n\
+%s // set Android home\n\
+ // use default Android SDK API level\n\
+ // use default Android SDK build tools\n\
+' ${ANDROID_HOME} \
+  # Strip out comments
+  | cut -d " " -f1 \
+  | ./configure
 
 WORKDIR /tensorflow
