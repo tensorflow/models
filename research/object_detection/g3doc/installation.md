@@ -80,6 +80,12 @@ make
 cp -r pycocotools <path_to_tensorflow>/models/research/
 ```
 
+ Alternatively, users can install `pycocotools` using pip:
+
+ ```bash
+pip install --user pycocotools
+ ```
+
 ## Protobuf Compilation
 
 The Tensorflow Object Detection API uses Protobufs to configure model and
