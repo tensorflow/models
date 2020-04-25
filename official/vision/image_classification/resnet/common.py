@@ -76,7 +76,7 @@ class PiecewiseConstantDecayWithWarmup(
 
   def _get_learning_rate(self, step):
     """Compute learning rate at given step."""
-    with tf.compat.v1.name_scope(self.name, 'PiecewiseConstantDecayWithWarmup',
+    with tf.name_scope(self.name, 'PiecewiseConstantDecayWithWarmup',
                                  [self.rescaled_lr, self.step_boundaries,
                                   self.lr_values, self.warmup_steps,
                                   self.compute_lr_on_cpu]):
