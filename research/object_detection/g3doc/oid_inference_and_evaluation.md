@@ -142,7 +142,7 @@ python -m object_detection/inference/infer_detections \
 
 Inference preserves all fields of the input TFExamples, and adds new fields to
 store the inferred detections. This allows [computing evaluation
-measures](#compute_evaluation_measures) on the output TFRecord alone, as ground
+measures](#computing-evaluation-measures) on the output TFRecord alone, as ground
 truth boxes are preserved as well. Since measure computations don't require
 access to the images, `infer_detections` can optionally discard them with the
 `--discard_image_pixels` flag. Discarding the images drastically reduces the
