@@ -28,7 +28,6 @@ import tensorflow as tf
 import tensorflow_model_optimization as tfmot
 from official.modeling import performance
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
@@ -294,8 +293,7 @@ def define_imagenet_keras_flags():
 
 def main(_):
   model_helpers.apply_clean(flags.FLAGS)
-  with logger.benchmark_context(flags.FLAGS):
-    stats = run(flags.FLAGS)
+  stats = run(flags.FLAGS)
   logging.info('Run stats:\n%s', stats)
 
 

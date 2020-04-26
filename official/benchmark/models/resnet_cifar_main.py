@@ -27,7 +27,6 @@ from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_model
 from official.benchmark.models import synthetic_util
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.vision.image_classification.resnet import common
@@ -277,8 +276,7 @@ def define_cifar_flags():
 
 
 def main(_):
-  with logger.benchmark_context(flags.FLAGS):
-    return run(flags.FLAGS)
+  return run(flags.FLAGS)
 
 
 if __name__ == '__main__':

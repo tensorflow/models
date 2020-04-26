@@ -39,7 +39,6 @@ from official.nlp.transformer import transformer
 from official.nlp.transformer import translate
 from official.nlp.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
@@ -471,25 +470,24 @@ def _ensure_dir(log_dir):
 
 def main(_):
   flags_obj = flags.FLAGS
-  with logger.benchmark_context(flags_obj):
-    task = TransformerTask(flags_obj)
+  task = TransformerTask(flags_obj)
 
-    # Execute flag override logic for better model performance
-    if flags_obj.tf_gpu_thread_mode:
-      keras_utils.set_gpu_thread_mode_and_count(
-          per_gpu_thread_count=flags_obj.per_gpu_thread_count,
-          gpu_thread_mode=flags_obj.tf_gpu_thread_mode,
-          num_gpus=flags_obj.num_gpus,
-          datasets_num_private_threads=flags_obj.datasets_num_private_threads)
+  # Execute flag override logic for better model performance
+  if flags_obj.tf_gpu_thread_mode:
+    keras_utils.set_gpu_thread_mode_and_count(
+        per_gpu_thread_count=flags_obj.per_gpu_thread_count,
+        gpu_thread_mode=flags_obj.tf_gpu_thread_mode,
+        num_gpus=flags_obj.num_gpus,
+        datasets_num_private_threads=flags_obj.datasets_num_private_threads)
 
-    if flags_obj.mode == "train":
-      task.train()
-    elif flags_obj.mode == "predict":
-      task.predict()
-    elif flags_obj.mode == "eval":
-      task.eval()
-    else:
-      raise ValueError("Invalid mode {}".format(flags_obj.mode))
+  if flags_obj.mode == "train":
+    task.train()
+  elif flags_obj.mode == "predict":
+    task.predict()
+  elif flags_obj.mode == "eval":
+    task.eval()
+  else:
+    raise ValueError("Invalid mode {}".format(flags_obj.mode))
 
 
 if __name__ == "__main__":

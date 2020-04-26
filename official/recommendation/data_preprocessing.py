@@ -22,19 +22,17 @@ import os
 import pickle
 import time
 import timeit
-import typing
-
 # pylint: disable=wrong-import-order
+from absl import logging
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from absl import logging
+import typing
 # pylint: enable=wrong-import-order
 
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import movielens
-from official.utils.logs import mlperf_helper
 
 
 DATASET_TO_NUM_USERS_AND_ITEMS = {
@@ -125,9 +123,6 @@ def _filter_index_sort(raw_rating_path, cache_path):
 
     num_users = len(original_users)
     num_items = len(original_items)
-
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.PREPROC_HP_NUM_EVAL,
-                            value=rconst.NUM_EVAL_NEGATIVES)
 
     assert num_users <= np.iinfo(rconst.USER_DTYPE).max
     assert num_items <= np.iinfo(rconst.ITEM_DTYPE).max

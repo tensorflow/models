@@ -37,8 +37,6 @@ from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import ncf_input_pipeline
 from official.recommendation import neumf_model
-from official.utils.logs import logger
-from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
@@ -551,10 +549,7 @@ def build_stats(loss, eval_result, time_callback):
 
 
 def main(_):
-  with logger.benchmark_context(FLAGS), \
-      mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
-    mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
-    run_ncf(FLAGS)
+  run_ncf(FLAGS)
 
 
 if __name__ == "__main__":

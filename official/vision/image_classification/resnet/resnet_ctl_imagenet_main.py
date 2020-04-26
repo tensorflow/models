@@ -27,7 +27,6 @@ import tensorflow as tf
 from official.modeling import performance
 from official.staging.training import controller
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
@@ -182,8 +181,7 @@ def run(flags_obj):
 
 def main(_):
   model_helpers.apply_clean(flags.FLAGS)
-  with logger.benchmark_context(flags.FLAGS):
-    stats = run(flags.FLAGS)
+  stats = run(flags.FLAGS)
   logging.info('Run stats:\n%s', stats)
 
 
