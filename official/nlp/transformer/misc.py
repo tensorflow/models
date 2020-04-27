@@ -109,6 +109,10 @@ def define_transformer_flags():
   flags.DEFINE_boolean(
       name='enable_metrics_in_training', default=False,
       help='Whether to enable metrics during training.')
+  flags.DEFINE_boolean(
+      name='enable_mlir_bridge',
+      default=False,
+      help='Whether to enable the TF to XLA bridge.')
   flags.DEFINE_string(
       name='profile_steps', default=None,
       help='Save profiling data to model dir at given range of steps. The '
