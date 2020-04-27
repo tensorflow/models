@@ -39,10 +39,11 @@ class BertPretrainer(tf.keras.Model):
 
   Arguments:
     network: A transformer network. This network should output a sequence output
-      and a classification output. Furthermore, it should expose its embedding
-      table via a "get_embedding_table" method.
+      and a classification output.
     num_classes: Number of classes to predict from the classification network.
     num_token_predictions: Number of tokens to predict from the masked LM.
+    embedding_table: Embedding table of a network. If None, the
+      "network.get_embedding_table()" is used.
     activation: The activation (if any) to use in the masked LM and
       classification networks. If None, no activation will be used.
     initializer: The initializer (if any) to use in the masked LM and
@@ -55,6 +56,7 @@ class BertPretrainer(tf.keras.Model):
                network,
                num_classes,
                num_token_predictions,
+               embedding_table=None,
                activation=None,
                initializer='glorot_uniform',
                output='logits',
@@ -100,6 +102,7 @@ class BertPretrainer(tf.keras.Model):
         num_predictions=num_token_predictions,
         input_width=sequence_output.shape[-1],
         source_network=network,
+        embedding_table=embedding_table,
         activation=activation,
         initializer=initializer,
         output=output,

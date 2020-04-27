@@ -37,6 +37,8 @@ class MaskedLM(network.Network):
     num_predictions: The number of predictions to make per sequence.
     source_network: The network with the embedding layer to use for the
       embedding layer.
+    embedding_table: The embedding table of a source network, If None, the
+      `source_network.get_embedding_table()` method is used.
     activation: The activation, if any, for the dense layer in this network.
     initializer: The intializer for the dense layer in this network. Defaults to
       a Glorot uniform initializer.
@@ -48,12 +50,14 @@ class MaskedLM(network.Network):
                input_width,
                num_predictions,
                source_network,
+               embedding_table=None,
                activation=None,
                initializer='glorot_uniform',
                output='logits',
                **kwargs):
 
-    embedding_table = source_network.get_embedding_table()
+    if embedding_table is None:
+      embedding_table = source_network.get_embedding_table()
     vocab_size, hidden_size = embedding_table.shape
 
     sequence_data = tf.keras.layers.Input(
