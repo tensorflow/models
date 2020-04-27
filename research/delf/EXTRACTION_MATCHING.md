@@ -75,3 +75,13 @@ $DISPLAY environment variable`. To fix this, one option is add the line
 `backend : Agg` to the file `.config/matplotlib/matplotlibrc`. On this problem,
 see the discussion
 [here](https://stackoverflow.com/questions/37604289/tkinter-tclerror-no-display-name-and-no-display-environment-variable).
+
+
+#### 'skimage'
+
+By default, skimage 0.13.XX or 0.14.1 is installed if you followed the instructions. According to [https://github.com/scikit-image/scikit-image/issues/3649#issuecomment-455273659]
+If you have scikit-image related issues, upgrading to a version above 0.14.1 with 
+```
+pip install -U scikit-image
+```
+should fix the issue
