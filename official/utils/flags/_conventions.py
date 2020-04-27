@@ -40,7 +40,7 @@ def _stdout_utf8():
     codecs.lookup("utf-8")
   except LookupError:
     return False
-  return sys.stdout.encoding == "UTF-8"
+  return getattr(sys.stdout, "encoding", "") == "UTF-8"
 
 
 if _stdout_utf8():
