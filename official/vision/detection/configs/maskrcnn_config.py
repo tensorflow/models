@@ -105,6 +105,9 @@ MASKRCNN_CFG.override({
     'mask_sampling': {
         'num_mask_samples_per_image': 128,  # Typically = `num_samples_per_image` * `fg_fraction`.
     },
+    'postprocess': {
+        'pre_nms_num_boxes': 1000,
+    },
 }, is_strict=False)
 
 
