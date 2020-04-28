@@ -51,15 +51,17 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
 
   def __init__(self,
                output_dir: Optional[str] = None,
-               tpu: Optional[str] = None):
+               tpu: Optional[str] = None,
+               **kwargs):
     """Inits BertPretrainAccuracyBenchmark class.
 
     Args:
       output_dir: Directory where to output e.g. log files
       tpu: TPU name to use in a TPU benchmark.
+      **kwargs: Additional keyword arguments.
     """
     super(BertPretrainAccuracyBenchmark, self).__init__(
-        output_dir=output_dir, tpu=tpu)
+        output_dir=output_dir, tpu=tpu, **kwargs)
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self, summary_path: str):
