@@ -29,8 +29,8 @@ from official.vision.detection.modeling import losses
 from official.vision.detection.modeling.architecture import factory
 from official.vision.detection.ops import postprocess_ops
 from official.vision.detection.ops import roi_ops
-from official.vision.detection.ops import sampling_ops
 from official.vision.detection.ops import spatial_transform_ops
+from official.vision.detection.ops import target_ops
 from official.vision.detection.utils import box_utils
 
 
@@ -51,8 +51,8 @@ class MaskrcnnModel(base_model.Model):
     self._fpn_fn = factory.multilevel_features_generator(params)
     self._rpn_head_fn = factory.rpn_head_generator(params)
     self._generate_rois_fn = roi_ops.ROIGenerator(params.roi_proposal)
-    self._sample_rois_fn = sampling_ops.ROISampler(params.roi_sampling)
-    self._sample_masks_fn = sampling_ops.MaskSampler(
+    self._sample_rois_fn = target_ops.ROISampler(params.roi_sampling)
+    self._sample_masks_fn = target_ops.MaskSampler(
         params.architecture.mask_target_size,
         params.mask_sampling.num_mask_samples_per_image)
 
