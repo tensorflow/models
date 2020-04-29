@@ -40,7 +40,7 @@ def ReadDatasetFile(dataset_file_path):
       array of integers; additionally, it has a key 'bbx' mapping to a NumPy
       array of floats with bounding box coordinates.
   """
-  with tf.gfile.GFile(dataset_file_path, 'rb') as f:
+  with tf.io.gfile.GFile(dataset_file_path, 'rb') as f:
     cfg = matlab.loadmat(f)
 
   # Parse outputs according to the specificities of the dataset file.
@@ -329,7 +329,7 @@ def SaveMetricsFile(mean_average_precision, mean_precisions, mean_recalls,
     pr_ranks: List of integers.
     output_path: Full file path.
   """
-  with tf.gfile.GFile(output_path, 'w') as f:
+  with tf.io.gfile.GFile(output_path, 'w') as f:
     for k in sorted(mean_average_precision.keys()):
       f.write('{}\n  mAP={}\n  mP@k{} {}\n  mR@k{} {}\n'.format(
           k, np.around(mean_average_precision[k] * 100, decimals=2),
@@ -422,7 +422,7 @@ def ReadMetricsFile(metrics_path):
   Raises:
     ValueError: If input file is malformed.
   """
-  with tf.gfile.GFile(metrics_path, 'r') as f:
+  with tf.io.gfile.GFile(metrics_path, 'r') as f:
     file_contents_stripped = [l.rstrip() for l in f]
 
   if len(file_contents_stripped) % 4:

@@ -38,8 +38,8 @@ def NormalizePixelValues(image,
   Returns:
     image: a float32 tensor of the same shape as the input image.
   """
-  image = tf.to_float(image)
-  image = tf.div(tf.subtract(image, pixel_value_offset), pixel_value_scale)
+  image = tf.cast(image, dtype=tf.float32)
+  image = tf.truediv(tf.subtract(image, pixel_value_offset), pixel_value_scale)
   return image
 
 
@@ -60,7 +60,8 @@ def CalculateReceptiveBoxes(height, width, rf, stride, padding):
   x, y = tf.meshgrid(tf.range(width), tf.range(height))
   coordinates = tf.reshape(tf.stack([y, x], axis=2), [-1, 2])
   # [y,x,y,x]
-  point_boxes = tf.to_float(tf.concat([coordinates, coordinates], 1))
+  point_boxes = tf.cast(
+      tf.concat([coordinates, coordinates], 1), dtype=tf.float32)
   bias = [-padding, -padding, -padding + rf - 1, -padding + rf - 1]
   rf_boxes = stride * point_boxes + bias
   return rf_boxes
@@ -115,7 +116,8 @@ def ExtractKeypointDescriptor(image, layer_name, image_scales, iou,
   Raises:
     ValueError: If the layer_name is unsupported.
   """
-  original_image_shape_float = tf.gather(tf.to_float(tf.shape(image)), [0, 1])
+  original_image_shape_float = tf.gather(
+      tf.cast(tf.shape(image), dtype=tf.float32), [0, 1])
   image_tensor = NormalizePixelValues(image)
   image_tensor = tf.expand_dims(image_tensor, 0, name='image/expand_dims')
 
@@ -161,8 +163,10 @@ def ExtractKeypointDescriptor(image, layer_name, image_scales, iou,
       scores: Concatenated attention score tensor with the shape of [K].
     """
     scale = tf.gather(image_scales, scale_index)
-    new_image_size = tf.to_int32(tf.round(original_image_shape_float * scale))
-    resized_image = tf.image.resize_bilinear(image_tensor, new_image_size)
+    new_image_size = tf.cast(
+        tf.round(original_image_shape_float * scale), dtype=tf.int32)
+    resized_image = tf.compat.v1.image.resize_bilinear(image_tensor,
+                                                       new_image_size)
 
     attention, feature_map = model_fn(
         resized_image, normalized_image=True, reuse=reuse)
@@ -340,7 +344,7 @@ def PostProcessDescriptors(descriptors, use_pca, pca_parameters):
       normalization and (possibly) PCA/whitening.
   """
   # L2-normalize, and if desired apply PCA (followed by L2-normalization).
-  with tf.variable_scope('postprocess'):
+  with tf.compat.v1.variable_scope('postprocess'):
     final_descriptors = tf.nn.l2_normalize(
         descriptors, axis=1, name='l2_normalization')
 

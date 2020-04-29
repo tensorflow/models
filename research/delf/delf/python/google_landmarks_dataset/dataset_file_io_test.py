@@ -29,8 +29,9 @@ class DatasetFileIoTest(tf.test.TestCase):
 
   def testReadRecognitionSolutionWorks(self):
     # Define inputs.
-    file_path = os.path.join(tf.test.get_temp_dir(), 'recognition_solution.csv')
-    with tf.gfile.GFile(file_path, 'w') as f:
+    file_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
+                             'recognition_solution.csv')
+    with tf.io.gfile.GFile(file_path, 'w') as f:
       f.write('id,landmarks,Usage\n')
       f.write('0123456789abcdef,0 12,Public\n')
       f.write('0223456789abcdef,,Public\n')
@@ -60,8 +61,9 @@ class DatasetFileIoTest(tf.test.TestCase):
 
   def testReadRetrievalSolutionWorks(self):
     # Define inputs.
-    file_path = os.path.join(tf.test.get_temp_dir(), 'retrieval_solution.csv')
-    with tf.gfile.GFile(file_path, 'w') as f:
+    file_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
+                             'retrieval_solution.csv')
+    with tf.io.gfile.GFile(file_path, 'w') as f:
       f.write('id,images,Usage\n')
       f.write('0123456789abcdef,None,Ignored\n')
       f.write('0223456789abcdef,fedcba9876543210 fedcba9876543200,Public\n')
@@ -91,9 +93,9 @@ class DatasetFileIoTest(tf.test.TestCase):
 
   def testReadRecognitionPredictionsWorks(self):
     # Define inputs.
-    file_path = os.path.join(tf.test.get_temp_dir(),
+    file_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
                              'recognition_predictions.csv')
-    with tf.gfile.GFile(file_path, 'w') as f:
+    with tf.io.gfile.GFile(file_path, 'w') as f:
       f.write('id,landmarks\n')
       f.write('0123456789abcdef,12 0.1 \n')
       f.write('0423456789abcdef,0 19.0\n')
@@ -129,9 +131,9 @@ class DatasetFileIoTest(tf.test.TestCase):
 
   def testReadRetrievalPredictionsWorks(self):
     # Define inputs.
-    file_path = os.path.join(tf.test.get_temp_dir(),
+    file_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
                              'retrieval_predictions.csv')
-    with tf.gfile.GFile(file_path, 'w') as f:
+    with tf.io.gfile.GFile(file_path, 'w') as f:
       f.write('id,images\n')
       f.write('0123456789abcdef,fedcba9876543250 \n')
       f.write('0423456789abcdef,fedcba9876543260\n')

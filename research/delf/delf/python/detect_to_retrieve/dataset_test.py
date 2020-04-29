@@ -206,7 +206,7 @@ class DatasetTest(tf.test.TestCase):
         'medium': np.array([0.5, 1.0])
     }
     pr_ranks = [1, 5]
-    output_path = os.path.join(tf.test.get_temp_dir(), 'metrics.txt')
+    output_path = os.path.join(tf.compat.v1.test.get_temp_dir(), 'metrics.txt')
 
     # Run tested function.
     dataset.SaveMetricsFile(mean_average_precision, mean_precisions,
@@ -223,7 +223,7 @@ class DatasetTest(tf.test.TestCase):
                         '  mR@k[1 5] [ 50. 100.]\n')
 
     # Parse actual results, and compare to expected.
-    with tf.gfile.GFile(output_path) as f:
+    with tf.io.gfile.GFile(output_path) as f:
       metrics = f.read()
 
     self.assertEqual(metrics, expected_metrics)
@@ -240,7 +240,7 @@ class DatasetTest(tf.test.TestCase):
         'medium': np.array([0.5, 1.0])
     }
     pr_ranks = [1, 5]
-    output_path = os.path.join(tf.test.get_temp_dir(), 'metrics.txt')
+    output_path = os.path.join(tf.compat.v1.test.get_temp_dir(), 'metrics.txt')
 
     # Run tested functions.
     dataset.SaveMetricsFile(mean_average_precision, mean_precisions,
@@ -261,8 +261,8 @@ class DatasetTest(tf.test.TestCase):
 
   def testReadMetricsWithRepeatedProtocolFails(self):
     # Define inputs.
-    input_path = os.path.join(tf.test.get_temp_dir(), 'metrics.txt')
-    with tf.gfile.GFile(input_path, 'w') as f:
+    input_path = os.path.join(tf.compat.v1.test.get_temp_dir(), 'metrics.txt')
+    with tf.io.gfile.GFile(input_path, 'w') as f:
       f.write('hard\n'
               '  mAP=70.0\n'
               '  mP@k[1 5] [ 100.   80.]\n'

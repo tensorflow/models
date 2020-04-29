@@ -32,8 +32,8 @@ def MakeDetector(sess, model_dir, import_scope=None):
   Returns:
     Function that receives an image and returns detection results.
   """
-  tf.saved_model.loader.load(
-      sess, [tf.saved_model.tag_constants.SERVING],
+  tf.compat.v1.saved_model.loader.load(
+      sess, [tf.compat.v1.saved_model.tag_constants.SERVING],
       model_dir,
       import_scope=import_scope)
   import_scope_prefix = import_scope + '/' if import_scope is not None else ''

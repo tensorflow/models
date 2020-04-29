@@ -268,7 +268,7 @@ class ExtractAggregatedRepresentation(object):
           output_vlad: VLAD descriptor updated to take into account contribution
             from ind-th feature.
         """
-        return ind + 1, tf.compat.v1.tensor_scatter_add(
+        return ind + 1, tf.tensor_scatter_nd_add(
             vlad, tf.expand_dims(selected_visual_words[ind], axis=1),
             tf.tile(
                 tf.expand_dims(features[ind], axis=0), [num_assignments, 1]) -

@@ -49,7 +49,7 @@ def ReadSolution(file_path, task):
   public_solution = {}
   private_solution = {}
   ignored_ids = []
-  with tf.gfile.GFile(file_path, 'r') as csv_file:
+  with tf.io.gfile.GFile(file_path, 'r') as csv_file:
     reader = csv.reader(csv_file)
     next(reader, None)  # Skip header.
     for row in reader:
@@ -108,7 +108,7 @@ def ReadPredictions(file_path, public_ids, private_ids, ignored_ids, task):
   """
   public_predictions = {}
   private_predictions = {}
-  with tf.gfile.GFile(file_path, 'r') as csv_file:
+  with tf.io.gfile.GFile(file_path, 'r') as csv_file:
     reader = csv.reader(csv_file)
     next(reader, None)  # Skip header.
     for row in reader:

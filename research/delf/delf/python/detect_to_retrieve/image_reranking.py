@@ -35,17 +35,17 @@ _STATUS_CHECK_GV_ITERATIONS = 10
 
 # Re-ranking / geometric verification parameters.
 _NUM_TO_RERANK = 100
-_FEATURE_DISTANCE_THRESHOLD = 0.9
 _NUM_RANSAC_TRIALS = 1000
 _MIN_RANSAC_SAMPLES = 3
-_RANSAC_RESIDUAL_THRESHOLD = 10
 
 
 def MatchFeatures(query_locations,
                   query_descriptors,
                   index_image_locations,
                   index_image_descriptors,
-                  ransac_seed=None):
+                  ransac_seed=None,
+                  feature_distance_threshold=0.9,
+                  ransac_residual_threshold=10.0):
   """Matches local features using geometric verification.
 
   First, finds putative local feature matches by matching `query_descriptors`
@@ -63,19 +63,33 @@ def MatchFeatures(query_locations,
     index_image_descriptors: Descriptors of local features for index image.
       NumPy array of shape [#index_image_features, depth].
     ransac_seed: Seed used by RANSAC. If None (default), no seed is provided.
+    feature_distance_threshold: Distance threshold below which a pair of
+      features is considered a potential match, and will be fed into RANSAC.
+    ransac_residual_threshold: Residual error threshold for considering matches
+      as inliers, used in RANSAC algorithm.
 
   Returns:
     score: Number of inliers of match. If no match is found, returns 0.
+
+  Raises:
+    ValueError: If local descriptors from query and index images have different
+      dimensionalities.
   """
   num_features_query = query_locations.shape[0]
   num_features_index_image = index_image_locations.shape[0]
   if not num_features_query or not num_features_index_image:
     return 0
 
+  local_feature_dim = query_descriptors.shape[1]
+  if index_image_descriptors.shape[1] != local_feature_dim:
+    raise ValueError(
+        'Local feature dimensionality is not consistent for query and index '
+        'images.')
+
   # Find nearest-neighbor matches using a KD tree.
   index_image_tree = spatial.cKDTree(index_image_descriptors)
   _, indices = index_image_tree.query(
-      query_descriptors, distance_upper_bound=_FEATURE_DISTANCE_THRESHOLD)
+      query_descriptors, distance_upper_bound=feature_distance_threshold)
 
   # Select feature locations for putative matches.
   query_locations_to_use = np.array([
@@ -98,7 +112,7 @@ def MatchFeatures(query_locations,
       (index_image_locations_to_use, query_locations_to_use),
       transform.AffineTransform,
       min_samples=_MIN_RANSAC_SAMPLES,
-      residual_threshold=_RANSAC_RESIDUAL_THRESHOLD,
+      residual_threshold=ransac_residual_threshold,
       max_trials=_NUM_RANSAC_TRIALS,
       random_state=ransac_seed)
   if inliers is None:

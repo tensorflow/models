@@ -128,10 +128,10 @@ def main(argv):
 
   # Parse AggregationConfig protos.
   query_config = aggregation_config_pb2.AggregationConfig()
-  with tf.gfile.GFile(cmd_args.query_aggregation_config_path, 'r') as f:
+  with tf.io.gfile.GFile(cmd_args.query_aggregation_config_path, 'r') as f:
     text_format.Merge(f.read(), query_config)
   index_config = aggregation_config_pb2.AggregationConfig()
-  with tf.gfile.GFile(cmd_args.index_aggregation_config_path, 'r') as f:
+  with tf.io.gfile.GFile(cmd_args.index_aggregation_config_path, 'r') as f:
     text_format.Merge(f.read(), index_config)
 
   # Read aggregated descriptors.
@@ -182,8 +182,8 @@ def main(argv):
     print('done! Retrieval for query %d took %f seconds' % (i, elapsed))
 
   # Create output directory if necessary.
-  if not tf.gfile.Exists(cmd_args.output_dir):
-    tf.gfile.MakeDirs(cmd_args.output_dir)
+  if not tf.io.gfile.exists(cmd_args.output_dir):
+    tf.io.gfile.makedirs(cmd_args.output_dir)
 
   # Compute metrics.
   medium_metrics = dataset.ComputeMetrics(ranks_before_gv, medium_ground_truth,

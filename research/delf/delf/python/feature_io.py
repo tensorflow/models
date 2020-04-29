@@ -168,7 +168,7 @@ def ReadFromFile(file_path):
     attention: [N] float array with attention scores.
     orientations: [N] float array with orientations.
   """
-  with tf.gfile.FastGFile(file_path, 'rb') as f:
+  with tf.io.gfile.GFile(file_path, 'rb') as f:
     return ParseFromString(f.read())
 
 
@@ -192,5 +192,5 @@ def WriteToFile(file_path,
   """
   serialized_data = SerializeToString(locations, scales, descriptors, attention,
                                       orientations)
-  with tf.gfile.FastGFile(file_path, 'w') as f:
+  with tf.io.gfile.GFile(file_path, 'w') as f:
     f.write(serialized_data)
