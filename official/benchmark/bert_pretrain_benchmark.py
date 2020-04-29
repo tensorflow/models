@@ -125,8 +125,8 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
     # This is used for accuracy test.
     self._setup()
     self._specify_common_flags()
-    FLAGS.num_steps_per_epoch = 25000
-    FLAGS.num_train_epochs = 40
+    FLAGS.num_steps_per_epoch = 250000
+    FLAGS.num_train_epochs = 4
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_8x8_tpu_bf16_seq128_1m_steps')
     summary_path = os.path.join(FLAGS.model_dir,
