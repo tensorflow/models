@@ -24,7 +24,7 @@ import unittest
 import mock
 import requests
 
-from official.utils.logs import cloud_lib
+from official.r1.utils.logs import cloud_lib
 
 
 class CloudLibTest(unittest.TestCase):

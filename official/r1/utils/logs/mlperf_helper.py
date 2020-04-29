@@ -30,8 +30,8 @@ import os
 import re
 import subprocess
 import sys
-import typing
 from absl import logging
+import typing
 # pylint:disable=logging-format-interpolation
 
 

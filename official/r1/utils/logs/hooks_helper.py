@@ -27,9 +27,9 @@ from __future__ import print_function
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 from absl import logging
 
-from official.utils.logs import hooks
-from official.utils.logs import logger
-from official.utils.logs import metric_hook
+from official.r1.utils.logs import hooks
+from official.r1.utils.logs import logger
+from official.r1.utils.logs import metric_hook
 
 _TENSORS_TO_LOG = dict((x, x) for x in ['learning_rate',
                                         'cross_entropy',

@@ -17,7 +17,6 @@
 The NeuMF model assembles both MF and MLP models under the NCF framework. Check
 `neumf_model.py` for more details about the models.
 """
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -29,16 +28,17 @@ import math
 import multiprocessing
 import os
 import signal
-import typing
 
-# pylint: disable=g-bad-import-order
-import numpy as np
 from absl import app as absl_app
 from absl import flags
 from absl import logging
+import numpy as np
 import tensorflow as tf
-# pylint: enable=g-bad-import-order
+import typing
 
+from official.r1.utils.logs import hooks_helper
+from official.r1.utils.logs import logger
+from official.r1.utils.logs import mlperf_helper
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
@@ -46,9 +46,6 @@ from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks_helper
-from official.utils.logs import logger
-from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 

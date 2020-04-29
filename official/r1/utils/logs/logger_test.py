@@ -14,7 +14,6 @@
 # ==============================================================================
 
 """Tests for benchmark logger."""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -25,19 +24,13 @@ import tempfile
 import time
 import unittest
 
-import mock
-from absl.testing import flagsaver
-import tensorflow as tf  # pylint: disable=g-bad-import-order
 from absl import logging
+from absl.testing import flagsaver
+import tensorflow as tf
 
-try:
-  from google.cloud import bigquery
-except ImportError:
-  bigquery = None
-
-from official.utils.misc import keras_utils
+from official.r1.utils.logs import logger
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
+from official.utils.misc import keras_utils
 
 
 class BenchmarkLoggerTest(tf.test.TestCase):
@@ -66,23 +59,6 @@ class BenchmarkLoggerTest(tf.test.TestCase):
         logger.config_benchmark_logger()
         self.assertIsInstance(logger.get_benchmark_logger(),
                               logger.BenchmarkFileLogger)
-
-  @mock.patch("official.utils.logs.logger.config_benchmark_logger")
-  def test_benchmark_context(self, mock_config_benchmark_logger):
-    mock_logger = mock.MagicMock()
-    mock_config_benchmark_logger.return_value = mock_logger
-    with logger.benchmark_context(None):
-      logging.info("start benchmarking")
-    mock_logger.on_finish.assert_called_once_with(logger.RUN_STATUS_SUCCESS)
-
-  @mock.patch("official.utils.logs.logger.config_benchmark_logger")
-  def test_benchmark_context_failure(self, mock_config_benchmark_logger):
-    mock_logger = mock.MagicMock()
-    mock_config_benchmark_logger.return_value = mock_logger
-    with self.assertRaises(RuntimeError):
-      with logger.benchmark_context(None):
-        raise RuntimeError("training error")
-    mock_logger.on_finish.assert_called_once_with(logger.RUN_STATUS_FAILURE)
 
 
 class BaseBenchmarkLoggerTest(tf.test.TestCase):
@@ -211,24 +187,6 @@ class BenchmarkFileLoggerTest(tf.test.TestCase):
 
     metric_log = os.path.join(log_dir, "metric.log")
     self.assertFalse(tf.io.gfile.exists(metric_log))
-
-  @mock.patch("official.utils.logs.logger._gather_run_info")
-  def test_log_run_info(self, mock_gather_run_info):
-    log_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
-    log = logger.BenchmarkFileLogger(log_dir)
-    run_info = {"model_name": "model_name",
-                "dataset": "dataset_name",
-                "run_info": "run_value"}
-    mock_gather_run_info.return_value = run_info
-    log.log_run_info("model_name", "dataset_name", {})
-
-    run_log = os.path.join(log_dir, "benchmark_run.log")
-    self.assertTrue(tf.io.gfile.exists(run_log))
-    with tf.io.gfile.GFile(run_log) as f:
-      run_info = json.loads(f.readline())
-      self.assertEqual(run_info["model_name"], "model_name")
-      self.assertEqual(run_info["dataset"], "dataset_name")
-      self.assertEqual(run_info["run_info"], "run_value")
 
   def test_collect_tensorflow_info(self):
     run_info = {}

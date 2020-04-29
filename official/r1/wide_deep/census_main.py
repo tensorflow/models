@@ -19,11 +19,10 @@ import os
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
-
-from official.utils.flags import core as flags_core
-from official.utils.logs import logger
+from official.r1.utils.logs import logger
 from official.r1.wide_deep import census_dataset
 from official.r1.wide_deep import wide_deep_run_loop
+from official.utils.flags import core as flags_core
 
 
 def define_census_flags():

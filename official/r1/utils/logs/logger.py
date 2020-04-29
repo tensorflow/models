@@ -31,13 +31,12 @@ import os
 import threading
 import uuid
 
-from six.moves import _thread as thread
 from absl import flags
+from absl import logging
+from six.moves import _thread as thread
 import tensorflow as tf
 from tensorflow.python.client import device_lib
-from absl import logging
-
-from official.utils.logs import cloud_lib
+from official.r1.utils.logs import cloud_lib
 
 METRIC_LOG_FILE_NAME = "metric.log"
 BENCHMARK_RUN_LOG_FILE_NAME = "benchmark_run.log"
