@@ -49,7 +49,7 @@ def load_images(file_pattern, batch_size, dataset_name):
   for i in range(batch_size):
     path = file_pattern % i
     print("Reading %s" % path)
-    pil_image = PIL.Image.open(tf.gfile.GFile(path))
+    pil_image = PIL.Image.open(tf.gfile.GFile(path, 'rb'))
     images_actual_data[i, ...] = np.asarray(pil_image)
   return images_actual_data
 
@@ -81,7 +81,7 @@ def run(checkpoint, batch_size, dataset_name, image_path_pattern):
       session_creator=session_creator) as sess:
     predictions = sess.run(endpoints.predicted_text,
                            feed_dict={images_placeholder: images_data})
-  return predictions.tolist()
+  return [pr_bytes.decode('utf-8') for pr_bytes in predictions.tolist()]
 
 
 def main(_):

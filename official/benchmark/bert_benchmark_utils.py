@@ -23,11 +23,11 @@ import time
 # pylint: disable=g-bad-import-order
 import numpy as np
 from absl import flags
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
-from official.utils.testing.perfzero_benchmark import PerfZeroBenchmark
+from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 
 FLAGS = flags.FLAGS
 
@@ -44,9 +44,14 @@ class BenchmarkTimerCallback(tf.keras.callbacks.Callback):
     self.batch_start_times[batch] = time.time()
 
   def on_batch_end(self, batch, logs=None):
+    # If there are multiple steps_per_loop, the end batch index will not be the
+    # same as the starting index. Use the last starting index instead.
+    if batch not in self.batch_start_times:
+      batch = max(self.batch_start_times.keys())
+
     self.batch_stop_times[batch] = time.time()
 
-  def get_examples_per_sec(self, batch_size, num_batches_to_skip=10):
+  def get_examples_per_sec(self, batch_size, num_batches_to_skip=1):
     batch_durations = []
     for batch in self.batch_start_times:
       if batch in self.batch_stop_times and batch >= num_batches_to_skip:
@@ -62,8 +67,9 @@ class BertBenchmarkBase(PerfZeroBenchmark):
   """Base class to hold methods common to test classes."""
   local_flags = None
 
-  def __init__(self, output_dir=None):
-    super(BertBenchmarkBase, self).__init__(output_dir=output_dir)
+  def __init__(self, output_dir=None, tpu=None, **kwargs):
+    super(BertBenchmarkBase, self).__init__(
+        output_dir=output_dir, tpu=tpu, **kwargs)
     self.num_gpus = 8
     self.timer_callback = None
 
@@ -92,7 +98,8 @@ class BertBenchmarkBase(PerfZeroBenchmark):
           'name':
               'exp_per_second',
           'value':
-              self.timer_callback.get_examples_per_sec(FLAGS.train_batch_size)
+              self.timer_callback.get_examples_per_sec(FLAGS.train_batch_size *
+                                                       FLAGS.steps_per_loop)
       })
     else:
       metrics.append({

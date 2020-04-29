@@ -23,12 +23,11 @@ import os
 from absl import app as absl_app
 from absl import flags
 import tensorflow as tf
-
-from official.recommendation import movielens
-from official.utils.flags import core as flags_core
-from official.utils.logs import logger
+from official.r1.utils.logs import logger
 from official.r1.wide_deep import movielens_dataset
 from official.r1.wide_deep import wide_deep_run_loop
+from official.recommendation import movielens
+from official.utils.flags import core as flags_core
 
 
 def define_movie_flags():
@@ -69,7 +68,7 @@ def build_estimator(model_dir, model_type, model_column_fn, inter_op, intra_op):
       model_dir=model_dir,
       feature_columns=deep_columns,
       hidden_units=hidden_units,
-      optimizer=tf.train.AdamOptimizer(),
+      optimizer=tf.compat.v1.train.AdamOptimizer(),
       activation_fn=tf.nn.sigmoid,
       dropout=0.3,
       loss_reduction=tf.losses.Reduction.MEAN)

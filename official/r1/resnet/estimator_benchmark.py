@@ -21,13 +21,14 @@ import os
 import time
 
 from absl import flags
+from absl import logging
 from absl.testing import flagsaver
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.r1.resnet import cifar10_main as cifar_main
 from official.r1.resnet import imagenet_main
+from official.r1.utils.logs import hooks
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks
 
 IMAGENET_DATA_DIR_NAME = 'imagenet'
 CIFAR_DATA_DIR_NAME = 'cifar-10-batches-bin'
@@ -56,7 +57,7 @@ class EstimatorBenchmark(tf.test.Benchmark):
 
   def _setup(self):
     """Sets up and resets flags before each test."""
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+    logging.set_verbosity(logging.INFO)
     if EstimatorBenchmark.local_flags is None:
       for flag_method in self.flag_methods:
         flag_method()
@@ -94,12 +95,12 @@ class EstimatorBenchmark(tf.test.Benchmark):
     metrics = []
     if 'accuracy' in eval_results:
       metrics.append({'name': 'accuracy_top_1',
-                      'value': eval_results['accuracy'].item(),
+                      'value': float(eval_results['accuracy']),
                       'min_value': top_1_min,
                       'max_value': top_1_max})
     if 'accuracy_top_5' in eval_results:
       metrics.append({'name': 'accuracy_top_5',
-                      'value': eval_results['accuracy_top_5'].item()})
+                      'value': float(eval_results['accuracy_top_5'])})
 
     if examples_per_sec_hook:
       exp_per_second_list = examples_per_sec_hook.current_examples_per_sec_list

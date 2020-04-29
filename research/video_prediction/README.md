@@ -1,9 +1,13 @@
+![No Maintenance Intended](https://img.shields.io/badge/No%20Maintenance%20Intended-%E2%9C%95-red.svg)
+![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
+
 # Video Prediction with Neural Advection
 
 *A TensorFlow implementation of the models described in [Unsupervised Learning for Physical Interaction through Video Prediction (Finn et al., 2016)](https://arxiv.org/abs/1605.07157).*
 
 This video prediction model, which is optionally conditioned on actions,
-predictions future video by internally predicting how to transform the last
+predicts future video by internally predicting how to transform the last
 image (which may have been predicted) into the next image. As a result, it can
 reuse apperance information from previous frames and can better generalize to
 objects not seen in the training set. Some example predictions on novel objects

@@ -20,11 +20,11 @@ from __future__ import print_function
 
 from absl import app
 from absl import flags
+from absl import logging
 import tensorflow as tf
-from typing import Optional, Text
-
-from official.nlp import bert_modeling
+from typing import Text
 from official.nlp.bert import bert_models
+from official.nlp.bert import configs
 
 FLAGS = flags.FLAGS
 
@@ -35,20 +35,16 @@ flags.DEFINE_string("model_checkpoint_path", None,
 flags.DEFINE_string("export_path", None, "TF-Hub SavedModel destination path.")
 flags.DEFINE_string("vocab_file", None,
                     "The vocabulary file that the BERT model was trained on.")
-flags.DEFINE_string("sp_model_file", None,
-                    "The sentence piece model file that the ALBERT model was "
-                    "trained on.")
-flags.DEFINE_enum(
-    "model_type", "bert", ["bert", "albert"],
-    "Specifies the type of the model. "
-    "If 'bert', will use canonical BERT; if 'albert', will use ALBERT model.")
+flags.DEFINE_bool("do_lower_case", None, "Whether to lowercase. If None, "
+                  "do_lower_case will be enabled if 'uncased' appears in the "
+                  "name of --vocab_file")
 
 
-def create_bert_model(bert_config: bert_modeling.BertConfig):
+def create_bert_model(bert_config: configs.BertConfig) -> tf.keras.Model:
   """Creates a BERT keras core model from BERT configuration.
 
   Args:
-    bert_config: A BertConfig` to create the core model.
+    bert_config: A `BertConfig` to create the core model.
 
   Returns:
     A keras model.
@@ -61,7 +57,7 @@ def create_bert_model(bert_config: bert_modeling.BertConfig):
   input_type_ids = tf.keras.layers.Input(
       shape=(None,), dtype=tf.int32, name="input_type_ids")
   transformer_encoder = bert_models.get_transformer_encoder(
-      bert_config, sequence_length=None, float_dtype=tf.float32)
+      bert_config, sequence_length=None)
   sequence_output, pooled_output = transformer_encoder(
       [input_word_ids, input_mask, input_type_ids])
   # To keep consistent with legacy hub modules, the outputs are
@@ -71,40 +67,28 @@ def create_bert_model(bert_config: bert_modeling.BertConfig):
       outputs=[pooled_output, sequence_output]), transformer_encoder
 
 
-def export_bert_tfhub(bert_config: bert_modeling.BertConfig,
-                      model_checkpoint_path: Text,
-                      hub_destination: Text,
-                      vocab_file: Optional[Text] = None,
-                      sp_model_file: Optional[Text] = None):
+def export_bert_tfhub(bert_config: configs.BertConfig,
+                      model_checkpoint_path: Text, hub_destination: Text,
+                      vocab_file: Text, do_lower_case: bool = None):
   """Restores a tf.keras.Model and saves for TF-Hub."""
+  # If do_lower_case is not explicit, default to checking whether "uncased" is
+  # in the vocab file name
+  if do_lower_case is None:
+    do_lower_case = "uncased" in vocab_file
+    logging.info("Using do_lower_case=%s based on name of vocab_file=%s",
+                 do_lower_case, vocab_file)
   core_model, encoder = create_bert_model(bert_config)
   checkpoint = tf.train.Checkpoint(model=encoder)
   checkpoint.restore(model_checkpoint_path).assert_consumed()
-
-  if isinstance(bert_config, bert_modeling.AlbertConfig):
-    if not sp_model_file:
-      raise ValueError("sp_model_file is required.")
-    core_model.sp_model_file = tf.saved_model.Asset(sp_model_file)
-  else:
-    assert isinstance(bert_config, bert_modeling.BertConfig)
-    if not vocab_file:
-      raise ValueError("vocab_file is required.")
-    core_model.vocab_file = tf.saved_model.Asset(vocab_file)
-    core_model.do_lower_case = tf.Variable(
-        "uncased" in vocab_file, trainable=False)
+  core_model.vocab_file = tf.saved_model.Asset(vocab_file)
+  core_model.do_lower_case = tf.Variable(do_lower_case, trainable=False)
   core_model.save(hub_destination, include_optimizer=False, save_format="tf")
 
 
 def main(_):
-  assert tf.version.VERSION.startswith('2.')
-  config_cls = {
-      "bert": bert_modeling.BertConfig,
-      "albert": bert_modeling.AlbertConfig,
-  }
-  bert_config = config_cls[FLAGS.model_type].from_json_file(
-      FLAGS.bert_config_file)
+  bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
   export_bert_tfhub(bert_config, FLAGS.model_checkpoint_path, FLAGS.export_path,
-                    FLAGS.vocab_file, FLAGS.sp_model_file)
+                    FLAGS.vocab_file, FLAGS.do_lower_case)
 
 
 if __name__ == "__main__":

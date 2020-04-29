@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Classification network."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -31,7 +31,7 @@ class Classification(network.Network):
 
   This network implements a simple classifier head based on a dense layer.
 
-  Attributes:
+  Arguments:
     input_width: The innermost dimension of the input tensor to this network.
     num_classes: The number of classes that this network should classify to.
     activation: The activation, if any, for the dense layer in this network.

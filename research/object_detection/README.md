@@ -1,3 +1,5 @@
+![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
 
 # Tensorflow Object Detection API
 Creating accurate machine learning models capable of localizing and identifying
@@ -27,14 +29,16 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 ## Maintainers
 
-* Jonathan Huang, github: [jch1](https://github.com/jch1)
-* Vivek Rathod, github: [tombstone](https://github.com/tombstone)
-* Ronny Votel, github: [ronnyvotel](https://github.com/ronnyvotel)
-* Derek Chow, github: [derekjchow](https://github.com/derekjchow)
-* Chen Sun, github: [jesu9](https://github.com/jesu9)
-* Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
-* Alireza Fathi, github: [afathi3](https://github.com/afathi3)
-* Zhichao Lu, github: [pkulzc](https://github.com/pkulzc)
+| Name | GitHub |
+| --- | --- |
+| Jonathan Huang | [jch1](https://github.com/jch1) | 
+| Vivek Rathod | [tombstone](https://github.com/tombstone) |
+| Ronny Votel | [ronnyvotel](https://github.com/ronnyvotel) |
+| Derek Chow | [derekjchow](https://github.com/derekjchow) |
+| Chen Sun | [jesu9](https://github.com/jesu9) |
+| Menglong Zhu | [dreamdragon](https://github.com/dreamdragon) |
+| Alireza Fathi | [afathi3](https://github.com/afathi3) |
+| Zhichao Lu | [pkulzc](https://github.com/pkulzc) |
 
 
 ## Table of contents

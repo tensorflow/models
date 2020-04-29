@@ -20,6 +20,14 @@ import tensorflow as tf
 from official.utils.flags import core as flags_core
 
 
+def define_gin_flags():
+  """Define common gin configurable flags."""
+  flags.DEFINE_multi_string('gin_file', None,
+                            'List of paths to the config files.')
+  flags.DEFINE_multi_string(
+      'gin_param', None, 'Newline separated list of Gin parameter bindings.')
+
+
 def define_common_bert_flags():
   """Define common flags for BERT tasks."""
   flags_core.define_base(
@@ -31,7 +39,6 @@ def define_common_bert_flags():
       stop_threshold=False,
       batch_size=False,
       num_gpu=True,
-      hooks=False,
       export_dir=False,
       distribution_strategy=True,
       run_eagerly=True)
@@ -49,12 +56,16 @@ def define_common_bert_flags():
   flags.DEFINE_integer('num_train_epochs', 3,
                        'Total number of training epochs to perform.')
   flags.DEFINE_integer(
-      'steps_per_loop', 200,
+      'steps_per_loop', 1,
       'Number of steps per graph-mode loop. Only training step '
       'happens inside the loop. Callbacks will not be called '
       'inside.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
+  flags.DEFINE_float('end_lr', 0.0,
+                     'The end learning rate for learning rate decay.')
+  flags.DEFINE_string('optimizer_type', 'adamw',
+                      'The type of optimizer to use for training (adamw|lamb)')
   flags.DEFINE_boolean(
       'scale_loss', False,
       'Whether to divide the loss by number of replica inside the per-replica '
@@ -66,10 +77,10 @@ def define_common_bert_flags():
   flags.DEFINE_string(
       'hub_module_url', None, 'TF-Hub path/url to Bert module. '
       'If specified, init_checkpoint flag should not be used.')
-  flags.DEFINE_enum(
-      'model_type', 'bert', ['bert', 'albert'],
-      'Specifies the type of the model. '
-      'If "bert", will use canonical BERT; if "albert", will use ALBERT model.')
+  flags.DEFINE_bool('hub_module_trainable', True,
+                    'True to make keras layers in the hub module trainable.')
+
+  flags_core.define_log_steps()
 
   # Adds flags for mixed precision and multi-worker training.
   flags_core.define_performance(
@@ -90,8 +101,16 @@ def define_common_bert_flags():
   )
 
 
+def dtype():
+  return flags_core.get_tf_dtype(flags.FLAGS)
+
+
 def use_float16():
   return flags_core.get_tf_dtype(flags.FLAGS) == tf.float16
+
+
+def use_graph_rewrite():
+  return flags.FLAGS.fp16_implementation == 'graph_rewrite'
 
 
 def get_loss_scale():

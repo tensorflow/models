@@ -19,12 +19,13 @@ from __future__ import print_function
 
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 from six.moves import range
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.r1.mnist import dataset
+from official.r1.utils.logs import hooks_helper
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
@@ -37,8 +38,6 @@ def create_model(data_format):
 
   Network structure is equivalent to:
   https://github.com/tensorflow/tensorflow/blob/r1.5/tensorflow/examples/tutorials/mnist/mnist_deep.py
-  and
-  https://github.com/tensorflow/models/blob/master/tutorials/image/mnist/convolutional.py
 
   But uses the tf.keras API.
 
@@ -184,8 +183,8 @@ def run_mnist(flags_obj):
 
   data_format = flags_obj.data_format
   if data_format is None:
-    data_format = ('channels_first'
-                   if tf.test.is_built_with_cuda() else 'channels_last')
+    data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
+                   else 'channels_last')
   mnist_classifier = tf.estimator.Estimator(
       model_fn=model_function,
       model_dir=flags_obj.model_dir,
@@ -243,6 +242,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_mnist_flags()
   absl_app.run(main)

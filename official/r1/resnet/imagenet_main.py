@@ -22,13 +22,15 @@ import os
 
 from absl import app as absl_app
 from absl import flags
+from absl import logging
+from six.moves import range
 import tensorflow as tf
 
 from official.r1.resnet import imagenet_preprocessing
 from official.r1.resnet import resnet_model
 from official.r1.resnet import resnet_run_loop
+from official.r1.utils.logs import logger
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 
 DEFAULT_IMAGE_SIZE = 224
 NUM_CHANNELS = 3
@@ -193,9 +195,9 @@ def input_fn(is_training,
   dataset = tf.data.Dataset.from_tensor_slices(filenames)
 
   if input_context:
-    tf.compat.v1.logging.info(
-        'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d' % (
-            input_context.input_pipeline_id, input_context.num_input_pipelines))
+    logging.info(
+        'Sharding the dataset: input_pipeline_id=%d num_input_pipelines=%d',
+        input_context.input_pipeline_id, input_context.num_input_pipelines)
     dataset = dataset.shard(input_context.num_input_pipelines,
                             input_context.input_pipeline_id)
 
@@ -307,7 +309,7 @@ def _get_block_sizes(resnet_size):
   except KeyError:
     err = ('Could not find layers for selected Resnet size.\n'
            'Size received: {}; sizes allowed: {}.'.format(
-               resnet_size, choices.keys()))
+               resnet_size, list(choices.keys())))
     raise ValueError(err)
 
 
@@ -386,6 +388,6 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_imagenet_flags()
   absl_app.run(main)

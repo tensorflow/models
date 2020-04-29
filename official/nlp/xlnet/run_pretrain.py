@@ -153,5 +153,4 @@ def main(unused_argv):
 
 
 if __name__ == "__main__":
-  assert tf.version.VERSION.startswith('2.')
   app.run(main)

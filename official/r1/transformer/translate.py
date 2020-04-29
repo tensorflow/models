@@ -23,10 +23,10 @@ import os
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 # pylint: enable=g-bad-import-order
 
-from official.transformer.utils import tokenizer
+from official.nlp.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
 
 _DECODE_BATCH_SIZE = 32

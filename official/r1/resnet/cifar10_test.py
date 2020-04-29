@@ -19,14 +19,15 @@ from __future__ import print_function
 
 from tempfile import mkstemp
 
+from absl import logging
 import numpy as np
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.r1.resnet import cifar10_main
 from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+logging.set_verbosity(logging.ERROR)
 
 _BATCH_SIZE = 128
 _HEIGHT = 32

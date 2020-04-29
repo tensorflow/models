@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -28,10 +29,16 @@ from official.nlp.modeling.layers import transformer
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
 # guarantees forward compatibility of this code for the V2 switchover.
 @keras_parameterized.run_all_keras_modes
+@parameterized.parameters(transformer.Transformer,
+                          transformer.CompiledTransformer)
 class TransformerLayerTest(keras_parameterized.TestCase):
 
-  def test_layer_creation(self):
-    test_layer = transformer.Transformer(
+  def tearDown(self):
+    super(TransformerLayerTest, self).tearDown()
+    tf.keras.mixed_precision.experimental.set_policy('float32')
+
+  def test_layer_creation(self, transformer_cls):
+    test_layer = transformer_cls(
         num_attention_heads=10,
         intermediate_size=2048,
         intermediate_activation='relu')
@@ -43,8 +50,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
 
-  def test_layer_creation_with_mask(self):
-    test_layer = transformer.Transformer(
+  def test_layer_creation_with_mask(self, transformer_cls):
+    test_layer = transformer_cls(
         num_attention_heads=10,
         intermediate_size=2048,
         intermediate_activation='relu')
@@ -58,8 +65,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
 
-  def test_layer_creation_with_incorrect_mask_fails(self):
-    test_layer = transformer.Transformer(
+  def test_layer_creation_with_incorrect_mask_fails(self, transformer_cls):
+    test_layer = transformer_cls(
         num_attention_heads=10,
         intermediate_size=2048,
         intermediate_activation='relu')
@@ -72,8 +79,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     with self.assertRaisesRegex(ValueError, 'When passing a mask tensor.*'):
       _ = test_layer([data_tensor, mask_tensor])
 
-  def test_layer_invocation(self):
-    test_layer = transformer.Transformer(
+  def test_layer_invocation(self, transformer_cls):
+    test_layer = transformer_cls(
         num_attention_heads=10,
         intermediate_size=2048,
         intermediate_activation='relu')
@@ -93,8 +100,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         (batch_size, sequence_length, width))
     _ = model.predict(input_data)
 
-  def test_layer_invocation_with_mask(self):
-    test_layer = transformer.Transformer(
+  def test_layer_invocation_with_mask(self, transformer_cls):
+    test_layer = transformer_cls(
         num_attention_heads=10,
         intermediate_size=2048,
         intermediate_activation='relu')
@@ -120,17 +127,16 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         2, size=(batch_size, sequence_length, sequence_length))
     _ = model.predict([input_data, mask_data])
 
-  def test_layer_invocation_with_float16_dtype(self):
-    test_layer = transformer.Transformer(
+  def test_layer_invocation_with_float16_dtype(self, transformer_cls):
+    tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
+    test_layer = transformer_cls(
         num_attention_heads=10,
         intermediate_size=2048,
-        intermediate_activation='relu',
-        dtype='float16')
+        intermediate_activation='relu')
     sequence_length = 21
     width = 80
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(
-        shape=(sequence_length, width), dtype=tf.float16)
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
     mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
@@ -142,15 +148,15 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     # (the NN is too complex) but this will rule out structural runtime errors.
     batch_size = 6
     input_data = (10 * np.random.random_sample(
-        (batch_size, sequence_length, width))).astype(np.float16)
+        (batch_size, sequence_length, width)))
     # The attention mask should be of shape (batch, from_seq_len, to_seq_len),
     # which here is (batch, sequence_length, sequence_length)
     mask_data = np.random.randint(
         2, size=(batch_size, sequence_length, sequence_length))
     _ = model.predict([input_data, mask_data])
 
-  def test_transform_with_initializer(self):
-    test_layer = transformer.Transformer(
+  def test_transform_with_initializer(self, transformer_cls):
+    test_layer = transformer_cls(
         num_attention_heads=10,
         intermediate_size=2048,
         intermediate_activation='relu',
@@ -162,6 +168,24 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     output = test_layer(data_tensor)
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output.shape.as_list())
+
+  def test_dynamic_layer_sequence(self, transformer_cls):
+    test_layer = transformer_cls(
+        num_attention_heads=10,
+        intermediate_size=2048,
+        intermediate_activation='relu',
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
+    # Create a 3-dimensional input (the first dimension is implicit).
+    width = 30
+    input_tensor = tf.keras.Input(shape=(None, width))
+    output_tensor = test_layer(input_tensor)
+    model = tf.keras.Model(input_tensor, output_tensor)
+
+    input_length = 17
+    input_data = np.ones((1, input_length, width))
+    output_data = model.predict(input_data)
+
+    self.assertAllEqual([1, input_length, width], output_data.shape)
 
 
 if __name__ == '__main__':

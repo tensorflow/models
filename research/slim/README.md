@@ -1,6 +1,6 @@
 # TensorFlow-Slim image classification model library
 
-[TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
+[TF-slim](https://github.com/tensorflow/models/tree/master/research/slim)
 is a new lightweight high-level API of TensorFlow (`tensorflow.contrib.slim`)
 for defining, training and evaluating complex
 models. This directory contains
@@ -15,15 +15,15 @@ data reading and queueing utilities. You can easily train any model on any of
 these datasets, as we demonstrate below. We've also included a
 [jupyter notebook](https://github.com/tensorflow/models/blob/master/research/slim/slim_walkthrough.ipynb),
 which provides working examples of how to use TF-Slim for image classification.
-For developing or modifying your own models, see also the [main TF-Slim page](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim).
+For developing or modifying your own models, see also the [main TF-Slim page](https://github.com/tensorflow/models/tree/master/research/slim).
 
 ## Contacts
 
 Maintainers of TF-slim:
 
+* Sergio Guadarrama, GitHub: [sguada](https://github.com/sguada)
 * Nathan Silberman,
-  github: [nathansilberman](https://github.com/nathansilberman)
-* Sergio Guadarrama, github: [sguada](https://github.com/sguada)
+  GitHub: [nathansilberman](https://github.com/nathansilberman)
 
 ## Citation
 "TensorFlow-Slim image classification model library"
@@ -179,7 +179,7 @@ format.
 
 The TFRecord format consists of a set of sharded files where each entry is a serialized `tf.Example` proto. Each `tf.Example` proto contains the ImageNet image (JPEG encoded) as well as metadata such as label and bounding box information.
 
-We provide a single [script](datasets/download_and_preprocess_imagenet.sh) for
+We provide a single [script](datasets/download_and_convert_imagenet.sh) for
 downloading and converting ImageNet data to TFRecord format. Downloading and
 preprocessing the data may take several hours (up to half a day) depending on
 your network and computer speed. Please be patient.

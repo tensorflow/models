@@ -26,6 +26,22 @@ EPSILON = 1e-8
 BBOX_XFORM_CLIP = np.log(1000. / 16.)
 
 
+def visualize_images_with_bounding_boxes(images, box_outputs, step,
+                                         summary_writer):
+  """Records subset of evaluation images with bounding boxes."""
+  image_shape = tf.shape(images[0])
+  image_height = tf.cast(image_shape[0], tf.float32)
+  image_width = tf.cast(image_shape[1], tf.float32)
+  normalized_boxes = normalize_boxes(box_outputs, [image_height, image_width])
+
+  bounding_box_color = tf.constant([[1.0, 1.0, 0.0, 1.0]])
+  image_summary = tf.image.draw_bounding_boxes(images, normalized_boxes,
+                                               bounding_box_color)
+  with summary_writer.as_default():
+    tf.summary.image('bounding_box_summary', image_summary, step=step)
+    summary_writer.flush()
+
+
 def yxyx_to_xywh(boxes):
   """Converts boxes from ymin, xmin, ymax, xmax to xmin, ymin, width, height.
 

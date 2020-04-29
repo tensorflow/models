@@ -43,14 +43,15 @@ def get_tf_dtype(flags_obj):
 
 
 def get_loss_scale(flags_obj, default_for_fp16):
+  dtype = get_tf_dtype(flags_obj)
   if flags_obj.loss_scale == "dynamic":
     return flags_obj.loss_scale
   elif flags_obj.loss_scale is not None:
     return float(flags_obj.loss_scale)
-  elif flags_obj.dtype == "fp32":
+  elif dtype == tf.float32 or dtype == tf.bfloat16:
     return 1  # No loss scaling is needed for fp32
   else:
-    assert flags_obj.dtype == "fp16"
+    assert dtype == tf.float16
     return default_for_fp16
 
 
@@ -63,7 +64,6 @@ def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
                        dynamic_loss_scale=False, fp16_implementation=False,
                        loss_scale=False,
                        tf_data_experimental_slack=False, enable_xla=False,
-                       force_v2_in_keras_compile=False,
                        training_dataset_cache=False):
   """Register flags for specifying performance tuning arguments.
 
@@ -90,9 +90,6 @@ def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
     tf_data_experimental_slack: Determines whether to enable tf.data's
       `experimental_slack` option.
     enable_xla: Determines if XLA (auto clustering) is turned on.
-    force_v2_in_keras_compile: Forces the use of run_distribued path even if not
-      using a `strategy`. This is not the same as
-      `tf.distribute.OneDeviceStrategy`
     training_dataset_cache: Whether to cache the training dataset on workers.
        Typically used to improve training performance when training data is in
        remote storage and can fit into worker memory.
@@ -288,12 +285,5 @@ def define_performance(num_parallel_calls=False, inter_op=False, intra_op=False,
     flags.DEFINE_boolean(
         name="enable_xla", default=False,
         help="Whether to enable XLA auto jit compilation")
-
-  if force_v2_in_keras_compile:
-    flags.DEFINE_boolean(
-        name="force_v2_in_keras_compile", default=None,
-        help="Forces the use of run_distribued path even if not"
-             "using a `strategy`. This is not the same as"
-             "`tf.distribute.OneDeviceStrategy`")
 
   return key_flags

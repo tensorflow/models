@@ -29,7 +29,7 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow as tf
+import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
 from official.recommendation import constants as rconst
@@ -37,8 +37,6 @@ from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import ncf_input_pipeline
 from official.recommendation import neumf_model
-from official.utils.logs import logger
-from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
@@ -300,15 +298,7 @@ def run_ncf(_):
           num_eval_steps,
           generate_input_online=generate_input_online)
     else:
-      # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
-      # a valid arg for this model. Also remove as a valid flag.
-      if FLAGS.force_v2_in_keras_compile is not None:
-        keras_model.compile(
-            optimizer=optimizer,
-            run_eagerly=FLAGS.run_eagerly,
-            experimental_run_tf_function=FLAGS.force_v2_in_keras_compile)
-      else:
-        keras_model.compile(optimizer=optimizer, run_eagerly=FLAGS.run_eagerly)
+      keras_model.compile(optimizer=optimizer, run_eagerly=FLAGS.run_eagerly)
 
       if not FLAGS.ml_perf:
         # Create Tensorboard summary and checkpoint callbacks.
@@ -413,7 +403,7 @@ def run_ncf_custom_training(params,
       optimizer.apply_gradients(grads)
       return loss
 
-    per_replica_losses = strategy.experimental_run_v2(
+    per_replica_losses = strategy.run(
         step_fn, args=(next(train_iterator),))
     mean_loss = strategy.reduce(
         tf.distribute.ReduceOp.SUM, per_replica_losses, axis=None)
@@ -433,7 +423,7 @@ def run_ncf_custom_training(params,
       return hr_sum, hr_count
 
     per_replica_hr_sum, per_replica_hr_count = (
-        strategy.experimental_run_v2(
+        strategy.run(
             step_fn, args=(next(eval_iterator),)))
     hr_sum = strategy.reduce(
         tf.distribute.ReduceOp.SUM, per_replica_hr_sum, axis=None)
@@ -559,10 +549,7 @@ def build_stats(loss, eval_result, time_callback):
 
 
 def main(_):
-  with logger.benchmark_context(FLAGS), \
-      mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
-    mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
-    run_ncf(FLAGS)
+  run_ncf(FLAGS)
 
 
 if __name__ == "__main__":

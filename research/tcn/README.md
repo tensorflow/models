@@ -1,3 +1,7 @@
+![No Maintenance Intended](https://img.shields.io/badge/No%20Maintenance%20Intended-%E2%9C%95-red.svg)
+![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
+
 # Time Contrastive Networks
 
 This implements ["Time Contrastive Networks"](https://arxiv.org/abs/1704.06888),
@@ -526,7 +530,7 @@ like:
 
 `$outdir/qtrain_clearodwalla_to_clear1_realv1_imtrain_clearsoda_to_white13_realv0.mp4`
 
-that look like this: <img src="g3doc/im.gif" title="Imitation Video" />
+that look like this: <img src="https://github.com/sermanet/tcn/blob/master/docs/figs/pouring.gif?raw=true" title="Imitation Video" />
 
 #### T-SNE / PCA Visualization
 

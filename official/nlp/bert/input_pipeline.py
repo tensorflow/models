@@ -59,7 +59,9 @@ def create_pretrain_dataset(input_patterns,
                             max_predictions_per_seq,
                             batch_size,
                             is_training=True,
-                            input_pipeline_context=None):
+                            input_pipeline_context=None,
+                            use_next_sentence_label=True,
+                            use_position_id=False):
   """Creates input dataset from (tf)records files for pretraining."""
   name_to_features = {
       'input_ids':
@@ -74,24 +76,31 @@ def create_pretrain_dataset(input_patterns,
           tf.io.FixedLenFeature([max_predictions_per_seq], tf.int64),
       'masked_lm_weights':
           tf.io.FixedLenFeature([max_predictions_per_seq], tf.float32),
-      'next_sentence_labels':
-          tf.io.FixedLenFeature([1], tf.int64),
   }
+  if use_next_sentence_label:
+    name_to_features['next_sentence_labels'] = tf.io.FixedLenFeature([1],
+                                                                     tf.int64)
+  if use_position_id:
+    name_to_features['position_ids'] = tf.io.FixedLenFeature([seq_length],
+                                                             tf.int64)
+  for input_pattern in input_patterns:
+    if not tf.io.gfile.glob(input_pattern):
+      raise ValueError('%s does not match any files.' % input_pattern)
 
   dataset = tf.data.Dataset.list_files(input_patterns, shuffle=is_training)
 
   if input_pipeline_context and input_pipeline_context.num_input_pipelines > 1:
     dataset = dataset.shard(input_pipeline_context.num_input_pipelines,
                             input_pipeline_context.input_pipeline_id)
+  if is_training:
+    dataset = dataset.repeat()
 
-  dataset = dataset.repeat()
-
-  # We set shuffle buffer to exactly match total number of
-  # training files to ensure that training data is well shuffled.
-  input_files = []
-  for input_pattern in input_patterns:
-    input_files.extend(tf.io.gfile.glob(input_pattern))
-  dataset = dataset.shuffle(len(input_files))
+    # We set shuffle buffer to exactly match total number of
+    # training files to ensure that training data is well shuffled.
+    input_files = []
+    for input_pattern in input_patterns:
+      input_files.extend(tf.io.gfile.glob(input_pattern))
+    dataset = dataset.shuffle(len(input_files))
 
   # In parallel, create tf record dataset for each train files.
   # cycle_length = 8 means that up to 8 files will be read and deserialized in
@@ -114,8 +123,11 @@ def create_pretrain_dataset(input_patterns,
         'masked_lm_positions': record['masked_lm_positions'],
         'masked_lm_ids': record['masked_lm_ids'],
         'masked_lm_weights': record['masked_lm_weights'],
-        'next_sentence_labels': record['next_sentence_labels'],
     }
+    if use_next_sentence_label:
+      x['next_sentence_labels'] = record['next_sentence_labels']
+    if use_position_id:
+      x['position_ids'] = record['position_ids']
 
     y = record['masked_lm_weights']
 
@@ -128,7 +140,7 @@ def create_pretrain_dataset(input_patterns,
   if is_training:
     dataset = dataset.shuffle(100)
 
-  dataset = dataset.batch(batch_size, drop_remainder=True)
+  dataset = dataset.batch(batch_size, drop_remainder=is_training)
   dataset = dataset.prefetch(1024)
   return dataset
 
@@ -144,7 +156,6 @@ def create_classifier_dataset(file_path,
       'input_mask': tf.io.FixedLenFeature([seq_length], tf.int64),
       'segment_ids': tf.io.FixedLenFeature([seq_length], tf.int64),
       'label_ids': tf.io.FixedLenFeature([], tf.int64),
-      'is_real_example': tf.io.FixedLenFeature([], tf.int64),
   }
   dataset = single_file_dataset(file_path, name_to_features)
 

@@ -13,15 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based one-hot embedding layer."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
 import tensorflow as tf
-
-from official.modeling import tf_utils
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -31,7 +29,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
   This layer uses either tf.gather or tf.one_hot to translate integer indices to
   float embeddings.
 
-  Attributes:
+  Arguments:
     vocab_size: Number of elements in the vocabulary.
     embedding_width: Output size of the embedding layer.
     initializer: The initializer to use for the embedding weights. Defaults to
@@ -78,8 +76,6 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
     super(OnDeviceEmbedding, self).build(input_shape)
 
   def call(self, inputs):
-    input_shape = tf_utils.get_shape_list(inputs, expected_rank=2)
-    input_shape.append(self._embedding_width)
     flat_inputs = tf.reshape(inputs, [-1])
     if self._use_one_hot:
       one_hot_data = tf.one_hot(
@@ -87,6 +83,9 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
       embeddings = tf.matmul(one_hot_data, self.embeddings)
     else:
       embeddings = tf.gather(self.embeddings, flat_inputs)
-    embeddings = tf.reshape(embeddings, input_shape)
-
+    embeddings = tf.reshape(
+        embeddings,
+        # Work around b/142213824: prefer concat to shape over a Python list.
+        tf.concat([tf.shape(inputs), [self._embedding_width]], axis=0))
+    embeddings.set_shape(inputs.shape.as_list() + [self._embedding_width])
     return embeddings

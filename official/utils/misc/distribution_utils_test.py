@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow.compat.v2 as tf
 
 from official.utils.misc import distribution_utils
 
@@ -43,22 +43,6 @@ class GetDistributionStrategyTest(tf.test.TestCase):
     self.assertEquals(len(ds.extended.worker_devices), 5)
     for device in ds.extended.worker_devices:
       self.assertIn('GPU', device)
-
-
-class PerReplicaBatchSizeTest(tf.test.TestCase):
-  """Tests for per_replica_batch_size."""
-
-  def test_batch_size(self):
-    self.assertEquals(
-        distribution_utils.per_replica_batch_size(147, num_gpus=0), 147)
-    self.assertEquals(
-        distribution_utils.per_replica_batch_size(147, num_gpus=1), 147)
-    self.assertEquals(
-        distribution_utils.per_replica_batch_size(147, num_gpus=7), 21)
-
-  def test_batch_size_with_remainder(self):
-    with self.assertRaises(ValueError):
-        distribution_utils.per_replica_batch_size(147, num_gpus=5)
 
 
 if __name__ == "__main__":

@@ -72,6 +72,7 @@ define_base = register_key_flags_in_core(_base.define_base)
 # We have define_base_eager for compatibility, since it used to be a separate
 # function from define_base.
 define_base_eager = define_base
+define_log_steps = register_key_flags_in_core(_benchmark.define_log_steps)
 define_benchmark = register_key_flags_in_core(_benchmark.define_benchmark)
 define_device = register_key_flags_in_core(_device.define_device)
 define_image = register_key_flags_in_core(_misc.define_image)

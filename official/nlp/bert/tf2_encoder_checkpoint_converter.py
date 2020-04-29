@@ -28,7 +28,7 @@ from absl import flags
 
 import tensorflow as tf
 from official.modeling import activations
-from official.nlp import bert_modeling as modeling
+from official.nlp.bert import configs
 from official.nlp.bert import tf1_checkpoint_converter_lib
 from official.nlp.modeling import networks
 
@@ -50,7 +50,7 @@ def _create_bert_model(cfg):
   Args:
     cfg: A `BertConfig` to create the core model.
   Returns:
-    A keras model.
+    A TransformerEncoder netowork.
   """
   bert_encoder = networks.TransformerEncoder(
       vocab_size=cfg.vocab_size,
@@ -98,10 +98,9 @@ def convert_checkpoint(bert_config, output_path, v1_checkpoint):
 
 
 def main(_):
-  assert tf.version.VERSION.startswith('2.')
   output_path = FLAGS.converted_checkpoint_path
   v1_checkpoint = FLAGS.checkpoint_to_convert
-  bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+  bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
   convert_checkpoint(bert_config, output_path, v1_checkpoint)
 
 

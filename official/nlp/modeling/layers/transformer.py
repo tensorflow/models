@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-based transformer block layer."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -23,6 +23,7 @@ import tensorflow as tf
 
 from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import dense_einsum
+from official.nlp.modeling.layers.util import tf_function_if_eager
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -32,7 +33,7 @@ class Transformer(tf.keras.layers.Layer):
   This layer implements the Transformer from "Attention Is All You Need".
   (https://arxiv.org/abs/1706.03762).
 
-  Attributes:
+  Arguments:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
@@ -99,9 +100,9 @@ class Transformer(tf.keras.layers.Layer):
           "heads (%d)" % (hidden_size, self._num_heads))
     self._attention_head_size = int(hidden_size // self._num_heads)
 
-    self._attention_layer = attention.Attention(
+    self._attention_layer = attention.MultiHeadAttention(
         num_heads=self._num_heads,
-        head_size=self._attention_head_size,
+        key_size=self._attention_head_size,
         dropout_rate=self._attention_dropout_rate,
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
@@ -111,18 +112,14 @@ class Transformer(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
         name="self_attention")
-    self._attention_output_dense = dense_einsum.DenseEinsum(
-        output_shape=hidden_size,
-        num_summed_dimensions=2,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="self_attention_output")
+    # TODO(hongkuny): Remove when checkpoint backward compatibility is resolved.
+    # pylint: disable=protected-access
+    self._attention_layer.build([input_tensor_shape])
+    self._attention_output_dense = self._attention_layer._output_dense
+
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    # Use float32 in layernorm for numeric stability.
+    # It is probably safe in mixed_float16, but we haven't validated this yet.
     self._attention_layer_norm = (
         tf.keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
@@ -153,6 +150,7 @@ class Transformer(tf.keras.layers.Layer):
         bias_constraint=self._bias_constraint,
         name="output")
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    # Use float32 in layernorm for numeric stability.
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
 
@@ -196,36 +194,26 @@ class Transformer(tf.keras.layers.Layer):
 
     attention_inputs = [input_tensor, input_tensor]
 
-    if attention_mask is not None:
-      attention_inputs.append(attention_mask)
-
-    attention_output = self._attention_layer(attention_inputs)
-    attention_output = self._attention_output_dense(attention_output)
+    attention_output = self._attention_layer(attention_inputs, attention_mask)
     attention_output = self._attention_dropout(attention_output)
-    # Use float32 in keras layer norm and the gelu activation in the
-    # intermediate dense layer for numeric stability
-    if self.dtype == tf.float16:
-      input_tensor = tf.cast(input_tensor, tf.float32)
-      attention_output = tf.cast(attention_output, tf.float32)
     attention_output = self._attention_layer_norm(input_tensor +
                                                   attention_output)
     intermediate_output = self._intermediate_dense(attention_output)
-    if self.dtype == tf.float16:
-      # Casts to float32 so that activation is done in float32.
-      intermediate_output = tf.cast(intermediate_output, tf.float32)
-      intermediate_output = self._intermediate_activation_layer(
-          intermediate_output)
-      intermediate_output = tf.cast(intermediate_output, tf.float16)
-    else:
-      intermediate_output = self._intermediate_activation_layer(
-          intermediate_output)
+    intermediate_output = self._intermediate_activation_layer(
+        intermediate_output)
     layer_output = self._output_dense(intermediate_output)
     layer_output = self._output_dropout(layer_output)
-    # Use float32 in keras layer norm for numeric stability
-    if self.dtype == tf.float16:
-      layer_output = tf.cast(layer_output, tf.float32)
+    # During mixed precision training, attention_output is from layer norm and
+    # is always fp32 for now. Cast layer_output to fp32 for the subsequent
+    # add.
+    layer_output = tf.cast(layer_output, tf.float32)
     layer_output = self._output_layer_norm(layer_output + attention_output)
-    if self.dtype == tf.float16:
-      layer_output = tf.cast(layer_output, tf.float16)
 
     return layer_output
+
+
+class CompiledTransformer(Transformer):
+
+  @tf_function_if_eager(experimental_compile=True)
+  def call(self, inputs):
+    return super(CompiledTransformer, self).call(inputs)

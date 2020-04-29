@@ -53,6 +53,10 @@ class ValidatedTransformerLayer(layers.Transformer):
 @keras_parameterized.run_all_keras_modes
 class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
 
+  def tearDown(self):
+    super(EncoderScaffoldLayerClassTest, self).tearDown()
+    tf.keras.mixed_precision.experimental.set_policy("float32")
+
   def test_network_creation(self):
     hidden_size = 32
     sequence_length = 21
@@ -81,16 +85,14 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
             0.1,
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        "dtype":
-            "float32",
         "call_list":
             call_list
     }
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=num_hidden_instances,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cls=ValidatedTransformerLayer,
         hidden_cfg=hidden_cfg,
@@ -127,7 +129,6 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
         "max_seq_length": sequence_length,
         "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
-        "dtype": "float16",
     }
     hidden_cfg = {
         "num_attention_heads":
@@ -142,16 +143,13 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
             0.1,
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        "dtype":
-            "float16",
     }
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
-        classification_layer_dtype=tf.float16,
         hidden_cfg=hidden_cfg,
         embedding_cfg=embedding_cfg)
     # Create the inputs (note that the first dimension is implicit).
@@ -165,8 +163,9 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
     self.assertAllEqual(expected_data_shape, data.shape.as_list())
     self.assertAllEqual(expected_pooled_shape, pooled.shape.as_list())
 
-    # If float_dtype is set to float16, the output should always be float16.
-    self.assertAllEqual(tf.float16, data.dtype)
+    # If float_dtype is set to float16, the data output is float32 (from a layer
+    # norm) and pool output should be float16.
+    self.assertAllEqual(tf.float32, data.dtype)
     self.assertAllEqual(tf.float16, pooled.dtype)
 
   def test_network_invocation(self):
@@ -196,17 +195,14 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
             0.1,
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        "dtype":
-            "float32",
     }
-    tf.keras.mixed_precision.experimental.set_policy("float32")
     print(hidden_cfg)
     print(embedding_cfg)
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cfg=embedding_cfg)
@@ -258,8 +254,8 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cfg=embedding_cfg)
@@ -293,14 +289,12 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
             0.1,
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        "dtype":
-            "float32",
     }
     # Create a small EncoderScaffold for testing.
     network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cfg=embedding_cfg)
@@ -353,15 +347,13 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
             0.1,
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        "dtype":
-            "float32",
     }
 
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cls=network,
@@ -422,15 +414,13 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
             0.1,
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        "dtype":
-            "float32",
     }
 
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
         embedding_cls=network,
@@ -493,7 +483,6 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
         "max_seq_length": sequence_length,
         "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
-        "dtype": "float32",
     }
 
     call_list = []
@@ -510,8 +499,6 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
             0.1,
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        "dtype":
-            "float32",
         "call_list":
             call_list
     }
@@ -522,8 +509,8 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
 
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cls=xformer,
         embedding_cfg=embedding_cfg)
@@ -566,7 +553,6 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
         "max_seq_length": sequence_length,
         "initializer": tf.keras.initializers.TruncatedNormal(stddev=0.02),
         "dropout_rate": 0.1,
-        "dtype": "float32",
     }
 
     call_list = []
@@ -583,8 +569,6 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
             0.1,
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        "dtype":
-            "float32",
         "call_list":
             call_list
     }
@@ -595,8 +579,8 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
 
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
-        num_output_classes=hidden_size,
-        classification_layer_initializer=tf.keras.initializers.TruncatedNormal(
+        pooled_output_dim=hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cls=xformer,
         embedding_cfg=embedding_cfg)
@@ -642,5 +626,4 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
 
 
 if __name__ == "__main__":
-  assert tf.version.VERSION.startswith('2.')
   tf.test.main()

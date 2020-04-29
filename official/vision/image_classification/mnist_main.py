@@ -28,7 +28,7 @@ import tensorflow_datasets as tfds
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
-from official.vision.image_classification import common
+from official.vision.image_classification.resnet import common
 
 FLAGS = flags.FLAGS
 

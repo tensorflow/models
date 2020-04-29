@@ -37,12 +37,10 @@ import sys
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-
 from official.recommendation import constants as rconst
 from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import stat_utils
-from official.utils.logs import mlperf_helper
 
 
 def sparse_to_dense_grads(grads_and_vars):
@@ -99,16 +97,6 @@ def neumf_model_fn(features, labels, mode, params):
     labels = tf.cast(labels, tf.int32)
     valid_pt_mask = features[rconst.VALID_POINT_MASK]
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_NAME, value="adam")
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_LR,
-                            value=params["learning_rate"])
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_BETA1,
-                            value=params["beta1"])
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_BETA2,
-                            value=params["beta2"])
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.OPT_HP_ADAM_EPSILON,
-                            value=params["epsilon"])
-
     optimizer = tf.compat.v1.train.AdamOptimizer(
         learning_rate=params["learning_rate"],
         beta1=params["beta1"],
@@ -117,16 +105,12 @@ def neumf_model_fn(features, labels, mode, params):
     if params["use_tpu"]:
       optimizer = tf.compat.v1.tpu.CrossShardOptimizer(optimizer)
 
-    mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_LOSS_FN,
-                            value=mlperf_helper.TAGS.BCE)
-
     loss = tf.compat.v1.losses.sparse_softmax_cross_entropy(
         labels=labels,
         logits=softmax_logits,
         weights=tf.cast(valid_pt_mask, tf.float32)
     )
 
-    # This tensor is used by logging hooks.
     tf.identity(loss, name="cross_entropy")
 
     global_step = tf.compat.v1.train.get_global_step()
@@ -171,10 +155,6 @@ def construct_model(user_input, item_input, params):
   mlp_reg_layers = params["mlp_reg_layers"]
 
   mf_dim = params["mf_dim"]
-
-  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_MF_DIM, value=mf_dim)
-  mlperf_helper.ncf_print(key=mlperf_helper.TAGS.MODEL_HP_MLP_LAYER_SIZES,
-                          value=model_layers)
 
   if model_layers[0] % 2 != 0:
     raise ValueError("The first layer size should be multiple of 2!")

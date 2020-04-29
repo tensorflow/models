@@ -31,10 +31,10 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
-from official.nlp import bert_modeling as modeling
+from official.nlp.bert import configs
 from official.nlp.bert import run_classifier
 from official.utils.misc import distribution_utils
-from official.utils.testing import benchmark_wrappers
+from official.benchmark import benchmark_wrappers
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
@@ -56,6 +56,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     self.num_epochs = None
     self.num_steps_per_epoch = None
     self.tpu = tpu
+    FLAGS.steps_per_loop = 50
 
   @flagsaver.flagsaver
   def _run_bert_classifier(self, callbacks=None, use_ds=True):
@@ -63,7 +64,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
       input_meta_data = json.loads(reader.read().decode('utf-8'))
 
-    bert_config = modeling.BertConfig.from_json_file(FLAGS.bert_config_file)
+    bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
     epochs = self.num_epochs if self.num_epochs else FLAGS.num_train_epochs
     if self.num_steps_per_epoch:
       steps_per_epoch = self.num_steps_per_epoch
@@ -80,8 +81,6 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
       strategy = distribution_utils.get_distribution_strategy(
           distribution_strategy='mirrored' if use_ds else 'off',
           num_gpus=self.num_gpus)
-
-    steps_per_loop = 1
 
     max_seq_length = input_meta_data['max_seq_length']
     train_input_fn = run_classifier.get_dataset_fn(
@@ -101,7 +100,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
         FLAGS.model_dir,
         epochs,
         steps_per_epoch,
-        steps_per_loop,
+        FLAGS.steps_per_loop,
         eval_steps,
         warmup_steps,
         FLAGS.learning_rate,
@@ -132,7 +131,7 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     # Since we only care about performance metrics, we limit
     # the number of training steps and epochs to prevent unnecessarily
     # long tests.
-    self.num_steps_per_epoch = 110
+    self.num_steps_per_epoch = 100
     self.num_epochs = 1
 
   @benchmark_wrappers.enable_runtime_flags
@@ -211,39 +210,6 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     summary_path = os.path.join(FLAGS.model_dir,
                                 'summaries/training_summary.txt')
     self._run_and_report_benchmark(summary_path, use_ds=False)
-
-  def benchmark_2_gpu_mrpc(self):
-    """Test BERT model performance with 2 GPUs."""
-
-    self._setup()
-    self.num_gpus = 2
-    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_mrpc')
-    FLAGS.train_data_path = self.train_data_path
-    FLAGS.eval_data_path = self.eval_data_path
-    FLAGS.input_meta_data_path = self.input_meta_data_path
-    FLAGS.bert_config_file = self.bert_config_file
-    FLAGS.train_batch_size = 8
-    FLAGS.eval_batch_size = 8
-
-    summary_path = os.path.join(FLAGS.model_dir,
-                                'summaries/training_summary.txt')
-    self._run_and_report_benchmark(summary_path)
-
-  def benchmark_4_gpu_mrpc(self):
-    """Test BERT model performance with 4 GPUs."""
-
-    self._setup()
-    self.num_gpus = 4
-    FLAGS.model_dir = self._get_model_dir('benchmark_4_gpu_mrpc')
-    FLAGS.train_data_path = self.train_data_path
-    FLAGS.eval_data_path = self.eval_data_path
-    FLAGS.input_meta_data_path = self.input_meta_data_path
-    FLAGS.bert_config_file = self.bert_config_file
-    FLAGS.train_batch_size = 16
-
-    summary_path = os.path.join(FLAGS.model_dir,
-                                'summaries/training_summary.txt')
-    self._run_and_report_benchmark(summary_path)
 
   def benchmark_8_gpu_mrpc(self):
     """Test BERT model performance with 8 GPUs."""

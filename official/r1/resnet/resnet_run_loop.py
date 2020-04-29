@@ -29,14 +29,15 @@ import multiprocessing
 import os
 
 from absl import flags
+from absl import logging
 import tensorflow as tf
 
 from official.r1.resnet import imagenet_preprocessing
 from official.r1.resnet import resnet_model
 from official.r1.utils import export
+from official.r1.utils.logs import hooks_helper
+from official.r1.utils.logs import logger
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks_helper
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
@@ -83,8 +84,8 @@ def process_record_dataset(dataset,
     options.experimental_threading.private_threadpool_size = (
         datasets_num_private_threads)
     dataset = dataset.with_options(options)
-    tf.compat.v1.logging.info('datasets_num_private_threads: %s',
-                              datasets_num_private_threads)
+    logging.info('datasets_num_private_threads: %s',
+                 datasets_num_private_threads)
 
   # Disable intra-op parallelism to optimize for throughput instead of latency.
   options = tf.data.Options()
@@ -205,17 +206,15 @@ def override_flags_and_set_envars_for_gpu_thread_pool(flags_obj):
     what has been set by the user on the command-line.
   """
   cpu_count = multiprocessing.cpu_count()
-  tf.compat.v1.logging.info('Logical CPU cores: %s', cpu_count)
+  logging.info('Logical CPU cores: %s', cpu_count)
 
   # Sets up thread pool for each GPU for op scheduling.
   per_gpu_thread_count = 1
   total_gpu_thread_count = per_gpu_thread_count * flags_obj.num_gpus
   os.environ['TF_GPU_THREAD_MODE'] = flags_obj.tf_gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  tf.compat.v1.logging.info('TF_GPU_THREAD_COUNT: %s',
-                            os.environ['TF_GPU_THREAD_COUNT'])
-  tf.compat.v1.logging.info('TF_GPU_THREAD_MODE: %s',
-                            os.environ['TF_GPU_THREAD_MODE'])
+  logging.info('TF_GPU_THREAD_COUNT: %s', os.environ['TF_GPU_THREAD_COUNT'])
+  logging.info('TF_GPU_THREAD_MODE: %s', os.environ['TF_GPU_THREAD_MODE'])
 
   # Reduces general thread pool by number of threads used for GPU pool.
   main_thread_count = cpu_count - total_gpu_thread_count
@@ -328,6 +327,37 @@ def learning_rate_with_decay(
     return poly_rate_fn
 
   return learning_rate_fn
+
+
+def per_replica_batch_size(batch_size, num_gpus):
+  """For multi-gpu, batch-size must be a multiple of the number of GPUs.
+
+
+  Note that distribution strategy handles this automatically when used with
+  Keras. For using with Estimator, we need to get per GPU batch.
+
+  Args:
+    batch_size: Global batch size to be divided among devices. This should be
+      equal to num_gpus times the single-GPU batch_size for multi-gpu training.
+    num_gpus: How many GPUs are used with DistributionStrategies.
+
+  Returns:
+    Batch size per device.
+
+  Raises:
+    ValueError: if batch_size is not divisible by number of devices
+  """
+  if num_gpus <= 1:
+    return batch_size
+
+  remainder = batch_size % num_gpus
+  if remainder:
+    err = ('When running with multiple GPUs, batch size '
+           'must be a multiple of the number of available GPUs. Found {} '
+           'GPUs with a batch size of {}; try --batch_size={} instead.'
+          ).format(num_gpus, batch_size, batch_size - remainder)
+    raise ValueError(err)
+  return int(batch_size / num_gpus)
 
 
 def resnet_model_fn(features, labels, mode, model_class,
@@ -621,7 +651,7 @@ def resnet_main(
     return input_function(
         is_training=True,
         data_dir=flags_obj.data_dir,
-        batch_size=distribution_utils.per_replica_batch_size(
+        batch_size=per_replica_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=num_epochs,
         dtype=flags_core.get_tf_dtype(flags_obj),
@@ -632,7 +662,7 @@ def resnet_main(
     return input_function(
         is_training=False,
         data_dir=flags_obj.data_dir,
-        batch_size=distribution_utils.per_replica_batch_size(
+        batch_size=per_replica_batch_size(
             flags_obj.batch_size, flags_core.get_num_gpus(flags_obj)),
         num_epochs=1,
         dtype=flags_core.get_tf_dtype(flags_obj))
@@ -648,7 +678,7 @@ def resnet_main(
         hooks=train_hooks,
         max_steps=flags_obj.max_train_steps)
     eval_spec = tf.estimator.EvalSpec(input_fn=input_fn_eval)
-    tf.compat.v1.logging.info('Starting to train and evaluate.')
+    logging.info('Starting to train and evaluate.')
     tf.estimator.train_and_evaluate(classifier, train_spec, eval_spec)
     # tf.estimator.train_and_evalute doesn't return anything in multi-worker
     # case.
@@ -671,8 +701,7 @@ def resnet_main(
       schedule[-1] = train_epochs - sum(schedule[:-1])  # over counting.
 
     for cycle_index, num_train_epochs in enumerate(schedule):
-      tf.compat.v1.logging.info('Starting cycle: %d/%d', cycle_index,
-                                int(n_loops))
+      logging.info('Starting cycle: %d/%d', cycle_index, int(n_loops))
 
       if num_train_epochs:
         # Since we are calling classifier.train immediately in each loop, the
@@ -691,7 +720,7 @@ def resnet_main(
       # allows the eval (which is generally unimportant in those circumstances)
       # to terminate.  Note that eval will run for max_train_steps each loop,
       # regardless of the global_step count.
-      tf.compat.v1.logging.info('Starting to evaluate.')
+      logging.info('Starting to evaluate.')
       eval_results = classifier.evaluate(input_fn=input_fn_eval,
                                          steps=flags_obj.max_train_steps)
 

@@ -18,16 +18,18 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import app as absl_app
+from absl import app
 from absl import flags
+from absl import logging
+import numpy as np
 import tensorflow as tf
+from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_model
+from official.benchmark.models import synthetic_util
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-from official.vision.image_classification import cifar_preprocessing
-from official.vision.image_classification import common
+from official.vision.image_classification.resnet import common
 
 
 LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
@@ -64,6 +66,46 @@ def learning_rate_schedule(current_epoch,
   return learning_rate
 
 
+class LearningRateBatchScheduler(tf.keras.callbacks.Callback):
+  """Callback to update learning rate on every batch (not epoch boundaries).
+
+  N.B. Only support Keras optimizers, not TF optimizers.
+
+  Attributes:
+      schedule: a function that takes an epoch index and a batch index as input
+          (both integer, indexed from 0) and returns a new learning rate as
+          output (float).
+  """
+
+  def __init__(self, schedule, batch_size, steps_per_epoch):
+    super(LearningRateBatchScheduler, self).__init__()
+    self.schedule = schedule
+    self.steps_per_epoch = steps_per_epoch
+    self.batch_size = batch_size
+    self.epochs = -1
+    self.prev_lr = -1
+
+  def on_epoch_begin(self, epoch, logs=None):
+    if not hasattr(self.model.optimizer, 'learning_rate'):
+      raise ValueError('Optimizer must have a "learning_rate" attribute.')
+    self.epochs += 1
+
+  def on_batch_begin(self, batch, logs=None):
+    """Executes before step begins."""
+    lr = self.schedule(self.epochs,
+                       batch,
+                       self.steps_per_epoch,
+                       self.batch_size)
+    if not isinstance(lr, (float, np.float32, np.float64)):
+      raise ValueError('The output of the "schedule" function should be float.')
+    if lr != self.prev_lr:
+      self.model.optimizer.learning_rate = lr  # lr should be a float here
+      self.prev_lr = lr
+      logging.debug(
+          'Epoch %05d Batch %05d: LearningRateBatchScheduler '
+          'change learning rate to %s.', self.epochs, batch, lr)
+
+
 def run(flags_obj):
   """Run ResNet Cifar-10 training and eval loop using native Keras APIs.
 
@@ -96,8 +138,8 @@ def run(flags_obj):
 
   data_format = flags_obj.data_format
   if data_format is None:
-    data_format = ('channels_first'
-                   if tf.test.is_built_with_cuda() else 'channels_last')
+    data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
+                   else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
 
   strategy = distribution_utils.get_distribution_strategy(
@@ -117,7 +159,7 @@ def run(flags_obj):
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
   if flags_obj.use_synthetic_data:
-    distribution_utils.set_up_synthetic_data()
+    synthetic_util.set_up_synthetic_data()
     input_fn = common.get_synth_input_fn(
         height=cifar_preprocessing.HEIGHT,
         width=cifar_preprocessing.WIDTH,
@@ -126,14 +168,13 @@ def run(flags_obj):
         dtype=flags_core.get_tf_dtype(flags_obj),
         drop_remainder=True)
   else:
-    distribution_utils.undo_set_up_synthetic_data()
+    synthetic_util.undo_set_up_synthetic_data()
     input_fn = cifar_preprocessing.input_fn
 
   train_input_dataset = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
       batch_size=flags_obj.batch_size,
-      num_epochs=flags_obj.train_epochs,
       parse_record_fn=cifar_preprocessing.parse_record,
       datasets_num_private_threads=flags_obj.datasets_num_private_threads,
       dtype=dtype,
@@ -148,36 +189,38 @@ def run(flags_obj):
         is_training=False,
         data_dir=flags_obj.data_dir,
         batch_size=flags_obj.batch_size,
-        num_epochs=flags_obj.train_epochs,
         parse_record_fn=cifar_preprocessing.parse_record)
-
-  with strategy_scope:
-    optimizer = common.get_optimizer()
-    model = resnet_cifar_model.resnet56(classes=cifar_preprocessing.NUM_CLASSES)
-
-    # TODO(b/138957587): Remove when force_v2_in_keras_compile is on longer
-    # a valid arg for this model. Also remove as a valid flag.
-    if flags_obj.force_v2_in_keras_compile is not None:
-      model.compile(
-          loss='sparse_categorical_crossentropy',
-          optimizer=optimizer,
-          metrics=(['sparse_categorical_accuracy']
-                   if flags_obj.report_accuracy_metrics else None),
-          run_eagerly=flags_obj.run_eagerly,
-          experimental_run_tf_function=flags_obj.force_v2_in_keras_compile)
-    else:
-      model.compile(
-          loss='sparse_categorical_crossentropy',
-          optimizer=optimizer,
-          metrics=(['sparse_categorical_accuracy']
-                   if flags_obj.report_accuracy_metrics else None),
-          run_eagerly=flags_obj.run_eagerly)
 
   steps_per_epoch = (
       cifar_preprocessing.NUM_IMAGES['train'] // flags_obj.batch_size)
+  lr_schedule = 0.1
+  if flags_obj.use_tensor_lr:
+    initial_learning_rate = common.BASE_LEARNING_RATE * flags_obj.batch_size / 128
+    lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+        boundaries=list(p[1] * steps_per_epoch for p in LR_SCHEDULE),
+        values=[initial_learning_rate] +
+        list(p[0] * initial_learning_rate for p in LR_SCHEDULE))
+
+  with strategy_scope:
+    optimizer = common.get_optimizer(lr_schedule)
+    model = resnet_cifar_model.resnet56(classes=cifar_preprocessing.NUM_CLASSES)
+    model.compile(
+        loss='sparse_categorical_crossentropy',
+        optimizer=optimizer,
+        metrics=(['sparse_categorical_accuracy']
+                 if flags_obj.report_accuracy_metrics else None),
+        run_eagerly=flags_obj.run_eagerly)
+
   train_epochs = flags_obj.train_epochs
 
-  callbacks = common.get_callbacks(steps_per_epoch, learning_rate_schedule)
+  callbacks = common.get_callbacks(steps_per_epoch)
+
+  if not flags_obj.use_tensor_lr:
+    lr_callback = LearningRateBatchScheduler(
+        schedule=learning_rate_schedule,
+        batch_size=flags_obj.batch_size,
+        steps_per_epoch=steps_per_epoch)
+    callbacks.append(lr_callback)
 
   # if mutliple epochs, ignore the train_steps flag.
   if train_epochs <= 1 and flags_obj.train_steps:
@@ -233,11 +276,10 @@ def define_cifar_flags():
 
 
 def main(_):
-  with logger.benchmark_context(flags.FLAGS):
-    return run(flags.FLAGS)
+  return run(flags.FLAGS)
 
 
 if __name__ == '__main__':
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_cifar_flags()
-  absl_app.run(main)
+  app.run(main)

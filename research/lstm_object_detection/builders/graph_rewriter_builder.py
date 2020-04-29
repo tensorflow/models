@@ -21,7 +21,9 @@ customization of freeze_bn_delay.
 """
 
 import re
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+from tensorflow.contrib import layers as contrib_layers
+from tensorflow.contrib import quantize as contrib_quantize
 from tensorflow.contrib.quantize.python import common
 from tensorflow.contrib.quantize.python import input_to_ops
 from tensorflow.contrib.quantize.python import quant_ops
@@ -72,17 +74,18 @@ def build(graph_rewriter_config,
 
     # Quantize the graph by inserting quantize ops for weights and activations
     if is_training:
-      tf.contrib.quantize.experimental_create_training_graph(
+      contrib_quantize.experimental_create_training_graph(
           input_graph=graph,
           quant_delay=graph_rewriter_config.quantization.delay,
           freeze_bn_delay=graph_rewriter_config.quantization.delay)
     else:
-      tf.contrib.quantize.experimental_create_eval_graph(
+      contrib_quantize.experimental_create_eval_graph(
           input_graph=graph,
           quant_delay=graph_rewriter_config.quantization.delay
           if not is_export else 0)
 
-    tf.contrib.layers.summarize_collection('quant_vars')
+    contrib_layers.summarize_collection('quant_vars')
+
   return graph_rewrite_fn
 
 

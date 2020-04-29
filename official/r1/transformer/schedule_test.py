@@ -14,7 +14,7 @@
 # ==============================================================================
 """Test Transformer's schedule manager."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from official.r1.transformer import schedule
 

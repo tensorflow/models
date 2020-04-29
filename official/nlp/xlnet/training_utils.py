@@ -28,7 +28,7 @@ from absl import logging
 import tensorflow as tf
 from typing import Any, Callable, Dict, Text, Optional
 
-from official.modeling import model_training_utils
+from official.nlp.bert import model_training_utils
 from official.nlp.xlnet import data_utils
 from official.nlp.xlnet import xlnet_modeling as modeling
 
@@ -222,16 +222,16 @@ def train(
         return mems
 
       if input_meta_data["mem_len"] > 0:
-        mem = strategy.experimental_run_v2(cache_fn)
+        mem = strategy.run(cache_fn)
         for _ in tf.range(steps):
-          mem = strategy.experimental_run_v2(
+          mem = strategy.run(
               _replicated_step, args=(
                   next(iterator),
                   mem,
               ))
       else:
         for _ in tf.range(steps):
-          strategy.experimental_run_v2(_replicated_step, args=(next(iterator),))
+          strategy.run(_replicated_step, args=(next(iterator),))
 
     if not run_eagerly:
       train_steps = tf.function(train_steps)

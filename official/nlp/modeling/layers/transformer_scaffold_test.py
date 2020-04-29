@@ -33,15 +33,16 @@ from official.nlp.modeling.layers import transformer_scaffold
 # boolean 'True'. We register this class as a Keras serializable so we can
 # test serialization below.
 @tf.keras.utils.register_keras_serializable(package='TestOnly')
-class ValidatedAttentionLayer(attention.Attention):
+class ValidatedAttentionLayer(attention.MultiHeadAttention):
 
   def __init__(self, call_list, **kwargs):
     super(ValidatedAttentionLayer, self).__init__(**kwargs)
     self.list = call_list
 
-  def call(self, inputs):
+  def call(self, inputs, attention_mask=None):
     self.list.append(True)
-    return super(ValidatedAttentionLayer, self).call(inputs)
+    return super(ValidatedAttentionLayer, self).call(
+        inputs, attention_mask=attention_mask)
 
   def get_config(self):
     config = super(ValidatedAttentionLayer, self).get_config()
@@ -54,6 +55,10 @@ class ValidatedAttentionLayer(attention.Attention):
 @keras_parameterized.run_all_keras_modes
 class TransformerLayerTest(keras_parameterized.TestCase):
 
+  def tearDown(self):
+    super(TransformerLayerTest, self).tearDown()
+    tf.keras.mixed_precision.experimental.set_policy('float32')
+
   def test_layer_creation(self):
     sequence_length = 21
     width = 80
@@ -61,7 +66,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'head_size': 8,
+        'key_size': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -89,7 +94,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'head_size': 8,
+        'key_size': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -118,7 +123,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'head_size': 8,
+        'key_size': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -142,7 +147,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'head_size': 8,
+        'key_size': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -177,7 +182,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'head_size': 8,
+        'key_size': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -212,13 +217,14 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     self.assertTrue(call_list[0], "The passed layer class wasn't instantiated.")
 
   def test_layer_invocation_with_float16_dtype(self):
+    tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
     sequence_length = 21
     width = 80
 
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'head_size': 8,
+        'key_size': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -226,12 +232,10 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         attention_cfg=attention_layer_cfg,
         num_attention_heads=10,
         intermediate_size=2048,
-        intermediate_activation='relu',
-        dtype='float16')
+        intermediate_activation='relu')
 
     # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(
-        shape=(sequence_length, width), dtype=tf.float16)
+    data_tensor = tf.keras.Input(shape=(sequence_length, width))
     # Create a 2-dimensional input (the first dimension is implicit).
     mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length))
     output_tensor = test_layer([data_tensor, mask_tensor])
@@ -243,7 +247,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     # (the NN is too complex) but this will rule out structural runtime errors.
     batch_size = 6
     input_data = (10 * np.random.random_sample(
-        (batch_size, sequence_length, width))).astype(np.float16)
+        (batch_size, sequence_length, width)))
     # The attention mask should be of shape (batch, from_seq_len, to_seq_len),
     # which here is (batch, sequence_length, sequence_length)
     mask_data = np.random.randint(
@@ -261,7 +265,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'head_size': 8,
+        'key_size': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -289,7 +293,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'head_size': 8,
+        'key_size': 8,
         'call_list': call_list,
         'name': 'test_layer',
     }

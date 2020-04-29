@@ -28,7 +28,7 @@ from absl import flags
 
 import tensorflow as tf
 from official.modeling import activations
-from official.nlp import bert_modeling as modeling
+from official.nlp.albert import configs
 from official.nlp.bert import tf1_checkpoint_converter_lib
 from official.nlp.modeling import networks
 
@@ -54,7 +54,7 @@ ALBERT_NAME_REPLACEMENTS = (
     ("embedding_hidden_mapping_in", "embedding_projection"),
     ("group_0/inner_group_0/", ""),
     ("attention_1/self", "self_attention"),
-    ("attention_1/output/dense", "self_attention_output"),
+    ("attention_1/output/dense", "self_attention/attention_output"),
     ("LayerNorm/", "self_attention_layer_norm/"),
     ("ffn_1/intermediate/dense", "intermediate"),
     ("ffn_1/intermediate/output/dense", "output"),
@@ -122,10 +122,9 @@ def convert_checkpoint(bert_config, output_path, v1_checkpoint):
 
 
 def main(_):
-  assert tf.version.VERSION.startswith('2.')
   output_path = FLAGS.converted_checkpoint_path
   v1_checkpoint = FLAGS.checkpoint_to_convert
-  albert_config = modeling.AlbertConfig.from_json_file(FLAGS.albert_config_file)
+  albert_config = configs.AlbertConfig.from_json_file(FLAGS.albert_config_file)
   convert_checkpoint(albert_config, output_path, v1_checkpoint)
 
 

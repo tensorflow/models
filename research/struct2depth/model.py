@@ -761,6 +761,7 @@ class Model(object):
       input_image = tf.placeholder(
           tf.float32, [self.batch_size, self.img_height, self.img_width, 3],
           name='raw_input')
+      self.input_image = input_image
       if self.imagenet_norm:
         input_image = (input_image - reader.IMAGENET_MEAN) / reader.IMAGENET_SD
       est_disp, _ = nets.disp_net(architecture=self.architecture,
@@ -769,7 +770,6 @@ class Model(object):
                                   weight_reg=self.weight_reg,
                                   is_training=True)
     est_depth = 1.0 / est_disp[0]
-    self.input_image = input_image
     self.est_depth = est_depth
 
   def build_egomotion_test_graph(self):

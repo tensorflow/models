@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Masked language model network."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -32,11 +32,13 @@ class MaskedLM(network.Network):
   This network implements a masked language model based on the provided network.
   It assumes that the network being passed has a "get_embedding_table()" method.
 
-  Attributes:
+  Arguments:
     input_width: The innermost dimension of the input tensor to this network.
     num_predictions: The number of predictions to make per sequence.
     source_network: The network with the embedding layer to use for the
       embedding layer.
+    embedding_table: The embedding table of a source network, If None, the
+      `source_network.get_embedding_table()` method is used.
     activation: The activation, if any, for the dense layer in this network.
     initializer: The intializer for the dense layer in this network. Defaults to
       a Glorot uniform initializer.
@@ -48,12 +50,14 @@ class MaskedLM(network.Network):
                input_width,
                num_predictions,
                source_network,
+               embedding_table=None,
                activation=None,
                initializer='glorot_uniform',
                output='logits',
                **kwargs):
 
-    embedding_table = source_network.get_embedding_table()
+    if embedding_table is None:
+      embedding_table = source_network.get_embedding_table()
     vocab_size, hidden_size = embedding_table.shape
 
     sequence_data = tf.keras.layers.Input(
@@ -128,11 +132,11 @@ class MaskedLM(network.Network):
         sequence_tensor, name='sequence_output_tensor')
     batch_size, seq_length, width = sequence_shape
 
-    flat_offsets = tf.keras.backend.reshape(
+    flat_offsets = tf.reshape(
         tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])
-    flat_positions = tf.keras.backend.reshape(positions + flat_offsets, [-1])
-    flat_sequence_tensor = tf.keras.backend.reshape(
-        sequence_tensor, [batch_size * seq_length, width])
+    flat_positions = tf.reshape(positions + flat_offsets, [-1])
+    flat_sequence_tensor = tf.reshape(sequence_tensor,
+                                      [batch_size * seq_length, width])
     output_tensor = tf.gather(flat_sequence_tensor, flat_positions)
 
     return output_tensor

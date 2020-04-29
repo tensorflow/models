@@ -21,6 +21,7 @@ The functions do not return a value, instead they modify the image itself.
 """
 import collections
 import functools
+from absl import logging
 # Set headless-friendly backend.
 import matplotlib; matplotlib.use('Agg')  # pylint: disable=multiple-statements
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
@@ -32,6 +33,7 @@ import PIL.ImageFont as ImageFont
 import six
 import tensorflow.compat.v2 as tf
 
+from official.vision.detection.utils import box_utils
 from official.vision.detection.utils.object_detection import shape_utils
 
 
@@ -91,6 +93,29 @@ def encode_image_array_as_png_str(image):
   png_string = output.getvalue()
   output.close()
   return png_string
+
+
+def visualize_images_with_bounding_boxes(images, box_outputs, step,
+                                         summary_writer):
+  """Records subset of evaluation images with bounding boxes."""
+  if not isinstance(images, list):
+    logging.warning('visualize_images_with_bounding_boxes expects list of '
+                    'images but received type: %s and value: %s',
+                    type(images), images)
+    return
+
+  image_shape = tf.shape(images[0])
+  image_height = tf.cast(image_shape[0], tf.float32)
+  image_width = tf.cast(image_shape[1], tf.float32)
+  normalized_boxes = box_utils.normalize_boxes(box_outputs,
+                                               [image_height, image_width])
+
+  bounding_box_color = tf.constant([[1.0, 1.0, 0.0, 1.0]])
+  image_summary = tf.image.draw_bounding_boxes(
+      tf.cast(images, tf.float32), normalized_boxes, bounding_box_color)
+  with summary_writer.as_default():
+    tf.summary.image('bounding_box_summary', image_summary, step=step)
+    summary_writer.flush()
 
 
 def draw_bounding_box_on_image_array(image,

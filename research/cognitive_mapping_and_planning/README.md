@@ -1,3 +1,7 @@
+![No Maintenance Intended](https://img.shields.io/badge/No%20Maintenance%20Intended-%E2%9C%95-red.svg)
+![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
+
 # Cognitive Mapping and Planning for Visual Navigation
 **Saurabh Gupta, James Davidson, Sergey Levine, Rahul Sukthankar, Jitendra Malik**
 
@@ -58,6 +62,7 @@ citing the following paper:
     mkdir -p deps
     git clone --recursive https://github.com/google/swiftshader.git deps/swiftshader-src
     cd deps/swiftshader-src && git checkout 91da6b00584afd7dcaed66da88e2b617429b3950
+    git submodule update
     mkdir build && cd build && cmake .. && make -j 16 libEGL libGLESv2
     cd ../../../
     cp deps/swiftshader-src/build/libEGL* libEGL.so.1

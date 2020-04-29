@@ -20,19 +20,20 @@ from __future__ import print_function
 
 import re
 
+from absl import logging
 import tensorflow as tf
+import tensorflow_addons.optimizers as tfa_optimizers
 
 
 class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
-  """Applys a warmup schedule on a given learning rate decay schedule."""
+  """Applies a warmup schedule on a given learning rate decay schedule."""
 
-  def __init__(
-      self,
-      initial_learning_rate,
-      decay_schedule_fn,
-      warmup_steps,
-      power=1.0,
-      name=None):
+  def __init__(self,
+               initial_learning_rate,
+               decay_schedule_fn,
+               warmup_steps,
+               power=1.0,
+               name=None):
     super(WarmUp, self).__init__()
     self.initial_learning_rate = initial_learning_rate
     self.warmup_steps = warmup_steps
@@ -50,10 +51,11 @@ class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
       warmup_learning_rate = (
           self.initial_learning_rate *
           tf.math.pow(warmup_percent_done, self.power))
-      return tf.cond(global_step_float < warmup_steps_float,
-                     lambda: warmup_learning_rate,
-                     lambda: self.decay_schedule_fn(step),
-                     name=name)
+      return tf.cond(
+          global_step_float < warmup_steps_float,
+          lambda: warmup_learning_rate,
+          lambda: self.decay_schedule_fn(step),
+          name=name)
 
   def get_config(self):
     return {
@@ -65,24 +67,44 @@ class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
     }
 
 
-def create_optimizer(init_lr, num_train_steps, num_warmup_steps):
+def create_optimizer(init_lr,
+                     num_train_steps,
+                     num_warmup_steps,
+                     end_lr=0.0,
+                     optimizer_type='adamw'):
   """Creates an optimizer with learning rate schedule."""
   # Implements linear decay of the learning rate.
-  learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
+  lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(
       initial_learning_rate=init_lr,
       decay_steps=num_train_steps,
-      end_learning_rate=0.0)
+      end_learning_rate=end_lr)
   if num_warmup_steps:
-    learning_rate_fn = WarmUp(initial_learning_rate=init_lr,
-                              decay_schedule_fn=learning_rate_fn,
-                              warmup_steps=num_warmup_steps)
-  optimizer = AdamWeightDecay(
-      learning_rate=learning_rate_fn,
-      weight_decay_rate=0.01,
-      beta_1=0.9,
-      beta_2=0.999,
-      epsilon=1e-6,
-      exclude_from_weight_decay=['layer_norm', 'bias'])
+    lr_schedule = WarmUp(
+        initial_learning_rate=init_lr,
+        decay_schedule_fn=lr_schedule,
+        warmup_steps=num_warmup_steps)
+
+  if optimizer_type == 'adamw':
+    logging.info('using Adamw optimizer')
+    optimizer = AdamWeightDecay(
+        learning_rate=lr_schedule,
+        weight_decay_rate=0.01,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-6,
+        exclude_from_weight_decay=['layer_norm', 'bias'])
+  elif optimizer_type == 'lamb':
+    logging.info('using Lamb optimizer')
+    optimizer = tfa_optimizers.LAMB(
+        learning_rate=lr_schedule,
+        weight_decay_rate=0.01,
+        beta_1=0.9,
+        beta_2=0.999,
+        epsilon=1e-6,
+        exclude_from_weight_decay=['layer_norm', 'bias'])
+  else:
+    raise ValueError('Unsupported optimizer type: ', optimizer_type)
+
   return optimizer
 
 
@@ -109,8 +131,8 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                exclude_from_weight_decay=None,
                name='AdamWeightDecay',
                **kwargs):
-    super(AdamWeightDecay, self).__init__(
-        learning_rate, beta_1, beta_2, epsilon, amsgrad, name, **kwargs)
+    super(AdamWeightDecay, self).__init__(learning_rate, beta_1, beta_2,
+                                          epsilon, amsgrad, name, **kwargs)
     self.weight_decay_rate = weight_decay_rate
     self._include_in_weight_decay = include_in_weight_decay
     self._exclude_from_weight_decay = exclude_from_weight_decay
@@ -137,10 +159,22 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
           use_locking=self._use_locking)
     return tf.no_op()
 
-  def apply_gradients(self, grads_and_vars, name=None):
+  def apply_gradients(self,
+                      grads_and_vars,
+                      name=None,
+                      experimental_aggregate_gradients=True):
     grads, tvars = list(zip(*grads_and_vars))
-    (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
-    return super(AdamWeightDecay, self).apply_gradients(zip(grads, tvars))
+    if experimental_aggregate_gradients:
+      # when experimental_aggregate_gradients = False, apply_gradients() no
+      # longer implicitly allreduce gradients, users manually allreduce gradient
+      # and passed the allreduced grads_and_vars. For now, the
+      # clip_by_global_norm will be moved to before the explicit allreduce to
+      # keep the math the same as TF 1 and pre TF 2.2 implementation.
+      (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+    return super(AdamWeightDecay, self).apply_gradients(
+        zip(grads, tvars),
+        name=name,
+        experimental_aggregate_gradients=experimental_aggregate_gradients)
 
   def _get_lr(self, var_device, var_dtype, apply_state):
     """Retrieves the learning rate with the given state."""
@@ -159,15 +193,15 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
     lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
     decay = self._decay_weights_op(var, lr_t, apply_state)
     with tf.control_dependencies([decay]):
-      return super(AdamWeightDecay, self)._resource_apply_dense(
-          grad, var, **kwargs)
+      return super(AdamWeightDecay,
+                   self)._resource_apply_dense(grad, var, **kwargs)
 
   def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
     lr_t, kwargs = self._get_lr(var.device, var.dtype.base_dtype, apply_state)
     decay = self._decay_weights_op(var, lr_t, apply_state)
     with tf.control_dependencies([decay]):
-      return super(AdamWeightDecay, self)._resource_apply_sparse(
-          grad, var, indices, **kwargs)
+      return super(AdamWeightDecay,
+                   self)._resource_apply_sparse(grad, var, indices, **kwargs)
 
   def get_config(self):
     config = super(AdamWeightDecay, self).get_config()

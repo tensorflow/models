@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Transformer-based text encoder network."""
-
+# pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
@@ -40,7 +40,7 @@ class TransformerEncoder(network.Network):
   in "BERT: Pre-training of Deep Bidirectional Transformers for Language
   Understanding".
 
-  Attributes:
+  Arguments:
     vocab_size: The size of the token vocabulary.
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.
@@ -59,7 +59,6 @@ class TransformerEncoder(network.Network):
     attention_dropout_rate: The dropout rate to use for the attention layers
       within the transformer layers.
     initializer: The initialzer to use for all weights in this encoder.
-    float_dtype: The dtype of this encoder. Can be 'float32' or 'float16'.
     return_all_encoder_outputs: Whether to output sequence embedding outputs of
       all encoder transformer layers.
   """
@@ -77,7 +76,6 @@ class TransformerEncoder(network.Network):
                dropout_rate=0.1,
                attention_dropout_rate=0.1,
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
-               float_dtype='float32',
                return_all_encoder_outputs=False,
                **kwargs):
     activation = tf.keras.activations.get(activation)
@@ -99,7 +97,6 @@ class TransformerEncoder(network.Network):
         'dropout_rate': dropout_rate,
         'attention_dropout_rate': attention_dropout_rate,
         'initializer': tf.keras.initializers.serialize(initializer),
-        'float_dtype': float_dtype,
         'return_all_encoder_outputs': return_all_encoder_outputs,
     }
 
@@ -121,7 +118,8 @@ class TransformerEncoder(network.Network):
     self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length)
+        max_sequence_length=max_sequence_length,
+        name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
 
     type_embeddings = (
@@ -141,11 +139,7 @@ class TransformerEncoder(network.Network):
             epsilon=1e-12,
             dtype=tf.float32)(embeddings))
     embeddings = (
-        tf.keras.layers.Dropout(rate=dropout_rate,
-                                dtype=tf.float32)(embeddings))
-
-    if float_dtype == 'float16':
-      embeddings = tf.cast(embeddings, tf.float16)
+        tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
 
     self._transformer_layers = []
     data = embeddings
@@ -159,7 +153,6 @@ class TransformerEncoder(network.Network):
           dropout_rate=dropout_rate,
           attention_dropout_rate=attention_dropout_rate,
           kernel_initializer=initializer,
-          dtype=float_dtype,
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
       data = layer([data, attention_mask])

@@ -23,6 +23,14 @@ from absl import flags
 from official.utils.flags._conventions import help_wrap
 
 
+def define_log_steps():
+  flags.DEFINE_integer(
+      name="log_steps", default=100,
+      help="Frequency with which to log timing information with TimeHistory.")
+
+  return []
+
+
 def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
   """Register benchmarking flags.
 
@@ -38,8 +46,7 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
 
   flags.DEFINE_enum(
       name="benchmark_logger_type", default="BaseBenchmarkLogger",
-      enum_values=["BaseBenchmarkLogger", "BenchmarkFileLogger",
-                   "BenchmarkBigQueryLogger"],
+      enum_values=["BaseBenchmarkLogger", "BenchmarkFileLogger"],
       help=help_wrap("The type of benchmark logger to use. Defaults to using "
                      "BaseBenchmarkLogger which logs to STDOUT. Different "
                      "loggers will require other flags to be able to work."))
@@ -52,11 +59,7 @@ def define_benchmark(benchmark_log_dir=True, bigquery_uploader=True):
                      "human consumption, and does not have any impact within "
                      "the system."))
 
-  flags.DEFINE_integer(
-      name='log_steps', default=100,
-      help='For every log_steps, we log the timing information such as '
-      'examples per second. Besides, for every log_steps, we store the '
-      'timestamp of a batch end.')
+  define_log_steps()
 
   if benchmark_log_dir:
     flags.DEFINE_string(
