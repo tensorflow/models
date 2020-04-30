@@ -17,19 +17,19 @@
 from setuptools import setup, find_packages
 
 install_requires = [
-    'absl-py >= 0.2.2',
-    'protobuf',
-    'pandas',
-    'numpy',
-    'scipy',
-    'tensorflow >= 1.10',
-    'tf_slim >= 1.0',
-    'tensorflow_probability',
+    'absl-py >= 0.7.1',
+    'protobuf >= 3.8.0',
+    'pandas >= 0.24.2',
+    'numpy >= 1.16.1',
+    'scipy >= 1.2.2',
+    'tensorflow >= 2.1',
+    'tf_slim >= 1.1',
+    'tensorflow_probability >= 0.9.0',
 ]
 
 setup(
     name='delf',
-    version='1.0',
+    version='2.0',
     include_package_data=True,
     packages=find_packages(),
     install_requires=install_requires,

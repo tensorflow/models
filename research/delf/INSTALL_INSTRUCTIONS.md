@@ -8,9 +8,9 @@ typical user can install Tensorflow using one of the following commands:
 
 ```bash
 # For CPU:
-pip install 'tensorflow==1.14'
+pip install 'tensorflow'
 # For GPU:
-pip install 'tensorflow-gpu==1.14'
+pip install 'tensorflow-gpu'
 ```
 
 ### TF-Slim
