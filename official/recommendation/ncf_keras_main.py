@@ -549,7 +549,7 @@ def build_stats(loss, eval_result, time_callback):
 
 
 def main(_):
-  run_ncf(FLAGS)
+  logging.info("Result is %s", run_ncf(FLAGS))
 
 
 if __name__ == "__main__":
