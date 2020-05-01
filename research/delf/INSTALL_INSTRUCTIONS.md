@@ -44,6 +44,7 @@ Install python library dependencies:
 
 ```bash
 pip install matplotlib numpy scikit-image scipy
+sudo apt-get install python-tk
 ```
 
 ### `tensorflow/models`
@@ -93,7 +94,8 @@ loaded successfully.
 
 Installation issues may happen if multiple python versions are mixed. The
 instructions above assume python2.7 version is used; if using python3.X, be sure
-to use `pip3` instead of `pip`, and all should work.
+to use `pip3` instead of `pip`, `python3-tk` instead of `python-tk`, and all
+should work.
 
 #### `pip install`
 
