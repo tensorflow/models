@@ -49,6 +49,12 @@ flags.DEFINE_enum("classification_task_name", "MNLI",
                   ["COLA", "MNLI", "MRPC", "QNLI", "QQP", "SST-2", "XNLI"],
                   "The name of the task to train BERT classifier.")
 
+# XNLI task specific flag.
+flags.DEFINE_string(
+    "xnli_language", "en",
+    "Language of training and evaluation data for XNIL task. If the value is "
+    "'all', the data of all languages will be used for training.")
+
 # BERT Squad task specific flags.
 flags.DEFINE_string(
     "squad_data_file", None,
@@ -79,8 +85,13 @@ flags.DEFINE_string(
 
 flags.DEFINE_string(
     "eval_data_output_path", None,
-    "The path in which generated training input data will be written as tf"
+    "The path in which generated evaluation input data will be written as tf"
     " records.")
+
+flags.DEFINE_string(
+    "test_data_output_path", None,
+    "The path in which generated test input data will be written as tf"
+    " records. If None, do not generate test data.")
 
 flags.DEFINE_string("meta_data_file_path", None,
                     "The path in which input meta data will be written.")
@@ -136,28 +147,37 @@ def generate_classifier_dataset():
         tokenizer,
         train_data_output_path=FLAGS.train_data_output_path,
         eval_data_output_path=FLAGS.eval_data_output_path,
+        test_data_output_path=FLAGS.test_data_output_path,
         max_seq_length=FLAGS.max_seq_length)
   else:
     processors = {
-        "cola": classifier_data_lib.ColaProcessor,
-        "mnli": classifier_data_lib.MnliProcessor,
-        "mrpc": classifier_data_lib.MrpcProcessor,
-        "qnli": classifier_data_lib.QnliProcessor,
+        "cola":
+            classifier_data_lib.ColaProcessor,
+        "mnli":
+            classifier_data_lib.MnliProcessor,
+        "mrpc":
+            classifier_data_lib.MrpcProcessor,
+        "qnli":
+            classifier_data_lib.QnliProcessor,
         "qqp": classifier_data_lib.QqpProcessor,
-        "sst-2": classifier_data_lib.SstProcessor,
-        "xnli": classifier_data_lib.XnliProcessor,
+        "sst-2":
+            classifier_data_lib.SstProcessor,
+        "xnli":
+            functools.partial(classifier_data_lib.XnliProcessor,
+                              language=FLAGS.xnli_language),
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:
       raise ValueError("Task not found: %s" % (task_name))
 
-    processor = processors[task_name](processor_text_fn)
+    processor = processors[task_name](process_text_fn=processor_text_fn)
     return classifier_data_lib.generate_tf_record_from_data_file(
         processor,
         FLAGS.input_data_dir,
         tokenizer,
         train_data_output_path=FLAGS.train_data_output_path,
         eval_data_output_path=FLAGS.eval_data_output_path,
+        test_data_output_path=FLAGS.test_data_output_path,
         max_seq_length=FLAGS.max_seq_length)
 
 

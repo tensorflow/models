@@ -107,21 +107,36 @@ class DataProcessor(object):
 
 class XnliProcessor(DataProcessor):
   """Processor for the XNLI data set."""
+  supported_languages = [
+      "ar", "bg", "de", "el", "en", "es", "fr", "hi", "ru", "sw", "th", "tr",
+      "ur", "vi", "zh"
+  ]
 
-  def __init__(self, process_text_fn=tokenization.convert_to_unicode):
+  def __init__(self,
+               language="en",
+               process_text_fn=tokenization.convert_to_unicode):
     super(XnliProcessor, self).__init__(process_text_fn)
-    self.language = "zh"
+    if language == "all":
+      self.languages = XnliProcessor.supported_languages
+    elif language not in XnliProcessor.supported_languages:
+      raise ValueError("language %s is not supported for XNLI task." % language)
+    else:
+      self.languages = [language]
 
   def get_train_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(
-        os.path.join(data_dir, "multinli",
-                     "multinli.train.%s.tsv" % self.language))
+    lines = []
+    for language in self.languages:
+      lines.extend(
+          self._read_tsv(
+              os.path.join(data_dir, "multinli",
+                           "multinli.train.%s.tsv" % language)))
+
     examples = []
     for (i, line) in enumerate(lines):
       if i == 0:
         continue
-      guid = "train-%d" % (i)
+      guid = "train-%d" % i
       text_a = self.process_text_fn(line[0])
       text_b = self.process_text_fn(line[1])
       label = self.process_text_fn(line[2])
@@ -138,16 +153,29 @@ class XnliProcessor(DataProcessor):
     for (i, line) in enumerate(lines):
       if i == 0:
         continue
-      guid = "dev-%d" % (i)
-      language = self.process_text_fn(line[0])
-      if language != self.process_text_fn(self.language):
-        continue
+      guid = "dev-%d" % i
       text_a = self.process_text_fn(line[6])
       text_b = self.process_text_fn(line[7])
       label = self.process_text_fn(line[1])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    lines = self._read_tsv(os.path.join(data_dir, "xnli.test.tsv"))
+    examples_by_lang = {k: [] for k in XnliProcessor.supported_languages}
+    for (i, line) in enumerate(lines):
+      if i == 0:
+        continue
+      guid = "test-%d" % i
+      language = self.process_text_fn(line[0])
+      text_a = self.process_text_fn(line[6])
+      text_b = self.process_text_fn(line[7])
+      label = self.process_text_fn(line[1])
+      examples_by_lang[language].append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples_by_lang
 
   def get_labels(self):
     """See base class."""
@@ -678,6 +706,7 @@ def generate_tf_record_from_data_file(processor,
                                       tokenizer,
                                       train_data_output_path=None,
                                       eval_data_output_path=None,
+                                      test_data_output_path=None,
                                       max_seq_length=128):
   """Generates and saves training data into a tf record file.
 
@@ -691,6 +720,8 @@ def generate_tf_record_from_data_file(processor,
         will be saved.
       eval_data_output_path: Output to which processed tf record for evaluation
         will be saved.
+      test_data_output_path: Output to which processed tf record for testing
+        will be saved. Must be a pattern template with {} if processor is XNLI.
       max_seq_length: Maximum sequence length of the to be generated
         training/eval data.
 
@@ -713,6 +744,19 @@ def generate_tf_record_from_data_file(processor,
                                             label_list, max_seq_length,
                                             tokenizer, eval_data_output_path)
 
+  if test_data_output_path:
+    test_input_data_examples = processor.get_test_examples(data_dir)
+    if isinstance(test_input_data_examples, dict):
+      for language, examples in test_input_data_examples.items():
+        file_based_convert_examples_to_features(
+            examples,
+            label_list, max_seq_length,
+            tokenizer, test_data_output_path.format(language))
+    else:
+      file_based_convert_examples_to_features(test_input_data_examples,
+                                              label_list, max_seq_length,
+                                              tokenizer, test_data_output_path)
+
   meta_data = {
       "task_type": "bert_classification",
       "processor_type": processor.get_processor_name(),
@@ -723,5 +767,13 @@ def generate_tf_record_from_data_file(processor,
 
   if eval_data_output_path:
     meta_data["eval_data_size"] = len(eval_input_data_examples)
+
+  if test_data_output_path:
+    test_input_data_examples = processor.get_test_examples(data_dir)
+    if isinstance(test_input_data_examples, dict):
+      for language, examples in test_input_data_examples.items():
+        meta_data["test_{}_data_size".format(language)] = len(examples)
+    else:
+      meta_data["test_data_size"] = len(test_input_data_examples)
 
   return meta_data
