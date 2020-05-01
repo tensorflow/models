@@ -24,6 +24,12 @@ cd tf-slim
 pip install .
 ```
 
+Note that these commands assume you are cloning using SSH. If you are using
+HTTPS instead, use `git clone https://github.com/google-research/tf-slim.git`
+instead. See
+[this link](https://help.github.com/en/github/using-git/which-remote-url-should-i-use)
+for more information.
+
 ### Protobuf
 
 The DELF library uses [protobuf](https://github.com/google/protobuf) (the python
@@ -62,6 +68,12 @@ cd ..
 # From tensorflow/models/research/
 export PYTHONPATH=$PYTHONPATH:`pwd`
 ```
+
+Note that these commands assume you are cloning using SSH. If you are using
+HTTPS instead, use `git clone https://github.com/tensorflow/models.git` instead.
+See
+[this link](https://help.github.com/en/github/using-git/which-remote-url-should-i-use)
+for more information.
 
 Then, compile DELF's protobufs. Use `PATH_TO_PROTOC` as the directory where you
 downloaded the `protoc` compiler.
@@ -103,3 +115,12 @@ Issues might be observed if using `pip install` with `-e` option (editable
 mode). You may try out to simply remove the `-e` from the commands above. Also,
 depending on your machine setup, you might need to run the `sudo pip install`
 command, that is with a `sudo` at the beginning.
+
+#### Cloning github repositories
+
+The default commands above assume you are cloning using SSH. If you are using
+HTTPS instead, use for example `git clone
+https://github.com/tensorflow/models.git` instead of `git clone
+git@github.com:tensorflow/models.git`. See
+[this link](https://help.github.com/en/github/using-git/which-remote-url-should-i-use)
+for more information.
