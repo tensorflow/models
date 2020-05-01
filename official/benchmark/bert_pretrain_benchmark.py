@@ -113,7 +113,7 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
     FLAGS.train_batch_size = 512
     FLAGS.learning_rate = 1e-4
     FLAGS.warmup_steps = 10000
-    FLAGS.steps_per_loop = 1000
+    FLAGS.steps_per_loop = 10000
     FLAGS.distribution_strategy = 'tpu'
     FLAGS.input_files = BERT_PRETRAIN_FILES_SEQ128
     FLAGS.max_seq_length = 128
