@@ -81,7 +81,8 @@ def main(unused_argv):
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Reading list of images.
-    filename_queue = tf.train.string_input_producer(image_paths, shuffle=False)
+    filename_queue = tf.compat.v1.train.string_input_producer(
+        image_paths, shuffle=False)
     reader = tf.compat.v1.WholeFileReader()
     _, value = reader.read(filename_queue)
     image_tf = tf.io.decode_jpeg(value, channels=3)
@@ -94,7 +95,7 @@ def main(unused_argv):
 
       # Start input enqueue threads.
       coord = tf.train.Coordinator()
-      threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+      threads = tf.compat.v1.train.start_queue_runners(sess=sess, coord=coord)
       start = time.clock()
       for i in range(num_images):
         # Write to log-info once in a while.
