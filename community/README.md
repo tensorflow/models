@@ -2,16 +2,19 @@
 
 # TensorFlow Community Models
 
-We provide a curated list of the GitHub repositories with machine learning models and implementations powered by TensorFlow 2.
+This repository provides a curated list of the GitHub repositories with machine learning models and implementations powered by TensorFlow 2.
 
-Unlike our "[official](https://github.com/tensorflow/models/tree/master/official)" and "[research](https://github.com/tensorflow/models/tree/master/research)" repositories, we do not maintain the GitHub repositories listed here. Their respective maintainers support them.
+**Disclosure**: Contributing companies or individuals are responsible for maintaining their repositories.
 
 ## Models / Implementations
 
-| Use case | GitHub Repository | Paper | Description | Maintainer(s) |
-|----------|-------------------|-------|-------------|---------------|
-| Computer Vision | [Mask R-CNN](https://github.com/NVIDIA/DeepLearningExamples/tree/master/TensorFlow2/Segmentation/MaskRCNN) | Mask R-CNN (https://arxiv.org/abs/1703.06870) | A script and recipe to train the Mask R-CNN model | [NVIDIA](https://github.com/NVIDIA) |
-| Computer Vision | [U-Net Medical Image Segmentation](https://github.com/NVIDIA/DeepLearningExamples/tree/master/TensorFlow2/Segmentation/UNet_Medical) | U-Net: Convolutional Networks for Biomedical Image Segmentation (https://arxiv.org/abs/1505.04597) | A script and recipe to train U-Net Medical | [NVIDIA](https://github.com/NVIDIA) |
+### Computer Vision
+
+#### Segmentation
+| Model | Reference (Paper) | &nbsp; &nbsp; &nbsp; Features &nbsp; &nbsp; &nbsp; | Maintainer |
+|-------|-------------------|----------|------------|
+| [Mask R-CNN](https://github.com/NVIDIA/DeepLearningExamples/tree/master/TensorFlow2/Segmentation/MaskRCNN) | [Mask R-CNN](https://arxiv.org/abs/1703.06870) | • Automatic Mixed Precision<br/>• Multi-GPU training support with Horovod<br/>• TensorRT | [NVIDIA](https://github.com/NVIDIA) |
+| [U-Net Medical Image Segmentation](https://github.com/NVIDIA/DeepLearningExamples/tree/master/TensorFlow2/Segmentation/UNet_Medical) | [U-Net: Convolutional Networks for Biomedical Image Segmentation](https://arxiv.org/abs/1505.04597) | • Automatic Mixed Precision<br/>• Multi-GPU training support with Horovod<br/>• TensorRT | [NVIDIA](https://github.com/NVIDIA) |
 
 
 ## Contributions
