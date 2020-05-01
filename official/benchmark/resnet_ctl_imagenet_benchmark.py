@@ -22,6 +22,7 @@ import time
 from absl import flags
 import tensorflow as tf
 
+from official.benchmark import owner_utils
 from official.vision.image_classification.resnet import common
 from official.vision.image_classification.resnet import resnet_ctl_imagenet_main
 from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
@@ -393,6 +394,16 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._set_df_common()
     FLAGS.batch_size = 4096
     FLAGS.dtype = 'bf16'
+    self._run_and_report_benchmark()
+
+  @owner_utils.Owner('tf-graph-compiler')
+  def benchmark_4x4_tpu_bf16_mlir(self):
+    """Run resnet model on 4x4 with the MLIR Bridge enabled."""
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 4096
+    FLAGS.dtype = 'bf16'
+    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
   def benchmark_8x16_tpu_bf16(self):

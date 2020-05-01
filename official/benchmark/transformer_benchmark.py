@@ -23,6 +23,7 @@ import time
 from absl import flags
 import tensorflow as tf
 from official.benchmark import benchmark_wrappers
+from official.benchmark import owner_utils
 from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.nlp.transformer import misc
 from official.nlp.transformer import transformer_main as transformer_main
@@ -723,6 +724,29 @@ class TransformerBigKerasBenchmarkReal(TransformerKerasBenchmark):
     FLAGS.decode_max_length = 97
     FLAGS.padded_decode = True
     FLAGS.enable_checkpointing = False
+
+    self._run_and_report_benchmark(
+        total_batch_size=FLAGS.batch_size,
+        log_steps=FLAGS.log_steps)
+
+  @owner_utils.Owner('tf-graph-compiler')
+  def benchmark_4x4_tpu_mlir(self):
+    """Run transformer_big model on 4x4 with the MLIR Bridge enabled."""
+    self._setup()
+    FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu')
+    FLAGS.train_steps = 300
+    FLAGS.log_steps = 150
+    FLAGS.steps_between_evals = 150
+    FLAGS.distribution_strategy = 'tpu'
+    FLAGS.static_batch = True
+    FLAGS.use_ctl = True
+    FLAGS.batch_size = 24576
+    FLAGS.max_length = 64
+    FLAGS.decode_batch_size = 32
+    FLAGS.decode_max_length = 97
+    FLAGS.padded_decode = True
+    FLAGS.enable_checkpointing = False
+    tf.config.experimental.enable_mlir_bridge()
 
     self._run_and_report_benchmark(
         total_batch_size=FLAGS.batch_size,

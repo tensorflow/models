@@ -25,6 +25,7 @@ from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
 from official.benchmark import benchmark_wrappers
+from official.benchmark import owner_utils
 from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 from official.recommendation import ncf_common
 from official.recommendation import ncf_keras_main
@@ -431,6 +432,17 @@ class NCFKerasBenchmarkReal(NCFKerasBenchmarkBase):
     FLAGS.keras_use_ctl = True
     FLAGS.num_gpus = 0
     FLAGS.train_epochs = 1
+    self._run_and_report_benchmark()
+
+  @owner_utils.Owner('tf-graph-compiler')
+  def benchmark_2x2_tpu_mlir(self):
+    """2x2 TPU using CTL with distribution strategy using the MLIR bridge."""
+    self._setup()
+    FLAGS.distribution_strategy = 'tpu'
+    FLAGS.keras_use_ctl = True
+    FLAGS.num_gpus = 0
+    FLAGS.train_epochs = 1
+    tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
 
