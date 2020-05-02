@@ -30,6 +30,7 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
+from official.benchmark import owner_utils
 from official.nlp.bert import run_squad
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
@@ -79,9 +80,9 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     Returns:
       A `tf.distribute.DistibutionStrategy` object.
     """
-    if FLAGS.tpu or ds_type == 'tpu':
+    if self.default_flags['tpu'] or ds_type == 'tpu':
       return distribution_utils.get_distribution_strategy(
-          distribution_strategy='tpu', tpu_address=FLAGS.tpu)
+          distribution_strategy='tpu', tpu_address=self.default_flags['tpu'])
     elif ds_type == 'multi_worker_mirrored':
       # Configures cluster spec for multi-worker distribution strategy.
       _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
@@ -225,26 +226,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark(ds_type='off', run_eagerly=True)
 
-  def benchmark_2_gpu(self):
-    """Tests BERT SQuAD model performance with 2 GPUs."""
-
-    self._setup()
-    self.num_gpus = 2
-    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_squad')
-    FLAGS.train_batch_size = 8
-
-    self._run_and_report_benchmark()
-
-  def benchmark_4_gpu(self):
-    """Tests BERT SQuAD model performance with 4 GPUs."""
-
-    self._setup()
-    self.num_gpus = 4
-    FLAGS.model_dir = self._get_model_dir('benchmark_4_gpu_squad')
-    FLAGS.train_batch_size = 16
-
-    self._run_and_report_benchmark()
-
+  @owner_utils.Owner('tf-model-garden')
   def benchmark_8_gpu(self):
     """Tests BERT SQuAD model performance with 8 GPUs."""
 
@@ -293,30 +275,6 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark()
 
-  def benchmark_2_gpu_fp16(self):
-    """Tests BERT SQuAD model performance with 2 GPUs and FP16."""
-
-    self._setup()
-    self.num_gpus = 2
-    FLAGS.model_dir = self._get_model_dir('benchmark_2_gpu_squad_fp16')
-    FLAGS.train_batch_size = 8
-    FLAGS.dtype = 'fp16'
-    FLAGS.loss_scale = 'dynamic'
-
-    self._run_and_report_benchmark()
-
-  def benchmark_4_gpu_fp16(self):
-    """Tests BERT SQuAD model performance with 4 GPUs and FP16."""
-
-    self._setup()
-    self.num_gpus = 4
-    FLAGS.model_dir = self._get_model_dir('benchmark_4_gpu_squad_fp16')
-    FLAGS.train_batch_size = 16
-    FLAGS.dtype = 'fp16'
-    FLAGS.loss_scale = 'dynamic'
-
-    self._run_and_report_benchmark()
-
   def benchmark_8_gpu_fp16(self):
     """Tests BERT SQuAD model performance with 8 GPUs."""
 
@@ -355,18 +313,6 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark()
 
-  def benchmark_4_gpu_amp(self):
-    """Tests BERT SQuAD model performance with 1 GPU with automatic mixed precision."""
-
-    self._setup()
-    self.num_gpus = 4
-    FLAGS.model_dir = self._get_model_dir('benchmark_4_gpu_amp_squad')
-    FLAGS.train_batch_size = 16
-    FLAGS.dtype = 'fp16'
-    FLAGS.fp16_implementation = 'graph_rewrite'
-
-    self._run_and_report_benchmark()
-
   def benchmark_8_gpu_amp(self):
     """Tests BERT SQuAD model performance with 1 GPU with automatic mixed precision."""
 
@@ -380,6 +326,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark()
 
+  @owner_utils.Owner('tf-model-garden')
   def benchmark_2x2_tpu(self):
     """Tests BERT SQuAD model performance with 2x2 TPU."""
 
@@ -449,6 +396,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark(ds_type='off', run_eagerly=True)
 
+  @owner_utils.Owner('tf-model-garden')
   def benchmark_8_gpu(self):
     """Tests BERT SQuAD model accuracy with 8 GPUs."""
 
@@ -485,6 +433,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark()
 
+  @owner_utils.Owner('tf-model-garden')
   def benchmark_2x2_tpu(self):
     """Tests BERT SQuAD model accuracy with 2x2 TPU."""
 

@@ -28,6 +28,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.benchmark import benchmark_wrappers
 from official.benchmark import bert_benchmark_utils
+from official.benchmark import owner_utils
 from official.nlp.bert import run_pretraining
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
@@ -64,10 +65,10 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
         output_dir=output_dir, tpu=tpu, **kwargs)
 
   @benchmark_wrappers.enable_runtime_flags
-  def _run_and_report_benchmark(self, summary_path: str):
+  def _run_and_report_benchmark(self, summary_path: str, report_accuracy: bool):
     """Runs and reports the benchmark given the provided configuration."""
     distribution = distribution_utils.get_distribution_strategy(
-        distribution_strategy='tpu', tpu_address=FLAGS.tpu)
+        distribution_strategy='tpu', tpu_address=self.default_flags['tpu'])
     logging.info('Flags: %s', flags_core.get_nondefault_flags_as_str())
     start_time_sec = time.time()
     run_pretraining.run_bert_pretrain(
@@ -76,32 +77,36 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
 
     with tf.io.gfile.GFile(summary_path, 'rb') as reader:
       summary = json.loads(reader.read().decode('utf-8'))
-    self._report_benchmark(summary, start_time_sec, wall_time_sec)
+    self._report_benchmark(summary, start_time_sec, wall_time_sec,
+                           report_accuracy)
 
-  def _report_benchmark(self, summary, start_time_sec, wall_time_sec):
+  def _report_benchmark(self, summary, start_time_sec, wall_time_sec,
+                        report_accuracy):
     metrics = [{
         'name': 'train_loss',
         'value': summary['train_loss'],
     }, {
         'name':
-            'example_per_second',
+            'exp_per_second',
         'value':
             self.timer_callback.get_examples_per_sec(FLAGS.train_batch_size *
                                                      FLAGS.steps_per_loop)
     }, {
         'name': 'startup_time',
         'value': self.timer_callback.get_startup_time(start_time_sec)
-    }, {
-        'name': 'masked_lm_accuracy',
-        'value': summary['masked_lm_accuracy'],
-        'min_value': MIN_MLM_ACCURACY,
-        'max_value': MAX_MLM_ACCURACY,
-    }, {
-        'name': 'next_sentence_accuracy',
-        'value': summary['next_sentence_accuracy'],
-        'min_value': MIN_NSP_ACCURACY,
-        'max_value': MAX_NSP_ACCURACY,
     }]
+    if report_accuracy:
+      metrics.extend([{
+          'name': 'masked_lm_accuracy',
+          'value': summary['masked_lm_accuracy'],
+          'min_value': MIN_MLM_ACCURACY,
+          'max_value': MAX_MLM_ACCURACY,
+      }, {
+          'name': 'next_sentence_accuracy',
+          'value': summary['next_sentence_accuracy'],
+          'min_value': MIN_NSP_ACCURACY,
+          'max_value': MAX_NSP_ACCURACY,
+      }])
     self.report_benchmark(
         iters=summary['total_training_steps'],
         wall_time=wall_time_sec,
@@ -120,7 +125,8 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
     FLAGS.max_predictions_per_seq = 20
     FLAGS.dtype = 'bf16'
 
-  def benchmark_8x8_tpu_bf16_seq128_1m_steps(self):
+  @owner_utils.Owner('tf-model-garden')
+  def benchmark_accuracy_8x8_tpu_bf16_seq128_1m_steps(self):
     """Test bert pretraining with 8x8 TPU for 1 million steps."""
     # This is used for accuracy test.
     self._setup()
@@ -128,23 +134,26 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
     FLAGS.num_steps_per_epoch = 250000
     FLAGS.num_train_epochs = 4
     FLAGS.model_dir = self._get_model_dir(
-        'benchmark_8x8_tpu_bf16_seq128_1m_steps')
+        'benchmark_accuracy_8x8_tpu_bf16_seq128_1m_steps')
     summary_path = os.path.join(FLAGS.model_dir,
                                 'summaries/training_summary.txt')
-    self._run_and_report_benchmark(summary_path=summary_path)
+    self._run_and_report_benchmark(summary_path=summary_path,
+                                   report_accuracy=True)
 
-  def benchmark_4x4_tpu_bf16_seq128_1k_steps(self):
-    """Test bert pretraining with 4x4 TPU for 1000 steps."""
-    # This is used for througput test.
+  @owner_utils.Owner('tf-model-garden')
+  def benchmark_perf_8x8_tpu_bf16_seq128_10k_steps(self):
+    """Test bert pretraining with 8x8 TPU for 10000 steps."""
     self._setup()
     self._specify_common_flags()
-    FLAGS.num_steps_per_epoch = 1000
-    FLAGS.num_train_epochs = 1
+    FLAGS.num_steps_per_epoch = 5000
+    FLAGS.num_train_epochs = 2
     FLAGS.model_dir = self._get_model_dir(
-        'benchmark_4x4_tpu_bf16_seq128_1k_steps')
+        'benchmark_perf_8x8_tpu_bf16_seq128_10k_steps')
     summary_path = os.path.join(FLAGS.model_dir,
                                 'summaries/training_summary.txt')
-    self._run_and_report_benchmark(summary_path=summary_path)
+    # Disable accuracy check.
+    self._run_and_report_benchmark(summary_path=summary_path,
+                                   report_accuracy=False)
 
 
 if __name__ == '__main__':
