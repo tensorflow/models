@@ -59,7 +59,7 @@ def _ReadMappingBasenameToBoxNames(input_path, index_image_names):
       strings (file names containing DELF features for boxes).
   """
   images_to_box_feature_files = {}
-  with tf.gfile.GFile(input_path, 'r') as f:
+  with tf.io.gfile.GFile(input_path, 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
       index_image_name = index_image_names[int(row['index_image_id'])]
@@ -101,7 +101,7 @@ def ExtractAggregatedRepresentationsToFiles(image_names, features_dir,
 
   # Parse AggregationConfig proto, and select output extension.
   config = aggregation_config_pb2.AggregationConfig()
-  with tf.gfile.GFile(aggregation_config_path, 'r') as f:
+  with tf.io.gfile.GFile(aggregation_config_path, 'r') as f:
     text_format.Merge(f.read(), config)
   output_extension = '.'
   if config.use_regional_aggregation:
@@ -121,10 +121,10 @@ def ExtractAggregatedRepresentationsToFiles(image_names, features_dir,
         mapping_path, image_names)
 
   # Create output directory if necessary.
-  if not tf.gfile.Exists(output_aggregation_dir):
-    tf.gfile.MakeDirs(output_aggregation_dir)
+  if not tf.io.gfile.exists(output_aggregation_dir):
+    tf.io.gfile.makedirs(output_aggregation_dir)
 
-  with tf.Session() as sess:
+  with tf.compat.v1.Session() as sess:
     extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
         sess, config)
 

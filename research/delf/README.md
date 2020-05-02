@@ -1,6 +1,3 @@
-![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
-![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
-
 # DELF: DEep Local Features
 
 This project presents code for extracting DELF features, which were introduced
@@ -17,7 +14,7 @@ detects and describes semantic local features which can be geometrically
 verified between images showing the same object instance. The pre-trained models
 released here have been optimized for landmark recognition, so expect it to work
 well in this area. We also provide tensorflow code for building the DELF model,
-which could then be used to train models for other types of objects.
+and [NEW] code for model training.
 
 If you make use of this code, please consider citing the following papers:
 
@@ -37,6 +34,10 @@ Proc. CVPR'19
 
 ## News
 
+-   [Jun'19] DELF achieved 2nd place in
+    [CVPR Visual Localization challenge (Local Features track)](https://sites.google.com/corp/view/ltvl2019).
+    See our slides
+    [here](https://docs.google.com/presentation/d/e/2PACX-1vTswzoXelqFqI_pCEIVl2uazeyGr7aKNklWHQCX-CbQ7MB17gaycqIaDTguuUCRm6_lXHwCdrkP7n1x/pub?start=false&loop=false&delayms=3000).
 -   [Apr'19] Check out our CVPR'19 paper:
     ["Detect-to-Retrieve: Efficient Regional Aggregation for Image Search"](https://arxiv.org/abs/1812.01584)
 -   [Jun'18] DELF achieved state-of-the-art results in a CVPR'18 image retrieval
@@ -59,7 +60,9 @@ We have two Google-Landmarks dataset versions:
     [Landmark Recognition](https://www.kaggle.com/c/landmark-recognition-2019)
     and [Landmark Retrieval](https://www.kaggle.com/c/landmark-retrieval-2019).
     It can be downloaded from CVDF
-    [here](https://github.com/cvdfoundation/google-landmark).
+    [here](https://github.com/cvdfoundation/google-landmark). See also
+    [the CVPR'20 paper](https://arxiv.org/abs/2004.01804) on this new dataset
+    version.
 
 If you make use of these datasets in your research, please consider citing the
 papers mentioned above.
@@ -109,6 +112,10 @@ should obtain a nice figure showing local feature matches, as:
 
 ![MatchedImagesExample](delf/python/examples/matched_images_example.jpg)
 
+### DELF training
+
+Please follow [these instructions](delf/python/training/README.md).
+
 ### Landmark detection
 
 Please follow [these instructions](DETECTION.md). At the end, you should obtain
@@ -145,7 +152,7 @@ This directory contains files for several different purposes:
 
 -   `box_io.py`, `datum_io.py`, `feature_io.py` are helper files for reading and
     writing tensors and features.
--   `delf_v1.py` contains the code to create DELF models.
+-   `delf_v1.py` contains code to create DELF models.
 -   `feature_aggregation_extractor.py` contains a module to perform local
     feature aggregation.
 -   `feature_aggregation_similarity.py` contains a module to perform similarity
@@ -160,28 +167,61 @@ feature extraction/matching, and object detection:
 
 -   `delf_config_example.pbtxt` shows an example instantiation of the DelfConfig
     proto, used for DELF feature extraction.
+-   `detector.py` is a module to construct an object detector function.
 -   `extract_boxes.py` enables object detection from a list of images.
 -   `extract_features.py` enables DELF extraction from a list of images.
+-   `extractor.py` is a module to construct a DELF local feature extraction
+    function.
 -   `match_images.py` supports image matching using DELF features extracted
     using `extract_features.py`.
 
 The subdirectory `delf/python/detect_to_retrieve` contains sample
 scripts/configs related to the Detect-to-Retrieve paper:
 
+-   `aggregation_extraction.py` is a library to extract/save feature
+    aggregation.
+-   `boxes_and_features_extraction.py` is a library to extract/save boxes and
+    DELF features.
 -   `cluster_delf_features.py` for local feature clustering.
 -   `dataset.py` for parsing/evaluating results on Revisited Oxford/Paris
     datasets.
+-   `delf_gld_config.pbtxt` gives the DelfConfig used in Detect-to-Retrieve
+    paper.
 -   `extract_aggregation.py` for aggregated local feature extraction.
 -   `extract_index_boxes_and_features.py` for index image local feature
     extraction / bounding box detection on Revisited datasets.
 -   `extract_query_features.py` for query image local feature extraction on
     Revisited datasets.
+-   `image_reranking.py` is a module to re-rank images with geometric
+    verification.
 -   `perform_retrieval.py` for performing retrieval/evaluating methods using
     aggregated local features on Revisited datasets.
--   `delf_gld_config.pbtxt` gives the DelfConfig used in Detect-to-Retrieve
-    paper.
 -   `index_aggregation_config.pbtxt`, `query_aggregation_config.pbtxt` give
     AggregationConfig's for Detect-to-Retrieve experiments.
+
+The subdirectory `delf/python/google_landmarks_dataset` contains sample
+scripts/modules for computing GLD metrics:
+
+-   `compute_recognition_metrics.py` performs recognition metric computation
+    given input predictions and solution files.
+-   `compute_retrieval_metrics.py` performs retrieval metric computation given
+    input predictions and solution files.
+-   `dataset_file_io.py` is a module for dataset-related file IO.
+-   `metrics.py` is a module for GLD metric computation.
+
+The subdirectory `delf/python/training` contains sample scripts/modules for
+performing DELF training:
+
+-   `datasets/googlelandmarks.py` is the dataset module used for training.
+-   `model/delf_model.py` is the model module used for training.
+-   `model/export_model.py` is a script for exporting trained models in the
+    format used by the inference code.
+-   `model/export_model_utils.py` is a module with utilities for model
+    exporting.
+-   `model/resnet50.py` is a module with a backbone RN50 implementation.
+-   `build_image_dataset.py` converts downloaded dataset into TFRecords format
+    for training.
+-   `train.py` is the main training script.
 
 Besides these, other files in the different subdirectories contain tests for the
 various modules.
@@ -191,6 +231,13 @@ various modules.
 Andr&eacute; Araujo (@andrefaraujo)
 
 ## Release history
+
+### April, 2020 (version 2.0)
+
+-   Initial DELF training code released.
+-   Codebase is now fully compatible with TF 2.1.
+
+**Thanks to contributors**: Arun Mukundan, Yuewei Na and Andr&eacute; Araujo.
 
 ### April, 2019
 

@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from delf import aggregation_config_pb2
 
+_CLUSTER_CENTERS_VAR_NAME = "clusters"
 _NORM_SQUARED_TOLERANCE = 1e-12
 
 # Aliases for aggregation types.
@@ -66,10 +67,7 @@ class ExtractAggregatedRepresentation(object):
             aggregation_config.feature_dimensionality
         ])
     tf.compat.v1.train.init_from_checkpoint(
-        aggregation_config.codebook_path, {
-            tf.contrib.factorization.KMeansClustering.CLUSTER_CENTERS_VAR_NAME:
-                codebook
-        })
+        aggregation_config.codebook_path, {_CLUSTER_CENTERS_VAR_NAME: codebook})
 
     # Construct extraction graph based on desired options.
     if self._aggregation_type == _VLAD:
@@ -270,7 +268,7 @@ class ExtractAggregatedRepresentation(object):
           output_vlad: VLAD descriptor updated to take into account contribution
             from ind-th feature.
         """
-        return ind + 1, tf.compat.v1.tensor_scatter_add(
+        return ind + 1, tf.tensor_scatter_nd_add(
             vlad, tf.expand_dims(selected_visual_words[ind], axis=1),
             tf.tile(
                 tf.expand_dims(features[ind], axis=0), [num_assignments, 1]) -

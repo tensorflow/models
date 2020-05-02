@@ -27,6 +27,7 @@ import os
 import sys
 import time
 
+from six.moves import range
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -53,55 +54,57 @@ def _ReadImageList(list_path):
   Returns:
     image_paths: List of image paths.
   """
-  with tf.gfile.GFile(list_path, 'r') as f:
+  with tf.io.gfile.GFile(list_path, 'r') as f:
     image_paths = f.readlines()
   image_paths = [entry.rstrip() for entry in image_paths]
   return image_paths
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
   # Read list of images.
-  tf.logging.info('Reading list of images...')
+  tf.compat.v1.logging.info('Reading list of images...')
   image_paths = _ReadImageList(cmd_args.list_images_path)
   num_images = len(image_paths)
-  tf.logging.info('done! Found %d images', num_images)
+  tf.compat.v1.logging.info('done! Found %d images', num_images)
 
   # Parse DelfConfig proto.
   config = delf_config_pb2.DelfConfig()
-  with tf.gfile.FastGFile(cmd_args.config_path, 'r') as f:
+  with tf.io.gfile.GFile(cmd_args.config_path, 'r') as f:
     text_format.Merge(f.read(), config)
 
   # Create output directory if necessary.
-  if not tf.gfile.Exists(cmd_args.output_dir):
-    tf.gfile.MakeDirs(cmd_args.output_dir)
+  if not tf.io.gfile.exists(cmd_args.output_dir):
+    tf.io.gfile.makedirs(cmd_args.output_dir)
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
     # Reading list of images.
-    filename_queue = tf.train.string_input_producer(image_paths, shuffle=False)
-    reader = tf.WholeFileReader()
+    filename_queue = tf.compat.v1.train.string_input_producer(
+        image_paths, shuffle=False)
+    reader = tf.compat.v1.WholeFileReader()
     _, value = reader.read(filename_queue)
-    image_tf = tf.image.decode_jpeg(value, channels=3)
+    image_tf = tf.io.decode_jpeg(value, channels=3)
 
-    with tf.Session() as sess:
-      init_op = tf.global_variables_initializer()
+    with tf.compat.v1.Session() as sess:
+      init_op = tf.compat.v1.global_variables_initializer()
       sess.run(init_op)
 
       extractor_fn = extractor.MakeExtractor(sess, config)
 
       # Start input enqueue threads.
       coord = tf.train.Coordinator()
-      threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+      threads = tf.compat.v1.train.start_queue_runners(sess=sess, coord=coord)
       start = time.clock()
       for i in range(num_images):
         # Write to log-info once in a while.
         if i == 0:
-          tf.logging.info('Starting to extract DELF features from images...')
+          tf.compat.v1.logging.info(
+              'Starting to extract DELF features from images...')
         elif i % _STATUS_CHECK_ITERATIONS == 0:
           elapsed = (time.clock() - start)
-          tf.logging.info(
+          tf.compat.v1.logging.info(
               'Processing image %d out of %d, last %d '
               'images took %f seconds', i, num_images, _STATUS_CHECK_ITERATIONS,
               elapsed)
@@ -114,8 +117,8 @@ def main(unused_argv):
         out_desc_filename = os.path.splitext(os.path.basename(
             image_paths[i]))[0] + _DELF_EXT
         out_desc_fullpath = os.path.join(cmd_args.output_dir, out_desc_filename)
-        if tf.gfile.Exists(out_desc_fullpath):
-          tf.logging.info('Skipping %s', image_paths[i])
+        if tf.io.gfile.exists(out_desc_fullpath):
+          tf.compat.v1.logging.info('Skipping %s', image_paths[i])
           continue
 
         # Extract and save features.

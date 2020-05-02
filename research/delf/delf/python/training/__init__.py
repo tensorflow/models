@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,26 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Setup script for delf."""
+"""Module for DELF training."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
-from setuptools import setup, find_packages
-
-install_requires = [
-    'absl-py >= 0.7.1',
-    'protobuf >= 3.8.0',
-    'pandas >= 0.24.2',
-    'numpy >= 1.16.1',
-    'scipy >= 1.2.2',
-    'tensorflow >= 2.1',
-    'tf_slim >= 1.1',
-    'tensorflow_probability >= 0.9.0',
-]
-
-setup(
-    name='delf',
-    version='2.0',
-    include_package_data=True,
-    packages=find_packages(),
-    install_requires=install_requires,
-    description='DELF (DEep Local Features)',
-)
+# pylint: disable=unused-import
+from delf.python.training import build_image_dataset
+# pylint: enable=unused-import
