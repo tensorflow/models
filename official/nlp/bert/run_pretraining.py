@@ -51,7 +51,6 @@ flags.DEFINE_bool('use_next_sentence_label', True,
                   'Whether to use next sentence label to compute final loss.')
 
 common_flags.define_common_bert_flags()
-common_flags.define_gin_flags()
 
 FLAGS = flags.FLAGS
 
