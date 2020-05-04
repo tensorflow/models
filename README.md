@@ -8,8 +8,8 @@ The TensorFlow Model Garden is a repository with a number of different implement
 
 | Directory | Description |
 |-----------|-------------|
-| [official](official) | • **A collection of example implementations for SOTA models using the latest TensorFlow 2's high-level APIs**<br />• Officially maintained, supported, and kept up to date with the latest TensorFlow 2 APIs<br />• Reasonably optimized for fast performance while still being easy to read |
-| [research](research) | • A collection of research model implementations in TensorFlow 1 or 2 by researchers<br />• Up to the individual researchers to maintain the model implementations and/or provide support on issues and pull requests |
+| [official](official) | • **A collection of example implementations for SOTA models using the latest TensorFlow 2's high-level APIs**<br />• Officially maintained, supported, and kept up to date with the latest TensorFlow 2 APIs by TensorFlow<br />• Reasonably optimized for fast performance while still being easy to read |
+| [research](research) | • A collection of research model implementations in TensorFlow 1 or 2 by researchers<br />• Maintained and supported by researchers |
 | [community](community) | • A curated list of the GitHub repositories with machine learning models and implementations powered by TensorFlow 2 |
 
 ## [Announcements](https://github.com/tensorflow/models/wiki/Announcements)
