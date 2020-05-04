@@ -228,13 +228,6 @@ def initialize(params: base_configs.ExperimentConfig,
   """Initializes backend related initializations."""
   keras_utils.set_session_config(
       enable_xla=params.runtime.enable_xla)
-  if params.runtime.gpu_thread_mode:
-    keras_utils.set_gpu_thread_mode_and_count(
-        per_gpu_thread_count=params.runtime.per_gpu_thread_count,
-        gpu_thread_mode=params.runtime.gpu_thread_mode,
-        num_gpus=params.runtime.num_gpus,
-        datasets_num_private_threads=params.runtime.dataset_num_private_threads)
-
   performance.set_mixed_precision_policy(dataset_builder.dtype,
                                          get_loss_scale(params))
   if tf.config.list_physical_devices('GPU'):
@@ -248,6 +241,15 @@ def initialize(params: base_configs.ExperimentConfig,
   if params.runtime.run_eagerly:
     # Enable eager execution to allow step-by-step debugging
     tf.config.experimental_run_functions_eagerly(True)
+  if tf.config.list_physical_devices('GPU'):
+    if params.runtime.gpu_thread_mode:
+      keras_utils.set_gpu_thread_mode_and_count(
+          per_gpu_thread_count=params.runtime.per_gpu_thread_count,
+          gpu_thread_mode=params.runtime.gpu_thread_mode,
+          num_gpus=params.runtime.num_gpus,
+          datasets_num_private_threads=params.runtime.dataset_num_private_threads)  # pylint:disable=line-too-long
+    if params.runtime.batchnorm_spatial_persistent:
+      os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'
 
 
 def define_classifier_flags():

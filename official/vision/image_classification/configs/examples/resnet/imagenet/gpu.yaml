@@ -4,6 +4,7 @@
 runtime:
   distribution_strategy: 'mirrored'
   num_gpus: 1
+  batchnorm_spatial_persistent: True
 train_dataset:
   name: 'imagenet2012'
   data_dir: null
@@ -12,9 +13,9 @@ train_dataset:
   image_size: 224
   num_classes: 1000
   num_examples: 1281167
-  batch_size: 128
+  batch_size: 64
   use_per_replica_batch_size: True
-  dtype: 'float32'
+  dtype: 'float16'
   mean_subtract: True
   standardize: True
 validation_dataset:
@@ -25,9 +26,9 @@ validation_dataset:
   image_size: 224
   num_classes: 1000
   num_examples: 50000
-  batch_size: 128
+  batch_size: 64
   use_per_replica_batch_size: True
-  dtype: 'float32'
+  dtype: 'float16'
   mean_subtract: True
   standardize: True
 model:

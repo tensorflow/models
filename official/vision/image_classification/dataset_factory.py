@@ -98,10 +98,6 @@ class DatasetConfig(base_config.Config):
     file_shuffle_buffer_size: The buffer size used for shuffling raw training
       files.
     skip_decoding: Whether to skip image decoding when loading from TFDS.
-    deterministic_train: Whether the examples in the training set should output
-      in a deterministic order.
-    use_slack: whether to introduce slack in the last prefetch. This may reduce
-      CPU contention at the start of a training step.
     cache: whether to cache to dataset examples. Can be used to avoid re-reading
       from disk on the second epoch. Requires significant memory overhead.
     mean_subtract: whether or not to apply mean subtraction to the dataset.
@@ -126,8 +122,6 @@ class DatasetConfig(base_config.Config):
   shuffle_buffer_size: int = 10000
   file_shuffle_buffer_size: int = 1024
   skip_decoding: bool = True
-  deterministic_train: bool = False
-  use_slack: bool = True
   cache: bool = False
   mean_subtract: bool = False
   standardize: bool = False
@@ -451,16 +445,6 @@ class DatasetBuilder:
     else:
       dataset = dataset.batch(self.global_batch_size,
                               drop_remainder=self.is_training)
-
-    if self.is_training:
-      options = tf.data.Options()
-      options.experimental_deterministic = self.config.deterministic_train
-      options.experimental_slack = self.config.use_slack
-      options.experimental_optimization.parallel_batch = True
-      options.experimental_optimization.map_fusion = True
-      options.experimental_optimization.map_vectorization.enabled = True
-      options.experimental_optimization.map_parallelization = True
-      dataset = dataset.with_options(options)
 
     # Prefetch overlaps in-feed with training
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
