@@ -27,73 +27,121 @@ As described in https://arxiv.org/abs/1704.04861.
   Andrew G. Howard, Menglong Zhu, Bo Chen, Dmitry Kalenichenko, Weijun Wang,
     Tobias Weyand, Marco Andreetto, Hartwig Adam
 
-100% Mobilenet V1 (base) with input size 224x224:
-
-Layer                                                     params           macs
---------------------------------------------------------------------------------
-MobilenetV1/Conv2d_0/Conv2D:                                 864      10,838,016
-MobilenetV1/Conv2d_1_depthwise/depthwise:                    288       3,612,672
-MobilenetV1/Conv2d_1_pointwise/Conv2D:                     2,048      25,690,112
-MobilenetV1/Conv2d_2_depthwise/depthwise:                    576       1,806,336
-MobilenetV1/Conv2d_2_pointwise/Conv2D:                     8,192      25,690,112
-MobilenetV1/Conv2d_3_depthwise/depthwise:                  1,152       3,612,672
-MobilenetV1/Conv2d_3_pointwise/Conv2D:                    16,384      51,380,224
-MobilenetV1/Conv2d_4_depthwise/depthwise:                  1,152         903,168
-MobilenetV1/Conv2d_4_pointwise/Conv2D:                    32,768      25,690,112
-MobilenetV1/Conv2d_5_depthwise/depthwise:                  2,304       1,806,336
-MobilenetV1/Conv2d_5_pointwise/Conv2D:                    65,536      51,380,224
-MobilenetV1/Conv2d_6_depthwise/depthwise:                  2,304         451,584
-MobilenetV1/Conv2d_6_pointwise/Conv2D:                   131,072      25,690,112
-MobilenetV1/Conv2d_7_depthwise/depthwise:                  4,608         903,168
-MobilenetV1/Conv2d_7_pointwise/Conv2D:                   262,144      51,380,224
-MobilenetV1/Conv2d_8_depthwise/depthwise:                  4,608         903,168
-MobilenetV1/Conv2d_8_pointwise/Conv2D:                   262,144      51,380,224
-MobilenetV1/Conv2d_9_depthwise/depthwise:                  4,608         903,168
-MobilenetV1/Conv2d_9_pointwise/Conv2D:                   262,144      51,380,224
-MobilenetV1/Conv2d_10_depthwise/depthwise:                 4,608         903,168
-MobilenetV1/Conv2d_10_pointwise/Conv2D:                  262,144      51,380,224
-MobilenetV1/Conv2d_11_depthwise/depthwise:                 4,608         903,168
-MobilenetV1/Conv2d_11_pointwise/Conv2D:                  262,144      51,380,224
-MobilenetV1/Conv2d_12_depthwise/depthwise:                 4,608         225,792
-MobilenetV1/Conv2d_12_pointwise/Conv2D:                  524,288      25,690,112
-MobilenetV1/Conv2d_13_depthwise/depthwise:                 9,216         451,584
-MobilenetV1/Conv2d_13_pointwise/Conv2D:                1,048,576      51,380,224
---------------------------------------------------------------------------------
-Total:                                                 3,185,088     567,716,352
-
 """
 
-from typing import Tuple, Union
+import logging
+from typing import Tuple, Union, Text
 
 import tensorflow as tf
+
+from research.mobilenet.mobilenet_config import MobileNetV1Config
+from research.mobilenet.mobilenet_config import Conv, DepSepConv
 
 layers = tf.keras.layers
 
 
-def conv2d_block(inputs: tf.Tensor,
-                 filters: int,
-                 depth_multiplier: float,
-                 min_depth: int = 8,
-                 kernel: Union[int, Tuple[int, int]] = (3, 3),
-                 strides: Union[int, Tuple[int, int]] = (1, 1)
-                 ) -> tf.Tensor:
+class FixedPadding(layers.Layer):
+  """Pads the input along the spatial dimensions independently of input size.
+
+  Pads the input such that if it was used in a convolution with 'VALID' padding,
+  the output would have the same dimensions as if the unpadded input was used
+  in a convolution with 'SAME' padding.
+
+  Args:
+    inputs: A tensor of size [batch, height_in, width_in, channels].
+    kernel_size: The kernel to be used in the conv2d or max_pool2d operation.
+    rate: An integer, rate for atrous convolution.
+
+  Returns:
+    output: A tensor of size [batch, height_out, width_out, channels] with the
+      input, either intact (if kernel_size == 1) or padded (if kernel_size > 1).
+  """
+
+  def __init__(self,
+               kernel_size: Tuple[int, int],
+               rate: int = 1,
+               name: Text = None):
+    super(FixedPadding, self).__init__(name=name)
+    self.kernel_size = kernel_size
+    self.rate = rate
+
+  def call(self, inputs: tf.Tensor, **kwargs):
+    kernel_size = self.kernel_size
+    rate = self.rate
+    kernel_size_effective = [kernel_size[0] + (kernel_size[0] - 1) * (rate - 1),
+                             kernel_size[0] + (kernel_size[0] - 1) * (rate - 1)]
+    pad_total = [kernel_size_effective[0] - 1, kernel_size_effective[1] - 1]
+    pad_beg = [pad_total[0] // 2, pad_total[1] // 2]
+    pad_end = [pad_total[0] - pad_beg[0], pad_total[1] - pad_beg[1]]
+    padded_inputs = tf.pad(
+      tensor=inputs,
+      paddings=[[0, 0], [pad_beg[0], pad_end[0]], [pad_beg[1], pad_end[1]],
+                [0, 0]])
+    return padded_inputs
+
+
+def _reduced_kernel_size_for_small_input(input_tensor: tf.Tensor,
+                                         kernel_size: Tuple[int, int]
+                                         ) -> Tuple[int, int]:
+  """Define kernel size which is automatically reduced for small input.
+
+  If the shape of the input images is unknown at graph construction time this
+  function assumes that the input images are large enough.
+
+  Args:
+    input_tensor: input tensor of size [batch_size, height, width, channels].
+    kernel_size: desired kernel size of length 2: [kernel_height, kernel_width]
+
+  Returns:
+    a tensor with the kernel size.
+  """
+  shape = input_tensor.get_shape().as_list()
+  if shape[1] is None or shape[2] is None:
+    kernel_size_out = kernel_size
+  else:
+    kernel_size_out = (min(shape[1], kernel_size[0]),
+                       min(shape[2], kernel_size[1]))
+  return kernel_size_out
+
+
+def _conv2d_block(inputs: tf.Tensor,
+                  filters: int,
+                  width_multiplier: float,
+                  min_depth: int,
+                  weight_decay: float,
+                  stddev: float,
+                  batch_norm_decay: float,
+                  batch_norm_epsilon: float,
+                  use_explicit_padding: bool = False,
+                  kernel: Union[int, Tuple[int, int]] = (3, 3),
+                  strides: Union[int, Tuple[int, int]] = (1, 1),
+                  block_id: int = 0
+                  ) -> tf.Tensor:
   """Adds an initial convolution layer (with batch normalization).
 
   Args:
     inputs: Input tensor of shape [batch_size, height, width, channels]
     filters: the dimensionality of the output space
       (i.e. the number of output filters in the convolution).
-    depth_multiplier: controls the width of the network.
-      - If `depth_multiplier` < 1.0, proportionally decreases the number
+    width_multiplier: controls the width of the network.
+      - If `width_multiplier` < 1.0, proportionally decreases the number
             of filters in each layer.
-      - If `depth_multiplier` > 1.0, proportionally increases the number
+      - If `width_multiplier` > 1.0, proportionally increases the number
             of filters in each layer.
-      - If `depth_multiplier` = 1, default number of filters from the paper
+      - If `width_multiplier` = 1, default number of filters from the paper
             are used at each layer.
       This is called `width multiplier (\alpha)` in the original paper.
     min_depth: Minimum depth value (number of channels) for all convolution ops.
-      Enforced when depth_multiplier < 1, and not an active constraint when
-      depth_multiplier >= 1.
+      Enforced when width_multiplier < 1, and not an active constraint when
+      width_multiplier >= 1.
+    weight_decay: The weight decay to use for regularizing the model.
+    stddev: The standard deviation of the trunctated normal weight initializer.
+    batch_norm_decay: Decay for batch norm moving average.
+    batch_norm_epsilon: Small float added to variance to avoid dividing by zero
+        in batch norm.
+    use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+      inputs so that the output dimensions are the same as if 'SAME' padding
+      were used.
     kernel: An integer or tuple/list of 2 integers, specifying the
       width and height of the 2D convolution window.
       Can be a single integer to specify the same value for
@@ -105,49 +153,88 @@ def conv2d_block(inputs: tf.Tensor,
         all spatial dimensions.
         Specifying any stride value != 1 is incompatible with specifying
         any `dilation_rate` value != 1.
+    block_id： a unique identification designating the block number.
 
   Returns
     Output tensor of block of shape [batch_size, height, width, filters].
   """
-  filters = max(int(filters * depth_multiplier), min_depth)
-  x = layers.ZeroPadding2D(padding=((0, 1), (0, 1)), name='conv1_pad')(inputs)
-  x = layers.Conv2D(filters, kernel,
-                    padding='valid',
-                    use_bias=False,
+
+  filters = max(int(filters * width_multiplier), min_depth)
+  padding = 'SAME'
+  if use_explicit_padding:
+    padding = 'VALID'
+
+  if use_explicit_padding:
+    inputs = FixedPadding(kernel_size=kernel,
+                          name='Conv2d_{}_FP'.format(block_id))(inputs)
+
+  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+  regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
+  x = layers.Conv2D(filters=filters,
+                    kernel_size=kernel,
                     strides=strides,
-                    name='conv1')(x)
-  x = layers.BatchNormalization(name='conv1_bn')(x)
-  return layers.ReLU(name='conv1_relu')(x)
+                    padding=padding,
+                    kernel_initializer=weights_init,
+                    kernel_regularizer=regularizer,
+                    use_bias=False,
+                    name='Conv2d_{}'.format(block_id))(inputs)
+
+  x = layers.BatchNormalization(epsilon=batch_norm_epsilon,
+                                momentum=batch_norm_decay,
+                                axis=-1,
+                                name='Conv2d_{}_BN'.format(block_id))(x)
+
+  outputs = layers.ReLU(max_value=6.,
+                        name='Conv2d_{}_ReLU'.format(block_id))(x)
+
+  return outputs
 
 
-def depthwise_conv2d_block(inputs: tf.Tensor,
-                           filters: int,
-                           depth_multiplier: float,
-                           min_depth: int = 8,
-                           kernel: Union[int, Tuple[int, int]] = (3, 3),
-                           strides: Union[int, Tuple[int, int]] = (1, 1)
-                           ) -> tf.Tensor:
-  """Adds a depthwise convolution block.
+def _depthwise_conv2d_block(inputs: tf.Tensor,
+                            filters: int,
+                            width_multiplier: float,
+                            min_depth: int,
+                            weight_decay: float,
+                            stddev: float,
+                            batch_norm_decay: float,
+                            batch_norm_epsilon: float,
+                            dilation_rate: int = 1,
+                            regularize_depthwise: bool = False,
+                            use_explicit_padding: bool = False,
+                            kernel: Union[int, Tuple[int, int]] = (3, 3),
+                            strides: Union[int, Tuple[int, int]] = (1, 1),
+                            block_id: int = 1
+                            ) -> tf.Tensor:
+  """Adds an initial convolution layer (with batch normalization).
 
-  A depthwise convolution block consists of a depthwise conv,
-  batch normalization, relu6, pointwise convolution,
-  batch normalization and relu6 activation.
-
-  Arguments
+  Args:
     inputs: Input tensor of shape [batch_size, height, width, channels]
-    filters: Integer, the dimensionality of the output space
-        (i.e. the number of output filters in the pointwise convolution).
-    depth_multiplier: controls the width of the network.
-      - If `depth_multiplier` < 1.0, proportionally decreases the number
+    filters: the dimensionality of the output space
+      (i.e. the number of output filters in the convolution).
+    width_multiplier: controls the width of the network.
+      - If `width_multiplier` < 1.0, proportionally decreases the number
             of filters in each layer.
-      - If `depth_multiplier` > 1.0, proportionally increases the number
+      - If `width_multiplier` > 1.0, proportionally increases the number
             of filters in each layer.
-      - If `depth_multiplier` = 1, default number of filters from the paper
+      - If `width_multiplier` = 1, default number of filters from the paper
             are used at each layer.
       This is called `width multiplier (\alpha)` in the original paper.
     min_depth: Minimum depth value (number of channels) for all convolution ops.
-      Enforced when depth_multiplier < 1, and not an active constraint when
-      depth_multiplier >= 1.
+      Enforced when width_multiplier < 1, and not an active constraint when
+      width_multiplier >= 1.
+    weight_decay: The weight decay to use for regularizing the model.
+    stddev: The standard deviation of the trunctated normal weight initializer.
+    batch_norm_decay: Decay for batch norm moving average.
+    batch_norm_epsilon: Small float added to variance to avoid dividing by zero
+        in batch norm.
+    dilation_rate: an integer or tuple/list of 2 integers, specifying
+      the dilation rate to use for dilated convolution.
+      Can be a single integer to specify the same value for
+      all spatial dimensions.
+    regularize_depthwise: Whether or not apply regularization on depthwise.
+    use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+      inputs so that the output dimensions are the same as if 'SAME' padding
+      were used.
     kernel: An integer or tuple/list of 2 integers, specifying the
       width and height of the 2D convolution window.
       Can be a single integer to specify the same value for
@@ -159,14 +246,197 @@ def depthwise_conv2d_block(inputs: tf.Tensor,
         all spatial dimensions.
         Specifying any stride value != 1 is incompatible with specifying
         any `dilation_rate` value != 1.
+    block_id: a unique identification designating the block number.
 
 
   Returns
     Output tensor of block of shape [batch_size, height, width, filters].
   """
-  pass
+
+  filters = max(int(filters * width_multiplier), min_depth)
+  padding = 'SAME'
+  if use_explicit_padding:
+    padding = 'VALID'
+
+  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+  regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
+  depth_regularizer = regularizer if regularize_depthwise else None
+
+  if use_explicit_padding:
+    inputs = FixedPadding(kernel_size=kernel,
+                          name='Conv2d_{}_FP'.format(block_id))(inputs)
+  x = layers.DepthwiseConv2D(kernel_size=kernel,
+                             padding=padding,
+                             depth_multiplier=1,
+                             strides=strides,
+                             kernel_initializer=weights_init,
+                             kernel_regularizer=depth_regularizer,
+                             dilation_rate=dilation_rate,
+                             use_bias=False,
+                             name='Conv2d_{}_dw'.format(block_id))(inputs)
+  x = layers.BatchNormalization(epsilon=batch_norm_epsilon,
+                                momentum=batch_norm_decay,
+                                axis=-1,
+                                name='Conv2d_{}_dw_BN'.format(block_id))(x)
+  x = layers.ReLU(max_value=6.,
+                  name='Conv2d_{}_dw_ReLU'.format(block_id))(x)
+
+  x = layers.Conv2D(filters=filters,
+                    kernel_size=(1, 1),
+                    padding='SAME',
+                    strides=(1, 1),
+                    kernel_initializer=weights_init,
+                    kernel_regularizer=regularizer,
+                    use_bias=False,
+                    name='Conv2d_{}_pw'.format(block_id))(x)
+  x = layers.BatchNormalization(epsilon=batch_norm_epsilon,
+                                momentum=batch_norm_decay,
+                                axis=-1,
+                                name='Conv2d_{}_pw_BN'.format(block_id))(x)
+  outputs = layers.ReLU(max_value=6.,
+                        name='Conv2d_{}_pw_ReLU'.format(block_id))(x)
+
+  return outputs
 
 
-class MobileNetV1(tf.keras.Model):
-  """Instantiates the MobileNet architecture."""
-  pass
+def mobilenet_v1_base(inputs: tf.Tensor,
+                      config: MobileNetV1Config
+                      ) -> tf.Tensor:
+  """Build the base MobileNet architecture."""
+
+  min_depth = config.min_depth
+  width_multiplier = config.width_multiplier
+  weight_decay = config.weight_decay
+  stddev = config.stddev
+  regularize_depthwise = config.regularize_depthwise
+  batch_norm_decay = config.batch_norm_decay
+  batch_norm_epsilon = config.batch_norm_epsilon
+  output_stride = config.output_stride
+  use_explicit_padding = config.use_explicit_padding
+
+  if width_multiplier <= 0:
+    raise ValueError('depth_multiplier is not greater than zero.')
+
+  if output_stride is not None and output_stride not in [8, 16, 32]:
+    raise ValueError('Only allowed output_stride values are 8, 16, 32.')
+
+  # The current_stride variable keeps track of the output stride of the
+  # activations, i.e., the running product of convolution strides up to the
+  # current network layer. This allows us to invoke atrous convolution
+  # whenever applying the next convolution would result in the activations
+  # having output stride larger than the target output_stride.
+  current_stride = 1
+
+  # The atrous convolution rate parameter.
+  rate = 1
+
+  net = inputs
+  for i, block_def in enumerate(config.blocks):
+    if output_stride is not None and current_stride == output_stride:
+      # If we have reached the target output_stride, then we need to employ
+      # atrous convolution with stride=1 and multiply the atrous rate by the
+      # current unit's stride for use in subsequent layers.
+      layer_stride = 1
+      layer_rate = rate
+      rate *= block_def.stride
+    else:
+      layer_stride = block_def.stride
+      layer_rate = 1
+      current_stride *= block_def.stride
+    if block_def.block_type == Conv:
+      net = _conv2d_block(
+        inputs=net,
+        filters=block_def.filters,
+        kernel=block_def.kernel,
+        strides=block_def.stride,
+        width_multiplier=width_multiplier,
+        min_depth=min_depth,
+        weight_decay=weight_decay,
+        stddev=stddev,
+        batch_norm_decay=batch_norm_decay,
+        batch_norm_epsilon=batch_norm_epsilon,
+        use_explicit_padding=use_explicit_padding,
+        block_id=i
+      )
+    elif block_def.block_type == DepSepConv:
+      net = _depthwise_conv2d_block(
+        inputs=net,
+        filters=block_def.filters,
+        kernel=block_def.kernel,
+        strides=layer_stride,
+        dilation_rate=layer_rate,
+        width_multiplier=width_multiplier,
+        min_depth=min_depth,
+        weight_decay=weight_decay,
+        stddev=stddev,
+        batch_norm_decay=batch_norm_decay,
+        batch_norm_epsilon=batch_norm_epsilon,
+        regularize_depthwise=regularize_depthwise,
+        use_explicit_padding=use_explicit_padding,
+        block_id=i
+      )
+    else:
+      raise ValueError('Unknown block type {} for layer {}'.format(
+        block_def.block_type, i))
+  return net
+
+
+def mobilenet_v1(input_shape: Tuple[int, int, int] = (224, 224, 3),
+                 config: MobileNetV1Config = MobileNetV1Config()
+                 ) -> tf.keras.models.Model:
+  """Instantiates the MobileNet Model."""
+
+  dropout_keep_prob = config.dropout_keep_prob
+  global_pool = config.global_pool
+  num_classes = config.num_classes
+  spatial_squeeze = config.spatial_squeeze
+  model_name = config.name
+
+  img_input = layers.Input(shape=input_shape, name='Input')
+  x = mobilenet_v1_base(img_input, config)
+
+  # Build top
+  if global_pool:
+    # Global average pooling.
+    x = layers.GlobalAveragePooling2D(data_format='channels_last',
+                                      name='top_GlobalPool')(x)
+    x = layers.Reshape((1, 1, x.shape[1]))(x)
+  else:
+    # Pooling with a fixed kernel size.
+    kernel_size = _reduced_kernel_size_for_small_input(x, (7, 7))
+    x = layers.AvgPool2D(pool_size=kernel_size,
+                         padding='VALID',
+                         data_format='channels_last',
+                         name='top_AvgPool')(x)
+
+  # 1 x 1 x 1024
+  x = layers.Dropout(rate=1 - dropout_keep_prob,
+                     name='top_Dropout')(x)
+
+  x = layers.Conv2D(filters=num_classes,
+                    kernel_size=(1, 1),
+                    padding='SAME',
+                    name='top_Conv2d_1x1')(x)
+  if spatial_squeeze:
+    x = layers.Reshape(target_shape=(num_classes,),
+                       name='top_SpatialSqueeze')(x)
+
+  x = layers.Activation(activation='softmax',
+                        name='top_Predictions')(x)
+
+  return tf.keras.models.Model(inputs=img_input,
+                               outputs=x,
+                               name=model_name)
+
+
+if __name__ == '__main__':
+  logging.basicConfig(
+    format='%(asctime)-15s:%(levelname)s:%(module)s:%(message)s',
+    level=logging.INFO)
+  model = mobilenet_v1()
+  model.compile(
+    optimizer='adam',
+    loss=tf.keras.losses.categorical_crossentropy,
+    metrics=[tf.keras.metrics.categorical_crossentropy]
+  )
+  logging.info(model.summary())
