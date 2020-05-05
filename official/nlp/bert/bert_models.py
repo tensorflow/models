@@ -101,7 +101,8 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
 @gin.configurable
 def get_transformer_encoder(bert_config,
                             sequence_length,
-                            transformer_encoder_cls=None):
+                            transformer_encoder_cls=None,
+                            output_range=None):
   """Gets a 'TransformerEncoder' object.
 
   Args:
@@ -109,6 +110,8 @@ def get_transformer_encoder(bert_config,
     sequence_length: Maximum sequence length of the training data.
     transformer_encoder_cls: A EncoderScaffold class. If it is None, uses the
       default BERT encoder implementation.
+    output_range: the sequence output range, [0, output_range). Default setting
+      is to return the entire sequence output.
 
   Returns:
     A networks.TransformerEncoder object.
@@ -161,6 +164,7 @@ def get_transformer_encoder(bert_config,
     return networks.AlbertTransformerEncoder(**kwargs)
   else:
     assert isinstance(bert_config, configs.BertConfig)
+    kwargs['output_range'] = output_range
     return networks.TransformerEncoder(**kwargs)
 
 
@@ -320,7 +324,8 @@ def classifier_model(bert_config,
         stddev=bert_config.initializer_range)
 
   if not hub_module_url:
-    bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
+    bert_encoder = get_transformer_encoder(
+        bert_config, max_seq_length, output_range=1)
     return models.BertClassifier(
         bert_encoder,
         num_classes=num_labels,
