@@ -18,4 +18,4 @@ This repository provides a curated list of the GitHub repositories with machine 
 
 ## Contributions
 
-If you want to contribute, please review the [contribution guidelines](../CONTRIBUTING.md).
+If you want to contribute, please review the [contribution guidelines](../../../wiki/How-to-contribute).
