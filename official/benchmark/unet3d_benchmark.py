@@ -131,6 +131,7 @@ class Unet3DAccuracyBenchmark(keras_benchmark.KerasBenchmark):
         dtype='bfloat16',
         distribution_strategy='tpu')
 
+  @owner_utils.Owner('tf-graph-compiler')
   def benchmark_4x4_tpu_bf16_mlir(self):
     """Test Keras model with 4x4 TPU, fp16 and MLIR enabled."""
     experiment_name = 'benchmark_4x4_tpu_fp16_mlir'
