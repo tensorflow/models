@@ -121,5 +121,4 @@ After removal, you will still be able to access archived models in the archive b
 
 ## Contributions
 
-If you want to contribute to the TensorFlow Model Garden,
-please review the [contribution guidelines](../CONTRIBUTING.md).
+If you want to contribute, please review the [contribution guidelines](../../../wiki/How-to-contribute).
