@@ -14,8 +14,7 @@
 # =============================================================================
 """Configuration definitions for MobileNet."""
 
-from typing import Text, Tuple, Union
-from enum import Enum
+from typing import Text, Tuple
 
 from dataclasses import dataclass
 from official.modeling.hyperparams import base_config
