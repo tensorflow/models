@@ -14,7 +14,7 @@
 # =============================================================================
 
 import logging
-from typing import Text, Tuple, Mapping
+from typing import Text, Tuple, Mapping, List, Union, Optional
 from functools import partial
 
 from dataclasses import dataclass
@@ -22,16 +22,8 @@ from dataclasses import dataclass
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
-from official.vision.image_classification.dataset_factory import DatasetConfig
+from research.mobilenet.dataset_config import DatasetConfig
 from research.mobilenet import dataset_preprocessing
-
-
-@dataclass
-class ImageNetConfig(DatasetConfig):
-  """The base ImageNet dataset config."""
-  name: str = 'imagenet2012'
-  image_size: int = 224
-  batch_size: int = 32
 
 
 def _get_dtype_map() -> Mapping[str, tf.dtypes.DType]:
@@ -63,8 +55,8 @@ def _preprocess(image: tf.Tensor,
       image,
       image_size=config.image_size,
       num_channels=config.num_channels,
-      mean_subtract=config.config.mean_subtract,
-      standardize=config.config.standardize,
+      mean_subtract=config.mean_subtract,
+      standardize=config.standardize,
       dtype=_get_dtype_map()[config.dtype])
 
   label = tf.cast(label, tf.int32)
@@ -77,44 +69,28 @@ def _preprocess(image: tf.Tensor,
 
 def load_tfds(
     dataset_name: Text,
-    data_dir: Text,
-    download: bool,
-    skip_decoding: bool,
-    split: Text,
+    download: bool = True,
+    split: Union[Text, List[Text]] = 'train',
+    data_dir: Optional[Text] = None,
 ) -> tf.data.Dataset:
   """Return a dataset loading files from TFDS."""
 
   logging.info('Using TFDS to load data.')
 
-  builder = tfds.builder(name=dataset_name,
-                         data_dir=data_dir)
-
-  if download:
-    builder.download_and_prepare()
-
-  decoders = {}
-
-  if skip_decoding:
-    decoders['image'] = tfds.decode.SkipDecoding()
-
-  read_config = tfds.ReadConfig(
-    interleave_parallel_reads=8,
-    interleave_block_length=1)
-
-  dataset = builder.as_dataset(
+  dataset = tfds.load(
+    name=dataset_name,
+    data_dir=data_dir,
     split=split,
+    download=download,
     as_supervised=True,
     shuffle_files=True,
-    decoders=decoders,
-    read_config=read_config)
+  )
 
   return dataset
 
 
 def pipeline(dataset: tf.data.Dataset,
              config: DatasetConfig,
-             is_training: bool = True,
-             strategy: tf.distribute.Strategy = None
              ) -> tf.data.Dataset:
   """Build a pipeline fetching, shuffling, and preprocessing the dataset.
 
@@ -124,6 +100,8 @@ def pipeline(dataset: tf.data.Dataset,
   Returns:
     A TensorFlow dataset outputting batched images and labels.
   """
+
+  is_training = True if config.split == 'train' else False
 
   if is_training and not config.cache:
     dataset = dataset.repeat()
@@ -141,18 +119,7 @@ def pipeline(dataset: tf.data.Dataset,
     partial(_preprocess, config=config, is_training=is_training),
     num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-  if strategy:
-    num_devices = strategy.num_replicas_in_sync
-    if not config.use_per_replica_batch_size:
-      raise ValueError(
-        'The builder does not support a global batch size with more than '
-        'one replica. Got {} replicas. Please set a '
-        '`per_replica_batch_size` and enable '
-        '`use_per_replica_batch_size=True`.'.format(num_devices))
-    global_batch_size = config.batch_size * num_devices
-  else:
-    global_batch_size = config.batch_size
-  dataset = dataset.batch(global_batch_size, drop_remainder=is_training)
+  dataset = dataset.batch(config.batch_size, drop_remainder=is_training)
 
   if is_training:
     options = tf.data.Options()
