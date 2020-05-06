@@ -11,7 +11,7 @@ scipy
 tensorflow>=2.1.0
 tensorflow-hub
 tensorflow-model-optimization
-tensorflow-datasets
+tensorflow-datasets>=3.1.0
 tensorflow-addons
 dataclasses
 gin-config
