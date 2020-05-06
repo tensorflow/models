@@ -20,6 +20,8 @@ and [NEW] code for model training.
 
 If you make use of this code, please consider citing the following papers:
 
+[![Paper](http://img.shields.io/badge/paper-arXiv.1612.06321-B3181B.svg)](https://arxiv.org/abs/1612.06321)
+
 ```
 "Large-Scale Image Retrieval with Attentive Deep Local Features",
 H. Noh, A. Araujo, J. Sim, T. Weyand and B. Han,
@@ -27,6 +29,8 @@ Proc. ICCV'17
 ```
 
 and/or
+
+[![Paper](http://img.shields.io/badge/paper-arXiv.1812.01584-B3181B.svg)](https://arxiv.org/abs/1812.01584)
 
 ```
 "Detect-to-Retrieve: Efficient Regional Aggregation for Image Search",

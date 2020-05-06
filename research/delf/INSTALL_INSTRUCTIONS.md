@@ -2,6 +2,8 @@
 
 ### Tensorflow
 
+[![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
+
 For detailed steps to install Tensorflow, follow the
 [Tensorflow installation instructions](https://www.tensorflow.org/install/). A
 typical user can install Tensorflow using one of the following commands:
