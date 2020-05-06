@@ -1,5 +1,7 @@
 # DELF: DEep Local Features
 
+[![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
+
 This project presents code for extracting DELF features, which were introduced
 with the paper
 ["Large-Scale Image Retrieval with Attentive Deep Local Features"](https://arxiv.org/abs/1612.06321).
