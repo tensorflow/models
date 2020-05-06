@@ -6,41 +6,68 @@ The TensorFlow official models are a collection of models
 that use TensorFlow’s high-level APIs.
 They are intended to be well-maintained, tested, and kept up to date
 with the latest TensorFlow API.
+
 They should also be reasonably optimized for fast performance while still
 being easy to read.
 These models are used as end-to-end tests, ensuring that the models run
 with the same or improved speed and performance with each new TensorFlow build.
 
-## Model Implementations
+## More models to come!
 
-### Natural Language Processing
+The team is actively developing new models.
+In the near future, we will add:
 
-| Model | Description | Reference |
-| ----- | ----------- | --------- |
-| [ALBERT](nlp/albert) | A Lite BERT for Self-supervised Learning of Language Representations | [arXiv:1909.11942](https://arxiv.org/abs/1909.11942) |
-| [BERT](nlp/bert) | A powerful pre-trained language representation model: BERT (Bidirectional Encoder Representations from Transformers) | [arXiv:1810.04805](https://arxiv.org/abs/1810.04805) |
-| [NHNet](nlp/nhnet) | A transformer-based multi-sequence to sequence model: Generating Representative Headlines for News Stories | [arXiv:2001.09386](https://arxiv.org/abs/2001.09386) |
-| [Transformer](nlp/transformer) | A transformer model to translate the WMT English to German dataset | [arXiv:1706.03762](https://arxiv.org/abs/1706.03762) |
-| [XLNet](nlp/xlnet) | XLNet: Generalized Autoregressive Pretraining for Language Understanding | [arXiv:1906.08237](https://arxiv.org/abs/1906.08237) |
+* State-of-the-art language understanding models:
+  More members in Transformer family
+* Start-of-the-art image classification models:
+  EfficientNet, MnasNet, and variants
+* A set of excellent objection detection models.
+
+## Table of Contents
+
+- [Models and Implementations](#models-and-implementations)
+  * [Computer Vision](#computer-vision)
+    + [Image Classification](#image-classification)
+    + [Object Detection and Segmentation](#object-detection-and-segmentation)
+  * [Natural Language Processing](#natural-language-processing)
+  * [Recommendation](#recommendation)
+- [How to get started with the official models](#how-to-get-started-with-the-official-models)
+
+## Models and Implementations
 
 ### Computer Vision
 
-| Model | Description | Reference |
-| ----- | ----------- | --------- |
-| [MNIST](vision/image_classification) | A basic model to classify digits from the MNIST dataset | [Link](http://yann.lecun.com/exdb/mnist/) |
-| [ResNet](vision/image_classification) | A deep residual network for image recognition | [arXiv:1512.03385](https://arxiv.org/abs/1512.03385) |
-| [RetinaNet](vision/detection) | A fast and powerful object detector | [arXiv:1708.02002](https://arxiv.org/abs/1708.02002) |
-| [Mask R-CNN](vision/detection) | An object detection and instance segmentation model | [arXiv:1703.06870](https://arxiv.org/abs/1703.06870) |
+#### Image Classification
 
-### Other models
+| Model | Reference (Paper) |
+|-------|-------------------|
+| [MNIST](vision/image_classification) | A basic model to classify digits from the [MNIST dataset](http://yann.lecun.com/exdb/mnist/) |
+| [ResNet](vision/image_classification) | [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385) |
 
-| Model | Description | Reference |
-| ----- | ----------- | --------- |
-| [NCF](recommendation) | Neural Collaborative Filtering model for recommendation tasks | [arXiv:1708.05031](https://arxiv.org/abs/1708.05031) |
+#### Object Detection and Segmentation
 
----
+| Model | Reference (Paper) |
+|-------|-------------------|
+| [RetinaNet](vision/detection) | [Focal Loss for Dense Object Detection](https://arxiv.org/abs/1708.02002) |
+| [Mask R-CNN](vision/detection) | [Mask R-CNN](https://arxiv.org/abs/1703.06870) |
 
-## How to get started with the Model Garden official models
+### Natural Language Processing
+
+| Model | Reference (Paper) |
+|-------|-------------------|
+| [ALBERT (A Lite BERT)](nlp/albert) | [ALBERT: A Lite BERT for Self-supervised Learning of Language Representations](https://arxiv.org/abs/1909.11942) |
+| [BERT (Bidirectional Encoder Representations from Transformers)](nlp/bert) | [BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding](https://arxiv.org/abs/1810.04805) |
+| [NHNet (News Headline generation model)](nlp/nhnet) | [Generating Representative Headlines for News Stories](https://arxiv.org/abs/2001.09386) |
+| [Transformer](nlp/transformer) | [Attention Is All You Need](https://arxiv.org/abs/1706.03762) |
+| [XLNet](nlp/xlnet) | [XLNet: Generalized Autoregressive Pretraining for Language Understanding](https://arxiv.org/abs/1906.08237) |
+
+### Recommendation
+
+| Model | Reference (Paper) |
+|-------|-------------------|
+| [NCF](recommendation) | [Neural Collaborative Filtering](https://arxiv.org/abs/1708.05031) |
+
+## How to get started with the official models
 
 * The models in the master branch are developed using TensorFlow 2,
 and they target the TensorFlow [nightly binaries](https://github.com/tensorflow/tensorflow#installation)
@@ -108,44 +135,6 @@ os.environ['PYTHONPATH'] += ":/path/to/models"
 pip3 install --user -r official/requirements.txt
 ```
 
----
-
-## More models to come!
-
-The team is actively developing new models.
-In the near future, we will add:
-
-- State-of-the-art language understanding models:
-  More members in Transformer family
-- Start-of-the-art image classification models:
-  EfficientNet, MnasNet and variants.
-- A set of excellent objection detection models.
-
-If you would like to make any fixes or improvements to the models, please
-[submit a pull request](https://github.com/tensorflow/models/compare).
-
----
-
 ## Contributions
 
-Every model should follow our guidelines to uphold our objectives of readable,
-usable, and maintainable code.
-
-### General Guidelines
-
-- Code should be well documented and tested.
-- Runnable from a blank environment with ease.
-- Trainable on: single GPU/CPU (baseline), multiple GPUs & TPUs
-- Compatible with Python 3 (using [six](https://pythonhosted.org/six/)
-when being compatible with Python 2 is necessary)
-- Conform to
-  [Google Python Style Guide](https://github.com/google/styleguide/blob/gh-pages/pyguide.md)
-
-### Implementation Guidelines
-
-These guidelines are to ensure consistent model implementations for
-better readability and maintainability.
-
-- Use [common utility functions](utils)
-- Export SavedModel at the end of the training.
-- Consistent flags and flag-parsing library ([read more here](utils/flags/guidelines.md))
+If you want to contribute, please review the [contribution guidelines](https://github.com/tensorflow/models/wiki/How-to-contribute).
