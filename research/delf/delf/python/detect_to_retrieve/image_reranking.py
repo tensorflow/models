@@ -103,8 +103,8 @@ def MatchFeatures(query_locations,
       if indices[i] != num_features_index_image
   ])
 
-  # If there are no putative matches, early return 0.
-  if not query_locations_to_use.shape[0]:
+  # If there are not enough putative matches, early return 0.
+  if query_locations_to_use.shape[0] <= _MIN_RANSAC_SAMPLES:
     return 0
 
   # Perform geometric verification using RANSAC.
