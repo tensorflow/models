@@ -1,5 +1,7 @@
 ## Detect-to-Retrieve instructions
 
+[![Paper](http://img.shields.io/badge/paper-arXiv.1812.01584-B3181B.svg)](https://arxiv.org/abs/1812.01584)
+
 These instructions can be used to reproduce the results from the
 [Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584) for the Revisited
 Oxford/Paris datasets.
