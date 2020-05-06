@@ -14,10 +14,8 @@
 # =============================================================================
 
 import logging
-from typing import Text, Tuple, Mapping, List, Union, Optional
+from typing import Text, Tuple, Mapping, List, Union, Optional, Type
 from functools import partial
-
-from dataclasses import dataclass
 
 import tensorflow_datasets as tfds
 import tensorflow as tf
@@ -39,7 +37,7 @@ def _get_dtype_map() -> Mapping[str, tf.dtypes.DType]:
 
 def _preprocess(image: tf.Tensor,
                 label: tf.Tensor,
-                config: DatasetConfig,
+                config: Type[DatasetConfig],
                 is_training: bool = True
                 ) -> Tuple[tf.Tensor, tf.Tensor]:
   """Apply image preprocessing and augmentation to the image and label."""
@@ -90,12 +88,13 @@ def load_tfds(
 
 
 def pipeline(dataset: tf.data.Dataset,
-             config: DatasetConfig,
+             config: Type[DatasetConfig],
              ) -> tf.data.Dataset:
   """Build a pipeline fetching, shuffling, and preprocessing the dataset.
 
   Args:
     dataset: A `tf.data.Dataset` that loads raw files.
+    config: A subclass instance of DatasetConfig
 
   Returns:
     A TensorFlow dataset outputting batched images and labels.
@@ -114,7 +113,6 @@ def pipeline(dataset: tf.data.Dataset,
     dataset = dataset.repeat()
 
   # Parse, pre-process, and batch the data in parallel
-
   dataset = dataset.map(
     partial(_preprocess, config=config, is_training=is_training),
     num_parallel_calls=tf.data.experimental.AUTOTUNE)
