@@ -1,5 +1,7 @@
 ## Quick start: landmark detection
 
+[![Paper](http://img.shields.io/badge/paper-arXiv.1812.01584-B3181B.svg)](https://arxiv.org/abs/1812.01584)
+
 ### Install DELF library
 
 To be able to use this code, please follow
