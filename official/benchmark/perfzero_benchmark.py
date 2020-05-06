@@ -72,6 +72,8 @@ class PerfZeroBenchmark(tf.test.Benchmark):
       # TPU models are expected to accept a --tpu=name flag. PerfZero creates
       # the TPU at runtime and passes the TPU's name to this flag.
       self.default_flags['tpu'] = resolved_tpu
+    else:
+      self.default_flags['tpu'] = ''
 
     logging.info('root_data_dir: %s', root_data_dir)
 

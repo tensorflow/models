@@ -61,7 +61,8 @@ def _get_classifier_parameters(
     run_eagerly: bool = False,
     gpu_thread_mode: Optional[str] = None,
     dataset_num_private_threads: Optional[int] = None,
-    loss_scale: Optional[str] = None) -> MutableMapping[str, Any]:
+    loss_scale: Optional[str] = None,
+    batchnorm_spatial_persistent: bool = False) -> MutableMapping[str, Any]:
   """Gets classifier trainer's ResNet parameters."""
   return {
       'runtime': {
@@ -72,6 +73,7 @@ def _get_classifier_parameters(
           'dataset_num_private_threads': dataset_num_private_threads,
           'gpu_thread_mode': gpu_thread_mode,
           'loss_scale': loss_scale,
+          'batchnorm_spatial_persistent': batchnorm_spatial_persistent,
       },
       'train_dataset': {
           'builder': builder,
@@ -167,7 +169,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
         run_eagerly=run_eagerly,
         gpu_thread_mode=gpu_thread_mode,
         dataset_num_private_threads=dataset_num_private_threads,
-        loss_scale=loss_scale)
+        loss_scale=loss_scale,
+        batchnorm_spatial_persistent=True)
     FLAGS.params_override = json.dumps(parameters)
     total_batch_size = num_gpus * per_replica_batch_size
 
@@ -349,7 +352,8 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
         enable_xla=enable_xla,
         gpu_thread_mode=gpu_thread_mode,
         dataset_num_private_threads=dataset_num_private_threads,
-        loss_scale=loss_scale)
+        loss_scale=loss_scale,
+        batchnorm_spatial_persistent=True)
     FLAGS.params_override = json.dumps(parameters)
     if distribution_strategy == 'tpu':
       total_batch_size = num_tpus * per_replica_batch_size

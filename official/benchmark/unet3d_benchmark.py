@@ -26,6 +26,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 
 from official.benchmark import benchmark_wrappers
 from official.benchmark import keras_benchmark
+from official.benchmark import owner_utils
 from official.vision.segmentation import unet_main as unet_training_lib
 from official.vision.segmentation import unet_model as unet_model_lib
 
@@ -119,9 +120,22 @@ class Unet3DAccuracyBenchmark(keras_benchmark.KerasBenchmark):
   def _get_model_dir(self, folder_name):
     return os.path.join(self.output_dir, folder_name)
 
+  @owner_utils.Owner('tf-model-garden')
   def benchmark_4x4_tpu_bf16(self):
     """Test Keras model with 4x4 TPU, fp16."""
     experiment_name = 'benchmark_4x4_tpu_fp16'
+    self._setup()
+    self._set_benchmark_parameters(experiment_name)
+    self._run_and_report_benchmark(
+        experiment_name=experiment_name,
+        dtype='bfloat16',
+        distribution_strategy='tpu')
+
+  @owner_utils.Owner('tf-graph-compiler')
+  def benchmark_4x4_tpu_bf16_mlir(self):
+    """Test Keras model with 4x4 TPU, fp16 and MLIR enabled."""
+    experiment_name = 'benchmark_4x4_tpu_fp16_mlir'
+    tf.config.experimental.enable_mlir_bridge()
     self._setup()
     self._set_benchmark_parameters(experiment_name)
     self._run_and_report_benchmark(

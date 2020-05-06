@@ -57,7 +57,6 @@ flags.DEFINE_integer('train_batch_size', 32, 'Batch size for training.')
 flags.DEFINE_integer('eval_batch_size', 32, 'Batch size for evaluation.')
 
 common_flags.define_common_bert_flags()
-common_flags.define_gin_flags()
 
 FLAGS = flags.FLAGS
 
