@@ -1,0 +1,31 @@
+name: lint_python
+on:
+  pull_request:
+  push:
+  #  branches: [master]
+jobs:
+  lint_python:
+    runs-on: ubuntu-latest
+    # strategy:
+    #  matrix:
+    #    os: [ubuntu-latest, macos-latest, windows-latest]
+    #    python-version: [3.5, 3.6, 3.7, 3.8]  # , pypy3]
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@master
+      # with:
+      #   python-version: ${{ matrix.python-version }}
+      - run: pip install black codespell flake8 isort pytest reorder-python-imports
+      - run: black --check . || true
+      # - run: black --diff . || true
+      # - if: matrix.python-version >= 3.6
+      #  run: |
+      #    pip install black
+      #    black --check . || true
+      - run: codespell --quiet-level=2 || true  # --ignore-words-list="" --skip=""
+      - run: flake8 . --count --show-source --statistics --select=E9,F63,F7  # ,F82
+      # isort and reorder-python-imports are two ways of doing the same thing
+      - run: isort --recursive . || true
+      - run: reorder-python-imports . || true
+      - run: pip install -r requirements.txt || true
+      - run: pytest . || true
