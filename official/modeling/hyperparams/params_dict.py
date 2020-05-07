@@ -42,6 +42,10 @@ _PARAM_RE = re.compile(r"""
   \[[^\]]*\]))                 # list of values
   ($|,\s*)""", re.VERBOSE)
 
+# pylint: disable=anomalous-backslash-in-string
+_CONST_VALUE_RE = re.compile('(\d.*|-\d.*|None)')
+# pylint: enable=anomalous-backslash-in-string
+
 
 class ParamsDict(object):
   """A hyperparameter container class."""
@@ -239,11 +243,20 @@ class ParamsDict(object):
       ValueError: if the restriction defined in the string is not supported.
     """
     def _get_kv(dotted_string, params_dict):
-      tokenized_params = dotted_string.split('.')
-      v = params_dict
-      for t in tokenized_params:
-        v = v[t]
-      return tokenized_params[-1], v
+      """Get keys and values indicated by dotted_string."""
+      if _CONST_VALUE_RE.match(dotted_string) is not None:
+        const_str = dotted_string
+        if const_str == 'None':
+          constant = None
+        else:
+          constant = float(const_str)
+        return None, constant
+      else:
+        tokenized_params = dotted_string.split('.')
+        v = params_dict
+        for t in tokenized_params:
+          v = v[t]
+        return tokenized_params[-1], v
 
     def _get_kvs(tokens, params_dict):
       if len(tokens) != 2:
