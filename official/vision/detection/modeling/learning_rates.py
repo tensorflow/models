@@ -21,7 +21,7 @@ from __future__ import print_function
 import functools
 
 import numpy as np
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from official.modeling.hyperparams import params_dict
 
 

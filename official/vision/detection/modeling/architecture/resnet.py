@@ -24,7 +24,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from tensorflow.python.keras import backend
 from official.vision.detection.modeling.architecture import nn_ops
 

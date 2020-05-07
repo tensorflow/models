@@ -21,7 +21,7 @@ from __future__ import print_function
 import abc
 import functools
 import re
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from official.vision.detection.modeling import checkpoint_utils
 from official.vision.detection.modeling import learning_rates
 from official.vision.detection.modeling import optimizers

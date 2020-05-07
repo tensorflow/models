@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from official.vision.detection.utils.object_detection import argmax_matcher
 from official.vision.detection.utils.object_detection import balanced_positive_negative_sampler
 from official.vision.detection.utils.object_detection import box_list

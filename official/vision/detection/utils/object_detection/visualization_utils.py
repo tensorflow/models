@@ -31,7 +31,7 @@ import PIL.ImageColor as ImageColor
 import PIL.ImageDraw as ImageDraw
 import PIL.ImageFont as ImageFont
 import six
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.utils import box_utils
 from official.vision.detection.utils.object_detection import shape_utils

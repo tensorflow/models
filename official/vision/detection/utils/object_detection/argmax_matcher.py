@@ -26,7 +26,7 @@ This matcher is used in Fast(er)-RCNN.
 Note: matchers are used in TargetAssigners. There is a create_target_assigner
 factory function for popular implementations.
 """
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.utils.object_detection import matcher
 from official.vision.detection.utils.object_detection import shape_utils

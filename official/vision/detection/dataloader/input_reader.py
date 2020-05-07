@@ -19,7 +19,7 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from typing import Text, Optional
 from official.modeling.hyperparams import params_dict
