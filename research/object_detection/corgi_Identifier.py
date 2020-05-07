@@ -1,3 +1,10 @@
+#Alex Schuster
+#CS485G
+#Assignment 5: Corgi Classification with Convolutional Neural Networks
+#Dr. Harrison
+#05/07/2020
+#NOTE: This is modified code from the https://github.com/tensorflow/models/tree/r1.13.0 repository. This program, the act of training, and everything involved in it was built off this
+#repository. Specifically, branch r1.13.0 was used.
 import numpy as np
 import os
 import six.moves.urllib as urllib
@@ -14,32 +21,28 @@ from io import StringIO
 from matplotlib import pyplot as plt
 from PIL import Image, ImageDraw
 
-# This is needed since the notebook is stored in the object_detection folder.
 from object_detection.utils import ops as utils_ops
-#sys.path.append("..")
 if StrictVersion(tf.__version__) < StrictVersion('1.9.0'):
   raise ImportError('Please upgrade your TensorFlow installation to v1.9.* or later!')
 
-
-# This is needed to display the images.
-#%matplotlib
-
 from utils import label_map_util
-path= r'C:\Users\alexs\OneDrive\Documents\GitHub\models\research\object_detection'
-os.chdir(path)
+#path= r'C:\Users\alexs\OneDrive\Documents\GitHub\models\research\object_detection'
+#os.chdir(path)
 from utils import visualization_utils as vis_util
 
+#This is the .csv file that holds a classifer for what the actual image is (cardigan or pembroke) so 
+#the program knows if it was correct or not. These correpond 1:1 to the test image numbers i.e.
+#row 1 of the .csv file corresponds to 'corgi1' in testimages/, and so on...
 corgiClassLabels = pd.read_csv('corgiClasslabels.csv', header=None)
 
 
 # Path to frozen detection graph. This is the actual model that is used for the object detection.
 frozenDir='inference_graph'
 PATH_TO_FROZEN_GRAPH = os.path.join(frozenDir, 'frozen_inference_graph.pb')
-#PATH_TO_FROZEN_GRAPH=r'C:\Users\alexs\OneDrive\Documents\GitHub\models\research\object_detection\inference_graph\frozen_inference_graph.pb'
 
 # List of the strings that is used to add correct label for each box.
-#PATH_TO_LABELS = os.path.join('data', 'mscoco_label_map.pbtxt')
-PATH_TO_LABELS= r'C:\Users\alexs\OneDrive\Documents\GitHub\models\research\object_detection\training\labelmap.pbtxt'
+trainingDir='training'
+PATH_TO_LABELS= os.path.join(trainingDir, 'labelmap.pbtxt')
 
 #Loading in frozen model
 detection_graph = tf.Graph()
@@ -58,14 +61,13 @@ def load_image_into_numpy_array(image):
       (im_height, im_width, 3)).astype(np.uint8)
 
 
-# If you want to test the code with your images, just add path to the images to the TEST_IMAGE_PATHS.
+# These images are located in objectdetection\test_images\, images 1-20 are the cardigan test images, 21-40 are the pembroke test images.
 PATH_TO_TEST_IMAGES_DIR = 'test_images'
 TEST_IMAGE_PATHS = [ os.path.join(PATH_TO_TEST_IMAGES_DIR, 'corgi{}.jpg'.format(i)) for i in range(1, len(corgiClassLabels)+1) ]
 
 # Size, in inches, of the output images.
 IMAGE_SIZE = (12, 8)
-occupied=0
-empty=0
+
 count=1
 correct=0
 def run_inference_for_single_image(image, graph):
@@ -153,8 +155,9 @@ for image_path in TEST_IMAGE_PATHS:
   print("Predicted Breed:",predictedBreed," Actual Breed: ",actualBreed)
   count+=1
 
+  #stricly for showing the image predictions, you can comment this out and it will still perform fine.
   cv2.imshow('object detector', image)
-  cv2.waitKey(0)
+  cv2.waitKey(0) #need to press a key to continue the program
   cv2.destroyAllWindows()
 
 print("Number of predictions correct was: ", correct,"/",len(corgiClassLabels)," Percent Correct: ", correct/len(corgiClassLabels)*100)
