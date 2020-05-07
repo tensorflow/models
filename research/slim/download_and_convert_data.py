@@ -39,7 +39,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from datasets import download_and_convert_cifar10
 from datasets import download_and_convert_flowers

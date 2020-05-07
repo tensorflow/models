@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import framework as contrib_framework
 from tensorflow.contrib import layers as contrib_layers
 from tensorflow.contrib import util as contrib_util

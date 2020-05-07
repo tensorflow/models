@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import slim as contrib_slim
 
 from nets.nasnet import nasnet
@@ -151,7 +151,8 @@ class NASNetTest(tf.test.TestCase):
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
                         'Predictions': [batch_size, num_classes]}
-    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    self.assertItemsEqual(
+        list(endpoints_shapes.keys()), list(end_points.keys()))
     for endpoint_name in endpoints_shapes:
       tf.compat.v1.logging.info('Endpoint name: {}'.format(endpoint_name))
       expected_shape = endpoints_shapes[endpoint_name]
@@ -202,7 +203,8 @@ class NASNetTest(tf.test.TestCase):
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
                         'Predictions': [batch_size, num_classes]}
-    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    self.assertItemsEqual(
+        list(endpoints_shapes.keys()), list(end_points.keys()))
     for endpoint_name in endpoints_shapes:
       tf.compat.v1.logging.info('Endpoint name: {}'.format(endpoint_name))
       expected_shape = endpoints_shapes[endpoint_name]
@@ -259,7 +261,8 @@ class NASNetTest(tf.test.TestCase):
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
                         'Predictions': [batch_size, num_classes]}
-    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    self.assertItemsEqual(
+        list(endpoints_shapes.keys()), list(end_points.keys()))
     for endpoint_name in endpoints_shapes:
       tf.compat.v1.logging.info('Endpoint name: {}'.format(endpoint_name))
       expected_shape = endpoints_shapes[endpoint_name]

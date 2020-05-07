@@ -22,7 +22,7 @@ import contextlib
 import copy
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import slim as contrib_slim
 
 slim = contrib_slim
@@ -318,6 +318,7 @@ def mobilenet(inputs,
               reuse=None,
               scope='Mobilenet',
               base_only=False,
+              use_reduce_mean_for_pooling=False,
               **mobilenet_args):
   """Mobilenet model for classification, supports both V1 and V2.
 
@@ -337,6 +338,8 @@ def mobilenet(inputs,
     scope: Optional variable_scope.
     base_only: if True will only create the base of the network (no pooling
     and no logits).
+    use_reduce_mean_for_pooling: if True use the reduce_mean for pooling. If
+    True use the global_pool function that provides some optimization.
     **mobilenet_args: passed to mobilenet_base verbatim.
       - conv_defs: list of conv defs
       - multiplier: Float multiplier for the depth (number of channels)
@@ -372,7 +375,7 @@ def mobilenet(inputs,
     net = tf.identity(net, name='embedding')
 
     with tf.compat.v1.variable_scope('Logits'):
-      net = global_pool(net)
+      net = global_pool(net, use_reduce_mean_for_pooling)
       end_points['global_pool'] = net
       if not num_classes:
         return net, end_points
@@ -396,7 +399,9 @@ def mobilenet(inputs,
   return logits, end_points
 
 
-def global_pool(input_tensor, pool_op=tf.compat.v2.nn.avg_pool2d):
+def global_pool(input_tensor,
+                use_reduce_mean_for_pooling=False,
+                pool_op=tf.compat.v2.nn.avg_pool2d):
   """Applies avg pool to produce 1x1 output.
 
   NOTE: This function is funcitonally equivalenet to reduce_mean, but it has
@@ -404,24 +409,29 @@ def global_pool(input_tensor, pool_op=tf.compat.v2.nn.avg_pool2d):
 
   Args:
     input_tensor: input tensor
+    use_reduce_mean_for_pooling: if True use reduce_mean for pooling
     pool_op: pooling op (avg pool is default)
   Returns:
     a tensor batch_size x 1 x 1 x depth.
   """
-  shape = input_tensor.get_shape().as_list()
-  if shape[1] is None or shape[2] is None:
-    kernel_size = tf.convert_to_tensor(value=[
-        1,
-        tf.shape(input=input_tensor)[1],
-        tf.shape(input=input_tensor)[2], 1
-    ])
+  if use_reduce_mean_for_pooling:
+    return tf.reduce_mean(
+        input_tensor, [1, 2], keep_dims=True, name='ReduceMean')
   else:
-    kernel_size = [1, shape[1], shape[2], 1]
-  output = pool_op(
-      input_tensor, ksize=kernel_size, strides=[1, 1, 1, 1], padding='VALID')
-  # Recover output shape, for unknown shape.
-  output.set_shape([None, 1, 1, None])
-  return output
+    shape = input_tensor.get_shape().as_list()
+    if shape[1] is None or shape[2] is None:
+      kernel_size = tf.convert_to_tensor(value=[
+          1,
+          tf.shape(input=input_tensor)[1],
+          tf.shape(input=input_tensor)[2], 1
+      ])
+    else:
+      kernel_size = [1, shape[1], shape[2], 1]
+    output = pool_op(
+        input_tensor, ksize=kernel_size, strides=[1, 1, 1, 1], padding='VALID')
+    # Recover output shape, for unknown shape.
+    output.set_shape([None, 1, 1, None])
+    return output
 
 
 def training_scope(is_training=True,

@@ -32,7 +32,8 @@ import contextlib2
 
 import PIL.Image
 
-import tensorflow as tf
+import six
+import tensorflow.compat.v1 as tf
 
 from datasets import dataset_utils
 
@@ -201,7 +202,7 @@ def create_tf_record_for_visualwakewords_dataset(annotations_file, image_dir,
     groundtruth_data = json.load(fid)
     images = groundtruth_data['images']
     annotations_index = groundtruth_data['annotations']
-    annotations_index = {int(k): v for k, v in annotations_index.iteritems()}
+    annotations_index = {int(k): v for k, v in six.iteritems(annotations_index)}
     # convert 'unicode' key to 'int' key after we parse the json file
 
     for idx, image in enumerate(images):

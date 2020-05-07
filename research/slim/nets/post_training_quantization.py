@@ -21,7 +21,7 @@ from __future__ import print_function
 import functools
 from absl import app
 from absl import flags
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import tensorflow_datasets as tfds
 from nets import nets_factory
 from preprocessing import preprocessing_factory

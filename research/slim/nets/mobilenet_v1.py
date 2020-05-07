@@ -108,7 +108,7 @@ from __future__ import print_function
 from collections import namedtuple
 import functools
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import layers as contrib_layers
 from tensorflow.contrib import slim as contrib_slim
 

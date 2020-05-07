@@ -19,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import tensorflow as tf
+import six
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import quantize as contrib_quantize
 from tensorflow.contrib import slim as contrib_slim
 
@@ -100,10 +101,10 @@ def metrics(logits, labels):
       'Recall_5':
           tf.compat.v1.metrics.recall_at_k(labels, logits, 5),
   })
-  for name, value in names_to_values.iteritems():
+  for name, value in six.iteritems(names_to_values):
     slim.summaries.add_scalar_summary(
         value, name, prefix='eval', print_summary=True)
-  return names_to_updates.values()
+  return list(names_to_updates.values())
 
 
 def build_model():

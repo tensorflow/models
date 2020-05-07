@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import slim as contrib_slim
 
 from nets import inception
@@ -100,7 +100,7 @@ class InceptionTest(tf.test.TestCase):
                           'MaxPool_3a_3x3', 'Conv2d_3b_1x1', 'Conv2d_4a_3x3',
                           'MaxPool_5a_3x3', 'Mixed_5b', 'Mixed_6a',
                           'PreAuxLogits', 'Mixed_7a', 'Conv2d_7b_1x1']
-    self.assertItemsEqual(end_points.keys(), expected_endpoints)
+    self.assertItemsEqual(list(end_points.keys()), expected_endpoints)
 
   def testBuildOnlyUptoFinalEndpoint(self):
     batch_size = 5
@@ -117,7 +117,7 @@ class InceptionTest(tf.test.TestCase):
         if endpoint != 'PreAuxLogits':
           self.assertTrue(out_tensor.op.name.startswith(
               'InceptionResnetV2/' + endpoint))
-        self.assertItemsEqual(endpoints[:index+1], end_points.keys())
+        self.assertItemsEqual(endpoints[:index + 1], list(end_points.keys()))
 
   def testBuildAndCheckAllEndPointsUptoPreAuxLogits(self):
     batch_size = 5
@@ -138,7 +138,8 @@ class InceptionTest(tf.test.TestCase):
                         'PreAuxLogits': [5, 17, 17, 1088]
                        }
 
-    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    self.assertItemsEqual(
+        list(endpoints_shapes.keys()), list(end_points.keys()))
     for endpoint_name in endpoints_shapes:
       expected_shape = endpoints_shapes[endpoint_name]
       self.assertTrue(endpoint_name in end_points)
@@ -164,7 +165,8 @@ class InceptionTest(tf.test.TestCase):
                         'PreAuxLogits': [5, 19, 19, 1088]
                        }
 
-    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    self.assertItemsEqual(
+        list(endpoints_shapes.keys()), list(end_points.keys()))
     for endpoint_name in endpoints_shapes:
       expected_shape = endpoints_shapes[endpoint_name]
       self.assertTrue(endpoint_name in end_points)
@@ -190,7 +192,8 @@ class InceptionTest(tf.test.TestCase):
                         'PreAuxLogits': [5, 33, 33, 1088]
                        }
 
-    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
+    self.assertItemsEqual(
+        list(endpoints_shapes.keys()), list(end_points.keys()))
     for endpoint_name in endpoints_shapes:
       expected_shape = endpoints_shapes[endpoint_name]
       self.assertTrue(endpoint_name in end_points)
