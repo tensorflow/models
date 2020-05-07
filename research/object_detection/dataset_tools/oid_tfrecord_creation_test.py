@@ -16,7 +16,7 @@
 
 import pandas as pd
 import six
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.dataset_tools import oid_tfrecord_creation
 

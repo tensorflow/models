@@ -18,13 +18,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import logging
 
+import numpy as np
 from six import string_types
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from object_detection.protos import string_int_label_map_pb2
+
+_LABEL_OFFSET = 1
 
 
 def _validate_label_map(label_map):
@@ -214,6 +218,59 @@ def get_label_map_dict(label_map_path_or_proto,
           label_map_dict[str(value)] = value
 
   return label_map_dict
+
+
+def get_label_map_hierarchy_lut(label_map_path_or_proto,
+                                include_identity=False):
+  """Reads a label map and returns ancestors and descendants in the hierarchy.
+
+  The function returns the ancestors and descendants as separate look up tables
+   (LUT) numpy arrays of shape [max_id, max_id] where lut[i,j] = 1 when there is
+   a hierarchical relationship between class i and j.
+
+  Args:
+    label_map_path_or_proto: path to StringIntLabelMap proto text file or the
+      proto itself.
+    include_identity: Boolean to indicate whether to include a class element
+      among its ancestors and descendants. Setting this will result in the lut
+      diagonal being set to 1.
+
+  Returns:
+    ancestors_lut: Look up table with the ancestors.
+    descendants_lut: Look up table with the descendants.
+  """
+  if isinstance(label_map_path_or_proto, string_types):
+    label_map = load_labelmap(label_map_path_or_proto)
+  else:
+    _validate_label_map(label_map_path_or_proto)
+    label_map = label_map_path_or_proto
+
+  hierarchy_dict = {
+      'ancestors': collections.defaultdict(list),
+      'descendants': collections.defaultdict(list)
+  }
+  max_id = -1
+  for item in label_map.item:
+    max_id = max(max_id, item.id)
+    for ancestor in item.ancestor_ids:
+      hierarchy_dict['ancestors'][item.id].append(ancestor)
+    for descendant in item.descendant_ids:
+      hierarchy_dict['descendants'][item.id].append(descendant)
+
+  def get_graph_relations_tensor(graph_relations):
+    graph_relations_tensor = np.zeros([max_id, max_id])
+    for id_val, ids_related in graph_relations.items():
+      id_val = int(id_val) - _LABEL_OFFSET
+      for id_related in ids_related:
+        id_related -= _LABEL_OFFSET
+        graph_relations_tensor[id_val, id_related] = 1
+    if include_identity:
+      graph_relations_tensor += np.eye(max_id)
+    return graph_relations_tensor
+
+  ancestors_lut = get_graph_relations_tensor(hierarchy_dict['ancestors'])
+  descendants_lut = get_graph_relations_tensor(hierarchy_dict['descendants'])
+  return ancestors_lut, descendants_lut
 
 
 def create_categories_from_labelmap(label_map_path, use_display_name=True):

@@ -104,7 +104,7 @@ python export_inference_graph.py \
               } \
             }"
 """
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from object_detection import exporter
 from object_detection.protos import pipeline_pb2

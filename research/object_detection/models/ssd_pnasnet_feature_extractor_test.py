@@ -15,13 +15,10 @@
 
 """Tests for ssd_pnas_feature_extractor."""
 import numpy as np
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
 
 from object_detection.models import ssd_feature_extractor_test
 from object_detection.models import ssd_pnasnet_feature_extractor
-
-slim = contrib_slim
 
 
 class SsdPnasNetFeatureExtractorTest(

@@ -15,7 +15,7 @@
 
 """Tests for object_detection.box_coder.mean_stddev_boxcoder."""
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.box_coders import mean_stddev_box_coder
 from object_detection.core import box_list

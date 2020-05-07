@@ -15,7 +15,7 @@
 
 """Tests for object_detection.grid_anchor_generator."""
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.utils import test_case

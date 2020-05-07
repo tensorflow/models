@@ -16,7 +16,8 @@
 """Functions to export object detection inference graph."""
 import os
 import tempfile
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.tools import freeze_graph  # pylint: disable=g-direct-tensorflow-import
 from object_detection.builders import graph_rewriter_builder
@@ -28,7 +29,6 @@ from object_detection.utils import shape_utils
 
 # pylint: disable=g-import-not-at-top
 try:
-  from tensorflow.contrib import slim
   from tensorflow.contrib import tfprof as contrib_tfprof
   from tensorflow.contrib.quantize.python import graph_matcher
 except ImportError:

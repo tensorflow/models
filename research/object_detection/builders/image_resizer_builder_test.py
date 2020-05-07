@@ -14,7 +14,7 @@
 # ==============================================================================
 """Tests for object_detection.builders.image_resizer_builder."""
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from object_detection.builders import image_resizer_builder
 from object_detection.protos import image_resizer_pb2
