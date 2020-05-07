@@ -1,0 +1,26 @@
+<annotation>
+	<folder>cardigan</folder>
+	<filename>n02113186_10891.jpg</filename>
+	<path>C:/Users/alexs/OneDrive/Documents/GitHub/models/research/images/train/cardigan/n02113186_10891.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>375</width>
+		<height>500</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>cardigan</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>120</xmin>
+			<ymin>62</ymin>
+			<xmax>308</xmax>
+			<ymax>281</ymax>
+		</bndbox>
+	</object>
+</annotation>

@@ -1,0 +1,26 @@
+<annotation>
+	<folder>pembroke</folder>
+	<filename>n02113023_6140.jpg</filename>
+	<path>C:/Users/alexs/OneDrive/Documents/GitHub/models/research/images/train/pembroke/n02113023_6140.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>500</width>
+		<height>375</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>pembroke</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>54</xmin>
+			<ymin>43</ymin>
+			<xmax>390</xmax>
+			<ymax>301</ymax>
+		</bndbox>
+	</object>
+</annotation>
