@@ -211,6 +211,31 @@ class ImageResizerBuilderTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       image_resizer_builder.build(invalid_image_resizer_text_proto)
 
+  def test_build_pad_to_multiple_resizer(self):
+    """Test building a pad_to_multiple_resizer from proto."""
+    image_resizer_text_proto = """
+      pad_to_multiple_resizer {
+        multiple: 32
+      }
+    """
+    input_shape = (60, 30, 3)
+    expected_output_shape = (64, 32, 3)
+    output_shape = self._shape_of_resized_random_image_given_text_proto(
+        input_shape, image_resizer_text_proto)
+    self.assertEqual(output_shape, expected_output_shape)
+
+  def test_build_pad_to_multiple_resizer_invalid_multiple(self):
+    """Test that building a pad_to_multiple_resizer errors with invalid multiple."""
+
+    image_resizer_text_proto = """
+      pad_to_multiple_resizer {
+        multiple: -10
+      }
+    """
+
+    with self.assertRaises(ValueError):
+      image_resizer_builder.build(image_resizer_text_proto)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -145,6 +145,7 @@ message Ssd {
   optional MaskHead mask_head_config = 25;
 }
 
+// Next id: 18.
 message SsdFeatureExtractor {
   reserved 6;
 

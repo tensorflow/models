@@ -16,6 +16,10 @@
 """Provides functions to prefetch tensors to feed into models."""
 import tensorflow as tf
 
+from object_detection.utils import tf_version
+if not tf_version.is_tf1():
+  raise ValueError('`prefetcher.py` is only supported in Tensorflow 1.X')
+
 
 def prefetch(tensor_dict, capacity):
   """Creates a prefetch queue for tensors.

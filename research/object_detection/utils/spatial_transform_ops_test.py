@@ -360,7 +360,7 @@ class MultiLevelRoIAlignTest(test_case.TestCase):
     self.assertAllClose(roi_features[0][4], 5 * np.ones((2, 2, 1)))
 
   def test_large_input(self):
-    if test_case.FLAGS.tpu_test:
+    if self.has_tpu():
       input_size = 1408
       min_level = 2
       max_level = 6
@@ -368,36 +368,31 @@ class MultiLevelRoIAlignTest(test_case.TestCase):
       num_boxes = 512
       num_filters = 256
       output_size = [7, 7]
-      with self.test_session() as sess:
-        features = []
-        for level in range(min_level, max_level + 1):
-          feat_size = int(input_size / 2**level)
-          features.append(tf.constant(
-              np.reshape(
-                  np.arange(
-                      batch_size * feat_size * feat_size * num_filters,
-                      dtype=np.float32),
-                  [batch_size, feat_size, feat_size, num_filters]),
-              dtype=tf.bfloat16))
-        boxes = np.array([
-            [[0, 0, 256, 256]]*num_boxes,
-        ], dtype=np.float32) / input_size
-        boxes = np.tile(boxes, [batch_size, 1, 1])
-        tf_boxes = tf.constant(boxes)
-        tf_levels = tf.random_uniform([batch_size, num_boxes], maxval=5,
-                                      dtype=tf.int32)
-        def crop_and_resize_fn():
-          return spatial_ops.multilevel_roi_align(
-              features, tf_boxes, tf_levels, output_size)
-
-        tpu_crop_and_resize_fn = tf.contrib.tpu.rewrite(crop_and_resize_fn)
-        sess.run(tf.contrib.tpu.initialize_system())
-        sess.run(tf.global_variables_initializer())
-        roi_features = sess.run(tpu_crop_and_resize_fn)
-        self.assertEqual(roi_features[0].shape,
-                         (batch_size, num_boxes, output_size[0], output_size[1],
-                          num_filters))
-        sess.run(tf.contrib.tpu.shutdown_system())
+      features = []
+      for level in range(min_level, max_level + 1):
+        feat_size = int(input_size / 2**level)
+        features.append(
+            np.reshape(
+                np.arange(
+                    batch_size * feat_size * feat_size * num_filters,
+                    dtype=np.float32),
+                [batch_size, feat_size, feat_size, num_filters]))
+      boxes = np.array([
+          [[0, 0, 256, 256]]*num_boxes,
+      ], dtype=np.float32) / input_size
+      boxes = np.tile(boxes, [batch_size, 1, 1])
+      levels = np.random.randint(5, size=[batch_size, num_boxes],
+                                 dtype=np.int32)
+      def crop_and_resize_fn():
+        tf_features = [
+            tf.constant(feature, dtype=tf.bfloat16) for feature in features
+        ]
+        return spatial_ops.multilevel_roi_align(
+            tf_features, tf.constant(boxes), tf.constant(levels), output_size)
+      roi_features = self.execute_tpu(crop_and_resize_fn, [])
+      self.assertEqual(roi_features.shape,
+                       (batch_size, num_boxes, output_size[0],
+                        output_size[1], num_filters))
 
 
 class MatMulCropAndResizeTest(test_case.TestCase):
@@ -516,13 +511,6 @@ class MatMulCropAndResizeTest(test_case.TestCase):
                         [[[5], [4]], [[2], [1]]]]]
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
-
-  def testInvalidInputShape(self):
-    image = tf.constant([[[1], [2]], [[3], [4]]], dtype=tf.float32)
-    boxes = tf.constant([[-1, -1, 1, 1]], dtype=tf.float32)
-    crop_size = [4, 4]
-    with self.assertRaises(ValueError):
-      spatial_ops.matmul_crop_and_resize(image, boxes, crop_size)
 
 
 class NativeCropAndResizeTest(test_case.TestCase):

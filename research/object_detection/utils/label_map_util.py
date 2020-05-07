@@ -85,6 +85,8 @@ def convert_label_map_to_categories(label_map,
     'id': (required) an integer id uniquely identifying this category.
     'name': (required) string representing category name
       e.g., 'cat', 'dog', 'pizza'.
+    'keypoints': (optional) a dictionary of keypoint string 'label' to integer
+      'id'.
   We only allow class into the list if its id-label_id_offset is
   between 0 (inclusive) and max_num_classes (exclusive).
   If there are several items mapping to the same id in the label map,
@@ -123,7 +125,18 @@ def convert_label_map_to_categories(label_map,
       name = item.name
     if item.id not in list_of_ids_already_added:
       list_of_ids_already_added.append(item.id)
-      categories.append({'id': item.id, 'name': name})
+      category = {'id': item.id, 'name': name}
+      if item.keypoints:
+        keypoints = {}
+        list_of_keypoint_ids = []
+        for kv in item.keypoints:
+          if kv.id in list_of_keypoint_ids:
+            raise ValueError('Duplicate keypoint ids are not allowed. '
+                             'Found {} more than once'.format(kv.id))
+          keypoints[kv.label] = kv.id
+          list_of_keypoint_ids.append(kv.id)
+        category['keypoints'] = keypoints
+      categories.append(category)
   return categories
 
 
@@ -135,7 +148,7 @@ def load_labelmap(path):
   Returns:
     a StringIntLabelMapProto
   """
-  with tf.gfile.GFile(path, 'r') as fid:
+  with tf.io.gfile.GFile(path, 'r') as fid:
     label_map_string = fid.read()
     label_map = string_int_label_map_pb2.StringIntLabelMap()
     try:
@@ -210,6 +223,8 @@ def create_categories_from_labelmap(label_map_path, use_display_name=True):
   which  has the following keys:
     'id': an integer id uniquely identifying this category.
     'name': string representing category name e.g., 'cat', 'dog'.
+    'keypoints': a dictionary of keypoint string label to integer id. It is only
+      returned when available in label map proto.
 
   Args:
     label_map_path: Path to `StringIntLabelMap` proto text file.

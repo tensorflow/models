@@ -15,66 +15,73 @@
 
 """Tests for object_detection.core.bipartite_matcher."""
 
+import numpy as np
 import tensorflow as tf
 
 from object_detection.matchers import bipartite_matcher
+from object_detection.utils import test_case
 
 
-class GreedyBipartiteMatcherTest(tf.test.TestCase):
+class GreedyBipartiteMatcherTest(test_case.TestCase):
 
   def test_get_expected_matches_when_all_rows_are_valid(self):
-    similarity_matrix = tf.constant([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]])
-    valid_rows = tf.ones([2], dtype=tf.bool)
+    similarity_matrix = np.array([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]],
+                                 dtype=np.float32)
+    valid_rows = np.ones([2], dtype=np.bool)
     expected_match_results = [-1, 1, 0]
-
-    matcher = bipartite_matcher.GreedyBipartiteMatcher()
-    match = matcher.match(similarity_matrix, valid_rows=valid_rows)
-    with self.test_session() as sess:
-      match_results_out = sess.run(match._match_results)
-      self.assertAllEqual(match_results_out, expected_match_results)
+    def graph_fn(similarity_matrix, valid_rows):
+      matcher = bipartite_matcher.GreedyBipartiteMatcher()
+      match = matcher.match(similarity_matrix, valid_rows=valid_rows)
+      return match._match_results
+    match_results_out = self.execute(graph_fn, [similarity_matrix, valid_rows])
+    self.assertAllEqual(match_results_out, expected_match_results)
 
   def test_get_expected_matches_with_all_rows_be_default(self):
-    similarity_matrix = tf.constant([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]])
+    similarity_matrix = np.array([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]],
+                                 dtype=np.float32)
     expected_match_results = [-1, 1, 0]
-
-    matcher = bipartite_matcher.GreedyBipartiteMatcher()
-    match = matcher.match(similarity_matrix)
-    with self.test_session() as sess:
-      match_results_out = sess.run(match._match_results)
-      self.assertAllEqual(match_results_out, expected_match_results)
+    def graph_fn(similarity_matrix):
+      matcher = bipartite_matcher.GreedyBipartiteMatcher()
+      match = matcher.match(similarity_matrix)
+      return match._match_results
+    match_results_out = self.execute(graph_fn, [similarity_matrix])
+    self.assertAllEqual(match_results_out, expected_match_results)
 
   def test_get_no_matches_with_zero_valid_rows(self):
-    similarity_matrix = tf.constant([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]])
-    valid_rows = tf.zeros([2], dtype=tf.bool)
+    similarity_matrix = np.array([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]],
+                                 dtype=np.float32)
+    valid_rows = np.zeros([2], dtype=np.bool)
     expected_match_results = [-1, -1, -1]
-
-    matcher = bipartite_matcher.GreedyBipartiteMatcher()
-    match = matcher.match(similarity_matrix, valid_rows)
-    with self.test_session() as sess:
-      match_results_out = sess.run(match._match_results)
-      self.assertAllEqual(match_results_out, expected_match_results)
+    def graph_fn(similarity_matrix, valid_rows):
+      matcher = bipartite_matcher.GreedyBipartiteMatcher()
+      match = matcher.match(similarity_matrix, valid_rows=valid_rows)
+      return match._match_results
+    match_results_out = self.execute(graph_fn, [similarity_matrix, valid_rows])
+    self.assertAllEqual(match_results_out, expected_match_results)
 
   def test_get_expected_matches_with_only_one_valid_row(self):
-    similarity_matrix = tf.constant([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]])
-    valid_rows = tf.constant([True, False], dtype=tf.bool)
+    similarity_matrix = np.array([[0.50, 0.1, 0.8], [0.15, 0.2, 0.3]],
+                                 dtype=np.float32)
+    valid_rows = np.array([True, False], dtype=np.bool)
     expected_match_results = [-1, -1, 0]
-
-    matcher = bipartite_matcher.GreedyBipartiteMatcher()
-    match = matcher.match(similarity_matrix, valid_rows)
-    with self.test_session() as sess:
-      match_results_out = sess.run(match._match_results)
-      self.assertAllEqual(match_results_out, expected_match_results)
+    def graph_fn(similarity_matrix, valid_rows):
+      matcher = bipartite_matcher.GreedyBipartiteMatcher()
+      match = matcher.match(similarity_matrix, valid_rows=valid_rows)
+      return match._match_results
+    match_results_out = self.execute(graph_fn, [similarity_matrix, valid_rows])
+    self.assertAllEqual(match_results_out, expected_match_results)
 
   def test_get_expected_matches_with_only_one_valid_row_at_bottom(self):
-    similarity_matrix = tf.constant([[0.15, 0.2, 0.3], [0.50, 0.1, 0.8]])
-    valid_rows = tf.constant([False, True], dtype=tf.bool)
+    similarity_matrix = np.array([[0.15, 0.2, 0.3], [0.50, 0.1, 0.8]],
+                                 dtype=np.float32)
+    valid_rows = np.array([False, True], dtype=np.bool)
     expected_match_results = [-1, -1, 0]
-
-    matcher = bipartite_matcher.GreedyBipartiteMatcher()
-    match = matcher.match(similarity_matrix, valid_rows)
-    with self.test_session() as sess:
-      match_results_out = sess.run(match._match_results)
-      self.assertAllEqual(match_results_out, expected_match_results)
+    def graph_fn(similarity_matrix, valid_rows):
+      matcher = bipartite_matcher.GreedyBipartiteMatcher()
+      match = matcher.match(similarity_matrix, valid_rows=valid_rows)
+      return match._match_results
+    match_results_out = self.execute(graph_fn, [similarity_matrix, valid_rows])
+    self.assertAllEqual(match_results_out, expected_match_results)
 
 
 if __name__ == '__main__':

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -487,8 +488,8 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
     self.assertEqual(box_head._box_code_size, 4)
-    self.assertTrue(
-        mask_rcnn_box_predictor.MASK_PREDICTIONS in third_stage_heads)
+    self.assertIn(
+        mask_rcnn_box_predictor.MASK_PREDICTIONS, third_stage_heads)
     self.assertEqual(
         third_stage_heads[mask_rcnn_box_predictor.MASK_PREDICTIONS]
         ._mask_prediction_conv_depth, 512)
@@ -527,8 +528,8 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertEqual(box_predictor.num_classes, 90)
     self.assertTrue(box_predictor._is_training)
     self.assertEqual(box_head._box_code_size, 4)
-    self.assertTrue(
-        mask_rcnn_box_predictor.MASK_PREDICTIONS in third_stage_heads)
+    self.assertIn(
+        mask_rcnn_box_predictor.MASK_PREDICTIONS, third_stage_heads)
     self.assertEqual(
         third_stage_heads[mask_rcnn_box_predictor.MASK_PREDICTIONS]
         ._mask_prediction_conv_depth, 512)

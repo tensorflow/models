@@ -201,6 +201,9 @@ def _build_localization_loss(loss_config):
   if loss_type == 'weighted_iou':
     return losses.WeightedIOULocalizationLoss()
 
+  if loss_type == 'l1_localization_loss':
+    return losses.L1LocalizationLoss()
+
   raise ValueError('Empty loss config.')
 
 
@@ -248,5 +251,10 @@ def _build_classification_loss(loss_config):
     return losses.BootstrappedSigmoidClassificationLoss(
         alpha=config.alpha,
         bootstrap_type=('hard' if config.hard_bootstrap else 'soft'))
+
+  if loss_type == 'penalty_reduced_logistic_focal_loss':
+    config = loss_config.penalty_reduced_logistic_focal_loss
+    return losses.PenaltyReducedLogisticFocalLoss(
+        alpha=config.alpha, beta=config.beta)
 
   raise ValueError('Empty loss config.')

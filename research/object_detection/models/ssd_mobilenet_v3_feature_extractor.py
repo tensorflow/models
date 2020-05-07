@@ -157,7 +157,7 @@ class SSDMobileNetV3FeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
               insert_1x1_conv=True,
               image_features=image_features)
 
-    return feature_maps.values()
+    return list(feature_maps.values())
 
 
 class SSDMobileNetV3LargeFeatureExtractor(SSDMobileNetV3FeatureExtractorBase):

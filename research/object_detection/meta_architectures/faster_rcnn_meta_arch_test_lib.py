@@ -18,10 +18,10 @@ import functools
 from absl.testing import parameterized
 
 import numpy as np
+import six
 import tensorflow as tf
 
 from google.protobuf import text_format
-from tensorflow.contrib import slim as contrib_slim
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
@@ -38,7 +38,14 @@ from object_detection.utils import ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 
-slim = contrib_slim
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import slim as contrib_slim
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
+
 BOX_CODE_SIZE = 4
 
 
@@ -58,14 +65,14 @@ class FakeFasterRCNNFeatureExtractor(
 
   def _extract_proposal_features(self, preprocessed_inputs, scope):
     with tf.variable_scope('mock_model'):
-      proposal_features = 0 * slim.conv2d(
+      proposal_features = 0 * contrib_slim.conv2d(
           preprocessed_inputs, num_outputs=3, kernel_size=1, scope='layer1')
       return proposal_features, {}
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     with tf.variable_scope('mock_model'):
-      return 0 * slim.conv2d(proposal_feature_maps,
-                             num_outputs=3, kernel_size=1, scope='layer2')
+      return 0 * contrib_slim.conv2d(
+          proposal_feature_maps, num_outputs=3, kernel_size=1, scope='layer2')
 
 
 class FakeFasterRCNNKerasFeatureExtractor(
@@ -226,7 +233,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                    use_static_shapes=False,
                    calibration_mapping_value=None,
                    share_box_across_classes=False,
-                   return_raw_detections_during_predict=False):
+                   return_raw_detections_during_predict=False,
+                   output_final_box_features=False):
 
     def image_resizer_fn(image, masks=None):
       """Fake image resizer function."""
@@ -372,47 +380,70 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         ops.matmul_crop_and_resize
         if use_matmul_crop_and_resize else ops.native_crop_and_resize)
     common_kwargs = {
-        'is_training': is_training,
-        'num_classes': num_classes,
-        'image_resizer_fn': image_resizer_fn,
-        'feature_extractor': fake_feature_extractor,
-        'number_of_stages': number_of_stages,
-        'first_stage_anchor_generator': first_stage_anchor_generator,
-        'first_stage_target_assigner': first_stage_target_assigner,
-        'first_stage_atrous_rate': first_stage_atrous_rate,
+        'is_training':
+            is_training,
+        'num_classes':
+            num_classes,
+        'image_resizer_fn':
+            image_resizer_fn,
+        'feature_extractor':
+            fake_feature_extractor,
+        'number_of_stages':
+            number_of_stages,
+        'first_stage_anchor_generator':
+            first_stage_anchor_generator,
+        'first_stage_target_assigner':
+            first_stage_target_assigner,
+        'first_stage_atrous_rate':
+            first_stage_atrous_rate,
         'first_stage_box_predictor_arg_scope_fn':
-        first_stage_box_predictor_arg_scope_fn,
+            first_stage_box_predictor_arg_scope_fn,
         'first_stage_box_predictor_kernel_size':
-        first_stage_box_predictor_kernel_size,
-        'first_stage_box_predictor_depth': first_stage_box_predictor_depth,
-        'first_stage_minibatch_size': first_stage_minibatch_size,
-        'first_stage_sampler': first_stage_sampler,
+            first_stage_box_predictor_kernel_size,
+        'first_stage_box_predictor_depth':
+            first_stage_box_predictor_depth,
+        'first_stage_minibatch_size':
+            first_stage_minibatch_size,
+        'first_stage_sampler':
+            first_stage_sampler,
         'first_stage_non_max_suppression_fn':
-        first_stage_non_max_suppression_fn,
-        'first_stage_max_proposals': first_stage_max_proposals,
+            first_stage_non_max_suppression_fn,
+        'first_stage_max_proposals':
+            first_stage_max_proposals,
         'first_stage_localization_loss_weight':
-        first_stage_localization_loss_weight,
+            first_stage_localization_loss_weight,
         'first_stage_objectness_loss_weight':
-        first_stage_objectness_loss_weight,
-        'second_stage_target_assigner': second_stage_target_assigner,
-        'second_stage_batch_size': second_stage_batch_size,
-        'second_stage_sampler': second_stage_sampler,
+            first_stage_objectness_loss_weight,
+        'second_stage_target_assigner':
+            second_stage_target_assigner,
+        'second_stage_batch_size':
+            second_stage_batch_size,
+        'second_stage_sampler':
+            second_stage_sampler,
         'second_stage_non_max_suppression_fn':
-        second_stage_non_max_suppression_fn,
-        'second_stage_score_conversion_fn': second_stage_score_conversion_fn,
+            second_stage_non_max_suppression_fn,
+        'second_stage_score_conversion_fn':
+            second_stage_score_conversion_fn,
         'second_stage_localization_loss_weight':
-        second_stage_localization_loss_weight,
+            second_stage_localization_loss_weight,
         'second_stage_classification_loss_weight':
-        second_stage_classification_loss_weight,
+            second_stage_classification_loss_weight,
         'second_stage_classification_loss':
-        second_stage_classification_loss,
-        'hard_example_miner': hard_example_miner,
-        'crop_and_resize_fn': crop_and_resize_fn,
-        'clip_anchors_to_image': clip_anchors_to_image,
-        'use_static_shapes': use_static_shapes,
-        'resize_masks': True,
+            second_stage_classification_loss,
+        'hard_example_miner':
+            hard_example_miner,
+        'crop_and_resize_fn':
+            crop_and_resize_fn,
+        'clip_anchors_to_image':
+            clip_anchors_to_image,
+        'use_static_shapes':
+            use_static_shapes,
+        'resize_masks':
+            True,
         'return_raw_detections_during_predict':
-            return_raw_detections_during_predict
+            return_raw_detections_during_predict,
+        'output_final_box_features':
+            output_final_box_features
     }
 
     return self._get_model(
@@ -866,12 +897,13 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           use_matmul_gather_in_matcher=use_static_shapes,
           first_stage_max_proposals=first_stage_max_proposals,
           pad_to_max_dimension=pad_to_max_dimension)
-      _, true_image_shapes = model.preprocess(images)
+      preprocessed_images, true_image_shapes = model.preprocess(images)
       proposals = model.postprocess({
           'rpn_box_encodings': rpn_box_encodings,
           'rpn_objectness_predictions_with_background':
           rpn_objectness_predictions_with_background,
           'rpn_features_to_crop': rpn_features_to_crop,
+          'image_shape': tf.shape(preprocessed_images),
           'anchors': anchors}, true_image_shapes)
       return (proposals['num_detections'], proposals['detection_boxes'],
               proposals['detection_scores'], proposals['raw_detection_boxes'],
@@ -924,6 +956,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                                     [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]]]
     expected_raw_scores = [[[0., 1.], [1., 0.], [1., 0.], [0., 1.]],
                            [[1., 0.], [0., 1.], [0., 1.], [1., 0.]]]
+
+    if pad_to_max_dimension is not None:
+      expected_raw_proposal_boxes = (np.array(expected_raw_proposal_boxes) *
+                                     32 / pad_to_max_dimension)
+      expected_proposal_boxes = (np.array(expected_proposal_boxes) *
+                                 32 / pad_to_max_dimension)
 
     self.assertAllClose(results[0], expected_num_proposals)
     for indx, num_proposals in enumerate(expected_num_proposals):
@@ -982,7 +1020,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         'rpn_objectness_predictions_with_background':
         rpn_objectness_predictions_with_background,
         'rpn_features_to_crop': rpn_features_to_crop,
-        'anchors': anchors}, true_image_shapes)
+        'anchors': anchors,
+        'image_shape': image_shape}, true_image_shapes)
     expected_proposal_boxes = [
         [[0, 0, .5, .5], [.5, .5, 1, 1]], [[0, .5, .5, 1], [.5, 0, 1, .5]]]
     expected_proposal_scores = [[1, 1],
@@ -1933,8 +1972,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     with test_graph_classification.as_default():
       image = tf.placeholder(dtype=tf.float32, shape=[1, 20, 20, 3])
       with tf.variable_scope('mock_model'):
-        net = slim.conv2d(image, num_outputs=3, kernel_size=1, scope='layer1')
-        slim.conv2d(net, num_outputs=3, kernel_size=1, scope='layer2')
+        net = contrib_slim.conv2d(
+            image, num_outputs=3, kernel_size=1, scope='layer1')
+        contrib_slim.conv2d(net, num_outputs=3, kernel_size=1, scope='layer2')
 
       init_op = tf.global_variables_initializer()
       saver = tf.train.Saver()
@@ -2012,10 +2052,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       with self.test_session(graph=test_graph_detection2) as sess:
         saver.restore(sess, saved_model_path)
         uninitialized_vars_list = sess.run(tf.report_uninitialized_variables())
-        self.assertIn('another_variable', uninitialized_vars_list)
+        self.assertIn(six.b('another_variable'), uninitialized_vars_list)
         for var in uninitialized_vars_list:
-          self.assertNotIn(model2.first_stage_feature_extractor_scope, var)
-          self.assertNotIn(model2.second_stage_feature_extractor_scope, var)
+          self.assertNotIn(
+              six.b(model2.first_stage_feature_extractor_scope), var)
+          self.assertNotIn(
+              six.b(model2.second_stage_feature_extractor_scope), var)
 
   @parameterized.parameters(
       {'use_keras': True},

@@ -56,7 +56,7 @@ via the following command. For a quantized model, run this from the tensorflow/
 directory:
 
 ```shell
-bazel run --config=opt tensorflow/lite/toco:toco -- \
+bazel run -c opt tensorflow/lite/toco:toco -- \
 --input_file=$OUTPUT_DIR/tflite_graph.pb \
 --output_file=$OUTPUT_DIR/detect.tflite \
 --input_shapes=1,300,300,3 \
@@ -82,7 +82,7 @@ parameters and can be run via the TensorFlow Lite interpreter on the Android
 device. For a floating point model, run this from the tensorflow/ directory:
 
 ```shell
-bazel run --config=opt tensorflow/lite/toco:toco -- \
+bazel run -c opt tensorflow/lite/toco:toco -- \
 --input_file=$OUTPUT_DIR/tflite_graph.pb \
 --output_file=$OUTPUT_DIR/detect.tflite \
 --input_shapes=1,300,300,3 \

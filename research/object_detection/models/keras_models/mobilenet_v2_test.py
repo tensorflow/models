@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +15,12 @@
 # ==============================================================================
 
 """Tests for mobilenet_v2."""
-import itertools
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import zip
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -116,8 +121,8 @@ class MobilenetV2Test(test_case.TestCase):
                                   3).astype(np.float32)
     feature_maps = self.execute(graph_fn, [image_tensor])
 
-    for feature_map, expected_shape in itertools.izip(
-        feature_maps, expected_feature_map_shapes):
+    for feature_map, expected_shape in zip(feature_maps,
+                                           expected_feature_map_shapes):
       self.assertAllEqual(feature_map.shape, expected_shape)
 
   def _check_returns_correct_shapes_with_dynamic_inputs(
@@ -138,8 +143,8 @@ class MobilenetV2Test(test_case.TestCase):
         np.array(image_width, dtype=np.int32)
     ])
 
-    for feature_map, expected_shape in itertools.izip(
-        feature_maps, expected_feature_map_shapes):
+    for feature_map, expected_shape in zip(feature_maps,
+                                           expected_feature_map_shapes):
       self.assertAllEqual(feature_map.shape, expected_shape)
 
   def _get_variables(self, depth_multiplier, layer_names=None):

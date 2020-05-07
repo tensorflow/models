@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +16,14 @@
 
 """Tests for object_detection.meta_architectures.faster_rcnn_meta_arch."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from absl.testing import parameterized
 import numpy as np
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch_test_lib
@@ -488,8 +495,8 @@ class FasterRCNNMetaArchTest(
     batch_size = 2
     initial_crop_size = 3
     maxpool_stride = 1
-    height = initial_crop_size/maxpool_stride
-    width = initial_crop_size/maxpool_stride
+    height = initial_crop_size // maxpool_stride
+    width = initial_crop_size // maxpool_stride
     depth = 3
     image_shape = np.array((2, 36, 48, 3), dtype=np.int32)
     for (num_proposals_shape, refined_box_encoding_shape,
@@ -574,9 +581,102 @@ class FasterRCNNMetaArchTest(
                                          maxpool_stride,
                                          num_features):
     return (batch_size * max_num_proposals,
-            initial_crop_size/maxpool_stride,
-            initial_crop_size/maxpool_stride,
+            initial_crop_size // maxpool_stride,
+            initial_crop_size // maxpool_stride,
             num_features)
+
+  @parameterized.parameters({'use_keras': True}, {'use_keras': False})
+  def test_output_final_box_features(self, use_keras):
+    model = self._build_model(
+        is_training=False,
+        use_keras=use_keras,
+        number_of_stages=2,
+        second_stage_batch_size=6,
+        output_final_box_features=True)
+
+    batch_size = 2
+    total_num_padded_proposals = batch_size * model.max_num_proposals
+    proposal_boxes = tf.constant([[[1, 1, 2, 3], [0, 0, 1, 1], [.5, .5, .6, .6],
+                                   4 * [0], 4 * [0], 4 * [0], 4 * [0], 4 * [0]],
+                                  [[2, 3, 6, 8], [1, 2, 5, 3], 4 * [0], 4 * [0],
+                                   4 * [0], 4 * [0], 4 * [0], 4 * [0]]],
+                                 dtype=tf.float32)
+    num_proposals = tf.constant([3, 2], dtype=tf.int32)
+    refined_box_encodings = tf.zeros(
+        [total_num_padded_proposals, model.num_classes, 4], dtype=tf.float32)
+    class_predictions_with_background = tf.ones(
+        [total_num_padded_proposals, model.num_classes + 1], dtype=tf.float32)
+    image_shape = tf.constant([batch_size, 36, 48, 3], dtype=tf.int32)
+
+    mask_height = 2
+    mask_width = 2
+    mask_predictions = 30. * tf.ones([
+        total_num_padded_proposals, model.num_classes, mask_height, mask_width
+    ],
+                                     dtype=tf.float32)
+    exp_detection_masks = np.array([[[[1, 1], [1, 1]], [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]], [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]]],
+                                    [[[1, 1], [1, 1]], [[1, 1], [1, 1]],
+                                     [[1, 1], [1, 1]], [[1, 1], [1, 1]],
+                                     [[0, 0], [0, 0]]]])
+
+    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+
+    # It should fail due to no rpn_features_to_crop in the input dict.
+    with self.assertRaises(ValueError):
+      detections = model.postprocess(
+          {
+              'refined_box_encodings':
+                  refined_box_encodings,
+              'class_predictions_with_background':
+                  class_predictions_with_background,
+              'num_proposals':
+                  num_proposals,
+              'proposal_boxes':
+                  proposal_boxes,
+              'image_shape':
+                  image_shape,
+              'mask_predictions':
+                  mask_predictions
+          }, true_image_shapes)
+
+    rpn_features_to_crop = tf.ones((batch_size, mask_height, mask_width, 3),
+                                   tf.float32)
+    detections = model.postprocess(
+        {
+            'refined_box_encodings':
+                refined_box_encodings,
+            'class_predictions_with_background':
+                class_predictions_with_background,
+            'num_proposals':
+                num_proposals,
+            'proposal_boxes':
+                proposal_boxes,
+            'image_shape':
+                image_shape,
+            'mask_predictions':
+                mask_predictions,
+            'rpn_features_to_crop':
+                rpn_features_to_crop
+        }, true_image_shapes)
+
+    with self.test_session() as sess:
+      init_op = tf.global_variables_initializer()
+      sess.run(init_op)
+      detections_out = sess.run(detections)
+      self.assertAllEqual(detections_out['detection_boxes'].shape, [2, 5, 4])
+      self.assertAllClose(detections_out['detection_scores'],
+                          [[1, 1, 1, 1, 1], [1, 1, 1, 1, 0]])
+      self.assertAllClose(detections_out['detection_classes'],
+                          [[0, 0, 0, 1, 1], [0, 0, 1, 1, 0]])
+      self.assertAllClose(detections_out['num_detections'], [5, 4])
+      self.assertAllClose(detections_out['detection_masks'],
+                          exp_detection_masks)
+      self.assertTrue(np.amax(detections_out['detection_masks'] <= 1.0))
+      self.assertTrue(np.amin(detections_out['detection_masks'] >= 0.0))
+      self.assertIn('detection_features', detections_out)
+
 
 if __name__ == '__main__':
   tf.test.main()
