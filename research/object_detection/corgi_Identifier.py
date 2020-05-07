@@ -25,8 +25,8 @@ if StrictVersion(tf.__version__) < StrictVersion('1.9.0'):
 #%matplotlib
 
 from utils import label_map_util
-path= r'C:\Users\alexs\OneDrive\Documents\GitHub\models\research\object_detection'
-os.chdir(path)
+# path= r'C:\Users\alexs\OneDrive\Documents\GitHub\models\research\object_detection'
+# os.chdir(path)
 from utils import visualization_utils as vis_util
 
 corgiClassLabels = pd.read_csv('corgiClasslabels.csv', header=None)
