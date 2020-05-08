@@ -3,7 +3,7 @@
 ## Data preparation
 
 See the
-[build_image_dataset.py](https://github.com/andrefaraujo/models/blob/master/research/delf/delf/python/training/build_image_dataset.py)
+[build_image_dataset.py](https://github.com/tensorflow/models/blob/master/research/delf/delf/python/training/build_image_dataset.py)
 script to prepare the data, following the instructions therein to download the
 dataset (via Kaggle) and then running the script.
 
