@@ -86,6 +86,8 @@ class EncoderScaffold(network.Network):
         "dropout_rate": The overall dropout rate for the transformer layers.
         "attention_dropout_rate": The dropout rate for the attention layers.
         "kernel_initializer": The initializer for the transformer layers.
+    return_all_layer_outputs: Whether to output sequence embedding outputs of
+      all encoder transformer layers.
   """
 
   def __init__(
@@ -99,6 +101,7 @@ class EncoderScaffold(network.Network):
       num_hidden_instances=1,
       hidden_cls=layers.Transformer,
       hidden_cfg=None,
+      return_all_layer_outputs=False,
       **kwargs):
     self._self_setattr_tracking = False
     self._hidden_cls = hidden_cls
@@ -109,6 +112,7 @@ class EncoderScaffold(network.Network):
     self._embedding_cls = embedding_cls
     self._embedding_cfg = embedding_cfg
     self._embedding_data = embedding_data
+    self._return_all_layer_outputs = return_all_layer_outputs
     self._kwargs = kwargs
 
     if embedding_cls:
@@ -173,17 +177,20 @@ class EncoderScaffold(network.Network):
     attention_mask = layers.SelfAttentionMask()([embeddings, mask])
     data = embeddings
 
+    layer_output_data = []
+    self._hidden_layers = []
     for _ in range(num_hidden_instances):
       if inspect.isclass(hidden_cls):
-        layer = self._hidden_cls(
-            **hidden_cfg) if hidden_cfg else self._hidden_cls()
+        layer = hidden_cls(**hidden_cfg) if hidden_cfg else hidden_cls()
       else:
-        layer = self._hidden_cls
+        layer = hidden_cls
       data = layer([data, attention_mask])
+      layer_output_data.append(data)
+      self._hidden_layers.append(layer)
 
     first_token_tensor = (
-        tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(data)
-    )
+        tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
+            layer_output_data[-1]))
     cls_output = tf.keras.layers.Dense(
         units=pooled_output_dim,
         activation='tanh',
@@ -191,8 +198,13 @@ class EncoderScaffold(network.Network):
         name='cls_transform')(
             first_token_tensor)
 
+    if return_all_layer_outputs:
+      outputs = [layer_output_data, cls_output]
+    else:
+      outputs = [layer_output_data[-1], cls_output]
+
     super(EncoderScaffold, self).__init__(
-        inputs=inputs, outputs=[data, cls_output], **kwargs)
+        inputs=inputs, outputs=outputs, **kwargs)
 
   def get_config(self):
     config_dict = {
@@ -208,6 +220,8 @@ class EncoderScaffold(network.Network):
             self._embedding_cfg,
         'hidden_cfg':
             self._hidden_cfg,
+        'return_all_layer_outputs':
+            self._return_all_layer_outputs,
     }
     if inspect.isclass(self._hidden_cls):
       config_dict['hidden_cls_string'] = tf.keras.utils.get_registered_name(
@@ -244,3 +258,8 @@ class EncoderScaffold(network.Network):
                           'serialization is not yet supported.') % self.name)
     else:
       return self._embedding_data
+
+  @property
+  def hidden_layers(self):
+    """List of hidden layers in the encoder."""
+    return self._hidden_layers
