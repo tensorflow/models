@@ -96,7 +96,7 @@ def define_transformer_flags():
       name='train_steps', short_name='ts', default=300000,
       help=flags_core.help_wrap('The number of steps used to train.'))
   flags.DEFINE_integer(
-      name='steps_between_evals', short_name='sbe', default=1000,
+      name='steps_between_evals', short_name='sbe', default=5000,
       help=flags_core.help_wrap(
           'The Number of training steps to run between evaluations. This is '
           'used if --train_steps is defined.'))

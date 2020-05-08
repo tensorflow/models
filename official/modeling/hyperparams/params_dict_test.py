@@ -155,6 +155,14 @@ class ParamsDictTest(tf.test.TestCase):
     with self.assertRaises(KeyError):
       params.validate()
 
+    # Valid restrictions with constant.
+    params = params_dict.ParamsDict(
+        {'a': None, 'c': {'a': 1}}, ['a == None', 'c.a == 1'])
+    params.validate()
+    with self.assertRaises(KeyError):
+      params = params_dict.ParamsDict(
+          {'a': 4, 'c': {'a': 1}}, ['a == None', 'c.a == 1'])
+
 
 class ParamsDictIOTest(tf.test.TestCase):
 

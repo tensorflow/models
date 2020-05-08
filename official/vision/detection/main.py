@@ -25,7 +25,7 @@ from absl import logging
 import functools
 import os
 import pprint
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.modeling.hyperparams import params_dict
 from official.modeling.training import distributed_executor as executor

@@ -68,7 +68,7 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
   def _run_and_report_benchmark(self, summary_path: str, report_accuracy: bool):
     """Runs and reports the benchmark given the provided configuration."""
     distribution = distribution_utils.get_distribution_strategy(
-        distribution_strategy='tpu', tpu_address=self.default_flags['tpu'])
+        distribution_strategy='tpu', tpu_address=self.tpu)
     logging.info('Flags: %s', flags_core.get_nondefault_flags_as_str())
     start_time_sec = time.time()
     run_pretraining.run_bert_pretrain(

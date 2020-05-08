@@ -14,7 +14,7 @@
 # ==============================================================================
 """Utility functions for dataloader."""
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.utils import input_utils
 

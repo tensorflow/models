@@ -148,7 +148,7 @@ class TransformerTask(object):
     params["decode_batch_size"] = flags_obj.decode_batch_size
     params["decode_max_length"] = flags_obj.decode_max_length
     params["padded_decode"] = flags_obj.padded_decode
-    params["num_parallel_calls"] = (
+    params["max_io_parallelism"] = (
         flags_obj.num_parallel_calls or tf.data.experimental.AUTOTUNE)
 
     params["use_synthetic_data"] = flags_obj.use_synthetic_data
@@ -239,7 +239,7 @@ class TransformerTask(object):
       train_ds = data_pipeline.train_input_fn(params)
       map_data_fn = data_pipeline.map_data_for_transformer_fn
       train_ds = train_ds.map(
-          map_data_fn, num_parallel_calls=params["num_parallel_calls"])
+          map_data_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     if params["use_ctl"]:
       train_ds_iterator = iter(train_ds)
 

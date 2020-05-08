@@ -193,7 +193,7 @@ def _batch_examples(dataset, batch_size, max_length):
 
 
 def _read_and_batch_from_files(
-    file_pattern, batch_size, max_length, num_parallel_calls, shuffle, repeat,
+    file_pattern, batch_size, max_length, max_io_parallelism, shuffle, repeat,
     static_batch=False, num_replicas=1, ctx=None):
   """Create dataset where each item is a dict of "inputs" and "targets".
 
@@ -201,7 +201,7 @@ def _read_and_batch_from_files(
     file_pattern: String used to match the input TFRecord files.
     batch_size: Maximum number of tokens per global batch of examples.
     max_length: Maximum number of tokens per example
-    num_parallel_calls: Number of cpu cores for parallel input processing.
+    max_io_parallelism: Max number of cpu cores for parallel input processing.
     shuffle: If true, randomizes order of elements.
     repeat: Number of times to repeat the dataset. If None, the dataset is
       repeated forever.
@@ -237,13 +237,13 @@ def _read_and_batch_from_files(
   options.experimental_deterministic = False
   dataset = dataset.interleave(
       _load_records,
-      cycle_length=num_parallel_calls,
+      cycle_length=max_io_parallelism,
       num_parallel_calls=tf.data.experimental.AUTOTUNE).with_options(options)
 
   # Parse each tf.Example into a dictionary
   # TODO: Look into prefetch_input_elements for performance optimization.
   dataset = dataset.map(_parse_example,
-                        num_parallel_calls=num_parallel_calls)
+                        num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
   # Remove examples where the input or target length exceeds the maximum length,
   dataset = dataset.filter(lambda x, y: _filter_max_length((x, y), max_length))
@@ -289,7 +289,7 @@ def train_input_fn(params, ctx=None):
     return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
       file_pattern, params["batch_size"], params["max_length"],
-      params["num_parallel_calls"], shuffle=True,
+      params["max_io_parallelism"], shuffle=True,
       repeat=params["repeat_dataset"], static_batch=params["static_batch"],
       num_replicas=params["num_gpus"], ctx=ctx)
 
@@ -301,7 +301,7 @@ def eval_input_fn(params, ctx=None):
     return _generate_synthetic_data(params)
   return _read_and_batch_from_files(
       file_pattern, params["batch_size"], params["max_length"],
-      params["num_parallel_calls"], shuffle=False, repeat=1,
+      params["max_io_parallelism"], shuffle=False, repeat=1,
       static_batch=params["static_batch"], num_replicas=params["num_gpus"],
       ctx=ctx)
 

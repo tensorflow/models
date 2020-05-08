@@ -80,9 +80,9 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     Returns:
       A `tf.distribute.DistibutionStrategy` object.
     """
-    if self.default_flags['tpu'] or ds_type == 'tpu':
+    if self.tpu or ds_type == 'tpu':
       return distribution_utils.get_distribution_strategy(
-          distribution_strategy='tpu', tpu_address=self.default_flags['tpu'])
+          distribution_strategy='tpu', tpu_address=self.tpu)
     elif ds_type == 'multi_worker_mirrored':
       # Configures cluster spec for multi-worker distribution strategy.
       _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,

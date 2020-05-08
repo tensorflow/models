@@ -74,9 +74,9 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     warmup_steps = int(epochs * steps_per_epoch * 0.1)
     eval_steps = int(
         math.ceil(input_meta_data['eval_data_size'] / FLAGS.eval_batch_size))
-    if self.default_flags['tpu']:
+    if self.tpu:
       strategy = distribution_utils.get_distribution_strategy(
-          distribution_strategy='tpu', tpu_address=self.default_flags['tpu'])
+          distribution_strategy='tpu', tpu_address=self.tpu)
     else:
       strategy = distribution_utils.get_distribution_strategy(
           distribution_strategy='mirrored' if use_ds else 'off',

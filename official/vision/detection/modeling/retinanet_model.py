@@ -21,7 +21,7 @@ from __future__ import print_function
 import collections
 import numpy as np
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from tensorflow.python.keras import backend
 from official.vision.detection.dataloader import mode_keys

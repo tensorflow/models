@@ -33,6 +33,7 @@ from absl import app as absl_app
 from absl import flags
 from absl import logging
 import numpy as np
+from six.moves import range
 import tensorflow as tf
 import typing
 
