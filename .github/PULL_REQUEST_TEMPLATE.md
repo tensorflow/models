@@ -7,7 +7,10 @@
 
 ## Type of change
 
-Please delete options that are not relevant.
+For a new feature or function, please create an issue first to discuss it
+with us before submitting a pull request.
+
+Note: Please delete options that are not relevant.
 
 - [ ] Bug fix (non-breaking change which fixes an issue)
 - [ ] Documentation update
@@ -15,6 +18,7 @@ Please delete options that are not relevant.
 - [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] A new research paper code implementation
+- [ ] Other (Specify)
 
 ## Tests
 
@@ -27,10 +31,10 @@ Please delete options that are not relevant.
 
 ## Checklist
 
-- [ ] I have signed the [Contributor License Agreement](../../wiki/Contributor-License-Agreements).
-- [ ] I have read [guidelines for pull request](../../wiki/Submitting-a-pull-request).
-- [ ] My code follows the [coding guidelines](../../wiki/Coding-Guidelines).
-- [ ] I have performed a self [code review](../../wiki/Code-review) of my own code.
+- [ ] I have signed the [Contributor License Agreement](https://github.com/tensorflow/models/wiki/Contributor-License-Agreements).
+- [ ] I have read [guidelines for pull request](https://github.com/tensorflow/models/wiki/Submitting-a-pull-request).
+- [ ] My code follows the [coding guidelines](https://github.com/tensorflow/models/wiki/Coding-guidelines).
+- [ ] I have performed a self [code review](https://github.com/tensorflow/models/wiki/Code-review) of my own code.
 - [ ] I have commented my code, particularly in hard-to-understand areas.
 - [ ] I have made corresponding changes to the documentation.
 - [ ] My changes generate no new warnings.
