@@ -95,8 +95,7 @@ class BaseTest(tf.test.TestCase):
 
     movielens.download = mock_download
     movielens.NUM_RATINGS[DATASET] = NUM_PTS
-    data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS,
-                                                                  NUM_ITEMS)
+    movielens.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS, NUM_ITEMS)
 
   def make_params(self, train_epochs=1):
     return {
