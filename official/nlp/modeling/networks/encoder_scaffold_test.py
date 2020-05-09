@@ -116,6 +116,7 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
       data = output_data
     self.assertIsInstance(test_network.hidden_layers, list)
     self.assertLen(test_network.hidden_layers, num_hidden_instances)
+    self.assertIsInstance(test_network.pooler_layer, tf.keras.layers.Dense)
 
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]

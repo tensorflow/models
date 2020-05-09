@@ -172,12 +172,12 @@ class TransformerEncoder(network.Network):
     first_token_tensor = (
         tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
             encoder_outputs[-1]))
-    cls_output = tf.keras.layers.Dense(
+    self._pooler_layer = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
         kernel_initializer=initializer,
-        name='pooler_transform')(
-            first_token_tensor)
+        name='pooler_transform')
+    cls_output = self._pooler_layer(first_token_tensor)
 
     if return_all_encoder_outputs:
       outputs = [encoder_outputs, cls_output]
@@ -197,6 +197,11 @@ class TransformerEncoder(network.Network):
   def transformer_layers(self):
     """List of Transformer layers in the encoder."""
     return self._transformer_layers
+
+  @property
+  def pooler_layer(self):
+    """The pooler dense layer after the transformer layers."""
+    return self._pooler_layer
 
   @classmethod
   def from_config(cls, config, custom_objects=None):

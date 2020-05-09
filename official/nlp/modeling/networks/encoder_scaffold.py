@@ -191,12 +191,12 @@ class EncoderScaffold(network.Network):
     first_token_tensor = (
         tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
             layer_output_data[-1]))
-    cls_output = tf.keras.layers.Dense(
+    self._pooler_layer = tf.keras.layers.Dense(
         units=pooled_output_dim,
         activation='tanh',
         kernel_initializer=pooler_layer_initializer,
-        name='cls_transform')(
-            first_token_tensor)
+        name='cls_transform')
+    cls_output = self._pooler_layer(first_token_tensor)
 
     if return_all_layer_outputs:
       outputs = [layer_output_data, cls_output]
@@ -263,3 +263,8 @@ class EncoderScaffold(network.Network):
   def hidden_layers(self):
     """List of hidden layers in the encoder."""
     return self._hidden_layers
+
+  @property
+  def pooler_layer(self):
+    """The pooler dense layer after the transformer layers."""
+    return self._pooler_layer
