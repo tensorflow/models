@@ -99,6 +99,13 @@ class MultiHeadAttentionTest(keras_parameterized.TestCase):
     # same.
     self.assertNotAllClose(masked_output_data, unmasked_output_data)
 
+    if use_bias:
+      self.assertLen(test_layer._query_dense.trainable_variables, 2)
+      self.assertLen(test_layer._output_dense.trainable_variables, 2)
+    else:
+      self.assertLen(test_layer._query_dense.trainable_variables, 1)
+      self.assertLen(test_layer._output_dense.trainable_variables, 1)
+
   def test_initializer(self):
     """Test with a specified initializer."""
     test_layer = attention.MultiHeadAttention(
@@ -143,7 +150,7 @@ class CachedAttentionTest(keras_parameterized.TestCase):
     # one element.
     mask_data = np.random.randint(
         2, size=(batch_size, from_seq_length, from_seq_length))
-    masked_output_data, cache = layer([from_data, from_data, mask_data, cache])
+    masked_output_data, cache = layer([from_data, from_data], mask_data, cache)
     self.assertEqual(masked_output_data.shape, (3, 4, 8))
     self.assertEqual(cache["value"].shape, (3, 4, 2, 2))
 
@@ -170,7 +177,9 @@ class CachedAttentionTest(keras_parameterized.TestCase):
     mask_data = np.random.randint(
         2, size=(batch_size, from_seq_length, from_seq_length), dtype=np.int32)
     # Testing the invocation directly as Keras cannot consume inputs correctly.
-    masked_output_data, cache = layer([from_data, from_data, mask_data, cache],
+    masked_output_data, cache = layer([from_data, from_data],
+                                      mask_data,
+                                      cache,
                                       decode_loop_step=decode_loop_step)
     self.assertEqual(masked_output_data.shape, (3, 4, 8))
     self.assertEqual(cache["value"].shape, (3, 4, 2, 2))

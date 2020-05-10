@@ -116,10 +116,6 @@ class Transformer(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
         name="self_attention")
-    # TODO(hongkuny): Remove when checkpoint backward compatibility is resolved.
-    # pylint: disable=protected-access
-    self._attention_layer.build([input_tensor_shape])
-    self._attention_output_dense = self._attention_layer._output_dense
 
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
