@@ -54,7 +54,7 @@ class Attention(tf.keras.layers.Layer):
       limit = math.sqrt(6.0 / (fan_in + fan_out))
       return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)
 
-    attention_initializer = _glorot_initializer(input_shape[-1],
+    attention_initializer = _glorot_initializer(input_shape.as_list()[-1],
                                                 self.hidden_size)
     self.query_dense_layer = layers.DenseEinsum(
         output_shape=(self.num_heads, size_per_head),
