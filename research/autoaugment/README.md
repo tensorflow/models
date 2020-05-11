@@ -45,8 +45,8 @@ PyramidNet + ShakeDrop | 0.05          | 5e-5         | 1800        | 64
 2.  Download CIFAR-10/CIFAR-100 dataset.
 
 ```shell
-curl -o cifar-10-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz
-curl -o cifar-100-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-100-binary.tar.gz
+curl -o cifar-10-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
+curl -o cifar-100-binary.tar.gz https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz
 ```
 
 <b>How to run:</b>
