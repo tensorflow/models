@@ -4,19 +4,14 @@ about: Use this template for raising a feature request for projects under the â€
 labels: type:feature,models:official
 
 ---
-<!--
-Please make sure that this is a feature request.
-
-As per our GitHub Policy (https://github.com/tensorflow/models/blob/master/ISSUES.md), we only address code bugs, documentation issues, and feature requests on GitHub.
-
-Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflow-model-garden) for help and support.
--->
 
 **Please provide the entire URL of the model you are using?**
-<!-- (e.g., https://github.com/tensorflow/models/tree/master/official/nlp/bert) -->
+e.g., https://github.com/tensorflow/models/tree/master/official/...
 
-**Describe the feature you request and the current behavior/state.**
+**Describe the feature you request**
+A clear and concise description of what you want to happen.
+
+**Additional context**
+Add any other context about the feature request here.
 
 **Are you willing to contribute it (Yes/No)?**
-
-**Any other info.**
