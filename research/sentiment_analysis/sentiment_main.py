@@ -10,19 +10,20 @@ from __future__ import division
 from __future__ import print_function
 
 import argparse
+import os 
 
 import tensorflow as tf
 
 from data import dataset
 import sentiment_model
-import os
+
 
 
 _DROPOUT_RATE = 0.95
 
 
 def run_model(dataset_name, emb_dim, voc_size, sen_len,
-              hid_dim, batch_size, epochs,model_save_dir):
+              hid_dim, batch_size, epochs, model_save_dir):
   """Run training loop and an evaluation at the end.
 
   Args:
@@ -61,11 +62,11 @@ def run_model(dataset_name, emb_dim, voc_size, sen_len,
 
 
   model.fit(x_train, y_train, batch_size=batch_size,
-            validation_split=0.4, epochs=epochs,callbacks=[checkpoint_callback])
+            validation_split=0.4, epochs=epochs, callbacks=[checkpoint_callback])
 
   score = model.evaluate(x_test, y_test, batch_size=batch_size)
   
-  model.save(model_save_dir+"/full-model.h5")
+  model.save(os.path.join(model_save_dir, "full-model.h5"))
 
   tf.logging.info("Score: {}".format(score))
 
@@ -103,9 +104,12 @@ if __name__ == "__main__":
 
   parser.add_argument("-f", "--folder",
                       help="folder/dir to save trained model",
-                      type=str, default=os.getcwd())
+                      type=str, default=None)
   args = parser.parse_args()
 
+  if args.folder is None:
+    parser.error("-f argument folder/dir to save is None,provide path to save model.")
+  
   run_model(args.dataset, args.embedding_dim, args.vocabulary_size,
             args.sentence_length, args.hidden_dim,
-            args.batch_size, args.epochs,args.folder)
+            args.batch_size, args.epochs, args.folder)
