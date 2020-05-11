@@ -23,15 +23,13 @@ from __future__ import print_function
 
 import copy
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 from tensorflow.contrib import training as contrib_training
 
 from nets.nasnet import nasnet
 from nets.nasnet import nasnet_utils
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+arg_scope = slim.arg_scope
 
 
 def large_imagenet_config():

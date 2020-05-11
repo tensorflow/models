@@ -19,14 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
+import tf_slim as slim
+
 from tensorflow.contrib import quantize as contrib_quantize
-from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from nets import mobilenet_v1
 from preprocessing import preprocessing_factory
-
-slim = contrib_slim
 
 flags = tf.compat.v1.app.flags
 

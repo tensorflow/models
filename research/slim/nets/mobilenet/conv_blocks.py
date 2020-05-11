@@ -17,9 +17,7 @@ import contextlib
 import functools
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tf_slim as slim
 
 
 def _fixed_padding(inputs, kernel_size, rate=1):

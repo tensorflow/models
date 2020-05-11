@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from nets import inception
 
@@ -106,8 +106,7 @@ class InceptionTest(tf.test.TestCase):
                         'PreLogitsFlatten': [batch_size, 1536],
                         'Logits': [batch_size, num_classes],
                         'Predictions': [batch_size, num_classes]}
-    self.assertItemsEqual(
-        list(endpoints_shapes.keys()), list(end_points.keys()))
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
     for endpoint_name in endpoints_shapes:
       expected_shape = endpoints_shapes[endpoint_name]
       self.assertTrue(endpoint_name in end_points)
@@ -128,7 +127,7 @@ class InceptionTest(tf.test.TestCase):
         'Mixed_5e', 'Mixed_6a', 'Mixed_6b', 'Mixed_6c', 'Mixed_6d',
         'Mixed_6e', 'Mixed_6f', 'Mixed_6g', 'Mixed_6h', 'Mixed_7a',
         'Mixed_7b', 'Mixed_7c', 'Mixed_7d']
-    self.assertItemsEqual(list(end_points.keys()), expected_endpoints)
+    self.assertItemsEqual(end_points.keys(), expected_endpoints)
     for name, op in end_points.items():
       self.assertTrue(op.name.startswith('InceptionV4/' + name))
 
@@ -148,8 +147,7 @@ class InceptionTest(tf.test.TestCase):
             inputs, final_endpoint=endpoint)
         self.assertTrue(out_tensor.op.name.startswith(
             'InceptionV4/' + endpoint))
-        self.assertItemsEqual(all_endpoints[:index + 1],
-                              list(end_points.keys()))
+        self.assertItemsEqual(all_endpoints[:index + 1], end_points.keys())
 
   def testVariablesSetDevice(self):
     batch_size = 5
@@ -264,7 +262,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     inputs = tf.compat.v1.placeholder(tf.float32, (1, height, width, 3))
-    with contrib_slim.arg_scope(inception.inception_v4_arg_scope()):
+    with slim.arg_scope(inception.inception_v4_arg_scope()):
       inception.inception_v4(inputs, num_classes, is_training=False)
 
     self.assertEqual(tf.compat.v1.global_variables('.*/BatchNorm/gamma:0$'), [])
@@ -273,7 +271,7 @@ class InceptionTest(tf.test.TestCase):
     height, width = 299, 299
     num_classes = 1000
     inputs = tf.compat.v1.placeholder(tf.float32, (1, height, width, 3))
-    with contrib_slim.arg_scope(
+    with slim.arg_scope(
         inception.inception_v4_arg_scope(batch_norm_scale=True)):
       inception.inception_v4(inputs, num_classes, is_training=False)
 

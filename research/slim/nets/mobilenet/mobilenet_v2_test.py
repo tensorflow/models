@@ -20,13 +20,10 @@ from __future__ import print_function
 import copy
 from six.moves import range
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 from nets.mobilenet import conv_blocks as ops
 from nets.mobilenet import mobilenet
 from nets.mobilenet import mobilenet_v2
-
-
-slim = contrib_slim
 
 
 def find_ops(optype):
@@ -42,9 +39,6 @@ def find_ops(optype):
 
 
 class MobilenetV2Test(tf.test.TestCase):
-
-  def setUp(self):
-    tf.compat.v1.reset_default_graph()
 
   def testCreation(self):
     spec = dict(mobilenet_v2.V2_DEF)

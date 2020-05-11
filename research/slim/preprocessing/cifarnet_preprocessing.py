@@ -21,11 +21,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+
 
 _PADDING = 4
-
-slim = contrib_slim
 
 
 def preprocess_for_train(image,

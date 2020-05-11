@@ -23,9 +23,7 @@ import copy
 import os
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tf_slim as slim
 
 
 @slim.add_arg_scope
@@ -401,7 +399,7 @@ def mobilenet(inputs,
 
 def global_pool(input_tensor,
                 use_reduce_mean_for_pooling=False,
-                pool_op=tf.compat.v2.nn.avg_pool2d):
+                pool_op=tf.nn.avg_pool2d):
   """Applies avg pool to produce 1x1 output.
 
   NOTE: This function is funcitonally equivalenet to reduce_mean, but it has
@@ -416,7 +414,7 @@ def global_pool(input_tensor,
   """
   if use_reduce_mean_for_pooling:
     return tf.reduce_mean(
-        input_tensor, [1, 2], keep_dims=True, name='ReduceMean')
+        input_tensor, [1, 2], keepdims=True, name='ReduceMean')
   else:
     shape = input_tensor.get_shape().as_list()
     if shape[1] is None or shape[2] is None:
@@ -442,7 +440,7 @@ def training_scope(is_training=True,
   """Defines Mobilenet training scope.
 
   Usage:
-     with tf.contrib.slim.arg_scope(mobilenet.training_scope()):
+     with slim.arg_scope(mobilenet.training_scope()):
        logits, endpoints = mobilenet_v2.mobilenet(input_tensor)
 
      # the network created will be trainble with dropout/batch norm

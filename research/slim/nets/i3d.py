@@ -25,12 +25,10 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from nets import i3d_utils
 from nets import s3dg
-
-slim = contrib_slim
 
 # pylint: disable=g-long-lambda
 trunc_normal = lambda stddev: tf.compat.v1.truncated_normal_initializer(

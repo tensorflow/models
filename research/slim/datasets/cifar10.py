@@ -24,11 +24,9 @@ from __future__ import print_function
 
 import os
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from datasets import dataset_utils
-
-slim = contrib_slim
 
 _FILE_PATTERN = 'cifar10_%s.tfrecord'
 

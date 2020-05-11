@@ -19,14 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from six.moves import range
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from nets import resnet_utils
 from nets import resnet_v2
-
-slim = contrib_slim
 
 tf.compat.v1.disable_resource_variables()
 
@@ -185,7 +182,7 @@ class ResnetUtilsTest(tf.test.TestCase):
         'tiny/block2/unit_2/bottleneck_v2/conv1',
         'tiny/block2/unit_2/bottleneck_v2/conv2',
         'tiny/block2/unit_2/bottleneck_v2/conv3']
-    self.assertItemsEqual(expected, list(end_points.keys()))
+    self.assertItemsEqual(expected, end_points.keys())
 
   def _stack_blocks_nondense(self, net, blocks):
     """A simplified ResNet Block stacker without output stride control."""
@@ -309,7 +306,7 @@ class ResnetCompleteNetworkTest(tf.test.TestCase):
       expected.append('resnet/block%d' % block)
     expected.extend(['global_pool', 'resnet/logits', 'resnet/spatial_squeeze',
                      'predictions'])
-    self.assertItemsEqual(list(end_points.keys()), expected)
+    self.assertItemsEqual(end_points.keys(), expected)
 
   def testClassificationShapes(self):
     global_pool = True

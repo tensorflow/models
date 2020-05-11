@@ -32,12 +32,10 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import slim as contrib_slim
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+import tf_slim as slim
 
+arg_scope = slim.arg_scope
 DATA_FORMAT_NCHW = 'NCHW'
 DATA_FORMAT_NHWC = 'NHWC'
 INVALID = 'null'
@@ -56,14 +54,14 @@ def calc_reduction_layers(num_cells, num_reduction_layers):
   return reduction_layers
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def get_channel_index(data_format=INVALID):
   assert data_format != INVALID
   axis = 3 if data_format == 'NHWC' else 1
   return axis
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def get_channel_dim(shape, data_format=INVALID):
   assert data_format != INVALID
   assert len(shape) == 4
@@ -75,7 +73,7 @@ def get_channel_dim(shape, data_format=INVALID):
     raise ValueError('Not a valid data_format', data_format)
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def global_avg_pool(x, data_format=INVALID):
   """Average pool away the height and width spatial dimensions of x."""
   assert data_format != INVALID
@@ -87,7 +85,7 @@ def global_avg_pool(x, data_format=INVALID):
     return tf.reduce_mean(input_tensor=x, axis=[2, 3])
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   """Reduces the shape of net without information loss due to striding."""
   assert data_format != INVALID
@@ -138,7 +136,7 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   return final_path
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def drop_path(net, keep_prob, is_training=True):
   """Drops out a whole example hiddenstate with the specified probability."""
   if is_training:
@@ -431,7 +429,7 @@ class NasNetABaseCell(object):
     net = tf.concat(values=states_to_combine, axis=concat_axis)
     return net
 
-  @contrib_framework.add_arg_scope  # No public API. For internal use only.
+  @slim.add_arg_scope  # No public API. For internal use only.
   def _apply_drop_path(self, net, current_step=None,
                        use_summaries=False, drop_connect_version='v3'):
     """Apply drop_path regularization.

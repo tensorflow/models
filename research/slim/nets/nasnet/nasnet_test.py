@@ -18,11 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from nets.nasnet import nasnet
-
-slim = contrib_slim
 
 
 class NASNetTest(tf.test.TestCase):
@@ -151,8 +149,7 @@ class NASNetTest(tf.test.TestCase):
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
                         'Predictions': [batch_size, num_classes]}
-    self.assertItemsEqual(
-        list(endpoints_shapes.keys()), list(end_points.keys()))
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
     for endpoint_name in endpoints_shapes:
       tf.compat.v1.logging.info('Endpoint name: {}'.format(endpoint_name))
       expected_shape = endpoints_shapes[endpoint_name]
@@ -203,8 +200,7 @@ class NASNetTest(tf.test.TestCase):
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
                         'Predictions': [batch_size, num_classes]}
-    self.assertItemsEqual(
-        list(endpoints_shapes.keys()), list(end_points.keys()))
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
     for endpoint_name in endpoints_shapes:
       tf.compat.v1.logging.info('Endpoint name: {}'.format(endpoint_name))
       expected_shape = endpoints_shapes[endpoint_name]
@@ -261,8 +257,7 @@ class NASNetTest(tf.test.TestCase):
                         'AuxLogits': [batch_size, num_classes],
                         'Logits': [batch_size, num_classes],
                         'Predictions': [batch_size, num_classes]}
-    self.assertItemsEqual(
-        list(endpoints_shapes.keys()), list(end_points.keys()))
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
     for endpoint_name in endpoints_shapes:
       tf.compat.v1.logging.info('Endpoint name: {}'.format(endpoint_name))
       expected_shape = endpoints_shapes[endpoint_name]

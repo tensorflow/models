@@ -25,11 +25,9 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from nets import inception_utils
-
-slim = contrib_slim
 
 
 def block_inception_a(inputs, scope=None, reuse=None):

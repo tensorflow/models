@@ -1,7 +1,7 @@
 # TensorFlow-Slim image classification model library
 
-[TF-slim](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim)
-is a new lightweight high-level API of TensorFlow (`tensorflow.contrib.slim`)
+[TF-slim](https://github.com/google-research/tf-slim/tree/master/tf_slim)
+is a new lightweight high-level API of TensorFlow (`tf_slim`)
 for defining, training and evaluating complex
 models. This directory contains
 code for training and evaluating several widely used Convolutional Neural
@@ -15,7 +15,7 @@ data reading and queueing utilities. You can easily train any model on any of
 these datasets, as we demonstrate below. We've also included a
 [jupyter notebook](https://github.com/tensorflow/models/blob/master/research/slim/slim_walkthrough.ipynb),
 which provides working examples of how to use TF-Slim for image classification.
-For developing or modifying your own models, see also the [main TF-Slim page](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim).
+For developing or modifying your own models, see also the [main TF-Slim page](https://github.com/google-research/tf-slim/tree/master/tf_slim).
 
 ## Contacts
 
@@ -49,12 +49,12 @@ prerequisite packages.
 
 ## Installing latest version of TF-slim
 
-TF-Slim is available as `tf.contrib.slim` via TensorFlow 1.0. To test that your
+TF-Slim is available as `tf_slim` package. To test that your
 installation is working, execute the following command; it should run without
 raising any errors.
 
 ```
-python -c "import tensorflow.contrib.slim as slim; eval = slim.evaluation.evaluate_once"
+python -c "import tf_slim as slim; eval = slim.evaluation.evaluate_once"
 ```
 
 ## Installing the TF-slim image models library
@@ -140,7 +140,7 @@ download can take several hours, and could use up to 500GB.
 ## Creating a TF-Slim Dataset Descriptor.
 
 Once the TFRecord files have been created, you can easily define a Slim
-[Dataset](https://github.com/tensorflow/tensorflow/blob/r0.10/tensorflow/contrib/slim/python/slim/data/dataset.py),
+[Dataset](https://github.com/google-research/tf-slim/master/tf_slim/data/dataset.py),
 which stores pointers to the data file, as well as various other pieces of
 metadata, such as the class labels, the train/test split, and how to parse the
 TFExample protos. We have included the TF-Slim Dataset descriptors
@@ -153,14 +153,15 @@ and
 [VisualWakeWords](https://github.com/tensorflow/models/blob/master/research/slim/datasets/visualwakewords.py),
 An example of how to load data using a TF-Slim dataset descriptor using a
 TF-Slim
-[DatasetDataProvider](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/contrib/slim/python/slim/data/dataset_data_provider.py)
+[DatasetDataProvider](https://github.com/google-research/tf-slim/tree/master/tf_slim/data/dataset_data_provider.py)
 is found below:
 
 ```python
 import tensorflow as tf
+import tf_slim as slim
 from datasets import flowers
 
-slim = tf.contrib.slim
+
 
 # Selects the 'validation' dataset.
 dataset = flowers.get_split('validation', DATA_DIR)
@@ -411,7 +412,7 @@ $ python eval_image_classifier.py \
     --model_name=inception_v3
 ```
 
-See the [evaluation module example](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/slim#evaluation-loop)
+See the [evaluation module example](https://github.com/google-research/tf-slim#evaluation-loop)
 for an example of how to evaluate a model at multiple checkpoints during or after the training.
 
 # Exporting the Inference Graph

@@ -20,11 +20,9 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from nets import inception
-
-slim = contrib_slim
 
 
 class InceptionV3Test(tf.test.TestCase):
@@ -71,7 +69,7 @@ class InceptionV3Test(tf.test.TestCase):
                           'MaxPool_5a_3x3', 'Mixed_5b', 'Mixed_5c', 'Mixed_5d',
                           'Mixed_6a', 'Mixed_6b', 'Mixed_6c', 'Mixed_6d',
                           'Mixed_6e', 'Mixed_7a', 'Mixed_7b', 'Mixed_7c']
-    self.assertItemsEqual(list(end_points.keys()), expected_endpoints)
+    self.assertItemsEqual(end_points.keys(), expected_endpoints)
 
   def testBuildOnlyUptoFinalEndpoint(self):
     batch_size = 5
@@ -89,7 +87,7 @@ class InceptionV3Test(tf.test.TestCase):
             inputs, final_endpoint=endpoint)
         self.assertTrue(out_tensor.op.name.startswith(
             'InceptionV3/' + endpoint))
-        self.assertItemsEqual(endpoints[:index + 1], list(end_points.keys()))
+        self.assertItemsEqual(endpoints[:index + 1], end_points.keys())
 
   def testBuildAndCheckAllEndPointsUptoMixed7c(self):
     batch_size = 5
@@ -116,8 +114,7 @@ class InceptionV3Test(tf.test.TestCase):
                         'Mixed_7a': [batch_size, 8, 8, 1280],
                         'Mixed_7b': [batch_size, 8, 8, 2048],
                         'Mixed_7c': [batch_size, 8, 8, 2048]}
-    self.assertItemsEqual(
-        list(endpoints_shapes.keys()), list(end_points.keys()))
+    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
     for endpoint_name in endpoints_shapes:
       expected_shape = endpoints_shapes[endpoint_name]
       self.assertTrue(endpoint_name in end_points)

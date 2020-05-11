@@ -357,13 +357,11 @@ import functools
 import numpy as np
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import layers as contrib_layers
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from nets.mobilenet import conv_blocks as ops
 from nets.mobilenet import mobilenet as lib
 
-slim = contrib_slim
 op = lib.op
 expand_input = ops.expand_input_by_factor
 
@@ -462,13 +460,12 @@ DEFAULTS = {
 }
 
 DEFAULTS_GROUP_NORM = {
-    (ops.expanded_conv,):
-        dict(normalizer_fn=contrib_layers.group_norm, residual=True),
+    (ops.expanded_conv,): dict(normalizer_fn=slim.group_norm, residual=True),
     (slim.conv2d, slim.fully_connected, slim.separable_conv2d): {
-        'normalizer_fn': contrib_layers.group_norm,
+        'normalizer_fn': slim.group_norm,
         'activation_fn': tf.nn.relu,
     },
-    (contrib_layers.group_norm,): {
+    (slim.group_norm,): {
         'groups': 8
     },
 }
@@ -629,28 +626,28 @@ def mobilenet(input_tensor,
   Inference mode is created by default. To create training use training_scope
   below.
 
-  with tf.contrib.slim.arg_scope(mobilenet_v3.training_scope()):
+  with slim.arg_scope(mobilenet_v3.training_scope()):
      logits, endpoints = mobilenet_v3.mobilenet(input_tensor)
 
   Args:
     input_tensor: The input tensor
     num_classes: number of classes
-    depth_multiplier: The multiplier applied to scale number of channels in each
-      layer.
+    depth_multiplier: The multiplier applied to scale number of
+    channels in each layer.
     scope: Scope of the operator
-    conv_defs: Which version to create. Could be large/small or any conv_def
-      (see mobilenet_v3.py for examples).
-    finegrain_classification_mode: When set to True, the model will keep the
-      last layer large even for small multipliers. Following
-    https://arxiv.org/abs/1801.04381 it improves performance for ImageNet-type
-      of problems. *Note* ignored if final_endpoint makes the builder exit
-      earlier.
+    conv_defs: Which version to create. Could be large/small or
+    any conv_def (see mobilenet_v3.py for examples).
+    finegrain_classification_mode: When set to True, the model
+    will keep the last layer large even for small multipliers. Following
+    https://arxiv.org/abs/1801.04381
+    it improves performance for ImageNet-type of problems.
+      *Note* ignored if final_endpoint makes the builder exit earlier.
     use_groupnorm: When set to True, use group_norm as normalizer_fn.
-    **kwargs: passed directly to mobilenet.mobilenet: prediction_fn- what
-      prediction function to use.
-      reuse-: whether to reuse variables (if reuse set to true, scope must be
-        given).
 
+    **kwargs: passed directly to mobilenet.mobilenet:
+      prediction_fn- what prediction function to use.
+      reuse-: whether to reuse variables (if reuse set to true, scope
+      must be given).
   Returns:
     logits/endpoints pair
 
@@ -667,7 +664,7 @@ def mobilenet(input_tensor,
     conv_defs = copy.deepcopy(conv_defs)
     conv_defs['defaults'] = dict(DEFAULTS_GROUP_NORM)
     conv_defs['defaults'].update({
-        (contrib_layers.group_norm,): {
+        (slim.group_norm,): {
             'groups': kwargs.pop('groups', 8)
         }
     })

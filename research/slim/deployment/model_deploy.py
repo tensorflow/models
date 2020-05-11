@@ -102,9 +102,7 @@ from __future__ import print_function
 import collections
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tf_slim as slim
 
 
 __all__ = ['create_clones',
