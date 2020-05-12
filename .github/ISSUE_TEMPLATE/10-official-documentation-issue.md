@@ -1,11 +1,20 @@
 ---
-name: Documentation Issue for Official Models
+name: "[Official Model] Documentation Issue"
 about: Use this template for reporting a documentation issue for projects under the “official” folder
 labels: type:docs,models:official
 
 ---
 
-**Documentation URL(s) with the issue:**
-e.g., https://github.com/tensorflow/models/tree/master/official/README.md
+# Prerequisites
 
-**Description of the issue (what needs to be changed):**
+Please answer the following question for yourself before submitting an issue.
+
+- [ ] I checked to make sure that this issue has not been filed already.
+
+## 1. The entire URL of the documentation with the issue
+
+https://github.com/tensorflow/models/tree/master/official/...
+
+## 2. Describe the issue
+
+A clear and concise description of what needs to be changed.

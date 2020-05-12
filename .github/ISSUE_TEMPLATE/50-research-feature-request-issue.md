@@ -1,24 +1,26 @@
 ---
-name: Feature Request for Research Models
-about: Use this template for raising a feature request for projects under the “research” folder
+name: "[Research Model] Feature Request"
+about: Use this template for raising a feature request for the “research” directory
 labels: type:feature,models:research
 
 ---
-<!--
-Please make sure that this is a feature request. 
 
-As per our GitHub Policy (https://github.com/tensorflow/models/blob/master/ISSUES.md), we only address code bugs, documentation issues, and feature requests on GitHub.
+# Prerequisites
 
-Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflow-model-garden) for help and support.
+Please answer the following question for yourself before submitting an issue.
 
-The research models (https://github.com/tensorflow/models/tree/master/research) are a large collection of models implemented in TensorFlow by researchers. They are not officially supported. It is up to the individual researchers to maintain the models and/or provide support on issues and pull requests.
--->
+- [ ] I checked to make sure that this feature has not been requested already.
 
-**Please provide the entire URL of the model you are using?**
-<!-- (e.g., https://github.com/tensorflow/models/tree/master/official/nlp/bert) -->
+## 1. The entire URL of the file you are using
 
-**Describe the feature you request and the current behavior/state.**
+https://github.com/tensorflow/models/tree/master/research/...
 
-**Are you willing to contribute it (Yes/No)?**
+## 2. Describe the feature you request
 
-**Any other info.**
+A clear and concise description of what you want to happen.
+
+## 3. Additional context
+
+Add any other context about the feature request here.
+
+## 4. Are you willing to contribute it? (Yes or No)
