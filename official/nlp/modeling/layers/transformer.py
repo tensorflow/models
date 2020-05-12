@@ -117,7 +117,10 @@ class Transformer(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
         name="self_attention")
-
+    # pylint: disable=protected-access
+    self._attention_layer.build([input_tensor_shape] * 3)
+    self._attention_output_dense = self._attention_layer._output_dense
+    # pylint: enable=protected-access
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
