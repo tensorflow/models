@@ -307,7 +307,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         attention to certain positions.
 
     Returns:
-      attention_output: The result of the computation, of shape [B, F, N, V] or
+      attention_output: The result of the computation, of shape [B, T, N, V] or
         [B, F, E], where `N` is the number of heads and `E` is the query input
         last dimension.
     """
