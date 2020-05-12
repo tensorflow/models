@@ -137,6 +137,10 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
         'benchmark_accuracy_8x8_tpu_bf16_seq128_1m_steps')
     summary_path = os.path.join(FLAGS.model_dir,
                                 'summaries/training_summary.txt')
+    # Set train_summary_interval to -1 to disable training summary, because
+    # writing summary to gcs may fail and summaries are not needed for this
+    # accuracy benchmark test.
+    FLAGS.train_summary_interval = -1
     self._run_and_report_benchmark(summary_path=summary_path,
                                    report_accuracy=True)
 

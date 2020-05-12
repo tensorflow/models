@@ -49,6 +49,9 @@ flags.DEFINE_float('warmup_steps', 10000,
                    'Warmup steps for Adam weight decay optimizer.')
 flags.DEFINE_bool('use_next_sentence_label', True,
                   'Whether to use next sentence label to compute final loss.')
+flags.DEFINE_bool('train_summary_interval', 0, 'Step interval for training '
+                  'summaries. If the value is a negative number, '
+                  'then training summaries are not enabled.')
 
 common_flags.define_common_bert_flags()
 
@@ -101,6 +104,7 @@ def run_customized_training(strategy,
                             input_files,
                             train_batch_size,
                             use_next_sentence_label=True,
+                            train_summary_interval=0,
                             custom_callbacks=None):
   """Run BERT pretrain model training using low-level API."""
 
@@ -135,6 +139,7 @@ def run_customized_training(strategy,
       steps_per_loop=steps_per_loop,
       epochs=epochs,
       sub_model_export_name='pretrained/bert_model',
+      train_summary_interval=train_summary_interval,
       custom_callbacks=custom_callbacks)
 
   return trained_model
@@ -170,6 +175,7 @@ def run_bert_pretrain(strategy, custom_callbacks=None):
       FLAGS.input_files,
       FLAGS.train_batch_size,
       FLAGS.use_next_sentence_label,
+      FLAGS.train_summary_interval,
       custom_callbacks=custom_callbacks)
 
 
