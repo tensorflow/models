@@ -962,18 +962,18 @@ def batch_multiclass_non_max_suppression(boxes,
     if use_class_agnostic_nms:
       raise ValueError('class-agnostic NMS is not supported by combined_nms.')
     if clip_window is not None:
-      tf.compat.v1.logging.warning(
+      tf.logging.warning(
           'clip_window is not supported by combined_nms unless it is'
           ' [0. 0. 1. 1.] for each image.')
     if additional_fields is not None:
-      tf.compat.v1.logging.warning(
+      tf.logging.warning(
           'additional_fields is not supported by combined_nms.')
     if parallel_iterations != 32:
-      tf.compat.v1.logging.warning(
+      tf.logging.warning(
           'Number of batch items to be processed in parallel is'
           ' not configurable by combined_nms.')
     if max_classes_per_detection > 1:
-      tf.compat.v1.logging.warning(
+      tf.logging.warning(
           'max_classes_per_detection is not configurable by combined_nms.')
 
     with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
@@ -1013,7 +1013,7 @@ def batch_multiclass_non_max_suppression(boxes,
   else:
     ordered_additional_fields = collections.OrderedDict(
         sorted(additional_fields.items(), key=lambda item: item[0]))
-  del additional_fields
+
   with tf.name_scope(scope, 'BatchMultiClassNonMaxSuppression'):
     boxes_shape = boxes.shape
     batch_size = shape_utils.get_dim_as_int(boxes_shape[0])

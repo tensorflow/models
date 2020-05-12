@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,8 +27,12 @@ layout and the parameters of each Op to make sure the two implementations are
 consistent.
 """
 
-import itertools
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import zip
 import tensorflow as tf
 
 from object_detection.models.keras_models import inception_resnet_v2
@@ -151,8 +156,7 @@ class InceptionResnetV2Test(test_case.TestCase):
                                   _NUM_CHANNELS).astype(np.float32)
     feature_maps = model(image_tensor)
 
-    for feature_map, layer_name in itertools.izip(
-        feature_maps, layer_names):
+    for feature_map, layer_name in zip(feature_maps, layer_names):
       endpoint_name = _KERAS_TO_SLIM_ENDPOINT_NAMES[layer_name]
       expected_shape = expected_feature_map_shape[endpoint_name]
       self.assertAllEqual(feature_map.shape, expected_shape)

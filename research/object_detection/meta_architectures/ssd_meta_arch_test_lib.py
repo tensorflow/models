@@ -17,7 +17,6 @@
 import functools
 import tensorflow as tf
 from google.protobuf import text_format
-from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.builders import post_processing_builder
 from object_detection.core import anchor_generator
@@ -34,7 +33,14 @@ from object_detection.utils import ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 
-slim = contrib_slim
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import slim as contrib_slim
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
+
 keras = tf.keras.layers
 
 
@@ -54,7 +60,7 @@ class FakeSSDFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
 
   def extract_features(self, preprocessed_inputs):
     with tf.variable_scope('mock_model'):
-      features = slim.conv2d(
+      features = contrib_slim.conv2d(
           inputs=preprocessed_inputs,
           num_outputs=32,
           kernel_size=1,

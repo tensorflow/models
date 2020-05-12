@@ -21,6 +21,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import enum
+import numpy as np
 from six.moves import zip
 import tensorflow as tf
 
@@ -29,7 +31,27 @@ from object_detection.core import standard_fields as fields
 from object_detection.protos import input_reader_pb2
 from object_detection.utils import label_map_util
 
-slim_example_decoder = tf.contrib.slim.tfexample_decoder
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import lookup as contrib_lookup
+  from tensorflow.contrib.slim import tfexample_decoder as slim_example_decoder
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
+
+
+class Visibility(enum.Enum):
+  """Visibility definitions.
+
+  This follows the MS Coco convention (http://cocodataset.org/#format-data).
+  """
+  # Keypoint is not labeled.
+  UNLABELED = 0
+  # Keypoint is labeled but falls outside the object segment (e.g. occluded).
+  NOT_VISIBLE = 1
+  # Keypoint is labeled and visible.
+  VISIBLE = 2
 
 
 class _ClassTensorHandler(slim_example_decoder.Tensor):
@@ -69,8 +91,8 @@ class _ClassTensorHandler(slim_example_decoder.Tensor):
       lookup = tf.compat.v2.lookup
       hash_table_class = tf.compat.v2.lookup.StaticHashTable
     except AttributeError:
-      lookup = tf.contrib.lookup
-      hash_table_class = tf.contrib.lookup.HashTable
+      lookup = contrib_lookup
+      hash_table_class = contrib_lookup.HashTable
     name_to_id_table = hash_table_class(
         initializer=lookup.KeyValueTensorInitializer(
             keys=tf.constant(list(name_to_id.keys())),
@@ -144,7 +166,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                dct_method='',
                num_keypoints=0,
                num_additional_channels=0,
-               load_multiclass_scores=False):
+               load_multiclass_scores=False,
+               load_context_features=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -168,6 +191,9 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       num_additional_channels: how many additional channels to use.
       load_multiclass_scores: Whether to load multiclass scores associated with
         boxes.
+      load_context_features: Whether to load information from context_features,
+        to provide additional context to a detection model for training and/or
+        inference
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
@@ -197,6 +223,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.VarLenFeature(tf.string),
         'image/class/label':
             tf.VarLenFeature(tf.int64),
+        'image/class/confidence':
+            tf.VarLenFeature(tf.float32),
         # Object boxes and classes.
         'image/object/bbox/xmin':
             tf.VarLenFeature(tf.float32),
@@ -253,6 +281,9 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             slim_example_decoder.Tensor('image/key/sha256')),
         fields.InputDataFields.filename: (
             slim_example_decoder.Tensor('image/filename')),
+        # Image-level labels.
+        fields.InputDataFields.groundtruth_image_confidences: (
+            slim_example_decoder.Tensor('image/class/confidence')),
         # Object boxes and classes.
         fields.InputDataFields.groundtruth_boxes: (
             slim_example_decoder.BoundingBox(['ymin', 'xmin', 'ymax', 'xmax'],
@@ -274,6 +305,20 @@ class TfExampleDecoder(data_decoder.DataDecoder):
           'image/object/class/multiclass_scores'] = tf.VarLenFeature(tf.float32)
       self.items_to_handlers[fields.InputDataFields.multiclass_scores] = (
           slim_example_decoder.Tensor('image/object/class/multiclass_scores'))
+
+    if load_context_features:
+      self.keys_to_features[
+          'image/context_features'] = tf.VarLenFeature(tf.float32)
+      self.items_to_handlers[fields.InputDataFields.context_features] = (
+          slim_example_decoder.ItemHandlerCallback(
+              ['image/context_features', 'image/context_feature_length'],
+              self._reshape_context_features))
+
+      self.keys_to_features[
+          'image/context_feature_length'] = tf.FixedLenFeature((), tf.int64)
+      self.items_to_handlers[fields.InputDataFields.context_feature_length] = (
+          slim_example_decoder.Tensor('image/context_feature_length'))
+
     if num_additional_channels > 0:
       self.keys_to_features[
           'image/additional_channels/encoded'] = tf.FixedLenFeature(
@@ -287,10 +332,17 @@ class TfExampleDecoder(data_decoder.DataDecoder):
           tf.VarLenFeature(tf.float32))
       self.keys_to_features['image/object/keypoint/y'] = (
           tf.VarLenFeature(tf.float32))
+      self.keys_to_features['image/object/keypoint/visibility'] = (
+          tf.VarLenFeature(tf.int64))
       self.items_to_handlers[fields.InputDataFields.groundtruth_keypoints] = (
           slim_example_decoder.ItemHandlerCallback(
               ['image/object/keypoint/y', 'image/object/keypoint/x'],
               self._reshape_keypoints))
+      kpt_vis_field = fields.InputDataFields.groundtruth_keypoint_visibilities
+      self.items_to_handlers[kpt_vis_field] = (
+          slim_example_decoder.ItemHandlerCallback(
+              ['image/object/keypoint/x', 'image/object/keypoint/visibility'],
+              self._reshape_keypoint_visibilities))
     if load_instance_masks:
       if instance_mask_type in (input_reader_pb2.DEFAULT,
                                 input_reader_pb2.NUMERICAL_MASKS):
@@ -363,6 +415,9 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         [None] indicating if the boxes enclose a crowd.
 
     Optional:
+      fields.InputDataFields.groundtruth_image_confidences - 1D float tensor of
+        shape [None] indicating if a class is present in the image (1.0) or
+        a class is not present in the image (0.0).
       fields.InputDataFields.image_additional_channels - 3D uint8 tensor of
         shape [None, None, num_additional_channels]. 1st dim is height; 2nd dim
         is width; 3rd dim is the number of additional channels.
@@ -371,8 +426,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       fields.InputDataFields.groundtruth_group_of - 1D bool tensor of shape
         [None] indicating if the boxes represent `group_of` instances.
       fields.InputDataFields.groundtruth_keypoints - 3D float32 tensor of
-        shape [None, None, 2] containing keypoints, where the coordinates of
-        the keypoints are ordered (y, x).
+        shape [None, num_keypoints, 2] containing keypoints, where the
+        coordinates of the keypoints are ordered (y, x).
+      fields.InputDataFields.groundtruth_keypoint_visibilities - 2D bool
+        tensor of shape [None, num_keypoints] containing keypoint visibilites.
       fields.InputDataFields.groundtruth_instance_masks - 3D float32 tensor of
         shape [None, None, None] containing instance masks.
       fields.InputDataFields.groundtruth_image_classes - 1D uint64 of shape
@@ -380,6 +437,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       fields.InputDataFields.multiclass_scores - 1D float32 tensor of shape
         [None * num_classes] containing flattened multiclass scores for
         groundtruth boxes.
+      fields.InputDataFields.context_features - 1D float32 tensor of shape
+        [context_feature_length * num_context_features]
+      fields.InputDataFields.context_feature_length - int32 tensor specifying
+        the length of each feature in context_features
     """
     serialized_example = tf.reshape(tf_example_string_tensor, shape=[])
     decoder = slim_example_decoder.TFExampleDecoder(self.keys_to_features,
@@ -410,20 +471,34 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                 tensor_dict[fields.InputDataFields.groundtruth_weights])[0],
             0), lambda: tensor_dict[fields.InputDataFields.groundtruth_weights],
         default_groundtruth_weights)
+
+    if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
+      # Set all keypoints that are not labeled to NaN.
+      gt_kpt_fld = fields.InputDataFields.groundtruth_keypoints
+      gt_kpt_vis_fld = fields.InputDataFields.groundtruth_keypoint_visibilities
+      visibilities_tiled = tf.tile(
+          tf.expand_dims(tensor_dict[gt_kpt_vis_fld], -1),
+          [1, 1, 2])
+      tensor_dict[gt_kpt_fld] = tf.where(
+          visibilities_tiled,
+          tensor_dict[gt_kpt_fld],
+          np.nan * tf.ones_like(tensor_dict[gt_kpt_fld]))
+
     return tensor_dict
 
   def _reshape_keypoints(self, keys_to_tensors):
     """Reshape keypoints.
 
-    The instance segmentation masks are reshaped to [num_instances,
-    num_keypoints, 2].
+    The keypoints are reshaped to [num_instances, num_keypoints, 2].
 
     Args:
-      keys_to_tensors: a dictionary from keys to tensors.
+      keys_to_tensors: a dictionary from keys to tensors. Expected keys are:
+        'image/object/keypoint/x'
+        'image/object/keypoint/y'
 
     Returns:
       A 3-D float tensor of shape [num_instances, num_keypoints, 2] with values
-        in {0, 1}.
+        in [0, 1].
     """
     y = keys_to_tensors['image/object/keypoint/y']
     if isinstance(y, tf.SparseTensor):
@@ -436,6 +511,54 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     keypoints = tf.concat([y, x], 1)
     keypoints = tf.reshape(keypoints, [-1, self._num_keypoints, 2])
     return keypoints
+
+  def _reshape_keypoint_visibilities(self, keys_to_tensors):
+    """Reshape keypoint visibilities.
+
+    The keypoint visibilities are reshaped to [num_instances,
+    num_keypoints].
+
+    The raw keypoint visibilities are expected to conform to the
+    MSCoco definition. See Visibility enum.
+
+    The returned boolean is True for the labeled case (either
+    Visibility.NOT_VISIBLE or Visibility.VISIBLE). These are the same categories
+    that COCO uses to evaluate keypoint detection performance:
+    http://cocodataset.org/#keypoints-eval
+
+    If image/object/keypoint/visibility is not provided, visibilities will be
+    set to True for finite keypoint coordinate values, and 0 if the coordinates
+    are NaN.
+
+    Args:
+      keys_to_tensors: a dictionary from keys to tensors. Expected keys are:
+        'image/object/keypoint/x'
+        'image/object/keypoint/visibility'
+
+    Returns:
+      A 2-D bool tensor of shape [num_instances, num_keypoints] with values
+        in {0, 1}. 1 if the keypoint is labeled, 0 otherwise.
+    """
+    x = keys_to_tensors['image/object/keypoint/x']
+    vis = keys_to_tensors['image/object/keypoint/visibility']
+    if isinstance(vis, tf.SparseTensor):
+      vis = tf.sparse_tensor_to_dense(vis)
+    if isinstance(x, tf.SparseTensor):
+      x = tf.sparse_tensor_to_dense(x)
+
+    default_vis = tf.where(
+        tf.math.is_nan(x),
+        Visibility.UNLABELED.value * tf.ones_like(x, dtype=tf.int64),
+        Visibility.VISIBLE.value * tf.ones_like(x, dtype=tf.int64))
+    # Use visibility if provided, otherwise use the default visibility.
+    vis = tf.cond(tf.equal(tf.size(x), tf.size(vis)),
+                  true_fn=lambda: vis,
+                  false_fn=lambda: default_vis)
+    vis = tf.math.logical_or(
+        tf.math.equal(vis, Visibility.NOT_VISIBLE.value),
+        tf.math.equal(vis, Visibility.VISIBLE.value))
+    vis = tf.reshape(vis, [-1, self._num_keypoints])
+    return vis
 
   def _reshape_instance_masks(self, keys_to_tensors):
     """Reshape instance segmentation masks.
@@ -459,6 +582,26 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     masks = tf.reshape(
         tf.cast(tf.greater(masks, 0.0), dtype=tf.float32), to_shape)
     return tf.cast(masks, tf.float32)
+
+  def _reshape_context_features(self, keys_to_tensors):
+    """Reshape context features.
+
+    The instance context_features are reshaped to
+      [num_context_features, context_feature_length]
+
+    Args:
+      keys_to_tensors: a dictionary from keys to tensors.
+
+    Returns:
+      A 2-D float tensor of shape [num_context_features, context_feature_length]
+    """
+    context_feature_length = keys_to_tensors['image/context_feature_length']
+    to_shape = tf.cast(tf.stack([-1, context_feature_length]), tf.int32)
+    context_features = keys_to_tensors['image/context_features']
+    if isinstance(context_features, tf.SparseTensor):
+      context_features = tf.sparse_tensor_to_dense(context_features)
+    context_features = tf.reshape(context_features, to_shape)
+    return context_features
 
   def _decode_png_instance_masks(self, keys_to_tensors):
     """Decode PNG instance segmentation masks and stack into dense tensor.

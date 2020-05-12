@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,18 +16,30 @@
 
 """Tests for object_detection.meta_architectures.ssd_meta_arch."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from absl.testing import parameterized
 
 import numpy as np
+import six
+from six.moves import range
 import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch_test_lib
 from object_detection.protos import model_pb2
 from object_detection.utils import test_utils
 
-slim = contrib_slim
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import slim as contrib_slim
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
+
 keras = tf.keras.layers
 
 
@@ -681,9 +694,9 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
           layer_two(net)
       else:
         with tf.variable_scope('mock_model'):
-          net = slim.conv2d(image, num_outputs=32, kernel_size=1,
-                            scope='layer1')
-          slim.conv2d(net, num_outputs=3, kernel_size=1, scope='layer2')
+          net = contrib_slim.conv2d(
+              image, num_outputs=32, kernel_size=1, scope='layer1')
+          contrib_slim.conv2d(net, num_outputs=3, kernel_size=1, scope='layer2')
 
       init_op = tf.global_variables_initializer()
       saver = tf.train.Saver()
@@ -711,7 +724,7 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
       with self.test_session(graph=test_graph_detection) as sess:
         saver.restore(sess, saved_model_path)
         for var in sess.run(tf.report_uninitialized_variables()):
-          self.assertNotIn('FeatureExtractor', var)
+          self.assertNotIn(six.ensure_binary('FeatureExtractor'), var)
 
   def test_load_all_det_checkpoint_vars(self, use_keras):
     test_graph_detection = tf.Graph()
@@ -775,6 +788,8 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
         ])
     self.assertAllClose(localization_loss, expected_localization_loss)
     self.assertAllClose(classification_loss, expected_classification_loss)
+
+
 
 if __name__ == '__main__':
   tf.test.main()
