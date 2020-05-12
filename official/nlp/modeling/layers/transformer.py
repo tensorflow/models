@@ -19,6 +19,7 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
+import gin
 import tensorflow as tf
 
 from official.nlp.modeling.layers import attention
@@ -219,6 +220,8 @@ class Transformer(tf.keras.layers.Layer):
     return layer_output
 
 
+@tf.keras.utils.register_keras_serializable(package="Text")
+@gin.configurable
 class CompiledTransformer(Transformer):
 
   @tf_function_if_eager(experimental_compile=True)
