@@ -1,6 +1,6 @@
 ---
 name: "[Official Model] Documentation Issue"
-about: Use this template for reporting a documentation issue for projects under the “official” folder
+about: Use this template for reporting a documentation issue for the “official” directory
 labels: type:docs,models:official
 
 ---
