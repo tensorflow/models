@@ -116,7 +116,8 @@ class EncoderScaffold(tf.keras.Model):
 
     if embedding_cls:
       if inspect.isclass(embedding_cls):
-        self._embedding_network = embedding_cls(embedding_cfg)
+        self._embedding_network = embedding_cls(
+            **embedding_cfg) if embedding_cfg else embedding_cls()
       else:
         self._embedding_network = embedding_cls
       inputs = self._embedding_network.inputs
