@@ -1,12 +1,6 @@
 # TensorFlow-Slim image classification model library
-
-[TF-slim](https://github.com/google-research/tf-slim/tree/master/tf_slim)
-is a new lightweight high-level API of TensorFlow (`tf_slim`)
-for defining, training and evaluating complex
-models. This directory contains
-code for training and evaluating several widely used Convolutional Neural
-Network (CNN) image classification models using TF-slim.
-It contains scripts that will allow
+This directory contains code for training and evaluating several widely used Convolutional Neural Network (CNN) image classification models using [tf_slim]((https://github.com/google-research/tf-slim/tree/master/tf_slim).
+It contains scripts that allow
 you to train models from scratch or fine-tune them from pre-trained network
 weights. It also contains code for downloading standard image datasets,
 converting them
@@ -20,9 +14,6 @@ For developing or modifying your own models, see also the [main TF-Slim page](ht
 ## Contacts
 
 Maintainers of TF-slim:
-
-* Nathan Silberman,
-  github: [nathansilberman](https://github.com/nathansilberman)
 * Sergio Guadarrama, github: [sguada](https://github.com/sguada)
 
 ## Citation
@@ -180,7 +171,7 @@ format.
 
 The TFRecord format consists of a set of sharded files where each entry is a serialized `tf.Example` proto. Each `tf.Example` proto contains the ImageNet image (JPEG encoded) as well as metadata such as label and bounding box information.
 
-We provide a single [script](datasets/download_and_preprocess_imagenet.sh) for
+We provide a single [script](datasets/download_and_convert_imagenet.sh) for
 downloading and converting ImageNet data to TFRecord format. Downloading and
 preprocessing the data may take several hours (up to half a day) depending on
 your network and computer speed. Please be patient.
@@ -203,10 +194,10 @@ you will not need to interact with the script again.
 DATA_DIR=$HOME/imagenet-data
 
 # build the preprocessing script.
-bazel build slim/download_and_preprocess_imagenet
+bazel build slim/download_and_convert_imagenet
 
 # run it
-bazel-bin/slim/download_and_preprocess_imagenet "${DATA_DIR}"
+bazel-bin/slim/download_and_convert_imagenet "${DATA_DIR}"
 ```
 
 The final line of the output script should read:
