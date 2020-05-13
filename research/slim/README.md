@@ -1,5 +1,6 @@
 # TensorFlow-Slim image classification model library
-This directory contains code for training and evaluating several widely used Convolutional Neural Network (CNN) image classification models using [tf_slim]((https://github.com/google-research/tf-slim/tree/master/tf_slim).
+This directory contains code for training and evaluating several widely used Convolutional Neural Network (CNN) image classification models using
+[tf_slim](https://github.com/google-research/tf-slim/tree/master/tf_slim).
 It contains scripts that allow
 you to train models from scratch or fine-tune them from pre-trained network
 weights. It also contains code for downloading standard image datasets,
