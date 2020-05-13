@@ -21,13 +21,12 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras.engine import network  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 from official.nlp.modeling import layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class TransformerEncoder(network.Network):
+class TransformerEncoder(tf.keras.Model):
   """Bi-directional Transformer-based encoder network.
 
   This network implements a bi-directional Transformer-based encoder as

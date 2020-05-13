@@ -21,12 +21,11 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras.engine import network  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import tf_utils
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class MaskedLM(network.Network):
+class MaskedLM(tf.keras.Model):
   """Masked language model network head for BERT modeling.
 
   This network implements a masked language model based on the provided network.

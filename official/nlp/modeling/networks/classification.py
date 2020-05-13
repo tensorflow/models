@@ -21,12 +21,9 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-# pylint: disable=g-direct-tensorflow-import
-from tensorflow.python.keras.engine import network
-
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class Classification(network.Network):
+class Classification(tf.keras.Model):
   """Classification network head for BERT modeling.
 
   This network implements a simple classifier head based on a dense layer.

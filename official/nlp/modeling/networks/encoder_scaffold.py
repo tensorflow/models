@@ -25,13 +25,12 @@ import inspect
 import gin
 import tensorflow as tf
 
-from tensorflow.python.keras.engine import network  # pylint: disable=g-direct-tensorflow-import
 from official.nlp.modeling import layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
 @gin.configurable
-class EncoderScaffold(network.Network):
+class EncoderScaffold(tf.keras.Model):
   """Bi-directional Transformer-based encoder network scaffold.
 
   This network allows users to flexibly implement an encoder similar to the one
