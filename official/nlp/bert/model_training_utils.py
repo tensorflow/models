@@ -24,6 +24,7 @@ import tempfile
 
 from absl import logging
 import tensorflow as tf
+from tensorflow.python.util import deprecation
 from official.staging.training import grad_utils
 from official.utils.misc import distribution_utils
 
@@ -97,6 +98,8 @@ def write_txt_summary(training_summary, summary_dir):
     f.write(json.dumps(training_summary, indent=4))
 
 
+@deprecation.deprecated(
+    None, 'This function is deprecated. Please use Keras compile/fit instead.')
 def run_customized_training_loop(
     # pylint: disable=invalid-name
     _sentinel=None,
