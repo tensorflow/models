@@ -61,7 +61,7 @@ features in TF 2.x. Users can train the model on both GPU and TPU.
 
 To train and evaluate the model, issue the following command:
 ```
-python ncf_keras_main.py
+python ncf_keras_main.py --eval_batch_size=1000
 ```
 Arguments:
   * `--model_dir`: Directory to save model training checkpoints. By default, it is `/tmp/ncf/`.
