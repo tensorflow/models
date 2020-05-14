@@ -63,7 +63,8 @@ def create_pretrain_dataset(input_patterns,
                             is_training=True,
                             input_pipeline_context=None,
                             use_next_sentence_label=True,
-                            use_position_id=False):
+                            use_position_id=False,
+                            output_fake_labels=True):
   """Creates input dataset from (tf)records files for pretraining."""
   name_to_features = {
       'input_ids':
@@ -135,9 +136,11 @@ def create_pretrain_dataset(input_patterns,
     if use_position_id:
       x['position_ids'] = record['position_ids']
 
-    y = record['masked_lm_weights']
-
-    return (x, y)
+    # TODO(hongkuny): Remove the fake labels after migrating bert pretraining.
+    if output_fake_labels:
+      return (x, record['masked_lm_weights'])
+    else:
+      return x
 
   dataset = dataset.map(
       _select_data_from_record,
