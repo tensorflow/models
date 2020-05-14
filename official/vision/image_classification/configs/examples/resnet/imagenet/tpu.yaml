@@ -52,5 +52,7 @@ train:
     enable_checkpoint_and_export: True
   resume_checkpoint: True
   epochs: 90
+  # 313 * batch_size = dataset_size
+  steps_per_loop: 313
 evaluation:
   epochs_between_evals: 1
