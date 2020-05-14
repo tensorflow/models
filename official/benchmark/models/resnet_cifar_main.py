@@ -213,7 +213,7 @@ def run(flags_obj):
 
   train_epochs = flags_obj.train_epochs
 
-  callbacks = common.get_callbacks(steps_per_epoch)
+  callbacks = common.get_callbacks()
 
   if not flags_obj.use_tensor_lr:
     lr_callback = LearningRateBatchScheduler(

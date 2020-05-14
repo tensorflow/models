@@ -416,7 +416,7 @@ class TransformerTask(object):
                                      params["hidden_size"],
                                      params["learning_rate_warmup_steps"])
     scheduler_callback = optimizer.LearningRateScheduler(sfunc, init_steps)
-    callbacks = misc.get_callbacks(params["steps_between_evals"])
+    callbacks = misc.get_callbacks()
     callbacks.append(scheduler_callback)
     if params["enable_checkpointing"]:
       ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")

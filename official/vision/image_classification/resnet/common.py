@@ -105,7 +105,6 @@ def get_optimizer(learning_rate=0.1):
 
 
 def get_callbacks(
-    steps_per_epoch,
     pruning_method=None,
     enable_checkpoint_and_export=False,
     model_dir=None):
@@ -120,14 +119,6 @@ def get_callbacks(
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
         log_dir=FLAGS.model_dir)
     callbacks.append(tensorboard_callback)
-
-  if FLAGS.profile_steps:
-    profiler_callback = keras_utils.get_profiler_callback(
-        FLAGS.model_dir,
-        FLAGS.profile_steps,
-        FLAGS.enable_tensorboard,
-        steps_per_epoch)
-    callbacks.append(profiler_callback)
 
   is_pruning_enabled = pruning_method is not None
   if is_pruning_enabled:
@@ -242,14 +233,6 @@ def define_keras_flags(
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. This flag will be '
       'ignored if train_epochs is set to be larger than 1. ')
-  flags.DEFINE_string(
-      name='profile_steps', default=None,
-      help='Save profiling data to model dir at given range of global steps. The '
-      'value must be a comma separated pair of positive integers, specifying '
-      'the first and last step to profile. For example, "--profile_steps=2,4" '
-      'triggers the profiler to process 3 steps, starting from the 2nd step. '
-      'Note that profiler has a non-trivial performance overhead, and the '
-      'output file can be gigantic if profiling many steps.')
   flags.DEFINE_boolean(
       name='batchnorm_spatial_persistent', default=True,
       help='Enable the spacial persistent mode for CuDNN batch norm kernel.')
