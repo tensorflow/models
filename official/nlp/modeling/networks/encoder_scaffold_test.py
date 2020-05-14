@@ -211,8 +211,6 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
     }
-    print(hidden_cfg)
-    print(embedding_cfg)
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
@@ -347,7 +345,9 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
         initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
         name="word_embeddings")
     word_embeddings = embedding_layer(word_ids)
-    network = tf.keras.Model([word_ids, mask], [word_embeddings, mask])
+    attention_mask = layers.SelfAttentionMask()([word_embeddings, mask])
+    network = tf.keras.Model([word_ids, mask],
+                             [word_embeddings, attention_mask])
 
     hidden_cfg = {
         "num_attention_heads":
@@ -414,7 +414,9 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
         initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
         name="word_embeddings")
     word_embeddings = embedding_layer(word_ids)
-    network = tf.keras.Model([word_ids, mask], [word_embeddings, mask])
+    attention_mask = layers.SelfAttentionMask()([word_embeddings, mask])
+    network = tf.keras.Model([word_ids, mask],
+                             [word_embeddings, attention_mask])
 
     hidden_cfg = {
         "num_attention_heads":
