@@ -142,6 +142,7 @@ Users can download the
 [GLUE data](https://gluebenchmark.com/tasks) by running
 [this script](https://gist.github.com/W4ngatang/60c2bdb54d156a41194446737ce03e2e)
 and unpack it to some directory `$GLUE_DIR`.
+Also, users can download [Pretrained Checkpoint](#access-to-pretrained-checkpoints) and locate on some directory `$BERT_DIR` instead of using checkpoints on Google Cloud Storage.
 
 ```shell
 export GLUE_DIR=~/glue
