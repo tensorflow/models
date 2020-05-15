@@ -21,7 +21,7 @@ import tensorflow_datasets as tfds
 import tensorflow as tf
 
 from research.mobilenet.configs.dataset_config import DatasetConfig
-from research.mobilenet import dataset_preprocessing
+from official.vision.image_classification import preprocessing
 
 
 def _get_dtype_map() -> Mapping[str, tf.dtypes.DType]:
@@ -42,14 +42,14 @@ def _preprocess(image: tf.Tensor,
                 ) -> Tuple[tf.Tensor, tf.Tensor]:
   """Apply image preprocessing and augmentation to the image and label."""
   if is_training:
-    image = dataset_preprocessing.preprocess_for_train(
+    image = preprocessing.preprocess_for_train(
       image,
       image_size=config.image_size,
       mean_subtract=config.mean_subtract,
       standardize=config.standardize,
       dtype=_get_dtype_map()[config.dtype])
   else:
-    image = dataset_preprocessing.preprocess_for_eval(
+    image = preprocessing.preprocess_for_eval(
       image,
       image_size=config.image_size,
       num_channels=config.num_channels,
