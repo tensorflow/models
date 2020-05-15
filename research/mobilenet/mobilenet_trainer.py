@@ -198,7 +198,7 @@ def get_args(args_parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
   args_parser.add_argument(
     '--learning_rate',
     help='Base learning rate.',
-    default='exponential'
+    default=0.008
   )
   args_parser.add_argument(
     '--epochs',
@@ -262,8 +262,6 @@ def train_and_eval(params: argparse.ArgumentParser):
   d_config = _get_dataset_config().get(params.dataset_name)
   m_config = _get_model_config().get(params.model_name)
 
-  d_config.batch_size = 2
-
   strategy = tf.distribute.MirroredStrategy()
   with strategy.scope():
     # build the dataset
@@ -283,12 +281,17 @@ def train_and_eval(params: argparse.ArgumentParser):
       model_config=m_config
     )
 
+    learning_rate = params.learning_rate
+    learning_params = defaults.LR_CONFIG_DEFAULT
+    learning_params.update({'initial_lr': learning_rate})
+
     # build the optimizer
     optimizer = _get_optimizer(
       batch_size=global_batch_size,
       steps_per_epoch=steps_per_epoch,
       lr_name=params.learning_scheduler_name,
-      optimizer_name=params.optimizer_name
+      optimizer_name=params.optimizer_name,
+      lr_params=learning_params
     )
 
     # compile model
