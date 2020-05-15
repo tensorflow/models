@@ -20,7 +20,7 @@ from functools import partial
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
-from research.mobilenet.dataset_config import DatasetConfig
+from research.mobilenet.configs.dataset_config import DatasetConfig
 from research.mobilenet import dataset_preprocessing
 
 

@@ -34,8 +34,8 @@ from typing import Tuple, Union, Text
 
 import tensorflow as tf
 
-from research.mobilenet.mobilenet_config import MobileNetV1Config
-from research.mobilenet.mobilenet_config import Conv, DepSepConv
+from research.mobilenet.configs.mobilenet_config import MobileNetV1Config
+from research.mobilenet.configs.mobilenet_config import Conv, DepSepConv
 
 layers = tf.keras.layers
 
