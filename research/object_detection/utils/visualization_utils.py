@@ -134,6 +134,7 @@ def draw_bounding_box_on_image_array(image,
                                      ymax,
                                      xmax,
                                      color='red',
+                                     font_size,
                                      thickness=4,
                                      display_str_list=(),
                                      use_normalized_coordinates=True):
@@ -157,7 +158,7 @@ def draw_bounding_box_on_image_array(image,
       coordinates as absolute.
   """
   image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
-  draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,
+  draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,font_size,
                              thickness, display_str_list,
                              use_normalized_coordinates)
   np.copyto(image, np.array(image_pil))
@@ -169,6 +170,7 @@ def draw_bounding_box_on_image(image,
                                ymax,
                                xmax,
                                color='red',
+                               font_size=28,
                                thickness=4,
                                display_str_list=(),
                                use_normalized_coordinates=True):
@@ -209,7 +211,7 @@ def draw_bounding_box_on_image(image,
               width=thickness,
               fill=color)
   try:
-    font = ImageFont.truetype('arial.ttf', 40)
+    font = ImageFont.truetype('arial.ttf', font_size)
   except IOError:
     font = ImageFont.load_default()
 
@@ -271,6 +273,7 @@ def draw_bounding_boxes_on_image_array(image,
 def draw_bounding_boxes_on_image(image,
                                  boxes,
                                  color='red',
+                                 font_size,
                                  thickness=4,
                                  display_str_list_list=()):
   """Draws bounding boxes on image.
@@ -300,7 +303,7 @@ def draw_bounding_boxes_on_image(image,
     if display_str_list_list:
       display_str_list = display_str_list_list[i]
     draw_bounding_box_on_image(image, boxes[i, 0], boxes[i, 1], boxes[i, 2],
-                               boxes[i, 3], color, thickness, display_str_list)
+                               boxes[i, 3], color, font_size,thickness, display_str_list)
 
 
 def create_visualization_fn(category_index,
@@ -946,6 +949,7 @@ def visualize_boxes_and_labels_on_image_array(
     keypoint_scores=None,
     keypoint_edges=None,
     track_ids=None,
+    font_size=28,
     use_normalized_coordinates=False,
     max_boxes_to_draw=20,
     min_score_thresh=.5,
@@ -1086,6 +1090,7 @@ def visualize_boxes_and_labels_on_image_array(
         xmin,
         ymax,
         xmax,
+        font_size,
         color=color,
         thickness=0 if skip_boxes else line_thickness,
         display_str_list=box_to_display_str_map[box],
