@@ -19,35 +19,19 @@ from typing import Text, Tuple, Union
 from dataclasses import dataclass
 from official.modeling.hyperparams import base_config
 
+Conv = 'Conv'
+DepSepConv = 'DepSepConv'
+InvertedResConv = 'InvertedResConv'
+
 
 @dataclass
-class Conv2DBlockConfig(base_config.Config):
+class MobileNetBlockConfig(base_config.Config):
   """Configuration for a block of MobileNetV1 model."""
   kernel: Tuple[int, int] = (3, 3)
   stride: int = 1
   filters: int = 32
-
-
-@dataclass
-class DepthwiseConv2DBlockConfig(base_config.Config):
-  """Configuration for a block of MobileNetV1 model."""
-  kernel: Tuple[int, int] = (3, 3)
-  stride: int = 1
-  filters: int = 32
-
-
-@dataclass
-class InvertedResConv2DBlockConfig(base_config.Config):
-  """Configuration for a block of MobileNetV1 model."""
-  kernel: Tuple[int, int] = (3, 3)
-  stride: int = 1
-  filters: int = 32
-  expansion_size: int = 6
-
-
-BlockConfig = Union[Conv2DBlockConfig,
-                    DepthwiseConv2DBlockConfig,
-                    InvertedResConv2DBlockConfig]
+  expansion_size: int = 6  # used for block type InvertedResConv
+  block_type: Text = Conv
 
 
 @dataclass
@@ -104,25 +88,39 @@ class MobileNetV1Config(base_config.Config):
   global_pool: bool = True
   spatial_squeeze: bool = True
 
-  blocks: Tuple[BlockConfig, ...] = (
+  blocks: Tuple[MobileNetBlockConfig, ...] = (
     # (kernel, stride, depth)
     # pylint: disable=bad-whitespace
     # base normal conv
-    Conv2DBlockConfig.from_args((3, 3), 2, 32),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=32, block_type=Conv),
     # depthsep conv
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 64),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 2, 128),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 128),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 2, 256),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 256),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 2, 512),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 512),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 512),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 512),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 512),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 512),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 2, 1024),
-    DepthwiseConv2DBlockConfig.from_args((3, 3), 1, 1024),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=64, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=12, filters=128, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=11, filters=128, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=12, filters=256, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=11, filters=256, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=12, filters=512, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args
+    (kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=12, filters=1024, block_type=DepSepConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=11, filters=1024, block_type=DepSepConv),
     # pylint: enable=bad-whitespace
   )
 
@@ -178,40 +176,77 @@ class MobileNetV2Config(base_config.Config):
   batch_norm_epsilon: float = 0.001
   output_stride: int = None
   use_explicit_padding: bool = False
-  global_pool: bool = True
   spatial_squeeze: bool = True
 
-  blocks: Tuple[BlockConfig, ...] = (
+  blocks: Tuple[MobileNetBlockConfig, ...] = (
     # (kernel, stride, depth)
     # pylint: disable=bad-whitespace
     # base normal conv
-    Conv2DBlockConfig.from_args((3, 3), 2, 32),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=32, block_type=Conv),
     # inverted res conv
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 16, 1),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=16,
+      expansion_size=1, block_type=InvertedResConv),
 
-    InvertedResConv2DBlockConfig.from_args((3, 3), 2, 24, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 24, 6),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=24,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=24,
+      expansion_size=6, block_type=InvertedResConv),
 
-    InvertedResConv2DBlockConfig.from_args((3, 3), 2, 32, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 32, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 32, 6),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=32,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=32,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=32,
+      expansion_size=6, block_type=InvertedResConv),
 
-    InvertedResConv2DBlockConfig.from_args((3, 3), 2, 64, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 64, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 64, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 64, 6),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=64,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=64,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=64,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=64,
+      expansion_size=6, block_type=InvertedResConv),
 
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 96, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 96, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 96, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 2, 24, 6),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=24,
+      expansion_size=6, block_type=InvertedResConv),
 
-    InvertedResConv2DBlockConfig.from_args((3, 3), 2, 160, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 160, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 160, 6),
-    InvertedResConv2DBlockConfig.from_args((3, 3), 1, 320, 6),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=160,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=160,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=160,
+      expansion_size=6, block_type=InvertedResConv),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=320,
+      expansion_size=6, block_type=InvertedResConv),
 
-    Conv2DBlockConfig.from_args((1, 1), 1, 1280),
+    MobileNetBlockConfig.from_args(
+      kernel=(1, 1), stride=1, filters=1280, block_type=Conv),
     # pylint: enable=bad-whitespace
   )
 
