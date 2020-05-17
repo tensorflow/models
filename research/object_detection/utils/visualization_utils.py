@@ -136,7 +136,7 @@ def draw_bounding_box_on_image_array(image,
                                      color='red',
                                      thickness=4,
                                      display_str_list=(),
-                                     use_normalized_coordinates=True):
+                                     use_normalized_coordinates=True,font_size=28):
   """Adds a bounding box to an image (numpy array).
 
   Bounding box coordinates can be specified in either absolute (pixel) or
@@ -159,7 +159,7 @@ def draw_bounding_box_on_image_array(image,
   image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
   draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,
                              thickness, display_str_list,
-                             use_normalized_coordinates)
+                             use_normalized_coordinates,font_size=font_size)
   np.copyto(image, np.array(image_pil))
 
 
@@ -171,7 +171,7 @@ def draw_bounding_box_on_image(image,
                                color='red',
                                thickness=4,
                                display_str_list=(),
-                               use_normalized_coordinates=True):
+                               use_normalized_coordinates=True,font_size=28):
   """Adds a bounding box to an image.
 
   Bounding box coordinates can be specified in either absolute (pixel) or
@@ -209,7 +209,7 @@ def draw_bounding_box_on_image(image,
               width=thickness,
               fill=color)
   try:
-    font = ImageFont.truetype('arial.ttf', 24)
+    font = ImageFont.truetype('arial.ttf', font_size)
   except IOError:
     font = ImageFont.load_default()
 
@@ -218,7 +218,7 @@ def draw_bounding_box_on_image(image,
   # instead of above.
   display_str_heights = [font.getsize(ds)[1] for ds in display_str_list]
   # Each display_str has a top and bottom margin of 0.05x.
-  total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
+  total_display_str_height = (10 + 2 * 0.01) * sum(display_str_heights)
 
   if top > total_display_str_height:
     text_bottom = top
@@ -271,6 +271,7 @@ def draw_bounding_boxes_on_image_array(image,
 def draw_bounding_boxes_on_image(image,
                                  boxes,
                                  color='red',
+                                 font_size=28,
                                  thickness=4,
                                  display_str_list_list=()):
   """Draws bounding boxes on image.
@@ -300,7 +301,7 @@ def draw_bounding_boxes_on_image(image,
     if display_str_list_list:
       display_str_list = display_str_list_list[i]
     draw_bounding_box_on_image(image, boxes[i, 0], boxes[i, 1], boxes[i, 2],
-                               boxes[i, 3], color, thickness, display_str_list)
+                               boxes[i, 3], color,thickness, display_str_list,font_size=font_size)
 
 
 def create_visualization_fn(category_index,
@@ -946,6 +947,7 @@ def visualize_boxes_and_labels_on_image_array(
     keypoint_scores=None,
     keypoint_edges=None,
     track_ids=None,
+    font_size=28,
     use_normalized_coordinates=False,
     max_boxes_to_draw=20,
     min_score_thresh=.5,
@@ -1089,7 +1091,7 @@ def visualize_boxes_and_labels_on_image_array(
         color=color,
         thickness=0 if skip_boxes else line_thickness,
         display_str_list=box_to_display_str_map[box],
-        use_normalized_coordinates=use_normalized_coordinates)
+        use_normalized_coordinates=use_normalized_coordinates,font_size=font_size)
     if keypoints is not None:
       keypoint_scores_for_box = None
       if box_to_keypoint_scores_map:
