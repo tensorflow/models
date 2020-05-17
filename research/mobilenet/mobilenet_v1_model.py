@@ -36,7 +36,9 @@ import tensorflow as tf
 
 from research.mobilenet import common_modules
 from research.mobilenet.configs.mobilenet_config import MobileNetV1Config
-from research.mobilenet.configs.mobilenet_config import Conv, DepSepConv
+from research.mobilenet.configs.mobilenet_config import Conv2DBlockConfig
+from research.mobilenet.configs.mobilenet_config import \
+  DepthwiseConv2DBlockConfig
 
 layers = tf.keras.layers
 
@@ -224,7 +226,7 @@ def mobilenet_v1_base(inputs: tf.Tensor,
       layer_stride = block_def.stride
       layer_rate = 1
       current_stride *= block_def.stride
-    if block_def.block_type == Conv:
+    if isinstance(block_def, Conv2DBlockConfig):
       net = common_modules.conv2d_block(
         inputs=net,
         filters=block_def.filters,
@@ -239,7 +241,7 @@ def mobilenet_v1_base(inputs: tf.Tensor,
         use_explicit_padding=use_explicit_padding,
         block_id=i
       )
-    elif block_def.block_type == DepSepConv:
+    elif isinstance(block_def, DepthwiseConv2DBlockConfig):
       net = _depthwise_conv2d_block(
         inputs=net,
         filters=block_def.filters,
