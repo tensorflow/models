@@ -28,6 +28,8 @@ from typing import Tuple, Union
 import tensorflow as tf
 
 from research.mobilenet import common_modules
+from research.mobilenet.configs.mobilenet_config import MobileNetV2Config
+from research.mobilenet.configs.mobilenet_config import Conv, InvertedResConv
 
 layers = tf.keras.layers
 
@@ -183,3 +185,144 @@ def _inverted_res_block(inputs: tf.Tensor,
       in_channels == filters):
     x = layers.Add(name=prefix + 'add')([inputs, x])
   return x
+
+
+def mobilenet_v2_base(inputs: tf.Tensor,
+                      config: MobileNetV2Config
+                      ) -> tf.Tensor:
+  """Build the base MobileNet architecture."""
+
+  min_depth = config.min_depth
+  width_multiplier = config.width_multiplier
+  weight_decay = config.weight_decay
+  stddev = config.stddev
+  regularize_depthwise = config.regularize_depthwise
+  batch_norm_decay = config.batch_norm_decay
+  batch_norm_epsilon = config.batch_norm_epsilon
+  output_stride = config.output_stride
+  use_explicit_padding = config.use_explicit_padding
+
+  if width_multiplier <= 0:
+    raise ValueError('depth_multiplier is not greater than zero.')
+
+  if output_stride is not None and output_stride not in [8, 16, 32]:
+    raise ValueError('Only allowed output_stride values are 8, 16, 32.')
+
+  # The current_stride variable keeps track of the output stride of the
+  # activations, i.e., the running product of convolution strides up to the
+  # current network layer. This allows us to invoke atrous convolution
+  # whenever applying the next convolution would result in the activations
+  # having output stride larger than the target output_stride.
+  current_stride = 1
+
+  # The atrous convolution rate parameter.
+  rate = 1
+
+  net = inputs
+  for i, block_def in enumerate(config.blocks):
+    if output_stride is not None and current_stride == output_stride:
+      # If we have reached the target output_stride, then we need to employ
+      # atrous convolution with stride=1 and multiply the atrous rate by the
+      # current unit's stride for use in subsequent layers.
+      layer_stride = 1
+      layer_rate = rate
+      rate *= block_def.stride
+    else:
+      layer_stride = block_def.stride
+      layer_rate = 1
+      current_stride *= block_def.stride
+    if block_def.block_type == Conv:
+      if i == 0 or width_multiplier > 1.0:
+        filters = common_modules.width_multiplier_op_divisible(
+          filters=block_def.filters,
+          width_multiplier=width_multiplier,
+          min_depth=min_depth)
+      else:
+        filters = block_def.filters
+      net = common_modules.conv2d_block(
+        inputs=net,
+        filters=filters,
+        kernel=block_def.kernel,
+        strides=block_def.stride,
+        width_multiplier=1,
+        min_depth=min_depth,
+        weight_decay=weight_decay,
+        stddev=stddev,
+        batch_norm_decay=batch_norm_decay,
+        batch_norm_epsilon=batch_norm_epsilon,
+        use_explicit_padding=use_explicit_padding,
+        block_id=i
+      )
+    elif block_def.block_type == InvertedResConv:
+      net = _inverted_res_block(
+        inputs=net,
+        filters=block_def.filters,
+        kernel=block_def.kernel,
+        strides=layer_stride,
+        expansion_size=block_def.expansion_size,
+        dilation_rate=layer_rate,
+        width_multiplier=width_multiplier,
+        min_depth=min_depth,
+        weight_decay=weight_decay,
+        stddev=stddev,
+        batch_norm_decay=batch_norm_decay,
+        batch_norm_epsilon=batch_norm_epsilon,
+        regularize_depthwise=regularize_depthwise,
+        use_explicit_padding=use_explicit_padding,
+        block_id=i
+      )
+    else:
+      raise ValueError('Unknown block type {} for layer {}'.format(
+        block_def.block_type, i))
+  return net
+
+
+def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
+                 config: MobileNetV2Config = MobileNetV2Config()
+                 ) -> tf.keras.models.Model:
+  """Instantiates the MobileNet Model."""
+
+  dropout_keep_prob = config.dropout_keep_prob
+  num_classes = config.num_classes
+  spatial_squeeze = config.spatial_squeeze
+  model_name = config.name
+
+  img_input = layers.Input(shape=input_shape, name='Input')
+  x = mobilenet_v2_base(img_input, config)
+
+  # Build top
+  # Global average pooling.
+  x = layers.GlobalAveragePooling2D(data_format='channels_last',
+                                    name='top_GlobalPool')(x)
+  x = layers.Reshape((1, 1, x.shape[1]))(x)
+
+  # 1 x 1 x 1024
+  x = layers.Dropout(rate=1 - dropout_keep_prob,
+                     name='top_Dropout')(x)
+
+  x = layers.Conv2D(filters=num_classes,
+                    kernel_size=(1, 1),
+                    padding='SAME',
+                    name='top_Conv2d_1x1')(x)
+  if spatial_squeeze:
+    x = layers.Reshape(target_shape=(num_classes,),
+                       name='top_SpatialSqueeze')(x)
+
+  x = layers.Activation(activation='softmax',
+                        name='top_Predictions')(x)
+
+  return tf.keras.models.Model(inputs=img_input,
+                               outputs=x,
+                               name=model_name)
+
+
+if __name__ == '__main__':
+  logging.basicConfig(
+    format='%(asctime)-15s:%(levelname)s:%(module)s:%(message)s',
+    level=logging.INFO)
+  model = mobilenet_v2()
+  model.compile(
+    optimizer='adam',
+    loss=tf.keras.losses.categorical_crossentropy,
+    metrics=[tf.keras.metrics.categorical_crossentropy])
+  logging.info(model.summary())
