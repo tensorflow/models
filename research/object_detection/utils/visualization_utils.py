@@ -158,7 +158,7 @@ def draw_bounding_box_on_image_array(image,
       coordinates as absolute.
   """
   image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
-  draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,font_size,
+  draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,font_size=font_size,
                              thickness, display_str_list,
                              use_normalized_coordinates)
   np.copyto(image, np.array(image_pil))
@@ -303,7 +303,7 @@ def draw_bounding_boxes_on_image(image,
     if display_str_list_list:
       display_str_list = display_str_list_list[i]
     draw_bounding_box_on_image(image, boxes[i, 0], boxes[i, 1], boxes[i, 2],
-                               boxes[i, 3], color, font_size,thickness, display_str_list)
+                               boxes[i, 3], color, font_size=font_size,thickness, display_str_list)
 
 
 def create_visualization_fn(category_index,
@@ -1090,7 +1090,7 @@ def visualize_boxes_and_labels_on_image_array(
         xmin,
         ymax,
         xmax,
-        font_size,
+        font_size=font_size,
         color=color,
         thickness=0 if skip_boxes else line_thickness,
         display_str_list=box_to_display_str_map[box],
