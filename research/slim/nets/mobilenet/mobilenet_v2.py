@@ -27,14 +27,12 @@ from __future__ import print_function
 import copy
 import functools
 
-import tensorflow as tf
-from tensorflow.contrib import layers as contrib_layers
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from nets.mobilenet import conv_blocks as ops
 from nets.mobilenet import mobilenet as lib
 
-slim = contrib_slim
 op = lib.op
 
 expand_input = ops.expand_input_by_factor
@@ -86,18 +84,17 @@ V2_DEF = dict(
 # Mobilenet v2 Definition with group normalization.
 V2_DEF_GROUP_NORM = copy.deepcopy(V2_DEF)
 V2_DEF_GROUP_NORM['defaults'] = {
-    (contrib_slim.conv2d, contrib_slim.fully_connected,
-     contrib_slim.separable_conv2d): {
-        'normalizer_fn': contrib_layers.group_norm,  # pylint: disable=C0330
+    (slim.conv2d, slim.fully_connected, slim.separable_conv2d): {
+        'normalizer_fn': slim.group_norm,  # pylint: disable=C0330
         'activation_fn': tf.nn.relu6,  # pylint: disable=C0330
     },  # pylint: disable=C0330
     (ops.expanded_conv,): {
         'expansion_size': ops.expand_input_by_factor(6),
         'split_expansion': 1,
-        'normalizer_fn': contrib_layers.group_norm,
+        'normalizer_fn': slim.group_norm,
         'residual': True
     },
-    (contrib_slim.conv2d, contrib_slim.separable_conv2d): {
+    (slim.conv2d, slim.separable_conv2d): {
         'padding': 'SAME'
     }
 }
@@ -119,7 +116,7 @@ def mobilenet(input_tensor,
   Inference mode is created by default. To create training use training_scope
   below.
 
-  with tf.contrib.slim.arg_scope(mobilenet_v2.training_scope()):
+  with slim.arg_scope(mobilenet_v2.training_scope()):
      logits, endpoints = mobilenet_v2.mobilenet(input_tensor)
 
   Args:
@@ -215,7 +212,7 @@ def mobilenet_base_group_norm(input_tensor, depth_multiplier=1.0, **kwargs):
   """Creates base of the mobilenet (no pooling and no logits) ."""
   kwargs['conv_defs'] = V2_DEF_GROUP_NORM
   kwargs['conv_defs']['defaults'].update({
-      (contrib_layers.group_norm,): {
+      (slim.group_norm,): {
           'groups': kwargs.pop('groups', 8)
       }
   })
@@ -227,10 +224,8 @@ def training_scope(**kwargs):
   """Defines MobilenetV2 training scope.
 
   Usage:
-     with tf.contrib.slim.arg_scope(mobilenet_v2.training_scope()):
+     with slim.arg_scope(mobilenet_v2.training_scope()):
        logits, endpoints = mobilenet_v2.mobilenet(input_tensor)
-
-  with slim.
 
   Args:
     **kwargs: Passed to mobilenet.training_scope. The following parameters

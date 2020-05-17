@@ -57,16 +57,14 @@ from __future__ import division
 from __future__ import print_function
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.contrib import quantize as contrib_quantize
-from tensorflow.contrib import slim as contrib_slim
+
 
 from tensorflow.python.platform import gfile
 from datasets import dataset_factory
 from nets import nets_factory
 
-
-slim = contrib_slim
 
 tf.app.flags.DEFINE_string(
     'model_name', 'inception_v3', 'The name of the architecture to save.')
