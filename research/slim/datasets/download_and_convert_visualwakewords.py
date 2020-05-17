@@ -80,14 +80,14 @@ import os
 import tensorflow.compat.v1 as tf
 from datasets import download_and_convert_visualwakewords_lib
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+tf.logging.set_verbosity(tf.logging.INFO)
 
-tf.compat.v1.app.flags.DEFINE_string(
+tf.app.flags.DEFINE_string(
     'coco_dirname', 'coco_dataset',
     'A subdirectory in visualwakewords dataset directory'
     'containing the coco dataset')
 
-FLAGS = tf.compat.v1.app.flags.FLAGS
+FLAGS = tf.app.flags.FLAGS
 
 
 def run(dataset_dir, small_object_area_threshold, foreground_class_of_interest):

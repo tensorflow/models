@@ -145,7 +145,7 @@ def _build_pnasnet_base(images,
       # pylint: enable=protected-access
 
   # Final softmax layer
-  with tf.compat.v1.variable_scope('final_layer'):
+  with tf.variable_scope('final_layer'):
     net = activation_fn(net)
     net = nasnet_utils.global_avg_pool(net)
     if add_and_check_endpoint('global_pool', net) or not num_classes:
@@ -174,7 +174,7 @@ def build_pnasnet_large(images,
   # pylint: enable=protected-access
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 
@@ -223,7 +223,7 @@ def build_pnasnet_mobile(images,
   # pylint: enable=protected-access
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 

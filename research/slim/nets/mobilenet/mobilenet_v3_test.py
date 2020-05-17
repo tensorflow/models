@@ -47,7 +47,7 @@ class MobilenetV3Test(tf.test.TestCase, parameterized.TestCase):
                                   ('with_groupnorm', True))
   def testMobilenetV3Large(self, use_groupnorm):
     logits, endpoints = mobilenet_v3.mobilenet(
-        tf.compat.v1.placeholder(tf.float32, (1, 224, 224, 3)),
+        tf.placeholder(tf.float32, (1, 224, 224, 3)),
         use_groupnorm=use_groupnorm)
     self.assertEqual(endpoints['layer_19'].shape, [1, 1, 1, 1280])
     self.assertEqual(logits.shape, [1, 1001])
@@ -57,7 +57,7 @@ class MobilenetV3Test(tf.test.TestCase, parameterized.TestCase):
                                   ('with_groupnorm', True))
   def testMobilenetV3Small(self, use_groupnorm):
     _, endpoints = mobilenet_v3.mobilenet(
-        tf.compat.v1.placeholder(tf.float32, (1, 224, 224, 3)),
+        tf.placeholder(tf.float32, (1, 224, 224, 3)),
         conv_defs=mobilenet_v3.V3_SMALL,
         use_groupnorm=use_groupnorm)
     self.assertEqual(endpoints['layer_15'].shape, [1, 1, 1, 1024])
@@ -67,7 +67,7 @@ class MobilenetV3Test(tf.test.TestCase, parameterized.TestCase):
                                   ('with_groupnorm', True))
   def testMobilenetEdgeTpu(self, use_groupnorm):
     _, endpoints = mobilenet_v3.edge_tpu(
-        tf.compat.v1.placeholder(tf.float32, (1, 224, 224, 3)),
+        tf.placeholder(tf.float32, (1, 224, 224, 3)),
         use_groupnorm=use_groupnorm)
     self.assertIn('Inference mode is created by default',
                   mobilenet_v3.edge_tpu.__doc__)
@@ -78,7 +78,7 @@ class MobilenetV3Test(tf.test.TestCase, parameterized.TestCase):
 
   def testMobilenetEdgeTpuChangeScope(self):
     _, endpoints = mobilenet_v3.edge_tpu(
-        tf.compat.v1.placeholder(tf.float32, (1, 224, 224, 3)), scope='Scope')
+        tf.placeholder(tf.float32, (1, 224, 224, 3)), scope='Scope')
     self.assertStartsWith(
         endpoints['layer_24'].name, 'Scope')
 
@@ -86,7 +86,7 @@ class MobilenetV3Test(tf.test.TestCase, parameterized.TestCase):
                                   ('with_groupnorm', True))
   def testMobilenetV3BaseOnly(self, use_groupnorm):
     result, endpoints = mobilenet_v3.mobilenet(
-        tf.compat.v1.placeholder(tf.float32, (1, 224, 224, 3)),
+        tf.placeholder(tf.float32, (1, 224, 224, 3)),
         conv_defs=mobilenet_v3.V3_LARGE,
         use_groupnorm=use_groupnorm,
         base_only=True,
@@ -112,7 +112,7 @@ class MobilenetV3Test(tf.test.TestCase, parameterized.TestCase):
                                   ('with_groupnorm', True))
   def testMobilenetV3WithReduceMean(self, use_groupnorm):
     _, _ = mobilenet_v3.mobilenet(
-        tf.compat.v1.placeholder(tf.float32, (1, 224, 224, 3)),
+        tf.placeholder(tf.float32, (1, 224, 224, 3)),
         conv_defs=mobilenet_v3.V3_SMALL,
         use_groupnorm=use_groupnorm,
         use_reduce_mean_for_pooling=True)
@@ -125,7 +125,7 @@ class MobilenetV3Test(tf.test.TestCase, parameterized.TestCase):
                                   ('with_groupnorm', True))
   def testMobilenetV3WithOutReduceMean(self, use_groupnorm):
     _, _ = mobilenet_v3.mobilenet(
-        tf.compat.v1.placeholder(tf.float32, (1, 224, 224, 3)),
+        tf.placeholder(tf.float32, (1, 224, 224, 3)),
         conv_defs=mobilenet_v3.V3_SMALL,
         use_groupnorm=use_groupnorm,
         use_reduce_mean_for_pooling=False)

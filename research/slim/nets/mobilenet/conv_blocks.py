@@ -78,8 +78,8 @@ def _split_divisible(num, num_ways, divisible_by=8):
 def _v1_compatible_scope_naming(scope):
   """v1 compatible scope naming."""
   if scope is None:  # Create uniqified separable blocks.
-    with tf.compat.v1.variable_scope(None, default_name='separable') as s, \
-         tf.compat.v1.name_scope(s.original_name_scope):
+    with tf.variable_scope(None, default_name='separable') as s, \
+         tf.name_scope(s.original_name_scope):
       yield ''
   else:
     # We use scope_depthwise, scope_pointwise for compatibility with V1 ckpts.
@@ -298,8 +298,8 @@ def expanded_conv(input_tensor,
   if depthwise_activation_fn is not None:
     dw_defaults['activation_fn'] = depthwise_activation_fn
   # pylint: disable=g-backslash-continuation
-  with tf.compat.v1.variable_scope(scope, default_name='expanded_conv') as s, \
-       tf.compat.v1.name_scope(s.original_name_scope), \
+  with tf.variable_scope(scope, default_name='expanded_conv') as s, \
+       tf.name_scope(s.original_name_scope), \
       slim.arg_scope((slim.conv2d,), **conv_defaults), \
        slim.arg_scope((slim.separable_conv2d,), **dw_defaults):
     prev_depth = input_tensor.get_shape().as_list()[3]
@@ -432,7 +432,7 @@ def squeeze_excite(input_tensor,
   Returns:
     Gated input_tensor. (e.g. X * SE(X))
   """
-  with tf.compat.v1.variable_scope('squeeze_excite'):
+  with tf.variable_scope('squeeze_excite'):
     if squeeze_input_tensor is None:
       squeeze_input_tensor = input_tensor
     input_size = input_tensor.shape.as_list()[1:3]

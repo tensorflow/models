@@ -34,7 +34,7 @@ def inception_arg_scope(
     batch_norm_decay=0.9997,
     batch_norm_epsilon=0.001,
     activation_fn=tf.nn.relu,
-    batch_norm_updates_collections=tf.compat.v1.GraphKeys.UPDATE_OPS,
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS,
     batch_norm_scale=False):
   """Defines the default arg scope for inception models.
 

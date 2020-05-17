@@ -152,7 +152,7 @@ class OverFeatTest(tf.test.TestCase):
       logits, _ = overfeat.overfeat(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.compat.v1.get_variable_scope().reuse_variables()
+      tf.get_variable_scope().reuse_variables()
       eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = overfeat.overfeat(eval_inputs, is_training=False,
@@ -169,7 +169,7 @@ class OverFeatTest(tf.test.TestCase):
     with self.test_session() as sess:
       inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = overfeat.overfeat(inputs)
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 

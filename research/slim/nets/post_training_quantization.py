@@ -127,7 +127,7 @@ def _representative_dataset_gen():
   dataset = tfds.builder(FLAGS.dataset_name, data_dir=FLAGS.dataset_dir)
   dataset.download_and_prepare()
   data = dataset.as_dataset()[FLAGS.dataset_split]
-  iterator = tf.compat.v1.data.make_one_shot_iterator(data)
+  iterator = tf.data.make_one_shot_iterator(data)
   if FLAGS.use_model_specific_preprocessing:
     preprocess_fn = functools.partial(
         preprocessing_factory.get_preprocessing(name=FLAGS.model_name),

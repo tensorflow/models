@@ -225,9 +225,9 @@ def nasnet_large_arg_scope(weight_decay=5e-5,
 def _build_aux_head(net, end_points, num_classes, hparams, scope):
   """Auxiliary head used for all models across all datasets."""
   activation_fn = tf.nn.relu6 if hparams.use_bounded_activation else tf.nn.relu
-  with tf.compat.v1.variable_scope(scope):
+  with tf.variable_scope(scope):
     aux_logits = tf.identity(net)
-    with tf.compat.v1.variable_scope('aux_logits'):
+    with tf.variable_scope('aux_logits'):
       aux_logits = slim.avg_pool2d(
           aux_logits, [5, 5], stride=3, padding='VALID')
       aux_logits = slim.conv2d(aux_logits, 128, [1, 1], scope='proj')
@@ -296,7 +296,7 @@ def build_nasnet_cifar(images, num_classes,
   _update_hparams(hparams, is_training)
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 
@@ -349,7 +349,7 @@ def build_nasnet_mobile(images, num_classes,
   _update_hparams(hparams, is_training)
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 
@@ -405,7 +405,7 @@ def build_nasnet_large(images, num_classes,
   _update_hparams(hparams, is_training)
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 
@@ -531,7 +531,7 @@ def _build_nasnet_base(images,
     cell_outputs.append(net)
 
   # Final softmax layer
-  with tf.compat.v1.variable_scope('final_layer'):
+  with tf.variable_scope('final_layer'):
     net = activation_fn(net)
     net = nasnet_utils.global_avg_pool(net)
     if add_and_check_endpoint('global_pool', net) or not num_classes:

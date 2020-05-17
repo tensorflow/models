@@ -55,8 +55,7 @@ def pix2pix_arg_scope():
       [slim.conv2d, slim.conv2d_transpose],
       normalizer_fn=slim.instance_norm,
       normalizer_params=instance_norm_params,
-      weights_initializer=tf.compat.v1.random_normal_initializer(0,
-                                                                 0.02)) as sc:
+      weights_initializer=tf.random_normal_initializer(0, 0.02)) as sc:
     return sc
 
 
@@ -165,7 +164,7 @@ def pix2pix_generator(net,
   ###########
   # Encoder #
   ###########
-  with tf.compat.v1.variable_scope('encoder'):
+  with tf.variable_scope('encoder'):
     with slim.arg_scope([slim.conv2d],
                         kernel_size=[4, 4],
                         stride=2,
@@ -193,7 +192,7 @@ def pix2pix_generator(net,
   reversed_blocks = list(blocks)
   reversed_blocks.reverse()
 
-  with tf.compat.v1.variable_scope('decoder'):
+  with tf.variable_scope('decoder'):
     # Dropout is used at both train and test time as per 'Image-to-Image',
     # Section 2.1 (last paragraph).
     with slim.arg_scope([slim.dropout], is_training=True):
@@ -209,7 +208,7 @@ def pix2pix_generator(net,
           net = slim.dropout(net, keep_prob=block.decoder_keep_prob)
         end_points['decoder%d' % block_id] = net
 
-  with tf.compat.v1.variable_scope('output'):
+  with tf.variable_scope('output'):
     # Explicitly set the normalizer_fn to None to override any default value
     # that may come from an arg_scope, such as pix2pix_arg_scope.
     logits = slim.conv2d(
@@ -248,7 +247,7 @@ def pix2pix_discriminator(net, num_filters, padding=2, pad_mode='REFLECT',
 
   def padded(net, scope):
     if padding:
-      with tf.compat.v1.variable_scope(scope):
+      with tf.variable_scope(scope):
         spatial_pad = tf.constant(
             [[0, 0], [padding, padding], [padding, padding], [0, 0]],
             dtype=tf.int32)

@@ -22,7 +22,7 @@ import tensorflow.compat.v1 as tf
 import tf_slim as slim
 
 # pylint: disable=g-long-lambda
-trunc_normal = lambda stddev: tf.compat.v1.truncated_normal_initializer(
+trunc_normal = lambda stddev: tf.truncated_normal_initializer(
     stddev=stddev)
 
 
@@ -61,7 +61,7 @@ def cifarnet(images, num_classes=10, is_training=False,
   """
   end_points = {}
 
-  with tf.compat.v1.variable_scope(scope, 'CifarNet', [images]):
+  with tf.variable_scope(scope, 'CifarNet', [images]):
     net = slim.conv2d(images, 64, [5, 5], scope='conv1')
     end_points['conv1'] = net
     net = slim.max_pool2d(net, [2, 2], 2, scope='pool1')
@@ -85,7 +85,7 @@ def cifarnet(images, num_classes=10, is_training=False,
     logits = slim.fully_connected(
         net,
         num_classes,
-        biases_initializer=tf.compat.v1.zeros_initializer(),
+        biases_initializer=tf.zeros_initializer(),
         weights_initializer=trunc_normal(1 / 192.0),
         weights_regularizer=None,
         activation_fn=None,
@@ -109,12 +109,12 @@ def cifarnet_arg_scope(weight_decay=0.004):
   """
   with slim.arg_scope(
       [slim.conv2d],
-      weights_initializer=tf.compat.v1.truncated_normal_initializer(
+      weights_initializer=tf.truncated_normal_initializer(
           stddev=5e-2),
       activation_fn=tf.nn.relu):
     with slim.arg_scope(
         [slim.fully_connected],
-        biases_initializer=tf.compat.v1.constant_initializer(0.1),
+        biases_initializer=tf.constant_initializer(0.1),
         weights_initializer=trunc_normal(0.04),
         weights_regularizer=slim.l2_regularizer(weight_decay),
         activation_fn=tf.nn.relu) as sc:

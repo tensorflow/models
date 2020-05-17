@@ -168,7 +168,7 @@ class VGGATest(tf.test.TestCase):
       logits, _ = vgg.vgg_a(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.compat.v1.get_variable_scope().reuse_variables()
+      tf.get_variable_scope().reuse_variables()
       eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = vgg.vgg_a(eval_inputs, is_training=False,
@@ -185,7 +185,7 @@ class VGGATest(tf.test.TestCase):
     with self.test_session() as sess:
       inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_a(inputs)
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 
@@ -355,7 +355,7 @@ class VGG16Test(tf.test.TestCase):
       logits, _ = vgg.vgg_16(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.compat.v1.get_variable_scope().reuse_variables()
+      tf.get_variable_scope().reuse_variables()
       eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = vgg.vgg_16(eval_inputs, is_training=False,
@@ -372,7 +372,7 @@ class VGG16Test(tf.test.TestCase):
     with self.test_session() as sess:
       inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_16(inputs)
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 
@@ -557,7 +557,7 @@ class VGG19Test(tf.test.TestCase):
       logits, _ = vgg.vgg_19(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.compat.v1.get_variable_scope().reuse_variables()
+      tf.get_variable_scope().reuse_variables()
       eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = vgg.vgg_19(eval_inputs, is_training=False,
@@ -574,7 +574,7 @@ class VGG19Test(tf.test.TestCase):
     with self.test_session() as sess:
       inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = vgg.vgg_19(inputs)
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 

@@ -418,13 +418,13 @@ class MobilenetV1Test(tf.test.TestCase):
                          [batch_size, 4, 4, 1024])
 
   def testUnknownImageShape(self):
-    tf.compat.v1.reset_default_graph()
+    tf.reset_default_graph()
     batch_size = 2
     height, width = 224, 224
     num_classes = 1000
     input_np = np.random.uniform(0, 1, (batch_size, height, width, 3))
     with self.test_session() as sess:
-      inputs = tf.compat.v1.placeholder(
+      inputs = tf.placeholder(
           tf.float32, shape=(batch_size, None, None, 3))
       logits, end_points = mobilenet_v1.mobilenet_v1(inputs, num_classes)
       self.assertTrue(logits.op.name.startswith('MobilenetV1/Logits'))
@@ -432,18 +432,18 @@ class MobilenetV1Test(tf.test.TestCase):
                            [batch_size, num_classes])
       pre_pool = end_points['Conv2d_13_pointwise']
       feed_dict = {inputs: input_np}
-      tf.compat.v1.global_variables_initializer().run()
+      tf.global_variables_initializer().run()
       pre_pool_out = sess.run(pre_pool, feed_dict=feed_dict)
       self.assertListEqual(list(pre_pool_out.shape), [batch_size, 7, 7, 1024])
 
   def testGlobalPoolUnknownImageShape(self):
-    tf.compat.v1.reset_default_graph()
+    tf.reset_default_graph()
     batch_size = 1
     height, width = 250, 300
     num_classes = 1000
     input_np = np.random.uniform(0, 1, (batch_size, height, width, 3))
     with self.test_session() as sess:
-      inputs = tf.compat.v1.placeholder(
+      inputs = tf.placeholder(
           tf.float32, shape=(batch_size, None, None, 3))
       logits, end_points = mobilenet_v1.mobilenet_v1(inputs, num_classes,
                                                      global_pool=True)
@@ -452,7 +452,7 @@ class MobilenetV1Test(tf.test.TestCase):
                            [batch_size, num_classes])
       pre_pool = end_points['Conv2d_13_pointwise']
       feed_dict = {inputs: input_np}
-      tf.compat.v1.global_variables_initializer().run()
+      tf.global_variables_initializer().run()
       pre_pool_out = sess.run(pre_pool, feed_dict=feed_dict)
       self.assertListEqual(list(pre_pool_out.shape), [batch_size, 8, 10, 1024])
 
@@ -461,7 +461,7 @@ class MobilenetV1Test(tf.test.TestCase):
     height, width = 224, 224
     num_classes = 1000
 
-    inputs = tf.compat.v1.placeholder(tf.float32, (None, height, width, 3))
+    inputs = tf.placeholder(tf.float32, (None, height, width, 3))
     logits, _ = mobilenet_v1.mobilenet_v1(inputs, num_classes)
     self.assertTrue(logits.op.name.startswith('MobilenetV1/Logits'))
     self.assertListEqual(logits.get_shape().as_list(),
@@ -469,7 +469,7 @@ class MobilenetV1Test(tf.test.TestCase):
     images = tf.random.uniform((batch_size, height, width, 3))
 
     with self.test_session() as sess:
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits, {inputs: images.eval()})
       self.assertEquals(output.shape, (batch_size, num_classes))
 
@@ -484,7 +484,7 @@ class MobilenetV1Test(tf.test.TestCase):
     predictions = tf.argmax(input=logits, axis=1)
 
     with self.test_session() as sess:
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (batch_size,))
 
@@ -502,7 +502,7 @@ class MobilenetV1Test(tf.test.TestCase):
     predictions = tf.argmax(input=logits, axis=1)
 
     with self.test_session() as sess:
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (eval_batch_size,))
 
@@ -514,7 +514,7 @@ class MobilenetV1Test(tf.test.TestCase):
                                           spatial_squeeze=False)
 
     with self.test_session() as sess:
-      tf.compat.v1.global_variables_initializer().run()
+      tf.global_variables_initializer().run()
       logits_out = sess.run(logits)
       self.assertListEqual(list(logits_out.shape), [1, 1, 1, num_classes])
 

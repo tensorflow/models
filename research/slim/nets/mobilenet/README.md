@@ -171,8 +171,8 @@ rmsprop_decay               |   0.9      |    |
 rmsprop_epsilon             |   0.002    |    |
 learning_rate_decay_factor  |   0.99     |   |
 optimizer                   |   RMSProp  | |
-warmup_epochs               |   5        | Slim uses per clone epoch, so the actual flag value is 0.6  |
-num_epochs_per_decay        |   3        | Slim uses per clone epoch, so the actual flag value is 0.375 |
+warmup_epochs               |   5        | Slim uses per clone epoch, so the the flag value is 0.6  |
+num_epochs_per_decay        |   3        | Slim uses per clone epoch, so the  flag value is 0.375 |
 batch_size (per chip)       |   192      |                   |
 moving_average_decay        |   0.9999   |                   |
 weight_decay                |   1e-5     |                   |

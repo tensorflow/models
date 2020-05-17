@@ -37,22 +37,22 @@ import tensorflow.compat.v1 as tf
 
 from datasets import dataset_utils
 
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+tf.logging.set_verbosity(tf.logging.INFO)
 
-tf.compat.v1.app.flags.DEFINE_string(
+tf.app.flags.DEFINE_string(
     'coco_train_url',
     'http://images.cocodataset.org/zips/train2014.zip',
     'Link to zip file containing coco training data')
-tf.compat.v1.app.flags.DEFINE_string(
+tf.app.flags.DEFINE_string(
     'coco_validation_url',
     'http://images.cocodataset.org/zips/val2014.zip',
     'Link to zip file containing coco validation data')
-tf.compat.v1.app.flags.DEFINE_string(
+tf.app.flags.DEFINE_string(
     'coco_annotations_url',
     'http://images.cocodataset.org/annotations/annotations_trainval2014.zip',
     'Link to zip file containing coco annotation data')
 
-FLAGS = tf.compat.v1.app.flags.FLAGS
+FLAGS = tf.app.flags.FLAGS
 
 
 def download_coco_dataset(dataset_dir):

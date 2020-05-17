@@ -58,7 +58,7 @@ def cyclegan_arg_scope(instance_norm_center=True,
       [slim.conv2d],
       normalizer_fn=slim.instance_norm,
       normalizer_params=instance_norm_params,
-      weights_initializer=tf.compat.v1.random_normal_initializer(
+      weights_initializer=tf.random_normal_initializer(
           0, weights_init_stddev),
       weights_regularizer=weights_regularizer) as sc:
     return sc
@@ -88,7 +88,7 @@ def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose',
   Raises:
     ValueError: if `method` is not recognized.
   """
-  with tf.compat.v1.variable_scope('upconv'):
+  with tf.variable_scope('upconv'):
     net_shape = tf.shape(input=net)
     height = net_shape[1]
     width = net_shape[2]
@@ -105,7 +105,7 @@ def cyclegan_upsample(net, num_outputs, stride, method='conv2d_transpose',
       net = tf.pad(tensor=net, paddings=spatial_pad_1, mode=pad_mode)
       net = slim.conv2d(net, num_outputs, kernel_size=[3, 3], padding='valid')
     elif method == 'bilinear_upsample_conv':
-      net = tf.compat.v1.image.resize_bilinear(
+      net = tf.image.resize_bilinear(
           net, [stride[0] * height, stride[1] * width],
           align_corners=align_corners)
       net = tf.pad(tensor=net, paddings=spatial_pad_1, mode=pad_mode)
@@ -203,13 +203,13 @@ def cyclegan_generator_resnet(images,
     ###########
     # Encoder #
     ###########
-    with tf.compat.v1.variable_scope('input'):
+    with tf.variable_scope('input'):
       # 7x7 input stage
       net = tf.pad(tensor=images, paddings=spatial_pad_3, mode='REFLECT')
       net = slim.conv2d(net, num_filters, kernel_size=[7, 7], padding='VALID')
       end_points['encoder_0'] = net
 
-    with tf.compat.v1.variable_scope('encoder'):
+    with tf.variable_scope('encoder'):
       with slim.arg_scope([slim.conv2d],
                           kernel_size=kernel_size,
                           stride=2,
@@ -226,14 +226,14 @@ def cyclegan_generator_resnet(images,
     ###################
     # Residual Blocks #
     ###################
-    with tf.compat.v1.variable_scope('residual_blocks'):
+    with tf.variable_scope('residual_blocks'):
       with slim.arg_scope([slim.conv2d],
                           kernel_size=kernel_size,
                           stride=1,
                           activation_fn=tf.nn.relu,
                           padding='VALID'):
         for block_id in xrange(num_resnet_blocks):
-          with tf.compat.v1.variable_scope('block_{}'.format(block_id)):
+          with tf.variable_scope('block_{}'.format(block_id)):
             res_net = tf.pad(tensor=net, paddings=paddings, mode='REFLECT')
             res_net = slim.conv2d(res_net, num_filters * 4)
             res_net = tf.pad(tensor=res_net, paddings=paddings, mode='REFLECT')
@@ -245,22 +245,22 @@ def cyclegan_generator_resnet(images,
     ###########
     # Decoder #
     ###########
-    with tf.compat.v1.variable_scope('decoder'):
+    with tf.variable_scope('decoder'):
 
       with slim.arg_scope([slim.conv2d],
                           kernel_size=kernel_size,
                           stride=1,
                           activation_fn=tf.nn.relu):
 
-        with tf.compat.v1.variable_scope('decoder1'):
+        with tf.variable_scope('decoder1'):
           net = upsample_fn(net, num_outputs=num_filters * 2, stride=[2, 2])
         end_points['decoder1'] = net
 
-        with tf.compat.v1.variable_scope('decoder2'):
+        with tf.variable_scope('decoder2'):
           net = upsample_fn(net, num_outputs=num_filters, stride=[2, 2])
         end_points['decoder2'] = net
 
-    with tf.compat.v1.variable_scope('output'):
+    with tf.variable_scope('output'):
       net = tf.pad(tensor=net, paddings=spatial_pad_3, mode='REFLECT')
       logits = slim.conv2d(
           net,

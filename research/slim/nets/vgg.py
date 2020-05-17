@@ -57,7 +57,7 @@ def vgg_arg_scope(weight_decay=0.0005):
   with slim.arg_scope([slim.conv2d, slim.fully_connected],
                       activation_fn=tf.nn.relu,
                       weights_regularizer=slim.l2_regularizer(weight_decay),
-                      biases_initializer=tf.compat.v1.zeros_initializer()):
+                      biases_initializer=tf.zeros_initializer()):
     with slim.arg_scope([slim.conv2d], padding='SAME') as arg_sc:
       return arg_sc
 
@@ -103,7 +103,7 @@ def vgg_a(inputs,
       or the input to the logits layer (if num_classes is 0 or None).
     end_points: a dict of tensors with intermediate activations.
   """
-  with tf.compat.v1.variable_scope(scope, 'vgg_a', [inputs], reuse=reuse) as sc:
+  with tf.variable_scope(scope, 'vgg_a', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d.
     with slim.arg_scope([slim.conv2d, slim.max_pool2d],
@@ -185,7 +185,7 @@ def vgg_16(inputs,
       or the input to the logits layer (if num_classes is 0 or None).
     end_points: a dict of tensors with intermediate activations.
   """
-  with tf.compat.v1.variable_scope(
+  with tf.variable_scope(
       scope, 'vgg_16', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d.
@@ -269,7 +269,7 @@ def vgg_19(inputs,
       None).
     end_points: a dict of tensors with intermediate activations.
   """
-  with tf.compat.v1.variable_scope(
+  with tf.variable_scope(
       scope, 'vgg_19', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d.
