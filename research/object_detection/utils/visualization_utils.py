@@ -134,10 +134,9 @@ def draw_bounding_box_on_image_array(image,
                                      ymax,
                                      xmax,
                                      color='red',
-                                     font_size=28,
                                      thickness=4,
                                      display_str_list=(),
-                                     use_normalized_coordinates=True):
+                                     use_normalized_coordinates=True,font_size=28):
   """Adds a bounding box to an image (numpy array).
 
   Bounding box coordinates can be specified in either absolute (pixel) or
@@ -170,10 +169,9 @@ def draw_bounding_box_on_image(image,
                                ymax,
                                xmax,
                                color='red',
-                               font_size=28,
                                thickness=4,
                                display_str_list=(),
-                               use_normalized_coordinates=True):
+                               use_normalized_coordinates=True,font_size=28):
   """Adds a bounding box to an image.
 
   Bounding box coordinates can be specified in either absolute (pixel) or
