@@ -42,6 +42,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     intermediate_activation: Activation for the intermediate layer.
     dropout_rate: Dropout probability for the post-attention and output dropout.
     attention_dropout_rate: Dropout probability for within the attention layer.
+    output_range: the sequence output range, [0, output_range) by slicing the
+      target sequence. `None` means the target sequence is not sliced.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -58,6 +60,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
                intermediate_activation,
                dropout_rate=0.0,
                attention_dropout_rate=0.0,
+               output_range=None,
                kernel_initializer="glorot_uniform",
                bias_initializer="zeros",
                kernel_regularizer=None,
@@ -74,6 +77,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._intermediate_activation = intermediate_activation
     self._attention_dropout_rate = attention_dropout_rate
     self._dropout_rate = dropout_rate
+    self._output_range = output_range
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
     self._bias_initializer = tf.keras.initializers.get(bias_initializer)
     self._kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
@@ -176,6 +180,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
             self._dropout_rate,
         "attention_dropout_rate":
             self._attention_dropout_rate,
+        "output_range":
+            self._output_range,
         "use_layer_norm":
             self._use_layer_norm,
         "kernel_initializer":
@@ -205,11 +211,16 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     else:
       input_tensor, attention_mask = (inputs, None)
 
-    attention_inputs = [input_tensor, input_tensor]
+    if self._output_range:
+      target_tensor = input_tensor[:, 0:self._output_range, :]
+      attention_mask = attention_mask[:, 0:self._output_range, :]
+    else:
+      target_tensor = input_tensor
+    attention_inputs = [target_tensor, input_tensor]
 
     attention_output = self._attention_layer(attention_inputs, attention_mask)
     attention_output = self._attention_dropout(attention_output)
-    attention_output = input_tensor + self._rezero_a * attention_output
+    attention_output = target_tensor + self._rezero_a * attention_output
     if self._use_layer_norm:
       attention_output = self._attention_layer_norm(attention_output)
     else:

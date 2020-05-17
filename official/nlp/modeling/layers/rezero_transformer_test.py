@@ -101,6 +101,33 @@ class TransformerWithReZeroLayerTest(keras_parameterized.TestCase):
 
     self.assertAllClose(input_data_normed, output_data)
 
+  def test_layer_output_range(self):
+    test_layer = rezero_transformer.ReZeroTransformer(
+        num_attention_heads=10,
+        intermediate_size=2048,
+        intermediate_activation='relu')
+    sequence_length = 21
+    width = 80
+
+    batch_size = 6
+    input_data = 10 * np.random.random_sample(
+        (batch_size, sequence_length, width))
+    mask_data = np.random.randint(
+        2, size=(batch_size, sequence_length, sequence_length))
+    output_tensor = test_layer([input_data, mask_data])
+
+    # The layer only attends to the first token and outputs the first token
+    # embeeding.
+    new_layer = rezero_transformer.ReZeroTransformer(
+        num_attention_heads=10,
+        intermediate_size=2048,
+        intermediate_activation='relu',
+        output_range=1)
+    _ = new_layer([input_data, mask_data])
+    new_layer.set_weights(test_layer.get_weights())
+    new_output_tensor = new_layer([input_data, mask_data])
+    self.assertAllClose(new_output_tensor, output_tensor[:, 0:1, :])
+
 
 if __name__ == '__main__':
   tf.test.main()
