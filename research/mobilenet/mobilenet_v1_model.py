@@ -30,54 +30,15 @@ As described in https://arxiv.org/abs/1704.04861.
 """
 
 import logging
-from typing import Tuple, Union, Text
+from typing import Tuple, Union
 
 import tensorflow as tf
 
+from research.mobilenet import common_modules
 from research.mobilenet.configs.mobilenet_config import MobileNetV1Config
 from research.mobilenet.configs.mobilenet_config import Conv, DepSepConv
 
 layers = tf.keras.layers
-
-
-class FixedPadding(layers.Layer):
-  """Pads the input along the spatial dimensions independently of input size.
-
-  Pads the input such that if it was used in a convolution with 'VALID' padding,
-  the output would have the same dimensions as if the unpadded input was used
-  in a convolution with 'SAME' padding.
-
-  Args:
-    inputs: A tensor of size [batch, height_in, width_in, channels].
-    kernel_size: The kernel to be used in the conv2d or max_pool2d operation.
-    rate: An integer, rate for atrous convolution.
-
-  Returns:
-    output: A tensor of size [batch, height_out, width_out, channels] with the
-      input, either intact (if kernel_size == 1) or padded (if kernel_size > 1).
-  """
-
-  def __init__(self,
-               kernel_size: Tuple[int, int],
-               rate: int = 1,
-               name: Text = None):
-    super(FixedPadding, self).__init__(name=name)
-    self.kernel_size = kernel_size
-    self.rate = rate
-
-  def call(self, inputs: tf.Tensor, **kwargs):
-    kernel_size = self.kernel_size
-    rate = self.rate
-    kernel_size_effective = [kernel_size[0] + (kernel_size[0] - 1) * (rate - 1),
-                             kernel_size[0] + (kernel_size[0] - 1) * (rate - 1)]
-    pad_total = [kernel_size_effective[0] - 1, kernel_size_effective[1] - 1]
-    pad_beg = [pad_total[0] // 2, pad_total[1] // 2]
-    pad_end = [pad_total[0] - pad_beg[0], pad_total[1] - pad_beg[1]]
-    padded_inputs = tf.pad(
-      tensor=inputs,
-      paddings=[[0, 0], [pad_beg[0], pad_end[0]], [pad_beg[1], pad_end[1]],
-                [0, 0]])
-    return padded_inputs
 
 
 def _reduced_kernel_size_for_small_input(input_tensor: tf.Tensor,
@@ -102,92 +63,6 @@ def _reduced_kernel_size_for_small_input(input_tensor: tf.Tensor,
     kernel_size_out = (min(shape[1], kernel_size[0]),
                        min(shape[2], kernel_size[1]))
   return kernel_size_out
-
-
-def _conv2d_block(inputs: tf.Tensor,
-                  filters: int,
-                  width_multiplier: float,
-                  min_depth: int,
-                  weight_decay: float,
-                  stddev: float,
-                  batch_norm_decay: float,
-                  batch_norm_epsilon: float,
-                  use_explicit_padding: bool = False,
-                  kernel: Union[int, Tuple[int, int]] = (3, 3),
-                  strides: Union[int, Tuple[int, int]] = (1, 1),
-                  block_id: int = 0
-                  ) -> tf.Tensor:
-  """Adds an initial convolution layer (with batch normalization).
-
-  Args:
-    inputs: Input tensor of shape [batch_size, height, width, channels]
-    filters: the dimensionality of the output space
-      (i.e. the number of output filters in the convolution).
-    width_multiplier: controls the width of the network.
-      - If `width_multiplier` < 1.0, proportionally decreases the number
-            of filters in each layer.
-      - If `width_multiplier` > 1.0, proportionally increases the number
-            of filters in each layer.
-      - If `width_multiplier` = 1, default number of filters from the paper
-            are used at each layer.
-      This is called `width multiplier (\alpha)` in the original paper.
-    min_depth: Minimum depth value (number of channels) for all convolution ops.
-      Enforced when width_multiplier < 1, and not an active constraint when
-      width_multiplier >= 1.
-    weight_decay: The weight decay to use for regularizing the model.
-    stddev: The standard deviation of the trunctated normal weight initializer.
-    batch_norm_decay: Decay for batch norm moving average.
-    batch_norm_epsilon: Small float added to variance to avoid dividing by zero
-        in batch norm.
-    use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
-      inputs so that the output dimensions are the same as if 'SAME' padding
-      were used.
-    kernel: An integer or tuple/list of 2 integers, specifying the
-      width and height of the 2D convolution window.
-      Can be a single integer to specify the same value for
-      all spatial dimensions.
-    strides: An integer or tuple/list of 2 integers,
-        specifying the strides of the convolution
-        along the width and height.
-        Can be a single integer to specify the same value for
-        all spatial dimensions.
-        Specifying any stride value != 1 is incompatible with specifying
-        any `dilation_rate` value != 1.
-    block_id： a unique identification designating the block number.
-
-  Returns
-    Output tensor of block of shape [batch_size, height, width, filters].
-  """
-
-  filters = max(int(filters * width_multiplier), min_depth)
-  padding = 'SAME'
-  if use_explicit_padding:
-    padding = 'VALID'
-
-  if use_explicit_padding:
-    inputs = FixedPadding(kernel_size=kernel,
-                          name='Conv2d_{}_FP'.format(block_id))(inputs)
-
-  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
-  regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
-  x = layers.Conv2D(filters=filters,
-                    kernel_size=kernel,
-                    strides=strides,
-                    padding=padding,
-                    kernel_initializer=weights_init,
-                    kernel_regularizer=regularizer,
-                    use_bias=False,
-                    name='Conv2d_{}'.format(block_id))(inputs)
-
-  x = layers.BatchNormalization(epsilon=batch_norm_epsilon,
-                                momentum=batch_norm_decay,
-                                axis=-1,
-                                name='Conv2d_{}_BN'.format(block_id))(x)
-
-  outputs = layers.ReLU(max_value=6.,
-                        name='Conv2d_{}_ReLU'.format(block_id))(x)
-
-  return outputs
 
 
 def _depthwise_conv2d_block(inputs: tf.Tensor,
@@ -253,18 +128,23 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
     Output tensor of block of shape [batch_size, height, width, filters].
   """
 
-  filters = max(int(filters * width_multiplier), min_depth)
-  padding = 'SAME'
-  if use_explicit_padding:
-    padding = 'VALID'
+  filters = common_modules.width_multiplier_op(
+    filters=filters,
+    width_multiplier=width_multiplier,
+    min_depth=min_depth)
 
   weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
   depth_regularizer = regularizer if regularize_depthwise else None
 
+  padding = 'SAME'
   if use_explicit_padding:
-    inputs = FixedPadding(kernel_size=kernel,
-                          name='Conv2d_{}_FP'.format(block_id))(inputs)
+    padding = 'VALID'
+    inputs = common_modules.FixedPadding(
+      kernel_size=kernel,
+      name='Conv2d_{}_FP'.format(block_id))(inputs)
+
+  # depth-wise convolution
   x = layers.DepthwiseConv2D(kernel_size=kernel,
                              padding=padding,
                              depth_multiplier=1,
@@ -281,6 +161,7 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
   x = layers.ReLU(max_value=6.,
                   name='Conv2d_{}_dw_ReLU'.format(block_id))(x)
 
+  # point-wise convolution
   x = layers.Conv2D(filters=filters,
                     kernel_size=(1, 1),
                     padding='SAME',
@@ -344,7 +225,7 @@ def mobilenet_v1_base(inputs: tf.Tensor,
       layer_rate = 1
       current_stride *= block_def.stride
     if block_def.block_type == Conv:
-      net = _conv2d_block(
+      net = common_modules.conv2d_block(
         inputs=net,
         filters=block_def.filters,
         kernel=block_def.kernel,
@@ -437,6 +318,5 @@ if __name__ == '__main__':
   model.compile(
     optimizer='adam',
     loss=tf.keras.losses.categorical_crossentropy,
-    metrics=[tf.keras.metrics.categorical_crossentropy]
-  )
+    metrics=[tf.keras.metrics.categorical_crossentropy])
   logging.info(model.summary())
