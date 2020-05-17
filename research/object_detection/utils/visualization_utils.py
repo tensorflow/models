@@ -134,7 +134,7 @@ def draw_bounding_box_on_image_array(image,
                                      ymax,
                                      xmax,
                                      color='red',
-                                     font_size,
+                                     font_size=28,
                                      thickness=4,
                                      display_str_list=(),
                                      use_normalized_coordinates=True):
@@ -273,7 +273,7 @@ def draw_bounding_boxes_on_image_array(image,
 def draw_bounding_boxes_on_image(image,
                                  boxes,
                                  color='red',
-                                 font_size,
+                                 font_size=28,
                                  thickness=4,
                                  display_str_list_list=()):
   """Draws bounding boxes on image.
