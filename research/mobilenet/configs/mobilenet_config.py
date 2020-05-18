@@ -14,10 +14,11 @@
 # =============================================================================
 """Configuration definitions for MobileNet."""
 
-from typing import Text, Tuple, Callable, Mapping
+from typing import Text, Tuple, Callable, Mapping, Type
 from dataclasses import dataclass
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from official.modeling.hyperparams import base_config
 
@@ -37,10 +38,11 @@ def get_activation_function() -> Mapping[Text, Callable]:
   }
 
 
-def get_normalization_layer() -> Mapping[Text, tf.keras.layers.Layer]:
+def get_normalization_layer() -> Mapping[Text, Type[tf.keras.layers.Layer]]:
   return {
     'batch_norm': tf.keras.layers.BatchNormalization,
-    'layer_norm': tf.keras.layers.LayerNormalization
+    'layer_norm': tf.keras.layers.LayerNormalization,
+    'group_norm': tfa.layers.GroupNormalization
   }
 
 
@@ -175,6 +177,9 @@ class MobileNetV2Config(base_config.Config):
         if necessary to prevent the network from reducing the spatial resolution
         of the activation maps. Allowed values are 8 (accurate fully convolutional
         mode), 16 (fast fully convolutional mode), 32 (classification mode).
+      finegrain_classification_mode: When set to True, the model
+        will keep the last layer large even for small multipliers. Following
+        https://arxiv.org/abs/1801.04381
       use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
@@ -197,6 +202,7 @@ class MobileNetV2Config(base_config.Config):
   min_depth: int = 8
   width_multiplier = 1.0
   output_stride: int = None
+  finegrain_classification_mode: bool = False
   use_explicit_padding: bool = False
   spatial_squeeze: bool = True
   # regularization
