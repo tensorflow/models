@@ -434,7 +434,6 @@ def custom_main(custom_callbacks=None):
 
 
 def main(_):
-  # Users should always run this script under TF 2.x
   custom_main(custom_callbacks=None)
 
 

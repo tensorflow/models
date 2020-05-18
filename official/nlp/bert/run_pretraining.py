@@ -180,7 +180,6 @@ def run_bert_pretrain(strategy, custom_callbacks=None):
 
 
 def main(_):
-  # Users should always run this script under TF 2.x
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'

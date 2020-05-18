@@ -91,7 +91,6 @@ def export_squad(model_export_path, input_meta_data):
 
 
 def main(_):
-  # Users should always run this script under TF 2.x
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
 
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
