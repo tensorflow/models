@@ -207,6 +207,7 @@ def mobilenet_v1_base(inputs: tf.Tensor,
     'momentum': batch_norm_decay,
     'epsilon': batch_norm_epsilon
   }
+  blocks = config.blocks
 
   if width_multiplier <= 0:
     raise ValueError('depth_multiplier is not greater than zero.')
@@ -225,7 +226,7 @@ def mobilenet_v1_base(inputs: tf.Tensor,
   rate = 1
 
   net = inputs
-  for i, block_def in enumerate(config.blocks):
+  for i, block_def in enumerate(blocks):
     if output_stride is not None and current_stride == output_stride:
       # If we have reached the target output_stride, then we need to employ
       # atrous convolution with stride=1 and multiply the atrous rate by the

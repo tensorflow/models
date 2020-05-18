@@ -197,6 +197,7 @@ def mobilenet_v2_base(inputs: tf.Tensor,
 
   min_depth = config.min_depth
   width_multiplier = config.width_multiplier
+  finegrain_classification_mode = config.finegrain_classification_mode
   weight_decay = config.weight_decay
   stddev = config.stddev
   regularize_depthwise = config.regularize_depthwise
@@ -210,12 +211,16 @@ def mobilenet_v2_base(inputs: tf.Tensor,
     'momentum': batch_norm_decay,
     'epsilon': batch_norm_epsilon
   }
+  blocks = config.blocks
 
   if width_multiplier <= 0:
     raise ValueError('depth_multiplier is not greater than zero.')
 
   if output_stride is not None and output_stride not in [8, 16, 32]:
     raise ValueError('Only allowed output_stride values are 8, 16, 32.')
+
+  if finegrain_classification_mode and width_multiplier < 1.0:
+    blocks[-1].filters /= width_multiplier
 
   # The current_stride variable keeps track of the output stride of the
   # activations, i.e., the running product of convolution strides up to the
@@ -228,7 +233,7 @@ def mobilenet_v2_base(inputs: tf.Tensor,
   rate = 1
 
   net = inputs
-  for i, block_def in enumerate(config.blocks):
+  for i, block_def in enumerate(blocks):
     if output_stride is not None and current_stride == output_stride:
       # If we have reached the target output_stride, then we need to employ
       # atrous convolution with stride=1 and multiply the atrous rate by the
@@ -264,13 +269,22 @@ def mobilenet_v2_base(inputs: tf.Tensor,
         block_id=i
       )
     elif block_def.block_type == InvertedResConv:
+      use_rate = rate
+      if layer_rate > 1 and block_def.kernel != (1, 1):
+        # We will apply atrous rate in the following cases:
+        # 1) When kernel_size is not in params, the operation then uses
+        #   default kernel size 3x3.
+        # 2) When kernel_size is in params, and if the kernel_size is not
+        #   equal to (1, 1) (there is no need to apply atrous convolution to
+        #   any 1x1 convolution).
+        use_rate = layer_rate
       net = _inverted_res_block(
         inputs=net,
         filters=block_def.filters,
         kernel=block_def.kernel,
         strides=layer_stride,
         expansion_size=block_def.expansion_size,
-        dilation_rate=layer_rate,
+        dilation_rate=use_rate,
         width_multiplier=width_multiplier,
         min_depth=min_depth,
         weight_decay=weight_decay,
