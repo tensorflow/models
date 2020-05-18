@@ -30,7 +30,7 @@ import tensorflow as tf
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
 from official.recommendation import movielens
-from official.recommendation import popen_helper
+from official.recommendation import popen_helper_internal as popen_helper
 from official.utils.misc import keras_utils
 
 

@@ -37,7 +37,7 @@ from absl import logging
 
 from official.recommendation import constants as rconst
 from official.recommendation import movielens
-from official.recommendation import popen_helper
+from official.recommendation import popen_helper_internal as popen_helper
 from official.recommendation import stat_utils
 from tensorflow.python.tpu.datasets import StreamingFilesDataset
 
