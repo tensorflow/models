@@ -3,6 +3,7 @@
 ### Tensorflow
 
 [![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
+[![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
 For detailed steps to install Tensorflow, follow the
 [Tensorflow installation instructions](https://www.tensorflow.org/install/). A
@@ -10,9 +11,9 @@ typical user can install Tensorflow using one of the following commands:
 
 ```bash
 # For CPU:
-pip install 'tensorflow'
+pip3 install 'tensorflow'
 # For GPU:
-pip install 'tensorflow-gpu'
+pip3 install 'tensorflow-gpu'
 ```
 
 ### TF-Slim
@@ -23,7 +24,7 @@ using previous versions which relied on tf.contrib (which is now deprecated).
 ```bash
 git clone git@github.com:google-research/tf-slim.git
 cd tf-slim
-pip install .
+pip3 install .
 ```
 
 Note that these commands assume you are cloning using SSH. If you are using
@@ -51,8 +52,8 @@ PATH_TO_PROTOC=`pwd`
 Install python library dependencies:
 
 ```bash
-pip install matplotlib numpy scikit-image scipy
-sudo apt-get install python-tk
+pip3 install matplotlib numpy scikit-image scipy
+sudo apt-get install python3-tk
 ```
 
 ### `tensorflow/models`
@@ -90,13 +91,13 @@ under the hood.
 
 ```bash
 # From tensorflow/models/research/delf/
-pip install -e . # Install "delf" package.
+pip3 install -e . # Install "delf" package.
 ```
 
 At this point, running
 
 ```bash
-python -c 'import delf'
+python3 -c 'import delf'
 ```
 
 should just return without complaints. This indicates that the DELF package is
@@ -104,18 +105,11 @@ loaded successfully.
 
 ### Troubleshooting
 
-#### Python version
+#### `pip3 install`
 
-Installation issues may happen if multiple python versions are mixed. The
-instructions above assume python2.7 version is used; if using python3.X, be sure
-to use `pip3` instead of `pip`, `python3-tk` instead of `python-tk`, and all
-should work.
-
-#### `pip install`
-
-Issues might be observed if using `pip install` with `-e` option (editable
+Issues might be observed if using `pip3 install` with `-e` option (editable
 mode). You may try out to simply remove the `-e` from the commands above. Also,
-depending on your machine setup, you might need to run the `sudo pip install`
+depending on your machine setup, you might need to run the `sudo pip3 install`
 command, that is with a `sudo` at the beginning.
 
 #### Cloning github repositories
