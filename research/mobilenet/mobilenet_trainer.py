@@ -31,6 +31,7 @@ from research.mobilenet.configs.mobilenet_config import MobileNetV1Config
 from research.mobilenet.configs.mobilenet_config import MobileNetV2Config
 from research.mobilenet.configs.mobilenet_config import MobileNetV3Config
 from research.mobilenet.mobilenet_v1_model import mobilenet_v1
+from research.mobilenet.mobilenet_v2_model import mobilenet_v2
 from research.mobilenet.configs import defaults
 
 from official.modeling.hyperparams import base_config
@@ -48,7 +49,8 @@ def _get_model_config() -> Mapping[Text, Type[base_config.Config]]:
 
 def _get_model_builder() -> Mapping[Text, Any]:
   return {
-    'mobilenet_v1': mobilenet_v1
+    'mobilenet_v1': mobilenet_v1,
+    'mobilenet_v2': mobilenet_v2
   }
 
 
@@ -176,7 +178,7 @@ def get_args(args_parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
   args_parser.add_argument(
     '--model_name',
     help='MobileNet version name.',
-    choices=['mobilenet_v1', 'mobilenet_v2', 'mobilenet_v3'],
+    choices=['mobilenet_v1', 'mobilenet_v2'],
     default='mobilenet_v1'
   )
   args_parser.add_argument(
