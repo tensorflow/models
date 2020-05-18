@@ -13,7 +13,7 @@ Assuming the data was downloaded to `/tmp/gld_tfrecord/`, running the following
 command should start training a model:
 
 ```sh
-python tensorflow_models/research/delf/delf/python/training/train.py \
+python3 tensorflow_models/research/delf/delf/python/training/train.py \
   --train_file_pattern=/tmp/gld_tfrecord/train* \
   --validation_file_pattern=/tmp/gld_tfrecord/train* \
   --debug

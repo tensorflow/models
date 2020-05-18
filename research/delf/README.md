@@ -1,6 +1,7 @@
 # DELF: DEep Local Features
 
 [![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
+[![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
 This project presents code for extracting DELF features, which were introduced
 with the paper
