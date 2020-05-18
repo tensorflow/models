@@ -44,7 +44,7 @@ threshold of 0.8, and produce visualizations.
 
 ```bash
 # From tensorflow/models/research/delf/delf/python/examples/
-python extract_boxes.py \
+python3 extract_boxes.py \
   --detector_path parameters/d2r_frcnn_20190411 \
   --detector_thresh 0.8 \
   --list_images_path list_images_detector.txt \
