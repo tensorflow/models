@@ -155,6 +155,7 @@ def draw_bounding_box_on_image_array(image,
     use_normalized_coordinates: If True (default), treat coordinates
       ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
       coordinates as absolute.
+      font_size: Font size of the label displayed over the bounding box
   """
   image_pil = Image.fromarray(np.uint8(image)).convert('RGB')
   draw_bounding_box_on_image(image_pil, ymin, xmin, ymax, xmax, color,
@@ -195,6 +196,7 @@ def draw_bounding_box_on_image(image,
     use_normalized_coordinates: If True (default), treat coordinates
       ymin, xmin, ymax, xmax as relative to the image.  Otherwise treat
       coordinates as absolute.
+    font_size: Font size of the label displayed over the bounding box
   """
   draw = ImageDraw.Draw(image)
   im_width, im_height = image.size
@@ -218,7 +220,7 @@ def draw_bounding_box_on_image(image,
   # instead of above.
   display_str_heights = [font.getsize(ds)[1] for ds in display_str_list]
   # Each display_str has a top and bottom margin of 0.05x.
-  total_display_str_height = (10 + 2 * 0.01) * sum(display_str_heights)
+  total_display_str_height = (1 + 2 * 0.05) * sum(display_str_heights)
 
   if top > total_display_str_height:
     text_bottom = top
@@ -281,6 +283,7 @@ def draw_bounding_boxes_on_image(image,
     boxes: a 2 dimensional numpy array of [N, 4]: (ymin, xmin, ymax, xmax).
            The coordinates are in normalized format between [0, 1].
     color: color to draw bounding box. Default is red.
+    font_size: Font size of the label displayed over the bounding box
     thickness: line thickness. Default value is 4.
     display_str_list_list: list of list of strings.
                            a list of strings for each bounding box.
@@ -988,6 +991,7 @@ def visualize_boxes_and_labels_on_image_array(
     track_ids: a numpy array of shape [N] with unique track ids. If provided,
       color-coding of boxes will be determined by these ids, and not the class
       indices.
+      font_size: Font size of the label displayed over the bounding box
     use_normalized_coordinates: whether boxes is to be interpreted as
       normalized coordinates or not.
     max_boxes_to_draw: maximum number of boxes to visualize.  If None, draw
