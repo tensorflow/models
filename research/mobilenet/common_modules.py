@@ -13,9 +13,12 @@
 # limitations under the License.
 # =============================================================================
 """Common util modules for MobileNet."""
-from typing import Tuple, Text, Union, Optional, List
+from typing import Tuple, Text, Union, Optional, List, Dict
 
 import tensorflow as tf
+
+from research.mobilenet.configs.mobilenet_config import get_activation_function
+from research.mobilenet.configs.mobilenet_config import get_normalization_layer
 
 layers = tf.keras.layers
 
@@ -137,8 +140,9 @@ def conv2d_block(inputs: tf.Tensor,
                  min_depth: int,
                  weight_decay: float,
                  stddev: float,
-                 batch_norm_decay: float,
-                 batch_norm_epsilon: float,
+                 activation_name: Text = 'relu6',
+                 normalization_name: Text = 'batch_norm',
+                 normalization_params: Dict = {},
                  use_explicit_padding: bool = False,
                  kernel: Union[int, Tuple[int, int]] = (3, 3),
                  strides: Union[int, Tuple[int, int]] = (1, 1),
@@ -163,9 +167,9 @@ def conv2d_block(inputs: tf.Tensor,
       width_multiplier >= 1.
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
-    batch_norm_decay: Decay for batch norm moving average.
-    batch_norm_epsilon: Small float added to variance to avoid dividing by zero
-        in batch norm.
+    activation_name: Name of the activation function
+    normalization_name: Name of the normalization layer
+    normalization_params: Parameters passed to normalization layer
     use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
       inputs so that the output dimensions are the same as if 'SAME' padding
       were used.
@@ -190,6 +194,9 @@ def conv2d_block(inputs: tf.Tensor,
                                 width_multiplier=width_multiplier,
                                 min_depth=min_depth)
 
+  activation_fn = get_activation_function()[activation_name]
+  normalization_layer = get_normalization_layer()[normalization_name]
+
   padding = 'SAME'
   if use_explicit_padding:
     padding = 'VALID'
@@ -208,12 +215,13 @@ def conv2d_block(inputs: tf.Tensor,
                     use_bias=False,
                     name='Conv2d_{}'.format(block_id))(inputs)
 
-  x = layers.BatchNormalization(epsilon=batch_norm_epsilon,
-                                momentum=batch_norm_decay,
-                                axis=-1,
-                                name='Conv2d_{}_BN'.format(block_id))(x)
+  x = normalization_layer(axis=-1,
+                          name='Conv2d_{}_{}'.format(
+                            block_id, normalization_name),
+                          **normalization_params)(x)
 
-  outputs = layers.ReLU(max_value=6.,
-                        name='Conv2d_{}_ReLU'.format(block_id))(x)
+  outputs = layers.Activation(activation=activation_fn,
+                              name='Conv2d_{}_{}'.format(
+                                block_id, activation_name))(x)
 
   return outputs

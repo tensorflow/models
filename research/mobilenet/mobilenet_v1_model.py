@@ -30,13 +30,15 @@ As described in https://arxiv.org/abs/1704.04861.
 """
 
 import logging
-from typing import Tuple, Union
+from typing import Tuple, Union, Text, Dict
 
 import tensorflow as tf
 
 from research.mobilenet import common_modules
 from research.mobilenet.configs.mobilenet_config import MobileNetV1Config
 from research.mobilenet.configs.mobilenet_config import Conv, DepSepConv
+from research.mobilenet.configs.mobilenet_config import get_activation_function
+from research.mobilenet.configs.mobilenet_config import get_normalization_layer
 
 layers = tf.keras.layers
 
@@ -71,8 +73,9 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
                             min_depth: int,
                             weight_decay: float,
                             stddev: float,
-                            batch_norm_decay: float,
-                            batch_norm_epsilon: float,
+                            activation_name: Text = 'relu6',
+                            normalization_name: Text = 'batch_norm',
+                            normalization_params: Dict = {},
                             dilation_rate: int = 1,
                             regularize_depthwise: bool = False,
                             use_explicit_padding: bool = False,
@@ -99,9 +102,9 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
       width_multiplier >= 1.
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
-    batch_norm_decay: Decay for batch norm moving average.
-    batch_norm_epsilon: Small float added to variance to avoid dividing by zero
-        in batch norm.
+    activation_name: Name of the activation function
+    normalization_name: Name of the normalization layer
+    normalization_params: Parameters passed to normalization layer
     dilation_rate: an integer or tuple/list of 2 integers, specifying
       the dilation rate to use for dilated convolution.
       Can be a single integer to specify the same value for
@@ -133,6 +136,9 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
     width_multiplier=width_multiplier,
     min_depth=min_depth)
 
+  activation_fn = get_activation_function()[activation_name]
+  normalization_layer = get_normalization_layer()[normalization_name]
+
   weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
   depth_regularizer = regularizer if regularize_depthwise else None
@@ -154,12 +160,13 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
                              dilation_rate=dilation_rate,
                              use_bias=False,
                              name='Conv2d_{}_dw'.format(block_id))(inputs)
-  x = layers.BatchNormalization(epsilon=batch_norm_epsilon,
-                                momentum=batch_norm_decay,
-                                axis=-1,
-                                name='Conv2d_{}_dw_BN'.format(block_id))(x)
-  x = layers.ReLU(max_value=6.,
-                  name='Conv2d_{}_dw_ReLU'.format(block_id))(x)
+  x = normalization_layer(axis=-1,
+                          name='Conv2d_{}_dw_{}'.format(
+                            block_id, normalization_name),
+                          **normalization_params)(x)
+  x = layers.Activation(activation=activation_fn,
+                        name='Conv2d_{}_dw_{}'.format(
+                          block_id, activation_name))(x)
 
   # point-wise convolution
   x = layers.Conv2D(filters=filters,
@@ -170,13 +177,13 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
                     kernel_regularizer=regularizer,
                     use_bias=False,
                     name='Conv2d_{}_pw'.format(block_id))(x)
-  x = layers.BatchNormalization(epsilon=batch_norm_epsilon,
-                                momentum=batch_norm_decay,
-                                axis=-1,
-                                name='Conv2d_{}_pw_BN'.format(block_id))(x)
-  outputs = layers.ReLU(max_value=6.,
-                        name='Conv2d_{}_pw_ReLU'.format(block_id))(x)
-
+  x = normalization_layer(axis=-1,
+                          name='Conv2d_{}_pw_{}'.format(
+                            block_id, normalization_name),
+                          **normalization_params)(x)
+  outputs = layers.Activation(activation=activation_fn,
+                              name='Conv2d_{}_pw_{}'.format(
+                                block_id, activation_name))(x)
   return outputs
 
 
@@ -194,6 +201,12 @@ def mobilenet_v1_base(inputs: tf.Tensor,
   batch_norm_epsilon = config.batch_norm_epsilon
   output_stride = config.output_stride
   use_explicit_padding = config.use_explicit_padding
+  activation_name = config.activation_name
+  normalization_name = config.normalization_name
+  normalization_params = {
+    'momentum': batch_norm_decay,
+    'epsilon': batch_norm_epsilon
+  }
 
   if width_multiplier <= 0:
     raise ValueError('depth_multiplier is not greater than zero.')
@@ -234,9 +247,10 @@ def mobilenet_v1_base(inputs: tf.Tensor,
         min_depth=min_depth,
         weight_decay=weight_decay,
         stddev=stddev,
-        batch_norm_decay=batch_norm_decay,
-        batch_norm_epsilon=batch_norm_epsilon,
         use_explicit_padding=use_explicit_padding,
+        activation_name=activation_name,
+        normalization_name=normalization_name,
+        normalization_params=normalization_params,
         block_id=i
       )
     elif block_def.block_type == DepSepConv:
@@ -250,8 +264,9 @@ def mobilenet_v1_base(inputs: tf.Tensor,
         min_depth=min_depth,
         weight_decay=weight_decay,
         stddev=stddev,
-        batch_norm_decay=batch_norm_decay,
-        batch_norm_epsilon=batch_norm_epsilon,
+        activation_name=activation_name,
+        normalization_name=normalization_name,
+        normalization_params=normalization_params,
         regularize_depthwise=regularize_depthwise,
         use_explicit_padding=use_explicit_padding,
         block_id=i
@@ -304,7 +319,6 @@ def mobilenet_v1(input_shape: Tuple[int, int, int] = (224, 224, 3),
 
   x = layers.Activation(activation='softmax',
                         name='top_Predictions')(x)
-
   return tf.keras.models.Model(inputs=img_input,
                                outputs=x,
                                name=model_name)

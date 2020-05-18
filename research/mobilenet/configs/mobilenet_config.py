@@ -14,14 +14,34 @@
 # =============================================================================
 """Configuration definitions for MobileNet."""
 
-from typing import Text, Tuple, Union
-
+from typing import Text, Tuple, Callable, Mapping
 from dataclasses import dataclass
+
+import tensorflow as tf
+
 from official.modeling.hyperparams import base_config
 
 Conv = 'Conv'
 DepSepConv = 'DepSepConv'
 InvertedResConv = 'InvertedResConv'
+
+
+def get_activation_function() -> Mapping[Text, Callable]:
+  return {
+    'relu': tf.nn.relu,
+    'relu6': tf.nn.relu6,
+    'swish': tf.nn.swish,
+    'elu': tf.nn.elu,
+    'sigmoid': tf.nn.sigmoid,
+    'softmax': tf.nn.softmax
+  }
+
+
+def get_normalization_layer() -> Mapping[Text, tf.keras.layers.Layer]:
+  return {
+    'batch_norm': tf.keras.layers.BatchNormalization,
+    'layer_norm': tf.keras.layers.LayerNormalization
+  }
 
 
 @dataclass
@@ -43,7 +63,6 @@ class MobileNetV1Config(base_config.Config):
       num_classes: number of predicted classes. If 0 or None, the logits layer
         is omitted and the input features to the logits layer (before dropout)
         are returned instead.
-      dropout_keep_prob: the percentage of activation values that are retained.
       min_depth: Minimum depth value (number of channels) for all convolution ops.
         Enforced when width_multiplier < 1, and not an active constraint when
         width_multiplier >= 1.
@@ -51,12 +70,6 @@ class MobileNetV1Config(base_config.Config):
         for all convolution ops. The value must be greater than zero. Typical
         usage will be to set this value in (0, 1) to reduce the number of
         parameters or computation cost of the model.
-      weight_decay: The weight decay to use for regularizing the model.
-      stddev: The standard deviation of the trunctated normal weight initializer.
-      regularize_depthwise: Whether or not apply regularization on depthwise.
-      batch_norm_decay: Decay for batch norm moving average.
-      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
-        in batch norm.
       output_stride: An integer that specifies the requested ratio of input to
         output spatial resolution. If not None, then we invoke atrous convolution
         if necessary to prevent the network from reducing the spatial resolution
@@ -71,23 +84,39 @@ class MobileNetV1Config(base_config.Config):
         larger outputs. If true, any input size is pooled down to 1x1.
       spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
         of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
+      weight_decay: The weight decay to use for regularizing the model.
+      stddev: The standard deviation of the trunctated normal weight initializer.
+      regularize_depthwise: Whether or not apply regularization on depthwise.
+      activation_fn: Name of the activation function
+      normalization_layer: Name of the normalization layer
+      batch_norm_decay: Decay for batch norm moving average.
+      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
+        in batch norm.
+      dropout_keep_prob: the percentage of activation values that are retained.
 
   """
   name: Text = 'MobileNetV1'
   num_classes: int = 1000
-  dropout_keep_prob: float = 0.999
+  # model specific
   min_depth: int = 8
   width_multiplier = 1.0
-  weight_decay: float = 0.00004
-  stddev: float = 0.09
-  regularize_depthwise: bool = False
-  batch_norm_decay: float = 0.9997
-  batch_norm_epsilon: float = 0.001
   output_stride: int = None
   use_explicit_padding: bool = False
   global_pool: bool = True
   spatial_squeeze: bool = True
-
+  # regularization
+  weight_decay: float = 0.00004
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'relu6'
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.999
+  # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
     # (kernel, stride, depth)
     # pylint: disable=bad-whitespace
@@ -134,7 +163,6 @@ class MobileNetV2Config(base_config.Config):
       num_classes: number of predicted classes. If 0 or None, the logits layer
         is omitted and the input features to the logits layer (before dropout)
         are returned instead.
-      dropout_keep_prob: the percentage of activation values that are retained.
       min_depth: Minimum depth value (number of channels) for all convolution ops.
         Enforced when width_multiplier < 1, and not an active constraint when
         width_multiplier >= 1.
@@ -142,12 +170,6 @@ class MobileNetV2Config(base_config.Config):
         for all convolution ops. The value must be greater than zero. Typical
         usage will be to set this value in (0, 1) to reduce the number of
         parameters or computation cost of the model.
-      weight_decay: The weight decay to use for regularizing the model.
-      stddev: The standard deviation of the trunctated normal weight initializer.
-      regularize_depthwise: Whether or not apply regularization on depthwise.
-      batch_norm_decay: Decay for batch norm moving average.
-      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
-        in batch norm.
       output_stride: An integer that specifies the requested ratio of input to
         output spatial resolution. If not None, then we invoke atrous convolution
         if necessary to prevent the network from reducing the spatial resolution
@@ -156,28 +178,40 @@ class MobileNetV2Config(base_config.Config):
       use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
-      global_pool: Optional boolean flag to control the avgpooling before the
-        logits layer. If false or unset, pooling is done with a fixed window
-        that reduces default-sized inputs to 1x1, while larger inputs lead to
-        larger outputs. If true, any input size is pooled down to 1x1.
       spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
         of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
+      weight_decay: The weight decay to use for regularizing the model.
+      stddev: The standard deviation of the trunctated normal weight initializer.
+      regularize_depthwise: Whether or not apply regularization on depthwise.
+      activation_fn: Name of the activation function
+      normalization_layer: Name of the normalization layer
+      batch_norm_decay: Decay for batch norm moving average.
+      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
+        in batch norm.
+      dropout_keep_prob: the percentage of activation values that are retained.
 
   """
   name: Text = 'MobileNetV2'
   num_classes: int = 1000
-  dropout_keep_prob: float = 0.999
+  # model specific
   min_depth: int = 8
   width_multiplier = 1.0
-  weight_decay: float = 0.00004
-  stddev: float = 0.09
-  regularize_depthwise: bool = False
-  batch_norm_decay: float = 0.9997
-  batch_norm_epsilon: float = 0.001
   output_stride: int = None
   use_explicit_padding: bool = False
   spatial_squeeze: bool = True
-
+  # regularization
+  weight_decay: float = 0.00004
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'relu6'
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.999
+  # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
     # (kernel, stride, depth)
     # pylint: disable=bad-whitespace
