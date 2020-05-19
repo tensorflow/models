@@ -111,7 +111,7 @@ def run_customized_training_loop(
     model_dir=None,
     train_input_fn=None,
     steps_per_epoch=None,
-    steps_per_loop=1,
+    steps_per_loop=None,
     epochs=1,
     eval_input_fn=None,
     eval_steps=None,
@@ -210,10 +210,19 @@ def run_customized_training_loop(
   ]
   if [arg for arg in required_arguments if arg is None]:
     raise ValueError('`strategy`, `model_fn`, `loss_fn`, `model_dir`, '
-                     '`steps_per_loop` and `steps_per_epoch` are required '
+                     '`steps_per_epoch` and `train_input_fn` are required '
                      'parameters.')
+  if not steps_per_loop:
+    if tf.config.list_logical_devices('TPU'):
+      # One can't fully utilize a TPU with steps_per_loop=1, so in this case
+      # default users to a more useful value.
+      steps_per_loop = min(1000, steps_per_epoch)
+    else:
+      steps_per_loop = 1
+    logging.info('steps_per_loop not specified. Using steps_per_loop=%d',
+                 steps_per_loop)
   if steps_per_loop > steps_per_epoch:
-    logging.error(
+    logging.warning(
         'steps_per_loop: %d is specified to be greater than '
         ' steps_per_epoch: %d, we will use steps_per_epoch as'
         ' steps_per_loop.', steps_per_loop, steps_per_epoch)
