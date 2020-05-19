@@ -168,8 +168,6 @@ class TransformerTask(object):
         tpu_address=flags_obj.tpu or "")
     if self.use_tpu:
       params["num_replicas"] = self.distribution_strategy.num_replicas_in_sync
-      if not params["static_batch"]:
-        raise ValueError("TPU requires static batch for input data.")
     else:
       logging.info("Running transformer with num_gpus = %d", num_gpus)
 
