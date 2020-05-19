@@ -34,12 +34,12 @@ from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 
 # Pretrain masked lanauge modeling accuracy range:
-MIN_MLM_ACCURACY = 0.65
-MAX_MLM_ACCURACY = 0.66
+MIN_MLM_ACCURACY = 0.635
+MAX_MLM_ACCURACY = 0.645
 
 # Pretrain next sentence prediction accuracy range:
-MIN_NSP_ACCURACY = 0.95
-MAX_NSP_ACCURACY = 0.98
+MIN_NSP_ACCURACY = 0.94
+MAX_NSP_ACCURACY = 0.96
 
 BERT_PRETRAIN_FILES_SEQ128 = 'gs://mlcompass-data/bert/pretraining_data/seq_128/wikipedia.tfrecord*,gs://mlcompass-data/bert/pretraining_data/seq_128/books.tfrecord*'
 BERT_BASE_CONFIG_FILE = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-12_H-768_A-12/bert_config.json'
@@ -126,15 +126,15 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
     FLAGS.dtype = 'bf16'
 
   @owner_utils.Owner('tf-model-garden')
-  def benchmark_accuracy_8x8_tpu_bf16_seq128_1m_steps(self):
-    """Test bert pretraining with 8x8 TPU for 1 million steps."""
+  def benchmark_accuracy_8x8_tpu_bf16_seq128_500k_steps(self):
+    """Test bert pretraining with 8x8 TPU for 500k steps."""
     # This is used for accuracy test.
     self._setup()
     self._specify_common_flags()
-    FLAGS.num_steps_per_epoch = 1000000
+    FLAGS.num_steps_per_epoch = 500000
     FLAGS.num_train_epochs = 1
     FLAGS.model_dir = self._get_model_dir(
-        'benchmark_accuracy_8x8_tpu_bf16_seq128_1m_steps')
+        'benchmark_accuracy_8x8_tpu_bf16_seq128_500k_steps')
     summary_path = os.path.join(FLAGS.model_dir,
                                 'summaries/training_summary.txt')
     # Set train_summary_interval to -1 to disable training summary, because
