@@ -20,6 +20,8 @@ The TensorFlow Model Garden is a repository with a number of different implement
 
 ## Contributions
 
+[![help wanted:paper code](https://img.shields.io/github/issues/tensorflow/models/help%20wanted%3Apaper%20code)](https://github.com/tensorflow/models/labels/help%20wanted%3Apaper%20code)
+
 If you want to contribute, please review the [contribution guidelines](../../wiki/How-to-contribute).
 
 ## License
