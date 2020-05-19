@@ -22,9 +22,9 @@ Tensorflow using one of the following commands:
 
 ``` bash
 # For CPU
-pip install tensorflow
+pip install tensorflow==1.15
 # For GPU
-pip install tensorflow-gpu
+pip install tensorflow-gpu==1.15
 ```
 
 The remaining libraries can be installed on Ubuntu 16.04 using via apt-get:
