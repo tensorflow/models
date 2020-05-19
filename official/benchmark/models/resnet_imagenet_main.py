@@ -51,7 +51,6 @@ def run(flags_obj):
     Dictionary of training and eval stats.
   """
   keras_utils.set_session_config(
-      enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
 
   # Execute flag override logic for better model performance

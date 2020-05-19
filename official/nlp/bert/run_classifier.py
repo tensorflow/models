@@ -347,7 +347,7 @@ def run_bert(strategy,
   if FLAGS.mode != 'train_and_eval':
     raise ValueError('Unsupported mode is specified: %s' % FLAGS.mode)
   # Enables XLA in Session Config. Should not be set for TPU.
-  keras_utils.set_config_v2(FLAGS.enable_xla)
+  keras_utils.set_session_config(FLAGS.enable_xla)
   performance.set_mixed_precision_policy(common_flags.dtype())
 
   epochs = FLAGS.num_train_epochs

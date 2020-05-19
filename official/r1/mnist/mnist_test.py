@@ -18,12 +18,10 @@ from __future__ import division
 from __future__ import print_function
 
 import time
-import unittest
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow.compat.v1 as tf  # pylint: disable=g-bad-import-order
 from absl import logging
 from official.r1.mnist import mnist
-from official.utils.misc import keras_utils
 
 BATCH_SIZE = 100
 
@@ -51,7 +49,6 @@ class Tests(tf.test.TestCase):
   using TF 2.0.
   """
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_mnist(self):
     classifier = make_estimator()
     classifier.train(input_fn=dummy_input_fn, steps=2)
@@ -71,7 +68,6 @@ class Tests(tf.test.TestCase):
       self.assertEqual(predictions['probabilities'].shape, (10,))
       self.assertEqual(predictions['classes'].shape, ())
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def mnist_model_fn_helper(self, mode, multi_gpu=False):
     features, labels = dummy_input_fn()
     image_count = features.shape[0]
@@ -99,19 +95,15 @@ class Tests(tf.test.TestCase):
       self.assertEqual(eval_metric_ops['accuracy'][0].dtype, tf.float32)
       self.assertEqual(eval_metric_ops['accuracy'][1].dtype, tf.float32)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_mnist_model_fn_train_mode(self):
     self.mnist_model_fn_helper(tf.estimator.ModeKeys.TRAIN)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_mnist_model_fn_train_mode_multi_gpu(self):
     self.mnist_model_fn_helper(tf.estimator.ModeKeys.TRAIN, multi_gpu=True)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_mnist_model_fn_eval_mode(self):
     self.mnist_model_fn_helper(tf.estimator.ModeKeys.EVAL)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_mnist_model_fn_predict_mode(self):
     self.mnist_model_fn_helper(tf.estimator.ModeKeys.PREDICT)
 
@@ -144,4 +136,5 @@ class Benchmarks(tf.test.Benchmark):
 
 if __name__ == '__main__':
   logging.set_verbosity(logging.ERROR)
+  tf.disable_v2_behavior()
   tf.test.main()

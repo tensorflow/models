@@ -48,7 +48,7 @@ import os
 from absl import app as absl_app
 from absl import flags
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from official.r1.utils.logs import logger
 from official.utils.flags import core as flags_core

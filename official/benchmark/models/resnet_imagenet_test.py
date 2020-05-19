@@ -23,7 +23,6 @@ import tensorflow as tf
 
 from tensorflow.python.eager import context
 from official.benchmark.models import resnet_imagenet_main
-from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.vision.image_classification.resnet import imagenet_preprocessing
 
@@ -85,8 +84,6 @@ class KerasImagenetTest(tf.test.TestCase):
 
   def test_end_to_end_no_dist_strat(self, flags_key):
     """Test Keras model with 1 GPU, no distribution strategy."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     extra_flags = [
         "-distribution_strategy", "off",
@@ -115,8 +112,6 @@ class KerasImagenetTest(tf.test.TestCase):
 
   def test_end_to_end_1_gpu(self, flags_key):
     """Test Keras model with 1 GPU."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 1:
       self.skipTest(
@@ -138,8 +133,6 @@ class KerasImagenetTest(tf.test.TestCase):
 
   def test_end_to_end_1_gpu_fp16(self, flags_key):
     """Test Keras model with 1 GPU and fp16."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 1:
       self.skipTest(
@@ -164,8 +157,6 @@ class KerasImagenetTest(tf.test.TestCase):
 
   def test_end_to_end_2_gpu(self, flags_key):
     """Test Keras model with 2 GPUs."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:
       self.skipTest(
@@ -186,8 +177,6 @@ class KerasImagenetTest(tf.test.TestCase):
 
   def test_end_to_end_xla_2_gpu(self, flags_key):
     """Test Keras model with XLA and 2 GPUs."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:
       self.skipTest(
@@ -209,8 +198,6 @@ class KerasImagenetTest(tf.test.TestCase):
 
   def test_end_to_end_2_gpu_fp16(self, flags_key):
     """Test Keras model with 2 GPUs and fp16."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:
       self.skipTest(
@@ -235,9 +222,6 @@ class KerasImagenetTest(tf.test.TestCase):
 
   def test_end_to_end_xla_2_gpu_fp16(self, flags_key):
     """Test Keras model with XLA, 2 GPUs and fp16."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
-
     if context.num_gpus() < 2:
       self.skipTest(
           "{} GPUs are not available for this test. {} GPUs are available".

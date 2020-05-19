@@ -18,13 +18,11 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import unittest
 
 import numpy as np
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow.compat.v1 as tf
 
 from official.recommendation import movielens
-from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.r1.wide_deep import movielens_dataset
 from official.r1.wide_deep import movielens_main
@@ -85,7 +83,6 @@ class BaseTest(tf.test.TestCase):
     with tf.io.gfile.GFile(self.item_csv, "w") as f:
       f.write(TEST_ITEM_DATA)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
   def test_input_fn(self):
     train_input_fn, _, _ = movielens_dataset.construct_input_fns(
         dataset=movielens.ML_1M, data_dir=self.temp_dir, batch_size=8, repeat=1)
@@ -103,7 +100,6 @@ class BaseTest(tf.test.TestCase):
 
       self.assertAllClose(labels[0], [1.0])
 
-  @unittest.skipIf(keras_utils.is_v2_0(), "TF 1.0 only test.")
   def test_end_to_end_deep(self):
     integration.run_synthetic(
         main=movielens_main.main, tmp_root=self.temp_dir,
@@ -117,4 +113,5 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
+  tf.disable_eager_execution()
   tf.test.main()
