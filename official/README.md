@@ -77,16 +77,16 @@ built from the
 as tagged branches or [downloadable releases](https://github.com/tensorflow/models/releases).
 * Model repository version numbers match the target TensorFlow release,
 such that
-[release v2.1.0](https://github.com/tensorflow/models/releases/tag/v2.1.0)
+[release v2.2.0](https://github.com/tensorflow/models/releases/tag/v2.2.0)
 are compatible with
-[TensorFlow v2.1.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0).
+[TensorFlow v2.2.0](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0).
 
 Please follow the below steps before running models in this repository.
 
 ### Requirements
 
 * The latest TensorFlow Model Garden release and TensorFlow 2
-  * If you are on a version of TensorFlow earlier than 2.1, please
+  * If you are on a version of TensorFlow earlier than 2.2, please
 upgrade your TensorFlow to [the latest TensorFlow 2](https://www.tensorflow.org/install/).
 
 ```shell
