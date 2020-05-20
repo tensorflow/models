@@ -15,10 +15,8 @@
 """BottleneckConvLSTMCell implementation."""
 
 import tensorflow.compat.v1 as tf
-
-from tensorflow.contrib import layers as contrib_layers
+import tf_slim as slim
 from tensorflow.contrib import rnn as contrib_rnn
-from tensorflow.contrib import slim
 from tensorflow.contrib.framework.python.ops import variables as contrib_variables
 import lstm_object_detection.lstm.utils as lstm_utils
 
@@ -121,7 +119,7 @@ class BottleneckConvLSTMCell(contrib_rnn.RNNCell):
       if self._pre_bottleneck:
         bottleneck = inputs
       else:
-        bottleneck = contrib_layers.separable_conv2d(
+        bottleneck = slim.separable_conv2d(
             tf.concat([inputs, h], 3),
             self._num_units,
             self._filter_size,
@@ -133,7 +131,7 @@ class BottleneckConvLSTMCell(contrib_rnn.RNNCell):
         if self._viz_gates:
           slim.summaries.add_histogram_summary(bottleneck, 'bottleneck')
 
-      concat = contrib_layers.separable_conv2d(
+      concat = slim.separable_conv2d(
           bottleneck,
           4 * self._num_units,
           self._filter_size,
@@ -243,7 +241,7 @@ class BottleneckConvLSTMCell(contrib_rnn.RNNCell):
       state = tf.reshape(state, [batch_size, height, width, -1])
     with tf.variable_scope('conv_lstm_cell', reuse=tf.AUTO_REUSE):
       scope_name = 'bottleneck_%d' % input_index
-      inputs = contrib_layers.separable_conv2d(
+      inputs = slim.separable_conv2d(
           tf.concat([inputs, state], 3),
           self.output_size[-1],
           self._filter_size,
