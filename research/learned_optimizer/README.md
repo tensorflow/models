@@ -10,6 +10,7 @@ Code for [Learned Optimizers that Scale and Generalize](https://arxiv.org/abs/17
 
 * Bazel ([install](https://bazel.build/versions/master/docs/install.html))
 * TensorFlow >= v1.3
+* Python 2.7.x
 
 ## Training a Learned Optimizer
 
