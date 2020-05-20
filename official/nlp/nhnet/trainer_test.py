@@ -37,6 +37,7 @@ def all_strategy_combinations():
       distribution=[
           strategy_combinations.one_device_strategy,
           strategy_combinations.one_device_strategy_gpu,
+          strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.tpu_strategy,
       ],
       mode="eager",
