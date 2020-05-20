@@ -55,7 +55,7 @@ class EfficientNetImageNetConfig(base_configs.ExperimentConfig):
       time_history=base_configs.TimeHistoryConfig(log_steps=100),
       tensorboard=base_configs.TensorboardConfig(track_lr=True,
                                                  write_model_weights=False),
-      steps_per_loop=1)
+      set_epoch_loop=False)
   evaluation: base_configs.EvalConfig = base_configs.EvalConfig(
       epochs_between_evals=1,
       steps=None)
@@ -88,7 +88,7 @@ class ResNetImagenetConfig(base_configs.ExperimentConfig):
       time_history=base_configs.TimeHistoryConfig(log_steps=100),
       tensorboard=base_configs.TensorboardConfig(track_lr=True,
                                                  write_model_weights=False),
-      steps_per_loop=1)
+      set_epoch_loop=False)
   evaluation: base_configs.EvalConfig = base_configs.EvalConfig(
       epochs_between_evals=1,
       steps=None)
