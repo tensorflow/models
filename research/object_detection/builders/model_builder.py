@@ -16,7 +16,6 @@
 """A function to build a DetectionModel from configuration."""
 
 import functools
-
 from object_detection.builders import anchor_generator_builder
 from object_detection.builders import box_coder_builder
 from object_detection.builders import box_predictor_builder
@@ -32,96 +31,162 @@ from object_detection.core import target_assigner
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
-from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
-from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
-from object_detection.models import faster_rcnn_inception_v2_feature_extractor as frcnn_inc_v2
-from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
-from object_detection.models import faster_rcnn_pnas_feature_extractor as frcnn_pnas
-from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
-from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
-from object_detection.models import ssd_resnet_v1_fpn_keras_feature_extractor as ssd_resnet_v1_fpn_keras
-from object_detection.models import ssd_resnet_v1_ppn_feature_extractor as ssd_resnet_v1_ppn
-from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
-from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
-from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
-from object_detection.models.ssd_mobilenet_edgetpu_feature_extractor import SSDMobileNetEdgeTPUFeatureExtractor
-from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
-from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMobileNetV1FpnFeatureExtractor
-from object_detection.models.ssd_mobilenet_v1_fpn_keras_feature_extractor import SSDMobileNetV1FpnKerasFeatureExtractor
-from object_detection.models.ssd_mobilenet_v1_keras_feature_extractor import SSDMobileNetV1KerasFeatureExtractor
-from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
-from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
-from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
-from object_detection.models.ssd_mobilenet_v2_fpn_keras_feature_extractor import SSDMobileNetV2FpnKerasFeatureExtractor
-from object_detection.models.ssd_mobilenet_v2_keras_feature_extractor import SSDMobileNetV2KerasFeatureExtractor
-from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3LargeFeatureExtractor
-from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3SmallFeatureExtractor
-from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
-from object_detection.predictors import rfcn_box_predictor
-from object_detection.predictors import rfcn_keras_box_predictor
 from object_detection.predictors.heads import mask_head
+from object_detection.protos import losses_pb2
 from object_detection.protos import model_pb2
+from object_detection.utils import label_map_util
 from object_detection.utils import ops
+from object_detection.utils import tf_version
 
-# A map of names to SSD feature extractors.
-SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
-    'ssd_inception_v2': SSDInceptionV2FeatureExtractor,
-    'ssd_inception_v3': SSDInceptionV3FeatureExtractor,
-    'ssd_mobilenet_v1': SSDMobileNetV1FeatureExtractor,
-    'ssd_mobilenet_v1_fpn': SSDMobileNetV1FpnFeatureExtractor,
-    'ssd_mobilenet_v1_ppn': SSDMobileNetV1PpnFeatureExtractor,
-    'ssd_mobilenet_v2': SSDMobileNetV2FeatureExtractor,
-    'ssd_mobilenet_v2_fpn': SSDMobileNetV2FpnFeatureExtractor,
-    'ssd_mobilenet_v3_large': SSDMobileNetV3LargeFeatureExtractor,
-    'ssd_mobilenet_v3_small': SSDMobileNetV3SmallFeatureExtractor,
-    'ssd_mobilenet_edgetpu': SSDMobileNetEdgeTPUFeatureExtractor,
-    'ssd_resnet50_v1_fpn': ssd_resnet_v1_fpn.SSDResnet50V1FpnFeatureExtractor,
-    'ssd_resnet101_v1_fpn': ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
-    'ssd_resnet152_v1_fpn': ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
-    'ssd_resnet50_v1_ppn': ssd_resnet_v1_ppn.SSDResnet50V1PpnFeatureExtractor,
-    'ssd_resnet101_v1_ppn':
-        ssd_resnet_v1_ppn.SSDResnet101V1PpnFeatureExtractor,
-    'ssd_resnet152_v1_ppn':
-        ssd_resnet_v1_ppn.SSDResnet152V1PpnFeatureExtractor,
-    'embedded_ssd_mobilenet_v1': EmbeddedSSDMobileNetV1FeatureExtractor,
-    'ssd_pnasnet': SSDPNASNetFeatureExtractor,
-}
+## Feature Extractors for TF
+## This section conditionally imports different feature extractors based on the
+## Tensorflow version.
+##
+# pylint: disable=g-import-not-at-top
+if tf_version.is_tf2():
+  from object_detection.models import center_net_hourglass_feature_extractor
+  from object_detection.models import center_net_resnet_feature_extractor
+  from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
+  from object_detection.models import faster_rcnn_resnet_keras_feature_extractor as frcnn_resnet_keras
+  from object_detection.models import ssd_resnet_v1_fpn_keras_feature_extractor as ssd_resnet_v1_fpn_keras
+  from object_detection.models.ssd_mobilenet_v1_fpn_keras_feature_extractor import SSDMobileNetV1FpnKerasFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v1_keras_feature_extractor import SSDMobileNetV1KerasFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v2_fpn_keras_feature_extractor import SSDMobileNetV2FpnKerasFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v2_keras_feature_extractor import SSDMobileNetV2KerasFeatureExtractor
+  from object_detection.predictors import rfcn_keras_box_predictor
 
-SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
-    'ssd_mobilenet_v1_keras': SSDMobileNetV1KerasFeatureExtractor,
-    'ssd_mobilenet_v1_fpn_keras': SSDMobileNetV1FpnKerasFeatureExtractor,
-    'ssd_mobilenet_v2_keras': SSDMobileNetV2KerasFeatureExtractor,
-    'ssd_mobilenet_v2_fpn_keras': SSDMobileNetV2FpnKerasFeatureExtractor,
-    'ssd_resnet50_v1_fpn_keras':
-        ssd_resnet_v1_fpn_keras.SSDResNet50V1FpnKerasFeatureExtractor,
-    'ssd_resnet101_v1_fpn_keras':
-        ssd_resnet_v1_fpn_keras.SSDResNet101V1FpnKerasFeatureExtractor,
-    'ssd_resnet152_v1_fpn_keras':
-        ssd_resnet_v1_fpn_keras.SSDResNet152V1FpnKerasFeatureExtractor,
-}
+if tf_version.is_tf1():
+  from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
+  from object_detection.models import faster_rcnn_inception_v2_feature_extractor as frcnn_inc_v2
+  from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
+  from object_detection.models import faster_rcnn_pnas_feature_extractor as frcnn_pnas
+  from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
+  from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
+  from object_detection.models import ssd_resnet_v1_ppn_feature_extractor as ssd_resnet_v1_ppn
+  from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
+  from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
+  from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v2_mnasfpn_feature_extractor import SSDMobileNetV2MnasFPNFeatureExtractor
+  from object_detection.models.ssd_inception_v3_feature_extractor import SSDInceptionV3FeatureExtractor
+  from object_detection.models.ssd_mobilenet_edgetpu_feature_extractor import SSDMobileNetEdgeTPUFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v1_feature_extractor import SSDMobileNetV1FeatureExtractor
+  from object_detection.models.ssd_mobilenet_v1_fpn_feature_extractor import SSDMobileNetV1FpnFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v1_ppn_feature_extractor import SSDMobileNetV1PpnFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
+  from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3LargeFeatureExtractor
+  from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3SmallFeatureExtractor
+  from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
+  from object_detection.predictors import rfcn_box_predictor
+# pylint: enable=g-import-not-at-top
 
-# A map of names to Faster R-CNN feature extractors.
-FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
-    'faster_rcnn_nas':
-    frcnn_nas.FasterRCNNNASFeatureExtractor,
-    'faster_rcnn_pnas':
-    frcnn_pnas.FasterRCNNPNASFeatureExtractor,
-    'faster_rcnn_inception_resnet_v2':
-    frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor,
-    'faster_rcnn_inception_v2':
-    frcnn_inc_v2.FasterRCNNInceptionV2FeatureExtractor,
-    'faster_rcnn_resnet50':
-    frcnn_resnet_v1.FasterRCNNResnet50FeatureExtractor,
-    'faster_rcnn_resnet101':
-    frcnn_resnet_v1.FasterRCNNResnet101FeatureExtractor,
-    'faster_rcnn_resnet152':
-    frcnn_resnet_v1.FasterRCNNResnet152FeatureExtractor,
-}
+if tf_version.is_tf2():
+  SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
+      'ssd_mobilenet_v1_keras': SSDMobileNetV1KerasFeatureExtractor,
+      'ssd_mobilenet_v1_fpn_keras': SSDMobileNetV1FpnKerasFeatureExtractor,
+      'ssd_mobilenet_v2_keras': SSDMobileNetV2KerasFeatureExtractor,
+      'ssd_mobilenet_v2_fpn_keras': SSDMobileNetV2FpnKerasFeatureExtractor,
+      'ssd_resnet50_v1_fpn_keras':
+          ssd_resnet_v1_fpn_keras.SSDResNet50V1FpnKerasFeatureExtractor,
+      'ssd_resnet101_v1_fpn_keras':
+          ssd_resnet_v1_fpn_keras.SSDResNet101V1FpnKerasFeatureExtractor,
+      'ssd_resnet152_v1_fpn_keras':
+          ssd_resnet_v1_fpn_keras.SSDResNet152V1FpnKerasFeatureExtractor,
+  }
 
-FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
-    'faster_rcnn_inception_resnet_v2_keras':
-    frcnn_inc_res_keras.FasterRCNNInceptionResnetV2KerasFeatureExtractor,
-}
+  FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
+      'faster_rcnn_resnet50_keras':
+          frcnn_resnet_keras.FasterRCNNResnet50KerasFeatureExtractor,
+      'faster_rcnn_resnet101_keras':
+          frcnn_resnet_keras.FasterRCNNResnet101KerasFeatureExtractor,
+      'faster_rcnn_resnet152_keras':
+          frcnn_resnet_keras.FasterRCNNResnet152KerasFeatureExtractor,
+      'faster_rcnn_inception_resnet_v2_keras':
+      frcnn_inc_res_keras.FasterRCNNInceptionResnetV2KerasFeatureExtractor,
+  }
+
+  CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
+      'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
+      'hourglass_104': center_net_hourglass_feature_extractor.hourglass_104,
+  }
+
+  FEATURE_EXTRACTOR_MAPS = [
+      CENTER_NET_EXTRACTOR_FUNCTION_MAP,
+      FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP,
+      SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
+  ]
+
+if tf_version.is_tf1():
+  SSD_FEATURE_EXTRACTOR_CLASS_MAP = {
+      'ssd_inception_v2':
+          SSDInceptionV2FeatureExtractor,
+      'ssd_inception_v3':
+          SSDInceptionV3FeatureExtractor,
+      'ssd_mobilenet_v1':
+          SSDMobileNetV1FeatureExtractor,
+      'ssd_mobilenet_v1_fpn':
+          SSDMobileNetV1FpnFeatureExtractor,
+      'ssd_mobilenet_v1_ppn':
+          SSDMobileNetV1PpnFeatureExtractor,
+      'ssd_mobilenet_v2':
+          SSDMobileNetV2FeatureExtractor,
+      'ssd_mobilenet_v2_fpn':
+          SSDMobileNetV2FpnFeatureExtractor,
+      'ssd_mobilenet_v2_mnasfpn':
+          SSDMobileNetV2MnasFPNFeatureExtractor,
+      'ssd_mobilenet_v3_large':
+          SSDMobileNetV3LargeFeatureExtractor,
+      'ssd_mobilenet_v3_small':
+          SSDMobileNetV3SmallFeatureExtractor,
+      'ssd_mobilenet_edgetpu':
+          SSDMobileNetEdgeTPUFeatureExtractor,
+      'ssd_resnet50_v1_fpn':
+          ssd_resnet_v1_fpn.SSDResnet50V1FpnFeatureExtractor,
+      'ssd_resnet101_v1_fpn':
+          ssd_resnet_v1_fpn.SSDResnet101V1FpnFeatureExtractor,
+      'ssd_resnet152_v1_fpn':
+          ssd_resnet_v1_fpn.SSDResnet152V1FpnFeatureExtractor,
+      'ssd_resnet50_v1_ppn':
+          ssd_resnet_v1_ppn.SSDResnet50V1PpnFeatureExtractor,
+      'ssd_resnet101_v1_ppn':
+          ssd_resnet_v1_ppn.SSDResnet101V1PpnFeatureExtractor,
+      'ssd_resnet152_v1_ppn':
+          ssd_resnet_v1_ppn.SSDResnet152V1PpnFeatureExtractor,
+      'embedded_ssd_mobilenet_v1':
+          EmbeddedSSDMobileNetV1FeatureExtractor,
+      'ssd_pnasnet':
+          SSDPNASNetFeatureExtractor,
+  }
+
+  FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
+      'faster_rcnn_nas':
+      frcnn_nas.FasterRCNNNASFeatureExtractor,
+      'faster_rcnn_pnas':
+      frcnn_pnas.FasterRCNNPNASFeatureExtractor,
+      'faster_rcnn_inception_resnet_v2':
+      frcnn_inc_res.FasterRCNNInceptionResnetV2FeatureExtractor,
+      'faster_rcnn_inception_v2':
+      frcnn_inc_v2.FasterRCNNInceptionV2FeatureExtractor,
+      'faster_rcnn_resnet50':
+      frcnn_resnet_v1.FasterRCNNResnet50FeatureExtractor,
+      'faster_rcnn_resnet101':
+      frcnn_resnet_v1.FasterRCNNResnet101FeatureExtractor,
+      'faster_rcnn_resnet152':
+      frcnn_resnet_v1.FasterRCNNResnet152FeatureExtractor,
+  }
+
+  FEATURE_EXTRACTOR_MAPS = [
+      SSD_FEATURE_EXTRACTOR_CLASS_MAP,
+      FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP
+  ]
+
+
+def _check_feature_extractor_exists(feature_extractor_type):
+  feature_extractors = set().union(*FEATURE_EXTRACTOR_MAPS)
+  if feature_extractor_type not in feature_extractors:
+    raise ValueError('{} is not supported. See `model_builder.py` for features '
+                     'extractors compatible with different versions of '
+                     'Tensorflow'.format(feature_extractor_type))
 
 
 def _build_ssd_feature_extractor(feature_extractor_config,
@@ -146,14 +211,14 @@ def _build_ssd_feature_extractor(feature_extractor_config,
     ValueError: On invalid feature extractor type.
   """
   feature_type = feature_extractor_config.type
-  is_keras_extractor = feature_type in SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
   depth_multiplier = feature_extractor_config.depth_multiplier
   min_depth = feature_extractor_config.min_depth
   pad_to_multiple = feature_extractor_config.pad_to_multiple
   use_explicit_padding = feature_extractor_config.use_explicit_padding
   use_depthwise = feature_extractor_config.use_depthwise
 
-  if is_keras_extractor:
+  is_keras = tf_version.is_tf2()
+  if is_keras:
     conv_hyperparams = hyperparams_builder.KerasLayerHyperparams(
         feature_extractor_config.conv_hyperparams)
   else:
@@ -162,11 +227,10 @@ def _build_ssd_feature_extractor(feature_extractor_config,
   override_base_feature_extractor_hyperparams = (
       feature_extractor_config.override_base_feature_extractor_hyperparams)
 
-  if (feature_type not in SSD_FEATURE_EXTRACTOR_CLASS_MAP) and (
-      not is_keras_extractor):
+  if not is_keras and feature_type not in SSD_FEATURE_EXTRACTOR_CLASS_MAP:
     raise ValueError('Unknown ssd feature_extractor: {}'.format(feature_type))
 
-  if is_keras_extractor:
+  if is_keras:
     feature_extractor_class = SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP[
         feature_type]
   else:
@@ -197,7 +261,7 @@ def _build_ssd_feature_extractor(feature_extractor_config,
   if feature_extractor_config.HasField('num_layers'):
     kwargs.update({'num_layers': feature_extractor_config.num_layers})
 
-  if is_keras_extractor:
+  if is_keras:
     kwargs.update({
         'conv_hyperparams': conv_hyperparams,
         'inplace_batchnorm_update': False,
@@ -208,6 +272,7 @@ def _build_ssd_feature_extractor(feature_extractor_config,
         'conv_hyperparams_fn': conv_hyperparams,
         'reuse_weights': reuse_weights,
     })
+
 
   if feature_extractor_config.HasField('fpn'):
     kwargs.update({
@@ -239,6 +304,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
       model_class_map).
   """
   num_classes = ssd_config.num_classes
+  _check_feature_extractor_exists(ssd_config.feature_extractor.type)
 
   # Feature extractor
   feature_extractor = _build_ssd_feature_extractor(
@@ -325,7 +391,7 @@ def _build_ssd_model(ssd_config, is_training, add_summaries):
 
 
 def _build_faster_rcnn_feature_extractor(
-    feature_extractor_config, is_training, reuse_weights=None,
+    feature_extractor_config, is_training, reuse_weights=True,
     inplace_batchnorm_update=False):
   """Builds a faster_rcnn_meta_arch.FasterRCNNFeatureExtractor based on config.
 
@@ -422,9 +488,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   """
   num_classes = frcnn_config.num_classes
   image_resizer_fn = image_resizer_builder.build(frcnn_config.image_resizer)
-
-  is_keras = (frcnn_config.feature_extractor.type in
-              FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP)
+  _check_feature_extractor_exists(frcnn_config.feature_extractor.type)
+  is_keras = tf_version.is_tf2()
 
   if is_keras:
     feature_extractor = _build_faster_rcnn_keras_feature_extractor(
@@ -536,53 +601,97 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       frcnn_config.clip_anchors_to_image)
 
   common_kwargs = {
-      'is_training': is_training,
-      'num_classes': num_classes,
-      'image_resizer_fn': image_resizer_fn,
-      'feature_extractor': feature_extractor,
-      'number_of_stages': number_of_stages,
-      'first_stage_anchor_generator': first_stage_anchor_generator,
-      'first_stage_target_assigner': first_stage_target_assigner,
-      'first_stage_atrous_rate': first_stage_atrous_rate,
+      'is_training':
+          is_training,
+      'num_classes':
+          num_classes,
+      'image_resizer_fn':
+          image_resizer_fn,
+      'feature_extractor':
+          feature_extractor,
+      'number_of_stages':
+          number_of_stages,
+      'first_stage_anchor_generator':
+          first_stage_anchor_generator,
+      'first_stage_target_assigner':
+          first_stage_target_assigner,
+      'first_stage_atrous_rate':
+          first_stage_atrous_rate,
       'first_stage_box_predictor_arg_scope_fn':
-      first_stage_box_predictor_arg_scope_fn,
+          first_stage_box_predictor_arg_scope_fn,
       'first_stage_box_predictor_kernel_size':
-      first_stage_box_predictor_kernel_size,
-      'first_stage_box_predictor_depth': first_stage_box_predictor_depth,
-      'first_stage_minibatch_size': first_stage_minibatch_size,
-      'first_stage_sampler': first_stage_sampler,
-      'first_stage_non_max_suppression_fn': first_stage_non_max_suppression_fn,
-      'first_stage_max_proposals': first_stage_max_proposals,
-      'first_stage_localization_loss_weight': first_stage_loc_loss_weight,
-      'first_stage_objectness_loss_weight': first_stage_obj_loss_weight,
-      'second_stage_target_assigner': second_stage_target_assigner,
-      'second_stage_batch_size': second_stage_batch_size,
-      'second_stage_sampler': second_stage_sampler,
+          first_stage_box_predictor_kernel_size,
+      'first_stage_box_predictor_depth':
+          first_stage_box_predictor_depth,
+      'first_stage_minibatch_size':
+          first_stage_minibatch_size,
+      'first_stage_sampler':
+          first_stage_sampler,
+      'first_stage_non_max_suppression_fn':
+          first_stage_non_max_suppression_fn,
+      'first_stage_max_proposals':
+          first_stage_max_proposals,
+      'first_stage_localization_loss_weight':
+          first_stage_loc_loss_weight,
+      'first_stage_objectness_loss_weight':
+          first_stage_obj_loss_weight,
+      'second_stage_target_assigner':
+          second_stage_target_assigner,
+      'second_stage_batch_size':
+          second_stage_batch_size,
+      'second_stage_sampler':
+          second_stage_sampler,
       'second_stage_non_max_suppression_fn':
-      second_stage_non_max_suppression_fn,
-      'second_stage_score_conversion_fn': second_stage_score_conversion_fn,
+          second_stage_non_max_suppression_fn,
+      'second_stage_score_conversion_fn':
+          second_stage_score_conversion_fn,
       'second_stage_localization_loss_weight':
-      second_stage_localization_loss_weight,
+          second_stage_localization_loss_weight,
       'second_stage_classification_loss':
-      second_stage_classification_loss,
+          second_stage_classification_loss,
       'second_stage_classification_loss_weight':
-      second_stage_classification_loss_weight,
-      'hard_example_miner': hard_example_miner,
-      'add_summaries': add_summaries,
-      'crop_and_resize_fn': crop_and_resize_fn,
-      'clip_anchors_to_image': clip_anchors_to_image,
-      'use_static_shapes': use_static_shapes,
-      'resize_masks': frcnn_config.resize_masks,
-      'return_raw_detections_during_predict': (
-          frcnn_config.return_raw_detections_during_predict)
+          second_stage_classification_loss_weight,
+      'hard_example_miner':
+          hard_example_miner,
+      'add_summaries':
+          add_summaries,
+      'crop_and_resize_fn':
+          crop_and_resize_fn,
+      'clip_anchors_to_image':
+          clip_anchors_to_image,
+      'use_static_shapes':
+          use_static_shapes,
+      'resize_masks':
+          frcnn_config.resize_masks,
+      'return_raw_detections_during_predict':
+          frcnn_config.return_raw_detections_during_predict,
+      'output_final_box_features':
+          frcnn_config.output_final_box_features
   }
 
-  if (isinstance(second_stage_box_predictor,
-                 rfcn_box_predictor.RfcnBoxPredictor) or
-      isinstance(second_stage_box_predictor,
-                 rfcn_keras_box_predictor.RfcnKerasBoxPredictor)):
+  if ((not is_keras and isinstance(second_stage_box_predictor,
+                                   rfcn_box_predictor.RfcnBoxPredictor)) or
+      (is_keras and
+       isinstance(second_stage_box_predictor,
+                  rfcn_keras_box_predictor.RfcnKerasBoxPredictor))):
     return rfcn_meta_arch.RFCNMetaArch(
         second_stage_rfcn_box_predictor=second_stage_box_predictor,
+        **common_kwargs)
+  elif frcnn_config.HasField('context_config'):
+    context_config = frcnn_config.context_config
+    common_kwargs.update({
+        'attention_bottleneck_dimension':
+            context_config.attention_bottleneck_dimension,
+        'attention_temperature':
+            context_config.attention_temperature
+    })
+    return context_rcnn_meta_arch.ContextRCNNMetaArch(
+        initial_crop_size=initial_crop_size,
+        maxpool_kernel_size=maxpool_kernel_size,
+        maxpool_stride=maxpool_stride,
+        second_stage_mask_rcnn_box_predictor=second_stage_box_predictor,
+        second_stage_mask_prediction_loss_weight=(
+            second_stage_mask_prediction_loss_weight),
         **common_kwargs)
   else:
     return faster_rcnn_meta_arch.FasterRCNNMetaArch(
@@ -602,10 +711,170 @@ def _build_experimental_model(config, is_training, add_summaries=True):
   return EXPERIMENTAL_META_ARCH_BUILDER_MAP[config.name](
       is_training, add_summaries)
 
-META_ARCHITECURE_BUILDER_MAP = {
+
+# The class ID in the groundtruth/model architecture is usually 0-based while
+# the ID in the label map is 1-based. The offset is used to convert between the
+# the two.
+CLASS_ID_OFFSET = 1
+KEYPOINT_STD_DEV_DEFAULT = 1.0
+
+
+def keypoint_proto_to_params(kp_config, keypoint_map_dict):
+  """Converts CenterNet.KeypointEstimation proto to parameter namedtuple."""
+  label_map_item = keypoint_map_dict[kp_config.keypoint_class_name]
+
+  classification_loss, localization_loss, _, _, _, _, _ = (
+      losses_builder.build(kp_config.loss))
+
+  keypoint_indices = [
+      keypoint.id for keypoint in label_map_item.keypoints
+  ]
+  keypoint_labels = [
+      keypoint.label for keypoint in label_map_item.keypoints
+  ]
+  keypoint_std_dev_dict = {
+      label: KEYPOINT_STD_DEV_DEFAULT for label in keypoint_labels
+  }
+  if kp_config.keypoint_label_to_std:
+    for label, value in kp_config.keypoint_label_to_std.items():
+      keypoint_std_dev_dict[label] = value
+  keypoint_std_dev = [keypoint_std_dev_dict[label] for label in keypoint_labels]
+  return center_net_meta_arch.KeypointEstimationParams(
+      task_name=kp_config.task_name,
+      class_id=label_map_item.id - CLASS_ID_OFFSET,
+      keypoint_indices=keypoint_indices,
+      classification_loss=classification_loss,
+      localization_loss=localization_loss,
+      keypoint_labels=keypoint_labels,
+      keypoint_std_dev=keypoint_std_dev,
+      task_loss_weight=kp_config.task_loss_weight,
+      keypoint_regression_loss_weight=kp_config.keypoint_regression_loss_weight,
+      keypoint_heatmap_loss_weight=kp_config.keypoint_heatmap_loss_weight,
+      keypoint_offset_loss_weight=kp_config.keypoint_offset_loss_weight,
+      heatmap_bias_init=kp_config.heatmap_bias_init,
+      keypoint_candidate_score_threshold=(
+          kp_config.keypoint_candidate_score_threshold),
+      num_candidates_per_keypoint=kp_config.num_candidates_per_keypoint,
+      peak_max_pool_kernel_size=kp_config.peak_max_pool_kernel_size,
+      unmatched_keypoint_score=kp_config.unmatched_keypoint_score,
+      box_scale=kp_config.box_scale,
+      candidate_search_scale=kp_config.candidate_search_scale,
+      candidate_ranking_mode=kp_config.candidate_ranking_mode)
+
+
+def object_detection_proto_to_params(od_config):
+  """Converts CenterNet.ObjectDetection proto to parameter namedtuple."""
+  loss = losses_pb2.Loss()
+  # Add dummy classification loss to avoid the loss_builder throwing error.
+  # TODO(yuhuic): update the loss builder to take the classification loss
+  # directly.
+  loss.classification_loss.weighted_sigmoid.CopyFrom(
+      losses_pb2.WeightedSigmoidClassificationLoss())
+  loss.localization_loss.CopyFrom(od_config.localization_loss)
+  _, localization_loss, _, _, _, _, _ = (losses_builder.build(loss))
+  return center_net_meta_arch.ObjectDetectionParams(
+      localization_loss=localization_loss,
+      scale_loss_weight=od_config.scale_loss_weight,
+      offset_loss_weight=od_config.offset_loss_weight,
+      task_loss_weight=od_config.task_loss_weight)
+
+
+def object_center_proto_to_params(oc_config):
+  """Converts CenterNet.ObjectCenter proto to parameter namedtuple."""
+  loss = losses_pb2.Loss()
+  # Add dummy localization loss to avoid the loss_builder throwing error.
+  # TODO(yuhuic): update the loss builder to take the localization loss
+  # directly.
+  loss.localization_loss.weighted_l2.CopyFrom(
+      losses_pb2.WeightedL2LocalizationLoss())
+  loss.classification_loss.CopyFrom(oc_config.classification_loss)
+  classification_loss, _, _, _, _, _, _ = (losses_builder.build(loss))
+  return center_net_meta_arch.ObjectCenterParams(
+      classification_loss=classification_loss,
+      object_center_loss_weight=oc_config.object_center_loss_weight,
+      heatmap_bias_init=oc_config.heatmap_bias_init,
+      min_box_overlap_iou=oc_config.min_box_overlap_iou,
+      max_box_predictions=oc_config.max_box_predictions)
+
+
+def _build_center_net_model(center_net_config, is_training, add_summaries):
+  """Build a CenterNet detection model.
+
+  Args:
+    center_net_config: A CenterNet proto object with model configuration.
+    is_training: True if this model is being built for training purposes.
+    add_summaries: Whether to add tf summaries in the model.
+
+  Returns:
+    CenterNetMetaArch based on the config.
+
+  """
+
+  image_resizer_fn = image_resizer_builder.build(
+      center_net_config.image_resizer)
+  _check_feature_extractor_exists(center_net_config.feature_extractor.type)
+  feature_extractor = _build_center_net_feature_extractor(
+      center_net_config.feature_extractor)
+  object_center_params = object_center_proto_to_params(
+      center_net_config.object_center_params)
+
+  object_detection_params = None
+  if center_net_config.HasField('object_detection_task'):
+    object_detection_params = object_detection_proto_to_params(
+        center_net_config.object_detection_task)
+
+  keypoint_params_dict = None
+  if center_net_config.keypoint_estimation_task:
+    label_map_proto = label_map_util.load_labelmap(
+        center_net_config.keypoint_label_map_path)
+    keypoint_map_dict = {
+        item.name: item for item in label_map_proto.item if item.keypoints
+    }
+    keypoint_params_dict = {}
+    keypoint_class_id_set = set()
+    all_keypoint_indices = []
+    for task in center_net_config.keypoint_estimation_task:
+      kp_params = keypoint_proto_to_params(task, keypoint_map_dict)
+      keypoint_params_dict[task.task_name] = kp_params
+      all_keypoint_indices.extend(kp_params.keypoint_indices)
+      if kp_params.class_id in keypoint_class_id_set:
+        raise ValueError(('Multiple keypoint tasks map to the same class id is '
+                          'not allowed: %d' % kp_params.class_id))
+      else:
+        keypoint_class_id_set.add(kp_params.class_id)
+    if len(all_keypoint_indices) > len(set(all_keypoint_indices)):
+      raise ValueError('Some keypoint indices are used more than once.')
+  return center_net_meta_arch.CenterNetMetaArch(
+      is_training=is_training,
+      add_summaries=add_summaries,
+      num_classes=center_net_config.num_classes,
+      feature_extractor=feature_extractor,
+      image_resizer_fn=image_resizer_fn,
+      object_center_params=object_center_params,
+      object_detection_params=object_detection_params,
+      keypoint_params_dict=keypoint_params_dict)
+
+
+def _build_center_net_feature_extractor(
+    feature_extractor_config):
+  """Build a CenterNet feature extractor from the given config."""
+
+  if feature_extractor_config.type not in CENTER_NET_EXTRACTOR_FUNCTION_MAP:
+    raise ValueError('\'{}\' is not a known CenterNet feature extractor type'
+                     .format(feature_extractor_config.type))
+
+  return CENTER_NET_EXTRACTOR_FUNCTION_MAP[feature_extractor_config.type](
+      channel_means=list(feature_extractor_config.channel_means),
+      channel_stds=list(feature_extractor_config.channel_stds),
+      bgr_ordering=feature_extractor_config.bgr_ordering
+  )
+
+
+META_ARCH_BUILDER_MAP = {
     'ssd': _build_ssd_model,
     'faster_rcnn': _build_faster_rcnn_model,
-    'experimental_model': _build_experimental_model
+    'experimental_model': _build_experimental_model,
+    'center_net': _build_center_net_model
 }
 
 
@@ -628,9 +897,9 @@ def build(model_config, is_training, add_summaries=True):
 
   meta_architecture = model_config.WhichOneof('model')
 
-  if meta_architecture not in META_ARCHITECURE_BUILDER_MAP:
+  if meta_architecture not in META_ARCH_BUILDER_MAP:
     raise ValueError('Unknown meta architecture: {}'.format(meta_architecture))
   else:
-    build_func = META_ARCHITECURE_BUILDER_MAP[meta_architecture]
+    build_func = META_ARCH_BUILDER_MAP[meta_architecture]
     return build_func(getattr(model_config, meta_architecture), is_training,
                       add_summaries)

@@ -109,7 +109,6 @@ def run(flags_obj):
     Dictionary of training and eval stats.
   """
   keras_utils.set_session_config(
-      enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
   performance.set_mixed_precision_policy(flags_core.get_tf_dtype(flags_obj))
 

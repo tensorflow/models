@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +24,24 @@ Detection configuration framework, they should define their own builder function
 that wraps the build function.
 """
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import tensorflow as tf
 
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.protos import input_reader_pb2
 
-parallel_reader = tf.contrib.slim.parallel_reader
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import slim as contrib_slim
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
+
+parallel_reader = contrib_slim.parallel_reader
 
 
 def build(input_reader_config):
@@ -70,7 +83,8 @@ def build(input_reader_config):
     decoder = tf_example_decoder.TfExampleDecoder(
         load_instance_masks=input_reader_config.load_instance_masks,
         instance_mask_type=input_reader_config.mask_type,
-        label_map_proto_file=label_map_proto_file)
+        label_map_proto_file=label_map_proto_file,
+        load_context_features=input_reader_config.load_context_features)
     return decoder.decode(string_tensor)
 
   raise ValueError('Unsupported input_reader_config.')

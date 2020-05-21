@@ -31,6 +31,13 @@ from object_detection.utils import shape_utils
 from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import static_shape
 
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import framework as contrib_framework
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
 
 matmul_crop_and_resize = spatial_ops.matmul_crop_and_resize
 multilevel_roi_align = spatial_ops.multilevel_roi_align
@@ -588,8 +595,9 @@ def normalize_to_target(inputs,
       initial_norm = depth * [target_norm_value]
     else:
       initial_norm = target_norm_value
-    target_norm = tf.contrib.framework.model_variable(
-        name='weights', dtype=tf.float32,
+    target_norm = contrib_framework.model_variable(
+        name='weights',
+        dtype=tf.float32,
         initializer=tf.constant(initial_norm, dtype=tf.float32),
         trainable=trainable)
     if summarize:

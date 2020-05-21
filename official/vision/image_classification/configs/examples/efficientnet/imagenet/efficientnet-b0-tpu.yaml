@@ -47,5 +47,6 @@ model:
 train:
   resume_checkpoint: True
   epochs: 500
+  set_epoch_loop: True
 evaluation:
   epochs_between_evals: 1

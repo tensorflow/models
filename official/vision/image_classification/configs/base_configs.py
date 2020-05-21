@@ -82,8 +82,10 @@ class TrainConfig(base_config.Config):
     callbacks: An instance of CallbacksConfig.
     metrics: An instance of MetricsConfig.
     tensorboard: An instance of TensorboardConfig.
-    steps_per_loop: The number of batches to run during each `tf.function`
-      call during training, which can increase training speed.
+    set_epoch_loop: Whether or not to set `experimental_steps_per_execution` to
+      equal the number of training steps in `model.compile`. This reduces the
+      number of callbacks run per epoch which significantly improves end-to-end
+      TPU training time.
 
   """
   resume_checkpoint: bool = None
@@ -93,7 +95,7 @@ class TrainConfig(base_config.Config):
   metrics: MetricsConfig = None
   tensorboard: TensorboardConfig = TensorboardConfig()
   time_history: TimeHistoryConfig = TimeHistoryConfig()
-  steps_per_loop: int = None
+  set_epoch_loop: bool = False
 
 
 @dataclasses.dataclass

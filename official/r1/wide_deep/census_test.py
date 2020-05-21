@@ -18,15 +18,13 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import unittest
 
-import tensorflow as tf  # pylint: disable=g-bad-import-order
 from absl import logging
+import tensorflow.compat.v1 as tf
 
-from official.utils.misc import keras_utils
-from official.utils.testing import integration
 from official.r1.wide_deep import census_dataset
 from official.r1.wide_deep import census_main
+from official.utils.testing import integration
 
 logging.set_verbosity(logging.ERROR)
 
@@ -73,7 +71,6 @@ class BaseTest(tf.test.TestCase):
           os.path.join(self.temp_dir, fname), 'w') as test_csv:
         test_csv.write(test_csv_contents)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_input_fn(self):
     dataset = census_dataset.input_fn(self.input_csv, 1, False, 1)
     features, labels = dataset.make_one_shot_iterator().get_next()
@@ -127,11 +124,9 @@ class BaseTest(tf.test.TestCase):
                        initial_results['auc_precision_recall'])
     self.assertGreater(final_results['accuracy'], initial_results['accuracy'])
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_wide_deep_estimator_training(self):
     self.build_and_test_estimator('wide_deep')
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_end_to_end_wide(self):
     integration.run_synthetic(
         main=census_main.main, tmp_root=self.get_temp_dir(),
@@ -142,7 +137,6 @@ class BaseTest(tf.test.TestCase):
         ],
         synth=False)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_end_to_end_deep(self):
     integration.run_synthetic(
         main=census_main.main, tmp_root=self.get_temp_dir(),
@@ -153,7 +147,6 @@ class BaseTest(tf.test.TestCase):
         ],
         synth=False)
 
-  @unittest.skipIf(keras_utils.is_v2_0(), 'TF 1.0 only test.')
   def test_end_to_end_wide_deep(self):
     integration.run_synthetic(
         main=census_main.main, tmp_root=self.get_temp_dir(),
@@ -166,4 +159,5 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == '__main__':
+  tf.disable_eager_execution()
   tf.test.main()

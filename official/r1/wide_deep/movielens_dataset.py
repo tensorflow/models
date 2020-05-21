@@ -25,7 +25,7 @@ import os
 from absl import app as absl_app
 from absl import flags
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 # pylint: enable=wrong-import-order
 
 from official.recommendation import movielens

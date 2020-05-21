@@ -67,5 +67,6 @@ Arguments:
   * `--model_dir`: Directory to save model training checkpoints. By default, it is `/tmp/ncf/`.
   * `--data_dir`: This should be set to the same directory given to the `data_download`'s `data_dir` argument.
   * `--dataset`: The dataset name to be downloaded and preprocessed. By default, it is `ml-1m`.
+  * `--num_gpus`: The number of GPUs used for training/evaluation of the model. Use CPU if this flag is 0. By default, it is 1.
 
 There are other arguments about models and training process. Refer to the [Flags package](https://abseil.io/docs/python/guides/flags) documentation or use the `--helpfull` flag to get a full list of possible arguments with detailed descriptions.

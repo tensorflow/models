@@ -8,6 +8,10 @@ models are intended as both convenience functions and canonical examples.
 * [`BertClassifier`](bert_classifier.py) implements a simple classification
 model containing a single classification head using the Classification network.
 
+* [`BertTokenClassifier`](bert_token_classifier.py) implements a simple token
+classification model containing a single classification head using the
+TokenClassification network.
+
 * [`BertSpanLabeler`](bert_span_labeler.py) implementats a simple single-span
 start-end predictor (that is, a model that predicts two values: a start token
 index and an end token index), suitable for SQuAD-style tasks.

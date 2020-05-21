@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +15,13 @@
 # ==============================================================================
 
 """Convolutional Box Predictors with and without weight sharing."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import collections
 
+from six.moves import range
 import tensorflow as tf
 
 from object_detection.core import box_predictor
@@ -400,7 +406,7 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
         self._head_scope_conv_layers[tower_name_scope] = conv_layers
       return base_tower_layers
 
-    for feature_index, input_shape in enumerate(input_shapes):
+    for feature_index in range(len(input_shapes)):
       # Additional projection layers should not be shared as input channels
       # (and thus weight shapes) are different
       inserted_layer_counter, projection_layers = (

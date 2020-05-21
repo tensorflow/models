@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Losses used for Mask-RCNN."""
+"""Losses used for detection models."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -479,12 +479,62 @@ class RetinanetBoxLoss(object):
 class ShapemaskMseLoss(object):
   """ShapeMask mask Mean Squared Error loss function wrapper."""
 
-  def __init__(self):
-    raise NotImplementedError('Not Implemented.')
+  def __call__(self, probs, labels, valid_mask):
+    """Compute instance segmentation loss.
+
+    Args:
+      probs: A Tensor of shape [batch_size * num_points, height, width,
+        num_classes]. The logits are not necessarily between 0 and 1.
+      labels: A float32/float16 Tensor of shape [batch_size, num_instances,
+          mask_size, mask_size], where mask_size =
+          mask_crop_size * gt_upsample_scale for fine mask, or mask_crop_size
+          for coarse masks and shape priors.
+      valid_mask: a binary mask indicating valid training masks.
+
+    Returns:
+      loss: an float tensor representing total mask classification loss.
+    """
+    with tf.name_scope('shapemask_prior_loss'):
+      batch_size, num_instances = valid_mask.get_shape().as_list()[:2]
+      diff = (tf.cast(labels, dtype=tf.float32) -
+              tf.cast(probs, dtype=tf.float32))
+      diff *= tf.cast(
+          tf.reshape(valid_mask, [batch_size, num_instances, 1, 1]),
+          tf.float32)
+      # Adding 0.001 in the denominator to avoid division by zero.
+      loss = tf.nn.l2_loss(diff) / (tf.reduce_sum(labels) + 0.001)
+    return loss
 
 
 class ShapemaskLoss(object):
   """ShapeMask mask loss function wrapper."""
 
   def __init__(self):
-    raise NotImplementedError('Not Implemented.')
+    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
+        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+
+  def __call__(self, logits, labels, valid_mask):
+    """ShapeMask mask cross entropy loss function wrapper.
+
+    Args:
+      logits: A Tensor of shape [batch_size * num_instances, height, width,
+        num_classes]. The logits are not necessarily between 0 and 1.
+      labels: A float16/float32 Tensor of shape [batch_size, num_instances,
+        mask_size, mask_size], where mask_size =
+        mask_crop_size * gt_upsample_scale for fine mask, or mask_crop_size
+        for coarse masks and shape priors.
+      valid_mask: a binary mask of shape [batch_size, num_instances]
+        indicating valid training masks.
+    Returns:
+      loss: an float tensor representing total mask classification loss.
+    """
+    with tf.name_scope('shapemask_loss'):
+      batch_size, num_instances = valid_mask.get_shape().as_list()[:2]
+      labels = tf.cast(labels, tf.float32)
+      logits = tf.cast(logits, tf.float32)
+      loss = self._binary_crossentropy(labels, logits)
+      loss *= tf.cast(tf.reshape(
+          valid_mask, [batch_size, num_instances, 1, 1]), loss.dtype)
+      # Adding 0.001 in the denominator to avoid division by zero.
+      loss = tf.reduce_sum(loss) / (tf.reduce_sum(labels) + 0.001)
+    return loss

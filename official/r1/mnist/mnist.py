@@ -21,7 +21,7 @@ from absl import app as absl_app
 from absl import flags
 from absl import logging
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from official.r1.mnist import dataset
 from official.r1.utils.logs import hooks_helper

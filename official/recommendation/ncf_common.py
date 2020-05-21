@@ -50,7 +50,7 @@ def get_inputs(params):
 
   if FLAGS.use_synthetic_data:
     producer = data_pipeline.DummyConstructor()
-    num_users, num_items = data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[
+    num_users, num_items = movielens.DATASET_TO_NUM_USERS_AND_ITEMS[
         FLAGS.dataset]
     num_train_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
     num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
@@ -163,21 +163,18 @@ def define_ncf_flags():
 
   flags.adopt_module_key_flags(flags_core)
 
+  movielens.define_flags()
+
   flags_core.set_defaults(
       model_dir="/tmp/ncf/",
       data_dir="/tmp/movielens-data/",
+      dataset=movielens.ML_1M,
       train_epochs=2,
       batch_size=99000,
       tpu=None
   )
 
   # Add ncf-specific flags
-  flags.DEFINE_enum(
-      name="dataset", default="ml-1m",
-      enum_values=["ml-1m", "ml-20m"], case_sensitive=False,
-      help=flags_core.help_wrap(
-          "Dataset to be trained and evaluated."))
-
   flags.DEFINE_boolean(
       name="download_if_missing", default=True, help=flags_core.help_wrap(
           "Download data to data_dir if it is not already present."))

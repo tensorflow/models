@@ -44,7 +44,7 @@ features for the images `hertford_000056.jpg` and `oxford_000317.jpg`:
 
 ```bash
 # From tensorflow/models/research/delf/delf/python/examples/
-python extract_features.py \
+python3 extract_features.py \
   --config_path delf_config_example.pbtxt \
   --list_images_path list_images.txt \
   --output_dir data/oxford5k_features
@@ -56,7 +56,7 @@ After feature extraction, run this command to perform feature matching between
 the images `hertford_000056.jpg` and `oxford_000317.jpg`:
 
 ```bash
-python match_images.py \
+python3 match_images.py \
   --image_1_path data/oxford5k_images/hertford_000056.jpg \
   --image_2_path data/oxford5k_images/oxford_000317.jpg \
   --features_1_path data/oxford5k_features/hertford_000056.delf \
@@ -84,4 +84,4 @@ By default, skimage 0.13.XX or 0.14.1 is installed if you followed the
 instructions. According to
 [https://github.com/scikit-image/scikit-image/issues/3649#issuecomment-455273659]
 If you have scikit-image related issues, upgrading to a version above 0.14.1
-with `pip install -U scikit-image` should fix the issue
+with `pip3 install -U scikit-image` should fix the issue

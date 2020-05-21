@@ -341,6 +341,7 @@ def train_and_eval(
 
     metrics_map = _get_metrics(one_hot)
     metrics = [metrics_map[metric] for metric in params.train.metrics]
+    steps_per_loop = train_steps if params.train.set_epoch_loop else 1
 
     if one_hot:
       loss_obj = tf.keras.losses.CategoricalCrossentropy(
@@ -350,7 +351,7 @@ def train_and_eval(
     model.compile(optimizer=optimizer,
                   loss=loss_obj,
                   metrics=metrics,
-                  experimental_steps_per_execution=params.train.steps_per_loop)
+                  experimental_steps_per_execution=steps_per_loop)
 
     initial_epoch = 0
     if params.train.resume_checkpoint:

@@ -95,12 +95,6 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         output_shape=self.hidden_size,
         kernel_initializer=self._kernel_initializer,
         name="attention/encdec")
-    # TODO(hongkuny): Remove when checkpoint backward compatibility is resolved.
-    # pylint: disable=protected-access
-    self.self_attention.build(input_shape)
-    self.self_attention_output_dense = self.self_attention._output_dense
-    self.encdec_attention.build(input_shape)
-    self.encdec_attention_output_dense = self.encdec_attention._output_dense
 
     self.encdec_attention_dropout = tf.keras.layers.Dropout(
         rate=self.hidden_dropout_prob)
@@ -145,14 +139,12 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
           "TransformerDecoderBlock must have 4 inputs, but it got: %d" %
           len(inputs))
     input_tensor, memory, attention_mask, self_attention_mask = inputs[:4]
-    if cache is None:
-      self_attention_inputs = [input_tensor, input_tensor, self_attention_mask]
-    else:
-      self_attention_inputs = [
-          input_tensor, input_tensor, self_attention_mask, cache
-      ]
+    self_attention_inputs = [input_tensor, input_tensor]
     self_attention_output, cache = self.self_attention(
-        self_attention_inputs, decode_loop_step=decode_loop_step)
+        self_attention_inputs,
+        attention_mask=self_attention_mask,
+        cache=cache,
+        decode_loop_step=decode_loop_step)
     self_attention_output = self.self_attention_dropout(self_attention_output)
     self_attention_output = self.self_attention_layer_norm(
         input_tensor + self_attention_output)

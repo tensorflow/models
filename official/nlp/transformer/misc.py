@@ -113,14 +113,6 @@ def define_transformer_flags():
       name='enable_mlir_bridge',
       default=False,
       help='Whether to enable the TF to XLA bridge.')
-  flags.DEFINE_string(
-      name='profile_steps', default=None,
-      help='Save profiling data to model dir at given range of steps. The '
-      'value must be a comma separated pair of positive integers, specifying '
-      'the first and last step to profile. For example, "--profile_steps=2,4" '
-      'triggers the profiler to process 3 steps, starting from the 2nd step. '
-      'Note that profiler has a non-trivial performance overhead, and the '
-      'output file can be gigantic if profiling many steps.')
   # Set flags from the flags_core module as 'key flags' so they're listed when
   # the '-h' flag is used. Without this line, the flags defined above are
   # only shown in the full `--helpful` help text.
@@ -239,7 +231,7 @@ def define_transformer_flags():
   # pylint: enable=unused-variable
 
 
-def get_callbacks(steps_per_epoch):
+def get_callbacks():
   """Returns common callbacks."""
   callbacks = []
   if FLAGS.enable_time_history:
@@ -253,14 +245,6 @@ def get_callbacks(steps_per_epoch):
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
         log_dir=FLAGS.model_dir)
     callbacks.append(tensorboard_callback)
-
-  if FLAGS.profile_steps:
-    profiler_callback = keras_utils.get_profiler_callback(
-        FLAGS.model_dir,
-        FLAGS.profile_steps,
-        FLAGS.enable_tensorboard,
-        steps_per_epoch)
-    callbacks.append(profiler_callback)
 
   return callbacks
 

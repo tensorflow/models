@@ -26,18 +26,20 @@ import numpy as np
 from six.moves import range
 import tensorflow as tf
 
+from tensorflow.contrib import slim
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import standard_fields as fields
 from object_detection.metrics import coco_evaluation
+from object_detection.protos import eval_pb2
 from object_detection.utils import label_map_util
 from object_detection.utils import object_detection_evaluation
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from object_detection.utils import visualization_utils as vis_utils
 
-slim = tf.contrib.slim
+EVAL_KEYPOINT_METRIC = 'coco_keypoint_metrics'
 
 # A dictionary of metric names to classes that implement the metric. The classes
 # in the dictionary must implement
@@ -45,6 +47,8 @@ slim = tf.contrib.slim
 EVAL_METRICS_CLASS_DICT = {
     'coco_detection_metrics':
         coco_evaluation.CocoDetectionEvaluator,
+    'coco_keypoint_metrics':
+        coco_evaluation.CocoKeypointEvaluator,
     'coco_mask_metrics':
         coco_evaluation.CocoMaskEvaluator,
     'oid_challenge_detection_metrics':
@@ -324,7 +328,7 @@ def _run_checkpoint_once(tensor_dict,
 
   counters = {'skipped': 0, 'success': 0}
   aggregate_result_losses_dict = collections.defaultdict(list)
-  with tf.contrib.slim.queues.QueueRunners(sess):
+  with slim.queues.QueueRunners(sess):
     try:
       for batch in range(int(num_batches)):
         if (batch + 1) % 100 == 0:
@@ -591,6 +595,8 @@ def result_dict_for_single_example(image,
       'groundtruth_group_of': [num_boxes] int64 tensor. (Optional)
       'groundtruth_instance_masks': 3D int64 tensor of instance masks
         (Optional).
+      'groundtruth_keypoints': [num_boxes, num_keypoints, 2] float32 tensor with
+        keypoints (Optional).
     class_agnostic: Boolean indicating whether the detections are class-agnostic
       (i.e. binary). Default False.
     scale_to_absolute: Boolean indicating whether boxes and keypoints should be
@@ -620,7 +626,8 @@ def result_dict_for_single_example(image,
     'groundtruth_group_of': [num_boxes] int64 tensor. (Optional)
     'groundtruth_instance_masks': 3D int64 tensor of instance masks
       (Optional).
-
+    'groundtruth_keypoints': [num_boxes, num_keypoints, 2] float32 tensor with
+      keypoints (Optional).
   """
 
   if groundtruth:
@@ -675,6 +682,10 @@ def result_dict_for_batched_example(images,
   Note that evaluation tools require classes that are 1-indexed, and so this
   function performs the offset. If `class_agnostic` is True, all output classes
   have label 1.
+  The groundtruth coordinates of boxes/keypoints in 'groundtruth' dictionary are
+  normalized relative to the (potentially padded) input image, while the
+  coordinates in 'detection' dictionary are normalized relative to the true
+  image shape.
 
   Args:
     images: A single 4D uint8 image tensor of shape [batch_size, H, W, C].
@@ -696,6 +707,10 @@ def result_dict_for_batched_example(images,
         tensor. (Optional)
       'groundtruth_instance_masks': 4D int64 tensor of instance
         masks (Optional).
+      'groundtruth_keypoints': [batch_size, max_number_of_boxes, num_keypoints,
+        2] float32 tensor with keypoints (Optional).
+      'groundtruth_keypoint_visibilities': [batch_size, max_number_of_boxes,
+        num_keypoints] bool tensor with keypoint visibilities (Optional).
     class_agnostic: Boolean indicating whether the detections are class-agnostic
       (i.e. binary). Default False.
     scale_to_absolute: Boolean indicating whether boxes and keypoints should be
@@ -724,7 +739,11 @@ def result_dict_for_batched_example(images,
     'detection_classes': [batch_size, max_detections] int64 tensor of 1-indexed
       classes.
     'detection_masks': [batch_size, max_detections, H, W] float32 tensor of
-      binarized masks, reframed to full image masks.
+      binarized masks, reframed to full image masks. (Optional)
+    'detection_keypoints': [batch_size, max_detections, num_keypoints, 2]
+      float32 tensor containing keypoint coordinates. (Optional)
+    'detection_keypoint_scores': [batch_size, max_detections, num_keypoints]
+      float32 tensor containing keypoint scores. (Optional)
     'num_detections': [batch_size] int64 tensor containing number of valid
       detections.
     'groundtruth_boxes': [batch_size, num_boxes, 4] float32 tensor of boxes, in
@@ -739,6 +758,10 @@ def result_dict_for_batched_example(images,
     'groundtruth_group_of': [batch_size, num_boxes] int64 tensor. (Optional)
     'groundtruth_instance_masks': 4D int64 tensor of instance masks
       (Optional).
+    'groundtruth_keypoints': [batch_size, num_boxes, num_keypoints, 2] float32
+      tensor with keypoints (Optional).
+    'groundtruth_keypoint_visibilities': [batch_size, num_boxes, num_keypoints]
+      bool tensor with keypoint visibilities (Optional).
     'num_groundtruth_boxes': [batch_size] tensor containing the maximum number
       of groundtruth boxes per image.
 
@@ -828,6 +851,12 @@ def result_dict_for_batched_example(images,
               _scale_keypoint_to_absolute,
               elems=[detection_keypoints, original_image_spatial_shapes],
               dtype=tf.float32))
+    if detection_fields.detection_keypoint_scores in detections:
+      output_dict[detection_fields.detection_keypoint_scores] = detections[
+          detection_fields.detection_keypoint_scores]
+    else:
+      output_dict[detection_fields.detection_keypoint_scores] = tf.ones_like(
+          detections[detection_fields.detection_keypoints][:, :, :, 0])
 
   if groundtruth:
     if max_gt_boxes is None:
@@ -866,6 +895,28 @@ def result_dict_for_batched_example(images,
         elems=[groundtruth_boxes, true_image_shapes], dtype=tf.float32)
     output_dict[input_data_fields.groundtruth_boxes] = groundtruth_boxes
 
+    if input_data_fields.groundtruth_keypoints in groundtruth:
+      # If groundtruth_keypoints is in the groundtruth dictionary. Update the
+      # coordinates to conform with the true image shape.
+      def _scale_keypoints_to_normalized_true_image(args):
+        """Scale the box coordinates to be relative to the true image shape."""
+        keypoints, true_image_shape = args
+        true_image_shape = tf.cast(true_image_shape, tf.float32)
+        true_height, true_width = true_image_shape[0], true_image_shape[1]
+        normalized_window = tf.stack(
+            [0.0, 0.0, true_height / image_height, true_width / image_width])
+        return keypoint_ops.change_coordinate_frame(keypoints,
+                                                    normalized_window)
+
+      groundtruth_keypoints = groundtruth[
+          input_data_fields.groundtruth_keypoints]
+      groundtruth_keypoints = shape_utils.static_or_dynamic_map_fn(
+          _scale_keypoints_to_normalized_true_image,
+          elems=[groundtruth_keypoints, true_image_shapes],
+          dtype=tf.float32)
+      output_dict[
+          input_data_fields.groundtruth_keypoints] = groundtruth_keypoints
+
     if scale_to_absolute:
       groundtruth_boxes = output_dict[input_data_fields.groundtruth_boxes]
       output_dict[input_data_fields.groundtruth_boxes] = (
@@ -873,6 +924,14 @@ def result_dict_for_batched_example(images,
               _scale_box_to_absolute,
               elems=[groundtruth_boxes, original_image_spatial_shapes],
               dtype=tf.float32))
+      if input_data_fields.groundtruth_keypoints in groundtruth:
+        groundtruth_keypoints = output_dict[
+            input_data_fields.groundtruth_keypoints]
+        output_dict[input_data_fields.groundtruth_keypoints] = (
+            shape_utils.static_or_dynamic_map_fn(
+                _scale_keypoint_to_absolute,
+                elems=[groundtruth_keypoints, original_image_spatial_shapes],
+                dtype=tf.float32))
 
     # For class-agnostic models, groundtruth classes all become 1.
     if class_agnostic:
@@ -893,6 +952,8 @@ def get_evaluators(eval_config, categories, evaluator_options=None):
     categories: A list of dicts, each of which has the following keys -
         'id': (required) an integer id uniquely identifying this category.
         'name': (required) string representing category name e.g., 'cat', 'dog'.
+        'keypoints': (optional) dict mapping this category's keypoints to unique
+          ids.
     evaluator_options: A dictionary of metric names (see
       EVAL_METRICS_CLASS_DICT) to `DetectionEvaluator` initialization
       keyword arguments. For example:
@@ -919,6 +980,32 @@ def get_evaluators(eval_config, categories, evaluator_options=None):
     evaluators_list.append(EVAL_METRICS_CLASS_DICT[eval_metric_fn_key](
         categories,
         **kwargs_dict))
+
+  if isinstance(eval_config, eval_pb2.EvalConfig):
+    parameterized_metrics = eval_config.parameterized_metric
+    for parameterized_metric in parameterized_metrics:
+      assert parameterized_metric.HasField('parameterized_metric')
+      if parameterized_metric.WhichOneof(
+          'parameterized_metric') == EVAL_KEYPOINT_METRIC:
+        keypoint_metrics = parameterized_metric.coco_keypoint_metrics
+        # Create category to keypoints mapping dict.
+        category_keypoints = {}
+        class_label = keypoint_metrics.class_label
+        category = None
+        for cat in categories:
+          if cat['name'] == class_label:
+            category = cat
+            break
+        if not category:
+          continue
+        keypoints_for_this_class = category['keypoints']
+        category_keypoints = [{
+            'id': keypoints_for_this_class[kp_name], 'name': kp_name
+        } for kp_name in keypoints_for_this_class]
+        # Create keypoint evaluator for this category.
+        evaluators_list.append(EVAL_METRICS_CLASS_DICT[EVAL_KEYPOINT_METRIC](
+            category['id'], category_keypoints, class_label,
+            keypoint_metrics.keypoint_label_to_sigmas))
   return evaluators_list
 
 

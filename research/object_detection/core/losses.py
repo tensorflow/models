@@ -33,12 +33,13 @@ from __future__ import print_function
 import abc
 import six
 import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.utils import ops
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 
 class Loss(six.with_metaclass(abc.ABCMeta, object)):

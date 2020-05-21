@@ -49,10 +49,11 @@ def define_common_bert_flags():
   flags.DEFINE_integer('num_train_epochs', 3,
                        'Total number of training epochs to perform.')
   flags.DEFINE_integer(
-      'steps_per_loop', 1,
+      'steps_per_loop', None,
       'Number of steps per graph-mode loop. Only training step '
       'happens inside the loop. Callbacks will not be called '
-      'inside.')
+      'inside. If not set the value will be configured depending on the '
+      'devices available.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
   flags.DEFINE_float('end_lr', 0.0,

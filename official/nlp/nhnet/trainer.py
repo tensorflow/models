@@ -162,12 +162,16 @@ def train(params, strategy, dataset=None):
   # Trains the model.
   steps_per_epoch = min(FLAGS.train_steps, FLAGS.checkpoint_interval)
   epochs = FLAGS.train_steps // steps_per_epoch
-  trainer.fit(
+  history = trainer.fit(
       x=dataset,
       steps_per_epoch=steps_per_epoch,
       epochs=epochs,
       callbacks=[summary_callback, checkpoint_callback],
       verbose=2)
+  train_hist = history.history
+  # Gets final loss from training.
+  stats = dict(training_loss=float(train_hist["training_loss"][-1]))
+  return stats
 
 
 def run():
@@ -197,7 +201,7 @@ def run():
       is_strict=False)
   stats = {}
   if "train" in FLAGS.mode:
-    train(params, strategy)
+    stats = train(params, strategy)
   if "eval" in FLAGS.mode:
     timeout = 0 if FLAGS.mode == "train_and_eval" else 3000
     # Uses padded decoding for TPU. Always uses cache.

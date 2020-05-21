@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -162,7 +163,7 @@ class _SSDResnetPpnFeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
             image_features={
                 'image_features': self._filter_features(activations)['block3']
             })
-    return feature_maps.values()
+    return list(feature_maps.values())
 
 
 class SSDResnet50V1PpnFeatureExtractor(_SSDResnetPpnFeatureExtractor):

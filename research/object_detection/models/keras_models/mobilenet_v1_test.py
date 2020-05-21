@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +26,12 @@ layout and the parameters of each Op to make sure the two implementations are
 consistent.
 """
 
-import itertools
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from six.moves import zip
 import tensorflow as tf
 
 from google.protobuf import text_format
@@ -127,8 +132,8 @@ class MobilenetV1Test(test_case.TestCase):
                                   _NUM_CHANNELS).astype(np.float32)
     feature_maps = self.execute(graph_fn, [image_tensor])
 
-    for feature_map, expected_shape in itertools.izip(
-        feature_maps, expected_feature_map_shape):
+    for feature_map, expected_shape in zip(feature_maps,
+                                           expected_feature_map_shape):
       self.assertAllEqual(feature_map.shape, expected_shape)
 
   def _check_returns_correct_shapes_with_dynamic_inputs(
@@ -150,8 +155,8 @@ class MobilenetV1Test(test_case.TestCase):
         np.array(image_width, dtype=np.int32)
     ])
 
-    for feature_map, expected_shape in itertools.izip(
-        feature_maps, expected_feature_map_shape):
+    for feature_map, expected_shape in zip(feature_maps,
+                                           expected_feature_map_shape):
       self.assertAllEqual(feature_map.shape, expected_shape)
 
   def _get_variables(self, depth_multiplier, layer_names=None):

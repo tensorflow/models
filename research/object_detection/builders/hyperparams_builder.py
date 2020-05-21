@@ -20,7 +20,14 @@ from object_detection.core import freezable_batch_norm
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import context_manager
 
-slim = tf.contrib.slim
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import slim
+  from tensorflow.contrib import layers as contrib_layers
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
 
 
 class KerasLayerHyperparams(object):
@@ -216,7 +223,7 @@ def build(hyperparams_config, is_training):
     batch_norm_params = _build_batch_norm_params(
         hyperparams_config.batch_norm, is_training)
   if hyperparams_config.HasField('group_norm'):
-    normalizer_fn = tf.contrib.layers.group_norm
+    normalizer_fn = contrib_layers.group_norm
   affected_ops = [slim.conv2d, slim.separable_conv2d, slim.conv2d_transpose]
   if hyperparams_config.HasField('op') and (
       hyperparams_config.op == hyperparams_pb2.Hyperparams.FC):
@@ -256,6 +263,8 @@ def _build_activation_fn(activation_fn):
     return tf.nn.relu
   if activation_fn == hyperparams_pb2.Hyperparams.RELU_6:
     return tf.nn.relu6
+  if activation_fn == hyperparams_pb2.Hyperparams.SWISH:
+    return tf.nn.swish
   raise ValueError('Unknown activation function: {}'.format(activation_fn))
 
 
@@ -301,6 +310,8 @@ def _build_keras_regularizer(regularizer):
     # weight by a factor of 2
     return tf.keras.regularizers.l2(
         float(regularizer.l2_regularizer.weight * 0.5))
+  if regularizer_oneof is None:
+    return None
   raise ValueError('Unknown regularizer function: {}'.format(regularizer_oneof))
 
 
@@ -369,6 +380,8 @@ def _build_initializer(initializer, build_for_keras=False):
           factor=initializer.variance_scaling_initializer.factor,
           mode=mode,
           uniform=initializer.variance_scaling_initializer.uniform)
+  if initializer_oneof is None:
+    return None
   raise ValueError('Unknown initializer function: {}'.format(
       initializer_oneof))
 

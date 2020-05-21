@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import functools
 import os
+from absl import logging
 from absl.testing import parameterized
 
 import numpy as np
@@ -484,16 +485,18 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
 
     empty_string = ''
     feed_dict = {string_placeholder: empty_string}
-
-    tf.set_random_seed(0)
-
     with self.test_session() as sess:
       out_string = sess.run(replaced_string, feed_dict=feed_dict)
 
-    # Test whether out_string is a string which represents an integer.
-    int(out_string)  # throws an error if out_string is not castable to int.
+    is_integer = True
+    try:
+      # Test whether out_string is a string which represents an integer, the
+      # casting below will throw an error if out_string is not castable to int.
+      int(out_string)
+    except ValueError:
+      is_integer = False
 
-    self.assertEqual(out_string, b'2798129067578209328')
+    self.assertTrue(is_integer)
 
   def test_force_no_resize(self):
     """Tests the functionality of force_no_reisze option."""
@@ -681,7 +684,7 @@ def _fake_resize50_preprocess_fn(image):
   return tf.expand_dims(image, 0), tf.expand_dims(shape, axis=0)
 
 
-class DataTransformationFnTest(test_case.TestCase):
+class DataTransformationFnTest(test_case.TestCase, parameterized.TestCase):
 
   def test_combine_additional_channels_if_present(self):
     image = np.random.rand(4, 4, 3).astype(np.float32)
@@ -766,6 +769,54 @@ class DataTransformationFnTest(test_case.TestCase):
         np.array([[0, 1, 0], [0, 0, 1]], np.float32),
         transformed_inputs[fields.InputDataFields.groundtruth_classes])
 
+  @parameterized.parameters(
+      {'labeled_classes': [1, 2]},
+      {'labeled_classes': []},
+      {'labeled_classes': [1, -1, 2]}  # -1 denotes an unrecognized class
+  )
+  def test_use_labeled_classes(self, labeled_classes):
+
+    def compute_fn(image, groundtruth_boxes, groundtruth_classes,
+                   groundtruth_labeled_classes):
+      tensor_dict = {
+          fields.InputDataFields.image:
+              image,
+          fields.InputDataFields.groundtruth_boxes:
+              groundtruth_boxes,
+          fields.InputDataFields.groundtruth_classes:
+              groundtruth_classes,
+          fields.InputDataFields.groundtruth_labeled_classes:
+              groundtruth_labeled_classes
+      }
+
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=3)
+      return input_transformation_fn(tensor_dict=tensor_dict)
+
+    image = np.random.rand(4, 4, 3).astype(np.float32)
+    groundtruth_boxes = np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]], np.float32)
+    groundtruth_classes = np.array([1, 2], np.int32)
+    groundtruth_labeled_classes = np.array(labeled_classes, np.int32)
+
+    transformed_inputs = self.execute_cpu(compute_fn, [
+        image, groundtruth_boxes, groundtruth_classes,
+        groundtruth_labeled_classes
+    ])
+
+    if labeled_classes == [1, 2] or labeled_classes == [1, -1, 2]:
+      transformed_labeled_classes = [1, 1, 0]
+    elif not labeled_classes:
+      transformed_labeled_classes = [1, 1, 1]
+    else:
+      logging.exception('Unexpected labeled_classes %r', labeled_classes)
+
+    self.assertAllEqual(
+        np.array(transformed_labeled_classes, np.float32),
+        transformed_inputs[fields.InputDataFields.groundtruth_labeled_classes])
+
   def test_returns_correct_class_label_encodings(self):
     tensor_dict = {
         fields.InputDataFields.image:
@@ -809,7 +860,7 @@ class DataTransformationFnTest(test_case.TestCase):
                 np.array([[[.1, .1]], [[.2, .2]], [[.5, .5]]],
                          np.float32)),
         fields.InputDataFields.groundtruth_keypoint_visibilities:
-            tf.constant([True, False, True]),
+            tf.constant([[True, True], [False, False], [True, True]]),
         fields.InputDataFields.groundtruth_instance_masks:
             tf.constant(np.random.rand(3, 4, 4).astype(np.float32)),
         fields.InputDataFields.groundtruth_is_crowd:
@@ -847,7 +898,7 @@ class DataTransformationFnTest(test_case.TestCase):
     self.assertAllEqual(
         transformed_inputs[
             fields.InputDataFields.groundtruth_keypoint_visibilities],
-        [True, True])
+        [[True, True], [True, True]])
     self.assertAllEqual(
         transformed_inputs[
             fields.InputDataFields.groundtruth_instance_masks].shape, [2, 4, 4])
@@ -1060,7 +1111,7 @@ class DataTransformationFnTest(test_case.TestCase):
         fields.InputDataFields.groundtruth_classes:
             tf.constant(np.array([1, 2], np.int32)),
         fields.InputDataFields.groundtruth_keypoints:
-            tf.constant([[0.1, 0.2], [0.3, 0.4]]),
+            tf.constant([[[0.1, 0.2]], [[0.3, 0.4]]]),
     }
 
     num_classes = 3
@@ -1078,7 +1129,75 @@ class DataTransformationFnTest(test_case.TestCase):
         [[.5, .25, 1., .5], [.0, .0, .5, .25]])
     self.assertAllClose(
         transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
-        [[[.1, .1], [.3, .2]]])
+        [[[.1, .1]], [[.3, .2]]])
+
+  def test_groundtruth_keypoint_weights(self):
+    tensor_dict = {
+        fields.InputDataFields.image:
+            tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+        fields.InputDataFields.groundtruth_boxes:
+            tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                 np.float32)),
+        fields.InputDataFields.groundtruth_classes:
+            tf.constant(np.array([1, 2], np.int32)),
+        fields.InputDataFields.groundtruth_keypoints:
+            tf.constant([[[0.1, 0.2], [0.3, 0.4]],
+                         [[0.5, 0.6], [0.7, 0.8]]]),
+        fields.InputDataFields.groundtruth_keypoint_visibilities:
+            tf.constant([[True, False], [True, True]]),
+    }
+
+    num_classes = 3
+    keypoint_type_weight = [1.0, 2.0]
+    input_transformation_fn = functools.partial(
+        inputs.transform_input_data,
+        model_preprocess_fn=_fake_resize50_preprocess_fn,
+        image_resizer_fn=_fake_image_resizer_fn,
+        num_classes=num_classes,
+        keypoint_type_weight=keypoint_type_weight)
+
+    with self.test_session() as sess:
+      transformed_inputs = sess.run(
+          input_transformation_fn(tensor_dict=tensor_dict))
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
+        [[[0.1, 0.1], [0.3, 0.2]],
+         [[0.5, 0.3], [0.7, 0.4]]])
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.groundtruth_keypoint_weights],
+        [[1.0, 0.0], [1.0, 2.0]])
+
+  def test_groundtruth_keypoint_weights_default(self):
+    tensor_dict = {
+        fields.InputDataFields.image:
+            tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+        fields.InputDataFields.groundtruth_boxes:
+            tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                 np.float32)),
+        fields.InputDataFields.groundtruth_classes:
+            tf.constant(np.array([1, 2], np.int32)),
+        fields.InputDataFields.groundtruth_keypoints:
+            tf.constant([[[0.1, 0.2], [0.3, 0.4]],
+                         [[0.5, 0.6], [0.7, 0.8]]]),
+    }
+
+    num_classes = 3
+    input_transformation_fn = functools.partial(
+        inputs.transform_input_data,
+        model_preprocess_fn=_fake_resize50_preprocess_fn,
+        image_resizer_fn=_fake_image_resizer_fn,
+        num_classes=num_classes)
+
+    with self.test_session() as sess:
+      transformed_inputs = sess.run(
+          input_transformation_fn(tensor_dict=tensor_dict))
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
+        [[[0.1, 0.1], [0.3, 0.2]],
+         [[0.5, 0.3], [0.7, 0.4]]])
+    self.assertAllClose(
+        transformed_inputs[fields.InputDataFields.groundtruth_keypoint_weights],
+        [[1.0, 1.0], [1.0, 1.0]])
 
 
 class PadInputDataToStaticShapesFnTest(test_case.TestCase):
@@ -1271,6 +1390,44 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
         padded_tensor_dict[
             fields.InputDataFields.groundtruth_keypoint_visibilities]
         .shape.as_list(), [3, 16])
+
+  def test_context_features(self):
+    context_memory_size = 8
+    context_feature_length = 10
+    max_num_context_features = 20
+    input_tensor_dict = {
+        fields.InputDataFields.context_features:
+            tf.placeholder(tf.float32,
+                           [context_memory_size, context_feature_length]),
+        fields.InputDataFields.context_feature_length:
+            tf.placeholder(tf.float32, [])
+    }
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=3,
+        spatial_image_shape=[5, 6],
+        max_num_context_features=max_num_context_features,
+        context_feature_length=context_feature_length)
+
+    self.assertAllEqual(
+        padded_tensor_dict[
+            fields.InputDataFields.context_features].shape.as_list(),
+        [max_num_context_features, context_feature_length])
+
+    with self.test_session() as sess:
+      feed_dict = {
+          input_tensor_dict[fields.InputDataFields.context_features]:
+              np.ones([context_memory_size, context_feature_length],
+                      dtype=np.float32),
+          input_tensor_dict[fields.InputDataFields.context_feature_length]:
+              context_feature_length
+      }
+      padded_tensor_dict_out = sess.run(padded_tensor_dict, feed_dict=feed_dict)
+
+    self.assertEqual(
+        padded_tensor_dict_out[fields.InputDataFields.valid_context_size],
+        context_memory_size)
 
 
 if __name__ == '__main__':

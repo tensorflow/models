@@ -45,6 +45,10 @@ message BatchNonMaxSuppression {
 
   // Whether to use tf.image.combined_non_max_suppression.
   optional bool use_combined_nms = 11 [default = false];
+
+  // Whether to change coordinate frame of the boxlist to be relative to
+  // window's frame.
+  optional bool change_coordinate_frame = 12 [default = true];
 }
 
 // Configuration proto for post-processing predicted boxes and

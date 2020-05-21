@@ -19,6 +19,7 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
+import gin
 import tensorflow as tf
 
 from official.nlp.modeling.layers import attention
@@ -116,11 +117,10 @@ class Transformer(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
         name="self_attention")
-    # TODO(hongkuny): Remove when checkpoint backward compatibility is resolved.
     # pylint: disable=protected-access
-    self._attention_layer.build([input_tensor_shape])
+    self._attention_layer.build([input_tensor_shape] * 3)
     self._attention_output_dense = self._attention_layer._output_dense
-
+    # pylint: enable=protected-access
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
@@ -223,6 +223,8 @@ class Transformer(tf.keras.layers.Layer):
     return layer_output
 
 
+@tf.keras.utils.register_keras_serializable(package="Text")
+@gin.configurable
 class CompiledTransformer(Transformer):
 
   @tf_function_if_eager(experimental_compile=True)

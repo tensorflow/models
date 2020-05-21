@@ -11,7 +11,7 @@ Tensorflow Object Detection API depends on the following libraries:
 *   tf Slim (which is included in the "tensorflow/models/research/" checkout)
 *   Jupyter notebook
 *   Matplotlib
-*   Tensorflow (>=1.12.0)
+*   Tensorflow (1.15.0)
 *   Cython
 *   contextlib2
 *   cocoapi
@@ -59,7 +59,9 @@ If that is your case, try the [manual](#Manual-protobuf-compiler-installation-an
 git clone https://github.com/tensorflow/models.git
 ```
 
-To use this library, you need to download this repository, whenever it says `<path-to-tensorflow>` it will be referring to the folder that you downloaded this repository into.
+To use this library, you need to download this repository, whenever it says
+`<path-to-tensorflow>` it will be referring to the folder that you downloaded
+this repository into.
 
 ## COCO API installation
 
@@ -80,18 +82,20 @@ make
 cp -r pycocotools <path_to_tensorflow>/models/research/
 ```
 
- Alternatively, users can install `pycocotools` using pip:
+Alternatively, users can install `pycocotools` using pip:
 
- ```bash
+```bash
 pip install --user pycocotools
- ```
+```
 
 ## Protobuf Compilation
 
 The Tensorflow Object Detection API uses Protobufs to configure model and
 training parameters. Before the framework can be used, the Protobuf libraries
 must be compiled. This should be done by running the following command from
-the [tensorflow/models/research/](https://github.com/tensorflow/models/tree/master/research/) directory:
+the [tensorflow/models/research/
+](https://github.com/tensorflow/models/tree/master/research/)
+directory:
 
 
 ``` bash
@@ -154,7 +158,8 @@ export PYTHONPATH=$PYTHONPATH:`pwd`:`pwd`/slim
 Note: This command needs to run from every new terminal you start. If you wish
 to avoid running this manually, you can add it as a new line to the end of your
 ~/.bashrc file, replacing \`pwd\` with the absolute path of
-tensorflow/models/research on your system. After updating ~/.bashrc file you can run the following command:
+tensorflow/models/research on your system. After updating ~/.bashrc file you
+can run the following command:
 
 ``` bash
 source ~/.bashrc
@@ -165,6 +170,8 @@ source ~/.bashrc
 You can test that you have correctly installed the Tensorflow Object Detection\
 API by running the following command:
 
+
 ```bash
-python object_detection/builders/model_builder_test.py
+# If using Tensorflow 1.X:
+python object_detection/builders/model_builder_tf1_test.py
 ```

@@ -22,7 +22,7 @@ import os
 
 from absl import app as absl_app
 from absl import flags
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from official.r1.utils.logs import logger
 from official.r1.wide_deep import movielens_dataset
 from official.r1.wide_deep import wide_deep_run_loop

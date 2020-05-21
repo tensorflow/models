@@ -24,6 +24,7 @@ import zlib
 import numpy as np
 import pandas as pd
 from pycocotools import mask as coco_mask
+import six
 import tensorflow as tf
 
 from object_detection.core import standard_fields
@@ -50,7 +51,8 @@ def encode_mask(mask_to_encode):
   mask_to_encode = mask_to_encode.astype(np.uint8)
   mask_to_encode = np.asfortranarray(mask_to_encode)
   encoded_mask = coco_mask.encode(mask_to_encode)[0]['counts']
-  compressed_mask = zlib.compress(encoded_mask, zlib.Z_BEST_COMPRESSION)
+  compressed_mask = zlib.compress(six.ensure_binary(encoded_mask),
+                                  zlib.Z_BEST_COMPRESSION)
   base64_mask = base64.b64encode(compressed_mask)
   return base64_mask
 

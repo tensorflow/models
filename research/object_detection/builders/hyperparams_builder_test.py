@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +25,13 @@ from object_detection.builders import hyperparams_builder
 from object_detection.core import freezable_batch_norm
 from object_detection.protos import hyperparams_pb2
 
-slim = tf.contrib.slim
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import slim
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
 
 
 def _get_scope_key(op):
@@ -49,7 +56,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    self.assertTrue(_get_scope_key(slim.conv2d) in scope)
+    self.assertIn(_get_scope_key(slim.conv2d), scope)
 
   def test_default_arg_scope_has_separable_conv2d_op(self):
     conv_hyperparams_text_proto = """
@@ -67,7 +74,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    self.assertTrue(_get_scope_key(slim.separable_conv2d) in scope)
+    self.assertIn(_get_scope_key(slim.separable_conv2d), scope)
 
   def test_default_arg_scope_has_conv2d_transpose_op(self):
     conv_hyperparams_text_proto = """
@@ -85,7 +92,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    self.assertTrue(_get_scope_key(slim.conv2d_transpose) in scope)
+    self.assertIn(_get_scope_key(slim.conv2d_transpose), scope)
 
   def test_explicit_fc_op_arg_scope_has_fully_connected_op(self):
     conv_hyperparams_text_proto = """
@@ -104,7 +111,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    self.assertTrue(_get_scope_key(slim.fully_connected) in scope)
+    self.assertIn(_get_scope_key(slim.fully_connected), scope)
 
   def test_separable_conv2d_and_conv2d_and_transpose_have_same_parameters(self):
     conv_hyperparams_text_proto = """
@@ -143,7 +150,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
                                          is_training=True)
     scope = scope_fn()
-    conv_scope_arguments = scope.values()[0]
+    conv_scope_arguments = list(scope.values())[0]
     regularizer = conv_scope_arguments['weights_regularizer']
     weights = np.array([1., -1, 4., 2.])
     with self.test_session() as sess:
@@ -284,8 +291,8 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     self.assertTrue(batch_norm_params['scale'])
 
     batch_norm_layer = keras_config.build_batch_norm()
-    self.assertTrue(isinstance(batch_norm_layer,
-                               freezable_batch_norm.FreezableBatchNorm))
+    self.assertIsInstance(batch_norm_layer,
+                          freezable_batch_norm.FreezableBatchNorm)
 
   def test_return_non_default_batch_norm_params_keras_override(
       self):
@@ -420,8 +427,8 @@ class HyperparamsBuilderTest(tf.test.TestCase):
 
     # The batch norm builder should build an identity Lambda layer
     identity_layer = keras_config.build_batch_norm()
-    self.assertTrue(isinstance(identity_layer,
-                               tf.keras.layers.Lambda))
+    self.assertIsInstance(identity_layer,
+                          tf.keras.layers.Lambda)
 
   def test_use_none_activation(self):
     conv_hyperparams_text_proto = """
@@ -463,7 +470,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     self.assertEqual(
         keras_config.params(include_activation=True)['activation'], None)
     activation_layer = keras_config.build_activation_layer()
-    self.assertTrue(isinstance(activation_layer, tf.keras.layers.Lambda))
+    self.assertIsInstance(activation_layer, tf.keras.layers.Lambda)
     self.assertEqual(activation_layer.function, tf.identity)
 
   def test_use_relu_activation(self):
@@ -506,7 +513,7 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     self.assertEqual(
         keras_config.params(include_activation=True)['activation'], tf.nn.relu)
     activation_layer = keras_config.build_activation_layer()
-    self.assertTrue(isinstance(activation_layer, tf.keras.layers.Lambda))
+    self.assertIsInstance(activation_layer, tf.keras.layers.Lambda)
     self.assertEqual(activation_layer.function, tf.nn.relu)
 
   def test_use_relu_6_activation(self):
@@ -549,8 +556,51 @@ class HyperparamsBuilderTest(tf.test.TestCase):
     self.assertEqual(
         keras_config.params(include_activation=True)['activation'], tf.nn.relu6)
     activation_layer = keras_config.build_activation_layer()
-    self.assertTrue(isinstance(activation_layer, tf.keras.layers.Lambda))
+    self.assertIsInstance(activation_layer, tf.keras.layers.Lambda)
     self.assertEqual(activation_layer.function, tf.nn.relu6)
+
+  def test_use_swish_activation(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l2_regularizer {
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+      activation: SWISH
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    scope_fn = hyperparams_builder.build(conv_hyperparams_proto,
+                                         is_training=True)
+    scope = scope_fn()
+    conv_scope_arguments = scope[_get_scope_key(slim.conv2d)]
+    self.assertEqual(conv_scope_arguments['activation_fn'], tf.nn.swish)
+
+  def test_use_swish_activation_keras(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l2_regularizer {
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+      activation: SWISH
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    keras_config = hyperparams_builder.KerasLayerHyperparams(
+        conv_hyperparams_proto)
+    self.assertEqual(keras_config.params()['activation'], None)
+    self.assertEqual(
+        keras_config.params(include_activation=True)['activation'], tf.nn.swish)
+    activation_layer = keras_config.build_activation_layer()
+    self.assertIsInstance(activation_layer, tf.keras.layers.Lambda)
+    self.assertEqual(activation_layer.function, tf.nn.swish)
 
   def test_override_activation_keras(self):
     conv_hyperparams_text_proto = """

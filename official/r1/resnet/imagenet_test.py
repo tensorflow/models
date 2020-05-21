@@ -23,7 +23,6 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from absl import logging
 
 from official.r1.resnet import imagenet_main
-from official.utils.misc import keras_utils
 from official.utils.testing import integration
 
 logging.set_verbosity(logging.ERROR)
@@ -43,8 +42,7 @@ class BaseTest(tf.test.TestCase):
 
   def setUp(self):
     super(BaseTest, self).setUp()
-    if keras_utils.is_v2_0:
-      tf.compat.v1.disable_eager_execution()
+    tf.compat.v1.disable_eager_execution()
     self._num_validation_images = imagenet_main.NUM_IMAGES['validation']
     imagenet_main.NUM_IMAGES['validation'] = 4
 

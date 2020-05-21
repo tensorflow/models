@@ -14,11 +14,11 @@
 # ==============================================================================
 
 """Mask R-CNN Box Predictor."""
-import tensorflow as tf
+from tensorflow.contrib import slim as contrib_slim
 
 from object_detection.core import box_predictor
 
-slim = tf.contrib.slim
+slim = contrib_slim
 
 BOX_ENCODINGS = box_predictor.BOX_ENCODINGS
 CLASS_PREDICTIONS_WITH_BACKGROUND = (

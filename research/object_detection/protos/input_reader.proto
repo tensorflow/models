@@ -2,6 +2,8 @@ syntax = "proto2";
 
 package object_detection.protos;
 
+import "object_detection/protos/image_resizer.proto";
+
 // Configuration proto for defining input readers that generate Object Detection
 // Examples from input sources. Input readers are expected to generate a
 // dictionary of tensors, with the following fields populated:
@@ -22,19 +24,19 @@ enum InstanceMaskType {
   PNG_MASKS = 2;        // Encoded PNG masks.
 }
 
-// Next id: 25
+// Next id: 29
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
-  optional string name = 23 [default=""];
+  optional string name = 23 [default = ""];
 
   // Path to StringIntLabelMap pbtxt file specifying the mapping from string
   // labels to integer ids.
-  optional string label_map_path = 1 [default=""];
+  optional string label_map_path = 1 [default = ""];
 
   // Whether data should be processed in the order they are read in, or
   // shuffled randomly.
-  optional bool shuffle = 2 [default=true];
+  optional bool shuffle = 2 [default = true];
 
   // Buffer size to be used when shuffling.
   optional uint32 shuffle_buffer_size = 11 [default = 2048];
@@ -44,43 +46,43 @@ message InputReader {
 
   // The number of times a data source is read. If set to zero, the data source
   // will be reused indefinitely.
-  optional uint32 num_epochs = 5 [default=0];
+  optional uint32 num_epochs = 5 [default = 0];
 
   // Integer representing how often an example should be sampled. To feed
   // only 1/3 of your data into your model, set `sample_1_of_n_examples` to 3.
   // This is particularly useful for evaluation, where you might not prefer to
   // evaluate all of your samples.
-  optional uint32 sample_1_of_n_examples = 22 [default=1];
+  optional uint32 sample_1_of_n_examples = 22 [default = 1];
 
   // Number of file shards to read in parallel.
-  optional uint32 num_readers = 6 [default=64];
+  optional uint32 num_readers = 6 [default = 64];
 
   // Number of batches to produce in parallel. If this is run on a 2x2 TPU set
   // this to 8.
-  optional uint32 num_parallel_batches = 19 [default=8];
+  optional uint32 num_parallel_batches = 19 [default = 8];
 
   // Number of batches to prefetch. Prefetch decouples input pipeline and
   // model so they can be pipelined resulting in higher throughput. Set this
   // to a small constant and increment linearly until the improvements become
   // marginal or you exceed your cpu memory budget. Setting this to -1,
   // automatically tunes this value for you.
-  optional int32 num_prefetch_batches = 20 [default=2];
+  optional int32 num_prefetch_batches = 20 [default = 2];
 
   // Maximum number of records to keep in reader queue.
-  optional uint32 queue_capacity = 3 [default=2000, deprecated=true];
+  optional uint32 queue_capacity = 3 [default = 2000, deprecated = true];
 
   // Minimum number of records to keep in reader queue. A large value is needed
   // to generate a good random shuffle.
-  optional uint32 min_after_dequeue = 4 [default=1000, deprecated=true];
+  optional uint32 min_after_dequeue = 4 [default = 1000, deprecated = true];
 
   // Number of records to read from each reader at once.
-  optional uint32 read_block_length = 15 [default=32];
+  optional uint32 read_block_length = 15 [default = 32];
 
   // Number of decoded records to prefetch before batching.
-  optional uint32 prefetch_size = 13 [default = 512, deprecated=true];
+  optional uint32 prefetch_size = 13 [default = 512, deprecated = true];
 
   // Number of parallel decode ops to apply.
-  optional uint32 num_parallel_map_calls = 14 [default = 64, deprecated=true];
+  optional uint32 num_parallel_map_calls = 14 [default = 64, deprecated = true];
 
   // If positive, TfExampleDecoder will try to decode rasters of additional
   // channels from tf.Examples.
@@ -89,13 +91,20 @@ message InputReader {
   // Number of groundtruth keypoints per object.
   optional uint32 num_keypoints = 16 [default = 0];
 
+  // Keypoint weights. These weights can be used to apply per-keypoint loss
+  // multipliers. The size of this field should agree with `num_keypoints`.
+  repeated float keypoint_type_weight = 26;
+
   // Maximum number of boxes to pad to during training / evaluation.
   // Set this to at least the maximum amount of boxes in the input data,
   // otherwise some groundtruth boxes may be clipped.
-  optional int32 max_number_of_boxes = 21 [default=100];
+  optional int32 max_number_of_boxes = 21 [default = 100];
 
   // Whether to load multiclass scores from the dataset.
   optional bool load_multiclass_scores = 24 [default = false];
+
+  // Whether to load context features from the dataset.
+  optional bool load_context_features = 25 [default = false];
 
   // Whether to load groundtruth instance masks.
   optional bool load_instance_masks = 7 [default = false];
@@ -107,10 +116,15 @@ message InputReader {
   // when mapping class text strings to integers.
   optional bool use_display_name = 17 [default = false];
 
+  // Whether to include the source_id string in the input features.
+  optional bool include_source_id = 27 [default = false];
+
   oneof input_reader {
     TFRecordInputReader tf_record_input_reader = 8;
     ExternalInputReader external_input_reader = 9;
   }
+
+
 }
 
 // An input reader that reads TF Example protos from local TFRecord files.

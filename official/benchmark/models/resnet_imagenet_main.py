@@ -51,7 +51,6 @@ def run(flags_obj):
     Dictionary of training and eval stats.
   """
   keras_utils.set_session_config(
-      enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
 
   # Execute flag override logic for better model performance
@@ -218,7 +217,6 @@ def run(flags_obj):
   train_epochs = flags_obj.train_epochs
 
   callbacks = common.get_callbacks(
-      steps_per_epoch=steps_per_epoch,
       pruning_method=flags_obj.pruning_method,
       enable_checkpoint_and_export=flags_obj.enable_checkpoint_and_export,
       model_dir=flags_obj.model_dir)

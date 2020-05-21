@@ -51,6 +51,10 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     data, pooled = test_network([word_ids, mask, type_ids])
 
+    self.assertIsInstance(test_network.transformer_layers, list)
+    self.assertLen(test_network.transformer_layers, 3)
+    self.assertIsInstance(test_network.pooler_layer, tf.keras.layers.Dense)
+
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]
     self.assertAllEqual(expected_data_shape, data.shape.as_list())

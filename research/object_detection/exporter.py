@@ -17,7 +17,6 @@
 import os
 import tempfile
 import tensorflow as tf
-from tensorflow.contrib.quantize.python import graph_matcher
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.tools import freeze_graph  # pylint: disable=g-direct-tensorflow-import
 from object_detection.builders import graph_rewriter_builder
@@ -27,7 +26,15 @@ from object_detection.data_decoders import tf_example_decoder
 from object_detection.utils import config_util
 from object_detection.utils import shape_utils
 
-slim = tf.contrib.slim
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import slim
+  from tensorflow.contrib import tfprof as contrib_tfprof
+  from tensorflow.contrib.quantize.python import graph_matcher
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
 
 freeze_graph_with_def_protos = freeze_graph.freeze_graph_with_def_protos
 
@@ -41,7 +48,7 @@ def rewrite_nn_resize_op(is_quantized=False):
     is_quantized: True if the default graph is quantized.
   """
   def remove_nn():
-    """Remove nearest neighbor upsampling structure and replace with TF op."""
+    """Remove nearest neighbor upsampling structures and replace with TF op."""
     input_pattern = graph_matcher.OpTypePattern(
         'FakeQuantWithMinMaxVars' if is_quantized else '*')
     stack_1_pattern = graph_matcher.OpTypePattern(
@@ -50,27 +57,37 @@ def rewrite_nn_resize_op(is_quantized=False):
         'Pack', inputs=[stack_1_pattern, stack_1_pattern], ordered_inputs=False)
     reshape_pattern = graph_matcher.OpTypePattern(
         'Reshape', inputs=[stack_2_pattern, 'Const'], ordered_inputs=False)
-    consumer_pattern = graph_matcher.OpTypePattern(
+    consumer_pattern1 = graph_matcher.OpTypePattern(
         'Add|AddV2|Max|Mul', inputs=[reshape_pattern, '*'],
         ordered_inputs=False)
+    consumer_pattern2 = graph_matcher.OpTypePattern(
+        'StridedSlice', inputs=[reshape_pattern, '*', '*', '*'],
+        ordered_inputs=False)
 
-    match_counter = 0
-    matcher = graph_matcher.GraphMatcher(consumer_pattern)
-    for match in matcher.match_graph(tf.get_default_graph()):
-      match_counter += 1
-      projection_op = match.get_op(input_pattern)
-      reshape_op = match.get_op(reshape_pattern)
-      consumer_op = match.get_op(consumer_pattern)
-      nn_resize = tf.image.resize_nearest_neighbor(
-          projection_op.outputs[0],
-          reshape_op.outputs[0].shape.dims[1:3],
-          align_corners=False,
-          name=os.path.split(reshape_op.name)[0] + '/resize_nearest_neighbor')
+    def replace_matches(consumer_pattern):
+      """Search for nearest neighbor pattern and replace with TF op."""
+      match_counter = 0
+      matcher = graph_matcher.GraphMatcher(consumer_pattern)
+      for match in matcher.match_graph(tf.get_default_graph()):
+        match_counter += 1
+        projection_op = match.get_op(input_pattern)
+        reshape_op = match.get_op(reshape_pattern)
+        consumer_op = match.get_op(consumer_pattern)
+        nn_resize = tf.image.resize_nearest_neighbor(
+            projection_op.outputs[0],
+            reshape_op.outputs[0].shape.dims[1:3],
+            align_corners=False,
+            name=os.path.split(reshape_op.name)[0] + '/resize_nearest_neighbor')
 
-      for index, op_input in enumerate(consumer_op.inputs):
-        if op_input == reshape_op.outputs[0]:
-          consumer_op._update_input(index, nn_resize)  # pylint: disable=protected-access
-          break
+        for index, op_input in enumerate(consumer_op.inputs):
+          if op_input == reshape_op.outputs[0]:
+            consumer_op._update_input(index, nn_resize)  # pylint: disable=protected-access
+            break
+
+      return match_counter
+
+    match_counter = replace_matches(consumer_pattern1)
+    match_counter += replace_matches(consumer_pattern2)
 
     tf.logging.info('Found and fixed {} matches'.format(match_counter))
     return match_counter
@@ -524,8 +541,8 @@ def profile_inference_graph(graph):
     graph: the inference graph.
   """
   tfprof_vars_option = (
-      tf.contrib.tfprof.model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
-  tfprof_flops_option = tf.contrib.tfprof.model_analyzer.FLOAT_OPS_OPTIONS
+      contrib_tfprof.model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+  tfprof_flops_option = contrib_tfprof.model_analyzer.FLOAT_OPS_OPTIONS
 
   # Batchnorm is usually folded during inference.
   tfprof_vars_option['trim_name_regexes'] = ['.*BatchNorm.*']
@@ -534,10 +551,8 @@ def profile_inference_graph(graph):
       '.*BatchNorm.*', '.*Initializer.*', '.*Regularizer.*', '.*BiasAdd.*'
   ]
 
-  tf.contrib.tfprof.model_analyzer.print_model_analysis(
-      graph,
-      tfprof_options=tfprof_vars_option)
+  contrib_tfprof.model_analyzer.print_model_analysis(
+      graph, tfprof_options=tfprof_vars_option)
 
-  tf.contrib.tfprof.model_analyzer.print_model_analysis(
-      graph,
-      tfprof_options=tfprof_flops_option)
+  contrib_tfprof.model_analyzer.print_model_analysis(
+      graph, tfprof_options=tfprof_flops_option)

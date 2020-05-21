@@ -42,6 +42,8 @@ class InputDataFields(object):
     filename: original filename of the dataset (without common path).
     groundtruth_image_classes: image-level class labels.
     groundtruth_image_confidences: image-level class confidences.
+    groundtruth_labeled_classes: image-level annotation that indicates the
+      classes for which an image has been labeled.
     groundtruth_boxes: coordinates of the ground truth boxes in the image.
     groundtruth_classes: box-level class labels.
     groundtruth_confidences: box-level class confidences. The shape should be
@@ -61,6 +63,7 @@ class InputDataFields(object):
     groundtruth_instance_classes: instance mask-level class labels.
     groundtruth_keypoints: ground truth keypoints.
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
+    groundtruth_keypoint_weights: groundtruth weight factor for keypoints.
     groundtruth_label_weights: groundtruth label weights.
     groundtruth_weights: groundtruth weight factor for bounding boxes.
     num_groundtruth_boxes: number of groundtruth boxes.
@@ -68,6 +71,11 @@ class InputDataFields(object):
     true_image_shapes: true shapes of images in the resized images, as resized
       images can be padded with zeros.
     multiclass_scores: the label score per class for each box.
+    context_features: a flattened list of contextual features.
+    context_feature_length: the fixed length of each feature in
+      context_features, used for reshaping.
+    valid_context_size: the valid context size, used in filtering the padded
+      context features.
   """
   image = 'image'
   image_additional_channels = 'image_additional_channels'
@@ -78,6 +86,7 @@ class InputDataFields(object):
   filename = 'filename'
   groundtruth_image_classes = 'groundtruth_image_classes'
   groundtruth_image_confidences = 'groundtruth_image_confidences'
+  groundtruth_labeled_classes = 'groundtruth_labeled_classes'
   groundtruth_boxes = 'groundtruth_boxes'
   groundtruth_classes = 'groundtruth_classes'
   groundtruth_confidences = 'groundtruth_confidences'
@@ -93,12 +102,16 @@ class InputDataFields(object):
   groundtruth_instance_classes = 'groundtruth_instance_classes'
   groundtruth_keypoints = 'groundtruth_keypoints'
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
+  groundtruth_keypoint_weights = 'groundtruth_keypoint_weights'
   groundtruth_label_weights = 'groundtruth_label_weights'
   groundtruth_weights = 'groundtruth_weights'
   num_groundtruth_boxes = 'num_groundtruth_boxes'
   is_annotated = 'is_annotated'
   true_image_shape = 'true_image_shape'
   multiclass_scores = 'multiclass_scores'
+  context_features = 'context_features'
+  context_feature_length = 'context_feature_length'
+  valid_context_size = 'valid_context_size'
 
 
 class DetectionResultFields(object):
@@ -115,6 +128,7 @@ class DetectionResultFields(object):
     detection_masks: contains a segmentation mask for each detection box.
     detection_boundaries: contains an object boundary for each detection box.
     detection_keypoints: contains detection keypoints for each detection box.
+    detection_keypoint_scores: contains detection keypoint scores.
     num_detections: number of detections in the batch.
     raw_detection_boxes: contains decoded detection boxes without Non-Max
       suppression.
@@ -134,6 +148,7 @@ class DetectionResultFields(object):
   detection_masks = 'detection_masks'
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
+  detection_keypoint_scores = 'detection_keypoint_scores'
   num_detections = 'num_detections'
   raw_detection_boxes = 'raw_detection_boxes'
   raw_detection_scores = 'raw_detection_scores'
@@ -164,6 +179,7 @@ class BoxListFields(object):
   masks = 'masks'
   boundaries = 'boundaries'
   keypoints = 'keypoints'
+  keypoint_visibilities = 'keypoint_visibilities'
   keypoint_heatmaps = 'keypoint_heatmaps'
   is_crowd = 'is_crowd'
 
@@ -201,6 +217,7 @@ class TfExampleFields(object):
     source_id: original source of the image
     image_class_text: image-level label in text format
     image_class_label: image-level label in numerical format
+    image_class_confidence: image-level confidence of the label
     object_class_text: labels in text format, e.g. ["person", "cat"]
     object_class_label: labels in numbers, e.g. [16, 8]
     object_bbox_xmin: xmin coordinates of groundtruth box, e.g. 10, 30
@@ -237,6 +254,7 @@ class TfExampleFields(object):
   source_id = 'image/source_id'
   image_class_text = 'image/class/text'
   image_class_label = 'image/class/label'
+  image_class_confidence = 'image/class/confidence'
   object_class_text = 'image/object/class/text'
   object_class_label = 'image/object/class/label'
   object_bbox_ymin = 'image/object/bbox/ymin'

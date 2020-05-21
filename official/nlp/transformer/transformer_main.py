@@ -168,8 +168,6 @@ class TransformerTask(object):
         tpu_address=flags_obj.tpu or "")
     if self.use_tpu:
       params["num_replicas"] = self.distribution_strategy.num_replicas_in_sync
-      if not params["static_batch"]:
-        raise ValueError("TPU requires static batch for input data.")
     else:
       logging.info("Running transformer with num_gpus = %d", num_gpus)
 
@@ -416,7 +414,7 @@ class TransformerTask(object):
                                      params["hidden_size"],
                                      params["learning_rate_warmup_steps"])
     scheduler_callback = optimizer.LearningRateScheduler(sfunc, init_steps)
-    callbacks = misc.get_callbacks(params["steps_between_evals"])
+    callbacks = misc.get_callbacks()
     callbacks.append(scheduler_callback)
     if params["enable_checkpointing"]:
       ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")

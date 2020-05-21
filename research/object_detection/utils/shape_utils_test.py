@@ -24,6 +24,14 @@ import tensorflow as tf
 
 from object_detection.utils import shape_utils
 
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import framework as contrib_framework
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
+
 
 class UtilTest(tf.test.TestCase):
 
@@ -124,7 +132,7 @@ class UtilTest(tf.test.TestCase):
     tensor = tf.placeholder(tf.float32, shape=(None, 2, 3))
     combined_shape = shape_utils.combined_static_and_dynamic_shape(
         tensor)
-    self.assertTrue(tf.contrib.framework.is_tensor(combined_shape[0]))
+    self.assertTrue(contrib_framework.is_tensor(combined_shape[0]))
     self.assertListEqual(combined_shape[1:], [2, 3])
 
   def test_pad_or_clip_nd_tensor(self):

@@ -220,14 +220,6 @@ def run_ncf(_):
   params = ncf_common.parse_flags(FLAGS)
   params["distribute_strategy"] = strategy
 
-  if not keras_utils.is_v2_0() and strategy is not None:
-    logging.error("NCF Keras only works with distribution strategy in TF 2.0")
-    return
-  if (params["keras_use_ctl"] and (
-      not keras_utils.is_v2_0() or strategy is None)):
-    logging.error(
-        "Custom training loop only works with tensorflow 2.0 and dist strat.")
-    return
   if params["use_tpu"] and not params["keras_use_ctl"]:
     logging.error("Custom training loop must be used when using TPUStrategy.")
     return
