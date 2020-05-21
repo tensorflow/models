@@ -64,7 +64,8 @@ def _create_bert_model(cfg):
       sequence_length=cfg.max_position_embeddings,
       type_vocab_size=cfg.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=cfg.initializer_range))
+          stddev=cfg.initializer_range),
+      embedding_width=cfg.embedding_size)
 
   return bert_encoder
 
