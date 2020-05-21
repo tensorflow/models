@@ -112,8 +112,11 @@ def main(argv):
         im = np.array(_PilLoader(input_image_filename).crop(bbox))
 
         # Extract and save features.
-        (locations_out, descriptors_out, feature_scales_out,
-         attention_out) = extractor_fn(im)
+        extracted_features = extractor_fn(im)
+        locations_out = extracted_features['local_features']['locations']
+        descriptors_out = extracted_features['local_features']['descriptors']
+        feature_scales_out = extracted_features['local_features']['scales']
+        attention_out = extracted_features['local_features']['attention']
 
         feature_io.WriteToFile(output_feature_filename, locations_out,
                                feature_scales_out, descriptors_out,
