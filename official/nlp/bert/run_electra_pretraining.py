@@ -23,7 +23,7 @@ from absl import logging
 import gin
 import tensorflow as tf
 
-from official.modeling import model_training_utils
+from official.nlp.bert import model_training_utils
 from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import electra_model

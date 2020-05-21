@@ -23,9 +23,10 @@ import json
 import six
 import tensorflow as tf
 from official.nlp.bert import configs
+from official.modeling.hyperparams import base_config
 
-class ElectraConfig(object):
-  """Configuration for `BertModel`."""
+class ElectraConfig(base_config.Config):
+  """Configuration for `ElectraModel`."""
 
   def __init__(self,
                vocab_size,

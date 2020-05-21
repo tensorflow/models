@@ -138,9 +138,6 @@ def _scatter_update(og, maskedlm_ids, tokids):
     B, L = sequence_shape
     N = maskedlm_ids.shape[1]
     shift = tf.reshape(tf.range(0, B, dtype=tf.int32) * L, [-1, 1])
-    print("discrim outputs")
-    print(shift)
-    print(maskedlm_ids)
     flat_positions = tf.reshape(maskedlm_ids+shift, [-1, 1])
     flat_updates = tf.reshape(tokids, [-1])
     updates = tf.scatter_nd(flat_positions, flat_updates, [B * L])
