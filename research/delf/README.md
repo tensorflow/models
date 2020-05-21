@@ -6,11 +6,9 @@
 This project presents code for extracting local and global image features, which
 are particularly useful for large-scale instance-level image recognition. These
 were introduced in the [DELF](https://arxiv.org/abs/1612.06321),
-[Detect-to-Retrieve](https://arxiv.org/abs/1812.01584) and
-[DELG](https://arxiv.org/abs/2001.05027) papers.
-
-We also released pre-trained models based on the
-[Google Landmarks dataset](https://www.kaggle.com/google/google-landmarks-dataset).
+[Detect-to-Retrieve](https://arxiv.org/abs/1812.01584),
+[DELG](https://arxiv.org/abs/2001.05027) and
+[Google Landmarks Dataset v2](https://arxiv.org/abs/2004.01804) papers.
 
 The pre-trained models released here have been optimized for landmark
 recognition, so expect it to work well in this area. We also provide tensorflow
@@ -45,8 +43,20 @@ B. Cao*, A. Araujo* and J. Sim,
 arxiv:2001.05027
 ```
 
+GLDv2:
+[![Paper](http://img.shields.io/badge/paper-arXiv.2004.01804-B3181B.svg)](https://arxiv.org/abs/2004.01804)
+
+```
+"Google Landmarks Dataset v2 - A Large-Scale Benchmark for Instance-Level Recognition and Retrieval",
+T. Weyand*, A. Araujo*, B. Cao and J. Sim,
+Proc. CVPR'20
+```
+
 ## News
 
+-   [Apr'20] Check out our CVPR'20 paper: ["Google Landmarks Dataset v2 - A
+    Large-Scale Benchmark for Instance-Level Recognition and
+    Retrieval"](https://arxiv.org/abs/2004.01804)
 -   [Jan'20] Check out our new paper:
     ["Unifying Deep Local and Global Features for Image Search"](https://arxiv.org/abs/2001.05027)
 -   [Jun'19] DELF achieved 2nd place in
@@ -63,7 +73,7 @@ arxiv:2001.05027
 -   [Mar'18] DELF is now available in
     [TF-Hub](https://www.tensorflow.org/hub/modules/google/delf/1)
 
-## Dataset
+## Datasets
 
 We have two Google-Landmarks dataset versions:
 
@@ -97,23 +107,29 @@ sections for examples on how to use the models.
 
 **DELF pre-trained on the Google-Landmarks dataset v1**
 ([link](http://storage.googleapis.com/delf/delf_gld_20190411.tar.gz)). Presented
-in the [CVPR'19 Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584).
-Boosts performance by ~4% mAP compared to ICCV'17 DELF model.
+in the [Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584). Boosts
+performance by ~4% mAP compared to ICCV'17 DELF model.
+
+**DELG pre-trained on the Google-Landmarks dataset v1**
+([link](http://storage.googleapis.com/delf/delg_gld_20200520.tar.gz)). Presented
+in the [DELG paper](https://arxiv.org/abs/2001.05027).
+
+**RN101-ArcFace pre-trained on the Google-Landmarks dataset v2 (train-clean)**
+([link](https://storage.googleapis.com/delf/rn101_af_gldv2clean_20200521.tar.gz)).
+Presented in the [GLDv2 paper](https://arxiv.org/abs/2004.01804).
 
 **DELF pre-trained on Landmarks-Clean/Landmarks-Full dataset**
 ([link](http://storage.googleapis.com/delf/delf_v1_20171026.tar.gz)). Presented
-in the [ICCV'17 DELF paper](https://arxiv.org/abs/1612.06321), model was trained
-on the dataset released by the [DIR paper](https://arxiv.org/abs/1604.01325).
+in the [DELF paper](https://arxiv.org/abs/1612.06321), model was trained on the
+dataset released by the [DIR paper](https://arxiv.org/abs/1604.01325).
 
 **Faster-RCNN detector pre-trained on Google Landmark Boxes**
 ([link](http://storage.googleapis.com/delf/d2r_frcnn_20190411.tar.gz)).
-Presented in the
-[CVPR'19 Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584).
+Presented in the [Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584).
 
 **MobileNet-SSD detector pre-trained on Google Landmark Boxes**
 ([link](http://storage.googleapis.com/delf/d2r_mnetssd_20190411.tar.gz)).
-Presented in the
-[CVPR'19 Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584).
+Presented in the [Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584).
 
 Besides these, we also release pre-trained codebooks for local feature
 aggregation. See the
@@ -135,6 +151,13 @@ Please follow [these instructions](delf/python/training/README.md).
 
 Please follow [these instructions](delf/python/delg/DELG_INSTRUCTIONS.md). At
 the end, you should obtain image retrieval results on the Revisited Oxford/Paris
+datasets.
+
+### GLDv2 baseline
+
+Please follow
+[these instructions](delf/python/google_landmarks_dataset/README.md). At the
+end, you should obtain image retrieval results on the Revisited Oxford/Paris
 datasets.
 
 ### Landmark detection
@@ -238,6 +261,8 @@ scripts/modules for computing GLD metrics:
     input predictions and solution files.
 -   `dataset_file_io.py` is a module for dataset-related file IO.
 -   `metrics.py` is a module for GLD metric computation.
+-   `rn101_af_gldv2clean_config.pbtxt` gives the DelfConfig used in the
+    ResNet101-ArcFace (trained on GLDv2-train-clean) baseline used in the paper.
 
 The subdirectory `delf/python/training` contains sample scripts/modules for
 performing DELF training:
@@ -261,6 +286,14 @@ various modules.
 Andr&eacute; Araujo (@andrefaraujo)
 
 ## Release history
+
+### May, 2020
+
+-   Codebase is now Python3-first
+-   DELG model/code released
+-   GLDv2 baseline model released
+
+**Thanks to contributors**: Barbara Fusinska and Andr&eacute; Araujo.
 
 ### April, 2020 (version 2.0)
 
