@@ -98,6 +98,7 @@ class MaskRCNNClassHead(head.Head):
       class_predictions_with_background = slim.fully_connected(
           flattened_roi_pooled_features,
           self._num_class_slots,
+          reuse=tf.AUTO_REUSE,
           activation_fn=None,
           scope=self._scope)
     class_predictions_with_background = tf.reshape(

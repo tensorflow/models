@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import six
 import tensorflow as tf
 
 from object_detection.core import standard_fields
@@ -61,18 +62,21 @@ def tf_example_from_annotations_data_frame(annotations_data_frame, label_map,
           dataset_util.float_list_feature(
               filtered_data_frame_boxes.XMax.as_matrix()),
       standard_fields.TfExampleFields.object_class_text:
-          dataset_util.bytes_list_feature(
-              filtered_data_frame_boxes.LabelName.as_matrix()),
+          dataset_util.bytes_list_feature([
+              six.ensure_binary(label_text)
+              for label_text in filtered_data_frame_boxes.LabelName.as_matrix()
+          ]),
       standard_fields.TfExampleFields.object_class_label:
           dataset_util.int64_list_feature(
-              filtered_data_frame_boxes.LabelName.map(lambda x: label_map[x])
-              .as_matrix()),
+              filtered_data_frame_boxes.LabelName.map(
+                  lambda x: label_map[x]).as_matrix()),
       standard_fields.TfExampleFields.filename:
-          dataset_util.bytes_feature('{}.jpg'.format(image_id)),
+          dataset_util.bytes_feature(
+              six.ensure_binary('{}.jpg'.format(image_id))),
       standard_fields.TfExampleFields.source_id:
-          dataset_util.bytes_feature(image_id),
+          dataset_util.bytes_feature(six.ensure_binary(image_id)),
       standard_fields.TfExampleFields.image_encoded:
-          dataset_util.bytes_feature(encoded_image),
+          dataset_util.bytes_feature(six.ensure_binary(encoded_image)),
   }
 
   if 'IsGroupOf' in filtered_data_frame.columns:
@@ -100,7 +104,9 @@ def tf_example_from_annotations_data_frame(annotations_data_frame, label_map,
                 image_class_label] = dataset_util.int64_list_feature(
                     filtered_data_frame_labels.LabelName.map(
                         lambda x: label_map[x]).as_matrix())
-    feature_map[standard_fields.TfExampleFields.
-                image_class_text] = dataset_util.bytes_list_feature(
-                    filtered_data_frame_labels.LabelName.as_matrix()),
+    feature_map[standard_fields.TfExampleFields
+                .image_class_text] = dataset_util.bytes_list_feature([
+                    six.ensure_binary(label_text) for label_text in
+                    filtered_data_frame_labels.LabelName.as_matrix()
+                ]),
   return tf.train.Example(features=tf.train.Features(feature=feature_map))

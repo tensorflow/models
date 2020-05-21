@@ -66,4 +66,4 @@ compile and install the TensorFlow Lite Android demo app.
 At various points throughout the tutorial, you may see references to the
 *research directory*.  This refers to the `research` folder within the
 models repository, located at
-`/tensorflow/models/resesarch`.
+`/tensorflow/models/research`.

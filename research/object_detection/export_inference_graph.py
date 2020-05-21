@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +63,7 @@ Notes:
 
 Example Usage:
 --------------
-python export_inference_graph \
+python export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path path/to/ssd_inception_v2.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
@@ -87,7 +88,7 @@ eval config.
 Example Usage (in which we change the second stage post-processing score
 threshold to be 0.5):
 
-python export_inference_graph \
+python export_inference_graph.py \
     --input_type image_tensor \
     --pipeline_config_path path/to/ssd_inception_v2.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
@@ -108,7 +109,6 @@ from google.protobuf import text_format
 from object_detection import exporter
 from object_detection.protos import pipeline_pb2
 
-slim = tf.contrib.slim
 flags = tf.app.flags
 
 flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '

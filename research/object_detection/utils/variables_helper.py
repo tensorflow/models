@@ -25,9 +25,8 @@ import re
 
 import tensorflow as tf
 
+from tensorflow.contrib import slim
 from tensorflow.python.ops import variables as tf_variables
-
-slim = tf.contrib.slim
 
 
 # TODO(derekjchow): Consider replacing with tf.contrib.filter_variables in

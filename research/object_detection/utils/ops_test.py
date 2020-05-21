@@ -27,7 +27,14 @@ from object_detection.core import standard_fields as fields
 from object_detection.utils import ops
 from object_detection.utils import test_case
 
-slim = tf.contrib.slim
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import framework as contrib_framework
+  from tensorflow.contrib import slim
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
 
 
 class NormalizedToImageCoordinatesTest(tf.test.TestCase):
@@ -760,7 +767,7 @@ class OpsTestNormalizeToTarget(tf.test.TestCase):
     with self.test_session():
       output = ops.normalize_to_target(inputs, target_norm_value, dim)
       self.assertEqual(output.op.name, 'NormalizeToTarget/mul')
-      var_name = tf.contrib.framework.get_variables()[0].name
+      var_name = contrib_framework.get_variables()[0].name
       self.assertEqual(var_name, 'NormalizeToTarget/weights:0')
 
   def test_invalid_dim(self):

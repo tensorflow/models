@@ -19,23 +19,21 @@ from __future__ import division
 from __future__ import print_function
 
 # pylint: disable=g-bad-import-order
-import copy
 import json
-import os
 import time
 
 from absl import flags
-from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
-from official.benchmark import bert_benchmark_utils as benchmark_utils
+from official.benchmark import benchmark_wrappers
+from official.benchmark import perfzero_benchmark
 from official.utils.flags import core as flags_core
-from official.utils.testing import benchmark_wrappers
+from official.utils.misc import keras_utils
 from official.vision.detection import main as detection
+from official.vision.detection.configs import base_config
 
-TMP_DIR = os.getenv('TMPDIR')
 FLAGS = flags.FLAGS
 
 # pylint: disable=line-too-long
@@ -46,51 +44,41 @@ RESNET_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/retinanet/resnet50-checkpoi
 # pylint: enable=line-too-long
 
 
-class DetectionBenchmarkBase(tf.test.Benchmark):
+class TimerCallback(keras_utils.TimeHistory):
+  """TimeHistory subclass for benchmark reporting."""
+
+  def get_examples_per_sec(self, warmup=1):
+    # First entry in timestamp_log is the start of the step 1. The rest of the
+    # entries are the end of each step recorded.
+    time_log = self.timestamp_log
+    seconds = time_log[-1].timestamp - time_log[warmup].timestamp
+    steps = time_log[-1].batch_index - time_log[warmup].batch_index
+    return self.batch_size * steps / seconds
+
+  def get_startup_time(self, start_time_sec):
+    return self.timestamp_log[0].timestamp - start_time_sec
+
+
+class DetectionBenchmarkBase(perfzero_benchmark.PerfZeroBenchmark):
   """Base class to hold methods common to test classes."""
-  local_flags = None
 
-  def __init__(self, output_dir=None):
-    self.num_gpus = 8
-
-    if not output_dir:
-      output_dir = '/tmp'
-    self.output_dir = output_dir
+  def __init__(self, **kwargs):
+    super(DetectionBenchmarkBase, self).__init__(**kwargs)
     self.timer_callback = None
 
-  def _get_model_dir(self, folder_name):
-    """Returns directory to store info, e.g. saved model and event log."""
-    return os.path.join(self.output_dir, folder_name)
-
-  def _setup(self):
-    """Sets up and resets flags before each test."""
-    self.timer_callback = benchmark_utils.BenchmarkTimerCallback()
-
-    if DetectionBenchmarkBase.local_flags is None:
-      # Loads flags to get defaults to then override. List cannot be empty.
-      flags.FLAGS(['foo'])
-      saved_flag_values = flagsaver.save_flag_values()
-      DetectionBenchmarkBase.local_flags = saved_flag_values
-    else:
-      flagsaver.restore_flag_values(DetectionBenchmarkBase.local_flags)
-
-  def _report_benchmark(self,
-                        stats,
-                        wall_time_sec,
-                        min_ap,
-                        max_ap,
-                        train_batch_size=None):
+  def _report_benchmark(self, stats, start_time_sec, wall_time_sec, min_ap,
+                        max_ap, warmup):
     """Report benchmark results by writing to local protobuf file.
 
     Args:
       stats: dict returned from Detection models with known entries.
-      wall_time_sec: the during of the benchmark execution in seconds
+      start_time_sec: the start of the benchmark execution in seconds
+      wall_time_sec: the duration of the benchmark execution in seconds
       min_ap: Minimum detection AP constraint to verify correctness of the
         model.
       max_ap: Maximum detection AP accuracy constraint to verify correctness of
         the model.
-      train_batch_size: Train batch size. It is needed for computing
-        exp_per_second.
+      warmup: Number of time log entries to ignore when computing examples/sec.
     """
     metrics = [{
         'name': 'total_loss',
@@ -99,7 +87,11 @@ class DetectionBenchmarkBase(tf.test.Benchmark):
     if self.timer_callback:
       metrics.append({
           'name': 'exp_per_second',
-          'value': self.timer_callback.get_examples_per_sec(train_batch_size)
+          'value': self.timer_callback.get_examples_per_sec(warmup)
+      })
+      metrics.append({
+          'name': 'startup_time',
+          'value': self.timer_callback.get_startup_time(start_time_sec)
       })
     else:
       metrics.append({
@@ -125,17 +117,17 @@ class DetectionBenchmarkBase(tf.test.Benchmark):
 class RetinanetBenchmarkBase(DetectionBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
 
-  def __init__(self, output_dir=None, **kwargs):
+  def __init__(self, **kwargs):
     self.train_data_path = COCO_TRAIN_DATA
     self.eval_data_path = COCO_EVAL_DATA
     self.eval_json_path = COCO_EVAL_JSON
     self.resnet_checkpoint_path = RESNET_CHECKPOINT_PATH
-
-    super(RetinanetBenchmarkBase, self).__init__(output_dir=output_dir)
+    super(RetinanetBenchmarkBase, self).__init__(**kwargs)
 
   def _run_detection_main(self):
     """Starts detection job."""
     if self.timer_callback:
+      FLAGS.log_steps = 0  # prevent detection.run from adding the same callback
       return detection.run(callbacks=[self.timer_callback])
     else:
       return detection.run()
@@ -149,37 +141,41 @@ class RetinanetAccuracy(RetinanetBenchmarkBase):
   `benchmark_(number of gpus)_gpu_(dataset type)` format.
   """
 
-  def __init__(self, output_dir=TMP_DIR, **kwargs):
-    super(RetinanetAccuracy, self).__init__(output_dir=output_dir)
-
   @benchmark_wrappers.enable_runtime_flags
-  def _run_and_report_benchmark(self, min_ap=0.325, max_ap=0.35):
+  def _run_and_report_benchmark(self,
+                                params,
+                                min_ap=0.325,
+                                max_ap=0.35,
+                                do_eval=True,
+                                warmup=1):
     """Starts RetinaNet accuracy benchmark test."""
+    FLAGS.params_override = json.dumps(params)
+    # Need timer callback to measure performance
+    self.timer_callback = TimerCallback(
+        batch_size=params['train']['batch_size'],
+        log_steps=FLAGS.log_steps,
+    )
 
     start_time_sec = time.time()
     FLAGS.mode = 'train'
     summary, _ = self._run_detection_main()
     wall_time_sec = time.time() - start_time_sec
 
-    FLAGS.mode = 'eval'
-    eval_metrics = self._run_detection_main()
-    summary.update(eval_metrics)
+    if do_eval:
+      FLAGS.mode = 'eval'
+      eval_metrics = self._run_detection_main()
+      summary.update(eval_metrics)
 
-    summary['train_batch_size'] = self.params_override['train']['batch_size']
-    summary['total_steps'] = self.params_override['train']['total_steps']
-    super(RetinanetAccuracy, self)._report_benchmark(
-        stats=summary,
-        wall_time_sec=wall_time_sec,
-        min_ap=min_ap,
-        max_ap=max_ap,
-        train_batch_size=self.params_override['train']['batch_size'])
+    summary['total_steps'] = params['train']['total_steps']
+    self._report_benchmark(summary, start_time_sec, wall_time_sec, min_ap,
+                           max_ap, warmup)
 
   def _setup(self):
     super(RetinanetAccuracy, self)._setup()
-    FLAGS.strategy_type = 'mirrored'
     FLAGS.model = 'retinanet'
 
-    self.params_override = {
+  def _params(self):
+    return {
         'train': {
             'batch_size': 64,
             'iterations_per_loop': 100,
@@ -189,6 +185,8 @@ class RetinanetAccuracy(RetinanetBenchmarkBase):
                 'path': self.resnet_checkpoint_path,
                 'prefix': 'resnet50/'
             },
+            # Speed up ResNet training when loading from the checkpoint.
+            'frozen_variable_prefix': base_config.RESNET_FROZEN_VAR_PREFIX,
         },
         'eval': {
             'batch_size': 8,
@@ -202,13 +200,11 @@ class RetinanetAccuracy(RetinanetBenchmarkBase):
   def benchmark_8_gpu_coco(self):
     """Run RetinaNet model accuracy test with 8 GPUs."""
     self._setup()
-    params = copy.deepcopy(self.params_override)
-    FLAGS.params_override = json.dumps(params)
+    params = self._params()
+    FLAGS.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_coco')
-    # Sets timer_callback to None as we do not use it now.
-    self.timer_callback = None
-
-    self._run_and_report_benchmark()
+    FLAGS.strategy_type = 'mirrored'
+    self._run_and_report_benchmark(params)
 
 
 class RetinanetBenchmarkReal(RetinanetAccuracy):
@@ -219,15 +215,16 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
   `benchmark_(number of gpus)_gpu` format.
   """
 
-  def __init__(self, output_dir=TMP_DIR, **kwargs):
-    super(RetinanetBenchmarkReal, self).__init__(output_dir=output_dir)
+  def _setup(self):
+    super(RetinanetBenchmarkReal, self)._setup()
+    # Use negative value to avoid saving checkpoints.
+    FLAGS.save_checkpoint_freq = -1
 
   @flagsaver.flagsaver
   def benchmark_8_gpu_coco(self):
     """Run RetinaNet model accuracy test with 8 GPUs."""
-    self.num_gpus = 8
     self._setup()
-    params = copy.deepcopy(self.params_override)
+    params = self._params()
     params['train']['total_steps'] = 1875  # One epoch.
     # The iterations_per_loop must be one, otherwise the number of examples per
     # second would be wrong. Currently only support calling callback per batch
@@ -237,58 +234,52 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     # Related bug: b/135933080
     params['train']['iterations_per_loop'] = 1
     params['eval']['eval_samples'] = 8
-    FLAGS.num_gpus = self.num_gpus
-    FLAGS.params_override = json.dumps(params)
+    FLAGS.num_gpus = 8
     FLAGS.model_dir = self._get_model_dir('real_benchmark_8_gpu_coco')
-    # Use negative value to avoid saving checkpoints.
-    FLAGS.save_checkpoint_freq = -1
-    if self.timer_callback is None:
-      logging.error('Cannot measure performance without timer callback')
-    else:
-      self._run_and_report_benchmark()
+    FLAGS.strategy_type = 'mirrored'
+    self._run_and_report_benchmark(params)
 
   @flagsaver.flagsaver
   def benchmark_1_gpu_coco(self):
     """Run RetinaNet model accuracy test with 1 GPU."""
-    self.num_gpus = 1
     self._setup()
-    params = copy.deepcopy(self.params_override)
+    params = self._params()
     params['train']['batch_size'] = 8
     params['train']['total_steps'] = 200
     params['train']['iterations_per_loop'] = 1
     params['eval']['eval_samples'] = 8
-    FLAGS.num_gpus = self.num_gpus
-    FLAGS.params_override = json.dumps(params)
+    FLAGS.num_gpus = 1
     FLAGS.model_dir = self._get_model_dir('real_benchmark_1_gpu_coco')
     FLAGS.strategy_type = 'one_device'
-    # Use negative value to avoid saving checkpoints.
-    FLAGS.save_checkpoint_freq = -1
-    if self.timer_callback is None:
-      logging.error('Cannot measure performance without timer callback')
-    else:
-      self._run_and_report_benchmark()
+    self._run_and_report_benchmark(params)
 
   @flagsaver.flagsaver
   def benchmark_xla_1_gpu_coco(self):
     """Run RetinaNet model accuracy test with 1 GPU and XLA enabled."""
-    self.num_gpus = 1
     self._setup()
-    params = copy.deepcopy(self.params_override)
+    params = self._params()
     params['train']['batch_size'] = 8
     params['train']['total_steps'] = 200
     params['train']['iterations_per_loop'] = 1
     params['eval']['eval_samples'] = 8
-    FLAGS.num_gpus = self.num_gpus
-    FLAGS.params_override = json.dumps(params)
-    FLAGS.model_dir = self._get_model_dir('real_benchmark_1_gpu_coco')
+    FLAGS.num_gpus = 1
+    FLAGS.model_dir = self._get_model_dir('real_benchmark_xla_1_gpu_coco')
     FLAGS.strategy_type = 'one_device'
     FLAGS.enable_xla = True
-    # Use negative value to avoid saving checkpoints.
-    FLAGS.save_checkpoint_freq = -1
-    if self.timer_callback is None:
-      logging.error('Cannot measure performance without timer callback')
-    else:
-      self._run_and_report_benchmark()
+    self._run_and_report_benchmark(params)
+
+  @flagsaver.flagsaver
+  def benchmark_2x2_tpu_coco(self):
+    """Run RetinaNet model accuracy test with 4 TPUs."""
+    self._setup()
+    params = self._params()
+    params['train']['batch_size'] = 64
+    params['train']['total_steps'] = 1875  # One epoch.
+    params['train']['iterations_per_loop'] = 500
+    FLAGS.model_dir = self._get_model_dir('real_benchmark_2x2_tpu_coco')
+    FLAGS.strategy_type = 'tpu'
+    self._run_and_report_benchmark(params, do_eval=False, warmup=0)
+
 
 if __name__ == '__main__':
   tf.test.main()

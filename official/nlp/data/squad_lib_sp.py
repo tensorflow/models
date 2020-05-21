@@ -26,6 +26,7 @@ import collections
 import copy
 import json
 import math
+import os
 from absl import logging
 import numpy as np
 import tensorflow as tf
@@ -819,6 +820,7 @@ class FeatureWriter(object):
     self.filename = filename
     self.is_training = is_training
     self.num_features = 0
+    tf.io.gfile.makedirs(os.path.dirname(filename))
     self._writer = tf.io.TFRecordWriter(filename)
 
   def process_feature(self, feature):

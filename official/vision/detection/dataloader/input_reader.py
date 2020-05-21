@@ -19,7 +19,7 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from typing import Text, Optional
 from official.modeling.hyperparams import params_dict
@@ -91,7 +91,7 @@ class InputFn(object):
       dataset = dataset.repeat()
 
     dataset = dataset.interleave(
-        map_func=lambda file_name: self._dataset_fn(file_name), cycle_length=32,
+        map_func=self._dataset_fn, cycle_length=32,
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     if self._is_training:

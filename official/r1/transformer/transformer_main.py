@@ -43,8 +43,8 @@ from official.nlp.transformer import compute_bleu
 from official.nlp.transformer.utils import metrics
 from official.nlp.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks_helper
-from official.utils.logs import logger
+from official.r1.utils.logs import hooks_helper
+from official.r1.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 

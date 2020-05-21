@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 from absl import app
 from absl import flags
 from absl import logging
@@ -26,7 +27,6 @@ import tensorflow as tf
 from official.modeling import performance
 from official.staging.training import controller
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
@@ -81,8 +81,8 @@ def get_num_train_iterations(flags_obj):
     train_steps = min(flags_obj.train_steps, train_steps)
     train_epochs = 1
 
-  eval_steps = (
-      imagenet_preprocessing.NUM_IMAGES['validation'] // flags_obj.batch_size)
+  eval_steps = math.ceil(1.0 * imagenet_preprocessing.NUM_IMAGES['validation'] /
+                         flags_obj.batch_size)
 
   return train_steps, train_epochs, eval_steps
 
@@ -109,12 +109,17 @@ def run(flags_obj):
     Dictionary of training and eval stats.
   """
   keras_utils.set_session_config(
-      enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
   performance.set_mixed_precision_policy(flags_core.get_tf_dtype(flags_obj))
 
-  # This only affects GPU.
-  common.set_cudnn_batchnorm_mode()
+  if tf.config.list_physical_devices('GPU'):
+    if flags_obj.tf_gpu_thread_mode:
+      keras_utils.set_gpu_thread_mode_and_count(
+          per_gpu_thread_count=flags_obj.per_gpu_thread_count,
+          gpu_thread_mode=flags_obj.tf_gpu_thread_mode,
+          num_gpus=flags_obj.num_gpus,
+          datasets_num_private_threads=flags_obj.datasets_num_private_threads)
+    common.set_cudnn_batchnorm_mode()
 
   # TODO(anj-s): Set data_format without using Keras.
   data_format = flags_obj.data_format
@@ -162,7 +167,7 @@ def run(flags_obj):
   resnet_controller = controller.Controller(
       strategy,
       runnable.train,
-      runnable.evaluate,
+      runnable.evaluate if not flags_obj.skip_eval else None,
       global_step=runnable.global_step,
       steps_per_loop=steps_per_loop,
       train_steps=per_epoch_steps * train_epochs,
@@ -181,8 +186,7 @@ def run(flags_obj):
 
 def main(_):
   model_helpers.apply_clean(flags.FLAGS)
-  with logger.benchmark_context(flags.FLAGS):
-    stats = run(flags.FLAGS)
+  stats = run(flags.FLAGS)
   logging.info('Run stats:\n%s', stats)
 
 

@@ -68,11 +68,11 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
           "heads (%d)" % (self.hidden_size, self.num_attention_heads))
     self.attention_head_size = int(self.hidden_size / self.num_attention_heads)
 
-  def build(self, unused_input_shapes):
+  def build(self, input_shape):
     # Self attention.
     self.self_attention = layers.CachedAttention(
         num_heads=self.num_attention_heads,
-        head_size=self.attention_head_size,
+        key_size=self.attention_head_size,
         dropout_rate=self.attention_probs_dropout_prob,
         kernel_initializer=self._kernel_initializer,
         name="self_attention")
@@ -90,16 +90,12 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
     # Encoder-decoder attention.
     self.encdec_attention = self._cross_attention_cls(
         num_heads=self.num_attention_heads,
-        head_size=self.attention_head_size,
+        key_size=self.attention_head_size,
         dropout_rate=self.attention_probs_dropout_prob,
+        output_shape=self.hidden_size,
         kernel_initializer=self._kernel_initializer,
         name="attention/encdec")
-    self.encdec_attention_output_dense = layers.DenseEinsum(
-        output_shape=self.hidden_size,
-        num_summed_dimensions=2,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        name="attention/encdec_output")
+
     self.encdec_attention_dropout = tf.keras.layers.Dropout(
         rate=self.hidden_dropout_prob)
     self.encdec_attention_layer_norm = (
@@ -123,14 +119,13 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
     self.output_dropout = tf.keras.layers.Dropout(rate=self.hidden_dropout_prob)
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm", axis=-1, epsilon=1e-12)
-    super(TransformerDecoderBlock, self).build(unused_input_shapes)
+    super(TransformerDecoderBlock, self).build(input_shape)
 
   def common_layers_with_encoder(self):
     """Gets layer objects that can make a Transformer encoder block."""
     return [
-        self.self_attention, self.self_attention_output_dense,
-        self.self_attention_layer_norm, self.intermediate_dense,
-        self.output_dense, self.output_layer_norm
+        self.self_attention, self.self_attention_layer_norm,
+        self.intermediate_dense, self.output_dense, self.output_layer_norm
     ]
 
   def call(self, inputs, cache=None, decode_loop_step=None):
@@ -144,26 +139,21 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
           "TransformerDecoderBlock must have 4 inputs, but it got: %d" %
           len(inputs))
     input_tensor, memory, attention_mask, self_attention_mask = inputs[:4]
-    if cache is None:
-      self_attention_inputs = [input_tensor, input_tensor, self_attention_mask]
-    else:
-      self_attention_inputs = [
-          input_tensor, input_tensor, self_attention_mask, cache
-      ]
+    self_attention_inputs = [input_tensor, input_tensor]
     self_attention_output, cache = self.self_attention(
-        self_attention_inputs, decode_loop_step=decode_loop_step)
-    self_attention_output = self.self_attention_output_dense(
-        self_attention_output)
+        self_attention_inputs,
+        attention_mask=self_attention_mask,
+        cache=cache,
+        decode_loop_step=decode_loop_step)
     self_attention_output = self.self_attention_dropout(self_attention_output)
     self_attention_output = self.self_attention_layer_norm(
         input_tensor + self_attention_output)
 
-    cross_attn_inputs = [self_attention_output, memory, attention_mask]
+    cross_attn_inputs = [self_attention_output, memory]
     if self.multi_channel_cross_attention:
       # Accesses the 5-th input tensor for the doc-attention probabilities.
       cross_attn_inputs.append(inputs[-1])
-    attention_output = self.encdec_attention(cross_attn_inputs)
-    attention_output = self.encdec_attention_output_dense(attention_output)
+    attention_output = self.encdec_attention(cross_attn_inputs, attention_mask)
     attention_output = self.encdec_attention_dropout(attention_output)
     attention_output = self.encdec_attention_layer_norm(self_attention_output +
                                                         attention_output)

@@ -58,6 +58,7 @@ class FasterRCNNInceptionResnetV2KerasFeatureExtractor(
     super(FasterRCNNInceptionResnetV2KerasFeatureExtractor, self).__init__(
         is_training, first_stage_features_stride, batch_norm_trainable,
         weight_decay)
+    self._variable_dict = {}
 
   def preprocess(self, resized_inputs):
     """Faster R-CNN with Inception Resnet v2 preprocessing.
@@ -105,9 +106,12 @@ class FasterRCNNInceptionResnetV2KerasFeatureExtractor(
               include_top=False)
         proposal_features = model.get_layer(
             name='block17_20_ac').output
-        return tf.keras.Model(
+        keras_model = tf.keras.Model(
             inputs=model.inputs,
             outputs=proposal_features)
+        for variable in keras_model.variables:
+          self._variable_dict[variable.name[:-2]] = variable
+        return keras_model
 
   def get_box_classifier_feature_extractor_model(self, name=None):
     """Returns a model that extracts second stage box classifier features.
@@ -143,10 +147,13 @@ class FasterRCNNInceptionResnetV2KerasFeatureExtractor(
         proposal_classifier_features = model.get_layer(
             name='conv_7b_ac').output
 
-        return model_util.extract_submodel(
+        keras_model = model_util.extract_submodel(
             model=model,
             inputs=proposal_feature_maps,
             outputs=proposal_classifier_features)
+        for variable in keras_model.variables:
+          self._variable_dict[variable.name[:-2]] = variable
+        return keras_model
 
   def restore_from_classification_checkpoint_fn(
       self,
@@ -1071,9 +1078,16 @@ class FasterRCNNInceptionResnetV2KerasFeatureExtractor(
     }
 
     variables_to_restore = {}
-    for variable in variables_helper.get_global_variables_safely():
-      var_name = keras_to_slim_name_mapping.get(variable.op.name)
-      if var_name:
-        variables_to_restore[var_name] = variable
+    if tf.executing_eagerly():
+      for key in self._variable_dict:
+        # variable.name includes ":0" at the end, but the names in the
+        # checkpoint do not have the suffix ":0". So, we strip it here.
+        var_name = keras_to_slim_name_mapping.get(key)
+        if var_name:
+          variables_to_restore[var_name] = self._variable_dict[key]
+    else:
+      for variable in variables_helper.get_global_variables_safely():
+        var_name = keras_to_slim_name_mapping.get(variable.op.name)
+        if var_name:
+          variables_to_restore[var_name] = variable
     return variables_to_restore
-

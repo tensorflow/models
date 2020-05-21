@@ -15,11 +15,12 @@
 r"""Tests for detection_inference.py."""
 
 import os
-import StringIO
 
 import numpy as np
 from PIL import Image
+import six
 import tensorflow as tf
+from google.protobuf import text_format
 
 from object_detection.core import standard_fields
 from object_detection.inference import detection_inference
@@ -32,7 +33,7 @@ def get_mock_tfrecord_path():
 
 def create_mock_tfrecord():
   pil_image = Image.fromarray(np.array([[[123, 0, 0]]], dtype=np.uint8), 'RGB')
-  image_output_stream = StringIO.StringIO()
+  image_output_stream = six.BytesIO()
   pil_image.save(image_output_stream, format='png')
   encoded_image = image_output_stream.getvalue()
 
@@ -46,6 +47,7 @@ def create_mock_tfrecord():
   tf_example = tf.train.Example(features=tf.train.Features(feature=feature_map))
   with tf.python_io.TFRecordWriter(get_mock_tfrecord_path()) as writer:
     writer.write(tf_example.SerializeToString())
+  return encoded_image
 
 
 def get_mock_graph_path():
@@ -76,7 +78,7 @@ class InferDetectionsTests(tf.test.TestCase):
 
   def test_simple(self):
     create_mock_graph()
-    create_mock_tfrecord()
+    encoded_image = create_mock_tfrecord()
 
     serialized_example_tensor, image_tensor = detection_inference.build_input(
         [get_mock_tfrecord_path()])
@@ -94,8 +96,8 @@ class InferDetectionsTests(tf.test.TestCase):
       tf_example = detection_inference.infer_detections_and_add_to_example(
           serialized_example_tensor, detected_boxes_tensor,
           detected_scores_tensor, detected_labels_tensor, False)
-
-    self.assertProtoEquals(r"""
+    expected_example = tf.train.Example()
+    text_format.Merge(r"""
         features {
           feature {
             key: "image/detection/bbox/ymin"
@@ -116,16 +118,13 @@ class InferDetectionsTests(tf.test.TestCase):
             key: "image/detection/score"
             value { float_list { value: [0.1, 0.2] } } }
           feature {
-            key: "image/encoded"
-            value { bytes_list { value:
-              "\211PNG\r\n\032\n\000\000\000\rIHDR\000\000\000\001\000\000"
-              "\000\001\010\002\000\000\000\220wS\336\000\000\000\022IDATx"
-              "\234b\250f`\000\000\000\000\377\377\003\000\001u\000|gO\242"
-              "\213\000\000\000\000IEND\256B`\202" } } }
-          feature {
             key: "test_field"
-            value { float_list { value: [1.0, 2.0, 3.0, 4.0] } } } }
-    """, tf_example)
+            value { float_list { value: [1.0, 2.0, 3.0, 4.0] } } } }""",
+                      expected_example)
+    expected_example.features.feature[
+        standard_fields.TfExampleFields
+        .image_encoded].CopyFrom(dataset_util.bytes_feature(encoded_image))
+    self.assertProtoEquals(expected_example, tf_example)
 
   def test_discard_image(self):
     create_mock_graph()

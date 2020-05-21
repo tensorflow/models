@@ -23,13 +23,12 @@ from absl import flags
 from absl import logging
 import numpy as np
 import tensorflow as tf
+from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_model
 from official.benchmark.models import synthetic_util
 from official.utils.flags import core as flags_core
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-from official.vision.image_classification.resnet import cifar_preprocessing
 from official.vision.image_classification.resnet import common
 
 
@@ -120,7 +119,6 @@ def run(flags_obj):
     Dictionary of training and eval stats.
   """
   keras_utils.set_session_config(
-      enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
 
   # Execute flag override logic for better model performance
@@ -214,7 +212,7 @@ def run(flags_obj):
 
   train_epochs = flags_obj.train_epochs
 
-  callbacks = common.get_callbacks(steps_per_epoch)
+  callbacks = common.get_callbacks()
 
   if not flags_obj.use_tensor_lr:
     lr_callback = LearningRateBatchScheduler(
@@ -277,8 +275,7 @@ def define_cifar_flags():
 
 
 def main(_):
-  with logger.benchmark_context(flags.FLAGS):
-    return run(flags.FLAGS)
+  return run(flags.FLAGS)
 
 
 if __name__ == '__main__':

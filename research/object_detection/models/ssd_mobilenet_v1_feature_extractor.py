@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -136,4 +137,4 @@ class SSDMobileNetV1FeatureExtractor(ssd_meta_arch.SSDFeatureExtractor):
             insert_1x1_conv=True,
             image_features=image_features)
 
-    return feature_maps.values()
+    return list(feature_maps.values())

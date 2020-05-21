@@ -17,6 +17,10 @@ adaptation by transfering the visual style of the target domain (which has few
 or no labels) to a source domain (which has many labels). This is accomplished
 using a Generative Adversarial Network (GAN).
 
+### Other implementations
+* [Simplified-DSN](https://github.com/AmirHussein96/Simplified-DSN): 
+  An unofficial implementation of the [Domain Separation Networks paper](https://arxiv.org/abs/1608.06019).
+
 ## Contact
 The domain separation code was open-sourced
 by [Konstantinos Bousmalis](https://github.com/bousmalis)
@@ -26,13 +30,8 @@ open-sourced by [David Dohan](https://github.com/dmrd) (ddohan@google.com).
 ## Installation
 You will need to have the following installed on your machine before trying out the DSN code.
 
-*  Tensorflow: https://www.tensorflow.org/install/
+*  TensorFlow 1.x: https://www.tensorflow.org/install/
 *  Bazel: https://bazel.build/
-
-## Important Note
-We are working to open source the pose estimation dataset. For now, the MNIST to
-MNIST-M dataset is available. Check back here in a few weeks or wait for a
-relevant announcement from [@bousmalis](https://twitter.com/bousmalis).
 
 ## Initial setup
 In order to run the MNIST to MNIST-M experiments, you will need to set the
@@ -60,8 +59,6 @@ The MNIST-M dataset is available online [here](http://bit.ly/2nrlUAJ).  Once it 
 ```
 $ bazel run domain_adaptation/datasets:download_and_convert_mnist_m -- --dataset_dir $DSN_DATA_DIR
 ```
-
-
 
 # Running PixelDA from MNIST to MNIST-M
 You can run PixelDA as follows (using Tensorboard to examine the results):

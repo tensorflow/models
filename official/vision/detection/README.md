@@ -113,7 +113,7 @@ predict:
 architecture:
  use_bfloat16: False
 retinanet_parser:
- use_bfloat16: Flase
+ use_bfloat16: False
 train:
  total_steps: 1
  batch_size: 8
@@ -225,7 +225,7 @@ predict:
 architecture:
  use_bfloat16: False
 maskrcnn_parser:
- use_bfloat16: Flase
+ use_bfloat16: False
 train:
  total_steps: 1000
  batch_size: 8

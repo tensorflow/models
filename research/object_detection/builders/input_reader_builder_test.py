@@ -54,6 +54,48 @@ class InputReaderBuilderTest(tf.test.TestCase):
 
     return path
 
+  def create_tf_record_with_context(self):
+    path = os.path.join(self.get_temp_dir(), 'tfrecord')
+    writer = tf.python_io.TFRecordWriter(path)
+
+    image_tensor = np.random.randint(255, size=(4, 5, 3)).astype(np.uint8)
+    flat_mask = (4 * 5) * [1.0]
+    context_features = (10 * 3) * [1.0]
+    with self.test_session():
+      encoded_jpeg = tf.image.encode_jpeg(tf.constant(image_tensor)).eval()
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded':
+                    dataset_util.bytes_feature(encoded_jpeg),
+                'image/format':
+                    dataset_util.bytes_feature('jpeg'.encode('utf8')),
+                'image/height':
+                    dataset_util.int64_feature(4),
+                'image/width':
+                    dataset_util.int64_feature(5),
+                'image/object/bbox/xmin':
+                    dataset_util.float_list_feature([0.0]),
+                'image/object/bbox/xmax':
+                    dataset_util.float_list_feature([1.0]),
+                'image/object/bbox/ymin':
+                    dataset_util.float_list_feature([0.0]),
+                'image/object/bbox/ymax':
+                    dataset_util.float_list_feature([1.0]),
+                'image/object/class/label':
+                    dataset_util.int64_list_feature([2]),
+                'image/object/mask':
+                    dataset_util.float_list_feature(flat_mask),
+                'image/context_features':
+                    dataset_util.float_list_feature(context_features),
+                'image/context_feature_length':
+                    dataset_util.int64_list_feature([10]),
+            }))
+    writer.write(example.SerializeToString())
+    writer.close()
+
+    return path
+
   def test_build_tf_record_input_reader(self):
     tf_record_path = self.create_tf_record()
 
@@ -71,17 +113,52 @@ class InputReaderBuilderTest(tf.test.TestCase):
     with tf.train.MonitoredSession() as sess:
       output_dict = sess.run(tensor_dict)
 
-    self.assertTrue(fields.InputDataFields.groundtruth_instance_masks
-                    not in output_dict)
-    self.assertEquals(
-        (4, 5, 3), output_dict[fields.InputDataFields.image].shape)
-    self.assertEquals(
-        [2], output_dict[fields.InputDataFields.groundtruth_classes])
-    self.assertEquals(
+    self.assertNotIn(fields.InputDataFields.groundtruth_instance_masks,
+                     output_dict)
+    self.assertEqual((4, 5, 3), output_dict[fields.InputDataFields.image].shape)
+    self.assertEqual([2],
+                     output_dict[fields.InputDataFields.groundtruth_classes])
+    self.assertEqual(
         (1, 4), output_dict[fields.InputDataFields.groundtruth_boxes].shape)
     self.assertAllEqual(
         [0.0, 0.0, 1.0, 1.0],
         output_dict[fields.InputDataFields.groundtruth_boxes][0])
+
+  def test_build_tf_record_input_reader_with_context(self):
+    tf_record_path = self.create_tf_record_with_context()
+
+    input_reader_text_proto = """
+      shuffle: false
+      num_readers: 1
+      tf_record_input_reader {{
+        input_path: '{0}'
+      }}
+    """.format(tf_record_path)
+    input_reader_proto = input_reader_pb2.InputReader()
+    text_format.Merge(input_reader_text_proto, input_reader_proto)
+    input_reader_proto.load_context_features = True
+    tensor_dict = input_reader_builder.build(input_reader_proto)
+
+    with tf.train.MonitoredSession() as sess:
+      output_dict = sess.run(tensor_dict)
+
+    self.assertNotIn(fields.InputDataFields.groundtruth_instance_masks,
+                     output_dict)
+    self.assertEqual((4, 5, 3), output_dict[fields.InputDataFields.image].shape)
+    self.assertEqual([2],
+                     output_dict[fields.InputDataFields.groundtruth_classes])
+    self.assertEqual(
+        (1, 4), output_dict[fields.InputDataFields.groundtruth_boxes].shape)
+    self.assertAllEqual(
+        [0.0, 0.0, 1.0, 1.0],
+        output_dict[fields.InputDataFields.groundtruth_boxes][0])
+    self.assertAllEqual(
+        [0.0, 0.0, 1.0, 1.0],
+        output_dict[fields.InputDataFields.groundtruth_boxes][0])
+    self.assertAllEqual(
+        (3, 10), output_dict[fields.InputDataFields.context_features].shape)
+    self.assertAllEqual(
+        (10), output_dict[fields.InputDataFields.context_feature_length])
 
   def test_build_tf_record_input_reader_and_load_instance_masks(self):
     tf_record_path = self.create_tf_record()
@@ -101,11 +178,10 @@ class InputReaderBuilderTest(tf.test.TestCase):
     with tf.train.MonitoredSession() as sess:
       output_dict = sess.run(tensor_dict)
 
-    self.assertEquals(
-        (4, 5, 3), output_dict[fields.InputDataFields.image].shape)
-    self.assertEquals(
-        [2], output_dict[fields.InputDataFields.groundtruth_classes])
-    self.assertEquals(
+    self.assertEqual((4, 5, 3), output_dict[fields.InputDataFields.image].shape)
+    self.assertEqual([2],
+                     output_dict[fields.InputDataFields.groundtruth_classes])
+    self.assertEqual(
         (1, 4), output_dict[fields.InputDataFields.groundtruth_boxes].shape)
     self.assertAllEqual(
         [0.0, 0.0, 1.0, 1.0],

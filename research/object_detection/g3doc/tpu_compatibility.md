@@ -46,26 +46,16 @@ have static shape:
 
 *   **Groundtruth tensors with static shape** - Images in a typical detection
     dataset have variable number of groundtruth boxes and associated classes.
-    Setting `max_number_of_boxes` to a large enough number in the
-    `train_input_reader` and `eval_input_reader` pads the groundtruth tensors
-    with zeros to a static shape. Padded groundtruth tensors are correctly
-    handled internally within the model.
+    Setting `max_number_of_boxes` to a large enough number in `train_config`
+    pads the groundtruth tensors with zeros to a static shape. Padded
+    groundtruth tensors are correctly handled internally within the model.
 
     ```
-    train_input_reader: {
-      tf_record_input_reader {
-        input_path: "PATH_TO_BE_CONFIGURED/mscoco_train.record-?????-of-00100"
-      }
-      label_map_path: "PATH_TO_BE_CONFIGURED/mscoco_label_map.pbtxt"
+    train_config: {
+      fine_tune_checkpoint: "PATH_TO_BE_CONFIGURED/model.ckpt"
+      batch_size: 64
       max_number_of_boxes: 200
-    }
-
-    eval_input_reader: {
-      tf_record_input_reader {
-        input_path: "PATH_TO_BE_CONFIGURED/mscoco_val.record-?????-of-0010"
-      }
-      label_map_path: "PATH_TO_BE_CONFIGURED/mscoco_label_map.pbtxt"
-      max_number_of_boxes: 200
+      unpad_groundtruth_tensors: false
     }
     ```
 

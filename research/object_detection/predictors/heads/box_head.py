@@ -107,6 +107,7 @@ class MaskRCNNBoxHead(head.Head):
       box_encodings = slim.fully_connected(
           flattened_roi_pooled_features,
           number_of_boxes * self._box_code_size,
+          reuse=tf.AUTO_REUSE,
           activation_fn=None,
           scope='BoxEncodingPredictor')
     box_encodings = tf.reshape(box_encodings,

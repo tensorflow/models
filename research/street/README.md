@@ -1,3 +1,7 @@
+![No Maintenance Intended](https://img.shields.io/badge/No%20Maintenance%20Intended-%E2%9C%95-red.svg)
+![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
+
 # StreetView Tensorflow Recurrent End-to-End Transcription (STREET) Model.
 
 A TensorFlow implementation of the STREET model described in the paper:
@@ -216,9 +220,9 @@ terminated manually.
 ## Training a full FSNS model
 
 After running the tests above, you are ready to train the real thing!
-*Note* that you might want to use a train_dir somewhere other than /tmp as
+*Note* that you might want to use a `train_dir` somewhere other than `/tmp` as
 you can stop the training, reboot if needed and continue if you keep the
-data intact, but /tmp gets deleted on a reboot.
+data intact, but `/tmp` gets deleted on a reboot.
 
 ```
 cd python
@@ -234,7 +238,7 @@ tensorboard --logdir=$train_dir
 ```
 
 Training will take a very long time (probably many weeks) to reach minimum
-error rate on a single machine, although it will probably take substatially
+error rate on a single machine, although it will probably take substantially
 fewer iterations than with parallel training. Faster training can be obtained
 with parallel training on a cluster.
 Since the setup is likely to be very site-specific, please see the TensorFlow

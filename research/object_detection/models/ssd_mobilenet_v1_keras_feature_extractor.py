@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,4 +165,4 @@ class SSDMobileNetV1KerasFeatureExtractor(
         'Conv2d_11_pointwise': image_features[0],
         'Conv2d_13_pointwise': image_features[1]})
 
-    return feature_maps.values()
+    return list(feature_maps.values())

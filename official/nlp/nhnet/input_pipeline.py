@@ -208,7 +208,7 @@ def create_dataset(file_paths,
     else:
       dataset = process_singledoc_transformer_dataset(dataset, batch_size,
                                                       params)
-  dataset = dataset.prefetch(1024)
+  dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
   return dataset
 
 

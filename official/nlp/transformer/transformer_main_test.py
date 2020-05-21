@@ -61,6 +61,7 @@ class TransformerTaskTest(tf.test.TestCase):
     FLAGS.train_steps = 2
     FLAGS.validation_steps = 1
     FLAGS.batch_size = 8
+    FLAGS.max_length = 1
     FLAGS.num_gpus = 1
     FLAGS.distribution_strategy = 'off'
     FLAGS.dtype = 'fp32'

@@ -81,7 +81,7 @@ class DelfFeaturesIoTest(tf.test.TestCase):
   def testWriteAndReadToFile(self):
     locations, scales, descriptors, attention, orientations = create_data()
 
-    tmpdir = tf.test.get_temp_dir()
+    tmpdir = tf.compat.v1.test.get_temp_dir()
     filename = os.path.join(tmpdir, 'test.delf')
     feature_io.WriteToFile(filename, locations, scales, descriptors, attention,
                            orientations)
@@ -94,7 +94,7 @@ class DelfFeaturesIoTest(tf.test.TestCase):
     self.assertAllEqual(orientations, data_read[4])
 
   def testWriteAndReadToFileEmptyFile(self):
-    tmpdir = tf.test.get_temp_dir()
+    tmpdir = tf.compat.v1.test.get_temp_dir()
     filename = os.path.join(tmpdir, 'test.delf')
     feature_io.WriteToFile(filename, np.array([]), np.array([]), np.array([]),
                            np.array([]), np.array([]))

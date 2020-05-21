@@ -29,6 +29,15 @@ import tensorflow as tf
 from object_detection import model_hparams
 from object_detection import model_lib
 
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import cluster_resolver as contrib_cluster_resolver
+  from tensorflow.contrib import tpu as contrib_tpu
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
+
 tf.flags.DEFINE_bool('use_tpu', True, 'Use TPUs rather than plain CPUs')
 
 # Cloud TPU Cluster Resolvers
@@ -85,17 +94,15 @@ def main(unused_argv):
   flags.mark_flag_as_required('pipeline_config_path')
 
   tpu_cluster_resolver = (
-      tf.contrib.cluster_resolver.TPUClusterResolver(
-          tpu=[FLAGS.tpu_name],
-          zone=FLAGS.tpu_zone,
-          project=FLAGS.gcp_project))
+      contrib_cluster_resolver.TPUClusterResolver(
+          tpu=[FLAGS.tpu_name], zone=FLAGS.tpu_zone, project=FLAGS.gcp_project))
   tpu_grpc_url = tpu_cluster_resolver.get_master()
 
-  config = tf.contrib.tpu.RunConfig(
+  config = contrib_tpu.RunConfig(
       master=tpu_grpc_url,
       evaluation_master=tpu_grpc_url,
       model_dir=FLAGS.model_dir,
-      tpu_config=tf.contrib.tpu.TPUConfig(
+      tpu_config=contrib_tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_shards))
 

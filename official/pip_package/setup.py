@@ -57,7 +57,7 @@ if project_name == 'tf-models-nightly':
   version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
   install_requires.append('tf-nightly')
 else:
-  install_requires.append('tensorflow>=2.1.0')
+  install_requires.append('tensorflow>=2.2.0')
 
 print('install_requires: ', install_requires)
 print('dependency_links: ', dependency_links)

@@ -49,9 +49,11 @@ flags.DEFINE_float('warmup_steps', 10000,
                    'Warmup steps for Adam weight decay optimizer.')
 flags.DEFINE_bool('use_next_sentence_label', True,
                   'Whether to use next sentence label to compute final loss.')
+flags.DEFINE_bool('train_summary_interval', 0, 'Step interval for training '
+                  'summaries. If the value is a negative number, '
+                  'then training summaries are not enabled.')
 
 common_flags.define_common_bert_flags()
-common_flags.define_gin_flags()
 
 FLAGS = flags.FLAGS
 
@@ -88,6 +90,7 @@ def get_loss_fn():
 
 def run_customized_training(strategy,
                             bert_config,
+                            init_checkpoint,
                             max_seq_length,
                             max_predictions_per_seq,
                             model_dir,
@@ -100,7 +103,9 @@ def run_customized_training(strategy,
                             optimizer_type,
                             input_files,
                             train_batch_size,
-                            use_next_sentence_label=True):
+                            use_next_sentence_label=True,
+                            train_summary_interval=0,
+                            custom_callbacks=None):
   """Run BERT pretrain model training using low-level API."""
 
   train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
@@ -128,16 +133,19 @@ def run_customized_training(strategy,
       loss_fn=get_loss_fn(),
       scale_loss=FLAGS.scale_loss,
       model_dir=model_dir,
+      init_checkpoint=init_checkpoint,
       train_input_fn=train_input_fn,
       steps_per_epoch=steps_per_epoch,
       steps_per_loop=steps_per_loop,
       epochs=epochs,
-      sub_model_export_name='pretrained/bert_model')
+      sub_model_export_name='pretrained/bert_model',
+      train_summary_interval=train_summary_interval,
+      custom_callbacks=custom_callbacks)
 
   return trained_model
 
 
-def run_bert_pretrain(strategy):
+def run_bert_pretrain(strategy, custom_callbacks=None):
   """Runs BERT pre-training."""
 
   bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
@@ -145,7 +153,7 @@ def run_bert_pretrain(strategy):
     raise ValueError('Distribution strategy is not specified.')
 
   # Runs customized training loop.
-  logging.info('Training using customized training loop TF 2.0 with distrubuted'
+  logging.info('Training using customized training loop TF 2.0 with distributed'
                'strategy.')
 
   performance.set_mixed_precision_policy(common_flags.dtype())
@@ -153,6 +161,7 @@ def run_bert_pretrain(strategy):
   return run_customized_training(
       strategy,
       bert_config,
+      FLAGS.init_checkpoint,  # Used to initialize only the BERT submodel.
       FLAGS.max_seq_length,
       FLAGS.max_predictions_per_seq,
       FLAGS.model_dir,
@@ -165,11 +174,12 @@ def run_bert_pretrain(strategy):
       FLAGS.optimizer_type,
       FLAGS.input_files,
       FLAGS.train_batch_size,
-      FLAGS.use_next_sentence_label)
+      FLAGS.use_next_sentence_label,
+      FLAGS.train_summary_interval,
+      custom_callbacks=custom_callbacks)
 
 
 def main(_):
-  # Users should always run this script under TF 2.x
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'

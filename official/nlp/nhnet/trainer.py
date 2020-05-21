@@ -33,6 +33,7 @@ from official.nlp.nhnet import models
 from official.nlp.nhnet import optimizer
 from official.nlp.transformer import metrics as transformer_metrics
 from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
 
@@ -122,18 +123,6 @@ class Trainer(tf.keras.Model):
     }
 
 
-class SimpleCheckpoint(tf.keras.callbacks.Callback):
-  """Keras callback to save tf.train.Checkpoints."""
-
-  def __init__(self, checkpoint_manager):
-    super(SimpleCheckpoint, self).__init__()
-    self.checkpoint_manager = checkpoint_manager
-
-  def on_epoch_end(self, epoch, logs=None):
-    step_counter = self.checkpoint_manager._step_counter.numpy()
-    self.checkpoint_manager.save(checkpoint_number=step_counter)
-
-
 def train(params, strategy, dataset=None):
   """Runs training."""
 
@@ -168,17 +157,21 @@ def train(params, strategy, dataset=None):
     if checkpoint_manager.restore_or_initialize():
       logging.info("Training restored from the checkpoints in: %s",
                    FLAGS.model_dir)
-    checkpoint_callback = SimpleCheckpoint(checkpoint_manager)
+    checkpoint_callback = keras_utils.SimpleCheckpoint(checkpoint_manager)
 
   # Trains the model.
   steps_per_epoch = min(FLAGS.train_steps, FLAGS.checkpoint_interval)
   epochs = FLAGS.train_steps // steps_per_epoch
-  trainer.fit(
+  history = trainer.fit(
       x=dataset,
       steps_per_epoch=steps_per_epoch,
       epochs=epochs,
       callbacks=[summary_callback, checkpoint_callback],
       verbose=2)
+  train_hist = history.history
+  # Gets final loss from training.
+  stats = dict(training_loss=float(train_hist["training_loss"][-1]))
+  return stats
 
 
 def run():
@@ -208,7 +201,7 @@ def run():
       is_strict=False)
   stats = {}
   if "train" in FLAGS.mode:
-    train(params, strategy)
+    stats = train(params, strategy)
   if "eval" in FLAGS.mode:
     timeout = 0 if FLAGS.mode == "train_and_eval" else 3000
     # Uses padded decoding for TPU. Always uses cache.

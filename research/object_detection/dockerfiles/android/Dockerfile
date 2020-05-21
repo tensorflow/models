@@ -13,6 +13,7 @@
 # limitations under the License.
 # #==========================================================================
 
+# Pull TF nightly-devel docker image
 FROM tensorflow/tensorflow:nightly-devel
 
 # Get the tensorflow models research directory, and move it into tensorflow
@@ -23,7 +24,8 @@ RUN git clone --depth 1 https://github.com/tensorflow/models.git && \
 
 # Install gcloud and gsutil commands
 # https://cloud.google.com/sdk/docs/quickstart-debian-ubuntu
-RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
+RUN apt-get -y update && apt-get install -y gpg-agent && \
+    export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
     echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
     apt-get update -y && apt-get install google-cloud-sdk -y
@@ -32,8 +34,10 @@ RUN export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)" && \
 # Install the Tensorflow Object Detection API from here
 # https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/installation.md
 
-# Install object detection api dependencies
-RUN apt-get install -y protobuf-compiler python-pil python-lxml python-tk && \
+# Install object detection api dependencies - use non-interactive mode to set
+# default tzdata config during installation.
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get install -y protobuf-compiler python-pil python-lxml python-tk && \
     pip install Cython && \
     pip install contextlib2 && \
     pip install jupyter && \
@@ -130,7 +134,7 @@ RUN cd /opt && \
 
 # Configure the build to use the things we just downloaded
 RUN cd /tensorflow && \
-    printf '\n\nn\ny\nn\nn\nn\ny\nn\nn\nn\nn\nn\nn\n\ny\n%s\n\n\n' ${ANDROID_HOME}|./configure
+    printf '\n\n\nn\ny\nn\nn\nn\ny\nn\nn\nn\nn\nn\nn\n\ny\n%s\n\n\n' ${ANDROID_HOME}|./configure
 
 
 WORKDIR /tensorflow

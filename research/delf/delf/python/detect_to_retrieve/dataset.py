@@ -40,7 +40,7 @@ def ReadDatasetFile(dataset_file_path):
       array of integers; additionally, it has a key 'bbx' mapping to a NumPy
       array of floats with bounding box coordinates.
   """
-  with tf.gfile.GFile(dataset_file_path, 'rb') as f:
+  with tf.io.gfile.GFile(dataset_file_path, 'rb') as f:
     cfg = matlab.loadmat(f)
 
   # Parse outputs according to the specificities of the dataset file.
@@ -314,3 +314,156 @@ def ComputeMetrics(sorted_index_ids, ground_truth, desired_pr_ranks):
 
   return (mean_average_precision, mean_precisions, mean_recalls,
           average_precisions, precisions, recalls)
+
+
+def SaveMetricsFile(mean_average_precision, mean_precisions, mean_recalls,
+                    pr_ranks, output_path):
+  """Saves aggregated retrieval metrics to text file.
+
+  Args:
+    mean_average_precision: Dict mapping each dataset protocol to a float.
+    mean_precisions: Dict mapping each dataset protocol to a NumPy array of
+      floats with shape [len(pr_ranks)].
+    mean_recalls: Dict mapping each dataset protocol to a NumPy array of floats
+      with shape [len(pr_ranks)].
+    pr_ranks: List of integers.
+    output_path: Full file path.
+  """
+  with tf.io.gfile.GFile(output_path, 'w') as f:
+    for k in sorted(mean_average_precision.keys()):
+      f.write('{}\n  mAP={}\n  mP@k{} {}\n  mR@k{} {}\n'.format(
+          k, np.around(mean_average_precision[k] * 100, decimals=2),
+          np.array(pr_ranks), np.around(mean_precisions[k] * 100, decimals=2),
+          np.array(pr_ranks), np.around(mean_recalls[k] * 100, decimals=2)))
+
+
+def _ParseSpaceSeparatedStringsInBrackets(line, prefixes, ind):
+  """Parses line containing space-separated strings in brackets.
+
+  Args:
+    line: String, containing line in metrics file with mP@k or mR@k figures.
+    prefixes: Tuple/list of strings, containing valid prefixes.
+    ind: Integer indicating which field within brackets is parsed.
+
+  Yields:
+    entry: String format entry.
+
+  Raises:
+    ValueError: If input line does not contain a valid prefix.
+  """
+  for prefix in prefixes:
+    if line.startswith(prefix):
+      line = line[len(prefix):]
+      break
+  else:
+    raise ValueError('Line %s is malformed, cannot find valid prefixes' % line)
+
+  for entry in line.split('[')[ind].split(']')[0].split():
+    yield entry
+
+
+def _ParsePrRanks(line):
+  """Parses PR ranks from mP@k line in metrics file.
+
+  Args:
+    line: String, containing line in metrics file with mP@k figures.
+
+  Returns:
+    pr_ranks: List of integers, containing used ranks.
+
+  Raises:
+    ValueError: If input line is malformed.
+  """
+  return [
+      int(pr_rank) for pr_rank in _ParseSpaceSeparatedStringsInBrackets(
+          line, ['  mP@k['], 0) if pr_rank
+  ]
+
+
+def _ParsePrScores(line, num_pr_ranks):
+  """Parses PR scores from line in metrics file.
+
+  Args:
+    line: String, containing line in metrics file with mP@k or mR@k figures.
+    num_pr_ranks: Integer, number of scores that should be in output list.
+
+  Returns:
+    pr_scores: List of floats, containing scores.
+
+  Raises:
+    ValueError: If input line is malformed.
+  """
+  pr_scores = [
+      float(pr_score) for pr_score in _ParseSpaceSeparatedStringsInBrackets(
+          line, ('  mP@k[', '  mR@k['), 1) if pr_score
+  ]
+
+  if len(pr_scores) != num_pr_ranks:
+    raise ValueError('Line %s is malformed, expected %d scores but found %d' %
+                     (line, num_pr_ranks, len(pr_scores)))
+
+  return pr_scores
+
+
+def ReadMetricsFile(metrics_path):
+  """Reads aggregated retrieval metrics from text file.
+
+  Args:
+    metrics_path: Full file path, containing aggregated retrieval metrics.
+
+  Returns:
+    mean_average_precision: Dict mapping each dataset protocol to a float.
+    pr_ranks: List of integer ranks used in aggregated recall/precision metrics.
+    mean_precisions: Dict mapping each dataset protocol to a NumPy array of
+      floats with shape [len(`pr_ranks`)].
+    mean_recalls: Dict mapping each dataset protocol to a NumPy array of floats
+      with shape [len(`pr_ranks`)].
+
+  Raises:
+    ValueError: If input file is malformed.
+  """
+  with tf.io.gfile.GFile(metrics_path, 'r') as f:
+    file_contents_stripped = [l.rstrip() for l in f]
+
+  if len(file_contents_stripped) % 4:
+    raise ValueError(
+        'Malformed input %s: number of lines must be a multiple of 4, '
+        'but it is %d' % (metrics_path, len(file_contents_stripped)))
+
+  mean_average_precision = {}
+  pr_ranks = []
+  mean_precisions = {}
+  mean_recalls = {}
+  protocols = set()
+  for i in range(0, len(file_contents_stripped), 4):
+    protocol = file_contents_stripped[i]
+    if protocol in protocols:
+      raise ValueError(
+          'Malformed input %s: protocol %s is found a second time' %
+          (metrics_path, protocol))
+    protocols.add(protocol)
+
+    # Parse mAP.
+    mean_average_precision[protocol] = float(
+        file_contents_stripped[i + 1].split('=')[1]) / 100.0
+
+    # Parse (or check consistency of) pr_ranks.
+    parsed_pr_ranks = _ParsePrRanks(file_contents_stripped[i + 2])
+    if not pr_ranks:
+      pr_ranks = parsed_pr_ranks
+    else:
+      if parsed_pr_ranks != pr_ranks:
+        raise ValueError('Malformed input %s: inconsistent PR ranks' %
+                         metrics_path)
+
+    # Parse mean precisions.
+    mean_precisions[protocol] = np.array(
+        _ParsePrScores(file_contents_stripped[i + 2], len(pr_ranks)),
+        dtype=float) / 100.0
+
+    # Parse mean recalls.
+    mean_recalls[protocol] = np.array(
+        _ParsePrScores(file_contents_stripped[i + 3], len(pr_ranks)),
+        dtype=float) / 100.0
+
+  return mean_average_precision, pr_ranks, mean_precisions, mean_recalls

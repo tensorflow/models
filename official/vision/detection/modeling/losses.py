@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def focal_loss(logits, targets, alpha, gamma, normalizer):
@@ -371,8 +371,8 @@ class MaskrcnnLoss(object):
 class RetinanetClassLoss(object):
   """RetinaNet class loss."""
 
-  def __init__(self, params):
-    self._num_classes = params.num_classes
+  def __init__(self, params, num_classes):
+    self._num_classes = num_classes
     self._focal_loss_alpha = params.focal_loss_alpha
     self._focal_loss_gamma = params.focal_loss_gamma
 

@@ -37,8 +37,6 @@ from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import ncf_input_pipeline
 from official.recommendation import neumf_model
-from official.utils.logs import logger
-from official.utils.logs import mlperf_helper
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
@@ -222,14 +220,6 @@ def run_ncf(_):
   params = ncf_common.parse_flags(FLAGS)
   params["distribute_strategy"] = strategy
 
-  if not keras_utils.is_v2_0() and strategy is not None:
-    logging.error("NCF Keras only works with distribution strategy in TF 2.0")
-    return
-  if (params["keras_use_ctl"] and (
-      not keras_utils.is_v2_0() or strategy is None)):
-    logging.error(
-        "Custom training loop only works with tensorflow 2.0 and dist strat.")
-    return
   if params["use_tpu"] and not params["keras_use_ctl"]:
     logging.error("Custom training loop must be used when using TPUStrategy.")
     return
@@ -551,10 +541,7 @@ def build_stats(loss, eval_result, time_callback):
 
 
 def main(_):
-  with logger.benchmark_context(FLAGS), \
-      mlperf_helper.LOGGER(FLAGS.output_ml_perf_compliance_logging):
-    mlperf_helper.set_ncf_root(os.path.split(os.path.abspath(__file__))[0])
-    run_ncf(FLAGS)
+  logging.info("Result is %s", run_ncf(FLAGS))
 
 
 if __name__ == "__main__":

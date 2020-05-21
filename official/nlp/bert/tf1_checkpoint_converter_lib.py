@@ -47,7 +47,7 @@ BERT_V2_NAME_REPLACEMENTS = (
     ("embeddings/position_embeddings", "position_embedding/embeddings"),
     ("embeddings/LayerNorm", "embeddings/layer_norm"),
     ("attention/self", "self_attention"),
-    ("attention/output/dense", "self_attention_output"),
+    ("attention/output/dense", "self_attention/attention_output"),
     ("attention/output/LayerNorm", "self_attention_layer_norm"),
     ("intermediate/dense", "intermediate"),
     ("output/dense", "output"),
@@ -94,9 +94,9 @@ def _get_permutation(name, permutations):
 
 def _get_new_shape(name, shape, num_heads):
   """Checks whether a variable requires reshape by pattern matching."""
-  if "self_attention_output/kernel" in name:
+  if "self_attention/attention_output/kernel" in name:
     return tuple([num_heads, shape[0] // num_heads, shape[1]])
-  if "self_attention_output/bias" in name:
+  if "self_attention/attention_output/bias" in name:
     return shape
 
   patterns = [

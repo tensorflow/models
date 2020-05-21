@@ -61,7 +61,7 @@ def _PilLoader(path):
   Returns:
     PIL image in RGB format.
   """
-  with tf.gfile.GFile(path, 'rb') as f:
+  with tf.io.gfile.GFile(path, 'rb') as f:
     img = Image.open(f)
     return img.convert('RGB')
 
@@ -70,28 +70,29 @@ def main(argv):
   if len(argv) > 1:
     raise RuntimeError('Too many command-line arguments.')
 
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
 
   # Read list of query images from dataset file.
-  tf.logging.info('Reading list of query images and boxes from dataset file...')
+  tf.compat.v1.logging.info(
+      'Reading list of query images and boxes from dataset file...')
   query_list, _, ground_truth = dataset.ReadDatasetFile(
       cmd_args.dataset_file_path)
   num_images = len(query_list)
-  tf.logging.info('done! Found %d images', num_images)
+  tf.compat.v1.logging.info('done! Found %d images', num_images)
 
   # Parse DelfConfig proto.
   config = delf_config_pb2.DelfConfig()
-  with tf.gfile.GFile(cmd_args.delf_config_path, 'r') as f:
+  with tf.io.gfile.GFile(cmd_args.delf_config_path, 'r') as f:
     text_format.Merge(f.read(), config)
 
   # Create output directory if necessary.
-  if not tf.gfile.Exists(cmd_args.output_features_dir):
-    tf.gfile.MakeDirs(cmd_args.output_features_dir)
+  if not tf.io.gfile.exists(cmd_args.output_features_dir):
+    tf.io.gfile.makedirs(cmd_args.output_features_dir)
 
   with tf.Graph().as_default():
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       # Initialize variables, construct DELF extractor.
-      init_op = tf.global_variables_initializer()
+      init_op = tf.compat.v1.global_variables_initializer()
       sess.run(init_op)
       extractor_fn = extractor.MakeExtractor(sess, config)
 
@@ -102,8 +103,8 @@ def main(argv):
                                             query_image_name + _IMAGE_EXTENSION)
         output_feature_filename = os.path.join(
             cmd_args.output_features_dir, query_image_name + _DELF_EXTENSION)
-        if tf.gfile.Exists(output_feature_filename):
-          tf.logging.info('Skipping %s', query_image_name)
+        if tf.io.gfile.exists(output_feature_filename):
+          tf.compat.v1.logging.info('Skipping %s', query_image_name)
           continue
 
         # Crop query image according to bounding box.

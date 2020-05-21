@@ -30,44 +30,70 @@ _MIN_HEIGHT = 10
 _MIN_WIDTH = 10
 
 
-def ResizeImage(image, config):
+def ResizeImage(image, config, resize_factor=1.0, square_output=False):
   """Resizes image according to config.
 
   Args:
     image: Uint8 array with shape (height, width, 3).
     config: DelfConfig proto containing the model configuration.
+    resize_factor: Optional float resize factor for the input image. If given,
+      the maximum and minimum allowed image sizes in `config` are scaled by this
+      factor. Must be non-negative.
+    square_output: If True, the output image's aspect ratio is potentially
+      distorted and a square image (ie, height=width) is returned. The image is
+      resized such that the largest image side is used in both dimensions.
 
   Returns:
     resized_image: Uint8 array with resized image.
-    scale_factor: Float with factor used for resizing (If upscaling, larger than
-      1; if downscaling, smaller than 1).
+    scale_factors: 2D float array, with factors used for resizing along height
+      and width (If upscaling, larger than 1; if downscaling, smaller than 1).
 
   Raises:
     ValueError: If `image` has incorrect number of dimensions/channels.
   """
+  if resize_factor < 0.0:
+    raise ValueError('negative resize_factor is not allowed: %f' %
+                     resize_factor)
   if image.ndim != 3:
     raise ValueError('image has incorrect number of dimensions: %d' %
                      image.ndims)
   height, width, channels = image.shape
 
+  # Take into account resize factor.
+  max_image_size = resize_factor * config.max_image_size
+  min_image_size = resize_factor * config.min_image_size
+
   if channels != 3:
     raise ValueError('image has incorrect number of channels: %d' % channels)
 
-  if config.max_image_size != -1 and (width > config.max_image_size or
-                                      height > config.max_image_size):
-    scale_factor = config.max_image_size / max(width, height)
-  elif config.min_image_size != -1 and (width < config.min_image_size and
-                                        height < config.min_image_size):
-    scale_factor = config.min_image_size / max(width, height)
+  largest_side = max(width, height)
+
+  if max_image_size >= 0 and largest_side > max_image_size:
+    scale_factor = max_image_size / largest_side
+  elif min_image_size >= 0 and largest_side < min_image_size:
+    scale_factor = min_image_size / largest_side
+  elif square_output and (height != width):
+    scale_factor = 1.0
   else:
     # No resizing needed, early return.
-    return image, 1.0
+    return image, np.ones(2, dtype=float)
 
-  new_shape = (int(width * scale_factor), int(height * scale_factor))
+  # Note that new_shape is in (width, height) format (PIL convention), while
+  # scale_factors are in (height, width) convention (NumPy convention).
+  if square_output:
+    new_shape = (int(round(largest_side * scale_factor)),
+                 int(round(largest_side * scale_factor)))
+  else:
+    new_shape = (int(round(width * scale_factor)),
+                 int(round(height * scale_factor)))
+
+  scale_factors = np.array([new_shape[1] / height, new_shape[0] / width],
+                           dtype=float)
+
   pil_image = Image.fromarray(image)
   resized_image = np.array(pil_image.resize(new_shape, resample=Image.BILINEAR))
 
-  return resized_image, scale_factor
+  return resized_image, scale_factors
 
 
 def MakeExtractor(sess, config, import_scope=None):
@@ -81,8 +107,8 @@ def MakeExtractor(sess, config, import_scope=None):
   Returns:
     Function that receives an image and returns features.
   """
-  tf.saved_model.loader.load(
-      sess, [tf.saved_model.tag_constants.SERVING],
+  tf.compat.v1.saved_model.loader.load(
+      sess, [tf.compat.v1.saved_model.tag_constants.SERVING],
       config.model_path,
       import_scope=import_scope)
   import_scope_prefix = import_scope + '/' if import_scope is not None else ''
@@ -118,7 +144,7 @@ def MakeExtractor(sess, config, import_scope=None):
     Returns:
       Tuple (locations, descriptors, feature_scales, attention)
     """
-    resized_image, scale_factor = ResizeImage(image, config)
+    resized_image, scale_factors = ResizeImage(image, config)
 
     # If the image is too small, returns empty features.
     if resized_image.shape[0] < _MIN_HEIGHT or resized_image.shape[
@@ -134,7 +160,7 @@ def MakeExtractor(sess, config, import_scope=None):
              input_image_scales: list(config.image_scales),
              input_max_feature_num: config.delf_local_config.max_feature_num
          })
-    rescaled_locations_out = locations_out / scale_factor
+    rescaled_locations_out = locations_out / scale_factors
 
     return (rescaled_locations_out, descriptors_out, feature_scales_out,
             attention_out)

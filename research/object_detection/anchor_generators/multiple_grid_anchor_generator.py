@@ -212,7 +212,7 @@ class MultipleGridAnchorGenerator(anchor_generator.AnchorGenerator):
     min_im_shape = tf.minimum(im_height, im_width)
     scale_height = min_im_shape / im_height
     scale_width = min_im_shape / im_width
-    if not tf.contrib.framework.is_tensor(self._base_anchor_size):
+    if not tf.is_tensor(self._base_anchor_size):
       base_anchor_size = [
           scale_height * tf.constant(self._base_anchor_size[0],
                                      dtype=tf.float32),

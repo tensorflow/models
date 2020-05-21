@@ -330,7 +330,7 @@ def _parse_tensorflow_example(record, max_path_len, input_keep_prob):
       lambda: tf.zeros([1, max_path_len, 4], dtype=tf.int64))
 
   # Paths are left-padded. We reverse them to make them right-padded.
-  paths = tf.reverse(paths, axis=[1])
+  #paths = tf.reverse(paths, axis=[1])
 
   path_counts = tf.cond(
       tf.shape(path_counts)[0] > 0,

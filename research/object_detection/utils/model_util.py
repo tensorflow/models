@@ -54,8 +54,8 @@ def extract_submodel(model, inputs, outputs, name=None):
   for layer in model.layers:
     layer_output = layer.output
     layer_inputs = layer.input
-    output_to_layer[layer_output] = layer
-    output_to_layer_input[layer_output] = layer_inputs
+    output_to_layer[layer_output.ref()] = layer
+    output_to_layer_input[layer_output.ref()] = layer_inputs
 
   model_inputs_dict = {}
   memoized_results = {}
@@ -63,20 +63,21 @@ def extract_submodel(model, inputs, outputs, name=None):
   # Relies on recursion, very low limit in python
   def _recurse_in_model(tensor):
     """Walk the existing model recursively to copy a submodel."""
-    if tensor in memoized_results:
-      return memoized_results[tensor]
-    if (tensor == inputs) or (isinstance(inputs, list) and tensor in inputs):
-      if tensor not in model_inputs_dict:
-        model_inputs_dict[tensor] = tf.keras.layers.Input(tensor=tensor)
-      out = model_inputs_dict[tensor]
+    if tensor.ref() in memoized_results:
+      return memoized_results[tensor.ref()]
+    if (tensor.ref() == inputs.ref()) or (
+        isinstance(inputs, list) and tensor in inputs):
+      if tensor.ref() not in model_inputs_dict:
+        model_inputs_dict[tensor.ref()] = tf.keras.layers.Input(tensor=tensor)
+      out = model_inputs_dict[tensor.ref()]
     else:
-      cur_inputs = output_to_layer_input[tensor]
-      cur_layer = output_to_layer[tensor]
+      cur_inputs = output_to_layer_input[tensor.ref()]
+      cur_layer = output_to_layer[tensor.ref()]
       if isinstance(cur_inputs, list):
         out = cur_layer([_recurse_in_model(inp) for inp in cur_inputs])
       else:
         out = cur_layer(_recurse_in_model(cur_inputs))
-    memoized_results[tensor] = out
+    memoized_results[tensor.ref()] = out
     return out
 
   if isinstance(outputs, list):
@@ -85,8 +86,8 @@ def extract_submodel(model, inputs, outputs, name=None):
     model_outputs = _recurse_in_model(outputs)
 
   if isinstance(inputs, list):
-    model_inputs = [model_inputs_dict[tensor] for tensor in inputs]
+    model_inputs = [model_inputs_dict[tensor.ref()] for tensor in inputs]
   else:
-    model_inputs = model_inputs_dict[inputs]
+    model_inputs = model_inputs_dict[inputs.ref()]
 
   return tf.keras.Model(inputs=model_inputs, outputs=model_outputs, name=name)

@@ -29,9 +29,10 @@ import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.benchmark import bert_benchmark_utils as benchmark_utils
+from official.benchmark import owner_utils
 from official.nlp.xlnet import run_classifier
 from official.nlp.xlnet import run_squad
-from official.utils.testing import benchmark_wrappers
+from official.benchmark import benchmark_wrappers
 
 
 # pylint: disable=line-too-long
@@ -47,8 +48,8 @@ FLAGS = flags.FLAGS
 class XLNetBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
 
-  def __init__(self, output_dir=None):
-    super(XLNetBenchmarkBase, self).__init__(output_dir)
+  def __init__(self, output_dir=None, tpu=None):
+    super(XLNetBenchmarkBase, self).__init__(output_dir=output_dir, tpu=tpu)
     self.num_epochs = None
     self.num_steps_per_epoch = None
 
@@ -71,12 +72,12 @@ class XLNetClassifyAccuracy(XLNetBenchmarkBase):
   `benchmark_(number of gpus)_gpu_(dataset type)` format.
   """
 
-  def __init__(self, output_dir=None, **kwargs):
+  def __init__(self, output_dir=None, tpu=None, **kwargs):
     self.train_data_path = CLASSIFIER_TRAIN_DATA_PATH
     self.eval_data_path = CLASSIFIER_EVAL_DATA_PATH
     self.pretrained_checkpoint_path = PRETRAINED_CHECKPOINT_PATH
 
-    super(XLNetClassifyAccuracy, self).__init__(output_dir=output_dir)
+    super(XLNetClassifyAccuracy, self).__init__(output_dir=output_dir, tpu=tpu)
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
@@ -123,10 +124,24 @@ class XLNetClassifyAccuracy(XLNetBenchmarkBase):
     FLAGS.train_tfrecord_path = self.train_data_path
     FLAGS.test_tfrecord_path = self.eval_data_path
 
+  @owner_utils.Owner('tf-model-garden')
   def benchmark_8_gpu_imdb(self):
     """Run XLNet model accuracy test with 8 GPUs."""
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_imdb')
+    # Sets timer_callback to None as we do not use it now.
+    self.timer_callback = None
+
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
+    self._run_and_report_benchmark(summary_path)
+
+  @owner_utils.Owner('tf-model-garden')
+  def benchmark_2x2_tpu_imdb(self):
+    """Run XLNet model accuracy test on 2x2 tpu."""
+    self._setup()
+    FLAGS.strategy_type = 'tpu'
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_imdb')
     # Sets timer_callback to None as we do not use it now.
     self.timer_callback = None
 
@@ -143,14 +158,14 @@ class XLNetSquadAccuracy(XLNetBenchmarkBase):
   `benchmark_(number of gpus)_gpu_(dataset type)` format.
   """
 
-  def __init__(self, output_dir=None, **kwargs):
+  def __init__(self, output_dir=None, tpu=None, **kwargs):
     self.train_data_path = SQUAD_DATA_PATH
     self.predict_file = os.path.join(SQUAD_DATA_PATH, "dev-v2.0.json")
     self.test_data_path = os.path.join(SQUAD_DATA_PATH, "12048.eval.tf_record")
     self.spiece_model_file = os.path.join(SQUAD_DATA_PATH, "spiece.cased.model")
     self.pretrained_checkpoint_path = PRETRAINED_CHECKPOINT_PATH
 
-    super(XLNetSquadAccuracy, self).__init__(output_dir=output_dir)
+    super(XLNetSquadAccuracy, self).__init__(output_dir=output_dir, tpu=tpu)
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self,
@@ -196,13 +211,28 @@ class XLNetSquadAccuracy(XLNetBenchmarkBase):
     FLAGS.test_tfrecord_path = self.test_data_path
     FLAGS.spiece_model_file = self.spiece_model_file
     FLAGS.predict_file = self.predict_file
-    FLAGS.adam_epsilon=1e-6
-    FLAGS.lr_layer_decay_rate=0.75
+    FLAGS.adam_epsilon = 1e-6
+    FLAGS.lr_layer_decay_rate = 0.75
 
+  @owner_utils.Owner('tf-model-garden')
   def benchmark_8_gpu_squadv2(self):
     """Run XLNet model squad v2 accuracy test with 8 GPUs."""
     self._setup()
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_squadv2')
+    FLAGS.predict_dir = FLAGS.model_dir
+    # Sets timer_callback to None as we do not use it now.
+    self.timer_callback = None
+
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
+    self._run_and_report_benchmark(summary_path)
+
+  @owner_utils.Owner('tf-model-garden')
+  def benchmark_2x2_tpu_squadv2(self):
+    """Run XLNet model squad v2 accuracy test on 2x2 tpu."""
+    self._setup()
+    FLAGS.strategy_type = 'tpu'
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_squadv2')
     FLAGS.predict_dir = FLAGS.model_dir
     # Sets timer_callback to None as we do not use it now.
     self.timer_callback = None
