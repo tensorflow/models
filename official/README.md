@@ -105,7 +105,7 @@ and dependencies automatically.
 pip install tf-models-nightly
 ```
 
-Please check out our [example](colab/bert.ipynb)
+Please check out our [example](colab/fine_tuning_bert.ipynb)
 to learn how to use a PIP package.
 
 #### Method 2: Clone the source
