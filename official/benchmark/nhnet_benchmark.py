@@ -31,7 +31,7 @@ from official.utils.flags import core as flags_core
 
 MIN_LOSS = 0.35
 MAX_LOSS = 0.45
-NHNET_DATA = 'nhnet_training_data_files'
+NHNET_DATA = 'gs://tf-perfzero-data/nhnet/v1/train.tfrecord*'
 
 FLAGS = flags.FLAGS
 
