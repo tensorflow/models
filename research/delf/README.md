@@ -3,18 +3,19 @@
 [![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
-This project presents code for extracting local and global image features, which
-are particularly useful for large-scale instance-level image recognition. These
-were introduced in the [DELF](https://arxiv.org/abs/1612.06321),
+This project presents code for deep local and global image feature methods,
+which are particularly useful for the computer vision tasks of instance-level
+recognition and retrieval. These were introduced in the
+[DELF](https://arxiv.org/abs/1612.06321),
 [Detect-to-Retrieve](https://arxiv.org/abs/1812.01584),
 [DELG](https://arxiv.org/abs/2001.05027) and
 [Google Landmarks Dataset v2](https://arxiv.org/abs/2004.01804) papers.
 
-The pre-trained models released here have been optimized for landmark
-recognition, so expect it to work well in this area. We also provide tensorflow
-code for building and training models.
+We provide Tensorflow code for building and training models, and python code for
+image retrieval and local feature matching. Pre-trained models for the landmark
+recognition domain are also provided.
 
-If you make use of this code, please consider citing the following papers:
+If you make use of this codebase, please consider citing the following papers:
 
 DELF:
 [![Paper](http://img.shields.io/badge/paper-arXiv.1612.06321-B3181B.svg)](https://arxiv.org/abs/1612.06321)
@@ -176,8 +177,8 @@ Oxford/Paris datasets.
 
 ## Code overview
 
-DELF/D2R code is located under the `delf` directory. There are two directories
-therein, `protos` and `python`.
+DELF/D2R/DELG/GLD code is located under the `delf` directory. There are two
+directories therein, `protos` and `python`.
 
 ### `delf/protos`
 
@@ -187,7 +188,7 @@ This directory contains protobufs:
     aggregation.
 -   `box.proto`: protobuf for serializing detected boxes.
 -   `datum.proto`: general-purpose protobuf for serializing float tensors.
--   `delf_config.proto`: protobuf for configuring DELF extraction.
+-   `delf_config.proto`: protobuf for configuring DELF/DELG extraction.
 -   `feature.proto`: protobuf for serializing DELF features.
 
 ### `delf/python`
@@ -214,7 +215,7 @@ feature extraction/matching, and object detection:
 -   `detector.py` is a module to construct an object detector function.
 -   `extract_boxes.py` enables object detection from a list of images.
 -   `extract_features.py` enables DELF extraction from a list of images.
--   `extractor.py` is a module to construct a DELF local feature extraction
+-   `extractor.py` is a module to construct a DELF/DELG local feature extraction
     function.
 -   `match_images.py` supports image matching using DELF features extracted
     using `extract_features.py`.
@@ -253,7 +254,8 @@ scripts/configs related to the Detect-to-Retrieve paper:
     AggregationConfig's for Detect-to-Retrieve experiments.
 
 The subdirectory `delf/python/google_landmarks_dataset` contains sample
-scripts/modules for computing GLD metrics:
+scripts/modules for computing GLD metrics / reproducing results from the GLDv2
+paper:
 
 -   `compute_recognition_metrics.py` performs recognition metric computation
     given input predictions and solution files.
@@ -262,7 +264,8 @@ scripts/modules for computing GLD metrics:
 -   `dataset_file_io.py` is a module for dataset-related file IO.
 -   `metrics.py` is a module for GLD metric computation.
 -   `rn101_af_gldv2clean_config.pbtxt` gives the DelfConfig used in the
-    ResNet101-ArcFace (trained on GLDv2-train-clean) baseline used in the paper.
+    ResNet101-ArcFace (trained on GLDv2-train-clean) baseline used in the GLDv2
+    paper.
 
 The subdirectory `delf/python/training` contains sample scripts/modules for
 performing DELF training:
