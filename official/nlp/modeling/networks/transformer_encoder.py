@@ -64,6 +64,11 @@ class TransformerEncoder(tf.keras.Model):
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yeilds the full
       output.
+    embedding_width: The width of the word embeddings. If the embedding width
+      is not equal to hidden size, embedding parameters will be factorized into
+      two matrices in the shape of ['vocab_size', 'embedding_width'] and
+      ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
+      smaller than 'hidden_size').
   """
 
   def __init__(self,
@@ -81,6 +86,7 @@ class TransformerEncoder(tf.keras.Model):
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                return_all_encoder_outputs=False,
                output_range=None,
+               embedding_width=None,
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
@@ -103,6 +109,7 @@ class TransformerEncoder(tf.keras.Model):
         'initializer': tf.keras.initializers.serialize(initializer),
         'return_all_encoder_outputs': return_all_encoder_outputs,
         'output_range': output_range,
+        'embedding_width': embedding_width,
     }
 
     word_ids = tf.keras.layers.Input(
@@ -112,9 +119,11 @@ class TransformerEncoder(tf.keras.Model):
     type_ids = tf.keras.layers.Input(
         shape=(sequence_length,), dtype=tf.int32, name='input_type_ids')
 
+    if embedding_width is None:
+      embedding_width = hidden_size
     self._embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
-        embedding_width=hidden_size,
+        embedding_width=embedding_width,
         initializer=initializer,
         name='word_embeddings')
     word_embeddings = self._embedding_layer(word_ids)
@@ -126,17 +135,27 @@ class TransformerEncoder(tf.keras.Model):
         max_sequence_length=max_sequence_length,
         name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
-
-    type_embeddings = (
-        layers.OnDeviceEmbedding(
-            vocab_size=type_vocab_size,
-            embedding_width=hidden_size,
-            initializer=initializer,
-            use_one_hot=True,
-            name='type_embeddings')(type_ids))
+    self._type_embedding_layer = layers.OnDeviceEmbedding(
+        vocab_size=type_vocab_size,
+        embedding_width=embedding_width,
+        initializer=initializer,
+        use_one_hot=True,
+        name='type_embeddings')
+    type_embeddings = self._type_embedding_layer(type_ids)
 
     embeddings = tf.keras.layers.Add()(
         [word_embeddings, position_embeddings, type_embeddings])
+
+    # We project the 'embedding' output to 'hidden_size' if it is not already
+    # 'hidden_size'.
+    if embedding_width != hidden_size:
+      self._embedding_projection = tf.keras.layers.experimental.EinsumDense(
+          '...x,xy->...y',
+          output_shape=hidden_size,
+          bias_axes='y',
+          kernel_initializer=initializer,
+          name='embedding_projection')
+      embeddings = self._embedding_projection(embeddings)
     embeddings = (
         tf.keras.layers.LayerNormalization(
             name='embeddings/layer_norm',
