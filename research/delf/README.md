@@ -1,4 +1,4 @@
-# DELF: DEep Local Features
+# Deep Local and Global Image Features
 
 [![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
@@ -14,7 +14,7 @@ We also released pre-trained models based on the
 
 The pre-trained models released here have been optimized for landmark
 recognition, so expect it to work well in this area. We also provide tensorflow
-code for building the DELF model, and [NEW] for model training.
+code for building and training models.
 
 If you make use of this code, please consider citing the following papers:
 
@@ -133,8 +133,9 @@ Please follow [these instructions](delf/python/training/README.md).
 
 ### DELG
 
-Please follow [these instructions](delf/python/delg/DELG.md). At the end, you
-should obtain image retrieval results on the Revisited Oxford/Paris datasets.
+Please follow [these instructions](delf/python/delg/DELG_INSTRUCTIONS.md). At
+the end, you should obtain image retrieval results on the Revisited Oxford/Paris
+datasets.
 
 ### Landmark detection
 
