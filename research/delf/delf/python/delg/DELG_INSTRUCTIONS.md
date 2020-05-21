@@ -35,7 +35,7 @@ wget http://cmp.felk.cvut.cz/revisitop/data/datasets/rparis6k/gnd_rparis6k.mat
 This is necessary to reproduce the main paper results:
 
 ```bash
-# From //third_party/tensorflow_models/delf/python/delg
+# From models/research/delf/delf/python/delg
 mkdir parameters && cd parameters
 
 # DELG-GLD model.
