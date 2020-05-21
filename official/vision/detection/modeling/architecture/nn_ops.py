@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
-from absl import logging
 import tensorflow as tf
 
 
@@ -105,5 +104,5 @@ def norm_activation_builder(momentum=0.997,
       momentum=momentum,
       epsilon=epsilon,
       trainable=trainable,
-      activation='relu',
+      activation=activation,
       **kwargs)
