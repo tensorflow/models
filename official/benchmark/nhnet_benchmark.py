@@ -39,14 +39,15 @@ FLAGS = flags.FLAGS
 class NHNetBenchmark(perfzero_benchmark.PerfZeroBenchmark):
   """Base benchmark class for NHNet."""
 
-  def __init__(self, output_dir=None, default_flags=None, tpu=None):
+  def __init__(self, output_dir=None, default_flags=None, tpu=None, **kwargs):
     self.default_flags = default_flags or {}
     flag_methods = trainer.define_flags()
     super(NHNetBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         flag_methods=flag_methods,
-        tpu=tpu)
+        tpu=tpu,
+        **kwargs)
 
   def _report_benchmark(self,
                         stats,
