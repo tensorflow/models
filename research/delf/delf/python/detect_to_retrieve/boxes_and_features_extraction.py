@@ -214,8 +214,11 @@ def ExtractBoxesAndFeaturesToFiles(image_names, image_paths, delf_config_path,
           else:
             im = np.array(pil_im)
 
-          (locations_out, descriptors_out, feature_scales_out,
-           attention_out) = delf_extractor_fn(im)
+          extracted_features = delf_extractor_fn(im)
+          locations_out = extracted_features['local_features']['locations']
+          descriptors_out = extracted_features['local_features']['descriptors']
+          feature_scales_out = extracted_features['local_features']['scales']
+          attention_out = extracted_features['local_features']['attention']
 
           feature_io.WriteToFile(output_feature_filename, locations_out,
                                  feature_scales_out, descriptors_out,

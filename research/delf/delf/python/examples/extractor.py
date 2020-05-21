@@ -30,7 +30,7 @@ _MIN_HEIGHT = 10
 _MIN_WIDTH = 10
 
 
-def ResizeImage(image, config, resize_factor=1.0, square_output=False):
+def ResizeImage(image, config, resize_factor=1.0):
   """Resizes image according to config.
 
   Args:
@@ -39,9 +39,6 @@ def ResizeImage(image, config, resize_factor=1.0, square_output=False):
     resize_factor: Optional float resize factor for the input image. If given,
       the maximum and minimum allowed image sizes in `config` are scaled by this
       factor. Must be non-negative.
-    square_output: If True, the output image's aspect ratio is potentially
-      distorted and a square image (ie, height=width) is returned. The image is
-      resized such that the largest image side is used in both dimensions.
 
   Returns:
     resized_image: Uint8 array with resized image.
@@ -72,7 +69,7 @@ def ResizeImage(image, config, resize_factor=1.0, square_output=False):
     scale_factor = max_image_size / largest_side
   elif min_image_size >= 0 and largest_side < min_image_size:
     scale_factor = min_image_size / largest_side
-  elif square_output and (height != width):
+  elif config.use_square_images and (height != width):
     scale_factor = 1.0
   else:
     # No resizing needed, early return.
@@ -80,7 +77,7 @@ def ResizeImage(image, config, resize_factor=1.0, square_output=False):
 
   # Note that new_shape is in (width, height) format (PIL convention), while
   # scale_factors are in (height, width) convention (NumPy convention).
-  if square_output:
+  if config.use_square_images:
     new_shape = (int(round(largest_side * scale_factor)),
                  int(round(largest_side * scale_factor)))
   else:
@@ -97,7 +94,7 @@ def ResizeImage(image, config, resize_factor=1.0, square_output=False):
 
 
 def MakeExtractor(sess, config, import_scope=None):
-  """Creates a function to extract features from an image.
+  """Creates a function to extract global and/or local features from an image.
 
   Args:
     sess: TensorFlow session to use.
@@ -107,62 +104,125 @@ def MakeExtractor(sess, config, import_scope=None):
   Returns:
     Function that receives an image and returns features.
   """
+  # Load model.
   tf.compat.v1.saved_model.loader.load(
       sess, [tf.compat.v1.saved_model.tag_constants.SERVING],
       config.model_path,
       import_scope=import_scope)
   import_scope_prefix = import_scope + '/' if import_scope is not None else ''
+
+  # Input tensors.
   input_image = sess.graph.get_tensor_by_name('%sinput_image:0' %
                                               import_scope_prefix)
-  input_score_threshold = sess.graph.get_tensor_by_name('%sinput_abs_thres:0' %
-                                                        import_scope_prefix)
   input_image_scales = sess.graph.get_tensor_by_name('%sinput_scales:0' %
                                                      import_scope_prefix)
-  input_max_feature_num = sess.graph.get_tensor_by_name(
-      '%sinput_max_feature_num:0' % import_scope_prefix)
-  boxes = sess.graph.get_tensor_by_name('%sboxes:0' % import_scope_prefix)
-  raw_descriptors = sess.graph.get_tensor_by_name('%sfeatures:0' %
-                                                  import_scope_prefix)
-  feature_scales = sess.graph.get_tensor_by_name('%sscales:0' %
-                                                 import_scope_prefix)
-  attention_with_extra_dim = sess.graph.get_tensor_by_name('%sscores:0' %
-                                                           import_scope_prefix)
-  attention = tf.reshape(attention_with_extra_dim,
-                         [tf.shape(attention_with_extra_dim)[0]])
+  if config.use_local_features:
+    input_score_threshold = sess.graph.get_tensor_by_name(
+        '%sinput_abs_thres:0' % import_scope_prefix)
+    input_max_feature_num = sess.graph.get_tensor_by_name(
+        '%sinput_max_feature_num:0' % import_scope_prefix)
 
-  locations, descriptors = feature_extractor.DelfFeaturePostProcessing(
-      boxes, raw_descriptors, config)
+  # Output tensors.
+  if config.use_global_features:
+    raw_global_descriptors = sess.graph.get_tensor_by_name(
+        '%sglobal_descriptors:0' % import_scope_prefix)
+  if config.use_local_features:
+    boxes = sess.graph.get_tensor_by_name('%sboxes:0' % import_scope_prefix)
+    raw_local_descriptors = sess.graph.get_tensor_by_name('%sfeatures:0' %
+                                                          import_scope_prefix)
+    feature_scales = sess.graph.get_tensor_by_name('%sscales:0' %
+                                                   import_scope_prefix)
+    attention_with_extra_dim = sess.graph.get_tensor_by_name(
+        '%sscores:0' % import_scope_prefix)
 
-  def ExtractorFn(image):
-    """Receives an image and returns DELF features.
+  # Post-process extracted features: normalize, PCA (optional), pooling.
+  if config.use_global_features:
+    if config.delf_global_config.image_scales_ind:
+      raw_global_descriptors_selected_scales = tf.gather(
+          raw_global_descriptors,
+          list(config.delf_global_config.image_scales_ind))
+    else:
+      raw_global_descriptors_selected_scales = raw_global_descriptors
+    global_descriptors_per_scale = feature_extractor.PostProcessDescriptors(
+        raw_global_descriptors_selected_scales,
+        config.delf_global_config.use_pca,
+        config.delf_global_config.pca_parameters)
+    unnormalized_global_descriptor = tf.reduce_sum(
+        global_descriptors_per_scale, axis=0, name='sum_pooling')
+    global_descriptor = tf.nn.l2_normalize(
+        unnormalized_global_descriptor, axis=0, name='final_l2_normalization')
 
-    If image is too small, returns empty set of features.
+  if config.use_local_features:
+    attention = tf.reshape(attention_with_extra_dim,
+                           [tf.shape(attention_with_extra_dim)[0]])
+    locations, local_descriptors = feature_extractor.DelfFeaturePostProcessing(
+        boxes, raw_local_descriptors, config)
+
+  def ExtractorFn(image, resize_factor=1.0):
+    """Receives an image and returns DELF global and/or local features.
+
+    If image is too small, returns empty features.
 
     Args:
       image: Uint8 array with shape (height, width, 3) containing the RGB image.
+      resize_factor: Optional float resize factor for the input image. If given,
+        the maximum and minimum allowed image sizes in the config are scaled by
+        this factor.
 
     Returns:
-      Tuple (locations, descriptors, feature_scales, attention)
+      extracted_features: A dict containing the extracted global descriptors
+        (key 'global_descriptor' mapping to a [D] float array), and/or local
+        features (key 'local_features' mapping to a dict with keys 'locations',
+        'descriptors', 'scales', 'attention').
     """
-    resized_image, scale_factors = ResizeImage(image, config)
+
+    resized_image, scale_factors = ResizeImage(
+        image, config, resize_factor=resize_factor)
 
     # If the image is too small, returns empty features.
     if resized_image.shape[0] < _MIN_HEIGHT or resized_image.shape[
         1] < _MIN_WIDTH:
-      return np.array([]), np.array([]), np.array([]), np.array([])
+      extracted_features = {'global_descriptor': np.array([])}
+      if config.use_local_features:
+        extracted_features.update({
+            'local_features': {
+                'locations': np.array([]),
+                'descriptors': np.array([]),
+                'scales': np.array([]),
+                'attention': np.array([]),
+            }
+        })
+      return extracted_features
 
-    (locations_out, descriptors_out, feature_scales_out,
-     attention_out) = sess.run(
-         [locations, descriptors, feature_scales, attention],
-         feed_dict={
-             input_image: resized_image,
-             input_score_threshold: config.delf_local_config.score_threshold,
-             input_image_scales: list(config.image_scales),
-             input_max_feature_num: config.delf_local_config.max_feature_num
-         })
-    rescaled_locations_out = locations_out / scale_factors
+    feed_dict = {
+        input_image: resized_image,
+        input_image_scales: list(config.image_scales),
+    }
+    fetches = {}
+    if config.use_global_features:
+      fetches.update({
+          'global_descriptor': global_descriptor,
+      })
+    if config.use_local_features:
+      feed_dict.update({
+          input_score_threshold: config.delf_local_config.score_threshold,
+          input_max_feature_num: config.delf_local_config.max_feature_num,
+      })
+      fetches.update({
+          'local_features': {
+              'locations': locations,
+              'descriptors': local_descriptors,
+              'scales': feature_scales,
+              'attention': attention,
+          }
+      })
 
-    return (rescaled_locations_out, descriptors_out, feature_scales_out,
-            attention_out)
+    extracted_features = sess.run(fetches, feed_dict=feed_dict)
+
+    # Adjust local feature positions due to rescaling.
+    if config.use_local_features:
+      extracted_features['local_features']['locations'] /= scale_factors
+
+    return extracted_features
 
   return ExtractorFn

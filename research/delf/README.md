@@ -1,26 +1,24 @@
-# DELF: DEep Local Features
+# Deep Local and Global Image Features
 
 [![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
-This project presents code for extracting DELF features, which were introduced
-with the paper
-["Large-Scale Image Retrieval with Attentive Deep Local Features"](https://arxiv.org/abs/1612.06321).
-It also contains code for the follow-up paper
-["Detect-to-Retrieve: Efficient Regional Aggregation for Image Search"](https://arxiv.org/abs/1812.01584).
+This project presents code for extracting local and global image features, which
+are particularly useful for large-scale instance-level image recognition. These
+were introduced in the [DELF](https://arxiv.org/abs/1612.06321),
+[Detect-to-Retrieve](https://arxiv.org/abs/1812.01584) and
+[DELG](https://arxiv.org/abs/2001.05027) papers.
 
 We also released pre-trained models based on the
 [Google Landmarks dataset](https://www.kaggle.com/google/google-landmarks-dataset).
 
-DELF is particularly useful for large-scale instance-level image recognition. It
-detects and describes semantic local features which can be geometrically
-verified between images showing the same object instance. The pre-trained models
-released here have been optimized for landmark recognition, so expect it to work
-well in this area. We also provide tensorflow code for building the DELF model,
-and [NEW] code for model training.
+The pre-trained models released here have been optimized for landmark
+recognition, so expect it to work well in this area. We also provide tensorflow
+code for building and training models.
 
 If you make use of this code, please consider citing the following papers:
 
+DELF:
 [![Paper](http://img.shields.io/badge/paper-arXiv.1612.06321-B3181B.svg)](https://arxiv.org/abs/1612.06321)
 
 ```
@@ -29,8 +27,7 @@ H. Noh, A. Araujo, J. Sim, T. Weyand and B. Han,
 Proc. ICCV'17
 ```
 
-and/or
-
+Detect-to-Retrieve:
 [![Paper](http://img.shields.io/badge/paper-arXiv.1812.01584-B3181B.svg)](https://arxiv.org/abs/1812.01584)
 
 ```
@@ -39,8 +36,19 @@ M. Teichmann*, A. Araujo*, M. Zhu and J. Sim,
 Proc. CVPR'19
 ```
 
+DELG:
+[![Paper](http://img.shields.io/badge/paper-arXiv.2001.05027-B3181B.svg)](https://arxiv.org/abs/2001.05027)
+
+```
+"Unifying Deep Local and Global Features for Image Search",
+B. Cao*, A. Araujo* and J. Sim,
+arxiv:2001.05027
+```
+
 ## News
 
+-   [Jan'20] Check out our new paper:
+    ["Unifying Deep Local and Global Features for Image Search"](https://arxiv.org/abs/2001.05027)
 -   [Jun'19] DELF achieved 2nd place in
     [CVPR Visual Localization challenge (Local Features track)](https://sites.google.com/corp/view/ltvl2019).
     See our slides
@@ -123,6 +131,12 @@ should obtain a nice figure showing local feature matches, as:
 
 Please follow [these instructions](delf/python/training/README.md).
 
+### DELG
+
+Please follow [these instructions](delf/python/delg/DELG_INSTRUCTIONS.md). At
+the end, you should obtain image retrieval results on the Revisited Oxford/Paris
+datasets.
+
 ### Landmark detection
 
 Please follow [these instructions](DETECTION.md). At the end, you should obtain
@@ -181,6 +195,15 @@ feature extraction/matching, and object detection:
     function.
 -   `match_images.py` supports image matching using DELF features extracted
     using `extract_features.py`.
+
+The subdirectory `delf/python/delg` contains sample scripts/configs related to
+the DELG paper:
+
+-   `delg_gld_config.pbtxt` gives the DelfConfig used in DELG paper.
+-   `extract_features.py` for local+global feature extraction on Revisited
+    datasets.
+-   `perform_retrieval.py` for performing retrieval/evaluating methods on
+    Revisited datasets.
 
 The subdirectory `delf/python/detect_to_retrieve` contains sample
 scripts/configs related to the Detect-to-Retrieve paper:
