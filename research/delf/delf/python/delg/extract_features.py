@@ -17,6 +17,9 @@
 Note that query images are cropped before feature extraction, as required by the
 evaluation protocols of these datasets.
 
+The types of extracted features (local and/or global) depend on the input
+DelfConfig.
+
 The program checks if features already exist, and skips computation for those.
 """
 
@@ -46,7 +49,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string(
     'delf_config_path', '/tmp/delf_config_example.pbtxt',
     'Path to DelfConfig proto text file with configuration to be used for DELG '
-    'extraction.')
+    'extraction. Local features are extracted if use_local_features is True; '
+    'global features are extracted if use_global_features is True.')
 flags.DEFINE_string(
     'dataset_file_path', '/tmp/gnd_roxford5k.mat',
     'Dataset file for Revisited Oxford or Paris dataset, in .mat format.')
@@ -133,13 +137,21 @@ def main(argv):
         image_name = image_list[i]
         input_image_filename = os.path.join(FLAGS.images_dir,
                                             image_name + _IMAGE_EXTENSION)
-        output_global_feature_filename = os.path.join(
-            FLAGS.output_features_dir, image_name + _DELG_GLOBAL_EXTENSION)
-        output_local_feature_filename = os.path.join(
-            FLAGS.output_features_dir, image_name + _DELG_LOCAL_EXTENSION)
-        if tf.io.gfile.exists(
-            output_global_feature_filename) and tf.io.gfile.exists(
-                output_local_feature_filename):
+
+        # Compose output file name and decide if image should be skipped.
+        should_skip_global = True
+        should_skip_local = True
+        if config.use_global_features:
+          output_global_feature_filename = os.path.join(
+              FLAGS.output_features_dir, image_name + _DELG_GLOBAL_EXTENSION)
+          if not tf.io.gfile.exists(output_global_feature_filename):
+            should_skip_global = False
+        if config.use_local_features:
+          output_local_feature_filename = os.path.join(
+              FLAGS.output_features_dir, image_name + _DELG_LOCAL_EXTENSION)
+          if not tf.io.gfile.exists(output_local_feature_filename):
+            should_skip_local = False
+        if should_skip_global and should_skip_local:
           print('Skipping %s' % image_name)
           continue
 
@@ -157,15 +169,17 @@ def main(argv):
 
         # Extract and save features.
         extracted_features = extractor_fn(im, resize_factor)
-        global_descriptor = extracted_features['global_descriptor']
-        locations = extracted_features['local_features']['locations']
-        descriptors = extracted_features['local_features']['descriptors']
-        feature_scales = extracted_features['local_features']['scales']
-        attention = extracted_features['local_features']['attention']
-
-        datum_io.WriteToFile(global_descriptor, output_global_feature_filename)
-        feature_io.WriteToFile(output_local_feature_filename, locations,
-                               feature_scales, descriptors, attention)
+        if config.use_global_features:
+          global_descriptor = extracted_features['global_descriptor']
+          datum_io.WriteToFile(global_descriptor,
+                               output_global_feature_filename)
+        if config.use_local_features:
+          locations = extracted_features['local_features']['locations']
+          descriptors = extracted_features['local_features']['descriptors']
+          feature_scales = extracted_features['local_features']['scales']
+          attention = extracted_features['local_features']['attention']
+          feature_io.WriteToFile(output_local_feature_filename, locations,
+                                 feature_scales, descriptors, attention)
 
 
 if __name__ == '__main__':
