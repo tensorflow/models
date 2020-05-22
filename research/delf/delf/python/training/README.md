@@ -1,5 +1,11 @@
 # DELF training instructions
 
+## Install DELF library
+
+To be able to use this code, please follow
+[these instructions](../../../INSTALL_INSTRUCTIONS.md) to properly install the
+DELF library.
+
 ## Data preparation
 
 See the
