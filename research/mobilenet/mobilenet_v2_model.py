@@ -130,7 +130,7 @@ def _inverted_res_block(inputs: tf.Tensor,
     expansion_size=expansion_size)
   x = layers.Conv2D(filters=expended_size,
                     kernel_size=kernel,
-                    strides=strides,
+                    strides=(1, 1),
                     padding='SAME',
                     kernel_initializer=weights_init,
                     kernel_regularizer=regularizer,

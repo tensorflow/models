@@ -134,40 +134,40 @@ class MobileNetV1Config(base_config.Config):
       kernel=(3, 3), stride=1, filters=64,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=12, filters=128,
+      kernel=(3, 3), stride=2, filters=128,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=128,
+      kernel=(3, 3), stride=1, filters=128,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=12, filters=256,
+      kernel=(3, 3), stride=2, filters=256,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=256,
+      kernel=(3, 3), stride=1, filters=256,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=12, filters=512,
+      kernel=(3, 3), stride=2, filters=512,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=512,
+      kernel=(3, 3), stride=1, filters=512,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=512,
+      kernel=(3, 3), stride=1, filters=512,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args
-    (kernel=(3, 3), stride=11, filters=512,
+    (kernel=(3, 3), stride=1, filters=512,
      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=512,
+      kernel=(3, 3), stride=1, filters=512,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=512,
+      kernel=(3, 3), stride=1, filters=512,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=12, filters=1024,
+      kernel=(3, 3), stride=2, filters=1024,
       block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=1024,
+      kernel=(3, 3), stride=1, filters=1024,
       block_type=BlockType.DepSepConv.value),
     # pylint: enable=bad-whitespace
   )
@@ -284,9 +284,6 @@ class MobileNetV2Config(base_config.Config):
       expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=96,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
-    MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=2, filters=24,
       expansion_size=6, block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
