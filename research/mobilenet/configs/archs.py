@@ -18,20 +18,33 @@ from typing import Text, Tuple, Callable, Mapping, Type
 from dataclasses import dataclass
 import enum
 
+import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
 from official.modeling.hyperparams import base_config
+
+layers = tf.keras.layers
+
+
+def hard_sigmoid(x):
+  return tf.nn.relu6(x + 3.) * (1. / 6.)
+
+
+def hard_swish(x):
+  return x * tf.nn.relu6(x + np.float32(3)) * np.float32(1. / 6.)
 
 
 def get_activation_function() -> Mapping[Text, Callable]:
   return {
     'relu': tf.nn.relu,
     'relu6': tf.nn.relu6,
-    'swish': tf.nn.swish,
     'elu': tf.nn.elu,
+    'swish': tf.nn.swish,
+    'hard_swish': hard_swish,
     'sigmoid': tf.nn.sigmoid,
-    'softmax': tf.nn.softmax
+    'hard_sigmoid': hard_sigmoid,
+    'softmax': tf.nn.softmax,
   }
 
 
