@@ -573,15 +573,20 @@ class DistributedExecutor(object):
           test_iterator, metric)
       return None
     logging.info('Running evaluation after step: %s.', current_training_step)
+    eval_step = 0
     while True:
       try:
-        test_step(test_iterator)
+        with tf.experimental.async_scope():
+          test_step(test_iterator)
+          eval_step += 1
       except (StopIteration, tf.errors.OutOfRangeError):
+        tf.experimental.async_clear_error()
         break
 
     metric_result = metric_results(metric)
-    logging.info('Step: [%d] Validation metric = %f', current_training_step,
-                 metric_result)
+    logging.info('Total eval steps: [%d]', eval_step)
+    logging.info('At training step: [%r] Validation metric = %r',
+                 current_training_step, metric_result)
     return metric_result
 
   def evaluate_from_model_dir(
