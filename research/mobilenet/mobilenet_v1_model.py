@@ -35,12 +35,11 @@ from typing import Tuple, Union, Text, Dict
 import tensorflow as tf
 
 from research.mobilenet import common_modules
-from research.mobilenet.configs.mobilenet_config import MobileNetV1Config
-from research.mobilenet.configs.mobilenet_config import Conv, DepSepConv
-from research.mobilenet.configs.mobilenet_config import get_activation_function
-from research.mobilenet.configs.mobilenet_config import get_normalization_layer
+from research.mobilenet.configs import archs
 
 layers = tf.keras.layers
+
+MobileNetV1Config = archs.MobileNetV1Config
 
 
 def _reduced_kernel_size_for_small_input(input_tensor: tf.Tensor,
@@ -136,8 +135,9 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
     width_multiplier=width_multiplier,
     min_depth=min_depth)
 
-  activation_fn = get_activation_function()[activation_name]
-  normalization_layer = get_normalization_layer()[normalization_name]
+  activation_fn = archs.get_activation_function()[activation_name]
+  normalization_layer = archs.get_normalization_layer()[
+    normalization_name]
 
   weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
@@ -188,7 +188,7 @@ def _depthwise_conv2d_block(inputs: tf.Tensor,
 
 
 def mobilenet_v1_base(inputs: tf.Tensor,
-                      config: MobileNetV1Config
+                      config: archs.MobileNetV1Config
                       ) -> tf.Tensor:
   """Build the base MobileNet architecture."""
 
@@ -238,7 +238,7 @@ def mobilenet_v1_base(inputs: tf.Tensor,
       layer_stride = block_def.stride
       layer_rate = 1
       current_stride *= block_def.stride
-    if block_def.block_type == Conv:
+    if block_def.block_type == archs.BlockType.Conv.value:
       net = common_modules.conv2d_block(
         inputs=net,
         filters=block_def.filters,
@@ -254,7 +254,7 @@ def mobilenet_v1_base(inputs: tf.Tensor,
         normalization_params=normalization_params,
         block_id=i
       )
-    elif block_def.block_type == DepSepConv:
+    elif block_def.block_type == archs.BlockType.DepSepConv.value:
       net = _depthwise_conv2d_block(
         inputs=net,
         filters=block_def.filters,

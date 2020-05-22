@@ -14,17 +14,17 @@
 # =============================================================================
 
 import logging
-import typing
+from typing import Text, Mapping, Type, Tuple, List, Optional, Union
 import functools
 
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
-from research.mobilenet.configs import dataset_config
+from research.mobilenet.configs import dataset as dataset_config
 from official.vision.image_classification import preprocessing
 
 
-def _get_dtype_map() -> typing.Mapping[typing.Text, tf.dtypes.DType]:
+def _get_dtype_map() -> Mapping[Text, tf.dtypes.DType]:
   """Returns the mapping from dtype string representations to TF dtypes."""
   return {
     'float32': tf.float32,
@@ -37,9 +37,9 @@ def _get_dtype_map() -> typing.Mapping[typing.Text, tf.dtypes.DType]:
 
 def _preprocess(image: tf.Tensor,
                 label: tf.Tensor,
-                config: typing.Type[dataset_config.DatasetConfig],
+                config: Type[dataset_config.DatasetConfig],
                 is_training: bool = True
-                ) -> typing.Tuple[tf.Tensor, tf.Tensor]:
+                ) -> Tuple[tf.Tensor, tf.Tensor]:
   """Apply image preprocessing and augmentation to the image and label.
 
   Args:
@@ -75,7 +75,7 @@ def _preprocess(image: tf.Tensor,
   return image, label
 
 
-def _get_tf_data_config(config: typing.Type[dataset_config.DatasetConfig]
+def _get_tf_data_config(config: Type[dataset_config.DatasetConfig]
                         ) -> tf.data.Options:
   """Construct an `Options` object to control which graph
   optimizations to apply or whether to use performance modeling to dynamically
@@ -97,10 +97,10 @@ def _get_tf_data_config(config: typing.Type[dataset_config.DatasetConfig]
   return options
 
 
-def load_tfds(dataset_name: typing.Text,
-              split: typing.Union[typing.Text, typing.List[typing.Text]],
+def load_tfds(dataset_name: Text,
+              split: Union[Text, List[Text]],
               download: bool = True,
-              data_dir: typing.Optional[typing.Text] = None,
+              data_dir: Optional[Text] = None,
               ) -> tf.data.Dataset:
   """Load dataset using TFDS
 
@@ -128,7 +128,7 @@ def load_tfds(dataset_name: typing.Text,
 
 
 def pipeline(dataset: tf.data.Dataset,
-             config: typing.Type[dataset_config.DatasetConfig],
+             config: Type[dataset_config.DatasetConfig],
              ) -> tf.data.Dataset:
   """Build a pipeline fetching, shuffling, and preprocessing the dataset.
 

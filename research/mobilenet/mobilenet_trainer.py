@@ -16,23 +16,19 @@
 """Runs an Image Classification task for MobileNet."""
 
 import os
-import argparse
+import logging
 from typing import Mapping, Text, Any, Type, List, Dict
 
-import logging
+from absl import app
+from absl import flags
 import tensorflow as tf
 
-from research.mobilenet.dataset_loader import load_tfds, pipeline
-from research.mobilenet.configs.dataset_config import DatasetConfig
-from research.mobilenet.configs.dataset_config import ImageNetTEConfig
-from research.mobilenet.configs.dataset_config import ImageNetConfig
-from research.mobilenet.configs.dataset_config import MNISTConfig
-from research.mobilenet.configs.mobilenet_config import MobileNetV1Config
-from research.mobilenet.configs.mobilenet_config import MobileNetV2Config
-from research.mobilenet.configs.mobilenet_config import MobileNetV3Config
-from research.mobilenet.mobilenet_v1_model import mobilenet_v1
-from research.mobilenet.mobilenet_v2_model import mobilenet_v2
+from research.mobilenet import dataset_loader
+from research.mobilenet import mobilenet_v1_model
+from research.mobilenet import mobilenet_v2_model
 from research.mobilenet.configs import defaults
+from research.mobilenet.configs import archs
+from research.mobilenet.configs import dataset as dataset_config
 
 from official.modeling.hyperparams import base_config
 from official.vision.image_classification.configs import base_configs
@@ -41,24 +37,24 @@ from official.vision.image_classification import optimizer_factory
 
 def _get_model_config() -> Mapping[Text, Type[base_config.Config]]:
   return {
-    'mobilenet_v1': MobileNetV1Config,
-    'mobilenet_v2': MobileNetV2Config,
-    'mobilenet_v3': MobileNetV3Config,
+    'mobilenet_v1': archs.MobileNetV1Config,
+    'mobilenet_v2': archs.MobileNetV2Config,
+    'mobilenet_v3': archs.MobileNetV3Config,
   }
 
 
 def _get_model_builder() -> Mapping[Text, Any]:
   return {
-    'mobilenet_v1': mobilenet_v1,
-    'mobilenet_v2': mobilenet_v2
+    'mobilenet_v1': mobilenet_v1_model.mobilenet_v1,
+    'mobilenet_v2': mobilenet_v2_model.mobilenet_v2
   }
 
 
-def _get_dataset_config() -> Mapping[Text, Type[DatasetConfig]]:
+def _get_dataset_config() -> Mapping[Text, Type[dataset_config.DatasetConfig]]:
   return {
-    'imagenet2012': ImageNetConfig,
-    'imagenette': ImageNetTEConfig,
-    'mnist': MNISTConfig
+    'imagenet2012': dataset_config.ImageNetConfig,
+    'imagenette': dataset_config.ImageNetteConfig,
+    'mnist': dataset_config.MNISTConfig
   }
 
 
@@ -166,7 +162,7 @@ def _resume_from_checkpoint(model: tf.keras.Model,
   return int(initial_epoch)
 
 
-def get_args(args_parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
+def get_flags():
   """Initialize the data extraction parameters.
 
   Define the arguments with the default values and parses the arguments
@@ -175,65 +171,63 @@ def get_args(args_parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
   Args:
       args_parser: (argparse.ArgumentParser)
   """
-  args_parser.add_argument(
-    '--model_name',
-    help='MobileNet version name.',
-    choices=['mobilenet_v1', 'mobilenet_v2'],
+  flags.DEFINE_string(
+    'model_name',
+    help='MobileNet version name: mobilenet_v1, mobilenet_v2',
     default='mobilenet_v1'
   )
-  args_parser.add_argument(
-    '--dataset_name',
-    help='Dataset name from TDFS to train on.',
-    choices=['imagenette', 'imagenet2012'],
+  flags.DEFINE_string(
+    'dataset_name',
+    help='Dataset name from TDFS to train on: imagenette, imagenet2012',
     default='imagenette'
   )
-  args_parser.add_argument(
-    '--optimizer_name',
+  flags.DEFINE_string(
+    'optimizer_name',
     help='Name of optimizer.',
     default='rmsprop'
   )
-  args_parser.add_argument(
-    '--learning_scheduler_name',
+  flags.DEFINE_string(
+    'learning_scheduler_name',
     help='Name of learning rate scheduler.',
     default='exponential'
   )
-  args_parser.add_argument(
-    '--learning_rate',
+  flags.DEFINE_float(
+    'learning_rate',
     help='Base learning rate.',
     default=0.008
   )
-  args_parser.add_argument(
-    '--epochs',
+  flags.DEFINE_integer(
+    'batch_size',
+    help='Training batch size.',
+    default=2 # for testing purpose
+  )
+  flags.DEFINE_integer(
+    'epochs',
     help='Number of epochs.',
     default=5
   )
-  args_parser.add_argument(
-    '--model_dir',
+  flags.DEFINE_string(
+    'model_dir',
     help='Working directory.',
     default='./tmp'
   )
-  args_parser.add_argument(
-    '--resume_checkpoint',
+  flags.DEFINE_bool(
+    'resume_checkpoint',
     help='Whether resume training from previous checkpoint.',
     default=False
   )
 
-  args_params = args_parser.parse_args()
-  logging.info('Parameters:', args_params)
 
-  return args_params
-
-
-def get_dataset(config: Type[DatasetConfig]) -> tf.data.Dataset:
+def get_dataset(config: Type[dataset_config.DatasetConfig]) -> tf.data.Dataset:
   """Build dataset for training, evaluation and test"""
-  raw_dataset = load_tfds(
+  raw_dataset = dataset_loader.load_tfds(
     dataset_name=config.name,
     data_dir=config.data_dir,
     download=config.download,
     split=config.split
   )
 
-  dataset = pipeline(
+  dataset = dataset_loader.pipeline(
     dataset=raw_dataset,
     config=config
   )
@@ -242,7 +236,7 @@ def get_dataset(config: Type[DatasetConfig]) -> tf.data.Dataset:
 
 
 def build_model(model_name: Text,
-                dataset_config: Type[DatasetConfig],
+                dataset_config: Type[dataset_config.DatasetConfig],
                 model_config: Type[base_config.Config]
                 ) -> tf.keras.models.Model:
   """Build mobilenet model given configuration"""
@@ -258,10 +252,10 @@ def build_model(model_name: Text,
     raise ValueError('The model {} is not supported.'.format(model_name))
 
 
-def train_and_eval(params: argparse.ArgumentParser):
+def train_and_eval(params: flags.FlagValues) -> tf.keras.callbacks.History:
   """Runs the train and eval path using compile/fit."""
-
   d_config = _get_dataset_config().get(params.dataset_name)
+  d_config.batch_size = params.batch_size
   m_config = _get_model_config().get(params.model_name)
 
   strategy = tf.distribute.MirroredStrategy()
@@ -327,10 +321,15 @@ def train_and_eval(params: argparse.ArgumentParser):
   return history
 
 
+def main(_):
+  history = train_and_eval(flags.FLAGS)
+  if history:
+    logging.info('Run history:\n%s', history)
+
+
 if __name__ == '__main__':
   logging.basicConfig(
     format='%(asctime)-15s:%(levelname)s:%(module)s:%(message)s',
     level=logging.INFO)
-  args_parser = argparse.ArgumentParser()
-  params = get_args(args_parser)
-  train_and_eval(params)
+  get_flags()
+  app.run(main)

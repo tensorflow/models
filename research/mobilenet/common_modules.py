@@ -13,12 +13,11 @@
 # limitations under the License.
 # =============================================================================
 """Common util modules for MobileNet."""
-from typing import Tuple, Text, Union, Optional, List, Dict
+from typing import Tuple, Text, List, Dict, Optional, Union
 
 import tensorflow as tf
 
-from research.mobilenet.configs.mobilenet_config import get_activation_function
-from research.mobilenet.configs.mobilenet_config import get_normalization_layer
+from research.mobilenet.configs import archs
 
 layers = tf.keras.layers
 
@@ -73,15 +72,15 @@ def make_divisible(value: float,
                    divisor: int,
                    min_value: Optional[float] = None
                    ) -> int:
-  """It ensures that all layers have a channel number that is divisible by 8
-  It can be seen here:
+  """This utility function is to ensure that all layers have a channel number
+  that is divisible by 8.
   Args:
-    value:
-    divisor:
-    min_value:
+    value: original value.
+    divisor: the divisor that need to be checked upon.
+    min_value: minimum value threshold.
 
   Returns:
-
+    The adjusted value that divisible again divisor.
   """
   if min_value is None:
     min_value = divisor
@@ -116,6 +115,7 @@ def split_divisible(num: int,
 def width_multiplier_op(filters: int,
                         width_multiplier: float,
                         min_depth: int = 8) -> int:
+  """Determine the number of channels given width multiplier"""
   return max(int(filters * width_multiplier), min_depth)
 
 
@@ -123,6 +123,7 @@ def width_multiplier_op_divisible(filters: int,
                                   width_multiplier: float,
                                   divisible_by: int = 8,
                                   min_depth: int = 8) -> int:
+  """Determine the divisible number of channels given width multiplier"""
   return make_divisible(value=filters * width_multiplier,
                         divisor=divisible_by,
                         min_value=min_depth)
@@ -194,8 +195,9 @@ def conv2d_block(inputs: tf.Tensor,
                                 width_multiplier=width_multiplier,
                                 min_depth=min_depth)
 
-  activation_fn = get_activation_function()[activation_name]
-  normalization_layer = get_normalization_layer()[normalization_name]
+  activation_fn = archs.get_activation_function()[activation_name]
+  normalization_layer = archs.get_normalization_layer()[
+    normalization_name]
 
   padding = 'SAME'
   if use_explicit_padding:
