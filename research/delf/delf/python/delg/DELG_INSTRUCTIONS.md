@@ -6,6 +6,12 @@ These instructions can be used to reproduce the results from the
 [DELG paper](https://arxiv.org/abs/2001.05027) for the Revisited Oxford/Paris
 datasets.
 
+### Install DELF library
+
+To be able to use this code, please follow
+[these instructions](../../../INSTALL_INSTRUCTIONS.md) to properly install the
+DELF library.
+
 ### Download datasets
 
 ```bash

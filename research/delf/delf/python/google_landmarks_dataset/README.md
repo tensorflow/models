@@ -15,6 +15,12 @@ file reading / metric computation modules.
 For more details on the dataset, please refer to its
 [website](https://github.com/cvdfoundation/google-landmark).
 
+### Install DELF library
+
+To be able to use this code, please follow
+[these instructions](../../../INSTALL_INSTRUCTIONS.md) to properly install the
+DELF library.
+
 ### Download Revisited Oxford/Paris datasets
 
 ```bash
