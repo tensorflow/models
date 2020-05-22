@@ -28,12 +28,11 @@ from typing import Tuple, Union, Text, Dict
 import tensorflow as tf
 
 from research.mobilenet import common_modules
-from research.mobilenet.configs.mobilenet_config import MobileNetV2Config
-from research.mobilenet.configs.mobilenet_config import Conv, InvertedResConv
-from research.mobilenet.configs.mobilenet_config import get_activation_function
-from research.mobilenet.configs.mobilenet_config import get_normalization_layer
+from research.mobilenet.configs import archs
 
 layers = tf.keras.layers
+
+MobileNetV2Config = archs.MobileNetV2Config
 
 
 def _inverted_res_block(inputs: tf.Tensor,
@@ -116,8 +115,9 @@ def _inverted_res_block(inputs: tf.Tensor,
     width_multiplier=width_multiplier,
     min_depth=min_depth)
 
-  activation_fn = get_activation_function()[activation_name]
-  normalization_layer = get_normalization_layer()[normalization_name]
+  activation_fn = archs.get_activation_function()[activation_name]
+  normalization_layer = archs.get_normalization_layer()[
+    normalization_name]
 
   weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
@@ -245,7 +245,7 @@ def mobilenet_v2_base(inputs: tf.Tensor,
       layer_stride = block_def.stride
       layer_rate = 1
       current_stride *= block_def.stride
-    if block_def.block_type == Conv:
+    if block_def.block_type == archs.BlockType.Conv.value:
       if i == 0 or width_multiplier > 1.0:
         filters = common_modules.width_multiplier_op_divisible(
           filters=block_def.filters,
@@ -268,7 +268,7 @@ def mobilenet_v2_base(inputs: tf.Tensor,
         normalization_params=normalization_params,
         block_id=i
       )
-    elif block_def.block_type == InvertedResConv:
+    elif block_def.block_type == archs.BlockType.InvertedResConv.value:
       use_rate = rate
       if layer_rate > 1 and block_def.kernel != (1, 1):
         # We will apply atrous rate in the following cases:

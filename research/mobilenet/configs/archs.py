@@ -16,15 +16,12 @@
 
 from typing import Text, Tuple, Callable, Mapping, Type
 from dataclasses import dataclass
+import enum
 
 import tensorflow as tf
 import tensorflow_addons as tfa
 
 from official.modeling.hyperparams import base_config
-
-Conv = 'Conv'
-DepSepConv = 'DepSepConv'
-InvertedResConv = 'InvertedResConv'
 
 
 def get_activation_function() -> Mapping[Text, Callable]:
@@ -46,6 +43,12 @@ def get_normalization_layer() -> Mapping[Text, Type[tf.keras.layers.Layer]]:
   }
 
 
+class BlockType(enum.Enum):
+  Conv = 'Conv'
+  DepSepConv = 'DepSepConv'
+  InvertedResConv = 'InvertedResConv'
+
+
 @dataclass
 class MobileNetBlockConfig(base_config.Config):
   """Configuration for a block of MobileNetV1 model."""
@@ -53,7 +56,7 @@ class MobileNetBlockConfig(base_config.Config):
   stride: int = 1
   filters: int = 32
   expansion_size: int = 6  # used for block type InvertedResConv
-  block_type: Text = Conv
+  block_type: Text = BlockType.Conv.value
 
 
 @dataclass
@@ -124,34 +127,48 @@ class MobileNetV1Config(base_config.Config):
     # pylint: disable=bad-whitespace
     # base normal conv
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=2, filters=32, block_type=Conv),
+      kernel=(3, 3), stride=2, filters=32,
+      block_type=BlockType.Conv.value),
     # depthsep conv
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=1, filters=64, block_type=DepSepConv),
+      kernel=(3, 3), stride=1, filters=64,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=12, filters=128, block_type=DepSepConv),
+      kernel=(3, 3), stride=12, filters=128,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=128, block_type=DepSepConv),
+      kernel=(3, 3), stride=11, filters=128,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=12, filters=256, block_type=DepSepConv),
+      kernel=(3, 3), stride=12, filters=256,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=256, block_type=DepSepConv),
+      kernel=(3, 3), stride=11, filters=256,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=12, filters=512, block_type=DepSepConv),
+      kernel=(3, 3), stride=12, filters=512,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+      kernel=(3, 3), stride=11, filters=512,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+      kernel=(3, 3), stride=11, filters=512,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args
-    (kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+    (kernel=(3, 3), stride=11, filters=512,
+     block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+      kernel=(3, 3), stride=11, filters=512,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=512, block_type=DepSepConv),
+      kernel=(3, 3), stride=11, filters=512,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=12, filters=1024, block_type=DepSepConv),
+      kernel=(3, 3), stride=12, filters=1024,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=11, filters=1024, block_type=DepSepConv),
+      kernel=(3, 3), stride=11, filters=1024,
+      block_type=BlockType.DepSepConv.value),
     # pylint: enable=bad-whitespace
   )
 
@@ -223,70 +240,70 @@ class MobileNetV2Config(base_config.Config):
     # pylint: disable=bad-whitespace
     # base normal conv
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=2, filters=32, block_type=Conv),
+      kernel=(3, 3), stride=2, filters=32, block_type=BlockType.Conv.value),
     # inverted res conv
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=16,
-      expansion_size=1, block_type=InvertedResConv),
+      expansion_size=1, block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=24,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=24,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=32,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=32,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=32,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=64,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=64,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=64,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=64,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=96,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=96,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=96,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=24,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=160,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=160,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=160,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=320,
-      expansion_size=6, block_type=InvertedResConv),
+      expansion_size=6, block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
-      kernel=(1, 1), stride=1, filters=1280, block_type=Conv),
+      kernel=(1, 1), stride=1, filters=1280, block_type=BlockType.Conv.value),
     # pylint: enable=bad-whitespace
   )
 

@@ -99,8 +99,15 @@ class DatasetConfig:
 
 
 @dataclass
-class ImageNetTEConfig(DatasetConfig):
-  """The base ImageNette dataset config."""
+class ImageNetteConfig(DatasetConfig):
+  """The base ImageNette dataset config.
+
+  Imagenette is a subset of 10 easily classified classes from the Imagenet
+  dataset. It was originally prepared by Jeremy Howard of FastAI.
+  The objective behind putting together a small version of the Imagenet dataset
+  was mainly because running new ideas/algorithms/experiments on the whole
+  Imagenet take a lot of time.
+  """
   name: str = 'imagenette'
   image_size: int = 224
   batch_size: int = 32
