@@ -21,6 +21,11 @@ from research.mobilenet.configs import archs
 
 layers = tf.keras.layers
 
+MobileNetConfig = Union[archs.MobileNetV1Config,
+                        archs.MobileNetV2Config,
+                        archs.MobileNetV3SmallConfig,
+                        archs.MobileNetV3LargeConfig]
+
 
 class FixedPadding(layers.Layer):
   """Pads the input along the spatial dimensions independently of input size.
@@ -91,27 +96,6 @@ def make_divisible(value: float,
   return new_value
 
 
-def split_divisible(num: int,
-                    num_ways: int,
-                    divisible_by: int = 8
-                    ) -> List[int]:
-  """Evenly splits num, num_ways so each piece is a multiple of divisible_by."""
-  assert num % divisible_by == 0
-  assert num / num_ways >= divisible_by
-  # Note: want to round down, we adjust each split to match the total.
-  base = num // num_ways // divisible_by * divisible_by
-  result = []
-  accumulated = 0
-  for i in range(num_ways):
-    r = base
-    while accumulated + r < num * (i + 1) / num_ways:
-      r += divisible_by
-    result.append(r)
-    accumulated += r
-  assert accumulated == num
-  return result
-
-
 def width_multiplier_op(filters: int,
                         width_multiplier: float,
                         min_depth: int = 8) -> int:
@@ -147,6 +131,7 @@ def conv2d_block(inputs: tf.Tensor,
                  use_explicit_padding: bool = False,
                  kernel: Union[int, Tuple[int, int]] = (3, 3),
                  strides: Union[int, Tuple[int, int]] = (1, 1),
+                 divisable: bool = False,
                  block_id: int = 0
                  ) -> tf.Tensor:
   """Adds an initial convolution layer (with batch normalization).
@@ -185,15 +170,22 @@ def conv2d_block(inputs: tf.Tensor,
         all spatial dimensions.
         Specifying any stride value != 1 is incompatible with specifying
         any `dilation_rate` value != 1.
-    block_id: a unique identification designating the block number.
+    divisable: Ensure the number of filters is divisable.
+    block_id: A unique identification designating the block number.
 
   Returns
     Output tensor of block of shape [batch_size, height, width, filters].
   """
 
-  filters = width_multiplier_op(filters=filters,
-                                width_multiplier=width_multiplier,
-                                min_depth=min_depth)
+  if not divisable:
+    filters = width_multiplier_op(filters=filters,
+                                  width_multiplier=width_multiplier,
+                                  min_depth=min_depth)
+  else:
+    filters = width_multiplier_op_divisible(
+      filters=filters,
+      width_multiplier=width_multiplier,
+      min_depth=min_depth)
 
   activation_fn = archs.get_activation_function()[activation_name]
   normalization_layer = archs.get_normalization_layer()[
@@ -226,6 +218,127 @@ def conv2d_block(inputs: tf.Tensor,
                               name='Conv2d_{}_{}'.format(
                                 block_id, activation_name))(x)
 
+  return outputs
+
+
+def depthwise_conv2d_block(inputs: tf.Tensor,
+                           filters: int,
+                           width_multiplier: float,
+                           min_depth: int,
+                           weight_decay: float,
+                           stddev: float,
+                           activation_name: Text = 'relu6',
+                           normalization_name: Text = 'batch_norm',
+                           normalization_params: Dict = {},
+                           dilation_rate: int = 1,
+                           regularize_depthwise: bool = False,
+                           use_explicit_padding: bool = False,
+                           kernel: Union[int, Tuple[int, int]] = (3, 3),
+                           strides: Union[int, Tuple[int, int]] = (1, 1),
+                           block_id: int = 1
+                           ) -> tf.Tensor:
+  """Adds an initial convolution layer (with batch normalization).
+
+  Args:
+    inputs: Input tensor of shape [batch_size, height, width, channels]
+    filters: the dimensionality of the output space
+      (i.e. the number of output filters in the convolution).
+    width_multiplier: controls the width of the network.
+      - If `width_multiplier` < 1.0, proportionally decreases the number
+            of filters in each layer.
+      - If `width_multiplier` > 1.0, proportionally increases the number
+            of filters in each layer.
+      - If `width_multiplier` = 1, default number of filters from the paper
+            are used at each layer.
+      This is called `width multiplier (\alpha)` in the original paper.
+    min_depth: Minimum depth value (number of channels) for all convolution ops.
+      Enforced when width_multiplier < 1, and not an active constraint when
+      width_multiplier >= 1.
+    weight_decay: The weight decay to use for regularizing the model.
+    stddev: The standard deviation of the trunctated normal weight initializer.
+    activation_name: Name of the activation function
+    normalization_name: Name of the normalization layer
+    normalization_params: Parameters passed to normalization layer
+    dilation_rate: an integer or tuple/list of 2 integers, specifying
+      the dilation rate to use for dilated convolution.
+      Can be a single integer to specify the same value for
+      all spatial dimensions.
+    regularize_depthwise: Whether or not apply regularization on depthwise.
+    use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+      inputs so that the output dimensions are the same as if 'SAME' padding
+      were used.
+    kernel: An integer or tuple/list of 2 integers, specifying the
+      width and height of the 2D convolution window.
+      Can be a single integer to specify the same value for
+      all spatial dimensions.
+    strides: An integer or tuple/list of 2 integers,
+        specifying the strides of the convolution
+        along the width and height.
+        Can be a single integer to specify the same value for
+        all spatial dimensions.
+        Specifying any stride value != 1 is incompatible with specifying
+        any `dilation_rate` value != 1.
+    block_id: a unique identification designating the block number.
+
+
+  Returns
+    Output tensor of block of shape [batch_size, height, width, filters].
+  """
+
+  filters = width_multiplier_op(
+    filters=filters,
+    width_multiplier=width_multiplier,
+    min_depth=min_depth)
+
+  activation_fn = archs.get_activation_function()[activation_name]
+  normalization_layer = archs.get_normalization_layer()[
+    normalization_name]
+
+  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+  regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
+  depth_regularizer = regularizer if regularize_depthwise else None
+
+  padding = 'SAME'
+  if use_explicit_padding:
+    padding = 'VALID'
+    inputs = FixedPadding(
+      kernel_size=kernel,
+      name='Conv2d_{}_FP'.format(block_id))(inputs)
+
+  # depth-wise convolution
+  x = layers.DepthwiseConv2D(kernel_size=kernel,
+                             padding=padding,
+                             depth_multiplier=1,
+                             strides=strides,
+                             kernel_initializer=weights_init,
+                             kernel_regularizer=depth_regularizer,
+                             dilation_rate=dilation_rate,
+                             use_bias=False,
+                             name='Conv2d_{}_dw'.format(block_id))(inputs)
+  x = normalization_layer(axis=-1,
+                          name='Conv2d_{}_dw_{}'.format(
+                            block_id, normalization_name),
+                          **normalization_params)(x)
+  x = layers.Activation(activation=activation_fn,
+                        name='Conv2d_{}_dw_{}'.format(
+                          block_id, activation_name))(x)
+
+  # point-wise convolution
+  x = layers.Conv2D(filters=filters,
+                    kernel_size=(1, 1),
+                    padding='SAME',
+                    strides=(1, 1),
+                    kernel_initializer=weights_init,
+                    kernel_regularizer=regularizer,
+                    use_bias=False,
+                    name='Conv2d_{}_pw'.format(block_id))(x)
+  x = normalization_layer(axis=-1,
+                          name='Conv2d_{}_pw_{}'.format(
+                            block_id, normalization_name),
+                          **normalization_params)(x)
+  outputs = layers.Activation(activation=activation_fn,
+                              name='Conv2d_{}_pw_{}'.format(
+                                block_id, activation_name))(x)
   return outputs
 
 
@@ -462,3 +575,143 @@ def inverted_res_block(inputs: tf.Tensor,
       in_channels == filters):
     x = layers.Add(name=prefix + 'add')([inputs, x])
   return x
+
+
+def mobilenet_base(inputs: tf.Tensor,
+                   config: MobileNetConfig
+                   ) -> tf.Tensor:
+  """Build the base MobileNet architecture."""
+
+  min_depth = config.min_depth
+  width_multiplier = config.width_multiplier
+  finegrain_classification_mode = config.finegrain_classification_mode
+  weight_decay = config.weight_decay
+  stddev = config.stddev
+  regularize_depthwise = config.regularize_depthwise
+  batch_norm_decay = config.batch_norm_decay
+  batch_norm_epsilon = config.batch_norm_epsilon
+  output_stride = config.output_stride
+  use_explicit_padding = config.use_explicit_padding
+  normalization_name = config.normalization_name
+  normalization_params = {
+    'momentum': batch_norm_decay,
+    'epsilon': batch_norm_epsilon
+  }
+  blocks = config.blocks
+
+  if width_multiplier <= 0:
+    raise ValueError('depth_multiplier is not greater than zero.')
+
+  if output_stride is not None and output_stride not in [8, 16, 32]:
+    raise ValueError('Only allowed output_stride values are 8, 16, 32.')
+
+  if finegrain_classification_mode and width_multiplier < 1.0:
+    blocks[-1].filters /= width_multiplier
+
+  # The current_stride variable keeps track of the output stride of the
+  # activations, i.e., the running product of convolution strides up to the
+  # current network layer. This allows us to invoke atrous convolution
+  # whenever applying the next convolution would result in the activations
+  # having output stride larger than the target output_stride.
+  current_stride = 1
+
+  # The atrous convolution rate parameter.
+  rate = 1
+
+  net = inputs
+  for i, block_def in enumerate(blocks):
+    if output_stride is not None and current_stride == output_stride:
+      # If we have reached the target output_stride, then we need to employ
+      # atrous convolution with stride=1 and multiply the atrous rate by the
+      # current unit's stride for use in subsequent layers.
+      layer_stride = 1
+      layer_rate = rate
+      rate *= block_def.stride
+    else:
+      layer_stride = block_def.stride
+      layer_rate = 1
+      current_stride *= block_def.stride
+
+    if block_def.block_type == archs.BlockType.Conv.value:
+      # This adjustment applies to V2 and V3
+      if (not isinstance(config, archs.MobileNetV1Config)
+          and (i == 0 or width_multiplier > 1.0)):
+        filters = width_multiplier_op_divisible(
+          filters=block_def.filters,
+          width_multiplier=width_multiplier,
+          min_depth=min_depth)
+      else:
+        filters = block_def.filters
+
+      # For V2 and V3, divisable should be explicitly ensured.
+      divisable = False
+      if not isinstance(config, archs.MobileNetV1Config):
+        divisable = True
+
+      net = conv2d_block(
+        inputs=net,
+        filters=filters,
+        kernel=block_def.kernel,
+        strides=block_def.stride,
+        activation_name=block_def.activation_name,
+        width_multiplier=1,
+        min_depth=min_depth,
+        weight_decay=weight_decay,
+        stddev=stddev,
+        use_explicit_padding=use_explicit_padding,
+        normalization_name=normalization_name,
+        normalization_params=normalization_params,
+        divisable=divisable,
+        block_id=i
+      )
+    elif block_def.block_type == archs.BlockType.DepSepConv.value:
+      net = depthwise_conv2d_block(
+        inputs=net,
+        filters=block_def.filters,
+        kernel=block_def.kernel,
+        strides=layer_stride,
+        activation_name=block_def.activation_name,
+        dilation_rate=layer_rate,
+        width_multiplier=width_multiplier,
+        min_depth=min_depth,
+        weight_decay=weight_decay,
+        stddev=stddev,
+        normalization_name=normalization_name,
+        normalization_params=normalization_params,
+        regularize_depthwise=regularize_depthwise,
+        use_explicit_padding=use_explicit_padding,
+        block_id=i
+      )
+    elif block_def.block_type == archs.BlockType.InvertedResConv.value:
+      use_rate = rate
+      if layer_rate > 1 and block_def.kernel != (1, 1):
+        # We will apply atrous rate in the following cases:
+        # 1) When kernel_size is not in params, the operation then uses
+        #   default kernel size 3x3.
+        # 2) When kernel_size is in params, and if the kernel_size is not
+        #   equal to (1, 1) (there is no need to apply atrous convolution to
+        #   any 1x1 convolution).
+        use_rate = layer_rate
+      net = inverted_res_block(
+        inputs=net,
+        filters=block_def.filters,
+        kernel=block_def.kernel,
+        strides=layer_stride,
+        expansion_size=block_def.expansion_size,
+        squeeze_factor=block_def.squeeze_factor,
+        activation_name=block_def.activation_name,
+        dilation_rate=use_rate,
+        width_multiplier=width_multiplier,
+        min_depth=min_depth,
+        weight_decay=weight_decay,
+        stddev=stddev,
+        regularize_depthwise=regularize_depthwise,
+        use_explicit_padding=use_explicit_padding,
+        normalization_name=normalization_name,
+        normalization_params=normalization_params,
+        block_id=i
+      )
+    else:
+      raise ValueError('Unknown block type {} for layer {}'.format(
+        block_def.block_type, i))
+  return net

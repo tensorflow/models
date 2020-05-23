@@ -35,118 +35,6 @@ layers = tf.keras.layers
 MobileNetV2Config = archs.MobileNetV2Config
 
 
-def mobilenet_v2_base(inputs: tf.Tensor,
-                      config: MobileNetV2Config
-                      ) -> tf.Tensor:
-  """Build the base MobileNet architecture."""
-
-  min_depth = config.min_depth
-  width_multiplier = config.width_multiplier
-  finegrain_classification_mode = config.finegrain_classification_mode
-  weight_decay = config.weight_decay
-  stddev = config.stddev
-  regularize_depthwise = config.regularize_depthwise
-  batch_norm_decay = config.batch_norm_decay
-  batch_norm_epsilon = config.batch_norm_epsilon
-  output_stride = config.output_stride
-  use_explicit_padding = config.use_explicit_padding
-  activation_name = config.activation_name
-  normalization_name = config.normalization_name
-  normalization_params = {
-    'momentum': batch_norm_decay,
-    'epsilon': batch_norm_epsilon
-  }
-  blocks = config.blocks
-
-  if width_multiplier <= 0:
-    raise ValueError('depth_multiplier is not greater than zero.')
-
-  if output_stride is not None and output_stride not in [8, 16, 32]:
-    raise ValueError('Only allowed output_stride values are 8, 16, 32.')
-
-  if finegrain_classification_mode and width_multiplier < 1.0:
-    blocks[-1].filters /= width_multiplier
-
-  # The current_stride variable keeps track of the output stride of the
-  # activations, i.e., the running product of convolution strides up to the
-  # current network layer. This allows us to invoke atrous convolution
-  # whenever applying the next convolution would result in the activations
-  # having output stride larger than the target output_stride.
-  current_stride = 1
-
-  # The atrous convolution rate parameter.
-  rate = 1
-
-  net = inputs
-  for i, block_def in enumerate(blocks):
-    if output_stride is not None and current_stride == output_stride:
-      # If we have reached the target output_stride, then we need to employ
-      # atrous convolution with stride=1 and multiply the atrous rate by the
-      # current unit's stride for use in subsequent layers.
-      layer_stride = 1
-      layer_rate = rate
-      rate *= block_def.stride
-    else:
-      layer_stride = block_def.stride
-      layer_rate = 1
-      current_stride *= block_def.stride
-    if block_def.block_type == archs.BlockType.Conv.value:
-      if i == 0 or width_multiplier > 1.0:
-        filters = common_modules.width_multiplier_op_divisible(
-          filters=block_def.filters,
-          width_multiplier=width_multiplier,
-          min_depth=min_depth)
-      else:
-        filters = block_def.filters
-      net = common_modules.conv2d_block(
-        inputs=net,
-        filters=filters,
-        kernel=block_def.kernel,
-        strides=block_def.stride,
-        width_multiplier=1,
-        min_depth=min_depth,
-        weight_decay=weight_decay,
-        stddev=stddev,
-        use_explicit_padding=use_explicit_padding,
-        activation_name=activation_name,
-        normalization_name=normalization_name,
-        normalization_params=normalization_params,
-        block_id=i
-      )
-    elif block_def.block_type == archs.BlockType.InvertedResConv.value:
-      use_rate = rate
-      if layer_rate > 1 and block_def.kernel != (1, 1):
-        # We will apply atrous rate in the following cases:
-        # 1) When kernel_size is not in params, the operation then uses
-        #   default kernel size 3x3.
-        # 2) When kernel_size is in params, and if the kernel_size is not
-        #   equal to (1, 1) (there is no need to apply atrous convolution to
-        #   any 1x1 convolution).
-        use_rate = layer_rate
-      net = common_modules.inverted_res_block(
-        inputs=net,
-        filters=block_def.filters,
-        kernel=block_def.kernel,
-        strides=layer_stride,
-        expansion_size=block_def.expansion_size,
-        dilation_rate=use_rate,
-        width_multiplier=width_multiplier,
-        min_depth=min_depth,
-        weight_decay=weight_decay,
-        stddev=stddev,
-        regularize_depthwise=regularize_depthwise,
-        use_explicit_padding=use_explicit_padding,
-        activation_name=activation_name,
-        normalization_name=normalization_name,
-        normalization_params=normalization_params,
-        block_id=i
-      )
-    else:
-      raise ValueError('Unknown block type {} for layer {}'.format(
-        block_def.block_type, i))
-  return net
-
-
 def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
                  config: MobileNetV2Config = MobileNetV2Config()
                  ) -> tf.keras.models.Model:
@@ -158,7 +46,7 @@ def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
   model_name = config.name
 
   img_input = layers.Input(shape=input_shape, name='Input')
-  x = mobilenet_v2_base(img_input, config)
+  x = common_modules.mobilenet_base(img_input, config)
 
   # Build top
   # Global average pooling.
@@ -166,7 +54,7 @@ def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
                                     name='top_GlobalPool')(x)
   x = layers.Reshape((1, 1, x.shape[1]))(x)
 
-  # 1 x 1 x 1024
+  # 1 x 1 x num_classes
   x = layers.Dropout(rate=1 - dropout_keep_prob,
                      name='top_Dropout')(x)
 
