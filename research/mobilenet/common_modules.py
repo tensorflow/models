@@ -267,7 +267,7 @@ def se_block(inputs: tf.Tensor,
     input_channels / squeeze_factor, divisor=divisible_by)
 
   inner_activation_fn = archs.get_activation_function()[inner_activation_name]
-  gating_activation_fn = archs.get_normalization_layer()[
+  gating_activation_fn = archs.get_activation_function()[
     gating_activation_name]
 
   x = layers.GlobalAveragePooling2D(name=prefix + 'se_GlobalPool')(inputs)

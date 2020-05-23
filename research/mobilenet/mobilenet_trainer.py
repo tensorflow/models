@@ -26,6 +26,7 @@ import tensorflow as tf
 from research.mobilenet import dataset_loader
 from research.mobilenet import mobilenet_v1_model
 from research.mobilenet import mobilenet_v2_model
+from research.mobilenet import mobilenet_v3_model
 from research.mobilenet.configs import defaults
 from research.mobilenet.configs import archs
 from research.mobilenet.configs import dataset as dataset_config
@@ -39,14 +40,15 @@ def _get_model_config() -> Mapping[Text, Type[base_config.Config]]:
   return {
     'mobilenet_v1': archs.MobileNetV1Config,
     'mobilenet_v2': archs.MobileNetV2Config,
-    'mobilenet_v3': archs.MobileNetV3LargeConfig,
+    'mobilenet_v3_small': archs.MobileNetV3SmallConfig,
+    'mobilenet_v3_large': archs.MobileNetV3LargeConfig
   }
 
 
 def _get_model_builder() -> Mapping[Text, Any]:
   return {
     'mobilenet_v1': mobilenet_v1_model.mobilenet_v1,
-    'mobilenet_v2': mobilenet_v2_model.mobilenet_v2
+    'mobilenet_v2': mobilenet_v2_model.mobilenet_v2,
   }
 
 
@@ -199,7 +201,7 @@ def get_flags():
   flags.DEFINE_integer(
     'batch_size',
     help='Training batch size.',
-    default=2 # for testing purpose
+    default=2  # for testing purpose
   )
   flags.DEFINE_integer(
     'epochs',

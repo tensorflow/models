@@ -173,6 +173,7 @@ def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
   x = layers.Conv2D(filters=num_classes,
                     kernel_size=(1, 1),
                     padding='SAME',
+                    bias_initializer=tf.keras.initializers.Zeros(),
                     name='top_Conv2d_1x1')(x)
   if spatial_squeeze:
     x = layers.Reshape(target_shape=(num_classes,),

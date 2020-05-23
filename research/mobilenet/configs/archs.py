@@ -372,6 +372,8 @@ class MobileNetV3LargeConfig(base_config.Config):
   weight_decay: float = 0.00004
   stddev: float = 0.09
   regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'hard_swish'
   # normalization
   normalization_name: Text = 'batch_norm'
   batch_norm_decay: float = 0.9997
@@ -544,6 +546,8 @@ class MobileNetV3SmallConfig(base_config.Config):
   weight_decay: float = 0.00004
   stddev: float = 0.09
   regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'hard_swish'
   # normalization
   normalization_name: Text = 'batch_norm'
   batch_norm_decay: float = 0.9997
