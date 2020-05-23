@@ -177,7 +177,8 @@ def get_flags():
   """
   flags.DEFINE_string(
     'model_name',
-    help='MobileNet version name: mobilenet_v1, mobilenet_v2',
+    help='MobileNet version name: mobilenet_v1, mobilenet_v2, '
+         'mobilenet_v3_small and mobilenet_v3_large',
     default='mobilenet_v1'
   )
   flags.DEFINE_string(
