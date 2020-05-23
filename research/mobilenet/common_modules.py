@@ -343,6 +343,8 @@ def depthwise_conv2d_block(inputs: tf.Tensor,
 
 
 def se_block(inputs: tf.Tensor,
+             weight_decay: float,
+             stddev: float,
              squeeze_factor: int = 4,
              divisible_by: int = 8,
              inner_activation_name: Text = 'relu',
@@ -358,6 +360,8 @@ def se_block(inputs: tf.Tensor,
 
   Args:
     inputs: input tensor to apply SE block to.
+    weight_decay: The weight decay to use for regularizing the model.
+    stddev: The standard deviation of the trunctated normal weight initializer.
     divisible_by: ensures all inner dimensions are divisible by this number.
     squeeze_factor: the factor of squeezing in the inner fully connected layer.
     inner_activation_name: non-linearity to be used in inner layer.
@@ -383,11 +387,16 @@ def se_block(inputs: tf.Tensor,
   gating_activation_fn = archs.get_activation_function()[
     gating_activation_name]
 
+  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+  regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
+
   x = layers.GlobalAveragePooling2D(name=prefix + 'se_GlobalPool')(inputs)
   x = layers.Reshape((1, 1, input_channels))(x)
 
   x = layers.Conv2D(squeeze_channels,
                     kernel_size=1,
+                    kernel_initializer=weights_init,
+                    kernel_regularizer=regularizer,
                     padding='SAME',
                     name=prefix + 'squeeze')(x)
   x = layers.Activation(activation=inner_activation_fn,
@@ -395,6 +404,8 @@ def se_block(inputs: tf.Tensor,
                           inner_activation_name))(x)
   x = layers.Conv2D(output_channels,
                     kernel_size=1,
+                    kernel_initializer=weights_init,
+                    kernel_regularizer=regularizer,
                     padding='SAME',
                     name=prefix + 'excite')(x)
   x = layers.Activation(activation=gating_activation_fn,
@@ -552,6 +563,8 @@ def inverted_res_block(inputs: tf.Tensor,
     x = se_block(inputs=x,
                  squeeze_factor=squeeze_factor,
                  inner_activation_name=activation_name,
+                 stddev=stddev,
+                 weight_decay=weight_decay,
                  block_id=block_id)
 
   # Project
