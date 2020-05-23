@@ -49,6 +49,8 @@ def _get_model_builder() -> Mapping[Text, Any]:
   return {
     'mobilenet_v1': mobilenet_v1_model.mobilenet_v1,
     'mobilenet_v2': mobilenet_v2_model.mobilenet_v2,
+    'mobilenet_v3_small': mobilenet_v3_model.mobilenet_v3_small,
+    'mobilenet_v3_large': mobilenet_v3_model.mobilenet_v3_large
   }
 
 

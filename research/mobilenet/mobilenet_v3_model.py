@@ -201,6 +201,7 @@ def mobilenet_v3_small(
     input_shape: Tuple[int, int, int] = (224, 224, 3),
     config: MobileNetV3SmallConfig = MobileNetV3SmallConfig()
 ) -> tf.keras.models.Model:
+  assert isinstance(config, MobileNetV3SmallConfig)
   return mobilenet_v3(input_shape=input_shape, config=config)
 
 
@@ -208,6 +209,7 @@ def mobilenet_v3_large(
     input_shape: Tuple[int, int, int] = (224, 224, 3),
     config: MobileNetV3LargeConfig = MobileNetV3LargeConfig(),
 ) -> tf.keras.models.Model:
+  assert isinstance(config, MobileNetV3LargeConfig)
   return mobilenet_v3(input_shape=input_shape, config=config)
 
 
