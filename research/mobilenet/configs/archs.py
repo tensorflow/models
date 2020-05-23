@@ -64,14 +64,14 @@ class BlockType(enum.Enum):
 
 @dataclass
 class MobileNetBlockConfig(base_config.Config):
-  """Configuration for a block of MobileNetV1 model."""
+  """Configuration for a block of MobileNet model."""
   kernel: Tuple[int, int] = (3, 3)
   stride: int = 1
   filters: int = 32
+  activation_name: Text = 'relu6'
   expansion_size: float = 6.  # used for block type InvertedResConv
   squeeze_factor: int = None  # used for block type InvertedResConv with SE
   block_type: Text = BlockType.Conv.value
-  activation_name: Text = 'relu6'
 
 
 @dataclass
@@ -95,6 +95,9 @@ class MobileNetV1Config(base_config.Config):
         if necessary to prevent the network from reducing the spatial resolution
         of the activation maps. Allowed values are 8 (accurate fully convolutional
         mode), 16 (fast fully convolutional mode), 32 (classification mode).
+      finegrain_classification_mode: When set to True, the model
+        will keep the last layer large even for small multipliers. Following
+        https://arxiv.org/abs/1801.04381
       use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
         inputs so that the output dimensions are the same as if 'SAME' padding
         were used.
@@ -121,6 +124,7 @@ class MobileNetV1Config(base_config.Config):
   min_depth: int = 8
   width_multiplier = 1.0
   output_stride: int = None
+  finegrain_classification_mode: bool = False
   use_explicit_padding: bool = False
   global_pool: bool = True
   spatial_squeeze: bool = True
@@ -169,9 +173,9 @@ class MobileNetV1Config(base_config.Config):
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=512,
       block_type=BlockType.DepSepConv.value),
-    MobileNetBlockConfig.from_args
-    (kernel=(3, 3), stride=1, filters=512,
-     block_type=BlockType.DepSepConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=512,
+      block_type=BlockType.DepSepConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=512,
       block_type=BlockType.DepSepConv.value),
@@ -255,67 +259,86 @@ class MobileNetV2Config(base_config.Config):
     # pylint: disable=bad-whitespace
     # base normal conv
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=2, filters=32, block_type=BlockType.Conv.value),
+      kernel=(3, 3), stride=2, filters=32,
+      block_type=BlockType.Conv.value),
     # inverted res conv
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=16,
-      expansion_size=1, block_type=BlockType.InvertedResConv.value),
+      expansion_size=1,
+      block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=24,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=24,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=32,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=32,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=32,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=64,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=64,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=64,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=64,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=96,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=96,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=96,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=2, filters=160,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=160,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=160,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=320,
-      expansion_size=6, block_type=BlockType.InvertedResConv.value),
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
-      kernel=(1, 1), stride=1, filters=1280, block_type=BlockType.Conv.value),
+      kernel=(1, 1), stride=1, filters=1280,
+      block_type=BlockType.Conv.value),
     # pylint: enable=bad-whitespace
   )
 
@@ -359,7 +382,7 @@ class MobileNetV3LargeConfig(base_config.Config):
       dropout_keep_prob: the percentage of activation values that are retained.
 
   """
-  name: Text = 'MobileNetV2'
+  name: Text = 'MobileNetV3Large'
   num_classes: int = 1000
   # model specific
   min_depth: int = 8
@@ -533,7 +556,7 @@ class MobileNetV3SmallConfig(base_config.Config):
       dropout_keep_prob: the percentage of activation values that are retained.
 
   """
-  name: Text = 'MobileNetV2'
+  name: Text = 'MobileNetV3Small'
   num_classes: int = 1000
   # model specific
   min_depth: int = 8

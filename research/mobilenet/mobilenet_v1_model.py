@@ -30,7 +30,7 @@ As described in https://arxiv.org/abs/1704.04861.
 """
 
 import logging
-from typing import Tuple, Union, Text, Dict
+from typing import Tuple
 
 import tensorflow as tf
 
@@ -66,218 +66,6 @@ def _reduced_kernel_size_for_small_input(input_tensor: tf.Tensor,
   return kernel_size_out
 
 
-def _depthwise_conv2d_block(inputs: tf.Tensor,
-                            filters: int,
-                            width_multiplier: float,
-                            min_depth: int,
-                            weight_decay: float,
-                            stddev: float,
-                            activation_name: Text = 'relu6',
-                            normalization_name: Text = 'batch_norm',
-                            normalization_params: Dict = {},
-                            dilation_rate: int = 1,
-                            regularize_depthwise: bool = False,
-                            use_explicit_padding: bool = False,
-                            kernel: Union[int, Tuple[int, int]] = (3, 3),
-                            strides: Union[int, Tuple[int, int]] = (1, 1),
-                            block_id: int = 1
-                            ) -> tf.Tensor:
-  """Adds an initial convolution layer (with batch normalization).
-
-  Args:
-    inputs: Input tensor of shape [batch_size, height, width, channels]
-    filters: the dimensionality of the output space
-      (i.e. the number of output filters in the convolution).
-    width_multiplier: controls the width of the network.
-      - If `width_multiplier` < 1.0, proportionally decreases the number
-            of filters in each layer.
-      - If `width_multiplier` > 1.0, proportionally increases the number
-            of filters in each layer.
-      - If `width_multiplier` = 1, default number of filters from the paper
-            are used at each layer.
-      This is called `width multiplier (\alpha)` in the original paper.
-    min_depth: Minimum depth value (number of channels) for all convolution ops.
-      Enforced when width_multiplier < 1, and not an active constraint when
-      width_multiplier >= 1.
-    weight_decay: The weight decay to use for regularizing the model.
-    stddev: The standard deviation of the trunctated normal weight initializer.
-    activation_name: Name of the activation function
-    normalization_name: Name of the normalization layer
-    normalization_params: Parameters passed to normalization layer
-    dilation_rate: an integer or tuple/list of 2 integers, specifying
-      the dilation rate to use for dilated convolution.
-      Can be a single integer to specify the same value for
-      all spatial dimensions.
-    regularize_depthwise: Whether or not apply regularization on depthwise.
-    use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
-      inputs so that the output dimensions are the same as if 'SAME' padding
-      were used.
-    kernel: An integer or tuple/list of 2 integers, specifying the
-      width and height of the 2D convolution window.
-      Can be a single integer to specify the same value for
-      all spatial dimensions.
-    strides: An integer or tuple/list of 2 integers,
-        specifying the strides of the convolution
-        along the width and height.
-        Can be a single integer to specify the same value for
-        all spatial dimensions.
-        Specifying any stride value != 1 is incompatible with specifying
-        any `dilation_rate` value != 1.
-    block_id: a unique identification designating the block number.
-
-
-  Returns
-    Output tensor of block of shape [batch_size, height, width, filters].
-  """
-
-  filters = common_modules.width_multiplier_op(
-    filters=filters,
-    width_multiplier=width_multiplier,
-    min_depth=min_depth)
-
-  activation_fn = archs.get_activation_function()[activation_name]
-  normalization_layer = archs.get_normalization_layer()[
-    normalization_name]
-
-  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
-  regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
-  depth_regularizer = regularizer if regularize_depthwise else None
-
-  padding = 'SAME'
-  if use_explicit_padding:
-    padding = 'VALID'
-    inputs = common_modules.FixedPadding(
-      kernel_size=kernel,
-      name='Conv2d_{}_FP'.format(block_id))(inputs)
-
-  # depth-wise convolution
-  x = layers.DepthwiseConv2D(kernel_size=kernel,
-                             padding=padding,
-                             depth_multiplier=1,
-                             strides=strides,
-                             kernel_initializer=weights_init,
-                             kernel_regularizer=depth_regularizer,
-                             dilation_rate=dilation_rate,
-                             use_bias=False,
-                             name='Conv2d_{}_dw'.format(block_id))(inputs)
-  x = normalization_layer(axis=-1,
-                          name='Conv2d_{}_dw_{}'.format(
-                            block_id, normalization_name),
-                          **normalization_params)(x)
-  x = layers.Activation(activation=activation_fn,
-                        name='Conv2d_{}_dw_{}'.format(
-                          block_id, activation_name))(x)
-
-  # point-wise convolution
-  x = layers.Conv2D(filters=filters,
-                    kernel_size=(1, 1),
-                    padding='SAME',
-                    strides=(1, 1),
-                    kernel_initializer=weights_init,
-                    kernel_regularizer=regularizer,
-                    use_bias=False,
-                    name='Conv2d_{}_pw'.format(block_id))(x)
-  x = normalization_layer(axis=-1,
-                          name='Conv2d_{}_pw_{}'.format(
-                            block_id, normalization_name),
-                          **normalization_params)(x)
-  outputs = layers.Activation(activation=activation_fn,
-                              name='Conv2d_{}_pw_{}'.format(
-                                block_id, activation_name))(x)
-  return outputs
-
-
-def mobilenet_v1_base(inputs: tf.Tensor,
-                      config: archs.MobileNetV1Config
-                      ) -> tf.Tensor:
-  """Build the base MobileNet architecture."""
-
-  min_depth = config.min_depth
-  width_multiplier = config.width_multiplier
-  weight_decay = config.weight_decay
-  stddev = config.stddev
-  regularize_depthwise = config.regularize_depthwise
-  batch_norm_decay = config.batch_norm_decay
-  batch_norm_epsilon = config.batch_norm_epsilon
-  output_stride = config.output_stride
-  use_explicit_padding = config.use_explicit_padding
-  activation_name = config.activation_name
-  normalization_name = config.normalization_name
-  normalization_params = {
-    'momentum': batch_norm_decay,
-    'epsilon': batch_norm_epsilon
-  }
-  blocks = config.blocks
-
-  if width_multiplier <= 0:
-    raise ValueError('depth_multiplier is not greater than zero.')
-
-  if output_stride is not None and output_stride not in [8, 16, 32]:
-    raise ValueError('Only allowed output_stride values are 8, 16, 32.')
-
-  # The current_stride variable keeps track of the output stride of the
-  # activations, i.e., the running product of convolution strides up to the
-  # current network layer. This allows us to invoke atrous convolution
-  # whenever applying the next convolution would result in the activations
-  # having output stride larger than the target output_stride.
-  current_stride = 1
-
-  # The atrous convolution rate parameter.
-  rate = 1
-
-  net = inputs
-  for i, block_def in enumerate(blocks):
-    if output_stride is not None and current_stride == output_stride:
-      # If we have reached the target output_stride, then we need to employ
-      # atrous convolution with stride=1 and multiply the atrous rate by the
-      # current unit's stride for use in subsequent layers.
-      layer_stride = 1
-      layer_rate = rate
-      rate *= block_def.stride
-    else:
-      layer_stride = block_def.stride
-      layer_rate = 1
-      current_stride *= block_def.stride
-    if block_def.block_type == archs.BlockType.Conv.value:
-      net = common_modules.conv2d_block(
-        inputs=net,
-        filters=block_def.filters,
-        kernel=block_def.kernel,
-        strides=block_def.stride,
-        width_multiplier=width_multiplier,
-        min_depth=min_depth,
-        weight_decay=weight_decay,
-        stddev=stddev,
-        use_explicit_padding=use_explicit_padding,
-        activation_name=activation_name,
-        normalization_name=normalization_name,
-        normalization_params=normalization_params,
-        block_id=i
-      )
-    elif block_def.block_type == archs.BlockType.DepSepConv.value:
-      net = _depthwise_conv2d_block(
-        inputs=net,
-        filters=block_def.filters,
-        kernel=block_def.kernel,
-        strides=layer_stride,
-        dilation_rate=layer_rate,
-        width_multiplier=width_multiplier,
-        min_depth=min_depth,
-        weight_decay=weight_decay,
-        stddev=stddev,
-        activation_name=activation_name,
-        normalization_name=normalization_name,
-        normalization_params=normalization_params,
-        regularize_depthwise=regularize_depthwise,
-        use_explicit_padding=use_explicit_padding,
-        block_id=i
-      )
-    else:
-      raise ValueError('Unknown block type {} for layer {}'.format(
-        block_def.block_type, i))
-  return net
-
-
 def mobilenet_v1(input_shape: Tuple[int, int, int] = (224, 224, 3),
                  config: MobileNetV1Config = MobileNetV1Config()
                  ) -> tf.keras.models.Model:
@@ -290,7 +78,7 @@ def mobilenet_v1(input_shape: Tuple[int, int, int] = (224, 224, 3),
   model_name = config.name
 
   img_input = layers.Input(shape=input_shape, name='Input')
-  x = mobilenet_v1_base(img_input, config)
+  x = common_modules.mobilenet_base(img_input, config)
 
   # Build top
   if global_pool:
@@ -306,7 +94,7 @@ def mobilenet_v1(input_shape: Tuple[int, int, int] = (224, 224, 3),
                          data_format='channels_last',
                          name='top_AvgPool')(x)
 
-  # 1 x 1 x 1024
+  # 1 x 1 x num_classes
   x = layers.Dropout(rate=1 - dropout_keep_prob,
                      name='top_Dropout')(x)
 
