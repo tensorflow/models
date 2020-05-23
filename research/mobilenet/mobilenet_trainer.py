@@ -39,7 +39,7 @@ def _get_model_config() -> Mapping[Text, Type[base_config.Config]]:
   return {
     'mobilenet_v1': archs.MobileNetV1Config,
     'mobilenet_v2': archs.MobileNetV2Config,
-    'mobilenet_v3': archs.MobileNetV3Config,
+    'mobilenet_v3': archs.MobileNetV3LargeConfig,
   }
 
 
