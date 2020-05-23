@@ -68,8 +68,10 @@ class MobileNetBlockConfig(base_config.Config):
   kernel: Tuple[int, int] = (3, 3)
   stride: int = 1
   filters: int = 32
-  expansion_size: int = 6  # used for block type InvertedResConv
+  expansion_size: float = 6.  # used for block type InvertedResConv
+  squeeze_factor: int = None  # used for block type InvertedResConv with SE
   block_type: Text = BlockType.Conv.value
+  activation_name: Text = 'relu6'
 
 
 @dataclass
@@ -319,6 +321,320 @@ class MobileNetV2Config(base_config.Config):
 
 
 @dataclass
-class MobileNetV3Config(base_config.Config):
-  """Configuration for the MobileNetV3 model."""
-  pass
+class MobileNetV3LargeConfig(base_config.Config):
+  """Configuration for the MobileNetV3 model.
+
+    Attributes:
+      name: name of the target model.
+      num_classes: number of predicted classes. If 0 or None, the logits layer
+        is omitted and the input features to the logits layer (before dropout)
+        are returned instead.
+      min_depth: Minimum depth value (number of channels) for all convolution ops.
+        Enforced when width_multiplier < 1, and not an active constraint when
+        width_multiplier >= 1.
+      width_multiplier: Float multiplier for the depth (number of channels)
+        for all convolution ops. The value must be greater than zero. Typical
+        usage will be to set this value in (0, 1) to reduce the number of
+        parameters or computation cost of the model.
+      output_stride: An integer that specifies the requested ratio of input to
+        output spatial resolution. If not None, then we invoke atrous convolution
+        if necessary to prevent the network from reducing the spatial resolution
+        of the activation maps. Allowed values are 8 (accurate fully convolutional
+        mode), 16 (fast fully convolutional mode), 32 (classification mode).
+      finegrain_classification_mode: When set to True, the model
+        will keep the last layer large even for small multipliers. Following
+        https://arxiv.org/abs/1801.04381
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
+      spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
+        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
+      weight_decay: The weight decay to use for regularizing the model.
+      stddev: The standard deviation of the trunctated normal weight initializer.
+      regularize_depthwise: Whether or not apply regularization on depthwise.
+      normalization_layer: Name of the normalization layer
+      batch_norm_decay: Decay for batch norm moving average.
+      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
+        in batch norm.
+      dropout_keep_prob: the percentage of activation values that are retained.
+
+  """
+  name: Text = 'MobileNetV2'
+  num_classes: int = 1000
+  # model specific
+  min_depth: int = 8
+  width_multiplier = 1.0
+  output_stride: int = None
+  finegrain_classification_mode: bool = False
+  use_explicit_padding: bool = False
+  spatial_squeeze: bool = True
+  # regularization
+  weight_decay: float = 0.00004
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.999
+  # base architecture
+  blocks: Tuple[MobileNetBlockConfig, ...] = (
+    # (kernel, stride, depth)
+    # pylint: disable=bad-whitespace
+    # base normal conv
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=16,
+      activation_name='hard_swish',
+      block_type=BlockType.Conv.value),
+
+    # inverted res conv
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=16,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=1,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=24,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=24,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=3,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=2, filters=40,
+      activation_name='relu',
+      squeeze_factor=4,
+      expansion_size=3,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=40,
+      activation_name='relu',
+      squeeze_factor=4,
+      expansion_size=3,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=40,
+      activation_name='relu',
+      squeeze_factor=4,
+      expansion_size=3,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=80,
+      activation_name='hard_swish',
+      squeeze_factor=None,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=80,
+      activation_name='hard_swish',
+      squeeze_factor=None,
+      expansion_size=2.5,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=80,
+      activation_name='hard_swish',
+      squeeze_factor=None,
+      expansion_size=2.3,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=80,
+      activation_name='hard_swish',
+      squeeze_factor=None,
+      expansion_size=2.3,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=112,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=112,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=2, filters=160,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=160,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=160,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+    # Last conv
+    MobileNetBlockConfig.from_args(
+      kernel=(1, 1), stride=1, filters=960,
+      activation_name='hard_swish',
+      block_type=BlockType.Conv.value),
+    # pylint: enable=bad-whitespace
+  )
+
+
+@dataclass
+class MobileNetV3SmallConfig(base_config.Config):
+  """Configuration for the MobileNetV3 model.
+
+    Attributes:
+      name: name of the target model.
+      num_classes: number of predicted classes. If 0 or None, the logits layer
+        is omitted and the input features to the logits layer (before dropout)
+        are returned instead.
+      min_depth: Minimum depth value (number of channels) for all convolution ops.
+        Enforced when width_multiplier < 1, and not an active constraint when
+        width_multiplier >= 1.
+      width_multiplier: Float multiplier for the depth (number of channels)
+        for all convolution ops. The value must be greater than zero. Typical
+        usage will be to set this value in (0, 1) to reduce the number of
+        parameters or computation cost of the model.
+      output_stride: An integer that specifies the requested ratio of input to
+        output spatial resolution. If not None, then we invoke atrous convolution
+        if necessary to prevent the network from reducing the spatial resolution
+        of the activation maps. Allowed values are 8 (accurate fully convolutional
+        mode), 16 (fast fully convolutional mode), 32 (classification mode).
+      finegrain_classification_mode: When set to True, the model
+        will keep the last layer large even for small multipliers. Following
+        https://arxiv.org/abs/1801.04381
+      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
+        inputs so that the output dimensions are the same as if 'SAME' padding
+        were used.
+      spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
+        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
+      weight_decay: The weight decay to use for regularizing the model.
+      stddev: The standard deviation of the trunctated normal weight initializer.
+      regularize_depthwise: Whether or not apply regularization on depthwise.
+      normalization_layer: Name of the normalization layer
+      batch_norm_decay: Decay for batch norm moving average.
+      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
+        in batch norm.
+      dropout_keep_prob: the percentage of activation values that are retained.
+
+  """
+  name: Text = 'MobileNetV2'
+  num_classes: int = 1000
+  # model specific
+  min_depth: int = 8
+  width_multiplier = 1.0
+  output_stride: int = None
+  finegrain_classification_mode: bool = False
+  use_explicit_padding: bool = False
+  spatial_squeeze: bool = True
+  # regularization
+  weight_decay: float = 0.00004
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.999
+  # base architecture
+  blocks: Tuple[MobileNetBlockConfig, ...] = (
+    # (kernel, stride, depth)
+    # pylint: disable=bad-whitespace
+    # base normal conv
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=16,
+      activation_name='hard_swish',
+      block_type=BlockType.Conv.value),
+
+    # inverted res conv
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=16,
+      activation_name='relu',
+      squeeze_factor=4,
+      expansion_size=1,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=24,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=72. / 16,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=24,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=88. / 24,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=2, filters=40,
+      activation_name='relu',
+      squeeze_factor=4,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=40,
+      activation_name='relu',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=40,
+      activation_name='relu',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=48,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=3,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=48,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=3,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=2, filters=96,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=96,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=96,
+      activation_name='hard_swish',
+      squeeze_factor=4,
+      expansion_size=6,
+      block_type=BlockType.InvertedResConv.value),
+
+    # Last conv
+    MobileNetBlockConfig.from_args(
+      kernel=(1, 1), stride=1, filters=576,
+      activation_name='hard_swish',
+      block_type=BlockType.Conv.value),
+    # pylint: enable=bad-whitespace
+  )

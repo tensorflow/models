@@ -130,7 +130,7 @@ def width_multiplier_op_divisible(filters: int,
 
 
 def expand_input_by_factor(num_inputs: int,
-                           expansion_size: int,
+                           expansion_size: float,
                            divisible_by: int = 8):
   return make_divisible(num_inputs * expansion_size, divisible_by)
 
@@ -303,7 +303,7 @@ def inverted_res_block(inputs: tf.Tensor,
                        normalization_name: Text = 'batch_norm',
                        normalization_params: Dict = {},
                        dilation_rate: int = 1,
-                       expansion_size: int = 6,
+                       expansion_size: float = 6.,
                        regularize_depthwise: bool = False,
                        use_explicit_padding: bool = False,
                        residual=True,
