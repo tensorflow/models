@@ -246,7 +246,7 @@ def se_block(inputs: tf.Tensor,
   Args:
     inputs: input tensor to apply SE block to.
     divisible_by: ensures all inner dimensions are divisible by this number.
-    squeeze_factor: the factor of squeezing in the inner fully connected layer
+    squeeze_factor: the factor of squeezing in the inner fully connected layer.
     inner_activation_name: non-linearity to be used in inner layer.
     gating_activation_name: non-linearity to be used for final gating function.
     squeeze_input_tensor: custom tensor to use for computing gating activation.
@@ -299,6 +299,7 @@ def inverted_res_block(inputs: tf.Tensor,
                        weight_decay: float,
                        stddev: float,
                        activation_name: Text = 'relu6',
+                       depthwise_activation_name: Text = None,
                        normalization_name: Text = 'batch_norm',
                        normalization_params: Dict = {},
                        dilation_rate: int = 1,
@@ -306,6 +307,7 @@ def inverted_res_block(inputs: tf.Tensor,
                        regularize_depthwise: bool = False,
                        use_explicit_padding: bool = False,
                        residual=True,
+                       squeeze_factor: Optional[int] = None,
                        kernel: Union[int, Tuple[int, int]] = (3, 3),
                        strides: Union[int, Tuple[int, int]] = 1,
                        block_id: int = 1
@@ -332,8 +334,9 @@ def inverted_res_block(inputs: tf.Tensor,
       width_multiplier >= 1.
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
-    activation_name: Name of the activation function
-    normalization_name: Name of the normalization layer
+    activation_name: Name of the activation function for inner Conv.
+    depthwise_activation_name: Name of the activation function for deptwhise only.
+    normalization_name: Name of the normalization layer.
     normalization_params: Parameters passed to normalization layer
     dilation_rate: an integer or tuple/list of 2 integers, specifying
       the dilation rate to use for dilated convolution.
@@ -349,6 +352,8 @@ def inverted_res_block(inputs: tf.Tensor,
       were used.
     residual: whether to include residual connection between input
       and output.
+    squeeze_factor: the factor of squeezing in the inner fully connected layer
+      for Squeeze excite block.
     kernel: An integer or tuple/list of 2 integers, specifying the
       width and height of the 2D convolution window.
       Can be a single integer to specify the same value for
@@ -372,7 +377,12 @@ def inverted_res_block(inputs: tf.Tensor,
     width_multiplier=width_multiplier,
     min_depth=min_depth)
 
+  if not depthwise_activation_name:
+    depthwise_activation_name = activation_name
+
   activation_fn = archs.get_activation_function()[activation_name]
+  depth_activation_fn = archs.get_activation_function()[
+    depthwise_activation_name]
   normalization_layer = archs.get_normalization_layer()[
     normalization_name]
 
@@ -386,7 +396,7 @@ def inverted_res_block(inputs: tf.Tensor,
     num_inputs=in_channels,
     expansion_size=expansion_size)
   x = layers.Conv2D(filters=expended_size,
-                    kernel_size=kernel,
+                    kernel_size=(1, 1),
                     strides=(1, 1),
                     padding='SAME',
                     kernel_initializer=weights_init,
@@ -421,8 +431,15 @@ def inverted_res_block(inputs: tf.Tensor,
                           name=prefix + 'depthwise_{}'.format(
                             normalization_name),
                           **normalization_params)(x)
-  x = layers.Activation(activation=activation_fn,
-                        name=prefix + 'depthwise_{}'.format(activation_name))(x)
+  x = layers.Activation(activation=depth_activation_fn,
+                        name=prefix + 'depthwise_{}'.format(
+                          depthwise_activation_name))(x)
+
+  if squeeze_factor:
+    x = se_block(inputs=x,
+                 squeeze_factor=squeeze_factor,
+                 inner_activation_name=activation_name,
+                 block_id=block_id)
 
   # Project
   x = layers.Conv2D(filters=filters,
