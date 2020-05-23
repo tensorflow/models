@@ -297,7 +297,7 @@ def squad_model(bert_config,
 
 def classifier_model(bert_config,
                      num_labels,
-                     max_seq_length,
+                     max_seq_length=None,
                      final_layer_initializer=None,
                      hub_module_url=None,
                      hub_module_trainable=True):
