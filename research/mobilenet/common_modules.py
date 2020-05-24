@@ -119,6 +119,15 @@ def expand_input_by_factor(num_inputs: int,
   return make_divisible(num_inputs * expansion_size, divisible_by)
 
 
+def get_initializer(stddev: float) -> tf.keras.initializers.Initializer:
+  if stddev < 0:
+    weight_intitializer = tf.keras.initializers.GlorotUniform()
+  else:
+    weight_intitializer = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+
+  return weight_intitializer
+
+
 def conv2d_block(inputs: tf.Tensor,
                  filters: int,
                  width_multiplier: float,
@@ -198,7 +207,7 @@ def conv2d_block(inputs: tf.Tensor,
       kernel_size=kernel,
       name='Conv2d_{}_FP'.format(block_id))(inputs)
 
-  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+  weights_init = get_initializer(stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
   x = layers.Conv2D(filters=filters,
                     kernel_size=kernel,
@@ -294,7 +303,7 @@ def depthwise_conv2d_block(inputs: tf.Tensor,
   normalization_layer = archs.get_normalization_layer()[
     normalization_name]
 
-  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+  weights_init = get_initializer(stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
   depth_regularizer = regularizer if regularize_depthwise else None
 
@@ -387,7 +396,7 @@ def se_block(inputs: tf.Tensor,
   gating_activation_fn = archs.get_activation_function()[
     gating_activation_name]
 
-  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+  weights_init = get_initializer(stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
 
   x = layers.GlobalAveragePooling2D(name=prefix + 'se_GlobalPool')(inputs)
@@ -510,7 +519,7 @@ def inverted_res_block(inputs: tf.Tensor,
   normalization_layer = archs.get_normalization_layer()[
     normalization_name]
 
-  weights_init = tf.keras.initializers.TruncatedNormal(stddev=stddev)
+  weights_init = get_initializer(stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
   depth_regularizer = regularizer if regularize_depthwise else None
 
@@ -595,30 +604,46 @@ def mobilenet_base(inputs: tf.Tensor,
                    ) -> tf.Tensor:
   """Build the base MobileNet architecture."""
 
-  min_depth = config.min_depth
+  input_shape = inputs.get_shape().as_list()
+  if len(input_shape) != 4:
+    raise ValueError('Expected rank 4 input, was: %d' % len(input_shape))
+
   width_multiplier = config.width_multiplier
-  finegrain_classification_mode = config.finegrain_classification_mode
+  min_depth = config.min_depth
+  output_stride = config.output_stride
+  use_explicit_padding = config.use_explicit_padding
+  # regularization
   weight_decay = config.weight_decay
   stddev = config.stddev
   regularize_depthwise = config.regularize_depthwise
-  batch_norm_decay = config.batch_norm_decay
-  batch_norm_epsilon = config.batch_norm_epsilon
-  output_stride = config.output_stride
-  use_explicit_padding = config.use_explicit_padding
+  # normalization
   normalization_name = config.normalization_name
+  # need change accordingly if different normalization fn is used
   normalization_params = {
-    'momentum': batch_norm_decay,
-    'epsilon': batch_norm_epsilon
+    'center': True,
+    'scale': True,
+    'momentum': config.batch_norm_decay,
+    'epsilon': config.batch_norm_epsilon
   }
+  # used only for MobileNetV2 in this base function
+  finegrain_classification_mode = config.finegrain_classification_mode
+  # base blocks definition
   blocks = config.blocks
 
   if width_multiplier <= 0:
     raise ValueError('depth_multiplier is not greater than zero.')
 
-  if output_stride is not None and output_stride not in [8, 16, 32]:
-    raise ValueError('Only allowed output_stride values are 8, 16, 32.')
+  if output_stride is not None:
+    if isinstance(config, archs.MobileNetV1Config):
+      if output_stride not in [8, 16, 32]:
+        raise ValueError('Only allowed output_stride values are 8, 16, 32.')
+    else:
+      if output_stride == 0 or (output_stride > 1 and output_stride % 2):
+        raise ValueError('Output stride must be None, 1 or a multiple of 2.')
 
-  if finegrain_classification_mode and width_multiplier < 1.0:
+  if (isinstance(config, archs.MobileNetV2Config)
+      and finegrain_classification_mode
+      and width_multiplier < 1.0):
     blocks[-1].filters /= width_multiplier
 
   # The current_stride variable keeps track of the output stride of the
