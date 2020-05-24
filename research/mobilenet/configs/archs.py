@@ -69,8 +69,10 @@ class MobileNetBlockConfig(base_config.Config):
   stride: int = 1
   filters: int = 32
   activation_name: Text = 'relu6'
-  expansion_size: float = 6.  # used for block type InvertedResConv
-  squeeze_factor: int = None  # used for block type InvertedResConv with SE
+  # used for block type InvertedResConv
+  expansion_size: float = 6.
+  # used for block type InvertedResConv with SE
+  squeeze_factor: int = None
   block_type: Text = BlockType.Conv.value
 
 
