@@ -84,7 +84,7 @@ def mobilenet_v1(input_shape: Tuple[int, int, int] = (224, 224, 3),
     # global average pooling.
     x = layers.GlobalAveragePooling2D(data_format='channels_last',
                                       name='top_GlobalPool')(x)
-    x = layers.Reshape((1, 1, x.shape[1]))(x)
+    x = layers.Reshape((1, 1, x.shape[1]), name='top_Reshape')(x)
   else:
     # pooling with a fixed kernel size
     kernel_size = _reduced_kernel_size_for_small_input(x, (7, 7))
