@@ -728,3 +728,29 @@ def mobilenet_base(inputs: tf.Tensor,
       raise ValueError('Unknown block type {} for layer {}'.format(
         block_def.block_type, i))
   return net
+
+
+def mobilenet_head(inputs: tf.Tensor,
+                   config: MobileNetConfig
+                   ) -> tf.Tensor:
+  """Build the head of MobileNet architecture."""
+  dropout_keep_prob = config.dropout_keep_prob
+  num_classes = config.num_classes
+  spatial_squeeze = config.spatial_squeeze
+
+  x = layers.Dropout(rate=1 - dropout_keep_prob,
+                     name='top_Dropout')(inputs)
+  # 1 x 1 x num_classes
+  x = layers.Conv2D(filters=num_classes,
+                    kernel_size=(1, 1),
+                    padding='SAME',
+                    bias_initializer=tf.keras.initializers.Zeros(),
+                    name='top_Conv2d_1x1_output')(x)
+  if spatial_squeeze:
+    x = layers.Reshape(target_shape=(num_classes,),
+                       name='top_SpatialSqueeze')(x)
+
+  x = layers.Activation(activation='softmax',
+                        name='top_Predictions')(x)
+
+  return x

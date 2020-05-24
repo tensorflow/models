@@ -40,12 +40,11 @@ def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
                  ) -> tf.keras.models.Model:
   """Instantiates the MobileNet Model."""
 
-  dropout_keep_prob = config.dropout_keep_prob
-  num_classes = config.num_classes
-  spatial_squeeze = config.spatial_squeeze
   model_name = config.name
 
   img_input = layers.Input(shape=input_shape, name='Input')
+
+  # build network base
   x = common_modules.mobilenet_base(img_input, config)
 
   # Build top
@@ -54,21 +53,8 @@ def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
                                     name='top_GlobalPool')(x)
   x = layers.Reshape((1, 1, x.shape[1]))(x)
 
-  # 1 x 1 x num_classes
-  x = layers.Dropout(rate=1 - dropout_keep_prob,
-                     name='top_Dropout')(x)
-
-  x = layers.Conv2D(filters=num_classes,
-                    kernel_size=(1, 1),
-                    padding='SAME',
-                    bias_initializer=tf.keras.initializers.Zeros(),
-                    name='top_Conv2d_1x1')(x)
-  if spatial_squeeze:
-    x = layers.Reshape(target_shape=(num_classes,),
-                       name='top_SpatialSqueeze')(x)
-
-  x = layers.Activation(activation='softmax',
-                        name='top_Predictions')(x)
+  # build classification head
+  x = common_modules.mobilenet_head(x, config)
 
   return tf.keras.models.Model(inputs=img_input,
                                outputs=x,
