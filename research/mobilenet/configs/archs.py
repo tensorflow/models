@@ -75,7 +75,7 @@ class MobileNetBlockConfig(base_config.Config):
 
 
 @dataclass
-class MobileNetV1Config(base_config.Config):
+class MobileNetConfig(base_config.Config):
   """Configuration for the MobileNetV1 model.
 
     Attributes:
@@ -118,7 +118,7 @@ class MobileNetV1Config(base_config.Config):
       dropout_keep_prob: the percentage of activation values that are retained.
 
   """
-  name: Text = 'MobileNetV1'
+  name: Text = 'MobileNet'
   num_classes: int = 1000
   # model specific
   min_depth: int = 8
@@ -140,6 +140,19 @@ class MobileNetV1Config(base_config.Config):
   batch_norm_epsilon: float = 0.001
   # dropout
   dropout_keep_prob: float = 0.999
+
+
+@dataclass
+class MobileNetV1Config(MobileNetConfig):
+  """Configuration for the MobileNetV1 model.
+
+    Attributes:
+      name: name of the target model.
+      blocks: base architecture
+
+  """
+  name: Text = 'MobileNetV1'
+
   # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
     # (kernel, stride, depth)
@@ -193,66 +206,16 @@ class MobileNetV1Config(base_config.Config):
 
 
 @dataclass
-class MobileNetV2Config(base_config.Config):
+class MobileNetV2Config(MobileNetConfig):
   """Configuration for the MobileNetV2 model.
 
     Attributes:
       name: name of the target model.
-      num_classes: number of predicted classes. If 0 or None, the logits layer
-        is omitted and the input features to the logits layer (before dropout)
-        are returned instead.
-      min_depth: Minimum depth value (number of channels) for all convolution ops.
-        Enforced when width_multiplier < 1, and not an active constraint when
-        width_multiplier >= 1.
-      width_multiplier: Float multiplier for the depth (number of channels)
-        for all convolution ops. The value must be greater than zero. Typical
-        usage will be to set this value in (0, 1) to reduce the number of
-        parameters or computation cost of the model.
-      output_stride: An integer that specifies the requested ratio of input to
-        output spatial resolution. If not None, then we invoke atrous convolution
-        if necessary to prevent the network from reducing the spatial resolution
-        of the activation maps. Allowed values are 8 (accurate fully convolutional
-        mode), 16 (fast fully convolutional mode), 32 (classification mode).
-      finegrain_classification_mode: When set to True, the model
-        will keep the last layer large even for small multipliers. Following
-        https://arxiv.org/abs/1801.04381
-      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
-        inputs so that the output dimensions are the same as if 'SAME' padding
-        were used.
-      spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
-        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
-      weight_decay: The weight decay to use for regularizing the model.
-      stddev: The standard deviation of the trunctated normal weight initializer.
-      regularize_depthwise: Whether or not apply regularization on depthwise.
-      activation_fn: Name of the activation function
-      normalization_layer: Name of the normalization layer
-      batch_norm_decay: Decay for batch norm moving average.
-      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
-        in batch norm.
-      dropout_keep_prob: the percentage of activation values that are retained.
+      blocks: base architecture
 
   """
   name: Text = 'MobileNetV2'
-  num_classes: int = 1000
-  # model specific
-  min_depth: int = 8
-  width_multiplier = 1.0
-  output_stride: int = None
-  finegrain_classification_mode: bool = False
-  use_explicit_padding: bool = False
-  spatial_squeeze: bool = True
-  # regularization
-  weight_decay: float = 0.00004
-  stddev: float = 0.09
-  regularize_depthwise: bool = False
-  # activation
-  activation_name: Text = 'relu6'
-  # normalization
-  normalization_name: Text = 'batch_norm'
-  batch_norm_decay: float = 0.9997
-  batch_norm_epsilon: float = 0.001
-  # dropout
-  dropout_keep_prob: float = 0.999
+
   # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
     # (kernel, stride, depth)
@@ -344,65 +307,16 @@ class MobileNetV2Config(base_config.Config):
 
 
 @dataclass
-class MobileNetV3LargeConfig(base_config.Config):
-  """Configuration for the MobileNetV3 model.
+class MobileNetV3LargeConfig(MobileNetConfig):
+  """Configuration for the MobileNetV3 Large model.
 
     Attributes:
       name: name of the target model.
-      num_classes: number of predicted classes. If 0 or None, the logits layer
-        is omitted and the input features to the logits layer (before dropout)
-        are returned instead.
-      min_depth: Minimum depth value (number of channels) for all convolution ops.
-        Enforced when width_multiplier < 1, and not an active constraint when
-        width_multiplier >= 1.
-      width_multiplier: Float multiplier for the depth (number of channels)
-        for all convolution ops. The value must be greater than zero. Typical
-        usage will be to set this value in (0, 1) to reduce the number of
-        parameters or computation cost of the model.
-      output_stride: An integer that specifies the requested ratio of input to
-        output spatial resolution. If not None, then we invoke atrous convolution
-        if necessary to prevent the network from reducing the spatial resolution
-        of the activation maps. Allowed values are 8 (accurate fully convolutional
-        mode), 16 (fast fully convolutional mode), 32 (classification mode).
-      finegrain_classification_mode: When set to True, the model
-        will keep the last layer large even for small multipliers. Following
-        https://arxiv.org/abs/1801.04381
-      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
-        inputs so that the output dimensions are the same as if 'SAME' padding
-        were used.
-      spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
-        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
-      weight_decay: The weight decay to use for regularizing the model.
-      stddev: The standard deviation of the trunctated normal weight initializer.
-      regularize_depthwise: Whether or not apply regularization on depthwise.
-      normalization_layer: Name of the normalization layer
-      batch_norm_decay: Decay for batch norm moving average.
-      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
-        in batch norm.
-      dropout_keep_prob: the percentage of activation values that are retained.
+      blocks: base architecture
 
   """
   name: Text = 'MobileNetV3Large'
-  num_classes: int = 1000
-  # model specific
-  min_depth: int = 8
-  width_multiplier = 1.0
-  output_stride: int = None
-  finegrain_classification_mode: bool = False
-  use_explicit_padding: bool = False
-  spatial_squeeze: bool = True
-  # regularization
-  weight_decay: float = 0.00004
-  stddev: float = 0.09
-  regularize_depthwise: bool = False
-  # activation
-  activation_name: Text = 'hard_swish'
-  # normalization
-  normalization_name: Text = 'batch_norm'
-  batch_norm_decay: float = 0.9997
-  batch_norm_epsilon: float = 0.001
-  # dropout
-  dropout_keep_prob: float = 0.999
+
   # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
     # (kernel, stride, depth)
@@ -518,65 +432,16 @@ class MobileNetV3LargeConfig(base_config.Config):
 
 
 @dataclass
-class MobileNetV3SmallConfig(base_config.Config):
-  """Configuration for the MobileNetV3 model.
+class MobileNetV3SmallConfig(MobileNetConfig):
+  """Configuration for the MobileNetV3 Small model.
 
     Attributes:
       name: name of the target model.
-      num_classes: number of predicted classes. If 0 or None, the logits layer
-        is omitted and the input features to the logits layer (before dropout)
-        are returned instead.
-      min_depth: Minimum depth value (number of channels) for all convolution ops.
-        Enforced when width_multiplier < 1, and not an active constraint when
-        width_multiplier >= 1.
-      width_multiplier: Float multiplier for the depth (number of channels)
-        for all convolution ops. The value must be greater than zero. Typical
-        usage will be to set this value in (0, 1) to reduce the number of
-        parameters or computation cost of the model.
-      output_stride: An integer that specifies the requested ratio of input to
-        output spatial resolution. If not None, then we invoke atrous convolution
-        if necessary to prevent the network from reducing the spatial resolution
-        of the activation maps. Allowed values are 8 (accurate fully convolutional
-        mode), 16 (fast fully convolutional mode), 32 (classification mode).
-      finegrain_classification_mode: When set to True, the model
-        will keep the last layer large even for small multipliers. Following
-        https://arxiv.org/abs/1801.04381
-      use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
-        inputs so that the output dimensions are the same as if 'SAME' padding
-        were used.
-      spatial_squeeze: if True, logits is of shape is [B, C], if false logits is
-        of shape [B, 1, 1, C], where B is batch_size and C is number of classes.
-      weight_decay: The weight decay to use for regularizing the model.
-      stddev: The standard deviation of the trunctated normal weight initializer.
-      regularize_depthwise: Whether or not apply regularization on depthwise.
-      normalization_layer: Name of the normalization layer
-      batch_norm_decay: Decay for batch norm moving average.
-      batch_norm_epsilon: Small float added to variance to avoid dividing by zero
-        in batch norm.
-      dropout_keep_prob: the percentage of activation values that are retained.
+      blocks: base architecture
 
   """
   name: Text = 'MobileNetV3Small'
-  num_classes: int = 1000
-  # model specific
-  min_depth: int = 8
-  width_multiplier = 1.0
-  output_stride: int = None
-  finegrain_classification_mode: bool = False
-  use_explicit_padding: bool = False
-  spatial_squeeze: bool = True
-  # regularization
-  weight_decay: float = 0.00004
-  stddev: float = 0.09
-  regularize_depthwise: bool = False
-  # activation
-  activation_name: Text = 'hard_swish'
-  # normalization
-  normalization_name: Text = 'batch_norm'
-  batch_norm_decay: float = 0.9997
-  batch_norm_epsilon: float = 0.001
-  # dropout
-  dropout_keep_prob: float = 0.999
+
   # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
     # (kernel, stride, depth)

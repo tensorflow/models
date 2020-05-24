@@ -20,7 +20,7 @@ Architecture: https://arxiv.org/abs/1905.02244
 """
 
 import logging
-from typing import Tuple, Union, Text
+from typing import Tuple, Union
 
 import tensorflow as tf
 
@@ -50,11 +50,11 @@ def mobilenet_v3(config: MobileNetV3Config,
   # build network base
   x = common_modules.mobilenet_base(img_input, config)
 
-  # Build top
-  # Global average pooling.
+  # build top
+  # global average pooling.
   x = layers.GlobalAveragePooling2D(data_format='channels_last',
                                     name='top_GlobalPool')(x)
-  x = layers.Reshape((1, 1, x.shape[1]))(x)
+  x = layers.Reshape((1, 1, x.shape[1]), name='top_Reshape')(x)
 
   if isinstance(config, MobileNetV3SmallConfig):
     last_conv_channels = 1024

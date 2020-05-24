@@ -47,11 +47,11 @@ def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
   # build network base
   x = common_modules.mobilenet_base(img_input, config)
 
-  # Build top
-  # Global average pooling.
+  # build top
+  # global average pooling.
   x = layers.GlobalAveragePooling2D(data_format='channels_last',
                                     name='top_GlobalPool')(x)
-  x = layers.Reshape((1, 1, x.shape[1]))(x)
+  x = layers.Reshape((1, 1, x.shape[1]), name='top_Reshape')(x)
 
   # build classification head
   x = common_modules.mobilenet_head(x, config)

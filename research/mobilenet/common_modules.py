@@ -13,7 +13,7 @@
 # limitations under the License.
 # =============================================================================
 """Common util modules for MobileNet."""
-from typing import Tuple, Text, List, Dict, Optional, Union
+from typing import Tuple, Text, Dict, Optional, Union
 
 import tensorflow as tf
 
