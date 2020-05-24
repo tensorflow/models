@@ -38,17 +38,16 @@ MobileNetV3Config = Union[MobileNetV3SmallConfig, MobileNetV3LargeConfig]
 def mobilenet_v3(config: MobileNetV3Config,
                  input_shape: Tuple[int, int, int] = (224, 224, 3),
                  ) -> tf.keras.models.Model:
-  """Instantiates the MobileNet V3 Small Model."""
+  """Instantiates the MobileNet V3 Model."""
 
-  dropout_keep_prob = config.dropout_keep_prob
-  num_classes = config.num_classes
-  spatial_squeeze = config.spatial_squeeze
   width_multiplier = config.width_multiplier
   min_depth = config.min_depth
   model_name = config.name
   activation_name = config.activation_name
 
   img_input = layers.Input(shape=input_shape, name='Input')
+
+  # build network base
   x = common_modules.mobilenet_base(img_input, config)
 
   # Build top
@@ -77,21 +76,8 @@ def mobilenet_v3(config: MobileNetV3Config,
     activation=archs.get_activation_function()[activation_name],
     name='top_Conv2d_1x1_{}'.format(activation_name))(x)
 
-  x = layers.Dropout(rate=1 - dropout_keep_prob,
-                     name='top_Dropout')(x)
-
-  # 1 x 1 x num_classes
-  x = layers.Conv2D(filters=num_classes,
-                    kernel_size=(1, 1),
-                    padding='SAME',
-                    bias_initializer=tf.keras.initializers.Zeros(),
-                    name='top_Conv2d_1x1_output')(x)
-  if spatial_squeeze:
-    x = layers.Reshape(target_shape=(num_classes,),
-                       name='top_SpatialSqueeze')(x)
-
-  x = layers.Activation(activation='softmax',
-                        name='top_Predictions')(x)
+  # build classification head
+  x = common_modules.mobilenet_head(x, config)
 
   return tf.keras.models.Model(inputs=img_input,
                                outputs=x,
@@ -102,6 +88,7 @@ def mobilenet_v3_small(
     input_shape: Tuple[int, int, int] = (224, 224, 3),
     config: MobileNetV3SmallConfig = MobileNetV3SmallConfig()
 ) -> tf.keras.models.Model:
+  """Instantiates the MobileNet V3 Small Model."""
   assert isinstance(config, MobileNetV3SmallConfig)
   return mobilenet_v3(input_shape=input_shape, config=config)
 
@@ -110,6 +97,7 @@ def mobilenet_v3_large(
     input_shape: Tuple[int, int, int] = (224, 224, 3),
     config: MobileNetV3LargeConfig = MobileNetV3LargeConfig(),
 ) -> tf.keras.models.Model:
+  """Instantiates the MobileNet V3 Large Model."""
   assert isinstance(config, MobileNetV3LargeConfig)
   return mobilenet_v3(input_shape=input_shape, config=config)
 

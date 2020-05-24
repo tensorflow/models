@@ -71,44 +71,31 @@ def mobilenet_v1(input_shape: Tuple[int, int, int] = (224, 224, 3),
                  ) -> tf.keras.models.Model:
   """Instantiates the MobileNet Model."""
 
-  dropout_keep_prob = config.dropout_keep_prob
   global_pool = config.global_pool
-  num_classes = config.num_classes
-  spatial_squeeze = config.spatial_squeeze
   model_name = config.name
 
   img_input = layers.Input(shape=input_shape, name='Input')
+
+  # build network base
   x = common_modules.mobilenet_base(img_input, config)
 
-  # Build top
+  # build top
   if global_pool:
-    # Global average pooling.
+    # global average pooling.
     x = layers.GlobalAveragePooling2D(data_format='channels_last',
                                       name='top_GlobalPool')(x)
     x = layers.Reshape((1, 1, x.shape[1]))(x)
   else:
-    # Pooling with a fixed kernel size.
+    # pooling with a fixed kernel size
     kernel_size = _reduced_kernel_size_for_small_input(x, (7, 7))
     x = layers.AvgPool2D(pool_size=kernel_size,
                          padding='VALID',
                          data_format='channels_last',
                          name='top_AvgPool')(x)
 
-  # 1 x 1 x num_classes
-  x = layers.Dropout(rate=1 - dropout_keep_prob,
-                     name='top_Dropout')(x)
+  # build classification head
+  x = common_modules.mobilenet_head(x, config)
 
-  x = layers.Conv2D(filters=num_classes,
-                    kernel_size=(1, 1),
-                    padding='SAME',
-                    bias_initializer=tf.keras.initializers.Zeros(),
-                    name='top_Conv2d_1x1')(x)
-  if spatial_squeeze:
-    x = layers.Reshape(target_shape=(num_classes,),
-                       name='top_SpatialSqueeze')(x)
-
-  x = layers.Activation(activation='softmax',
-                        name='top_Predictions')(x)
   return tf.keras.models.Model(inputs=img_input,
                                outputs=x,
                                name=model_name)
