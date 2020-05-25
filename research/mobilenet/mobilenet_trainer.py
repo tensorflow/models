@@ -29,14 +29,14 @@ from research.mobilenet import mobilenet_v2_model
 from research.mobilenet import mobilenet_v3_model
 from research.mobilenet.configs import defaults
 from research.mobilenet.configs import archs
-from research.mobilenet.configs import dataset as dataset_config
+from research.mobilenet.configs import dataset
 
-from official.modeling.hyperparams import base_config
 from official.vision.image_classification.configs import base_configs
 from official.vision.image_classification import optimizer_factory
+from official.vision.image_classification import dataset_factory
 
 
-def _get_model_config() -> Mapping[Text, Type[base_config.Config]]:
+def _get_model_config() -> Mapping[Text, Type[archs.MobileNetConfig]]:
   return {
     'mobilenet_v1': archs.MobileNetV1Config,
     'mobilenet_v2': archs.MobileNetV2Config,
@@ -54,11 +54,11 @@ def _get_model_builder() -> Mapping[Text, Any]:
   }
 
 
-def _get_dataset_config() -> Mapping[Text, Type[dataset_config.DatasetConfig]]:
+def _get_dataset_config() -> Mapping[Text, Type[dataset_factory.DatasetConfig]]:
   return {
-    'imagenet2012': dataset_config.ImageNetConfig,
-    'imagenette': dataset_config.ImageNetteConfig,
-    'mnist': dataset_config.MNISTConfig
+    'imagenet2012': dataset.ImageNetConfig,
+    'imagenette': dataset.ImageNetteConfig,
+    'mnist': dataset.MNISTConfig
   }
 
 
@@ -186,6 +186,16 @@ def get_flags():
     default='imagenette'
   )
   flags.DEFINE_string(
+    'model_dir',
+    help='Working directory.',
+    default='./tmp'
+  )
+  flags.DEFINE_bool(
+    'resume_checkpoint',
+    help='Whether resume training from previous checkpoint.',
+    default=False
+  )
+  flags.DEFINE_string(
     'optimizer_name',
     help='Name of optimizer.',
     default='rmsprop'
@@ -195,10 +205,36 @@ def get_flags():
     help='Name of learning rate scheduler.',
     default='exponential'
   )
+  # for hyperparameter tuning
   flags.DEFINE_float(
-    'learning_rate',
+    'op_momentum',
+    help='Optimizer momentum.',
+    default=0.9
+  )
+  flags.DEFINE_float(
+    'op_decay_rate',
+    help='Optimizer decay.',
+    default=0.9
+  )
+  flags.DEFINE_float(
+    'lr',
     help='Base learning rate.',
     default=0.008
+  )
+  flags.DEFINE_float(
+    'lr_decay_rate',
+    help='Magnitude of learning rate decay.',
+    default=0.97
+  )
+  flags.DEFINE_float(
+    'lr_decay_epochs',
+    help='Frequency of learning rate decay.',
+    default=2.4
+  )
+  flags.DEFINE_float(
+    'dropout_rate',
+    help='Dropout rate.',
+    default=0.2
   )
   flags.DEFINE_integer(
     'batch_size',
@@ -210,19 +246,9 @@ def get_flags():
     help='Number of epochs.',
     default=5
   )
-  flags.DEFINE_string(
-    'model_dir',
-    help='Working directory.',
-    default='./tmp'
-  )
-  flags.DEFINE_bool(
-    'resume_checkpoint',
-    help='Whether resume training from previous checkpoint.',
-    default=False
-  )
 
 
-def get_dataset(config: Type[dataset_config.DatasetConfig]) -> tf.data.Dataset:
+def get_dataset(config: Type[dataset_factory.DatasetConfig]) -> tf.data.Dataset:
   """Build dataset for training, evaluation and test"""
   raw_dataset = dataset_loader.load_tfds(
     dataset_name=config.name,
@@ -240,8 +266,8 @@ def get_dataset(config: Type[dataset_config.DatasetConfig]) -> tf.data.Dataset:
 
 
 def build_model(model_name: Text,
-                dataset_config: Type[dataset_config.DatasetConfig],
-                model_config: Type[base_config.Config]
+                dataset_config: Type[dataset_factory.DatasetConfig],
+                model_config: Type[archs.MobileNetConfig]
                 ) -> tf.keras.models.Model:
   """Build mobilenet model given configuration"""
 
@@ -258,10 +284,14 @@ def build_model(model_name: Text,
 
 def train_and_eval(params: flags.FlagValues) -> tf.keras.callbacks.History:
   """Runs the train and eval path using compile/fit."""
+  logging.info('Run training for {} with {}'.format(params.model_name,
+                                                    params.dataset_name))
+  logging.info('The CLI params are: {}'.format(params.flag_values_dict()))
   d_config = _get_dataset_config().get(params.dataset_name)
+  m_config = _get_model_config().get(params.model_name)
   # override the batch size with CLI params
   d_config.batch_size = params.batch_size
-  m_config = _get_model_config().get(params.model_name)
+  m_config.dropout_keep_prob = 1 - params.dropout_rate
 
   strategy = tf.distribute.MirroredStrategy()
   with strategy.scope():
@@ -283,17 +313,21 @@ def train_and_eval(params: flags.FlagValues) -> tf.keras.callbacks.History:
       model_config=m_config
     )
 
-    learning_rate = params.learning_rate
-    learning_params = defaults.LR_CONFIG_DEFAULT
-    learning_params.update({'initial_lr': learning_rate})
-
     # build the optimizer
+    learning_params = defaults.LR_CONFIG_DEFAULT
+    learning_params.update({'initial_lr': params.lr,
+                            'decay_epochs': params.lr_decay_epochs,
+                            'decay_rate': params.lr_decay_rate})
+    optimizer_params = defaults.OP_CONFIG_DEFAULT
+    optimizer_params.update({'decay': params.op_decay_rate,
+                             'momentum': params.op_momentum})
     optimizer = _get_optimizer(
       batch_size=global_batch_size,
       steps_per_epoch=steps_per_epoch,
       lr_name=params.learning_scheduler_name,
       optimizer_name=params.optimizer_name,
-      lr_params=learning_params
+      lr_params=learning_params,
+      optimizer_params=optimizer_params
     )
 
     # compile model

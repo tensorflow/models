@@ -20,8 +20,8 @@ import functools
 import tensorflow_datasets as tfds
 import tensorflow as tf
 
-from research.mobilenet.configs import dataset as dataset_config
 from official.vision.image_classification import preprocessing
+from official.vision.image_classification import dataset_factory
 
 
 def _get_dtype_map() -> Mapping[Text, tf.dtypes.DType]:
@@ -37,7 +37,7 @@ def _get_dtype_map() -> Mapping[Text, tf.dtypes.DType]:
 
 def _preprocess(image: tf.Tensor,
                 label: tf.Tensor,
-                config: Type[dataset_config.DatasetConfig],
+                config: Type[dataset_factory.DatasetConfig],
                 is_training: bool = True
                 ) -> Tuple[tf.Tensor, tf.Tensor]:
   """Apply image preprocessing and augmentation to the image and label.
@@ -77,7 +77,7 @@ def _preprocess(image: tf.Tensor,
   return image, label
 
 
-def _get_tf_data_config(config: Type[dataset_config.DatasetConfig]
+def _get_tf_data_config(config: Type[dataset_factory.DatasetConfig]
                         ) -> tf.data.Options:
   """Construct an `Options` object to control which graph
   optimizations to apply or whether to use performance modeling to dynamically
@@ -130,7 +130,7 @@ def load_tfds(dataset_name: Text,
 
 
 def pipeline(dataset: tf.data.Dataset,
-             config: Type[dataset_config.DatasetConfig],
+             config: Type[dataset_factory.DatasetConfig],
              ) -> tf.data.Dataset:
   """Build a pipeline fetching, shuffling, and preprocessing the dataset.
 
