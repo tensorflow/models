@@ -57,11 +57,12 @@ class MaskedSoftmax(tf.keras.layers.Layer):
       # positions we want to attend and -10000.0 for masked positions.
       adder = (1.0 - tf.cast(mask, scores.dtype)) * -10000.0
 
-      tf.print ('mask', mask)
-      tf.print ('adder', adder)
+      # tf.print ('mask', mask)
+      tf.print('adder:', adder)
 
       # Since we are adding it to the raw scores before the softmax, this is
       # effectively the same as removing these entirely.
+
 
       scores += adder
 
@@ -70,6 +71,7 @@ class MaskedSoftmax(tf.keras.layers.Layer):
     else:
       return tf.math.exp(scores - tf.math.reduce_logsumexp(
           scores, axis=self._normalization_axes, keepdims=True))
+
 
   def get_config(self):
     config = {'mask_expansion_axes': self._mask_expansion_axes}
