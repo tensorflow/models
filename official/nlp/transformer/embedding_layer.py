@@ -81,20 +81,19 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
       mask = tf.cast(tf.not_equal(inputs, 0), embeddings.dtype)
 
       print ('inputs')
-      print (inputs)
+      print (inputs[:2])
 
       print ('embeddings from input')
-      print (embeddings)
+      print (embeddings[:2])
 
       print ('mask')
-      print (mask)
+      print (mask[:2])
 
 
-      mask = tf.cast(tf.not_equal(inputs, 0), embeddings.dtype)
       embeddings *= tf.expand_dims(mask, -1)
 
       print ('embeddings after mask')
-      print (embeddings)
+      print (embeddings[:2])
 
 
 
