@@ -57,7 +57,9 @@ def _preprocess(image: tf.Tensor,
       image_size=config.image_size,
       mean_subtract=config.mean_subtract,
       standardize=config.standardize,
-      dtype=_get_dtype_map()[config.dtype])
+      dtype=_get_dtype_map()[config.dtype],
+      augmenter=config.augmenter.build()
+      if config.augmenter is not None else None)
   else:
     image = preprocessing.preprocess_for_eval(
       image,
