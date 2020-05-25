@@ -65,7 +65,8 @@ def mobilenet_v3(config: MobileNetV3Config,
   else:
     raise ValueError('Only support MobileNetV3S and MobileNetV3L')
 
-  if finegrain_classification_mode and width_multiplier > 1.0:
+  if (not finegrain_classification_mode
+      or (finegrain_classification_mode and width_multiplier > 1.0)):
     last_conv_channels = common_modules.width_multiplier_op_divisible(
       filters=last_conv_channels,
       width_multiplier=width_multiplier,
