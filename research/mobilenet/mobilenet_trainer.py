@@ -102,8 +102,7 @@ def _get_callback(model_dir: Text) -> List[tf.keras.callbacks.Callback]:
   check_point = tf.keras.callbacks.ModelCheckpoint(
     save_best_only=True,
     filepath=os.path.join(model_dir, 'model.ckpt-{epoch:04d}'),
-    verbose=1
-  )
+    verbose=1)
   tensorboard = tf.keras.callbacks.TensorBoard(log_dir=model_dir)
   return [check_point, tensorboard]
 
@@ -260,6 +259,7 @@ def build_model(model_name: Text,
 def train_and_eval(params: flags.FlagValues) -> tf.keras.callbacks.History:
   """Runs the train and eval path using compile/fit."""
   d_config = _get_dataset_config().get(params.dataset_name)
+  # override the batch size with CLI params
   d_config.batch_size = params.batch_size
   m_config = _get_model_config().get(params.model_name)
 
@@ -267,6 +267,7 @@ def train_and_eval(params: flags.FlagValues) -> tf.keras.callbacks.History:
   with strategy.scope():
     # build the dataset
     global_batch_size = d_config.batch_size * strategy.num_replicas_in_sync
+    # for distributed training, update batch size
     d_config.batch_size = global_batch_size
     train_dataset = get_dataset(d_config)
     d_config.split = 'validation'
