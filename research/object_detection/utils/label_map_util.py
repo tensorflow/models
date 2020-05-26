@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import logging
-
 from six import string_types
 from six.moves import range
 import tensorflow as tf
