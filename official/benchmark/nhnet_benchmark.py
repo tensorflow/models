@@ -29,8 +29,8 @@ from official.benchmark import perfzero_benchmark
 from official.nlp.nhnet import trainer
 from official.utils.flags import core as flags_core
 
-MIN_LOSS = 0.35
-MAX_LOSS = 0.45
+MIN_LOSS = 0.40
+MAX_LOSS = 0.55
 NHNET_DATA = 'gs://tf-perfzero-data/nhnet/v1/processed/train.tfrecord*'
 
 FLAGS = flags.FLAGS
