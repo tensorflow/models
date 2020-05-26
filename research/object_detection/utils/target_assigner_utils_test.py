@@ -15,7 +15,7 @@
 """Tests for utils.target_assigner_utils."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import target_assigner_utils as ta_utils
 from object_detection.utils import test_case

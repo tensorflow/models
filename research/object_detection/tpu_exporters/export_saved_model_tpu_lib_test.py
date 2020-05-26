@@ -22,7 +22,7 @@ import os
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.tpu_exporters import export_saved_model_tpu_lib
 

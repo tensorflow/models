@@ -15,7 +15,7 @@
 
 """Tests for models.faster_rcnn_nas_feature_extractor."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.models import faster_rcnn_nas_feature_extractor as frcnn_nas
 

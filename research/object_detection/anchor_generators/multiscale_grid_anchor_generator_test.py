@@ -15,7 +15,7 @@
 
 """Tests for anchor_generators.multiscale_grid_anchor_generator_test.py."""
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.anchor_generators import multiscale_grid_anchor_generator as mg
 from object_detection.utils import test_case

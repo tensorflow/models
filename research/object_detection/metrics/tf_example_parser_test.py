@@ -16,7 +16,7 @@
 
 import numpy as np
 import numpy.testing as np_testing
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields as fields
 from object_detection.metrics import tf_example_parser

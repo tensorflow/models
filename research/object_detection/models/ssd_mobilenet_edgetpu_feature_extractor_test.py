@@ -14,13 +14,10 @@
 # ==============================================================================
 """Tests for ssd_mobilenet_edgetpu_feature_extractor."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-from tensorflow.contrib import slim as contrib_slim
 from object_detection.models import ssd_mobilenet_edgetpu_feature_extractor
 from object_detection.models import ssd_mobilenet_edgetpu_feature_extractor_testbase
-
-slim = contrib_slim
 
 
 class SsdMobilenetEdgeTPUFeatureExtractorTest(

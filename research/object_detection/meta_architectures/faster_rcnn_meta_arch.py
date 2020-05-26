@@ -96,7 +96,8 @@ configured in the meta architecture:
 from __future__ import print_function
 import abc
 import functools
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.builders import box_predictor_builder
@@ -112,14 +113,6 @@ from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from object_detection.utils import variables_helper
 
-# pylint: disable=g-import-not-at-top
-try:
-  from tensorflow.contrib import framework as contrib_framework
-  from tensorflow.contrib import slim as contrib_slim
-except ImportError:
-  # TF 2.0 doesn't ship with contrib.
-  pass
-# pylint: enable=g-import-not-at-top
 
 _UNINITIALIZED_FEATURE_EXTRACTOR = '__uninitialized__'
 
@@ -566,10 +559,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
       self._first_stage_box_predictor_arg_scope_fn = (
           first_stage_box_predictor_arg_scope_fn)
       def rpn_box_predictor_feature_extractor(rpn_features_to_crop):
-        with contrib_slim.arg_scope(
-            self._first_stage_box_predictor_arg_scope_fn()):
+        with slim.arg_scope(self._first_stage_box_predictor_arg_scope_fn()):
           reuse = tf.get_variable_scope().reuse
-          return contrib_slim.conv2d(
+          return slim.conv2d(
               rpn_features_to_crop,
               self._first_stage_box_predictor_depth,
               kernel_size=[
@@ -2805,7 +2797,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
           self.first_stage_feature_extractor_scope,
           self.second_stage_feature_extractor_scope
       ]
-    feature_extractor_variables = contrib_framework.filter_variables(
+    feature_extractor_variables = slim.filter_variables(
         variables_to_restore, include_patterns=include_patterns)
     return {var.op.name: var for var in feature_extractor_variables}
 

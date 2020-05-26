@@ -14,7 +14,7 @@
 # ==============================================================================
 """Tests for google3.third_party.tensorflow_models.object_detection.core.class_agnostic_nms."""
 from absl.testing import parameterized
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.core import post_processing
 from object_detection.core import standard_fields as fields
 from object_detection.utils import test_case

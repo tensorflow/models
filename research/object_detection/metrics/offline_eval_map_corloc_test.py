@@ -14,7 +14,7 @@
 # ==============================================================================
 """Tests for utilities in offline_eval_map_corloc binary."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.metrics import offline_eval_map_corloc as offline_eval
 

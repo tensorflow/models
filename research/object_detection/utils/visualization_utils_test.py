@@ -25,15 +25,28 @@ import numpy as np
 import PIL.Image as Image
 import six
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields as fields
+from object_detection.utils import test_case
 from object_detection.utils import visualization_utils
 
 _TESTDATA_PATH = 'object_detection/test_images'
 
 
-class VisualizationUtilsTest(tf.test.TestCase):
+def get_iterator_next_for_testing(dataset, is_tf2):
+
+  # In TF2, lookup tables are not supported in one shot iterators, but
+  # initialization is implicit.
+  if is_tf2:
+    return dataset.make_initializable_iterator().get_next()
+  # In TF1, we use one shot iterator because it does not require running
+  # a separate init op.
+  else:
+    return dataset.make_one_shot_iterator().get_next()
+
+
+class VisualizationUtilsTest(test_case.TestCase):
 
   def test_get_prime_multiplier_for_color_randomness(self):
     # Show that default multipler is not 1 and does not divide the total number
@@ -151,13 +164,12 @@ class VisualizationUtilsTest(tf.test.TestCase):
   def test_draw_bounding_boxes_on_image_tensors(self):
     """Tests that bounding box utility produces reasonable results."""
     category_index = {1: {'id': 1, 'name': 'dog'}, 2: {'id': 2, 'name': 'cat'}}
-
     fname = os.path.join(_TESTDATA_PATH, 'image1.jpg')
     image_np = np.array(Image.open(fname))
     images_np = np.stack((image_np, image_np), axis=0)
     original_image_shape = [[636, 512], [636, 512]]
 
-    with tf.Graph().as_default():
+    def graph_fn():
       images_tensor = tf.constant(value=images_np, dtype=tf.uint8)
       image_shape = tf.constant(original_image_shape, dtype=tf.int32)
       boxes = tf.constant([[[0.4, 0.25, 0.75, 0.75], [0.5, 0.3, 0.6, 0.9]],
@@ -178,22 +190,20 @@ class VisualizationUtilsTest(tf.test.TestCase):
               keypoints=keypoints,
               min_score_thresh=0.2,
               keypoint_edges=keypoint_edges))
+      return images_with_boxes
 
-      with self.test_session() as sess:
-        sess.run(tf.global_variables_initializer())
-
-        # Write output images for visualization.
-        images_with_boxes_np = sess.run(images_with_boxes)
-        self.assertEqual(images_np.shape[0], images_with_boxes_np.shape[0])
-        self.assertEqual(images_np.shape[3], images_with_boxes_np.shape[3])
-        self.assertEqual(
-            tuple(original_image_shape[0]), images_with_boxes_np.shape[1:3])
-        for i in range(images_with_boxes_np.shape[0]):
-          img_name = 'image_' + str(i) + '.png'
-          output_file = os.path.join(self.get_temp_dir(), img_name)
-          logging.info('Writing output image %d to %s', i, output_file)
-          image_pil = Image.fromarray(images_with_boxes_np[i, ...])
-          image_pil.save(output_file)
+    # Write output images for visualization.
+    images_with_boxes_np = self.execute(graph_fn, [])
+    self.assertEqual(images_np.shape[0], images_with_boxes_np.shape[0])
+    self.assertEqual(images_np.shape[3], images_with_boxes_np.shape[3])
+    self.assertEqual(
+        tuple(original_image_shape[0]), images_with_boxes_np.shape[1:3])
+    for i in range(images_with_boxes_np.shape[0]):
+      img_name = 'image_' + str(i) + '.png'
+      output_file = os.path.join(self.get_temp_dir(), img_name)
+      logging.info('Writing output image %d to %s', i, output_file)
+      image_pil = Image.fromarray(images_with_boxes_np[i, ...])
+      image_pil.save(output_file)
 
   def test_draw_bounding_boxes_on_image_tensors_with_track_ids(self):
     """Tests that bounding box utility produces reasonable results."""
@@ -204,7 +214,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
     images_np = np.stack((image_np, image_np), axis=0)
     original_image_shape = [[636, 512], [636, 512]]
 
-    with tf.Graph().as_default():
+    def graph_fn():
       images_tensor = tf.constant(value=images_np, dtype=tf.uint8)
       image_shape = tf.constant(original_image_shape, dtype=tf.int32)
       boxes = tf.constant([[[0.4, 0.25, 0.75, 0.75],
@@ -227,22 +237,20 @@ class VisualizationUtilsTest(tf.test.TestCase):
               true_image_shape=image_shape,
               track_ids=track_ids,
               min_score_thresh=0.2))
+      return images_with_boxes
 
-      with self.test_session() as sess:
-        sess.run(tf.global_variables_initializer())
-
-        # Write output images for visualization.
-        images_with_boxes_np = sess.run(images_with_boxes)
-        self.assertEqual(images_np.shape[0], images_with_boxes_np.shape[0])
-        self.assertEqual(images_np.shape[3], images_with_boxes_np.shape[3])
-        self.assertEqual(
-            tuple(original_image_shape[0]), images_with_boxes_np.shape[1:3])
-        for i in range(images_with_boxes_np.shape[0]):
-          img_name = 'image_with_track_ids_' + str(i) + '.png'
-          output_file = os.path.join(self.get_temp_dir(), img_name)
-          logging.info('Writing output image %d to %s', i, output_file)
-          image_pil = Image.fromarray(images_with_boxes_np[i, ...])
-          image_pil.save(output_file)
+    # Write output images for visualization.
+    images_with_boxes_np = self.execute(graph_fn, [])
+    self.assertEqual(images_np.shape[0], images_with_boxes_np.shape[0])
+    self.assertEqual(images_np.shape[3], images_with_boxes_np.shape[3])
+    self.assertEqual(
+        tuple(original_image_shape[0]), images_with_boxes_np.shape[1:3])
+    for i in range(images_with_boxes_np.shape[0]):
+      img_name = 'image_with_track_ids_' + str(i) + '.png'
+      output_file = os.path.join(self.get_temp_dir(), img_name)
+      logging.info('Writing output image %d to %s', i, output_file)
+      image_pil = Image.fromarray(images_with_boxes_np[i, ...])
+      image_pil.save(output_file)
 
   def test_draw_bounding_boxes_on_image_tensors_with_additional_channels(self):
     """Tests the case where input image tensor has more than 3 channels."""
@@ -250,7 +258,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
     image_np = self.create_test_image_with_five_channels()
     images_np = np.stack((image_np, image_np), axis=0)
 
-    with tf.Graph().as_default():
+    def graph_fn():
       images_tensor = tf.constant(value=images_np, dtype=tf.uint8)
       boxes = tf.constant(0, dtype=tf.float32, shape=[2, 0, 4])
       classes = tf.constant(0, dtype=tf.int64, shape=[2, 0])
@@ -264,11 +272,10 @@ class VisualizationUtilsTest(tf.test.TestCase):
               category_index,
               min_score_thresh=0.2))
 
-      with self.test_session() as sess:
-        sess.run(tf.global_variables_initializer())
+      return images_with_boxes
 
-        final_images_np = sess.run(images_with_boxes)
-        self.assertEqual((2, 100, 200, 3), final_images_np.shape)
+    final_images_np = self.execute(graph_fn, [])
+    self.assertEqual((2, 100, 200, 3), final_images_np.shape)
 
   def test_draw_bounding_boxes_on_image_tensors_grayscale(self):
     """Tests the case where input image tensor has one channel."""
@@ -276,7 +283,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
     image_np = self.create_test_grayscale_image()
     images_np = np.stack((image_np, image_np), axis=0)
 
-    with tf.Graph().as_default():
+    def graph_fn():
       images_tensor = tf.constant(value=images_np, dtype=tf.uint8)
       image_shape = tf.constant([[100, 200], [100, 200]], dtype=tf.int32)
       boxes = tf.constant(0, dtype=tf.float32, shape=[2, 0, 4])
@@ -293,11 +300,10 @@ class VisualizationUtilsTest(tf.test.TestCase):
               true_image_shape=image_shape,
               min_score_thresh=0.2))
 
-      with self.test_session() as sess:
-        sess.run(tf.global_variables_initializer())
+      return images_with_boxes
 
-        final_images_np = sess.run(images_with_boxes)
-        self.assertEqual((2, 100, 200, 3), final_images_np.shape)
+    final_images_np = self.execute(graph_fn, [])
+    self.assertEqual((2, 100, 200, 3), final_images_np.shape)
 
   def test_draw_keypoints_on_image(self):
     test_image = self.create_colorful_test_image()
@@ -407,7 +413,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
     heatmap2 = np.asarray([[0, 1],
                            [1, 0]], dtype=np.float)
     heatmaps = np.stack([heatmap1, heatmap2], axis=0)
-    with tf.Graph().as_default():
+    def graph_fn():
       image_tensor = tf.constant(test_image, dtype=tf.uint8)
       image_tensor = tf.expand_dims(image_tensor, axis=0)
       heatmaps_tensor = tf.expand_dims(
@@ -417,34 +423,38 @@ class VisualizationUtilsTest(tf.test.TestCase):
           heatmaps=heatmaps_tensor,
           apply_sigmoid=False)
 
-      with self.test_session() as sess:
-        sess.run(tf.global_variables_initializer())
+      return output_image
 
-        output_image_np = sess.run(output_image)
-      self.assertAllEqual(
-          output_image_np,
-          np.expand_dims(
-              np.array([[[240, 248, 255], [127, 255, 0]],
-                        [[127, 255, 0], [240, 248, 255]]]),
-              axis=0))
+    output_image_np = self.execute(graph_fn, [])
+    self.assertAllEqual(
+        output_image_np,
+        np.expand_dims(
+            np.array([[[240, 248, 255], [127, 255, 0]],
+                      [[127, 255, 0], [240, 248, 255]]]),
+            axis=0))
 
   def test_add_cdf_image_summary(self):
-    values = [0.1, 0.2, 0.3, 0.4, 0.42, 0.44, 0.46, 0.48, 0.50]
-    visualization_utils.add_cdf_image_summary(values, 'PositiveAnchorLoss')
-    cdf_image_summary = tf.get_collection(key=tf.GraphKeys.SUMMARIES)[0]
-    with self.test_session():
-      cdf_image_summary.eval()
+    def graph_fn():
+      values = [0.1, 0.2, 0.3, 0.4, 0.42, 0.44, 0.46, 0.48, 0.50]
+      visualization_utils.add_cdf_image_summary(values, 'PositiveAnchorLoss')
+      cdf_image_summary = tf.get_collection(key=tf.GraphKeys.SUMMARIES)[0]
+      return cdf_image_summary
+    self.execute(graph_fn, [])
 
   def test_add_hist_image_summary(self):
-    values = [0.1, 0.2, 0.3, 0.4, 0.42, 0.44, 0.46, 0.48, 0.50]
-    bins = [0.01 * i for i in range(101)]
-    visualization_utils.add_hist_image_summary(values, bins,
-                                               'ScoresDistribution')
-    hist_image_summary = tf.get_collection(key=tf.GraphKeys.SUMMARIES)[0]
-    with self.test_session():
-      hist_image_summary.eval()
+    def graph_fn():
+      values = [0.1, 0.2, 0.3, 0.4, 0.42, 0.44, 0.46, 0.48, 0.50]
+      bins = [0.01 * i for i in range(101)]
+      visualization_utils.add_hist_image_summary(values, bins,
+                                                 'ScoresDistribution')
+      hist_image_summary = tf.get_collection(key=tf.GraphKeys.SUMMARIES)[0]
+      return hist_image_summary
+    self.execute(graph_fn, [])
 
   def test_eval_metric_ops(self):
+    if self.is_tf2():
+      self.skipTest('This test is only compatible with Tensorflow 1.X, '
+                    'estimator eval ops are not supported in Tensorflow 2.')
     category_index = {1: {'id': 1, 'name': 'dog'}, 2: {'id': 2, 'name': 'cat'}}
     max_examples_to_draw = 4
     metric_op_base = 'Detections_Left_Groundtruth_Right'

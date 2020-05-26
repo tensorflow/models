@@ -22,10 +22,8 @@ import contextlib
 import copy
 import os
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 
 @slim.add_arg_scope
@@ -306,8 +304,8 @@ def mobilenet_base(  # pylint: disable=invalid-name
 
 @contextlib.contextmanager
 def _scope_all(scope, default_scope=None):
-  with tf.compat.v1.variable_scope(scope, default_name=default_scope) as s,\
-       tf.compat.v1.name_scope(s.original_name_scope):
+  with tf.variable_scope(scope, default_name=default_scope) as s,\
+       tf.name_scope(s.original_name_scope):
     yield s
 
 
@@ -318,6 +316,7 @@ def mobilenet(inputs,
               reuse=None,
               scope='Mobilenet',
               base_only=False,
+              use_reduce_mean_for_pooling=False,
               **mobilenet_args):
   """Mobilenet model for classification, supports both V1 and V2.
 
@@ -337,6 +336,8 @@ def mobilenet(inputs,
     scope: Optional variable_scope.
     base_only: if True will only create the base of the network (no pooling
     and no logits).
+    use_reduce_mean_for_pooling: if True use the reduce_mean for pooling. If
+    True use the global_pool function that provides some optimization.
     **mobilenet_args: passed to mobilenet_base verbatim.
       - conv_defs: list of conv defs
       - multiplier: Float multiplier for the depth (number of channels)
@@ -363,7 +364,7 @@ def mobilenet(inputs,
   if len(input_shape) != 4:
     raise ValueError('Expected rank 4 input, was: %d' % len(input_shape))
 
-  with tf.compat.v1.variable_scope(scope, 'Mobilenet', reuse=reuse) as scope:
+  with tf.variable_scope(scope, 'Mobilenet', reuse=reuse) as scope:
     inputs = tf.identity(inputs, 'input')
     net, end_points = mobilenet_base(inputs, scope=scope, **mobilenet_args)
     if base_only:
@@ -371,8 +372,8 @@ def mobilenet(inputs,
 
     net = tf.identity(net, name='embedding')
 
-    with tf.compat.v1.variable_scope('Logits'):
-      net = global_pool(net)
+    with tf.variable_scope('Logits'):
+      net = global_pool(net, use_reduce_mean_for_pooling)
       end_points['global_pool'] = net
       if not num_classes:
         return net, end_points
@@ -384,7 +385,7 @@ def mobilenet(inputs,
           num_classes, [1, 1],
           activation_fn=None,
           normalizer_fn=None,
-          biases_initializer=tf.compat.v1.zeros_initializer(),
+          biases_initializer=tf.zeros_initializer(),
           scope='Conv2d_1c_1x1')
 
       logits = tf.squeeze(logits, [1, 2])
@@ -396,7 +397,9 @@ def mobilenet(inputs,
   return logits, end_points
 
 
-def global_pool(input_tensor, pool_op=tf.compat.v2.nn.avg_pool2d):
+def global_pool(input_tensor,
+                use_reduce_mean_for_pooling=False,
+                pool_op=tf.nn.avg_pool2d):
   """Applies avg pool to produce 1x1 output.
 
   NOTE: This function is funcitonally equivalenet to reduce_mean, but it has
@@ -404,24 +407,29 @@ def global_pool(input_tensor, pool_op=tf.compat.v2.nn.avg_pool2d):
 
   Args:
     input_tensor: input tensor
+    use_reduce_mean_for_pooling: if True use reduce_mean for pooling
     pool_op: pooling op (avg pool is default)
   Returns:
     a tensor batch_size x 1 x 1 x depth.
   """
-  shape = input_tensor.get_shape().as_list()
-  if shape[1] is None or shape[2] is None:
-    kernel_size = tf.convert_to_tensor(value=[
-        1,
-        tf.shape(input=input_tensor)[1],
-        tf.shape(input=input_tensor)[2], 1
-    ])
+  if use_reduce_mean_for_pooling:
+    return tf.reduce_mean(
+        input_tensor, [1, 2], keepdims=True, name='ReduceMean')
   else:
-    kernel_size = [1, shape[1], shape[2], 1]
-  output = pool_op(
-      input_tensor, ksize=kernel_size, strides=[1, 1, 1, 1], padding='VALID')
-  # Recover output shape, for unknown shape.
-  output.set_shape([None, 1, 1, None])
-  return output
+    shape = input_tensor.get_shape().as_list()
+    if shape[1] is None or shape[2] is None:
+      kernel_size = tf.convert_to_tensor(value=[
+          1,
+          tf.shape(input=input_tensor)[1],
+          tf.shape(input=input_tensor)[2], 1
+      ])
+    else:
+      kernel_size = [1, shape[1], shape[2], 1]
+    output = pool_op(
+        input_tensor, ksize=kernel_size, strides=[1, 1, 1, 1], padding='VALID')
+    # Recover output shape, for unknown shape.
+    output.set_shape([None, 1, 1, None])
+    return output
 
 
 def training_scope(is_training=True,
@@ -432,7 +440,7 @@ def training_scope(is_training=True,
   """Defines Mobilenet training scope.
 
   Usage:
-     with tf.contrib.slim.arg_scope(mobilenet.training_scope()):
+     with slim.arg_scope(mobilenet.training_scope()):
        logits, endpoints = mobilenet_v2.mobilenet(input_tensor)
 
      # the network created will be trainble with dropout/batch norm
@@ -462,7 +470,7 @@ def training_scope(is_training=True,
   if stddev < 0:
     weight_intitializer = slim.initializers.xavier_initializer()
   else:
-    weight_intitializer = tf.compat.v1.truncated_normal_initializer(
+    weight_intitializer = tf.truncated_normal_initializer(
         stddev=stddev)
 
   # Set weight_decay for weights in Conv and FC layers.

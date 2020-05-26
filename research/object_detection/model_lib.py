@@ -22,7 +22,9 @@ import copy
 import functools
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
+
 
 from object_detection import eval_util
 from object_detection import exporter as exporter_lib
@@ -40,11 +42,8 @@ from object_detection.utils import visualization_utils as vis_utils
 
 # pylint: disable=g-import-not-at-top
 try:
-  from tensorflow.contrib import framework as contrib_framework
-  from tensorflow.contrib import layers as contrib_layers
   from tensorflow.contrib import learn as contrib_learn
   from tensorflow.contrib import tpu as contrib_tpu
-  from tensorflow.contrib import training as contrib_training
 except ImportError:
   # TF 2.0 doesn't ship with contrib.
   pass
@@ -95,6 +94,10 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
         of groundtruth boxes per image..
       'groundtruth_keypoints': [batch_size, num_boxes, num_keypoints, 2] float32
         tensor of keypoints (if provided in groundtruth).
+      'groundtruth_group_of': [batch_size, num_boxes] bool tensor indicating
+        group_of annotations (if provided in groundtruth).
+      'groundtruth_labeled_classes': [batch_size, num_classes] int64
+        tensor of 1-indexed classes.
     class_agnostic: Boolean indicating whether detections are class agnostic.
   """
   input_data_fields = fields.InputDataFields()
@@ -137,6 +140,29 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
     groundtruth[input_data_fields.groundtruth_keypoint_visibilities] = tf.stack(
         detection_model.groundtruth_lists(
             fields.BoxListFields.keypoint_visibilities))
+
+  if detection_model.groundtruth_has_field(fields.BoxListFields.group_of):
+    groundtruth[input_data_fields.groundtruth_group_of] = tf.stack(
+        detection_model.groundtruth_lists(fields.BoxListFields.group_of))
+
+  if detection_model.groundtruth_has_field(
+      fields.InputDataFields.groundtruth_labeled_classes):
+    labeled_classes_list = detection_model.groundtruth_lists(
+        fields.InputDataFields.groundtruth_labeled_classes)
+    labeled_classes = [
+        tf.where(x)[:, 0] + label_id_offset for x in labeled_classes_list
+    ]
+    if len(labeled_classes) > 1:
+      num_classes = labeled_classes_list[0].shape[0]
+      padded_labeled_classes = []
+      for x in labeled_classes:
+        padding = num_classes - tf.shape(x)[0]
+        padded_labeled_classes.append(tf.pad(x, [[0, padding]]))
+      groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.stack(
+          padded_labeled_classes)
+    else:
+      groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.stack(
+          labeled_classes)
 
   groundtruth[input_data_fields.num_groundtruth_boxes] = (
       tf.tile([max_number_of_boxes], multiples=[groundtruth_boxes_shape[0]]))
@@ -213,6 +239,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
         unpadded_tensor = tf.slice(padded_tensor, slice_begin, slice_size)
         unpadded_tensor_list.append(unpadded_tensor)
       unbatched_unpadded_tensor_dict[key] = unpadded_tensor_list
+
     unbatched_tensor_dict.update(unbatched_unpadded_tensor_dict)
 
   return unbatched_tensor_dict
@@ -252,6 +279,9 @@ def provide_groundtruth(model, labels):
   gt_is_crowd_list = None
   if fields.InputDataFields.groundtruth_is_crowd in labels:
     gt_is_crowd_list = labels[fields.InputDataFields.groundtruth_is_crowd]
+  gt_group_of_list = None
+  if fields.InputDataFields.groundtruth_group_of in labels:
+    gt_group_of_list = labels[fields.InputDataFields.groundtruth_group_of]
   gt_area_list = None
   if fields.InputDataFields.groundtruth_area in labels:
     gt_area_list = labels[fields.InputDataFields.groundtruth_area]
@@ -269,6 +299,7 @@ def provide_groundtruth(model, labels):
       groundtruth_keypoint_visibilities_list=gt_keypoint_visibilities_list,
       groundtruth_weights_list=gt_weights_list,
       groundtruth_is_crowd_list=gt_is_crowd_list,
+      groundtruth_group_of_list=gt_group_of_list,
       groundtruth_area_list=gt_area_list)
 
 
@@ -447,7 +478,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
       exclude_variables = (
           train_config.freeze_variables
           if train_config.freeze_variables else None)
-      trainable_variables = contrib_framework.filter_variables(
+      trainable_variables = slim.filter_variables(
           tf.trainable_variables(),
           include_patterns=include_variables,
           exclude_patterns=exclude_variables)
@@ -462,7 +493,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
       summaries = [] if use_tpu else None
       if train_config.summarize_gradients:
         summaries = ['gradients', 'gradient_norm', 'global_gradient_norm']
-      train_op = contrib_layers.optimize_loss(
+      train_op = slim.optimizers.optimize_loss(
           loss=total_loss,
           global_step=global_step,
           learning_rate=None,
@@ -826,7 +857,48 @@ def create_train_and_eval_specs(train_input_fn,
   return train_spec, eval_specs
 
 
-def continuous_eval(estimator, model_dir, input_fn, train_steps, name):
+def _evaluate_checkpoint(estimator,
+                         input_fn,
+                         checkpoint_path,
+                         name,
+                         max_retries=0):
+  """Evaluates a checkpoint.
+
+  Args:
+    estimator: Estimator object to use for evaluation.
+    input_fn: Input function to use for evaluation.
+    checkpoint_path: Path of the checkpoint to evaluate.
+    name: Namescope for eval summary.
+    max_retries: Maximum number of times to retry the evaluation on encountering
+      a tf.errors.InvalidArgumentError. If negative, will always retry the
+      evaluation.
+
+  Returns:
+    Estimator evaluation results.
+  """
+  always_retry = True if max_retries < 0 else False
+  retries = 0
+  while always_retry or retries <= max_retries:
+    try:
+      return estimator.evaluate(
+          input_fn=input_fn,
+          steps=None,
+          checkpoint_path=checkpoint_path,
+          name=name)
+    except tf.errors.InvalidArgumentError as e:
+      if always_retry or retries < max_retries:
+        tf.logging.info('Retrying checkpoint evaluation after exception: %s', e)
+        retries += 1
+      else:
+        raise e
+
+
+def continuous_eval(estimator,
+                    model_dir,
+                    input_fn,
+                    train_steps,
+                    name,
+                    max_retries=0):
   """Perform continuous evaluation on checkpoints written to a model directory.
 
   Args:
@@ -836,20 +908,27 @@ def continuous_eval(estimator, model_dir, input_fn, train_steps, name):
     train_steps: Number of training steps. This is used to infer the last
       checkpoint and stop evaluation loop.
     name: Namescope for eval summary.
+    max_retries: Maximum number of times to retry the evaluation on encountering
+      a tf.errors.InvalidArgumentError. If negative, will always retry the
+      evaluation.
   """
 
   def terminate_eval():
     tf.logging.info('Terminating eval after 180 seconds of no checkpoints')
     return True
 
-  for ckpt in contrib_training.checkpoints_iterator(
+  for ckpt in tf.train.checkpoints_iterator(
       model_dir, min_interval_secs=180, timeout=None,
       timeout_fn=terminate_eval):
 
     tf.logging.info('Starting Evaluation.')
     try:
-      eval_results = estimator.evaluate(
-          input_fn=input_fn, steps=None, checkpoint_path=ckpt, name=name)
+      eval_results = _evaluate_checkpoint(
+          estimator=estimator,
+          input_fn=input_fn,
+          checkpoint_path=ckpt,
+          name=name,
+          max_retries=max_retries)
       tf.logging.info('Eval results: %s' % eval_results)
 
       # Terminate eval job when final checkpoint is reached

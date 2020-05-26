@@ -24,7 +24,7 @@ from absl import logging
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection import inputs
 from object_detection.core import preprocessor
@@ -53,6 +53,25 @@ def _get_configs_for_model(model_name):
       configs, kwargs_dict=override_dict)
 
 
+def _get_configs_for_model_sequence_example(model_name):
+  """Returns configurations for model."""
+  fname = os.path.join(tf.resource_loader.get_data_files_path(),
+                       'test_data/' + model_name + '.config')
+  label_map_path = os.path.join(tf.resource_loader.get_data_files_path(),
+                                'data/snapshot_serengeti_label_map.pbtxt')
+  data_path = os.path.join(
+      tf.resource_loader.get_data_files_path(),
+      'test_data/snapshot_serengeti_sequence_examples.record')
+  configs = config_util.get_configs_from_pipeline_file(fname)
+  override_dict = {
+      'train_input_path': data_path,
+      'eval_input_path': data_path,
+      'label_map_path': label_map_path
+  }
+  return config_util.merge_external_params_with_configs(
+      configs, kwargs_dict=override_dict)
+
+
 def _make_initializable_iterator(dataset):
   """Creates an iterator, and initializes tables.
 
@@ -62,7 +81,7 @@ def _make_initializable_iterator(dataset):
   Returns:
     A `tf.data.Iterator`.
   """
-  iterator = dataset.make_initializable_iterator()
+  iterator = tf.data.make_initializable_iterator(dataset)
   tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
   return iterator
 
@@ -204,6 +223,85 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
         labels[fields.InputDataFields.groundtruth_difficult].shape.as_list())
     self.assertEqual(
         tf.int32, labels[fields.InputDataFields.groundtruth_difficult].dtype)
+
+  def test_context_rcnn_resnet50_train_input_with_sequence_example(
+      self, train_batch_size=8):
+    """Tests the training input function for FasterRcnnResnet50."""
+    configs = _get_configs_for_model_sequence_example(
+        'context_rcnn_camera_trap')
+    model_config = configs['model']
+    train_config = configs['train_config']
+    train_config.batch_size = train_batch_size
+    train_input_fn = inputs.create_train_input_fn(
+        train_config, configs['train_input_config'], model_config)
+    features, labels = _make_initializable_iterator(train_input_fn()).get_next()
+
+    self.assertAllEqual([train_batch_size, 640, 640, 3],
+                        features[fields.InputDataFields.image].shape.as_list())
+    self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
+    self.assertAllEqual([train_batch_size],
+                        features[inputs.HASH_KEY].shape.as_list())
+    self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, 4],
+        labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_boxes].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_classes].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_weights].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_confidences].shape.as_list())
+    self.assertEqual(
+        tf.float32,
+        labels[fields.InputDataFields.groundtruth_confidences].dtype)
+
+  def test_context_rcnn_resnet50_eval_input_with_sequence_example(
+      self, eval_batch_size=8):
+    """Tests the eval input function for FasterRcnnResnet50."""
+    configs = _get_configs_for_model_sequence_example(
+        'context_rcnn_camera_trap')
+    model_config = configs['model']
+    eval_config = configs['eval_config']
+    eval_config.batch_size = eval_batch_size
+    eval_input_fn = inputs.create_eval_input_fn(
+        eval_config, configs['eval_input_configs'][0], model_config)
+    features, labels = _make_initializable_iterator(eval_input_fn()).get_next()
+    self.assertAllEqual([eval_batch_size, 640, 640, 3],
+                        features[fields.InputDataFields.image].shape.as_list())
+    self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 640, 640, 3],
+        features[fields.InputDataFields.original_image].shape.as_list())
+    self.assertEqual(tf.uint8,
+                     features[fields.InputDataFields.original_image].dtype)
+    self.assertAllEqual([eval_batch_size],
+                        features[inputs.HASH_KEY].shape.as_list())
+    self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100, 4],
+        labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_boxes].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_classes].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(
+        tf.float32,
+        labels[fields.InputDataFields.groundtruth_weights].dtype)
 
   def test_ssd_inceptionV2_train_input(self):
     """Tests the training input function for SSDInceptionV2."""

@@ -217,7 +217,8 @@ def quantize_op(inputs,
     # While training, collect EMAs of ranges seen, store in min_var, max_var.
     # TFLite requires that 0.0 is always in the [min; max] range.
     range_min = tf.minimum(tf.reduce_min(inputs), 0.0, 'SafeQuantRangeMin')
-    range_max = tf.maximum(tf.reduce_max(inputs), 0.0, 'SafeQuantRangeMax')
+    # We set the lower_bound of max_range to prevent range collapse.
+    range_max = tf.maximum(tf.reduce_max(inputs), 1e-5, 'SafeQuantRangeMax')
     min_val = moving_averages.assign_moving_average(
         min_var, range_min, ema_decay, name='AssignMinEma')
     max_val = moving_averages.assign_moving_average(

@@ -22,16 +22,15 @@ from __future__ import print_function
 import collections
 import functools
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
 from nets.mobilenet import mobilenet
 from nets.mobilenet import mobilenet_v2
 
-slim = contrib_slim
 
 Block = collections.namedtuple(
     'Block', ['inputs', 'output_level', 'kernel_size', 'expansion_size'])

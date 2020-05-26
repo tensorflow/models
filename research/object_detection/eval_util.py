@@ -24,9 +24,10 @@ import time
 
 import numpy as np
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-from tensorflow.contrib import slim
+import tf_slim as slim
+
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import keypoint_ops
@@ -553,11 +554,15 @@ def _resize_detection_masks(args):
 
 
 def _resize_groundtruth_masks(args):
-  mask, image_shape = args
+  """Resizes groundgtruth masks to the original image size."""
+  mask, true_image_shape, original_image_shape = args
+  true_height = true_image_shape[0]
+  true_width = true_image_shape[1]
+  mask = mask[:, :true_height, :true_width]
   mask = tf.expand_dims(mask, 3)
   mask = tf.image.resize_images(
       mask,
-      image_shape,
+      original_image_shape,
       method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
       align_corners=True)
   return tf.cast(tf.squeeze(mask, 3), tf.uint8)
@@ -689,7 +694,7 @@ def result_dict_for_batched_example(images,
 
   Args:
     images: A single 4D uint8 image tensor of shape [batch_size, H, W, C].
-    keys: A [batch_size] string tensor with image identifier.
+    keys: A [batch_size] string/int tensor with image identifier.
     detections: A dictionary of detections, returned from
       DetectionModel.postprocess().
     groundtruth: (Optional) Dictionary of groundtruth items, with fields:
@@ -711,6 +716,8 @@ def result_dict_for_batched_example(images,
         2] float32 tensor with keypoints (Optional).
       'groundtruth_keypoint_visibilities': [batch_size, max_number_of_boxes,
         num_keypoints] bool tensor with keypoint visibilities (Optional).
+      'groundtruth_labeled_classes': [batch_size, num_classes] int64
+        tensor of 1-indexed classes. (Optional)
     class_agnostic: Boolean indicating whether the detections are class-agnostic
       (i.e. binary). Default False.
     scale_to_absolute: Boolean indicating whether boxes and keypoints should be
@@ -762,6 +769,8 @@ def result_dict_for_batched_example(images,
       tensor with keypoints (Optional).
     'groundtruth_keypoint_visibilities': [batch_size, num_boxes, num_keypoints]
       bool tensor with keypoint visibilities (Optional).
+    'groundtruth_labeled_classes': [batch_size, num_classes]  int64 tensor
+      of 1-indexed classes. (Optional)
     'num_groundtruth_boxes': [batch_size] tensor containing the maximum number
       of groundtruth boxes per image.
 
@@ -871,7 +880,7 @@ def result_dict_for_batched_example(images,
       groundtruth[input_data_fields.groundtruth_instance_masks] = (
           shape_utils.static_or_dynamic_map_fn(
               _resize_groundtruth_masks,
-              elems=[masks, original_image_spatial_shapes],
+              elems=[masks, true_image_shapes, original_image_spatial_shapes],
               dtype=tf.uint8))
 
     output_dict.update(groundtruth)

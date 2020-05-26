@@ -91,7 +91,7 @@ from __future__ import print_function
 
 import warnings
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 Model = tf.keras.Model
 Input = tf.keras.layers.Input

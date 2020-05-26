@@ -22,7 +22,7 @@ import abc
 from absl.testing import parameterized
 import numpy as np
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.models import ssd_feature_extractor_test
 

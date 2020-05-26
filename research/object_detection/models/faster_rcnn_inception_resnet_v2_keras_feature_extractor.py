@@ -25,7 +25,7 @@ Huang et al. (https://arxiv.org/abs/1611.10012)
 # Skip pylint for this file because it times out
 # pylint: skip-file
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.models.keras_models import inception_resnet_v2

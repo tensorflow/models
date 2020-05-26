@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for ssd resnet v1 feature extractors."""
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.models import ssd_resnet_v1_ppn_feature_extractor
 from object_detection.models import ssd_resnet_v1_ppn_feature_extractor_testbase

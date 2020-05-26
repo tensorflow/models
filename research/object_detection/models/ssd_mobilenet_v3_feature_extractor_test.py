@@ -14,14 +14,14 @@
 # ==============================================================================
 """Tests for ssd_mobilenet_v3_feature_extractor."""
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.models import ssd_mobilenet_v3_feature_extractor
 from object_detection.models import ssd_mobilenet_v3_feature_extractor_testbase
 
 
-slim = contrib_slim
+slim = slim
 
 
 class SsdMobilenetV3LargeFeatureExtractorTest(

@@ -14,13 +14,14 @@
 # ==============================================================================
 """Tests for graph_rewriter_builder."""
 import mock
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
+
 from object_detection.builders import graph_rewriter_builder
 from object_detection.protos import graph_rewriter_pb2
 
 # pylint: disable=g-import-not-at-top
 try:
-  from tensorflow.contrib import layers as contrib_layers
   from tensorflow.contrib import quantize as contrib_quantize
 except ImportError:
   # TF 2.0 doesn't ship with contrib.
@@ -34,7 +35,7 @@ class QuantizationBuilderTest(tf.test.TestCase):
     with mock.patch.object(
         contrib_quantize,
         'experimental_create_training_graph') as mock_quant_fn:
-      with mock.patch.object(contrib_layers,
+      with mock.patch.object(slim,
                              'summarize_collection') as mock_summarize_col:
         graph_rewriter_proto = graph_rewriter_pb2.GraphRewriter()
         graph_rewriter_proto.quantization.delay = 10
@@ -51,7 +52,7 @@ class QuantizationBuilderTest(tf.test.TestCase):
   def testQuantizationBuilderSetsUpCorrectEvalArguments(self):
     with mock.patch.object(contrib_quantize,
                            'experimental_create_eval_graph') as mock_quant_fn:
-      with mock.patch.object(contrib_layers,
+      with mock.patch.object(slim,
                              'summarize_collection') as mock_summarize_col:
         graph_rewriter_proto = graph_rewriter_pb2.GraphRewriter()
         graph_rewriter_proto.quantization.delay = 10

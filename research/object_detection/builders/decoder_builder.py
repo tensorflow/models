@@ -23,6 +23,7 @@ from __future__ import division
 from __future__ import print_function
 
 from object_detection.data_decoders import tf_example_decoder
+from object_detection.data_decoders import tf_sequence_example_decoder
 from object_detection.protos import input_reader_pb2
 
 
@@ -46,16 +47,24 @@ def build(input_reader_config):
     label_map_proto_file = None
     if input_reader_config.HasField('label_map_path'):
       label_map_proto_file = input_reader_config.label_map_path
-    decoder = tf_example_decoder.TfExampleDecoder(
-        load_instance_masks=input_reader_config.load_instance_masks,
-        load_multiclass_scores=input_reader_config.load_multiclass_scores,
-        load_context_features=input_reader_config.load_context_features,
-        instance_mask_type=input_reader_config.mask_type,
-        label_map_proto_file=label_map_proto_file,
-        use_display_name=input_reader_config.use_display_name,
-        num_additional_channels=input_reader_config.num_additional_channels,
-        num_keypoints=input_reader_config.num_keypoints)
-
-    return decoder
+    input_type = input_reader_config.input_type
+    if input_type == input_reader_pb2.InputType.TF_EXAMPLE:
+      decoder = tf_example_decoder.TfExampleDecoder(
+          load_instance_masks=input_reader_config.load_instance_masks,
+          load_multiclass_scores=input_reader_config.load_multiclass_scores,
+          load_context_features=input_reader_config.load_context_features,
+          instance_mask_type=input_reader_config.mask_type,
+          label_map_proto_file=label_map_proto_file,
+          use_display_name=input_reader_config.use_display_name,
+          num_additional_channels=input_reader_config.num_additional_channels,
+          num_keypoints=input_reader_config.num_keypoints,
+          expand_hierarchy_labels=input_reader_config.expand_labels_hierarchy)
+      return decoder
+    elif input_type == input_reader_pb2.InputType.TF_SEQUENCE_EXAMPLE:
+      decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder(
+          label_map_proto_file=label_map_proto_file,
+          load_context_features=input_reader_config.load_context_features)
+      return decoder
+    raise ValueError('Unsupported input_type in config.')
 
   raise ValueError('Unsupported input_reader_config.')

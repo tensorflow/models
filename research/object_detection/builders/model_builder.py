@@ -75,6 +75,9 @@ if tf_version.is_tf1():
   from object_detection.models.ssd_mobilenet_v2_feature_extractor import SSDMobileNetV2FeatureExtractor
   from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3LargeFeatureExtractor
   from object_detection.models.ssd_mobilenet_v3_feature_extractor import SSDMobileNetV3SmallFeatureExtractor
+  from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetCPUFeatureExtractor
+  from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetDSPFeatureExtractor
+  from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetEdgeTPUFeatureExtractor
   from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
   from object_detection.predictors import rfcn_box_predictor
 # pylint: enable=g-import-not-at-top
@@ -156,6 +159,9 @@ if tf_version.is_tf1():
           EmbeddedSSDMobileNetV1FeatureExtractor,
       'ssd_pnasnet':
           SSDPNASNetFeatureExtractor,
+      'ssd_mobiledet_cpu': SSDMobileDetCPUFeatureExtractor,
+      'ssd_mobiledet_dsp': SSDMobileDetDSPFeatureExtractor,
+      'ssd_mobiledet_edgetpu': SSDMobileDetEdgeTPUFeatureExtractor,
   }
 
   FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -794,7 +800,25 @@ def object_center_proto_to_params(oc_config):
       object_center_loss_weight=oc_config.object_center_loss_weight,
       heatmap_bias_init=oc_config.heatmap_bias_init,
       min_box_overlap_iou=oc_config.min_box_overlap_iou,
-      max_box_predictions=oc_config.max_box_predictions)
+      max_box_predictions=oc_config.max_box_predictions,
+      use_labeled_classes=oc_config.use_labeled_classes)
+
+
+def mask_proto_to_params(mask_config):
+  """Converts CenterNet.MaskEstimation proto to parameter namedtuple."""
+  loss = losses_pb2.Loss()
+  # Add dummy localization loss to avoid the loss_builder throwing error.
+  loss.localization_loss.weighted_l2.CopyFrom(
+      losses_pb2.WeightedL2LocalizationLoss())
+  loss.classification_loss.CopyFrom(mask_config.classification_loss)
+  classification_loss, _, _, _, _, _, _ = (losses_builder.build(loss))
+  return center_net_meta_arch.MaskParams(
+      classification_loss=classification_loss,
+      task_loss_weight=mask_config.task_loss_weight,
+      mask_height=mask_config.mask_height,
+      mask_width=mask_config.mask_width,
+      score_threshold=mask_config.score_threshold,
+      heatmap_bias_init=mask_config.heatmap_bias_init)
 
 
 def _build_center_net_model(center_net_config, is_training, add_summaries):
@@ -844,6 +868,11 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
         keypoint_class_id_set.add(kp_params.class_id)
     if len(all_keypoint_indices) > len(set(all_keypoint_indices)):
       raise ValueError('Some keypoint indices are used more than once.')
+
+  mask_params = None
+  if center_net_config.HasField('mask_estimation_task'):
+    mask_params = mask_proto_to_params(center_net_config.mask_estimation_task)
+
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
@@ -852,7 +881,8 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       image_resizer_fn=image_resizer_fn,
       object_center_params=object_center_params,
       object_detection_params=object_detection_params,
-      keypoint_params_dict=keypoint_params_dict)
+      keypoint_params_dict=keypoint_params_dict,
+      mask_params=mask_params)
 
 
 def _build_center_net_feature_extractor(

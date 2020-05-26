@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import functools
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.builders import dataset_builder
 from object_detection.builders import image_resizer_builder
 from object_detection.builders import model_builder
@@ -189,10 +189,21 @@ def transform_input_data(tensor_dict,
   Returns:
     A dictionary keyed by fields.InputDataFields containing the tensors obtained
     after applying all the transformations.
+
+  Raises:
+    KeyError: If both groundtruth_labeled_classes and groundtruth_image_classes
+      are provided by the decoder in tensor_dict since both fields are
+      considered to contain the same information.
   """
   out_tensor_dict = tensor_dict.copy()
 
   labeled_classes_field = fields.InputDataFields.groundtruth_labeled_classes
+  image_classes_field = fields.InputDataFields.groundtruth_image_classes
+  if (labeled_classes_field in out_tensor_dict and
+      image_classes_field in out_tensor_dict):
+    raise KeyError('groundtruth_labeled_classes and groundtruth_image_classes'
+                   'are provided by the decoder, but only one should be set.')
+
   if labeled_classes_field in out_tensor_dict:
     # tf_example_decoder casts unrecognized labels to -1. Remove these
     # unrecognized labels before converting labeled_classes to k-hot vector.
@@ -200,6 +211,10 @@ def transform_input_data(tensor_dict,
         out_tensor_dict[labeled_classes_field], unrecognized_label=-1)
     out_tensor_dict[labeled_classes_field] = _convert_labeled_classes_to_k_hot(
         out_tensor_dict[labeled_classes_field], num_classes)
+
+  if image_classes_field in out_tensor_dict:
+    out_tensor_dict[labeled_classes_field] = _convert_labeled_classes_to_k_hot(
+        out_tensor_dict[image_classes_field], num_classes)
 
   if fields.InputDataFields.multiclass_scores in out_tensor_dict:
     out_tensor_dict[
@@ -475,6 +490,9 @@ def pad_input_data_to_static_shapes(tensor_dict,
   if fields.InputDataFields.context_feature_length in tensor_dict:
     padding_shapes[fields.InputDataFields.context_feature_length] = []
 
+  if fields.InputDataFields.is_annotated in tensor_dict:
+    padding_shapes[fields.InputDataFields.is_annotated] = []
+
   padded_tensor_dict = {}
   for tensor_name in tensor_dict:
     padded_tensor_dict[tensor_name] = shape_utils.pad_or_clip_nd(
@@ -551,6 +569,7 @@ def _get_labels_dict(input_dict):
       fields.InputDataFields.groundtruth_instance_masks,
       fields.InputDataFields.groundtruth_area,
       fields.InputDataFields.groundtruth_is_crowd,
+      fields.InputDataFields.groundtruth_group_of,
       fields.InputDataFields.groundtruth_difficult,
       fields.InputDataFields.groundtruth_keypoint_visibilities,
       fields.InputDataFields.groundtruth_keypoint_weights,
@@ -700,6 +719,8 @@ def train_input(train_config, train_input_config,
       labels[fields.InputDataFields.groundtruth_visibilities] is a
         [batch_size, num_boxes, num_keypoints] bool tensor containing
         groundtruth visibilities for each keypoint.
+      labels[fields.InputDataFields.groundtruth_labeled_classes] is a
+        [batch_size, num_classes] float32 k-hot tensor of classes.
 
   Raises:
     TypeError: if the `train_config`, `train_input_config` or `model_config`
@@ -760,12 +781,14 @@ def train_input(train_config, train_input_config,
     include_source_id = train_input_config.include_source_id
     return (_get_features_dict(tensor_dict, include_source_id),
             _get_labels_dict(tensor_dict))
+  reduce_to_frame_fn = get_reduce_to_frame_fn(train_input_config, True)
 
   dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
       train_input_config,
       transform_input_data_fn=transform_and_pad_input_data_fn,
       batch_size=params['batch_size'] if params else train_config.batch_size,
-      input_context=input_context)
+      input_context=input_context,
+      reduce_to_frame_fn=reduce_to_frame_fn)
   return dataset
 
 
@@ -834,6 +857,11 @@ def eval_input(eval_config, eval_input_config, model_config,
       labels[fields.InputDataFields.groundtruth_visibilities] is a
         [batch_size, num_boxes, num_keypoints] bool tensor containing
         groundtruth visibilities for each keypoint.
+      labels[fields.InputDataFields.groundtruth_group_of] is a [1, num_boxes]
+        bool tensor indicating if the box covers more than 5 instances of the
+        same class which heavily occlude each other.
+      labels[fields.InputDataFields.groundtruth_labeled_classes] is a
+        [num_boxes, num_classes] float32 k-hot tensor of classes.
 
   Raises:
     TypeError: if the `eval_config`, `eval_input_config` or `model_config`
@@ -894,10 +922,14 @@ def eval_input(eval_config, eval_input_config, model_config,
     include_source_id = eval_input_config.include_source_id
     return (_get_features_dict(tensor_dict, include_source_id),
             _get_labels_dict(tensor_dict))
+
+  reduce_to_frame_fn = get_reduce_to_frame_fn(eval_input_config, False)
+
   dataset = INPUT_BUILDER_UTIL_MAP['dataset_build'](
       eval_input_config,
       batch_size=params['batch_size'] if params else eval_config.batch_size,
-      transform_input_data_fn=transform_and_pad_input_data_fn)
+      transform_input_data_fn=transform_and_pad_input_data_fn,
+      reduce_to_frame_fn=reduce_to_frame_fn)
   return dataset
 
 
@@ -953,3 +985,74 @@ def create_predict_input_fn(model_config, predict_input_config):
         receiver_tensors={SERVING_FED_EXAMPLE_KEY: example})
 
   return _predict_input_fn
+
+
+def get_reduce_to_frame_fn(input_reader_config, is_training):
+  """Returns a function reducing sequence tensors to single frame tensors.
+
+  If the input type is not TF_SEQUENCE_EXAMPLE, the tensors are passed through
+  this function unchanged. Otherwise, when in training mode, a single frame is
+  selected at random from the sequence example, and the tensors for that frame
+  are converted to single frame tensors, with all associated context features.
+  In evaluation mode all frames are converted to single frame tensors with
+  copied context tensors. After the sequence example tensors are converted into
+  one or many single frame tensors, the images from each frame are decoded.
+
+  Args:
+    input_reader_config: An input_reader_pb2.InputReader.
+    is_training: Whether we are in training mode.
+
+  Returns:
+    `reduce_to_frame_fn` for the dataset builder
+  """
+  if input_reader_config.input_type != (
+      input_reader_pb2.InputType.TF_SEQUENCE_EXAMPLE):
+    return lambda d: d
+  else:
+    def reduce_to_frame(dataset):
+      """Returns a function reducing sequence tensors to single frame tensors.
+
+      Args:
+        dataset: A tf dataset containing sequence tensors.
+
+      Returns:
+        A tf dataset containing single frame tensors.
+      """
+      if is_training:
+        def get_single_frame(tensor_dict):
+          """Returns a random frame from a sequence.
+
+          Picks a random frame and returns slices of sequence tensors
+          corresponding to the random frame. Returns non-sequence tensors
+          unchanged.
+
+          Args:
+            tensor_dict: A dictionary containing sequence tensors.
+
+          Returns:
+            Tensors for a single random frame within the sequence.
+          """
+          num_frames = tf.cast(
+              tf.shape(tensor_dict[fields.InputDataFields.source_id])[0],
+              dtype=tf.int32)
+          frame_index = tf.random.uniform((), minval=0, maxval=num_frames,
+                                          dtype=tf.int32)
+          out_tensor_dict = {}
+          for key in tensor_dict:
+            if key in fields.SEQUENCE_FIELDS:
+              # Slice random frame from sequence tensors
+              out_tensor_dict[key] = tensor_dict[key][frame_index]
+            else:
+              # Copy all context tensors.
+              out_tensor_dict[key] = tensor_dict[key]
+          return out_tensor_dict
+        dataset = dataset.map(get_single_frame, tf.data.experimental.AUTOTUNE)
+      else:
+        dataset = dataset.map(util_ops.tile_context_tensors,
+                              tf.data.experimental.AUTOTUNE)
+        dataset = dataset.unbatch()
+      # Decode frame here as SequenceExample tensors contain encoded images.
+      dataset = dataset.map(util_ops.decode_image,
+                            tf.data.experimental.AUTOTUNE)
+      return dataset
+    return reduce_to_frame
