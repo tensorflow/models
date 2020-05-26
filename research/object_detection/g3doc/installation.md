@@ -15,6 +15,7 @@ Tensorflow Object Detection API depends on the following libraries:
 *   Cython
 *   contextlib2
 *   cocoapi
+*   gast 0.2.2
 
 For detailed steps to install Tensorflow, follow the [Tensorflow installation
 instructions](https://www.tensorflow.org/install/). A typical user can install
@@ -35,6 +36,7 @@ pip install --user Cython
 pip install --user contextlib2
 pip install --user jupyter
 pip install --user matplotlib
+pip install --user gast==0.2.2
 ```
 
 Alternatively, users can install dependencies using pip:
@@ -46,6 +48,7 @@ pip install --user pillow
 pip install --user lxml
 pip install --user jupyter
 pip install --user matplotlib
+pip install --user gast==0.2.2
 ```
 
 <!-- common_typos_disable -->
