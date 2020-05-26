@@ -178,6 +178,7 @@ def run_bert_classifier(strategy,
       eval_input_fn=eval_input_fn,
       eval_steps=eval_steps,
       init_checkpoint=init_checkpoint,
+      sub_model_export_name=FLAGS.sub_model_export_name,
       metric_fn=metric_fn,
       custom_callbacks=custom_callbacks,
       run_eagerly=run_eagerly)
