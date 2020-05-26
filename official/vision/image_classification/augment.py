@@ -169,7 +169,7 @@ def transform(image: tf.Tensor, transforms) -> tf.Tensor:
   """Prepares input data for `image_ops.transform`."""
   original_ndims = tf.rank(image)
   transforms = tf.convert_to_tensor(transforms, dtype=tf.float32)
-  if len(tf.shape(transforms)) == 1:
+  if tf.rank(transforms) == 1:
     transforms = transforms[None]
   image = to_4d(image)
   image = image_ops.transform(
