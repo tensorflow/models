@@ -176,6 +176,9 @@ class RetinanetAccuracy(RetinanetBenchmarkBase):
 
   def _params(self):
     return {
+        'architecture': {
+            'use_bfloat16': True,
+        },
         'train': {
             'batch_size': 64,
             'iterations_per_loop': 100,
@@ -225,6 +228,7 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     """Run RetinaNet model accuracy test with 8 GPUs."""
     self._setup()
     params = self._params()
+    params['architecture']['use_bfloat16'] = False
     params['train']['total_steps'] = 1875  # One epoch.
     # The iterations_per_loop must be one, otherwise the number of examples per
     # second would be wrong. Currently only support calling callback per batch
@@ -244,6 +248,7 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     """Run RetinaNet model accuracy test with 1 GPU."""
     self._setup()
     params = self._params()
+    params['architecture']['use_bfloat16'] = False
     params['train']['batch_size'] = 8
     params['train']['total_steps'] = 200
     params['train']['iterations_per_loop'] = 1
@@ -258,6 +263,7 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     """Run RetinaNet model accuracy test with 1 GPU and XLA enabled."""
     self._setup()
     params = self._params()
+    params['architecture']['use_bfloat16'] = False
     params['train']['batch_size'] = 8
     params['train']['total_steps'] = 200
     params['train']['iterations_per_loop'] = 1
