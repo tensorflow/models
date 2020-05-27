@@ -32,7 +32,7 @@ from official.utils.flags import core as flags_core
 MIN_LOSS = 0.40
 MAX_LOSS = 0.55
 NHNET_DATA = 'gs://tf-perfzero-data/nhnet/v1/processed/train.tfrecord*'
-PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
+PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-12_H-768_A-12/bert_model.ckpt'
 
 FLAGS = flags.FLAGS
 
