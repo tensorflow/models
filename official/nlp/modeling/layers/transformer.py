@@ -141,8 +141,14 @@ class Transformer(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
         name="intermediate")
+    policy = tf.keras.mixed_precision.experimental.global_policy()
+    if policy.name == "mixed_bfloat16":
+      # bfloat16 causes BERT with the LAMB optimizer to not converge
+      # as well, so we use float32.
+      # TODO(b/154538392): Investigate this.
+      policy = tf.float32
     self._intermediate_activation_layer = tf.keras.layers.Activation(
-        self._intermediate_activation)
+        self._intermediate_activation, dtype=policy)
     self._output_dense = dense_einsum.DenseEinsum(
         output_shape=hidden_size,
         kernel_initializer=self._kernel_initializer,
