@@ -93,7 +93,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
         max_seq_length,
         FLAGS.eval_batch_size,
         is_training=False)
-    run_classifier.run_bert_classifier(
+    _, summary = run_classifier.run_bert_classifier(
         strategy,
         bert_config,
         input_meta_data,
@@ -107,7 +107,9 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
         FLAGS.init_checkpoint,
         train_input_fn,
         eval_input_fn,
+        training_callbacks=False,
         custom_callbacks=callbacks)
+    return summary
 
 
 class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
@@ -142,11 +144,9 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
                                 use_ds=True):
     """Starts BERT performance benchmark test."""
     start_time_sec = time.time()
-    self._run_bert_classifier(callbacks=[self.timer_callback], use_ds=use_ds)
+    summary = self._run_bert_classifier(
+        callbacks=[self.timer_callback], use_ds=use_ds)
     wall_time_sec = time.time() - start_time_sec
-
-    with tf.io.gfile.GFile(training_summary_path, 'rb') as reader:
-      summary = json.loads(reader.read().decode('utf-8'))
 
     # Since we do not load from any pretrained checkpoints, we ignore all
     # accuracy metrics.
@@ -246,8 +246,7 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     self._run_and_report_benchmark(summary_path, use_ds=False)
 
   def benchmark_8_gpu_amp_mrpc(self):
-    """Test BERT model performance with 8 GPUs with automatic mixed precision.
-    """
+    """Test BERT model performance with 8 GPUs with automatic mixed precision."""
 
     self._setup()
     self.num_gpus = 8
@@ -308,11 +307,8 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
     """Starts BERT accuracy benchmark test."""
 
     start_time_sec = time.time()
-    self._run_bert_classifier(callbacks=[self.timer_callback])
+    summary = self._run_bert_classifier(callbacks=[self.timer_callback])
     wall_time_sec = time.time() - start_time_sec
-
-    with tf.io.gfile.GFile(training_summary_path, 'rb') as reader:
-      summary = json.loads(reader.read().decode('utf-8'))
 
     super(BertClassifyAccuracy, self)._report_benchmark(
         stats=summary,
