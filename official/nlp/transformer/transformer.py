@@ -29,7 +29,7 @@ from official.nlp.transformer import ffn_layer
 from official.nlp.transformer import metrics
 from official.nlp.transformer import model_utils
 from official.nlp.transformer.utils.tokenizer import EOS_ID
-
+from official.nlp.modeling.layers import position_embedding
 
 # Disable the not-callable lint error, since it claims many objects are not
 # callable when they actually are.
@@ -171,8 +171,13 @@ class Transformer(tf.keras.Model):
 
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
-        pos_encoding = model_utils.get_position_encoding(
-            length, self.params["hidden_size"])
+        # pos_encoding = model_utils.get_position_encoding(
+        #     length, self.params["hidden_size"])
+        pos_layer = position_embedding.PositionEmbedding(
+            use_relative=True)
+        input_tensor = tf.zeros([length, self.params["hidden_size"]])
+        pos_encoding = pos_layer(input_tensor)
+
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
 
