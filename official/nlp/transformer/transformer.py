@@ -173,10 +173,12 @@ class Transformer(tf.keras.Model):
         length = tf.shape(embedded_inputs)[1]
         # pos_encoding = model_utils.get_position_encoding(
         #     length, self.params["hidden_size"])
-        pos_layer = position_embedding.PositionEmbedding(
-            use_relative=True)
-        input_tensor = tf.zeros([length, self.params["hidden_size"]])
+
+        input_tensor = tf.cast(tf.range(length), tf.float32)
+        pos_layer = position_embedding.PositionEmbeddingRelative(
+            hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(input_tensor)
+        print (pos_encoding)
 
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
