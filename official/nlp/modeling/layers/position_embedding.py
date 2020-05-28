@@ -80,10 +80,12 @@ class PositionEmbedding(tf.keras.layers.Layer):
   def build(self, input_shape):
     """Implements build() for the layer."""
     if self._use_relative:
+      tf.print('input shape:', input_shape)
+      tf.print('input shape:', input_shape[0], input_shape[1])
       initializer = tf.keras.initializers.Zeros()
       self._position_embeddings = self.add_weight(
           "embeddings",
-          shape=[input_shape[0], input_shape[1]],
+          shape=(input_shape[0], input_shape[1]),
           initializer=initializer,
           trainable=True)
     else:
