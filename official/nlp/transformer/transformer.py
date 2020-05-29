@@ -170,7 +170,7 @@ class Transformer(tf.keras.Model):
       attention_bias = tf.cast(attention_bias, self.params["dtype"])
 
       with tf.name_scope("add_pos_encoding"):
-        # length = tf.shape(embedded_inputs)[1]
+        length = tf.shape(embedded_inputs)[1]
 
         tf.print(tf.shape(embedded_inputs))
 
@@ -217,7 +217,7 @@ class Transformer(tf.keras.Model):
         decoder_inputs = tf.pad(decoder_inputs,
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
-        # length = tf.shape(decoder_inputs)[1]
+        length = tf.shape(decoder_inputs)[1]
         # pos_encoding = model_utils.get_position_encoding(
         #     length, self.params["hidden_size"])
 
