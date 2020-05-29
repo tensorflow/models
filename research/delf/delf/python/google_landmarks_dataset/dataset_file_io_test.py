@@ -20,16 +20,19 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
 import tensorflow as tf
 
 from delf.python.google_landmarks_dataset import dataset_file_io
+
+FLAGS = flags.FLAGS
 
 
 class DatasetFileIoTest(tf.test.TestCase):
 
   def testReadRecognitionSolutionWorks(self):
     # Define inputs.
-    file_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
+    file_path = os.path.join(FLAGS.test_tmpdir,
                              'recognition_solution.csv')
     with tf.io.gfile.GFile(file_path, 'w') as f:
       f.write('id,landmarks,Usage\n')
@@ -61,7 +64,7 @@ class DatasetFileIoTest(tf.test.TestCase):
 
   def testReadRetrievalSolutionWorks(self):
     # Define inputs.
-    file_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
+    file_path = os.path.join(FLAGS.test_tmpdir,
                              'retrieval_solution.csv')
     with tf.io.gfile.GFile(file_path, 'w') as f:
       f.write('id,images,Usage\n')
@@ -93,7 +96,7 @@ class DatasetFileIoTest(tf.test.TestCase):
 
   def testReadRecognitionPredictionsWorks(self):
     # Define inputs.
-    file_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
+    file_path = os.path.join(FLAGS.test_tmpdir,
                              'recognition_predictions.csv')
     with tf.io.gfile.GFile(file_path, 'w') as f:
       f.write('id,landmarks\n')
@@ -131,7 +134,7 @@ class DatasetFileIoTest(tf.test.TestCase):
 
   def testReadRetrievalPredictionsWorks(self):
     # Define inputs.
-    file_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
+    file_path = os.path.join(FLAGS.test_tmpdir,
                              'retrieval_predictions.csv')
     with tf.io.gfile.GFile(file_path, 'w') as f:
       f.write('id,images\n')
