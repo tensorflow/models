@@ -38,11 +38,16 @@ python3 ~/models/official/vision/detection/main.py \
   --params_override="{ type: retinanet, train: { checkpoint: { path: ${RESNET_CHECKPOINT?}, prefix: resnet50/ }, train_file_pattern: ${TRAIN_FILE_PATTERN?} }, eval: { val_json_file: ${VAL_JSON_FILE?}, eval_file_pattern: ${EVAL_FILE_PATTERN?} } }"
 ```
 
-The pre-trained ResNet-50 checkpoint can be found here:
+The pre-trained ResNet-50 checkpoint can be downloaded [here](https://storage.cloud.google.com/cloud-tpu-checkpoints/model-garden-vision/detection/resnet50-2018-02-07.tar.gz).
 
-```
-https://storage.cloud.google.com/cloud-tpu-checkpoints/model-garden-vision/detection/resnet50-2018-02-07.tar.gz
-```
+Note: The ResNet implementation under
+[detection/](https://github.com/tensorflow/models/tree/master/official/vision/detection)
+is currently different from the one under
+[classification/](https://github.com/tensorflow/models/tree/master/official/vision/image_classification),
+so the checkpoints are not compatible.
+We will unify the implementation soon.
+
+
 
 ### Train a custom RetinaNet using the config file.
 
@@ -150,11 +155,15 @@ python3 ~/models/official/vision/detection/main.py \
   --params_override="{train: { checkpoint: { path: ${RESNET_CHECKPOINT}, prefix: resnet50/ }, train_file_pattern: ${TRAIN_FILE_PATTERN} }, eval: { val_json_file: ${VAL_JSON_FILE}, eval_file_pattern: ${EVAL_FILE_PATTERN} } }"
 ```
 
-The pre-trained ResNet-50 checkpoint can be found here:
+The pre-trained ResNet-50 checkpoint can be downloaded [here](https://storage.cloud.google.com/cloud-tpu-checkpoints/model-garden-vision/detection/resnet50-2018-02-07.tar.gz).
 
-```
-https://storage.cloud.google.com/cloud-tpu-checkpoints/model-garden-vision/detection/resnet50-2018-02-07.tar.gz
-```
+Note: The ResNet implementation under
+[detection/](https://github.com/tensorflow/models/tree/master/official/vision/detection)
+is currently different from the one under
+[classification/](https://github.com/tensorflow/models/tree/master/official/vision/image_classification),
+so the checkpoints are not compatible.
+We will unify the implementation soon.
+
 
 ### Train a custom Mask R-CNN using the config file.
 
