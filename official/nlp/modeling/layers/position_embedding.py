@@ -167,6 +167,10 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     """Implements build() for the layer."""
+    dimension_list = input_shape.as_list()
+    if len(dimension_list) != 3:
+      raise ValueError("PositionEmbedding expects a 3-dimensional input tensor "
+                       "of shape [batch, sequence, width]")
     super(PositionEmbeddingRelative, self).build(input_shape)
 
   def call(self, inputs):
@@ -185,5 +189,5 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
         tf.cast(tf.range(num_timescales), tf.float32) * -log_timescale_increment)
     scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
     position_embeddings = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-    tf.print('inner position emb', position_embeddings)
+    # tf.print('inner position emb', position_embeddings)
     return position_embeddings

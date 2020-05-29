@@ -180,8 +180,7 @@ class Transformer(tf.keras.Model):
         pos_layer = position_embedding.PositionEmbeddingRelative(
             hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(embedded_inputs)
-        # tf.print(length, self.params["hidden_size"])
-        # tf.print(pos_encoding)
+
 
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
@@ -218,14 +217,13 @@ class Transformer(tf.keras.Model):
         decoder_inputs = tf.pad(decoder_inputs,
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
-        length = tf.shape(decoder_inputs)[1]
-        pos_encoding = model_utils.get_position_encoding(
-            length, self.params["hidden_size"])
+        # length = tf.shape(decoder_inputs)[1]
+        # pos_encoding = model_utils.get_position_encoding(
+        #     length, self.params["hidden_size"])
 
-        # input_tensor = tf.cast(tf.range(length), tf.float32)
-        # pos_layer = position_embedding.PositionEmbeddingRelative(
-        #     hidden_size=self.params["hidden_size"])
-        # pos_encoding = pos_layer(input_tensor)
+        pos_layer = position_embedding.PositionEmbeddingRelative(
+            hidden_size=self.params["hidden_size"])
+        pos_encoding = pos_layer(decoder_inputs)
 
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         decoder_inputs += pos_encoding
@@ -252,10 +250,9 @@ class Transformer(tf.keras.Model):
     timing_signal = model_utils.get_position_encoding(
         max_decode_length + 1, self.params["hidden_size"])
 
-    # input_tensor = tf.cast(tf.range(max_decode_length + 1), tf.float32)
     # pos_layer = position_embedding.PositionEmbeddingRelative(
     #     hidden_size=self.params["hidden_size"])
-    # timing_signal = pos_layer(input_tensor)
+    # timing_signal = pos_layer(embedded_inputs)
 
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
