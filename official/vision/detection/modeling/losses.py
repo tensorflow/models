@@ -411,8 +411,10 @@ class RetinanetClassLoss(object):
     bs, height, width, _, _ = cls_targets_one_hot.get_shape().as_list()
     cls_targets_one_hot = tf.reshape(cls_targets_one_hot,
                                      [bs, height, width, -1])
-    loss = focal_loss(cls_outputs, cls_targets_one_hot,
-                      self._focal_loss_alpha, self._focal_loss_gamma,
+    loss = focal_loss(tf.cast(cls_outputs, dtype=tf.float32),
+                      tf.cast(cls_targets_one_hot, dtype=tf.float32),
+                      self._focal_loss_alpha,
+                      self._focal_loss_gamma,
                       num_positives)
 
     ignore_loss = tf.where(

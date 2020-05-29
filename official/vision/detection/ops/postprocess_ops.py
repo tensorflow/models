@@ -288,6 +288,7 @@ def _generate_detections_batched(boxes,
          pad_per_class=False,)
     # De-normalizes box cooridinates.
     nmsed_boxes *= normalizer
+  nmsed_classes = tf.cast(nmsed_classes, tf.int32)
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
