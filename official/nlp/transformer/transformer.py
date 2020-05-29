@@ -247,15 +247,15 @@ class Transformer(tf.keras.Model):
   def _get_symbols_to_logits_fn(self, max_decode_length, training):
     """Returns a decoding function that calculates logits of the next tokens."""
 
-    timing_signal = model_utils.get_position_encoding(
-        max_decode_length + 1, self.params["hidden_size"])
+    # timing_signal = model_utils.get_position_encoding(
+    #     max_decode_length + 1, self.params["hidden_size"])
 
-    # pos_layer = position_embedding.PositionEmbeddingRelative(
-    #     hidden_size=self.params["hidden_size"],
-    #     length=max_decode_length + 1)
-    # timing_signal = pos_layer(None)
+    pos_layer = position_embedding.PositionEmbeddingRelative(
+        hidden_size=self.params["hidden_size"],
+        length=max_decode_length + 1)
+    timing_signal = pos_layer(None)
 
-    tf.print('timing_signal', timing_signal)
+    # tf.print('timing_signal', timing_signal)
 
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
