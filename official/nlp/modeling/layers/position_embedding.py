@@ -138,6 +138,7 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
                hidden_size,
                min_timescale=1.0,
                max_timescale=1.0e4,
+               length=None,
                **kwargs):
     # We need to have a default dtype of float32, since the inputs (which Keras
     # usually uses to infer the dtype) will always be int32.
@@ -155,6 +156,7 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
     self._hidden_size = hidden_size
     self._min_timescale = min_timescale
     self._max_timescale = max_timescale
+    self._length = length
 
   def get_config(self):
     config = {
@@ -167,18 +169,20 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     """Implements build() for the layer."""
-    dimension_list = input_shape.as_list()
-    if len(dimension_list) != 3:
-      raise ValueError("PositionEmbedding expects a 3-dimensional input tensor "
-                       "of shape [batch, sequence, width]")
+    # dimension_list = input_shape.as_list()
+    # if len(dimension_list) != 3:
+    #   raise ValueError("PositionEmbedding expects a 3-dimensional input tensor "
+    #                    "of shape [batch, sequence, width]")
     super(PositionEmbeddingRelative, self).build(input_shape)
 
   def call(self, inputs):
     """Implements call() for the layer."""
-
-    input_shape = tf_utils.get_shape_list(inputs)
-    tf.print('inner input shape:', input_shape)
-    length = input_shape[1]
+    length = self._length
+    assert (inputs is None) != (length is None)
+    if inputs is not None:
+      input_shape = tf_utils.get_shape_list(inputs)
+      tf.print('inner input shape:', input_shape)
+      length = input_shape[1]
     position = tf.cast(tf.range(length), tf.float32)
     num_timescales = self._hidden_size // 2
     min_timescale, max_timescale = self._min_timescale, self._max_timescale
