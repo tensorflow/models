@@ -172,7 +172,7 @@ class Transformer(tf.keras.Model):
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
 
-        tf.print(tf.shape(embedded_inputs))
+        # tf.print(tf.shape(embedded_inputs))
 
         # pos_encoding = model_utils.get_position_encoding(
         #     length, self.params["hidden_size"])
@@ -254,6 +254,8 @@ class Transformer(tf.keras.Model):
         hidden_size=self.params["hidden_size"],
         length=max_decode_length + 1)
     timing_signal = pos_layer(None)
+
+    tf.print('timing_signal', timing_signal)
 
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(

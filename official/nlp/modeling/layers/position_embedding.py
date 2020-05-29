@@ -181,7 +181,7 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
     assert (inputs is None) != (length is None)
     if inputs is not None:
       input_shape = tf_utils.get_shape_list(inputs)
-      tf.print('inner input shape:', input_shape)
+      # tf.print('inner input shape:', input_shape)
       length = input_shape[1]
     position = tf.cast(tf.range(length), tf.float32)
     num_timescales = self._hidden_size // 2
