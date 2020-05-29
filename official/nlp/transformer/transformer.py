@@ -170,7 +170,7 @@ class Transformer(tf.keras.Model):
       attention_bias = tf.cast(attention_bias, self.params["dtype"])
 
       with tf.name_scope("add_pos_encoding"):
-        length = tf.shape(embedded_inputs)[1]
+        # length = tf.shape(embedded_inputs)[1]
 
         tf.print(tf.shape(embedded_inputs))
 

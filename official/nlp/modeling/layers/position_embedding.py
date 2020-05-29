@@ -167,18 +167,15 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     """Implements build() for the layer."""
-    # dimension_list = input_shape.as_list()
-    # tf.print('input shape', dimension_list)
-    # self._length = dimension_list[1]
     super(PositionEmbeddingRelative, self).build(input_shape)
 
   def call(self, inputs):
     """Implements call() for the layer."""
 
     input_shape = tf_utils.get_shape_list(inputs)
-    tf.print(input_shape)
-    self._length = input_shape[1]
-    position = tf.cast(tf.range(self._length), tf.float32)
+    tf.print('inner input shape:', input_shape)
+    length = input_shape[1]
+    position = tf.cast(tf.range(length), tf.float32)
     num_timescales = self._hidden_size // 2
     min_timescale, max_timescale = self._min_timescale, self._max_timescale
     log_timescale_increment = (
