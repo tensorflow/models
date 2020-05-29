@@ -253,7 +253,7 @@ class Transformer(tf.keras.Model):
     pos_layer = position_embedding.PositionEmbeddingRelative(
         hidden_size=self.params["hidden_size"],
         length=max_decode_length + 1)
-    timing_signal = pos_layer()
+    timing_signal = pos_layer(None)
 
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
