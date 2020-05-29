@@ -141,6 +141,8 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
 
   def __init__(self,
                hidden_size,
+               min_timescale=1.0,
+               max_timescale=1.0e4,
                **kwargs):
     # We need to have a default dtype of float32, since the inputs (which Keras
     # usually uses to infer the dtype) will always be int32.
@@ -156,6 +158,8 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
     # self._initializer = tf.keras.initializers.get(initializer)
     # self._use_dynamic_slicing = use_dynamic_slicing
     self._hidden_size = hidden_size
+    self._min_timescale = min_timescale
+    self._max_timescale = max_timescale
 
   # def get_config(self):
   #   config = {
@@ -208,7 +212,7 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
     """Implements call() for the layer."""
     position = inputs
     num_timescales = self._hidden_size // 2
-    min_timescale, max_timescale = 1.0, 1.0e4
+    min_timescale, max_timescale = self._min_timescale, self._max_timescale
     log_timescale_increment = (
         math.log(float(max_timescale) / float(min_timescale)) /
         (tf.cast(num_timescales, tf.float32) - 1))
