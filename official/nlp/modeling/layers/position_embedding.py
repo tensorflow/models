@@ -127,7 +127,7 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
   This layer calculates the position encoding as a mix of sine and cosine functions
   with geometrically increasing wavelengths. Defined and formulized in "Attention is
   All You Need", section 3.5.
-  (https://arxiv.org/abs/1810.04805).
+  (https://arxiv.org/abs/1706.03762).
   Arguments:
     hidden_size: Size of the hidden layer.
     min_timescale: Minimum scale that will be applied at each position
