@@ -38,6 +38,12 @@ python3 ~/models/official/vision/detection/main.py \
   --params_override="{ type: retinanet, train: { checkpoint: { path: ${RESNET_CHECKPOINT?}, prefix: resnet50/ }, train_file_pattern: ${TRAIN_FILE_PATTERN?} }, eval: { val_json_file: ${VAL_JSON_FILE?}, eval_file_pattern: ${EVAL_FILE_PATTERN?} } }"
 ```
 
+The pre-trained ResNet-50 checkpoint can be found here:
+
+```
+gs://cloud-tpu-artifacts/resnet/resnet-nhwc-2018-10-14/model.ckpt-112602
+```
+
 ### Train a custom RetinaNet using the config file.
 
 First, create a YAML config file, e.g. *my_retinanet.yaml*. This file specifies
