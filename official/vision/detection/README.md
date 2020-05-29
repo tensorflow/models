@@ -41,7 +41,7 @@ python3 ~/models/official/vision/detection/main.py \
 The pre-trained ResNet-50 checkpoint can be found here:
 
 ```
-gs://cloud-tpu-artifacts/resnet/resnet-nhwc-2018-10-14/model.ckpt-112602
+https://storage.cloud.google.com/cloud-tpu-checkpoints/model-garden-vision/detection/resnet50-2018-02-07.tar.gz
 ```
 
 ### Train a custom RetinaNet using the config file.
@@ -148,6 +148,12 @@ python3 ~/models/official/vision/detection/main.py \
   --mode=train \
   --model=mask_rcnn \
   --params_override="{train: { checkpoint: { path: ${RESNET_CHECKPOINT}, prefix: resnet50/ }, train_file_pattern: ${TRAIN_FILE_PATTERN} }, eval: { val_json_file: ${VAL_JSON_FILE}, eval_file_pattern: ${EVAL_FILE_PATTERN} } }"
+```
+
+The pre-trained ResNet-50 checkpoint can be found here:
+
+```
+https://storage.cloud.google.com/cloud-tpu-checkpoints/model-garden-vision/detection/resnet50-2018-02-07.tar.gz
 ```
 
 ### Train a custom Mask R-CNN using the config file.
