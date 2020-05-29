@@ -27,6 +27,7 @@ import os
 import sys
 import time
 
+import numpy as np
 from six.moves import range
 import tensorflow as tf
 
@@ -34,6 +35,7 @@ from google.protobuf import text_format
 from tensorflow.python.platform import app
 from delf import delf_config_pb2
 from delf import feature_io
+from delf import utils
 from delf import extractor
 
 cmd_args = None
@@ -61,13 +63,11 @@ def _ReadImageList(list_path):
 
 
 def main(unused_argv):
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-
   # Read list of images.
-  tf.compat.v1.logging.info('Reading list of images...')
+  print('Reading list of images...')
   image_paths = _ReadImageList(cmd_args.list_images_path)
   num_images = len(image_paths)
-  tf.compat.v1.logging.info('done! Found %d images', num_images)
+  print(f'done! Found {num_images} images')
 
   # Parse DelfConfig proto.
   config = delf_config_pb2.DelfConfig()
@@ -80,46 +80,34 @@ def main(unused_argv):
 
   # Tell TensorFlow that the model will be built into the default Graph.
   with tf.Graph().as_default():
-    # Reading list of images.
-    filename_queue = tf.compat.v1.train.string_input_producer(
-        image_paths, shuffle=False)
-    reader = tf.compat.v1.WholeFileReader()
-    _, value = reader.read(filename_queue)
-    image_tf = tf.io.decode_jpeg(value, channels=3)
-
     with tf.compat.v1.Session() as sess:
       init_op = tf.compat.v1.global_variables_initializer()
       sess.run(init_op)
 
       extractor_fn = extractor.MakeExtractor(sess, config)
 
-      # Start input enqueue threads.
-      coord = tf.train.Coordinator()
-      threads = tf.compat.v1.train.start_queue_runners(sess=sess, coord=coord)
       start = time.clock()
       for i in range(num_images):
         # Write to log-info once in a while.
         if i == 0:
-          tf.compat.v1.logging.info(
-              'Starting to extract DELF features from images...')
+          print('Starting to extract DELF features from images...')
         elif i % _STATUS_CHECK_ITERATIONS == 0:
           elapsed = (time.clock() - start)
-          tf.compat.v1.logging.info(
-              'Processing image %d out of %d, last %d '
-              'images took %f seconds', i, num_images, _STATUS_CHECK_ITERATIONS,
-              elapsed)
+          print(
+              f'Processing image {i} out of {num_images}, last '
+              f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds'
+              )
           start = time.clock()
-
-        # # Get next image.
-        im = sess.run(image_tf)
 
         # If descriptor already exists, skip its computation.
         out_desc_filename = os.path.splitext(os.path.basename(
             image_paths[i]))[0] + _DELF_EXT
         out_desc_fullpath = os.path.join(cmd_args.output_dir, out_desc_filename)
         if tf.io.gfile.exists(out_desc_fullpath):
-          tf.compat.v1.logging.info('Skipping %s', image_paths[i])
+          print(f'Skipping {image_paths[i]}')
           continue
+
+        im = np.array(utils.RgbLoader(image_paths[i]))
 
         # Extract and save features.
         extracted_features = extractor_fn(im)
@@ -131,10 +119,6 @@ def main(unused_argv):
         feature_io.WriteToFile(out_desc_fullpath, locations_out,
                                feature_scales_out, descriptors_out,
                                attention_out)
-
-      # Finalize enqueue threads.
-      coord.request_stop()
-      coord.join(threads)
 
 
 if __name__ == '__main__':

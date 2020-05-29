@@ -24,14 +24,13 @@ import os
 import time
 
 import numpy as np
-from PIL import Image
-from PIL import ImageFile
 import tensorflow as tf
 
 from google.protobuf import text_format
 from delf import delf_config_pb2
 from delf import box_io
 from delf import feature_io
+from delf import utils
 from delf import detector
 from delf import extractor
 
@@ -41,23 +40,6 @@ _DELF_EXTENSION = '.delf'
 
 # Pace to report extraction log.
 _STATUS_CHECK_ITERATIONS = 100
-
-# To avoid crashing for truncated (corrupted) images.
-ImageFile.LOAD_TRUNCATED_IMAGES = True
-
-
-def _PilLoader(path):
-  """Helper function to read image with PIL.
-
-  Args:
-    path: Path to image to be loaded.
-
-  Returns:
-    PIL image in RGB format.
-  """
-  with tf.io.gfile.GFile(path, 'rb') as f:
-    img = Image.open(f)
-    return img.convert('RGB')
 
 
 def _WriteMappingBasenameToIds(index_names_ids_and_boxes, output_path):
@@ -157,7 +139,7 @@ def ExtractBoxesAndFeaturesToFiles(image_names, image_paths, delf_config_path,
         output_box_filename = os.path.join(output_boxes_dir,
                                            image_name + _BOX_EXTENSION)
 
-        pil_im = _PilLoader(image_paths[i])
+        pil_im = utils.RgbLoader(image_paths[i])
         width, height = pil_im.size
 
         # Extract and save boxes.
