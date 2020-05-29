@@ -86,11 +86,11 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
 
       mask = tf.cast(tf.not_equal(inputs, 0), embeddings.dtype)
 
-      tf.print ('mask:', mask)
+      # tf.print ('mask:', mask)
 
       embeddings *= tf.expand_dims(mask, -1)
 
-      tf.print ('emb:', embeddings)
+      # tf.print ('emb:', embeddings)
 
       # Scale embedding by the sqrt of the hidden size
       embeddings *= self.hidden_size ** 0.5
