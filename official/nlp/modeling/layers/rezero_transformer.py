@@ -113,7 +113,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._attention_layer = attention.MultiHeadAttention(
         num_heads=self._num_heads,
         key_size=self._attention_head_size,
-        dropout_rate=self._attention_dropout_rate,
+        dropout=self._attention_dropout_rate,
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,

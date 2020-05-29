@@ -143,7 +143,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
     default_attention_cfg = {
         "num_heads": self._num_heads,
         "key_size": self._attention_head_size,
-        "dropout_rate": self._attention_dropout_rate,
+        "dropout": self._attention_dropout_rate,
         "name": "self_attention"
     }
     default_attention_cfg.update(common_kwargs)
