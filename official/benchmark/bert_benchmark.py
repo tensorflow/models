@@ -53,7 +53,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
 
   def __init__(self, output_dir=None, tpu=None):
-    super(BertClassifyBenchmarkBase, self).__init__(output_dir)
+    super(BertClassifyBenchmarkBase, self).__init__(output_dir, tpu=tpu)
     self.num_epochs = None
     self.num_steps_per_epoch = None
     FLAGS.steps_per_loop = 50
