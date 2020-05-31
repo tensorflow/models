@@ -172,7 +172,8 @@ class Transformer(tf.keras.Model):
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
 
-        # tf.print(tf.shape(embedded_inputs))
+        print ('print', embedded_inputs)
+        tf.print('tf print', tf.shape(embedded_inputs))
 
         pos_encoding = model_utils.get_position_encoding(
             length, self.params["hidden_size"])

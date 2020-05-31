@@ -12,7 +12,7 @@ hidden_size = 32
 
 pos_layer = position_embedding.PositionEmbeddingRelative(
     hidden_size=hidden_size)
-input_tensor = tf.keras.Input(shape=(1, 32))
+input_tensor = tf.keras.Input(shape=(None, 32))
 output = pos_layer(input_tensor)
 print (output)
 print ('test shape', output.shape.as_list())
