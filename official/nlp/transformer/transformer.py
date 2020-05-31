@@ -181,6 +181,7 @@ class Transformer(tf.keras.Model):
 
         print ('input', embedded_inputs.shape.as_list())
         print ('output', pos_encoding.shape.as_list())
+        tf.print('all info', pos_encoding, summarize=-1)
 
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
