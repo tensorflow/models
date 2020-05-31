@@ -182,7 +182,7 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
     # assert (inputs is None) != (length is None)
     if inputs is None and length is None:
       raise ValueError(
-          "If inputs is None, `length` must be set."
+          "If inputs is None, `length` must be set in PositionEmbeddingRelative()."
       )
     if inputs is not None:
       input_shape = tf_utils.get_shape_list(inputs)
