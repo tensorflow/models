@@ -185,6 +185,7 @@ class Transformer(tf.keras.Model):
 
         same = tf.math.reduce_all(tf.math.equal(pos_encoding_prev, pos_encoding))
         print ('same or not', same)
+        tf.print(same)
         # assert same
 
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
@@ -232,6 +233,7 @@ class Transformer(tf.keras.Model):
 
         same = tf.math.reduce_all(tf.math.equal(pos_encoding_prev, pos_encoding))
         print ('same or not', same)
+        tf.print(same)
         # assert same
 
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
@@ -266,6 +268,7 @@ class Transformer(tf.keras.Model):
 
     same = tf.math.reduce_all(tf.math.equal(timing_signal_prev, timing_signal))
     print ('same or not', same)
+    tf.print(same)
     # assert same
 
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
