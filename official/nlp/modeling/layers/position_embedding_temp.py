@@ -14,20 +14,20 @@ pos_layer = position_embedding.PositionEmbeddingRelative(
     hidden_size=hidden_size)
 input_tensor = tf.keras.Input(shape=(None, 32))
 output = pos_layer(input_tensor)
-print (output)
-print ('test shape', output.shape.as_list())
+print ('input shape', input_tensor.shape.as_list())
+print ('output shape', output.shape.as_list())
 
 pos_layer = position_embedding.PositionEmbeddingRelative(
     hidden_size=hidden_size)
 input_tensor = tf.keras.Input(shape=(1, 32))
 output = pos_layer(input_tensor)
-print (output)
-print ('test shape', output.shape.as_list())
+print ('input shape', input_tensor.shape.as_list())
+print ('output shape', output.shape.as_list())
 
 
 pos_layer = position_embedding.PositionEmbeddingRelative(
     hidden_size=hidden_size)
 input_tensor = tf.keras.Input(shape=(97, 32))
 output = pos_layer(input_tensor)
-print (output)
-print ('test shape', output.shape.as_list())
+print ('input shape', input_tensor.shape.as_list())
+print ('output shape', output.shape.as_list())
