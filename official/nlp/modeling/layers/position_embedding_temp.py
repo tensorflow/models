@@ -34,6 +34,6 @@ print ('output shape', output.shape.as_list())
 
 pos_layer = position_embedding.PositionEmbeddingRelative(
     hidden_size=8)
-input_tensor = tf.constant([[[0,0,0], [1,1,1]]])
+input_tensor = tf.constant([[[0, 0, 0, 0]*hidden_size]])
 output = pos_layer(input_tensor)
 tf.print('output', output, summarize=-1)

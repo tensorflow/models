@@ -98,6 +98,16 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
 
     self.assertAllEqual([1, input_length, width], output_data.shape)
 
+  def test_relative_tensor_input(self):
+    hidden_size = 8
+    test_layer = position_embedding.PositionEmbeddingRelative(
+    hidden_size=8)
+    input_tensor = tf.constant([[[0]*hidden_size]])
+    output_tensor = test_layer(input_tensor)
+    expected_output_tensor = tf.constant([[0, 0, 0, 0, 1, 1, 1, 1]])
+    tf.print('direct output', output_tensor)
+    tf.print('expected output', expected_output_tensor)
+    self.assertAllEqual(output_tensor, expected_output_tensor)
 
 if __name__ == "__main__":
   tf.test.main()
