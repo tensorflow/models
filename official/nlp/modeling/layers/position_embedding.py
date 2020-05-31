@@ -163,6 +163,7 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
         "hidden_size": self._hidden_size,
         "min_timescale": self._min_timescale,
         "max_timescale": self._max_timescale,
+        "length": self._length,
     }
     base_config = super(PositionEmbedding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -178,7 +179,11 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
   def call(self, inputs):
     """Implements call() for the layer."""
     length = self._length
-    assert (inputs is None) != (length is None)
+    # assert (inputs is None) != (length is None)
+    if inputs is None and length is None:
+      raise ValueError(
+          "If inputs is None, `length` must be set."
+      )
     if inputs is not None:
       input_shape = tf_utils.get_shape_list(inputs)
       # tf.print('inner input shape:', input_shape)
@@ -193,5 +198,4 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
         tf.cast(tf.range(num_timescales), tf.float32) * -log_timescale_increment)
     scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
     position_embeddings = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-    # tf.print('inner position emb', position_embeddings)
     return position_embeddings

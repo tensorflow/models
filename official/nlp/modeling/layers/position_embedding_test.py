@@ -114,8 +114,6 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     input_tensor = None
     output_tensor = test_layer(input_tensor)
     expected_output_tensor = tf.constant([[0, 0, 0, 0, 1, 1, 1, 1]])
-    tf.print('direct output', output_tensor)
-    tf.print('expected output', expected_output_tensor)
     self.assertAllEqual(output_tensor, expected_output_tensor)
 
 if __name__ == "__main__":
