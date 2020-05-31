@@ -15,4 +15,4 @@ pos_layer = position_embedding.PositionEmbeddingRelative(
 input_tensor = tf.keras.Input(shape=(1, 32))
 output = pos_layer(input_tensor)
 print (output)
-print (output.shape.as_list())
+print ('test shape', output.shape.as_list())
