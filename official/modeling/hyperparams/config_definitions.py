@@ -18,11 +18,11 @@ from typing import Optional
 
 import dataclasses
 
-from official.modeling import optimization
 from official.modeling.hyperparams import base_config
+from official.modeling.optimization.configs import optimization_config
 from official.utils import registry
 
-OptimizationConfig = optimization.OptimizationConfig
+OptimizationConfig = optimization_config.OptimizationConfig
 
 
 @dataclasses.dataclass
