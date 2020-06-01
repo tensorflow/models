@@ -122,7 +122,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
     return tf.broadcast_to(position_embeddings, input_shape)
 
 @tf.keras.utils.register_keras_serializable(package="Text")
-class PositionEmbeddingRelative(tf.keras.layers.Layer):
+class RelativePositionEmbedding(tf.keras.layers.Layer):
   """Creates a positional embedding.
   This layer calculates the position encoding as a mix of sine and cosine functions
   with geometrically increasing wavelengths. Defined and formulized in "Attention is
@@ -148,11 +148,7 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
     if "dtype" not in kwargs:
       kwargs["dtype"] = "float32"
 
-    super(PositionEmbeddingRelative, self).__init__(**kwargs)
-    # if use_dynamic_slicing and max_sequence_length is None:
-    #   raise ValueError(
-    #       "If `use_dynamic_slicing` is True, `max_sequence_length` must be set."
-    #   )
+    super(RelativePositionEmbedding, self).__init__(**kwargs)
     self._hidden_size = hidden_size
     self._min_timescale = min_timescale
     self._max_timescale = max_timescale
@@ -170,19 +166,14 @@ class PositionEmbeddingRelative(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     """Implements build() for the layer."""
-    # dimension_list = input_shape.as_list()
-    # if len(dimension_list) != 3:
-    #   raise ValueError("PositionEmbedding expects a 3-dimensional input tensor "
-    #                    "of shape [batch, sequence, width]")
-    super(PositionEmbeddingRelative, self).build(input_shape)
+    super(RelativePositionEmbedding, self).build(input_shape)
 
   def call(self, inputs):
     """Implements call() for the layer."""
     length = self._length
-    # assert (inputs is None) != (length is None)
     if inputs is None and length is None:
       raise ValueError(
-          "If inputs is None, `length` must be set in PositionEmbeddingRelative()."
+          "If inputs is None, `length` must be set in RelativePositionEmbedding()."
       )
     if inputs is not None:
       input_shape = tf_utils.get_shape_list(inputs)

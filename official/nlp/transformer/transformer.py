@@ -173,7 +173,7 @@ class Transformer(tf.keras.Model):
         length = tf.shape(embedded_inputs)[1]
         # pos_encoding_prev = model_utils.get_position_encoding(
         #     length, self.params["hidden_size"])
-        pos_layer = position_embedding.PositionEmbeddingRelative(
+        pos_layer = position_embedding.RelativePositionEmbedding(
             hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(embedded_inputs)
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
@@ -214,7 +214,7 @@ class Transformer(tf.keras.Model):
         length = tf.shape(decoder_inputs)[1]
         # pos_encoding_prev = model_utils.get_position_encoding(
         #     length, self.params["hidden_size"])
-        pos_layer = position_embedding.PositionEmbeddingRelative(
+        pos_layer = position_embedding.RelativePositionEmbedding(
             hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(decoder_inputs)
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
@@ -242,7 +242,7 @@ class Transformer(tf.keras.Model):
     # timing_signal_prev = model_utils.get_position_encoding(
     #     max_decode_length + 1, self.params["hidden_size"])
 
-    pos_layer = position_embedding.PositionEmbeddingRelative(
+    pos_layer = position_embedding.RelativePositionEmbedding(
         hidden_size=self.params["hidden_size"],
         length=max_decode_length + 1)
     timing_signal = pos_layer(None)
