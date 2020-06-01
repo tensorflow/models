@@ -135,6 +135,27 @@ def check_eventfile_for_keyword(keyword, summary_dir):
   return any(summaries_with_matching_keyword(keyword, summary_dir))
 
 
+class RecordingCallback(tf.keras.callbacks.Callback):
+
+  def __init__(self):
+    self.batch_begin = []  # (batch, logs)
+    self.batch_end = []    # (batch, logs)
+    self.epoch_begin = []  # (epoch, logs)
+    self.epoch_end = []    # (epoch, logs)
+
+  def on_batch_begin(self, batch, logs=None):
+    self.batch_begin.append((batch, logs))
+
+  def on_batch_end(self, batch, logs=None):
+    self.batch_end.append((batch, logs))
+
+  def on_epoch_begin(self, epoch, logs=None):
+    self.epoch_begin.append((epoch, logs))
+
+  def on_epoch_end(self, epoch, logs=None):
+    self.epoch_end.append((epoch, logs))
+
+
 class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
@@ -156,6 +177,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
         eval_input_fn=input_fn,
         eval_steps=10,
         init_checkpoint=None,
+        sub_model_export_name='my_submodel_name',
         metric_fn=metric_fn,
         custom_callbacks=None,
         run_eagerly=run_eagerly)
@@ -188,7 +210,20 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
         distribution, model_dir, steps_per_loop=10, run_eagerly=False)
 
     # Two checkpoints should be saved after two epochs.
-    self.assertNotEmpty(tf.io.gfile.glob(os.path.join(model_dir, 'ctl_step_*')))
+    files = map(os.path.basename,
+                tf.io.gfile.glob(os.path.join(model_dir, 'ctl_step_*index')))
+    self.assertCountEqual(['ctl_step_20.ckpt-1.index',
+                           'ctl_step_40.ckpt-2.index'], files)
+
+    # Three submodel checkpoints should be saved after two epochs (one after
+    # each epoch plus one final).
+    files = map(os.path.basename,
+                tf.io.gfile.glob(os.path.join(model_dir,
+                                              'my_submodel_name*index')))
+    self.assertCountEqual(['my_submodel_name.ckpt-3.index',
+                           'my_submodel_name_step_20.ckpt-1.index',
+                           'my_submodel_name_step_40.ckpt-2.index'], files)
+
     self.assertNotEmpty(
         tf.io.gfile.glob(
             os.path.join(model_dir, 'summaries/training_summary*')))
@@ -209,6 +244,41 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         check_eventfile_for_keyword('mean_input',
                                     os.path.join(model_dir, 'summaries/eval')))
+
+  @combinations.generate(eager_strategy_combinations())
+  def test_train_check_callbacks(self, distribution):
+    model_dir = self.get_temp_dir()
+    callback = RecordingCallback()
+    callbacks = [callback]
+    input_fn = create_fake_data_input_fn(
+        batch_size=8, features_shape=[128], num_classes=3)
+    model_training_utils.run_customized_training_loop(
+        strategy=distribution,
+        model_fn=self._model_fn,
+        loss_fn=tf.keras.losses.categorical_crossentropy,
+        model_dir=model_dir,
+        steps_per_epoch=20,
+        steps_per_loop=10,
+        epochs=2,
+        train_input_fn=input_fn,
+        eval_input_fn=input_fn,
+        eval_steps=10,
+        init_checkpoint=None,
+        metric_fn=metric_fn,
+        custom_callbacks=callbacks,
+        run_eagerly=False)
+    self.assertEqual(callback.epoch_begin, [(1, {}), (2, {})])
+    epoch_ends, epoch_end_infos = zip(*callback.epoch_end)
+    self.assertEqual(list(epoch_ends), [1, 2])
+    for info in epoch_end_infos:
+      self.assertIn('accuracy', info)
+
+    self.assertEqual(callback.batch_begin,
+                     [(0, {}), (10, {}), (20, {}), (30, {})])
+    batch_ends, batch_end_infos = zip(*callback.batch_end)
+    self.assertEqual(list(batch_ends), [9, 19, 29, 39])
+    for info in batch_end_infos:
+      self.assertIn('loss', info)
 
   @combinations.generate(
       combinations.combine(

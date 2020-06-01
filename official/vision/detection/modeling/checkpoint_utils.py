@@ -24,7 +24,7 @@ from __future__ import print_function
 import re
 from absl import logging
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def _build_assignment_map(keras_model,

@@ -26,7 +26,7 @@ import tensorflow as tf  # pylint: disable=g-bad-import-order
 from official.benchmark.models.shakespeare import shakespeare_main
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
-from official.utils.testing import benchmark_wrappers
+from official.benchmark import benchmark_wrappers
 from official.benchmark.perfzero_benchmark import PerfZeroBenchmark
 
 SHAKESPEARE_TRAIN_DATA = 'shakespeare/shakespeare.txt'
@@ -273,7 +273,6 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     FLAGS.num_gpus = 1
     FLAGS.batch_size = 64
     FLAGS.cudnn = False
-    FLAGS.enable_eager = keras_utils.is_v2_0()
     self._run_and_report_benchmark()
 
   def benchmark_1_gpu_no_ds(self):
@@ -307,7 +306,6 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     FLAGS.num_gpus = 1
     FLAGS.batch_size = 64
     FLAGS.cudnn = False
-    FLAGS.enable_eager = keras_utils.is_v2_0()
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 
@@ -326,7 +324,6 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     FLAGS.batch_size = 64 * 8
     FLAGS.log_steps = 10
     FLAGS.cudnn = False
-    FLAGS.enable_eager = keras_utils.is_v2_0()
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu(self):
@@ -345,7 +342,6 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
     FLAGS.batch_size = 64 * 8
     FLAGS.log_steps = 10
     FLAGS.cudnn = False
-    FLAGS.enable_eager = keras_utils.is_v2_0()
     FLAGS.enable_xla = True
     self._run_and_report_benchmark()
 

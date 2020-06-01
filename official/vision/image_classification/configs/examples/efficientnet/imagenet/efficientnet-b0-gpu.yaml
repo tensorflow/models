@@ -3,8 +3,6 @@
 # Reaches ~76.1% within 350 epochs.
 # Note: This configuration uses a scaled per-replica batch size based on the number of devices.
 runtime:
-  model_dir: null
-  mode: 'train_and_eval'
   distribution_strategy: 'mirrored'
   num_gpus: 1
 train_dataset:
@@ -36,6 +34,7 @@ model:
       num_classes: 1000
       batch_norm: 'default'
       dtype: 'float32'
+      activation: 'swish'
   optimizer:
     name: 'rmsprop'
     momentum: 0.9

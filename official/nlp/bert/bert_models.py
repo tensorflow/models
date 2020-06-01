@@ -101,7 +101,8 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
 @gin.configurable
 def get_transformer_encoder(bert_config,
                             sequence_length,
-                            transformer_encoder_cls=None):
+                            transformer_encoder_cls=None,
+                            output_range=None):
   """Gets a 'TransformerEncoder' object.
 
   Args:
@@ -109,6 +110,8 @@ def get_transformer_encoder(bert_config,
     sequence_length: Maximum sequence length of the training data.
     transformer_encoder_cls: A EncoderScaffold class. If it is None, uses the
       default BERT encoder implementation.
+    output_range: the sequence output range, [0, output_range). Default setting
+      is to return the entire sequence output.
 
   Returns:
     A networks.TransformerEncoder object.
@@ -131,13 +134,16 @@ def get_transformer_encoder(bert_config,
         intermediate_activation=tf_utils.get_activation(bert_config.hidden_act),
         dropout_rate=bert_config.hidden_dropout_prob,
         attention_dropout_rate=bert_config.attention_probs_dropout_prob,
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=bert_config.initializer_range),
     )
     kwargs = dict(
         embedding_cfg=embedding_cfg,
         hidden_cfg=hidden_cfg,
         num_hidden_instances=bert_config.num_hidden_layers,
         pooled_output_dim=bert_config.hidden_size,
-    )
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=bert_config.initializer_range))
 
     # Relies on gin configuration to define the Transformer encoder arguments.
     return transformer_encoder_cls(**kwargs)
@@ -161,6 +167,7 @@ def get_transformer_encoder(bert_config,
     return networks.AlbertTransformerEncoder(**kwargs)
   else:
     assert isinstance(bert_config, configs.BertConfig)
+    kwargs['output_range'] = output_range
     return networks.TransformerEncoder(**kwargs)
 
 
@@ -212,6 +219,7 @@ def pretrain_model(bert_config,
         stddev=bert_config.initializer_range)
   pretrainer_model = models.BertPretrainer(
       network=transformer_encoder,
+      embedding_table=transformer_encoder.get_embedding_table(),
       num_classes=2,  # The next sentence prediction label has two classes.
       num_token_predictions=max_predictions_per_seq,
       initializer=initializer,
@@ -319,7 +327,8 @@ def classifier_model(bert_config,
         stddev=bert_config.initializer_range)
 
   if not hub_module_url:
-    bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
+    bert_encoder = get_transformer_encoder(
+        bert_config, max_seq_length, output_range=1)
     return models.BertClassifier(
         bert_encoder,
         num_classes=num_labels,

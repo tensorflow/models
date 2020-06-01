@@ -24,10 +24,9 @@ import tensorflow as tf
 
 from tensorflow.python.eager import context
 from tensorflow.python.platform import googletest
+from official.benchmark.models import cifar_preprocessing
 from official.benchmark.models import resnet_cifar_main
-from official.utils.misc import keras_utils
 from official.utils.testing import integration
-from official.vision.image_classification.resnet import cifar_preprocessing
 
 
 class KerasCifarTest(googletest.TestCase):
@@ -60,8 +59,6 @@ class KerasCifarTest(googletest.TestCase):
 
   def test_end_to_end_no_dist_strat(self):
     """Test Keras model with 1 GPU, no distribution strategy."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     extra_flags = [
         "-distribution_strategy", "off",
@@ -94,8 +91,6 @@ class KerasCifarTest(googletest.TestCase):
 
   def test_end_to_end_1_gpu(self):
     """Test Keras model with 1 GPU."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 1:
       self.skipTest(
@@ -140,8 +135,6 @@ class KerasCifarTest(googletest.TestCase):
 
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     if context.num_gpus() < 2:
       self.skipTest(

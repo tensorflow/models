@@ -55,7 +55,7 @@ def _PilLoader(path):
   Returns:
     PIL image in RGB format.
   """
-  with tf.gfile.GFile(path, 'rb') as f:
+  with tf.io.gfile.GFile(path, 'rb') as f:
     img = Image.open(f)
     return img.convert('RGB')
 
@@ -68,7 +68,7 @@ def _WriteMappingBasenameToIds(index_names_ids_and_boxes, output_path):
       ID and box ID.
     output_path: Output CSV path.
   """
-  with tf.gfile.GFile(output_path, 'w') as f:
+  with tf.io.gfile.GFile(output_path, 'w') as f:
     csv_writer = csv.DictWriter(
         f, fieldnames=['name', 'index_image_id', 'box_id'])
     csv_writer.writeheader()
@@ -118,22 +118,22 @@ def ExtractBoxesAndFeaturesToFiles(image_names, image_paths, delf_config_path,
 
   # Parse DelfConfig proto.
   config = delf_config_pb2.DelfConfig()
-  with tf.gfile.GFile(delf_config_path, 'r') as f:
+  with tf.io.gfile.GFile(delf_config_path, 'r') as f:
     text_format.Merge(f.read(), config)
 
   # Create output directories if necessary.
-  if not tf.gfile.Exists(output_features_dir):
-    tf.gfile.MakeDirs(output_features_dir)
-  if not tf.gfile.Exists(output_boxes_dir):
-    tf.gfile.MakeDirs(output_boxes_dir)
-  if not tf.gfile.Exists(os.path.dirname(output_mapping)):
-    tf.gfile.MakeDirs(os.path.dirname(output_mapping))
+  if not tf.io.gfile.exists(output_features_dir):
+    tf.io.gfile.makedirs(output_features_dir)
+  if not tf.io.gfile.exists(output_boxes_dir):
+    tf.io.gfile.makedirs(output_boxes_dir)
+  if not tf.io.gfile.exists(os.path.dirname(output_mapping)):
+    tf.io.gfile.makedirs(os.path.dirname(output_mapping))
 
   names_ids_and_boxes = []
   with tf.Graph().as_default():
-    with tf.Session() as sess:
+    with tf.compat.v1.Session() as sess:
       # Initialize variables, construct detector and DELF extractor.
-      init_op = tf.global_variables_initializer()
+      init_op = tf.compat.v1.global_variables_initializer()
       sess.run(init_op)
       detector_fn = detector.MakeDetector(
           sess, detector_model_dir, import_scope='detector')
@@ -161,7 +161,7 @@ def ExtractBoxesAndFeaturesToFiles(image_names, image_paths, delf_config_path,
         width, height = pil_im.size
 
         # Extract and save boxes.
-        if tf.gfile.Exists(output_box_filename):
+        if tf.io.gfile.exists(output_box_filename):
           print('Skipping box computation for %s' % image_name)
           (boxes_out, scores_out,
            class_indices_out) = box_io.ReadFromFile(output_box_filename)
@@ -197,7 +197,7 @@ def ExtractBoxesAndFeaturesToFiles(image_names, image_paths, delf_config_path,
 
           names_ids_and_boxes.append([box_name, i, delf_file_ind - 1])
 
-          if tf.gfile.Exists(output_feature_filename):
+          if tf.io.gfile.exists(output_feature_filename):
             print('Skipping DELF computation for %s' % box_name)
             continue
 

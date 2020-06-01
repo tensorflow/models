@@ -38,7 +38,7 @@ Here's a sample installation and test session:
 
 ```shell
 # Upgrade pip first. Also make sure wheel is installed.
-python -m pip install --upgrade pip wheel.
+python -m pip install --upgrade pip wheel
 
 # Install dependences.
 pip install numpy resampy tensorflow soundfile

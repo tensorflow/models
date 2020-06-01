@@ -76,10 +76,7 @@ class PiecewiseConstantDecayWithWarmup(
 
   def _get_learning_rate(self, step):
     """Compute learning rate at given step."""
-    with tf.compat.v1.name_scope(self.name, 'PiecewiseConstantDecayWithWarmup',
-                                 [self.rescaled_lr, self.step_boundaries,
-                                  self.lr_values, self.warmup_steps,
-                                  self.compute_lr_on_cpu]):
+    with tf.name_scope('PiecewiseConstantDecayWithWarmup'):
       def warmup_lr(step):
         return self.rescaled_lr * (
             tf.cast(step, tf.float32) / tf.cast(self.warmup_steps, tf.float32))
@@ -108,7 +105,6 @@ def get_optimizer(learning_rate=0.1):
 
 
 def get_callbacks(
-    steps_per_epoch,
     pruning_method=None,
     enable_checkpoint_and_export=False,
     model_dir=None):
@@ -121,16 +117,9 @@ def get_callbacks(
 
   if FLAGS.enable_tensorboard:
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
-        log_dir=FLAGS.model_dir)
+        log_dir=FLAGS.model_dir,
+        profile_batch=FLAGS.profile_steps)
     callbacks.append(tensorboard_callback)
-
-  if FLAGS.profile_steps:
-    profiler_callback = keras_utils.get_profiler_callback(
-        FLAGS.model_dir,
-        FLAGS.profile_steps,
-        FLAGS.enable_tensorboard,
-        steps_per_epoch)
-    callbacks.append(profiler_callback)
 
   is_pruning_enabled = pruning_method is not None
   if is_pruning_enabled:
@@ -240,11 +229,6 @@ def define_keras_flags(
   flags.DEFINE_boolean(
       name='enable_tensorboard', default=False,
       help='Whether to enable Tensorboard callback.')
-  flags.DEFINE_integer(
-      name='train_steps', default=None,
-      help='The number of steps to run for training. If it is larger than '
-      '# batches per epoch, then use # batches per epoch. This flag will be '
-      'ignored if train_epochs is set to be larger than 1. ')
   flags.DEFINE_string(
       name='profile_steps', default=None,
       help='Save profiling data to model dir at given range of global steps. The '
@@ -253,6 +237,11 @@ def define_keras_flags(
       'triggers the profiler to process 3 steps, starting from the 2nd step. '
       'Note that profiler has a non-trivial performance overhead, and the '
       'output file can be gigantic if profiling many steps.')
+  flags.DEFINE_integer(
+      name='train_steps', default=None,
+      help='The number of steps to run for training. If it is larger than '
+      '# batches per epoch, then use # batches per epoch. This flag will be '
+      'ignored if train_epochs is set to be larger than 1. ')
   flags.DEFINE_boolean(
       name='batchnorm_spatial_persistent', default=True,
       help='Enable the spacial persistent mode for CuDNN batch norm kernel.')

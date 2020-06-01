@@ -47,7 +47,6 @@ def define_flags():
                          epochs_between_evals=False,
                          stop_threshold=False,
                          num_gpu=True,
-                         hooks=False,
                          export_dir=False,
                          run_eagerly=True,
                          distribution_strategy=True)
@@ -140,7 +139,6 @@ def build_model(vocab_size,
   Returns:
     A Keras Model.
   """
-  assert keras_utils.is_v2_0()
   LSTM = functools.partial(tf.keras.layers.LSTM, implementation=2)
 
   # By indirecting the activation through a lambda layer, the logic to dispatch
@@ -276,7 +274,6 @@ def run(flags_obj):
     tf.keras.mixed_precision.experimental.set_policy(policy)
 
   keras_utils.set_session_config(
-      enable_eager=flags_obj.enable_eager,
       enable_xla=flags_obj.enable_xla)
 
   strategy = distribution_utils.get_distribution_strategy(

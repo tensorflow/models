@@ -54,7 +54,7 @@ ALBERT_NAME_REPLACEMENTS = (
     ("embedding_hidden_mapping_in", "embedding_projection"),
     ("group_0/inner_group_0/", ""),
     ("attention_1/self", "self_attention"),
-    ("attention_1/output/dense", "self_attention_output"),
+    ("attention_1/output/dense", "self_attention/attention_output"),
     ("LayerNorm/", "self_attention_layer_norm/"),
     ("ffn_1/intermediate/dense", "intermediate"),
     ("ffn_1/intermediate/output/dense", "output"),

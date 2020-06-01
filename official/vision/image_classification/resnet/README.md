@@ -1,4 +1,4 @@
-This folder contains a compile/fit and
+This folder contains a
 [custom training loop (CTL)](#resnet-custom-training-loop) implementation for
 ResNet50.
 
@@ -21,15 +21,11 @@ version uses a ResNet50 model implemented in
 * ResNet50 TFHub: [feature vector](https://tfhub.dev/tensorflow/resnet_50/feature_vector/1)
 and [classification](https://tfhub.dev/tensorflow/resnet_50/classification/1)
 
-```bash
-python3 resnet_imagenet_main.py
-```
-
 Again, if you did not download the data to the default directory, specify the
 location with the `--data_dir` flag:
 
 ```bash
-python3 resnet_imagenet_main.py --data_dir=/path/to/imagenet
+python3 resnet_ctl_imagenet_main.py --data_dir=/path/to/imagenet
 ```
 
 There are more flag options you can specify. Here are some examples:
@@ -48,7 +44,7 @@ For example, this is a typical command line to run with ImageNet data with
 batch size 128 per GPU:
 
 ```bash
-python3 -m resnet_imagenet_main.py \
+python3 -m resnet_ctl_imagenet_main.py \
     --model_dir=/tmp/model_dir/something \
     --num_gpus=2 \
     --batch_size=128 \

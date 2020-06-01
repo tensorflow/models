@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 EPSILON = 1e-8
 BBOX_XFORM_CLIP = np.log(1000. / 16.)

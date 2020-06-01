@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Functions and classes related to optimization (weight updates)."""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -21,6 +20,7 @@ from __future__ import print_function
 import re
 
 from absl import logging
+import gin
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
 
@@ -67,6 +67,7 @@ class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
     }
 
 
+@gin.configurable
 def create_optimizer(init_lr,
                      num_train_steps,
                      num_warmup_steps,

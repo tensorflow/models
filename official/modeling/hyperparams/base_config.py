@@ -273,6 +273,8 @@ class RuntimeConfig(Config):
     loss_scale: The type of loss scale. This is used when setting the mixed
       precision policy.
     run_eagerly: Whether or not to run the experiment eagerly.
+    batchnorm_spatial_persistent: Whether or not to enable the spatial
+      persistent mode for CuDNN batch norm kernel for improved GPU performance.
 
   """
   distribution_strategy: str = 'mirrored'
@@ -288,6 +290,7 @@ class RuntimeConfig(Config):
   num_packs: int = 1
   loss_scale: Optional[str] = None
   run_eagerly: bool = False
+  batchnorm_spatial_persistent: bool = False
 
 
 @dataclasses.dataclass

@@ -57,7 +57,7 @@ class BoxesIoTest(tf.test.TestCase):
   def testWriteAndReadToFile(self):
     boxes, scores, class_indices = self._create_data()
 
-    tmpdir = tf.test.get_temp_dir()
+    tmpdir = tf.compat.v1.test.get_temp_dir()
     filename = os.path.join(tmpdir, 'test.boxes')
     box_io.WriteToFile(filename, boxes, scores, class_indices)
     data_read = box_io.ReadFromFile(filename)
@@ -67,7 +67,7 @@ class BoxesIoTest(tf.test.TestCase):
     self.assertAllEqual(class_indices, data_read[2])
 
   def testWriteAndReadToFileEmptyFile(self):
-    tmpdir = tf.test.get_temp_dir()
+    tmpdir = tf.compat.v1.test.get_temp_dir()
     filename = os.path.join(tmpdir, 'test.box')
     box_io.WriteToFile(filename, np.array([]), np.array([]), np.array([]))
     data_read = box_io.ReadFromFile(filename)

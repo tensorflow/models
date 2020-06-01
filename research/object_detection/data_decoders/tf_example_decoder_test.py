@@ -24,8 +24,6 @@ from object_detection.data_decoders import tf_example_decoder
 from object_detection.protos import input_reader_pb2
 from object_detection.utils import dataset_util
 
-slim_example_decoder = tf.contrib.slim.tfexample_decoder
-
 
 class TfExampleDecoderTest(tf.test.TestCase):
 
@@ -273,6 +271,68 @@ class TfExampleDecoderTest(tf.test.TestCase):
     bbox_xmaxs = [3.0, 7.0]
     keypoint_ys = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
     keypoint_xs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    keypoint_visibility = [1, 2, 0, 1, 0, 2]
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded':
+                    dataset_util.bytes_feature(encoded_jpeg),
+                'image/format':
+                    dataset_util.bytes_feature(six.b('jpeg')),
+                'image/object/bbox/ymin':
+                    dataset_util.float_list_feature(bbox_ymins),
+                'image/object/bbox/xmin':
+                    dataset_util.float_list_feature(bbox_xmins),
+                'image/object/bbox/ymax':
+                    dataset_util.float_list_feature(bbox_ymaxs),
+                'image/object/bbox/xmax':
+                    dataset_util.float_list_feature(bbox_xmaxs),
+                'image/object/keypoint/y':
+                    dataset_util.float_list_feature(keypoint_ys),
+                'image/object/keypoint/x':
+                    dataset_util.float_list_feature(keypoint_xs),
+                'image/object/keypoint/visibility':
+                    dataset_util.int64_list_feature(keypoint_visibility),
+            })).SerializeToString()
+
+    example_decoder = tf_example_decoder.TfExampleDecoder(num_keypoints=3)
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+
+    self.assertAllEqual((tensor_dict[fields.InputDataFields.groundtruth_boxes]
+                         .get_shape().as_list()), [None, 4])
+    self.assertAllEqual(
+        (tensor_dict[fields.InputDataFields.groundtruth_keypoints].get_shape()
+         .as_list()), [2, 3, 2])
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+
+    expected_boxes = np.vstack([bbox_ymins, bbox_xmins, bbox_ymaxs,
+                                bbox_xmaxs]).transpose()
+    self.assertAllEqual(expected_boxes,
+                        tensor_dict[fields.InputDataFields.groundtruth_boxes])
+
+    expected_keypoints = [
+        [[0.0, 1.0], [1.0, 2.0], [np.nan, np.nan]],
+        [[3.0, 4.0], [np.nan, np.nan], [5.0, 6.0]]]
+    self.assertAllClose(
+        expected_keypoints,
+        tensor_dict[fields.InputDataFields.groundtruth_keypoints])
+
+    expected_visibility = (
+        (np.array(keypoint_visibility) > 0).reshape((2, 3)))
+    self.assertAllEqual(
+        expected_visibility,
+        tensor_dict[fields.InputDataFields.groundtruth_keypoint_visibilities])
+
+  def testDecodeKeypointNoVisibilities(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    bbox_ymins = [0.0, 4.0]
+    bbox_xmins = [1.0, 5.0]
+    bbox_ymaxs = [2.0, 6.0]
+    bbox_xmaxs = [3.0, 7.0]
+    keypoint_ys = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    keypoint_xs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
     example = tf.train.Example(
         features=tf.train.Features(
             feature={
@@ -315,6 +375,11 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(
         expected_keypoints,
         tensor_dict[fields.InputDataFields.groundtruth_keypoints])
+
+    expected_visibility = np.ones((2, 3))
+    self.assertAllEqual(
+        expected_visibility,
+        tensor_dict[fields.InputDataFields.groundtruth_keypoint_visibilities])
 
   def testDecodeDefaultGroundtruthWeights(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
@@ -841,6 +906,34 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(object_weights,
                         tensor_dict[fields.InputDataFields.groundtruth_weights])
 
+  def testDecodeClassConfidence(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    class_confidence = [0.0, 1.0, 0.0]
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded':
+                    dataset_util.bytes_feature(encoded_jpeg),
+                'image/format':
+                    dataset_util.bytes_feature(six.b('jpeg')),
+                'image/class/confidence':
+                    dataset_util.float_list_feature(class_confidence),
+            })).SerializeToString()
+
+    example_decoder = tf_example_decoder.TfExampleDecoder()
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+
+    self.assertAllEqual(
+        (tensor_dict[fields.InputDataFields.groundtruth_image_confidences]
+         .get_shape().as_list()), [3])
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+
+    self.assertAllEqual(
+        class_confidence,
+        tensor_dict[fields.InputDataFields.groundtruth_image_confidences])
+
   def testDecodeInstanceSegmentation(self):
     num_instances = 4
     image_height = 5
@@ -991,6 +1084,87 @@ class TfExampleDecoderTest(tf.test.TestCase):
     self.assertAllEqual(
         tensor_dict[fields.InputDataFields.groundtruth_image_classes],
         np.array([1, 3]))
+
+  def testDecodeContextFeatures(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    bbox_ymins = [0.0, 4.0]
+    bbox_xmins = [1.0, 5.0]
+    bbox_ymaxs = [2.0, 6.0]
+    bbox_xmaxs = [3.0, 7.0]
+    num_features = 8
+    context_feature_length = 10
+    context_features = np.random.random(num_features*context_feature_length)
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded':
+                    dataset_util.bytes_feature(encoded_jpeg),
+                'image/format':
+                    dataset_util.bytes_feature(six.b('jpeg')),
+                'image/context_features':
+                    dataset_util.float_list_feature(context_features),
+                'image/context_feature_length':
+                    dataset_util.int64_feature(context_feature_length),
+                'image/object/bbox/ymin':
+                    dataset_util.float_list_feature(bbox_ymins),
+                'image/object/bbox/xmin':
+                    dataset_util.float_list_feature(bbox_xmins),
+                'image/object/bbox/ymax':
+                    dataset_util.float_list_feature(bbox_ymaxs),
+                'image/object/bbox/xmax':
+                    dataset_util.float_list_feature(bbox_xmaxs),
+            })).SerializeToString()
+
+    example_decoder = tf_example_decoder.TfExampleDecoder(
+        load_context_features=True)
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+    self.assertAllClose(
+        context_features.reshape(num_features, context_feature_length),
+        tensor_dict[fields.InputDataFields.context_features])
+    self.assertAllEqual(
+        context_feature_length,
+        tensor_dict[fields.InputDataFields.context_feature_length])
+
+  def testContextFeaturesNotAvailableByDefault(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg = self._EncodeImage(image_tensor)
+    bbox_ymins = [0.0, 4.0]
+    bbox_xmins = [1.0, 5.0]
+    bbox_ymaxs = [2.0, 6.0]
+    bbox_xmaxs = [3.0, 7.0]
+    num_features = 10
+    context_feature_length = 10
+    context_features = np.random.random(num_features*context_feature_length)
+    example = tf.train.Example(
+        features=tf.train.Features(
+            feature={
+                'image/encoded':
+                    dataset_util.bytes_feature(encoded_jpeg),
+                'image/format':
+                    dataset_util.bytes_feature(six.b('jpeg')),
+                'image/context_features':
+                    dataset_util.float_list_feature(context_features),
+                'image/context_feature_length':
+                    dataset_util.int64_feature(context_feature_length),
+                'image/object/bbox/ymin':
+                    dataset_util.float_list_feature(bbox_ymins),
+                'image/object/bbox/xmin':
+                    dataset_util.float_list_feature(bbox_xmins),
+                'image/object/bbox/ymax':
+                    dataset_util.float_list_feature(bbox_ymaxs),
+                'image/object/bbox/xmax':
+                    dataset_util.float_list_feature(bbox_xmaxs),
+            })).SerializeToString()
+
+    example_decoder = tf_example_decoder.TfExampleDecoder()
+    tensor_dict = example_decoder.decode(tf.convert_to_tensor(example))
+    with self.test_session() as sess:
+      tensor_dict = sess.run(tensor_dict)
+    self.assertNotIn(fields.InputDataFields.context_features,
+                     tensor_dict)
 
 
 if __name__ == '__main__':

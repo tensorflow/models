@@ -30,7 +30,7 @@ from abc import ABCMeta
 from abc import abstractmethod
 from abc import abstractproperty
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 # Box coder types.

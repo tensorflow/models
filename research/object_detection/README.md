@@ -1,4 +1,4 @@
-![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow Requirement: 1.15](https://img.shields.io/badge/TensorFlow%20Requirement-1.15-brightgreen)
 ![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
 
 # Tensorflow Object Detection API
@@ -29,15 +29,16 @@ https://scholar.googleusercontent.com/scholar.bib?q=info:l291WsrB-hQJ:scholar.go
 
 ## Maintainers
 
-* Jonathan Huang, github: [jch1](https://github.com/jch1)
-* Vivek Rathod, github: [tombstone](https://github.com/tombstone)
-* Ronny Votel, github: [ronnyvotel](https://github.com/ronnyvotel)
-* Derek Chow, github: [derekjchow](https://github.com/derekjchow)
-* Chen Sun, github: [jesu9](https://github.com/jesu9)
-* Menglong Zhu, github: [dreamdragon](https://github.com/dreamdragon)
-* Alireza Fathi, github: [afathi3](https://github.com/afathi3)
-* Zhichao Lu, github: [pkulzc](https://github.com/pkulzc)
-
+| Name | GitHub |
+| --- | --- |
+| Jonathan Huang | [jch1](https://github.com/jch1) |
+| Vivek Rathod | [tombstone](https://github.com/tombstone) |
+| Ronny Votel | [ronnyvotel](https://github.com/ronnyvotel) |
+| Derek Chow | [derekjchow](https://github.com/derekjchow) |
+| Chen Sun | [jesu9](https://github.com/jesu9) |
+| Menglong Zhu | [dreamdragon](https://github.com/dreamdragon) |
+| Alireza Fathi | [afathi3](https://github.com/afathi3) |
+| Zhichao Lu | [pkulzc](https://github.com/pkulzc) |
 
 ## Table of contents
 
@@ -102,6 +103,25 @@ reporting an issue.
 
 
 ## Release information
+
+### May 7th, 2020
+We have released a mobile model with the
+[MnasFPN head](https://arxiv.org/abs/1912.01106).
+
+
+* MnasFPN with MobileNet-V2 backbone is the most accurate (26.6 mAP at 183ms on
+Pixel 1) mobile detection model we have released to date. With depth-multiplier,
+MnasFPN with MobileNet-V2 backbone is 1.8 mAP higher than MobileNet-V3-Large
+with SSDLite (23.8 mAP vs 22.0 mAP) at similar latency (120ms) on Pixel 1.
+
+We have released model definition, model checkpoints trained on
+the COCO14 dataset and a converted TFLite model.
+
+<b>Thanks to contributors</b>: Bo Chen, Golnaz Ghiasi, Hanxiao Liu,
+Tsung-Yi Lin, Dmitry Kalenichenko, Hartwig Adam, Quoc Le, Zhichao Lu,
+Jonathan Huang.
+
+
 
 ### Nov 13th, 2019
 We have released MobileNetEdgeTPU SSDLite model.

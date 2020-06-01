@@ -45,6 +45,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
 
     # Show that with 34 colors, the closest prime number to 34/10 that
     # satisfies the constraints is 5.
+    default_standard_colors = visualization_utils.STANDARD_COLORS
     visualization_utils.STANDARD_COLORS = [
         'color_{}'.format(str(i)) for i in range(34)
     ]
@@ -58,6 +59,8 @@ class VisualizationUtilsTest(tf.test.TestCase):
     ]
     multiplier = visualization_utils._get_multiplier_for_color_randomness()
     self.assertEqual(13, multiplier)
+
+    visualization_utils.STANDARD_COLORS = default_standard_colors
 
   def create_colorful_test_image(self):
     """This function creates an image that can be used to test vis functions.
@@ -161,6 +164,8 @@ class VisualizationUtilsTest(tf.test.TestCase):
                            [[0.25, 0.25, 0.75, 0.75], [0.1, 0.3, 0.6, 1.0]]])
       classes = tf.constant([[1, 1], [1, 2]], dtype=tf.int64)
       scores = tf.constant([[0.8, 0.1], [0.6, 0.5]])
+      keypoints = tf.random.uniform((2, 2, 4, 2), maxval=1.0, dtype=tf.float32)
+      keypoint_edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
       images_with_boxes = (
           visualization_utils.draw_bounding_boxes_on_image_tensors(
               images_tensor,
@@ -170,7 +175,9 @@ class VisualizationUtilsTest(tf.test.TestCase):
               category_index,
               original_image_spatial_shape=image_shape,
               true_image_shape=image_shape,
-              min_score_thresh=0.2))
+              keypoints=keypoints,
+              min_score_thresh=0.2,
+              keypoint_edges=keypoint_edges))
 
       with self.test_session() as sess:
         sess.run(tf.global_variables_initializer())
@@ -297,8 +304,34 @@ class VisualizationUtilsTest(tf.test.TestCase):
     test_image = Image.fromarray(test_image)
     width_original, height_original = test_image.size
     keypoints = [[0.25, 0.75], [0.4, 0.6], [0.1, 0.1], [0.9, 0.9]]
+    keypoint_scores = [0.8, 0.2, 0.2, 0.7]
+    keypoint_edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
 
-    visualization_utils.draw_keypoints_on_image(test_image, keypoints)
+    visualization_utils.draw_keypoints_on_image(
+        test_image,
+        keypoints,
+        keypoint_scores,
+        keypoint_edges=keypoint_edges,
+        keypoint_edge_width=1,
+        keypoint_edge_color='green')
+    width_final, height_final = test_image.size
+
+    self.assertEqual(width_original, width_final)
+    self.assertEqual(height_original, height_final)
+
+  def test_draw_keypoints_on_image_with_default_keypoint_scores(self):
+    test_image = self.create_colorful_test_image()
+    test_image = Image.fromarray(test_image)
+    width_original, height_original = test_image.size
+    keypoints = [[0.25, np.nan], [0.4, 0.6], [np.nan, np.nan], [0.9, 0.9]]
+    keypoint_edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
+
+    visualization_utils.draw_keypoints_on_image(
+        test_image,
+        keypoints,
+        keypoint_edges=keypoint_edges,
+        keypoint_edge_width=1,
+        keypoint_edge_color='green')
     width_final, height_final = test_image.size
 
     self.assertEqual(width_original, width_final)
@@ -309,8 +342,14 @@ class VisualizationUtilsTest(tf.test.TestCase):
     width_original = test_image.shape[0]
     height_original = test_image.shape[1]
     keypoints = [[0.25, 0.75], [0.4, 0.6], [0.1, 0.1], [0.9, 0.9]]
+    keypoint_edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
 
-    visualization_utils.draw_keypoints_on_image_array(test_image, keypoints)
+    visualization_utils.draw_keypoints_on_image_array(
+        test_image,
+        keypoints,
+        keypoint_edges=keypoint_edges,
+        keypoint_edge_width=1,
+        keypoint_edge_color='green')
     width_final = test_image.shape[0]
     height_final = test_image.shape[1]
 
@@ -327,6 +366,67 @@ class VisualizationUtilsTest(tf.test.TestCase):
     visualization_utils.draw_mask_on_image_array(test_image, mask,
                                                  color='Blue', alpha=.5)
     self.assertAllEqual(test_image, expected_result)
+
+  def test_draw_heatmaps_on_image(self):
+    test_image = self.create_colorful_test_image()
+    test_image = Image.fromarray(test_image)
+    width_original, height_original = test_image.size
+    heatmaps = np.ones(shape=[10, 20, 1], dtype=float)
+    visualization_utils.draw_heatmaps_on_image(test_image, heatmaps)
+    width_final, height_final = test_image.size
+    pixels = list(test_image.getdata())
+
+    self.assertEqual(width_original, width_final)
+    self.assertEqual(height_original, height_final)
+    # The pixel shoud be painted as AliceBlue with RGB (240, 248, 255).
+    self.assertAllEqual((240, 248, 255), pixels[10])
+
+  def test_draw_heatmaps_on_image_array(self):
+    test_image = np.asarray([[[0, 0, 0], [0, 0, 0]],
+                             [[0, 0, 0], [0, 0, 0]]], dtype=np.uint8)
+    heatmap1 = np.asarray([[1, 0],
+                           [0, 1]], dtype=np.float)
+    heatmap2 = np.asarray([[0, 1],
+                           [1, 0]], dtype=np.float)
+    heatmaps = np.stack([heatmap1, heatmap2], axis=0)
+    output_image = visualization_utils.draw_heatmaps_on_image_array(
+        test_image, heatmaps)
+    # Output image should be painted as "AliceBlue" at (0, 0), (1, 1)
+    # and "Chartreuse" at (0, 1), (1, 0).
+    self.assertAllEqual(
+        output_image,
+        np.array([[[240, 248, 255], [127, 255, 0]],
+                  [[127, 255, 0], [240, 248, 255]]]))
+
+  def test_draw_heatmaps_on_image_tensors(self):
+    test_image = np.asarray([[[0, 0, 0], [0, 0, 0]],
+                             [[0, 0, 0], [0, 0, 0]]], dtype=np.uint8)
+
+    heatmap1 = np.asarray([[1, 0],
+                           [0, 1]], dtype=np.float)
+    heatmap2 = np.asarray([[0, 1],
+                           [1, 0]], dtype=np.float)
+    heatmaps = np.stack([heatmap1, heatmap2], axis=0)
+    with tf.Graph().as_default():
+      image_tensor = tf.constant(test_image, dtype=tf.uint8)
+      image_tensor = tf.expand_dims(image_tensor, axis=0)
+      heatmaps_tensor = tf.expand_dims(
+          tf.constant(heatmaps, dtype=tf.float32), axis=0)
+      output_image = visualization_utils.draw_heatmaps_on_image_tensors(
+          images=image_tensor,
+          heatmaps=heatmaps_tensor,
+          apply_sigmoid=False)
+
+      with self.test_session() as sess:
+        sess.run(tf.global_variables_initializer())
+
+        output_image_np = sess.run(output_image)
+      self.assertAllEqual(
+          output_image_np,
+          np.expand_dims(
+              np.array([[[240, 248, 255], [127, 255, 0]],
+                        [[127, 255, 0], [240, 248, 255]]]),
+              axis=0))
 
   def test_add_cdf_image_summary(self):
     values = [0.1, 0.2, 0.3, 0.4, 0.42, 0.44, 0.46, 0.48, 0.50]
@@ -371,6 +471,7 @@ class VisualizationUtilsTest(tf.test.TestCase):
                                           minval=0.0,
                                           maxval=1.0,
                                           dtype=tf.float32)
+    num_groundtruth_boxes = tf.constant([3, 8, 0, 2], tf.int32)
     groundtruth_classes = tf.random_uniform([4, 8],
                                             minval=1,
                                             maxval=3,
@@ -390,7 +491,9 @@ class VisualizationUtilsTest(tf.test.TestCase):
         fields.InputDataFields.groundtruth_boxes:
             groundtruth_boxes,
         fields.InputDataFields.groundtruth_classes:
-            groundtruth_classes
+            groundtruth_classes,
+        fields.InputDataFields.num_groundtruth_boxes:
+            num_groundtruth_boxes
     }
     metric_ops = eval_metric_ops.get_estimator_eval_metric_ops(eval_dict)
     _, update_op = metric_ops[next(six.iterkeys(metric_ops))]
@@ -445,6 +548,28 @@ class VisualizationUtilsTest(tf.test.TestCase):
       self.assertEqual(
           six.b(''),
           value_ops_out[metric_op_base + '/' + str(max_examples_to_draw - 1)])
+
+  def test_visualize_boxes_and_labels_on_image_array(self):
+    ori_image = np.ones([360, 480, 3], dtype=np.int32) * 255
+    test_image = np.ones([360, 480, 3], dtype=np.int32) * 255
+    detections = np.array([[0.8, 0.1, 0.9, 0.1, 1., 0.1],
+                           [0.1, 0.3, 0.8, 0.7, 1., 0.6]])
+    keypoints = np.array(np.random.rand(2, 5, 2), dtype=np.float32)
+    labelmap = {1: {'id': 1, 'name': 'cat'}, 2: {'id': 2, 'name': 'dog'}}
+    visualization_utils.visualize_boxes_and_labels_on_image_array(
+        test_image,
+        detections[:, :4],
+        detections[:, 4].astype(np.int32),
+        detections[:, 5],
+        labelmap,
+        keypoints=keypoints,
+        track_ids=None,
+        use_normalized_coordinates=True,
+        max_boxes_to_draw=1,
+        min_score_thresh=0.2,
+        agnostic_mode=False,
+        line_thickness=8)
+    self.assertGreater(np.abs(np.sum(test_image - ori_image)), 0)
 
 
 if __name__ == '__main__':

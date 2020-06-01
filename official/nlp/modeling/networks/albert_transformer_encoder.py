@@ -21,13 +21,12 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras.engine import network  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 from official.nlp.modeling import layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class AlbertTransformerEncoder(network.Network):
+class AlbertTransformerEncoder(tf.keras.Model):
   """ALBERT (https://arxiv.org/abs/1810.04805) text encoder network.
 
   This network implements the encoder described in the paper "ALBERT: A Lite
@@ -122,7 +121,8 @@ class AlbertTransformerEncoder(network.Network):
     self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length)
+        max_sequence_length=max_sequence_length,
+        name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
 
     type_embeddings = (

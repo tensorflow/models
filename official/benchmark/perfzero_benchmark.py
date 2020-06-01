@@ -39,6 +39,7 @@ class PerfZeroBenchmark(tf.test.Benchmark):
   def __init__(self,
                output_dir=None,
                default_flags=None,
+               root_data_dir=None,
                flag_methods=None,
                tpu=None):
     """Initialize class.
@@ -46,6 +47,8 @@ class PerfZeroBenchmark(tf.test.Benchmark):
     Args:
       output_dir: Base directory to store all output for the test.
       default_flags: Set of flags to pass to model.
+      root_data_dir: Optional param used by child classes to look for the
+        dataset.
       flag_methods: Set of flag methods to run during setup.
       tpu: (optional) TPU name to use in a TPU benchmark.
     """
@@ -69,6 +72,12 @@ class PerfZeroBenchmark(tf.test.Benchmark):
       # TPU models are expected to accept a --tpu=name flag. PerfZero creates
       # the TPU at runtime and passes the TPU's name to this flag.
       self.default_flags['tpu'] = resolved_tpu
+
+    logging.info('root_data_dir: %s', root_data_dir)
+
+  @property
+  def tpu(self):
+    return self.default_flags.get('tpu', None)
 
   def _get_model_dir(self, folder_name):
     """Returns directory to store info, e.g. saved model and event log."""

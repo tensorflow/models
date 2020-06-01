@@ -1,3 +1,6 @@
+![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
+
 # Tensorflow Mobile Video Object Detection
 
 Tensorflow mobile video object detection implementation proposed in the

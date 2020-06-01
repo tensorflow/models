@@ -26,10 +26,10 @@ from typing import Any, MutableMapping, Optional
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
+from official.benchmark import benchmark_wrappers
 from official.benchmark import keras_benchmark
-from official.utils.testing import benchmark_wrappers
+from official.benchmark.models import resnet_imagenet_main
 from official.vision.image_classification import classifier_trainer
-from official.vision.image_classification.resnet import resnet_imagenet_main
 
 MIN_TOP_1_ACCURACY = 0.76
 MAX_TOP_1_ACCURACY = 0.77
@@ -61,7 +61,8 @@ def _get_classifier_parameters(
     run_eagerly: bool = False,
     gpu_thread_mode: Optional[str] = None,
     dataset_num_private_threads: Optional[int] = None,
-    loss_scale: Optional[str] = None) -> MutableMapping[str, Any]:
+    loss_scale: Optional[str] = None,
+    batchnorm_spatial_persistent: bool = False) -> MutableMapping[str, Any]:
   """Gets classifier trainer's ResNet parameters."""
   return {
       'runtime': {
@@ -72,6 +73,7 @@ def _get_classifier_parameters(
           'dataset_num_private_threads': dataset_num_private_threads,
           'gpu_thread_mode': gpu_thread_mode,
           'loss_scale': loss_scale,
+          'batchnorm_spatial_persistent': batchnorm_spatial_persistent,
       },
       'train_dataset': {
           'builder': builder,
@@ -94,6 +96,11 @@ def _get_classifier_parameters(
               'enable_tensorboard': False,
               'enable_checkpoint_and_export': False,
               'enable_time_history': True,
+          },
+      },
+      'model': {
+          'loss': {
+              'label_smoothing': 0.1,
           },
       },
       'evaluation': {
@@ -162,7 +169,8 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
         run_eagerly=run_eagerly,
         gpu_thread_mode=gpu_thread_mode,
         dataset_num_private_threads=dataset_num_private_threads,
-        loss_scale=loss_scale)
+        loss_scale=loss_scale,
+        batchnorm_spatial_persistent=True)
     FLAGS.params_override = json.dumps(parameters)
     total_batch_size = num_gpus * per_replica_batch_size
 
@@ -315,6 +323,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
       top_1_min: float = MIN_TOP_1_ACCURACY,
       top_1_max: float = MAX_TOP_1_ACCURACY,
       num_gpus: int = 0,
+      num_tpus: int = 0,
       distribution_strategy: str = 'mirrored',
       per_replica_batch_size: int = 128,
       epochs_between_evals: int = 1,
@@ -343,9 +352,13 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
         enable_xla=enable_xla,
         gpu_thread_mode=gpu_thread_mode,
         dataset_num_private_threads=dataset_num_private_threads,
-        loss_scale=loss_scale)
+        loss_scale=loss_scale,
+        batchnorm_spatial_persistent=True)
     FLAGS.params_override = json.dumps(parameters)
-    total_batch_size = num_gpus * per_replica_batch_size
+    if distribution_strategy == 'tpu':
+      total_batch_size = num_tpus * per_replica_batch_size
+    else:
+      total_batch_size = num_gpus * per_replica_batch_size
 
     start_time_sec = time.time()
     stats = classifier_trainer.run(flags.FLAGS)
@@ -599,23 +612,35 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
         loss_scale='dynamic',
         dataset_num_private_threads=48)
 
-  def benchmark_2x2_tpu_fp16(self):
-    """Test Keras model with 2x2 TPU, fp16."""
+  def benchmark_2x2_tpu_bf16(self):
+    """Test Keras model with 2x2 TPU, bf16."""
     self._setup()
     self._run_and_report_benchmark(
-        experiment_name='benchmark_2x2_tpu_fp16',
+        experiment_name='benchmark_2x2_tpu_bf16',
         dtype='bfloat16',
+        num_tpus=8,
         distribution_strategy='tpu',
         per_replica_batch_size=128)
 
-  def benchmark_4x4_tpu_fp16(self):
-    """Test Keras model with 4x4 TPU, fp16."""
+  def benchmark_4x4_tpu_bf16(self):
+    """Test Keras model with 4x4 TPU, bf16."""
     self._setup()
     self._run_and_report_benchmark(
-        experiment_name='benchmark_4x4_tpu_fp16',
+        experiment_name='benchmark_4x4_tpu_bf16',
         dtype='bfloat16',
+        num_tpus=32,
         distribution_strategy='tpu',
         per_replica_batch_size=128)
+
+  def benchmark_8x8_tpu_bf16(self):
+    """Test Keras model with 8x8 TPU, bf16."""
+    self._setup()
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_8x8_tpu_bf16',
+        dtype='bfloat16',
+        num_tpus=128,
+        distribution_strategy='tpu',
+        per_replica_batch_size=64)
 
   def fill_report_object(self, stats):
     super(Resnet50KerasClassifierBenchmarkBase, self).fill_report_object(
@@ -1020,24 +1045,34 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.datasets_num_private_threads = 48
     self._run_and_report_benchmark()
 
-  def benchmark_2x2_tpu_fp16(self):
-    """Test Keras model with 2x2 TPU, fp16."""
+  def benchmark_2x2_tpu_bf16(self):
+    """Test Keras model with 2x2 TPU, bf16."""
     self._setup()
 
     FLAGS.dtype = 'bf16'
     FLAGS.distribution_strategy = 'tpu'
-    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_fp16')
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_bf16')
     FLAGS.batch_size = 1024
     self._run_and_report_benchmark()
 
-  def benchmark_4x4_tpu_fp16(self):
-    """Test Keras model with 4x4 TPU, fp16."""
+  def benchmark_4x4_tpu_bf16(self):
+    """Test Keras model with 4x4 TPU, bf16."""
     self._setup()
 
     FLAGS.dtype = 'bf16'
     FLAGS.distribution_strategy = 'tpu'
-    FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_fp16')
+    FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_bf16')
     FLAGS.batch_size = 4096
+    self._run_and_report_benchmark()
+
+  def benchmark_8x8_tpu_bf16(self):
+    """Test Keras model with 8x8 TPU, bf16."""
+    self._setup()
+
+    FLAGS.dtype = 'bf16'
+    FLAGS.distribution_strategy = 'tpu'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8x8_tpu_bf16')
+    FLAGS.batch_size = 8192
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):

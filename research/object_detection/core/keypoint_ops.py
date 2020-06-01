@@ -125,6 +125,24 @@ def change_coordinate_frame(keypoints, window, scope=None):
     return new_keypoints
 
 
+def keypoints_to_enclosing_bounding_boxes(keypoints):
+  """Creates enclosing bounding boxes from keypoints.
+
+  Args:
+    keypoints: a [num_instances, num_keypoints, 2] float32 tensor with keypoints
+      in [y, x] format.
+
+  Returns:
+    A [num_instances, 4] float32 tensor that tightly covers all the keypoints
+    for each instance.
+  """
+  ymin = tf.math.reduce_min(keypoints[:, :, 0], axis=1)
+  xmin = tf.math.reduce_min(keypoints[:, :, 1], axis=1)
+  ymax = tf.math.reduce_max(keypoints[:, :, 0], axis=1)
+  xmax = tf.math.reduce_max(keypoints[:, :, 1], axis=1)
+  return tf.stack([ymin, xmin, ymax, xmax], axis=1)
+
+
 def to_normalized_coordinates(keypoints, height, width,
                               check_range=True, scope=None):
   """Converts absolute keypoint coordinates to normalized coordinates in [0, 1].
@@ -280,3 +298,69 @@ def rot90(keypoints, scope=None):
     new_keypoints = tf.concat([v, u], 2)
     new_keypoints = tf.transpose(new_keypoints, [1, 0, 2])
     return new_keypoints
+
+
+def keypoint_weights_from_visibilities(keypoint_visibilities,
+                                       per_keypoint_weights=None):
+  """Returns a keypoint weights tensor.
+
+  During training, it is often beneficial to consider only those keypoints that
+  are labeled. This function returns a weights tensor that combines default
+  per-keypoint weights, as well as the visibilities of individual keypoints.
+
+  The returned tensor satisfies:
+  keypoint_weights[i, k] = per_keypoint_weights[k] * keypoint_visibilities[i, k]
+  where per_keypoint_weights[k] is set to 1 if not provided.
+
+  Args:
+    keypoint_visibilities: A [num_instances, num_keypoints] boolean tensor
+      indicating whether a keypoint is labeled (and perhaps even visible).
+    per_keypoint_weights: A list or 1-d tensor of length `num_keypoints` with
+      per-keypoint weights. If None, will use 1 for each visible keypoint
+      weight.
+
+  Returns:
+    A [num_instances, num_keypoints] float32 tensor with keypoint weights. Those
+    keypoints deemed visible will have the provided per-keypoint weight, and
+    all others will be set to zero.
+  """
+  if per_keypoint_weights is None:
+    num_keypoints = keypoint_visibilities.shape.as_list()[1]
+    per_keypoint_weight_mult = tf.ones((1, num_keypoints,), dtype=tf.float32)
+  else:
+    per_keypoint_weight_mult = tf.expand_dims(per_keypoint_weights, axis=0)
+  return per_keypoint_weight_mult * tf.cast(keypoint_visibilities, tf.float32)
+
+
+def set_keypoint_visibilities(keypoints, initial_keypoint_visibilities=None):
+  """Sets keypoint visibilities based on valid/invalid keypoints.
+
+  Some keypoint operations set invisible keypoints (e.g. cropped keypoints) to
+  NaN, without affecting any keypoint "visibility" variables. This function is
+  used to update (or create) keypoint visibilities to agree with visible /
+  invisible keypoint coordinates.
+
+  Args:
+    keypoints: a float32 tensor of shape [num_instances, num_keypoints, 2].
+    initial_keypoint_visibilities: a boolean tensor of shape
+      [num_instances, num_keypoints]. If provided, will maintain the visibility
+      designation of a keypoint, so long as the corresponding coordinates are
+      not NaN. If not provided, will create keypoint visibilities directly from
+      the values in `keypoints` (i.e. NaN coordinates map to False, otherwise
+      they map to True).
+
+  Returns:
+    keypoint_visibilities: a bool tensor of shape [num_instances, num_keypoints]
+    indicating whether a keypoint is visible or not.
+  """
+  if initial_keypoint_visibilities is not None:
+    keypoint_visibilities = tf.cast(initial_keypoint_visibilities, tf.bool)
+  else:
+    keypoint_visibilities = tf.ones_like(keypoints[:, :, 0], dtype=tf.bool)
+
+  keypoints_with_nan = tf.math.reduce_any(tf.math.is_nan(keypoints), axis=2)
+  keypoint_visibilities = tf.where(
+      keypoints_with_nan,
+      tf.zeros_like(keypoint_visibilities, dtype=tf.bool),
+      keypoint_visibilities)
+  return keypoint_visibilities

@@ -23,12 +23,12 @@ import time
 from absl import flags
 from absl import logging
 from absl.testing import flagsaver
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.r1.resnet import cifar10_main as cifar_main
 from official.r1.resnet import imagenet_main
+from official.r1.utils.logs import hooks
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks
 
 IMAGENET_DATA_DIR_NAME = 'imagenet'
 CIFAR_DATA_DIR_NAME = 'cifar-10-batches-bin'

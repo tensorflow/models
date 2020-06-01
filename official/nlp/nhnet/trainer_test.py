@@ -37,6 +37,7 @@ def all_strategy_combinations():
       distribution=[
           strategy_combinations.one_device_strategy,
           strategy_combinations.one_device_strategy_gpu,
+          strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.tpu_strategy,
       ],
       mode="eager",
@@ -48,6 +49,7 @@ def get_trivial_data(config) -> tf.data.Dataset:
   batch_size, num_docs = 2, len(config.passage_list),
   len_passage = config.len_passage
   len_title = config.len_title
+
   def generate_data(_) -> tf.data.Dataset:
     fake_ids = tf.zeros((num_docs, len_passage), dtype=tf.int32)
     title = tf.zeros((len_title), dtype=tf.int32)
@@ -59,8 +61,8 @@ def get_trivial_data(config) -> tf.data.Dataset:
 
   dataset = tf.data.Dataset.range(1)
   dataset = dataset.repeat()
-  dataset = dataset.map(generate_data,
-                        num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  dataset = dataset.map(
+      generate_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
   dataset = dataset.prefetch(buffer_size=1).batch(batch_size)
   return dataset
 
@@ -91,7 +93,9 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
     FLAGS.checkpoint_interval = 5
     FLAGS.model_dir = self.get_temp_dir()
     FLAGS.model_type = "nhnet"
-    trainer.train(self._config, distribution, get_trivial_data(self._config))
+    stats = trainer.train(self._config, distribution,
+                          get_trivial_data(self._config))
+    self.assertIn("training_loss", stats)
     self.assertLen(
         tf.io.gfile.glob(os.path.join(FLAGS.model_dir, "ckpt*.index")), 2)
 

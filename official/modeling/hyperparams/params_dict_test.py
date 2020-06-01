@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Tests for official.modeling.hyperparams.params_dict.py."""
+"""Tests for params_dict.py."""
 
 import os
 
@@ -45,12 +45,14 @@ class ParamsDictTest(tf.test.TestCase):
     self.assertEqual(params.b, 2)
 
   def test_lock(self):
-    params = params_dict.ParamsDict({'a': 1, 'b': 2})
+    params = params_dict.ParamsDict({'a': 1, 'b': 2, 'c': 3})
     params.lock()
     with self.assertRaises(ValueError):
       params.a = 10
     with self.assertRaises(ValueError):
       params.override({'b': 20})
+    with self.assertRaises(ValueError):
+      del params.c
 
   def test_setattr(self):
     params = params_dict.ParamsDict()
@@ -68,6 +70,20 @@ class ParamsDictTest(tf.test.TestCase):
     self.assertEqual(params.a, 'aa')
     self.assertEqual(params.b, 2)
     self.assertEqual(params.c, None)
+
+  def test_delattr(self):
+    params = params_dict.ParamsDict()
+    params.override(
+        {'a': 'aa', 'b': 2, 'c': None, 'd': {'d1': 1, 'd2': 10}},
+        is_strict=False)
+    del params.c
+    self.assertEqual(params.a, 'aa')
+    self.assertEqual(params.b, 2)
+    with self.assertRaises(AttributeError):
+      _ = params.c
+    del params.d
+    with self.assertRaises(AttributeError):
+      _ = params.d.d1
 
   def test_contains(self):
     params = params_dict.ParamsDict()
@@ -138,6 +154,14 @@ class ParamsDictTest(tf.test.TestCase):
     params.override({'a': 11})
     with self.assertRaises(KeyError):
       params.validate()
+
+    # Valid restrictions with constant.
+    params = params_dict.ParamsDict(
+        {'a': None, 'c': {'a': 1}}, ['a == None', 'c.a == 1'])
+    params.validate()
+    with self.assertRaises(KeyError):
+      params = params_dict.ParamsDict(
+          {'a': 4, 'c': {'a': 1}}, ['a == None', 'c.a == 1'])
 
 
 class ParamsDictIOTest(tf.test.TestCase):

@@ -40,15 +40,15 @@ class MultiChannelAttentionTest(tf.test.TestCase):
     num_heads = 2
     num_docs = 5
     attention_layer = multi_channel_attention.MultiChannelAttention(
-        num_heads, head_size=2)
+        num_heads, key_size=2)
 
     from_data = 10 * np.random.random_sample((3, 4, 8))
     to_data = 10 * np.random.random_sample((3, num_docs, 2, 8))
     mask_data = np.random.randint(2, size=(3, num_docs, 4, 2))
     doc_probs = np.random.randint(
         2, size=(3, num_heads, 4, num_docs)).astype(float)
-    outputs = attention_layer([from_data, to_data, mask_data, doc_probs])
-    self.assertEqual(outputs.shape, (3, 4, num_heads, 2))
+    outputs = attention_layer([from_data, to_data, doc_probs], mask_data)
+    self.assertEqual(outputs.shape, (3, 4, 8))
 
 
 if __name__ == "__main__":

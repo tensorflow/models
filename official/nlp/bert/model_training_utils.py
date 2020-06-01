@@ -24,6 +24,7 @@ import tempfile
 
 from absl import logging
 import tensorflow as tf
+from tensorflow.python.util import deprecation
 from official.staging.training import grad_utils
 from official.utils.misc import distribution_utils
 
@@ -89,12 +90,16 @@ def steps_to_run(current_step, steps_per_epoch, steps_per_loop):
 
 def write_txt_summary(training_summary, summary_dir):
   """Writes a summary text file to record stats."""
+  if not tf.io.gfile.exists(summary_dir):
+    tf.io.gfile.mkdir(summary_dir)
   summary_path = os.path.join(summary_dir, _SUMMARY_TXT)
   with tf.io.gfile.GFile(summary_path, 'wb') as f:
     logging.info('Training Summary: \n%s', str(training_summary))
     f.write(json.dumps(training_summary, indent=4))
 
 
+@deprecation.deprecated(
+    None, 'This function is deprecated. Please use Keras compile/fit instead.')
 def run_customized_training_loop(
     # pylint: disable=invalid-name
     _sentinel=None,
@@ -106,7 +111,7 @@ def run_customized_training_loop(
     model_dir=None,
     train_input_fn=None,
     steps_per_epoch=None,
-    steps_per_loop=1,
+    steps_per_loop=None,
     epochs=1,
     eval_input_fn=None,
     eval_steps=None,
@@ -117,7 +122,8 @@ def run_customized_training_loop(
     sub_model_export_name=None,
     explicit_allreduce=False,
     pre_allreduce_callbacks=None,
-    post_allreduce_callbacks=None):
+    post_allreduce_callbacks=None,
+    train_summary_interval=0):
   """Run BERT pretrain model training using low-level API.
 
   Arguments:
@@ -153,7 +159,8 @@ def run_customized_training_loop(
         `model_fn`.
       custom_callbacks: A list of Keras Callbacks objects to run during
         training. More specifically, `on_batch_begin()`, `on_batch_end()`,
-        methods are invoked during training.
+        `on_epoch_begin()`, `on_epoch_end()` methods are invoked during
+        training.  Note that some metrics may be missing from `logs`.
       run_eagerly: Whether to run model training in pure eager execution. This
         should be disable for TPUStrategy.
       sub_model_export_name: If not None, will export `sub_model` returned by
@@ -180,6 +187,8 @@ def run_customized_training_loop(
         functions will be invoked in the list order and right before gradients
         are applied to variables for updates. Default is no callbacks. Only used
         when explicit_allreduce=True.
+      train_summary_interval: Step interval for training summaries. If the value
+        is a negative number, then training summaries are not enabled.
 
   Returns:
       Trained model.
@@ -201,10 +210,19 @@ def run_customized_training_loop(
   ]
   if [arg for arg in required_arguments if arg is None]:
     raise ValueError('`strategy`, `model_fn`, `loss_fn`, `model_dir`, '
-                     '`steps_per_loop` and `steps_per_epoch` are required '
+                     '`steps_per_epoch` and `train_input_fn` are required '
                      'parameters.')
+  if not steps_per_loop:
+    if tf.config.list_logical_devices('TPU'):
+      # One can't fully utilize a TPU with steps_per_loop=1, so in this case
+      # default users to a more useful value.
+      steps_per_loop = min(1000, steps_per_epoch)
+    else:
+      steps_per_loop = 1
+    logging.info('steps_per_loop not specified. Using steps_per_loop=%d',
+                 steps_per_loop)
   if steps_per_loop > steps_per_epoch:
-    logging.error(
+    logging.warning(
         'steps_per_loop: %d is specified to be greater than '
         ' steps_per_epoch: %d, we will use steps_per_epoch as'
         ' steps_per_loop.', steps_per_loop, steps_per_epoch)
@@ -225,8 +243,12 @@ def run_customized_training_loop(
     raise ValueError(
         'if `metric_fn` is specified, metric_fn must be a callable.')
 
+  callback_list = tf.keras.callbacks.CallbackList(custom_callbacks)
+
   total_training_steps = steps_per_epoch * epochs
   train_iterator = _get_input_iterator(train_input_fn, strategy)
+  eval_loss_metric = tf.keras.metrics.Mean(
+      'training_loss', dtype=tf.float32)
 
   with distribution_utils.get_strategy_scope(strategy):
     # To correctly place the model weights on accelerators,
@@ -269,13 +291,14 @@ def run_customized_training_loop(
       summary_dir = tempfile.mkdtemp()
     eval_summary_writer = tf.summary.create_file_writer(
         os.path.join(summary_dir, 'eval'))
-    if steps_per_loop >= _MIN_SUMMARY_STEPS:
+    last_summary_step = 0
+    if steps_per_loop >= _MIN_SUMMARY_STEPS and train_summary_interval >= 0:
       # Only writes summary when the stats are collected sufficiently over
       # enough steps.
       train_summary_writer = tf.summary.create_file_writer(
           os.path.join(summary_dir, 'train'))
     else:
-      train_summary_writer = None
+      train_summary_writer = tf.summary.create_noop_writer()
 
     # Collects training variables.
     training_vars = model.trainable_variables
@@ -353,45 +376,68 @@ def run_customized_training_loop(
         model_outputs = model(inputs, training=False)
         for metric in eval_metrics:
           metric.update_state(labels, model_outputs)
+        return model_outputs, labels
 
-      strategy.run(_test_step_fn, args=(next(iterator),))
+      outputs, labels = strategy.run(_test_step_fn, args=(next(iterator),))
+      outputs = tf.nest.map_structure(strategy.experimental_local_results,
+                                      outputs)
+      labels = tf.nest.map_structure(strategy.experimental_local_results,
+                                     labels)
+      return outputs, labels
 
     if not run_eagerly:
       train_single_step = tf.function(train_single_step)
       test_step = tf.function(test_step)
 
     def _run_evaluation(current_training_step, test_iterator):
-      """Runs validation steps and aggregate metrics."""
-      for _ in range(eval_steps):
-        test_step(test_iterator)
+      """Runs validation steps and aggregate metrics.
 
+      Args:
+        current_training_step: tf.int32 tensor containing the current step.
+        test_iterator: distributed iterator of test datasets.
+
+      Returns:
+        A dict of metic names and values.
+      """
+      # The last batch of the evaluation is often smaller than previous ones.
+      # Moreover, in some distributed pieces it might even be empty. Therefore,
+      # different from the way training_loss is calculated, it is needed to
+      # gather all the logits and labels here to calculate the evaluation loss
+      # outside.
+      loss_list, loss_weights = list(), list()
+      for _ in range(eval_steps):
+        outputs, labels = test_step(test_iterator)
+        for cur_logits, cur_labels in zip(outputs, labels):
+          # This is to handle cases when cur_labels is not a single tensor,
+          # but a dict of tensors.
+          cur_weight = tf.shape(tf.nest.flatten(cur_labels)[0])[0]
+          if cur_weight != 0:
+            loss_list.append(loss_fn(cur_labels, cur_logits).numpy())
+            loss_weights.append(cur_weight)
+      # The sample_weights are the actual number of examples in each batch,
+      # a summation of numbers of examples in each replica if using
+      # distributed training.
+      eval_loss_metric.update_state(loss_list, sample_weight=loss_weights)
+
+      logs = {}
       with eval_summary_writer.as_default():
-        for metric in eval_metrics + model.metrics:
+        for metric in [eval_loss_metric] + eval_metrics + model.metrics:
           metric_value = _float_metric_value(metric)
+          logs[metric.name] = metric_value
           logging.info('Step: [%d] Validation %s = %f', current_training_step,
                        metric.name, metric_value)
           tf.summary.scalar(
               metric.name, metric_value, step=current_training_step)
         eval_summary_writer.flush()
 
-    def _run_callbacks_on_batch_begin(batch):
-      """Runs custom callbacks at the start of every step."""
-      if not custom_callbacks:
-        return
-      for callback in custom_callbacks:
-        callback.on_batch_begin(batch)
-
-    def _run_callbacks_on_batch_end(batch, logs):
-      """Runs custom callbacks at the end of every step."""
-      if not custom_callbacks:
-        return
-      for callback in custom_callbacks:
-        callback.on_batch_end(batch, logs)
+      return logs
 
     # Training loop starts here.
-    checkpoint = tf.train.Checkpoint(model=model, optimizer=optimizer)
+    checkpoint = tf.train.Checkpoint(
+        model=model, optimizer=optimizer, global_step=optimizer.iterations)
     sub_model_checkpoint = tf.train.Checkpoint(
-        model=sub_model) if sub_model_export_name else None
+        model=sub_model,
+        global_step=optimizer.iterations) if sub_model_export_name else None
 
     latest_checkpoint_file = tf.train.latest_checkpoint(model_dir)
     if latest_checkpoint_file:
@@ -405,13 +451,16 @@ def run_customized_training_loop(
     checkpoint_name = 'ctl_step_{step}.ckpt'
 
     while current_step < total_training_steps:
+      if current_step % steps_per_epoch == 0:
+        callback_list.on_epoch_begin(int(current_step / steps_per_epoch) + 1)
+
       # Training loss/metric are taking average over steps inside micro
       # training loop. We reset the their values before each round.
       train_loss_metric.reset_states()
       for metric in train_metrics + model.metrics:
         metric.reset_states()
 
-      _run_callbacks_on_batch_begin(current_step)
+      callback_list.on_batch_begin(current_step)
       # Runs several steps in the host while loop.
       steps = steps_to_run(current_step, steps_per_epoch, steps_per_loop)
 
@@ -426,57 +475,73 @@ def run_customized_training_loop(
                     tf.convert_to_tensor(steps, dtype=tf.int32))
       train_loss = _float_metric_value(train_loss_metric)
       current_step += steps
-      _run_callbacks_on_batch_end(current_step - 1, {'loss': train_loss})
+      callback_list.on_batch_end(current_step - 1, {'loss': train_loss})
 
       # Updates training logging.
       training_status = 'Train Step: %d/%d  / loss = %s' % (
           current_step, total_training_steps, train_loss)
 
-      if train_summary_writer:
-        with train_summary_writer.as_default():
-          tf.summary.scalar(
-              train_loss_metric.name, train_loss, step=current_step)
-          for metric in train_metrics + model.metrics:
-            metric_value = _float_metric_value(metric)
-            training_status += '  %s = %f' % (metric.name, metric_value)
-            tf.summary.scalar(metric.name, metric_value, step=current_step)
-          train_summary_writer.flush()
+      if current_step >= last_summary_step + train_summary_interval:
+        summary_writer = train_summary_writer
+        last_summary_step = current_step
+      else:
+        summary_writer = tf.summary.create_noop_writer()
+
+      with summary_writer.as_default():
+        tf.summary.scalar(
+            train_loss_metric.name, train_loss, step=current_step)
+        for metric in train_metrics + model.metrics:
+          metric_value = _float_metric_value(metric)
+          training_status += '  %s = %f' % (metric.name, metric_value)
+          tf.summary.scalar(metric.name, metric_value, step=current_step)
+        summary_writer.flush()
       logging.info(training_status)
 
-      # Saves model checkpoints and run validation steps at every epoch end.
       if current_step % steps_per_epoch == 0:
-        # To avoid repeated model saving, we do not save after the last
-        # step of training.
+        # Save a submodel with the step in the file name after each epoch.
+        if sub_model_export_name:
+          _save_checkpoint(
+              strategy, sub_model_checkpoint, model_dir,
+              '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
+
+        # Save model checkpoints and run validation steps after each epoch
+        # (with the exception of the final epoch which is handled after the
+        # training loop).
         if current_step < total_training_steps:
           _save_checkpoint(strategy, checkpoint, model_dir,
                            checkpoint_name.format(step=current_step))
-          if sub_model_export_name:
-            _save_checkpoint(
-                strategy, sub_model_checkpoint, model_dir,
-                '%s_step_%d.ckpt' % (sub_model_export_name, current_step))
-        if eval_input_fn:
-          logging.info('Running evaluation after step: %s.', current_step)
-          _run_evaluation(current_step,
-                          _get_input_iterator(eval_input_fn, strategy))
-          # Re-initialize evaluation metric.
-          for metric in eval_metrics + model.metrics:
-            metric.reset_states()
+          logs = None
+          if eval_input_fn:
+            logging.info('Running evaluation after step: %s.', current_step)
+            logs = _run_evaluation(current_step,
+                                   _get_input_iterator(eval_input_fn, strategy))
+            # Re-initialize evaluation metric.
+            eval_loss_metric.reset_states()
+            for metric in eval_metrics + model.metrics:
+              metric.reset_states()
 
-    _save_checkpoint(strategy, checkpoint, model_dir,
-                     checkpoint_name.format(step=current_step))
+          callback_list.on_epoch_end(int(current_step / steps_per_epoch), logs)
+
     if sub_model_export_name:
       _save_checkpoint(strategy, sub_model_checkpoint, model_dir,
                        '%s.ckpt' % sub_model_export_name)
 
+    _save_checkpoint(strategy, checkpoint, model_dir,
+                     checkpoint_name.format(step=current_step))
+    logs = None
     if eval_input_fn:
       logging.info('Running final evaluation after training is complete.')
-      _run_evaluation(current_step,
-                      _get_input_iterator(eval_input_fn, strategy))
+      logs = _run_evaluation(current_step,
+                             _get_input_iterator(eval_input_fn, strategy))
+
+    callback_list.on_epoch_end(int(current_step / steps_per_epoch), logs)
 
     training_summary = {
         'total_training_steps': total_training_steps,
         'train_loss': _float_metric_value(train_loss_metric),
     }
+    for metric in model.metrics:
+      training_summary[metric.name] = _float_metric_value(metric)
     if eval_metrics:
       # TODO(hongkuny): Cleans up summary reporting in text.
       training_summary['last_train_metrics'] = _float_metric_value(

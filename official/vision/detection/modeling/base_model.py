@@ -21,40 +21,10 @@ from __future__ import print_function
 import abc
 import functools
 import re
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from official.vision.detection.modeling import checkpoint_utils
 from official.vision.detection.modeling import learning_rates
-
-
-class OptimizerFactory(object):
-  """Class to generate optimizer function."""
-
-  def __init__(self, params):
-    """Creates optimized based on the specified flags."""
-    if params.type == 'momentum':
-      nesterov = False
-      try:
-        nesterov = params.nesterov
-      except AttributeError:
-        pass
-      self._optimizer = functools.partial(
-          tf.keras.optimizers.SGD,
-          momentum=params.momentum,
-          nesterov=nesterov)
-    elif params.type == 'adam':
-      self._optimizer = tf.keras.optimizers.Adam
-    elif params.type == 'adadelta':
-      self._optimizer = tf.keras.optimizers.Adadelta
-    elif params.type == 'adagrad':
-      self._optimizer = tf.keras.optimizers.Adagrad
-    elif params.type == 'rmsprop':
-      self._optimizer = functools.partial(
-          tf.keras.optimizers.RMSprop, momentum=params.momentum)
-    else:
-      raise ValueError('Unsupported optimizer type %s.' % self._optimizer)
-
-  def __call__(self, learning_rate):
-    return self._optimizer(learning_rate=learning_rate)
+from official.vision.detection.modeling import optimizers
 
 
 def _make_filter_trainable_variables_fn(frozen_variable_prefix):
@@ -73,7 +43,8 @@ def _make_filter_trainable_variables_fn(frozen_variable_prefix):
     # the frozen variables' names.
     filtered_variables = [
         v for v in variables
-        if not re.match(frozen_variable_prefix, v.name)
+        if not frozen_variable_prefix or
+        not re.match(frozen_variable_prefix, v.name)
     ]
     return filtered_variables
 
@@ -94,9 +65,9 @@ class Model(object):
       tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
 
     # Optimization.
-    self._optimizer_fn = OptimizerFactory(params.train.optimizer)
+    self._optimizer_fn = optimizers.OptimizerFactory(params.train.optimizer)
     self._learning_rate = learning_rates.learning_rate_generator(
-        params.train.learning_rate)
+        params.train.total_steps, params.train.learning_rate)
 
     self._frozen_variable_prefix = params.train.frozen_variable_prefix
     self._regularization_var_regex = params.train.regularization_variable_regex

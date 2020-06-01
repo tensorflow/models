@@ -21,13 +21,12 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras.engine import network  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 from official.nlp.modeling import layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class TransformerEncoder(network.Network):
+class TransformerEncoder(tf.keras.Model):
   """Bi-directional Transformer-based encoder network.
 
   This network implements a bi-directional Transformer-based encoder as
@@ -61,6 +60,10 @@ class TransformerEncoder(network.Network):
     initializer: The initialzer to use for all weights in this encoder.
     return_all_encoder_outputs: Whether to output sequence embedding outputs of
       all encoder transformer layers.
+    output_range: the sequence output range, [0, output_range), by slicing the
+      target sequence of the last transformer layer. `None` means the entire
+      target sequence will attend to the source sequence, which yeilds the full
+      output.
   """
 
   def __init__(self,
@@ -77,6 +80,7 @@ class TransformerEncoder(network.Network):
                attention_dropout_rate=0.1,
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                return_all_encoder_outputs=False,
+               output_range=None,
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
@@ -98,6 +102,7 @@ class TransformerEncoder(network.Network):
         'attention_dropout_rate': attention_dropout_rate,
         'initializer': tf.keras.initializers.serialize(initializer),
         'return_all_encoder_outputs': return_all_encoder_outputs,
+        'output_range': output_range,
     }
 
     word_ids = tf.keras.layers.Input(
@@ -118,7 +123,8 @@ class TransformerEncoder(network.Network):
     self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length)
+        max_sequence_length=max_sequence_length,
+        name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
 
     type_embeddings = (
@@ -145,12 +151,17 @@ class TransformerEncoder(network.Network):
     attention_mask = layers.SelfAttentionMask()([data, mask])
     encoder_outputs = []
     for i in range(num_layers):
+      if i == num_layers - 1 and output_range is not None:
+        transformer_output_range = output_range
+      else:
+        transformer_output_range = None
       layer = layers.Transformer(
           num_attention_heads=num_attention_heads,
           intermediate_size=intermediate_size,
           intermediate_activation=activation,
           dropout_rate=dropout_rate,
           attention_dropout_rate=attention_dropout_rate,
+          output_range=transformer_output_range,
           kernel_initializer=initializer,
           name='transformer/layer_%d' % i)
       self._transformer_layers.append(layer)
@@ -160,12 +171,12 @@ class TransformerEncoder(network.Network):
     first_token_tensor = (
         tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
             encoder_outputs[-1]))
-    cls_output = tf.keras.layers.Dense(
+    self._pooler_layer = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
         kernel_initializer=initializer,
-        name='pooler_transform')(
-            first_token_tensor)
+        name='pooler_transform')
+    cls_output = self._pooler_layer(first_token_tensor)
 
     if return_all_encoder_outputs:
       outputs = [encoder_outputs, cls_output]
@@ -185,6 +196,11 @@ class TransformerEncoder(network.Network):
   def transformer_layers(self):
     """List of Transformer layers in the encoder."""
     return self._transformer_layers
+
+  @property
+  def pooler_layer(self):
+    """The pooler dense layer after the transformer layers."""
+    return self._pooler_layer
 
   @classmethod
   def from_config(cls, config, custom_objects=None):

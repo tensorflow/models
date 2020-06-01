@@ -96,7 +96,7 @@ def define_transformer_flags():
       name='train_steps', short_name='ts', default=300000,
       help=flags_core.help_wrap('The number of steps used to train.'))
   flags.DEFINE_integer(
-      name='steps_between_evals', short_name='sbe', default=1000,
+      name='steps_between_evals', short_name='sbe', default=5000,
       help=flags_core.help_wrap(
           'The Number of training steps to run between evaluations. This is '
           'used if --train_steps is defined.'))
@@ -109,14 +109,10 @@ def define_transformer_flags():
   flags.DEFINE_boolean(
       name='enable_metrics_in_training', default=False,
       help='Whether to enable metrics during training.')
-  flags.DEFINE_string(
-      name='profile_steps', default=None,
-      help='Save profiling data to model dir at given range of steps. The '
-      'value must be a comma separated pair of positive integers, specifying '
-      'the first and last step to profile. For example, "--profile_steps=2,4" '
-      'triggers the profiler to process 3 steps, starting from the 2nd step. '
-      'Note that profiler has a non-trivial performance overhead, and the '
-      'output file can be gigantic if profiling many steps.')
+  flags.DEFINE_boolean(
+      name='enable_mlir_bridge',
+      default=False,
+      help='Whether to enable the TF to XLA bridge.')
   # Set flags from the flags_core module as 'key flags' so they're listed when
   # the '-h' flag is used. Without this line, the flags defined above are
   # only shown in the full `--helpful` help text.
@@ -235,7 +231,7 @@ def define_transformer_flags():
   # pylint: enable=unused-variable
 
 
-def get_callbacks(steps_per_epoch):
+def get_callbacks():
   """Returns common callbacks."""
   callbacks = []
   if FLAGS.enable_time_history:
@@ -250,29 +246,18 @@ def get_callbacks(steps_per_epoch):
         log_dir=FLAGS.model_dir)
     callbacks.append(tensorboard_callback)
 
-  if FLAGS.profile_steps:
-    profiler_callback = keras_utils.get_profiler_callback(
-        FLAGS.model_dir,
-        FLAGS.profile_steps,
-        FLAGS.enable_tensorboard,
-        steps_per_epoch)
-    callbacks.append(profiler_callback)
-
   return callbacks
 
 
-def build_stats(history, callbacks):
-  """Normalizes and returns dictionary of stats.
+def update_stats(history, stats, callbacks):
+  """Normalizes and updates dictionary of stats.
 
   Args:
     history: Results of the training step.
+    stats: Dict with pre-existing training stats.
     callbacks: a list of callbacks which might include a time history callback
       used during keras.fit.
-
-  Returns:
-    Dictionary of normalized results.
   """
-  stats = {}
 
   if history and history.history:
     train_hist = history.history
@@ -280,7 +265,7 @@ def build_stats(history, callbacks):
     stats['loss'] = float(train_hist['loss'][-1])
 
   if not callbacks:
-    return stats
+    return
 
   # Look for the time history callback which was used during keras.fit
   for callback in callbacks:
@@ -293,4 +278,3 @@ def build_stats(history, callbacks):
             callback.batch_size * callback.log_steps *
             (len(callback.timestamp_log)-1) /
             (timestamp_log[-1].timestamp - timestamp_log[0].timestamp))
-  return stats

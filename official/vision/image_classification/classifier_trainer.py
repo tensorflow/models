@@ -15,12 +15,7 @@
 # ==============================================================================
 """Runs an Image Classification model."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
-
 import pprint
 from typing import Any, Tuple, Text, Optional, Mapping
 
@@ -29,10 +24,9 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
+from official.modeling import hyperparams
 from official.modeling import performance
-from official.modeling.hyperparams import params_dict
 from official.utils import hyperparams_flags
-from official.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.vision.image_classification import callbacks as custom_callbacks
@@ -101,15 +95,16 @@ def get_image_size_from_model(
 def _get_dataset_builders(params: base_configs.ExperimentConfig,
                           strategy: tf.distribute.Strategy,
                           one_hot: bool
-                         ) -> Tuple[Any, Any, Any]:
-  """Create and return train, validation, and test dataset builders."""
+                         ) -> Tuple[Any, Any]:
+  """Create and return train and validation dataset builders."""
   if one_hot:
     logging.warning('label_smoothing > 0, so datasets will be one hot encoded.')
   else:
     logging.warning('label_smoothing not applied, so datasets will not be one '
                     'hot encoded.')
 
-  num_devices = strategy.num_replicas_in_sync
+  num_devices = strategy.num_replicas_in_sync if strategy else 1
+
   image_size = get_image_size_from_model(params)
 
   dataset_configs = [
@@ -186,8 +181,7 @@ def _get_params_from_flags(flags_obj: flags.FlagValues):
 
   for param in overriding_configs:
     logging.info('Overriding params: %s', param)
-    # Set is_strict to false because we can have dynamic dict parameters.
-    params = params_dict.override_params_dict(params, param, is_strict=False)
+    params = hyperparams.override_params_dict(params, param, is_strict=True)
 
   params.validate()
   params.lock()
@@ -234,13 +228,6 @@ def initialize(params: base_configs.ExperimentConfig,
   """Initializes backend related initializations."""
   keras_utils.set_session_config(
       enable_xla=params.runtime.enable_xla)
-  if params.runtime.gpu_thread_mode:
-    keras_utils.set_gpu_thread_mode_and_count(
-        per_gpu_thread_count=params.runtime.per_gpu_thread_count,
-        gpu_thread_mode=params.runtime.gpu_thread_mode,
-        num_gpus=params.runtime.num_gpus,
-        datasets_num_private_threads=params.runtime.dataset_num_private_threads)
-
   performance.set_mixed_precision_policy(dataset_builder.dtype,
                                          get_loss_scale(params))
   if tf.config.list_physical_devices('GPU'):
@@ -254,6 +241,15 @@ def initialize(params: base_configs.ExperimentConfig,
   if params.runtime.run_eagerly:
     # Enable eager execution to allow step-by-step debugging
     tf.config.experimental_run_functions_eagerly(True)
+  if tf.config.list_physical_devices('GPU'):
+    if params.runtime.gpu_thread_mode:
+      keras_utils.set_gpu_thread_mode_and_count(
+          per_gpu_thread_count=params.runtime.per_gpu_thread_count,
+          gpu_thread_mode=params.runtime.gpu_thread_mode,
+          num_gpus=params.runtime.num_gpus,
+          datasets_num_private_threads=params.runtime.dataset_num_private_threads)  # pylint:disable=line-too-long
+    if params.runtime.batchnorm_spatial_persistent:
+      os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'
 
 
 def define_classifier_flags():
@@ -291,7 +287,7 @@ def serialize_config(params: base_configs.ExperimentConfig,
   params_save_path = os.path.join(model_dir, 'params.yaml')
   logging.info('Saving experiment configuration to %s', params_save_path)
   tf.io.gfile.makedirs(model_dir)
-  params_dict.save_params_dict_to_yaml(params, params_save_path)
+  hyperparams.save_params_dict_to_yaml(params, params_save_path)
 
 
 def train_and_eval(
@@ -309,13 +305,15 @@ def train_and_eval(
 
   strategy_scope = distribution_utils.get_strategy_scope(strategy)
 
-  logging.info('Detected %d devices.', strategy.num_replicas_in_sync)
+  logging.info('Detected %d devices.',
+               strategy.num_replicas_in_sync if strategy else 1)
 
   label_smoothing = params.model.loss.label_smoothing
   one_hot = label_smoothing and label_smoothing > 0
 
   builders = _get_dataset_builders(params, strategy, one_hot)
-  datasets = [builder.build() if builder else None for builder in builders]
+  datasets = [builder.build(strategy)
+              if builder else None for builder in builders]
 
   # Unpack datasets and builders based on train/val/test splits
   train_builder, validation_builder = builders  # pylint: disable=unbalanced-tuple-unpacking
@@ -343,6 +341,7 @@ def train_and_eval(
 
     metrics_map = _get_metrics(one_hot)
     metrics = [metrics_map[metric] for metric in params.train.metrics]
+    steps_per_loop = train_steps if params.train.set_epoch_loop else 1
 
     if one_hot:
       loss_obj = tf.keras.losses.CategoricalCrossentropy(
@@ -351,7 +350,8 @@ def train_and_eval(
       loss_obj = tf.keras.losses.SparseCategoricalCrossentropy()
     model.compile(optimizer=optimizer,
                   loss=loss_obj,
-                  metrics=metrics)
+                  metrics=metrics,
+                  experimental_steps_per_execution=steps_per_loop)
 
     initial_epoch = 0
     if params.train.resume_checkpoint:
@@ -387,9 +387,8 @@ def train_and_eval(
       steps_per_epoch=train_steps,
       initial_epoch=initial_epoch,
       callbacks=callbacks,
-      **validation_kwargs,
-      experimental_steps_per_execution=params.train.steps_per_loop,
-      verbose=2)
+      verbose=2,
+      **validation_kwargs)
 
   validation_output = None
   if not params.evaluation.skip_eval:
@@ -439,8 +438,7 @@ def run(flags_obj: flags.FlagValues,
 
 
 def main(_):
-  with logger.benchmark_context(flags.FLAGS):
-    stats = run(flags.FLAGS)
+  stats = run(flags.FLAGS)
   if stats:
     logging.info('Run stats:\n%s', stats)
 

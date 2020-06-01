@@ -36,7 +36,7 @@ import numpy as np
 from absl import logging
 from pycocotools import cocoeval
 import six
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.evaluation import coco_utils
 from official.vision.detection.utils import class_utils

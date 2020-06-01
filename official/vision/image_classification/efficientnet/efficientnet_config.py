@@ -22,6 +22,7 @@ from typing import Any, Mapping
 
 import dataclasses
 
+from official.modeling.hyperparams import base_config
 from official.vision.image_classification.configs import base_configs
 
 
@@ -43,23 +44,24 @@ class EfficientNetModelConfig(base_configs.ModelConfig):
       configuration.
     learning_rate: The configuration for learning rate. Defaults to an
       exponential configuration.
-
   """
   name: str = 'EfficientNet'
   num_classes: int = 1000
-  model_params: Mapping[str, Any] = dataclasses.field(default_factory=lambda: {
-      'model_name': 'efficientnet-b0',
-      'model_weights_path': '',
-      'weights_format': 'saved_model',
-      'overrides': {
-          'batch_norm': 'default',
-          'rescale_input': True,
-          'num_classes': 1000,
-      }
-  })
+  model_params: base_config.Config = dataclasses.field(
+      default_factory=lambda: {
+          'model_name': 'efficientnet-b0',
+          'model_weights_path': '',
+          'weights_format': 'saved_model',
+          'overrides': {
+              'batch_norm': 'default',
+              'rescale_input': True,
+              'num_classes': 1000,
+              'activation': 'swish',
+              'dtype': 'float32',
+          }
+      })
   loss: base_configs.LossConfig = base_configs.LossConfig(
-      name='categorical_crossentropy',
-      label_smoothing=0.1)
+      name='categorical_crossentropy', label_smoothing=0.1)
   optimizer: base_configs.OptimizerConfig = base_configs.OptimizerConfig(
       name='rmsprop',
       decay=0.9,

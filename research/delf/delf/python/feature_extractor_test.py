@@ -34,7 +34,7 @@ class FeatureExtractorTest(tf.test.TestCase):
         image, pixel_value_offset=5.0, pixel_value_scale=2.0)
     exp_normalized_image = [[[-1.0, 125.0, -2.5], [14.5, 3.5, 0.0]],
                             [[20.0, 0.0, 30.0], [25.5, 36.0, 42.0]]]
-    with self.test_session() as sess:
+    with self.session() as sess:
       normalized_image_out = sess.run(normalized_image)
 
     self.assertAllEqual(normalized_image_out, exp_normalized_image)
@@ -43,7 +43,7 @@ class FeatureExtractorTest(tf.test.TestCase):
     boxes = feature_extractor.CalculateReceptiveBoxes(
         height=1, width=2, rf=291, stride=32, padding=145)
     exp_boxes = [[-145., -145., 145., 145.], [-145., -113., 145., 177.]]
-    with self.test_session() as sess:
+    with self.session() as sess:
       boxes_out = sess.run(boxes)
 
     self.assertAllEqual(exp_boxes, boxes_out)
@@ -52,7 +52,7 @@ class FeatureExtractorTest(tf.test.TestCase):
     boxes = [[-10.0, 0.0, 11.0, 21.0], [-2.5, 5.0, 18.5, 26.0],
              [45.0, -2.5, 66.0, 18.5]]
     centers = feature_extractor.CalculateKeypointCenters(boxes)
-    with self.test_session() as sess:
+    with self.session() as sess:
       centers_out = sess.run(centers)
 
     exp_centers = [[0.5, 10.5], [8.0, 15.5], [55.5, 8.0]]
@@ -72,12 +72,11 @@ class FeatureExtractorTest(tf.test.TestCase):
       del normalized_image, reuse  # Unused variables in the test.
       image_shape = tf.shape(image)
       attention = tf.squeeze(tf.norm(image, axis=3))
-      feature_map = tf.concat(
-          [
-              tf.tile(image, [1, 1, 1, 341]),
-              tf.zeros([1, image_shape[1], image_shape[2], 1])
-          ],
-          axis=3)
+      feature_map = tf.concat([
+          tf.tile(image, [1, 1, 1, 341]),
+          tf.zeros([1, image_shape[1], image_shape[2], 1])
+      ],
+                              axis=3)
       return attention, feature_map
 
     boxes, feature_scales, features, scores = (
@@ -99,7 +98,7 @@ class FeatureExtractorTest(tf.test.TestCase):
             axis=1))
     exp_scores = [[1.723042], [1.600781]]
 
-    with self.test_session() as sess:
+    with self.session() as sess:
       boxes_out, feature_scales_out, features_out, scores_out = sess.run(
           [boxes, feature_scales, features, scores])
 
@@ -118,16 +117,18 @@ class FeatureExtractorTest(tf.test.TestCase):
     use_whitening = True
     pca_variances = tf.constant([4.0, 1.0])
 
-    output = feature_extractor.ApplyPcaAndWhitening(
-        data, pca_matrix, pca_mean, output_dim, use_whitening, pca_variances)
+    output = feature_extractor.ApplyPcaAndWhitening(data, pca_matrix, pca_mean,
+                                                    output_dim, use_whitening,
+                                                    pca_variances)
 
     exp_output = [[2.5, -5.0], [-6.0, -2.0], [-0.5, -3.0], [1.0, -2.0]]
 
-    with self.test_session() as sess:
+    with self.session() as sess:
       output_out = sess.run(output)
 
     self.assertAllEqual(exp_output, output_out)
 
 
 if __name__ == '__main__':
+  tf.compat.v1.disable_eager_execution()
   tf.test.main()

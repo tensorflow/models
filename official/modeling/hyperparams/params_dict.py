@@ -42,6 +42,10 @@ _PARAM_RE = re.compile(r"""
   \[[^\]]*\]))                 # list of values
   ($|,\s*)""", re.VERBOSE)
 
+# pylint: disable=anomalous-backslash-in-string
+_CONST_VALUE_RE = re.compile('(\d.*|-\d.*|None)')
+# pylint: enable=anomalous-backslash-in-string
+
 
 class ParamsDict(object):
   """A hyperparameter container class."""
@@ -124,6 +128,25 @@ class ParamsDict(object):
   def get(self, key, value=None):
     """Accesses through built-in dictionary get method."""
     return self.__dict__.get(key, value)
+
+  def __delattr__(self, k):
+    """Deletes the key and removes its values.
+
+    Args:
+      k: the key string.
+
+    Raises:
+      AttributeError: if k is reserverd or not defined in the ParamsDict.
+      ValueError: if the ParamsDict instance has been locked.
+    """
+    if k in ParamsDict.RESERVED_ATTR:
+      raise AttributeError('The key `{}` is reserved. No change is allowes. '
+                           .format(k))
+    if k not in self.__dict__.keys():
+      raise AttributeError('The key `{}` does not exist. '.format(k))
+    if self._locked:
+      raise ValueError('The ParamsDict has been locked. No change is allowed.')
+    del self.__dict__[k]
 
   def override(self, override_params, is_strict=True):
     """Override the ParamsDict with a set of given params.
@@ -220,11 +243,20 @@ class ParamsDict(object):
       ValueError: if the restriction defined in the string is not supported.
     """
     def _get_kv(dotted_string, params_dict):
-      tokenized_params = dotted_string.split('.')
-      v = params_dict
-      for t in tokenized_params:
-        v = v[t]
-      return tokenized_params[-1], v
+      """Get keys and values indicated by dotted_string."""
+      if _CONST_VALUE_RE.match(dotted_string) is not None:
+        const_str = dotted_string
+        if const_str == 'None':
+          constant = None
+        else:
+          constant = float(const_str)
+        return None, constant
+      else:
+        tokenized_params = dotted_string.split('.')
+        v = params_dict
+        for t in tokenized_params:
+          v = v[t]
+        return tokenized_params[-1], v
 
     def _get_kvs(tokens, params_dict):
       if len(tokens) != 2:
@@ -286,7 +318,6 @@ def read_yaml_to_params_dict(file_path):
 def save_params_dict_to_yaml(params, file_path):
   """Saves the input ParamsDict to a YAML file."""
   with tf.io.gfile.GFile(file_path, 'w') as f:
-
     def _my_list_rep(dumper, data):
       # u'tag:yaml.org,2002:seq' is the YAML internal tag for sequence.
       return dumper.represent_sequence(

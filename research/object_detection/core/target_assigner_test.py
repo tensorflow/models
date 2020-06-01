@@ -25,6 +25,7 @@ from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner as targetassigner
 from object_detection.matchers import argmax_matcher
 from object_detection.matchers import bipartite_matcher
+from object_detection.utils import np_box_ops
 from object_detection.utils import test_case
 
 
@@ -65,10 +66,10 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_targets_out, exp_reg_targets)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
-    self.assertEquals(cls_targets_out.dtype, np.float32)
-    self.assertEquals(cls_weights_out.dtype, np.float32)
-    self.assertEquals(reg_targets_out.dtype, np.float32)
-    self.assertEquals(reg_weights_out.dtype, np.float32)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
 
   def test_assign_class_agnostic_with_ignored_matches(self):
     # Note: test is very similar to above. The third box matched with an IOU
@@ -108,10 +109,10 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_targets_out, exp_reg_targets)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
-    self.assertEquals(cls_targets_out.dtype, np.float32)
-    self.assertEquals(cls_weights_out.dtype, np.float32)
-    self.assertEquals(reg_targets_out.dtype, np.float32)
-    self.assertEquals(reg_weights_out.dtype, np.float32)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
 
   def test_assign_agnostic_with_keypoints(self):
     def graph_fn(anchor_means, groundtruth_box_corners,
@@ -158,10 +159,10 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_targets_out, exp_reg_targets)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
-    self.assertEquals(cls_targets_out.dtype, np.float32)
-    self.assertEquals(cls_weights_out.dtype, np.float32)
-    self.assertEquals(reg_targets_out.dtype, np.float32)
-    self.assertEquals(reg_weights_out.dtype, np.float32)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
 
   def test_assign_class_agnostic_with_keypoints_and_ignored_matches(self):
     # Note: test is very similar to above. The third box matched with an IOU
@@ -213,10 +214,10 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_targets_out, exp_reg_targets)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
-    self.assertEquals(cls_targets_out.dtype, np.float32)
-    self.assertEquals(cls_weights_out.dtype, np.float32)
-    self.assertEquals(reg_targets_out.dtype, np.float32)
-    self.assertEquals(reg_weights_out.dtype, np.float32)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
 
   def test_assign_multiclass(self):
 
@@ -271,10 +272,10 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_targets_out, exp_reg_targets)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
-    self.assertEquals(cls_targets_out.dtype, np.float32)
-    self.assertEquals(cls_weights_out.dtype, np.float32)
-    self.assertEquals(reg_targets_out.dtype, np.float32)
-    self.assertEquals(reg_weights_out.dtype, np.float32)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
 
   def test_assign_multiclass_with_groundtruth_weights(self):
 
@@ -379,10 +380,10 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_targets_out, exp_reg_targets)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
-    self.assertEquals(cls_targets_out.dtype, np.float32)
-    self.assertEquals(cls_weights_out.dtype, np.float32)
-    self.assertEquals(reg_targets_out.dtype, np.float32)
-    self.assertEquals(reg_weights_out.dtype, np.float32)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
 
   def test_assign_empty_groundtruth(self):
 
@@ -431,10 +432,10 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertAllClose(cls_weights_out, exp_cls_weights)
     self.assertAllClose(reg_targets_out, exp_reg_targets)
     self.assertAllClose(reg_weights_out, exp_reg_weights)
-    self.assertEquals(cls_targets_out.dtype, np.float32)
-    self.assertEquals(cls_weights_out.dtype, np.float32)
-    self.assertEquals(reg_targets_out.dtype, np.float32)
-    self.assertEquals(reg_weights_out.dtype, np.float32)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
 
   def test_raises_error_on_incompatible_groundtruth_boxes_and_labels(self):
     similarity_calc = region_similarity_calculator.NegSqDistSimilarity()
@@ -1226,6 +1227,8 @@ class CreateTargetAssignerTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       targetassigner.create_target_assigner('InvalidDetector',
                                             stage='invalid_stage')
+
+
 
 
 if __name__ == '__main__':
