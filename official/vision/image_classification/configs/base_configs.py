@@ -23,54 +23,50 @@ from typing import Any, List, Mapping, Optional
 
 import dataclasses
 
-from official.modeling.hyperparams import base_config
+from official.modeling import hyperparams
 
-
-CallbacksConfig = base_config.CallbacksConfig
-TensorboardConfig = base_config.TensorboardConfig
-RuntimeConfig = base_config.RuntimeConfig
+CallbacksConfig = hyperparams.CallbacksConfig
+TensorboardConfig = hyperparams.TensorboardConfig
+RuntimeConfig = hyperparams.RuntimeConfig
 
 
 @dataclasses.dataclass
-class ExportConfig(base_config.Config):
+class ExportConfig(hyperparams.Config):
   """Configuration for exports.
 
   Attributes:
     checkpoint: the path to the checkpoint to export.
     destination: the path to where the checkpoint should be exported.
-
   """
   checkpoint: str = None
   destination: str = None
 
 
 @dataclasses.dataclass
-class MetricsConfig(base_config.Config):
+class MetricsConfig(hyperparams.Config):
   """Configuration for Metrics.
 
   Attributes:
     accuracy: Whether or not to track accuracy as a Callback. Defaults to None.
     top_5: Whether or not to track top_5_accuracy as a Callback. Defaults to
       None.
-
   """
   accuracy: bool = None
   top_5: bool = None
 
 
 @dataclasses.dataclass
-class TimeHistoryConfig(base_config.Config):
+class TimeHistoryConfig(hyperparams.Config):
   """Configuration for the TimeHistory callback.
 
   Attributes:
     log_steps: Interval of steps between logging of batch level stats.
-
   """
   log_steps: int = None
 
 
 @dataclasses.dataclass
-class TrainConfig(base_config.Config):
+class TrainConfig(hyperparams.Config):
   """Configuration for training.
 
   Attributes:
@@ -86,7 +82,6 @@ class TrainConfig(base_config.Config):
       equal the number of training steps in `model.compile`. This reduces the
       number of callbacks run per epoch which significantly improves end-to-end
       TPU training time.
-
   """
   resume_checkpoint: bool = None
   epochs: int = None
@@ -99,7 +94,7 @@ class TrainConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class EvalConfig(base_config.Config):
+class EvalConfig(hyperparams.Config):
   """Configuration for evaluation.
 
   Attributes:
@@ -109,7 +104,6 @@ class EvalConfig(base_config.Config):
       be inferred based on the number of images and batch size. Defaults to
       None.
     skip_eval: Whether or not to skip evaluation.
-
   """
   epochs_between_evals: int = None
   steps: int = None
@@ -117,21 +111,20 @@ class EvalConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class LossConfig(base_config.Config):
+class LossConfig(hyperparams.Config):
   """Configuration for Loss.
 
   Attributes:
     name: The name of the loss. Defaults to None.
     label_smoothing: Whether or not to apply label smoothing to the loss. This
       only applies to 'categorical_cross_entropy'.
-
   """
   name: str = None
   label_smoothing: float = None
 
 
 @dataclasses.dataclass
-class OptimizerConfig(base_config.Config):
+class OptimizerConfig(hyperparams.Config):
   """Configuration for Optimizers.
 
   Attributes:
@@ -144,12 +137,11 @@ class OptimizerConfig(base_config.Config):
       exponential moving average is not used. Defaults to None.
     lookahead: Whether or not to apply the lookahead optimizer. Defaults to
       None.
-    beta_1: The exponential decay rate for the 1st moment estimates. Used in
-      the Adam optimizers. Defaults to None.
-    beta_2: The exponential decay rate for the 2nd moment estimates. Used in
-      the Adam optimizers. Defaults to None.
+    beta_1: The exponential decay rate for the 1st moment estimates. Used in the
+      Adam optimizers. Defaults to None.
+    beta_2: The exponential decay rate for the 2nd moment estimates. Used in the
+      Adam optimizers. Defaults to None.
     epsilon: Small value used to avoid 0 denominator. Defaults to 1e-7.
-
   """
   name: str = None
   decay: float = None
@@ -164,7 +156,7 @@ class OptimizerConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class LearningRateConfig(base_config.Config):
+class LearningRateConfig(hyperparams.Config):
   """Configuration for learning rates.
 
   Attributes:
@@ -173,16 +165,15 @@ class LearningRateConfig(base_config.Config):
     decay_epochs: The number of decay epochs. Defaults to None.
     decay_rate: The rate of decay. Defaults to None.
     warmup_epochs: The number of warmup epochs. Defaults to None.
-    batch_lr_multiplier: The multiplier to apply to the base learning rate,
-      if necessary. Defaults to None.
-    examples_per_epoch: the number of examples in a single epoch.
-      Defaults to None.
+    batch_lr_multiplier: The multiplier to apply to the base learning rate, if
+      necessary. Defaults to None.
+    examples_per_epoch: the number of examples in a single epoch. Defaults to
+      None.
     boundaries: boundaries used in piecewise constant decay with warmup.
     multipliers: multipliers used in piecewise constant decay with warmup.
     scale_by_batch_size: Scale the learning rate by a fraction of the batch
       size. Set to 0 for no scaling (default).
     staircase: Apply exponential decay at discrete values instead of continuous.
-
   """
   name: str = None
   initial_lr: float = None
@@ -197,7 +188,7 @@ class LearningRateConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class ModelConfig(base_config.Config):
+class ModelConfig(hyperparams.Config):
   """Configuration for Models.
 
   Attributes:
@@ -206,17 +197,16 @@ class ModelConfig(base_config.Config):
     num_classes: The number of classes in the model. Defaults to None.
     loss: A `LossConfig` instance. Defaults to None.
     optimizer: An `OptimizerConfig` instance. Defaults to None.
-
   """
   name: str = None
-  model_params: base_config.Config = None
+  model_params: hyperparams.Config = None
   num_classes: int = None
   loss: LossConfig = None
   optimizer: OptimizerConfig = None
 
 
 @dataclasses.dataclass
-class ExperimentConfig(base_config.Config):
+class ExperimentConfig(hyperparams.Config):
   """Base configuration for an image classification experiment.
 
   Attributes:
@@ -227,7 +217,6 @@ class ExperimentConfig(base_config.Config):
     evaluation: An `EvalConfig` instance.
     model: A `ModelConfig` instance.
     export: An `ExportConfig` instance.
-
   """
   model_dir: str = None
   model_name: str = None
