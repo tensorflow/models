@@ -94,12 +94,6 @@ class MaskedLM(network.Network):
       output_tensors = self.logits
     elif output == 'predictions':
       output_tensors = predictions
-    elif output == 'both':
-        super(MaskedLM, self).__init__(
-            inputs=[sequence_data, masked_lm_positions],
-            outputs=[self.logits, predictions],
-            **kwargs)
-        return
     else:
       raise ValueError(
           ('Unknown `output` value "%s". `output` can be either "logits" or '

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -104,7 +104,10 @@ class ElectraPretrainer(tf.keras.Model):
         output='logits',
         name='generator')
     lm_outputs = tf.identity(self.masked_lm([sequence_output, masked_lm_positions]), "mlm_logits")
+
+    #Generates fake data to train discriminator on
     fake_data, labels = _get_fake_data(inputs[0], lm_outputs, masked_lm_positions)
+
     other_output, other_cls_output = discriminator([fake_data, inputs[1], inputs[2]])
     self.discrimnator = networks.Discriminator(
         input_width=other_output.shape[-1],
@@ -127,14 +130,14 @@ class ElectraPretrainer(tf.keras.Model):
     return cls(**config)
 
 
-def _get_fake_data(og, predictions, maskedlm_ids):
+def _get_fake_data(orig_sent, predictions, maskedlm_ids):
   tokids = tf.stop_gradient(tf.math.argmax(predictions,axis=-1,output_type=tf.dtypes.int32))
-  updatedids, mask = _scatter_update(og,maskedlm_ids,tokids)
-  labels = mask*(1-tf.cast(tf.equal(og,updatedids),tf.int32))
+  updatedids, mask = _scatter_update(orig_sent,maskedlm_ids,tokids)
+  labels = mask*(1-tf.cast(tf.equal(orig_sent,updatedids),tf.int32))
   return updatedids, labels
-def _scatter_update(og, maskedlm_ids, tokids):
+def _scatter_update(orig_sent, maskedlm_ids, tokids):
     sequence_shape = tf_utils.get_shape_list(
-        og, name='input_word_ids')
+        orig_sent, name='input_word_ids')
     B, L = sequence_shape
     N = maskedlm_ids.shape[1]
     shift = tf.reshape(tf.range(0, B, dtype=tf.int32) * L, [-1, 1])
@@ -151,6 +154,6 @@ def _scatter_update(og, maskedlm_ids, tokids):
     updates_mask *= not_first_token
     updates = tf.math.floordiv(updates, tf.maximum(1, updates_mask))
     updates_mask = tf.minimum(updates_mask, 1, name = 'updates_mask')
-    updated_sequence = (((1 - updates_mask) * og) +
+    updated_sequence = (((1 - updates_mask) * orig_sent) +
                         (updates_mask * updates))
     return updated_sequence, updates_mask

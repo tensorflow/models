@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,12 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
+import dataclasses
 import json
 import six
 import tensorflow as tf
 from official.nlp.bert import configs
 from official.modeling.hyperparams import base_config
 
+@dataclasses.dataclass
 class ElectraConfig(base_config.Config):
   """Configuration for `ElectraModel`."""
 
@@ -40,9 +42,8 @@ class ElectraConfig(base_config.Config):
                max_position_embeddings=512,
                type_vocab_size=16,
                initializer_range=0.02,
-               multiplier = 3,
-               discrim_rate = 50,
-               backward_compatible=True):
+               multiplier=3,
+               discrim_rate=50):
     """Constructs BertConfig.
 
     Args:
@@ -66,8 +67,6 @@ class ElectraConfig(base_config.Config):
         `BertModel`.
       initializer_range: The stdev of the truncated_normal_initializer for
         initializing all weight matrices.
-      backward_compatible: Boolean, whether the variables shape are compatible
-        with checkpoints converted from TF 1.x BERT.
     """
     self.vocab_size = vocab_size
     self.hidden_size = hidden_size
@@ -108,6 +107,7 @@ class ElectraConfig(base_config.Config):
     self.type_vocab_size,
     self.initializer_range,
     self.backward_compatible)
+
   def get_discriminator_bert(self):
     return configs.BertConfig(self.vocab_size,
     self.discrim_hidden_size,
