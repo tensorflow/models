@@ -171,26 +171,11 @@ class Transformer(tf.keras.Model):
 
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
-
-        pos_encoding_prev = model_utils.get_position_encoding(
-            length, self.params["hidden_size"])
-
+        # pos_encoding_prev = model_utils.get_position_encoding(
+        #     length, self.params["hidden_size"])
         pos_layer = position_embedding.PositionEmbeddingRelative(
             hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(embedded_inputs)
-
-        # print ('input', embedded_inputs.shape.as_list())
-        # print ('output', pos_encoding.shape.as_list())
-        # tf.print('all info new', pos_encoding, summarize=-1)
-
-        same = tf.math.reduce_all(tf.math.equal(pos_encoding_prev, pos_encoding))
-        # print ('same or not', same)
-        tf.print('same or not', same)
-        # assert same
-
-        tf.print('should be diff')
-        tf.print('should be diff', tf.math.reduce_all(tf.math.equal(embedded_inputs, pos_encoding)))
-
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
 
@@ -227,18 +212,11 @@ class Transformer(tf.keras.Model):
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
-        pos_encoding_prev = model_utils.get_position_encoding(
-            length, self.params["hidden_size"])
-
+        # pos_encoding_prev = model_utils.get_position_encoding(
+        #     length, self.params["hidden_size"])
         pos_layer = position_embedding.PositionEmbeddingRelative(
             hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(decoder_inputs)
-
-        same = tf.math.reduce_all(tf.math.equal(pos_encoding_prev, pos_encoding))
-        # print ('same or not', same)
-        tf.print('same or not', same)
-        # assert same
-
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         decoder_inputs += pos_encoding
       if training:
@@ -261,19 +239,13 @@ class Transformer(tf.keras.Model):
   def _get_symbols_to_logits_fn(self, max_decode_length, training):
     """Returns a decoding function that calculates logits of the next tokens."""
 
-    timing_signal_prev = model_utils.get_position_encoding(
-        max_decode_length + 1, self.params["hidden_size"])
+    # timing_signal_prev = model_utils.get_position_encoding(
+    #     max_decode_length + 1, self.params["hidden_size"])
 
     pos_layer = position_embedding.PositionEmbeddingRelative(
         hidden_size=self.params["hidden_size"],
         length=max_decode_length + 1)
     timing_signal = pos_layer(None)
-
-    same = tf.math.reduce_all(tf.math.equal(timing_signal_prev, timing_signal))
-    # print ('same or not', same)
-    tf.print('same or not', same)
-    # assert same
-
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
         max_decode_length, dtype=self.params["dtype"])
