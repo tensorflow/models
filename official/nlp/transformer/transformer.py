@@ -171,8 +171,6 @@ class Transformer(tf.keras.Model):
 
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
-        # pos_encoding_prev = model_utils.get_position_encoding(
-        #     length, self.params["hidden_size"])
         pos_layer = position_embedding.RelativePositionEmbedding(
             hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(embedded_inputs)
@@ -212,8 +210,6 @@ class Transformer(tf.keras.Model):
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
-        # pos_encoding_prev = model_utils.get_position_encoding(
-        #     length, self.params["hidden_size"])
         pos_layer = position_embedding.RelativePositionEmbedding(
             hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(decoder_inputs)
@@ -238,9 +234,6 @@ class Transformer(tf.keras.Model):
 
   def _get_symbols_to_logits_fn(self, max_decode_length, training):
     """Returns a decoding function that calculates logits of the next tokens."""
-
-    # timing_signal_prev = model_utils.get_position_encoding(
-    #     max_decode_length + 1, self.params["hidden_size"])
 
     pos_layer = position_embedding.RelativePositionEmbedding(
         hidden_size=self.params["hidden_size"],
