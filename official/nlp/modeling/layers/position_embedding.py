@@ -132,6 +132,8 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
     hidden_size: Size of the hidden layer.
     min_timescale: Minimum scale that will be applied at each position
     max_timescale: Maximum scale that will be applied at each position.
+    length: Number of positions. Should be specified if `inputs` is None at
+      `call(self, inputs)`
   """
 
   def __init__(self,
