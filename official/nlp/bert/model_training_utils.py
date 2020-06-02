@@ -488,6 +488,11 @@ def run_customized_training_loop(
         summary_writer = tf.summary.create_noop_writer()
 
       with summary_writer.as_default():
+        if callable(optimizer.learning_rate):
+          tf.summary.scalar(
+              'learning_rate',
+              optimizer.learning_rate(current_step),
+              step=current_step)
         tf.summary.scalar(
             train_loss_metric.name, train_loss, step=current_step)
         for metric in train_metrics + model.metrics:

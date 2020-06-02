@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import numpy as np
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 from object_detection.core import freezable_batch_norm

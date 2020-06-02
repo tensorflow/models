@@ -18,10 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import io
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy import spatial
+from skimage import feature
 from skimage import measure
 from skimage import transform
 
@@ -45,7 +48,11 @@ def MatchFeatures(query_locations,
                   index_image_descriptors,
                   ransac_seed=None,
                   feature_distance_threshold=0.9,
-                  ransac_residual_threshold=10.0):
+                  ransac_residual_threshold=10.0,
+                  query_im_array=None,
+                  index_im_array=None,
+                  query_im_scale_factors=None,
+                  index_im_scale_factors=None):
   """Matches local features using geometric verification.
 
   First, finds putative local feature matches by matching `query_descriptors`
@@ -67,9 +74,21 @@ def MatchFeatures(query_locations,
       features is considered a potential match, and will be fed into RANSAC.
     ransac_residual_threshold: Residual error threshold for considering matches
       as inliers, used in RANSAC algorithm.
+    query_im_array: Optional. If not None, contains a NumPy array with the query
+      image, used to produce match visualization, if there is a match.
+    index_im_array: Optional. Same as `query_im_array`, but for index image.
+    query_im_scale_factors: Optional. If not None, contains a NumPy array with
+      the query image scales, used to produce match visualization, if there is a
+      match. If None and a visualization will be produced, [1.0, 1.0] is used
+      (ie, feature locations are not scaled).
+    index_im_scale_factors: Optional. Same as `query_im_scale_factors`, but for
+      index image.
 
   Returns:
     score: Number of inliers of match. If no match is found, returns 0.
+    match_viz_bytes: Encoded image bytes with visualization of the match, if
+      there is one, and if `query_im_array` and `index_im_array` are properly
+      set. Otherwise, it's an empty bytes string.
 
   Raises:
     ValueError: If local descriptors from query and index images have different
@@ -78,7 +97,7 @@ def MatchFeatures(query_locations,
   num_features_query = query_locations.shape[0]
   num_features_index_image = index_image_locations.shape[0]
   if not num_features_query or not num_features_index_image:
-    return 0
+    return 0, b''
 
   local_feature_dim = query_descriptors.shape[1]
   if index_image_descriptors.shape[1] != local_feature_dim:
@@ -105,7 +124,7 @@ def MatchFeatures(query_locations,
 
   # If there are not enough putative matches, early return 0.
   if query_locations_to_use.shape[0] <= _MIN_RANSAC_SAMPLES:
-    return 0
+    return 0, b''
 
   # Perform geometric verification using RANSAC.
   _, inliers = measure.ransac(
@@ -115,15 +134,49 @@ def MatchFeatures(query_locations,
       residual_threshold=ransac_residual_threshold,
       max_trials=_NUM_RANSAC_TRIALS,
       random_state=ransac_seed)
+  match_viz_bytes = b''
+
   if inliers is None:
     inliers = []
+  elif query_im_array is not None and index_im_array is not None:
+    if query_im_scale_factors is None:
+      query_im_scale_factors = [1.0, 1.0]
+    if index_im_scale_factors is None:
+      index_im_scale_factors = [1.0, 1.0]
+    inlier_idxs = np.nonzero(inliers)[0]
+    _, ax = plt.subplots()
+    ax.axis('off')
+    ax.xaxis.set_major_locator(plt.NullLocator())
+    ax.yaxis.set_major_locator(plt.NullLocator())
+    plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+    plt.margins(0, 0)
+    feature.plot_matches(
+        ax,
+        query_im_array,
+        index_im_array,
+        query_locations_to_use * query_im_scale_factors,
+        index_image_locations_to_use * index_im_scale_factors,
+        np.column_stack((inlier_idxs, inlier_idxs)),
+        only_matches=True)
 
-  return sum(inliers)
+    match_viz_io = io.BytesIO()
+    plt.savefig(match_viz_io, format='jpeg', bbox_inches='tight', pad_inches=0)
+    match_viz_bytes = match_viz_io.getvalue()
+
+  return sum(inliers), match_viz_bytes
 
 
-def RerankByGeometricVerification(input_ranks, initial_scores, query_name,
-                                  index_names, query_features_dir,
-                                  index_features_dir, junk_ids):
+def RerankByGeometricVerification(input_ranks,
+                                  initial_scores,
+                                  query_name,
+                                  index_names,
+                                  query_features_dir,
+                                  index_features_dir,
+                                  junk_ids,
+                                  local_feature_extension=_DELF_EXTENSION,
+                                  ransac_seed=None,
+                                  feature_distance_threshold=0.9,
+                                  ransac_residual_threshold=10.0):
   """Re-ranks retrieval results using geometric verification.
 
   Args:
@@ -139,6 +192,13 @@ def RerankByGeometricVerification(input_ranks, initial_scores, query_name,
       (string).
     junk_ids: Set with indices of junk images which should not be considered
       during re-ranking.
+    local_feature_extension: String, extension to use for loading local feature
+      files.
+    ransac_seed: Seed used by RANSAC. If None (default), no seed is provided.
+    feature_distance_threshold: Distance threshold below which a pair of local
+      features is considered a potential match, and will be fed into RANSAC.
+    ransac_residual_threshold: Residual error threshold for considering matches
+      as inliers, used in RANSAC algorithm.
 
   Returns:
     output_ranks: 1D NumPy array with index image indices, sorted from the most
@@ -168,7 +228,7 @@ def RerankByGeometricVerification(input_ranks, initial_scores, query_name,
 
   # Load query image features.
   query_features_path = os.path.join(query_features_dir,
-                                     query_name + _DELF_EXTENSION)
+                                     query_name + local_feature_extension)
   query_locations, _, query_descriptors, _, _ = feature_io.ReadFromFile(
       query_features_path)
 
@@ -187,13 +247,19 @@ def RerankByGeometricVerification(input_ranks, initial_scores, query_name,
 
     # Load index image features.
     index_image_features_path = os.path.join(
-        index_features_dir, index_names[index_image_id] + _DELF_EXTENSION)
+        index_features_dir,
+        index_names[index_image_id] + local_feature_extension)
     (index_image_locations, _, index_image_descriptors, _,
      _) = feature_io.ReadFromFile(index_image_features_path)
 
-    inliers_and_initial_scores[index_image_id][0] = MatchFeatures(
-        query_locations, query_descriptors, index_image_locations,
-        index_image_descriptors)
+    inliers_and_initial_scores[index_image_id][0], _ = MatchFeatures(
+        query_locations,
+        query_descriptors,
+        index_image_locations,
+        index_image_descriptors,
+        ransac_seed=ransac_seed,
+        feature_distance_threshold=feature_distance_threshold,
+        ransac_residual_threshold=ransac_residual_threshold)
 
   # Sort based on (inliers_score, initial_score).
   def _InliersInitialScoresSorting(k):

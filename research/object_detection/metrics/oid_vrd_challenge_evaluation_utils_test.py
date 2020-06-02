@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import numpy as np
 import pandas as pd
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.core import standard_fields
 from object_detection.metrics import oid_vrd_challenge_evaluation_utils as utils
 from object_detection.utils import vrd_evaluation

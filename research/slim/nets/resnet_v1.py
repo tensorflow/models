@@ -34,7 +34,7 @@ units.
 
 Typical use:
 
-   from tensorflow.contrib.slim.nets import resnet_v1
+   from tf_slim.nets import resnet_v1
 
 ResNet-101 for image classification into 1000 classes:
 
@@ -56,14 +56,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from nets import resnet_utils
 
 
 resnet_arg_scope = resnet_utils.resnet_arg_scope
-slim = contrib_slim
 
 
 class NoOpScope(object):
@@ -109,7 +108,7 @@ def bottleneck(inputs,
   Returns:
     The ResNet unit's output.
   """
-  with tf.compat.v1.variable_scope(scope, 'bottleneck_v1', [inputs]) as sc:
+  with tf.variable_scope(scope, 'bottleneck_v1', [inputs]) as sc:
     depth_in = slim.utils.last_dimension(inputs.get_shape(), min_rank=4)
     if depth == depth_in:
       shortcut = resnet_utils.subsample(inputs, stride, 'shortcut')
@@ -219,7 +218,7 @@ def resnet_v1(inputs,
   Raises:
     ValueError: If the target output_stride is not valid.
   """
-  with tf.compat.v1.variable_scope(
+  with tf.variable_scope(
       scope, 'resnet_v1', [inputs], reuse=reuse) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     with slim.arg_scope([slim.conv2d, bottleneck,

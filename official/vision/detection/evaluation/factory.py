@@ -29,6 +29,11 @@ def evaluator_generator(params):
   elif params.type == 'box_and_mask':
     evaluator = coco_evaluator.COCOEvaluator(
         annotation_file=params.val_json_file, include_mask=True)
+  elif params.type == 'shapemask_box_and_mask':
+    evaluator = coco_evaluator.ShapeMaskCOCOEvaluator(
+        mask_eval_class=params.mask_eval_class,
+        annotation_file=params.val_json_file, include_mask=True)
+
   else:
     raise ValueError('Evaluator %s is not supported.' % params.type)
 

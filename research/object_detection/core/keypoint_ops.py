@@ -20,7 +20,7 @@ where the last dimension holds rank 2 tensors of the form [y, x] representing
 the coordinates of the keypoint.
 """
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def scale(keypoints, y_scale, x_scale, scope=None):

@@ -8,7 +8,8 @@ Tensorflow Object Detection API depends on the following libraries:
 *   Python-tk
 *   Pillow 1.0
 *   lxml
-*   tf Slim (which is included in the "tensorflow/models/research/" checkout)
+*   tf-slim (https://github.com/google-research/tf-slim)
+*   slim (which is included in the "tensorflow/models/research/" checkout)
 *   Jupyter notebook
 *   Matplotlib
 *   Tensorflow (1.15.0)
@@ -29,23 +30,25 @@ pip install tensorflow-gpu
 
 The remaining libraries can be installed on Ubuntu 16.04 using via apt-get:
 
-``` bash
+```bash
 sudo apt-get install protobuf-compiler python-pil python-lxml python-tk
 pip install --user Cython
 pip install --user contextlib2
 pip install --user jupyter
 pip install --user matplotlib
+pip install --user tf_slim
 ```
 
 Alternatively, users can install dependencies using pip:
 
-``` bash
+```bash
 pip install --user Cython
 pip install --user contextlib2
 pip install --user pillow
 pip install --user lxml
 pip install --user jupyter
 pip install --user matplotlib
+pip install --user tf_slim
 ```
 
 <!-- common_typos_disable -->
@@ -160,6 +163,10 @@ to avoid running this manually, you can add it as a new line to the end of your
 ~/.bashrc file, replacing \`pwd\` with the absolute path of
 tensorflow/models/research on your system. After updating ~/.bashrc file you
 can run the following command:
+
+Note: Some of the functions defined in tensorflow/models/research/slim has been
+moved to [tf-slim](https://github.com/google-research/tf-slim), so installing
+tf_slim is required now.
 
 ``` bash
 source ~/.bashrc

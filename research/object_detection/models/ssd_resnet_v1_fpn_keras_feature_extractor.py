@@ -22,7 +22,7 @@ from __future__ import print_function
 
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators

@@ -14,11 +14,10 @@
 # ==============================================================================
 """Functions for quantized training and evaluation."""
 
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 # pylint: disable=g-import-not-at-top
 try:
-  from tensorflow.contrib import layers as contrib_layers
   from tensorflow.contrib import quantize as contrib_quantize
 except ImportError:
   # TF 2.0 doesn't ship with contrib.
@@ -49,7 +48,6 @@ def build(graph_rewriter_config, is_training):
       contrib_quantize.experimental_create_eval_graph(
           input_graph=tf.get_default_graph()
       )
-
-    contrib_layers.summarize_collection('quant_vars')
+    slim.summarize_collection('quant_vars')
 
   return graph_rewrite_fn

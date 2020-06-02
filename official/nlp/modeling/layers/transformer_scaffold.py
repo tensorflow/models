@@ -143,7 +143,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
     default_attention_cfg = {
         "num_heads": self._num_heads,
         "key_size": self._attention_head_size,
-        "dropout_rate": self._attention_dropout_rate,
+        "dropout": self._attention_dropout_rate,
         "name": "self_attention"
     }
     default_attention_cfg.update(common_kwargs)
@@ -176,16 +176,16 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
     if self._feedforward_block is None:
       self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
-          "...x,xy->...y",
-          output_shape=self._intermediate_size,
-          bias_axes="y",
+          "abc,cd->abd",
+          output_shape=(None, self._intermediate_size),
+          bias_axes="d",
           activation=self._intermediate_activation,
           name="intermediate",
           **common_kwargs)
       self._output_dense = tf.keras.layers.experimental.EinsumDense(
-          "...x,xy->...y",
-          output_shape=hidden_size,
-          bias_axes="y",
+          "abc,cd->abd",
+          output_shape=(None, hidden_size),
+          bias_axes="d",
           name="output",
           **common_kwargs)
 

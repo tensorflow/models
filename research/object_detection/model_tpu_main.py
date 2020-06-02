@@ -23,7 +23,7 @@ from __future__ import division
 from __future__ import print_function
 
 from absl import flags
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 from object_detection import model_hparams
@@ -85,6 +85,11 @@ flags.DEFINE_string(
     'where event and checkpoint files will be written.')
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                     'file.')
+flags.DEFINE_integer(
+    'max_eval_retries', 0, 'If running continuous eval, the maximum number of '
+    'retries upon encountering tf.errors.InvalidArgumentError. If negative, '
+    'will always retry the evaluation.'
+)
 
 FLAGS = tf.flags.FLAGS
 
@@ -142,7 +147,7 @@ def main(unused_argv):
       # Currently only a single eval input is allowed.
       input_fn = eval_input_fns[0]
     model_lib.continuous_eval(estimator, FLAGS.model_dir, input_fn, train_steps,
-                              name)
+                              name, FLAGS.max_eval_retries)
 
 
 if __name__ == '__main__':

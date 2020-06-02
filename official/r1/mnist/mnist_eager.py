@@ -32,6 +32,8 @@ import time
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
+from six.moves import range
+from six.moves import zip
 import tensorflow as tf
 from tensorflow.python import eager as tfe
 # pylint: enable=g-bad-import-order
@@ -75,7 +77,7 @@ def train(model, optimizer, dataset, step_counter, log_interval=None):
                                     compute_accuracy(logits, labels))
       grads = tape.gradient(loss_value, model.variables)
       optimizer.apply_gradients(
-          zip(grads, model.variables), global_step=step_counter)
+          list(zip(grads, model.variables)), global_step=step_counter)
       if log_interval and batch % log_interval == 0:
         rate = log_interval / (time.time() - start)
         print('Step #%d\tLoss: %.6f (%d steps/sec)' % (batch, loss_value, rate))

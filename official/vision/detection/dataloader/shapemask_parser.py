@@ -419,6 +419,7 @@ class Parser(object):
 
     inputs = {
         'image': image,
+        'image_info': image_info,
         'mask_boxes': sampled_boxes,
         'mask_outer_boxes': mask_outer_boxes,
         'mask_classes': sampled_classes,

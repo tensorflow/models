@@ -38,10 +38,8 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 
 class Block(collections.namedtuple('Block', ['scope', 'unit_fn', 'args'])):
@@ -181,7 +179,7 @@ def stack_blocks_dense(net, blocks, output_stride=None,
   rate = 1
 
   for block in blocks:
-    with tf.compat.v1.variable_scope(block.scope, 'block', [net]) as sc:
+    with tf.variable_scope(block.scope, 'block', [net]) as sc:
       block_stride = 1
       for i, unit in enumerate(block.args):
         if store_non_strided_activations and i == len(block.args) - 1:
@@ -189,7 +187,7 @@ def stack_blocks_dense(net, blocks, output_stride=None,
           block_stride = unit.get('stride', 1)
           unit = dict(unit, stride=1)
 
-        with tf.compat.v1.variable_scope('unit_%d' % (i + 1), values=[net]):
+        with tf.variable_scope('unit_%d' % (i + 1), values=[net]):
           # If we have reached the target output_stride, then we need to employ
           # atrous convolution with stride=1 and multiply the atrous rate by the
           # current unit's stride for use in subsequent layers.
@@ -228,7 +226,7 @@ def resnet_arg_scope(
     batch_norm_scale=True,
     activation_fn=tf.nn.relu,
     use_batch_norm=True,
-    batch_norm_updates_collections=tf.compat.v1.GraphKeys.UPDATE_OPS):
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS):
   """Defines the default ResNet arg scope.
 
   TODO(gpapan): The batch-normalization related default values above are

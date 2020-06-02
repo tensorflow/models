@@ -24,7 +24,7 @@ import numpy as np
 import six
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import preprocessor
 from object_detection.core import preprocessor_cache
@@ -2268,7 +2268,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
         padded_boxes_[:, 3] - padded_boxes_[:, 1])))
 
-  def testRandomPadImageWithKeypoints(self):
+  def testRandomPadImageWithKeypointsAndMasks(self):
     def graph_fn():
       preprocessing_options = [(preprocessor.normalize_image, {
           'original_minval': 0,
@@ -2280,45 +2280,57 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       images = self.createTestImages()
       boxes = self.createTestBoxes()
       labels = self.createTestLabels()
+      masks = self.createTestMasks()
       keypoints, _ = self.createTestKeypoints()
       tensor_dict = {
           fields.InputDataFields.image: images,
           fields.InputDataFields.groundtruth_boxes: boxes,
           fields.InputDataFields.groundtruth_classes: labels,
+          fields.InputDataFields.groundtruth_instance_masks: masks,
           fields.InputDataFields.groundtruth_keypoints: keypoints,
       }
       tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
       images = tensor_dict[fields.InputDataFields.image]
 
       preprocessing_options = [(preprocessor.random_pad_image, {})]
+      func_arg_map = preprocessor.get_default_func_arg_map(
+          include_instance_masks=True,
+          include_keypoints=True,
+          include_keypoint_visibilities=True)
       padded_tensor_dict = preprocessor.preprocess(tensor_dict,
-                                                   preprocessing_options)
+                                                   preprocessing_options,
+                                                   func_arg_map=func_arg_map)
 
       padded_images = padded_tensor_dict[fields.InputDataFields.image]
       padded_boxes = padded_tensor_dict[
           fields.InputDataFields.groundtruth_boxes]
+      padded_masks = padded_tensor_dict[
+          fields.InputDataFields.groundtruth_instance_masks]
       padded_keypoints = padded_tensor_dict[
           fields.InputDataFields.groundtruth_keypoints]
       boxes_shape = tf.shape(boxes)
       padded_boxes_shape = tf.shape(padded_boxes)
+      padded_masks_shape = tf.shape(padded_masks)
       keypoints_shape = tf.shape(keypoints)
       padded_keypoints_shape = tf.shape(padded_keypoints)
       images_shape = tf.shape(images)
       padded_images_shape = tf.shape(padded_images)
-      return [boxes_shape, padded_boxes_shape, keypoints_shape,
-              padded_keypoints_shape, images_shape, padded_images_shape, boxes,
-              padded_boxes, keypoints, padded_keypoints]
+      return [boxes_shape, padded_boxes_shape, padded_masks_shape,
+              keypoints_shape, padded_keypoints_shape, images_shape,
+              padded_images_shape, boxes, padded_boxes, keypoints,
+              padded_keypoints]
 
-    (boxes_shape_, padded_boxes_shape_, keypoints_shape_,
-     padded_keypoints_shape_, images_shape_, padded_images_shape_, boxes_,
-     padded_boxes_, keypoints_, padded_keypoints_) = self.execute_cpu(graph_fn,
-                                                                      [])
+    (boxes_shape_, padded_boxes_shape_, padded_masks_shape_,
+     keypoints_shape_, padded_keypoints_shape_, images_shape_,
+     padded_images_shape_, boxes_, padded_boxes_,
+     keypoints_, padded_keypoints_) = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(boxes_shape_, padded_boxes_shape_)
     self.assertAllEqual(keypoints_shape_, padded_keypoints_shape_)
     self.assertTrue((images_shape_[1] >= padded_images_shape_[1] * 0.5).all)
     self.assertTrue((images_shape_[2] >= padded_images_shape_[2] * 0.5).all)
     self.assertTrue((images_shape_[1] <= padded_images_shape_[1]).all)
     self.assertTrue((images_shape_[2] <= padded_images_shape_[2]).all)
+    self.assertAllEqual(padded_masks_shape_[1:3], padded_images_shape_[1:3])
     self.assertTrue(np.all((boxes_[:, 2] - boxes_[:, 0]) >= (
         padded_boxes_[:, 2] - padded_boxes_[:, 0])))
     self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (

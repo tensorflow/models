@@ -62,6 +62,7 @@ def _get_classifier_parameters(
     gpu_thread_mode: Optional[str] = None,
     dataset_num_private_threads: Optional[int] = None,
     loss_scale: Optional[str] = None,
+    report_metrics: bool = True,
     batchnorm_spatial_persistent: bool = False) -> MutableMapping[str, Any]:
   """Gets classifier trainer's ResNet parameters."""
   return {
@@ -97,6 +98,7 @@ def _get_classifier_parameters(
               'enable_checkpoint_and_export': False,
               'enable_time_history': True,
           },
+          'metrics': ['accuracy'] if report_metrics else [],
       },
       'model': {
           'loss': {
@@ -169,6 +171,7 @@ class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
         run_eagerly=run_eagerly,
         gpu_thread_mode=gpu_thread_mode,
         dataset_num_private_threads=dataset_num_private_threads,
+        report_metrics=True,
         loss_scale=loss_scale,
         batchnorm_spatial_persistent=True)
     FLAGS.params_override = json.dumps(parameters)
@@ -353,6 +356,7 @@ class Resnet50KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
         gpu_thread_mode=gpu_thread_mode,
         dataset_num_private_threads=dataset_num_private_threads,
         loss_scale=loss_scale,
+        report_metrics=False,
         batchnorm_spatial_persistent=True)
     FLAGS.params_override = json.dumps(parameters)
     if distribution_strategy == 'tpu':

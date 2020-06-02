@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from pycocotools import mask as coco_mask
 import six
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields
 from object_detection.metrics import oid_challenge_evaluation_utils as utils

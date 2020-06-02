@@ -20,12 +20,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+
 
 _PADDING = 4
-
-slim = contrib_slim
 
 
 def preprocess_for_train(image,

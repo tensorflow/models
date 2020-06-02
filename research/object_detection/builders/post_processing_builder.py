@@ -16,7 +16,7 @@
 """Builder function for post processing operations."""
 import functools
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.builders import calibration_builder
 from object_detection.core import post_processing
 from object_detection.protos import post_processing_pb2
@@ -102,7 +102,8 @@ def _build_non_max_suppressor(nms_config):
       soft_nms_sigma=nms_config.soft_nms_sigma,
       use_partitioned_nms=nms_config.use_partitioned_nms,
       use_combined_nms=nms_config.use_combined_nms,
-      change_coordinate_frame=nms_config.change_coordinate_frame)
+      change_coordinate_frame=nms_config.change_coordinate_frame,
+      use_hard_nms=nms_config.use_hard_nms)
 
   return non_max_suppressor_fn
 

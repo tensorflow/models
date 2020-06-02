@@ -28,20 +28,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.data_decoders import tf_example_decoder
+from object_detection.data_decoders import tf_sequence_example_decoder
 from object_detection.protos import input_reader_pb2
 
 # pylint: disable=g-import-not-at-top
 try:
-  from tensorflow.contrib import slim as contrib_slim
+  import tf_slim as slim
 except ImportError:
   # TF 2.0 doesn't ship with contrib.
   pass
 # pylint: enable=g-import-not-at-top
 
-parallel_reader = contrib_slim.parallel_reader
+parallel_reader = slim.parallel_reader
 
 
 def build(input_reader_config):
@@ -80,11 +81,18 @@ def build(input_reader_config):
     label_map_proto_file = None
     if input_reader_config.HasField('label_map_path'):
       label_map_proto_file = input_reader_config.label_map_path
-    decoder = tf_example_decoder.TfExampleDecoder(
-        load_instance_masks=input_reader_config.load_instance_masks,
-        instance_mask_type=input_reader_config.mask_type,
-        label_map_proto_file=label_map_proto_file,
-        load_context_features=input_reader_config.load_context_features)
-    return decoder.decode(string_tensor)
-
+    input_type = input_reader_config.input_type
+    if input_type == input_reader_pb2.InputType.TF_EXAMPLE:
+      decoder = tf_example_decoder.TfExampleDecoder(
+          load_instance_masks=input_reader_config.load_instance_masks,
+          instance_mask_type=input_reader_config.mask_type,
+          label_map_proto_file=label_map_proto_file,
+          load_context_features=input_reader_config.load_context_features)
+      return decoder.decode(string_tensor)
+    elif input_type == input_reader_pb2.InputType.TF_SEQUENCE_EXAMPLE:
+      decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder(
+          label_map_proto_file=label_map_proto_file,
+          load_context_features=input_reader_config.load_context_features)
+      return decoder.decode(string_tensor)
+    raise ValueError('Unsupported input_type.')
   raise ValueError('Unsupported input_reader_config.')

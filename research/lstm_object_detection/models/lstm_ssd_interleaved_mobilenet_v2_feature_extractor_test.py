@@ -15,10 +15,9 @@
 
 """Tests for lstm_ssd_interleaved_mobilenet_v2_feature_extractor."""
 
-import itertools
 import numpy as np
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim
+import tf_slim as slim
 from tensorflow.contrib import training as contrib_training
 
 from lstm_object_detection.models import lstm_ssd_interleaved_mobilenet_v2_feature_extractor
@@ -261,16 +260,16 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractorTest(
     state_channel = 320
     init_state1 = {
         'lstm_state_c': tf.zeros(
-            [image_height/32, image_width/32, state_channel]),
+            [image_height // 32, image_width // 32, state_channel]),
         'lstm_state_h': tf.zeros(
-            [image_height/32, image_width/32, state_channel]),
+            [image_height // 32, image_width // 32, state_channel]),
         'lstm_state_step': tf.zeros([1])
     }
     init_state2 = {
         'lstm_state_c': tf.random_uniform(
-            [image_height/32, image_width/32, state_channel]),
+            [image_height // 32, image_width // 32, state_channel]),
         'lstm_state_h': tf.random_uniform(
-            [image_height/32, image_width/32, state_channel]),
+            [image_height // 32, image_width // 32, state_channel]),
         'lstm_state_step': tf.zeros([1])
     }
     seq = {'dummy': tf.random_uniform([2, 1, 1, 1])}
@@ -326,7 +325,7 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractorTest(
     image_tensor = np.random.rand(batch_size, image_height, image_width,
                                   3).astype(np.float32)
     feature_maps = self.execute(graph_fn, [image_tensor])
-    for feature_map, expected_shape in itertools.izip(
+    for feature_map, expected_shape in zip(
         feature_maps, expected_feature_map_shapes):
       self.assertAllEqual(feature_map.shape, expected_shape)
 

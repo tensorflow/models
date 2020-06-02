@@ -22,10 +22,6 @@ from __future__ import print_function
 from absl import flags
 import tensorflow as tf
 
-# TODO(tianlin) Import internal library. Remove this when some functions for
-# different TF versions are fixed.
-from tensorflow.python import tf2 as tf2_internal
-
 from official.nlp.transformer import model_params
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
@@ -37,11 +33,6 @@ PARAMS_MAP = {
     'base': model_params.BASE_PARAMS,
     'big': model_params.BIG_PARAMS,
 }
-
-
-def is_v2():
-  """Returns whether it is v2."""
-  return tf2_internal.enabled()
 
 
 def get_model_params(param_set, num_gpus):
@@ -76,17 +67,6 @@ def define_transformer_flags():
       datasets_num_private_threads=True,
       enable_xla=True,
       fp16_implementation=True
-  )
-
-  # Additional performance flags
-  # TODO(b/76028325): Remove when generic layout optimizer is ready.
-  flags.DEFINE_boolean(
-      name='enable_grappler_layout_optimizer',
-      default=True,
-      help='Enable Grappler layout optimizer. Currently Grappler can '
-           'de-optimize fp16 graphs by forcing NCHW layout for all '
-           'convolutions and batch normalizations, and this flag allows to '
-           'disable it.'
   )
 
   flags_core.define_benchmark()

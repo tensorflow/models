@@ -31,11 +31,10 @@ import collections
 import functools
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-slim = contrib_slim
 
 # Activation bound used for TPU v1. Activations will be clipped to
 # [-ACTIVATION_BOUND, ACTIVATION_BOUND] when training with

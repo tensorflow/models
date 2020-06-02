@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 # This is to specify the custom config of model structures. For example,
 # ConvDefs(conv_name='conv_pw_12', filters=512) for Mobilenet V1 is to specify

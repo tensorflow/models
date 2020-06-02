@@ -14,7 +14,7 @@
 # ==============================================================================
 """Generates grid anchors on the fly corresponding to multiple CNN layers."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.core import anchor_generator

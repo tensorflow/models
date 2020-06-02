@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 

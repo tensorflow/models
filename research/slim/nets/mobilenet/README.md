@@ -6,7 +6,7 @@ This folder contains building code for
 definition for each model is located in [mobilenet_v2.py](mobilenet_v2.py) and
 [mobilenet_v3.py](mobilenet_v3.py) respectively.
 
-For MobilenetV1 please refer to this [page](../mobilenet_v1.md)
+For MobilenetV1 please refer to [this page](../mobilenet_v1.md)
 
 We have also introduced a family of MobileNets customized for the Edge TPU
 accelerator found in
@@ -61,20 +61,20 @@ on CPU, we find that they are much more performant on GPU/DSP.
 
 | Imagenet Checkpoint | MACs (M) | Params (M) | Top1 | Pixel 1 | Pixel 2 | Pixel 3 |
 | ------------------ | -------- | ---------- | ---- | ------- | ------- | ------- |
-| [Large dm=1 (float)]   | 217      | 5.4        | 75.2 | 51.2    | 61      | 44      |
-| [Large dm=1 (8-bit)] | 217      | 5.4        | 73.9 | 44      | 42.5    | 32      |
+| [Large dm=1 (float)]    | 217      | 5.4        | 75.2 | 51.2    | 61      | 44      |
+| [Large dm=1 (8-bit)]    | 217      | 5.4        | 73.9 | 44      | 42.5    | 32      |
 | [Large dm=0.75 (float)] | 155      | 4.0        | 73.3 | 39.8    | 48      | 34      |
-| [Small dm=1 (float)]   | 66       | 2.9        | 67.5 | 15.8    | 19.4    | 14.4    |
-| [Small dm=1 (8-bit)]   | 66       | 2.9        | 64.9 | 15.5    | 15      | 10.7    |
+| [Small dm=1 (float)]    | 66       | 2.9        | 67.5 | 15.8    | 19.4    | 14.4    |
+| [Small dm=1 (8-bit)]    | 66       | 2.9        | 64.9 | 15.5    | 15      | 10.7    |
 | [Small dm=0.75 (float)] | 44       | 2.4        | 65.4 | 12.8    | 15.9    | 11.6    |
 
 #### Minimalistic checkpoints:
 
 | Imagenet Checkpoint | MACs (M) | Params (M) | Top1 | Pixel 1 | Pixel 2 | Pixel 3 |
 | -------------- | -------- | ---------- | ---- | ------- | ------- | ------- |
-| [Large minimalistic (float)]   | 209      | 3.9        | 72.3 | 44.1    | 51      | 35      |
+| [Large minimalistic (float)]        | 209      | 3.9        | 72.3 | 44.1    | 51      | 35      |
 | [Large minimalistic (8-bit)][lm8]   | 209      | 3.9        | 71.3 | 37      | 35      | 27      |
-| [Small minimalistic (float)]   | 65       | 2.0        | 61.9 | 12.2    | 15.1    | 11      |
+| [Small minimalistic (float)]        | 65       | 2.0        | 61.9 | 12.2    | 15.1    | 11      |
 
 #### Edge TPU checkpoints:
 
@@ -103,36 +103,87 @@ tool.
 
 ### Mobilenet V2 Imagenet Checkpoints
 
-Classification Checkpoint                                                                                  | MACs (M) | Parameters (M) | Top 1 Accuracy | Top 5 Accuracy | Mobile CPU (ms) Pixel 1
----------------------------------------------------------------------------------------------------------- | -------- | -------------- | -------------- | -------------- | -----------------------
-[mobilenet_v2_1.4_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.4_224.tgz)   | 582      | 6.06           | 75.0           | 92.5           | 138.0
-[mobilenet_v2_1.3_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.3_224.tgz)   | 509      | 5.34           | 74.4           | 92.1           | 123.0
-[mobilenet_v2_1.0_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_224.tgz)   | 300      | 3.47           | 71.8           | 91.0           | 73.8
-[mobilenet_v2_1.0_192](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_192.tgz)   | 221      | 3.47           | 70.7           | 90.1           | 55.1
-[mobilenet_v2_1.0_160](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_160.tgz)   | 154      | 3.47           | 68.8           | 89.0           | 40.2
-[mobilenet_v2_1.0_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_128.tgz)   | 99       | 3.47           | 65.3           | 86.9           | 27.6
-[mobilenet_v2_1.0_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_96.tgz)     | 56       | 3.47           | 60.3           | 83.2           | 17.6
-[mobilenet_v2_0.75_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_224.tgz) | 209      | 2.61           | 69.8           | 89.6           | 55.8
-[mobilenet_v2_0.75_192](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_192.tgz) | 153      | 2.61           | 68.7           | 88.9           | 41.6
-[mobilenet_v2_0.75_160](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_160.tgz) | 107      | 2.61           | 66.4           | 87.3           | 30.4
-[mobilenet_v2_0.75_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_128.tgz) | 69       | 2.61           | 63.2           | 85.3           | 21.9
-[mobilenet_v2_0.75_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_96.tgz)   | 39       | 2.61           | 58.8           | 81.6           | 14.2
-[mobilenet_v2_0.5_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_224.tgz)   | 97       | 1.95           | 65.4           | 86.4           | 28.7
-[mobilenet_v2_0.5_192](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_192.tgz)   | 71       | 1.95           | 63.9           | 85.4           | 21.1
-[mobilenet_v2_0.5_160](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_160.tgz)   | 50       | 1.95           | 61.0           | 83.2           | 14.9
-[mobilenet_v2_0.5_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_128.tgz)   | 32       | 1.95           | 57.7           | 80.8           | 9.9
-[mobilenet_v2_0.5_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_96.tgz)     | 18       | 1.95           | 51.2           | 75.8           | 6.4
-[mobilenet_v2_0.35_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_224.tgz) | 59       | 1.66           | 60.3           | 82.9           | 19.7
-[mobilenet_v2_0.35_192](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_192.tgz) | 43       | 1.66           | 58.2           | 81.2           | 14.6
-[mobilenet_v2_0.35_160](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_160.tgz) | 30       | 1.66           | 55.7           | 79.1           | 10.5
-[mobilenet_v2_0.35_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_128.tgz) | 20       | 1.66           | 50.8           | 75.0           | 6.9
-[mobilenet_v2_0.35_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_96.tgz)   | 11       | 1.66           | 45.5           | 70.4           | 4.5
+Classification Checkpoint                   | Quantized                                                               | MACs (M) | Parameters (M) | Top 1 Accuracy | Top 5 Accuracy | Mobile CPU (ms) Pixel 1
+------------------------------------------------------------------------------------------------------|-------------- | -------- | -------------- | -------------- | -------------- | -----------------------
+[float_v2_1.4_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.4_224.tgz)  | [uint8][quantized_v2_1.4_224]  | 582      | 6.06           | 75.0           | 92.5           | 138.0
+[float_v2_1.3_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.3_224.tgz) |[uint8][quantized_v2_1.3_224]   | 509      | 5.34           | 74.4           | 92.1           | 123.0
+[float_v2_1.0_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_224.tgz)  |[uint8][quantized_v2_1.0_224]  | 300      | 3.47           | 71.8           | 91.0           | 73.8
+[float_v2_1.0_192](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_192.tgz)  |[uint8][quantized_v2_1.0_192]  | 221      | 3.47           | 70.7           | 90.1           | 55.1
+[float_v2_1.0_160](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_160.tgz) | [uint8][quantized_v2_1.0_160]  | 154      | 3.47           | 68.8           | 89.0           | 40.2
+[float_v2_1.0_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_128.tgz) |  [uint8][quantized_v2_1.0_128]  | 99       | 3.47           | 65.3           | 86.9           | 27.6
+[float_v2_1.0_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_1.0_96.tgz)    | [uint8][quantized_v2_1.0_96]   | 56       | 3.47           | 60.3           | 83.2           | 17.6
+[float_v2_0.75_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_224.tgz)|[uint8][quantized_v2_0.75_224] | 209      | 2.61           | 69.8           | 89.6           | 55.8
+[float_v2_0.75_192](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_192.tgz)|[uint8][quantized_v2_0.75_192] | 153      | 2.61           | 68.7           | 88.9           | 41.6
+[float_v2_0.75_160](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_160.tgz)| [uint8][quantized_v2_0.75_160] | 107      | 2.61           | 66.4           | 87.3           | 30.4
+[float_v2_0.75_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_128.tgz)| [uint8][quantized_v2_0.75_128] | 69       | 2.61           | 63.2           | 85.3           | 21.9
+[float_v2_0.75_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.75_96.tgz)  |[uint8][quantized_v2_0.75_96]  | 39       | 2.61           | 58.8           | 81.6           | 14.2
+[float_v2_0.5_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_224.tgz)  |[uint8][quantized_v2_0.5_224] | 97       | 1.95           | 65.4           | 86.4           | 28.7
+[float_v2_0.5_192](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_192.tgz)  |[uint8][quantized_v2_0.5_192]  | 71       | 1.95           | 63.9           | 85.4           | 21.1
+[float_v2_0.5_160](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_160.tgz)  |[uint8][quantized_v2_0.5_160]  | 50       | 1.95           | 61.0           | 83.2           | 14.9
+[float_v2_0.5_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_128.tgz)  |[uint8][quantized_v2_0.5_128]  | 32       | 1.95           | 57.7           | 80.8           | 9.9
+[float_v2_0.5_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.5_96.tgz)    |[uint8][quantized_v2_0.5_96]   | 18       | 1.95           | 51.2           | 75.8           | 6.4
+[float_v2_0.35_224](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_224.tgz)|[uint8][quantized_v2_0.35_224] | 59       | 1.66           | 60.3           | 82.9           | 19.7
+[float_v2_0.35_192](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_192.tgz)| [uint8][quantized_v2_0.35_192] | 43       | 1.66           | 58.2           | 81.2           | 14.6
+[float_v2_0.35_160](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_160.tgz)|[uint8][quantized_v2_0.35_160] | 30       | 1.66           | 55.7           | 79.1           | 10.5
+[float_v2_0.35_128](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_128.tgz)|[uint8][quantized_v2_0.35_128] | 20       | 1.66           | 50.8           | 75.0           | 6.9
+[float_v2_0.35_96](https://storage.googleapis.com/mobilenet_v2/checkpoints/mobilenet_v2_0.35_96.tgz)  |[uint8][quantized_v2_0.35_96]  | 11       | 1.66           | 45.5           | 70.4           | 4.5
+
+[quantized_v2_1.4_224]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_224_140.tgz
+[quantized_v2_1.3_224]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_224_130.tgz
+[quantized_v2_1.0_224]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_224_100.tgz
+[quantized_v2_1.0_192]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_192_100.tgz
+[quantized_v2_1.0_160]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_160_100.tgz
+[quantized_v2_1.0_128]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_128_100.tgz
+[quantized_v2_1.0_96]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_96_100.tgz
+[quantized_v2_0.75_224]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_224_75.tgz
+[quantized_v2_0.75_192]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_192_75.tgz
+[quantized_v2_0.75_160]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_160_75.tgz
+[quantized_v2_0.75_128]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_128_75.tgz
+[quantized_v2_0.75_96]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_96_75.tgz
+[quantized_v2_0.5_224]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_224_50.tgz
+[quantized_v2_0.5_192]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_192_50.tgz
+[quantized_v2_0.5_160]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_160_50.tgz
+[quantized_v2_0.5_128]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_128_50.tgz
+[quantized_v2_0.5_96]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_96_50.tgz
+[quantized_v2_0.35_224]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_224_35.tgz
+[quantized_v2_0.35_192]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_192_35.tgz
+[quantized_v2_0.35_160]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_160_35.tgz
+[quantized_v2_0.35_128]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_128_35.tgz
+[quantized_v2_0.35_96]: https://storage.googleapis.com/mobilenet_v2/checkpoints/quantized_v2_96_35.tgz
+
+
+
+
+
 
 ## Training
 
 ### V3
+The following configuration, achieves 74.6% using 8 GPU setup and 75.2% using
+2x2 TPU setup.
 
-TODO: Add V3 hyperparameters
+
+Final Top 1 Accuracy        |      74.6         |           |
+----------------------------|------------------|-----------|
+learning_rate               |   0.16     |Total learning rate. (Per clone learning rate is 0.02) |
+rmsprop_momentum            |   0.9      |    |
+rmsprop_decay               |   0.9      |    |
+rmsprop_epsilon             |   0.002    |    |
+learning_rate_decay_factor  |   0.99     |   |
+optimizer                   |   RMSProp  | |
+warmup_epochs               |   5        | Slim uses per clone epoch, so the the flag value is 0.6  |
+num_epochs_per_decay        |   3        | Slim uses per clone epoch, so the  flag value is 0.375 |
+batch_size (per chip)       |   192      |                   |
+moving_average_decay        |   0.9999   |                   |
+weight_decay                |   1e-5     |                   |
+init_stddev                 |    0.008   |                   |
+dropout_keep_prob           |   0.8      |                   |
+bn_moving_average_decay     |   0.997    |                   |
+bn_epsilon                  |      0.001 |                   |
+label_smoothing             |   0.1      |                   |
+
+
+
 
 ### V2
 

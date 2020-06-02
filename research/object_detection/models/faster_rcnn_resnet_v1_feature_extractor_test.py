@@ -16,7 +16,7 @@
 """Tests for object_detection.models.faster_rcnn_resnet_v1_feature_extractor."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as faster_rcnn_resnet_v1
 

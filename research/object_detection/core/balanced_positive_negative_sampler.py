@@ -30,7 +30,7 @@ It also ensures the length of output of the subsample is always batch_size, even
 when number of examples set to True in indicator is less than batch_size.
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import minibatch_sampler
 

@@ -85,8 +85,8 @@ def retinanet_head_generator(params):
 
 
 def rpn_head_generator(params):
-  head_params = params.rpn_head
   """Generator function for RPN head architecture."""
+  head_params = params.rpn_head
   return heads.RpnHead(
       params.architecture.min_level,
       params.architecture.max_level,
@@ -126,3 +126,38 @@ def mask_rcnn_head_generator(params):
       params.norm_activation.activation,
       head_params.use_batch_norm,
       norm_activation=norm_activation_generator(params.norm_activation))
+
+
+def shapeprior_head_generator(params):
+  """Generator function for shape prior head architecture."""
+  head_params = params.shapemask_head
+  return heads.ShapemaskPriorHead(
+      params.architecture.num_classes,
+      head_params.num_downsample_channels,
+      head_params.mask_crop_size,
+      head_params.use_category_for_mask,
+      head_params.shape_prior_path)
+
+
+def coarsemask_head_generator(params):
+  """Generator function for ShapeMask coarse mask head architecture."""
+  head_params = params.shapemask_head
+  return heads.ShapemaskCoarsemaskHead(
+      params.architecture.num_classes,
+      head_params.num_downsample_channels,
+      head_params.mask_crop_size,
+      head_params.use_category_for_mask,
+      head_params.num_convs,
+      norm_activation=norm_activation_generator(params.norm_activation))
+
+
+def finemask_head_generator(params):
+  """Generator function for Shapemask fine mask head architecture."""
+  head_params = params.shapemask_head
+  return heads.ShapemaskFinemaskHead(
+      params.architecture.num_classes,
+      head_params.num_downsample_channels,
+      head_params.mask_crop_size,
+      head_params.use_category_for_mask,
+      head_params.num_convs,
+      head_params.upsample_factor)

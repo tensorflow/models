@@ -22,7 +22,7 @@ import copy
 import os
 import time
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection import eval_util
 from object_detection import inputs
@@ -101,6 +101,10 @@ def _compute_losses_and_predictions_dicts(
           instance masks for objects.
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           float32 tensor containing keypoints for each box.
+        labels[fields.InputDataFields.groundtruth_group_of] is a tf.bool tensor
+          containing group_of annotations.
+        labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
+          k-hot tensor of classes.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
 
@@ -199,6 +203,8 @@ def eager_train_step(detection_model,
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           [batch_size, num_boxes, num_keypoints, 2] float32 tensor containing
           keypoints for each box.
+        labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
+          k-hot tensor of classes.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
     learning_rate: The learning rate tensor for the current training step.

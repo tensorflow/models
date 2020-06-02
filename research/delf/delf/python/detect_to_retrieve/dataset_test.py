@@ -20,10 +20,13 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
 import numpy as np
 import tensorflow as tf
 
 from delf.python.detect_to_retrieve import dataset
+
+FLAGS = flags.FLAGS
 
 
 class DatasetTest(tf.test.TestCase):
@@ -206,7 +209,7 @@ class DatasetTest(tf.test.TestCase):
         'medium': np.array([0.5, 1.0])
     }
     pr_ranks = [1, 5]
-    output_path = os.path.join(tf.compat.v1.test.get_temp_dir(), 'metrics.txt')
+    output_path = os.path.join(FLAGS.test_tmpdir, 'metrics.txt')
 
     # Run tested function.
     dataset.SaveMetricsFile(mean_average_precision, mean_precisions,
@@ -240,7 +243,7 @@ class DatasetTest(tf.test.TestCase):
         'medium': np.array([0.5, 1.0])
     }
     pr_ranks = [1, 5]
-    output_path = os.path.join(tf.compat.v1.test.get_temp_dir(), 'metrics.txt')
+    output_path = os.path.join(FLAGS.test_tmpdir, 'metrics.txt')
 
     # Run tested functions.
     dataset.SaveMetricsFile(mean_average_precision, mean_precisions,
@@ -261,7 +264,7 @@ class DatasetTest(tf.test.TestCase):
 
   def testReadMetricsWithRepeatedProtocolFails(self):
     # Define inputs.
-    input_path = os.path.join(tf.compat.v1.test.get_temp_dir(), 'metrics.txt')
+    input_path = os.path.join(FLAGS.test_tmpdir, 'metrics.txt')
     with tf.io.gfile.GFile(input_path, 'w') as f:
       f.write('hard\n'
               '  mAP=70.0\n'

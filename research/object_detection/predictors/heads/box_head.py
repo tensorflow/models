@@ -20,12 +20,10 @@ All the box prediction heads have a predict function that receives the
 `features` as the first argument and returns `box_encodings`.
 """
 import functools
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.predictors.heads import head
-
-slim = contrib_slim
 
 
 class MaskRCNNBoxHead(head.Head):
