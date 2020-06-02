@@ -83,6 +83,28 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     is_zeros = np.greater(output_data, 0)
     self.assertAllEqual(expected_zeros, is_zeros)
 
+  def test_masked_softmax_high_dims(self):
+    test_layer = masked_softmax.MaskedSoftmax(
+        mask_expansion_axes=[1], normalization_axes=[6, 7])
+    input_shape = [2, 3, 4, 5, 6, 7, 8]
+    mask_shape = [5, 6, 7, 8]
+    input_tensor = tf.keras.Input(shape=input_shape)
+    mask_tensor = tf.keras.Input(shape=mask_shape)
+    output = test_layer([input_tensor, mask_tensor])
+    model = tf.keras.Model([input_tensor, mask_tensor], output)
+
+    input_data = 10 * np.random.random_sample([3] + input_shape)
+    mask_data = np.random.randint(2, size=[3] + mask_shape)
+
+    output_data = model.predict([input_data, mask_data])
+    expanded_mask = np.expand_dims(mask_data, axis=1)
+    expanded_mask = np.expand_dims(expanded_mask, axis=1)
+    expanded_mask = np.expand_dims(
+        expanded_mask, axis=1) * np.ones_like(input_data)
+    expected_zeros = np.greater(expanded_mask, 0)
+    is_zeros = np.greater(output_data, 0)
+    self.assertAllEqual(expected_zeros, is_zeros)
+
 
 if __name__ == '__main__':
   tf.test.main()

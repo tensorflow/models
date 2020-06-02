@@ -67,7 +67,7 @@ class DelfV1(object):
   """
 
   def __init__(self, target_layer_type=_SUPPORTED_TARGET_LAYER[0]):
-    tf.compat.v1.logging.info('Creating model %s ', target_layer_type)
+    print('Creating model %s ' % target_layer_type)
 
     self._target_layer_type = target_layer_type
     if self._target_layer_type not in _SUPPORTED_TARGET_LAYER:

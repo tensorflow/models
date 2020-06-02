@@ -188,7 +188,7 @@ def convert(checkpoint_from_path,
     with tf.Session() as sess:
       sess.run(tf.global_variables_initializer())
       tf.logging.info("Writing checkpoint_to_path %s", checkpoint_to_path)
-      saver.save(sess, checkpoint_to_path)
+      saver.save(sess, checkpoint_to_path, write_meta_graph=False)
 
   tf.logging.info("Summary:")
   tf.logging.info("  Converted %d variable name(s).", len(new_variable_map))

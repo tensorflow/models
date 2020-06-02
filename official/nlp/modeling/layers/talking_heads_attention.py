@@ -32,7 +32,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
   Arguments:
     num_heads: Number of attention heads.
     key_size: Size of each attention head.
-    dropout_rate: Dropout probability.
+    dropout: Dropout probability.
     output_shape: The expected shape of an output tensor, besides the batch and
       sequence dims. If not specified, projects back to the key feature dim.
     kernel_initializer: Initializer for dense layer kernels.
@@ -47,7 +47,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
   def __init__(self,
                num_heads,
                key_size,
-               dropout_rate=0.0,
+               dropout=0.0,
                output_shape=None,
                kernel_initializer="glorot_uniform",
                bias_initializer="zeros",
@@ -60,7 +60,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
     super(TalkingHeadsAttention, self).__init__(**kwargs)
     self._num_heads = num_heads
     self._key_size = key_size
-    self._dropout_rate = dropout_rate
+    self._dropout = dropout
     self._output_shape = output_shape
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
     self._bias_initializer = tf.keras.initializers.get(bias_initializer)
@@ -104,7 +104,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
 
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[1])
 
-    self._dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+    self._dropout = tf.keras.layers.Dropout(rate=self._dropout)
 
   def build(self, input_shape):
     if self._output_shape:
@@ -147,8 +147,8 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
             self._num_heads,
         "key_size":
             self._key_size,
-        "dropout_rate":
-            self._dropout_rate,
+        "dropout":
+            self._dropout,
         "kernel_initializer":
             tf.keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":

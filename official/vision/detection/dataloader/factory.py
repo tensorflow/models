@@ -22,6 +22,7 @@ from official.vision.detection.dataloader import maskrcnn_parser
 from official.vision.detection.dataloader import retinanet_parser
 from official.vision.detection.dataloader import shapemask_parser
 
+
 def parser_generator(params, mode):
   """Generator function for various dataset parser."""
   if params.architecture.parser == 'retinanet_parser':

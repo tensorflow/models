@@ -33,7 +33,6 @@ from official.nlp.bert import common_flags
 from official.nlp.bert import configs as bert_configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
-from official.nlp.bert import model_training_utils
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
@@ -110,9 +109,8 @@ def run_bert_classifier(strategy,
                         init_checkpoint,
                         train_input_fn,
                         eval_input_fn,
-                        custom_callbacks=None,
-                        run_eagerly=False,
-                        use_keras_compile_fit=False):
+                        training_callbacks=True,
+                        custom_callbacks=None):
   """Run BERT classifier training using low-level API."""
   max_seq_length = input_meta_data['max_seq_length']
   num_classes = input_meta_data['num_labels']
@@ -142,46 +140,26 @@ def run_bert_classifier(strategy,
   # correct device and strategy scope.
   def metric_fn():
     return tf.keras.metrics.SparseCategoricalAccuracy(
-        'test_accuracy', dtype=tf.float32)
+        'accuracy', dtype=tf.float32)
 
-  if use_keras_compile_fit:
-    # Start training using Keras compile/fit API.
-    logging.info('Training using TF 2.0 Keras compile/fit API with '
-                 'distribution strategy.')
-    return run_keras_compile_fit(
-        model_dir,
-        strategy,
-        _get_classifier_model,
-        train_input_fn,
-        eval_input_fn,
-        loss_fn,
-        metric_fn,
-        init_checkpoint,
-        epochs,
-        steps_per_epoch,
-        steps_per_loop,
-        eval_steps,
-        custom_callbacks=custom_callbacks)
-
-  # Use user-defined loop to start training.
-  logging.info('Training using customized training loop TF 2.0 with '
+  # Start training using Keras compile/fit API.
+  logging.info('Training using TF 2.x Keras compile/fit API with '
                'distribution strategy.')
-  return model_training_utils.run_customized_training_loop(
-      strategy=strategy,
-      model_fn=_get_classifier_model,
-      loss_fn=loss_fn,
-      model_dir=model_dir,
-      steps_per_epoch=steps_per_epoch,
-      steps_per_loop=steps_per_loop,
-      epochs=epochs,
-      train_input_fn=train_input_fn,
-      eval_input_fn=eval_input_fn,
-      eval_steps=eval_steps,
-      init_checkpoint=init_checkpoint,
-      sub_model_export_name=FLAGS.sub_model_export_name,
-      metric_fn=metric_fn,
-      custom_callbacks=custom_callbacks,
-      run_eagerly=run_eagerly)
+  return run_keras_compile_fit(
+      model_dir,
+      strategy,
+      _get_classifier_model,
+      train_input_fn,
+      eval_input_fn,
+      loss_fn,
+      metric_fn,
+      init_checkpoint,
+      epochs,
+      steps_per_epoch,
+      steps_per_loop,
+      eval_steps,
+      training_callbacks=training_callbacks,
+      custom_callbacks=custom_callbacks)
 
 
 def run_keras_compile_fit(model_dir,
@@ -196,6 +174,7 @@ def run_keras_compile_fit(model_dir,
                           steps_per_epoch,
                           steps_per_loop,
                           eval_steps,
+                          training_callbacks=True,
                           custom_callbacks=None):
   """Runs BERT classifier model using Keras compile/fit API."""
 
@@ -226,20 +205,25 @@ def run_keras_compile_fit(model_dir,
         checkpoint_interval=0)
     checkpoint_callback = keras_utils.SimpleCheckpoint(checkpoint_manager)
 
-    if custom_callbacks is not None:
-      custom_callbacks += [summary_callback, checkpoint_callback]
-    else:
-      custom_callbacks = [summary_callback, checkpoint_callback]
+    if training_callbacks:
+      if custom_callbacks is not None:
+        custom_callbacks += [summary_callback, checkpoint_callback]
+      else:
+        custom_callbacks = [summary_callback, checkpoint_callback]
 
-    bert_model.fit(
+    history = bert_model.fit(
         x=training_dataset,
         validation_data=evaluation_dataset,
         steps_per_epoch=steps_per_epoch,
         epochs=epochs,
         validation_steps=eval_steps,
         callbacks=custom_callbacks)
-
-    return bert_model
+    stats = {'total_training_steps': steps_per_epoch * epochs}
+    if 'loss' in history.history:
+      stats['train_loss'] = history.history['loss'][-1]
+    if 'val_accuracy' in history.history:
+      stats['eval_metrics'] = history.history['val_accuracy'][-1]
+    return bert_model, stats
 
 
 def get_predictions_and_labels(strategy,
@@ -364,7 +348,7 @@ def run_bert(strategy,
             log_steps=FLAGS.log_steps,
             logdir=FLAGS.model_dir))
 
-  trained_model = run_bert_classifier(
+  trained_model, _ = run_bert_classifier(
       strategy,
       model_config,
       input_meta_data,
@@ -378,8 +362,6 @@ def run_bert(strategy,
       init_checkpoint or FLAGS.init_checkpoint,
       train_input_fn,
       eval_input_fn,
-      run_eagerly=FLAGS.run_eagerly,
-      use_keras_compile_fit=FLAGS.use_keras_compile_fit,
       custom_callbacks=custom_callbacks)
 
   if FLAGS.model_export_path:

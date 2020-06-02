@@ -462,7 +462,7 @@ class QnliProcessor(DataProcessor):
 
 
 class TfdsProcessor(DataProcessor):
-  """Processor for generic text classification TFDS data set.
+  """Processor for generic text classification and regression TFDS data set.
 
   The TFDS parameters are expected to be provided in the tfds_params string, in
   a comma-separated list of parameter assignments.
@@ -473,6 +473,8 @@ class TfdsProcessor(DataProcessor):
     tfds_params="dataset=glue/sst2,text_key=sentence"
     tfds_params="dataset=glue/qnli,text_key=question,text_b_key=sentence"
     tfds_params="dataset=glue/mrpc,text_key=sentence1,text_b_key=sentence2"
+    tfds_params="dataset=glue/stsb,text_key=sentence1,text_b_key=sentence2,"
+                "is_regression=true,label_type=float"
   Possible parameters (please refer to the documentation of Tensorflow Datasets
   (TFDS) for the meaning of individual parameters):
     dataset: Required dataset name (potentially with subset and version number).
@@ -487,6 +489,8 @@ class TfdsProcessor(DataProcessor):
     test_text_key: Key of the text feature to use in test set.
     test_text_b_key: Key of the second text feature to use in test set.
     test_label: String to be used as the label for all test examples.
+    label_type: Type of the label key (defaults to `int`).
+    is_regression: Whether the task is a regression problem (defaults to False).
   """
 
   def __init__(self, tfds_params,
@@ -498,10 +502,16 @@ class TfdsProcessor(DataProcessor):
 
     self.dataset, info = tfds.load(self.dataset_name, data_dir=self.data_dir,
                                    with_info=True)
-    self._labels = list(range(info.features[self.label_key].num_classes))
+    if self.is_regression:
+      self._labels = None
+    else:
+      self._labels = list(range(info.features[self.label_key].num_classes))
 
   def _process_tfds_params_str(self, params_str):
     """Extracts TFDS parameters from a comma-separated assignements string."""
+    dtype_map = {"int": int, "float": float}
+    cast_str_to_bool = lambda s: s.lower() not in ["false", "0"]
+
     tuples = [x.split("=") for x in params_str.split(",")]
     d = {k.strip(): v.strip() for k, v in tuples}
     self.dataset_name = d["dataset"]  # Required.
@@ -516,6 +526,8 @@ class TfdsProcessor(DataProcessor):
     self.test_text_key = d.get("test_text_key", self.text_key)
     self.test_text_b_key = d.get("test_text_b_key", self.text_b_key)
     self.test_label = d.get("test_label", "test_example")
+    self.label_type = dtype_map[d.get("label_type", "int")]
+    self.is_regression = cast_str_to_bool(d.get("is_regression", "False"))
 
   def get_train_examples(self, data_dir):
     assert data_dir is None
@@ -553,7 +565,7 @@ class TfdsProcessor(DataProcessor):
         text_a = self.process_text_fn(example[self.text_key])
         if self.text_b_key:
           text_b = self.process_text_fn(example[self.text_b_key])
-        label = int(example[self.label_key])
+        label = self.label_type(example[self.label_key])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
@@ -563,8 +575,9 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
                            tokenizer):
   """Converts a single `InputExample` into a single `InputFeatures`."""
   label_map = {}
-  for (i, label) in enumerate(label_list):
-    label_map[label] = i
+  if label_list:
+    for (i, label) in enumerate(label_list):
+      label_map[label] = i
 
   tokens_a = tokenizer.tokenize(example.text_a)
   tokens_b = None
@@ -632,7 +645,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   assert len(input_mask) == max_seq_length
   assert len(segment_ids) == max_seq_length
 
-  label_id = label_map[example.label]
+  label_id = label_map[example.label] if label_map else example.label
   if ex_index < 5:
     logging.info("*** Example ***")
     logging.info("guid: %s", (example.guid))
@@ -654,7 +667,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
 
 def file_based_convert_examples_to_features(examples, label_list,
                                             max_seq_length, tokenizer,
-                                            output_file):
+                                            output_file, label_type=None):
   """Convert a set of `InputExample`s to a TFRecord file."""
 
   tf.io.gfile.makedirs(os.path.dirname(output_file))
@@ -670,12 +683,18 @@ def file_based_convert_examples_to_features(examples, label_list,
     def create_int_feature(values):
       f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
       return f
+    def create_float_feature(values):
+      f = tf.train.Feature(float_list=tf.train.FloatList(value=list(values)))
+      return f
 
     features = collections.OrderedDict()
     features["input_ids"] = create_int_feature(feature.input_ids)
     features["input_mask"] = create_int_feature(feature.input_mask)
     features["segment_ids"] = create_int_feature(feature.segment_ids)
-    features["label_ids"] = create_int_feature([feature.label_id])
+    if label_type is not None and label_type == float:
+      features["label_ids"] = create_float_feature([feature.label_id])
+    else:
+      features["label_ids"] = create_int_feature([feature.label_id])
     features["is_real_example"] = create_int_feature(
         [int(feature.is_real_example)])
 
@@ -731,18 +750,23 @@ def generate_tf_record_from_data_file(processor,
   assert train_data_output_path or eval_data_output_path
 
   label_list = processor.get_labels()
+  label_type = getattr(processor, "label_type", None)
+  is_regression = getattr(processor, "is_regression", False)
   assert train_data_output_path
+
   train_input_data_examples = processor.get_train_examples(data_dir)
   file_based_convert_examples_to_features(train_input_data_examples, label_list,
                                           max_seq_length, tokenizer,
-                                          train_data_output_path)
+                                          train_data_output_path,
+                                          label_type)
   num_training_data = len(train_input_data_examples)
 
   if eval_data_output_path:
     eval_input_data_examples = processor.get_dev_examples(data_dir)
     file_based_convert_examples_to_features(eval_input_data_examples,
                                             label_list, max_seq_length,
-                                            tokenizer, eval_data_output_path)
+                                            tokenizer, eval_data_output_path,
+                                            label_type)
 
   if test_data_output_path:
     test_input_data_examples = processor.get_test_examples(data_dir)
@@ -751,19 +775,25 @@ def generate_tf_record_from_data_file(processor,
         file_based_convert_examples_to_features(
             examples,
             label_list, max_seq_length,
-            tokenizer, test_data_output_path.format(language))
+            tokenizer, test_data_output_path.format(language),
+            label_type)
     else:
       file_based_convert_examples_to_features(test_input_data_examples,
                                               label_list, max_seq_length,
-                                              tokenizer, test_data_output_path)
+                                              tokenizer, test_data_output_path,
+                                              label_type)
 
   meta_data = {
-      "task_type": "bert_classification",
       "processor_type": processor.get_processor_name(),
-      "num_labels": len(processor.get_labels()),
       "train_data_size": num_training_data,
       "max_seq_length": max_seq_length,
   }
+  if is_regression:
+    meta_data["task_type"] = "bert_regression"
+    meta_data["label_type"] = {int: "int", float: "float"}[label_type]
+  else:
+    meta_data["task_type"] = "bert_classification"
+    meta_data["num_labels"] = len(processor.get_labels())
 
   if eval_data_output_path:
     meta_data["eval_data_size"] = len(eval_input_data_examples)

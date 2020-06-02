@@ -33,14 +33,13 @@ import time
 from absl import app
 from absl import flags
 import numpy as np
-from PIL import Image
-from PIL import ImageFile
 import tensorflow as tf
 
 from google.protobuf import text_format
 from delf import delf_config_pb2
 from delf import datum_io
 from delf import feature_io
+from delf import utils
 from delf.python.detect_to_retrieve import dataset
 from delf import extractor
 
@@ -71,25 +70,8 @@ _DELG_GLOBAL_EXTENSION = '.delg_global'
 _DELG_LOCAL_EXTENSION = '.delg_local'
 _IMAGE_EXTENSION = '.jpg'
 
-# To avoid PIL crashing for truncated (corrupted) images.
-ImageFile.LOAD_TRUNCATED_IMAGES = True
-
 # Pace to report extraction log.
 _STATUS_CHECK_ITERATIONS = 50
-
-
-def _PilLoader(path):
-  """Helper function to read image with PIL.
-
-  Args:
-    path: Path to image to be loaded.
-
-  Returns:
-    PIL image in RGB format.
-  """
-  with tf.io.gfile.GFile(path, 'rb') as f:
-    img = Image.open(f)
-    return img.convert('RGB')
 
 
 def main(argv):
@@ -155,7 +137,7 @@ def main(argv):
           print('Skipping %s' % image_name)
           continue
 
-        pil_im = _PilLoader(input_image_filename)
+        pil_im = utils.RgbLoader(input_image_filename)
         resize_factor = 1.0
         if FLAGS.image_set == 'query':
           # Crop query image according to bounding box.

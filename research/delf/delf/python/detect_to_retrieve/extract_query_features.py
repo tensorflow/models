@@ -31,14 +31,13 @@ import sys
 import time
 
 import numpy as np
-from PIL import Image
-from PIL import ImageFile
 import tensorflow as tf
 
 from google.protobuf import text_format
 from tensorflow.python.platform import app
 from delf import delf_config_pb2
 from delf import feature_io
+from delf import utils
 from delf.python.detect_to_retrieve import dataset
 from delf import extractor
 
@@ -48,37 +47,17 @@ cmd_args = None
 _DELF_EXTENSION = '.delf'
 _IMAGE_EXTENSION = '.jpg'
 
-# To avoid PIL crashing for truncated (corrupted) images.
-ImageFile.LOAD_TRUNCATED_IMAGES = True
-
-
-def _PilLoader(path):
-  """Helper function to read image with PIL.
-
-  Args:
-    path: Path to image to be loaded.
-
-  Returns:
-    PIL image in RGB format.
-  """
-  with tf.io.gfile.GFile(path, 'rb') as f:
-    img = Image.open(f)
-    return img.convert('RGB')
-
 
 def main(argv):
   if len(argv) > 1:
     raise RuntimeError('Too many command-line arguments.')
 
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
-
   # Read list of query images from dataset file.
-  tf.compat.v1.logging.info(
-      'Reading list of query images and boxes from dataset file...')
+  print('Reading list of query images and boxes from dataset file...')
   query_list, _, ground_truth = dataset.ReadDatasetFile(
       cmd_args.dataset_file_path)
   num_images = len(query_list)
-  tf.compat.v1.logging.info('done! Found %d images', num_images)
+  print(f'done! Found {num_images} images')
 
   # Parse DelfConfig proto.
   config = delf_config_pb2.DelfConfig()
@@ -104,12 +83,12 @@ def main(argv):
         output_feature_filename = os.path.join(
             cmd_args.output_features_dir, query_image_name + _DELF_EXTENSION)
         if tf.io.gfile.exists(output_feature_filename):
-          tf.compat.v1.logging.info('Skipping %s', query_image_name)
+          print(f'Skipping {query_image_name}')
           continue
 
         # Crop query image according to bounding box.
         bbox = [int(round(b)) for b in ground_truth[i]['bbx']]
-        im = np.array(_PilLoader(input_image_filename).crop(bbox))
+        im = np.array(utils.RgbLoader(input_image_filename).crop(bbox))
 
         # Extract and save features.
         extracted_features = extractor_fn(im)
