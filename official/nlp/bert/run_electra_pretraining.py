@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Run masked LM/next sentence pre-training for BERT in TF 2.x."""
+"""Run masked LM/next sentence pre-training for Electra in TF 2.x."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -60,7 +60,7 @@ def get_pretrain_dataset_fn(input_file_pattern, seq_length,
                             max_predictions_per_seq, global_batch_size):
   """Returns input dataset from input file string."""
   def _dataset_fn(ctx=None):
-    """Returns tf.data.Dataset for distributed BERT pretraining."""
+    """Returns tf.data.Dataset for distributed Electra pretraining."""
     input_patterns = input_file_pattern.split(',')
     batch_size = ctx.get_per_replica_batch_size(global_batch_size)
     train_dataset = input_pipeline.create_pretrain_dataset(
@@ -76,7 +76,7 @@ def get_pretrain_dataset_fn(input_file_pattern, seq_length,
 
 
 def get_loss_fn():
-  """Returns loss function for BERT pretraining."""
+  """Returns loss function for Electra pretraining."""
 
   def _electra_pretrain_loss_fn(unused_labels, losses, **unused_args):
     return tf.reduce_mean(losses)
@@ -96,7 +96,7 @@ def run_customized_training(strategy,
                             warmup_steps,
                             input_files,
                             train_batch_size):
-  """Run BERT pretrain model training using low-level API."""
+  """Run Electra pretrain model training using low-level API."""
   train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
                                            max_predictions_per_seq,
                                            train_batch_size)
@@ -129,7 +129,7 @@ def run_customized_training(strategy,
 
 
 def run_electra_pretrain(strategy):
-  """Runs BERT pre-training."""
+  """Runs Electra pre-training."""
 
   electra_config = electraconfigs.ElectraConfig.from_json_file(FLAGS.electra_config_file)
   if not strategy:

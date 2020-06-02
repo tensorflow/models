@@ -131,9 +131,9 @@ class ElectraPretrainer(tf.keras.Model):
 
 
 def _get_fake_data(orig_sent, predictions, maskedlm_ids):
-  tokids = tf.stop_gradient(tf.math.argmax(predictions,axis=-1,output_type=tf.dtypes.int32))
-  updatedids, mask = _scatter_update(orig_sent,maskedlm_ids,tokids)
-  labels = mask*(1-tf.cast(tf.equal(orig_sent,updatedids),tf.int32))
+  tokids = tf.stop_gradient(tf.math.argmax(predictions, axis=-1, output_type=tf.dtypes.int32))
+  updatedids, mask = _scatter_update(orig_sent, maskedlm_ids, tokids)
+  labels = mask * (1 - tf.cast(tf.equal(orig_sent, updatedids), tf.int32))
   return updatedids, labels
 def _scatter_update(orig_sent, maskedlm_ids, tokids):
     sequence_shape = tf_utils.get_shape_list(

@@ -48,12 +48,12 @@ class ElectraPretrainLossAndMetricLayer(tf.keras.layers.Layer):
     """Adds metrics."""
     masked_lm_accuracy = tf.keras.metrics.sparse_categorical_accuracy(
         lm_labels, lm_output)
-    numerator = tf.reduce_sum(masked_lm_accuracy * tf.cast(lm_label_weights,tf.float32))
+    numerator = tf.reduce_sum(masked_lm_accuracy * tf.cast(lm_label_weights, tf.float32))
     denominator = tf.reduce_sum(tf.cast(lm_label_weights, tf.float32)) + 1e-5
     masked_lm_accuracy = numerator / denominator
 
     discrim_accuracy = tf.keras.metrics.binary_accuracy(tf.cast(discrim_label, tf.float32), discrim_output)
-    self.add_metric(discrim_accuracy, name='discrinator_accuracy', aggregation='mean')
+    self.add_metric(discrim_accuracy, name='discriminator_accuracy', aggregation='mean')
     self.add_metric(
         masked_lm_accuracy, name='masked_lm_accuracy', aggregation='mean')
 
@@ -73,7 +73,7 @@ class ElectraPretrainLossAndMetricLayer(tf.keras.layers.Layer):
         labels=lm_label_ids, predictions=lm_output, weights=weights)
     discrim_ind_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits = discrim_output, labels=tf.cast(discrim_labels,tf.float32))
     discrim_loss = tf.reduce_sum(discrim_ind_loss)
-    loss = mask_label_loss+self.config["discrim_rate"]*discrim_loss
+    loss = mask_label_loss + self.config["discrim_rate"] * discrim_loss
 
 
     self._add_metrics(lm_output, lm_label_ids, lm_label_weights,

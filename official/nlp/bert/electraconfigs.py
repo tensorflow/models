@@ -44,7 +44,7 @@ class ElectraConfig(base_config.Config):
                initializer_range=0.02,
                multiplier=3,
                discrim_rate=50):
-    """Constructs BertConfig.
+    """Constructs ElectraConfig.
 
     Args:
       vocab_size: Vocabulary size of `inputs_ids` in `BertModel`.
@@ -84,7 +84,6 @@ class ElectraConfig(base_config.Config):
     self.max_position_embeddings = max_position_embeddings
     self.type_vocab_size = type_vocab_size
     self.initializer_range = initializer_range
-    self.backward_compatible = backward_compatible
 
   @classmethod
   def from_dict(cls, json_object):
@@ -96,31 +95,29 @@ class ElectraConfig(base_config.Config):
 
   def get_generator_bert(self):
     return configs.BertConfig(self.vocab_size,
-    self.hidden_size,
-    self.num_hidden_layers,
-    self.num_attention_heads,
-    self.intermediate_size,
-    self.hidden_act,
-    self.hidden_dropout_prob,
-    self.attention_probs_dropout_prob,
-    self.max_position_embeddings,
-    self.type_vocab_size,
-    self.initializer_range,
-    self.backward_compatible)
+      self.hidden_size,
+      self.num_hidden_layers,
+      self.num_attention_heads,
+      self.intermediate_size,
+      self.hidden_act,
+      self.hidden_dropout_prob,
+      self.attention_probs_dropout_prob,
+      self.max_position_embeddings,
+      self.type_vocab_size,
+      self.initializer_range)
 
   def get_discriminator_bert(self):
     return configs.BertConfig(self.vocab_size,
-    self.discrim_hidden_size,
-    self.discrim_layers,
-    self.discrim_attention_heads,
-    self.intermediate_size,
-    self.hidden_act,
-    self.hidden_dropout_prob,
-    self.attention_probs_dropout_prob,
-    self.max_position_embeddings,
-    self.type_vocab_size,
-    self.initializer_range,
-    self.backward_compatible)
+      self.discrim_hidden_size,
+      self.discrim_layers,
+      self.discrim_attention_heads,
+      self.intermediate_size,
+      self.hidden_act,
+      self.hidden_dropout_prob,
+      self.attention_probs_dropout_prob,
+      self.max_position_embeddings,
+      self.type_vocab_size,
+      self.initializer_range)
 
   @classmethod
   def from_json_file(cls, json_file):
