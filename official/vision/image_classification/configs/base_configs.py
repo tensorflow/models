@@ -24,10 +24,11 @@ from typing import Any, List, Mapping, Optional
 import dataclasses
 
 from official.modeling import hyperparams
+from official.modeling.hyperparams import config_definitions
 
-CallbacksConfig = hyperparams.CallbacksConfig
-TensorboardConfig = hyperparams.TensorboardConfig
-RuntimeConfig = hyperparams.RuntimeConfig
+CallbacksConfig = config_definitions.CallbacksConfig
+TensorboardConfig = config_definitions.TensorboardConfig
+RuntimeConfig = config_definitions.RuntimeConfig
 
 
 @dataclasses.dataclass
