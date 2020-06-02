@@ -47,3 +47,7 @@ assemble new layers, networks, or models.
 
 *   [ClassificationHead](cls_head.py) A pooling head over a sequence of
     embeddings, commonly used by classification tasks.
+
+*   [GatedFeedforward](gated_feedforward.py) implements the gated linear layer
+    feedforward as described in
+    ["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202).
