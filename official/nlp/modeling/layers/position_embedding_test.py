@@ -101,7 +101,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
   def test_relative_tensor_input(self):
     hidden_size = 8
     test_layer = position_embedding.RelativePositionEmbedding(
-      hidden_size=hidden_size)
+        hidden_size=hidden_size)
 
     # create a 3-dimensional input for test_layer to infer length as 1.
     input_tensor = tf.constant([[[0] * hidden_size]])
@@ -118,7 +118,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     # When we do not have tensor as input, we explicitly specify length
     # value when initializing test_layer.
     test_layer = position_embedding.RelativePositionEmbedding(
-      hidden_size=hidden_size, length=1)
+        hidden_size=hidden_size, length=1)
     input_tensor = None
     output_tensor = test_layer(input_tensor)
 
