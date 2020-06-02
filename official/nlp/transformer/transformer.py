@@ -22,6 +22,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from official.nlp.modeling.layers import position_embedding
 from official.nlp.transformer import attention_layer
 from official.nlp.transformer import beam_search
 from official.nlp.transformer import embedding_layer
@@ -29,7 +30,7 @@ from official.nlp.transformer import ffn_layer
 from official.nlp.transformer import metrics
 from official.nlp.transformer import model_utils
 from official.nlp.transformer.utils.tokenizer import EOS_ID
-from official.nlp.modeling.layers import position_embedding
+
 
 # Disable the not-callable lint error, since it claims many objects are not
 # callable when they actually are.
