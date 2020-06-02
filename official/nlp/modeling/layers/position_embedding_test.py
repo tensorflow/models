@@ -36,7 +36,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     sequence_length = 21
     width = 30
     input_tensor = tf.keras.Input(shape=(sequence_length, width))
-    output_tensor = test_layer(input_tensor)
+    output_tensor = test_layer(input_tensor) # pylint: disable=not-callable
 
     # When using static positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions save batch.
@@ -51,7 +51,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     sequence_length = 21
     width = 30
     input_tensor = tf.keras.Input(shape=(sequence_length, width))
-    output_tensor = test_layer(input_tensor)
+    output_tensor = test_layer(input_tensor) # pylint: disable=not-callable
 
     # When using static positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions save batch.
@@ -67,7 +67,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     # Create a 3-dimensional input (the first dimension is implicit).
     width = 30
     input_tensor = tf.keras.Input(shape=(None, width))
-    output_tensor = test_layer(input_tensor)
+    output_tensor = test_layer(input_tensor) # pylint: disable=not-callable
 
     # When using dynamic positional embedding shapes, the output is expected
     # to be the same as the input shape in all dimensions - but may be None if
@@ -82,7 +82,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     # Create a 3-dimensional input (the first dimension is implicit).
     width = 30
     input_tensor = tf.keras.Input(shape=(None, width))
-    output_tensor = test_layer(input_tensor)
+    output_tensor = test_layer(input_tensor) # pylint: disable=not-callable
 
     model = tf.keras.Model(input_tensor, output_tensor)
 
@@ -105,7 +105,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
 
     # create a 3-dimensional input for test_layer to infer length as 1.
     input_tensor = tf.constant([[[0] * hidden_size]])
-    output_tensor = test_layer(input_tensor)
+    output_tensor = test_layer(input_tensor) # pylint: disable=not-callable
 
     # expected output is the theoretical result of the input based on
     # sine cosine relative position embedding formula.
@@ -120,7 +120,7 @@ class PositionEmbeddingLayerTest(keras_parameterized.TestCase):
     test_layer = position_embedding.RelativePositionEmbedding(
         hidden_size=hidden_size, length=1)
     input_tensor = None
-    output_tensor = test_layer(input_tensor)
+    output_tensor = test_layer(input_tensor) # pylint: disable=not-callable
 
     # expected output is the theoretical result of the input based on
     # sine cosine relative position embedding formula.
