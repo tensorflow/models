@@ -124,9 +124,9 @@ class PositionEmbedding(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package="Text")
 class RelativePositionEmbedding(tf.keras.layers.Layer):
   """Creates a positional embedding.
-  This layer calculates the position encoding as a mix of sine and cosine functions
-  with geometrically increasing wavelengths. Defined and formulized in "Attention is
-  All You Need", section 3.5.
+  This layer calculates the position encoding as a mix of sine and cosine
+  functions with geometrically increasing wavelengths. Defined and formulized in
+   "Attention is All You Need", section 3.5.
   (https://arxiv.org/abs/1706.03762).
   Arguments:
     hidden_size: Size of the hidden layer.
@@ -143,8 +143,8 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
     # We need to have a default dtype of float32, since the inputs (which Keras
     # usually uses to infer the dtype) will always be int32.
     # We compute the positional encoding in float32 even if the model uses
-    # float16, as many of the ops used, like log and exp, are numerically unstable
-    # in float16.
+    # float16, as many of the ops used, like log and exp, are numerically
+    # unstable in float16.
     if "dtype" not in kwargs:
       kwargs["dtype"] = "float32"
 
@@ -161,7 +161,7 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
         "max_timescale": self._max_timescale,
         "length": self._length,
     }
-    base_config = super(PositionEmbedding, self).get_config()
+    base_config = super(RelativePositionEmbedding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
@@ -173,8 +173,8 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
     length = self._length
     if inputs is None and length is None:
       raise ValueError(
-          "If inputs is None, `length` must be set in RelativePositionEmbedding()."
-      )
+        "If inputs is None, `length` must be set in "
+        "RelativePositionEmbedding().")
     if inputs is not None:
       input_shape = tf_utils.get_shape_list(inputs)
       length = input_shape[1]
@@ -182,10 +182,12 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
     num_timescales = self._hidden_size // 2
     min_timescale, max_timescale = self._min_timescale, self._max_timescale
     log_timescale_increment = (
-        math.log(float(max_timescale) / float(min_timescale)) /
-        (tf.cast(num_timescales, tf.float32) - 1))
+            math.log(float(max_timescale) / float(min_timescale)) /
+            (tf.cast(num_timescales, tf.float32) - 1))
     inv_timescales = min_timescale * tf.exp(
-        tf.cast(tf.range(num_timescales), tf.float32) * -log_timescale_increment)
-    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
-    position_embeddings = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
+      tf.cast(tf.range(num_timescales), tf.float32) * -log_timescale_increment)
+    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales,
+                                                               0)
+    position_embeddings = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)],
+                                    axis=1)
     return position_embeddings

@@ -172,7 +172,7 @@ class Transformer(tf.keras.Model):
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(embedded_inputs)[1]
         pos_layer = position_embedding.RelativePositionEmbedding(
-            hidden_size=self.params["hidden_size"])
+          hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(embedded_inputs)
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
@@ -211,7 +211,7 @@ class Transformer(tf.keras.Model):
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
         pos_layer = position_embedding.RelativePositionEmbedding(
-            hidden_size=self.params["hidden_size"])
+          hidden_size=self.params["hidden_size"])
         pos_encoding = pos_layer(decoder_inputs)
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         decoder_inputs += pos_encoding
@@ -236,8 +236,8 @@ class Transformer(tf.keras.Model):
     """Returns a decoding function that calculates logits of the next tokens."""
 
     pos_layer = position_embedding.RelativePositionEmbedding(
-        hidden_size=self.params["hidden_size"],
-        length=max_decode_length + 1)
+      hidden_size=self.params["hidden_size"],
+      length=max_decode_length + 1)
     timing_signal = pos_layer(None)
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
