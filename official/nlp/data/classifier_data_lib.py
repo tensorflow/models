@@ -187,6 +187,91 @@ class XnliProcessor(DataProcessor):
     return "XNLI"
 
 
+class PawsxProcessor(DataProcessor):
+  """Processor for the PAWS-X data set."""
+  supported_languages = [
+      "de", "en", "es", "fr", "ja", "ko", "zh"
+  ]
+
+  def __init__(self,
+               language="en",
+               process_text_fn=tokenization.convert_to_unicode):
+    super(PawsxProcessor, self).__init__(process_text_fn)
+    if language == "all":
+      self.languages = PawsxProcessor.supported_languages
+    elif language not in PawsxProcessor.supported_languages:
+      raise ValueError("language %s is not supported for PAWS-X task." %
+                       language)
+    else:
+      self.languages = [language]
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    lines = []
+    for language in self.languages:
+      if language == "en":
+        train_tsv = "train.tsv"
+      else:
+        train_tsv = "translated_train.tsv"
+      # Skips the header.
+      lines.extend(
+          self._read_tsv(
+              os.path.join(data_dir, language, train_tsv))[1:])
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "train-%d" % i
+      text_a = self.process_text_fn(line[1])
+      text_b = self.process_text_fn(line[2])
+      label = self.process_text_fn(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    lines = []
+    for language in PawsxProcessor.supported_languages:
+      # Skips the header.
+      lines.extend(
+          self._read_tsv(os.path.join(data_dir, language, "dev_2k.tsv"))[1:])
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "dev-%d" % i
+      text_a = self.process_text_fn(line[1])
+      text_b = self.process_text_fn(line[2])
+      label = self.process_text_fn(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    examples_by_lang = {k: [] for k in PawsxProcessor.supported_languages}
+    for language in PawsxProcessor.supported_languages:
+      lines = self._read_tsv(os.path.join(data_dir, language, "test_2k.tsv"))
+      for (i, line) in enumerate(lines):
+        if i == 0:
+          continue
+        guid = "test-%d" % i
+        text_a = self.process_text_fn(line[1])
+        text_b = self.process_text_fn(line[2])
+        label = self.process_text_fn(line[3])
+        examples_by_lang[language].append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples_by_lang
+
+  def get_labels(self):
+    """See base class."""
+    return ["0", "1"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "PAWS-X"
+
+
 class MnliProcessor(DataProcessor):
   """Processor for the MultiNLI data set (GLUE version)."""
 

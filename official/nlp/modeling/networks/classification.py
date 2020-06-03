@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Classification network."""
+"""Classification and regression network."""
 # pylint: disable=g-classes-have-attributes
 from __future__ import absolute_import
 from __future__ import division
@@ -26,11 +26,13 @@ import tensorflow as tf
 class Classification(tf.keras.Model):
   """Classification network head for BERT modeling.
 
-  This network implements a simple classifier head based on a dense layer.
+  This network implements a simple classifier head based on a dense layer. If
+  num_classes is one, it can be considered as a regression problem.
 
   Arguments:
     input_width: The innermost dimension of the input tensor to this network.
-    num_classes: The number of classes that this network should classify to.
+    num_classes: The number of classes that this network should classify to. If
+      equal to 1, a regression problem is assumed.
     activation: The activation, if any, for the dense layer in this network.
     initializer: The intializer for the dense layer in this network. Defaults to
       a Glorot uniform initializer.

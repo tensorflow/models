@@ -22,7 +22,6 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from official.nlp.modeling.layers import position_embedding
 from official.nlp.transformer import attention_layer
 from official.nlp.transformer import beam_search
 from official.nlp.transformer import embedding_layer
@@ -171,9 +170,9 @@ class Transformer(tf.keras.Model):
       attention_bias = tf.cast(attention_bias, self.params["dtype"])
 
       with tf.name_scope("add_pos_encoding"):
-        pos_layer = position_embedding.RelativePositionEmbedding(
-            hidden_size=self.params["hidden_size"])
-        pos_encoding = pos_layer(embedded_inputs)
+        length = tf.shape(embedded_inputs)[1]
+        pos_encoding = model_utils.get_position_encoding(
+            length, self.params["hidden_size"])
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
 
@@ -210,9 +209,8 @@ class Transformer(tf.keras.Model):
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
-        pos_layer = position_embedding.RelativePositionEmbedding(
-            hidden_size=self.params["hidden_size"])
-        pos_encoding = pos_layer(decoder_inputs)
+        pos_encoding = model_utils.get_position_encoding(
+            length, self.params["hidden_size"])
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         decoder_inputs += pos_encoding
       if training:
@@ -235,10 +233,8 @@ class Transformer(tf.keras.Model):
   def _get_symbols_to_logits_fn(self, max_decode_length, training):
     """Returns a decoding function that calculates logits of the next tokens."""
 
-    pos_layer = position_embedding.RelativePositionEmbedding(
-        hidden_size=self.params["hidden_size"],
-        length=max_decode_length + 1)
-    timing_signal = pos_layer(None)
+    timing_signal = model_utils.get_position_encoding(
+        max_decode_length + 1, self.params["hidden_size"])
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
         max_decode_length, dtype=self.params["dtype"])
