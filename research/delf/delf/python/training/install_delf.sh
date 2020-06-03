@@ -32,18 +32,11 @@ handle_exit_code() {
 }
 
 install_tensorflow() {
-    # Install TensorFlow 2.2. Exit if Python version is 3.7.x or it TensorFlow installation fails
-
-    echo "Checking that Python version is different than 3.7.x"
-    python -c "import sys; assert (sys.version_info < (3, 7, 0) or sys.version_info > (3, 8, 0))" 1>/dev/null 2>/dev/null
-    local exit_code=$?
-    handle_exit_code ${exit_code} "Python version different than 3.7 is a pre-requisite. Current version ${python_version}."
-    
+    # Install TensorFlow 2.2
     echo "Installing TensorFlow 2.2"
     pip3 install --upgrade tensorflow==2.2.0
     local exit_code=$?
     handle_exit_code ${exit_code} "Unable to install Tensorflow 2.2."
-    
     echo "Installing TensorFlow 2.2 for GPU"
     pip3 install --upgrade tensorflow-gpu==2.2.0
     local exit_code=$?
@@ -56,10 +49,10 @@ install_tf_slim() {
     git clone ${tf_slim_git_repo}
     local exit_code=$?
     handle_exit_code ${exit_code} "Unable to clone TF-Slim repository ${tf_slim_git_repo}."
-    pushd .
+    pushd . > /dev/null
     cd tf-slim
     pip3 install .
-    popd
+    popd > /dev/null
     rm -rf tf-slim
 }
 
@@ -80,16 +73,15 @@ download_protoc() {
 }
 
 compile_delf_protos() {
-    # Compiles DELF protobufs from tensorflow/models/research/delf/delf using the potoc compiler 
+    # Compiles DELF protobufs from tensorflow/models/research/delf using the potoc compiler 
     echo "Compiling DELF Protobufs"
     PATH_TO_PROTOC="`pwd`/${protoc_folder}"
     pushd . > /dev/null
-    cd ../..
-    ${PATH_TO_PROTOC}/bin/protoc protos/*.proto --python_out=.
+    cd ../../..
+    ${PATH_TO_PROTOC}/bin/protoc delf/protos/*.proto --python_out=.
     local exit_code=$?
     handle_exit_code ${exit_code} "Unable to compile DELF Protobufs."
     popd > /dev/null
-    exit 1
 }
 
 cleanup_protoc() {
@@ -102,7 +94,11 @@ install_python_libraries() {
     # Installs Python libraries upon which the DELF package has dependencies
     echo "Installing matplotlib, numpy, scikit-image, scipy and python3-tk"
     pip3 install matplotlib numpy scikit-image scipy
+    local exit_code=$?
+    handle_exit_code ${exit_code} "Unable to install at least one of: matplotlib numpy scikit-image scipy."
     sudo apt-get -y install python3-tk
+    local exit_code=$?
+    handle_exit_code ${exit_code} "Unable to install python3-tk."
 }
 
 install_object_detection() {
@@ -112,6 +108,8 @@ install_object_detection() {
     cd ../../../..
     export PYTHONPATH=$PYTHONPATH:`pwd`
     pip3 install .
+    local exit_code=$?
+    handle_exit_code ${exit_code} "Unable to install the object_detection package."
     popd > /dev/null
 }
 
@@ -119,22 +117,27 @@ install_delf_package() {
     # Installs the object detection package from tensorflow/models/research/delf/delf
     echo "Installing DELF package"
     pushd . > /dev/null
-    cd ../..
+    cd ../../..
     pip3 install -e .
+    local exit_code=$?
+    handle_exit_code ${exit_code} "Unable to install the DELF package."
     popd > /dev/null
 }
 
 post_install_check() {
     # Checks the DEFL package has been successfully installed
     echo "Checking DELF package installation"
-    pip3 install -e .
+    python3 -c 'import delf'
+    local exit_code=$?
+    handle_exit_code ${exit_code} "DELF package installation check failed."
+    echo "Installation successful."
 }
 
 install_delf() {
     # Orchestrates DEFL package installation
-    #install_tensorflow
-    #install_tf_slim
-    #download_protoc
+    install_tensorflow
+    install_tf_slim
+    download_protoc
     compile_delf_protos
     cleanup_protoc
     install_python_libraries
