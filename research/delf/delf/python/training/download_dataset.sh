@@ -15,7 +15,7 @@
 # limitations under the License.
 # ==============================================================================
 
-# GLDv2 datase image files by split
+# This script dowloands the Google Landmarks v2 dataset. GLDv2 datase image files by split:
 # - TRAIN: 500
 # - INDEX: 100
 # - TEST: 20
