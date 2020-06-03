@@ -154,13 +154,14 @@ def create_classifier_dataset(file_path,
                               seq_length,
                               batch_size,
                               is_training=True,
-                              input_pipeline_context=None):
+                              input_pipeline_context=None,
+                              label_type=tf.int64):
   """Creates input dataset from (tf)records files for train/eval."""
   name_to_features = {
       'input_ids': tf.io.FixedLenFeature([seq_length], tf.int64),
       'input_mask': tf.io.FixedLenFeature([seq_length], tf.int64),
       'segment_ids': tf.io.FixedLenFeature([seq_length], tf.int64),
-      'label_ids': tf.io.FixedLenFeature([], tf.int64),
+      'label_ids': tf.io.FixedLenFeature([], label_type),
   }
   dataset = single_file_dataset(file_path, name_to_features)
 
