@@ -47,14 +47,21 @@ flags.DEFINE_string(
     "for the task.")
 
 flags.DEFINE_enum("classification_task_name", "MNLI",
-                  ["COLA", "MNLI", "MRPC", "QNLI", "QQP", "SST-2", "XNLI"],
+                  ["COLA", "MNLI", "MRPC", "QNLI", "QQP", "SST-2", "XNLI",
+                   "PAWS-X"],
                   "The name of the task to train BERT classifier.")
 
 # XNLI task specific flag.
 flags.DEFINE_string(
     "xnli_language", "en",
-    "Language of training and evaluation data for XNIL task. If the value is "
-    "'all', the data of all languages will be used for training.")
+    "Language of training data for XNIL task. If the value is 'all', the data "
+    "of all languages will be used for training.")
+
+# PAWS-X task specific flag.
+flags.DEFINE_string(
+    "pawsx_language", "en",
+    "Language of trainig data for PAWS-X task. If the value is 'all', the data "
+    "of all languages will be used for training.")
 
 # BERT Squad task specific flags.
 flags.DEFINE_string(
@@ -166,6 +173,9 @@ def generate_classifier_dataset():
         "xnli":
             functools.partial(classifier_data_lib.XnliProcessor,
                               language=FLAGS.xnli_language),
+        "paws-x":
+            functools.partial(classifier_data_lib.PawsxProcessor,
+                              language=FLAGS.pawsx_language)
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:

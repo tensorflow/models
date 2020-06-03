@@ -59,7 +59,6 @@ class MaskedSoftmax(tf.keras.layers.Layer):
 
       # Since we are adding it to the raw scores before the softmax, this is
       # effectively the same as removing these entirely.
-
       scores += adder
 
     if len(self._normalization_axes) == 1:
