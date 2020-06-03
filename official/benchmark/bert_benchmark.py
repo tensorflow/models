@@ -56,7 +56,7 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     super(BertClassifyBenchmarkBase, self).__init__(output_dir, tpu=tpu)
     self.num_epochs = None
     self.num_steps_per_epoch = None
-    FLAGS.steps_per_loop = 50
+    FLAGS.steps_per_loop = 1
 
   @flagsaver.flagsaver
   def _run_bert_classifier(self, callbacks=None, use_ds=True):
@@ -269,6 +269,7 @@ class BertClassifyBenchmarkReal(BertClassifyBenchmarkBase):
     """Test BERT model performance with 2x2 TPU."""
 
     self._setup()
+    FLAGS.steps_per_loop = 50
     FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_mrpc')
     FLAGS.train_data_path = self.train_data_path
     FLAGS.eval_data_path = self.eval_data_path
@@ -352,6 +353,7 @@ class BertClassifyAccuracy(BertClassifyBenchmarkBase):
   def benchmark_2x2_tpu_mrpc(self):
     """Run BERT model accuracy test on 2x2 TPU."""
     self._setup()
+    FLAGS.steps_per_loop = 50
     FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_mrpc')
 
     summary_path = os.path.join(FLAGS.model_dir,
