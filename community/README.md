@@ -11,7 +11,7 @@ This repository provides a curated list of the GitHub repositories with machine 
 ### Computer Vision
 
 #### Image Recognition
-| Model | Reference (Paper) | &nbsp; &nbsp; &nbsp; Features &nbsp; &nbsp; &nbsp; | Maintainer |
+| &nbsp; &nbsp; &nbsp; &nbsp; Model &nbsp; &nbsp; &nbsp; &nbsp; | Reference (Paper) | Features | Maintainer |
 |-------|-------------------|----------|------------|
 | [DenseNet 169](https://github.com/IntelAI/models/blob/master/benchmarks/image_recognition/tensorflow/densenet169) | [Densely Connected Convolutional Networks](https://arxiv.org/pdf/1608.06993) | • FP32 Inference | [Intel](https://github.com/IntelAI) |
 | [Inception V3](https://github.com/IntelAI/models/tree/master/benchmarks/image_recognition/tensorflow/inceptionv3) | [Rethinking the Inception Architecture for Computer Vision](https://arxiv.org/pdf/1512.00567.pdf) | • Int8 Inference<br/>• FP32 Inference | [Intel](https://github.com/IntelAI) |
