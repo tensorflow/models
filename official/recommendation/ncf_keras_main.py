@@ -191,7 +191,8 @@ def _get_keras_model(params):
   # Custom training loop calculates loss and metric as a part of
   # training/evaluation step function.
   if not params["keras_use_ctl"]:
-    softmax_logits = MetricLayer(params)([softmax_logits, dup_mask_input])
+    softmax_logits = MetricLayer(
+        params["match_mlperf"])([softmax_logits, dup_mask_input])
     # TODO(b/134744680): Use model.add_loss() instead once the API is well
     # supported.
     softmax_logits = LossLayer(batch_size)(
