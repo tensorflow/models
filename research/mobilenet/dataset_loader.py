@@ -118,6 +118,11 @@ def load_tfds(dataset_name: Text,
 
   logging.info('Using TFDS to load data.')
 
+  # A temp fix as here: https://github.com/tensorflow/datasets/issues/1441
+  import resource
+  low, high = resource.getrlimit(resource.RLIMIT_NOFILE)
+  resource.setrlimit(resource.RLIMIT_NOFILE, (high, high))
+
   dataset = tfds.load(
     name=dataset_name,
     data_dir=data_dir,
