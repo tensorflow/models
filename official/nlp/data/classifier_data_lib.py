@@ -127,15 +127,14 @@ class XnliProcessor(DataProcessor):
     """See base class."""
     lines = []
     for language in self.languages:
+      # Skips the header.
       lines.extend(
           self._read_tsv(
               os.path.join(data_dir, "multinli",
-                           "multinli.train.%s.tsv" % language)))
+                           "multinli.train.%s.tsv" % language))[1:])
 
     examples = []
     for (i, line) in enumerate(lines):
-      if i == 0:
-        continue
       guid = "train-%d" % i
       text_a = self.process_text_fn(line[0])
       text_b = self.process_text_fn(line[1])
@@ -825,7 +824,8 @@ def generate_tf_record_from_data_file(processor,
       eval_data_output_path: Output to which processed tf record for evaluation
         will be saved.
       test_data_output_path: Output to which processed tf record for testing
-        will be saved. Must be a pattern template with {} if processor is XNLI.
+        will be saved. Must be a pattern template with {} if processor has
+        language specific test data.
       max_seq_length: Maximum sequence length of the to be generated
         training/eval data.
 
