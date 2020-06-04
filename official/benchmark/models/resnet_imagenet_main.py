@@ -63,7 +63,7 @@ def selective_clustering_clone_wrapper(clustering_params1, clustering_params2,
         return cluster.cluster_weights(layer, **clustering_params1)
       else:
         print("Wrapped layer " + layer.name +
-              " with number of clusters equals to " +
+              " with " +
               str(clustering_params2["number_of_clusters"]) + " clusters.")
         return cluster.cluster_weights(layer, **clustering_params2)
     return layer
@@ -243,7 +243,7 @@ def run(flags_obj):
           classes=imagenet_preprocessing.NUM_CLASSES,
           layers=tf.keras.layers)
     elif flags_obj.model == 'mobilenet_pretrained':
-      shape = (3, 224, 224)
+      shape = (224, 224, 3)
       model = tf.keras.applications.mobilenet.MobileNet(
           input_shape=shape,
           alpha=1.0,
@@ -366,12 +366,13 @@ def run(flags_obj):
   if not strategy and flags_obj.explicit_gpu_placement:
     no_dist_strat_device.__exit__()
 
-  if flags_obj.save_files_to:
-    keras_file = os.path.join(flags_obj.save_files_to, 'clustered.h5')
-  else:
-    keras_file = './clustered.h5'
-  print('Saving clustered and stripped model to: ', keras_file)
-  tf.keras.models.save_model(model, keras_file)
+  if flags_obj.clustering_method:
+    if flags_obj.save_files_to:
+      keras_file = os.path.join(flags_obj.save_files_to, 'clustered.h5')
+    else:
+      keras_file = './clustered.h5'
+    print('Saving clustered and stripped model to: ', keras_file)
+    tf.keras.models.save_model(model, keras_file)
 
   stats = common.build_stats(history, eval_output, callbacks)
   return stats

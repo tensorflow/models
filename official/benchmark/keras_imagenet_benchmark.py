@@ -42,6 +42,7 @@ MOBILENET_V1_MAX_TOP_1_ACCURACY = 0.68
 MODEL_OPTIMIZATION_TOP_1_ACCURACY = {
     'RESNET50_FINETUNE_PRUNING': (0.76, 0.77),
     'MOBILENET_V1_FINETUNE_PRUNING': (0.67, 0.68),
+    'MOBILENET_V1_FINETUNE_CLUSTERING': (0.68, 0.70)
 }
 
 FLAGS = flags.FLAGS
@@ -1771,6 +1772,120 @@ class Resnet50KerasPruningBenchmarkReal(KerasPruningBenchmarkRealBase):
         'optimizer': 'mobilenet_default',
     }
     super(Resnet50KerasPruningBenchmarkReal, self).__init__(
+        default_flags=default_flags, **kwargs)
+
+
+class KerasClusteringAccuracyBase(keras_benchmark.KerasBenchmark):
+  """Benchmark accuracy tests for clustering method."""
+
+  def __init__(self,
+               output_dir=None,
+               root_data_dir=None,
+               default_flags=None,
+               **kwargs):
+    """An accuracy benchmark class for clustering method.
+
+    Args:
+      output_dir: directory where to output e.g. log files
+      root_data_dir: directory under which to look for dataset
+      default_flags: default flags
+      **kwargs: arbitrary named arguments. This is needed to make the
+                constructor forward compatible in case PerfZero provides more
+                named arguments before updating the constructor.
+    """
+    if default_flags is None:
+      default_flags = {}
+    default_flags['clustering_method'] = 'selective_clustering'
+    default_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
+    default_flags['model'] = 'mobilenet_pretrained'
+    default_flags['optimizer'] = 'mobilenet_fine_tune'
+
+    flag_methods = [resnet_imagenet_main.define_imagenet_keras_flags]
+
+    super(KerasClusteringAccuracyBase, self).__init__(
+        output_dir=output_dir,
+        flag_methods=flag_methods,
+        default_flags=default_flags,
+        **kwargs)
+
+  def benchmark_8_gpu(self):
+    """Test Keras model with eager, dist_strat and 8 GPUs."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.batch_size = 32 * 8
+    FLAGS.train_epochs = 1
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
+    FLAGS.dtype = 'fp32'
+    FLAGS.enable_eager = True
+    self._run_and_report_benchmark()
+
+  @benchmark_wrappers.enable_runtime_flags
+  def _run_and_report_benchmark(self,
+                                top_1_min=MODEL_OPTIMIZATION_TOP_1_ACCURACY[
+                                    'MOBILENET_V1_FINETUNE_CLUSTERING'][0],
+                                top_1_max=MODEL_OPTIMIZATION_TOP_1_ACCURACY[
+                                    'MOBILENET_V1_FINETUNE_CLUSTERING'][1]):
+    start_time_sec = time.time()
+    stats = resnet_imagenet_main.run(flags.FLAGS)
+    wall_time_sec = time.time() - start_time_sec
+
+    super(KerasClusteringAccuracyBase, self)._report_benchmark(
+        stats,
+        wall_time_sec,
+        top_1_min=top_1_min,
+        top_1_max=top_1_max,
+        total_batch_size=FLAGS.batch_size,
+        log_steps=100)
+
+
+class MobilenetV1KerasClusteringAccuracy(KerasClusteringAccuracyBase):
+  """Benchmark accuracy tests for MobilenetV1 with clustering method."""
+
+  def __init__(self, root_data_dir=None, **kwargs):
+    default_flags = {
+        'model': 'mobilenet_pretrained',
+        'optimizer': 'mobilenet_fine_tune',
+    }
+    super(MobilenetV1KerasClusteringAccuracy, self).__init__(
+        root_data_dir=root_data_dir,
+        default_flags=default_flags,
+        **kwargs)
+
+  def _run_and_report_benchmark(self):
+    super(MobilenetV1KerasClusteringAccuracy, self)._run_and_report_benchmark(
+        top_1_min=\
+        MODEL_OPTIMIZATION_TOP_1_ACCURACY['MOBILENET_V1_FINETUNE_CLUSTERING'][0],
+        top_1_max=\
+        MODEL_OPTIMIZATION_TOP_1_ACCURACY['MOBILENET_V1_FINETUNE_CLUSTERING'][1])
+
+
+class KerasClusteringBenchmarkRealBase(Resnet50KerasBenchmarkBase):
+  """Clustering method benchmarks."""
+
+  def __init__(self, root_data_dir=None, default_flags=None, **kwargs):
+    if default_flags is None:
+      default_flags = {}
+    default_flags.update({
+        'skip_eval': True,
+        'report_accuracy_metrics': False,
+        'data_dir': os.path.join(root_data_dir, 'imagenet'),
+        'train_steps': 110,
+        'log_steps': 10,
+    })
+    super(KerasClusteringBenchmarkRealBase, self).__init__(
+        default_flags=default_flags, **kwargs)
+
+
+class MobilenetV1KerasClusteringBenchmarkReal(KerasClusteringBenchmarkRealBase):
+  """Clustering method benchmarks for MobilenetV1."""
+
+  def __init__(self, **kwargs):
+    default_flags = {
+        'model': 'mobilenet_pretrained',
+        'optimizer': 'mobilenet_fine_tune',
+    }
+    super(MobilenetV1KerasClusteringBenchmarkReal, self).__init__(
         default_flags=default_flags, **kwargs)
 
 

@@ -26,12 +26,13 @@ from official.benchmark.models import resnet_imagenet_main
 from official.utils.testing import integration
 from official.vision.image_classification.resnet import imagenet_preprocessing
 
-
+# TBC: joint clustering and tuning is not supported yet so only one flag should be selected
 @parameterized.parameters(
     "resnet",
     # "resnet_polynomial_decay",  b/151854314
     "mobilenet",
-    # "mobilenet_polynomial_decay"  b/151854314
+    # "mobilenet_polynomial_decay",  b/151854314
+    "mobilenet_selective_clustering",
 )
 class KerasImagenetTest(tf.test.TestCase):
   """Unit tests for Keras Models with ImageNet."""
@@ -74,6 +75,11 @@ class KerasImagenetTest(tf.test.TestCase):
           "-pruning_method",
           "polynomial_decay",
       ],
+      "mobilenet_selective_clustering": [
+          "-model", "mobilenet_pretrained",
+          "-optimizer", "mobilenet_fine_tune",
+          "-clustering_method", "selective_clustering",
+      ]
   }
   _tempdir = None
 
@@ -167,7 +173,10 @@ class KerasImagenetTest(tf.test.TestCase):
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     if "polynomial_decay" in extra_flags:
-      self.skipTest("Pruning with fp16 is not currently supported.")
+      self.skipTest("Pruning with fp16 is currently not supported.")
+
+    if "selective_clustering" in extra_flags:
+      self.skipTest("Clustering with fp16 is currently not supported.")
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -237,7 +246,10 @@ class KerasImagenetTest(tf.test.TestCase):
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     if "polynomial_decay" in extra_flags:
-      self.skipTest("Pruning with fp16 is not currently supported.")
+      self.skipTest("Pruning with fp16 is currently not supported.")
+
+    if "selective_clustering" in extra_flags:
+      self.skipTest("Clustering with fp16 is currently not supported.")
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
@@ -264,7 +276,10 @@ class KerasImagenetTest(tf.test.TestCase):
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     if "polynomial_decay" in extra_flags:
-      self.skipTest("Pruning with fp16 is not currently supported.")
+      self.skipTest("Pruning with fp16 is currently not supported.")
+
+    if "selective_clustering" in extra_flags:
+      self.skipTest("Clustering with fp16 is currently not supported.")
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
