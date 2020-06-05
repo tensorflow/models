@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
+from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
@@ -77,3 +78,23 @@ def instantiate_from_cfg(
           stddev=encoder_cfg.initializer_range),
       encoder_network=encoder_network,
       classification_heads=classification_heads)
+
+
+@dataclasses.dataclass
+class BertPretrainDataConfig(cfg.DataConfig):
+  """Data config for BERT pretraining task."""
+  input_path: str = ""
+  global_batch_size: int = 512
+  is_training: bool = True
+  seq_length: int = 512
+  max_predictions_per_seq: int = 76
+  use_next_sentence_label: bool = True
+  use_position_id: bool = False
+
+
+@dataclasses.dataclass
+class BertPretrainEvalDataConfig(BertPretrainDataConfig):
+  """Data config for the eval set in BERT pretraining task."""
+  input_path: str = ""
+  global_batch_size: int = 512
+  is_training: bool = False
