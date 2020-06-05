@@ -80,15 +80,76 @@ class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
   def get_config(self) -> Mapping[str, Any]:
     if isinstance(self._after_warmup_lr_sched,
                   tf.keras.optimizers.schedules.LearningRateSchedule):
-      name = "{!s}WithWarmup".format(self._after_warmup_lr_sched.name)  # pytype: disable=attribute-error
-      config = self._after_warmup_lr_sched.get_config()  # pytype: disable=attribute-error
+      config = {
+          "after_warmup_lr_sched": self._after_warmup_lr_sched.get_config()}  # pytype: disable=attribute-error
     else:
-      name = "ConstantWithWarmup"
-      config = {"learning_rate": self._after_warmup_lr_sched}
+      config = {"after_warmup_lr_sched": self._after_warmup_lr_sched}  # pytype: disable=attribute-error
 
     config.update({
         "warmup_steps": self._warmup_steps,
         "warmup_learning_rate": self._init_warmup_lr,
-        "name": name
+        "name": self._name
+    })
+    return config
+
+
+class PolynomialWarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
+  """Applies polynomial warmup schedule on a given learning rate decay schedule.
+  """
+
+  def __init__(self,
+               after_warmup_lr_sched: Union[
+                   tf.keras.optimizers.schedules.LearningRateSchedule, float],
+               warmup_steps: int,
+               power: float = 1.0,
+               name: str = "PolynomialWarmup"):
+    super(PolynomialWarmUp, self).__init__()
+    if isinstance(after_warmup_lr_sched,
+                  tf.keras.optimizers.schedules.LearningRateSchedule):
+      self._initial_learning_rate = after_warmup_lr_sched(warmup_steps)
+    else:
+      self._initial_learning_rate = tf.cast(
+          after_warmup_lr_sched, dtype=tf.float32)
+
+    self._warmup_steps = warmup_steps
+    self._power = power
+    self._after_warmup_lr_sched = after_warmup_lr_sched
+    self._name = name
+
+  def __call__(self, step):
+    with tf.name_scope(self._name or "PolynomialWarmUp") as name:
+      # Implements polynomial warmup. i.e., if global_step < warmup_steps, the
+      # learning rate will be `global_step/num_warmup_steps * init_lr`.
+      global_step_float = tf.cast(step, tf.float32)
+      warmup_steps_float = tf.cast(self._warmup_steps, tf.float32)
+      warmup_percent_done = global_step_float / warmup_steps_float
+      warmup_learning_rate = (
+          self._initial_learning_rate *
+          tf.math.pow(warmup_percent_done, self._power))
+
+      if isinstance(self._after_warmup_lr_sched,
+                    tf.keras.optimizers.schedules.LearningRateSchedule):
+        after_warmup_lr = self._after_warmup_lr_sched(step)
+      else:
+        after_warmup_lr = tf.cast(self._after_warmup_lr_sched, dtype=tf.float32)
+
+      return tf.cond(
+          global_step_float < warmup_steps_float,
+          lambda: warmup_learning_rate,
+          lambda: after_warmup_lr,
+          name=name)
+
+  def get_config(self) -> Mapping[str, Any]:
+    if isinstance(self._after_warmup_lr_sched,
+                  tf.keras.optimizers.schedules.LearningRateSchedule):
+      config = {
+          "after_warmup_lr_sched": self._after_warmup_lr_sched.get_config()}  # pytype: disable=attribute-error
+    else:
+      config = {"after_warmup_lr_sched": self._after_warmup_lr_sched}  # pytype: disable=attribute-error
+
+    config.update({
+        "warmup_steps": self._warmup_setps,
+        "power": self._power,
+        "name": self._name
     })
     return config
