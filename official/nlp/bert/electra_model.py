@@ -71,7 +71,9 @@ class ElectraPretrainLossAndMetricLayer(tf.keras.layers.Layer):
     discrim_output = tf.cast(discrim_output, tf.float32)
     mask_label_loss = losses.weighted_sparse_categorical_crossentropy_loss(
         labels=lm_label_ids, predictions=lm_output, weights=weights)
-    discrim_ind_loss = tf.nn.sigmoid_cross_entropy_with_logits(logits = discrim_output, labels=tf.cast(discrim_labels,tf.float32))
+    discrim_ind_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+        logits = discrim_output,
+        labels=tf.cast(discrim_labels,tf.float32))
     discrim_loss = tf.reduce_sum(discrim_ind_loss)
     loss = mask_label_loss + self.config["discrim_rate"] * discrim_loss
 
@@ -178,8 +180,12 @@ def pretrain_model(electra_config,
       dtype=tf.int32)
   next_sentence_labels = tf.keras.layers.Input(
       shape=(1,), name='next_sentence_labels', dtype=tf.int32)
-  gen_encoder = get_transformer_encoder(electraconfigs.ElectraConfig.get_generator_bert(electra_config), seq_length)
-  discrim_encoder = get_transformer_encoder(electraconfigs.ElectraConfig.get_discriminator_bert(electra_config), seq_length)
+  gen_encoder = get_transformer_encoder(
+      electraconfigs.ElectraConfig.get_generator_bert(electra_config),
+      seq_length)
+  discrim_encoder = get_transformer_encoder(
+      electraconfigs.ElectraConfig.get_discriminator_bert(electra_config),
+      seq_length)
   if initializer is None:
     initializer = tf.keras.initializers.TruncatedNormal(
         stddev=electra_config.initializer_range)

@@ -23,11 +23,10 @@ import dataclasses
 import json
 import six
 import tensorflow as tf
-from official.nlp.bert import configs
-from official.modeling.hyperparams import base_config
+from official.modeling import hyperparams
 
 @dataclasses.dataclass
-class ElectraConfig(base_config.Config):
+class ElectraConfig(hyperparams.Config):
   """Configuration for `ElectraModel`."""
 
   def __init__(self,
