@@ -56,11 +56,13 @@ class LrConfig(oneof.OneOfConfig):
     stepwise: stepwise learning rate config.
     exponential: exponential learning rate config.
     polynomial: polynomial learning rate config.
+    cosine: cosine learning rate config.
   """
   type: Optional[str] = None
   stepwise: lr_cfg.StepwiseLrConfig = lr_cfg.StepwiseLrConfig()
   exponential: lr_cfg.ExponentialLrConfig = lr_cfg.ExponentialLrConfig()
   polynomial: lr_cfg.PolynomialLrConfig = lr_cfg.PolynomialLrConfig()
+  cosine: lr_cfg.CosineLrConfig = lr_cfg.CosineLrConfig()
 
 
 @dataclasses.dataclass
@@ -70,9 +72,11 @@ class WarmupConfig(oneof.OneOfConfig):
   Attributes:
     type: 'str', type of warmup schedule to be used, on the of fields below.
     linear: linear warmup config.
+    polynomial: polynomial warmup config.
   """
   type: Optional[str] = None
   linear: lr_cfg.LinearWarmupConfig = lr_cfg.LinearWarmupConfig()
+  polynomial: lr_cfg.PolinomialWarmupConfig = lr_cfg.PolinomialWarmupConfig()
 
 
 @dataclasses.dataclass

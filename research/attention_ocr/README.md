@@ -1,5 +1,9 @@
 ## Attention-based Extraction of Structured Information from Street View Imagery
 
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/attention-based-extraction-of-structured/optical-character-recognition-on-fsns-test)](https://paperswithcode.com/sota/optical-character-recognition-on-fsns-test?p=attention-based-extraction-of-structured)
+[![Paper](http://img.shields.io/badge/paper-arXiv.1704.03549-B3181B.svg)](https://arxiv.org/abs/1704.03549)
+[![TensorFlow 1.15](https://img.shields.io/badge/tensorflow-1.15-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
+
 *A TensorFlow model for real-world image text extraction problems.*
 
 This folder contains the code needed to train a new Attention OCR model on the
@@ -13,12 +17,12 @@ Imagery"](https://arxiv.org/abs/1704.03549)
 
 ## Contacts
 
-Authors:
-Zbigniew Wojna <zbigniewwojna@gmail.com>,
-Alexander Gorban <gorban@google.com>
+Authors
 
-Pull requests:
-[alexgorban](https://github.com/alexgorban)
+* Zbigniew Wojna (zbigniewwojna@gmail.com)
+* Alexander Gorban (gorban@google.com)
+
+Maintainer: Xavier Gibert [@xavigibert](https://github.com/xavigibert)
 
 ## Requirements
 

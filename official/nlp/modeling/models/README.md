@@ -7,6 +7,7 @@ models are intended as both convenience functions and canonical examples.
 
 * [`BertClassifier`](bert_classifier.py) implements a simple classification
 model containing a single classification head using the Classification network.
+It can be used as a regression model as well.
 
 * [`BertTokenClassifier`](bert_token_classifier.py) implements a simple token
 classification model containing a single classification head using the

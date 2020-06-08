@@ -99,7 +99,8 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     "test_data_output_path", None,
     "The path in which generated test input data will be written as tf"
-    " records. If None, do not generate test data.")
+    " records. If None, do not generate test data. Must be a pattern template"
+    " as test_{}.tfrecords if processor has language specific test data.")
 
 flags.DEFINE_string("meta_data_file_path", None,
                     "The path in which input meta data will be written.")

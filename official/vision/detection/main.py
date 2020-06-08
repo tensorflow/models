@@ -42,15 +42,10 @@ from official.utils.misc import keras_utils
 hyperparams_flags.initialize_common_flags()
 flags_core.define_log_steps()
 
-flags.DEFINE_bool(
-    'enable_xla',
-    default=False,
-    help='Enable XLA for GPU')
+flags.DEFINE_bool('enable_xla', default=False, help='Enable XLA for GPU')
 
 flags.DEFINE_string(
-    'mode',
-    default='train',
-    help='Mode to run: `train`, `eval` or `train_and_eval`.')
+    'mode', default='train', help='Mode to run: `train` or `eval`.')
 
 flags.DEFINE_string(
     'model', default='retinanet',

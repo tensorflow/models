@@ -477,7 +477,6 @@ class DatasetBuilder:
     parsed = tf.io.parse_single_example(record, keys_to_features)
 
     label = tf.reshape(parsed['image/class/label'], shape=[1])
-    label = tf.cast(label, dtype=tf.int32)
 
     # Subtract one so that labels are in [0, 1000)
     label -= 1

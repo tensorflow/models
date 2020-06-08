@@ -44,21 +44,6 @@ RESNET_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/retinanet/resnet50-checkpoi
 # pylint: enable=line-too-long
 
 
-class TimerCallback(keras_utils.TimeHistory):
-  """TimeHistory subclass for benchmark reporting."""
-
-  def get_examples_per_sec(self, warmup=1):
-    # First entry in timestamp_log is the start of the step 1. The rest of the
-    # entries are the end of each step recorded.
-    time_log = self.timestamp_log
-    seconds = time_log[-1].timestamp - time_log[warmup].timestamp
-    steps = time_log[-1].batch_index - time_log[warmup].batch_index
-    return self.batch_size * steps / seconds
-
-  def get_startup_time(self, start_time_sec):
-    return self.timestamp_log[0].timestamp - start_time_sec
-
-
 class DetectionBenchmarkBase(perfzero_benchmark.PerfZeroBenchmark):
   """Base class to hold methods common to test classes."""
 
@@ -151,7 +136,7 @@ class RetinanetAccuracy(RetinanetBenchmarkBase):
     """Starts RetinaNet accuracy benchmark test."""
     FLAGS.params_override = json.dumps(params)
     # Need timer callback to measure performance
-    self.timer_callback = TimerCallback(
+    self.timer_callback = keras_utils.TimeHistory(
         batch_size=params['train']['batch_size'],
         log_steps=FLAGS.log_steps,
     )

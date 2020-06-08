@@ -13,9 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Hyperparams package definition."""
-# pylint: disable=g-multiple-import
-from official.modeling.hyperparams.base_config import *
-from official.modeling.hyperparams.oneof import *
-from official.modeling.hyperparams.params_dict import *
+"""Configurations for Encoders."""
 
+import dataclasses
+
+from official.modeling.hyperparams import base_config
+
+
+@dataclasses.dataclass
+class TransformerEncoderConfig(base_config.Config):
+  """BERT encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3076
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  max_position_embeddings: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02

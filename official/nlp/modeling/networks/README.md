@@ -18,7 +18,9 @@ into two smaller matrices and shares parameters across layers.
 
 * [`MaskedLM`](masked_lm.py) implements a masked language model for BERT pretraining. It assumes that the network being passed has a `get_embedding_table()` method.
 
-* [`Classification`](classification.py) contains a single hidden layer, and is intended for use as a classification head.
+* [`Classification`](classification.py) contains a single hidden layer, and is
+intended for use as a classification or regression (if number of classes is set
+to 1) head.
 
 * [`TokenClassification`](token_classification.py) contains a single hidden
 layer, and is intended for use as a token classification head.

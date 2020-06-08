@@ -36,10 +36,12 @@ LR_CLS = {
     'stepwise': tf.keras.optimizers.schedules.PiecewiseConstantDecay,
     'polynomial': tf.keras.optimizers.schedules.PolynomialDecay,
     'exponential': tf.keras.optimizers.schedules.ExponentialDecay,
+    'cosine': tf.keras.experimental.CosineDecay
 }
 
 WARMUP_CLS = {
-    'linear': lr_schedule.LinearWarmup
+    'linear': lr_schedule.LinearWarmup,
+    'polynomial': lr_schedule.PolynomialWarmUp
 }
 
 
@@ -108,6 +110,7 @@ class OptimizerFactory(object):
       returned.
     """
 
+    # TODO(arashwan): Explore if we want to only allow explicit const lr sched.
     if not self._lr_config:
       lr = self._optimizer_config.learning_rate
     else:

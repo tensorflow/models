@@ -101,6 +101,28 @@ class PolynomialLrConfig(base_config.Config):
 
 
 @dataclasses.dataclass
+class CosineLrConfig(base_config.Config):
+  """Configuration for Cosine learning rate decay.
+
+  This class is a containers for the cosine learning rate decay configs,
+  tf.keras.experimental.CosineDecay.
+
+  Attributes:
+    name: The name of the learning rate schedule. Defaults to CosineDecay.
+    initial_learning_rate: A float. The initial learning rate. Defaults to
+                           None.
+    decay_steps: A positive integer that is used for decay computation.
+                 Defaults to None.
+    alpha: A float.  Minimum learning rate value as a fraction of
+                     initial_learning_rate.
+  """
+  name: str = 'CosineDecay'
+  initial_learning_rate: Optional[float] = None
+  decay_steps: Optional[int] = None
+  alpha: float = 0.0
+
+
+@dataclasses.dataclass
 class LinearWarmupConfig(base_config.Config):
   """Configuration for linear warmup schedule config.
 
@@ -118,8 +140,23 @@ class LinearWarmupConfig(base_config.Config):
     warmup_learning_rate: Initial learning rate for the warmup. Defaults to 0.
     warmup_steps: Warmup steps. Defaults to None.
   """
-  name: str = 'LinearWarmup'
+  name: str = 'linear'
   warmup_learning_rate: float = 0
   warmup_steps: Optional[int] = None
 
+
+@dataclasses.dataclass
+class PolinomialWarmupConfig(base_config.Config):
+  """Configuration for linear warmup schedule config.
+
+  This class is a container for the polinomial warmup schedule configs.
+
+  Attributes:
+    name: The name of warmup schedule. Defaults to Polinomial.
+    power: Polinomial power. Defaults to 1.
+    warmup_steps: Warmup steps. Defaults to None.
+  """
+  name: str = 'polinomial'
+  power: float = 1
+  warmup_steps: Optional[int] = None
 

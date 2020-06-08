@@ -209,6 +209,32 @@ class OptimizerFactoryTest(tf.test.TestCase):
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
 
+  def test_cosine_lr_schedule(self):
+    params = {
+        'optimizer': {
+            'type': 'sgd',
+            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+        },
+        'learning_rate': {
+            'type': 'cosine',
+            'cosine': {
+                'initial_learning_rate': 0.1,
+                'decay_steps': 1000
+            }
+        }
+    }
+    expected_lr_step_values = [[0, 0.1],
+                               [250, 0.08535534],
+                               [500, 0.04999999],
+                               [750, 0.01464466],
+                               [1000, 0]]
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+
+    for step, value in expected_lr_step_values:
+      self.assertAlmostEqual(lr(step).numpy(), value)
+
   def test_constant_lr_with_warmup_schedule(self):
     params = {
         'optimizer': {
@@ -233,6 +259,38 @@ class OptimizerFactoryTest(tf.test.TestCase):
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
 
+  def test_stepwise_lr_with_polinomial_warmup_schedule(self):
+    params = {
+        'optimizer': {
+            'type': 'sgd',
+            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+        },
+        'learning_rate': {
+            'type': 'stepwise',
+            'stepwise': {'boundaries': [10000, 20000],
+                         'values': [0.1, 0.01, 0.001]}
+        },
+        'warmup': {
+            'type': 'polynomial',
+            'polynomial': {'warmup_steps': 500, 'power': 2.}
+        }
+    }
+    expected_lr_step_values = [
+        [0, 0.0],
+        [250, 0.025],
+        [500, 0.1],
+        [5500, 0.1],
+        [10000, 0.1],
+        [10001, 0.01],
+        [20000, 0.01],
+        [20001, 0.001]
+    ]
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+
+    for step, value in expected_lr_step_values:
+      self.assertAlmostEqual(lr(step).numpy(), value)
 
 if __name__ == '__main__':
   tf.test.main()
