@@ -243,15 +243,12 @@ def run(flags_obj):
           classes=imagenet_preprocessing.NUM_CLASSES,
           layers=tf.keras.layers)
     elif flags_obj.model == 'mobilenet_pretrained':
-      shape = (224, 224, 3)
       model = tf.keras.applications.mobilenet.MobileNet(
-          input_shape=shape,
           alpha=1.0,
           depth_multiplier=1,
           dropout=1e-7,
           include_top=True,
           weights='imagenet',
-          input_tensor=tf.keras.layers.Input(shape),
           pooling=None,
           classes=1000,
           layers=tf.keras.layers)
@@ -277,7 +274,7 @@ def run(flags_obj):
       raise NotImplementedError('Only polynomial_decay is currently supported.')
 
     if flags_obj.clustering_method == 'selective_clustering':
-      if dtype != tf.float32:
+      if dtype != tf.float32 or flags_obj.fp16_implementation == 'graph_rewrite':
         raise NotImplementedError(
             'Clustering is currently only supported on dtype=tf.float32.')
       clustering_params1 = {

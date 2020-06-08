@@ -929,7 +929,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
-    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    FLAGS.batch_size = 128 * 8
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
@@ -996,7 +996,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16_tweaked')
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.dataset_num_private_threads = 40
+    FLAGS.datasets_num_private_threads = 40
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16_dynamic_tweaked(self):
@@ -1012,7 +1012,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
-    FLAGS.dataset_num_private_threads = 40
+    FLAGS.datasets_num_private_threads = 40
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16(self):
@@ -1870,6 +1870,8 @@ class KerasClusteringBenchmarkRealBase(Resnet50KerasBenchmarkBase):
         'skip_eval': True,
         'report_accuracy_metrics': False,
         'data_dir': os.path.join(root_data_dir, 'imagenet'),
+        'clustering_method': 'selective_clustering',
+        'number_of_clusters': 256,
         'train_steps': 110,
         'log_steps': 10,
     })
