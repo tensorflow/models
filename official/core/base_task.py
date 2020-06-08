@@ -34,7 +34,7 @@ class Task(tf.Module):
   # Special keys in train/validate step returned logs.
   loss = "loss"
 
-  def __init__(self, params=cfg.TaskConfig):
+  def __init__(self, params: cfg.TaskConfig):
     self._task_config = params
 
   @property
