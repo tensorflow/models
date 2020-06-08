@@ -50,7 +50,6 @@ from __future__ import print_function
 import csv
 import os
 
-import google3
 from absl import app
 from absl import flags
 
