@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Modified by Kaushik Shivakumar for the AVA Actions Dataset, to work without MediaPipe
+# Modified by Kaushik Shivakumar for the AVA Actions Dataset,
+# to work without MediaPipe.
 
 r"""Code to download and parse the Ava dataset for TensorFlow models.
 
@@ -21,10 +22,12 @@ https://research.google.com/ava/index.html)
 is a data set for human action recognition.
 
 This script downloads the annotations and prepares data from similar annotations
-if local video files are available. The video files can be downloaded from the following website:
+if local video files are available. The video files can be downloaded
+from the following website:
 https://github.com/cvdfoundation/ava-datset
 
-Prior to running this script, please run download_and_preprocess_ava.sh to download and trim input videos.
+Prior to running this script, please run download_and_preprocess_ava.sh to
+download and trim input videos.
 
 Running this code as a module generates the data set on disk. First, the
 required files are downloaded (_download_data) which enables constructing the
@@ -80,6 +83,8 @@ import sys
 import tarfile
 import zipfile
 import tempfile
+import collections
+import glob
 
 from absl import app
 from absl import flags
@@ -88,8 +93,6 @@ from six.moves import range
 from six.moves import urllib
 from six.moves import zip
 import tensorflow.compat.v1 as tf
-import collections
-import glob
 import numpy as np
 import cv2
 
@@ -100,7 +103,7 @@ from object_detection.utils import label_map_util
 GLOBAL_SOURCE_ID = 0
 POSSIBLE_TIMESTAMPS = range(902, 1798)
 ANNOTATION_URL = "https://research.google.com/ava/download/ava_v2.2.zip"
-SECONDS_TO_MILLISECONDS = 1000
+SECONDS_TO_MILLI = 1000
 FILEPATTERN = "ava_actions_%s_25fps_rgb"
 SPLITS = {
     "train": {
@@ -158,15 +161,18 @@ class Ava(object):
       video_path_format_string: The format string for the path to local files.
       download_labels_for_map: If true, download the annotations to create the
         label map.
-      seconds_per_sequence: The length of each sequence, in seconds. Output FPS is 1.
-      hop_between_sequences: The gap between the centers of successive sequences.
+      seconds_per_sequence: The length of each sequence, in seconds.
+      hop_between_sequences: The gap between the centers of
+      successive sequences.
     """
     logging.info("Downloading data.")
     download_output = self._download_data(download_labels_for_map)
     for key in splits_to_process.split(","):
       logging.info("Generating metadata for split: %s", key)
       all_metadata = list(self._generate_metadata(
-          download_output[0][key][0], download_output[0][key][1], download_output[1], seconds_per_sequence, hop_between_sequences, video_path_format_string))
+          download_output[0][key][0], download_output[0][key][1],
+          download_output[1], seconds_per_sequence, hop_between_sequences,
+          video_path_format_string))
       logging.info("An example of the metadata: ")
       logging.info(all_metadata[0])
       random.seed(47)
@@ -182,7 +188,8 @@ class Ava(object):
     logging.info("Data extraction complete.")
 
   def _generate_metadata(self, annotation_file, excluded_file, label_map,
-                         seconds_per_sequence, hop_between_sequences, video_path_format_string):
+                         seconds_per_sequence, hop_between_sequences,
+                         video_path_format_string):
     """For each row in the annotation CSV, generates the corresponding metadata.
 
     Args:
@@ -207,7 +214,7 @@ class Ava(object):
     with open(annotation_file, "r") as excluded:
       reader = csv.reader(excluded)
       for row in reader:
-        if (len(row) <= 2):
+        if len(row) <= 2:
           frame_excluded[(row[0], int(float(row[1])))] = True
     with open(annotation_file, "r") as annotations:
       reader = csv.DictReader(annotations, fieldnames)
@@ -221,7 +228,8 @@ class Ava(object):
       # for each video, find aggregates near each sampled frame.:
       for media_id in ids:
         print(media_id)
-        filepath = glob.glob(video_path_format_string.format(media_id) + "*")[0]
+        filepath = glob.glob(
+            video_path_format_string.format(media_id) + "*")[0]
         filename = filepath.split("/")[-1]
         cur_vid = cv2.VideoCapture(filepath)
         width = cur_vid.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -232,9 +240,10 @@ class Ava(object):
           start_time = middle_frame_time - seconds_per_sequence // 2 - (
               1 if seconds_per_sequence % 2 == 0 else 0)
           end_time = middle_frame_time + (seconds_per_sequence // 2)
-          #Since clips have been pre-trimmed to last from the 15 min mark to 30 min mark,
-          #these timestamps would be out of bounds, so just continue.
-          if (start_time - 900 < 0 or end_time - 900 > 1800):
+          # Since clips have been pre-trimmed to last from the 15 min mark
+          # to 30 min mark, these timestamps would be out of bounds, so
+          # just continue.
+          if start_time - 900 < 0 or end_time - 900 > 1800:
             continue
           GLOBAL_SOURCE_ID += 1
           total_xmins = []
@@ -247,12 +256,14 @@ class Ava(object):
           total_source_ids = []
           total_confidences = []
           for windowed_timestamp in range(start_time, end_time):
-            cur_vid.set(cv2.CAP_PROP_POS_MSEC, (windowed_timestamp - 900)*SECONDS_TO_MILLISECONDS)
+            cur_vid.set(cv2.CAP_PROP_POS_MSEC,
+                        (windowed_timestamp - 900) * SECONDS_TO_MILLI)
             success, image = cur_vid.read()
             success, buffer = cv2.imencode('.jpg', image)
             total_images.append(dataset_util.bytes_feature(buffer.tostring()))
             source_id = str(GLOBAL_SOURCE_ID) + "_" + media_id
-            total_source_ids.append(dataset_util.bytes_feature(source_id.encode("utf8")))
+            total_source_ids.append(dataset_util.bytes_feature(
+                source_id.encode("utf8")))
             GLOBAL_SOURCE_ID += 1
             if (media_id, windowed_timestamp) in frame_excluded:
               continue
@@ -275,14 +286,15 @@ class Ava(object):
                   confidences.append(1)
                 else:
                   logging.warning("Unknown label: %s", row["action_label"])
-            
             total_xmins.append(dataset_util.float_list_feature(xmins))
             total_xmaxs.append(dataset_util.float_list_feature(xmaxs))
             total_ymins.append(dataset_util.float_list_feature(ymins))
             total_ymaxs.append(dataset_util.float_list_feature(ymaxs))
             total_labels.append(dataset_util.int64_list_feature(labels))
-            total_label_strings.append(dataset_util.bytes_list_feature(label_strings))
-            total_confidences.append(dataset_util.float_list_feature(confidences))
+            total_label_strings.append(
+                dataset_util.bytes_list_feature(label_strings))
+            total_confidences.append(
+                dataset_util.float_list_feature(confidences))
 
           context_feature_dict = {
               'image/height':
@@ -294,27 +306,30 @@ class Ava(object):
           }
 
           sequence_feature_dict = {
-            'image/source_id':
-                feature_list_feature(total_source_ids),
-            'image/encoded':
-                feature_list_feature(total_images),
-            'region/bbox/xmin':
-                feature_list_feature(total_xmins),
-            'region/bbox/xmax':
-                feature_list_feature(total_xmaxs),
-            'region/bbox/ymin':
-                feature_list_feature(total_ymins),
-            'region/bbox/ymax':
-                feature_list_feature(total_ymaxs),
-            'region/label/index':
-                feature_list_feature(total_labels),
-            'region/label/string':
-                feature_list_feature(total_label_strings),
-            'region/label/confidence':
-                feature_list_feature(total_confidences)
+              'image/source_id':
+                  feature_list_feature(total_source_ids),
+              'image/encoded':
+                  feature_list_feature(total_images),
+              'region/bbox/xmin':
+                  feature_list_feature(total_xmins),
+              'region/bbox/xmax':
+                  feature_list_feature(total_xmaxs),
+              'region/bbox/ymin':
+                  feature_list_feature(total_ymins),
+              'region/bbox/ymax':
+                  feature_list_feature(total_ymaxs),
+              'region/label/index':
+                  feature_list_feature(total_labels),
+              'region/label/string':
+                  feature_list_feature(total_label_strings),
+              'region/label/confidence':
+                  feature_list_feature(total_confidences)
           }
 
-          yield tf.train.SequenceExample(context=tf.train.Features(feature=context_feature_dict), feature_lists=tf.train.FeatureLists(feature_list=sequence_feature_dict))
+          yield tf.train.SequenceExample(
+              context=tf.train.Features(feature=context_feature_dict),
+              feature_lists=tf.train.FeatureLists(
+                  feature_list=sequence_feature_dict))
 
   def _download_data(self, download_labels_for_map):
     """Downloads and extracts data if not already available."""
@@ -327,17 +342,22 @@ class Ava(object):
     logging.info("Downloading annotations.")
     paths = {}
     if download_labels_for_map:
-      zip_path = os.path.join(self.path_to_data_download, ANNOTATION_URL.split("/")[-1])
+      zip_path = os.path.join(self.path_to_data_download,
+                              ANNOTATION_URL.split("/")[-1])
       urlretrieve(ANNOTATION_URL, zip_path)
       with zipfile.ZipFile(zip_path, 'r') as zip_ref:
           zip_ref.extractall(self.path_to_data_download)
       for split in ["train", "test", "val"]:
-        csv_path = os.path.join(self.path_to_data_download, "ava_%s_v2.2.csv" % split)
-        excluded_csv_path = os.path.join(self.path_to_data_download, "ava_%s_excluded_timestamps_v2.2.csv" % split)
+        csv_path = os.path.join(self.path_to_data_download,
+                                "ava_%s_v2.2.csv" % split)
+        excluded_csv_path = os.path.join(self.path_to_data_download,
+                                         "ava_%s_excluded_" +
+                                         "timestamps_v2.2.csv" % split)
         SPLITS[split]["csv"] = csv_path
         SPLITS[split]["excluded-csv"] = excluded_csv_path
         paths[split] = (csv_path, excluded_csv_path)
-    label_map = self.get_label_map(os.path.join(self.path_to_data_download, "ava_action_list_v2.2.pbtxt"))
+    label_map = self.get_label_map(os.path.join(self.path_to_data_download,
+                                                "ava_action_list_v2.2.pbtxt"))
     return paths, label_map
 
   def get_label_map(self, path):
@@ -382,12 +402,13 @@ def _close_on_exit(writers):
 def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
-  Ava(flags.FLAGS.path_to_output_dir, flags.FLAGS.path_to_download_data).generate_examples(
-      flags.FLAGS.splits_to_process,
-      flags.FLAGS.video_path_format_string,
-      flags.FLAGS.download_labels_for_map,
-      flags.FLAGS.seconds_per_sequence,
-      flags.FLAGS.hop_between_sequences)
+  Ava(flags.FLAGS.path_to_output_dir,
+      flags.FLAGS.path_to_download_data).generate_examples(
+          flags.FLAGS.splits_to_process,
+          flags.FLAGS.video_path_format_string,
+          flags.FLAGS.download_labels_for_map,
+          flags.FLAGS.seconds_per_sequence,
+          flags.FLAGS.hop_between_sequences)
 
 if __name__ == "__main__":
   flags.DEFINE_string("path_to_download_data",
