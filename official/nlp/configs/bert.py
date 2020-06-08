@@ -49,10 +49,10 @@ class BertPretrainerConfig(base_config.Config):
 
 def instantiate_from_cfg(
     config: BertPretrainerConfig,
-    encoder_network: Optional[tf.keras.layers.Layer] = None):
+    encoder_network: Optional[tf.keras.Model] = None):
   """Instantiates a BertPretrainer from the config."""
+  encoder_cfg = config.encoder
   if encoder_network is None:
-    encoder_cfg = config.encoder
     encoder_network = networks.TransformerEncoder(
         vocab_size=encoder_cfg.vocab_size,
         hidden_size=encoder_cfg.hidden_size,
