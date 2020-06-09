@@ -1035,8 +1035,11 @@ def get_reduce_to_frame_fn(input_reader_config, is_training):
           num_frames = tf.cast(
               tf.shape(tensor_dict[fields.InputDataFields.source_id])[0],
               dtype=tf.int32)
-          frame_index = tf.random.uniform((), minval=0, maxval=num_frames,
-                                          dtype=tf.int32)
+          if input_reader_config.frame_index == -1:
+            frame_index = tf.random.uniform((), minval=0, maxval=num_frames,
+                                            dtype=tf.int32)
+          else:
+            frame_index = input_reader_config.frame_index
           out_tensor_dict = {}
           for key in tensor_dict:
             if key in fields.SEQUENCE_FIELDS:

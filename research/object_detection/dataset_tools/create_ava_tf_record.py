@@ -256,18 +256,19 @@ class Ava(object):
           total_source_ids = []
           total_confidences = []
           for windowed_timestamp in range(start_time, end_time):
-            cur_vid.set(cv2.CAP_PROP_POS_MSEC,
-                        (windowed_timestamp - 900) * SECONDS_TO_MILLI)
-            success, image = cur_vid.read()
-            success, buffer = cv2.imencode('.jpg', image)
-            total_images.append(dataset_util.bytes_feature(buffer.tostring()))
-            source_id = str(GLOBAL_SOURCE_ID) + "_" + media_id
-            total_source_ids.append(dataset_util.bytes_feature(
-                source_id.encode("utf8")))
-            GLOBAL_SOURCE_ID += 1
             if (media_id, windowed_timestamp) in frame_excluded:
               continue
             else:
+              cur_vid.set(cv2.CAP_PROP_POS_MSEC,
+                          (windowed_timestamp - 900) * SECONDS_TO_MILLI)
+              success, image = cur_vid.read()
+              success, buffer = cv2.imencode('.jpg', image)
+              total_images.append(dataset_util.bytes_feature(buffer.tostring()))
+              source_id = str(GLOBAL_SOURCE_ID) + "_" + media_id
+              total_source_ids.append(dataset_util.bytes_feature(
+                  source_id.encode("utf8")))
+              GLOBAL_SOURCE_ID += 1
+            
               xmins = []
               xmaxs = []
               ymins = []
@@ -295,6 +296,9 @@ class Ava(object):
                 dataset_util.bytes_list_feature(label_strings))
             total_confidences.append(
                 dataset_util.float_list_feature(confidences))
+          
+          if (len(total_source_ids) < 8):
+            continue
 
           context_feature_dict = {
               'image/height':
@@ -307,23 +311,23 @@ class Ava(object):
 
           sequence_feature_dict = {
               'image/source_id':
-                  feature_list_feature(total_source_ids),
+                  feature_list_feature(total_source_ids[:8]),
               'image/encoded':
-                  feature_list_feature(total_images),
+                  feature_list_feature(total_images[:8]),
               'region/bbox/xmin':
-                  feature_list_feature(total_xmins),
+                  feature_list_feature(total_xmins[:8]),
               'region/bbox/xmax':
-                  feature_list_feature(total_xmaxs),
+                  feature_list_feature(total_xmaxs[:8]),
               'region/bbox/ymin':
-                  feature_list_feature(total_ymins),
+                  feature_list_feature(total_ymins[:8]),
               'region/bbox/ymax':
-                  feature_list_feature(total_ymaxs),
+                  feature_list_feature(total_ymaxs[:8]),
               'region/label/index':
-                  feature_list_feature(total_labels),
+                  feature_list_feature(total_labels[:8]),
               'region/label/string':
-                  feature_list_feature(total_label_strings),
+                  feature_list_feature(total_label_strings[:8]),
               'region/label/confidence':
-                  feature_list_feature(total_confidences)
+                  feature_list_feature(total_confidences[:8])
           }
 
           yield tf.train.SequenceExample(
@@ -351,8 +355,7 @@ class Ava(object):
         csv_path = os.path.join(self.path_to_data_download,
                                 "ava_%s_v2.2.csv" % split)
         excluded_csv_path = os.path.join(self.path_to_data_download,
-                                         "ava_%s_excluded_" +
-                                         "timestamps_v2.2.csv" % split)
+                                         "ava_%s_excluded_timestamps_v2.2.csv" % split)
         SPLITS[split]["csv"] = csv_path
         SPLITS[split]["excluded-csv"] = excluded_csv_path
         paths[split] = (csv_path, excluded_csv_path)
@@ -431,7 +434,7 @@ if __name__ == "__main__":
                       "arguments of {video}, {start}, {end}, {label_name}, and "
                       "{split}, corresponding to columns of the data csvs.")
   flags.DEFINE_integer("seconds_per_sequence",
-                       10,
+                       9,
                        "The number of seconds per example in each example.")
   flags.DEFINE_integer("hop_between_sequences",
                        10,
