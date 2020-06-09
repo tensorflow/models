@@ -3,7 +3,7 @@ For MobilenetV2+ see this file [mobilenet/README.md](mobilenet/README.md)
 
 # MobileNetV1
 
-[MobileNets](https://arxiv.org/abs/1704.04861) are small, low-latency, low-power models parameterized to meet the resource constraints of a variety of use cases. They can be built upon for classification, detection, embeddings and segmentation similar to how other popular large scale models, such as Inception, are used. MobileNets can be run efficiently on mobile devices with [TensorFlow Mobile](https://www.tensorflow.org/mobile/).
+[MobileNets](https://arxiv.org/abs/1704.04861) are small, low-latency, low-power models parameterized to meet the resource constraints of a variety of use cases. They can be built upon for classification, detection, embeddings and segmentation similar to how other popular large scale models, such as Inception, are used. MobileNets can be run efficiently on mobile devices with [TensorFlow Lite](https://www.tensorflow.org/lite).
 
 MobileNets trade off between latency, size and accuracy while comparing favorably with popular models from the literature.
 
@@ -59,15 +59,17 @@ The linked model tar files contain the following:
 * Eval graph text protos (to be easily viewed)
 * Frozen trained models
 * Info file containing input and output information
-* Converted [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/) flatbuffer model
+* Converted [TensorFlow Lite](https://www.tensorflow.org/lite) flatbuffer model
 
 Note that quantized model GraphDefs are still float models, they just have FakeQuantization
-operation embedded to simulate quantization. These are converted by [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/)
+operation embedded to simulate quantization. These are converted by [TensorFlow Lite](https://www.tensorflow.org/lite)
 to be fully quantized. The final effect of quantization can be seen by comparing the frozen fake
 quantized graph to the size of the TFLite flatbuffer, i.e. The TFLite flatbuffer is about 1/4
 the size.
 For more information on the quantization techniques used here, see
-[here](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/quantize).
+[here](https://github.com/tensorflow/tensorflow/tree/r1.15/tensorflow/contrib/quantize).
+There isn't any equivalent in TF2.x yet, more information can be found in
+[this RFC](https://github.com/tensorflow/community/blob/master/rfcs/20180907-contrib-sunset.md)
 
 Here is an example of how to download the MobileNet_v1_1.0_224 checkpoint:
 
@@ -84,9 +86,11 @@ $ mv mobilenet_v1_1.0_224.ckpt.* ${CHECKPOINT_DIR}
 This package contains scripts for training floating point and eight-bit fixed
 point TensorFlow models.
 
-Quantization tools used are described in [contrib/quantize](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/contrib/quantize).
+Quantization tools used are described [here](https://github.com/tensorflow/tensorflow/tree/r1.15/tensorflow/contrib/quantize).
+There isn't any equivalent in TF2.x yet, more information can be found in
+[this RFC](https://github.com/tensorflow/community/blob/master/rfcs/20180907-contrib-sunset.md)
 
-Conversion to fully quantized models for mobile can be done through [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/).
+Conversion to fully quantized models for mobile can be done through [TensorFlow Lite](https://www.tensorflow.org/lite).
 
 ## Usage
 
@@ -133,4 +137,4 @@ Eval:
 $ ./bazel-bin/mobilenet_v1_eval --dataset_dir "path/to/dataset" --checkpoint_dir "path/to/checkpoints" --quantize=True
 ```
 
-The resulting float and quantized models can be run on-device via [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/).
+The resulting float and quantized models can be run on-device via [TensorFlow Lite](https://www.tensorflow.org/lite).
