@@ -84,6 +84,16 @@ class LearningRateTests(tf.test.TestCase):
           boundaries=[1, 2],
           multipliers=[1, 2])
 
+  def test_cosine_decay_with_warmup(self):
+    """Basic computational test for cosine decay with warmup."""
+    expected_lrs = [0.0, 0.1, 0.05, 0.0]
+
+    lr = learning_rate.CosineDecayWithWarmup(
+        batch_size=256, total_steps=3, warmup_steps=1)
+
+    for step in [0, 1, 2, 3]:
+      self.assertAllClose(lr(step), expected_lrs[step])
+
 
 if __name__ == '__main__':
   tf.test.main()
