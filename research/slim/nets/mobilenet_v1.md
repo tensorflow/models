@@ -67,7 +67,9 @@ to be fully quantized. The final effect of quantization can be seen by comparing
 quantized graph to the size of the TFLite flatbuffer, i.e. The TFLite flatbuffer is about 1/4
 the size.
 For more information on the quantization techniques used here, see
-[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/kernels/quantize.cc).
+[here](https://github.com/tensorflow/tensorflow/tree/r1.15/tensorflow/contrib/quantize).
+There isn't any equivalent in TF2.x yet, more information can be found in
+[this RFC](https://github.com/tensorflow/community/blob/master/rfcs/20180907-contrib-sunset.md)
 
 Here is an example of how to download the MobileNet_v1_1.0_224 checkpoint:
 
@@ -84,7 +86,9 @@ $ mv mobilenet_v1_1.0_224.ckpt.* ${CHECKPOINT_DIR}
 This package contains scripts for training floating point and eight-bit fixed
 point TensorFlow models.
 
-Quantization tools used are described [here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/kernels/quantize.cc).
+Quantization tools used are described [here](https://github.com/tensorflow/tensorflow/tree/r1.15/tensorflow/contrib/quantize).
+There isn't any equivalent in TF2.x yet, more information can be found in
+[this RFC](https://github.com/tensorflow/community/blob/master/rfcs/20180907-contrib-sunset.md)
 
 Conversion to fully quantized models for mobile can be done through [TensorFlow Lite](https://www.tensorflow.org/lite).
 
