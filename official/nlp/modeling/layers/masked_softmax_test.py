@@ -105,6 +105,15 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     is_zeros = np.greater(output_data, 0)
     self.assertAllEqual(expected_zeros, is_zeros)
 
+  def test_serialize_deserialize(self):
+    test_layer = masked_softmax.MaskedSoftmax(
+        mask_expansion_axes=[1], normalization_axes=[6, 7])
+    new_layer = masked_softmax.MaskedSoftmax.from_config(
+        test_layer.get_config())
+
+    # If the serialization was successful, the new config should match the old.
+    self.assertAllEqual(test_layer.get_config(), new_layer.get_config())
+
 
 if __name__ == '__main__':
   tf.test.main()
