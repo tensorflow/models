@@ -74,6 +74,7 @@ def instantiate_from_cfg(
     classification_heads = []
   return bert_pretrainer.BertPretrainerV2(
       config.num_masked_tokens,
+      mlm_activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
       encoder_network=encoder_network,
