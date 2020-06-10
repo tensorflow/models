@@ -42,11 +42,7 @@ class MaskedSoftmax(tf.keras.layers.Layer):
       self._normalization_axes = normalization_axes
     super(MaskedSoftmax, self).__init__(**kwargs)
 
-  def call(self, inputs):
-    if isinstance(inputs, list) and len(inputs) == 2:
-      scores, mask = inputs
-    else:
-      scores, mask = (inputs, None)
+  def call(self, scores, mask=None):
 
     if mask is not None:
       for _ in range(len(scores.shape) - len(mask.shape)):

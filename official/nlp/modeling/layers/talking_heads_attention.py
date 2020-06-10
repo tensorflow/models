@@ -198,7 +198,7 @@ class TalkingHeadsAttention(tf.keras.layers.Layer):
 
     # Normalize the attention scores to probabilities.
     # `attention_probs` = [B, N, F, T]
-    attention_probs = self._masked_softmax([attention_scores, attention_mask])
+    attention_probs = self._masked_softmax(attention_scores, attention_mask)
 
     # Apply talking heads after softmax.
     attention_probs = tf.einsum("BNFT,NL->BLFT", attention_probs,
