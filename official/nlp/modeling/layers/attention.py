@@ -145,7 +145,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
   >>> target = tf.keras.Input(shape=[8, 16])
   >>> source = tf.keras.Input(shape=[4, 16])
   >>> mask_tensor = tf.keras.Input(shape=[8, 4])
-  >>> output_tensor, weights = layer([input_tensor, input_tensor])
+  >>> output_tensor, weights = layer([target, source])
   >>> print(output_tensor.shape), print(weights.shape)
   (None, 8, 16)  (None, 2, 8, 4)
 
