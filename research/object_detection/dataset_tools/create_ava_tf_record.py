@@ -255,7 +255,8 @@ class Ava(object):
           total_images = []
           total_source_ids = []
           total_confidences = []
-          for windowed_timestamp in range(start_time, end_time):
+          windowed_timestamp = start_time
+          while (windowed_timestamp < end_time):
             cur_vid.set(cv2.CAP_PROP_POS_MSEC,
                         (windowed_timestamp - 900) * SECONDS_TO_MILLI)
             success, image = cur_vid.read()
@@ -266,6 +267,7 @@ class Ava(object):
                 source_id.encode("utf8")))
             GLOBAL_SOURCE_ID += 1
             if (media_id, windowed_timestamp) in frame_excluded:
+              end_time += 1
               continue
             else:
               xmins = []
@@ -295,6 +297,7 @@ class Ava(object):
                 dataset_util.bytes_list_feature(label_strings))
             total_confidences.append(
                 dataset_util.float_list_feature(confidences))
+            windowed_timestamp += 1
 
           context_feature_dict = {
               'image/height':
@@ -350,9 +353,8 @@ class Ava(object):
       for split in ["train", "test", "val"]:
         csv_path = os.path.join(self.path_to_data_download,
                                 "ava_%s_v2.2.csv" % split)
-        excluded_csv_path = os.path.join(self.path_to_data_download,
-                                         "ava_%s_excluded_" +
-                                         "timestamps_v2.2.csv" % split)
+        fmtStr = "ava_%s_excluded_timestamps_v2.2.csv" % split
+        excluded_csv_path = os.path.join(self.path_to_data_download, fmtStr)
         SPLITS[split]["csv"] = csv_path
         SPLITS[split]["excluded-csv"] = excluded_csv_path
         paths[split] = (csv_path, excluded_csv_path)
