@@ -98,3 +98,22 @@ class BertPretrainEvalDataConfig(BertPretrainDataConfig):
   input_path: str = ""
   global_batch_size: int = 512
   is_training: bool = False
+
+
+@dataclasses.dataclass
+class BertSentencePredictionDataConfig(cfg.DataConfig):
+  """Data of sentence prediction dataset."""
+  input_path: str = ""
+  global_batch_size: int = 32
+  is_training: bool = True
+  seq_length: int = 128
+
+
+@dataclasses.dataclass
+class BertSentencePredictionDevDataConfig(cfg.DataConfig):
+  """Dev data of MNLI sentence prediction dataset."""
+  input_path: str = ""
+  global_batch_size: int = 32
+  is_training: bool = False
+  seq_length: int = 128
+  drop_remainder: bool = False
