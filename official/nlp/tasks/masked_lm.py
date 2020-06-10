@@ -55,11 +55,16 @@ class MaskedLMTask(base_task.Task):
         weights=features['masked_lm_weights'])
     metrics['lm_example_loss'].update_state(mlm_loss)
     if 'next_sentence_labels' in features:
+      policy = tf.keras.mixed_precision.experimental.global_policy()
+      if policy.name == 'mixed_bfloat16':  # b/158514794: bf16 is not stable.
+        policy = tf.float32
+      predictions = tf.keras.layers.Activation(
+          tf.nn.log_softmax, dtype=policy)(model_outputs['next_sentence'])
+
       sentence_labels = features['next_sentence_labels']
       sentence_loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
           labels=sentence_labels,
-          predictions=tf.nn.log_softmax(
-              model_outputs['next_sentence'], axis=-1))
+          predictions=predictions)
       metrics['next_sentence_loss'].update_state(sentence_loss)
       total_loss = mlm_loss + sentence_loss
     else:
