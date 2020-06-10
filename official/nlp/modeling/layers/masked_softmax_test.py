@@ -45,7 +45,7 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     test_layer = masked_softmax.MaskedSoftmax()
     input_tensor = tf.keras.Input(shape=(4, 8))
     mask_tensor = tf.keras.Input(shape=(4, 8))
-    output = test_layer([input_tensor, mask_tensor])
+    output = test_layer(input_tensor, mask_tensor)
     model = tf.keras.Model([input_tensor, mask_tensor], output)
 
     input_data = 10 * np.random.random_sample((3, 4, 8))
@@ -59,7 +59,7 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
   def test_masked_softmax_with_none_mask(self):
     test_layer = masked_softmax.MaskedSoftmax()
     input_tensor = tf.keras.Input(shape=(4, 8))
-    output = test_layer([input_tensor, None])
+    output = test_layer(input_tensor, None)
     model = tf.keras.Model(input_tensor, output)
 
     input_data = 10 * np.random.random_sample((3, 4, 8))
@@ -71,7 +71,7 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     test_layer = masked_softmax.MaskedSoftmax(mask_expansion_axes=[1])
     input_tensor = tf.keras.Input(shape=(4, 8))
     mask_tensor = tf.keras.Input(shape=(8))
-    output = test_layer([input_tensor, mask_tensor])
+    output = test_layer(input_tensor, mask_tensor)
     model = tf.keras.Model([input_tensor, mask_tensor], output)
 
     input_data = 10 * np.random.random_sample((3, 4, 8))
@@ -90,7 +90,7 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     mask_shape = [5, 6, 7, 8]
     input_tensor = tf.keras.Input(shape=input_shape)
     mask_tensor = tf.keras.Input(shape=mask_shape)
-    output = test_layer([input_tensor, mask_tensor])
+    output = test_layer(input_tensor, mask_tensor)
     model = tf.keras.Model([input_tensor, mask_tensor], output)
 
     input_data = 10 * np.random.random_sample([3] + input_shape)

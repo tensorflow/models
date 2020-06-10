@@ -375,7 +375,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
     # Normalize the attention scores to probabilities.
     # `attention_scores` = [B, N, T, S]
-    attention_scores = self._masked_softmax([attention_scores, attention_mask])
+    attention_scores = self._masked_softmax(attention_scores, attention_mask)
 
     # This is actually dropping out entire tokens to attend to, which might
     # seem a bit unusual, but is taken from the original Transformer paper.
@@ -516,7 +516,7 @@ class CachedAttention(MultiHeadAttention):
 
     # Normalize the attention scores to probabilities.
     # `attention_scores` = [B, N, F, T]
-    attention_scores = self._masked_softmax([attention_scores, attention_mask])
+    attention_scores = self._masked_softmax(attention_scores, attention_mask)
 
     # This is actually dropping out entire tokens to attend to, which might
     # seem a bit unusual, but is taken from the original Transformer paper.
