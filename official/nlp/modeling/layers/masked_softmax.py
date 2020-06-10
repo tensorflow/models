@@ -64,6 +64,9 @@ class MaskedSoftmax(tf.keras.layers.Layer):
           scores, axis=self._normalization_axes, keepdims=True))
 
   def get_config(self):
-    config = {'mask_expansion_axes': self._mask_expansion_axes}
+    config = {
+        'mask_expansion_axes': self._mask_expansion_axes,
+        'normalization_axes': self._normalization_axes
+    }
     base_config = super(MaskedSoftmax, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
