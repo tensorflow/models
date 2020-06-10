@@ -14,9 +14,8 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for official.nlp.tasks.sentence_prediction."""
+import functools
 import os
-import orbit
-# pylint: disable=g-bad-import-order
 import tensorflow as tf
 
 from official.nlp.bert import configs
@@ -34,8 +33,8 @@ class SentencePredictionTaskTest(tf.test.TestCase):
     metrics = task.build_metrics()
 
     strategy = tf.distribute.get_strategy()
-    dataset = orbit.utils.make_distributed_dataset(strategy, task.build_inputs,
-                                                   config.train_data)
+    dataset = strategy.experimental_distribute_datasets_from_function(
+        functools.partial(task.build_inputs, config.train_data))
 
     iterator = iter(dataset)
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
