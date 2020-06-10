@@ -31,7 +31,12 @@ class DataConfig(base_config.Config):
 
   Attributes:
     input_path: The path to the input. It can be either (1) a file pattern, or
-      (2) multiple file patterns separated by comma.
+      (2) multiple file patterns separated by comma. It should not be specified
+      when the following `tfds_name` is specified.
+    tfds_name: The name of the tensorflow dataset (TFDS). It should not be
+      specified when the above `input_path` is specified.
+    tfds_split: A str indicating which split of the data to load from TFDS. It
+      is required when above `tfds_name` is specified.
     global_batch_size: The global batch size across all replicas.
     is_training: Whether this data is used for training or not.
     drop_remainder: Whether the last batch should be dropped in the case it has
@@ -41,21 +46,40 @@ class DataConfig(base_config.Config):
       from disk on the second epoch. Requires significant memory overhead.
     cycle_length: The number of files that will be processed concurrently when
       interleaving files.
+    block_length: The number of consecutive elements to produce from each input
+      element before cycling to another input element when interleaving files.
     sharding: Whether sharding is used in the input pipeline.
     examples_consume: An `integer` specifying the number of examples it will
       produce. If positive, it only takes this number of examples and raises
       tf.error.OutOfRangeError after that. Default is -1, meaning it will
       exhaust all the examples in the dataset.
+    tfds_data_dir: A str specifying the directory to read/write TFDS data.
+    tfds_download: A bool to indicate whether to download data using TFDS.
+    tfds_as_supervised: A bool. When loading dataset from TFDS, if True,
+      the returned tf.data.Dataset will have a 2-tuple structure (input, label)
+      according to builder.info.supervised_keys; if False, the default,
+      the returned tf.data.Dataset will have a dictionary with all the features.
+    tfds_skip_decoding_feature: A str to indicate which features are skipped
+      for decoding when loading dataset from TFDS. Use comma to separate
+      multiple features. The main use case is to skip the image/video decoding
+      for better performance.
   """
   input_path: str = ""
+  tfds_name: str = ""
+  tfds_split: str = ""
   global_batch_size: int = 0
   is_training: bool = None
   drop_remainder: bool = True
   shuffle_buffer_size: int = 100
   cache: bool = False
   cycle_length: int = 8
+  block_length: int = 1
   sharding: bool = True
   examples_consume: int = -1
+  tfds_data_dir: str = ""
+  tfds_download: bool = False
+  tfds_as_supervised: bool = False
+  tfds_skip_decoding_feature: str = ""
 
 
 @dataclasses.dataclass
