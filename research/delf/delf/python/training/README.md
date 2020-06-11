@@ -20,7 +20,7 @@ cd models/research/delf/delf/python/training
 
 ## Install the DELF Library
 
-The DELF Python library can be installeed by running the [install_delf.sh](./install_delf.sh)
+The DELF Python library can be installeed by running the [`install_delf.sh`](./install_delf.sh)
 script using the command:
 ```
 bash install_delf.sh
@@ -36,7 +36,7 @@ Buffers.
 
 *Please note that the current installation only works on 64 bits Linux architectures due to the 
 `protoc` binary downloaded by the installation script. If you wish to install the DELF library on
-other architectures please update the [install_delf.sh](./install_delf.sh) script by referencing
+other architectures please update the [`install_delf.sh`](./install_delf.sh) script by referencing
 the desired `protoc` [binary release](https://github.com/protocolbuffers/protobuf/releases).*
 
 ## Download the GLDv2 Training Data
@@ -48,7 +48,7 @@ referenced in `*.csv`files containing training metadata and licensing informatio
 * INDEX: 100 files.
 * TEST: 20 files.
 
-To download the GLDv2 images, run the [download_dataset.sh](./download_dataset.sh) script like in
+To download the GLDv2 images, run the [`download_dataset.sh`](./download_dataset.sh) script like in
 the following example:
 ```
 bash download_dataset.sh 500 100 20
@@ -76,10 +76,47 @@ based on the first, second and third character in their file name.*)
 
 ## Prepare the Data for Training
 
-See the
-[build_image_dataset.py](https://github.com/tensorflow/models/blob/master/research/delf/delf/python/training/build_image_dataset.py)
-script to prepare the data, following the instructions therein to download the
-dataset (via Kaggle) and then running the script.
+Preparing the data from training consists of creating [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord)
+files from the raw GLDv2 images grouped into TRAIN, VALIDATION and TEST splits. This can be achieved by running the [`build_image_dataset.py`](./build_image_dataset.py) script. Assuming 
+that the GLDv2 images have been downloaded to the `gldv2_dataset` folder, the script can be run as follows:
+```
+python build_image_dataset.py \
+    --train_csv_path=gldv2_dataset/train/train.csv \
+    --train_clean_csv_path=gldv2_dataset/train/train_clean.csv \
+    --train_directory=gldv2_dataset/train/*/*/*/ \
+    --test_csv_path=gldv2_dataset/train/test.csv \
+    --test_directory=gldv2_dataset/test/*/*/*/ \
+    --output_directory=gldv2_dataset/tfrecord/ \
+    --num_shards=128 \
+    --generate_train_validation_splits \
+    --validation_split_size=0.2
+```
+The [`build_image_dataset.py`](./build_image_dataset.py) takes the following parameters:
+* `train_csv_path` - Path of the CSV file referencing images from the TRAIN dataset.
+* `train_clean_csv_path` - (Optional) Path of the CSV file referencing images from the *clean*
+TRAIN dataset. If provided:
+  * Images will be filered by only keeping the ones listed in this file
+  * Images will also be relabeled in order to guarantee a continuous sequence of labels. The
+  script will output a `[OUTPUT_DIRECTORY]/relabeling.csv` file containing the mapping between the
+  new labels and the old labels.
+* `train_directory` - Training data directory.
+* `test_csv_path` - (Optional) Path of the CSV file referencing images from the TEST dataset. If
+None or absent, TFRecords for the images in the TEST dataset are not generated.
+* `test_directory` - (Optional) Testing data directory. Required only if `test_csv_path` is not
+None.
+* `output_directory ` - Directory where the TFRecord files and relabeling file will be written.
+* `num_shards` - Number of shards in which each split (TRAIN, VALIDATION, TEST) will be broken.
+* `generate_train_validation_splits` - (Optional) Whether to split the TRAIN dataset into TRAIN
+and VALIDATION splits.
+* `validation_split_size` - (Optional) The size of the VALIDATION split as a fraction of the 
+TRAIN dataset.
+* `seed` - (Optional) The seed to be used while shuffling the TRAIN dataset when generating the
+TRAIN and VALIDATION splits. Recommended for splits reproducibility purposes.
+
+The TFRecord files written in the `OUTPUT_DIRECTORY` will be prefixed as follows:
+* TRAIN split - `train-*`
+* VALIDATION split - `validation-*`
+* TEST split - `test-*`
 
 ## Running the Training
 
