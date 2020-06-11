@@ -80,7 +80,7 @@ Preparing the data from training consists of creating [TFRecord](https://www.ten
 files from the raw GLDv2 images grouped into TRAIN, VALIDATION and TEST splits. This can be achieved by running the [`build_image_dataset.py`](./build_image_dataset.py) script. Assuming 
 that the GLDv2 images have been downloaded to the `gldv2_dataset` folder, the script can be run as follows:
 ```
-python build_image_dataset.py \
+python3 build_image_dataset.py \
     --train_csv_path=gldv2_dataset/train/train.csv \
     --train_clean_csv_path=gldv2_dataset/train/train_clean.csv \
     --train_directory=gldv2_dataset/train/*/*/*/ \
@@ -123,15 +123,12 @@ files can take up to 12 hours and up to 500 GB of space disk.*
 
 ## Running the Training
 
-Assuming the data was downloaded to `/tmp/gld_tfrecord/`, running the following
-command should start training a model:
+Assuming the TFRecord files were generated in the `gldv2_dataset/tfrecord/` directory, running 
+the following command should start training a model:
 
 ```sh
 python3 tensorflow_models/research/delf/delf/python/training/train.py \
-  --train_file_pattern=/tmp/gld_tfrecord/train* \
-  --validation_file_pattern=/tmp/gld_tfrecord/train* \
+  --train_file_pattern=gldv2_dataset/tfrecord/train* \
+  --validation_file_pattern=gldv2_dataset/tfrecord/validation* \
   --debug
 ```
-
-Note that one may want to split the train TFRecords into a train/val (for
-training, we usually simply split it 80/20 randomly).
