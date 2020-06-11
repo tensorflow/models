@@ -112,99 +112,91 @@ def ExtractBoxesAndFeaturesToFiles(image_names, image_paths, delf_config_path,
     tf.io.gfile.makedirs(os.path.dirname(output_mapping))
 
   names_ids_and_boxes = []
-  with tf.Graph().as_default():
-    with tf.compat.v1.Session() as sess:
-      # Initialize variables, construct detector and DELF extractor.
-      init_op = tf.compat.v1.global_variables_initializer()
-      sess.run(init_op)
-      detector_fn = detector.MakeDetector(
-          sess, detector_model_dir, import_scope='detector')
-      delf_extractor_fn = extractor.MakeExtractor(
-          sess, config, import_scope='extractor_delf')
+  detector_fn = detector.MakeDetector(detector_model_dir)
+  delf_extractor_fn = extractor.MakeExtractor(config)
 
-      start = time.clock()
-      for i in range(num_images):
-        if i == 0:
-          print('Starting to extract features/boxes...')
-        elif i % _STATUS_CHECK_ITERATIONS == 0:
-          elapsed = (time.clock() - start)
-          print('Processing image %d out of %d, last %d '
-                'images took %f seconds' %
-                (i, num_images, _STATUS_CHECK_ITERATIONS, elapsed))
-          start = time.clock()
+  start = time.time()
+  for i in range(num_images):
+    if i == 0:
+      print('Starting to extract features/boxes...')
+    elif i % _STATUS_CHECK_ITERATIONS == 0:
+      elapsed = (time.time() - start)
+      print('Processing image %d out of %d, last %d '
+            'images took %f seconds' %
+            (i, num_images, _STATUS_CHECK_ITERATIONS, elapsed))
+      start = time.time()
 
-        image_name = image_names[i]
-        output_feature_filename_whole_image = os.path.join(
-            output_features_dir, image_name + _DELF_EXTENSION)
-        output_box_filename = os.path.join(output_boxes_dir,
-                                           image_name + _BOX_EXTENSION)
+    image_name = image_names[i]
+    output_feature_filename_whole_image = os.path.join(
+        output_features_dir, image_name + _DELF_EXTENSION)
+    output_box_filename = os.path.join(output_boxes_dir,
+                                       image_name + _BOX_EXTENSION)
 
-        pil_im = utils.RgbLoader(image_paths[i])
-        width, height = pil_im.size
+    pil_im = utils.RgbLoader(image_paths[i])
+    width, height = pil_im.size
 
-        # Extract and save boxes.
-        if tf.io.gfile.exists(output_box_filename):
-          print('Skipping box computation for %s' % image_name)
-          (boxes_out, scores_out,
-           class_indices_out) = box_io.ReadFromFile(output_box_filename)
-        else:
-          (boxes_out, scores_out,
-           class_indices_out) = detector_fn(np.expand_dims(pil_im, 0))
-          # Using only one image per batch.
-          boxes_out = boxes_out[0]
-          scores_out = scores_out[0]
-          class_indices_out = class_indices_out[0]
-          box_io.WriteToFile(output_box_filename, boxes_out, scores_out,
-                             class_indices_out)
+    # Extract and save boxes.
+    if tf.io.gfile.exists(output_box_filename):
+      print('Skipping box computation for %s' % image_name)
+      (boxes_out, scores_out,
+       class_indices_out) = box_io.ReadFromFile(output_box_filename)
+    else:
+      (boxes_out, scores_out,
+       class_indices_out) = detector_fn(np.expand_dims(pil_im, 0))
+      # Using only one image per batch.
+      boxes_out = boxes_out[0]
+      scores_out = scores_out[0]
+      class_indices_out = class_indices_out[0]
+      box_io.WriteToFile(output_box_filename, boxes_out, scores_out,
+                         class_indices_out)
 
-        # Select boxes with scores greater than threshold. Those will be the
-        # ones with extracted DELF features (besides the whole image, whose DELF
-        # features are extracted in all cases).
-        num_delf_files = 1
-        selected_boxes = []
-        for box_ind, box in enumerate(boxes_out):
-          if scores_out[box_ind] >= detector_thresh:
-            selected_boxes.append(box)
-        num_delf_files += len(selected_boxes)
+    # Select boxes with scores greater than threshold. Those will be the
+    # ones with extracted DELF features (besides the whole image, whose DELF
+    # features are extracted in all cases).
+    num_delf_files = 1
+    selected_boxes = []
+    for box_ind, box in enumerate(boxes_out):
+      if scores_out[box_ind] >= detector_thresh:
+        selected_boxes.append(box)
+    num_delf_files += len(selected_boxes)
 
-        # Extract and save DELF features.
-        for delf_file_ind in range(num_delf_files):
-          if delf_file_ind == 0:
-            box_name = image_name
-            output_feature_filename = output_feature_filename_whole_image
-          else:
-            box_name = image_name + '_' + str(delf_file_ind - 1)
-            output_feature_filename = os.path.join(output_features_dir,
-                                                   box_name + _DELF_EXTENSION)
+    # Extract and save DELF features.
+    for delf_file_ind in range(num_delf_files):
+      if delf_file_ind == 0:
+        box_name = image_name
+        output_feature_filename = output_feature_filename_whole_image
+      else:
+        box_name = image_name + '_' + str(delf_file_ind - 1)
+        output_feature_filename = os.path.join(output_features_dir,
+                                               box_name + _DELF_EXTENSION)
 
-          names_ids_and_boxes.append([box_name, i, delf_file_ind - 1])
+      names_ids_and_boxes.append([box_name, i, delf_file_ind - 1])
 
-          if tf.io.gfile.exists(output_feature_filename):
-            print('Skipping DELF computation for %s' % box_name)
-            continue
+      if tf.io.gfile.exists(output_feature_filename):
+        print('Skipping DELF computation for %s' % box_name)
+        continue
 
-          if delf_file_ind >= 1:
-            bbox_for_cropping = selected_boxes[delf_file_ind - 1]
-            bbox_for_cropping_pil_convention = [
-                int(math.floor(bbox_for_cropping[1] * width)),
-                int(math.floor(bbox_for_cropping[0] * height)),
-                int(math.ceil(bbox_for_cropping[3] * width)),
-                int(math.ceil(bbox_for_cropping[2] * height))
-            ]
-            pil_cropped_im = pil_im.crop(bbox_for_cropping_pil_convention)
-            im = np.array(pil_cropped_im)
-          else:
-            im = np.array(pil_im)
+      if delf_file_ind >= 1:
+        bbox_for_cropping = selected_boxes[delf_file_ind - 1]
+        bbox_for_cropping_pil_convention = [
+            int(math.floor(bbox_for_cropping[1] * width)),
+            int(math.floor(bbox_for_cropping[0] * height)),
+            int(math.ceil(bbox_for_cropping[3] * width)),
+            int(math.ceil(bbox_for_cropping[2] * height))
+        ]
+        pil_cropped_im = pil_im.crop(bbox_for_cropping_pil_convention)
+        im = np.array(pil_cropped_im)
+      else:
+        im = np.array(pil_im)
 
-          extracted_features = delf_extractor_fn(im)
-          locations_out = extracted_features['local_features']['locations']
-          descriptors_out = extracted_features['local_features']['descriptors']
-          feature_scales_out = extracted_features['local_features']['scales']
-          attention_out = extracted_features['local_features']['attention']
+      extracted_features = delf_extractor_fn(im)
+      locations_out = extracted_features['local_features']['locations']
+      descriptors_out = extracted_features['local_features']['descriptors']
+      feature_scales_out = extracted_features['local_features']['scales']
+      attention_out = extracted_features['local_features']['attention']
 
-          feature_io.WriteToFile(output_feature_filename, locations_out,
-                                 feature_scales_out, descriptors_out,
-                                 attention_out)
+      feature_io.WriteToFile(output_feature_filename, locations_out,
+                             feature_scales_out, descriptors_out, attention_out)
 
   # Save mapping from output DELF name to image id and box id.
   _WriteMappingBasenameToIds(names_ids_and_boxes, output_mapping)

@@ -345,7 +345,10 @@ def _build_train_and_validation_splits(image_paths, file_ids, labels,
   # Create subsets of image attributes by label, shuffle them separately and
   # split each subset into TRAIN and VALIDATION splits based on the size of the
   # validation split.
-  splits = {}
+  splits = {
+      _VALIDATION_SPLIT: [],
+      _TRAIN_SPLIT: []
+  }
   rs = np.random.RandomState(np.random.MT19937(np.random.SeedSequence(seed)))
   for label, indexes in image_attrs_idx_by_label.items():
     # Create the subset for the current label.
@@ -355,23 +358,18 @@ def _build_train_and_validation_splits(image_paths, file_ids, labels,
     columns_indices = np.arange(images_per_label)
     rs.shuffle(columns_indices)
     image_attrs_label = image_attrs_label[:, columns_indices]
-    # Split the current label subset into TRAIN and VALIDATION splits.
+    # Split the current label subset into TRAIN and VALIDATION splits and add
+    # each split to the list of all splits.
     cutoff_idx = max(1, int(validation_split_size * images_per_label))
-    validation_split = image_attrs_label[:, 0 : cutoff_idx]
-    train_split = image_attrs_label[:, cutoff_idx : ]
-    # Merge the splits of the current subset with the splits of other labels.
-    splits[_VALIDATION_SPLIT] = (
-        np.concatenate((splits[_VALIDATION_SPLIT], validation_split), axis=1)
-        if _VALIDATION_SPLIT in splits else validation_split)
-    splits[_TRAIN_SPLIT] = (
-        np.concatenate((splits[_TRAIN_SPLIT], train_split), axis=1)
-        if _TRAIN_SPLIT in splits else train_split)
+    splits[_VALIDATION_SPLIT].append(image_attrs_label[:, 0 : cutoff_idx])
+    splits[_TRAIN_SPLIT].append(image_attrs_label[:, cutoff_idx : ])
+
+  validation_split = np.concatenate(splits[_VALIDATION_SPLIT], axis=1)
+  train_split = np.concatenate(splits[_TRAIN_SPLIT], axis=1)
 
   # Unstack the image attribute arrays in the TRAIN and VALIDATION splits and
   # convert them back to lists. Convert labels back to 'int' from 'str'
   # following the explicit type change from 'str' to 'int' for stacking.
-  validation_split = splits[_VALIDATION_SPLIT]
-  train_split = splits[_TRAIN_SPLIT]
   return (
       {
           _IMAGE_PATHS_KEY: validation_split[0, :].tolist(),
