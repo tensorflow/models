@@ -82,7 +82,7 @@ class FakeLSTMFeatureExtractor(
         min_depth=self._min_depth,
         insert_1x1_conv=True,
         image_features=image_features)
-    return feature_maps.values()
+    return list(feature_maps.values())
 
 
 class FakeLSTMInterleavedFeatureExtractor(
@@ -141,7 +141,7 @@ class FakeLSTMInterleavedFeatureExtractor(
         min_depth=self._min_depth,
         insert_1x1_conv=True,
         image_features=image_features)
-    return feature_maps.values()
+    return list(feature_maps.values())
 
 
 class MockAnchorGenerator2x2(anchor_generator.AnchorGenerator):
