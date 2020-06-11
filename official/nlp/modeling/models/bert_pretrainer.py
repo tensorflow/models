@@ -47,8 +47,8 @@ class BertPretrainer(tf.keras.Model):
     num_token_predictions: Number of tokens to predict from the masked LM.
     embedding_table: Embedding table of a network. If None, the
       "network.get_embedding_table()" is used.
-    activation: The activation (if any) to use in the masked LM and
-      classification networks. If None, no activation will be used.
+    activation: The activation (if any) to use in the masked LM network.
+      If None, no activation will be used.
     initializer: The initializer (if any) to use in the masked LM and
       classification networks. Defaults to a Glorot uniform initializer.
     output: The output style for this network. Can be either 'logits' or
@@ -151,6 +151,8 @@ class BertPretrainerV2(tf.keras.Model):
     num_masked_tokens: Number of tokens to predict from the masked LM.
     encoder_network: A transformer network. This network should output a
       sequence output and a classification output.
+    mlm_activation: The activation (if any) to use in the masked LM network.
+      If None, no activation will be used.
     mlm_initializer: The initializer (if any) to use in the masked LM. Default
       to a Glorot uniform initializer.
     classification_heads: A list of optional head layers to transform on encoder
@@ -166,6 +168,7 @@ class BertPretrainerV2(tf.keras.Model):
       self,
       num_masked_tokens: int,
       encoder_network: tf.keras.Model,
+      mlm_activation=None,
       mlm_initializer='glorot_uniform',
       classification_heads: Optional[List[tf.keras.layers.Layer]] = None,
       name: str = 'bert',
@@ -194,6 +197,7 @@ class BertPretrainerV2(tf.keras.Model):
           num_predictions=num_masked_tokens,
           input_width=sequence_output.shape[-1],
           source_network=self.encoder_network,
+          activation=mlm_activation,
           initializer=mlm_initializer,
           name='masked_lm')
       masked_lm_positions = copy.copy(self.masked_lm.inputs[-1])

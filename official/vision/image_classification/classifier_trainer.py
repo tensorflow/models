@@ -333,6 +333,7 @@ def train_and_eval(
     learning_rate = optimizer_factory.build_learning_rate(
         params=params.model.learning_rate,
         batch_size=train_builder.global_batch_size,
+        train_epochs=train_epochs,
         train_steps=train_steps)
     optimizer = optimizer_factory.build_optimizer(
         optimizer_name=params.model.optimizer.name,

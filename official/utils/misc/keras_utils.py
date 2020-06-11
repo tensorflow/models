@@ -133,9 +133,9 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
       if self.summary_writer:
         with self.summary_writer.as_default():
-          tf.summary.scalar('global_step/sec', steps_per_second,
+          tf.summary.scalar('steps_per_second', steps_per_second,
                             self.global_steps)
-          tf.summary.scalar('examples/sec', examples_per_second,
+          tf.summary.scalar('examples_per_second', examples_per_second,
                             self.global_steps)
 
       self.last_log_step = self.global_steps

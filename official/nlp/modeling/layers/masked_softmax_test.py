@@ -45,7 +45,7 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     test_layer = masked_softmax.MaskedSoftmax()
     input_tensor = tf.keras.Input(shape=(4, 8))
     mask_tensor = tf.keras.Input(shape=(4, 8))
-    output = test_layer([input_tensor, mask_tensor])
+    output = test_layer(input_tensor, mask_tensor)
     model = tf.keras.Model([input_tensor, mask_tensor], output)
 
     input_data = 10 * np.random.random_sample((3, 4, 8))
@@ -59,7 +59,7 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
   def test_masked_softmax_with_none_mask(self):
     test_layer = masked_softmax.MaskedSoftmax()
     input_tensor = tf.keras.Input(shape=(4, 8))
-    output = test_layer([input_tensor, None])
+    output = test_layer(input_tensor, None)
     model = tf.keras.Model(input_tensor, output)
 
     input_data = 10 * np.random.random_sample((3, 4, 8))
@@ -71,7 +71,7 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     test_layer = masked_softmax.MaskedSoftmax(mask_expansion_axes=[1])
     input_tensor = tf.keras.Input(shape=(4, 8))
     mask_tensor = tf.keras.Input(shape=(8))
-    output = test_layer([input_tensor, mask_tensor])
+    output = test_layer(input_tensor, mask_tensor)
     model = tf.keras.Model([input_tensor, mask_tensor], output)
 
     input_data = 10 * np.random.random_sample((3, 4, 8))
@@ -90,7 +90,7 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     mask_shape = [5, 6, 7, 8]
     input_tensor = tf.keras.Input(shape=input_shape)
     mask_tensor = tf.keras.Input(shape=mask_shape)
-    output = test_layer([input_tensor, mask_tensor])
+    output = test_layer(input_tensor, mask_tensor)
     model = tf.keras.Model([input_tensor, mask_tensor], output)
 
     input_data = 10 * np.random.random_sample([3] + input_shape)
@@ -104,6 +104,15 @@ class MaskedSoftmaxLayerTest(keras_parameterized.TestCase):
     expected_zeros = np.greater(expanded_mask, 0)
     is_zeros = np.greater(output_data, 0)
     self.assertAllEqual(expected_zeros, is_zeros)
+
+  def test_serialize_deserialize(self):
+    test_layer = masked_softmax.MaskedSoftmax(
+        mask_expansion_axes=[1], normalization_axes=[6, 7])
+    new_layer = masked_softmax.MaskedSoftmax.from_config(
+        test_layer.get_config())
+
+    # If the serialization was successful, the new config should match the old.
+    self.assertAllEqual(test_layer.get_config(), new_layer.get_config())
 
 
 if __name__ == '__main__':
