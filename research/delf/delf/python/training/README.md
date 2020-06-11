@@ -118,6 +118,9 @@ The TFRecord files written in the `OUTPUT_DIRECTORY` will be prefixed as follows
 * VALIDATION split - `validation-*`
 * TEST split - `test-*`
 
+*Please note that due to the large size of the GLDv2 dataset, the generation of the TFRecord 
+files can take up to 12 hours and up to 500 GB of space disk.*
+
 ## Running the Training
 
 Assuming the data was downloaded to `/tmp/gld_tfrecord/`, running the following
