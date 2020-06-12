@@ -13,11 +13,11 @@
 # limitations under the License.
 
 # Modified by Kaushik Shivakumar for the AVA Actions Dataset,
-# to work without MediaPipe.
+# to work without MediaPipe, code started by Bryan Seybold. 
 
-r"""Code to download and parse the Ava dataset for TensorFlow models.
+r"""Code to download and parse the AVA dataset for TensorFlow models.
 
-The [Ava data set](
+The [AVA data set](
 https://research.google.com/ava/index.html)
 is a data set for human action recognition.
 
