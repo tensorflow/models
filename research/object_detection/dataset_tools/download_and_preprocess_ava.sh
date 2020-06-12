@@ -3,7 +3,7 @@
 mkdir ava_vids_raw
 cd ava_vids_raw
 
-#curl -O s3.amazonaws.com/ava-dataset/annotations/ava_file_names_trainval_v2.1.txt
+curl -O s3.amazonaws.com/ava-dataset/annotations/ava_file_names_trainval_v2.1.txt
 
 echo "Downloading all videos."
 
@@ -15,9 +15,11 @@ done
 
 rm "ava_file_names_trainval_v2.1.txt"
 cd ..
-echo "Trimming all videos."
 
-mkdir ava_vids_trimmed
-for filename in ava_vids_raw/*; do
-  ffmpeg -ss 900 -to 1800 -i $filename -c copy ava_vids_trimmed/${filename##*/}
-done
+#Trimming causes issues with frame seeking in the python script, so it is best left out.
+#echo "Trimming all videos."
+
+#mkdir ava_vids_trimmed
+#for filename in ava_vids_raw/*; do
+#  ffmpeg -ss 900 -to 1800 -i $filename -c copy ava_vids_trimmed/${filename##*/}
+#done

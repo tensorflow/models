@@ -99,7 +99,6 @@ import cv2
 from object_detection.dataset_tools import tf_record_creation_util
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
-
 GLOBAL_SOURCE_ID = 0
 POSSIBLE_TIMESTAMPS = range(902, 1798)
 ANNOTATION_URL = "https://research.google.com/ava/download/ava_v2.2.zip"
@@ -211,11 +210,6 @@ class Ava(object):
       reader = csv.reader(excluded)
       for row in reader:
         frame_excluded[(row[0], int(float(row[1])))] = True
-    with open(annotation_file, "r") as excluded:
-      reader = csv.reader(excluded)
-      for row in reader:
-        if len(row) <= 2:
-          frame_excluded[(row[0], int(float(row[1])))] = True
     with open(annotation_file, "r") as annotations:
       reader = csv.DictReader(annotations, fieldnames)
       frame_annotations = collections.defaultdict(list)
@@ -226,24 +220,26 @@ class Ava(object):
         key = (row["id"], int(float(row["timestamp_seconds"])))
         frame_annotations[key].append(row)
       # for each video, find aggregates near each sampled frame.:
+      logging.info("Generating metadata...")
+      media_num = 1
       for media_id in ids:
-        print(media_id)
+        logging.info("%d/%d, ignore warnings.\n" % (media_num, len(ids)))
+        media_num += 1
+
         filepath = glob.glob(
             video_path_format_string.format(media_id) + "*")[0]
         filename = filepath.split("/")[-1]
         cur_vid = cv2.VideoCapture(filepath)
         width = cur_vid.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = cur_vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        for middle_frame_time in range(POSSIBLE_TIMESTAMPS[0],
-                                       POSSIBLE_TIMESTAMPS[-1],
-                                       hop_between_sequences):
+        middle_frame_time = POSSIBLE_TIMESTAMPS[0]
+        while middle_frame_time < POSSIBLE_TIMESTAMPS[-1]:
           start_time = middle_frame_time - seconds_per_sequence // 2 - (
-              1 if seconds_per_sequence % 2 == 0 else 0)
+              0 if seconds_per_sequence % 2 == 0 else 1)
           end_time = middle_frame_time + (seconds_per_sequence // 2)
-          # Since clips have been pre-trimmed to last from the 15 min mark
-          # to 30 min mark, these timestamps would be out of bounds, so
-          # just continue.
-          if start_time - 900 < 0 or end_time - 900 > 1800:
+
+          # Safety check that can be removed if desired
+          if start_time - 900 < 0 or end_time - 900 > 900:
             continue
           GLOBAL_SOURCE_ID += 1
           total_xmins = []
@@ -256,18 +252,26 @@ class Ava(object):
           total_source_ids = []
           total_confidences = []
           windowed_timestamp = start_time
-          while (windowed_timestamp < end_time):
+          while windowed_timestamp < end_time:
+            skipped_frame_count = 0;
+
             cur_vid.set(cv2.CAP_PROP_POS_MSEC,
-                        (windowed_timestamp - 900) * SECONDS_TO_MILLI)
+                        (windowed_timestamp) * SECONDS_TO_MILLI)
             success, image = cur_vid.read()
             success, buffer = cv2.imencode('.jpg', image)
-            total_images.append(dataset_util.bytes_feature(buffer.tostring()))
+
+            bufstring = buffer.tostring()
+            total_images.append(dataset_util.bytes_feature(bufstring))
+
             source_id = str(GLOBAL_SOURCE_ID) + "_" + media_id
             total_source_ids.append(dataset_util.bytes_feature(
                 source_id.encode("utf8")))
             GLOBAL_SOURCE_ID += 1
             if (media_id, windowed_timestamp) in frame_excluded:
               end_time += 1
+              windowed_timestamp += 1
+              skipped_frame_count += 1
+              logging.info("Ignoring and skipping excluded frame.")
               continue
             else:
               xmins = []
@@ -278,7 +282,7 @@ class Ava(object):
               label_strings = []
               confidences = []
               for row in frame_annotations[(media_id, windowed_timestamp)]:
-                if int(row["action_label"]) in label_map:
+                if len(row) > 2 and int(row["action_label"]) in label_map:
                   xmins.append(float(row["xmin"]))
                   xmaxs.append(float(row["xmax"]))
                   ymins.append(float(row["ymin"]))
@@ -288,6 +292,20 @@ class Ava(object):
                   confidences.append(1)
                 else:
                   logging.warning("Unknown label: %s", row["action_label"])
+
+
+            #Display the image and bounding boxes being
+            #processed (for debugging purposes)
+            """
+            for i in range(len(xmins)):
+              cv2.rectangle(image, (int(xmins[i] * width), 
+                                    int(ymaxs[i] * height)), 
+                                    (int(xmaxs[i] * width), 
+                                    int(ymins[i] * height)), (255, 0, 0), 2)
+            cv2.imshow("mywindow", image)
+            cv2.waitKey(1000)
+            """
+
             total_xmins.append(dataset_util.float_list_feature(xmins))
             total_xmaxs.append(dataset_util.float_list_feature(xmaxs))
             total_ymins.append(dataset_util.float_list_feature(ymins))
@@ -329,10 +347,15 @@ class Ava(object):
                   feature_list_feature(total_confidences)
           }
 
-          yield tf.train.SequenceExample(
-              context=tf.train.Features(feature=context_feature_dict),
-              feature_lists=tf.train.FeatureLists(
-                  feature_list=sequence_feature_dict))
+          if len(total_xmins) > 0:
+            yield tf.train.SequenceExample(
+                context=tf.train.Features(feature=context_feature_dict),
+                feature_lists=tf.train.FeatureLists(
+                    feature_list=sequence_feature_dict))
+
+          middle_frame_time += (hop_between_sequences + skipped_frame_count)
+
+        cur_vid.release()
 
   def _download_data(self, download_labels_for_map):
     """Downloads and extracts data if not already available."""
@@ -353,11 +376,12 @@ class Ava(object):
       for split in ["train", "test", "val"]:
         csv_path = os.path.join(self.path_to_data_download,
                                 "ava_%s_v2.2.csv" % split)
-        fmtStr = "ava_%s_excluded_timestamps_v2.2.csv" % split
-        excluded_csv_path = os.path.join(self.path_to_data_download, fmtStr)
+        excl_name = "ava_%s_excluded_timestamps_v2.2.csv" % split
+        excluded_csv_path = os.path.join(self.path_to_data_download, excl_name)
         SPLITS[split]["csv"] = csv_path
         SPLITS[split]["excluded-csv"] = excluded_csv_path
         paths[split] = (csv_path, excluded_csv_path)
+
     label_map = self.get_label_map(os.path.join(self.path_to_data_download,
                                                 "ava_action_list_v2.2.pbtxt"))
     return paths, label_map
