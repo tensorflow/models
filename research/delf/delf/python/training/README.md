@@ -20,7 +20,7 @@ cd models/research/delf/delf/python/training
 
 ## Install the DELF Library
 
-The DELF Python library can be installeed by running the [`install_delf.sh`](./install_delf.sh)
+The DELF Python library can be installed by running the [`install_delf.sh`](./install_delf.sh)
 script using the command:
 ```
 bash install_delf.sh
@@ -72,51 +72,46 @@ contains the following:
 based on the first, second and third character in their file name.*)
 * The CSV files containing training and licensing metadata of the downloaded images.
 
-*Please note that due to the large size of the GLDv2 dataset, the download can take up to 12 hours and up to 1 TB of space disk.* 
+*Please note that due to the large size of the GLDv2 dataset, the download can take up to 12 
+hours and up to 1 TB of disk space. In order to save bandwidth and disk space, you may want to start by downloading only the TRAIN dataset, the only one required for the training, thus saving
+approximately ~95 GB, the equivalent of the INDEX and TEST datasets. To further save disk space,
+the `*.tar` files can be deleted after downloading and upacking them.*
 
 ## Prepare the Data for Training
 
-Preparing the data from training consists of creating [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord)
-files from the raw GLDv2 images grouped into TRAIN, VALIDATION and TEST splits. This can be achieved by running the [`build_image_dataset.py`](./build_image_dataset.py) script. Assuming 
-that the GLDv2 images have been downloaded to the `gldv2_dataset` folder, the script can be run as follows:
+Preparing the data for training consists of creating [TFRecord](https://www.tensorflow.org/tutorials/load_data/tfrecord)
+files from the raw GLDv2 images grouped into TRAIN and VALIDATION splits. The training set
+produced contains only the *clean* subset of the GLDv2 dataset. The [CVPR'20 paper](https://arxiv.org/abs/2004.01804)
+introducing the GLDv2 dataset contains a detailed description of the *clean* subset.
+
+Generating the TFRecord files containing the TRAIN and VALIDATION splits of the *clean* GLDv2 
+subset can be achieved by running the [`build_image_dataset.py`](./build_image_dataset.py) 
+script. Assuming that the GLDv2 images have been downloaded to the `gldv2_dataset` folder, the 
+script can be run as follows:
 ```
 python3 build_image_dataset.py \
     --train_csv_path=gldv2_dataset/train/train.csv \
     --train_clean_csv_path=gldv2_dataset/train/train_clean.csv \
     --train_directory=gldv2_dataset/train/*/*/*/ \
-    --test_csv_path=gldv2_dataset/train/test.csv \
-    --test_directory=gldv2_dataset/test/*/*/*/ \
     --output_directory=gldv2_dataset/tfrecord/ \
     --num_shards=128 \
     --generate_train_validation_splits \
     --validation_split_size=0.2
 ```
-The [`build_image_dataset.py`](./build_image_dataset.py) takes the following parameters:
-* `train_csv_path` - Path of the CSV file referencing images from the TRAIN dataset.
-* `train_clean_csv_path` - (Optional) Path of the CSV file referencing images from the *clean*
-TRAIN dataset. If provided:
-  * Images will be filered by only keeping the ones listed in this file
-  * Images will also be relabeled in order to guarantee a continuous sequence of labels. The
-  script will output a `[OUTPUT_DIRECTORY]/relabeling.csv` file containing the mapping between the
-  new labels and the old labels.
-* `train_directory` - Training data directory.
-* `test_csv_path` - (Optional) Path of the CSV file referencing images from the TEST dataset. If
-None or absent, TFRecords for the images in the TEST dataset are not generated.
-* `test_directory` - (Optional) Testing data directory. Required only if `test_csv_path` is not
-None.
-* `output_directory ` - Directory where the TFRecord files and relabeling file will be written.
-* `num_shards` - Number of shards in which each split (TRAIN, VALIDATION, TEST) will be broken.
-* `generate_train_validation_splits` - (Optional) Whether to split the TRAIN dataset into TRAIN
-and VALIDATION splits.
-* `validation_split_size` - (Optional) The size of the VALIDATION split as a fraction of the 
-TRAIN dataset.
-* `seed` - (Optional) The seed to be used while shuffling the TRAIN dataset when generating the
-TRAIN and VALIDATION splits. Recommended for splits reproducibility purposes.
+*Please refer to the source code of the [`build_image_dataset.py`](./build_image_dataset.py) script for a detailed description of its parameters.*
 
 The TFRecord files written in the `OUTPUT_DIRECTORY` will be prefixed as follows:
 * TRAIN split: `train-*`
 * VALIDATION split: `validation-*`
-* TEST split: `test-*`
+
+The same script can be used to generate TFRecord files for the TEST split for post-training
+evaluation purposes. This can be achieved by adding the parameters:
+```
+    --test_csv_path=gldv2_dataset/train/test.csv \
+    --test_directory=gldv2_dataset/test/*/*/*/ \
+```
+In this scenario, the TFRecord files of the TEST split written in the `OUTPUT_DIRECTORY` will be
+named according to the pattern `test-*`.
 
 *Please note that due to the large size of the GLDv2 dataset, the generation of the TFRecord 
 files can take up to 12 hours and up to 500 GB of space disk.*
@@ -126,9 +121,8 @@ files can take up to 12 hours and up to 500 GB of space disk.*
 Assuming the TFRecord files were generated in the `gldv2_dataset/tfrecord/` directory, running 
 the following command should start training a model:
 
-```sh
-python3 tensorflow_models/research/delf/delf/python/training/train.py \
+```
+python3 train.py \
   --train_file_pattern=gldv2_dataset/tfrecord/train* \
-  --validation_file_pattern=gldv2_dataset/tfrecord/validation* \
-  --debug
+  --validation_file_pattern=gldv2_dataset/tfrecord/validation*
 ```
