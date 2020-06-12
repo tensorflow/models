@@ -198,9 +198,16 @@ class TransformerScaffold(tf.keras.layers.Layer):
           "abc,cd->abd",
           output_shape=(None, self._intermediate_size),
           bias_axes="d",
-          activation=self._intermediate_activation,
           name="intermediate",
           **common_kwargs)
+      policy = tf.keras.mixed_precision.experimental.global_policy()
+      if policy.name == "mixed_bfloat16":
+        # bfloat16 causes BERT with the LAMB optimizer to not converge
+        # as well, so we use float32.
+        # TODO(b/154538392): Investigate this.
+        policy = tf.float32
+      self._intermediate_activation_layer = tf.keras.layers.Activation(
+          self._intermediate_activation, dtype=policy)
       self._output_dense = tf.keras.layers.experimental.EinsumDense(
           "abc,cd->abd",
           output_shape=(None, hidden_size),
@@ -263,6 +270,8 @@ class TransformerScaffold(tf.keras.layers.Layer):
                                                   attention_output)
     if self._feedforward_block is None:
       intermediate_output = self._intermediate_dense(attention_output)
+      intermediate_output = self._intermediate_activation_layer(
+          intermediate_output)
       layer_output = self._output_dense(intermediate_output)
       layer_output = self._output_dropout(layer_output)
       # During mixed precision training, attention_output is from layer norm
