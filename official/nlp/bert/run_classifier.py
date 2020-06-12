@@ -86,23 +86,12 @@ def get_loss_fn(num_classes):
   return classification_loss_fn
 
 
-def get_regression_loss_fn():
-  """Gets the regression loss function."""
-
-  def regression_loss_fn(labels, logits):
-    """Regression loss."""
-    labels = tf.cast(labels, dtype=tf.float32)
-    per_example_loss = tf.math.squared_difference(labels, logits)
-    return tf.reduce_mean(per_example_loss)
-
-  return regression_loss_fn
-
-
 def get_dataset_fn(input_file_pattern,
                    max_seq_length,
                    global_batch_size,
                    is_training,
-                   label_type=tf.int64):
+                   label_type=tf.int64,
+                   include_sample_weights=False):
   """Gets a closure to create a dataset."""
 
   def _dataset_fn(ctx=None):
@@ -115,7 +104,8 @@ def get_dataset_fn(input_file_pattern,
         batch_size,
         is_training=is_training,
         input_pipeline_context=ctx,
-        label_type=label_type)
+        label_type=label_type,
+        include_sample_weights=include_sample_weights)
     return dataset
 
   return _dataset_fn
@@ -160,8 +150,12 @@ def run_bert_classifier(strategy,
         use_graph_rewrite=common_flags.use_graph_rewrite())
     return classifier_model, core_model
 
-  loss_fn = (
-      get_regression_loss_fn() if is_regression else get_loss_fn(num_classes))
+  # tf.keras.losses objects accept optional sample_weight arguments (eg. coming
+  # from the dataset) to compute weighted loss, as used for the regression
+  # tasks. The classification tasks, using the custom get_loss_fn don't accept
+  # sample weights though.
+  loss_fn = (tf.keras.losses.MeanSquaredError() if is_regression
+             else get_loss_fn(num_classes))
 
   # Defines evaluation metrics function, which will create metrics in the
   # correct device and strategy scope.
@@ -416,6 +410,7 @@ def custom_main(custom_callbacks=None):
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
   label_type = LABEL_TYPES_MAP[input_meta_data.get('label_type', 'int')]
+  include_sample_weights = input_meta_data.get('has_sample_weights', False)
 
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'
@@ -436,7 +431,8 @@ def custom_main(custom_callbacks=None):
       input_meta_data['max_seq_length'],
       FLAGS.eval_batch_size,
       is_training=False,
-      label_type=label_type)
+      label_type=label_type,
+      include_sample_weights=include_sample_weights)
 
   if FLAGS.mode == 'predict':
     with strategy.scope():
@@ -470,7 +466,8 @@ def custom_main(custom_callbacks=None):
       input_meta_data['max_seq_length'],
       FLAGS.train_batch_size,
       is_training=True,
-      label_type=label_type)
+      label_type=label_type,
+      include_sample_weights=include_sample_weights)
   run_bert(
       strategy,
       input_meta_data,
