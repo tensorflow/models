@@ -22,6 +22,7 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 
+from delf import datum_io
 from delf import feature_extractor
 
 # Minimum dimensions below which DELF features are not extracted (empty
@@ -93,70 +94,91 @@ def ResizeImage(image, config, resize_factor=1.0):
   return resized_image, scale_factors
 
 
-def MakeExtractor(sess, config, import_scope=None):
+def MakeExtractor(config):
   """Creates a function to extract global and/or local features from an image.
 
   Args:
-    sess: TensorFlow session to use.
     config: DelfConfig proto containing the model configuration.
-    import_scope: Optional scope to use for model.
 
   Returns:
     Function that receives an image and returns features.
   """
   # Load model.
-  tf.compat.v1.saved_model.loader.load(
-      sess, [tf.compat.v1.saved_model.tag_constants.SERVING],
-      config.model_path,
-      import_scope=import_scope)
-  import_scope_prefix = import_scope + '/' if import_scope is not None else ''
+  model = tf.saved_model.load(config.model_path)
 
-  # Input tensors.
-  input_image = sess.graph.get_tensor_by_name('%sinput_image:0' %
-                                              import_scope_prefix)
-  input_image_scales = sess.graph.get_tensor_by_name('%sinput_scales:0' %
-                                                     import_scope_prefix)
+  # Input/output end-points/tensors.
+  feeds = ['input_image:0', 'input_scales:0']
+  fetches = []
+  image_scales_tensor = tf.convert_to_tensor(list(config.image_scales))
+
+  # Custom configuration needed when local features are used.
   if config.use_local_features:
-    input_score_threshold = sess.graph.get_tensor_by_name(
-        '%sinput_abs_thres:0' % import_scope_prefix)
-    input_max_feature_num = sess.graph.get_tensor_by_name(
-        '%sinput_max_feature_num:0' % import_scope_prefix)
+    # Extra input/output end-points/tensors.
+    feeds.append('input_abs_thres:0')
+    feeds.append('input_max_feature_num:0')
+    fetches.append('boxes:0')
+    fetches.append('features:0')
+    fetches.append('scales:0')
+    fetches.append('scores:0')
+    score_threshold_tensor = tf.constant(
+        config.delf_local_config.score_threshold)
+    max_feature_num_tensor = tf.constant(
+        config.delf_local_config.max_feature_num)
 
-  # Output tensors.
+    # If using PCA, pre-load required parameters.
+    local_pca_parameters = {}
+    if config.delf_local_config.use_pca:
+      local_pca_parameters['mean'] = tf.constant(
+          datum_io.ReadFromFile(
+              config.delf_local_config.pca_parameters.mean_path),
+          dtype=tf.float32)
+      local_pca_parameters['matrix'] = tf.constant(
+          datum_io.ReadFromFile(
+              config.delf_local_config.pca_parameters.projection_matrix_path),
+          dtype=tf.float32)
+      local_pca_parameters[
+          'dim'] = config.delf_local_config.pca_parameters.pca_dim
+      local_pca_parameters['use_whitening'] = (
+          config.delf_local_config.pca_parameters.use_whitening)
+      if config.delf_local_config.pca_parameters.use_whitening:
+        local_pca_parameters['variances'] = tf.squeeze(
+            tf.constant(
+                datum_io.ReadFromFile(
+                    config.delf_local_config.pca_parameters.pca_variances_path),
+                dtype=tf.float32))
+      else:
+        local_pca_parameters['variances'] = None
+
+  # Custom configuration needed when global features are used.
   if config.use_global_features:
-    raw_global_descriptors = sess.graph.get_tensor_by_name(
-        '%sglobal_descriptors:0' % import_scope_prefix)
-  if config.use_local_features:
-    boxes = sess.graph.get_tensor_by_name('%sboxes:0' % import_scope_prefix)
-    raw_local_descriptors = sess.graph.get_tensor_by_name('%sfeatures:0' %
-                                                          import_scope_prefix)
-    feature_scales = sess.graph.get_tensor_by_name('%sscales:0' %
-                                                   import_scope_prefix)
-    attention_with_extra_dim = sess.graph.get_tensor_by_name(
-        '%sscores:0' % import_scope_prefix)
+    # Extra output end-point.
+    fetches.append('global_descriptors:0')
 
-  # Post-process extracted features: normalize, PCA (optional), pooling.
-  if config.use_global_features:
-    if config.delf_global_config.image_scales_ind:
-      raw_global_descriptors_selected_scales = tf.gather(
-          raw_global_descriptors,
-          list(config.delf_global_config.image_scales_ind))
-    else:
-      raw_global_descriptors_selected_scales = raw_global_descriptors
-    global_descriptors_per_scale = feature_extractor.PostProcessDescriptors(
-        raw_global_descriptors_selected_scales,
-        config.delf_global_config.use_pca,
-        config.delf_global_config.pca_parameters)
-    unnormalized_global_descriptor = tf.reduce_sum(
-        global_descriptors_per_scale, axis=0, name='sum_pooling')
-    global_descriptor = tf.nn.l2_normalize(
-        unnormalized_global_descriptor, axis=0, name='final_l2_normalization')
+    # If using PCA, pre-load required parameters.
+    global_pca_parameters = {}
+    if config.delf_global_config.use_pca:
+      global_pca_parameters['mean'] = tf.constant(
+          datum_io.ReadFromFile(
+              config.delf_global_config.pca_parameters.mean_path),
+          dtype=tf.float32)
+      global_pca_parameters['matrix'] = tf.constant(
+          datum_io.ReadFromFile(
+              config.delf_global_config.pca_parameters.projection_matrix_path),
+          dtype=tf.float32)
+      global_pca_parameters[
+          'dim'] = config.delf_global_config.pca_parameters.pca_dim
+      global_pca_parameters['use_whitening'] = (
+          config.delf_global_config.pca_parameters.use_whitening)
+      if config.delf_global_config.pca_parameters.use_whitening:
+        global_pca_parameters['variances'] = tf.squeeze(
+            tf.constant(
+                datum_io.ReadFromFile(config.delf_global_config.pca_parameters
+                                      .pca_variances_path),
+                dtype=tf.float32))
+      else:
+        global_pca_parameters['variances'] = None
 
-  if config.use_local_features:
-    attention = tf.reshape(attention_with_extra_dim,
-                           [tf.shape(attention_with_extra_dim)[0]])
-    locations, local_descriptors = feature_extractor.DelfFeaturePostProcessing(
-        boxes, raw_local_descriptors, config)
+  model = model.prune(feeds=feeds, fetches=fetches)
 
   def ExtractorFn(image, resize_factor=1.0):
     """Receives an image and returns DELF global and/or local features.
@@ -194,34 +216,61 @@ def MakeExtractor(sess, config, import_scope=None):
         })
       return extracted_features
 
-    feed_dict = {
-        input_image: resized_image,
-        input_image_scales: list(config.image_scales),
-    }
-    fetches = {}
-    if config.use_global_features:
-      fetches.update({
-          'global_descriptor': global_descriptor,
-      })
+    # Input tensors.
+    image_tensor = tf.convert_to_tensor(resized_image)
+
+    # Extracted features.
+    extracted_features = {}
+    output = None
+
     if config.use_local_features:
-      feed_dict.update({
-          input_score_threshold: config.delf_local_config.score_threshold,
-          input_max_feature_num: config.delf_local_config.max_feature_num,
+      output = model(image_tensor, image_scales_tensor, score_threshold_tensor,
+                     max_feature_num_tensor)
+    else:
+      output = model(image_tensor, image_scales_tensor)
+
+    # Post-process extracted features: normalize, PCA (optional), pooling.
+    if config.use_global_features:
+      raw_global_descriptors = output[-1]
+      if config.delf_global_config.image_scales_ind:
+        raw_global_descriptors_selected_scales = tf.gather(
+            raw_global_descriptors,
+            list(config.delf_global_config.image_scales_ind))
+      else:
+        raw_global_descriptors_selected_scales = raw_global_descriptors
+      global_descriptors_per_scale = feature_extractor.PostProcessDescriptors(
+          raw_global_descriptors_selected_scales,
+          config.delf_global_config.use_pca, global_pca_parameters)
+      unnormalized_global_descriptor = tf.reduce_sum(
+          global_descriptors_per_scale, axis=0, name='sum_pooling')
+      global_descriptor = tf.nn.l2_normalize(
+          unnormalized_global_descriptor, axis=0, name='final_l2_normalization')
+      extracted_features.update({
+          'global_descriptor': global_descriptor.numpy(),
       })
-      fetches.update({
+
+    if config.use_local_features:
+      boxes = output[0]
+      raw_local_descriptors = output[1]
+      feature_scales = output[2]
+      attention_with_extra_dim = output[3]
+
+      attention = tf.reshape(attention_with_extra_dim,
+                             [tf.shape(attention_with_extra_dim)[0]])
+      locations, local_descriptors = (
+          feature_extractor.DelfFeaturePostProcessing(
+              boxes, raw_local_descriptors, config.delf_local_config.use_pca,
+              local_pca_parameters))
+      locations /= scale_factors
+
+      extracted_features.update({
           'local_features': {
-              'locations': locations,
-              'descriptors': local_descriptors,
-              'scales': feature_scales,
-              'attention': attention,
+              'locations': locations.numpy(),
+              'descriptors': local_descriptors.numpy(),
+              'scales': feature_scales.numpy(),
+              'attention': attention.numpy(),
           }
       })
-
-    extracted_features = sess.run(fetches, feed_dict=feed_dict)
-
-    # Adjust local feature positions due to rescaling.
-    if config.use_local_features:
-      extracted_features['local_features']['locations'] /= scale_factors
 
     return extracted_features
 

@@ -78,47 +78,40 @@ def main(unused_argv):
   if not tf.io.gfile.exists(cmd_args.output_dir):
     tf.io.gfile.makedirs(cmd_args.output_dir)
 
-  # Tell TensorFlow that the model will be built into the default Graph.
-  with tf.Graph().as_default():
-    with tf.compat.v1.Session() as sess:
-      init_op = tf.compat.v1.global_variables_initializer()
-      sess.run(init_op)
+  extractor_fn = extractor.MakeExtractor(config)
 
-      extractor_fn = extractor.MakeExtractor(sess, config)
+  start = time.time()
+  for i in range(num_images):
+    # Report progress once in a while.
+    if i == 0:
+      print('Starting to extract DELF features from images...')
+    elif i % _STATUS_CHECK_ITERATIONS == 0:
+      elapsed = (time.time() - start)
+      print(
+          f'Processing image {i} out of {num_images}, last '
+          f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds'
+      )
+      start = time.time()
 
-      start = time.clock()
-      for i in range(num_images):
-        # Write to log-info once in a while.
-        if i == 0:
-          print('Starting to extract DELF features from images...')
-        elif i % _STATUS_CHECK_ITERATIONS == 0:
-          elapsed = (time.clock() - start)
-          print(
-              f'Processing image {i} out of {num_images}, last '
-              f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds'
-              )
-          start = time.clock()
+    # If descriptor already exists, skip its computation.
+    out_desc_filename = os.path.splitext(os.path.basename(
+        image_paths[i]))[0] + _DELF_EXT
+    out_desc_fullpath = os.path.join(cmd_args.output_dir, out_desc_filename)
+    if tf.io.gfile.exists(out_desc_fullpath):
+      print(f'Skipping {image_paths[i]}')
+      continue
 
-        # If descriptor already exists, skip its computation.
-        out_desc_filename = os.path.splitext(os.path.basename(
-            image_paths[i]))[0] + _DELF_EXT
-        out_desc_fullpath = os.path.join(cmd_args.output_dir, out_desc_filename)
-        if tf.io.gfile.exists(out_desc_fullpath):
-          print(f'Skipping {image_paths[i]}')
-          continue
+    im = np.array(utils.RgbLoader(image_paths[i]))
 
-        im = np.array(utils.RgbLoader(image_paths[i]))
+    # Extract and save features.
+    extracted_features = extractor_fn(im)
+    locations_out = extracted_features['local_features']['locations']
+    descriptors_out = extracted_features['local_features']['descriptors']
+    feature_scales_out = extracted_features['local_features']['scales']
+    attention_out = extracted_features['local_features']['attention']
 
-        # Extract and save features.
-        extracted_features = extractor_fn(im)
-        locations_out = extracted_features['local_features']['locations']
-        descriptors_out = extracted_features['local_features']['descriptors']
-        feature_scales_out = extracted_features['local_features']['scales']
-        attention_out = extracted_features['local_features']['attention']
-
-        feature_io.WriteToFile(out_desc_fullpath, locations_out,
-                               feature_scales_out, descriptors_out,
-                               attention_out)
+    feature_io.WriteToFile(out_desc_fullpath, locations_out, feature_scales_out,
+                           descriptors_out, attention_out)
 
 
 if __name__ == '__main__':
