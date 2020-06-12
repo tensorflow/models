@@ -68,41 +68,36 @@ def main(argv):
   if not tf.io.gfile.exists(cmd_args.output_features_dir):
     tf.io.gfile.makedirs(cmd_args.output_features_dir)
 
-  with tf.Graph().as_default():
-    with tf.compat.v1.Session() as sess:
-      # Initialize variables, construct DELF extractor.
-      init_op = tf.compat.v1.global_variables_initializer()
-      sess.run(init_op)
-      extractor_fn = extractor.MakeExtractor(sess, config)
+  extractor_fn = extractor.MakeExtractor(config)
 
-      start = time.clock()
-      for i in range(num_images):
-        query_image_name = query_list[i]
-        input_image_filename = os.path.join(cmd_args.images_dir,
-                                            query_image_name + _IMAGE_EXTENSION)
-        output_feature_filename = os.path.join(
-            cmd_args.output_features_dir, query_image_name + _DELF_EXTENSION)
-        if tf.io.gfile.exists(output_feature_filename):
-          print(f'Skipping {query_image_name}')
-          continue
+  start = time.time()
+  for i in range(num_images):
+    query_image_name = query_list[i]
+    input_image_filename = os.path.join(cmd_args.images_dir,
+                                        query_image_name + _IMAGE_EXTENSION)
+    output_feature_filename = os.path.join(
+        cmd_args.output_features_dir, query_image_name + _DELF_EXTENSION)
+    if tf.io.gfile.exists(output_feature_filename):
+      print(f'Skipping {query_image_name}')
+      continue
 
-        # Crop query image according to bounding box.
-        bbox = [int(round(b)) for b in ground_truth[i]['bbx']]
-        im = np.array(utils.RgbLoader(input_image_filename).crop(bbox))
+    # Crop query image according to bounding box.
+    bbox = [int(round(b)) for b in ground_truth[i]['bbx']]
+    im = np.array(utils.RgbLoader(input_image_filename).crop(bbox))
 
-        # Extract and save features.
-        extracted_features = extractor_fn(im)
-        locations_out = extracted_features['local_features']['locations']
-        descriptors_out = extracted_features['local_features']['descriptors']
-        feature_scales_out = extracted_features['local_features']['scales']
-        attention_out = extracted_features['local_features']['attention']
+    # Extract and save features.
+    extracted_features = extractor_fn(im)
+    locations_out = extracted_features['local_features']['locations']
+    descriptors_out = extracted_features['local_features']['descriptors']
+    feature_scales_out = extracted_features['local_features']['scales']
+    attention_out = extracted_features['local_features']['attention']
 
-        feature_io.WriteToFile(output_feature_filename, locations_out,
-                               feature_scales_out, descriptors_out,
-                               attention_out)
+    feature_io.WriteToFile(output_feature_filename, locations_out,
+                           feature_scales_out, descriptors_out,
+                           attention_out)
 
-      elapsed = (time.clock() - start)
-      print('Processed %d query images in %f seconds' % (num_images, elapsed))
+  elapsed = (time.time() - start)
+  print('Processed %d query images in %f seconds' % (num_images, elapsed))
 
 
 if __name__ == '__main__':

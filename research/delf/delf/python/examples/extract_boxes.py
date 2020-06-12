@@ -144,53 +144,47 @@ def main(argv):
       cmd_args.output_viz_dir):
     tf.io.gfile.makedirs(cmd_args.output_viz_dir)
 
-  # Tell TensorFlow that the model will be built into the default Graph.
-  with tf.Graph().as_default():
-    with tf.compat.v1.Session() as sess:
-      init_op = tf.compat.v1.global_variables_initializer()
-      sess.run(init_op)
+  detector_fn = detector.MakeDetector(cmd_args.detector_path)
 
-      detector_fn = detector.MakeDetector(sess, cmd_args.detector_path)
+  start = time.time()
+  for i, image_path in enumerate(image_paths):
+    # Report progress once in a while.
+    if i == 0:
+      print('Starting to detect objects in images...')
+    elif i % _STATUS_CHECK_ITERATIONS == 0:
+      elapsed = (time.time() - start)
+      print(
+          f'Processing image {i} out of {num_images}, last '
+          f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds'
+          )
+      start = time.time()
 
-      start = time.clock()
-      for i, image_path in enumerate(image_paths):
-        # Write to log-info once in a while.
-        if i == 0:
-          print('Starting to detect objects in images...')
-        elif i % _STATUS_CHECK_ITERATIONS == 0:
-          elapsed = (time.clock() - start)
-          print(
-              f'Processing image {i} out of {num_images}, last '
-              f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds'
-              )
-          start = time.clock()
+    # If descriptor already exists, skip its computation.
+    base_boxes_filename, _ = os.path.splitext(os.path.basename(image_path))
+    out_boxes_filename = base_boxes_filename + _BOX_EXT
+    out_boxes_fullpath = os.path.join(cmd_args.output_dir,
+                                      out_boxes_filename)
+    if tf.io.gfile.exists(out_boxes_fullpath):
+      print(f'Skipping {image_path}')
+      continue
 
-        # If descriptor already exists, skip its computation.
-        base_boxes_filename, _ = os.path.splitext(os.path.basename(image_path))
-        out_boxes_filename = base_boxes_filename + _BOX_EXT
-        out_boxes_fullpath = os.path.join(cmd_args.output_dir,
-                                          out_boxes_filename)
-        if tf.io.gfile.exists(out_boxes_fullpath):
-          print(f'Skipping {image_path}')
-          continue
+    im = np.expand_dims(np.array(utils.RgbLoader(image_paths[i])), 0)
 
-        im = np.expand_dims(np.array(utils.RgbLoader(image_paths[i])), 0)
+    # Extract and save boxes.
+    (boxes_out, scores_out, class_indices_out) = detector_fn(im)
+    (selected_boxes, selected_scores,
+     selected_class_indices) = _FilterBoxesByScore(boxes_out[0],
+                                                   scores_out[0],
+                                                   class_indices_out[0],
+                                                   cmd_args.detector_thresh)
 
-        # Extract and save boxes.
-        (boxes_out, scores_out, class_indices_out) = detector_fn(im)
-        (selected_boxes, selected_scores,
-         selected_class_indices) = _FilterBoxesByScore(boxes_out[0],
-                                                       scores_out[0],
-                                                       class_indices_out[0],
-                                                       cmd_args.detector_thresh)
-
-        box_io.WriteToFile(out_boxes_fullpath, selected_boxes, selected_scores,
-                           selected_class_indices)
-        if cmd_args.output_viz_dir:
-          out_viz_filename = base_boxes_filename + _VIZ_SUFFIX
-          out_viz_fullpath = os.path.join(cmd_args.output_viz_dir,
-                                          out_viz_filename)
-          _PlotBoxesAndSaveImage(im[0], selected_boxes, out_viz_fullpath)
+    box_io.WriteToFile(out_boxes_fullpath, selected_boxes, selected_scores,
+                       selected_class_indices)
+    if cmd_args.output_viz_dir:
+      out_viz_filename = base_boxes_filename + _VIZ_SUFFIX
+      out_viz_fullpath = os.path.join(cmd_args.output_viz_dir,
+                                      out_viz_filename)
+      _PlotBoxesAndSaveImage(im[0], selected_boxes, out_viz_fullpath)
 
 
 if __name__ == '__main__':
