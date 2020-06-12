@@ -105,19 +105,27 @@ class GatedFeedforward(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
     self._intermediate_dense = []
+    self._intermediate_activation_layers = []
     self._gate_dense = []
     self._output_dense = []
     self._output_dropout = []
     self._output_layer_norm = []
+    activation_policy = tf.keras.mixed_precision.experimental.global_policy()
+    if activation_policy.name == "mixed_bfloat16":
+      # bfloat16 causes BERT with the LAMB optimizer to not converge
+      # as well, so we use float32.
+      # TODO(b/154538392): Investigate this.
+      activation_policy = tf.float32
     for i in range(self._num_blocks):
       self._intermediate_dense.append(
           tf.keras.layers.experimental.EinsumDense(
               "abc,cd->abd",
               output_shape=(None, self._intermediate_size),
               bias_axes="d",
-              activation=self._intermediate_activation,
               name="intermediate_%d" % i,
               **common_kwargs))
+      self._intermediate_activation_layers.append(tf.keras.layers.Activation(
+          self._intermediate_activation, dtype=activation_policy))
       if self._use_gate:
         self._gate_dense.append(
             tf.keras.layers.experimental.EinsumDense(
@@ -180,6 +188,8 @@ class GatedFeedforward(tf.keras.layers.Layer):
     for i in range(self._num_blocks):
       layer_input = layer_output
       intermediate_output = self._intermediate_dense[i](layer_input)
+      intermediate_output = self._intermediate_activation_layers[i](
+          intermediate_output)
       if self._use_gate:
         gated_linear = self._gate_dense[i](layer_input)
         intermediate_output = intermediate_output * gated_linear
