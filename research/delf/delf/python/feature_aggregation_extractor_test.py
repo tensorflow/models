@@ -20,11 +20,14 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
 import numpy as np
 import tensorflow as tf
 
 from delf import aggregation_config_pb2
 from delf import feature_aggregation_extractor
+
+FLAGS = flags.FLAGS
 
 
 class FeatureAggregationTest(tf.test.TestCase):
@@ -35,17 +38,15 @@ class FeatureAggregationTest(tf.test.TestCase):
     Args:
       checkpoint_path: Directory where codebook is saved to.
     """
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      codebook = tf.Variable(
-          [[0.5, 0.5], [0.0, 0.0], [1.0, 0.0], [-0.5, -0.5], [0.0, 1.0]],
-          name='clusters')
-      saver = tf.compat.v1.train.Saver([codebook])
-      sess.run(tf.compat.v1.global_variables_initializer())
-      saver.save(sess, checkpoint_path)
+    codebook = tf.Variable(
+        [[0.5, 0.5], [0.0, 0.0], [1.0, 0.0], [-0.5, -0.5], [0.0, 1.0]],
+        name='clusters',
+        dtype=tf.float32)
+    ckpt = tf.train.Checkpoint(codebook=codebook)
+    ckpt.write(checkpoint_path)
 
   def setUp(self):
-    self._codebook_path = os.path.join(tf.compat.v1.test.get_temp_dir(),
-                                       'test_codebook')
+    self._codebook_path = os.path.join(FLAGS.test_tmpdir, 'test_codebook')
     self._CreateCodebook(self._codebook_path)
 
   def testComputeNormalizedVladWorks(self):
@@ -61,10 +62,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.num_assignments = 1
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      vlad, extra_output = extractor.Extract(features)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    vlad, extra_output = extractor.Extract(features)
 
     # Define expected results.
     exp_vlad = [
@@ -90,10 +90,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.feature_batch_size = 2
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      vlad, extra_output = extractor.Extract(features)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    vlad, extra_output = extractor.Extract(features)
 
     # Define expected results.
     exp_vlad = [
@@ -118,10 +117,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.num_assignments = 1
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      vlad, extra_output = extractor.Extract(features)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    vlad, extra_output = extractor.Extract(features)
 
     # Define expected results.
     exp_vlad = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5, 0.5, 1.0, 1.0]
@@ -144,10 +142,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.num_assignments = 3
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      vlad, extra_output = extractor.Extract(features)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    vlad, extra_output = extractor.Extract(features)
 
     # Define expected results.
     exp_vlad = [1.0, 1.0, 0.0, 0.0, 0.0, 2.0, -0.5, 0.5, 0.0, 0.0]
@@ -168,10 +165,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.codebook_path = self._codebook_path
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      vlad, extra_output = extractor.Extract(features)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    vlad, extra_output = extractor.Extract(features)
 
     # Define expected results.
     exp_vlad = np.zeros([10], dtype=float)
@@ -197,10 +193,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      rvlad, extra_output = extractor.Extract(features, num_features_per_region)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    rvlad, extra_output = extractor.Extract(features, num_features_per_region)
 
     # Define expected results.
     exp_rvlad = [
@@ -228,10 +223,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      rvlad, extra_output = extractor.Extract(features, num_features_per_region)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    rvlad, extra_output = extractor.Extract(features, num_features_per_region)
 
     # Define expected results.
     exp_rvlad = [
@@ -256,10 +250,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      rvlad, extra_output = extractor.Extract(features, num_features_per_region)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    rvlad, extra_output = extractor.Extract(features, num_features_per_region)
 
     # Define expected results.
     exp_rvlad = np.zeros([10], dtype=float)
@@ -286,10 +279,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      rvlad, extra_output = extractor.Extract(features, num_features_per_region)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    rvlad, extra_output = extractor.Extract(features, num_features_per_region)
 
     # Define expected results.
     exp_rvlad = [
@@ -318,10 +310,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      rvlad, extra_output = extractor.Extract(features, num_features_per_region)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    rvlad, extra_output = extractor.Extract(features, num_features_per_region)
 
     # Define expected results.
     exp_rvlad = [
@@ -349,14 +340,13 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      with self.assertRaisesRegex(
-          ValueError,
-          r'Incorrect arguments: sum\(num_features_per_region\) and '
-          r'features.shape\[0\] are different'):
-        extractor.Extract(features, num_features_per_region)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    with self.assertRaisesRegex(
+        ValueError,
+        r'Incorrect arguments: sum\(num_features_per_region\) and '
+        r'features.shape\[0\] are different'):
+      extractor.Extract(features, num_features_per_region)
 
   def testComputeAsmkWorks(self):
     # Construct inputs.
@@ -370,10 +360,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.num_assignments = 1
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      asmk, visual_words = extractor.Extract(features)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    asmk, visual_words = extractor.Extract(features)
 
     # Define expected results.
     exp_asmk = [-0.707107, 0.707107, 0.707107, 0.707107]
@@ -395,10 +384,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.num_assignments = 1
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      asmk_star, visual_words = extractor.Extract(features)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    asmk_star, visual_words = extractor.Extract(features)
 
     # Define expected results.
     exp_asmk_star = [64, 192]
@@ -420,10 +408,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.num_assignments = 3
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      asmk, visual_words = extractor.Extract(features)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    asmk, visual_words = extractor.Extract(features)
 
     # Define expected results.
     exp_asmk = [0.707107, 0.707107, 0.0, 1.0, -0.707107, 0.707107]
@@ -448,10 +435,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      rasmk, visual_words = extractor.Extract(features, num_features_per_region)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    rasmk, visual_words = extractor.Extract(features, num_features_per_region)
 
     # Define expected results.
     exp_rasmk = [-0.707107, 0.707107, 0.361261, 0.932465]
@@ -476,11 +462,10 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
-          sess, config)
-      rasmk_star, visual_words = extractor.Extract(features,
-                                                   num_features_per_region)
+    extractor = feature_aggregation_extractor.ExtractAggregatedRepresentation(
+        config)
+    rasmk_star, visual_words = extractor.Extract(features,
+                                                 num_features_per_region)
 
     # Define expected results.
     exp_rasmk_star = [64, 192]
@@ -500,10 +485,9 @@ class FeatureAggregationTest(tf.test.TestCase):
     config.use_regional_aggregation = True
 
     # Run tested function.
-    with tf.Graph().as_default() as g, self.session(graph=g) as sess:
-      with self.assertRaisesRegex(ValueError, 'Invalid aggregation type'):
-        feature_aggregation_extractor.ExtractAggregatedRepresentation(
-            sess, config)
+    with self.assertRaisesRegex(ValueError, 'Invalid aggregation type'):
+      feature_aggregation_extractor.ExtractAggregatedRepresentation(
+          config)
 
 
 if __name__ == '__main__':

@@ -27,6 +27,15 @@ import functools
 import tensorflow as tf
 
 
+class _GoogleLandmarksInfo(object):
+  """Metadata about the Google Landmarks dataset."""
+  num_classes = {
+      'gld_v1': 14951,
+      'gld_v2': 203094,
+      'gld_v2_clean': 81313
+  }
+
+
 class _DataAugmentationParams(object):
   """Default parameters for augmentation."""
   # The following are used for training.
@@ -167,3 +176,12 @@ def CreateDataset(file_pattern,
   dataset = dataset.batch(batch_size)
 
   return dataset
+
+
+def GoogleLandmarksInfo():
+  """Returns metadata information on the Google Landmarks dataset.
+
+  Returns:
+     object _GoogleLandmarksInfo containing metadata about the GLD dataset.
+  """
+  return _GoogleLandmarksInfo()

@@ -43,6 +43,10 @@ flags.DEFINE_string('train_file_pattern', '/tmp/data/train*',
                     'File pattern of training dataset files.')
 flags.DEFINE_string('validation_file_pattern', '/tmp/data/validation*',
                     'File pattern of validation dataset files.')
+flags.DEFINE_enum('dataset_version', 'gld_v1',
+                  ['gld_v1', 'gld_v2', 'gld_v2_clean'],
+                  'Google Landmarks dataset version, used to determine the'
+                  'number of classes.')
 flags.DEFINE_integer('seed', 0, 'Seed to training dataset.')
 flags.DEFINE_float('initial_lr', 0.001, 'Initial learning rate.')
 flags.DEFINE_integer('batch_size', 32, 'Global batch size.')
@@ -136,9 +140,9 @@ def main(argv):
     save_interval = 1
     report_interval = 1
 
-  # TODO(andrearaujo): Using placeholder, replace with actual value using
-  # GoogleLandmarksInfo() from datasets/googlelandmarks.py.
-  num_classes = 14951
+  # Determine the number of classes based on the version of the dataset.
+  gld_info = gld.GoogleLandmarksInfo()
+  num_classes = gld_info.num_classes[FLAGS.dataset_version]
 
   # ------------------------------------------------------------
   # Create the distributed train/validation sets.
