@@ -79,8 +79,7 @@ class SentencePredictionTask(base_task.Task):
     else:
       return bert.instantiate_from_cfg(self.task_config.network)
 
-  def build_losses(self, features, model_outputs, aux_losses=None) -> tf.Tensor:
-    labels = features
+  def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
         labels=labels,
         predictions=tf.nn.log_softmax(model_outputs['sentence_prediction'],
@@ -118,12 +117,12 @@ class SentencePredictionTask(base_task.Task):
     ]
     return metrics
 
-  def process_metrics(self, metrics, labels, outputs):
+  def process_metrics(self, metrics, labels, model_outputs):
     for metric in metrics:
-      metric.update_state(labels, outputs['sentence_prediction'])
+      metric.update_state(labels, model_outputs['sentence_prediction'])
 
-  def process_compiled_metrics(self, compiled_metrics, labels, outputs):
-    compiled_metrics.update_state(labels, outputs['sentence_prediction'])
+  def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
+    compiled_metrics.update_state(labels, model_outputs['sentence_prediction'])
 
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""
