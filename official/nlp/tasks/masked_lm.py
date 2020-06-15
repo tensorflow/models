@@ -43,25 +43,25 @@ class MaskedLMTask(base_task.Task):
     return bert.instantiate_from_cfg(self.task_config.network)
 
   def build_losses(self,
-                   features,
+                   labels,
                    model_outputs,
                    metrics,
                    aux_losses=None) -> tf.Tensor:
     metrics = dict([(metric.name, metric) for metric in metrics])
     lm_output = tf.nn.log_softmax(model_outputs['lm_output'], axis=-1)
     mlm_loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
-        labels=features['masked_lm_ids'],
+        labels=labels['masked_lm_ids'],
         predictions=lm_output,
-        weights=features['masked_lm_weights'])
+        weights=labels['masked_lm_weights'])
     metrics['lm_example_loss'].update_state(mlm_loss)
-    if 'next_sentence_labels' in features:
+    if 'next_sentence_labels' in labels:
       policy = tf.keras.mixed_precision.experimental.global_policy()
       if policy.name == 'mixed_bfloat16':  # b/158514794: bf16 is not stable.
         policy = tf.float32
       predictions = tf.keras.layers.Activation(
           tf.nn.log_softmax, dtype=policy)(model_outputs['next_sentence'])
 
-      sentence_labels = features['next_sentence_labels']
+      sentence_labels = labels['next_sentence_labels']
       sentence_loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
           labels=sentence_labels,
           predictions=predictions)
@@ -112,15 +112,15 @@ class MaskedLMTask(base_task.Task):
       metrics.append(tf.keras.metrics.Mean(name='next_sentence_loss'))
     return metrics
 
-  def process_metrics(self, metrics, inputs, outputs):
+  def process_metrics(self, metrics, labels, model_outputs):
     metrics = dict([(metric.name, metric) for metric in metrics])
     if 'masked_lm_accuracy' in metrics:
-      metrics['masked_lm_accuracy'].update_state(inputs['masked_lm_ids'],
-                                                 outputs['lm_output'],
-                                                 inputs['masked_lm_weights'])
+      metrics['masked_lm_accuracy'].update_state(labels['masked_lm_ids'],
+                                                 model_outputs['lm_output'],
+                                                 labels['masked_lm_weights'])
     if 'next_sentence_accuracy' in metrics:
       metrics['next_sentence_accuracy'].update_state(
-          inputs['next_sentence_labels'], outputs['next_sentence'])
+          labels['next_sentence_labels'], model_outputs['next_sentence'])
 
   def train_step(self, inputs, model: tf.keras.Model,
                  optimizer: tf.keras.optimizers.Optimizer, metrics):
@@ -139,7 +139,7 @@ class MaskedLMTask(base_task.Task):
       outputs = model(inputs, training=True)
       # Computes per-replica loss.
       loss = self.build_losses(
-          features=inputs,
+          labels=inputs,
           model_outputs=outputs,
           metrics=metrics,
           aux_losses=model.losses)
@@ -166,7 +166,7 @@ class MaskedLMTask(base_task.Task):
     """
     outputs = self.inference_step(inputs, model)
     loss = self.build_losses(
-        features=inputs,
+        labels=inputs,
         model_outputs=outputs,
         metrics=metrics,
         aux_losses=model.losses)
