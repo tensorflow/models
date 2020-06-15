@@ -114,18 +114,18 @@ class Task(tf.Module):
     """
     pass
 
-  def build_losses(self, features, model_outputs, aux_losses=None) -> tf.Tensor:
+  def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     """Standard interface to compute losses.
 
     Args:
-      features: optional feature/labels tensors.
+      labels: optional label tensors.
       model_outputs: a nested structure of output tensors.
       aux_losses: auxiliarly loss tensors, i.e. `losses` in keras.Model.
 
     Returns:
       The total loss tensor.
     """
-    del model_outputs, features
+    del model_outputs, labels
 
     if aux_losses is None:
       losses = [tf.constant(0.0, dtype=tf.float32)]
@@ -139,29 +139,29 @@ class Task(tf.Module):
     del training
     return []
 
-  def process_metrics(self, metrics, labels, outputs):
+  def process_metrics(self, metrics, labels, model_outputs):
     """Process and update metrics. Called when using custom training loop API.
 
     Args:
       metrics: a nested structure of metrics objects.
         The return of function self.build_metrics.
       labels: a tensor or a nested structure of tensors.
-      outputs: a tensor or a nested structure of tensors.
+      model_outputs: a tensor or a nested structure of tensors.
         For example, output of the keras model built by self.build_model.
     """
     for metric in metrics:
-      metric.update_state(labels, outputs)
+      metric.update_state(labels, model_outputs)
 
-  def process_compiled_metrics(self, compiled_metrics, labels, outputs):
+  def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
     """Process and update compiled_metrics. call when using compile/fit API.
 
     Args:
       compiled_metrics: the compiled metrics (model.compiled_metrics).
       labels: a tensor or a nested structure of tensors.
-      outputs: a tensor or a nested structure of tensors.
+      model_outputs: a tensor or a nested structure of tensors.
         For example, output of the keras model built by self.build_model.
     """
-    compiled_metrics.update_state(labels, outputs)
+    compiled_metrics.update_state(labels, model_outputs)
 
   def train_step(self,
                  inputs,
@@ -187,7 +187,7 @@ class Task(tf.Module):
       outputs = model(features, training=True)
       # Computes per-replica loss.
       loss = self.build_losses(
-          features=labels, model_outputs=outputs, aux_losses=model.losses)
+          labels=labels, model_outputs=outputs, aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
       scaled_loss = loss / tf.distribute.get_strategy().num_replicas_in_sync
@@ -231,7 +231,7 @@ class Task(tf.Module):
       features, labels = inputs, inputs
     outputs = self.inference_step(features, model)
     loss = self.build_losses(
-        features=labels, model_outputs=outputs, aux_losses=model.losses)
+        labels=labels, model_outputs=outputs, aux_losses=model.losses)
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
