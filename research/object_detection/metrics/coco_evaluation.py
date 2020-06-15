@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import numpy as np
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields
 from object_detection.metrics import coco_tools
@@ -1096,27 +1096,24 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                     for key, value in mask_metrics.items()}
     return mask_metrics
 
-  def get_estimator_eval_metric_ops(self, eval_dict):
-    """Returns a dictionary of eval metric ops.
+  def add_eval_dict(self, eval_dict):
+    """Observes an evaluation result dict for a single example.
 
-    Note that once value_op is called, the detections and groundtruth added via
-    update_op are cleared.
+    When executing eagerly, once all observations have been observed by this
+    method you can use `.evaluate()` to get the final metrics.
+
+    When using `tf.estimator.Estimator` for evaluation this function is used by
+    `get_estimator_eval_metric_ops()` to construct the metric update op.
 
     Args:
-      eval_dict: A dictionary that holds tensors for evaluating object detection
-        performance. For single-image evaluation, this dictionary may be
-        produced from eval_util.result_dict_for_single_example(). If multi-image
-        evaluation, `eval_dict` should contain the fields
-        'num_groundtruth_boxes_per_image' and 'num_det_boxes_per_image' to
-        properly unpad the tensors from the batch.
+      eval_dict: A dictionary that holds tensors for evaluating an object
+        detection model, returned from
+        eval_util.result_dict_for_single_example().
 
     Returns:
-      a dictionary of metric names to tuple of value_op and update_op that can
-      be used as eval metric ops in tf.estimator.EstimatorSpec. Note that all
-      update ops  must be run together and similarly all value ops must be run
-      together to guarantee correct behaviour.
+      None when executing eagerly, or an update_op that can be used to update
+      the eval metrics in `tf.estimator.EstimatorSpec`.
     """
-
     def update_op(image_id_batched, groundtruth_boxes_batched,
                   groundtruth_classes_batched,
                   groundtruth_instance_masks_batched,
@@ -1203,13 +1200,34 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
             tf.shape(detection_scores)[1:2],
             multiples=tf.shape(detection_scores)[0:1])
 
-    update_op = tf.py_func(update_op, [
+    return tf.py_func(update_op, [
         image_id, groundtruth_boxes, groundtruth_classes,
         groundtruth_instance_masks, groundtruth_is_crowd,
         num_gt_boxes_per_image, detection_scores, detection_classes,
         detection_masks, num_det_boxes_per_image
     ], [])
 
+  def get_estimator_eval_metric_ops(self, eval_dict):
+    """Returns a dictionary of eval metric ops.
+
+    Note that once value_op is called, the detections and groundtruth added via
+    update_op are cleared.
+
+    Args:
+      eval_dict: A dictionary that holds tensors for evaluating object detection
+        performance. For single-image evaluation, this dictionary may be
+        produced from eval_util.result_dict_for_single_example(). If multi-image
+        evaluation, `eval_dict` should contain the fields
+        'num_groundtruth_boxes_per_image' and 'num_det_boxes_per_image' to
+        properly unpad the tensors from the batch.
+
+    Returns:
+      a dictionary of metric names to tuple of value_op and update_op that can
+      be used as eval metric ops in tf.estimator.EstimatorSpec. Note that all
+      update ops  must be run together and similarly all value ops must be run
+      together to guarantee correct behaviour.
+    """
+    update_op = self.add_eval_dict(eval_dict)
     metric_names = ['DetectionMasks_Precision/mAP',
                     'DetectionMasks_Precision/mAP@.50IOU',
                     'DetectionMasks_Precision/mAP@.75IOU',

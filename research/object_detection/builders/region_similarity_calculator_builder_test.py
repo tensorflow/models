@@ -15,7 +15,7 @@
 
 """Tests for region_similarity_calculator_builder."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 from object_detection.builders import region_similarity_calculator_builder

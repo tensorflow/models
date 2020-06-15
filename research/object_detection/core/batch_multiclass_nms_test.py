@@ -19,7 +19,7 @@ from __future__ import print_function
 from absl.testing import parameterized
 import numpy as np
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.core import post_processing
 from object_detection.utils import test_case
 

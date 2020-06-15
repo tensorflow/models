@@ -221,7 +221,8 @@ def train_squad(strategy,
                 bert_config,
                 custom_callbacks=None,
                 run_eagerly=False,
-                init_checkpoint=None):
+                init_checkpoint=None,
+                sub_model_export_name=None):
   """Run bert squad training."""
   if strategy:
     logging.info('Training using customized training loop with distribution'
@@ -279,6 +280,7 @@ def train_squad(strategy,
       epochs=epochs,
       train_input_fn=train_input_fn,
       init_checkpoint=init_checkpoint or FLAGS.init_checkpoint,
+      sub_model_export_name=sub_model_export_name,
       run_eagerly=run_eagerly,
       custom_callbacks=custom_callbacks,
       explicit_allreduce=False,

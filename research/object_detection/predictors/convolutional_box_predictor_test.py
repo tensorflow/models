@@ -24,7 +24,7 @@ from absl.testing import parameterized
 import numpy as np
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 from object_detection.builders import box_predictor_builder

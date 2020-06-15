@@ -19,7 +19,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from delf import datum_io
 from delf import delf_v1
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
@@ -331,13 +330,15 @@ def ApplyPcaAndWhitening(data,
   return output
 
 
-def PostProcessDescriptors(descriptors, use_pca, pca_parameters):
+def PostProcessDescriptors(descriptors, use_pca, pca_parameters=None):
   """Post-process descriptors.
 
   Args:
     descriptors: [N, input_dim] float tensor.
     use_pca: Whether to use PCA.
-    pca_parameters: DelfPcaParameters proto.
+    pca_parameters: Only used if `use_pca` is True. Dict containing PCA
+      parameter tensors, with keys 'mean', 'matrix', 'dim', 'use_whitening',
+      'variances'.
 
   Returns:
     final_descriptors: [N, output_dim] float tensor with descriptors after
@@ -349,25 +350,13 @@ def PostProcessDescriptors(descriptors, use_pca, pca_parameters):
         descriptors, axis=1, name='l2_normalization')
 
     if use_pca:
-      # Load PCA parameters.
-      pca_mean = tf.constant(
-          datum_io.ReadFromFile(pca_parameters.mean_path), dtype=tf.float32)
-      pca_matrix = tf.constant(
-          datum_io.ReadFromFile(pca_parameters.projection_matrix_path),
-          dtype=tf.float32)
-      pca_dim = pca_parameters.pca_dim
-      pca_variances = None
-      if pca_parameters.use_whitening:
-        pca_variances = tf.squeeze(
-            tf.constant(
-                datum_io.ReadFromFile(pca_parameters.pca_variances_path),
-                dtype=tf.float32))
-
       # Apply PCA, and whitening if desired.
-      final_descriptors = ApplyPcaAndWhitening(final_descriptors, pca_matrix,
-                                               pca_mean, pca_dim,
-                                               pca_parameters.use_whitening,
-                                               pca_variances)
+      final_descriptors = ApplyPcaAndWhitening(final_descriptors,
+                                               pca_parameters['matrix'],
+                                               pca_parameters['mean'],
+                                               pca_parameters['dim'],
+                                               pca_parameters['use_whitening'],
+                                               pca_parameters['variances'])
 
       # Re-normalize.
       final_descriptors = tf.nn.l2_normalize(
@@ -376,7 +365,7 @@ def PostProcessDescriptors(descriptors, use_pca, pca_parameters):
   return final_descriptors
 
 
-def DelfFeaturePostProcessing(boxes, descriptors, config):
+def DelfFeaturePostProcessing(boxes, descriptors, use_pca, pca_parameters=None):
   """Extract DELF features from input image.
 
   Args:
@@ -384,7 +373,10 @@ def DelfFeaturePostProcessing(boxes, descriptors, config):
       the number of final feature points which pass through keypoint selection
       and NMS steps.
     descriptors: [N, input_dim] float tensor.
-    config: DelfConfig proto with DELF extraction options.
+    use_pca: Whether to use PCA.
+    pca_parameters: Only used if `use_pca` is True. Dict containing PCA
+      parameter tensors, with keys 'mean', 'matrix', 'dim', 'use_whitening',
+      'variances'.
 
   Returns:
     locations: [N, 2] float tensor which denotes the selected keypoint
@@ -395,8 +387,7 @@ def DelfFeaturePostProcessing(boxes, descriptors, config):
 
   # Get center of descriptor boxes, corresponding to feature locations.
   locations = CalculateKeypointCenters(boxes)
-  final_descriptors = PostProcessDescriptors(
-      descriptors, config.delf_local_config.use_pca,
-      config.delf_local_config.pca_parameters)
+  final_descriptors = PostProcessDescriptors(descriptors, use_pca,
+                                             pca_parameters)
 
   return locations, final_descriptors

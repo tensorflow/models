@@ -35,7 +35,8 @@ from official.nlp.data import squad_lib_sp
 FLAGS = flags.FLAGS
 
 flags.DEFINE_enum(
-    "fine_tuning_task_type", "classification", ["classification", "squad"],
+    "fine_tuning_task_type", "classification",
+    ["classification", "regression", "squad"],
     "The name of the BERT fine tuning task for which data "
     "will be generated..")
 
@@ -46,14 +47,21 @@ flags.DEFINE_string(
     "for the task.")
 
 flags.DEFINE_enum("classification_task_name", "MNLI",
-                  ["COLA", "MNLI", "MRPC", "QNLI", "QQP", "SST-2", "XNLI"],
+                  ["COLA", "MNLI", "MRPC", "QNLI", "QQP", "SST-2", "XNLI",
+                   "PAWS-X"],
                   "The name of the task to train BERT classifier.")
 
 # XNLI task specific flag.
 flags.DEFINE_string(
     "xnli_language", "en",
-    "Language of training and evaluation data for XNIL task. If the value is "
-    "'all', the data of all languages will be used for training.")
+    "Language of training data for XNIL task. If the value is 'all', the data "
+    "of all languages will be used for training.")
+
+# PAWS-X task specific flag.
+flags.DEFINE_string(
+    "pawsx_language", "en",
+    "Language of trainig data for PAWS-X task. If the value is 'all', the data "
+    "of all languages will be used for training.")
 
 # BERT Squad task specific flags.
 flags.DEFINE_string(
@@ -91,7 +99,8 @@ flags.DEFINE_string(
 flags.DEFINE_string(
     "test_data_output_path", None,
     "The path in which generated test input data will be written as tf"
-    " records. If None, do not generate test data.")
+    " records. If None, do not generate test data. Must be a pattern template"
+    " as test_{}.tfrecords if processor has language specific test data.")
 
 flags.DEFINE_string("meta_data_file_path", None,
                     "The path in which input meta data will be written.")
@@ -165,6 +174,9 @@ def generate_classifier_dataset():
         "xnli":
             functools.partial(classifier_data_lib.XnliProcessor,
                               language=FLAGS.xnli_language),
+        "paws-x":
+            functools.partial(classifier_data_lib.PawsxProcessor,
+                              language=FLAGS.pawsx_language)
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:
@@ -179,6 +191,34 @@ def generate_classifier_dataset():
         eval_data_output_path=FLAGS.eval_data_output_path,
         test_data_output_path=FLAGS.test_data_output_path,
         max_seq_length=FLAGS.max_seq_length)
+
+
+def generate_regression_dataset():
+  """Generates regression dataset and returns input meta data."""
+  if FLAGS.tokenizer_impl == "word_piece":
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+    processor_text_fn = tokenization.convert_to_unicode
+  else:
+    assert FLAGS.tokenizer_impl == "sentence_piece"
+    tokenizer = tokenization.FullSentencePieceTokenizer(FLAGS.sp_model_file)
+    processor_text_fn = functools.partial(
+        tokenization.preprocess_text, lower=FLAGS.do_lower_case)
+
+  if FLAGS.tfds_params:
+    processor = classifier_data_lib.TfdsProcessor(
+        tfds_params=FLAGS.tfds_params,
+        process_text_fn=processor_text_fn)
+    return classifier_data_lib.generate_tf_record_from_data_file(
+        processor,
+        None,
+        tokenizer,
+        train_data_output_path=FLAGS.train_data_output_path,
+        eval_data_output_path=FLAGS.eval_data_output_path,
+        test_data_output_path=FLAGS.test_data_output_path,
+        max_seq_length=FLAGS.max_seq_length)
+  else:
+    raise ValueError("No data processor found for the given regression task.")
 
 
 def generate_squad_dataset():
@@ -210,6 +250,8 @@ def main(_):
 
   if FLAGS.fine_tuning_task_type == "classification":
     input_meta_data = generate_classifier_dataset()
+  elif FLAGS.fine_tuning_task_type == "regression":
+    input_meta_data = generate_regression_dataset()
   else:
     input_meta_data = generate_squad_dataset()
 

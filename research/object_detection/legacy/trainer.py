@@ -21,8 +21,8 @@ DetectionModel.
 
 import functools
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.builders import optimizer_builder
 from object_detection.builders import preprocessor_builder
@@ -32,8 +32,6 @@ from object_detection.core import standard_fields as fields
 from object_detection.utils import ops as util_ops
 from object_detection.utils import variables_helper
 from deployment import model_deploy
-
-slim = contrib_slim
 
 
 def create_input_queue(batch_size_per_clone, create_tensor_dict_fn,

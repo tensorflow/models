@@ -85,7 +85,8 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('exponential', 'exponential'),
-      ('piecewise_constant_with_warmup', 'piecewise_constant_with_warmup'))
+      ('piecewise_constant_with_warmup', 'piecewise_constant_with_warmup'),
+      ('cosine_with_warmup', 'cosine_with_warmup'))
   def test_learning_rate_with_decay_and_warmup(self, lr_decay_type):
     """Basic smoke test for syntax."""
     params = base_configs.LearningRateConfig(
@@ -99,11 +100,13 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
         boundaries=[0],
         multipliers=[0, 1])
     batch_size = 1
+    train_epochs = 1
     train_steps = 1
 
     lr = optimizer_factory.build_learning_rate(
         params=params,
         batch_size=batch_size,
+        train_epochs=train_epochs,
         train_steps=train_steps)
     self.assertTrue(
         issubclass(

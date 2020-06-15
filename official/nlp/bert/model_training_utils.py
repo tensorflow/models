@@ -235,10 +235,9 @@ def run_customized_training_loop(
           'TPUStrategy should not run eagerly as it heavily relies on graph'
           ' optimization for the distributed system.')
 
-  if eval_input_fn and (eval_steps is None or metric_fn is None):
+  if eval_input_fn and eval_steps is None:
     raise ValueError(
-        '`eval_step` and `metric_fn` are required when `eval_input_fn ` '
-        'is not none.')
+        '`eval_step` is required when `eval_input_fn ` is not none.')
   if metric_fn and not callable(metric_fn):
     raise ValueError(
         'if `metric_fn` is specified, metric_fn must be a callable.')
@@ -488,6 +487,11 @@ def run_customized_training_loop(
         summary_writer = tf.summary.create_noop_writer()
 
       with summary_writer.as_default():
+        if callable(optimizer.learning_rate):
+          tf.summary.scalar(
+              'learning_rate',
+              optimizer.learning_rate(current_step),
+              step=current_step)
         tf.summary.scalar(
             train_loss_metric.name, train_loss, step=current_step)
         for metric in train_metrics + model.metrics:

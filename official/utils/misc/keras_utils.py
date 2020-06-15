@@ -85,6 +85,18 @@ class TimeHistory(tf.keras.callbacks.Callback):
     """The average number of training examples per second across all epochs."""
     return self.average_steps_per_second * self.batch_size
 
+  def get_examples_per_sec(self, warmup=1):
+    """Calculates examples/sec through timestamp_log and skip warmup period."""
+    # First entry in timestamp_log is the start of the step 1. The rest of the
+    # entries are the end of each step recorded.
+    time_log = self.timestamp_log
+    seconds = time_log[-1].timestamp - time_log[warmup].timestamp
+    steps = time_log[-1].batch_index - time_log[warmup].batch_index
+    return self.batch_size * steps / seconds
+
+  def get_startup_time(self, start_time_sec):
+    return self.timestamp_log[0].timestamp - start_time_sec
+
   def on_train_end(self, logs=None):
     self.train_finish_time = time.time()
 
@@ -121,9 +133,9 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
       if self.summary_writer:
         with self.summary_writer.as_default():
-          tf.summary.scalar('global_step/sec', steps_per_second,
+          tf.summary.scalar('steps_per_second', steps_per_second,
                             self.global_steps)
-          tf.summary.scalar('examples/sec', examples_per_second,
+          tf.summary.scalar('examples_per_second', examples_per_second,
                             self.global_steps)
 
       self.last_log_step = self.global_steps

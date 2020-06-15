@@ -31,13 +31,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+import tf_slim as slim
 
+arg_scope = slim.arg_scope
 DATA_FORMAT_NCHW = 'NCHW'
 DATA_FORMAT_NHWC = 'NHWC'
 INVALID = 'null'
@@ -56,14 +54,14 @@ def calc_reduction_layers(num_cells, num_reduction_layers):
   return reduction_layers
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def get_channel_index(data_format=INVALID):
   assert data_format != INVALID
   axis = 3 if data_format == 'NHWC' else 1
   return axis
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def get_channel_dim(shape, data_format=INVALID):
   assert data_format != INVALID
   assert len(shape) == 4
@@ -75,7 +73,7 @@ def get_channel_dim(shape, data_format=INVALID):
     raise ValueError('Not a valid data_format', data_format)
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def global_avg_pool(x, data_format=INVALID):
   """Average pool away the height and width spatial dimensions of x."""
   assert data_format != INVALID
@@ -87,7 +85,7 @@ def global_avg_pool(x, data_format=INVALID):
     return tf.reduce_mean(input_tensor=x, axis=[2, 3])
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   """Reduces the shape of net without information loss due to striding."""
   assert data_format != INVALID
@@ -101,8 +99,8 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
     stride_spec = [1, 1, stride, stride]
 
   # Skip path 1
-  path1 = tf.compat.v2.nn.avg_pool2d(
-      input=net,
+  path1 = tf.nn.avg_pool2d(
+      net,
       ksize=[1, 1, 1, 1],
       strides=stride_spec,
       padding='VALID',
@@ -120,9 +118,8 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
     pad_arr = [[0, 0], [0, 0], [0, 1], [0, 1]]
     path2 = tf.pad(tensor=net, paddings=pad_arr)[:, :, 1:, 1:]
     concat_axis = 1
-
-  path2 = tf.compat.v2.nn.avg_pool2d(
-      input=path2,
+  path2 = tf.nn.avg_pool2d(
+      path2,
       ksize=[1, 1, 1, 1],
       strides=stride_spec,
       padding='VALID',
@@ -138,7 +135,7 @@ def factorized_reduction(net, output_filters, stride, data_format=INVALID):
   return final_path
 
 
-@contrib_framework.add_arg_scope
+@slim.add_arg_scope
 def drop_path(net, keep_prob, is_training=True):
   """Drops out a whole example hiddenstate with the specified probability."""
   if is_training:
@@ -324,10 +321,10 @@ class NasNetABaseCell(object):
     self._filter_size = int(self._num_conv_filters * filter_scaling)
 
     i = 0
-    with tf.compat.v1.variable_scope(scope):
+    with tf.variable_scope(scope):
       net = self._cell_base(net, prev_layer)
       for iteration in range(5):
-        with tf.compat.v1.variable_scope('comb_iter_{}'.format(iteration)):
+        with tf.variable_scope('comb_iter_{}'.format(iteration)):
           left_hiddenstate_idx, right_hiddenstate_idx = (
               self._hiddenstate_indices[i],
               self._hiddenstate_indices[i + 1])
@@ -340,17 +337,17 @@ class NasNetABaseCell(object):
           operation_right = self._operations[i+1]
           i += 2
           # Apply conv operations
-          with tf.compat.v1.variable_scope('left'):
+          with tf.variable_scope('left'):
             h1 = self._apply_conv_operation(h1, operation_left,
                                             stride, original_input_left,
                                             current_step)
-          with tf.compat.v1.variable_scope('right'):
+          with tf.variable_scope('right'):
             h2 = self._apply_conv_operation(h2, operation_right,
                                             stride, original_input_right,
                                             current_step)
 
           # Combine hidden states using 'add'.
-          with tf.compat.v1.variable_scope('combine'):
+          with tf.variable_scope('combine'):
             h = h1 + h2
             if self._use_bounded_activation:
               h = tf.nn.relu6(h)
@@ -358,7 +355,7 @@ class NasNetABaseCell(object):
           # Add hiddenstate to the list of hiddenstates we can choose from
           net.append(h)
 
-      with tf.compat.v1.variable_scope('cell_output'):
+      with tf.variable_scope('cell_output'):
         net = self._combine_unused_states(net)
 
       return net
@@ -419,7 +416,7 @@ class NasNetABaseCell(object):
       should_reduce = should_reduce and not used_h
       if should_reduce:
         stride = 2 if final_height != curr_height else 1
-        with tf.compat.v1.variable_scope('reduction_{}'.format(idx)):
+        with tf.variable_scope('reduction_{}'.format(idx)):
           net[idx] = factorized_reduction(
               net[idx], final_num_filters, stride)
 
@@ -431,7 +428,7 @@ class NasNetABaseCell(object):
     net = tf.concat(values=states_to_combine, axis=concat_axis)
     return net
 
-  @contrib_framework.add_arg_scope  # No public API. For internal use only.
+  @slim.add_arg_scope  # No public API. For internal use only.
   def _apply_drop_path(self, net, current_step=None,
                        use_summaries=False, drop_connect_version='v3'):
     """Apply drop_path regularization.
@@ -460,24 +457,23 @@ class NasNetABaseCell(object):
         layer_ratio = (self._cell_num + 1)/float(num_cells)
         if use_summaries:
           with tf.device('/cpu:0'):
-            tf.compat.v1.summary.scalar('layer_ratio', layer_ratio)
+            tf.summary.scalar('layer_ratio', layer_ratio)
         drop_path_keep_prob = 1 - layer_ratio * (1 - drop_path_keep_prob)
       if drop_connect_version in ['v1', 'v3']:
         # Decrease the keep probability over time
         if current_step is None:
-          current_step = tf.compat.v1.train.get_or_create_global_step()
+          current_step = tf.train.get_or_create_global_step()
         current_step = tf.cast(current_step, tf.float32)
         drop_path_burn_in_steps = self._total_training_steps
         current_ratio = current_step / drop_path_burn_in_steps
         current_ratio = tf.minimum(1.0, current_ratio)
         if use_summaries:
           with tf.device('/cpu:0'):
-            tf.compat.v1.summary.scalar('current_ratio', current_ratio)
+            tf.summary.scalar('current_ratio', current_ratio)
         drop_path_keep_prob = (1 - current_ratio * (1 - drop_path_keep_prob))
       if use_summaries:
         with tf.device('/cpu:0'):
-          tf.compat.v1.summary.scalar('drop_path_keep_prob',
-                                      drop_path_keep_prob)
+          tf.summary.scalar('drop_path_keep_prob', drop_path_keep_prob)
       net = drop_path(net, drop_path_keep_prob)
     return net
 

@@ -44,12 +44,30 @@ class TransformerScaffold(tf.keras.layers.Layer):
     intermediate_activation: Activation for the intermediate layer.
     attention_cls: A class to instantiate attention layer, or a layer instance.
     attention_cfg: The config with which to instantiate `attention_cls`. Ignored
-      if attention_cls is a layer instance.
+      if attention_cls is a layer instance or None. If `attention_cls` is a
+      class, but `attention_cfg` is None, following kwargs will be used to
+      instantiate the attention instance:
+      {
+        "num_heads": num_attention_heads,
+        "key_size": int(hidden_size // num_attention_heads),
+        "dropout": attention_dropout_rate,
+        "name": "self_attention"
+      }, where `hidden_size` is the input tensor's last dimension.
     feedforward_cls: A class to instantiate feedforward layer, or a layer
       instance. If None, will use the standard feedforward layer as described
-      in "Attention Is All You Need" paper.
+      in "Attention Is All You Need" paper. If not None, the instantiated
+      feedforward layer is expected to take the output of attention as input
+      and its output is this transformer layer's output.
     feedforward_cfg: The config with which to instantiate `feedforward_cls`.
       Ignored if feedforward_cls is a layer instance or is None.
+      If `feedforward_cls` is a class, but `feedforward_cfg` is None, following
+      kwargs will be used to instantiate the feedforward instance:
+      {
+        "intermediate_size": intermediate_size,
+        "intermediate_activation": intermediate_activation,
+        "dropout": dropout_rate,
+        "name": "feedforward"
+      }.
     dropout_rate: Dropout probability for the post-attention and output dropout.
     attention_dropout_rate: Dropout probability for within the attention layer.
     kernel_initializer: Initializer for dense layer kernels.
@@ -143,7 +161,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
     default_attention_cfg = {
         "num_heads": self._num_heads,
         "key_size": self._attention_head_size,
-        "dropout_rate": self._attention_dropout_rate,
+        "dropout": self._attention_dropout_rate,
         "name": "self_attention"
     }
     default_attention_cfg.update(common_kwargs)
@@ -156,6 +174,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
       default_feedforward_cfg = {
           "intermediate_size": self._intermediate_size,
           "intermediate_activation": self._intermediate_activation,
+          "dropout": self._dropout_rate,
           "name": "feedforward",
       }
       default_feedforward_cfg.update(common_kwargs)
@@ -176,16 +195,23 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
     if self._feedforward_block is None:
       self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
-          "...x,xy->...y",
-          output_shape=self._intermediate_size,
-          bias_axes="y",
-          activation=self._intermediate_activation,
+          "abc,cd->abd",
+          output_shape=(None, self._intermediate_size),
+          bias_axes="d",
           name="intermediate",
           **common_kwargs)
+      policy = tf.keras.mixed_precision.experimental.global_policy()
+      if policy.name == "mixed_bfloat16":
+        # bfloat16 causes BERT with the LAMB optimizer to not converge
+        # as well, so we use float32.
+        # TODO(b/154538392): Investigate this.
+        policy = tf.float32
+      self._intermediate_activation_layer = tf.keras.layers.Activation(
+          self._intermediate_activation, dtype=policy)
       self._output_dense = tf.keras.layers.experimental.EinsumDense(
-          "...x,xy->...y",
-          output_shape=hidden_size,
-          bias_axes="y",
+          "abc,cd->abd",
+          output_shape=(None, hidden_size),
+          bias_axes="d",
           name="output",
           **common_kwargs)
 
@@ -244,13 +270,16 @@ class TransformerScaffold(tf.keras.layers.Layer):
                                                   attention_output)
     if self._feedforward_block is None:
       intermediate_output = self._intermediate_dense(attention_output)
+      intermediate_output = self._intermediate_activation_layer(
+          intermediate_output)
       layer_output = self._output_dense(intermediate_output)
+      layer_output = self._output_dropout(layer_output)
+      # During mixed precision training, attention_output is from layer norm
+      # and is always fp32 for now. Cast layer_output to fp32 for the subsequent
+      # add.
+      layer_output = tf.cast(layer_output, tf.float32)
+      layer_output = self._output_layer_norm(layer_output + attention_output)
     else:
       layer_output = self._feedforward_block(attention_output)
-    layer_output = self._output_dropout(layer_output)
-    # During mixed precision training, attention_output is from layer norm and
-    # is always fp32 for now. Cast layer_output to fp32 for the subsequent add.
-    layer_output = tf.cast(layer_output, tf.float32)
-    layer_output = self._output_layer_norm(layer_output + attention_output)
 
     return layer_output

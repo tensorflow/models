@@ -24,8 +24,8 @@ from __future__ import print_function
 import enum
 import numpy as np
 from six.moves import zip
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
+from tf_slim import tfexample_decoder as slim_example_decoder
 from object_detection.core import data_decoder
 from object_detection.core import standard_fields as fields
 from object_detection.protos import input_reader_pb2
@@ -34,11 +34,13 @@ from object_detection.utils import label_map_util
 # pylint: disable=g-import-not-at-top
 try:
   from tensorflow.contrib import lookup as contrib_lookup
-  from tensorflow.contrib.slim import tfexample_decoder as slim_example_decoder
+
 except ImportError:
   # TF 2.0 doesn't ship with contrib.
   pass
 # pylint: enable=g-import-not-at-top
+
+_LABEL_OFFSET = 1
 
 
 class Visibility(enum.Enum):
@@ -167,7 +169,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                num_keypoints=0,
                num_additional_channels=0,
                load_multiclass_scores=False,
-               load_context_features=False):
+               load_context_features=False,
+               expand_hierarchy_labels=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -193,12 +196,18 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         boxes.
       load_context_features: Whether to load information from context_features,
         to provide additional context to a detection model for training and/or
-        inference
+        inference.
+      expand_hierarchy_labels: Expands the object and image labels taking into
+        account the provided hierarchy in the label_map_proto_file. For positive
+        classes, the labels are extended to ancestor. For negative classes,
+        the labels are expanded to descendants.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
         input_reader_pb2.DEFAULT, input_reader_pb2.NUMERICAL, or
         input_reader_pb2.PNG_MASKS.
+      ValueError: If `expand_labels_hierarchy` is True, but the
+        `label_map_proto_file` is not provided.
     """
     # TODO(rathodv): delete unused `use_display_name` argument once we change
     # other decoders to handle label maps similarly.
@@ -385,6 +394,20 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     self.items_to_handlers[
         fields.InputDataFields.groundtruth_image_classes] = image_label_handler
 
+    self._expand_hierarchy_labels = expand_hierarchy_labels
+    self._ancestors_lut = None
+    self._descendants_lut = None
+    if expand_hierarchy_labels:
+      if label_map_proto_file:
+        ancestors_lut, descendants_lut = (
+            label_map_util.get_label_map_hierarchy_lut(label_map_proto_file,
+                                                       True))
+        self._ancestors_lut = tf.constant(ancestors_lut, dtype=tf.int64)
+        self._descendants_lut = tf.constant(descendants_lut, dtype=tf.int64)
+      else:
+        raise ValueError('In order to expand labels, the label_map_proto_file '
+                         'has to be provided.')
+
   def decode(self, tf_example_string_tensor):
     """Decodes serialized tensorflow example and returns a tensor dictionary.
 
@@ -432,7 +455,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         tensor of shape [None, num_keypoints] containing keypoint visibilites.
       fields.InputDataFields.groundtruth_instance_masks - 3D float32 tensor of
         shape [None, None, None] containing instance masks.
-      fields.InputDataFields.groundtruth_image_classes - 1D uint64 of shape
+      fields.InputDataFields.groundtruth_image_classes - 1D int64 of shape
         [None] containing classes for the boxes.
       fields.InputDataFields.multiclass_scores - 1D float32 tensor of shape
         [None * num_classes] containing flattened multiclass scores for
@@ -483,6 +506,46 @@ class TfExampleDecoder(data_decoder.DataDecoder):
           visibilities_tiled,
           tensor_dict[gt_kpt_fld],
           np.nan * tf.ones_like(tensor_dict[gt_kpt_fld]))
+
+    if self._expand_hierarchy_labels:
+      input_fields = fields.InputDataFields
+      image_classes, image_confidences = self._expand_image_label_hierarchy(
+          tensor_dict[input_fields.groundtruth_image_classes],
+          tensor_dict[input_fields.groundtruth_image_confidences])
+      tensor_dict[input_fields.groundtruth_image_classes] = image_classes
+      tensor_dict[input_fields.groundtruth_image_confidences] = (
+          image_confidences)
+
+      box_fields = [
+          fields.InputDataFields.groundtruth_group_of,
+          fields.InputDataFields.groundtruth_is_crowd,
+          fields.InputDataFields.groundtruth_difficult,
+          fields.InputDataFields.groundtruth_area,
+          fields.InputDataFields.groundtruth_boxes,
+          fields.InputDataFields.groundtruth_weights,
+      ]
+
+      def expand_field(field_name):
+        return self._expansion_box_field_labels(
+            tensor_dict[input_fields.groundtruth_classes],
+            tensor_dict[field_name])
+
+      # pylint: disable=cell-var-from-loop
+      for field in box_fields:
+        if field in tensor_dict:
+          tensor_dict[field] = tf.cond(
+              tf.size(tensor_dict[field]) > 0, lambda: expand_field(field),
+              lambda: tensor_dict[field])
+      # pylint: enable=cell-var-from-loop
+
+      tensor_dict[input_fields.groundtruth_classes] = (
+          self._expansion_box_field_labels(
+              tensor_dict[input_fields.groundtruth_classes],
+              tensor_dict[input_fields.groundtruth_classes], True))
+
+    if fields.InputDataFields.groundtruth_group_of in tensor_dict:
+      group_of = fields.InputDataFields.groundtruth_group_of
+      tensor_dict[group_of] = tf.cast(tensor_dict[group_of], dtype=tf.bool)
 
     return tensor_dict
 
@@ -633,3 +696,69 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         tf.greater(tf.size(png_masks), 0),
         lambda: tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32),
         lambda: tf.zeros(tf.cast(tf.stack([0, height, width]), dtype=tf.int32)))
+
+  def _expand_image_label_hierarchy(self, image_classes, image_confidences):
+    """Expand image level labels according to the hierarchy.
+
+    Args:
+      image_classes: Int64 tensor with the image level class ids for a sample.
+      image_confidences: Float tensor signaling whether a class id is present in
+        the image (1.0) or not present (0.0).
+
+    Returns:
+      new_image_classes: Int64 tensor equal to expanding image_classes.
+      new_image_confidences: Float tensor equal to expanding image_confidences.
+    """
+
+    def expand_labels(relation_tensor, confidence_value):
+      """Expand to ancestors or descendants depending on arguments."""
+      mask = tf.equal(image_confidences, confidence_value)
+      target_image_classes = tf.boolean_mask(image_classes, mask)
+      expanded_indices = tf.reduce_any((tf.gather(
+          relation_tensor, target_image_classes - _LABEL_OFFSET, axis=0) > 0),
+                                       axis=0)
+      expanded_indices = tf.where(expanded_indices)[:, 0] + _LABEL_OFFSET
+      new_groundtruth_image_classes = (
+          tf.concat([
+              tf.boolean_mask(image_classes, tf.logical_not(mask)),
+              expanded_indices,
+          ],
+                    axis=0))
+      new_groundtruth_image_confidences = (
+          tf.concat([
+              tf.boolean_mask(image_confidences, tf.logical_not(mask)),
+              tf.ones([tf.shape(expanded_indices)[0]],
+                      dtype=image_confidences.dtype) * confidence_value,
+          ],
+                    axis=0))
+      return new_groundtruth_image_classes, new_groundtruth_image_confidences
+
+    image_classes, image_confidences = expand_labels(self._ancestors_lut, 1.0)
+    new_image_classes, new_image_confidences = expand_labels(
+        self._descendants_lut, 0.0)
+    return new_image_classes, new_image_confidences
+
+  def _expansion_box_field_labels(self,
+                                  object_classes,
+                                  object_field,
+                                  copy_class_id=False):
+    """Expand the labels of a specific object field according to the hierarchy.
+
+    Args:
+      object_classes: Int64 tensor with the class id for each element in
+        object_field.
+      object_field: Tensor to be expanded.
+      copy_class_id: Boolean to choose whether to use class id values in the
+        output tensor instead of replicating the original values.
+
+    Returns:
+      A tensor with the result of expanding object_field.
+    """
+    expanded_indices = tf.gather(
+        self._ancestors_lut, object_classes - _LABEL_OFFSET, axis=0)
+    if copy_class_id:
+      new_object_field = tf.where(expanded_indices > 0)[:, 1] + _LABEL_OFFSET
+    else:
+      new_object_field = tf.repeat(
+          object_field, tf.reduce_sum(expanded_indices, axis=1), axis=0)
+    return new_object_field

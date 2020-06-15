@@ -18,8 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from tensorflow.python import tf2  # pylint: disable=import-outside-toplevel
+from object_detection.utils import tf_version
 if not tf2.enabled():
   from tensorflow.contrib import tpu as contrib_tpu  # pylint: disable=g-import-not-at-top, line-too-long
 
@@ -58,9 +59,9 @@ class TestCase(tf.test.TestCase):
 
   def is_tf2(self):
     """Returns whether TF2 is enabled."""
-    return tf2.enabled()
+    return tf_version.is_tf2()
 
-  def execute_tpu_tf1(self, compute_fn, inputs):
+  def execute_tpu_tf1(self, compute_fn, inputs, graph=None):
     """Executes compute_fn on TPU with Tensorflow 1.X.
 
     Args:
@@ -68,11 +69,13 @@ class TestCase(tf.test.TestCase):
         of input numpy tensors, performs computation and returns output numpy
         tensors.
       inputs: a list of numpy arrays to feed input to the `compute_fn`.
+      graph: (optional) If not None, provided `graph` is used for computation
+        instead of a brand new tf.Graph().
 
     Returns:
       A list of numpy arrays or a single numpy array.
     """
-    with self.test_session(graph=tf.Graph()) as sess:
+    with self.session(graph=(graph or tf.Graph())) as sess:
       placeholders = [tf.placeholder_with_default(v, v.shape) for v in inputs]
       def wrap_graph_fn(*args, **kwargs):
         results = compute_fn(*args, **kwargs)
@@ -117,7 +120,7 @@ class TestCase(tf.test.TestCase):
     tf.tpu.experimental.shutdown_tpu_system()
     return self.maybe_extract_single_output(outputs)
 
-  def execute_cpu_tf1(self, compute_fn, inputs):
+  def execute_cpu_tf1(self, compute_fn, inputs, graph=None):
     """Executes compute_fn on CPU with Tensorflow 1.X.
 
     Args:
@@ -125,13 +128,15 @@ class TestCase(tf.test.TestCase):
         of input numpy tensors, performs computation and returns output numpy
         tensors.
       inputs: a list of numpy arrays to feed input to the `compute_fn`.
+      graph: (optional) If not None, provided `graph` is used for computation
+        instead of a brand new tf.Graph().
 
     Returns:
       A list of numpy arrays or a single numpy array.
     """
     if self.is_tf2():
       raise ValueError('Required version Tenforflow 1.X is not available.')
-    with self.test_session(graph=tf.Graph()) as sess:
+    with self.session(graph=(graph or tf.Graph())) as sess:
       placeholders = [tf.placeholder_with_default(v, v.shape) for v in inputs]
       results = compute_fn(*placeholders)
       if (not (isinstance(results, dict) or isinstance(results, tf.Tensor)) and
@@ -163,7 +168,7 @@ class TestCase(tf.test.TestCase):
       return compute_fn(*tf_inputs)
     return self.maybe_extract_single_output(run())
 
-  def execute_cpu(self, compute_fn, inputs):
+  def execute_cpu(self, compute_fn, inputs, graph=None):
     """Executes compute_fn on CPU.
 
     Depending on the underlying TensorFlow installation (build deps) runs in
@@ -174,6 +179,8 @@ class TestCase(tf.test.TestCase):
         of input numpy tensors, performs computation and returns output numpy
         tensors.
       inputs: a list of numpy arrays to feed input to the `compute_fn`.
+      graph: (optional) If not None, provided `graph` is used for computation
+        instead of a brand new tf.Graph().
 
     Returns:
       A list of numpy arrays or a single tensor.
@@ -181,9 +188,9 @@ class TestCase(tf.test.TestCase):
     if self.is_tf2():
       return self.execute_cpu_tf2(compute_fn, inputs)
     else:
-      return self.execute_cpu_tf1(compute_fn, inputs)
+      return self.execute_cpu_tf1(compute_fn, inputs, graph)
 
-  def execute_tpu(self, compute_fn, inputs):
+  def execute_tpu(self, compute_fn, inputs, graph=None):
     """Executes compute_fn on TPU.
 
     Depending on the underlying TensorFlow installation (build deps) runs in
@@ -194,6 +201,8 @@ class TestCase(tf.test.TestCase):
         of input numpy tensors, performs computation and returns output numpy
         tensors.
       inputs: a list of numpy arrays to feed input to the `compute_fn`.
+      graph: (optional) If not None, provided `graph` is used for computation
+        instead of a brand new tf.Graph().
 
     Returns:
       A list of numpy arrays or a single tensor.
@@ -203,7 +212,7 @@ class TestCase(tf.test.TestCase):
     if self.is_tf2():
       return self.execute_tpu_tf2(compute_fn, inputs)
     else:
-      return self.execute_tpu_tf1(compute_fn, inputs)
+      return self.execute_tpu_tf1(compute_fn, inputs, graph)
 
   def execute_tf2(self, compute_fn, inputs):
     """Runs compute_fn with TensorFlow 2.0.
@@ -226,7 +235,7 @@ class TestCase(tf.test.TestCase):
     else:
       return self.execute_cpu_tf2(compute_fn, inputs)
 
-  def execute_tf1(self, compute_fn, inputs):
+  def execute_tf1(self, compute_fn, inputs, graph=None):
     """Runs compute_fn with TensorFlow 1.X.
 
     Executes on TPU if available, otherwise executes on CPU.
@@ -236,6 +245,8 @@ class TestCase(tf.test.TestCase):
         of input numpy tensors, performs computation and returns output numpy
         tensors.
       inputs: a list of numpy arrays to feed input to the `compute_fn`.
+      graph: (optional) If not None, provided `graph` is used for computation
+        instead of a brand new tf.Graph().
 
     Returns:
       A list of numpy arrays or a single tensor.
@@ -243,11 +254,11 @@ class TestCase(tf.test.TestCase):
     if self.is_tf2():
       raise ValueError('Required version Tenforflow 1.X is not available.')
     if self.has_tpu():
-      return self.execute_tpu_tf1(compute_fn, inputs)
+      return self.execute_tpu_tf1(compute_fn, inputs, graph)
     else:
-      return self.execute_cpu_tf1(compute_fn, inputs)
+      return self.execute_cpu_tf1(compute_fn, inputs, graph)
 
-  def execute(self, compute_fn, inputs):
+  def execute(self, compute_fn, inputs, graph=None):
     """Runs compute_fn with inputs and returns results.
 
     * Executes in either TF1.X or TF2.X style based on the TensorFlow version.
@@ -258,6 +269,8 @@ class TestCase(tf.test.TestCase):
         of input numpy tensors, performs computation and returns output numpy
         tensors.
       inputs: a list of numpy arrays to feed input to the `compute_fn`.
+      graph: (optional) If not None, provided `graph` is used for computation
+        instead of a brand new tf.Graph().
 
     Returns:
       A list of numpy arrays or a single tensor.
@@ -267,6 +280,6 @@ class TestCase(tf.test.TestCase):
     elif not self.has_tpu() and tf2.enabled():
       return self.execute_cpu_tf2(compute_fn, inputs)
     elif self.has_tpu() and not tf2.enabled():
-      return self.execute_tpu_tf1(compute_fn, inputs)
+      return self.execute_tpu_tf1(compute_fn, inputs, graph)
     else:
-      return self.execute_cpu_tf1(compute_fn, inputs)
+      return self.execute_cpu_tf1(compute_fn, inputs, graph)

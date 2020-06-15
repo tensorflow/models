@@ -9,7 +9,7 @@ groundtruth boxes in the dataset. If an image is encountered with more
 bounding boxes, the excess boxes will be clipped.
 
 ## Q: AttributeError: 'module' object has no attribute 'BackupHandler'
-A: This BackupHandler (tf.contrib.slim.tfexample_decoder.BackupHandler) was
+A: This BackupHandler (tf_slim.tfexample_decoder.BackupHandler) was
 introduced in tensorflow 1.5.0 so runing with earlier versions may cause this
 issue. It now has been replaced by
 object_detection.data_decoders.tf_example_decoder.BackupHandler. Whoever sees

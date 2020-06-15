@@ -56,7 +56,6 @@ import os
 from absl import logging
 import tensorflow as tf
 
-from official.nlp.transformer import misc
 from official.utils.misc import model_helpers
 
 # Buffer size for reading records from a TFRecord file. Each training file is
@@ -313,9 +312,5 @@ def eval_input_fn(params, ctx=None):
 def map_data_for_transformer_fn(x, y):
   """Maps data for training, and handles weried behaviors for different vers."""
   # Will transform input x and targets y into tuple(x, y) as new model inputs.
-  if misc.is_v2():
-    # For TF v2, the 2nd parameter is omitted to make Keras training work.
-    return ((x, y),)
-  else:
-    # For TF v1, Keras requires a dummy placeholder as the 2nd parameter.
-    return ((x, y), tf.constant(0.0))
+  # For TF v2, the 2nd parameter is omitted to make Keras training work.
+  return ((x, y),)

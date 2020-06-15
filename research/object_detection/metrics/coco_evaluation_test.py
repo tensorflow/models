@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.core import standard_fields
 from object_detection.metrics import coco_evaluation
 
@@ -1439,6 +1439,66 @@ class CocoMaskEvaluationTest(tf.test.TestCase):
 
 
 class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
+
+  def testAddEvalDict(self):
+    coco_evaluator = coco_evaluation.CocoMaskEvaluator(_get_categories_list())
+    image_id = tf.placeholder(tf.string, shape=())
+    groundtruth_boxes = tf.placeholder(tf.float32, shape=(None, 4))
+    groundtruth_classes = tf.placeholder(tf.float32, shape=(None))
+    groundtruth_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
+    detection_scores = tf.placeholder(tf.float32, shape=(None))
+    detection_classes = tf.placeholder(tf.float32, shape=(None))
+    detection_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
+
+    input_data_fields = standard_fields.InputDataFields
+    detection_fields = standard_fields.DetectionResultFields
+    eval_dict = {
+        input_data_fields.key: image_id,
+        input_data_fields.groundtruth_boxes: groundtruth_boxes,
+        input_data_fields.groundtruth_classes: groundtruth_classes,
+        input_data_fields.groundtruth_instance_masks: groundtruth_masks,
+        detection_fields.detection_scores: detection_scores,
+        detection_fields.detection_classes: detection_classes,
+        detection_fields.detection_masks: detection_masks,
+    }
+    update_op = coco_evaluator.add_eval_dict(eval_dict)
+    with self.test_session() as sess:
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id:
+                  'image1',
+              groundtruth_boxes:
+                  np.array([[100., 100., 200., 200.], [50., 50., 100., 100.]]),
+              groundtruth_classes:
+                  np.array([1, 2]),
+              groundtruth_masks:
+                  np.stack([
+                      np.pad(
+                          np.ones([100, 100], dtype=np.uint8), ((10, 10),
+                                                                (10, 10)),
+                          mode='constant'),
+                      np.pad(
+                          np.ones([50, 50], dtype=np.uint8), ((0, 70), (0, 70)),
+                          mode='constant')
+                  ]),
+              detection_scores:
+                  np.array([.9, .8]),
+              detection_classes:
+                  np.array([2, 1]),
+              detection_masks:
+                  np.stack([
+                      np.pad(
+                          np.ones([50, 50], dtype=np.uint8), ((0, 70), (0, 70)),
+                          mode='constant'),
+                      np.pad(
+                          np.ones([100, 100], dtype=np.uint8), ((10, 10),
+                                                                (10, 10)),
+                          mode='constant'),
+                  ])
+          })
+      self.assertLen(coco_evaluator._groundtruth_list, 2)
+      self.assertLen(coco_evaluator._detection_masks_list, 2)
 
   def testGetOneMAPWithMatchingGroundtruthAndDetections(self):
     coco_evaluator = coco_evaluation.CocoMaskEvaluator(_get_categories_list())

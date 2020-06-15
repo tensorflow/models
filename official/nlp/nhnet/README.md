@@ -39,13 +39,14 @@ First, install the `news-please` CLI (requires python 3.x)
 $ pip3 install news-please
 ```
 
-Next, run the crawler with our provided config and URL list
+Next, run the crawler with our provided [config and URL list](https://github.com/google-research-datasets/NewSHead/releases)
 
 ```shell
-# Sets to path of the downloaded data folder
+# Sets to path of the downloaded data folder.
 $ DATA_FOLDER=/path/to/downloaded_dataset
 
-# Uses CLI interface to crawl
+# Uses CLI interface to crawl. We assume news_please subfolder contains the
+# decompressed config.cfg and sitelist.hjson.
 $ news-please -c $DATA_FOLDER/news_please
 ```
 By default, it will store crawled
@@ -80,7 +81,7 @@ Next, we can run the following data preprocess script which may take a few hours
 
 
 ```shell
-# Recall that we use DATA_FOLDER=/path/to/downloaded_dataset
+# Recall that we use DATA_FOLDER=/path/to/downloaded_dataset.
 $ python3 raw_data_preprocess.py \
     -crawled_articles=/tmp/nhnet \
     -vocab=/path/to/bert_checkpoint/vocab.txt \

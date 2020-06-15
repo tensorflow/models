@@ -104,6 +104,25 @@ reporting an issue.
 
 ## Release information
 
+### May 19th, 2020
+We have released
+[MobileDets](https://arxiv.org/abs/2004.14525),
+a set of high-performance models for mobile CPUs, DSPs and EdgeTPUs.
+
+* MobileDets outperform MobileNetV3+SSDLite by 1.7 mAP at comparable mobile CPU
+inference latencies. MobileDets also outperform MobileNetV2+SSDLite by 1.9 mAP
+on mobile CPUs, 3.7 mAP on EdgeTPUs and 3.4 mAP on DSPs while running equally
+fast. MobileDets also offer up to 2x speedup over MnasFPN on EdgeTPUs and DSPs.
+
+For each of the three hardware platforms we have released model definition,
+model checkpoints trained on the COCO14 dataset and converted TFLite models in
+fp32 and/or uint8.
+
+<b>Thanks to contributors</b>: Yunyang Xiong, Hanxiao Liu, Suyog Gupta,
+Berkin Akin, Gabriel Bender, Pieter-Jan Kindermans, Mingxing Tan, Vikas Singh,
+Bo Chen, Quoc Le, Zhichao Lu.
+
+
 ### May 7th, 2020
 We have released a mobile model with the
 [MnasFPN head](https://arxiv.org/abs/1912.01106).
@@ -119,7 +138,7 @@ the COCO14 dataset and a converted TFLite model.
 
 <b>Thanks to contributors</b>: Bo Chen, Golnaz Ghiasi, Hanxiao Liu,
 Tsung-Yi Lin, Dmitry Kalenichenko, Hartwig Adam, Quoc Le, Zhichao Lu,
-Jonathan Huang.
+Jonathan Huang, Hao Xu.
 
 
 

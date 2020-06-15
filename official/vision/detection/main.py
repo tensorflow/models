@@ -42,19 +42,14 @@ from official.utils.misc import keras_utils
 hyperparams_flags.initialize_common_flags()
 flags_core.define_log_steps()
 
-flags.DEFINE_bool(
-    'enable_xla',
-    default=False,
-    help='Enable XLA for GPU')
+flags.DEFINE_bool('enable_xla', default=False, help='Enable XLA for GPU')
 
 flags.DEFINE_string(
-    'mode',
-    default='train',
-    help='Mode to run: `train`, `eval` or `train_and_eval`.')
+    'mode', default='train', help='Mode to run: `train` or `eval`.')
 
 flags.DEFINE_string(
     'model', default='retinanet',
-    help='Model to run: `retinanet` or `mask_rcnn`.')
+    help='Model to run: `retinanet`, `mask_rcnn` or `shapemask`.')
 
 flags.DEFINE_string('training_file_pattern', None,
                     'Location of the train data.')
@@ -75,7 +70,7 @@ def run_executor(params,
                  eval_input_fn=None,
                  callbacks=None,
                  prebuilt_strategy=None):
-  """Runs Retinanet model on distribution strategy defined by the user."""
+  """Runs the object detection model on distribution strategy defined by the user."""
 
   if params.architecture.use_bfloat16:
     policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
@@ -203,7 +198,7 @@ def run(callbacks=None):
   params.lock()
   pp = pprint.PrettyPrinter()
   params_str = pp.pformat(params.as_dict())
-  logging.info('Model Parameters: {}'.format(params_str))
+  logging.info('Model Parameters: %s', params_str)
 
   train_input_fn = None
   eval_input_fn = None

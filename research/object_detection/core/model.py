@@ -60,7 +60,7 @@ from __future__ import print_function
 
 import abc
 import six
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields as fields
 
@@ -68,7 +68,7 @@ from object_detection.core import standard_fields as fields
 # If using a new enough version of TensorFlow, detection models should be a
 # tf module or keras model for tracking.
 try:
-  _BaseClass = tf.Module
+  _BaseClass = tf.keras.layers.Layer
 except AttributeError:
   _BaseClass = object
 
@@ -89,6 +89,8 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     """
     self._num_classes = num_classes
     self._groundtruth_lists = {}
+
+    super(DetectionModel, self).__init__()
 
   @property
   def num_classes(self):
@@ -295,6 +297,7 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
                           groundtruth_weights_list=None,
                           groundtruth_confidences_list=None,
                           groundtruth_is_crowd_list=None,
+                          groundtruth_group_of_list=None,
                           groundtruth_area_list=None,
                           is_annotated_list=None,
                           groundtruth_labeled_classes=None):
@@ -328,14 +331,16 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
         boxes.
       groundtruth_is_crowd_list: A list of 1-D tf.bool tensors of shape
         [num_boxes] containing is_crowd annotations.
+      groundtruth_group_of_list: A list of 1-D tf.bool tensors of shape
+        [num_boxes] containing group_of annotations.
       groundtruth_area_list: A list of 1-D tf.float32 tensors of shape
         [num_boxes] containing the area (in the original absolute coordinates)
         of the annotations.
       is_annotated_list: A list of scalar tf.bool tensors indicating whether
         images have been labeled or not.
       groundtruth_labeled_classes: A list of 1-D tf.float32 tensors of shape
-        [num_classes], containing label indices (1-indexed) of the classes that
-        are exhaustively annotated.
+        [num_classes], containing label indices encoded as k-hot of the classes
+        that are exhaustively annotated.
     """
     self._groundtruth_lists[fields.BoxListFields.boxes] = groundtruth_boxes_list
     self._groundtruth_lists[
@@ -359,6 +364,9 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     if groundtruth_is_crowd_list:
       self._groundtruth_lists[
           fields.BoxListFields.is_crowd] = groundtruth_is_crowd_list
+    if groundtruth_group_of_list:
+      self._groundtruth_lists[
+          fields.BoxListFields.group_of] = groundtruth_group_of_list
     if groundtruth_area_list:
       self._groundtruth_lists[
           fields.InputDataFields.groundtruth_area] = groundtruth_area_list
@@ -418,3 +426,20 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       A list of update operators.
     """
     pass
+
+  def call(self, images):
+    """Returns detections from a batch of images.
+
+    This method calls the preprocess, predict and postprocess function
+    sequentially and returns the output.
+
+    Args:
+      images: a [batch_size, height, width, channels] float tensor.
+
+    Returns:
+       detetcions: The dict of tensors returned by the postprocess function.
+    """
+
+    preprocessed_images, shapes = self.preprocess(images)
+    prediction_dict = self.predict(preprocessed_images, shapes)
+    return self.postprocess(prediction_dict, shapes)

@@ -16,7 +16,7 @@
 """Tests for google3.research.vale.object_detection.minibatch_sampler."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import minibatch_sampler
 from object_detection.utils import test_case

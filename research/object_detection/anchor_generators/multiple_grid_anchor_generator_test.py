@@ -17,7 +17,7 @@
 
 import numpy as np
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.anchor_generators import multiple_grid_anchor_generator as ag
 from object_detection.utils import test_case

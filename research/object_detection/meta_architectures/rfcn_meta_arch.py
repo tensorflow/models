@@ -38,7 +38,7 @@ for an example.
 See notes in the documentation of Faster R-CNN meta-architecture as they all
 apply here.
 """
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import box_predictor
 from object_detection.meta_architectures import faster_rcnn_meta_arch

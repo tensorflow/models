@@ -98,8 +98,8 @@ class DocAttention(tf.keras.layers.Layer):
 class MultiChannelAttention(layers.MultiHeadAttention):
   """Multi-channel Attention layer."""
 
-  def __init__(self, num_heads, key_size, **kwargs):
-    super(MultiChannelAttention, self).__init__(num_heads, key_size, **kwargs)
+  def build(self, input_shape):
+    super(MultiChannelAttention, self).build(input_shape)
     self._masked_softmax = layers.MaskedSoftmax(mask_expansion_axes=[2])
 
   def call(self, inputs, attention_mask=None):
@@ -131,11 +131,11 @@ class MultiChannelAttention(layers.MultiHeadAttention):
 
     # Normalize the attention scores to probabilities.
     # `attention_probs` = [B, A, N, F, T]
-    attention_probs = self._masked_softmax([attention_scores, attention_mask])
+    attention_probs = self._masked_softmax(attention_scores, attention_mask)
 
     # This is actually dropping out entire tokens to attend to, which might
     # seem a bit unusual, but is taken from the original Transformer paper.
-    attention_probs = self._dropout(attention_probs)
+    attention_probs = self._dropout_layer(attention_probs)
 
     # `context_layer` = [B, F, N, H]
     context_layer = tf.einsum("BANFT,BATNH->BAFNH", attention_probs,

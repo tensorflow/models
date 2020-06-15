@@ -33,6 +33,11 @@ message StringIntLabelMapItem {
     optional string label = 2;
   }
   repeated KeypointMap keypoints = 4;
+
+  // Label ids for the elements that are connected in the hierarchy with the
+  // current element. Value should correspond to another label id element.
+  repeated int32 ancestor_ids = 5;
+  repeated int32 descendant_ids = 6;
 };
 
 message StringIntLabelMap {

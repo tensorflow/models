@@ -21,12 +21,13 @@ from __future__ import print_function
 
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
+from object_detection.utils import test_case
 from object_detection.utils import variables_helper
 
 
-class FilterVariablesTest(tf.test.TestCase):
+class FilterVariablesTest(test_case.TestCase):
 
   def _create_variables(self):
     return [tf.Variable(1.0, name='FeatureExtractor/InceptionV3/weights'),
@@ -37,26 +38,26 @@ class FilterVariablesTest(tf.test.TestCase):
   def test_return_all_variables_when_empty_regex(self):
     variables = self._create_variables()
     out_variables = variables_helper.filter_variables(variables, [''])
-    self.assertItemsEqual(out_variables, variables)
+    self.assertCountEqual(out_variables, variables)
 
   def test_return_variables_which_do_not_match_single_regex(self):
     variables = self._create_variables()
     out_variables = variables_helper.filter_variables(variables,
                                                       ['FeatureExtractor/.*'])
-    self.assertItemsEqual(out_variables, variables[2:])
+    self.assertCountEqual(out_variables, variables[2:])
 
   def test_return_variables_which_do_not_match_any_regex_in_list(self):
     variables = self._create_variables()
     out_variables = variables_helper.filter_variables(variables, [
         'FeatureExtractor.*biases', 'StackProposalGenerator.*biases'
     ])
-    self.assertItemsEqual(out_variables, [variables[0], variables[2]])
+    self.assertCountEqual(out_variables, [variables[0], variables[2]])
 
   def test_return_variables_matching_empty_regex_list(self):
     variables = self._create_variables()
     out_variables = variables_helper.filter_variables(
         variables, [''], invert=True)
-    self.assertItemsEqual(out_variables, [])
+    self.assertCountEqual(out_variables, [])
 
   def test_return_variables_matching_some_regex_in_list(self):
     variables = self._create_variables()
@@ -64,7 +65,7 @@ class FilterVariablesTest(tf.test.TestCase):
         variables,
         ['FeatureExtractor.*biases', 'StackProposalGenerator.*biases'],
         invert=True)
-    self.assertItemsEqual(out_variables, [variables[1], variables[3]])
+    self.assertCountEqual(out_variables, [variables[1], variables[3]])
 
 
 class MultiplyGradientsMatchingRegexTest(tf.test.TestCase):
@@ -90,7 +91,7 @@ class MultiplyGradientsMatchingRegexTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       output = sess.run(grads_and_vars)
-      self.assertItemsEqual(output, exp_output)
+      self.assertCountEqual(output, exp_output)
 
   def test_multiply_all_bias_variables(self):
     grads_and_vars = self._create_grads_and_vars()
@@ -103,10 +104,10 @@ class MultiplyGradientsMatchingRegexTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       output = sess.run(grads_and_vars)
-      self.assertItemsEqual(output, exp_output)
+      self.assertCountEqual(output, exp_output)
 
 
-class FreezeGradientsMatchingRegexTest(tf.test.TestCase):
+class FreezeGradientsMatchingRegexTest(test_case.TestCase):
 
   def _create_grads_and_vars(self):
     return [(tf.constant(1.0),
@@ -128,10 +129,10 @@ class FreezeGradientsMatchingRegexTest(tf.test.TestCase):
     with self.test_session() as sess:
       sess.run(init_op)
       output = sess.run(grads_and_vars)
-      self.assertItemsEqual(output, exp_output)
+      self.assertCountEqual(output, exp_output)
 
 
-class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
+class GetVariablesAvailableInCheckpointTest(test_case.TestCase):
 
   def test_return_all_variables_from_checkpoint(self):
     with tf.Graph().as_default():
@@ -147,7 +148,7 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
         saver.save(sess, checkpoint_path)
       out_variables = variables_helper.get_variables_available_in_checkpoint(
           variables, checkpoint_path)
-    self.assertItemsEqual(out_variables, variables)
+    self.assertCountEqual(out_variables, variables)
 
   def test_return_all_variables_from_checkpoint_with_partition(self):
     with tf.Graph().as_default():
@@ -165,7 +166,7 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
         saver.save(sess, checkpoint_path)
       out_variables = variables_helper.get_variables_available_in_checkpoint(
           variables, checkpoint_path)
-    self.assertItemsEqual(out_variables, variables)
+    self.assertCountEqual(out_variables, variables)
 
   def test_return_variables_available_in_checkpoint(self):
     checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
@@ -186,7 +187,7 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
       graph2_variables = graph1_variables + [tf.Variable(1.0, name='biases')]
       out_variables = variables_helper.get_variables_available_in_checkpoint(
           graph2_variables, checkpoint_path, include_global_step=False)
-    self.assertItemsEqual(out_variables, [weight_variable])
+    self.assertCountEqual(out_variables, [weight_variable])
 
   def test_return_variables_available_an_checkpoint_with_dict_inputs(self):
     checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
@@ -208,9 +209,9 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
       out_variables = variables_helper.get_variables_available_in_checkpoint(
           graph2_variables_dict, checkpoint_path)
 
-    self.assertTrue(isinstance(out_variables, dict))
-    self.assertItemsEqual(list(out_variables.keys()), ['ckpt_weights'])
-    self.assertTrue(out_variables['ckpt_weights'].op.name == 'weights')
+    self.assertIsInstance(out_variables, dict)
+    self.assertCountEqual(list(out_variables.keys()), ['ckpt_weights'])
+    self.assertEqual(out_variables['ckpt_weights'].op.name, 'weights')
 
   def test_return_variables_with_correct_sizes(self):
     checkpoint_path = os.path.join(self.get_temp_dir(), 'model.ckpt')
@@ -237,7 +238,7 @@ class GetVariablesAvailableInCheckpointTest(tf.test.TestCase):
 
     out_variables = variables_helper.get_variables_available_in_checkpoint(
         graph2_variables, checkpoint_path, include_global_step=True)
-    self.assertItemsEqual(out_variables, [bias_variable, global_step])
+    self.assertCountEqual(out_variables, [bias_variable, global_step])
 
 
 if __name__ == '__main__':

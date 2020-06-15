@@ -113,7 +113,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._attention_layer = attention.MultiHeadAttention(
         num_heads=self._num_heads,
         key_size=self._attention_head_size,
-        dropout_rate=self._attention_dropout_rate,
+        dropout=self._attention_dropout_rate,
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -143,8 +143,14 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint,
         name="intermediate")
+    policy = tf.keras.mixed_precision.experimental.global_policy()
+    if policy.name == "mixed_bfloat16":
+      # bfloat16 causes BERT with the LAMB optimizer to not converge
+      # as well, so we use float32.
+      # TODO(b/154538392): Investigate this.
+      policy = tf.float32
     self._intermediate_activation_layer = tf.keras.layers.Activation(
-        self._intermediate_activation)
+        self._intermediate_activation, dtype=policy)
     self._output_dense = dense_einsum.DenseEinsum(
         output_shape=hidden_size,
         kernel_initializer=self._kernel_initializer,

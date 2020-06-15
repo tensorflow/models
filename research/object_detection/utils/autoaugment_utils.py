@@ -22,7 +22,7 @@ from __future__ import print_function
 import inspect
 import math
 import six
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 # pylint: disable=g-import-not-at-top
 try:

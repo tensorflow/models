@@ -33,7 +33,7 @@ from official.nlp.bert import tokenization
 class InputExample(object):
   """A single training/test example for simple sequence classification."""
 
-  def __init__(self, guid, text_a, text_b=None, label=None):
+  def __init__(self, guid, text_a, text_b=None, label=None, weight=None):
     """Constructs a InputExample.
 
     Args:
@@ -44,11 +44,14 @@ class InputExample(object):
         Only must be specified for sequence pair tasks.
       label: (Optional) string. The label of the example. This should be
         specified for train and dev examples, but not for test examples.
+      weight: (Optional) float. The weight of the example to be used during
+        training.
     """
     self.guid = guid
     self.text_a = text_a
     self.text_b = text_b
     self.label = label
+    self.weight = weight
 
 
 class InputFeatures(object):
@@ -59,12 +62,14 @@ class InputFeatures(object):
                input_mask,
                segment_ids,
                label_id,
-               is_real_example=True):
+               is_real_example=True,
+               weight=None):
     self.input_ids = input_ids
     self.input_mask = input_mask
     self.segment_ids = segment_ids
     self.label_id = label_id
     self.is_real_example = is_real_example
+    self.weight = weight
 
 
 class DataProcessor(object):
@@ -127,15 +132,14 @@ class XnliProcessor(DataProcessor):
     """See base class."""
     lines = []
     for language in self.languages:
+      # Skips the header.
       lines.extend(
           self._read_tsv(
               os.path.join(data_dir, "multinli",
-                           "multinli.train.%s.tsv" % language)))
+                           "multinli.train.%s.tsv" % language))[1:])
 
     examples = []
     for (i, line) in enumerate(lines):
-      if i == 0:
-        continue
       guid = "train-%d" % i
       text_a = self.process_text_fn(line[0])
       text_b = self.process_text_fn(line[1])
@@ -185,6 +189,91 @@ class XnliProcessor(DataProcessor):
   def get_processor_name():
     """See base class."""
     return "XNLI"
+
+
+class PawsxProcessor(DataProcessor):
+  """Processor for the PAWS-X data set."""
+  supported_languages = [
+      "de", "en", "es", "fr", "ja", "ko", "zh"
+  ]
+
+  def __init__(self,
+               language="en",
+               process_text_fn=tokenization.convert_to_unicode):
+    super(PawsxProcessor, self).__init__(process_text_fn)
+    if language == "all":
+      self.languages = PawsxProcessor.supported_languages
+    elif language not in PawsxProcessor.supported_languages:
+      raise ValueError("language %s is not supported for PAWS-X task." %
+                       language)
+    else:
+      self.languages = [language]
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    lines = []
+    for language in self.languages:
+      if language == "en":
+        train_tsv = "train.tsv"
+      else:
+        train_tsv = "translated_train.tsv"
+      # Skips the header.
+      lines.extend(
+          self._read_tsv(
+              os.path.join(data_dir, language, train_tsv))[1:])
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "train-%d" % i
+      text_a = self.process_text_fn(line[1])
+      text_b = self.process_text_fn(line[2])
+      label = self.process_text_fn(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    lines = []
+    for language in PawsxProcessor.supported_languages:
+      # Skips the header.
+      lines.extend(
+          self._read_tsv(os.path.join(data_dir, language, "dev_2k.tsv"))[1:])
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "dev-%d" % i
+      text_a = self.process_text_fn(line[1])
+      text_b = self.process_text_fn(line[2])
+      label = self.process_text_fn(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    examples_by_lang = {k: [] for k in PawsxProcessor.supported_languages}
+    for language in PawsxProcessor.supported_languages:
+      lines = self._read_tsv(os.path.join(data_dir, language, "test_2k.tsv"))
+      for (i, line) in enumerate(lines):
+        if i == 0:
+          continue
+        guid = "test-%d" % i
+        text_a = self.process_text_fn(line[1])
+        text_b = self.process_text_fn(line[2])
+        label = self.process_text_fn(line[3])
+        examples_by_lang[language].append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples_by_lang
+
+  def get_labels(self):
+    """See base class."""
+    return ["0", "1"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "PAWS-X"
 
 
 class MnliProcessor(DataProcessor):
@@ -462,7 +551,7 @@ class QnliProcessor(DataProcessor):
 
 
 class TfdsProcessor(DataProcessor):
-  """Processor for generic text classification TFDS data set.
+  """Processor for generic text classification and regression TFDS data set.
 
   The TFDS parameters are expected to be provided in the tfds_params string, in
   a comma-separated list of parameter assignments.
@@ -473,6 +562,8 @@ class TfdsProcessor(DataProcessor):
     tfds_params="dataset=glue/sst2,text_key=sentence"
     tfds_params="dataset=glue/qnli,text_key=question,text_b_key=sentence"
     tfds_params="dataset=glue/mrpc,text_key=sentence1,text_b_key=sentence2"
+    tfds_params="dataset=glue/stsb,text_key=sentence1,text_b_key=sentence2,"
+                "is_regression=true,label_type=float"
   Possible parameters (please refer to the documentation of Tensorflow Datasets
   (TFDS) for the meaning of individual parameters):
     dataset: Required dataset name (potentially with subset and version number).
@@ -487,6 +578,9 @@ class TfdsProcessor(DataProcessor):
     test_text_key: Key of the text feature to use in test set.
     test_text_b_key: Key of the second text feature to use in test set.
     test_label: String to be used as the label for all test examples.
+    label_type: Type of the label key (defaults to `int`).
+    weight_key: Key of the float sample weight (is not used if not provided).
+    is_regression: Whether the task is a regression problem (defaults to False).
   """
 
   def __init__(self, tfds_params,
@@ -498,10 +592,16 @@ class TfdsProcessor(DataProcessor):
 
     self.dataset, info = tfds.load(self.dataset_name, data_dir=self.data_dir,
                                    with_info=True)
-    self._labels = list(range(info.features[self.label_key].num_classes))
+    if self.is_regression:
+      self._labels = None
+    else:
+      self._labels = list(range(info.features[self.label_key].num_classes))
 
   def _process_tfds_params_str(self, params_str):
     """Extracts TFDS parameters from a comma-separated assignements string."""
+    dtype_map = {"int": int, "float": float}
+    cast_str_to_bool = lambda s: s.lower() not in ["false", "0"]
+
     tuples = [x.split("=") for x in params_str.split(",")]
     d = {k.strip(): v.strip() for k, v in tuples}
     self.dataset_name = d["dataset"]  # Required.
@@ -516,6 +616,9 @@ class TfdsProcessor(DataProcessor):
     self.test_text_key = d.get("test_text_key", self.text_key)
     self.test_text_b_key = d.get("test_text_b_key", self.text_b_key)
     self.test_label = d.get("test_label", "test_example")
+    self.label_type = dtype_map[d.get("label_type", "int")]
+    self.is_regression = cast_str_to_bool(d.get("is_regression", "False"))
+    self.weight_key = d.get("weight_key", None)
 
   def get_train_examples(self, data_dir):
     assert data_dir is None
@@ -541,7 +644,7 @@ class TfdsProcessor(DataProcessor):
       raise ValueError("Split {} not available.".format(split_name))
     dataset = self.dataset[split_name].as_numpy_iterator()
     examples = []
-    text_b = None
+    text_b, weight = None, None
     for i, example in enumerate(dataset):
       guid = "%s-%s" % (set_type, i)
       if set_type == "test":
@@ -553,9 +656,12 @@ class TfdsProcessor(DataProcessor):
         text_a = self.process_text_fn(example[self.text_key])
         if self.text_b_key:
           text_b = self.process_text_fn(example[self.text_b_key])
-        label = int(example[self.label_key])
+        label = self.label_type(example[self.label_key])
+      if self.weight_key:
+        weight = float(example[self.weight_key])
       examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label,
+                       weight=weight))
     return examples
 
 
@@ -563,8 +669,9 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
                            tokenizer):
   """Converts a single `InputExample` into a single `InputFeatures`."""
   label_map = {}
-  for (i, label) in enumerate(label_list):
-    label_map[label] = i
+  if label_list:
+    for (i, label) in enumerate(label_list):
+      label_map[label] = i
 
   tokens_a = tokenizer.tokenize(example.text_a)
   tokens_b = None
@@ -632,7 +739,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   assert len(input_mask) == max_seq_length
   assert len(segment_ids) == max_seq_length
 
-  label_id = label_map[example.label]
+  label_id = label_map[example.label] if label_map else example.label
   if ex_index < 5:
     logging.info("*** Example ***")
     logging.info("guid: %s", (example.guid))
@@ -642,19 +749,21 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     logging.info("input_mask: %s", " ".join([str(x) for x in input_mask]))
     logging.info("segment_ids: %s", " ".join([str(x) for x in segment_ids]))
     logging.info("label: %s (id = %d)", example.label, label_id)
+    logging.info("weight: %s", example.weight)
 
   feature = InputFeatures(
       input_ids=input_ids,
       input_mask=input_mask,
       segment_ids=segment_ids,
       label_id=label_id,
-      is_real_example=True)
+      is_real_example=True,
+      weight=example.weight)
   return feature
 
 
 def file_based_convert_examples_to_features(examples, label_list,
                                             max_seq_length, tokenizer,
-                                            output_file):
+                                            output_file, label_type=None):
   """Convert a set of `InputExample`s to a TFRecord file."""
 
   tf.io.gfile.makedirs(os.path.dirname(output_file))
@@ -670,14 +779,22 @@ def file_based_convert_examples_to_features(examples, label_list,
     def create_int_feature(values):
       f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
       return f
+    def create_float_feature(values):
+      f = tf.train.Feature(float_list=tf.train.FloatList(value=list(values)))
+      return f
 
     features = collections.OrderedDict()
     features["input_ids"] = create_int_feature(feature.input_ids)
     features["input_mask"] = create_int_feature(feature.input_mask)
     features["segment_ids"] = create_int_feature(feature.segment_ids)
-    features["label_ids"] = create_int_feature([feature.label_id])
+    if label_type is not None and label_type == float:
+      features["label_ids"] = create_float_feature([feature.label_id])
+    else:
+      features["label_ids"] = create_int_feature([feature.label_id])
     features["is_real_example"] = create_int_feature(
         [int(feature.is_real_example)])
+    if feature.weight is not None:
+      features["weight"] = create_float_feature([feature.weight])
 
     tf_example = tf.train.Example(features=tf.train.Features(feature=features))
     writer.write(tf_example.SerializeToString())
@@ -721,7 +838,8 @@ def generate_tf_record_from_data_file(processor,
       eval_data_output_path: Output to which processed tf record for evaluation
         will be saved.
       test_data_output_path: Output to which processed tf record for testing
-        will be saved. Must be a pattern template with {} if processor is XNLI.
+        will be saved. Must be a pattern template with {} if processor has
+        language specific test data.
       max_seq_length: Maximum sequence length of the to be generated
         training/eval data.
 
@@ -731,18 +849,24 @@ def generate_tf_record_from_data_file(processor,
   assert train_data_output_path or eval_data_output_path
 
   label_list = processor.get_labels()
+  label_type = getattr(processor, "label_type", None)
+  is_regression = getattr(processor, "is_regression", False)
+  has_sample_weights = getattr(processor, "weight_key", False)
   assert train_data_output_path
+
   train_input_data_examples = processor.get_train_examples(data_dir)
   file_based_convert_examples_to_features(train_input_data_examples, label_list,
                                           max_seq_length, tokenizer,
-                                          train_data_output_path)
+                                          train_data_output_path,
+                                          label_type)
   num_training_data = len(train_input_data_examples)
 
   if eval_data_output_path:
     eval_input_data_examples = processor.get_dev_examples(data_dir)
     file_based_convert_examples_to_features(eval_input_data_examples,
                                             label_list, max_seq_length,
-                                            tokenizer, eval_data_output_path)
+                                            tokenizer, eval_data_output_path,
+                                            label_type)
 
   if test_data_output_path:
     test_input_data_examples = processor.get_test_examples(data_dir)
@@ -751,19 +875,27 @@ def generate_tf_record_from_data_file(processor,
         file_based_convert_examples_to_features(
             examples,
             label_list, max_seq_length,
-            tokenizer, test_data_output_path.format(language))
+            tokenizer, test_data_output_path.format(language),
+            label_type)
     else:
       file_based_convert_examples_to_features(test_input_data_examples,
                                               label_list, max_seq_length,
-                                              tokenizer, test_data_output_path)
+                                              tokenizer, test_data_output_path,
+                                              label_type)
 
   meta_data = {
-      "task_type": "bert_classification",
       "processor_type": processor.get_processor_name(),
-      "num_labels": len(processor.get_labels()),
       "train_data_size": num_training_data,
       "max_seq_length": max_seq_length,
   }
+  if is_regression:
+    meta_data["task_type"] = "bert_regression"
+    meta_data["label_type"] = {int: "int", float: "float"}[label_type]
+  else:
+    meta_data["task_type"] = "bert_classification"
+    meta_data["num_labels"] = len(processor.get_labels())
+  if has_sample_weights:
+    meta_data["has_sample_weights"] = True
 
   if eval_data_output_path:
     meta_data["eval_data_size"] = len(eval_input_data_examples)

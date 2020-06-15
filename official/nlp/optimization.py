@@ -93,7 +93,7 @@ def create_optimizer(init_lr,
         beta_1=0.9,
         beta_2=0.999,
         epsilon=1e-6,
-        exclude_from_weight_decay=['layer_norm', 'bias'])
+        exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'])
   elif optimizer_type == 'lamb':
     logging.info('using Lamb optimizer')
     optimizer = tfa_optimizers.LAMB(
@@ -102,7 +102,7 @@ def create_optimizer(init_lr,
         beta_1=0.9,
         beta_2=0.999,
         epsilon=1e-6,
-        exclude_from_weight_decay=['layer_norm', 'bias'])
+        exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'])
   else:
     raise ValueError('Unsupported optimizer type: ', optimizer_type)
 

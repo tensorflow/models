@@ -27,7 +27,7 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow.contrib import data as tf_data
 from object_detection.builders import decoder_builder
@@ -118,7 +118,7 @@ def shard_function_for_context(input_context):
 
 
 def build(input_reader_config, batch_size=None, transform_input_data_fn=None,
-          input_context=None):
+          input_context=None, reduce_to_frame_fn=None):
   """Builds a tf.data.Dataset.
 
   Builds a tf.data.Dataset by applying the `transform_input_data_fn` on all
@@ -132,6 +132,8 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None,
     input_context: optional, A tf.distribute.InputContext object used to
       shard filenames and compute per-replica batch_size when this function
       is being called per-replica.
+    reduce_to_frame_fn: Function that extracts frames from tf.SequenceExample
+      type input data.
 
   Returns:
     A tf.data.Dataset based on the input_reader_config.
@@ -151,18 +153,9 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None,
     if not config.input_path:
       raise ValueError('At least one input path must be specified in '
                        '`input_reader_config`.')
-
-    def process_fn(value):
-      """Sets up tf graph that decodes, transforms and pads input data."""
-      processed_tensors = decoder.decode(value)
-      if transform_input_data_fn is not None:
-        processed_tensors = transform_input_data_fn(processed_tensors)
-      return processed_tensors
-
     shard_fn = shard_function_for_context(input_context)
     if input_context is not None:
       batch_size = input_context.get_per_replica_batch_size(batch_size)
-
     dataset = read_dataset(
         functools.partial(tf.data.TFRecordDataset, buffer_size=8 * 1000 * 1000),
         config.input_path[:], input_reader_config, filename_shard_fn=shard_fn)
@@ -170,16 +163,12 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None,
       dataset = dataset.shard(input_reader_config.sample_1_of_n_examples, 0)
     # TODO(rathodv): make batch size a required argument once the old binaries
     # are deleted.
-    if batch_size:
-      num_parallel_calls = batch_size * input_reader_config.num_parallel_batches
-    else:
-      num_parallel_calls = input_reader_config.num_parallel_map_calls
-    # TODO(b/123952794): Migrate to V2 function.
-    if hasattr(dataset, 'map_with_legacy_function'):
-      data_map_fn = dataset.map_with_legacy_function
-    else:
-      data_map_fn = dataset.map
-    dataset = data_map_fn(process_fn, num_parallel_calls=num_parallel_calls)
+    dataset = dataset.map(decoder.decode, tf.data.experimental.AUTOTUNE)
+    if reduce_to_frame_fn:
+      dataset = reduce_to_frame_fn(dataset)
+    if transform_input_data_fn is not None:
+      dataset = dataset.map(transform_input_data_fn,
+                            tf.data.experimental.AUTOTUNE)
     if batch_size:
       dataset = dataset.apply(
           tf_data.batch_and_drop_remainder(batch_size))

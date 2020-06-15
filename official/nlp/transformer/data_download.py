@@ -383,7 +383,7 @@ def main(unused_argv):
 
   # Download test_data
   logging.info("Step 1/5: Downloading test data")
-  train_files = get_raw_files(FLAGS.data_dir, _TEST_DATA_SOURCES)
+  get_raw_files(FLAGS.data_dir, _TEST_DATA_SOURCES)
 
   # Get paths of download/extracted training and evaluation files.
   logging.info("Step 2/5: Downloading data from source")

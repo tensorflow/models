@@ -21,7 +21,7 @@ from __future__ import print_function
 import os
 import numpy as np
 import six
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from google.protobuf import text_format
 from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import array_ops
@@ -42,7 +42,7 @@ else:
 
 # pylint: disable=g-import-not-at-top
 try:
-  from tensorflow.contrib import slim as contrib_slim
+  import tf_slim as slim
 except ImportError:
   # TF 2.0 doesn't ship with contrib.
   pass
@@ -1092,7 +1092,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     g = tf.Graph()
     with g.as_default():
       x = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
-      x_conv = contrib_slim.conv2d(x, 8, 1)
+      x_conv = slim.conv2d(x, 8, 1)
       y = array_ops.placeholder(dtypes.float32, shape=(8, 20, 20, 8))
       s = ops.nearest_neighbor_upsampling(x_conv, 2)
       t = s + y
@@ -1137,7 +1137,7 @@ class ExportInferenceGraphTest(tf.test.TestCase):
     g = tf.Graph()
     with g.as_default():
       x = array_ops.placeholder(dtypes.float32, shape=(8, 10, 10, 8))
-      x_conv = contrib_slim.conv2d(x, 8, 1)
+      x_conv = slim.conv2d(x, 8, 1)
       s = ops.nearest_neighbor_upsampling(x_conv, 2)
       t = s[:, :19, :19, :]
 

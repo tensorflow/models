@@ -24,20 +24,13 @@ import six
 
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
 from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import static_shape
 
-# pylint: disable=g-import-not-at-top
-try:
-  from tensorflow.contrib import framework as contrib_framework
-except ImportError:
-  # TF 2.0 doesn't ship with contrib.
-  pass
-# pylint: enable=g-import-not-at-top
 
 matmul_crop_and_resize = spatial_ops.matmul_crop_and_resize
 multilevel_roi_align = spatial_ops.multilevel_roi_align
@@ -595,7 +588,7 @@ def normalize_to_target(inputs,
       initial_norm = depth * [target_norm_value]
     else:
       initial_norm = target_norm_value
-    target_norm = contrib_framework.model_variable(
+    target_norm = slim.model_variable(
         name='weights',
         dtype=tf.float32,
         initializer=tf.constant(initial_norm, dtype=tf.float32),
@@ -833,7 +826,10 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
       boxes = tf.reshape(boxes, [-1, 2, 2])
       min_corner = tf.expand_dims(reference_boxes[:, 0:2], 1)
       max_corner = tf.expand_dims(reference_boxes[:, 2:4], 1)
-      transformed_boxes = (boxes - min_corner) / (max_corner - min_corner)
+      denom = max_corner - min_corner
+      # Prevent a divide by zero.
+      denom = tf.math.maximum(denom, 1e-4)
+      transformed_boxes = (boxes - min_corner) / denom
       return tf.reshape(transformed_boxes, [-1, 4])
 
     box_masks_expanded = tf.expand_dims(box_masks, axis=3)
@@ -841,6 +837,9 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
     unit_boxes = tf.concat(
         [tf.zeros([num_boxes, 2]), tf.ones([num_boxes, 2])], axis=1)
     reverse_boxes = transform_boxes_relative_to_boxes(unit_boxes, boxes)
+
+    # TODO(vighneshb) Use matmul_crop_and_resize so that the output shape
+    # is static. This will help us run and test on TPUs.
     return tf.image.crop_and_resize(
         image=box_masks_expanded,
         boxes=reverse_boxes,
@@ -1042,28 +1041,30 @@ def fpn_feature_levels(num_levels, unit_scale_index, image_ratio, boxes):
   return levels
 
 
-def bfloat16_to_float32_nested(tensor_nested):
+def bfloat16_to_float32_nested(input_nested):
   """Convert float32 tensors in a nested structure to bfloat16.
 
   Args:
-    tensor_nested: A Python dict, values being Tensor or Python list/tuple of
-      Tensor.
+    input_nested: A Python dict, values being Tensor or Python list/tuple of
+      Tensor or Non-Tensor.
 
   Returns:
     A Python dict with the same structure as `tensor_dict`,
     with all bfloat16 tensors converted to float32.
   """
-  if isinstance(tensor_nested, tf.Tensor):
-    if tensor_nested.dtype == tf.bfloat16:
-      return tf.cast(tensor_nested, dtype=tf.float32)
+  if isinstance(input_nested, tf.Tensor):
+    if input_nested.dtype == tf.bfloat16:
+      return tf.cast(input_nested, dtype=tf.float32)
     else:
-      return tensor_nested
-  elif isinstance(tensor_nested, (list, tuple)):
-    out_tensor_dict = [bfloat16_to_float32_nested(t) for t in tensor_nested]
-  elif isinstance(tensor_nested, dict):
+      return input_nested
+  elif isinstance(input_nested, (list, tuple)):
+    out_tensor_dict = [bfloat16_to_float32_nested(t) for t in input_nested]
+  elif isinstance(input_nested, dict):
     out_tensor_dict = {
-        k: bfloat16_to_float32_nested(v) for k, v in tensor_nested.items()
+        k: bfloat16_to_float32_nested(v) for k, v in input_nested.items()
     }
+  else:
+    return input_nested
   return out_tensor_dict
 
 
@@ -1101,3 +1102,28 @@ EqualizationLossConfig = collections.namedtuple('EqualizationLossConfig',
                                                 ['weight', 'exclude_prefixes'])
 
 
+
+
+def tile_context_tensors(tensor_dict):
+  """Tiles context fields to have num_frames along 0-th dimension."""
+
+  num_frames = tf.shape(tensor_dict[fields.InputDataFields.image])[0]
+
+  for key in tensor_dict:
+    if key not in fields.SEQUENCE_FIELDS:
+      original_tensor = tensor_dict[key]
+      tensor_shape = shape_utils.combined_static_and_dynamic_shape(
+          original_tensor)
+      tensor_dict[key] = tf.tile(
+          tf.expand_dims(original_tensor, 0),
+          tf.stack([num_frames] + [1] * len(tensor_shape), axis=0))
+  return tensor_dict
+
+
+def decode_image(tensor_dict):
+  """Decodes images in a tensor dict."""
+
+  tensor_dict[fields.InputDataFields.image] = tf.io.decode_image(
+      tensor_dict[fields.InputDataFields.image], channels=3)
+  tensor_dict[fields.InputDataFields.image].set_shape([None, None, 3])
+  return tensor_dict

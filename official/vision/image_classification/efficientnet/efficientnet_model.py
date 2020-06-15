@@ -372,7 +372,8 @@ def efficientnet(image_input: tf.keras.layers.Input,
                    name='stem')
 
   # Build blocks
-  num_blocks_total = sum(block.num_repeat for block in blocks)
+  num_blocks_total = sum(
+      round_repeats(block.num_repeat, depth_coefficient) for block in blocks)
   block_num = 0
 
   for stack_idx, block in enumerate(blocks):

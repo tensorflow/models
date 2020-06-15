@@ -18,10 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 
 def lenet(images, num_classes=10, is_training=False,
@@ -59,7 +57,7 @@ def lenet(images, num_classes=10, is_training=False,
   """
   end_points = {}
 
-  with tf.compat.v1.variable_scope(scope, 'LeNet', [images]):
+  with tf.variable_scope(scope, 'LeNet', [images]):
     net = end_points['conv1'] = slim.conv2d(images, 32, [5, 5], scope='conv1')
     net = end_points['pool1'] = slim.max_pool2d(net, [2, 2], 2, scope='pool1')
     net = end_points['conv2'] = slim.conv2d(net, 64, [5, 5], scope='conv2')
@@ -93,6 +91,6 @@ def lenet_arg_scope(weight_decay=0.0):
   with slim.arg_scope(
       [slim.conv2d, slim.fully_connected],
       weights_regularizer=slim.l2_regularizer(weight_decay),
-      weights_initializer=tf.compat.v1.truncated_normal_initializer(stddev=0.1),
+      weights_initializer=tf.truncated_normal_initializer(stddev=0.1),
       activation_fn=tf.nn.relu) as sc:
     return sc

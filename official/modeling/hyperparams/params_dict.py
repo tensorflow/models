@@ -42,9 +42,7 @@ _PARAM_RE = re.compile(r"""
   \[[^\]]*\]))                 # list of values
   ($|,\s*)""", re.VERBOSE)
 
-# pylint: disable=anomalous-backslash-in-string
-_CONST_VALUE_RE = re.compile('(\d.*|-\d.*|None)')
-# pylint: enable=anomalous-backslash-in-string
+_CONST_VALUE_RE = re.compile(r'(\d.*|-\d.*|None)')
 
 
 class ParamsDict(object):

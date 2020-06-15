@@ -17,13 +17,11 @@
 
 import numpy as np
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 from tensorflow.contrib import training as contrib_training
 
 from lstm_object_detection.models import lstm_ssd_mobilenet_v1_feature_extractor as feature_extractor
 from object_detection.models import ssd_feature_extractor_test
-
-slim = contrib_slim
 
 
 class LstmSsdMobilenetV1FeatureExtractorTest(
