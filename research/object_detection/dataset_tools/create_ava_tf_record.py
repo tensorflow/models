@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Modified by Kaushik Shivakumar for the AVA Actions Dataset,
-# to work without MediaPipe, code started by Bryan Seybold. 
+# Modified by Kaushik Shivakumar for the AVA Actions Dataset
+# to work without MediaPipe, code started by Bryan Seybold.
 
 r"""Code to download and parse the AVA dataset for TensorFlow models.
 
@@ -99,11 +99,12 @@ import cv2
 from object_detection.dataset_tools import tf_record_creation_util
 from object_detection.utils import dataset_util
 from object_detection.utils import label_map_util
+
 GLOBAL_SOURCE_ID = 0
 POSSIBLE_TIMESTAMPS = range(902, 1798)
 ANNOTATION_URL = "https://research.google.com/ava/download/ava_v2.2.zip"
 SECONDS_TO_MILLI = 1000
-FILEPATTERN = "ava_actions_%s_25fps_rgb"
+FILEPATTERN = "ava_actions_%s_1fps_rgb"
 SPLITS = {
     "train": {
         "shards": 1000,
@@ -238,9 +239,6 @@ class Ava(object):
               0 if seconds_per_sequence % 2 == 0 else 1)
           end_time = middle_frame_time + (seconds_per_sequence // 2)
 
-          # Safety check that can be removed if desired
-          if start_time - 900 < 0 or end_time - 900 > 900:
-            continue
           GLOBAL_SOURCE_ID += 1
           total_xmins = []
           total_xmaxs = []
@@ -292,7 +290,6 @@ class Ava(object):
                   confidences.append(1)
                 else:
                   logging.warning("Unknown label: %s", row["action_label"])
-
 
             #Display the image and bounding boxes being
             #processed (for debugging purposes)
@@ -353,7 +350,15 @@ class Ava(object):
                 feature_lists=tf.train.FeatureLists(
                     feature_list=sequence_feature_dict))
 
-          middle_frame_time += (hop_between_sequences + skipped_frame_count)
+          #Move middle_time_frame, skipping excluded frames
+          frames_moved = 0
+          frames_excluded_count = 0
+          while (frames_moved < hop_between_sequences + frames_excluded_count
+                and middle_frame_time + frames_moved < POSSIBLE_TIMESTAMPS[-1]):
+            frames_moved += 1
+            if (media_id, windowed_timestamp + frames_moved) in frame_excluded:
+              frames_excluded_count += 1
+          middle_frame_time += frames_moved
 
         cur_vid.release()
 
