@@ -25,7 +25,7 @@ import tensorflow_hub as hub
 from official.modeling import tf_utils
 from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import electraconfigs
-from official.nlp.bert import configs
+from official.nlp.bert import bert_models
 from official.nlp.modeling import losses
 from official.nlp.modeling import models
 from official.nlp.modeling import networks
@@ -83,67 +83,6 @@ class ElectraPretrainLossAndMetricLayer(tf.keras.layers.Layer):
     return loss
 
 
-@gin.configurable
-def get_transformer_encoder(bert_config,
-                            sequence_length,
-                            transformer_encoder_cls=None):
-  """Gets a 'TransformerEncoder' object.
-
-  Args:
-    bert_config: A 'modeling.BertConfig' or 'modeling.AlbertConfig' object.
-    sequence_length: Maximum sequence length of the training data.
-    transformer_encoder_cls: A EncoderScaffold class. If it is None, uses the
-      default BERT encoder implementation.
-
-  Returns:
-    A networks.TransformerEncoder object.
-  """
-  if transformer_encoder_cls is not None:
-    # TODO(hongkuny): evaluate if it is better to put cfg definition in gin.
-    embedding_cfg = dict(
-        vocab_size=bert_config.vocab_size,
-        type_vocab_size=bert_config.type_vocab_size,
-        hidden_size=bert_config.hidden_size,
-        seq_length=sequence_length,
-        max_seq_length=bert_config.max_position_embeddings,
-        initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=bert_config.initializer_range),
-        dropout_rate=bert_config.hidden_dropout_prob,
-    )
-    hidden_cfg = dict(
-        num_attention_heads=bert_config.num_attention_heads,
-        intermediate_size=bert_config.intermediate_size,
-        intermediate_activation=tf_utils.get_activation(bert_config.hidden_act),
-        dropout_rate=bert_config.hidden_dropout_prob,
-        attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-    )
-    kwargs = dict(embedding_cfg=embedding_cfg, hidden_cfg=hidden_cfg,
-                  num_hidden_instances=bert_config.num_hidden_layers,)
-
-    # Relies on gin configuration to define the Transformer encoder arguments.
-    return transformer_encoder_cls(**kwargs)
-
-  kwargs = dict(
-      vocab_size=bert_config.vocab_size,
-      hidden_size=bert_config.hidden_size,
-      num_layers=bert_config.num_hidden_layers,
-      num_attention_heads=bert_config.num_attention_heads,
-      intermediate_size=bert_config.intermediate_size,
-      activation=tf_utils.get_activation(bert_config.hidden_act),
-      dropout_rate=bert_config.hidden_dropout_prob,
-      attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-      sequence_length=sequence_length,
-      max_sequence_length=bert_config.max_position_embeddings,
-      type_vocab_size=bert_config.type_vocab_size,
-      initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=bert_config.initializer_range))
-  if isinstance(bert_config, albert_configs.AlbertConfig):
-    kwargs['embedding_width'] = bert_config.embedding_size
-    return networks.AlbertTransformerEncoder(**kwargs)
-  else:
-    assert isinstance(bert_config, configs.BertConfig)
-    return networks.TransformerEncoder(**kwargs)
-
 
 def pretrain_model(electra_config,
                    seq_length,
@@ -178,12 +117,10 @@ def pretrain_model(electra_config,
       shape=(max_predictions_per_seq,),
       name='masked_lm_weights',
       dtype=tf.int32)
-  next_sentence_labels = tf.keras.layers.Input(
-      shape=(1,), name='next_sentence_labels', dtype=tf.int32)
-  gen_encoder = get_transformer_encoder(
+  gen_encoder = bert_models.get_transformer_encoder(
       electraconfigs.ElectraConfig.get_generator_bert(electra_config),
       seq_length)
-  discrim_encoder = get_transformer_encoder(
+  discrim_encoder = bert_models.get_transformer_encoder(
       electraconfigs.ElectraConfig.get_discriminator_bert(electra_config),
       seq_length)
   if initializer is None:
@@ -192,7 +129,7 @@ def pretrain_model(electra_config,
   pretrainer_model = models.ElectraPretrainer(
       network=gen_encoder,
       discriminator=discrim_encoder,
-      num_classes=2,  # The next sentence prediction label has two classes.
+      num_classes=2,
       num_token_predictions=max_predictions_per_seq,
       initializer=initializer,
       output='predictions')
@@ -212,7 +149,6 @@ def pretrain_model(electra_config,
           'masked_lm_positions': masked_lm_positions,
           'masked_lm_ids': masked_lm_ids,
           'masked_lm_weights': masked_lm_weights,
-          'next_sentence_labels': next_sentence_labels,
       },
       outputs=output_loss)
   return keras_model, discrim_encoder
@@ -241,7 +177,7 @@ def squad_model(bert_config,
     initializer = tf.keras.initializers.TruncatedNormal(
         stddev=bert_config.initializer_range)
   if not hub_module_url:
-    bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
+    bert_encoder = bert_models.get_transformer_encoder(bert_config, max_seq_length)
     return models.BertSpanLabeler(
         network=bert_encoder, initializer=initializer), bert_encoder
 
@@ -298,7 +234,7 @@ def classifier_model(bert_config,
         stddev=bert_config.initializer_range)
 
   if not hub_module_url:
-    bert_encoder = get_transformer_encoder(bert_config, max_seq_length)
+    bert_encoder = bert_models.get_transformer_encoder(bert_config, max_seq_length)
     return models.BertClassifier(
         bert_encoder,
         num_classes=num_labels,
