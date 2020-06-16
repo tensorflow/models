@@ -230,9 +230,10 @@ def pretrain_model(bert_config,
       initializer=initializer,
       output='predictions')
 
-  lm_output, sentence_output = pretrainer_model(
+  outputs = pretrainer_model(
       [input_word_ids, input_mask, input_type_ids, masked_lm_positions])
-
+  lm_output = outputs['masked_lm']
+  sentence_output = outputs['classification']
   pretrain_loss_layer = BertPretrainLossAndMetricLayer(
       vocab_size=bert_config.vocab_size)
   output_loss = pretrain_loss_layer(lm_output, sentence_output, masked_lm_ids,
