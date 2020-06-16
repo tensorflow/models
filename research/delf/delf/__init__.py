@@ -25,7 +25,6 @@ from delf.protos import delf_config_pb2
 from delf.protos import feature_pb2
 from delf.python import box_io
 from delf.python import datum_io
-from delf.python import delf_v1
 from delf.python import feature_aggregation_extractor
 from delf.python import feature_aggregation_similarity
 from delf.python import feature_extractor
