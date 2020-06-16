@@ -23,6 +23,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
+from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 from official.nlp.modeling.losses import weighted_sparse_categorical_crossentropy
 
@@ -48,20 +49,18 @@ class ClassificationLossTest(keras_parameterized.TestCase):
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    lm_outputs, _ = xformer_stack([word_ids, mask, type_ids])
+    _ = xformer_stack([word_ids, mask, type_ids])
 
     # Create a maskedLM from the transformer stack.
-    test_network = networks.MaskedLM(
-        num_predictions=num_predictions,
-        input_width=lm_outputs.shape[-1],
-        source_network=xformer_stack,
+    test_layer = layers.MaskedLM(
+        embedding_table=xformer_stack.get_embedding_table(),
         output=output)
 
     # Create a model from the masked LM layer.
     lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
     masked_lm_positions = tf.keras.Input(
         shape=(num_predictions,), dtype=tf.int32)
-    output = test_network([lm_input_tensor, masked_lm_positions])
+    output = test_layer(lm_input_tensor, masked_positions=masked_lm_positions)
     return tf.keras.Model([lm_input_tensor, masked_lm_positions], output)
 
   def create_classification_model(self, input_width, num_classes):

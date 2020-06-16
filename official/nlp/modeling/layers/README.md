@@ -45,6 +45,9 @@ assemble new layers, networks, or models.
     should be masked), the output will have masked positions set to
     approximately zero.
 
+* [`MaskedLM`](masked_lm.py) implements a masked language model. It assumes the
+  embedding table variable is passed to it.
+
 *   [ClassificationHead](cls_head.py) A pooling head over a sequence of
     embeddings, commonly used by classification tasks.
 
