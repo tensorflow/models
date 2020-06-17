@@ -50,16 +50,19 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    lm_mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    masked_lm_positions = tf.keras.Input(
+        shape=(num_token_predictions,), dtype=tf.int32)
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.
-    lm_outs, cls_outs = bert_trainer_model([word_ids, mask, type_ids, lm_mask])
+    outputs = bert_trainer_model(
+        [word_ids, mask, type_ids, masked_lm_positions])
 
     # Validate that the outputs are of the expected shape.
     expected_lm_shape = [None, num_token_predictions, vocab_size]
     expected_classification_shape = [None, num_classes]
-    self.assertAllEqual(expected_lm_shape, lm_outs.shape.as_list())
-    self.assertAllEqual(expected_classification_shape, cls_outs.shape.as_list())
+    self.assertAllEqual(expected_lm_shape, outputs['masked_lm'].shape.as_list())
+    self.assertAllEqual(expected_classification_shape,
+                        outputs['classification'].shape.as_list())
 
   def test_bert_trainer_tensor_call(self):
     """Validate that the Keras object can be invoked."""
@@ -81,7 +84,7 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     # Invoke the trainer model on the tensors. In Eager mode, this does the
     # actual calculation. (We can't validate the outputs, since the network is
     # too complex: this simply ensures we're not hitting runtime errors.)
-    _, _ = bert_trainer_model([word_ids, mask, type_ids, lm_mask])
+    _ = bert_trainer_model([word_ids, mask, type_ids, lm_mask])
 
   def test_serialize_deserialize(self):
     """Validate that the BERT trainer can be serialized and deserialized."""
@@ -123,7 +126,7 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    lm_mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    lm_mask = tf.keras.Input(shape=(num_token_predictions,), dtype=tf.int32)
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.
     outputs = bert_trainer_model([word_ids, mask, type_ids, lm_mask])

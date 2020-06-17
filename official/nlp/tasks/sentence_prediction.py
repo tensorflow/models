@@ -29,9 +29,9 @@ from official.nlp.modeling import losses as loss_lib
 @dataclasses.dataclass
 class SentencePredictionConfig(cfg.TaskConfig):
   """The model config."""
-  # At most one of `pretrain_checkpoint_dir` and `hub_module_url` can
+  # At most one of `init_checkpoint` and `hub_module_url` can
   # be specified.
-  pretrain_checkpoint_dir: str = ''
+  init_checkpoint: str = ''
   hub_module_url: str = ''
   network: bert.BertPretrainerConfig = bert.BertPretrainerConfig(
       num_masked_tokens=0,
@@ -52,7 +52,7 @@ class SentencePredictionTask(base_task.Task):
 
   def __init__(self, params=cfg.TaskConfig):
     super(SentencePredictionTask, self).__init__(params)
-    if params.hub_module_url and params.pretrain_checkpoint_dir:
+    if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`pretrain_checkpoint_dir` can be specified.')
     if params.hub_module_url:
@@ -79,12 +79,11 @@ class SentencePredictionTask(base_task.Task):
     else:
       return bert.instantiate_from_cfg(self.task_config.network)
 
-  def build_losses(self, features, model_outputs, aux_losses=None) -> tf.Tensor:
-    labels = features
+  def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
         labels=labels,
-        predictions=tf.nn.log_softmax(model_outputs['sentence_prediction'],
-                                      axis=-1))
+        predictions=tf.nn.log_softmax(
+            model_outputs['sentence_prediction'], axis=-1))
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
@@ -93,6 +92,7 @@ class SentencePredictionTask(base_task.Task):
   def build_inputs(self, params, input_context=None):
     """Returns tf.data.Dataset for sentence_prediction task."""
     if params.input_path == 'dummy':
+
       def dummy_data(_):
         dummy_ids = tf.zeros((1, params.seq_length), dtype=tf.int32)
         x = dict(
@@ -113,22 +113,22 @@ class SentencePredictionTask(base_task.Task):
 
   def build_metrics(self, training=None):
     del training
-    metrics = [
-        tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy')
-    ]
+    metrics = [tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy')]
     return metrics
 
-  def process_metrics(self, metrics, labels, outputs):
+  def process_metrics(self, metrics, labels, model_outputs):
     for metric in metrics:
-      metric.update_state(labels, outputs['sentence_prediction'])
+      metric.update_state(labels, model_outputs['sentence_prediction'])
 
-  def process_compiled_metrics(self, compiled_metrics, labels, outputs):
-    compiled_metrics.update_state(labels, outputs['sentence_prediction'])
+  def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
+    compiled_metrics.update_state(labels, model_outputs['sentence_prediction'])
 
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""
-    pretrain_ckpt_dir = self.task_config.pretrain_checkpoint_dir
-    if not pretrain_ckpt_dir:
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+    if not ckpt_dir_or_file:
       return
 
     pretrain2finetune_mapping = {
@@ -138,10 +138,7 @@ class SentencePredictionTask(base_task.Task):
             model.checkpoint_items['sentence_prediction.pooler_dense'],
     }
     ckpt = tf.train.Checkpoint(**pretrain2finetune_mapping)
-    latest_pretrain_ckpt = tf.train.latest_checkpoint(pretrain_ckpt_dir)
-    if latest_pretrain_ckpt is None:
-      raise FileNotFoundError(
-          'Cannot find pretrain checkpoint under {}'.format(pretrain_ckpt_dir))
-    status = ckpt.restore(latest_pretrain_ckpt)
+    status = ckpt.restore(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
-    logging.info('finished loading pretrained checkpoint.')
+    logging.info('finished loading pretrained checkpoint from %s',
+                 ckpt_dir_or_file)

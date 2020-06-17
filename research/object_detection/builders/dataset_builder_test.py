@@ -197,13 +197,13 @@ class DatasetBuilderTest(test_case.TestCase):
         output_dict[fields.InputDataFields.groundtruth_boxes][0][0])
 
   def get_mock_reduce_to_frame_fn(self):
-    def mock_reduce_to_frame_fn(dataset):
+    def mock_reduce_to_frame_fn(dataset, dataset_map_fn, batch_size, config):
       def get_frame(tensor_dict):
         out_tensor_dict = {}
         out_tensor_dict[fields.InputDataFields.source_id] = (
             tensor_dict[fields.InputDataFields.source_id][0])
         return out_tensor_dict
-      return dataset.map(get_frame, tf.data.experimental.AUTOTUNE)
+      return dataset_map_fn(dataset, get_frame, batch_size, config)
     return mock_reduce_to_frame_fn
 
   def test_build_tf_record_input_reader_sequence_example_train(self):
@@ -537,8 +537,15 @@ class ReadDatasetTest(test_case.TestCase):
     def graph_fn():
       keys = [1, 0, -1]
       dataset = tf.data.Dataset.from_tensor_slices([[1, 2, -1, 5]])
-      table = contrib_lookup.HashTable(
-          initializer=contrib_lookup.KeyValueTensorInitializer(
+      try:
+        # Dynamically try to load the tf v2 lookup, falling back to contrib
+        lookup = tf.compat.v2.lookup
+        hash_table_class = tf.compat.v2.lookup.StaticHashTable
+      except AttributeError:
+        lookup = contrib_lookup
+        hash_table_class = contrib_lookup.HashTable
+      table = hash_table_class(
+          initializer=lookup.KeyValueTensorInitializer(
               keys=keys, values=list(reversed(keys))),
           default_value=100)
       dataset = dataset.map(table.lookup)
@@ -559,7 +566,7 @@ class ReadDatasetTest(test_case.TestCase):
     data = self.execute(graph_fn, [])
     # Note that the execute function extracts single outputs if the return
     # value is of size 1.
-    self.assertAllEqual(
+    self.assertCountEqual(
         data, [
             1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 1, 10, 2, 20, 3, 30, 4, 40, 5,
             50
@@ -577,7 +584,7 @@ class ReadDatasetTest(test_case.TestCase):
     data = self.execute(graph_fn, [])
     # Note that the execute function extracts single outputs if the return
     # value is of size 1.
-    self.assertAllEqual(
+    self.assertCountEqual(
         data, [
             1, 10, 2, 20, 3, 30, 4, 40, 5, 50, 1, 10, 2, 20, 3, 30, 4, 40, 5,
             50
@@ -607,12 +614,14 @@ class ReadDatasetTest(test_case.TestCase):
     def graph_fn():
       return self._get_dataset_next(
           [self._shuffle_path_template % '*'], config, batch_size=10)
-    expected_non_shuffle_output = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+    expected_non_shuffle_output1 = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1]
+    expected_non_shuffle_output2 = [1, 1, 1, 1, 1, 0, 0, 0, 0, 0]
 
     # Note that the execute function extracts single outputs if the return
     # value is of size 1.
     data = self.execute(graph_fn, [])
-    self.assertAllEqual(data, expected_non_shuffle_output)
+    self.assertTrue(all(data == expected_non_shuffle_output1) or
+                    all(data == expected_non_shuffle_output2))
 
   def test_read_dataset_single_epoch(self):
     config = input_reader_pb2.InputReader()
