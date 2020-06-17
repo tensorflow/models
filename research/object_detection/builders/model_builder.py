@@ -28,6 +28,8 @@ from object_detection.builders import region_similarity_calculator_builder as si
 from object_detection.core import balanced_positive_negative_sampler as sampler
 from object_detection.core import post_processing
 from object_detection.core import target_assigner
+from object_detection.meta_architectures import center_net_meta_arch
+from object_detection.meta_architectures import context_rcnn_meta_arch
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
@@ -46,6 +48,7 @@ from object_detection.utils import tf_version
 if tf_version.is_tf2():
   from object_detection.models import center_net_hourglass_feature_extractor
   from object_detection.models import center_net_resnet_feature_extractor
+  from object_detection.models import center_net_resnet_v1_fpn_feature_extractor
   from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
   from object_detection.models import faster_rcnn_resnet_keras_feature_extractor as frcnn_resnet_keras
   from object_detection.models import ssd_resnet_v1_fpn_keras_feature_extractor as ssd_resnet_v1_fpn_keras
@@ -78,6 +81,7 @@ if tf_version.is_tf1():
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetCPUFeatureExtractor
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetDSPFeatureExtractor
   from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetEdgeTPUFeatureExtractor
+  from object_detection.models.ssd_mobiledet_feature_extractor import SSDMobileDetGPUFeatureExtractor
   from object_detection.models.ssd_pnasnet_feature_extractor import SSDPNASNetFeatureExtractor
   from object_detection.predictors import rfcn_box_predictor
 # pylint: enable=g-import-not-at-top
@@ -108,8 +112,12 @@ if tf_version.is_tf2():
   }
 
   CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
-      'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
       'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
+      'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v1_50_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
+      'resnet_v1_101_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_101_fpn,
       'hourglass_104': center_net_hourglass_feature_extractor.hourglass_104,
   }
 
@@ -159,9 +167,14 @@ if tf_version.is_tf1():
           EmbeddedSSDMobileNetV1FeatureExtractor,
       'ssd_pnasnet':
           SSDPNASNetFeatureExtractor,
-      'ssd_mobiledet_cpu': SSDMobileDetCPUFeatureExtractor,
-      'ssd_mobiledet_dsp': SSDMobileDetDSPFeatureExtractor,
-      'ssd_mobiledet_edgetpu': SSDMobileDetEdgeTPUFeatureExtractor,
+      'ssd_mobiledet_cpu':
+          SSDMobileDetCPUFeatureExtractor,
+      'ssd_mobiledet_dsp':
+          SSDMobileDetDSPFeatureExtractor,
+      'ssd_mobiledet_edgetpu':
+          SSDMobileDetEdgeTPUFeatureExtractor,
+      'ssd_mobiledet_gpu':
+          SSDMobileDetGPUFeatureExtractor,
   }
 
   FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -765,7 +778,9 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
       unmatched_keypoint_score=kp_config.unmatched_keypoint_score,
       box_scale=kp_config.box_scale,
       candidate_search_scale=kp_config.candidate_search_scale,
-      candidate_ranking_mode=kp_config.candidate_ranking_mode)
+      candidate_ranking_mode=kp_config.candidate_ranking_mode,
+      offset_peak_radius=kp_config.offset_peak_radius,
+      per_keypoint_offset=kp_config.per_keypoint_offset)
 
 
 def object_detection_proto_to_params(od_config):

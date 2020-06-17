@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
 from absl.testing import parameterized
 import numpy as np
 import six
@@ -30,11 +31,12 @@ from object_detection.core import preprocessor
 from object_detection.core import preprocessor_cache
 from object_detection.core import standard_fields as fields
 from object_detection.utils import test_case
+from object_detection.utils import tf_version
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
 else:
-  from unittest import mock  # pylint: disable=g-import-not-at-top
+  mock = unittest.mock  # pylint: disable=g-import-not-at-top
 
 
 class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
@@ -2819,6 +2821,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllEqual(images_shape, patched_images_shape)
     self.assertAllEqual(images, patched_images)
 
+  @unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
   def testAutoAugmentImage(self):
     def graph_fn():
       preprocessing_options = []

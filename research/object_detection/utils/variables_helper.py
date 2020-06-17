@@ -47,8 +47,6 @@ def filter_variables(variables, filter_regex_list, invert=False):
   Returns:
     a list of filtered variables.
   """
-  if tf.executing_eagerly():
-    raise ValueError('Accessing variables is not supported in eager mode.')
   kept_vars = []
   variables_to_ignore_patterns = list([fre for fre in filter_regex_list if fre])
   for var in variables:
@@ -74,8 +72,6 @@ def multiply_gradients_matching_regex(grads_and_vars, regex_list, multiplier):
   Returns:
     grads_and_vars: A list of gradient to variable pairs (tuples).
   """
-  if tf.executing_eagerly():
-    raise ValueError('Accessing variables is not supported in eager mode.')
   variables = [pair[1] for pair in grads_and_vars]
   matching_vars = filter_variables(variables, regex_list, invert=True)
   for var in matching_vars:
@@ -97,8 +93,6 @@ def freeze_gradients_matching_regex(grads_and_vars, regex_list):
     grads_and_vars: A list of gradient to variable pairs (tuples) that do not
       contain the variables and gradients matching the regex.
   """
-  if tf.executing_eagerly():
-    raise ValueError('Accessing variables is not supported in eager mode.')
   variables = [pair[1] for pair in grads_and_vars]
   matching_vars = filter_variables(variables, regex_list, invert=True)
   kept_grads_and_vars = [pair for pair in grads_and_vars
@@ -129,8 +123,6 @@ def get_variables_available_in_checkpoint(variables,
   Raises:
     ValueError: if `variables` is not a list or dict.
   """
-  if tf.executing_eagerly():
-    raise ValueError('Accessing variables is not supported in eager mode.')
   if isinstance(variables, list):
     variable_names_map = {}
     for variable in variables:
@@ -178,8 +170,6 @@ def get_global_variables_safely():
   Returns:
     The result of tf.global_variables()
   """
-  if tf.executing_eagerly():
-    raise ValueError('Accessing variables is not supported in eager mode.')
   with tf.init_scope():
     if tf.executing_eagerly():
       raise ValueError("Global variables collection is not tracked when "

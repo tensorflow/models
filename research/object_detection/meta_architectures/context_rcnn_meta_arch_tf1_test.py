@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for google3.third_party.tensorflow_models.object_detection.meta_architectures.context_meta_arch."""
+"""Tests for object_detection.meta_architectures.context_meta_arch."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import functools
-
+import unittest
 from absl.testing import parameterized
 import mock
 import tensorflow.compat.v1 as tf
@@ -109,6 +109,7 @@ class FakeFasterRCNNKerasFeatureExtractor(
     ])
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
 class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
 
   def _get_model(self, box_predictor, **common_kwargs):
