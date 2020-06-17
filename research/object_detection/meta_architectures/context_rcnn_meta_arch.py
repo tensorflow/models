@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +16,7 @@
 
 This adds the ability to use attention into contextual features within the
 Faster R-CNN object detection framework to improve object detection performance.
-See http://go/long_term_termporal_context_for_per_camera_object_detection for
-more information.
+See https://arxiv.org/abs/1912.03538 for more information.
 """
 
 from __future__ import absolute_import

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for google3.third_party.tensorflow_models.object_detection.meta_architectures.context_meta_arch."""
+"""Tests for object_detection.meta_architectures.context_meta_arch."""
 
 from __future__ import absolute_import
 from __future__ import division

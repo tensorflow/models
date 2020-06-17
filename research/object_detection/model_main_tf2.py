@@ -1,5 +1,5 @@
 # Lint as: python3
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,12 @@
 # limitations under the License.
 # ==============================================================================
 
-r"""Creates and runs object detection model.
+r"""Creates and runs TF2 object detection models.
+
+##################################
+NOTE: This module has not been fully tested; please bear with us while we iron
+out the kinks.
+##################################
 
 When a TPU device is available, this binary uses TPUStrategy. Otherwise, it uses
 GPUS with MirroredStrategy/MultiWorkerMirroredStrategy.
@@ -32,7 +37,7 @@ python model_main_tf2.py -- \
 """
 from absl import flags
 import tensorflow.compat.v2 as tf
-from google3.third_party_tensorflow_models.object_detection import model_hparams
+from object_detection import model_hparams
 from object_detection import model_lib_v2
 
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
