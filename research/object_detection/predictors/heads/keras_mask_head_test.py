@@ -14,7 +14,7 @@
 # ==============================================================================
 
 """Tests for object_detection.predictors.heads.mask_head."""
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 from object_detection.builders import hyperparams_builder

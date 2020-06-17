@@ -160,10 +160,10 @@ def get_transformer_encoder(bert_config,
       sequence_length=sequence_length,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
+      embedding_width=bert_config.embedding_size,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range))
   if isinstance(bert_config, albert_configs.AlbertConfig):
-    kwargs['embedding_width'] = bert_config.embedding_size
     return networks.AlbertTransformerEncoder(**kwargs)
   else:
     assert isinstance(bert_config, configs.BertConfig)
@@ -175,7 +175,8 @@ def pretrain_model(bert_config,
                    seq_length,
                    max_predictions_per_seq,
                    initializer=None,
-                   use_next_sentence_label=True):
+                   use_next_sentence_label=True,
+                   return_core_pretrainer_model=False):
   """Returns model to be used for pre-training.
 
   Args:
@@ -185,10 +186,13 @@ def pretrain_model(bert_config,
         and use for pretraining.
       initializer: Initializer for weights in BertPretrainer.
       use_next_sentence_label: Whether to use the next sentence label.
+      return_core_pretrainer_model: Whether to also return the `BertPretrainer`
+        object.
 
   Returns:
-      Pretraining model as well as core BERT submodel from which to save
-      weights after pretraining.
+      A Tuple of (1) Pretraining model, (2) core BERT submodel from which to
+      save weights after pretraining, and (3) optional core `BertPretrainer`
+      object if argument `return_core_pretrainer_model` is True.
   """
   input_word_ids = tf.keras.layers.Input(
       shape=(seq_length,), name='input_word_ids', dtype=tf.int32)
@@ -221,13 +225,15 @@ def pretrain_model(bert_config,
       network=transformer_encoder,
       embedding_table=transformer_encoder.get_embedding_table(),
       num_classes=2,  # The next sentence prediction label has two classes.
+      activation=tf_utils.get_activation(bert_config.hidden_act),
       num_token_predictions=max_predictions_per_seq,
       initializer=initializer,
       output='predictions')
 
-  lm_output, sentence_output = pretrainer_model(
+  outputs = pretrainer_model(
       [input_word_ids, input_mask, input_type_ids, masked_lm_positions])
-
+  lm_output = outputs['masked_lm']
+  sentence_output = outputs['classification']
   pretrain_loss_layer = BertPretrainLossAndMetricLayer(
       vocab_size=bert_config.vocab_size)
   output_loss = pretrain_loss_layer(lm_output, sentence_output, masked_lm_ids,
@@ -244,7 +250,10 @@ def pretrain_model(bert_config,
     inputs['next_sentence_labels'] = next_sentence_labels
 
   keras_model = tf.keras.Model(inputs=inputs, outputs=output_loss)
-  return keras_model, transformer_encoder
+  if return_core_pretrainer_model:
+    return keras_model, transformer_encoder, pretrainer_model
+  else:
+    return keras_model, transformer_encoder
 
 
 def squad_model(bert_config,
@@ -297,7 +306,7 @@ def squad_model(bert_config,
 
 def classifier_model(bert_config,
                      num_labels,
-                     max_seq_length,
+                     max_seq_length=None,
                      final_layer_initializer=None,
                      hub_module_url=None,
                      hub_module_trainable=True):

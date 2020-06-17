@@ -17,21 +17,13 @@
 """Tests object_detection.core.hyperparams_builder."""
 
 import numpy as np
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from google.protobuf import text_format
 
 from object_detection.builders import hyperparams_builder
 from object_detection.core import freezable_batch_norm
 from object_detection.protos import hyperparams_pb2
-
-# pylint: disable=g-import-not-at-top
-try:
-  from tensorflow.contrib import slim
-except ImportError:
-  # TF 2.0 doesn't ship with contrib.
-  pass
-# pylint: enable=g-import-not-at-top
 
 
 def _get_scope_key(op):

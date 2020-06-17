@@ -154,14 +154,18 @@ def create_classifier_dataset(file_path,
                               seq_length,
                               batch_size,
                               is_training=True,
-                              input_pipeline_context=None):
+                              input_pipeline_context=None,
+                              label_type=tf.int64,
+                              include_sample_weights=False):
   """Creates input dataset from (tf)records files for train/eval."""
   name_to_features = {
       'input_ids': tf.io.FixedLenFeature([seq_length], tf.int64),
       'input_mask': tf.io.FixedLenFeature([seq_length], tf.int64),
       'segment_ids': tf.io.FixedLenFeature([seq_length], tf.int64),
-      'label_ids': tf.io.FixedLenFeature([], tf.int64),
+      'label_ids': tf.io.FixedLenFeature([], label_type),
   }
+  if include_sample_weights:
+    name_to_features['weight'] = tf.io.FixedLenFeature([], tf.float32)
   dataset = single_file_dataset(file_path, name_to_features)
 
   # The dataset is always sharded by number of hosts.
@@ -177,6 +181,9 @@ def create_classifier_dataset(file_path,
         'input_type_ids': record['segment_ids']
     }
     y = record['label_ids']
+    if include_sample_weights:
+      w = record['weight']
+      return (x, y, w)
     return (x, y)
 
   if is_training:

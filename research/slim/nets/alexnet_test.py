@@ -17,12 +17,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from nets import alexnet
-
-slim = contrib_slim
 
 
 class AlexnetV2Test(tf.test.TestCase):
@@ -156,7 +154,7 @@ class AlexnetV2Test(tf.test.TestCase):
       logits, _ = alexnet.alexnet_v2(train_inputs)
       self.assertListEqual(logits.get_shape().as_list(),
                            [train_batch_size, num_classes])
-      tf.compat.v1.get_variable_scope().reuse_variables()
+      tf.get_variable_scope().reuse_variables()
       eval_inputs = tf.random.uniform(
           (eval_batch_size, eval_height, eval_width, 3))
       logits, _ = alexnet.alexnet_v2(eval_inputs, is_training=False,
@@ -173,7 +171,7 @@ class AlexnetV2Test(tf.test.TestCase):
     with self.test_session() as sess:
       inputs = tf.random.uniform((batch_size, height, width, 3))
       logits, _ = alexnet.alexnet_v2(inputs)
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(logits)
       self.assertTrue(output.any())
 

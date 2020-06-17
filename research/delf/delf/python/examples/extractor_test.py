@@ -66,10 +66,12 @@ class ExtractorTest(tf.test.TestCase, parameterized.TestCase):
 
     # Set up config.
     config = delf_config_pb2.DelfConfig(
-        max_image_size=max_image_size, min_image_size=min_image_size)
+        max_image_size=max_image_size,
+        min_image_size=min_image_size,
+        use_square_images=square_output)
 
     resized_image, scale_factors = extractor.ResizeImage(
-        image, config, resize_factor, square_output)
+        image, config, resize_factor)
     self.assertAllEqual(resized_image.shape, expected_shape)
     self.assertAllClose(scale_factors, expected_scale_factors)
 
@@ -87,10 +89,12 @@ class ExtractorTest(tf.test.TestCase, parameterized.TestCase):
 
     # Set up config.
     config = delf_config_pb2.DelfConfig(
-        max_image_size=max_image_size, min_image_size=min_image_size)
+        max_image_size=max_image_size,
+        min_image_size=min_image_size,
+        use_square_images=square_output)
 
     resized_image, scale_factors = extractor.ResizeImage(
-        image, config, resize_factor, square_output)
+        image, config, resize_factor)
     self.assertAllEqual(resized_image.shape, expected_shape)
     self.assertAllClose(scale_factors, expected_scale_factors)
 

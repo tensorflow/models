@@ -73,7 +73,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
     self.self_attention = layers.CachedAttention(
         num_heads=self.num_attention_heads,
         key_size=self.attention_head_size,
-        dropout_rate=self.attention_probs_dropout_prob,
+        dropout=self.attention_probs_dropout_prob,
         kernel_initializer=self._kernel_initializer,
         name="self_attention")
     self.self_attention_output_dense = layers.DenseEinsum(
@@ -91,7 +91,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
     self.encdec_attention = self._cross_attention_cls(
         num_heads=self.num_attention_heads,
         key_size=self.attention_head_size,
-        dropout_rate=self.attention_probs_dropout_prob,
+        dropout=self.attention_probs_dropout_prob,
         output_shape=self.hidden_size,
         kernel_initializer=self._kernel_initializer,
         name="attention/encdec")

@@ -17,7 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.tpu_exporters import export_saved_model_tpu_lib
 
 flags = tf.app.flags

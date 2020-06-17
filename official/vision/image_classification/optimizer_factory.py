@@ -331,6 +331,7 @@ def build_optimizer(
 
 def build_learning_rate(params: base_configs.LearningRateConfig,
                         batch_size: int = None,
+                        train_epochs: int = None,
                         train_steps: int = None):
   """Build the learning rate given the provided configuration."""
   decay_type = params.name
@@ -375,8 +376,15 @@ def build_learning_rate(params: base_configs.LearningRateConfig,
         warmup_epochs=params.warmup_epochs,
         boundaries=params.boundaries,
         multipliers=params.multipliers)
+  elif decay_type == 'cosine_with_warmup':
+    lr = learning_rate.CosineDecayWithWarmup(
+        batch_size=batch_size,
+        total_steps=train_epochs * train_steps,
+        warmup_steps=warmup_steps)
   if warmup_steps > 0:
-    if decay_type != 'piecewise_constant_with_warmup':
+    if decay_type not in [
+        'piecewise_constant_with_warmup', 'cosine_with_warmup'
+    ]:
       logging.info('Applying %d warmup steps to the learning rate',
                    warmup_steps)
       lr = learning_rate.WarmupDecaySchedule(lr, warmup_steps)

@@ -49,6 +49,14 @@ message BatchNonMaxSuppression {
   // Whether to change coordinate frame of the boxlist to be relative to
   // window's frame.
   optional bool change_coordinate_frame = 12 [default = true];
+
+  // Use hard NMS. Note that even if this field is set false, the behavior of
+  // NMS will be equivalent to hard NMS; This field when set to true forces the
+  // tf.image.non_max_suppression function to be called instead
+  // of tf.image.non_max_suppression_with_scores and can be used to
+  // export models for older versions of TF.
+  optional bool use_hard_nms = 13 [default = false];
+
 }
 
 // Configuration proto for post-processing predicted boxes and

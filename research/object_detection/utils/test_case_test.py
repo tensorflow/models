@@ -15,7 +15,7 @@
 """Tests for google3.third_party.tensorflow_models.object_detection.utils.test_case."""
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.utils import test_case
 
 

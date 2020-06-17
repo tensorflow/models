@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import numpy as np
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import learning_schedules
 from object_detection.utils import test_case

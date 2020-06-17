@@ -75,27 +75,3 @@ def export_bert_model(model_export_path: typing.Text,
           latest_checkpoint_file).assert_existing_objects_matched()
 
   model.save(model_export_path, include_optimizer=False, save_format='tf')
-
-
-class BertModelCheckpoint(tf.keras.callbacks.Callback):
-  """Keras callback that saves model at the end of every epoch."""
-
-  def __init__(self, checkpoint_dir, checkpoint):
-    """Initializes BertModelCheckpoint.
-
-    Arguments:
-      checkpoint_dir: Directory of the to be saved checkpoint file.
-      checkpoint: tf.train.Checkpoint object.
-    """
-    super(BertModelCheckpoint, self).__init__()
-    self.checkpoint_file_name = os.path.join(
-        checkpoint_dir, 'bert_training_checkpoint_step_{global_step}.ckpt')
-    assert isinstance(checkpoint, tf.train.Checkpoint)
-    self.checkpoint = checkpoint
-
-  def on_epoch_end(self, epoch, logs=None):
-    global_step = tf.keras.backend.get_value(self.model.optimizer.iterations)
-    formatted_file_name = self.checkpoint_file_name.format(
-        global_step=global_step)
-    saved_path = self.checkpoint.save(formatted_file_name)
-    logging.info('Saving model TF checkpoint to : %s', saved_path)

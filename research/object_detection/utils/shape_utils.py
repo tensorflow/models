@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import static_shape
 
@@ -69,17 +69,18 @@ def pad_tensor(t, length):
       is an integer, the first dimension of padded_t is set to length
       statically.
   """
-  t_rank = tf.rank(t)
-  t_shape = tf.shape(t)
-  t_d0 = t_shape[0]
-  pad_d0 = tf.expand_dims(length - t_d0, 0)
-  pad_shape = tf.cond(
-      tf.greater(t_rank, 1), lambda: tf.concat([pad_d0, t_shape[1:]], 0),
-      lambda: tf.expand_dims(length - t_d0, 0))
-  padded_t = tf.concat([t, tf.zeros(pad_shape, dtype=t.dtype)], 0)
-  if not _is_tensor(length):
-    padded_t = _set_dim_0(padded_t, length)
-  return padded_t
+
+  # Computing the padding statically makes the operation work with XLA.
+  rank = len(t.get_shape())
+  paddings = [[0 for _ in range(2)] for _ in range(rank)]
+  t_d0 = tf.shape(t)[0]
+
+  if isinstance(length, int) or len(length.get_shape()) == 0:  # pylint:disable=g-explicit-length-test
+    paddings[0][1] = length - t_d0
+  else:
+    paddings[0][1] = length[0] - t_d0
+
+  return tf.pad(t, paddings)
 
 
 def clip_tensor(t, length):

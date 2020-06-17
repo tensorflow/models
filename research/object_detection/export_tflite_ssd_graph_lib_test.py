@@ -20,7 +20,9 @@ from __future__ import print_function
 import os
 import numpy as np
 import six
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
+
 from tensorflow.core.framework import types_pb2
 from object_detection import export_tflite_ssd_graph_lib
 from object_detection import exporter
@@ -32,11 +34,6 @@ from object_detection.protos import pipeline_pb2
 from object_detection.protos import post_processing_pb2
 
 # pylint: disable=g-import-not-at-top
-try:
-  from tensorflow.contrib import slim as contrib_slim
-except ImportError:
-  # TF 2.0 doesn't ship with contrib.
-  pass
 
 if six.PY2:
   import mock
@@ -54,7 +51,7 @@ class FakeModel(model.DetectionModel):
     pass
 
   def predict(self, preprocessed_inputs, true_image_shapes):
-    features = contrib_slim.conv2d(preprocessed_inputs, 3, 1)
+    features = slim.conv2d(preprocessed_inputs, 3, 1)
     with tf.control_dependencies([features]):
       prediction_tensors = {
           'box_encodings':

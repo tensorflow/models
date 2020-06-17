@@ -15,7 +15,7 @@
 
 """Functions to build DetectionModel training optimizers."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 from tensorflow.contrib import opt as tf_opt

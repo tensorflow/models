@@ -42,9 +42,9 @@ class AlbertTransformerEncoder(tf.keras.Model):
 
   Arguments:
     vocab_size: The size of the token vocabulary.
-    embedding_width: The width of the word embeddings. If the embedding width
-      is not equal to hidden size, embedding parameters will be factorized into
-      two matrices in the shape of ['vocab_size', 'embedding_width'] and
+    embedding_width: The width of the word embeddings. If the embedding width is
+      not equal to hidden size, embedding parameters will be factorized into two
+      matrices in the shape of ['vocab_size', 'embedding_width'] and
       ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
       smaller than 'hidden_size').
     hidden_size: The size of the transformer hidden layers.
@@ -110,6 +110,8 @@ class AlbertTransformerEncoder(tf.keras.Model):
     type_ids = tf.keras.layers.Input(
         shape=(sequence_length,), dtype=tf.int32, name='input_type_ids')
 
+    if embedding_width is None:
+      embedding_width = hidden_size
     self._embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
@@ -141,13 +143,14 @@ class AlbertTransformerEncoder(tf.keras.Model):
             axis=-1,
             epsilon=1e-12,
             dtype=tf.float32)(embeddings))
-    embeddings = (
-        tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
+    embeddings = (tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     if embedding_width != hidden_size:
-      embeddings = layers.DenseEinsum(
+      embeddings = tf.keras.layers.experimental.EinsumDense(
+          '...x,xy->...y',
           output_shape=hidden_size,
+          bias_axes='y',
           kernel_initializer=initializer,
           name='embedding_projection')(
               embeddings)
@@ -176,9 +179,7 @@ class AlbertTransformerEncoder(tf.keras.Model):
             first_token_tensor)
 
     super(AlbertTransformerEncoder, self).__init__(
-        inputs=[word_ids, mask, type_ids],
-        outputs=[data, cls_output],
-        **kwargs)
+        inputs=[word_ids, mask, type_ids], outputs=[data, cls_output], **kwargs)
 
   def get_embedding_table(self):
     return self._embedding_layer.embeddings

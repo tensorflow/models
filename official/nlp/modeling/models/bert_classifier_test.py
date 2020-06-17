@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
@@ -30,7 +31,8 @@ from official.nlp.modeling.models import bert_classifier
 @keras_parameterized.run_all_keras_modes
 class BertClassifierTest(keras_parameterized.TestCase):
 
-  def test_bert_trainer(self):
+  @parameterized.parameters(1, 3)
+  def test_bert_trainer(self, num_classes):
     """Validate that the Keras object can be created."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
@@ -39,7 +41,6 @@ class BertClassifierTest(keras_parameterized.TestCase):
         vocab_size=vocab_size, num_layers=2, sequence_length=sequence_length)
 
     # Create a BERT trainer with the created network.
-    num_classes = 3
     bert_trainer_model = bert_classifier.BertClassifier(
         test_network,
         num_classes=num_classes)
@@ -56,7 +57,8 @@ class BertClassifierTest(keras_parameterized.TestCase):
     expected_classification_shape = [None, num_classes]
     self.assertAllEqual(expected_classification_shape, cls_outs.shape.as_list())
 
-  def test_bert_trainer_tensor_call(self):
+  @parameterized.parameters(1, 2)
+  def test_bert_trainer_tensor_call(self, num_classes):
     """Validate that the Keras object can be invoked."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
@@ -65,7 +67,7 @@ class BertClassifierTest(keras_parameterized.TestCase):
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network, num_classes=2)
+        test_network, num_classes=num_classes)
 
     # Create a set of 2-dimensional data tensors to feed into the model.
     word_ids = tf.constant([[1, 1], [2, 2]], dtype=tf.int32)

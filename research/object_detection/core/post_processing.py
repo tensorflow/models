@@ -22,7 +22,7 @@ import collections
 import numpy as np
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
@@ -396,6 +396,7 @@ def multiclass_non_max_suppression(boxes,
                                    use_partitioned_nms=False,
                                    additional_fields=None,
                                    soft_nms_sigma=0.0,
+                                   use_hard_nms=False,
                                    scope=None):
   """Multi-class version of non maximum suppression.
 
@@ -450,6 +451,7 @@ def multiclass_non_max_suppression(boxes,
       `soft_nms_sigma=0.0` (which is default), we fall back to standard (hard)
       NMS.  Soft NMS is currently only supported when pad_to_max_output_size is
       False.
+    use_hard_nms: Enforce the usage of hard NMS.
     scope: name scope.
 
   Returns:
@@ -536,7 +538,7 @@ def multiclass_non_max_suppression(boxes,
         max_selection_size = tf.minimum(max_size_per_class,
                                         boxlist_and_class_scores.num_boxes())
         if (hasattr(tf.image, 'non_max_suppression_with_scores') and
-            tf.compat.forward_compatible(2019, 6, 6)):
+            tf.compat.forward_compatible(2019, 6, 6) and not use_hard_nms):
           (selected_indices, selected_scores
           ) = tf.image.non_max_suppression_with_scores(
               boxlist_and_class_scores.get(),
@@ -852,7 +854,8 @@ def batch_multiclass_non_max_suppression(boxes,
                                          use_class_agnostic_nms=False,
                                          max_classes_per_detection=1,
                                          use_dynamic_map_fn=False,
-                                         use_combined_nms=False):
+                                         use_combined_nms=False,
+                                         use_hard_nms=False):
   """Multi-class version of non maximum suppression that operates on a batch.
 
   This op is similar to `multiclass_non_max_suppression` but operates on a batch
@@ -923,6 +926,7 @@ def batch_multiclass_non_max_suppression(boxes,
       calling this function.
       Masks and additional fields are not supported.
       See argument checks in the code below for unsupported arguments.
+    use_hard_nms: Enforce the usage of hard NMS.
 
   Returns:
     'nmsed_boxes': A [batch_size, max_detections, 4] float32 tensor
@@ -966,12 +970,10 @@ def batch_multiclass_non_max_suppression(boxes,
           'clip_window is not supported by combined_nms unless it is'
           ' [0. 0. 1. 1.] for each image.')
     if additional_fields is not None:
-      tf.logging.warning(
-          'additional_fields is not supported by combined_nms.')
+      tf.logging.warning('additional_fields is not supported by combined_nms.')
     if parallel_iterations != 32:
-      tf.logging.warning(
-          'Number of batch items to be processed in parallel is'
-          ' not configurable by combined_nms.')
+      tf.logging.warning('Number of batch items to be processed in parallel is'
+                         ' not configurable by combined_nms.')
     if max_classes_per_detection > 1:
       tf.logging.warning(
           'max_classes_per_detection is not configurable by combined_nms.')
@@ -1009,7 +1011,7 @@ def batch_multiclass_non_max_suppression(boxes,
   # in _single_image_nms_fn(). The dictionary is thus a sorted version of
   # additional_fields.
   if additional_fields is None:
-    ordered_additional_fields = {}
+    ordered_additional_fields = collections.OrderedDict()
   else:
     ordered_additional_fields = collections.OrderedDict(
         sorted(additional_fields.items(), key=lambda item: item[0]))
@@ -1159,7 +1161,8 @@ def batch_multiclass_non_max_suppression(boxes,
             pad_to_max_output_size=use_static_shapes,
             use_partitioned_nms=use_partitioned_nms,
             additional_fields=per_image_additional_fields,
-            soft_nms_sigma=soft_nms_sigma)
+            soft_nms_sigma=soft_nms_sigma,
+            use_hard_nms=use_hard_nms)
 
       if not use_static_shapes:
         nmsed_boxlist = box_list_ops.pad_or_clip_box_list(

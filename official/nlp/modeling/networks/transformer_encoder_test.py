@@ -173,6 +173,21 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     outputs = model.predict([word_id_data, mask_data, type_id_data])
     self.assertEqual(outputs[0].shape[1], out_seq_len)
 
+    # Creates a TransformerEncoder with embedding_width != hidden_size
+    test_network = transformer_encoder.TransformerEncoder(
+        vocab_size=vocab_size,
+        hidden_size=hidden_size,
+        sequence_length=sequence_length,
+        max_sequence_length=max_sequence_length,
+        num_attention_heads=2,
+        num_layers=3,
+        type_vocab_size=num_types,
+        embedding_width=16)
+    model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
+    outputs = model.predict([word_id_data, mask_data, type_id_data])
+    self.assertEqual(outputs[0].shape[-1], hidden_size)
+    self.assertTrue(hasattr(test_network, "_embedding_projection"))
+
   def test_serialize_deserialize(self):
     tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
     # Create a network object that sets all of its config options.
@@ -190,7 +205,8 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
         attention_dropout_rate=0.22,
         initializer="glorot_uniform",
         return_all_encoder_outputs=False,
-        output_range=-1)
+        output_range=-1,
+        embedding_width=16)
     network = transformer_encoder.TransformerEncoder(**kwargs)
 
     expected_config = dict(kwargs)

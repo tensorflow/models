@@ -24,17 +24,15 @@ from __future__ import division
 from __future__ import print_function
 
 from six.moves import range
-import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.utils import variables_helper
 from nets.nasnet import nasnet_utils
 from nets.nasnet import pnasnet
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+arg_scope = slim.arg_scope
 
 
 def pnasnet_large_arg_scope_for_detection(is_batch_norm_training=False):

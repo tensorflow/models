@@ -74,7 +74,7 @@ import sys
 import six
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow.python.ops import control_flow_ops
 from object_detection.core import box_list
@@ -1603,6 +1603,7 @@ def random_crop_image(image,
 
 def random_pad_image(image,
                      boxes,
+                     masks=None,
                      keypoints=None,
                      min_image_size=None,
                      max_image_size=None,
@@ -1625,6 +1626,9 @@ def random_pad_image(image,
            Boxes are in normalized form meaning their coordinates vary
            between [0, 1].
            Each row is in the form of [ymin, xmin, ymax, xmax].
+    masks: (optional) rank 3 float32 tensor with shape
+           [N, height, width] containing instance masks. The masks
+           are of the same height, width as the input `image`.
     keypoints: (optional) rank 3 float32 tensor with shape
                [N, num_keypoints, 2]. The keypoints are in y-x normalized
                coordinates.
@@ -1648,6 +1652,8 @@ def random_pad_image(image,
     boxes: boxes which is the same rank as input boxes. Boxes are in normalized
            form.
 
+    if masks is not None, the function also returns:
+    masks: rank 3 float32 tensor with shape [N, new_height, new_width]
     if keypoints is not None, the function also returns:
     keypoints: rank 3 float32 tensor with shape [N, num_keypoints, 2]
   """
@@ -1728,6 +1734,15 @@ def random_pad_image(image,
 
   result = [new_image, new_boxes]
 
+  if masks is not None:
+    new_masks = tf.image.pad_to_bounding_box(
+        masks[:, :, :, tf.newaxis],
+        offset_height=offset_height,
+        offset_width=offset_width,
+        target_height=target_height,
+        target_width=target_width)[:, :, :, 0]
+    result.append(new_masks)
+
   if keypoints is not None:
     new_keypoints = keypoint_ops.change_coordinate_frame(keypoints, new_window)
     result.append(new_keypoints)
@@ -1737,6 +1752,7 @@ def random_pad_image(image,
 
 def random_absolute_pad_image(image,
                               boxes,
+                              masks=None,
                               keypoints=None,
                               max_height_padding=None,
                               max_width_padding=None,
@@ -1756,6 +1772,9 @@ def random_absolute_pad_image(image,
            Boxes are in normalized form meaning their coordinates vary
            between [0, 1].
            Each row is in the form of [ymin, xmin, ymax, xmax].
+    masks: (optional) rank 3 float32 tensor with shape
+           [N, height, width] containing instance masks. The masks
+           are of the same height, width as the input `image`.
     keypoints: (optional) rank 3 float32 tensor with shape
                [N, num_keypoints, 2]. The keypoints are in y-x normalized
                coordinates.
@@ -1778,6 +1797,10 @@ def random_absolute_pad_image(image,
     image: Image shape will be [new_height, new_width, channels].
     boxes: boxes which is the same rank as input boxes. Boxes are in normalized
            form.
+    if masks is not None, the function also returns:
+    masks: rank 3 float32 tensor with shape [N, new_height, new_width]
+    if keypoints is not None, the function also returns:
+    keypoints: rank 3 float32 tensor with shape [N, num_keypoints, 2]
   """
   min_image_size = tf.shape(image)[:2]
   max_image_size = min_image_size + tf.cast(
@@ -1785,6 +1808,7 @@ def random_absolute_pad_image(image,
   return random_pad_image(
       image,
       boxes,
+      masks=masks,
       keypoints=keypoints,
       min_image_size=min_image_size,
       max_image_size=max_image_size,
@@ -4060,10 +4084,12 @@ def get_default_func_arg_map(include_label_weights=True,
                           groundtruth_keypoint_visibilities),
       random_pad_image:
           (fields.InputDataFields.image,
-           fields.InputDataFields.groundtruth_boxes, groundtruth_keypoints),
+           fields.InputDataFields.groundtruth_boxes, groundtruth_instance_masks,
+           groundtruth_keypoints),
       random_absolute_pad_image:
           (fields.InputDataFields.image,
-           fields.InputDataFields.groundtruth_boxes, groundtruth_keypoints),
+           fields.InputDataFields.groundtruth_boxes, groundtruth_instance_masks,
+           groundtruth_keypoints),
       random_crop_pad_image: (fields.InputDataFields.image,
                               fields.InputDataFields.groundtruth_boxes,
                               fields.InputDataFields.groundtruth_classes,

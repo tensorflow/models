@@ -19,15 +19,14 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
+
 from tensorflow.contrib import quantize as contrib_quantize
-from tensorflow.contrib import slim as contrib_slim
 
 from datasets import dataset_factory
 from nets import nets_factory
 from preprocessing import preprocessing_factory
-
-slim = contrib_slim
 
 tf.app.flags.DEFINE_integer(
     'batch_size', 100, 'The number of samples in each batch.')

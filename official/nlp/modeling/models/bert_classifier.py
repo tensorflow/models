@@ -34,7 +34,7 @@ class BertClassifier(tf.keras.Model):
 
   The BertClassifier allows a user to pass in a transformer stack, and
   instantiates a classification network based on the passed `num_classes`
-  argument.
+  argument. If `num_classes` is set to 1, a regression network is instantiated.
 
   Arguments:
     network: A transformer network. This network should output a sequence output

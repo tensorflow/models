@@ -29,9 +29,10 @@ from official.benchmark import perfzero_benchmark
 from official.nlp.nhnet import trainer
 from official.utils.flags import core as flags_core
 
-MIN_LOSS = 0.35
-MAX_LOSS = 0.45
-NHNET_DATA = 'gs://tf-perfzero-data/nhnet/v1/train.tfrecord*'
+MIN_LOSS = 0.40
+MAX_LOSS = 0.55
+NHNET_DATA = 'gs://tf-perfzero-data/nhnet/v1/processed/train.tfrecord*'
+PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-12_H-768_A-12/bert_model.ckpt'
 
 FLAGS = flags.FLAGS
 
@@ -39,14 +40,15 @@ FLAGS = flags.FLAGS
 class NHNetBenchmark(perfzero_benchmark.PerfZeroBenchmark):
   """Base benchmark class for NHNet."""
 
-  def __init__(self, output_dir=None, default_flags=None, tpu=None):
+  def __init__(self, output_dir=None, default_flags=None, tpu=None, **kwargs):
     self.default_flags = default_flags or {}
     flag_methods = trainer.define_flags()
     super(NHNetBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=default_flags,
         flag_methods=flag_methods,
-        tpu=tpu)
+        tpu=tpu,
+        **kwargs)
 
   def _report_benchmark(self,
                         stats,
@@ -125,6 +127,7 @@ class NHNetAccuracyBenchmark(NHNetBenchmark):
     FLAGS.train_steps = 50000
     FLAGS.checkpoint_interval = FLAGS.train_steps
     FLAGS.distribution_strategy = 'tpu'
+    FLAGS.init_checkpoint = PRETRAINED_CHECKPOINT_PATH
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_accuracy_4x4_tpu_bf32_50k_steps')
     self._run_and_report_benchmark()

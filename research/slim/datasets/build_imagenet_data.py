@@ -94,7 +94,7 @@ import threading
 
 import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 tf.app.flags.DEFINE_string('train_directory', '/tmp/',

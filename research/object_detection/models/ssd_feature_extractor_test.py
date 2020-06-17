@@ -24,10 +24,10 @@ from abc import abstractmethod
 
 import numpy as np
 from six.moves import zip
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from google.protobuf import text_format
-from tensorflow.contrib import slim as contrib_slim
+
 from object_detection.builders import hyperparams_builder
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import test_case
@@ -59,7 +59,7 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
     return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
 
   def conv_hyperparams_fn(self):
-    with contrib_slim.arg_scope([]) as sc:
+    with slim.arg_scope([]) as sc:
       return sc
 
   @abstractmethod

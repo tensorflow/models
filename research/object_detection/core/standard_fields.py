@@ -76,6 +76,9 @@ class InputDataFields(object):
       context_features, used for reshaping.
     valid_context_size: the valid context size, used in filtering the padded
       context features.
+    image_format: format for the images, used to decode
+    image_height: height of images, used to decode
+    image_width: width of images, used to decode
   """
   image = 'image'
   image_additional_channels = 'image_additional_channels'
@@ -112,6 +115,10 @@ class InputDataFields(object):
   context_features = 'context_features'
   context_feature_length = 'context_feature_length'
   valid_context_size = 'valid_context_size'
+  image_timestamps = 'image_timestamps'
+  image_format = 'image_format'
+  image_height = 'image_height'
+  image_width = 'image_width'
 
 
 class DetectionResultFields(object):
@@ -182,6 +189,7 @@ class BoxListFields(object):
   keypoint_visibilities = 'keypoint_visibilities'
   keypoint_heatmaps = 'keypoint_heatmaps'
   is_crowd = 'is_crowd'
+  group_of = 'group_of'
 
 
 class PredictionFields(object):
@@ -279,3 +287,14 @@ class TfExampleFields(object):
   detection_bbox_ymax = 'image/detection/bbox/ymax'
   detection_bbox_xmax = 'image/detection/bbox/xmax'
   detection_score = 'image/detection/score'
+
+# Sequence fields for SequenceExample inputs.
+# All others are considered context fields.
+SEQUENCE_FIELDS = [InputDataFields.image,
+                   InputDataFields.source_id,
+                   InputDataFields.groundtruth_boxes,
+                   InputDataFields.num_groundtruth_boxes,
+                   InputDataFields.groundtruth_classes,
+                   InputDataFields.groundtruth_weights,
+                   InputDataFields.source_id,
+                   InputDataFields.is_annotated]

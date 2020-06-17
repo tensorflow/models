@@ -14,7 +14,7 @@
 # ==============================================================================
 """Builder function for image resizing operations."""
 import functools
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import preprocessor
 from object_detection.protos import image_resizer_pb2

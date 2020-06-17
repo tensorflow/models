@@ -24,7 +24,14 @@ enum InstanceMaskType {
   PNG_MASKS = 2;        // Encoded PNG masks.
 }
 
-// Next id: 29
+// Input type format: whether inputs are TfExamples or TfSequenceExamples.
+enum InputType {
+  INPUT_DEFAULT = 0;          // Default implementation, currently TF_EXAMPLE
+  TF_EXAMPLE = 1;  // TfExample input
+  TF_SEQUENCE_EXAMPLE = 2;        // TfSequenceExample Input
+}
+
+// Next id: 31
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -119,15 +126,22 @@ message InputReader {
   // Whether to include the source_id string in the input features.
   optional bool include_source_id = 27 [default = false];
 
+  // Whether input data type is tf.Examples or tf.SequenceExamples
+  optional InputType input_type = 30 [default = TF_EXAMPLE];
+
   oneof input_reader {
     TFRecordInputReader tf_record_input_reader = 8;
     ExternalInputReader external_input_reader = 9;
   }
 
 
+  // Expand labels to ancestors or descendants in the hierarchy for
+  // for positive and negative labels, respectively.
+  optional bool expand_labels_hierarchy = 29 [default = false];
 }
 
-// An input reader that reads TF Example protos from local TFRecord files.
+// An input reader that reads TF Example or TF Sequence Example protos from
+// local TFRecord files.
 message TFRecordInputReader {
   // Path(s) to `TFRecordFile`s.
   repeated string input_path = 1;

@@ -31,13 +31,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 # pylint: disable=g-long-lambda
-trunc_normal = lambda stddev: tf.compat.v1.truncated_normal_initializer(
+trunc_normal = lambda stddev: tf.truncated_normal_initializer(
     0.0, stddev)
 
 
@@ -45,7 +43,7 @@ def overfeat_arg_scope(weight_decay=0.0005):
   with slim.arg_scope([slim.conv2d, slim.fully_connected],
                       activation_fn=tf.nn.relu,
                       weights_regularizer=slim.l2_regularizer(weight_decay),
-                      biases_initializer=tf.compat.v1.zeros_initializer()):
+                      biases_initializer=tf.zeros_initializer()):
     with slim.arg_scope([slim.conv2d], padding='SAME'):
       with slim.arg_scope([slim.max_pool2d], padding='VALID') as arg_sc:
         return arg_sc
@@ -91,7 +89,7 @@ def overfeat(inputs,
       None).
     end_points: a dict of tensors with intermediate activations.
   """
-  with tf.compat.v1.variable_scope(scope, 'overfeat', [inputs]) as sc:
+  with tf.variable_scope(scope, 'overfeat', [inputs]) as sc:
     end_points_collection = sc.original_name_scope + '_end_points'
     # Collect outputs for conv2d, fully_connected and max_pool2d
     with slim.arg_scope([slim.conv2d, slim.fully_connected, slim.max_pool2d],
@@ -110,7 +108,7 @@ def overfeat(inputs,
       with slim.arg_scope(
           [slim.conv2d],
           weights_initializer=trunc_normal(0.005),
-          biases_initializer=tf.compat.v1.constant_initializer(0.1)):
+          biases_initializer=tf.constant_initializer(0.1)):
         net = slim.conv2d(net, 3072, [6, 6], padding='VALID', scope='fc6')
         net = slim.dropout(net, dropout_keep_prob, is_training=is_training,
                            scope='dropout6')
@@ -130,7 +128,7 @@ def overfeat(inputs,
               num_classes, [1, 1],
               activation_fn=None,
               normalizer_fn=None,
-              biases_initializer=tf.compat.v1.zeros_initializer(),
+              biases_initializer=tf.zeros_initializer(),
               scope='fc8')
           if spatial_squeeze:
             net = tf.squeeze(net, [1, 2], name='fc8/squeezed')
