@@ -160,9 +160,10 @@ def run_customized_training_loop(
       init_checkpoint: Optional checkpoint to load to `sub_model` returned by
         `model_fn`.
       custom_callbacks: A list of Keras Callbacks objects to run during
-        training. More specifically, `on_batch_begin()`, `on_batch_end()`,
-        `on_epoch_begin()`, `on_epoch_end()` methods are invoked during
-        training.  Note that some metrics may be missing from `logs`.
+        training. More specifically, `on_train_begin(), on_train_end(),
+        on_batch_begin()`, `on_batch_end()`, `on_epoch_begin()`,
+        `on_epoch_end()` methods are invoked during training.
+        Note that some metrics may be missing from `logs`.
       run_eagerly: Whether to run model training in pure eager execution. This
         should be disable for TPUStrategy.
       sub_model_export_name: If not None, will export `sub_model` returned by
@@ -246,8 +247,6 @@ def run_customized_training_loop(
     raise ValueError(
         'if `metric_fn` is specified, metric_fn must be a callable.')
 
-  callback_list = tf.keras.callbacks.CallbackList(custom_callbacks)
-
   total_training_steps = steps_per_epoch * epochs
   train_iterator = _get_input_iterator(train_input_fn, strategy)
   eval_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
@@ -262,6 +261,9 @@ def run_customized_training_loop(
     if sub_model_export_name and sub_model is None:
       raise ValueError('sub_model_export_name is specified as %s, but '
                        'sub_model is None.' % sub_model_export_name)
+
+    callback_list = tf.keras.callbacks.CallbackList(
+        callbacks=custom_callbacks, model=model)
 
     optimizer = model.optimizer
 
@@ -451,7 +453,8 @@ def run_customized_training_loop(
     checkpoint_name = 'ctl_step_{step}.ckpt'
 
     logs = {}
-    while current_step < total_training_steps:
+    callback_list.on_train_begin()
+    while current_step < total_training_steps and not model.stop_training:
       if current_step % steps_per_epoch == 0:
         callback_list.on_epoch_begin(
             int(current_step / steps_per_epoch) + 1)
@@ -563,5 +566,7 @@ def run_customized_training_loop(
 
     if not _should_export_summary(strategy):
       tf.io.gfile.rmtree(summary_dir)
+
+    callback_list.on_train_end()
 
     return model
