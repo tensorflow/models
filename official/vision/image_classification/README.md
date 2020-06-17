@@ -119,6 +119,24 @@ python3 classifier_trainer.py \
   --params_override='runtime.num_gpus=$NUM_GPUS'
 ```
 
+To train on multiple hosts, each with GPUs attached using
+[MultiWorkerMirroredStrategy](https://www.tensorflow.org/api_docs/python/tf/distribute/experimental/MultiWorkerMirroredStrategy)
+please update `runtime` section in gpu.yaml
+(or override using `--params_override`) with:
+
+```YAML
+# gpu.yaml
+runtime:
+  distribution_strategy: 'multi_worker_mirrored'
+  worker_hosts: '$HOST1:port,$HOST2:port'
+  num_gpus: $NUM_GPUS
+  task_index: 0
+```
+By having `task_index: 0` on the first host and `task_index: 1` on the second
+and so on. `$HOST1` and `$HOST2` are the IP addresses of the hosts, and `port`
+can be chosen any free port on the hosts. Only the first host will write
+TensorBoard Summaries and save checkpoints.
+
 #### On TPU:
 ```bash
 python3 classifier_trainer.py \
