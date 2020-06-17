@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
 from absl.testing import parameterized
 
 import numpy as np
@@ -30,6 +31,7 @@ from object_detection.core import standard_fields as fields
 from object_detection.metrics import coco_evaluation
 from object_detection.protos import eval_pb2
 from object_detection.utils import test_case
+from object_detection.utils import tf_version
 
 
 class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
@@ -127,6 +129,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
       {'batch_size': 1, 'max_gt_boxes': None, 'scale_to_absolute': False},
       {'batch_size': 8, 'max_gt_boxes': [1], 'scale_to_absolute': False}
   )
+  @unittest.skipIf(tf_version.is_tf2(), 'Only compatible with TF1.X')
   def test_get_eval_metric_ops_for_coco_detections(self, batch_size=1,
                                                    max_gt_boxes=None,
                                                    scale_to_absolute=False):
@@ -155,6 +158,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
       {'batch_size': 1, 'max_gt_boxes': None, 'scale_to_absolute': False},
       {'batch_size': 8, 'max_gt_boxes': [1], 'scale_to_absolute': False}
   )
+  @unittest.skipIf(tf_version.is_tf2(), 'Only compatible with TF1.X')
   def test_get_eval_metric_ops_for_coco_detections_and_masks(
       self, batch_size=1, max_gt_boxes=None, scale_to_absolute=False):
     eval_config = eval_pb2.EvalConfig()
@@ -185,6 +189,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
       {'batch_size': 1, 'max_gt_boxes': None, 'scale_to_absolute': False},
       {'batch_size': 8, 'max_gt_boxes': [1], 'scale_to_absolute': False}
   )
+  @unittest.skipIf(tf_version.is_tf2(), 'Only compatible with TF1.X')
   def test_get_eval_metric_ops_for_coco_detections_and_resized_masks(
       self, batch_size=1, max_gt_boxes=None, scale_to_absolute=False):
     eval_config = eval_pb2.EvalConfig()
@@ -210,6 +215,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
       self.assertAlmostEqual(1.0, metrics['DetectionBoxes_Precision/mAP'])
       self.assertAlmostEqual(1.0, metrics['DetectionMasks_Precision/mAP'])
 
+  @unittest.skipIf(tf_version.is_tf2(), 'Only compatible with TF1.X')
   def test_get_eval_metric_ops_raises_error_with_unsupported_metric(self):
     eval_config = eval_pb2.EvalConfig()
     eval_config.metrics_set.extend(['unsupported_metric'])
@@ -334,63 +340,67 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
                                dtype=np.float32)
     detection_keypoints = np.array([[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]],
                                    dtype=np.float32)
-    detections = {
-        detection_fields.detection_boxes:
-            tf.constant(detection_boxes),
-        detection_fields.detection_scores:
-            tf.constant([[1.], [1.]]),
-        detection_fields.detection_classes:
-            tf.constant([[1], [2]]),
-        detection_fields.num_detections:
-            tf.constant([1, 1]),
-        detection_fields.detection_keypoints:
-            tf.tile(
-                tf.reshape(
-                    tf.constant(detection_keypoints), shape=[1, 1, 3, 2]),
-                multiples=[2, 1, 1, 1])
-    }
+    def graph_fn():
+      detections = {
+          detection_fields.detection_boxes:
+              tf.constant(detection_boxes),
+          detection_fields.detection_scores:
+              tf.constant([[1.], [1.]]),
+          detection_fields.detection_classes:
+              tf.constant([[1], [2]]),
+          detection_fields.num_detections:
+              tf.constant([1, 1]),
+          detection_fields.detection_keypoints:
+              tf.tile(
+                  tf.reshape(
+                      tf.constant(detection_keypoints), shape=[1, 1, 3, 2]),
+                  multiples=[2, 1, 1, 1])
+      }
 
-    gt_boxes = detection_boxes
-    groundtruth = {
-        input_data_fields.groundtruth_boxes:
-            tf.constant(gt_boxes),
-        input_data_fields.groundtruth_classes:
-            tf.constant([[1.], [1.]]),
-        input_data_fields.groundtruth_keypoints:
-            tf.tile(
-                tf.reshape(
-                    tf.constant(detection_keypoints), shape=[1, 1, 3, 2]),
-                multiples=[2, 1, 1, 1])
-    }
+      gt_boxes = detection_boxes
+      groundtruth = {
+          input_data_fields.groundtruth_boxes:
+              tf.constant(gt_boxes),
+          input_data_fields.groundtruth_classes:
+              tf.constant([[1.], [1.]]),
+          input_data_fields.groundtruth_keypoints:
+              tf.tile(
+                  tf.reshape(
+                      tf.constant(detection_keypoints), shape=[1, 1, 3, 2]),
+                  multiples=[2, 1, 1, 1])
+      }
 
-    image = tf.zeros((2, 100, 100, 3), dtype=tf.float32)
+      image = tf.zeros((2, 100, 100, 3), dtype=tf.float32)
 
-    true_image_shapes = tf.constant([[100, 100, 3], [50, 100, 3]])
-    original_image_spatial_shapes = tf.constant([[200, 200], [150, 300]])
+      true_image_shapes = tf.constant([[100, 100, 3], [50, 100, 3]])
+      original_image_spatial_shapes = tf.constant([[200, 200], [150, 300]])
 
-    result = eval_util.result_dict_for_batched_example(
-        image, key, detections, groundtruth,
-        scale_to_absolute=True,
-        true_image_shapes=true_image_shapes,
-        original_image_spatial_shapes=original_image_spatial_shapes,
-        max_gt_boxes=tf.constant(1))
+      result = eval_util.result_dict_for_batched_example(
+          image, key, detections, groundtruth,
+          scale_to_absolute=True,
+          true_image_shapes=true_image_shapes,
+          original_image_spatial_shapes=original_image_spatial_shapes,
+          max_gt_boxes=tf.constant(1))
+      return (result[input_data_fields.groundtruth_boxes],
+              result[input_data_fields.groundtruth_keypoints],
+              result[detection_fields.detection_boxes],
+              result[detection_fields.detection_keypoints])
+    (gt_boxes, gt_keypoints, detection_boxes,
+     detection_keypoints) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(
+        [[[0., 0., 200., 200.]], [[0.0, 0.0, 150., 150.]]],
+        gt_boxes)
+    self.assertAllClose([[[[0., 0.], [100., 100.], [200., 200.]]],
+                         [[[0., 0.], [150., 150.], [300., 300.]]]],
+                        gt_keypoints)
 
-    with self.test_session() as sess:
-      result = sess.run(result)
-      self.assertAllEqual(
-          [[[0., 0., 200., 200.]], [[0.0, 0.0, 150., 150.]]],
-          result[input_data_fields.groundtruth_boxes])
-      self.assertAllClose([[[[0., 0.], [100., 100.], [200., 200.]]],
-                           [[[0., 0.], [150., 150.], [300., 300.]]]],
-                          result[input_data_fields.groundtruth_keypoints])
-
-      # Predictions from the model are not scaled.
-      self.assertAllEqual(
-          [[[0., 0., 200., 200.]], [[0.0, 0.0, 75., 150.]]],
-          result[detection_fields.detection_boxes])
-      self.assertAllClose([[[[0., 0.], [100., 100.], [200., 200.]]],
-                           [[[0., 0.], [75., 150.], [150., 300.]]]],
-                          result[detection_fields.detection_keypoints])
+    # Predictions from the model are not scaled.
+    self.assertAllEqual(
+        [[[0., 0., 200., 200.]], [[0.0, 0.0, 75., 150.]]],
+        detection_boxes)
+    self.assertAllClose([[[[0., 0.], [100., 100.], [200., 200.]]],
+                         [[[0., 0.], [75., 150.], [150., 300.]]]],
+                        detection_keypoints)
 
 
 if __name__ == '__main__':

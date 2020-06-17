@@ -16,6 +16,7 @@
 
 """Tests for box_predictor_builder."""
 
+import unittest
 import mock
 import tensorflow.compat.v1 as tf
 
@@ -25,8 +26,10 @@ from object_detection.builders import hyperparams_builder
 from object_detection.predictors import mask_rcnn_box_predictor
 from object_detection.protos import box_predictor_pb2
 from object_detection.protos import hyperparams_pb2
+from object_detection.utils import tf_version
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only Tests.')
 class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
 
   def test_box_predictor_calls_conv_argscope_fn(self):
@@ -161,6 +164,7 @@ class ConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
     self.assertFalse(class_head._use_depthwise)
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only Tests.')
 class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
 
   def test_box_predictor_calls_conv_argscope_fn(self):
@@ -357,6 +361,7 @@ class WeightSharedConvolutionalBoxPredictorBuilderTest(tf.test.TestCase):
 
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only Tests.')
 class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
 
   def test_box_predictor_builder_calls_fc_argscope_fn(self):
@@ -537,6 +542,7 @@ class MaskRCNNBoxPredictorBuilderTest(tf.test.TestCase):
                     ._convolve_then_upsample)
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only Tests.')
 class RfcnBoxPredictorBuilderTest(tf.test.TestCase):
 
   def test_box_predictor_calls_fc_argscope_fn(self):

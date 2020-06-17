@@ -268,7 +268,7 @@ def padded_one_hot_encoding(indices, depth, left_pad):
                                  on_value=1, off_value=0), tf.float32)
     return tf.pad(one_hot, [[0, 0], [left_pad, 0]], mode='CONSTANT')
   result = tf.cond(tf.greater(tf.size(indices), 0), one_hot_and_pad,
-                   lambda: tf.zeros((depth + left_pad, 0)))
+                   lambda: tf.zeros((tf.size(indices), depth + left_pad)))
   return tf.reshape(result, [-1, depth + left_pad])
 
 

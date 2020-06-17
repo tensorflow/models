@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
-
+import unittest
 from absl.testing import parameterized
 import mock
 import tensorflow.compat.v1 as tf
@@ -109,6 +109,7 @@ class FakeFasterRCNNKerasFeatureExtractor(
     ])
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
 class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
 
   def _get_model(self, box_predictor, **common_kwargs):

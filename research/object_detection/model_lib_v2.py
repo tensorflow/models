@@ -358,7 +358,7 @@ def load_fine_tune_checkpoint(
     ckpt.restore(checkpoint_path).assert_existing_objects_matched()
 
 
-def _get_filepath(strategy, filepath):
+def get_filepath(strategy, filepath):
   """Get appropriate filepath for worker.
 
   Args:
@@ -377,7 +377,7 @@ def _get_filepath(strategy, filepath):
     return os.path.join(filepath, 'temp_worker_{:03d}'.format(task_id))
 
 
-def _clean_temporary_directories(strategy, filepath):
+def clean_temporary_directories(strategy, filepath):
   """Temporary directory clean up for MultiWorker Mirrored Strategy.
 
   This is needed for all non-chief workers.
@@ -539,8 +539,8 @@ def train_loop(
   ## Train the model
   # Get the appropriate filepath (temporary or not) based on whether the worker
   # is the chief.
-  summary_writer_filepath = _get_filepath(strategy,
-                                          os.path.join(model_dir, 'train'))
+  summary_writer_filepath = get_filepath(strategy,
+                                         os.path.join(model_dir, 'train'))
   summary_writer = tf.compat.v2.summary.create_file_writer(
       summary_writer_filepath)
 
@@ -567,7 +567,7 @@ def train_loop(
         ckpt = tf.compat.v2.train.Checkpoint(
             step=global_step, model=detection_model, optimizer=optimizer)
 
-        manager_dir = _get_filepath(strategy, model_dir)
+        manager_dir = get_filepath(strategy, model_dir)
         if not strategy.extended.should_checkpoint:
           checkpoint_max_to_keep = 1
         manager = tf.compat.v2.train.CheckpointManager(
@@ -615,6 +615,10 @@ def train_loop(
           return _sample_and_train(strategy, train_step_fn, data_iterator)
 
         train_input_iter = iter(train_input)
+
+        if int(global_step.value()) == 0:
+          manager.save()
+
         checkpointed_step = int(global_step.value())
         logged_step = global_step.value()
 
@@ -646,8 +650,8 @@ def train_loop(
   # Remove the checkpoint directories of the non-chief workers that
   # MultiWorkerMirroredStrategy forces us to save during sync distributed
   # training.
-  _clean_temporary_directories(strategy, manager_dir)
-  _clean_temporary_directories(strategy, summary_writer_filepath)
+  clean_temporary_directories(strategy, manager_dir)
+  clean_temporary_directories(strategy, summary_writer_filepath)
 
 
 def eager_eval_loop(

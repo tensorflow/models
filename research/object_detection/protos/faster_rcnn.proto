@@ -188,7 +188,7 @@ message Context {
   // Next id: 4
 
   // The maximum number of contextual features per-image, used for padding
-  optional int32 max_num_context_features = 1 [default = 8500];
+  optional int32 max_num_context_features = 1 [default = 2000];
 
   // The bottleneck feature dimension of the attention block.
   optional int32 attention_bottleneck_dimension = 2 [default = 2048];

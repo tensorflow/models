@@ -290,6 +290,72 @@ def mobiledet_edgetpu_backbone(h, multiplier=1.0):
   return endpoints
 
 
+def mobiledet_gpu_backbone(h, multiplier=1.0):
+  """Build a MobileDet GPU backbone."""
+
+  def _scale(filters):
+    return _scale_filters(filters, multiplier)
+
+  ibn = functools.partial(_inverted_bottleneck, activation_fn=tf.nn.relu6)
+  fused = functools.partial(_fused_conv, activation_fn=tf.nn.relu6)
+  tucker = functools.partial(_tucker_conv, activation_fn=tf.nn.relu6)
+
+  endpoints = {}
+  # block 0
+  h = _conv(h, _scale(32), 3, strides=2, activation_fn=tf.nn.relu6)
+
+  # block 1
+  h = tucker(
+      h,
+      _scale(16),
+      input_rank_ratio=0.25,
+      output_rank_ratio=0.25,
+      residual=False)
+  endpoints['C1'] = h
+
+  # block 2
+  h = fused(h, _scale(32), expansion=8, strides=2, residual=False)
+  h = tucker(h, _scale(32), input_rank_ratio=0.25, output_rank_ratio=0.25)
+  h = tucker(h, _scale(32), input_rank_ratio=0.25, output_rank_ratio=0.25)
+  h = tucker(h, _scale(32), input_rank_ratio=0.25, output_rank_ratio=0.25)
+  endpoints['C2'] = h
+
+  # block 3
+  h = fused(
+      h, _scale(64), expansion=8, kernel_size=3, strides=2, residual=False)
+  h = fused(h, _scale(64), expansion=8)
+  h = fused(h, _scale(64), expansion=8)
+  h = fused(h, _scale(64), expansion=4)
+  endpoints['C3'] = h
+
+  # block 4
+  h = fused(
+      h, _scale(128), expansion=8, kernel_size=3, strides=2, residual=False)
+  h = fused(h, _scale(128), expansion=4)
+  h = fused(h, _scale(128), expansion=4)
+  h = fused(h, _scale(128), expansion=4)
+
+  # block 5
+  h = fused(
+      h, _scale(128), expansion=8, kernel_size=3, strides=1, residual=False)
+  h = fused(h, _scale(128), expansion=8)
+  h = fused(h, _scale(128), expansion=8)
+  h = fused(h, _scale(128), expansion=8)
+  endpoints['C4'] = h
+
+  # block 6
+  h = fused(
+      h, _scale(128), expansion=4, kernel_size=3, strides=2, residual=False)
+  h = fused(h, _scale(128), expansion=4)
+  h = fused(h, _scale(128), expansion=4)
+  h = fused(h, _scale(128), expansion=4)
+
+  # block 7
+  h = ibn(h, _scale(384), expansion=8, kernel_size=3, strides=1, residual=False)
+  endpoints['C5'] = h
+  return endpoints
+
+
 class SSDMobileDetFeatureExtractorBase(ssd_meta_arch.SSDFeatureExtractor):
   """Base class of SSD feature extractor using MobileDet features."""
 
@@ -480,6 +546,34 @@ class SSDMobileDetEdgeTPUFeatureExtractor(SSDMobileDetFeatureExtractorBase):
                scope_name='MobileDetEdgeTPU'):
     super(SSDMobileDetEdgeTPUFeatureExtractor, self).__init__(
         backbone_fn=mobiledet_edgetpu_backbone,
+        is_training=is_training,
+        depth_multiplier=depth_multiplier,
+        min_depth=min_depth,
+        pad_to_multiple=pad_to_multiple,
+        conv_hyperparams_fn=conv_hyperparams_fn,
+        reuse_weights=reuse_weights,
+        use_explicit_padding=use_explicit_padding,
+        use_depthwise=use_depthwise,
+        override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams,
+        scope_name=scope_name)
+
+
+class SSDMobileDetGPUFeatureExtractor(SSDMobileDetFeatureExtractorBase):
+  """MobileDet-GPU feature extractor."""
+
+  def __init__(self,
+               is_training,
+               depth_multiplier,
+               min_depth,
+               pad_to_multiple,
+               conv_hyperparams_fn,
+               reuse_weights=None,
+               use_explicit_padding=False,
+               use_depthwise=False,
+               override_base_feature_extractor_hyperparams=False,
+               scope_name='MobileDetGPU'):
+    super(SSDMobileDetGPUFeatureExtractor, self).__init__(
+        backbone_fn=mobiledet_gpu_backbone,
         is_training=is_training,
         depth_multiplier=depth_multiplier,
         min_depth=min_depth,
