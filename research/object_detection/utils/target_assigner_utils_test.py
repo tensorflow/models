@@ -87,8 +87,32 @@ class TargetUtilTest(test_case.TestCase):
 
     np.testing.assert_array_almost_equal(offsets,
                                          np.array([[1.1, -0.8], [0.1, 0.5]]))
-    np.testing.assert_array_almost_equal(indices,
-                                         np.array([[1, 2], [0, 4]]))
+    np.testing.assert_array_almost_equal(indices, np.array([[1, 2], [0, 4]]))
+
+  def test_compute_floor_offsets_with_indices_multisources(self):
+
+    def graph_fn():
+      y_source = tf.constant([[1.0, 0.0], [2.0, 3.0]], dtype=tf.float32)
+      x_source = tf.constant([[2.0, 4.0], [3.0, 3.0]], dtype=tf.float32)
+      y_target = tf.constant([2.1, 0.1], dtype=tf.float32)
+      x_target = tf.constant([1.2, 4.5], dtype=tf.float32)
+      (offsets, indices) = ta_utils.compute_floor_offsets_with_indices(
+          y_source, x_source, y_target, x_target)
+      return offsets, indices
+
+    offsets, indices = self.execute(graph_fn, [])
+    # Offset from the first source to target.
+    np.testing.assert_array_almost_equal(offsets[:, 0, :],
+                                         np.array([[1.1, -0.8], [-1.9, 1.5]]))
+    # Offset from the second source to target.
+    np.testing.assert_array_almost_equal(offsets[:, 1, :],
+                                         np.array([[2.1, -2.8], [-2.9, 1.5]]))
+    # Indices from the first source to target.
+    np.testing.assert_array_almost_equal(indices[:, 0, :],
+                                         np.array([[1, 2], [2, 3]]))
+    # Indices from the second source to target.
+    np.testing.assert_array_almost_equal(indices[:, 1, :],
+                                         np.array([[0, 4], [3, 3]]))
 
   def test_get_valid_keypoints_mask(self):
 
@@ -173,6 +197,44 @@ class TargetUtilTest(test_case.TestCase):
     # All other pixel weights should be 1.0.
     # 20 * 10 - 6 * 6 - 3 * 7 = 143.0
     self.assertAlmostEqual(np.sum(output), 143.0)
+
+  def test_blackout_pixel_weights_by_box_regions_zero_instance(self):
+    def graph_fn():
+      boxes = tf.zeros([0, 4], dtype=tf.float32)
+      blackout = tf.zeros([0], dtype=tf.bool)
+      blackout_pixel_weights_by_box_regions = tf.function(
+          ta_utils.blackout_pixel_weights_by_box_regions)
+      output = blackout_pixel_weights_by_box_regions(10, 20, boxes, blackout)
+      return output
+
+    output = self.execute(graph_fn, [])
+    # The output should be all 1s since there's no annotation provided.
+    np.testing.assert_array_equal(output, np.ones([10, 20], dtype=np.float32))
+
+  def test_get_surrounding_grids(self):
+
+    def graph_fn():
+      y_coordinates = tf.constant([0.5], dtype=tf.float32)
+      x_coordinates = tf.constant([4.5], dtype=tf.float32)
+      output = ta_utils.get_surrounding_grids(
+          height=3,
+          width=5,
+          y_coordinates=y_coordinates,
+          x_coordinates=x_coordinates,
+          radius=1)
+      return output
+
+    y_indices, x_indices, valid = self.execute(graph_fn, [])
+
+    # Five neighboring indices: [-1, 4] (out of bound), [0, 3], [0, 4],
+    # [0, 5] (out of bound), [1, 4].
+    np.testing.assert_array_almost_equal(
+        y_indices,
+        np.array([[0.0, 0.0, 0.0, 0.0, 1.0]]))
+    np.testing.assert_array_almost_equal(
+        x_indices,
+        np.array([[0.0, 3.0, 4.0, 0.0, 4.0]]))
+    self.assertAllEqual(valid, [[False, True, True, False, True]])
 
 
 if __name__ == '__main__':

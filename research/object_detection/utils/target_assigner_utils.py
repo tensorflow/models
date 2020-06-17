@@ -118,12 +118,17 @@ def compute_floor_offsets_with_indices(y_source,
   they were put on the grids) to target coordinates. Note that the input
   coordinates should be the "absolute" coordinates in terms of the output image
   dimensions as opposed to the normalized coordinates (i.e. values in [0, 1]).
+  If the input y and x source have the second dimension (representing the
+  neighboring pixels), then the offsets are computed from each of the
+  neighboring pixels to their corresponding target (first dimension).
 
   Args:
-    y_source: A tensor with shape [num_points] representing the absolute
-      y-coordinates (in the output image space) of the source points.
-    x_source: A tensor with shape [num_points] representing the absolute
-      x-coordinates (in the output image space) of the source points.
+    y_source: A tensor with shape [num_points] (or [num_points, num_neighbors])
+      representing the absolute y-coordinates (in the output image space) of the
+      source points.
+    x_source: A tensor with shape [num_points] (or [num_points, num_neighbors])
+      representing the absolute x-coordinates (in the output image space) of the
+      source points.
     y_target: A tensor with shape [num_points] representing the absolute
       y-coordinates (in the output image space) of the target points. If not
       provided, then y_source is used as the targets.
@@ -133,18 +138,33 @@ def compute_floor_offsets_with_indices(y_source,
 
   Returns:
     A tuple of two tensors:
-      offsets: A tensor with shape [num_points, 2] representing the offsets of
-        each input point.
-      indices: A tensor with shape [num_points, 2] representing the indices of
-        where the offsets should be retrieved in the output image dimension
-        space.
+      offsets: A tensor with shape [num_points, 2] (or
+        [num_points, num_neighbors, 2]) representing the offsets of each input
+        point.
+      indices: A tensor with shape [num_points, 2] (or
+        [num_points, num_neighbors, 2]) representing the indices of where the
+        offsets should be retrieved in the output image dimension space.
+
+  Raise:
+    ValueError: source and target shapes have unexpected values.
   """
   y_source_floored = tf.floor(y_source)
   x_source_floored = tf.floor(x_source)
-  if y_target is None:
+
+  source_shape = shape_utils.combined_static_and_dynamic_shape(y_source)
+  if y_target is None and x_target is None:
     y_target = y_source
-  if x_target is None:
     x_target = x_source
+  else:
+    target_shape = shape_utils.combined_static_and_dynamic_shape(y_target)
+    if len(source_shape) == 2 and len(target_shape) == 1:
+      _, num_neighbors = source_shape
+      y_target = tf.tile(
+          tf.expand_dims(y_target, -1), multiples=[1, num_neighbors])
+      x_target = tf.tile(
+          tf.expand_dims(x_target, -1), multiples=[1, num_neighbors])
+    elif source_shape != target_shape:
+      raise ValueError('Inconsistent source and target shape.')
 
   y_offset = y_target - y_source_floored
   x_offset = x_target - x_source_floored
@@ -152,9 +172,8 @@ def compute_floor_offsets_with_indices(y_source,
   y_source_indices = tf.cast(y_source_floored, tf.int32)
   x_source_indices = tf.cast(x_source_floored, tf.int32)
 
-  indices = tf.stack([y_source_indices, x_source_indices], axis=1)
-  offsets = tf.stack([y_offset, x_offset], axis=1)
-
+  indices = tf.stack([y_source_indices, x_source_indices], axis=-1)
+  offsets = tf.stack([y_offset, x_offset], axis=-1)
   return offsets, indices
 
 
@@ -231,6 +250,12 @@ def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout):
     A float tensor with shape [height, width] where all values within the
     regions of the blackout boxes are 0.0 and 1.0 else where.
   """
+  num_instances, _ = shape_utils.combined_static_and_dynamic_shape(boxes)
+  # If no annotation instance is provided, return all ones (instead of
+  # unexpected values) to avoid NaN loss value.
+  if num_instances == 0:
+    return tf.ones([height, width], dtype=tf.float32)
+
   (y_grid, x_grid) = image_shape_to_grids(height, width)
   y_grid = tf.expand_dims(y_grid, axis=0)
   x_grid = tf.expand_dims(x_grid, axis=0)
@@ -257,3 +282,72 @@ def blackout_pixel_weights_by_box_regions(height, width, boxes, blackout):
   out_boxes = tf.reduce_max(selected_in_boxes, axis=0)
   out_boxes = tf.ones_like(out_boxes) - out_boxes
   return out_boxes
+
+
+def _get_yx_indices_offset_by_radius(radius):
+  """Gets the y and x index offsets that are within the radius."""
+  y_offsets = []
+  x_offsets = []
+  for y_offset in range(-radius, radius + 1, 1):
+    for x_offset in range(-radius, radius + 1, 1):
+      if x_offset ** 2 + y_offset ** 2 <= radius ** 2:
+        y_offsets.append(y_offset)
+        x_offsets.append(x_offset)
+  return (tf.constant(y_offsets, dtype=tf.float32),
+          tf.constant(x_offsets, dtype=tf.float32))
+
+
+def get_surrounding_grids(height, width, y_coordinates, x_coordinates, radius):
+  """Gets the indices of the surrounding pixels of the input y, x coordinates.
+
+  This function returns the pixel indices corresponding to the (floor of the)
+  input coordinates and their surrounding pixels within the radius. If the
+  radius is set to 0, then only the pixels that correspond to the floor of the
+  coordinates will be returned. If the radius is larger than 0, then all of the
+  pixels within the radius of the "floor pixels" will also be returned. For
+  example, if the input coorindate is [2.1, 3.5] and radius is 1, then the five
+  pixel indices will be returned: [2, 3], [1, 3], [2, 2], [2, 4], [3, 3]. Also,
+  if the surrounding pixels are outside of valid image region, then the returned
+  pixel indices will be [0, 0] and its corresponding "valid" value will be
+  False.
+
+  Args:
+    height: int, the height of the output image.
+    width: int, the width of the output image.
+    y_coordinates: A tensor with shape [num_points] representing the absolute
+      y-coordinates (in the output image space) of the points.
+    x_coordinates: A tensor with shape [num_points] representing the absolute
+      x-coordinates (in the output image space) of the points.
+    radius: int, the radius of the neighboring pixels to be considered and
+      returned. If set to 0, then only the pixel indices corresponding to the
+      floor of the input coordinates will be returned.
+
+  Returns:
+    A tuple of three tensors:
+      y_indices: A [num_points, num_neighbors] float tensor representing the
+        pixel y indices corresponding to the input points within radius. The
+        "num_neighbors" is determined by the size of the radius.
+      x_indices: A [num_points, num_neighbors] float tensor representing the
+        pixel x indices corresponding to the input points within radius. The
+        "num_neighbors" is determined by the size of the radius.
+      valid: A [num_points, num_neighbors] boolean tensor representing whether
+        each returned index is in valid image region or not.
+  """
+  # Floored y, x: [num_points, 1].
+  y_center = tf.expand_dims(tf.math.floor(y_coordinates), axis=-1)
+  x_center = tf.expand_dims(tf.math.floor(x_coordinates), axis=-1)
+  y_offsets, x_offsets = _get_yx_indices_offset_by_radius(radius)
+  # Indices offsets: [1, num_neighbors].
+  y_offsets = tf.expand_dims(y_offsets, axis=0)
+  x_offsets = tf.expand_dims(x_offsets, axis=0)
+
+  # Floor + offsets: [num_points, num_neighbors].
+  y_output = y_center + y_offsets
+  x_output = x_center + x_offsets
+  default_output = tf.zeros_like(y_output)
+  valid = tf.logical_and(
+      tf.logical_and(x_output >= 0, x_output < width),
+      tf.logical_and(y_output >= 0, y_output < height))
+  y_output = tf.where(valid, y_output, default_output)
+  x_output = tf.where(valid, x_output, default_output)
+  return (y_output, x_output, valid)

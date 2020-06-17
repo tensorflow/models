@@ -19,14 +19,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
 import numpy as np
 from six.moves import range
 import tensorflow.compat.v1 as tf
 import tf_slim as slim
 
 from object_detection.core import batcher
+from object_detection.utils import tf_version
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
 class BatcherTest(tf.test.TestCase):
 
   def test_batch_and_unpad_2d_tensors_of_different_sizes_in_1st_dimension(self):

@@ -52,6 +52,7 @@ from pycocotools import coco
 from pycocotools import cocoeval
 from pycocotools import mask
 
+import six
 from six.moves import range
 from six.moves import zip
 import tensorflow.compat.v1 as tf
@@ -353,7 +354,9 @@ def _RleCompress(masks):
   Returns:
     A pycocotools Run-length encoding of the mask.
   """
-  return mask.encode(np.asfortranarray(masks))
+  rle = mask.encode(np.asfortranarray(masks))
+  rle['counts'] = six.ensure_str(rle['counts'])
+  return rle
 
 
 def ExportSingleImageGroundtruthToCoco(image_id,
