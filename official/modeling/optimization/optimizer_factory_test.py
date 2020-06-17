@@ -259,7 +259,7 @@ class OptimizerFactoryTest(tf.test.TestCase):
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
 
-  def test_stepwise_lr_with_polinomial_warmup_schedule(self):
+  def test_stepwise_lr_with_polynomial_warmup_schedule(self):
     params = {
         'optimizer': {
             'type': 'sgd',

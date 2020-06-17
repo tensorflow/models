@@ -86,23 +86,12 @@ def get_loss_fn(num_classes):
   return classification_loss_fn
 
 
-def get_regression_loss_fn():
-  """Gets the regression loss function."""
-
-  def regression_loss_fn(labels, logits):
-    """Regression loss."""
-    labels = tf.cast(labels, dtype=tf.float32)
-    per_example_loss = tf.math.squared_difference(labels, logits)
-    return tf.reduce_mean(per_example_loss)
-
-  return regression_loss_fn
-
-
 def get_dataset_fn(input_file_pattern,
                    max_seq_length,
                    global_batch_size,
                    is_training,
-                   label_type=tf.int64):
+                   label_type=tf.int64,
+                   include_sample_weights=False):
   """Gets a closure to create a dataset."""
 
   def _dataset_fn(ctx=None):
@@ -115,7 +104,8 @@ def get_dataset_fn(input_file_pattern,
         batch_size,
         is_training=is_training,
         input_pipeline_context=ctx,
-        label_type=label_type)
+        label_type=label_type,
+        include_sample_weights=include_sample_weights)
     return dataset
 
   return _dataset_fn
@@ -135,7 +125,8 @@ def run_bert_classifier(strategy,
                         train_input_fn,
                         eval_input_fn,
                         training_callbacks=True,
-                        custom_callbacks=None):
+                        custom_callbacks=None,
+                        custom_metrics=None):
   """Run BERT classifier training using low-level API."""
   max_seq_length = input_meta_data['max_seq_length']
   num_classes = input_meta_data.get('num_labels', 1)
@@ -160,12 +151,18 @@ def run_bert_classifier(strategy,
         use_graph_rewrite=common_flags.use_graph_rewrite())
     return classifier_model, core_model
 
-  loss_fn = (
-      get_regression_loss_fn() if is_regression else get_loss_fn(num_classes))
+  # tf.keras.losses objects accept optional sample_weight arguments (eg. coming
+  # from the dataset) to compute weighted loss, as used for the regression
+  # tasks. The classification tasks, using the custom get_loss_fn don't accept
+  # sample weights though.
+  loss_fn = (tf.keras.losses.MeanSquaredError() if is_regression
+             else get_loss_fn(num_classes))
 
   # Defines evaluation metrics function, which will create metrics in the
   # correct device and strategy scope.
-  if is_regression:
+  if custom_metrics:
+    metric_fn = custom_metrics
+  elif is_regression:
     metric_fn = functools.partial(
         tf.keras.metrics.MeanSquaredError,
         'mean_squared_error',
@@ -222,10 +219,12 @@ def run_keras_compile_fit(model_dir,
       checkpoint = tf.train.Checkpoint(model=sub_model)
       checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
 
+    if not isinstance(metric_fn, (list, tuple)):
+      metric_fn = [metric_fn]
     bert_model.compile(
         optimizer=optimizer,
         loss=loss_fn,
-        metrics=[metric_fn()],
+        metrics=[fn() for fn in metric_fn],
         experimental_steps_per_execution=steps_per_loop)
 
     summary_dir = os.path.join(model_dir, 'summaries')
@@ -356,7 +355,8 @@ def run_bert(strategy,
              train_input_fn=None,
              eval_input_fn=None,
              init_checkpoint=None,
-             custom_callbacks=None):
+             custom_callbacks=None,
+             custom_metrics=None):
   """Run BERT training."""
   # Enables XLA in Session Config. Should not be set for TPU.
   keras_utils.set_session_config(FLAGS.enable_xla)
@@ -397,7 +397,8 @@ def run_bert(strategy,
       init_checkpoint or FLAGS.init_checkpoint,
       train_input_fn,
       eval_input_fn,
-      custom_callbacks=custom_callbacks)
+      custom_callbacks=custom_callbacks,
+      custom_metrics=custom_metrics)
 
   if FLAGS.model_export_path:
     model_saving_utils.export_bert_model(
@@ -405,17 +406,19 @@ def run_bert(strategy,
   return trained_model
 
 
-def custom_main(custom_callbacks=None):
+def custom_main(custom_callbacks=None, custom_metrics=None):
   """Run classification or regression.
 
   Args:
     custom_callbacks: list of tf.keras.Callbacks passed to training loop.
+    custom_metrics: list of metrics passed to the training loop.
   """
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
 
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
   label_type = LABEL_TYPES_MAP[input_meta_data.get('label_type', 'int')]
+  include_sample_weights = input_meta_data.get('has_sample_weights', False)
 
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'
@@ -436,7 +439,8 @@ def custom_main(custom_callbacks=None):
       input_meta_data['max_seq_length'],
       FLAGS.eval_batch_size,
       is_training=False,
-      label_type=label_type)
+      label_type=label_type,
+      include_sample_weights=include_sample_weights)
 
   if FLAGS.mode == 'predict':
     with strategy.scope():
@@ -470,18 +474,20 @@ def custom_main(custom_callbacks=None):
       input_meta_data['max_seq_length'],
       FLAGS.train_batch_size,
       is_training=True,
-      label_type=label_type)
+      label_type=label_type,
+      include_sample_weights=include_sample_weights)
   run_bert(
       strategy,
       input_meta_data,
       bert_config,
       train_input_fn,
       eval_input_fn,
-      custom_callbacks=custom_callbacks)
+      custom_callbacks=custom_callbacks,
+      custom_metrics=custom_metrics)
 
 
 def main(_):
-  custom_main(custom_callbacks=None)
+  custom_main(custom_callbacks=None, custom_metrics=None)
 
 
 if __name__ == '__main__':

@@ -25,6 +25,7 @@ from typing import List, Optional
 import gin
 import tensorflow as tf
 
+from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 
 
@@ -47,8 +48,8 @@ class BertPretrainer(tf.keras.Model):
     num_token_predictions: Number of tokens to predict from the masked LM.
     embedding_table: Embedding table of a network. If None, the
       "network.get_embedding_table()" is used.
-    activation: The activation (if any) to use in the masked LM and
-      classification networks. If None, no activation will be used.
+    activation: The activation (if any) to use in the masked LM network. If
+      None, no activation will be used.
     initializer: The initializer (if any) to use in the masked LM and
       classification networks. Defaults to a Glorot uniform initializer.
     output: The output style for this network. Can be either 'logits' or
@@ -106,16 +107,16 @@ class BertPretrainer(tf.keras.Model):
         dtype=tf.int32)
     inputs.append(masked_lm_positions)
 
-    self.masked_lm = networks.MaskedLM(
-        num_predictions=num_token_predictions,
-        input_width=sequence_output.shape[-1],
-        source_network=network,
+    if embedding_table is None:
+      embedding_table = self.encoder.get_embedding_table()
+    self.masked_lm = layers.MaskedLM(
         embedding_table=embedding_table,
         activation=activation,
         initializer=initializer,
         output=output,
-        name='masked_lm')
-    lm_outputs = self.masked_lm([sequence_output, masked_lm_positions])
+        name='cls/predictions')
+    lm_outputs = self.masked_lm(
+        sequence_output, masked_positions=masked_lm_positions)
 
     self.classification = networks.Classification(
         input_width=cls_output.shape[-1],
@@ -126,7 +127,9 @@ class BertPretrainer(tf.keras.Model):
     sentence_outputs = self.classification(cls_output)
 
     super(BertPretrainer, self).__init__(
-        inputs=inputs, outputs=[lm_outputs, sentence_outputs], **kwargs)
+        inputs=inputs,
+        outputs=dict(masked_lm=lm_outputs, classification=sentence_outputs),
+        **kwargs)
 
   def get_config(self):
     return self._config
@@ -151,6 +154,8 @@ class BertPretrainerV2(tf.keras.Model):
     num_masked_tokens: Number of tokens to predict from the masked LM.
     encoder_network: A transformer network. This network should output a
       sequence output and a classification output.
+    mlm_activation: The activation (if any) to use in the masked LM network. If
+      None, no activation will be used.
     mlm_initializer: The initializer (if any) to use in the masked LM. Default
       to a Glorot uniform initializer.
     classification_heads: A list of optional head layers to transform on encoder
@@ -166,6 +171,7 @@ class BertPretrainerV2(tf.keras.Model):
       self,
       num_masked_tokens: int,
       encoder_network: tf.keras.Model,
+      mlm_activation=None,
       mlm_initializer='glorot_uniform',
       classification_heads: Optional[List[tf.keras.layers.Layer]] = None,
       name: str = 'bert',
@@ -190,16 +196,18 @@ class BertPretrainerV2(tf.keras.Model):
 
     outputs = dict()
     if num_masked_tokens > 0:
-      self.masked_lm = networks.MaskedLM(
-          num_predictions=num_masked_tokens,
-          input_width=sequence_output.shape[-1],
-          source_network=self.encoder_network,
+      self.masked_lm = layers.MaskedLM(
+          embedding_table=self.encoder_network.get_embedding_table(),
+          activation=mlm_activation,
           initializer=mlm_initializer,
-          name='masked_lm')
-      masked_lm_positions = copy.copy(self.masked_lm.inputs[-1])
+          name='cls/predictions')
+      masked_lm_positions = tf.keras.layers.Input(
+          shape=(num_masked_tokens,),
+          name='masked_lm_positions',
+          dtype=tf.int32)
       inputs.append(masked_lm_positions)
       outputs['lm_output'] = self.masked_lm(
-          [sequence_output, masked_lm_positions])
+          sequence_output, masked_positions=masked_lm_positions)
     for cls_head in self.classification_heads:
       outputs[cls_head.name] = cls_head(sequence_output)
 

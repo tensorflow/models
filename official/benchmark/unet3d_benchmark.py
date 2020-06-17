@@ -32,9 +32,9 @@ from official.vision.segmentation import unet_model as unet_model_lib
 
 UNET3D_MIN_ACCURACY = 0.90
 UNET3D_MAX_ACCURACY = 0.98
-UNET_TRAINING_FILES = 'unet_training_data_files'
-UNET_EVAL_FILES = 'unet_eval_data_files'
-UNET_MODEL_CONFIG_FILE = 'unet_model_config'
+UNET_TRAINING_FILES = 'gs://mlcompass-data/unet3d/train_data/*'
+UNET_EVAL_FILES = 'gs://mlcompass-data/unet3d/eval_data/*'
+UNET_MODEL_CONFIG_FILE = 'gs://mlcompass-data/unet3d/config/unet_config.yaml'
 
 FLAGS = flags.FLAGS
 

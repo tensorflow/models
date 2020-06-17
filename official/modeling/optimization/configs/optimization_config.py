@@ -76,7 +76,7 @@ class WarmupConfig(oneof.OneOfConfig):
   """
   type: Optional[str] = None
   linear: lr_cfg.LinearWarmupConfig = lr_cfg.LinearWarmupConfig()
-  polynomial: lr_cfg.PolinomialWarmupConfig = lr_cfg.PolinomialWarmupConfig()
+  polynomial: lr_cfg.PolynomialWarmupConfig = lr_cfg.PolynomialWarmupConfig()
 
 
 @dataclasses.dataclass

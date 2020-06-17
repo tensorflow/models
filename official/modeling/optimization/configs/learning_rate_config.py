@@ -146,17 +146,17 @@ class LinearWarmupConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class PolinomialWarmupConfig(base_config.Config):
+class PolynomialWarmupConfig(base_config.Config):
   """Configuration for linear warmup schedule config.
 
-  This class is a container for the polinomial warmup schedule configs.
+  This class is a container for the polynomial warmup schedule configs.
 
   Attributes:
-    name: The name of warmup schedule. Defaults to Polinomial.
-    power: Polinomial power. Defaults to 1.
+    name: The name of warmup schedule. Defaults to Polynomial.
+    power: Polynomial power. Defaults to 1.
     warmup_steps: Warmup steps. Defaults to None.
   """
-  name: str = 'polinomial'
+  name: str = 'polynomial'
   power: float = 1
   warmup_steps: Optional[int] = None
 

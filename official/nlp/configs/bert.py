@@ -49,10 +49,10 @@ class BertPretrainerConfig(base_config.Config):
 
 def instantiate_from_cfg(
     config: BertPretrainerConfig,
-    encoder_network: Optional[tf.keras.layers.Layer] = None):
+    encoder_network: Optional[tf.keras.Model] = None):
   """Instantiates a BertPretrainer from the config."""
+  encoder_cfg = config.encoder
   if encoder_network is None:
-    encoder_cfg = config.encoder
     encoder_network = networks.TransformerEncoder(
         vocab_size=encoder_cfg.vocab_size,
         hidden_size=encoder_cfg.hidden_size,
@@ -74,6 +74,7 @@ def instantiate_from_cfg(
     classification_heads = []
   return bert_pretrainer.BertPretrainerV2(
       config.num_masked_tokens,
+      mlm_activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
       encoder_network=encoder_network,
@@ -98,3 +99,22 @@ class BertPretrainEvalDataConfig(BertPretrainDataConfig):
   input_path: str = ""
   global_batch_size: int = 512
   is_training: bool = False
+
+
+@dataclasses.dataclass
+class BertSentencePredictionDataConfig(cfg.DataConfig):
+  """Data of sentence prediction dataset."""
+  input_path: str = ""
+  global_batch_size: int = 32
+  is_training: bool = True
+  seq_length: int = 128
+
+
+@dataclasses.dataclass
+class BertSentencePredictionDevDataConfig(cfg.DataConfig):
+  """Dev data of MNLI sentence prediction dataset."""
+  input_path: str = ""
+  global_batch_size: int = 32
+  is_training: bool = False
+  seq_length: int = 128
+  drop_remainder: bool = False

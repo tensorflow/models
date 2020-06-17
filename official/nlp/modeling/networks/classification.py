@@ -63,7 +63,13 @@ class Classification(tf.keras.Model):
         kernel_initializer=initializer,
         name='predictions/transform/logits')(
             cls_output)
-    predictions = tf.keras.layers.Activation(tf.nn.log_softmax)(self.logits)
+
+    policy = tf.keras.mixed_precision.experimental.global_policy()
+    if policy.name == 'mixed_bfloat16':
+      # b/158514794: bf16 is not stable with post-softmax cross-entropy.
+      policy = tf.float32
+    predictions = tf.keras.layers.Activation(tf.nn.log_softmax,
+                                             dtype=policy)(self.logits)
 
     if output == 'logits':
       output_tensors = self.logits

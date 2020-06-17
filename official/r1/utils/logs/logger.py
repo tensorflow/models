@@ -25,7 +25,6 @@ from __future__ import print_function
 import contextlib
 import datetime
 import json
-import multiprocessing
 import numbers
 import os
 import threading
@@ -220,7 +219,6 @@ def _gather_run_info(model_name, dataset_name, run_params, test_id):
   _collect_tensorflow_info(run_info)
   _collect_tensorflow_environment_variables(run_info)
   _collect_run_params(run_info, run_params)
-  _collect_cpu_info(run_info)
   _collect_memory_info(run_info)
   _collect_test_environment(run_info)
   return run_info
@@ -270,28 +268,6 @@ def _collect_tensorflow_environment_variables(run_info):
   run_info["tensorflow_environment_variables"] = [
       {"name": k, "value": v}
       for k, v in sorted(os.environ.items()) if k.startswith("TF_")]
-
-
-# The following code is mirrored from tensorflow/tools/test/system_info_lib
-# which is not exposed for import.
-def _collect_cpu_info(run_info):
-  """Collect the CPU information for the local environment."""
-  cpu_info = {}
-
-  cpu_info["num_cores"] = multiprocessing.cpu_count()
-
-  try:
-    # Note: cpuinfo is not installed in the TensorFlow OSS tree.
-    # It is installable via pip.
-    import cpuinfo    # pylint: disable=g-import-not-at-top
-
-    info = cpuinfo.get_cpu_info()
-    cpu_info["cpu_info"] = info["brand"]
-    cpu_info["mhz_per_cpu"] = info["hz_advertised_raw"][0] / 1.0e6
-
-    run_info["machine_config"]["cpu_info"] = cpu_info
-  except ImportError:
-    logging.warn("'cpuinfo' not imported. CPU info will not be logged.")
 
 
 def _collect_memory_info(run_info):

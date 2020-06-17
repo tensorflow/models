@@ -29,7 +29,6 @@ from __future__ import print_function
 import functools
 import tensorflow.compat.v1 as tf
 
-from tensorflow.contrib import data as tf_data
 from object_detection.builders import decoder_builder
 from object_detection.protos import input_reader_pb2
 
@@ -94,7 +93,7 @@ def read_dataset(file_read_func, input_files, config,
 
   filename_dataset = filename_dataset.repeat(config.num_epochs or None)
   records_dataset = filename_dataset.apply(
-      tf_data.parallel_interleave(
+      tf.data.experimental.parallel_interleave(
           file_read_func,
           cycle_length=num_readers,
           block_length=config.read_block_length,
@@ -153,6 +152,30 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None,
     if not config.input_path:
       raise ValueError('At least one input path must be specified in '
                        '`input_reader_config`.')
+    def dataset_map_fn(dataset, fn_to_map, batch_size=None,
+                       input_reader_config=None):
+      """Handles whether or not to use the legacy map function.
+
+      Args:
+        dataset: A tf.Dataset.
+        fn_to_map: The function to be mapped for that dataset.
+        batch_size: Batch size. If batch size is None, no batching is performed.
+        input_reader_config: A input_reader_pb2.InputReader object.
+
+      Returns:
+        A tf.data.Dataset mapped with fn_to_map.
+      """
+      if hasattr(dataset, 'map_with_legacy_function'):
+        if batch_size:
+          num_parallel_calls = batch_size * (
+              input_reader_config.num_parallel_batches)
+        else:
+          num_parallel_calls = input_reader_config.num_parallel_map_calls
+        dataset = dataset.map_with_legacy_function(
+            fn_to_map, num_parallel_calls=num_parallel_calls)
+      else:
+        dataset = dataset.map(fn_to_map, tf.data.experimental.AUTOTUNE)
+      return dataset
     shard_fn = shard_function_for_context(input_context)
     if input_context is not None:
       batch_size = input_context.get_per_replica_batch_size(batch_size)
@@ -163,15 +186,16 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None,
       dataset = dataset.shard(input_reader_config.sample_1_of_n_examples, 0)
     # TODO(rathodv): make batch size a required argument once the old binaries
     # are deleted.
-    dataset = dataset.map(decoder.decode, tf.data.experimental.AUTOTUNE)
+    dataset = dataset_map_fn(dataset, decoder.decode, batch_size,
+                             input_reader_config)
     if reduce_to_frame_fn:
-      dataset = reduce_to_frame_fn(dataset)
+      dataset = reduce_to_frame_fn(dataset, dataset_map_fn, batch_size,
+                                   input_reader_config)
     if transform_input_data_fn is not None:
-      dataset = dataset.map(transform_input_data_fn,
-                            tf.data.experimental.AUTOTUNE)
+      dataset = dataset_map_fn(dataset, transform_input_data_fn,
+                               batch_size, input_reader_config)
     if batch_size:
-      dataset = dataset.apply(
-          tf_data.batch_and_drop_remainder(batch_size))
+      dataset = dataset.batch(batch_size, drop_remainder=True)
     dataset = dataset.prefetch(input_reader_config.num_prefetch_batches)
     return dataset
 

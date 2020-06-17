@@ -20,6 +20,7 @@ from __future__ import print_function
 
 from typing import Any, List, Mapping
 
+import numpy as np
 import tensorflow as tf
 
 BASE_LEARNING_RATE = 0.1
@@ -117,4 +118,47 @@ class PiecewiseConstantDecayWithWarmup(
         "step_boundaries": self._step_boundaries,
         "lr_values": self._lr_values,
         "warmup_steps": self._warmup_steps,
+    }
+
+
+class CosineDecayWithWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
+  """Class to generate learning rate tensor."""
+
+  def __init__(self, batch_size: int, total_steps: int, warmup_steps: int):
+    """Creates the consine learning rate tensor with linear warmup.
+
+    Args:
+      batch_size: The training batch size used in the experiment.
+      total_steps: Total training steps.
+      warmup_steps: Steps for the warm up period.
+    """
+    super(CosineDecayWithWarmup, self).__init__()
+    base_lr_batch_size = 256
+    self._total_steps = total_steps
+    self._init_learning_rate = BASE_LEARNING_RATE * batch_size / base_lr_batch_size
+    self._warmup_steps = warmup_steps
+
+  def __call__(self, global_step: int):
+    global_step = tf.cast(global_step, dtype=tf.float32)
+    warmup_steps = self._warmup_steps
+    init_lr = self._init_learning_rate
+    total_steps = self._total_steps
+
+    linear_warmup = global_step / warmup_steps * init_lr
+
+    cosine_learning_rate = init_lr * (tf.cos(np.pi *
+                                             (global_step - warmup_steps) /
+                                             (total_steps - warmup_steps)) +
+                                      1.0) / 2.0
+
+    learning_rate = tf.where(global_step < warmup_steps, linear_warmup,
+                             cosine_learning_rate)
+    return learning_rate
+
+  def get_config(self):
+    return {
+        "total_steps": self._total_steps,
+        "warmup_learning_rate": self._warmup_learning_rate,
+        "warmup_steps": self._warmup_steps,
+        "init_learning_rate": self._init_learning_rate,
     }

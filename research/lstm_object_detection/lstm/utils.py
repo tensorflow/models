@@ -120,6 +120,8 @@ def quantizable_separable_conv2d(inputs,
                                  stride=1,
                                  activation_fn=tf.nn.relu6,
                                  normalizer_fn=None,
+                                 weights_initializer=None,
+                                 pointwise_initializer=None,
                                  scope=None):
   """Quantization friendly backward compatible separable conv2d.
 
@@ -145,6 +147,8 @@ def quantizable_separable_conv2d(inputs,
     activation_fn: Activation function. The default value is a ReLU function.
       Explicitly set it to None to skip it and maintain a linear activation.
     normalizer_fn: Normalization function to use instead of biases.
+    weights_initializer: An initializer for the depthwise weights.
+    pointwise_initializer: An initializer for the pointwise weights.
     scope: Optional scope for variable_scope.
 
   Returns:
@@ -160,6 +164,8 @@ def quantizable_separable_conv2d(inputs,
         activation_fn=None,
         normalizer_fn=None,
         biases_initializer=None,
+        weights_initializer=weights_initializer,
+        pointwise_initializer=None,
         scope=scope)
     outputs = contrib_layers.bias_add(
         outputs, trainable=True, scope='%s_bias' % scope)
@@ -169,6 +175,7 @@ def quantizable_separable_conv2d(inputs,
         activation_fn=activation_fn,
         stride=stride,
         normalizer_fn=normalizer_fn,
+        weights_initializer=pointwise_initializer,
         scope=scope)
   else:
     outputs = contrib_layers.separable_conv2d(
@@ -179,6 +186,8 @@ def quantizable_separable_conv2d(inputs,
         stride=stride,
         activation_fn=activation_fn,
         normalizer_fn=normalizer_fn,
+        weights_initializer=weights_initializer,
+        pointwise_initializer=pointwise_initializer,
         scope=scope)
   return outputs
 

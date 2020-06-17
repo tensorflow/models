@@ -41,12 +41,13 @@ class BatchTimestamp(object):
 class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
 
-  def __init__(self, batch_size, log_steps, logdir=None):
+  def __init__(self, batch_size, log_steps, initial_step=0, logdir=None):
     """Callback for logging performance.
 
     Args:
       batch_size: Total batch size.
       log_steps: Interval of steps between logging of batch level stats.
+      initial_step: Optional, initial step.
       logdir: Optional directory to write TensorBoard summaries.
     """
     # TODO(wcromar): remove this parameter and rely on `logs` parameter of
@@ -54,8 +55,8 @@ class TimeHistory(tf.keras.callbacks.Callback):
     self.batch_size = batch_size
     super(TimeHistory, self).__init__()
     self.log_steps = log_steps
-    self.last_log_step = 0
-    self.steps_before_epoch = 0
+    self.last_log_step = initial_step
+    self.steps_before_epoch = initial_step
     self.steps_in_epoch = 0
     self.start_time = None
 
@@ -84,6 +85,18 @@ class TimeHistory(tf.keras.callbacks.Callback):
   def average_examples_per_second(self):
     """The average number of training examples per second across all epochs."""
     return self.average_steps_per_second * self.batch_size
+
+  def get_examples_per_sec(self, warmup=1):
+    """Calculates examples/sec through timestamp_log and skip warmup period."""
+    # First entry in timestamp_log is the start of the step 1. The rest of the
+    # entries are the end of each step recorded.
+    time_log = self.timestamp_log
+    seconds = time_log[-1].timestamp - time_log[warmup].timestamp
+    steps = time_log[-1].batch_index - time_log[warmup].batch_index
+    return self.batch_size * steps / seconds
+
+  def get_startup_time(self, start_time_sec):
+    return self.timestamp_log[0].timestamp - start_time_sec
 
   def on_train_end(self, logs=None):
     self.train_finish_time = time.time()
@@ -121,9 +134,9 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
       if self.summary_writer:
         with self.summary_writer.as_default():
-          tf.summary.scalar('global_step/sec', steps_per_second,
+          tf.summary.scalar('steps_per_second', steps_per_second,
                             self.global_steps)
-          tf.summary.scalar('examples/sec', examples_per_second,
+          tf.summary.scalar('examples_per_second', examples_per_second,
                             self.global_steps)
 
       self.last_log_step = self.global_steps
