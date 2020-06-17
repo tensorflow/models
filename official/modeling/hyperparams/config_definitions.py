@@ -162,6 +162,21 @@ class CallbacksConfig(base_config.Config):
 
 @dataclasses.dataclass
 class TrainerConfig(base_config.Config):
+  """Configuration for trainer.
+
+  Attributes:
+    optimizer_config: optimizer config, it includes optimizer, learning rate,
+      and warmup schedule configs.
+    train_tf_while_loop: whether or not to use tf while loop.
+    train_tf_function: whether or not to use tf_function for training loop.
+    eval_tf_function: whether or not to use tf_function for eval.
+    steps_per_loop: number of steps per loop.
+    summary_interval: number of steps between each summary.
+    checkpoint_intervals: number of steps between checkpoints.
+    max_to_keep: max checkpoints to keep.
+    continuous_eval_timeout: maximum number of seconds to wait between
+      checkpoints, if set to None, continuous eval will wait indefinetely.
+  """
   optimizer_config: OptimizationConfig = OptimizationConfig()
   train_tf_while_loop: bool = True
   train_tf_function: bool = True
@@ -170,6 +185,7 @@ class TrainerConfig(base_config.Config):
   summary_interval: int = 1000
   checkpoint_interval: int = 1000
   max_to_keep: int = 5
+  continuous_eval_timeout: Optional[int] = None
 
 
 @dataclasses.dataclass
