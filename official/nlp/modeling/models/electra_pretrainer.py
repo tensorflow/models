@@ -19,9 +19,9 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
+import sys
 import copy
 import tensorflow as tf
-import sys
 from official.nlp.modeling import networks
 from official.modeling import tf_utils
 
@@ -103,12 +103,16 @@ class ElectraPretrainer(tf.keras.Model):
         initializer=initializer,
         output='logits',
         name='generator')
-    lm_outputs = tf.identity(self.masked_lm([sequence_output, masked_lm_positions]), "mlm_logits")
+    lm_outputs = tf.identity(
+        self.masked_lm([sequence_output, masked_lm_positions]),
+        "mlm_logits")
 
     #Generates fake data to train discriminator on
-    fake_data, labels = _get_fake_data(inputs[0], lm_outputs, masked_lm_positions)
+    fake_data, labels = _get_fake_data(inputs[0],
+                                       lm_outputs, masked_lm_positions)
 
-    other_output, other_cls_output = discriminator([fake_data, inputs[1], inputs[2]])
+    other_output, other_cls_output = discriminator([fake_data,
+                                                    inputs[1], inputs[2]])
     self.discrimnator = networks.Discriminator(
         input_width=other_output.shape[-1],
         source_network=discriminator,
@@ -129,31 +133,68 @@ class ElectraPretrainer(tf.keras.Model):
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
 
-
 def _get_fake_data(orig_sent, predictions, maskedlm_ids):
-  tokids = tf.stop_gradient(tf.math.argmax(predictions, axis=-1, output_type=tf.dtypes.int32))
-  updatedids, mask = _scatter_update(orig_sent, maskedlm_ids, tokids)
-  labels = mask * (1 - tf.cast(tf.equal(orig_sent, updatedids), tf.int32))
-  return updatedids, labels
+  """Gets the corrupted sentence from generator outputs
+
+  Args:
+    orig_sent: A [batch_size, seq_length] or
+        [batch_size, seq_length, depth] tensor of values
+    predictions: A [batch_size, seq_length, vocab_size]
+        or [batch_size, seq_length, depth, vocab_size] tensor from the generator
+    maskedlm_ids: A [batch_size, n_positions] tensor of indices
+
+  Returns:
+     updatedids: A [batch_size, seq_length] or
+        [batch_size, seq_length, depth] tensor that is the corrupted sentence
+    labels: A tensor that is the same size as updatedids
+
+  """
+  tokids = tf.stop_gradient(tf.math.argmax(predictions, axis=-1,
+                                           output_type=tf.dtypes.int32))
+  updated_ids, mask = _scatter_update(orig_sent, maskedlm_ids, tokids)
+  labels = mask * (1 - tf.cast(tf.equal(orig_sent, updated_ids), tf.int32))
+  return updated_ids, labels
+
 def _scatter_update(orig_sent, maskedlm_ids, tokids):
+    """Returns a sentence that replaces certain masked words
+        with words that generator deems likely
+
+    Args:
+      orig_sent: A [batch_size, seq_length] or
+          [batch_size, seq_length, depth] tensor of values
+      maskedlm_ids: A [batch_size, n_positions] tensor of indices
+      tokids: A [batch_size, seq_length]
+          or [batch_size, seq_length, depth] tensor
+          that represents the most likely word at each position
+
+    Returns:
+       updated_sequence: a [batch_size, seq_len, depth] that
+           represents the corrupted sentence
+       updates_mask: a [batch_size, seq_len] tensor of
+           which tokens have been masked
+
+    """
+
     sequence_shape = tf_utils.get_shape_list(
         orig_sent, name='input_word_ids')
-    B, L = sequence_shape
-    N = maskedlm_ids.shape[1]
-    shift = tf.reshape(tf.range(0, B, dtype=tf.int32) * L, [-1, 1])
+    batch, seq_length = sequence_shape
+    positions = maskedlm_ids.shape[1]
+    shift = tf.reshape(tf.range(0, batch, dtype=tf.int32) * seq_length, [-1, 1])
     flat_positions = tf.reshape(maskedlm_ids+shift, [-1, 1])
     flat_updates = tf.reshape(tokids, [-1])
-    updates = tf.scatter_nd(flat_positions, flat_updates, [B * L])
-    updates = tf.reshape(updates, [B, L])
+    updates = tf.scatter_nd(flat_positions, flat_updates, [batch * seq_length])
+    updates = tf.reshape(updates, [batch, seq_length])
 
-    flat_updates_mask = tf.ones([B * N], tf.int32)
-    updates_mask = tf.scatter_nd(flat_positions, flat_updates_mask, [B * L])
-    updates_mask = tf.reshape(updates_mask, [B, L])
-    not_first_token = tf.concat([tf.zeros((B, 1), tf.int32),
-                                 tf.ones((B, L - 1), tf.int32, name="otherones")], -1)
+    flat_updates_mask = tf.ones([batch * positions], tf.int32)
+    updates_mask = tf.scatter_nd(flat_positions, flat_updates_mask,
+                                 [batch * seq_length])
+    updates_mask = tf.reshape(updates_mask, [batch, seq_length])
+    not_first_token = tf.concat([tf.zeros((batch, 1), tf.int32),
+                                 tf.ones((batch, seq_length - 1),
+                                         tf.int32, name="otherones")], -1)
     updates_mask *= not_first_token
     updates = tf.math.floordiv(updates, tf.maximum(1, updates_mask))
-    updates_mask = tf.minimum(updates_mask, 1, name = 'updates_mask')
+    updates_mask = tf.minimum(updates_mask, 1, name='updates_mask')
     updated_sequence = (((1 - updates_mask) * orig_sent) +
                         (updates_mask * updates))
     return updated_sequence, updates_mask
