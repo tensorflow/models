@@ -289,7 +289,30 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
   #       return feature_maps
 
   def get_box_classifier_feature_extractor_model(self, name=None):
+    """Returns a model that extracts second stage box classifier features.
 
+    TODO: doc
+
+    Args:
+      name: A scope name to construct all variables within.
+
+    Returns:
+      A Keras model that takes proposal_feature_maps:
+        A 4-D float tensor with shape
+        [batch_size * self.max_num_proposals, crop_height, crop_width, depth]
+        representing the feature map cropped to each proposal.
+      And returns proposal_classifier_features:
+        A 4-D float tensor with shape
+        [batch_size * self.max_num_proposals, height, width, depth]
+        representing box classifier features for each proposal.
+    """
+    with tf.name_scope(name):
+      with tf.name_scope('ResnetV1FPN'):
+        feature_extractor_model = tf.keras.models.Sequential([
+          Dense(unit=1024, activation='ReLU'),
+          Dense(unit=1024, activation='ReLU')
+        ])
+        return feature_extractor_model
 
 
 class FasterRCNNResnet50FPNKerasFeatureExtractor(
