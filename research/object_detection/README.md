@@ -48,7 +48,7 @@ Setup:
 
 Quick Start:
 
-  * <a href='object_detection_tutorial.ipynb'>
+  * <a href='colab_tutorials/object_detection_tutorial.ipynb'>
       Quick Start: Jupyter notebook for off-the-shelf inference</a><br>
   * <a href="g3doc/running_pets.md">Quick Start: Training a pet detector</a><br>
 
