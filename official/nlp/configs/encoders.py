@@ -34,7 +34,7 @@ class TransformerEncoderConfig(base_config.Config):
   num_layers: int = 12
   num_attention_heads: int = 12
   hidden_activation: str = "gelu"
-  intermediate_size: int = 3076
+  intermediate_size: int = 3072
   dropout_rate: float = 0.1
   attention_dropout_rate: float = 0.1
   max_position_embeddings: int = 512
