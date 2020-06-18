@@ -198,7 +198,6 @@ class TaskConfig(base_config.Config):
 @dataclasses.dataclass
 class ExperimentConfig(base_config.Config):
   """Top-level configuration."""
-  mode: str = "train"  # train, eval, train_and_eval.
   task: TaskConfig = TaskConfig()
   trainer: TrainerConfig = TrainerConfig()
   runtime: RuntimeConfig = RuntimeConfig()
