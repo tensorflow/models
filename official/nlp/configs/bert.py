@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""A multi-head BERT encoder network for pretraining."""
+"""Multi-head BERT encoder network with classification heads.
+
+Includes configurations and instantiation methods.
+"""
 from typing import List, Optional, Text
 
 import dataclasses
@@ -24,7 +27,6 @@ from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
 from official.nlp.modeling import layers
-from official.nlp.modeling import networks
 from official.nlp.modeling.models import bert_pretrainer
 
 
@@ -47,43 +49,34 @@ class BertPretrainerConfig(base_config.Config):
   cls_heads: List[ClsHeadConfig] = dataclasses.field(default_factory=list)
 
 
-def instantiate_from_cfg(
+def instantiate_classification_heads_from_cfgs(
+    cls_head_configs: List[ClsHeadConfig]) -> List[layers.ClassificationHead]:
+  return [
+      layers.ClassificationHead(**cfg.as_dict()) for cfg in cls_head_configs
+    ] if cls_head_configs else []
+
+
+def instantiate_bertpretrainer_from_cfg(
     config: BertPretrainerConfig,
-    encoder_network: Optional[tf.keras.Model] = None):
+    encoder_network: Optional[tf.keras.Model] = None
+    ) -> bert_pretrainer.BertPretrainerV2:
   """Instantiates a BertPretrainer from the config."""
   encoder_cfg = config.encoder
   if encoder_network is None:
-    encoder_network = networks.TransformerEncoder(
-        vocab_size=encoder_cfg.vocab_size,
-        hidden_size=encoder_cfg.hidden_size,
-        num_layers=encoder_cfg.num_layers,
-        num_attention_heads=encoder_cfg.num_attention_heads,
-        intermediate_size=encoder_cfg.intermediate_size,
-        activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
-        dropout_rate=encoder_cfg.dropout_rate,
-        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
-        max_sequence_length=encoder_cfg.max_position_embeddings,
-        type_vocab_size=encoder_cfg.type_vocab_size,
-        initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=encoder_cfg.initializer_range))
-  if config.cls_heads:
-    classification_heads = [
-        layers.ClassificationHead(**cfg.as_dict()) for cfg in config.cls_heads
-    ]
-  else:
-    classification_heads = []
+    encoder_network = encoders.instantiate_encoder_from_cfg(encoder_cfg)
   return bert_pretrainer.BertPretrainerV2(
       config.num_masked_tokens,
       mlm_activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
       encoder_network=encoder_network,
-      classification_heads=classification_heads)
+      classification_heads=instantiate_classification_heads_from_cfgs(
+          config.cls_heads))
 
 
 @dataclasses.dataclass
 class BertPretrainDataConfig(cfg.DataConfig):
-  """Data config for BERT pretraining task."""
+  """Data config for BERT pretraining task (tasks/masked_lm)."""
   input_path: str = ""
   global_batch_size: int = 512
   is_training: bool = True
@@ -95,15 +88,15 @@ class BertPretrainDataConfig(cfg.DataConfig):
 
 @dataclasses.dataclass
 class BertPretrainEvalDataConfig(BertPretrainDataConfig):
-  """Data config for the eval set in BERT pretraining task."""
+  """Data config for the eval set in BERT pretraining task (tasks/masked_lm)."""
   input_path: str = ""
   global_batch_size: int = 512
   is_training: bool = False
 
 
 @dataclasses.dataclass
-class BertSentencePredictionDataConfig(cfg.DataConfig):
-  """Data of sentence prediction dataset."""
+class SentencePredictionDataConfig(cfg.DataConfig):
+  """Data config for sentence prediction task (tasks/sentence_prediction)."""
   input_path: str = ""
   global_batch_size: int = 32
   is_training: bool = True
@@ -111,10 +104,29 @@ class BertSentencePredictionDataConfig(cfg.DataConfig):
 
 
 @dataclasses.dataclass
-class BertSentencePredictionDevDataConfig(cfg.DataConfig):
-  """Dev data of MNLI sentence prediction dataset."""
+class SentencePredictionDevDataConfig(cfg.DataConfig):
+  """Dev Data config for sentence prediction (tasks/sentence_prediction)."""
   input_path: str = ""
   global_batch_size: int = 32
   is_training: bool = False
   seq_length: int = 128
+  drop_remainder: bool = False
+
+
+@dataclasses.dataclass
+class QADataConfig(cfg.DataConfig):
+  """Data config for question answering task (tasks/question_answering)."""
+  input_path: str = ""
+  global_batch_size: int = 48
+  is_training: bool = True
+  seq_length: int = 384
+
+
+@dataclasses.dataclass
+class QADevDataConfig(cfg.DataConfig):
+  """Dev Data config for queston answering (tasks/question_answering)."""
+  input_path: str = ""
+  global_batch_size: int = 48
+  is_training: bool = False
+  seq_length: int = 384
   drop_remainder: bool = False

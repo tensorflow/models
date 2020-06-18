@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Sentence prediction (classification) task."""
+"""Question answering task."""
 import logging
 import dataclasses
 import tensorflow as tf
@@ -21,40 +21,35 @@ import tensorflow_hub as hub
 
 from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
-from official.nlp.configs import bert
-from official.nlp.data import sentence_prediction_dataloader
-from official.nlp.modeling import losses as loss_lib
+from official.nlp.bert import input_pipeline
+from official.nlp.configs import encoders
+from official.nlp.modeling import models
 
 
 @dataclasses.dataclass
-class SentencePredictionConfig(cfg.TaskConfig):
+class QuestionAnsweringConfig(cfg.TaskConfig):
   """The model config."""
-  # At most one of `init_checkpoint` and `hub_module_url` can
-  # be specified.
+  # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
-  network: bert.BertPretrainerConfig = bert.BertPretrainerConfig(
-      num_masked_tokens=0,  # No masked language modeling head.
-      cls_heads=[
-          bert.ClsHeadConfig(
-              inner_dim=768,
-              num_classes=3,
-              dropout_rate=0.1,
-              name='sentence_prediction')
-      ])
+  network: encoders.TransformerEncoderConfig = (
+      encoders.TransformerEncoderConfig())
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@base_task.register_task_cls(SentencePredictionConfig)
-class SentencePredictionTask(base_task.Task):
-  """Task object for sentence_prediction."""
+@base_task.register_task_cls(QuestionAnsweringConfig)
+class QuestionAnsweringTask(base_task.Task):
+  """Task object for question answering.
+
+  TODO(lehou): Add post-processing.
+  """
 
   def __init__(self, params=cfg.TaskConfig):
-    super(SentencePredictionTask, self).__init__(params)
+    super(QuestionAnsweringTask, self).__init__(params)
     if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
-                       '`pretrain_checkpoint_dir` can be specified.')
+                       '`init_checkpoint` can be specified.')
     if params.hub_module_url:
       self._hub_module = hub.load(params.hub_module_url)
     else:
@@ -62,6 +57,7 @@ class SentencePredictionTask(base_task.Task):
 
   def build_model(self):
     if self._hub_module:
+      # TODO(lehou): maybe add the hub_module building logic to a util function.
       input_word_ids = tf.keras.layers.Input(
           shape=(None,), dtype=tf.int32, name='input_word_ids')
       input_mask = tf.keras.layers.Input(
@@ -71,35 +67,47 @@ class SentencePredictionTask(base_task.Task):
       bert_model = hub.KerasLayer(self._hub_module, trainable=True)
       pooled_output, sequence_output = bert_model(
           [input_word_ids, input_mask, input_type_ids])
-      encoder_from_hub = tf.keras.Model(
+      encoder_network = tf.keras.Model(
           inputs=[input_word_ids, input_mask, input_type_ids],
           outputs=[sequence_output, pooled_output])
-      return bert.instantiate_bertpretrainer_from_cfg(
-          self.task_config.network, encoder_network=encoder_from_hub)
     else:
-      return bert.instantiate_bertpretrainer_from_cfg(self.task_config.network)
+      encoder_network = encoders.instantiate_encoder_from_cfg(
+          self.task_config.network)
+
+    return models.BertSpanLabeler(
+        network=encoder_network,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=self.task_config.network.initializer_range))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
-        labels=labels,
-        predictions=tf.nn.log_softmax(
-            model_outputs['sentence_prediction'], axis=-1))
+    start_positions = labels['start_positions']
+    end_positions = labels['end_positions']
+    start_logits, end_logits = model_outputs
 
-    if aux_losses:
-      loss += tf.add_n(aux_losses)
+    start_loss = tf.keras.losses.sparse_categorical_crossentropy(
+        start_positions,
+        tf.cast(start_logits, dtype=tf.float32),
+        from_logits=True)
+    end_loss = tf.keras.losses.sparse_categorical_crossentropy(
+        end_positions,
+        tf.cast(end_logits, dtype=tf.float32),
+        from_logits=True)
+
+    loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
     return loss
 
   def build_inputs(self, params, input_context=None):
     """Returns tf.data.Dataset for sentence_prediction task."""
     if params.input_path == 'dummy':
-
       def dummy_data(_):
         dummy_ids = tf.zeros((1, params.seq_length), dtype=tf.int32)
         x = dict(
             input_word_ids=dummy_ids,
             input_mask=dummy_ids,
             input_type_ids=dummy_ids)
-        y = tf.ones((1, 1), dtype=tf.int32)
+        y = dict(
+            start_positions=tf.constant(0, dtype=tf.int32),
+            end_positions=tf.constant(1, dtype=tf.int32))
         return (x, y)
 
       dataset = tf.data.Dataset.range(1)
@@ -108,20 +116,41 @@ class SentencePredictionTask(base_task.Task):
           dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       return dataset
 
-    return sentence_prediction_dataloader.SentencePredictionDataLoader(
-        params).load(input_context)
+    batch_size = input_context.get_per_replica_batch_size(
+        params.global_batch_size) if input_context else params.global_batch_size
+    # TODO(chendouble): add and use nlp.data.question_answering_dataloader.
+    dataset = input_pipeline.create_squad_dataset(
+        params.input_path,
+        params.seq_length,
+        batch_size,
+        is_training=params.is_training,
+        input_pipeline_context=input_context)
+    return dataset
 
   def build_metrics(self, training=None):
     del training
-    metrics = [tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy')]
+    # TODO(lehou): a list of metrics doesn't work the same as in compile/fit.
+    metrics = [
+        tf.keras.metrics.SparseCategoricalAccuracy(
+            name='start_position_accuracy'),
+        tf.keras.metrics.SparseCategoricalAccuracy(
+            name='end_position_accuracy'),
+    ]
     return metrics
 
   def process_metrics(self, metrics, labels, model_outputs):
-    for metric in metrics:
-      metric.update_state(labels, model_outputs['sentence_prediction'])
+    metrics = dict([(metric.name, metric) for metric in metrics])
+    start_logits, end_logits = model_outputs
+    metrics['start_position_accuracy'].update_state(
+        labels['start_positions'], start_logits)
+    metrics['end_position_accuracy'].update_state(
+        labels['end_positions'], end_logits)
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    compiled_metrics.update_state(labels, model_outputs['sentence_prediction'])
+    start_logits, end_logits = model_outputs
+    compiled_metrics.update_state(
+        y_true=labels,  # labels has keys 'start_positions' and 'end_positions'.
+        y_pred={'start_positions': start_logits, 'end_positions': end_logits})
 
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""
@@ -131,13 +160,7 @@ class SentencePredictionTask(base_task.Task):
     if not ckpt_dir_or_file:
       return
 
-    pretrain2finetune_mapping = {
-        'encoder':
-            model.checkpoint_items['encoder'],
-        'next_sentence.pooler_dense':
-            model.checkpoint_items['sentence_prediction.pooler_dense'],
-    }
-    ckpt = tf.train.Checkpoint(**pretrain2finetune_mapping)
+    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
     status = ckpt.restore(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
     logging.info('finished loading pretrained checkpoint from %s',
