@@ -83,7 +83,7 @@ class SentencePredictionTask(base_task.Task):
     loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
         labels=labels,
         predictions=tf.nn.log_softmax(
-            model_outputs['sentence_prediction'], axis=-1))
+            tf.cast(model_outputs['sentence_prediction'], tf.float32), axis=-1))
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
