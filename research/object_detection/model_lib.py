@@ -23,8 +23,8 @@ import functools
 import os
 
 import tensorflow.compat.v1 as tf
+import tensorflow.compat.v2 as tf2
 import tf_slim as slim
-
 
 from object_detection import eval_util
 from object_detection import exporter as exporter_lib
@@ -349,7 +349,7 @@ def create_model_fn(detection_model_fn, configs, hparams, use_tpu=False,
       from tensorflow.python.keras.engine import base_layer_utils  # pylint: disable=g-import-not-at-top
       # Enable v2 behavior, as `mixed_bfloat16` is only supported in TF 2.0.
       base_layer_utils.enable_v2_dtype_behavior()
-      tf.compat.v2.keras.mixed_precision.experimental.set_policy(
+      tf2.keras.mixed_precision.experimental.set_policy(
           'mixed_bfloat16')
     detection_model = detection_model_fn(
         is_training=is_training, add_summaries=(not use_tpu))
