@@ -28,8 +28,8 @@ import data.dataset as dataset
 import decoder
 import deep_speech_model
 from official.utils.flags import core as flags_core
-from official.utils.logs import hooks_helper
-from official.utils.logs import logger
+from official.r1.utils.logs import hooks_helper
+from official.r1.utils.logs import logger
 from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 
