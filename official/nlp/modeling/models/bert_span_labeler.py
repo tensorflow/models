@@ -51,11 +51,13 @@ class BertSpanLabeler(tf.keras.Model):
                output='logits',
                **kwargs):
     self._self_setattr_tracking = False
+    self._network = network
     self._config = {
         'network': network,
         'initializer': initializer,
         'output': output,
     }
+
     # We want to use the inputs of the passed network as the inputs to this
     # Model. To do this, we need to keep a handle to the network inputs for use
     # when we construct the Model object at the end of init.
@@ -88,6 +90,10 @@ class BertSpanLabeler(tf.keras.Model):
 
     super(BertSpanLabeler, self).__init__(
         inputs=inputs, outputs=logits, **kwargs)
+
+  @property
+  def checkpoint_items(self):
+    return dict(encoder=self._network)
 
   def get_config(self):
     return self._config
