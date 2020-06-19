@@ -234,7 +234,7 @@ class XtremeXnliProcessor(DataProcessor):
         guid = f"test-{i}"
         text_a = self.process_text_fn(line[0])
         text_b = self.process_text_fn(line[1])
-        label = self.process_text_fn(line[2])
+        label = "contradiction"
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
@@ -346,7 +346,7 @@ class XtremePawsxProcessor(DataProcessor):
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "dev_en.tsv"))
+    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
 
     examples = []
     for (i, line) in enumerate(lines):
@@ -367,7 +367,7 @@ class XtremePawsxProcessor(DataProcessor):
         guid = "test-%d" % i
         text_a = self.process_text_fn(line[0])
         text_b = self.process_text_fn(line[1])
-        label = self.process_text_fn(line[2])
+        label = "0"
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
