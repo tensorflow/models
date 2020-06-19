@@ -22,149 +22,8 @@ from __future__ import print_function
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
-from official.nlp.nhnet import multi_channel_attention
+from official.nlp.modeling.layers import transformer
 from official.nlp.transformer import model_utils as transformer_utils
-
-
-class TransformerDecoderBlock(tf.keras.layers.Layer):
-  """Single transformer layer for decoder.
-
-  It has three sub-layers:
-  (1) a multi-head self-attention mechanism.
-  (2) a encoder-decoder attention.
-  (3) a positionwise fully connected feed-forward network.
-  """
-
-  def __init__(self,
-               hidden_size=768,
-               num_attention_heads=12,
-               intermediate_size=3072,
-               intermediate_activation="gelu",
-               hidden_dropout_prob=0.0,
-               attention_probs_dropout_prob=0.0,
-               initializer_range=0.02,
-               multi_channel_cross_attention=False,
-               **kwargs):
-    super(TransformerDecoderBlock, self).__init__(**kwargs)
-    self.hidden_size = hidden_size
-    self.num_attention_heads = num_attention_heads
-    self.intermediate_size = intermediate_size
-    self.intermediate_activation = tf_utils.get_activation(
-        intermediate_activation)
-    self.hidden_dropout_prob = hidden_dropout_prob
-    self.attention_probs_dropout_prob = attention_probs_dropout_prob
-    self.multi_channel_cross_attention = multi_channel_cross_attention
-    self._kernel_initializer = tf.keras.initializers.TruncatedNormal(
-        stddev=initializer_range)
-    self._bias_initializer = tf.keras.initializers.get("zeros")
-    if self.multi_channel_cross_attention:
-      self._cross_attention_cls = multi_channel_attention.MultiChannelAttention
-    else:
-      self._cross_attention_cls = layers.MultiHeadAttention
-
-    if self.hidden_size % self.num_attention_heads != 0:
-      raise ValueError(
-          "The hidden size (%d) is not a multiple of the number of attention "
-          "heads (%d)" % (self.hidden_size, self.num_attention_heads))
-    self.attention_head_size = int(self.hidden_size / self.num_attention_heads)
-
-  def build(self, input_shape):
-    # Self attention.
-    self.self_attention = layers.CachedAttention(
-        num_heads=self.num_attention_heads,
-        key_size=self.attention_head_size,
-        dropout=self.attention_probs_dropout_prob,
-        kernel_initializer=self._kernel_initializer,
-        name="self_attention")
-    self.self_attention_output_dense = layers.DenseEinsum(
-        output_shape=self.hidden_size,
-        num_summed_dimensions=2,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        name="self_attention_output")
-    self.self_attention_dropout = tf.keras.layers.Dropout(
-        rate=self.hidden_dropout_prob)
-    self.self_attention_layer_norm = (
-        tf.keras.layers.LayerNormalization(
-            name="self_attention_layer_norm", axis=-1, epsilon=1e-12))
-    # Encoder-decoder attention.
-    self.encdec_attention = self._cross_attention_cls(
-        num_heads=self.num_attention_heads,
-        key_size=self.attention_head_size,
-        dropout=self.attention_probs_dropout_prob,
-        output_shape=self.hidden_size,
-        kernel_initializer=self._kernel_initializer,
-        name="attention/encdec")
-
-    self.encdec_attention_dropout = tf.keras.layers.Dropout(
-        rate=self.hidden_dropout_prob)
-    self.encdec_attention_layer_norm = (
-        tf.keras.layers.LayerNormalization(
-            name="attention/encdec_output_layer_norm", axis=-1, epsilon=1e-12))
-
-    # Feed-forward projection.
-    self.intermediate_dense = layers.DenseEinsum(
-        output_shape=self.intermediate_size,
-        activation=None,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        name="intermediate")
-    self.intermediate_activation_layer = tf.keras.layers.Activation(
-        self.intermediate_activation)
-    self.output_dense = layers.DenseEinsum(
-        output_shape=self.hidden_size,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        name="output")
-    self.output_dropout = tf.keras.layers.Dropout(rate=self.hidden_dropout_prob)
-    self.output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="output_layer_norm", axis=-1, epsilon=1e-12)
-    super(TransformerDecoderBlock, self).build(input_shape)
-
-  def common_layers_with_encoder(self):
-    """Gets layer objects that can make a Transformer encoder block."""
-    return [
-        self.self_attention, self.self_attention_layer_norm,
-        self.intermediate_dense, self.output_dense, self.output_layer_norm
-    ]
-
-  def call(self, inputs, cache=None, decode_loop_step=None):
-    if self.multi_channel_cross_attention:
-      if len(inputs) != 5:
-        raise ValueError(
-            "TransformerDecoderBlock must have 5 inputs, when it uses "
-            "multi_channel_cross_attention. But it got: %d" % len(inputs))
-    elif len(inputs) != 4:
-      raise ValueError(
-          "TransformerDecoderBlock must have 4 inputs, but it got: %d" %
-          len(inputs))
-    input_tensor, memory, attention_mask, self_attention_mask = inputs[:4]
-    self_attention_inputs = [input_tensor, input_tensor]
-    self_attention_output, cache = self.self_attention(
-        self_attention_inputs,
-        attention_mask=self_attention_mask,
-        cache=cache,
-        decode_loop_step=decode_loop_step)
-    self_attention_output = self.self_attention_dropout(self_attention_output)
-    self_attention_output = self.self_attention_layer_norm(
-        input_tensor + self_attention_output)
-
-    cross_attn_inputs = [self_attention_output, memory]
-    if self.multi_channel_cross_attention:
-      # Accesses the 5-th input tensor for the doc-attention probabilities.
-      cross_attn_inputs.append(inputs[-1])
-    attention_output = self.encdec_attention(cross_attn_inputs, attention_mask)
-    attention_output = self.encdec_attention_dropout(attention_output)
-    attention_output = self.encdec_attention_layer_norm(self_attention_output +
-                                                        attention_output)
-
-    intermediate_output = self.intermediate_dense(attention_output)
-    intermediate_output = self.intermediate_activation_layer(
-        intermediate_output)
-    layer_output = self.output_dense(intermediate_output)
-    layer_output = self.output_dropout(layer_output)
-    layer_output = self.output_layer_norm(layer_output + attention_output)
-    return layer_output, cache
 
 
 class TransformerDecoder(tf.keras.layers.Layer):
@@ -200,7 +59,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
     self.layers = []
     for i in range(self.num_hidden_layers):
       self.layers.append(
-          TransformerDecoderBlock(
+          transformer.TransformerDecoderLayer(
               hidden_size=self.hidden_size,
               num_attention_heads=self.num_attention_heads,
               intermediate_size=self.intermediate_size,

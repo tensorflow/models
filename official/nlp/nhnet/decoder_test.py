@@ -26,17 +26,6 @@ from official.nlp.nhnet import decoder
 from official.nlp.nhnet import utils
 
 
-def _create_cache(batch_size, init_decode_length, num_heads, head_size):
-  return {
-      "key":
-          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
-                   dtype=tf.float32),
-      "value":
-          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
-                   dtype=tf.float32)
-  }
-
-
 class DecoderTest(tf.test.TestCase):
 
   def setUp(self):
@@ -55,26 +44,6 @@ class DecoderTest(tf.test.TestCase):
         initializer_range=self._config.initializer_range)
     decoder_block.build(None)
     self.assertEqual(len(decoder_block.layers), self._config.num_hidden_layers)
-
-  def test_decoder_block_with_cache(self):
-    decoder_block = decoder.TransformerDecoderBlock(
-        hidden_size=self._config.hidden_size,
-        num_attention_heads=self._config.num_attention_heads,
-        intermediate_size=self._config.intermediate_size,
-        intermediate_activation=self._config.hidden_act,
-        hidden_dropout_prob=self._config.hidden_dropout_prob,
-        attention_probs_dropout_prob=self._config.attention_probs_dropout_prob,
-        initializer_range=self._config.initializer_range)
-    # Forward path.
-    dummy_tensor = tf.zeros([2, 4, self._config.hidden_size], dtype=tf.float32)
-    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
-    inputs = [dummy_tensor, dummy_tensor, dummy_mask, dummy_mask]
-    cache = _create_cache(
-        2, 0, self._config.num_attention_heads,
-        self._config.hidden_size // self._config.num_attention_heads)
-    output, cache = decoder_block(inputs, cache)
-    self.assertEqual(output.shape, (2, 4, self._config.hidden_size))
-    self.assertEqual(cache["value"].shape, (2, 4, 2, 8))
 
   def test_bert_decoder(self):
     seq_length = 10
