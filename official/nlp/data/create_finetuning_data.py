@@ -48,8 +48,12 @@ flags.DEFINE_string(
 
 flags.DEFINE_enum("classification_task_name", "MNLI",
                   ["COLA", "MNLI", "MRPC", "QNLI", "QQP", "SST-2", "XNLI",
-                   "PAWS-X"],
-                  "The name of the task to train BERT classifier.")
+                   "PAWS-X", "XTREME-XNLI", "XTREME-PAWS-X"],
+                  "The name of the task to train BERT classifier. The "
+                  "difference between XTREME-XNLI and XNLI is: 1. the format "
+                  "of input tsv files; 2. the dev set for XTREME is english "
+                  "only and for XNLI is all languages combined. Same for "
+                  "PAWS-X.")
 
 # XNLI task specific flag.
 flags.DEFINE_string(
@@ -176,7 +180,11 @@ def generate_classifier_dataset():
                               language=FLAGS.xnli_language),
         "paws-x":
             functools.partial(classifier_data_lib.PawsxProcessor,
-                              language=FLAGS.pawsx_language)
+                              language=FLAGS.pawsx_language),
+        "xtreme-xnli":
+            functools.partial(classifier_data_lib.XtremeXnliProcessor),
+        "xtreme-paws-x":
+            functools.partial(classifier_data_lib.XtremePawsxProcessor)
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:
