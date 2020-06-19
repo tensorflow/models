@@ -45,8 +45,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
 
   def _build_feature_extractor(self, architecture='resnet_v1_50'):
     return frcnn_res_fpn.FasterRCNNResnet50FPNKerasFeatureExtractor(
-        is_training=False
-        ,
+        is_training=False,
         conv_hyperparams=self._build_conv_hyperparams(),
         first_stage_features_stride=16,
         batch_norm_trainable=False,
@@ -55,28 +54,30 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
   def test_extract_proposal_features_returns_expected_size(self):
     feature_extractor = self._build_feature_extractor()
     preprocessed_inputs = tf.random_uniform(
-        [2, 320, 320, 3], maxval=255, dtype=tf.float32)
+        [2, 448, 448, 3], maxval=255, dtype=tf.float32)
     rpn_feature_maps = feature_extractor.get_proposal_feature_extractor_model(
         name='TestScope')(preprocessed_inputs)
     features_shapes = [tf.shape(rpn_feature_map) 
-        for name, rpn_feature_map in rpn_feature_maps.items()]
-    
-    self.assertAllEqual(features_shapes[0].numpy(), [2, 40, 40, 256])
-    self.assertAllEqual(features_shapes[1].numpy(), [2, 20, 20, 256])
-    self.assertAllEqual(features_shapes[2].numpy(), [2, 10, 10, 256])
+        for rpn_feature_map in rpn_feature_maps]
+
+    self.assertAllEqual(features_shapes[0].numpy(), [2, 112, 112, 256])
+    self.assertAllEqual(features_shapes[1].numpy(), [2, 56, 56, 256])
+    self.assertAllEqual(features_shapes[2].numpy(), [2, 28, 28, 256])
+    self.assertAllEqual(features_shapes[3].numpy(), [2, 14, 14, 256])
 
   def test_extract_proposal_features_half_size_input(self):
     feature_extractor = self._build_feature_extractor()
     preprocessed_inputs = tf.random_uniform(
-        [2, 160, 160, 3], maxval=255, dtype=tf.float32)
+        [2, 224, 224, 3], maxval=255, dtype=tf.float32)
     rpn_feature_maps = feature_extractor.get_proposal_feature_extractor_model(
         name='TestScope')(preprocessed_inputs)
     features_shapes = [tf.shape(rpn_feature_map) 
-        for name, rpn_feature_map in rpn_feature_maps.items()]
+        for rpn_feature_map in rpn_feature_maps]
     
-    self.assertAllEqual(features_shapes[0].numpy(), [2, 20, 20, 256])
-    self.assertAllEqual(features_shapes[1].numpy(), [2, 10, 10, 256])
-    self.assertAllEqual(features_shapes[2].numpy(), [2, 5, 5, 256])
+    self.assertAllEqual(features_shapes[0].numpy(), [2, 56, 56, 256])
+    self.assertAllEqual(features_shapes[1].numpy(), [2, 28, 28, 256])
+    self.assertAllEqual(features_shapes[2].numpy(), [2, 14, 14, 256])
+    self.assertAllEqual(features_shapes[3].numpy(), [2, 7, 7, 256])
 
   def test_extract_proposal_features_dies_with_incorrect_rank_inputs(self):
     feature_extractor = self._build_feature_extractor()
@@ -85,3 +86,25 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
     with self.assertRaises(tf.errors.InvalidArgumentError):
       feature_extractor.get_proposal_feature_extractor_model(
           name='TestScope')(preprocessed_inputs)
+
+  # def test_extract_box_classifier_features_returns_expected_size(self):
+  #   feature_extractor = self._build_feature_extractor()
+  #   proposal_feature_maps = tf.random_uniform(
+  #       [3, 7, 7, 1024], maxval=255, dtype=tf.float32)
+  #   model = feature_extractor.get_box_classifier_feature_extractor_model(
+  #       name='TestScope')
+  #   proposal_classifier_features = (
+  #       model(proposal_feature_maps))
+  #   features_shape = tf.shape(proposal_classifier_features)
+  #   # Note: due to a slight mismatch in slim and keras resnet definitions
+  #   # the output shape of the box classifier is slightly different compared to
+  #   # that of the slim implementation.  The keras version is more `canonical`
+  #   # in that it more accurately reflects the original authors' implementation.
+  #   # TODO(jonathanhuang): make the output shape match that of the slim
+  #   # implementation by using atrous convolutions.
+  #   self.assertAllEqual(features_shape.numpy(), [3, 4, 4, 2048])
+
+
+if __name__ == '__main__':
+  tf.enable_v2_behavior()
+  tf.test.main()
