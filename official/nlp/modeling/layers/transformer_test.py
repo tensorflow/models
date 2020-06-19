@@ -215,5 +215,41 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     self.assertAllEqual([1, input_length, width], output_data.shape)
 
 
+def _create_cache(batch_size, init_decode_length, num_heads, head_size):
+  return {
+      'key':
+          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
+                   dtype=tf.float32),
+      'value':
+          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
+                   dtype=tf.float32)
+  }
+
+
+@keras_parameterized.run_all_keras_modes
+class TransformerDecoderLayerTest(keras_parameterized.TestCase):
+
+  def test_decoder_block_with_cache(self):
+    num_attention_heads = 2
+    hidden_size = 16
+    decoder_block = transformer.TransformerDecoderLayer(
+        hidden_size=hidden_size,
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        hidden_dropout_prob=0.1,
+        attention_probs_dropout_prob=0.1,
+        initializer_range=0.1)
+    # Forward path.
+    dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
+    inputs = [dummy_tensor, dummy_tensor, dummy_mask, dummy_mask]
+    cache = _create_cache(2, 0, num_attention_heads,
+                          hidden_size // num_attention_heads)
+    output, cache = decoder_block(inputs, cache)
+    self.assertEqual(output.shape, (2, 4, hidden_size))
+    self.assertEqual(cache['value'].shape, (2, 4, 2, 8))
+
+
 if __name__ == '__main__':
   tf.test.main()

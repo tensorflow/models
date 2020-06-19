@@ -9,12 +9,16 @@ assemble new layers, networks, or models.
     initialization parameters.
 
 *   [MultiHeadAttention](attention.py) implements an optionally masked attention
-    between two tensors, from_tensor and to_tensor, as described in
+    between query, key, value tensors as described in
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762). If
     `from_tensor` and `to_tensor` are the same, then this is self-attention.
 
 *   [CachedAttention](attention.py) implements an attention layer with cache
     used for auto-agressive decoding.
+
+*   [MultiChannelAttention](multi_channel_attention.py) implements an variant of
+    multi-head attention which can be used to merge multiple streams for
+    cross-attentions.
 
 *   [TalkingHeadsAttention](talking_heads_attention.py) implements the talking
     heads attention, as decribed in
