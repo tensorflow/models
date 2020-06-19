@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Multi-channel decoder."""
+"""Multi-channel Attention."""
+# pylint: disable=g-classes-have-attributes
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,11 +25,25 @@ import math
 
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.nlp.modeling import layers
+from official.nlp.modeling.layers import attention
+from official.nlp.modeling.layers import dense_einsum
+from official.nlp.modeling.layers import masked_softmax
 
 
-class DocAttention(tf.keras.layers.Layer):
-  """Documents Attention layer."""
+class VotingAttention(tf.keras.layers.Layer):
+  """Voting Attention layer.
+
+  Arguments:
+    num_heads: the number of attention heads.
+    head_size: per-head hidden size.
+    kernel_initializer: Initializer for dense layer kernels.
+    bias_initializer: Initializer for dense layer biases.
+    kernel_regularizer: Regularizer for dense layer kernels.
+    bias_regularizer: Regularizer for dense layer biases.
+    activity_regularizer: Regularizer for dense layer activity.
+    kernel_constraint: Constraint for dense layer kernels.
+    bias_constraint: Constraint for dense layer kernels.
+  """
 
   def __init__(self,
                num_heads,
@@ -41,7 +56,7 @@ class DocAttention(tf.keras.layers.Layer):
                kernel_constraint=None,
                bias_constraint=None,
                **kwargs):
-    super(DocAttention, self).__init__(**kwargs)
+    super(VotingAttention, self).__init__(**kwargs)
     self._num_heads = num_heads
     self._head_size = head_size
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
@@ -52,7 +67,7 @@ class DocAttention(tf.keras.layers.Layer):
     self._bias_constraint = tf.keras.constraints.get(bias_constraint)
 
   def build(self, unused_input_shapes):
-    self._query_dense = layers.DenseEinsum(
+    self._query_dense = dense_einsum.DenseEinsum(
         output_shape=(self._num_heads, self._head_size),
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
@@ -63,7 +78,7 @@ class DocAttention(tf.keras.layers.Layer):
         bias_constraint=self._bias_constraint,
         dtype=self.dtype,
         name="encdocatt_query")
-    self._key_dense = layers.DenseEinsum(
+    self._key_dense = dense_einsum.DenseEinsum(
         output_shape=(self._num_heads, self._head_size),
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
@@ -74,7 +89,7 @@ class DocAttention(tf.keras.layers.Layer):
         bias_constraint=self._bias_constraint,
         dtype=self.dtype,
         name="encdocatt_key")
-    super(DocAttention, self).build(unused_input_shapes)
+    super(VotingAttention, self).build(unused_input_shapes)
 
   def call(self, encoder_outputs, doc_attention_mask):
     num_docs = tf_utils.get_shape_list(encoder_outputs, expected_rank=[4])[1]
@@ -95,12 +110,16 @@ class DocAttention(tf.keras.layers.Layer):
     return tf.nn.softmax(doc_attention_probs + infadder)
 
 
-class MultiChannelAttention(layers.MultiHeadAttention):
-  """Multi-channel Attention layer."""
+class MultiChannelAttention(attention.MultiHeadAttention):
+  """Multi-channel Attention layer.
+
+  Introduced in: https://arxiv.org/abs/2001.09386. Expects multiple
+  cross-attention target sequences.
+  """
 
   def build(self, input_shape):
     super(MultiChannelAttention, self).build(input_shape)
-    self._masked_softmax = layers.MaskedSoftmax(mask_expansion_axes=[2])
+    self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
   def call(self, inputs, attention_mask=None):
     from_tensor = inputs[0]
