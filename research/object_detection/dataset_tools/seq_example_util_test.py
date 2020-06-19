@@ -24,9 +24,17 @@ import six
 import tensorflow.compat.v1 as tf
 
 from object_detection.dataset_tools import seq_example_util
+from object_detection.utils import tf_version
 
 
 class SeqExampleUtilTest(tf.test.TestCase):
+
+  def materialize_tensors(self, list_of_tensors):
+    if tf_version.is_tf2():
+      return [tensor.numpy() for tensor in list_of_tensors]
+    else:
+      with self.cached_session() as sess:
+        return sess.run(list_of_tensors)
 
   def test_make_unlabeled_example(self):
     num_frames = 5
@@ -41,8 +49,7 @@ class SeqExampleUtilTest(tf.test.TestCase):
     image_source_ids = [str(idx) for idx in range(num_frames)]
     images_list = tf.unstack(images, axis=0)
     encoded_images_list = [tf.io.encode_jpeg(image) for image in images_list]
-    with tf.Session() as sess:
-      encoded_images = sess.run(encoded_images_list)
+    encoded_images = self.materialize_tensors(encoded_images_list)
     seq_example = seq_example_util.make_sequence_example(
         dataset_name=dataset_name,
         video_id=video_id,
@@ -109,8 +116,7 @@ class SeqExampleUtilTest(tf.test.TestCase):
         dtype=tf.int32), dtype=tf.uint8)
     images_list = tf.unstack(images, axis=0)
     encoded_images_list = [tf.io.encode_jpeg(image) for image in images_list]
-    with tf.Session() as sess:
-      encoded_images = sess.run(encoded_images_list)
+    encoded_images = self.materialize_tensors(encoded_images_list)
     timestamps = [100000, 110000]
     is_annotated = [1, 0]
     bboxes = [
@@ -208,8 +214,7 @@ class SeqExampleUtilTest(tf.test.TestCase):
         dtype=tf.int32), dtype=tf.uint8)
     images_list = tf.unstack(images, axis=0)
     encoded_images_list = [tf.io.encode_jpeg(image) for image in images_list]
-    with tf.Session() as sess:
-      encoded_images = sess.run(encoded_images_list)
+    encoded_images = self.materialize_tensors(encoded_images_list)
     bboxes = [
         np.array([[0., 0., 0.75, 0.75],
                   [0., 0., 1., 1.]], dtype=np.float32),

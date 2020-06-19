@@ -27,7 +27,10 @@ from object_detection.models import feature_map_generators
 from object_detection.utils import context_manager
 from object_detection.utils import ops
 from object_detection.utils import variables_helper
-from nets.nasnet import pnasnet
+try:
+  from nets.nasnet import pnasnet  # pylint: disable=g-import-not-at-top
+except:  # pylint: disable=bare-except
+  pass
 
 
 def pnasnet_large_arg_scope_for_detection(is_batch_norm_training=False):

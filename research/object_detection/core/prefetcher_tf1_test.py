@@ -18,16 +18,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
 from six.moves import range
 import tensorflow.compat.v1 as tf
-
-# pylint: disable=g-bad-import-order,
-from object_detection.core import prefetcher
 import tf_slim as slim
 
-# pylint: disable=g-bad-import-order
+from object_detection.core import prefetcher
+from object_detection.utils import tf_version
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
 class PrefetcherTest(tf.test.TestCase):
   """Test class for prefetcher."""
 

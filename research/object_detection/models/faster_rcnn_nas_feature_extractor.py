@@ -31,8 +31,14 @@ import tf_slim as slim
 
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.utils import variables_helper
-from nets.nasnet import nasnet
-from nets.nasnet import nasnet_utils
+
+# pylint: disable=g-import-not-at-top
+try:
+  from nets.nasnet import nasnet
+  from nets.nasnet import nasnet_utils
+except:  # pylint: disable=bare-except
+  pass
+# pylint: enable=g-import-not-at-top
 
 arg_scope = slim.arg_scope
 

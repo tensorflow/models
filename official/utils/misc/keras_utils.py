@@ -41,12 +41,13 @@ class BatchTimestamp(object):
 class TimeHistory(tf.keras.callbacks.Callback):
   """Callback for Keras models."""
 
-  def __init__(self, batch_size, log_steps, logdir=None):
+  def __init__(self, batch_size, log_steps, initial_step=0, logdir=None):
     """Callback for logging performance.
 
     Args:
       batch_size: Total batch size.
       log_steps: Interval of steps between logging of batch level stats.
+      initial_step: Optional, initial step.
       logdir: Optional directory to write TensorBoard summaries.
     """
     # TODO(wcromar): remove this parameter and rely on `logs` parameter of
@@ -54,8 +55,8 @@ class TimeHistory(tf.keras.callbacks.Callback):
     self.batch_size = batch_size
     super(TimeHistory, self).__init__()
     self.log_steps = log_steps
-    self.last_log_step = 0
-    self.steps_before_epoch = 0
+    self.last_log_step = initial_step
+    self.steps_before_epoch = initial_step
     self.steps_in_epoch = 0
     self.start_time = None
 

@@ -235,9 +235,6 @@ def initialize(params: base_configs.ExperimentConfig,
   else:
     data_format = 'channels_last'
   tf.keras.backend.set_image_data_format(data_format)
-  distribution_utils.configure_cluster(
-      params.runtime.worker_hosts,
-      params.runtime.task_index)
   if params.runtime.run_eagerly:
     # Enable eager execution to allow step-by-step debugging
     tf.config.experimental_run_functions_eagerly(True)
@@ -295,6 +292,10 @@ def train_and_eval(
     strategy_override: tf.distribute.Strategy) -> Mapping[str, Any]:
   """Runs the train and eval path using compile/fit."""
   logging.info('Running train and eval.')
+
+  distribution_utils.configure_cluster(
+      params.runtime.worker_hosts,
+      params.runtime.task_index)
 
   # Note: for TPUs, strategy and scope should be created before the dataset
   strategy = strategy_override or distribution_utils.get_distribution_strategy(

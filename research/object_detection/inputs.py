@@ -64,7 +64,6 @@ def _multiclass_scores_or_one_hot_labels(multiclass_scores,
                       [tf.shape(groundtruth_boxes)[0], num_classes])
   def false_fn():
     return tf.one_hot(groundtruth_classes, num_classes)
-
   return tf.cond(tf.size(multiclass_scores) > 0, true_fn, false_fn)
 
 
@@ -1006,14 +1005,21 @@ def get_reduce_to_frame_fn(input_reader_config, is_training):
     `reduce_to_frame_fn` for the dataset builder
   """
   if input_reader_config.input_type != (
-      input_reader_pb2.InputType.TF_SEQUENCE_EXAMPLE):
-    return lambda d: d
+      input_reader_pb2.InputType.Value('TF_SEQUENCE_EXAMPLE')):
+    return lambda dataset, dataset_map_fn, batch_size, config: dataset
   else:
-    def reduce_to_frame(dataset):
+    def reduce_to_frame(dataset, dataset_map_fn, batch_size,
+                        input_reader_config):
       """Returns a function reducing sequence tensors to single frame tensors.
 
       Args:
         dataset: A tf dataset containing sequence tensors.
+        dataset_map_fn: A function that handles whether to
+          map_with_legacy_function for this dataset
+        batch_size: used if map_with_legacy_function is true to determine
+          num_parallel_calls
+        input_reader_config: used if map_with_legacy_function is true to
+          determine num_parallel_calls
 
       Returns:
         A tf dataset containing single frame tensors.
@@ -1046,13 +1052,14 @@ def get_reduce_to_frame_fn(input_reader_config, is_training):
               # Copy all context tensors.
               out_tensor_dict[key] = tensor_dict[key]
           return out_tensor_dict
-        dataset = dataset.map(get_single_frame, tf.data.experimental.AUTOTUNE)
+        dataset = dataset_map_fn(dataset, get_single_frame, batch_size,
+                                 input_reader_config)
       else:
-        dataset = dataset.map(util_ops.tile_context_tensors,
-                              tf.data.experimental.AUTOTUNE)
+        dataset = dataset_map_fn(dataset, util_ops.tile_context_tensors,
+                                 batch_size, input_reader_config)
         dataset = dataset.unbatch()
       # Decode frame here as SequenceExample tensors contain encoded images.
-      dataset = dataset.map(util_ops.decode_image,
-                            tf.data.experimental.AUTOTUNE)
+      dataset = dataset_map_fn(dataset, util_ops.decode_image, batch_size,
+                               input_reader_config)
       return dataset
     return reduce_to_frame

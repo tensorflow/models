@@ -196,8 +196,7 @@ class OpsTestPaddedOneHotEncoding(test_case.TestCase):
                                 [0, 0, 0, 1, 0, 0],
                                 [0, 0, 0, 0, 0, 1]], np.float32)
 
-    # Executing on CPU only because output shape is not constant.
-    out_one_hot_tensor = self.execute_cpu(graph_fn, [])
+    out_one_hot_tensor = self.execute(graph_fn, [])
     self.assertAllClose(out_one_hot_tensor, expected_tensor, rtol=1e-10,
                         atol=1e-10)
 
@@ -212,8 +211,7 @@ class OpsTestPaddedOneHotEncoding(test_case.TestCase):
                                 [0, 0, 0, 1, 0, 0, 0],
                                 [0, 0, 0, 0, 1, 0, 0],
                                 [0, 0, 0, 0, 0, 0, 1]], np.float32)
-    # Executing on CPU only because output shape is not constant.
-    out_one_hot_tensor = self.execute_cpu(graph_fn, [])
+    out_one_hot_tensor = self.execute(graph_fn, [])
     self.assertAllClose(out_one_hot_tensor, expected_tensor, rtol=1e-10,
                         atol=1e-10)
 
@@ -229,8 +227,7 @@ class OpsTestPaddedOneHotEncoding(test_case.TestCase):
                                 [0, 0, 0, 0, 0, 0, 1, 0, 0],
                                 [0, 0, 0, 0, 0, 0, 0, 0, 1]], np.float32)
 
-    # executing on CPU only because output shape is not constant.
-    out_one_hot_tensor = self.execute_cpu(graph_fn, [])
+    out_one_hot_tensor = self.execute(graph_fn, [])
     self.assertAllClose(out_one_hot_tensor, expected_tensor, rtol=1e-10,
                         atol=1e-10)
 
@@ -246,8 +243,7 @@ class OpsTestPaddedOneHotEncoding(test_case.TestCase):
       return one_hot_tensor
 
     expected_tensor = np.zeros((0, depth + pad))
-    # executing on CPU only because output shape is not constant.
-    out_one_hot_tensor = self.execute_cpu(graph_fn, [])
+    out_one_hot_tensor = self.execute(graph_fn, [])
     self.assertAllClose(out_one_hot_tensor, expected_tensor, rtol=1e-10,
                         atol=1e-10)
 

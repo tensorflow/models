@@ -15,84 +15,37 @@
 # ==============================================================================
 """Tests for optimizer_factory.py."""
 
+from absl.testing import parameterized
+
 import tensorflow as tf
-import tensorflow_addons.optimizers as tfa_optimizers
 
 from official.modeling.optimization import optimizer_factory
 from official.modeling.optimization.configs import optimization_config
-from official.nlp import optimization as nlp_optimization
 
 
-class OptimizerFactoryTest(tf.test.TestCase):
+class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_sgd_optimizer(self):
+  @parameterized.parameters(
+      ('sgd'),
+      ('rmsprop'),
+      ('adam'),
+      ('adamw'),
+      ('lamb'))
+  def test_optimizers(self, optimizer_type):
     params = {
         'optimizer': {
-            'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'type': optimizer_type
         }
     }
-    expected_optimizer_config = {
-        'name': 'SGD',
-        'learning_rate': 0.1,
-        'decay': 0.0,
-        'momentum': 0.9,
-        'nesterov': False
-    }
-    opt_config = optimization_config.OptimizationConfig(params)
-    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
-    lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
-
-    self.assertIsInstance(optimizer, tf.keras.optimizers.SGD)
-    self.assertEqual(expected_optimizer_config, optimizer.get_config())
-
-  def test_adam_optimizer(self):
-
-    # Define adam optimizer with default values.
-    params = {
-        'optimizer': {
-            'type': 'adam'
-        }
-    }
-    expected_optimizer_config = tf.keras.optimizers.Adam().get_config()
+    optimizer_cls = optimizer_factory.OPTIMIZERS_CLS[optimizer_type]
+    expected_optimizer_config = optimizer_cls().get_config()
 
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
     optimizer = opt_factory.build_optimizer(lr)
 
-    self.assertIsInstance(optimizer, tf.keras.optimizers.Adam)
-    self.assertEqual(expected_optimizer_config, optimizer.get_config())
-
-  def test_adam_weight_decay_optimizer(self):
-    params = {
-        'optimizer': {
-            'type': 'adamw'
-        }
-    }
-    expected_optimizer_config = nlp_optimization.AdamWeightDecay().get_config()
-    opt_config = optimization_config.OptimizationConfig(params)
-    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
-    lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
-
-    self.assertIsInstance(optimizer, nlp_optimization.AdamWeightDecay)
-    self.assertEqual(expected_optimizer_config, optimizer.get_config())
-
-  def test_lamb_optimizer(self):
-    params = {
-        'optimizer': {
-            'type': 'lamb'
-        }
-    }
-    expected_optimizer_config = tfa_optimizers.LAMB().get_config()
-    opt_config = optimization_config.OptimizationConfig(params)
-    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
-    lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
-
-    self.assertIsInstance(optimizer, tfa_optimizers.LAMB)
+    self.assertIsInstance(optimizer, optimizer_cls)
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
 
   def test_stepwise_lr_schedule(self):

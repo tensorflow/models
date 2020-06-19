@@ -41,6 +41,29 @@ class SGDConfig(base_config.Config):
 
 
 @dataclasses.dataclass
+class RMSPropConfig(base_config.Config):
+  """Configuration for RMSProp optimizer.
+
+  The attributes for this class matches the arguments of
+  tf.keras.optimizers.RMSprop.
+
+  Attributes:
+    name: name of the optimizer.
+    learning_rate: learning_rate for RMSprop optimizer.
+    rho: discounting factor for RMSprop optimizer.
+    momentum: momentum for RMSprop optimizer.
+    epsilon: epsilon value for RMSprop optimizer, help with numerical stability.
+    centered: Whether to normalize gradients or not.
+  """
+  name: str = "RMSprop"
+  learning_rate: float = 0.001
+  rho: float = 0.9
+  momentum: float = 0.0
+  epsilon: float = 1e-7
+  centered: bool = False
+
+
+@dataclasses.dataclass
 class AdamConfig(base_config.Config):
   """Configuration for Adam optimizer.
 

@@ -24,9 +24,9 @@ from object_detection.core import region_similarity_calculator
 from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner as targetassigner
 from object_detection.matchers import argmax_matcher
-from object_detection.matchers import bipartite_matcher
 from object_detection.utils import np_box_ops
 from object_detection.utils import test_case
+from object_detection.utils import tf_version
 
 
 class TargetAssignerTest(test_case.TestCase):
@@ -439,7 +439,7 @@ class TargetAssignerTest(test_case.TestCase):
 
   def test_raises_error_on_incompatible_groundtruth_boxes_and_labels(self):
     similarity_calc = region_similarity_calculator.NegSqDistSimilarity()
-    matcher = bipartite_matcher.GreedyBipartiteMatcher()
+    matcher = argmax_matcher.ArgMaxMatcher(0.5)
     box_coder = mean_stddev_box_coder.MeanStddevBoxCoder()
     unmatched_class_label = tf.constant([1, 0, 0, 0, 0, 0, 0], tf.float32)
     target_assigner = targetassigner.TargetAssigner(
@@ -469,7 +469,7 @@ class TargetAssignerTest(test_case.TestCase):
 
   def test_raises_error_on_invalid_groundtruth_labels(self):
     similarity_calc = region_similarity_calculator.NegSqDistSimilarity()
-    matcher = bipartite_matcher.GreedyBipartiteMatcher()
+    matcher = argmax_matcher.ArgMaxMatcher(0.5)
     box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=1.0)
     unmatched_class_label = tf.constant([[0, 0], [0, 0], [0, 0]], tf.float32)
     target_assigner = targetassigner.TargetAssigner(
@@ -1191,7 +1191,7 @@ class BatchTargetAssignConfidencesTest(test_case.TestCase):
       ])
 
 
-class CreateTargetAssignerTest(tf.test.TestCase):
+class CreateTargetAssignerTest(test_case.TestCase):
 
   def test_create_target_assigner(self):
     """Tests that named constructor gives working target assigners.
@@ -1202,9 +1202,10 @@ class CreateTargetAssignerTest(tf.test.TestCase):
     groundtruth = box_list.BoxList(tf.constant(corners))
 
     priors = box_list.BoxList(tf.constant(corners))
-    multibox_ta = (targetassigner
-                   .create_target_assigner('Multibox', stage='proposal'))
-    multibox_ta.assign(priors, groundtruth)
+    if tf_version.is_tf1():
+      multibox_ta = (targetassigner
+                     .create_target_assigner('Multibox', stage='proposal'))
+      multibox_ta.assign(priors, groundtruth)
     # No tests on output, as that may vary arbitrarily as new target assigners
     # are added. As long as it is constructed correctly and runs without errors,
     # tests on the individual assigners cover correctness of the assignments.
@@ -1228,6 +1229,681 @@ class CreateTargetAssignerTest(tf.test.TestCase):
       targetassigner.create_target_assigner('InvalidDetector',
                                             stage='invalid_stage')
 
+
+def _array_argmax(array):
+  return np.unravel_index(np.argmax(array), array.shape)
+
+
+class CenterNetCenterHeatmapTargetAssignerTest(test_case.TestCase):
+
+  def setUp(self):
+    super(CenterNetCenterHeatmapTargetAssignerTest, self).setUp()
+
+    self._box_center = [0.0, 0.0, 1.0, 1.0]
+    self._box_center_small = [0.25, 0.25, 0.75, 0.75]
+    self._box_lower_left = [0.5, 0.0, 1.0, 0.5]
+    self._box_center_offset = [0.1, 0.05, 1.0, 1.0]
+    self._box_odd_coordinates = [0.1625, 0.2125, 0.5625, 0.9625]
+
+  def test_center_location(self):
+    """Test that the centers are at the correct location."""
+    def graph_fn():
+      box_batch = [tf.constant([self._box_center, self._box_lower_left])]
+      classes = [
+          tf.one_hot([0, 1], depth=4),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(4)
+      targets = assigner.assign_center_targets_from_boxes(80, 80, box_batch,
+                                                          classes)
+      return targets
+    targets = self.execute(graph_fn, [])
+    self.assertEqual((10, 10), _array_argmax(targets[0, :, :, 0]))
+    self.assertAlmostEqual(1.0, targets[0, 10, 10, 0])
+    self.assertEqual((15, 5), _array_argmax(targets[0, :, :, 1]))
+    self.assertAlmostEqual(1.0, targets[0, 15, 5, 1])
+
+  def test_center_batch_shape(self):
+    """Test that the shape of the target for a batch is correct."""
+    def graph_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_center]),
+          tf.constant([self._box_center_small]),
+      ]
+      classes = [
+          tf.one_hot([0, 1], depth=4),
+          tf.one_hot([2], depth=4),
+          tf.one_hot([3], depth=4),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(4)
+      targets = assigner.assign_center_targets_from_boxes(80, 80, box_batch,
+                                                          classes)
+      return targets
+    targets = self.execute(graph_fn, [])
+    self.assertEqual((3, 20, 20, 4), targets.shape)
+
+  def test_center_overlap_maximum(self):
+    """Test that when boxes overlap we, are computing the maximum."""
+    def graph_fn():
+      box_batch = [
+          tf.constant([
+              self._box_center, self._box_center_offset, self._box_center,
+              self._box_center_offset
+          ])
+      ]
+      classes = [
+          tf.one_hot([0, 0, 1, 2], depth=4),
+      ]
+
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(4)
+      targets = assigner.assign_center_targets_from_boxes(80, 80, box_batch,
+                                                          classes)
+      return targets
+    targets = self.execute(graph_fn, [])
+    class0_targets = targets[0, :, :, 0]
+    class1_targets = targets[0, :, :, 1]
+    class2_targets = targets[0, :, :, 2]
+    np.testing.assert_allclose(class0_targets,
+                               np.maximum(class1_targets, class2_targets))
+
+  def test_size_blur(self):
+    """Test that the heatmap of a larger box is more blurred."""
+    def graph_fn():
+      box_batch = [tf.constant([self._box_center, self._box_center_small])]
+
+      classes = [
+          tf.one_hot([0, 1], depth=4),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(4)
+      targets = assigner.assign_center_targets_from_boxes(80, 80, box_batch,
+                                                          classes)
+      return targets
+    targets = self.execute(graph_fn, [])
+    self.assertGreater(
+        np.count_nonzero(targets[:, :, :, 0]),
+        np.count_nonzero(targets[:, :, :, 1]))
+
+  def test_weights(self):
+    """Test that the weights correctly ignore ground truth."""
+    def graph1_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_center]),
+          tf.constant([self._box_center_small]),
+      ]
+      classes = [
+          tf.one_hot([0, 1], depth=4),
+          tf.one_hot([2], depth=4),
+          tf.one_hot([3], depth=4),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(4)
+      targets = assigner.assign_center_targets_from_boxes(80, 80, box_batch,
+                                                          classes)
+      return targets
+
+    targets = self.execute(graph1_fn, [])
+    self.assertAlmostEqual(1.0, targets[0, :, :, 0].max())
+    self.assertAlmostEqual(1.0, targets[0, :, :, 1].max())
+    self.assertAlmostEqual(1.0, targets[1, :, :, 2].max())
+    self.assertAlmostEqual(1.0, targets[2, :, :, 3].max())
+    self.assertAlmostEqual(0.0, targets[0, :, :, [2, 3]].max())
+    self.assertAlmostEqual(0.0, targets[1, :, :, [0, 1, 3]].max())
+    self.assertAlmostEqual(0.0, targets[2, :, :, :3].max())
+
+    def graph2_fn():
+      weights = [
+          tf.constant([0., 1.]),
+          tf.constant([1.]),
+          tf.constant([1.]),
+      ]
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_center]),
+          tf.constant([self._box_center_small]),
+      ]
+      classes = [
+          tf.one_hot([0, 1], depth=4),
+          tf.one_hot([2], depth=4),
+          tf.one_hot([3], depth=4),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(4)
+      targets = assigner.assign_center_targets_from_boxes(80, 80, box_batch,
+                                                          classes,
+                                                          weights)
+      return targets
+    targets = self.execute(graph2_fn, [])
+    self.assertAlmostEqual(1.0, targets[0, :, :, 1].max())
+    self.assertAlmostEqual(1.0, targets[1, :, :, 2].max())
+    self.assertAlmostEqual(1.0, targets[2, :, :, 3].max())
+    self.assertAlmostEqual(0.0, targets[0, :, :, [0, 2, 3]].max())
+    self.assertAlmostEqual(0.0, targets[1, :, :, [0, 1, 3]].max())
+    self.assertAlmostEqual(0.0, targets[2, :, :, :3].max())
+
+  def test_low_overlap(self):
+    def graph1_fn():
+      box_batch = [tf.constant([self._box_center])]
+      classes = [
+          tf.one_hot([0], depth=2),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(
+          4, min_overlap=0.1)
+      targets_low_overlap = assigner.assign_center_targets_from_boxes(
+          80, 80, box_batch, classes)
+      return targets_low_overlap
+    targets_low_overlap = self.execute(graph1_fn, [])
+    self.assertLess(1, np.count_nonzero(targets_low_overlap))
+
+    def graph2_fn():
+      box_batch = [tf.constant([self._box_center])]
+      classes = [
+          tf.one_hot([0], depth=2),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(
+          4, min_overlap=0.6)
+      targets_medium_overlap = assigner.assign_center_targets_from_boxes(
+          80, 80, box_batch, classes)
+      return targets_medium_overlap
+    targets_medium_overlap = self.execute(graph2_fn, [])
+    self.assertLess(1, np.count_nonzero(targets_medium_overlap))
+
+    def graph3_fn():
+      box_batch = [tf.constant([self._box_center])]
+      classes = [
+          tf.one_hot([0], depth=2),
+      ]
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(
+          4, min_overlap=0.99)
+      targets_high_overlap = assigner.assign_center_targets_from_boxes(
+          80, 80, box_batch, classes)
+      return targets_high_overlap
+
+    targets_high_overlap = self.execute(graph3_fn, [])
+    self.assertTrue(np.all(targets_low_overlap >= targets_medium_overlap))
+    self.assertTrue(np.all(targets_medium_overlap >= targets_high_overlap))
+
+  def test_empty_box_list(self):
+    """Test that an empty box list gives an all 0 heatmap."""
+    def graph_fn():
+      box_batch = [
+          tf.zeros((0, 4), dtype=tf.float32),
+      ]
+
+      classes = [
+          tf.zeros((0, 5), dtype=tf.float32),
+      ]
+
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(
+          4, min_overlap=0.1)
+      targets = assigner.assign_center_targets_from_boxes(
+          80, 80, box_batch, classes)
+      return targets
+    targets = self.execute(graph_fn, [])
+    np.testing.assert_allclose(targets, 0.)
+
+
+class CenterNetBoxTargetAssignerTest(test_case.TestCase):
+
+  def setUp(self):
+    super(CenterNetBoxTargetAssignerTest, self).setUp()
+    self._box_center = [0.0, 0.0, 1.0, 1.0]
+    self._box_center_small = [0.25, 0.25, 0.75, 0.75]
+    self._box_lower_left = [0.5, 0.0, 1.0, 0.5]
+    self._box_center_offset = [0.1, 0.05, 1.0, 1.0]
+    self._box_odd_coordinates = [0.1625, 0.2125, 0.5625, 0.9625]
+
+  def test_max_distance_for_overlap(self):
+    """Test that the distance ensures the IoU with random boxes."""
+
+    # TODO(vighneshb) remove this after the `_smallest_positive_root`
+    # function if fixed.
+    self.skipTest(('Skipping test because we are using an incorrect version of'
+                   'the `max_distance_for_overlap` function to reproduce'
+                   ' results.'))
+
+    rng = np.random.RandomState(0)
+    n_samples = 100
+
+    width = rng.uniform(1, 100, size=n_samples)
+    height = rng.uniform(1, 100, size=n_samples)
+    min_iou = rng.uniform(0.1, 1.0, size=n_samples)
+
+    def graph_fn():
+      max_dist = targetassigner.max_distance_for_overlap(height, width, min_iou)
+      return max_dist
+    max_dist = self.execute(graph_fn, [])
+    xmin1 = np.zeros(n_samples)
+    ymin1 = np.zeros(n_samples)
+    xmax1 = np.zeros(n_samples) + width
+    ymax1 = np.zeros(n_samples) + height
+
+    xmin2 = max_dist * np.cos(rng.uniform(0, 2 * np.pi))
+    ymin2 = max_dist * np.sin(rng.uniform(0, 2 * np.pi))
+    xmax2 = width + max_dist * np.cos(rng.uniform(0, 2 * np.pi))
+    ymax2 = height + max_dist * np.sin(rng.uniform(0, 2 * np.pi))
+
+    boxes1 = np.vstack([ymin1, xmin1, ymax1, xmax1]).T
+    boxes2 = np.vstack([ymin2, xmin2, ymax2, xmax2]).T
+
+    iou = np.diag(np_box_ops.iou(boxes1, boxes2))
+
+    self.assertTrue(np.all(iou >= min_iou))
+
+  def test_max_distance_for_overlap_centernet(self):
+    """Test the version of the function used in the CenterNet paper."""
+
+    def graph_fn():
+      distance = targetassigner.max_distance_for_overlap(10, 5, 0.5)
+      return distance
+    distance = self.execute(graph_fn, [])
+    self.assertAlmostEqual(2.807764064, distance)
+
+  def test_assign_size_and_offset_targets(self):
+    """Test the assign_size_and_offset_targets function."""
+    def graph_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_center_offset]),
+          tf.constant([self._box_center_small, self._box_odd_coordinates]),
+      ]
+
+      assigner = targetassigner.CenterNetBoxTargetAssigner(4)
+      indices, hw, yx_offset, weights = assigner.assign_size_and_offset_targets(
+          80, 80, box_batch)
+      return indices, hw, yx_offset, weights
+    indices, hw, yx_offset, weights = self.execute(graph_fn, [])
+    self.assertEqual(indices.shape, (5, 3))
+    self.assertEqual(hw.shape, (5, 2))
+    self.assertEqual(yx_offset.shape, (5, 2))
+    self.assertEqual(weights.shape, (5,))
+    np.testing.assert_array_equal(
+        indices,
+        [[0, 10, 10], [0, 15, 5], [1, 11, 10], [2, 10, 10], [2, 7, 11]])
+    np.testing.assert_array_equal(
+        hw, [[20, 20], [10, 10], [18, 19], [10, 10], [8, 15]])
+    np.testing.assert_array_equal(
+        yx_offset, [[0, 0], [0, 0], [0, 0.5], [0, 0], [0.25, 0.75]])
+    np.testing.assert_array_equal(weights, 1)
+
+  def test_assign_size_and_offset_targets_weights(self):
+    """Test the assign_size_and_offset_targets function with box weights."""
+    def graph_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_lower_left, self._box_center_small]),
+          tf.constant([self._box_center_small, self._box_odd_coordinates]),
+      ]
+
+      cn_assigner = targetassigner.CenterNetBoxTargetAssigner(4)
+      weights_batch = [
+          tf.constant([0.0, 1.0]),
+          tf.constant([1.0, 1.0]),
+          tf.constant([0.0, 0.0])
+      ]
+      indices, hw, yx_offset, weights = cn_assigner.assign_size_and_offset_targets(
+          80, 80, box_batch, weights_batch)
+      return indices, hw, yx_offset, weights
+    indices, hw, yx_offset, weights = self.execute(graph_fn, [])
+    self.assertEqual(indices.shape, (6, 3))
+    self.assertEqual(hw.shape, (6, 2))
+    self.assertEqual(yx_offset.shape, (6, 2))
+    self.assertEqual(weights.shape, (6,))
+    np.testing.assert_array_equal(indices,
+                                  [[0, 10, 10], [0, 15, 5], [1, 15, 5],
+                                   [1, 10, 10], [2, 10, 10], [2, 7, 11]])
+    np.testing.assert_array_equal(
+        hw, [[20, 20], [10, 10], [10, 10], [10, 10], [10, 10], [8, 15]])
+    np.testing.assert_array_equal(
+        yx_offset, [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0.25, 0.75]])
+    np.testing.assert_array_equal(weights, [0, 1, 1, 1, 0, 0])
+
+  def test_get_batch_predictions_from_indices(self):
+    """Test the get_batch_predictions_from_indices function.
+
+    This test verifies that the indices returned by
+    assign_size_and_offset_targets function work as expected with a predicted
+    tensor.
+
+    """
+    def graph_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_center_small, self._box_odd_coordinates]),
+      ]
+
+      pred_array = np.ones((2, 40, 20, 2), dtype=np.int32) * -1000
+      pred_array[0, 20, 10] = [1, 2]
+      pred_array[0, 30, 5] = [3, 4]
+      pred_array[1, 20, 10] = [5, 6]
+      pred_array[1, 14, 11] = [7, 8]
+
+      pred_tensor = tf.constant(pred_array)
+
+      cn_assigner = targetassigner.CenterNetBoxTargetAssigner(4)
+      indices, _, _, _ = cn_assigner.assign_size_and_offset_targets(
+          160, 80, box_batch)
+
+      preds = targetassigner.get_batch_predictions_from_indices(
+          pred_tensor, indices)
+      return preds
+    preds = self.execute(graph_fn, [])
+    np.testing.assert_array_equal(preds, [[1, 2], [3, 4], [5, 6], [7, 8]])
+
+
+class CenterNetKeypointTargetAssignerTest(test_case.TestCase):
+
+  def test_keypoint_heatmap_targets(self):
+    def graph_fn():
+      gt_classes_list = [
+          tf.one_hot([0, 1, 0, 1], depth=4),
+      ]
+      coordinates = tf.expand_dims(
+          tf.constant(
+              np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                        [float('nan'), 0.7, float('nan'), 0.9, 1.0],
+                        [0.4, 0.1, 0.4, 0.2, 0.1],
+                        [float('nan'), 0.1, 0.5, 0.7, 0.6]]),
+              dtype=tf.float32),
+          axis=2)
+      gt_keypoints_list = [tf.concat([coordinates, coordinates], axis=2)]
+      gt_boxes_list = [
+          tf.constant(
+              np.array([[0.0, 0.0, 0.3, 0.3],
+                        [0.0, 0.0, 0.5, 0.5],
+                        [0.0, 0.0, 0.5, 0.5],
+                        [0.0, 0.0, 1.0, 1.0]]),
+              dtype=tf.float32)
+      ]
+
+      cn_assigner = targetassigner.CenterNetKeypointTargetAssigner(
+          stride=4,
+          class_id=1,
+          keypoint_indices=[0, 2])
+      (targets, num_instances_batch,
+       valid_mask) = cn_assigner.assign_keypoint_heatmap_targets(
+           120,
+           80,
+           gt_keypoints_list,
+           gt_classes_list,
+           gt_boxes_list=gt_boxes_list)
+      return targets, num_instances_batch, valid_mask
+
+    targets, num_instances_batch, valid_mask = self.execute(graph_fn, [])
+    # keypoint (0.5, 0.5) is selected. The peak is expected to appear at the
+    # center of the image.
+    self.assertEqual((15, 10), _array_argmax(targets[0, :, :, 1]))
+    self.assertAlmostEqual(1.0, targets[0, 15, 10, 1])
+    # No peak for the first class since NaN is selected.
+    self.assertAlmostEqual(0.0, targets[0, 15, 10, 0])
+    # Verify the output heatmap shape.
+    self.assertAllEqual([1, 30, 20, 2], targets.shape)
+    # Verify the number of instances is correct.
+    np.testing.assert_array_almost_equal([[0, 1]],
+                                         num_instances_batch)
+    # When calling the function, we specify the class id to be 1 (1th and 3rd)
+    # instance and the keypoint indices to be [0, 2], meaning that the 1st
+    # instance is the target class with no valid keypoints in it. As a result,
+    # the region of the 1st instance boxing box should be blacked out
+    # (0.0, 0.0, 0.5, 0.5), transfering to (0, 0, 15, 10) in absolute output
+    # space.
+    self.assertAlmostEqual(np.sum(valid_mask[:, 0:16, 0:11]), 0.0)
+    # All other values are 1.0 so the sum is: 30 * 20 - 16 * 11 = 424.
+    self.assertAlmostEqual(np.sum(valid_mask), 424.0)
+
+  def test_assign_keypoints_offset_targets(self):
+    def graph_fn():
+      gt_classes_list = [
+          tf.one_hot([0, 1, 0, 1], depth=4),
+      ]
+      coordinates = tf.expand_dims(
+          tf.constant(
+              np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                        [float('nan'), 0.7, float('nan'), 0.9, 0.4],
+                        [0.4, 0.1, 0.4, 0.2, 0.0],
+                        [float('nan'), 0.0, 0.12, 0.7, 0.4]]),
+              dtype=tf.float32),
+          axis=2)
+      gt_keypoints_list = [tf.concat([coordinates, coordinates], axis=2)]
+
+      cn_assigner = targetassigner.CenterNetKeypointTargetAssigner(
+          stride=4,
+          class_id=1,
+          keypoint_indices=[0, 2])
+      (indices, offsets, weights) = cn_assigner.assign_keypoints_offset_targets(
+          height=120,
+          width=80,
+          gt_keypoints_list=gt_keypoints_list,
+          gt_classes_list=gt_classes_list)
+      return indices, weights, offsets
+    indices, weights, offsets = self.execute(graph_fn, [])
+    # Only the last element has positive weight.
+    np.testing.assert_array_almost_equal(
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0], weights)
+    # Validate the last element's indices and offsets.
+    np.testing.assert_array_equal([0, 3, 2], indices[7, :])
+    np.testing.assert_array_almost_equal([0.6, 0.4], offsets[7, :])
+
+  def test_assign_keypoints_offset_targets_radius(self):
+    def graph_fn():
+      gt_classes_list = [
+          tf.one_hot([0, 1, 0, 1], depth=4),
+      ]
+      coordinates = tf.expand_dims(
+          tf.constant(
+              np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                        [float('nan'), 0.7, float('nan'), 0.9, 0.4],
+                        [0.4, 0.1, 0.4, 0.2, 0.0],
+                        [float('nan'), 0.0, 0.12, 0.7, 0.4]]),
+              dtype=tf.float32),
+          axis=2)
+      gt_keypoints_list = [tf.concat([coordinates, coordinates], axis=2)]
+
+      cn_assigner = targetassigner.CenterNetKeypointTargetAssigner(
+          stride=4,
+          class_id=1,
+          keypoint_indices=[0, 2],
+          peak_radius=1,
+          per_keypoint_offset=True)
+      (indices, offsets, weights) = cn_assigner.assign_keypoints_offset_targets(
+          height=120,
+          width=80,
+          gt_keypoints_list=gt_keypoints_list,
+          gt_classes_list=gt_classes_list)
+      return indices, weights, offsets
+    indices, weights, offsets = self.execute(graph_fn, [])
+
+    # There are total 8 * 5 (neighbors) = 40 targets.
+    self.assertAllEqual(indices.shape, [40, 4])
+    self.assertAllEqual(offsets.shape, [40, 2])
+    self.assertAllEqual(weights.shape, [40])
+    # Only the last 5 (radius 1 generates 5 valid points) element has positive
+    # weight.
+    np.testing.assert_array_almost_equal([
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0
+    ], weights)
+    # Validate the last element's (with neighbors) indices and offsets.
+    np.testing.assert_array_equal([0, 2, 2, 1], indices[35, :])
+    np.testing.assert_array_equal([0, 3, 1, 1], indices[36, :])
+    np.testing.assert_array_equal([0, 3, 2, 1], indices[37, :])
+    np.testing.assert_array_equal([0, 3, 3, 1], indices[38, :])
+    np.testing.assert_array_equal([0, 4, 2, 1], indices[39, :])
+    np.testing.assert_array_almost_equal([1.6, 0.4], offsets[35, :])
+    np.testing.assert_array_almost_equal([0.6, 1.4], offsets[36, :])
+    np.testing.assert_array_almost_equal([0.6, 0.4], offsets[37, :])
+    np.testing.assert_array_almost_equal([0.6, -0.6], offsets[38, :])
+    np.testing.assert_array_almost_equal([-0.4, 0.4], offsets[39, :])
+
+  def test_assign_joint_regression_targets(self):
+    def graph_fn():
+      gt_boxes_list = [
+          tf.constant(
+              np.array([[0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 1.0, 1.0]]),
+              dtype=tf.float32)
+      ]
+      gt_classes_list = [
+          tf.one_hot([0, 1, 0, 1], depth=4),
+      ]
+      coordinates = tf.expand_dims(
+          tf.constant(
+              np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                        [float('nan'), 0.7, float('nan'), 0.9, 0.4],
+                        [0.4, 0.1, 0.4, 0.2, 0.0],
+                        [float('nan'), 0.0, 0.12, 0.7, 0.4]]),
+              dtype=tf.float32),
+          axis=2)
+      gt_keypoints_list = [tf.concat([coordinates, coordinates], axis=2)]
+
+      cn_assigner = targetassigner.CenterNetKeypointTargetAssigner(
+          stride=4,
+          class_id=1,
+          keypoint_indices=[0, 2])
+      (indices, offsets, weights) = cn_assigner.assign_joint_regression_targets(
+          height=120,
+          width=80,
+          gt_keypoints_list=gt_keypoints_list,
+          gt_classes_list=gt_classes_list,
+          gt_boxes_list=gt_boxes_list)
+      return indices, offsets, weights
+    indices, offsets, weights = self.execute(graph_fn, [])
+    np.testing.assert_array_almost_equal(
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0], weights)
+    np.testing.assert_array_equal([0, 15, 10, 1], indices[7, :])
+    np.testing.assert_array_almost_equal([-11.4, -7.6], offsets[7, :])
+
+  def test_assign_joint_regression_targets_radius(self):
+    def graph_fn():
+      gt_boxes_list = [
+          tf.constant(
+              np.array([[0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 0.0, 0.0],
+                        [0.0, 0.0, 1.0, 1.0]]),
+              dtype=tf.float32)
+      ]
+      gt_classes_list = [
+          tf.one_hot([0, 1, 0, 1], depth=4),
+      ]
+      coordinates = tf.expand_dims(
+          tf.constant(
+              np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                        [float('nan'), 0.7, float('nan'), 0.9, 0.4],
+                        [0.4, 0.1, 0.4, 0.2, 0.0],
+                        [float('nan'), 0.0, 0.12, 0.7, 0.4]]),
+              dtype=tf.float32),
+          axis=2)
+      gt_keypoints_list = [tf.concat([coordinates, coordinates], axis=2)]
+
+      cn_assigner = targetassigner.CenterNetKeypointTargetAssigner(
+          stride=4,
+          class_id=1,
+          keypoint_indices=[0, 2],
+          peak_radius=1)
+      (indices, offsets, weights) = cn_assigner.assign_joint_regression_targets(
+          height=120,
+          width=80,
+          gt_keypoints_list=gt_keypoints_list,
+          gt_classes_list=gt_classes_list,
+          gt_boxes_list=gt_boxes_list)
+      return indices, offsets, weights
+    indices, offsets, weights = self.execute(graph_fn, [])
+
+    # There are total 8 * 5 (neighbors) = 40 targets.
+    self.assertAllEqual(indices.shape, [40, 4])
+    self.assertAllEqual(offsets.shape, [40, 2])
+    self.assertAllEqual(weights.shape, [40])
+    # Only the last 5 (radius 1 generates 5 valid points) element has positive
+    # weight.
+    np.testing.assert_array_almost_equal([
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0
+    ], weights)
+    # Test the values of the indices and offsets of the last 5 elements.
+    np.testing.assert_array_equal([0, 14, 10, 1], indices[35, :])
+    np.testing.assert_array_equal([0, 15, 9, 1], indices[36, :])
+    np.testing.assert_array_equal([0, 15, 10, 1], indices[37, :])
+    np.testing.assert_array_equal([0, 15, 11, 1], indices[38, :])
+    np.testing.assert_array_equal([0, 16, 10, 1], indices[39, :])
+    np.testing.assert_array_almost_equal([-10.4, -7.6], offsets[35, :])
+    np.testing.assert_array_almost_equal([-11.4, -6.6], offsets[36, :])
+    np.testing.assert_array_almost_equal([-11.4, -7.6], offsets[37, :])
+    np.testing.assert_array_almost_equal([-11.4, -8.6], offsets[38, :])
+    np.testing.assert_array_almost_equal([-12.4, -7.6], offsets[39, :])
+
+
+class CenterNetMaskTargetAssignerTest(test_case.TestCase):
+
+  def test_assign_segmentation_targets(self):
+    def graph_fn():
+      gt_masks_list = [
+          # Example 0.
+          tf.constant([
+              [
+                  [1., 0., 0., 0.],
+                  [1., 1., 0., 0.],
+                  [0., 0., 0., 0.],
+                  [0., 0., 0., 0.],
+              ],
+              [
+                  [0., 0., 0., 0.],
+                  [0., 0., 0., 1.],
+                  [0., 0., 0., 0.],
+                  [0., 0., 0., 0.],
+              ],
+              [
+                  [1., 1., 0., 0.],
+                  [1., 1., 0., 0.],
+                  [0., 0., 1., 1.],
+                  [0., 0., 1., 1.],
+              ]
+          ], dtype=tf.float32),
+          # Example 1.
+          tf.constant([
+              [
+                  [1., 1., 0., 1.],
+                  [1., 1., 1., 1.],
+                  [0., 0., 1., 1.],
+                  [0., 0., 0., 1.],
+              ],
+              [
+                  [0., 0., 0., 0.],
+                  [0., 0., 0., 0.],
+                  [1., 1., 0., 0.],
+                  [1., 1., 0., 0.],
+              ],
+          ], dtype=tf.float32),
+      ]
+      gt_classes_list = [
+          # Example 0.
+          tf.constant([[1., 0., 0.],
+                       [0., 1., 0.],
+                       [1., 0., 0.]], dtype=tf.float32),
+          # Example 1.
+          tf.constant([[0., 1., 0.],
+                       [0., 1., 0.]], dtype=tf.float32)
+      ]
+      cn_assigner = targetassigner.CenterNetMaskTargetAssigner(stride=2)
+      segmentation_target = cn_assigner.assign_segmentation_targets(
+          gt_masks_list=gt_masks_list,
+          gt_classes_list=gt_classes_list,
+          mask_resize_method=targetassigner.ResizeMethod.NEAREST_NEIGHBOR)
+      return segmentation_target
+    segmentation_target = self.execute(graph_fn, [])
+
+    expected_seg_target = np.array([
+        # Example 0  [[class 0, class 1], [background, class 0]]
+        [[[1, 0, 0], [0, 1, 0]],
+         [[0, 0, 0], [1, 0, 0]]],
+        # Example 1  [[class 1, class 1], [class 1, class 1]]
+        [[[0, 1, 0], [0, 1, 0]],
+         [[0, 1, 0], [0, 1, 0]]],
+    ], dtype=np.float32)
+    np.testing.assert_array_almost_equal(
+        expected_seg_target, segmentation_target)
 
 
 if __name__ == '__main__':
