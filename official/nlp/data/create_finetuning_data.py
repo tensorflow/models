@@ -173,6 +173,7 @@ def generate_classifier_dataset():
         "qnli":
             classifier_data_lib.QnliProcessor,
         "qqp": classifier_data_lib.QqpProcessor,
+        "rte": classifier_data_lib.RteProcessor,
         "sst-2":
             classifier_data_lib.SstProcessor,
         "xnli":
