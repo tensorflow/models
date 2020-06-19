@@ -191,9 +191,10 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
             (feature_block, feature_block_map[feature_block])
             for feature_block in feature_block_list]
         fpn_features = self._fpn_features_generator(fpn_input_image_features)
+        features_maps = [fpn_feature for _, fpn_feature in fpn_features.items()]
 
         feature_extractor_model = tf.keras.models.Model(
-            inputs=full_resnet_v1_model.inputs, outputs=fpn_features)
+            inputs=full_resnet_v1_model.inputs, outputs=features_maps)
         return feature_extractor_model
 
   def get_box_classifier_feature_extractor_model(self, name=None):
