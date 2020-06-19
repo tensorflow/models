@@ -218,8 +218,9 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
     with tf.name_scope(name):
       with tf.name_scope('ResnetV1FPN'):
         feature_extractor_model = tf.keras.models.Sequential([
-          tf.keras.layers.Dense(unit=1024, activation='ReLU'),
-          tf.keras.layers.Dense(unit=1024, activation='ReLU')
+          tf.keras.layers.Flatten(),
+          tf.keras.layers.Dense(units=1024, activation='relu'),
+          tf.keras.layers.Dense(units=1024, activation='relu')
         ])
         return feature_extractor_model
 
