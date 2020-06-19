@@ -87,22 +87,17 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
       feature_extractor.get_proposal_feature_extractor_model(
           name='TestScope')(preprocessed_inputs)
 
-  # def test_extract_box_classifier_features_returns_expected_size(self):
-  #   feature_extractor = self._build_feature_extractor()
-  #   proposal_feature_maps = tf.random_uniform(
-  #       [3, 7, 7, 1024], maxval=255, dtype=tf.float32)
-  #   model = feature_extractor.get_box_classifier_feature_extractor_model(
-  #       name='TestScope')
-  #   proposal_classifier_features = (
-  #       model(proposal_feature_maps))
-  #   features_shape = tf.shape(proposal_classifier_features)
-  #   # Note: due to a slight mismatch in slim and keras resnet definitions
-  #   # the output shape of the box classifier is slightly different compared to
-  #   # that of the slim implementation.  The keras version is more `canonical`
-  #   # in that it more accurately reflects the original authors' implementation.
-  #   # TODO(jonathanhuang): make the output shape match that of the slim
-  #   # implementation by using atrous convolutions.
-  #   self.assertAllEqual(features_shape.numpy(), [3, 4, 4, 2048])
+  def test_extract_box_classifier_features_returns_expected_size(self):
+    feature_extractor = self._build_feature_extractor()
+    proposal_feature_maps = tf.random_uniform(
+        [3, 7, 7, 1024], maxval=255, dtype=tf.float32)
+    model = feature_extractor.get_box_classifier_feature_extractor_model(
+        name='TestScope')
+    proposal_classifier_features = (
+        model(proposal_feature_maps))
+    features_shape = tf.shape(proposal_classifier_features)
+
+    self.assertAllEqual(features_shape.numpy(), [3, 1024])
 
 
 if __name__ == '__main__':
