@@ -14,8 +14,11 @@
 # limitations under the License.
 # ==============================================================================
 """Sentence prediction (classification) task."""
-import logging
+from absl import logging
 import dataclasses
+import numpy as np
+from scipy import stats
+from sklearn import metrics as sklearn_metrics
 import tensorflow as tf
 import tensorflow_hub as hub
 
@@ -33,6 +36,7 @@ class SentencePredictionConfig(cfg.TaskConfig):
   # be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
+  metric_type: str = 'accuracy'
   network: bert.BertPretrainerConfig = bert.BertPretrainerConfig(
       num_masked_tokens=0,  # No masked language modeling head.
       cls_heads=[
@@ -59,6 +63,7 @@ class SentencePredictionTask(base_task.Task):
       self._hub_module = hub.load(params.hub_module_url)
     else:
       self._hub_module = None
+    self.metric_type = params.metric_type
 
   def build_model(self):
     if self._hub_module:
@@ -122,6 +127,57 @@ class SentencePredictionTask(base_task.Task):
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
     compiled_metrics.update_state(labels, model_outputs['sentence_prediction'])
+
+  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+    if self.metric_type == 'accuracy':
+      return super(SentencePredictionTask,
+                   self).validation_step(inputs, model, metrics)
+    features, labels = inputs
+    outputs = self.inference_step(features, model)
+    loss = self.build_losses(
+        labels=labels, model_outputs=outputs, aux_losses=model.losses)
+    if self.metric_type == 'matthews_corrcoef':
+      return {
+          self.loss:
+              loss,
+          'sentence_prediction':
+              tf.expand_dims(
+                  tf.math.argmax(outputs['sentence_prediction'], axis=1),
+                  axis=0),
+          'labels':
+              labels,
+      }
+    if self.metric_type == 'pearson_spearman_corr':
+      return {
+          self.loss: loss,
+          'sentence_prediction': outputs['sentence_prediction'],
+          'labels': labels,
+      }
+
+  def aggregate_logs(self, state=None, step_outputs=None):
+    if state is None:
+      state = {'sentence_prediction': [], 'labels': []}
+    state['sentence_prediction'].append(
+        np.concatenate([v.numpy() for v in step_outputs['sentence_prediction']],
+                       axis=0))
+    state['labels'].append(
+        np.concatenate([v.numpy() for v in step_outputs['labels']], axis=0))
+    return state
+
+  def reduce_aggregated_logs(self, aggregated_logs):
+    if self.metric_type == 'matthews_corrcoef':
+      preds = np.concatenate(aggregated_logs['sentence_prediction'], axis=0)
+      labels = np.concatenate(aggregated_logs['labels'], axis=0)
+      return {
+          self.metric_type: sklearn_metrics.matthews_corrcoef(preds, labels)
+      }
+    if self.metric_type == 'pearson_spearman_corr':
+      preds = np.concatenate(aggregated_logs['sentence_prediction'], axis=0)
+      labels = np.concatenate(aggregated_logs['labels'], axis=0)
+      pearson_corr = stats.pearsonr(preds, labels)[0]
+      spearman_corr = stats.spearmanr(preds, labels)[0]
+      corr_metric = (pearson_corr + spearman_corr) / 2
+      return {self.metric_type: corr_metric}
 
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""
