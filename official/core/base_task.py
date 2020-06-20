@@ -247,6 +247,14 @@ class Task(tf.Module):
     """Performs the forward step."""
     return model(inputs, training=False)
 
+  def aggregate_logs(self, state, step_logs):
+    """Optional aggregation over logs returned from a validation step."""
+    pass
+
+  def reduce_aggregated_logs(self, aggregated_logs):
+    """Optional reduce of aggregated logs over validation steps."""
+    return {}
+
 
 _REGISTERED_TASK_CLS = {}
 
