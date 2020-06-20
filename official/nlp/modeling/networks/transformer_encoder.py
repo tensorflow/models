@@ -60,7 +60,7 @@ class TransformerEncoder(tf.keras.Model):
     initializer: The initialzer to use for all weights in this encoder.
     return_all_encoder_outputs: Whether to output sequence embedding outputs of
       all encoder transformer layers.
-    output_range: the sequence output range, [0, output_range), by slicing the
+    output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yeilds the full
       output.
@@ -69,6 +69,10 @@ class TransformerEncoder(tf.keras.Model):
       two matrices in the shape of ['vocab_size', 'embedding_width'] and
       ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
       smaller than 'hidden_size').
+    embedding_layer: The word embedding layer. `None` means we will create a new
+      embedding layer. Otherwise, we will reuse the given embedding layer. This
+      parameter is originally added for ELECTRA model which needs to tie the
+      generator embeddings with the discriminator embeddings.
   """
 
   def __init__(self,
@@ -87,6 +91,7 @@ class TransformerEncoder(tf.keras.Model):
                return_all_encoder_outputs=False,
                output_range=None,
                embedding_width=None,
+               embedding_layer=None,
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
@@ -121,11 +126,14 @@ class TransformerEncoder(tf.keras.Model):
 
     if embedding_width is None:
       embedding_width = hidden_size
-    self._embedding_layer = layers.OnDeviceEmbedding(
-        vocab_size=vocab_size,
-        embedding_width=embedding_width,
-        initializer=initializer,
-        name='word_embeddings')
+    if embedding_layer is None:
+      self._embedding_layer = layers.OnDeviceEmbedding(
+          vocab_size=vocab_size,
+          embedding_width=embedding_width,
+          initializer=initializer,
+          name='word_embeddings')
+    else:
+      self._embedding_layer = embedding_layer
     word_embeddings = self._embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
@@ -208,6 +216,9 @@ class TransformerEncoder(tf.keras.Model):
 
   def get_embedding_table(self):
     return self._embedding_layer.embeddings
+
+  def get_embedding_layer(self):
+    return self._embedding_layer
 
   def get_config(self):
     return self._config_dict
