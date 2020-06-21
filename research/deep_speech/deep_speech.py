@@ -69,21 +69,6 @@ def compute_length_after_conv(max_time_steps, ctc_time_steps, input_length):
       ctc_input_length, tf.cast(max_time_steps, dtype=tf.float32)), dtype=tf.int32)
 
 
-def ctc_loss(label_length, ctc_input_length, labels, logits):
-  """Computes the ctc loss for the current batch of predictions."""
-  label_length = tf.cast(tf.squeeze(label_length), dtype=tf.int32)
-  ctc_input_length = tf.cast(tf.squeeze(ctc_input_length), dtype=tf.int32)
-  sparse_labels = tf.cast(
-      tf.keras.backend.ctc_label_dense_to_sparse(labels, label_length), dtype=tf.int32)
-  y_pred = tf.math.log(tf.transpose(
-      logits, perm=[1, 0, 2]) + tf.keras.backend.epsilon())
-
-  return tf.expand_dims(
-      tf.compat.v1.nn.ctc_loss(labels=sparse_labels, inputs=y_pred,
-                     sequence_length=ctc_input_length),
-      axis=1)
-
-
 def evaluate_model(estimator, speech_labels, entries, input_fn_eval):
   """Evaluate the model performance using WER anc CER as metrics.
 
@@ -165,7 +150,7 @@ def model_fn(features, labels, mode, params):
     logits = model(features, training=False)
     predictions = {
         "classes": tf.argmax(logits, axis=2),
-        "probabilities": tf.nn.softmax(logits),
+        "probabilities": logits,
         "logits": logits
     }
     return tf.estimator.EstimatorSpec(
@@ -174,12 +159,11 @@ def model_fn(features, labels, mode, params):
 
   # In training mode.
   logits = model(features, training=True)
-  probs = tf.nn.softmax(logits)
   ctc_input_length = compute_length_after_conv(
-      tf.shape(features)[1], tf.shape(probs)[1], input_length)
+      tf.shape(features)[1], tf.shape(logits)[1], input_length)
   # Compute CTC loss
-  loss = tf.reduce_mean(ctc_loss(
-      label_length, ctc_input_length, labels, probs))
+  loss = tf.reduce_mean(tf.keras.backend.ctc_batch_cost(
+      labels, logits, ctc_input_length, label_length))
 
   optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=flags_obj.learning_rate)
   global_step = tf.compat.v1.train.get_or_create_global_step()
