@@ -27,6 +27,7 @@ from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
 from official.nlp.data import sentence_prediction_dataloader
 from official.nlp.modeling import losses as loss_lib
+from official.nlp.tasks import utils
 
 
 @dataclasses.dataclass
@@ -67,18 +68,7 @@ class SentencePredictionTask(base_task.Task):
 
   def build_model(self):
     if self._hub_module:
-      input_word_ids = tf.keras.layers.Input(
-          shape=(None,), dtype=tf.int32, name='input_word_ids')
-      input_mask = tf.keras.layers.Input(
-          shape=(None,), dtype=tf.int32, name='input_mask')
-      input_type_ids = tf.keras.layers.Input(
-          shape=(None,), dtype=tf.int32, name='input_type_ids')
-      bert_model = hub.KerasLayer(self._hub_module, trainable=True)
-      pooled_output, sequence_output = bert_model(
-          [input_word_ids, input_mask, input_type_ids])
-      encoder_from_hub = tf.keras.Model(
-          inputs=[input_word_ids, input_mask, input_type_ids],
-          outputs=[sequence_output, pooled_output])
+      encoder_from_hub = utils.get_encoder_from_hub(self._hub_module)
       return bert.instantiate_bertpretrainer_from_cfg(
           self.task_config.network, encoder_network=encoder_from_hub)
     else:
