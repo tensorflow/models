@@ -60,13 +60,13 @@ class TransformerDecoder(tf.keras.layers.Layer):
     for i in range(self.num_hidden_layers):
       self.layers.append(
           transformer.TransformerDecoderLayer(
-              hidden_size=self.hidden_size,
               num_attention_heads=self.num_attention_heads,
               intermediate_size=self.intermediate_size,
               intermediate_activation=self.intermediate_activation,
-              hidden_dropout_prob=self.hidden_dropout_prob,
-              attention_probs_dropout_prob=self.attention_probs_dropout_prob,
-              initializer_range=self.initializer_range,
+              dropout_rate=self.hidden_dropout_prob,
+              attention_dropout_rate=self.attention_probs_dropout_prob,
+              kernel_initializer=tf.keras.initializers.TruncatedNormal(
+                  stddev=self.initializer_range),
               multi_channel_cross_attention=self.multi_channel_cross_attention,
               name=("layer_%d" % i)))
     super(TransformerDecoder, self).build(unused_input_shapes)
