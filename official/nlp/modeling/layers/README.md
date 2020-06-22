@@ -28,6 +28,10 @@ assemble new layers, networks, or models.
     described in
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
 
+*   [TransformerDecoderLayer](transformer.py) TransformerDecoderLayer is made up
+    of self multi-head attention, cross multi-head attention and
+    feedforward network.
+
 *   [ReZeroTransformer](rezero_transformer.py) implements Transformer with
     ReZero described in
     ["ReZero is All You Need: Fast Convergence at Large Depth"](https://arxiv.org/abs/2003.04887).
@@ -49,8 +53,8 @@ assemble new layers, networks, or models.
     should be masked), the output will have masked positions set to
     approximately zero.
 
-* [`MaskedLM`](masked_lm.py) implements a masked language model. It assumes the
-  embedding table variable is passed to it.
+*   [`MaskedLM`](masked_lm.py) implements a masked language model. It assumes
+    the embedding table variable is passed to it.
 
 *   [ClassificationHead](cls_head.py) A pooling head over a sequence of
     embeddings, commonly used by classification tasks.
