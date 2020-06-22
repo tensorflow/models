@@ -233,13 +233,11 @@ class TransformerDecoderLayerTest(keras_parameterized.TestCase):
     num_attention_heads = 2
     hidden_size = 16
     decoder_block = transformer.TransformerDecoderLayer(
-        hidden_size=hidden_size,
         num_attention_heads=num_attention_heads,
         intermediate_size=32,
         intermediate_activation='relu',
-        hidden_dropout_prob=0.1,
-        attention_probs_dropout_prob=0.1,
-        initializer_range=0.1)
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1)
     # Forward path.
     dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
     dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
