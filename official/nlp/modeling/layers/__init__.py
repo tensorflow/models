@@ -26,5 +26,5 @@ from official.nlp.modeling.layers.position_embedding import PositionEmbedding
 from official.nlp.modeling.layers.rezero_transformer import ReZeroTransformer
 from official.nlp.modeling.layers.self_attention_mask import SelfAttentionMask
 from official.nlp.modeling.layers.talking_heads_attention import TalkingHeadsAttention
-from official.nlp.modeling.layers.transformer import Transformer
+from official.nlp.modeling.layers.transformer import *
 from official.nlp.modeling.layers.transformer_scaffold import TransformerScaffold

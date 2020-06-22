@@ -173,3 +173,18 @@ def assert_rank(tensor, expected_rank, name=None):
         "For the tensor `%s`, the actual tensor rank `%d` (shape = %s) is not "
         "equal to the expected tensor rank `%s`" %
         (name, actual_rank, str(tensor.shape), str(expected_rank)))
+
+
+def safe_mean(losses):
+  """Computes a safe mean of the losses.
+
+  Args:
+    losses: `Tensor` whose elements contain individual loss measurements.
+
+  Returns:
+    A scalar representing the mean of `losses`. If `num_present` is zero,
+      then zero is returned.
+  """
+  total = tf.reduce_sum(losses)
+  num_elements = tf.cast(tf.size(losses), dtype=losses.dtype)
+  return tf.math.divide_no_nan(total, num_elements)
