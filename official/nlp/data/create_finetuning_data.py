@@ -186,6 +186,7 @@ def generate_classifier_dataset():
         "paws-x":
             functools.partial(classifier_data_lib.PawsxProcessor,
                               language=FLAGS.pawsx_language),
+        "wnli": classifier_data_lib.WnliProcessor,
         "xtreme-xnli":
             functools.partial(classifier_data_lib.XtremeXnliProcessor),
         "xtreme-paws-x":
