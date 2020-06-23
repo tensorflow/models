@@ -38,7 +38,7 @@ class SentencePredictionConfig(cfg.TaskConfig):
   init_checkpoint: str = ''
   hub_module_url: str = ''
   metric_type: str = 'accuracy'
-  network: bert.BertPretrainerConfig = bert.BertPretrainerConfig(
+  model: bert.BertPretrainerConfig = bert.BertPretrainerConfig(
       num_masked_tokens=0,  # No masked language modeling head.
       cls_heads=[
           bert.ClsHeadConfig(
@@ -70,9 +70,9 @@ class SentencePredictionTask(base_task.Task):
     if self._hub_module:
       encoder_from_hub = utils.get_encoder_from_hub(self._hub_module)
       return bert.instantiate_bertpretrainer_from_cfg(
-          self.task_config.network, encoder_network=encoder_from_hub)
+          self.task_config.model, encoder_network=encoder_from_hub)
     else:
-      return bert.instantiate_bertpretrainer_from_cfg(self.task_config.network)
+      return bert.instantiate_bertpretrainer_from_cfg(self.task_config.model)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(

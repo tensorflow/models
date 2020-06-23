@@ -33,7 +33,7 @@ class TaggingConfig(cfg.TaskConfig):
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
-  network: encoders.TransformerEncoderConfig = (
+  model: encoders.TransformerEncoderConfig = (
       encoders.TransformerEncoderConfig())
   num_classes: int = 0
   # The ignored label id will not contribute to loss.
@@ -67,14 +67,14 @@ class TaggingTask(base_task.Task):
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
       encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.network)
+          self.task_config.model)
 
     return models.BertTokenClassifier(
         network=encoder_network,
         num_classes=self.task_config.num_classes,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.network.initializer_range),
-        dropout_rate=self.task_config.network.dropout_rate,
+            stddev=self.task_config.model.initializer_range),
+        dropout_rate=self.task_config.model.dropout_rate,
         output='logits')
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
