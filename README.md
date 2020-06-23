@@ -2,7 +2,8 @@
 
 # Welcome to the Model Garden for TensorFlow
 
-The TensorFlow Model Garden is a repository with a number of different implementations of state-of-the-art (SOTA) models and modeling solutions for TensorFlow users. We aim to demonstrate the best practices for modeling so that TensorFlow users can take full advantage of TensorFlow for their research and product development.
+The TensorFlow Model Garden is a repository with a number of different implementations of state-of-the-art (SOTA) models and modeling solutions for TensorFlow users. We aim to demonstrate the best practices for modeling so that TensorFlow users
+can take full advantage of TensorFlow for their research and product development.
 
 | Directory | Description |
 |-----------|-------------|
@@ -10,7 +11,7 @@ The TensorFlow Model Garden is a repository with a number of different implement
 | [research](research) | • A collection of research model implementations in TensorFlow 1 or 2 by researchers<br />• Maintained and supported by researchers |
 | [community](community) | • A curated list of the GitHub repositories with machine learning models and implementations powered by TensorFlow 2 |
 
-## [Announcements](../../wiki/Announcements)
+## [Announcements](https://github.com/tensorflow/models/wiki/Announcements)
 
 | Date | News |
 |------|------|
@@ -21,11 +22,17 @@ The TensorFlow Model Garden is a repository with a number of different implement
 | May 1, 2020 | [DELF: DEep Local Features](https://github.com/tensorflow/models/tree/master/research/delf) updated to support TensorFlow 2.1
 | March 31, 2020 | [Introducing the Model Garden for TensorFlow 2](https://blog.tensorflow.org/2020/03/introducing-model-garden-for-tensorflow-2.html) ([Tweet](https://twitter.com/TensorFlow/status/1245029834633297921)) |
 
+## [Milestones](https://github.com/tensorflow/models/milestones)
+
+| Date | Milestone |
+|------|-----------|
+| July 7, 2020 | [![GitHub milestone](https://img.shields.io/github/milestones/progress/tensorflow/models/1)](https://github.com/tensorflow/models/milestone/1) |
+
 ## Contributions
 
 [![help wanted:paper implementation](https://img.shields.io/github/issues/tensorflow/models/help%20wanted%3Apaper%20implementation)](https://github.com/tensorflow/models/labels/help%20wanted%3Apaper%20implementation)
 
-If you want to contribute, please review the [contribution guidelines](../../wiki/How-to-contribute).
+If you want to contribute, please review the [contribution guidelines](https://github.com/tensorflow/models/wiki/How-to-contribute).
 
 ## License
 
