@@ -109,4 +109,4 @@ def main(unused_argv):
           use_tpu=FLAGS.use_tpu)
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()
