@@ -910,7 +910,7 @@ def eval_continuously(
     tf.logging.warning(
         'Forced number of epochs for all eval validations to be 1.')
   configs = merge_external_params_with_configs(
-      configs, hparams, kwargs_dict=kwargs)
+      configs, None, kwargs_dict=kwargs)
   model_config = configs['model']
   train_input_config = configs['train_input_config']
   eval_config = configs['eval_config']

@@ -26,6 +26,7 @@ try:
   from tensorflow.contrib import training as contrib_training
 except ImportError:
   # TF 2.0 doesn't ship with contrib.
+  from tensorboard
   pass
 # pylint: enable=g-import-not-at-top
 
@@ -40,6 +41,7 @@ def create_hparams(hparams_overrides=None):
   Returns:
     The hyperparameters as a tf.HParams object.
   """
+  return None
   hparams = contrib_training.HParams(
       # Whether a fine tuning checkpoint (provided in the pipeline config)
       # should be loaded for training.
