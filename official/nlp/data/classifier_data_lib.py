@@ -611,13 +611,11 @@ class RteProcessor(DataProcessor):
       if i == 0:
         continue
       guid = "%s-%s" % (set_type, i)
+      text_a = tokenization.convert_to_unicode(line[1])
+      text_b = tokenization.convert_to_unicode(line[2])
       if set_type == "test":
-        text_a = tokenization.convert_to_unicode(line[1])
-        text_b = tokenization.convert_to_unicode(line[2])
         label = "entailment"
       else:
-        text_a = tokenization.convert_to_unicode(line[1])
-        text_b = tokenization.convert_to_unicode(line[2])
         label = tokenization.convert_to_unicode(line[3])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
@@ -836,6 +834,51 @@ class TfdsProcessor(DataProcessor):
     return examples
 
 
+class WnliProcessor(DataProcessor):
+  """Processor for the WNLI data set (GLUE version)."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    return ["0", "1"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "WNLI"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training and dev sets."""
+    examples = []
+    for i, line in enumerate(lines):
+      if i == 0:
+        continue
+      guid = "%s-%s" % (set_type, i)
+      text_a = tokenization.convert_to_unicode(line[1])
+      text_b = tokenization.convert_to_unicode(line[2])
+      if set_type == "test":
+        label = "0"
+      else:
+        label = tokenization.convert_to_unicode(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+
 def convert_single_example(ex_index, example, label_list, max_seq_length,
                            tokenizer):
   """Converts a single `InputExample` into a single `InputFeatures`."""
@@ -1010,8 +1053,7 @@ def generate_tf_record_from_data_file(processor,
   Arguments:
       processor: Input processor object to be used for generating data. Subclass
         of `DataProcessor`.
-      data_dir: Directory that contains train/eval data to process. Data files
-        should be in from "dev.tsv", "test.tsv", or "train.tsv".
+      data_dir: Directory that contains train/eval/test data to process.
       tokenizer: The tokenizer to be applied on the data.
       train_data_output_path: Output to which processed tf record for training
         will be saved.
@@ -1047,6 +1089,12 @@ def generate_tf_record_from_data_file(processor,
                                             tokenizer, eval_data_output_path,
                                             label_type)
 
+  meta_data = {
+      "processor_type": processor.get_processor_name(),
+      "train_data_size": num_training_data,
+      "max_seq_length": max_seq_length,
+  }
+
   if test_data_output_path:
     test_input_data_examples = processor.get_test_examples(data_dir)
     if isinstance(test_input_data_examples, dict):
@@ -1054,17 +1102,14 @@ def generate_tf_record_from_data_file(processor,
         file_based_convert_examples_to_features(
             examples, label_list, max_seq_length, tokenizer,
             test_data_output_path.format(language), label_type)
+        meta_data["test_{}_data_size".format(language)] = len(examples)
     else:
       file_based_convert_examples_to_features(test_input_data_examples,
                                               label_list, max_seq_length,
                                               tokenizer, test_data_output_path,
                                               label_type)
+      meta_data["test_data_size"] = len(test_input_data_examples)
 
-  meta_data = {
-      "processor_type": processor.get_processor_name(),
-      "train_data_size": num_training_data,
-      "max_seq_length": max_seq_length,
-  }
   if is_regression:
     meta_data["task_type"] = "bert_regression"
     meta_data["label_type"] = {int: "int", float: "float"}[label_type]
@@ -1076,13 +1121,5 @@ def generate_tf_record_from_data_file(processor,
 
   if eval_data_output_path:
     meta_data["eval_data_size"] = len(eval_input_data_examples)
-
-  if test_data_output_path:
-    test_input_data_examples = processor.get_test_examples(data_dir)
-    if isinstance(test_input_data_examples, dict):
-      for language, examples in test_input_data_examples.items():
-        meta_data["test_{}_data_size".format(language)] = len(examples)
-    else:
-      meta_data["test_data_size"] = len(test_input_data_examples)
 
   return meta_data
