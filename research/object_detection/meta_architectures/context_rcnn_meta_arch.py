@@ -289,9 +289,6 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     """
     if (fields.InputDataFields.context_features not in features or
         fields.InputDataFields.valid_context_size not in features):
-      for key, value in features.items():
-        print(key)
-      print (fields.InputDataFields.valid_context_size in features)
       raise ValueError(
           "Please make sure context_features and valid_context_size are in the "
           "features")

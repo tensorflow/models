@@ -469,10 +469,9 @@ def train_loop(
     train_steps = train_config.num_steps
 
   # Read export_to_tpu from hparams if not passed.
-  # Read export_to_tpu from hparams if not passed.
-  #if export_to_tpu is None:
-  #  export_to_tpu = hparams.get('export_to_tpu', False)
-  export_to_tpu = False
+  if export_to_tpu is None:
+    export_to_tpu = False
+  
   tf.logging.info(
       'train_loop: use_tpu %s, export_to_tpu %s', use_tpu,
       export_to_tpu)
@@ -525,7 +524,6 @@ def train_loop(
 
     train_input = strategy.experimental_distribute_datasets_from_function(
         train_dataset_fn)
-
 
     global_step = tf.Variable(
         0, trainable=False, dtype=tf.compat.v2.dtypes.int64, name='global_step',
@@ -945,9 +943,9 @@ def eval_continuously(
     eval_inputs.append((eval_input_config.name, next_eval_input))
 
   # Read export_to_tpu from hparams if not passed.
-  #if export_to_tpu is None:
-  #  export_to_tpu = hparams.get('export_to_tpu', False)
-  export_to_tpu = False
+  if export_to_tpu is None:
+    export_to_tpu = False
+  
   tf.logging.info('eval_continuously: use_tpu %s, export_to_tpu %s',
                   use_tpu, export_to_tpu)
 

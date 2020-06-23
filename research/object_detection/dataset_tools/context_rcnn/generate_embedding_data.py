@@ -53,12 +53,10 @@ import threading
 from absl import app
 from absl import flags
 import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions, DirectOptions
 import numpy as np
 import six
 import tensorflow.compat.v1 as tf
 from apache_beam import runners
-#import glob2
 
 flags.DEFINE_string('embedding_input_tfrecord', None, 'TFRecord containing'
                     'images in tf.Example format for object detection.')
@@ -113,7 +111,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     with self.session_lock:
       if self._session is None:
         graph = tf.Graph()
-        self._session = tf.Session(graph=graph, config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
+        self._session = tf.Session(graph=graph)
         with graph.as_default():
           meta_graph = tf.saved_model.loader.load(
               self._session, [tf.saved_model.tag_constants.SERVING],
@@ -199,9 +197,6 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     example = tf.train.Example()
     example.features.feature['image/unix_time'].float_list.value.extend(
         [unix_time])
-
-    #print(tfrecord_entry)
-    #print(type(tfrecord_entry))
 
     (detection_features, detection_boxes, num_detections,
      detection_scores) = self._session.run(
@@ -340,9 +335,7 @@ def construct_pipeline(input_tfrecord, output_tfrecord, model_dir,
     bottom_k_embedding_count: The number of low-confidence embeddings to store.
     num_shards: The number of output shards.
   """
-  #print(input_tfrecord)
-  #allpaths = glob2.glob(input_tfrecord)
-  def pipeline(root): 
+  def pipeline(root):
     input_collection = (
         root | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
             input_tfrecord,
@@ -364,10 +357,6 @@ def main(_):
   Args:
     _: unused
   """
-  #pipeline_options = PipelineOptions(flags="--num_workers=1 --max_num_workers=1 --running_mode='in_memory'")
-  #pipeline_options.view_as(DirectOptions).direct_num_workers = 1
-  #pipeline_options.view_as(DirectOptions).direct_running_mode = ''
-
   # must create before flags are used
   runner = runners.DirectRunner()
 
@@ -377,7 +366,7 @@ def main(_):
       construct_pipeline(FLAGS.embedding_input_tfrecord,
                          FLAGS.embedding_output_tfrecord,
                          FLAGS.embedding_model_dir, FLAGS.top_k_embedding_count,
-                         FLAGS.bottom_k_embedding_count, FLAGS.num_shards))#, options=pipeline_options)
+                         FLAGS.bottom_k_embedding_count, FLAGS.num_shards))
 
 
 if __name__ == '__main__':
