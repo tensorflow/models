@@ -13,41 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for official.nlp.tasks.sentence_prediction."""
+"""Tests for official.nlp.tasks.question_answering."""
 import functools
 import os
-
-from absl.testing import parameterized
 import tensorflow as tf
 
 from official.nlp.bert import configs
 from official.nlp.bert import export_tfhub
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
-from official.nlp.tasks import sentence_prediction
+from official.nlp.tasks import question_answering
 
 
-class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
+class QuestionAnsweringTaskTest(tf.test.TestCase):
 
   def setUp(self):
-    super(SentencePredictionTaskTest, self).setUp()
-    self._train_data_config = bert.SentencePredictionDataConfig(
+    super(QuestionAnsweringTaskTest, self).setUp()
+    self._encoder_config = encoders.TransformerEncoderConfig(
+        vocab_size=30522, num_layers=1)
+    self._train_data_config = bert.QADataConfig(
         input_path="dummy", seq_length=128, global_batch_size=1)
 
-  def get_network_config(self, num_classes):
-    return bert.BertPretrainerConfig(
-        encoder=encoders.TransformerEncoderConfig(
-            vocab_size=30522, num_layers=1),
-        num_masked_tokens=0,
-        cls_heads=[
-            bert.ClsHeadConfig(
-                inner_dim=10,
-                num_classes=num_classes,
-                name="sentence_prediction")
-        ])
-
   def _run_task(self, config):
-    task = sentence_prediction.SentencePredictionTask(config)
+    task = question_answering.QuestionAnsweringTask(config)
     model = task.build_model()
     metrics = task.build_metrics()
 
@@ -61,24 +49,9 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     task.validation_step(next(iterator), model, metrics=metrics)
 
   def test_task(self):
-    config = sentence_prediction.SentencePredictionConfig(
-        init_checkpoint=self.get_temp_dir(),
-        network=self.get_network_config(2),
-        train_data=self._train_data_config)
-    task = sentence_prediction.SentencePredictionTask(config)
-    model = task.build_model()
-    metrics = task.build_metrics()
-    dataset = task.build_inputs(config.train_data)
-
-    iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
-    task.train_step(next(iterator), model, optimizer, metrics=metrics)
-    task.validation_step(next(iterator), model, metrics=metrics)
-
     # Saves a checkpoint.
     pretrain_cfg = bert.BertPretrainerConfig(
-        encoder=encoders.TransformerEncoderConfig(
-            vocab_size=30522, num_layers=1),
+        encoder=self._encoder_config,
         num_masked_tokens=20,
         cls_heads=[
             bert.ClsHeadConfig(
@@ -87,45 +60,39 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     pretrain_model = bert.instantiate_bertpretrainer_from_cfg(pretrain_cfg)
     ckpt = tf.train.Checkpoint(
         model=pretrain_model, **pretrain_model.checkpoint_items)
-    ckpt.save(config.init_checkpoint)
-    task.initialize(model)
+    saved_path = ckpt.save(self.get_temp_dir())
 
-  @parameterized.parameters(("matthews_corrcoef", 2),
-                            ("pearson_spearman_corr", 1))
-  def test_np_metrics(self, metric_type, num_classes):
-    config = sentence_prediction.SentencePredictionConfig(
-        metric_type=metric_type,
-        init_checkpoint=self.get_temp_dir(),
-        network=self.get_network_config(num_classes),
+    config = question_answering.QuestionAnsweringConfig(
+        init_checkpoint=saved_path,
+        network=self._encoder_config,
         train_data=self._train_data_config)
-    task = sentence_prediction.SentencePredictionTask(config)
+    task = question_answering.QuestionAnsweringTask(config)
     model = task.build_model()
+    metrics = task.build_metrics()
     dataset = task.build_inputs(config.train_data)
 
     iterator = iter(dataset)
-    strategy = tf.distribute.get_strategy()
-    distributed_outputs = strategy.run(
-        functools.partial(task.validation_step, model=model),
-        args=(next(iterator),))
-    outputs = tf.nest.map_structure(strategy.experimental_local_results,
-                                    distributed_outputs)
-    aggregated = task.aggregate_logs(step_outputs=outputs)
-    aggregated = task.aggregate_logs(state=aggregated, step_outputs=outputs)
-    self.assertIn(metric_type, task.reduce_aggregated_logs(aggregated))
+    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    task.train_step(next(iterator), model, optimizer, metrics=metrics)
+    task.validation_step(next(iterator), model, metrics=metrics)
+    task.initialize(model)
 
   def test_task_with_fit(self):
-    config = sentence_prediction.SentencePredictionConfig(
-        network=self.get_network_config(2), train_data=self._train_data_config)
-    task = sentence_prediction.SentencePredictionTask(config)
+    config = question_answering.QuestionAnsweringConfig(
+        network=self._encoder_config,
+        train_data=self._train_data_config)
+    task = question_answering.QuestionAnsweringTask(config)
     model = task.build_model()
     model = task.compile_model(
         model,
         optimizer=tf.keras.optimizers.SGD(lr=0.1),
         train_step=task.train_step,
-        metrics=task.build_metrics())
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")])
     dataset = task.build_inputs(config.train_data)
     logs = model.fit(dataset, epochs=1, steps_per_epoch=2)
     self.assertIn("loss", logs.history)
+    self.assertIn("start_positions_accuracy", logs.history)
+    self.assertIn("end_positions_accuracy", logs.history)
 
   def _export_bert_tfhub(self):
     bert_config = configs.BertConfig(
@@ -152,9 +119,9 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_task_with_hub(self):
     hub_module_url = self._export_bert_tfhub()
-    config = sentence_prediction.SentencePredictionConfig(
+    config = question_answering.QuestionAnsweringConfig(
         hub_module_url=hub_module_url,
-        network=self.get_network_config(2),
+        network=self._encoder_config,
         train_data=self._train_data_config)
     self._run_task(config)
 

@@ -22,14 +22,15 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from official.nlp.nhnet import multi_channel_attention
+from official.nlp.modeling.layers import multi_channel_attention
 
 
 class MultiChannelAttentionTest(tf.test.TestCase):
 
   def test_doc_attention(self):
     num_heads = 2
-    doc_attention = multi_channel_attention.DocAttention(num_heads, head_size=8)
+    doc_attention = multi_channel_attention.VotingAttention(
+        num_heads, head_size=8)
     num_docs = 3
     inputs = np.zeros((2, num_docs, 10, 16), dtype=np.float32)
     doc_mask = np.zeros((2, num_docs), dtype=np.float32)

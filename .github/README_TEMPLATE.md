@@ -1,13 +1,13 @@
 > :memo: A README.md template for releasing a paper code implementation to a GitHub repository.  
 >  
-> * Template version: 1.0.2020.125  
+> * Template version: 1.0.2020.170  
 > * Please modify sections depending on needs.  
 
 # Model name, Paper title, or Project Name
 
 > :memo: Add a badge for the ArXiv identifier of your paper (arXiv:YYMM.NNNNN)
 
-[![Paper](http://img.shields.io/badge/paper-arXiv.YYMM.NNNNN-B3181B.svg)](https://arxiv.org/abs/...)
+[![Paper](http://img.shields.io/badge/Paper-arXiv.YYMM.NNNNN-B3181B?logo=arXiv)](https://arxiv.org/abs/...)
 
 This repository is the official or unofficial implementation of the following paper.
 
@@ -28,8 +28,8 @@ This repository is the official or unofficial implementation of the following pa
 
 > :memo: Provide maintainer information.  
 
-* Last name, First name ([@GitHub username](https://github.com/username))
-* Last name, First name ([@GitHub username](https://github.com/username))
+* Full name ([@GitHub username](https://github.com/username))
+* Full name ([@GitHub username](https://github.com/username))
 
 ## Table of Contents
 
@@ -37,8 +37,8 @@ This repository is the official or unofficial implementation of the following pa
 
 ## Requirements
 
-[![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
-[![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
+[![TensorFlow 2.1](https://img.shields.io/badge/TensorFlow-2.1-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
+[![Python 3.6](https://img.shields.io/badge/Python-3.6-3776AB)](https://www.python.org/downloads/release/python-360/)
 
 > :memo: Provide details of the software required.  
 >  
@@ -103,6 +103,8 @@ python3 ...
 > :memo: Provide links to references.  
 
 ## License
+
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 > :memo: Place your license text in a file named LICENSE in the root of the repository.  
 >  
