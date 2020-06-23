@@ -32,8 +32,10 @@ from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import static_shape
 
 
+multilevel_matmul_crop_and_resize = spatial_ops.multilevel_matmul_crop_and_resize
 matmul_crop_and_resize = spatial_ops.matmul_crop_and_resize
 multilevel_roi_align = spatial_ops.multilevel_roi_align
+multilevel_native_crop_and_resize = spatial_ops.multilevel_native_crop_and_resize
 native_crop_and_resize = spatial_ops.native_crop_and_resize
 
 
