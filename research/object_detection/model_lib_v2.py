@@ -470,7 +470,8 @@ def train_loop(
 
   # Read export_to_tpu from hparams if not passed.
   if export_to_tpu is None:
-    export_to_tpu = hparams.get('export_to_tpu', False)
+    export_to_tpu = False
+  
   tf.logging.info(
       'train_loop: use_tpu %s, export_to_tpu %s', use_tpu,
       export_to_tpu)
@@ -479,10 +480,8 @@ def train_loop(
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
   # Parse the checkpoint fine tuning configs
-  if hparams.load_pretrained:
-    fine_tune_checkpoint_path = train_config.fine_tune_checkpoint
-  else:
-    fine_tune_checkpoint_path = None
+  fine_tune_checkpoint_path = train_config.fine_tune_checkpoint
+  
   load_all_detection_checkpoint_vars = (
       train_config.load_all_detection_checkpoint_vars)
   # TODO(kaftan) (or anyone else): move this piece of config munging to
@@ -523,7 +522,6 @@ def train_loop(
 
     train_input = strategy.experimental_distribute_datasets_from_function(
         train_dataset_fn)
-
 
     global_step = tf.Variable(
         0, trainable=False, dtype=tf.compat.v2.dtypes.int64, name='global_step',
@@ -910,7 +908,7 @@ def eval_continuously(
     tf.logging.warning(
         'Forced number of epochs for all eval validations to be 1.')
   configs = merge_external_params_with_configs(
-      configs, hparams, kwargs_dict=kwargs)
+      configs, None, kwargs_dict=kwargs)
   model_config = configs['model']
   train_input_config = configs['train_input_config']
   eval_config = configs['eval_config']
@@ -944,7 +942,8 @@ def eval_continuously(
 
   # Read export_to_tpu from hparams if not passed.
   if export_to_tpu is None:
-    export_to_tpu = hparams.get('export_to_tpu', False)
+    export_to_tpu = False
+  
   tf.logging.info('eval_continuously: use_tpu %s, export_to_tpu %s',
                   use_tpu, export_to_tpu)
 
