@@ -26,7 +26,7 @@ class MLMTaskTest(tf.test.TestCase):
 
   def test_task(self):
     config = masked_lm.MaskedLMConfig(
-        network=bert.BertPretrainerConfig(
+        model=bert.BertPretrainerConfig(
             encoders.TransformerEncoderConfig(vocab_size=30522, num_layers=1),
             num_masked_tokens=20,
             cls_heads=[
