@@ -26,7 +26,7 @@ can take full advantage of TensorFlow for their research and product development
 
 | Date | Milestone |
 |------|-----------|
-| July 7, 2020 | [![GitHub milestone](https://img.shields.io/github/milestones/progress/tensorflow/models/1)](https://github.com/tensorflow/models/milestone/1) |
+| July 8, 2020 | [![GitHub milestone](https://img.shields.io/github/milestones/progress/tensorflow/models/1)](https://github.com/tensorflow/models/milestone/1) |
 
 ## Contributions
 
