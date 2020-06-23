@@ -943,8 +943,9 @@ def eval_continuously(
     eval_inputs.append((eval_input_config.name, next_eval_input))
 
   # Read export_to_tpu from hparams if not passed.
-  if export_to_tpu is None:
-    export_to_tpu = hparams.get('export_to_tpu', False)
+  #if export_to_tpu is None:
+  #  export_to_tpu = hparams.get('export_to_tpu', False)
+  export_to_tpu = False
   tf.logging.info('eval_continuously: use_tpu %s, export_to_tpu %s',
                   use_tpu, export_to_tpu)
 
