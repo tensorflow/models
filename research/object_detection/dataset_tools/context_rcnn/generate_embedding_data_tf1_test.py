@@ -85,7 +85,7 @@ class FakeModel(model.DetectionModel):
 
 @contextlib.contextmanager
 def InMemoryTFRecord(entries):
-  temp = tempfile.NamedTemporaryFile(delete=False)
+  temp = tempfile.NamedTemporaryFile(delete=False, dir="/tmp/embtest/")
   filename = temp.name
   try:
     with tf.python_io.TFRecordWriter(filename) as writer:
@@ -157,9 +157,11 @@ class GenerateEmbeddingData(tf.test.TestCase):
           frozen_graph_def=frozen_graph_def,
           inputs=placeholder_tensor,
           outputs=outputs)
+      print(saved_model_path)
       return saved_model_path
 
-  def _create_tf_example(self):
+  #seed must be between 0 and 9
+  def _create_tf_example(self, seed=""):
     with self.test_session():
       encoded_image = tf.image.encode_jpeg(
           tf.constant(np.ones((4, 4, 3)).astype(np.uint8))).eval()
@@ -177,7 +179,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
         features=tf.train.Features(
             feature={
                 'image/encoded': BytesFeature(encoded_image),
-                'image/source_id': BytesFeature(b'image_id'),
+                'image/source_id': BytesFeature(bytes('image_id' + seed)),
                 'image/height': Int64Feature(400),
                 'image/width': Int64Feature(600),
                 'image/class/label': Int64Feature(5),
@@ -194,7 +196,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
 
     return example.SerializeToString()
 
-  def assert_expected_example(self, example, topk=False, botk=False):
+  def assert_expected_example(self, example, topk=False, botk=False, seed=""):
     # Check embeddings
     if topk or botk:
       self.assertEqual(len(
@@ -251,10 +253,10 @@ class GenerateEmbeddingData(tf.test.TestCase):
         example.features.feature['image/width'].int64_list.value, [600])
     self.assertAllEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        ['image_id'])
+        ['image_id' + seed])
     self.assertTrue(
         example.features.feature['image/encoded'].bytes_list.value)
-
+  
   def test_generate_embedding_data_fn(self):
     saved_model_path = self._export_saved_model()
     top_k_embedding_count = 1
@@ -308,9 +310,48 @@ class GenerateEmbeddingData(tf.test.TestCase):
     output = inference_fn.process(generated_example)
     output_example = output[0]
     self.assert_expected_example(output_example, botk=True)
-
+  
   def test_beam_pipeline(self):
-    with InMemoryTFRecord([self._create_tf_example()]) as input_tfrecord:
+    with InMemoryTFRecord([self._create_tf_example("a")]) as r1, InMemoryTFRecord([self._create_tf_example("b")]) as r2:
+      print("created files")
+      #input_tfrecord = r1 #"test_files/*"
+
+      runner = runners.DirectRunner()
+      temp_dir = tempfile.mkdtemp(dir=os.environ.get('TEST_TMPDIR'))
+      output_tfrecord = os.path.join(temp_dir, 'output_tfrecord')
+      saved_model_path = self._export_saved_model()
+      top_k_embedding_count = 1
+      bottom_k_embedding_count = 0
+      num_shards = 1
+
+      #self.assertRegex(r1, r2, msg=r1)
+
+      pipeline = generate_embedding_data.construct_pipeline(
+          "/tmp/embtest/tmp*", output_tfrecord, saved_model_path,
+          top_k_embedding_count, bottom_k_embedding_count, num_shards)
+      runner.run(pipeline)
+      filenames = tf.io.gfile.glob(
+          output_tfrecord + '-?????-of-?????')
+      actual_output = []
+      record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
+      for record in record_iterator:
+        actual_output.append(record)
+      self.assertEqual(len(actual_output), 2)
+      
+      try:
+        self.assert_expected_example(tf.train.Example.FromString(
+            actual_output[1]), seed="a")
+        self.assert_expected_example(tf.train.Example.FromString(
+            actual_output[0]), seed="b")
+      except:
+        self.assert_expected_example(tf.train.Example.FromString(
+            actual_output[0]), seed="a")
+        self.assert_expected_example(tf.train.Example.FromString(
+            actual_output[1]), seed="b")
+  """
+  def test_beam_pipeline(self):
+    with InMemoryTFRecord([self._create_tf_example("a")]) as x:
+      input_tfrecord = x
       runner = runners.DirectRunner()
       temp_dir = tempfile.mkdtemp(dir=os.environ.get('TEST_TMPDIR'))
       output_tfrecord = os.path.join(temp_dir, 'output_tfrecord')
@@ -328,10 +369,9 @@ class GenerateEmbeddingData(tf.test.TestCase):
       record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
       for record in record_iterator:
         actual_output.append(record)
-      self.assertEqual(len(actual_output), 1)
+      #self.assertEqual(len(actual_output), 1)
       self.assert_expected_example(tf.train.Example.FromString(
           actual_output[0]))
-
-
+  """
 if __name__ == '__main__':
   tf.test.main()
