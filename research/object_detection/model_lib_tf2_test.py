@@ -81,8 +81,7 @@ class ModelLibTest(tf.test.TestCase):
 
   def test_train_loop_then_eval_loop(self):
     """Tests that Estimator and input function are constructed correctly."""
-    hparams = model_hparams.create_hparams(
-        hparams_overrides='load_pretrained=false')
+    hparams = None
     pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
     config_kwarg_overrides = _get_config_kwarg_overrides()
     model_dir = tf.test.get_temp_dir()
@@ -151,8 +150,7 @@ class ModelCheckpointTest(tf.test.TestCase):
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = SimpleModel()
 
-      hparams = model_hparams.create_hparams(
-          hparams_overrides='load_pretrained=false')
+      hparams = None
       pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
       config_kwarg_overrides = _get_config_kwarg_overrides()
       model_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
