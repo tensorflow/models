@@ -33,7 +33,13 @@ from official.nlp.bert import tokenization
 class InputExample(object):
   """A single training/test example for simple sequence classification."""
 
-  def __init__(self, guid, text_a, text_b=None, label=None, weight=None):
+  def __init__(self,
+               guid,
+               text_a,
+               text_b=None,
+               label=None,
+               weight=None,
+               int_iden=None):
     """Constructs a InputExample.
 
     Args:
@@ -46,12 +52,15 @@ class InputExample(object):
         specified for train and dev examples, but not for test examples.
       weight: (Optional) float. The weight of the example to be used during
         training.
+      int_iden: (Optional) int. The int identification number of example in the
+        corpus.
     """
     self.guid = guid
     self.text_a = text_a
     self.text_b = text_b
     self.label = label
     self.weight = weight
+    self.int_iden = int_iden
 
 
 class InputFeatures(object):
@@ -63,13 +72,15 @@ class InputFeatures(object):
                segment_ids,
                label_id,
                is_real_example=True,
-               weight=None):
+               weight=None,
+               int_iden=None):
     self.input_ids = input_ids
     self.input_mask = input_mask
     self.segment_ids = segment_ids
     self.label_id = label_id
     self.is_real_example = is_real_example
     self.weight = weight
+    self.int_iden = int_iden
 
 
 class DataProcessor(object):
@@ -908,8 +919,9 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     logging.info("input_ids: %s", " ".join([str(x) for x in input_ids]))
     logging.info("input_mask: %s", " ".join([str(x) for x in input_mask]))
     logging.info("segment_ids: %s", " ".join([str(x) for x in segment_ids]))
-    logging.info("label: %s (id = %d)", example.label, label_id)
+    logging.info("label: %s (id = %s)", example.label, str(label_id))
     logging.info("weight: %s", example.weight)
+    logging.info("int_iden: %s", str(example.int_iden))
 
   feature = InputFeatures(
       input_ids=input_ids,
@@ -917,7 +929,9 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
       segment_ids=segment_ids,
       label_id=label_id,
       is_real_example=True,
-      weight=example.weight)
+      weight=example.weight,
+      int_iden=example.int_iden)
+
   return feature
 
 
@@ -953,12 +967,14 @@ def file_based_convert_examples_to_features(examples,
     features["segment_ids"] = create_int_feature(feature.segment_ids)
     if label_type is not None and label_type == float:
       features["label_ids"] = create_float_feature([feature.label_id])
-    else:
+    elif feature.label_id is not None:
       features["label_ids"] = create_int_feature([feature.label_id])
     features["is_real_example"] = create_int_feature(
         [int(feature.is_real_example)])
     if feature.weight is not None:
       features["weight"] = create_float_feature([feature.weight])
+    if feature.int_iden is not None:
+      features["int_iden"] = create_int_feature([feature.int_iden])
 
     tf_example = tf.train.Example(features=tf.train.Features(feature=features))
     writer.write(tf_example.SerializeToString())
