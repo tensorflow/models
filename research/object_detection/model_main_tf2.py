@@ -45,6 +45,7 @@ flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
 flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
 flags.DEFINE_bool('eval_on_train_data', False, 'Enable evaluating on train '
                   'data (only supported in distributed training).')
+flags.DEFINE_bool('use_tpu', False, 'Use TPUs.')
 flags.DEFINE_integer('sample_1_of_n_eval_examples', None, 'Will sample one of '
                      'every n eval input examples, where n is provided.')
 flags.DEFINE_integer('sample_1_of_n_eval_on_train_examples', 5, 'Will sample '
@@ -80,7 +81,7 @@ def main(unused_argv):
 
   if FLAGS.checkpoint_dir:
     model_lib_v2.eval_continuously(
-        hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
+        hparams=None,
         pipeline_config_path=FLAGS.pipeline_config_path,
         model_dir=FLAGS.model_dir,
         train_steps=FLAGS.num_train_steps,
@@ -102,11 +103,11 @@ def main(unused_argv):
 
     with strategy.scope():
       model_lib_v2.train_loop(
-          hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
+          hparams=None,
           pipeline_config_path=FLAGS.pipeline_config_path,
           model_dir=FLAGS.model_dir,
           train_steps=FLAGS.num_train_steps,
           use_tpu=FLAGS.use_tpu)
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()
