@@ -217,4 +217,5 @@ class CheckpointV2Test(tf.test.TestCase):
           input_dataset=self._train_input_fn(),
           unpad_groundtruth_tensors=True)
 
-
+if __name__ == '__main__':
+  tf.test.main()
