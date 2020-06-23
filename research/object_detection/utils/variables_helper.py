@@ -170,15 +170,10 @@ def get_global_variables_safely():
   Returns:
     The result of tf.global_variables()
   """
-  from tensorflow.python.framework.ops import disable_eager_execution, enable_eager_execution
-
-  disable_eager_execution()
-
   with tf.init_scope():
     if tf.executing_eagerly():
       raise ValueError("Global variables collection is not tracked when "
                        "executing eagerly. Use a Keras model's `.variables` "
                        "attribute instead.")
   x = tf.global_variables()
-  enable_eager_execution()
   return x
