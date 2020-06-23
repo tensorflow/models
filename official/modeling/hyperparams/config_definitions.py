@@ -193,7 +193,7 @@ class TrainerConfig(base_config.Config):
 
 @dataclasses.dataclass
 class TaskConfig(base_config.Config):
-  network: base_config.Config = None
+  model: base_config.Config = None
   train_data: DataConfig = DataConfig()
   validation_data: DataConfig = DataConfig()
 

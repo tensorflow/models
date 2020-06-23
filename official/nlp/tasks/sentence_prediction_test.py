@@ -34,7 +34,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     self._train_data_config = bert.SentencePredictionDataConfig(
         input_path="dummy", seq_length=128, global_batch_size=1)
 
-  def get_network_config(self, num_classes):
+  def get_model_config(self, num_classes):
     return bert.BertPretrainerConfig(
         encoder=encoders.TransformerEncoderConfig(
             vocab_size=30522, num_layers=1),
@@ -63,7 +63,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
   def test_task(self):
     config = sentence_prediction.SentencePredictionConfig(
         init_checkpoint=self.get_temp_dir(),
-        network=self.get_network_config(2),
+        model=self.get_model_config(2),
         train_data=self._train_data_config)
     task = sentence_prediction.SentencePredictionTask(config)
     model = task.build_model()
@@ -96,7 +96,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     config = sentence_prediction.SentencePredictionConfig(
         metric_type=metric_type,
         init_checkpoint=self.get_temp_dir(),
-        network=self.get_network_config(num_classes),
+        model=self.get_model_config(num_classes),
         train_data=self._train_data_config)
     task = sentence_prediction.SentencePredictionTask(config)
     model = task.build_model()
@@ -115,7 +115,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_task_with_fit(self):
     config = sentence_prediction.SentencePredictionConfig(
-        network=self.get_network_config(2), train_data=self._train_data_config)
+        model=self.get_model_config(2), train_data=self._train_data_config)
     task = sentence_prediction.SentencePredictionTask(config)
     model = task.build_model()
     model = task.compile_model(
@@ -154,7 +154,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     hub_module_url = self._export_bert_tfhub()
     config = sentence_prediction.SentencePredictionConfig(
         hub_module_url=hub_module_url,
-        network=self.get_network_config(2),
+        model=self.get_model_config(2),
         train_data=self._train_data_config)
     self._run_task(config)
 

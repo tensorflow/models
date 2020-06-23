@@ -64,7 +64,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
 
     config = question_answering.QuestionAnsweringConfig(
         init_checkpoint=saved_path,
-        network=self._encoder_config,
+        model=self._encoder_config,
         train_data=self._train_data_config)
     task = question_answering.QuestionAnsweringTask(config)
     model = task.build_model()
@@ -79,7 +79,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
 
   def test_task_with_fit(self):
     config = question_answering.QuestionAnsweringConfig(
-        network=self._encoder_config,
+        model=self._encoder_config,
         train_data=self._train_data_config)
     task = question_answering.QuestionAnsweringTask(config)
     model = task.build_model()
@@ -121,7 +121,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
     hub_module_url = self._export_bert_tfhub()
     config = question_answering.QuestionAnsweringConfig(
         hub_module_url=hub_module_url,
-        network=self._encoder_config,
+        model=self._encoder_config,
         train_data=self._train_data_config)
     self._run_task(config)
 

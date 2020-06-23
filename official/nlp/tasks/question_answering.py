@@ -33,7 +33,7 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
-  network: encoders.TransformerEncoderConfig = (
+  model: encoders.TransformerEncoderConfig = (
       encoders.TransformerEncoderConfig())
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
@@ -61,12 +61,12 @@ class QuestionAnsweringTask(base_task.Task):
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
       encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.network)
+          self.task_config.model)
 
     return models.BertSpanLabeler(
         network=encoder_network,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.network.initializer_range))
+            stddev=self.task_config.model.initializer_range))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     start_positions = labels['start_positions']

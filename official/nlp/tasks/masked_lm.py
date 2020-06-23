@@ -27,7 +27,7 @@ from official.nlp.modeling import losses as loss_lib
 @dataclasses.dataclass
 class MaskedLMConfig(cfg.TaskConfig):
   """The model config."""
-  network: bert.BertPretrainerConfig = bert.BertPretrainerConfig(cls_heads=[
+  model: bert.BertPretrainerConfig = bert.BertPretrainerConfig(cls_heads=[
       bert.ClsHeadConfig(
           inner_dim=768, num_classes=2, dropout_rate=0.1, name='next_sentence')
   ])
@@ -40,7 +40,7 @@ class MaskedLMTask(base_task.Task):
   """Mock task object for testing."""
 
   def build_model(self):
-    return bert.instantiate_bertpretrainer_from_cfg(self.task_config.network)
+    return bert.instantiate_bertpretrainer_from_cfg(self.task_config.model)
 
   def build_losses(self,
                    labels,
