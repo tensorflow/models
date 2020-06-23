@@ -481,8 +481,8 @@ def train_loop(
 
   # Parse the checkpoint fine tuning configs
   fine_tune_checkpoint_path = None
-  if train_config.fine_tune_checkpoint != "":
-    fine_tune_checkpoint_path = train_config.fine_tune_checkpoint
+  #if train_config.fine_tune_checkpoint != "":
+  #  fine_tune_checkpoint_path = train_config.fine_tune_checkpoint
   
   load_all_detection_checkpoint_vars = (
       train_config.load_all_detection_checkpoint_vars)
