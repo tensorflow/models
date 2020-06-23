@@ -175,5 +175,4 @@ def get_global_variables_safely():
       raise ValueError("Global variables collection is not tracked when "
                        "executing eagerly. Use a Keras model's `.variables` "
                        "attribute instead.")
-  x = tf.global_variables()
-  return x
+  return tf.global_variables()
