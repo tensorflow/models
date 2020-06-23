@@ -411,6 +411,19 @@ def multilevel_roi_align(features, boxes, box_levels, output_size,
     return features_per_box
 
 
+def multilevel_native_crop_and_resize(images, boxes, box_levels, 
+                                      crop_size, scope=None):
+  #FIXME: fix docstring
+  """doc string."""
+  if not box_levels:
+    return native_crop_and_resize(images[0], boxes, crop_size, scope=None)
+  croped_feature_list = []
+  for level, image in enumerate(images):
+    level_boxes = tf.gather(boxes, box_levels == (level-1))
+    cropped = native_crop_and_resize(image, level_boxes, crop_size)
+    croped_feature_list.append(cropped)
+  return tf.concat(croped_feature_list, axis=0)
+
 def native_crop_and_resize(image, boxes, crop_size, scope=None):
   """Same as `matmul_crop_and_resize` but uses tf.image.crop_and_resize."""
   def get_box_inds(proposals):
@@ -429,6 +442,20 @@ def native_crop_and_resize(image, boxes, crop_size, scope=None):
     final_shape = tf.concat([tf.shape(boxes)[:2],
                              tf.shape(cropped_regions)[1:]], axis=0)
     return tf.reshape(cropped_regions, final_shape)
+
+def multilevel_matmul_crop_and_resize(images, boxes, box_levels, crop_size, 
+                                      extrapolation_value=0.0, scope=None):
+  #FIXME: fix docstring
+  """doc string."""
+  with tf.name_scope(scope, 'MatMulCropAndResize'):
+    if box_levels is None:
+      box_levels = tf.zeros(tf.shape(boxes)[:2], dtype=tf.int32)
+    return multilevel_roi_align([image],
+                                boxes,
+                                box_levels,
+                                crop_size,
+                                align_corners=True,
+                                extrapolation_value=extrapolation_value)
 
 
 def matmul_crop_and_resize(image, boxes, crop_size, extrapolation_value=0.0,
