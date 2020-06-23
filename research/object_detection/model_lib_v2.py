@@ -480,7 +480,7 @@ def train_loop(
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
   # Parse the checkpoint fine tuning configs
-  fine_tune_checkpoint = None
+  fine_tune_checkpoint_path = None
   if train_config.fine_tune_checkpoint != "":
     fine_tune_checkpoint_path = train_config.fine_tune_checkpoint
   
