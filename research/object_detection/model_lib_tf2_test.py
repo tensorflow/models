@@ -26,7 +26,6 @@ import six
 import tensorflow.compat.v1 as tf
 
 from object_detection import inputs
-from object_detection import model_hparams
 from object_detection import model_lib_v2
 from object_detection.builders import model_builder
 from object_detection.core import model
