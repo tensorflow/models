@@ -762,7 +762,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     Returns:
       prediction_dict: a dictionary holding "raw" prediction tensors:
-        1) rpn_box_predictor_features: A 4-D float32 tensor with shape
+        1) rpn_box_predictor_features: A list of 4-D float32 tensor with shape
           [batch_size, height, width, depth] to be used for predicting proposal
           boxes and corresponding objectness scores.
         2) rpn_features_to_crop: A list of 4-D float32 tensor with shape
@@ -1356,7 +1356,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Note resulting tensors will not have been postprocessed.
 
     Args:
-      rpn_box_predictor_features: A 4-D float32 tensor with shape
+      rpn_box_predictor_features: A list of 4-D float32 tensor with shape
         [batch, height, width, depth] to be used for predicting proposal boxes
         and corresponding objectness scores.
 
@@ -1381,10 +1381,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
                          'corresponding to a single feature map.')
     if self._first_stage_box_predictor.is_keras_model:
       box_predictions = self._first_stage_box_predictor(
-          [rpn_box_predictor_features])
+          rpn_box_predictor_features)
     else:
       box_predictions = self._first_stage_box_predictor.predict(
-          [rpn_box_predictor_features],
+          rpn_box_predictor_features,
           num_anchors_per_location,
           scope=self.first_stage_box_predictor_scope)
 
