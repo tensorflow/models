@@ -469,8 +469,10 @@ def train_loop(
     train_steps = train_config.num_steps
 
   # Read export_to_tpu from hparams if not passed.
-  if export_to_tpu is None:
-    export_to_tpu = hparams.get('export_to_tpu', False)
+  # Read export_to_tpu from hparams if not passed.
+  #if export_to_tpu is None:
+  #  export_to_tpu = hparams.get('export_to_tpu', False)
+  export_to_tpu = False
   tf.logging.info(
       'train_loop: use_tpu %s, export_to_tpu %s', use_tpu,
       export_to_tpu)
