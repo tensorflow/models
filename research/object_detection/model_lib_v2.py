@@ -392,14 +392,12 @@ def clean_temporary_directories(strategy, filepath):
 
 
 def train_loop(
-    hparams,
     pipeline_config_path,
     model_dir,
     config_override=None,
     train_steps=None,
     use_tpu=False,
     save_final_config=False,
-    export_to_tpu=None,
     checkpoint_every_n=1000,
     checkpoint_max_to_keep=7,
     **kwargs):
@@ -417,7 +415,6 @@ def train_loop(
     8. Logs the training metrics as TensorBoard summaries.
 
   Args:
-    hparams: A `HParams`.
     pipeline_config_path: A path to a pipeline config file.
     model_dir:
       The directory to save checkpoints and summaries to.
@@ -428,10 +425,6 @@ def train_loop(
     use_tpu: Boolean, whether training and evaluation should run on TPU.
     save_final_config: Whether to save final config (obtained after applying
       overrides) to `model_dir`.
-    export_to_tpu: When use_tpu and export_to_tpu are true,
-      `export_savedmodel()` exports a metagraph for serving on TPU besides the
-      one on CPU. If export_to_tpu is not provided, we will look for it in
-      hparams too.
     checkpoint_every_n:
       Checkpoint every n training steps.
     checkpoint_max_to_keep:
@@ -453,7 +446,7 @@ def train_loop(
       'use_bfloat16': configs['train_config'].use_bfloat16 and use_tpu
   })
   configs = merge_external_params_with_configs(
-      configs, hparams, kwargs_dict=kwargs)
+      configs, None, kwargs_dict=kwargs)
   model_config = configs['model']
   train_config = configs['train_config']
   train_input_config = configs['train_input_config']
@@ -468,33 +461,12 @@ def train_loop(
   if train_steps is None and train_config.num_steps != 0:
     train_steps = train_config.num_steps
 
-  # Read export_to_tpu from hparams if not passed.
-  if export_to_tpu is None:
-    export_to_tpu = hparams.get('export_to_tpu', False)
-  tf.logging.info(
-      'train_loop: use_tpu %s, export_to_tpu %s', use_tpu,
-      export_to_tpu)
-
   if kwargs['use_bfloat16']:
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
-  # Parse the checkpoint fine tuning configs
-  if hparams.load_pretrained:
-    fine_tune_checkpoint_path = train_config.fine_tune_checkpoint
-  else:
-    fine_tune_checkpoint_path = None
   load_all_detection_checkpoint_vars = (
       train_config.load_all_detection_checkpoint_vars)
-  # TODO(kaftan) (or anyone else): move this piece of config munging to
-  ## utils/config_util.py
-  if not train_config.fine_tune_checkpoint_type:
-    # train_config.from_detection_checkpoint field is deprecated. For
-    # backward compatibility, set train_config.fine_tune_checkpoint_type
-    # based on train_config.from_detection_checkpoint.
-    if train_config.from_detection_checkpoint:
-      train_config.fine_tune_checkpoint_type = 'detection'
-    else:
-      train_config.fine_tune_checkpoint_type = 'classification'
+  config_util.update_fine_tune_checkpoint_type(train_config)
   fine_tune_checkpoint_type = train_config.fine_tune_checkpoint_type
   fine_tune_checkpoint_version = train_config.fine_tune_checkpoint_version
 
@@ -556,8 +528,9 @@ def train_loop(
       with tf.compat.v2.summary.record_if(
           lambda: global_step % num_steps_per_iteration == 0):
         # Load a fine-tuning checkpoint.
-        if fine_tune_checkpoint_path:
-          load_fine_tune_checkpoint(detection_model, fine_tune_checkpoint_path,
+        if train_config.fine_tune_checkpoint:
+          load_fine_tune_checkpoint(detection_model,
+                                    train_config.fine_tune_checkpoint,
                                     fine_tune_checkpoint_type,
                                     fine_tune_checkpoint_version,
                                     load_all_detection_checkpoint_vars,
@@ -841,7 +814,6 @@ def eager_eval_loop(
 
 
 def eval_continuously(
-    hparams,
     pipeline_config_path,
     config_override=None,
     train_steps=None,
@@ -850,7 +822,6 @@ def eval_continuously(
     use_tpu=False,
     override_eval_num_epochs=True,
     postprocess_on_cpu=False,
-    export_to_tpu=None,
     model_dir=None,
     checkpoint_dir=None,
     wait_interval=180,
@@ -863,7 +834,6 @@ def eval_continuously(
   on the evaluation data.
 
   Args:
-    hparams: A `HParams`.
     pipeline_config_path: A path to a pipeline config file.
     config_override: A pipeline_pb2.TrainEvalPipelineConfig text proto to
       override the config from `pipeline_config_path`.
@@ -879,10 +849,6 @@ def eval_continuously(
       eval_input.
     postprocess_on_cpu: When use_tpu and postprocess_on_cpu are true,
       postprocess is scheduled on the host cpu.
-    export_to_tpu: When use_tpu and export_to_tpu are true,
-      `export_savedmodel()` exports a metagraph for serving on TPU besides the
-      one on CPU. If export_to_tpu is not provided, we will look for it in
-      hparams too.
     model_dir: Directory to output resulting evaluation summaries to.
     checkpoint_dir: Directory that contains the training checkpoints.
     wait_interval: The mimmum number of seconds to wait before checking for a
@@ -910,7 +876,7 @@ def eval_continuously(
     tf.logging.warning(
         'Forced number of epochs for all eval validations to be 1.')
   configs = merge_external_params_with_configs(
-      configs, hparams, kwargs_dict=kwargs)
+      configs, None, kwargs_dict=kwargs)
   model_config = configs['model']
   train_input_config = configs['train_input_config']
   eval_config = configs['eval_config']
@@ -941,12 +907,6 @@ def eval_continuously(
         model_config=model_config,
         model=detection_model)
     eval_inputs.append((eval_input_config.name, next_eval_input))
-
-  # Read export_to_tpu from hparams if not passed.
-  if export_to_tpu is None:
-    export_to_tpu = hparams.get('export_to_tpu', False)
-  tf.logging.info('eval_continuously: use_tpu %s, export_to_tpu %s',
-                  use_tpu, export_to_tpu)
 
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)
