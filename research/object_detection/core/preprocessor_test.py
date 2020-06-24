@@ -120,7 +120,10 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     return tf.constant(keypoints, dtype=tf.float32)
 
   def createKeypointFlipPermutation(self):
-    return np.array([0, 2, 1], dtype=np.int32)
+    return [0, 2, 1]
+
+  def createKeypointRotPermutation(self):
+    return [0, 2, 1]
 
   def createTestLabels(self):
     labels = tf.constant([1, 2], dtype=tf.int32)
@@ -912,19 +915,22 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
                                 test_keypoints=True)
 
   def testRunRandomRotation90WithMaskAndKeypoints(self):
-    preprocess_options = [(preprocessor.random_rotation90, {})]
     image_height = 3
     image_width = 3
     images = tf.random_uniform([1, image_height, image_width, 3])
     boxes = self.createTestBoxes()
     masks = self.createTestMasks()
     keypoints, _ = self.createTestKeypoints()
+    keypoint_rot_permutation = self.createKeypointRotPermutation()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_instance_masks: masks,
         fields.InputDataFields.groundtruth_keypoints: keypoints
     }
+    preprocess_options = [(preprocessor.random_rotation90, {
+        'keypoint_rot_permutation': keypoint_rot_permutation
+    })]
     preprocessor_arg_map = preprocessor.get_default_func_arg_map(
         include_instance_masks=True, include_keypoints=True)
     tensor_dict = preprocessor.preprocess(

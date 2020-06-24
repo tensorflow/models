@@ -57,7 +57,8 @@ message NormalizeImage {
   optional float target_maxval = 4 [default=1];
 }
 
-// Randomly horizontally flips the image and detections 50% of the time.
+// Randomly horizontally flips the image and detections with the specified
+// probability, default to 50% of the time.
 message RandomHorizontalFlip {
   // Specifies a mapping from the original keypoint indices to horizontally
   // flipped indices. This is used in the event that keypoints are specified,
@@ -71,10 +72,15 @@ message RandomHorizontalFlip {
   // keypoint_flip_permutation: 3
   // keypoint_flip_permutation: 5
   // keypoint_flip_permutation: 4
+  // If nothing is specified the order of keypoint will be mantained.
   repeated int32 keypoint_flip_permutation = 1;
+
+  // The probability of running this augmentation for each image.
+  optional float probability = 2 [default=0.5];
 }
 
-// Randomly vertically flips the image and detections 50% of the time.
+// Randomly vertically flips the image and detections with the specified
+// probability, default to 50% of the time.
 message RandomVerticalFlip {
   // Specifies a mapping from the original keypoint indices to vertically
   // flipped indices. This is used in the event that keypoints are specified,
@@ -89,11 +95,23 @@ message RandomVerticalFlip {
   // keypoint_flip_permutation: 5
   // keypoint_flip_permutation: 4
   repeated int32 keypoint_flip_permutation = 1;
+
+  // The probability of running this augmentation for each image.
+  optional float probability = 2 [default=0.5];
 }
 
 // Randomly rotates the image and detections by 90 degrees counter-clockwise
-// 50% of the time.
-message RandomRotation90 {}
+// with the specified probability, default to 50% of the time.
+message RandomRotation90 {
+  // Specifies a mapping from the original keypoint indices to 90 degree counter
+  // clockwise indices. This is used in the event that keypoints are specified,
+  // in which case when the image is rotated the keypoints might need to be
+  // permuted.
+  repeated int32 keypoint_rot_permutation = 1;
+
+  // The probability of running this augmentation for each image.
+  optional float probability = 2 [default=0.5];
+}
 
 // Randomly scales the values of all pixels in the image by some constant value
 // between [minval, maxval], then clip the value to a range between [0, 1.0].
@@ -457,7 +475,6 @@ message SSDRandomCropPadFixedAspectRatio {
 // Converts class logits to softmax optionally scaling the values by temperature
 // first.
 message ConvertClassLogitsToSoftmax {
-
   // Scale to use on logits before applying softmax.
   optional float temperature = 1 [default=1.0];
 }
@@ -472,11 +489,9 @@ message RandomSelfConcatImage {
 
 // Apply an Autoaugment policy to the image and bounding boxes.
 message AutoAugmentImage {
-
   // What AutoAugment policy to apply to the Image
   optional string policy_name = 1 [default="v0"];
 }
-
 
 // Randomly drops ground truth boxes for a label with some probability.
 message DropLabelProbabilistically {
@@ -486,7 +501,6 @@ message DropLabelProbabilistically {
   // Probability of dropping the label.
   optional float drop_probability = 2 [default = 1.0];
 }
-
 
 //Remap a set of labels to a new label.
 message RemapLabels {

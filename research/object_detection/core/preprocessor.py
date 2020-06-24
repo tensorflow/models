@@ -569,11 +569,10 @@ def random_horizontal_flip(image,
                            keypoints=None,
                            keypoint_visibilities=None,
                            keypoint_flip_permutation=None,
+                           probability=0.5,
                            seed=None,
                            preprocess_vars_cache=None):
   """Randomly flips the image and detections horizontally.
-
-  The probability of flipping the image is 50%.
 
   Args:
     image: rank 3 float32 tensor with shape [height, width, channels].
@@ -592,6 +591,7 @@ def random_horizontal_flip(image,
                            [num_instances, num_keypoints].
     keypoint_flip_permutation: rank 1 int32 tensor containing the keypoint flip
                                permutation.
+    probability: the probability of performing this augmentation.
     seed: random seed
     preprocess_vars_cache: PreprocessorCache object that records previously
                            performed augmentations. Updated in-place. If this
@@ -636,7 +636,7 @@ def random_horizontal_flip(image,
         generator_func,
         preprocessor_cache.PreprocessorCache.HORIZONTAL_FLIP,
         preprocess_vars_cache)
-    do_a_flip_random = tf.greater(do_a_flip_random, 0.5)
+    do_a_flip_random = tf.less(do_a_flip_random, probability)
 
     # flip image
     image = tf.cond(do_a_flip_random, lambda: _flip_image(image), lambda: image)
@@ -682,6 +682,7 @@ def random_vertical_flip(image,
                          masks=None,
                          keypoints=None,
                          keypoint_flip_permutation=None,
+                         probability=0.5,
                          seed=None,
                          preprocess_vars_cache=None):
   """Randomly flips the image and detections vertically.
@@ -703,6 +704,7 @@ def random_vertical_flip(image,
                normalized coordinates.
     keypoint_flip_permutation: rank 1 int32 tensor containing the keypoint flip
                                permutation.
+    probability: the probability of performing this augmentation.
     seed: random seed
     preprocess_vars_cache: PreprocessorCache object that records previously
                            performed augmentations. Updated in-place. If this
@@ -743,7 +745,7 @@ def random_vertical_flip(image,
     do_a_flip_random = _get_or_create_preprocess_rand_vars(
         generator_func, preprocessor_cache.PreprocessorCache.VERTICAL_FLIP,
         preprocess_vars_cache)
-    do_a_flip_random = tf.greater(do_a_flip_random, 0.5)
+    do_a_flip_random = tf.less(do_a_flip_random, probability)
 
     # flip image
     image = tf.cond(do_a_flip_random, lambda: _flip_image(image), lambda: image)
@@ -777,6 +779,8 @@ def random_rotation90(image,
                       boxes=None,
                       masks=None,
                       keypoints=None,
+                      keypoint_rot_permutation=None,
+                      probability=0.5,
                       seed=None,
                       preprocess_vars_cache=None):
   """Randomly rotates the image and detections 90 degrees counter-clockwise.
@@ -799,6 +803,9 @@ def random_rotation90(image,
     keypoints: (optional) rank 3 float32 tensor with shape
                [num_instances, num_keypoints, 2]. The keypoints are in y-x
                normalized coordinates.
+    keypoint_rot_permutation: rank 1 int32 tensor containing the keypoint flip
+                              permutation.
+    probability: the probability of performing this augmentation.
     seed: random seed
     preprocess_vars_cache: PreprocessorCache object that records previously
                            performed augmentations. Updated in-place. If this
@@ -833,7 +840,7 @@ def random_rotation90(image,
     do_a_rot90_random = _get_or_create_preprocess_rand_vars(
         generator_func, preprocessor_cache.PreprocessorCache.ROTATION90,
         preprocess_vars_cache)
-    do_a_rot90_random = tf.greater(do_a_rot90_random, 0.5)
+    do_a_rot90_random = tf.less(do_a_rot90_random, probability)
 
     # flip image
     image = tf.cond(do_a_rot90_random, lambda: _rot90_image(image),
@@ -856,7 +863,7 @@ def random_rotation90(image,
     if keypoints is not None:
       keypoints = tf.cond(
           do_a_rot90_random,
-          lambda: keypoint_ops.rot90(keypoints),
+          lambda: keypoint_ops.rot90(keypoints, keypoint_rot_permutation),
           lambda: keypoints)
       result.append(keypoints)
 
