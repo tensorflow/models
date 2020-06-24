@@ -43,10 +43,10 @@ flags.DEFINE_string('train_file_pattern', '/tmp/data/train*',
                     'File pattern of training dataset files.')
 flags.DEFINE_string('validation_file_pattern', '/tmp/data/validation*',
                     'File pattern of validation dataset files.')
-flags.DEFINE_enum('dataset_version', 'gld_v1',
-                  ['gld_v1', 'gld_v2', 'gld_v2_clean'],
-                  'Google Landmarks dataset version, used to determine the'
-                  'number of classes.')
+flags.DEFINE_enum(
+    'dataset_version', 'gld_v1', ['gld_v1', 'gld_v2', 'gld_v2_clean'],
+    'Google Landmarks dataset version, used to determine the'
+    'number of classes.')
 flags.DEFINE_integer('seed', 0, 'Seed to training dataset.')
 flags.DEFINE_float('initial_lr', 0.001, 'Initial learning rate.')
 flags.DEFINE_integer('batch_size', 32, 'Global batch size.')
@@ -134,8 +134,9 @@ def main(argv):
   clip_val = tf.constant(10.0)
 
   if FLAGS.debug:
+    tf.config.run_functions_eagerly(True)
     global_batch_size = 4
-    max_iters = 4
+    max_iters = 100
     num_eval = 1
     save_interval = 1
     report_interval = 1
@@ -159,11 +160,12 @@ def main(argv):
       augmentation=False,
       seed=FLAGS.seed)
 
-  train_iterator = strategy.make_dataset_iterator(train_dataset)
-  validation_iterator = strategy.make_dataset_iterator(validation_dataset)
+  train_dist_dataset = strategy.experimental_distribute_dataset(train_dataset)
+  validation_dist_dataset = strategy.experimental_distribute_dataset(
+      validation_dataset)
 
-  train_iterator.initialize()
-  validation_iterator.initialize()
+  train_iter = iter(train_dist_dataset)
+  validation_iter = iter(validation_dist_dataset)
 
   # Create a checkpoint directory to store the checkpoints.
   checkpoint_prefix = os.path.join(FLAGS.logdir, 'delf_tf2-ckpt')
@@ -219,11 +221,14 @@ def main(argv):
       labels = tf.clip_by_value(labels, 0, model.num_classes)
 
       global_step = optimizer.iterations
+      tf.summary.image('batch_images', (images + 1.0) / 2.0, step=global_step)
       tf.summary.scalar(
           'image_range/max', tf.reduce_max(images), step=global_step)
       tf.summary.scalar(
           'image_range/min', tf.reduce_min(images), step=global_step)
 
+      # TODO(andrearaujo): we should try to unify the backprop into a single
+      # function, instead of applying once to descriptor then to attention.
       def _backprop_loss(tape, loss, weights):
         """Backpropogate losses using clipped gradients.
 
@@ -349,7 +354,7 @@ def main(argv):
 
           # input_batch : images(b, h, w, c), labels(b,).
           try:
-            input_batch = train_iterator.get_next()
+            input_batch = next(train_iter)
           except tf.errors.OutOfRangeError:
             # Break if we run out of data in the dataset.
             logging.info('Stopping training at global step %d, no more data',
@@ -394,7 +399,7 @@ def main(argv):
           if global_step_value % eval_interval == 0:
             for i in range(num_eval):
               try:
-                validation_batch = validation_iterator.get_next()
+                validation_batch = next(validation_iter)
                 desc_validation_result, attn_validation_result = (
                     distributed_validation_step(validation_batch))
               except tf.errors.OutOfRangeError:
@@ -416,13 +421,17 @@ def main(argv):
               print('          : attn:', attn_validation_result.numpy())
 
           # Save checkpoint once (each save_interval*n, n \in N) steps.
+          # TODO(andrearaujo): save only in one of the two ways. They are
+          # identical, the only difference is that the manager adds some extra
+          # prefixes and variables (eg, optimizer variables).
           if global_step_value % save_interval == 0:
             save_path = manager.save()
-            logging.info('Saved({global_step_value}) at %s', save_path)
+            logging.info('Saved (%d) at %s', global_step_value, save_path)
 
             file_path = '%s/delf_weights' % FLAGS.logdir
             model.save_weights(file_path, save_format='tf')
-            logging.info('Saved weights({global_step_value}) at %s', file_path)
+            logging.info('Saved weights (%d) at %s', global_step_value,
+                         file_path)
 
           # Reset metrics for next step.
           desc_train_accuracy.reset_states()
