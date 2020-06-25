@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +17,10 @@
 
 BACKBONES = [
     'resnet',
-    'spinenet',
 ]
 
 MULTILEVEL_FEATURES = [
     'fpn',
-    'identity',
 ]
 
 # pylint: disable=line-too-long
@@ -119,9 +117,6 @@ BASE_CFG = {
     },
     'resnet': {
         'resnet_depth': 50,
-    },
-    'spinenet': {
-        'model_id': '49',
     },
     'fpn': {
         'fpn_feat_dims': 256,
