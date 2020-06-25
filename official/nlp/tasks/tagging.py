@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Question answering task."""
+"""Tagging (e.g., NER/POS) task."""
 import logging
 import dataclasses
 import tensorflow as tf
@@ -21,36 +21,63 @@ import tensorflow_hub as hub
 
 from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
-from official.nlp.bert import input_pipeline
 from official.nlp.configs import encoders
+from official.nlp.data import tagging_data_loader
 from official.nlp.modeling import models
 from official.nlp.tasks import utils
 
 
 @dataclasses.dataclass
-class QuestionAnsweringConfig(cfg.TaskConfig):
+class TaggingConfig(cfg.TaskConfig):
   """The model config."""
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
   model: encoders.TransformerEncoderConfig = (
       encoders.TransformerEncoderConfig())
+
+  # The number of real labels. Note that a word may be tokenized into
+  # multiple word_pieces tokens, and we asssume the real label id (non-negative)
+  # is assigned to the first token of the word, and a negative label id is
+  # assigned to the remaining tokens. The negative label id will not contribute
+  # to loss and metrics.
+  num_classes: int = 0
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@base_task.register_task_cls(QuestionAnsweringConfig)
-class QuestionAnsweringTask(base_task.Task):
-  """Task object for question answering.
+def _masked_labels_and_weights(y_true):
+  """Masks negative values from token level labels.
 
-  TODO(lehou): Add post-processing.
+  Args:
+    y_true: Token labels, typically shape (batch_size, seq_len), where tokens
+      with negative labels should be ignored during loss/accuracy calculation.
+
+  Returns:
+    (masked_y_true, masked_weights) where `masked_y_true` is the input
+    with each negative label replaced with zero and `masked_weights` is 0.0
+    where negative labels were replaced and 1.0 for original labels.
   """
+  # Ignore the classes of tokens with negative values.
+  mask = tf.greater_equal(y_true, 0)
+  # Replace negative labels, which are out of bounds for some loss functions,
+  # with zero.
+  masked_y_true = tf.where(mask, y_true, 0)
+  return masked_y_true, tf.cast(mask, tf.float32)
+
+
+@base_task.register_task_cls(TaggingConfig)
+class TaggingTask(base_task.Task):
+  """Task object for tagging (e.g., NER or POS)."""
 
   def __init__(self, params=cfg.TaskConfig):
-    super(QuestionAnsweringTask, self).__init__(params)
+    super(TaggingTask, self).__init__(params)
     if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
+    if params.num_classes == 0:
+      raise ValueError('TaggingConfig.num_classes cannot be 0.')
+
     if params.hub_module_url:
       self._hub_module = hub.load(params.hub_module_url)
     else:
@@ -63,40 +90,41 @@ class QuestionAnsweringTask(base_task.Task):
       encoder_network = encoders.instantiate_encoder_from_cfg(
           self.task_config.model)
 
-    return models.BertSpanLabeler(
+    return models.BertTokenClassifier(
         network=encoder_network,
+        num_classes=self.task_config.num_classes,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.model.initializer_range))
+            stddev=self.task_config.model.initializer_range),
+        dropout_rate=self.task_config.model.dropout_rate,
+        output='logits')
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    start_positions = labels['start_positions']
-    end_positions = labels['end_positions']
-    start_logits, end_logits = model_outputs
-
-    start_loss = tf.keras.losses.sparse_categorical_crossentropy(
-        start_positions,
-        tf.cast(start_logits, dtype=tf.float32),
-        from_logits=True)
-    end_loss = tf.keras.losses.sparse_categorical_crossentropy(
-        end_positions,
-        tf.cast(end_logits, dtype=tf.float32),
-        from_logits=True)
-
-    loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
+    model_outputs = tf.cast(model_outputs, tf.float32)
+    masked_labels, masked_weights = _masked_labels_and_weights(labels)
+    loss = tf.keras.losses.sparse_categorical_crossentropy(
+        masked_labels, model_outputs, from_logits=True)
+    numerator_loss = tf.reduce_sum(loss * masked_weights)
+    denominator_loss = tf.reduce_sum(masked_weights)
+    loss = tf.math.divide_no_nan(numerator_loss, denominator_loss)
     return loss
 
   def build_inputs(self, params, input_context=None):
     """Returns tf.data.Dataset for sentence_prediction task."""
     if params.input_path == 'dummy':
+
       def dummy_data(_):
         dummy_ids = tf.zeros((1, params.seq_length), dtype=tf.int32)
         x = dict(
             input_word_ids=dummy_ids,
             input_mask=dummy_ids,
             input_type_ids=dummy_ids)
-        y = dict(
-            start_positions=tf.constant(0, dtype=tf.int32),
-            end_positions=tf.constant(1, dtype=tf.int32))
+
+        # Include some label_id as -1, which will be ignored in loss/metrics.
+        y = tf.random.uniform(
+            shape=(1, params.seq_length),
+            minval=-1,
+            maxval=self.task_config.num_classes,
+            dtype=tf.dtypes.int32)
         return (x, y)
 
       dataset = tf.data.Dataset.range(1)
@@ -105,41 +133,22 @@ class QuestionAnsweringTask(base_task.Task):
           dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       return dataset
 
-    batch_size = input_context.get_per_replica_batch_size(
-        params.global_batch_size) if input_context else params.global_batch_size
-    # TODO(chendouble): add and use nlp.data.question_answering_dataloader.
-    dataset = input_pipeline.create_squad_dataset(
-        params.input_path,
-        params.seq_length,
-        batch_size,
-        is_training=params.is_training,
-        input_pipeline_context=input_context)
+    dataset = tagging_data_loader.TaggingDataLoader(params).load(input_context)
     return dataset
 
   def build_metrics(self, training=None):
     del training
-    # TODO(lehou): a list of metrics doesn't work the same as in compile/fit.
-    metrics = [
-        tf.keras.metrics.SparseCategoricalAccuracy(
-            name='start_position_accuracy'),
-        tf.keras.metrics.SparseCategoricalAccuracy(
-            name='end_position_accuracy'),
-    ]
-    return metrics
+    # TODO(chendouble): evaluate using seqeval's f1/precision/recall.
+    return [tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy')]
 
   def process_metrics(self, metrics, labels, model_outputs):
-    metrics = dict([(metric.name, metric) for metric in metrics])
-    start_logits, end_logits = model_outputs
-    metrics['start_position_accuracy'].update_state(
-        labels['start_positions'], start_logits)
-    metrics['end_position_accuracy'].update_state(
-        labels['end_positions'], end_logits)
+    masked_labels, masked_weights = _masked_labels_and_weights(labels)
+    for metric in metrics:
+      metric.update_state(masked_labels, model_outputs, masked_weights)
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    start_logits, end_logits = model_outputs
-    compiled_metrics.update_state(
-        y_true=labels,  # labels has keys 'start_positions' and 'end_positions'.
-        y_pred={'start_positions': start_logits, 'end_positions': end_logits})
+    masked_labels, masked_weights = _masked_labels_and_weights(labels)
+    compiled_metrics.update_state(masked_labels, model_outputs, masked_weights)
 
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for official.nlp.tasks.question_answering."""
+"""Tests for official.nlp.tasks.tagging."""
 import functools
 import os
 import tensorflow as tf
@@ -22,20 +22,20 @@ from official.nlp.bert import configs
 from official.nlp.bert import export_tfhub
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
-from official.nlp.tasks import question_answering
+from official.nlp.tasks import tagging
 
 
-class QuestionAnsweringTaskTest(tf.test.TestCase):
+class TaggingTest(tf.test.TestCase):
 
   def setUp(self):
-    super(QuestionAnsweringTaskTest, self).setUp()
+    super(TaggingTest, self).setUp()
     self._encoder_config = encoders.TransformerEncoderConfig(
         vocab_size=30522, num_layers=1)
-    self._train_data_config = bert.QADataConfig(
+    self._train_data_config = bert.TaggingDataConfig(
         input_path="dummy", seq_length=128, global_batch_size=1)
 
   def _run_task(self, config):
-    task = question_answering.QuestionAnsweringTask(config)
+    task = tagging.TaggingTask(config)
     model = task.build_model()
     metrics = task.build_metrics()
 
@@ -50,23 +50,16 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
 
   def test_task(self):
     # Saves a checkpoint.
-    pretrain_cfg = bert.BertPretrainerConfig(
-        encoder=self._encoder_config,
-        num_masked_tokens=20,
-        cls_heads=[
-            bert.ClsHeadConfig(
-                inner_dim=10, num_classes=3, name="next_sentence")
-        ])
-    pretrain_model = bert.instantiate_bertpretrainer_from_cfg(pretrain_cfg)
-    ckpt = tf.train.Checkpoint(
-        model=pretrain_model, **pretrain_model.checkpoint_items)
+    encoder = encoders.instantiate_encoder_from_cfg(self._encoder_config)
+    ckpt = tf.train.Checkpoint(encoder=encoder)
     saved_path = ckpt.save(self.get_temp_dir())
 
-    config = question_answering.QuestionAnsweringConfig(
+    config = tagging.TaggingConfig(
         init_checkpoint=saved_path,
         model=self._encoder_config,
-        train_data=self._train_data_config)
-    task = question_answering.QuestionAnsweringTask(config)
+        train_data=self._train_data_config,
+        num_classes=3)
+    task = tagging.TaggingTask(config)
     model = task.build_model()
     metrics = task.build_metrics()
     dataset = task.build_inputs(config.train_data)
@@ -78,10 +71,12 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
     task.initialize(model)
 
   def test_task_with_fit(self):
-    config = question_answering.QuestionAnsweringConfig(
+    config = tagging.TaggingConfig(
         model=self._encoder_config,
-        train_data=self._train_data_config)
-    task = question_answering.QuestionAnsweringTask(config)
+        train_data=self._train_data_config,
+        num_classes=3)
+
+    task = tagging.TaggingTask(config)
     model = task.build_model()
     model = task.compile_model(
         model,
@@ -91,8 +86,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
     dataset = task.build_inputs(config.train_data)
     logs = model.fit(dataset, epochs=1, steps_per_epoch=2)
     self.assertIn("loss", logs.history)
-    self.assertIn("start_positions_accuracy", logs.history)
-    self.assertIn("end_positions_accuracy", logs.history)
+    self.assertIn("accuracy", logs.history)
 
   def _export_bert_tfhub(self):
     bert_config = configs.BertConfig(
@@ -119,9 +113,10 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
 
   def test_task_with_hub(self):
     hub_module_url = self._export_bert_tfhub()
-    config = question_answering.QuestionAnsweringConfig(
+    config = tagging.TaggingConfig(
         hub_module_url=hub_module_url,
         model=self._encoder_config,
+        num_classes=4,
         train_data=self._train_data_config)
     self._run_task(config)
 

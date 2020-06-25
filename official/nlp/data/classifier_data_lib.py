@@ -33,7 +33,13 @@ from official.nlp.bert import tokenization
 class InputExample(object):
   """A single training/test example for simple sequence classification."""
 
-  def __init__(self, guid, text_a, text_b=None, label=None, weight=None):
+  def __init__(self,
+               guid,
+               text_a,
+               text_b=None,
+               label=None,
+               weight=None,
+               int_iden=None):
     """Constructs a InputExample.
 
     Args:
@@ -46,12 +52,15 @@ class InputExample(object):
         specified for train and dev examples, but not for test examples.
       weight: (Optional) float. The weight of the example to be used during
         training.
+      int_iden: (Optional) int. The int identification number of example in the
+        corpus.
     """
     self.guid = guid
     self.text_a = text_a
     self.text_b = text_b
     self.label = label
     self.weight = weight
+    self.int_iden = int_iden
 
 
 class InputFeatures(object):
@@ -63,13 +72,15 @@ class InputFeatures(object):
                segment_ids,
                label_id,
                is_real_example=True,
-               weight=None):
+               weight=None,
+               int_iden=None):
     self.input_ids = input_ids
     self.input_mask = input_mask
     self.segment_ids = segment_ids
     self.label_id = label_id
     self.is_real_example = is_real_example
     self.weight = weight
+    self.int_iden = int_iden
 
 
 class DataProcessor(object):
@@ -234,7 +245,7 @@ class XtremeXnliProcessor(DataProcessor):
         guid = f"test-{i}"
         text_a = self.process_text_fn(line[0])
         text_b = self.process_text_fn(line[1])
-        label = self.process_text_fn(line[2])
+        label = "contradiction"
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
@@ -346,7 +357,7 @@ class XtremePawsxProcessor(DataProcessor):
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "dev_en.tsv"))
+    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
 
     examples = []
     for (i, line) in enumerate(lines):
@@ -367,7 +378,7 @@ class XtremePawsxProcessor(DataProcessor):
         guid = "test-%d" % i
         text_a = self.process_text_fn(line[0])
         text_b = self.process_text_fn(line[1])
-        label = self.process_text_fn(line[2])
+        label = "0"
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
@@ -561,6 +572,53 @@ class ColaProcessor(DataProcessor):
         label = self.process_text_fn(line[1])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+    return examples
+
+
+class RteProcessor(DataProcessor):
+  """Processor for the RTE data set (GLUE version)."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    # All datasets are converted to 2-class split, where for 3-class datasets we
+    # collapse neutral and contradiction into not_entailment.
+    return ["entailment", "not_entailment"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "RTE"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training and dev sets."""
+    examples = []
+    for i, line in enumerate(lines):
+      if i == 0:
+        continue
+      guid = "%s-%s" % (set_type, i)
+      text_a = tokenization.convert_to_unicode(line[1])
+      text_b = tokenization.convert_to_unicode(line[2])
+      if set_type == "test":
+        label = "entailment"
+      else:
+        label = tokenization.convert_to_unicode(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
 
@@ -776,6 +834,51 @@ class TfdsProcessor(DataProcessor):
     return examples
 
 
+class WnliProcessor(DataProcessor):
+  """Processor for the WNLI data set (GLUE version)."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    return ["0", "1"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "WNLI"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training and dev sets."""
+    examples = []
+    for i, line in enumerate(lines):
+      if i == 0:
+        continue
+      guid = "%s-%s" % (set_type, i)
+      text_a = tokenization.convert_to_unicode(line[1])
+      text_b = tokenization.convert_to_unicode(line[2])
+      if set_type == "test":
+        label = "0"
+      else:
+        label = tokenization.convert_to_unicode(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+
 def convert_single_example(ex_index, example, label_list, max_seq_length,
                            tokenizer):
   """Converts a single `InputExample` into a single `InputFeatures`."""
@@ -859,8 +962,9 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     logging.info("input_ids: %s", " ".join([str(x) for x in input_ids]))
     logging.info("input_mask: %s", " ".join([str(x) for x in input_mask]))
     logging.info("segment_ids: %s", " ".join([str(x) for x in segment_ids]))
-    logging.info("label: %s (id = %d)", example.label, label_id)
+    logging.info("label: %s (id = %s)", example.label, str(label_id))
     logging.info("weight: %s", example.weight)
+    logging.info("int_iden: %s", str(example.int_iden))
 
   feature = InputFeatures(
       input_ids=input_ids,
@@ -868,7 +972,9 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
       segment_ids=segment_ids,
       label_id=label_id,
       is_real_example=True,
-      weight=example.weight)
+      weight=example.weight,
+      int_iden=example.int_iden)
+
   return feature
 
 
@@ -904,12 +1010,14 @@ def file_based_convert_examples_to_features(examples,
     features["segment_ids"] = create_int_feature(feature.segment_ids)
     if label_type is not None and label_type == float:
       features["label_ids"] = create_float_feature([feature.label_id])
-    else:
+    elif feature.label_id is not None:
       features["label_ids"] = create_int_feature([feature.label_id])
     features["is_real_example"] = create_int_feature(
         [int(feature.is_real_example)])
     if feature.weight is not None:
       features["weight"] = create_float_feature([feature.weight])
+    if feature.int_iden is not None:
+      features["int_iden"] = create_int_feature([feature.int_iden])
 
     tf_example = tf.train.Example(features=tf.train.Features(feature=features))
     writer.write(tf_example.SerializeToString())
@@ -945,8 +1053,7 @@ def generate_tf_record_from_data_file(processor,
   Arguments:
       processor: Input processor object to be used for generating data. Subclass
         of `DataProcessor`.
-      data_dir: Directory that contains train/eval data to process. Data files
-        should be in from "dev.tsv", "test.tsv", or "train.tsv".
+      data_dir: Directory that contains train/eval/test data to process.
       tokenizer: The tokenizer to be applied on the data.
       train_data_output_path: Output to which processed tf record for training
         will be saved.
@@ -982,6 +1089,12 @@ def generate_tf_record_from_data_file(processor,
                                             tokenizer, eval_data_output_path,
                                             label_type)
 
+  meta_data = {
+      "processor_type": processor.get_processor_name(),
+      "train_data_size": num_training_data,
+      "max_seq_length": max_seq_length,
+  }
+
   if test_data_output_path:
     test_input_data_examples = processor.get_test_examples(data_dir)
     if isinstance(test_input_data_examples, dict):
@@ -989,17 +1102,14 @@ def generate_tf_record_from_data_file(processor,
         file_based_convert_examples_to_features(
             examples, label_list, max_seq_length, tokenizer,
             test_data_output_path.format(language), label_type)
+        meta_data["test_{}_data_size".format(language)] = len(examples)
     else:
       file_based_convert_examples_to_features(test_input_data_examples,
                                               label_list, max_seq_length,
                                               tokenizer, test_data_output_path,
                                               label_type)
+      meta_data["test_data_size"] = len(test_input_data_examples)
 
-  meta_data = {
-      "processor_type": processor.get_processor_name(),
-      "train_data_size": num_training_data,
-      "max_seq_length": max_seq_length,
-  }
   if is_regression:
     meta_data["task_type"] = "bert_regression"
     meta_data["label_type"] = {int: "int", float: "float"}[label_type]
@@ -1011,13 +1121,5 @@ def generate_tf_record_from_data_file(processor,
 
   if eval_data_output_path:
     meta_data["eval_data_size"] = len(eval_input_data_examples)
-
-  if test_data_output_path:
-    test_input_data_examples = processor.get_test_examples(data_dir)
-    if isinstance(test_input_data_examples, dict):
-      for language, examples in test_input_data_examples.items():
-        meta_data["test_{}_data_size".format(language)] = len(examples)
-    else:
-      meta_data["test_data_size"] = len(test_input_data_examples)
 
   return meta_data

@@ -178,19 +178,22 @@ class TrainerConfig(base_config.Config):
       checkpoints, if set to None, continuous eval will wait indefinetely.
   """
   optimizer_config: OptimizationConfig = OptimizationConfig()
-  train_tf_while_loop: bool = True
-  train_tf_function: bool = True
-  eval_tf_function: bool = True
+  train_steps: int = 0
+  validation_steps: Optional[int] = None
+  validation_interval: int = 100
   steps_per_loop: int = 1000
   summary_interval: int = 1000
   checkpoint_interval: int = 1000
   max_to_keep: int = 5
   continuous_eval_timeout: Optional[int] = None
+  train_tf_while_loop: bool = True
+  train_tf_function: bool = True
+  eval_tf_function: bool = True
 
 
 @dataclasses.dataclass
 class TaskConfig(base_config.Config):
-  network: base_config.Config = None
+  model: base_config.Config = None
   train_data: DataConfig = DataConfig()
   validation_data: DataConfig = DataConfig()
 
@@ -201,9 +204,6 @@ class ExperimentConfig(base_config.Config):
   task: TaskConfig = TaskConfig()
   trainer: TrainerConfig = TrainerConfig()
   runtime: RuntimeConfig = RuntimeConfig()
-  train_steps: int = 0
-  validation_steps: Optional[int] = None
-  validation_interval: int = 100
 
 
 _REGISTERED_CONFIGS = {}

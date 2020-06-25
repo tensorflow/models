@@ -54,6 +54,8 @@ pip install -r requirements.txt
 
 ## Results
 
+[![TensorFlow Hub](https://img.shields.io/badge/TF%20Hub-Models-FF6F00?logo=tensorflow)](https://tfhub.dev/...)
+
 > :memo: Provide a table with results. (e.g., accuracy, latency)  
 >  
 > * Provide links to the pre-trained models (checkpoint, SavedModel files).  

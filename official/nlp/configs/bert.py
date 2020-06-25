@@ -130,3 +130,22 @@ class QADevDataConfig(cfg.DataConfig):
   is_training: bool = False
   seq_length: int = 384
   drop_remainder: bool = False
+
+
+@dataclasses.dataclass
+class TaggingDataConfig(cfg.DataConfig):
+  """Data config for tagging (tasks/tagging)."""
+  input_path: str = ""
+  global_batch_size: int = 48
+  is_training: bool = True
+  seq_length: int = 384
+
+
+@dataclasses.dataclass
+class TaggingDevDataConfig(cfg.DataConfig):
+  """Dev Data config for tagging (tasks/tagging)."""
+  input_path: str = ""
+  global_batch_size: int = 48
+  is_training: bool = False
+  seq_length: int = 384
+  drop_remainder: bool = False

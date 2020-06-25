@@ -92,7 +92,11 @@ def bleu_wrapper(ref_filename, hyp_filename, case_sensitive=False):
       tf.io.gfile.GFile(ref_filename).read()).strip().splitlines()
   hyp_lines = tokenizer.native_to_unicode(
       tf.io.gfile.GFile(hyp_filename).read()).strip().splitlines()
+  return bleu_on_list(ref_lines, hyp_lines, case_sensitive)
 
+
+def bleu_on_list(ref_lines, hyp_lines, case_sensitive=False):
+  """Compute BLEU for two list of strings (reference and hypothesis)."""
   if len(ref_lines) != len(hyp_lines):
     raise ValueError(
         "Reference and translation files have different number of "
