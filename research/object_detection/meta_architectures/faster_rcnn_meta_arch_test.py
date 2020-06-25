@@ -484,8 +484,9 @@ class FasterRCNNMetaArchTest(
               'mask_predictions':
                   mask_predictions,
               'rpn_features_to_crop':
-                  rpn_features_to_crop
+                  [rpn_features_to_crop]
           }, true_image_shapes)
+      print("here")
       self.assertIn('detection_features', detections)
       return (detections['detection_boxes'], detections['detection_scores'],
               detections['detection_classes'], detections['num_detections'],
