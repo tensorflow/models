@@ -42,6 +42,7 @@ from object_detection import model_lib_v2
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                     'file.')
 flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
+flags.DEFINE_bool('use_tpu', False, 'Whether to use TPUs')
 flags.DEFINE_bool('eval_on_train_data', False, 'Enable evaluating on train '
                   'data (only supported in distributed training).')
 flags.DEFINE_integer('sample_1_of_n_eval_examples', None, 'Will sample one of '
@@ -84,7 +85,7 @@ def main(unused_argv):
         checkpoint_dir=FLAGS.checkpoint_dir,
         wait_interval=300, timeout=FLAGS.eval_timeout)
   else:
-    if tf.config.get_visible_devices('TPU'):
+    if FLAGS.use_tpu:
       resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
       tf.config.experimental_connect_to_cluster(resolver)
       tf.tpu.experimental.initialize_tpu_system(resolver)

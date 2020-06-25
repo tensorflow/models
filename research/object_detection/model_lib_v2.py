@@ -330,7 +330,7 @@ def load_fine_tune_checkpoint(
         labels)
 
   strategy = tf.compat.v2.distribute.get_strategy()
-  strategy.run(
+  strategy.experimental_run_v2(
       _dummy_computation_fn, args=(
           features,
           labels,
@@ -570,7 +570,7 @@ def train_loop(
 
         def _sample_and_train(strategy, train_step_fn, data_iterator):
           features, labels = data_iterator.next()
-          per_replica_losses = strategy.run(
+          per_replica_losses = strategy.experimental_run_v2(
               train_step_fn, args=(features, labels))
           # TODO(anjalisridhar): explore if it is safe to remove the
           ## num_replicas scaling of the loss and switch this to a ReduceOp.Mean
