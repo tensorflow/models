@@ -515,28 +515,6 @@ class MatMulCropAndResizeTest(test_case.TestCase):
 
 class NativeCropAndResizeTest(test_case.TestCase):
 
-  # def testBatchCropAndResize3x3To2x2_2Channels(self):
-
-  #   def graph_fn(image, boxes):
-  #     return spatial_ops.native_crop_and_resize(image, boxes, crop_size=[2, 2])
-
-  #   image = np.array([[[[1, 0], [2, 1], [3, 2]],
-  #                      [[4, 3], [5, 4], [6, 5]],
-  #                      [[7, 6], [8, 7], [9, 8]]],
-  #                     [[[1, 0], [2, 1], [3, 2]],
-  #                      [[4, 3], [5, 4], [6, 5]],
-  #                      [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)
-  #   boxes = np.array([[[0, 0, 1, 1],
-  #                      [0, 0, .5, .5]],
-  #                     [[1, 1, 0, 0],
-  #                      [.5, .5, 0, 0]]], dtype=np.float32)
-  #   expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
-  #                       [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]],
-  #                      [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
-  #                       [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
-  #   crop_output = self.execute_cpu(graph_fn, [image, boxes])
-  #   self.assertAllClose(crop_output, expected_output)
-
   def testBatchCropAndResize3x3To2x2_2Channels(self):
 
     def graph_fn(image, boxes):
