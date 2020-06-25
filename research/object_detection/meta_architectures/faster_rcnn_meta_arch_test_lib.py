@@ -377,8 +377,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           max_negatives_per_positive=None)
 
     crop_and_resize_fn = (
-        ops.matmul_crop_and_resize
-        if use_matmul_crop_and_resize else ops.native_crop_and_resize)
+        ops.multilevel_matmul_crop_and_resize
+        if use_matmul_crop_and_resize else ops.multilevel_native_crop_and_resize)
     common_kwargs = {
         'is_training':
             is_training,
@@ -478,8 +478,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
 
       preprocessed_inputs, true_image_shapes = model.preprocess(images)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
-      return (prediction_dict['rpn_box_predictor_features'],
-              prediction_dict['rpn_features_to_crop'],
+      return (prediction_dict['rpn_box_predictor_features'][0],
+              prediction_dict['rpn_features_to_crop'][0],
               prediction_dict['image_shape'],
               prediction_dict['rpn_box_encodings'],
               prediction_dict['rpn_objectness_predictions_with_background'],
@@ -600,9 +600,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
 
     def compare_results(results, expected_output_shapes):
       """Checks if the shape of the predictions are as expected."""
-      self.assertAllEqual(results[0].shape,
+      self.assertAllEqual(results[0][0].shape,
                           expected_output_shapes['rpn_box_predictor_features'])
-      self.assertAllEqual(results[1].shape,
+      self.assertAllEqual(results[1][0].shape,
                           expected_output_shapes['rpn_features_to_crop'])
       self.assertAllEqual(results[2].shape,
                           expected_output_shapes['image_shape'])
@@ -745,8 +745,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
               result_tensor_dict['anchors'],
               result_tensor_dict['rpn_box_encodings'],
               result_tensor_dict['rpn_objectness_predictions_with_background'],
-              result_tensor_dict['rpn_features_to_crop'],
-              result_tensor_dict['rpn_box_predictor_features'],
+              result_tensor_dict['rpn_features_to_crop'][0],
+              result_tensor_dict['rpn_box_predictor_features'][0],
               result_tensor_dict['final_anchors'],
              )
 
