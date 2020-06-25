@@ -117,8 +117,8 @@ class MultiChannelAttention(attention.MultiHeadAttention):
   cross-attention target sequences.
   """
 
-  def build(self, input_shape):
-    super(MultiChannelAttention, self).build(input_shape)
+  def _build_attention(self, qkv_rank):
+    super(MultiChannelAttention, self)._build_attention(qkv_rank)
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
   def call(self, inputs, attention_mask=None):
