@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
+import numpy as np
 
 
 def _coordinate_vector_1d(start, end, size, align_endpoints):
@@ -419,9 +420,22 @@ def multilevel_native_crop_and_resize(images, boxes, box_levels,
     return native_crop_and_resize(images[0], boxes, crop_size, scope=None)
   croped_feature_list = []
   for level, image in enumerate(images):
-    level_boxes = tf.gather(boxes, box_levels == (level-1))
-    cropped = native_crop_and_resize(image, level_boxes, crop_size)
-    croped_feature_list.append(cropped)
+    # indicies = tf.boolean_mask(tf.range(0, boxes[0]), box_levels == level)
+    # print(indicies)
+    # level_boxes = tf.gather(boxes, indicies)
+    # print(level_boxes)
+    # level_boxes = boxes[box_levels == level]
+    # level_boxes = tf.reshape(level_boxes,
+    #                          [1, -1] + level_boxes.shape.as_list()[1:])
+    cropped = native_crop_and_resize(image, boxes, crop_size)
+    print(cropped)
+    cond = tf.tile(tf.equal(box_levels, level)[:, :, tf.newaxis], [1, 1] + [tf.math.reduce_prod(cropped.shape.as_list()[2:])])
+    cond = tf.reshape(cond, cropped.shape)
+    print(cond)
+    cropped_final = tf.where(cond, cropped, tf.zeros_like(cropped))
+    # cropped[tf.where(box_levels != level)] = tf.zeros(crop_size)
+    print(cropped_final)
+    croped_feature_list.append(cropped_final)
   return tf.concat(croped_feature_list, axis=0)
 
 
