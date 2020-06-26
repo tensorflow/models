@@ -16,10 +16,13 @@ dataclasses
 gin-config
 tf_slim>=1.1.0
 typing
-sentencepiece
 Cython
 matplotlib
-opencv-python-headless
 pyyaml
+# CV related dependencies
+opencv-python-headless
 Pillow
 -e git+https://github.com/cocodataset/cocoapi#egg=pycocotools&subdirectory=PythonAPI
+# NLP related dependencies
+seqeval
+sentencepiece
