@@ -30,9 +30,12 @@ pip install apache-beam
 ```
 
 and can be run locally, or on a cluster for efficient processing of large
-amounts of data. See the
+amounts of data. Note that generate_detection_data.py and
+generate_embedding_data.py both involve running inference, and may be very slow
+to run locally. See the
 [Apache Beam documentation](https://beam.apache.org/documentation/runners/dataflow/)
-for more information.
+for more information, and Google Cloud Documentation for a tutorial on
+[running Beam jobs on DataFlow](https://cloud.google.com/dataflow/docs/quickstarts/quickstart-python).
 
 ### Generating TfRecords from a set of images and a COCO-CameraTraps style JSON
 
@@ -191,3 +194,6 @@ python export_inference_graph.py \
     --side_input_types float,int
 
 ```
+
+If you have questions about Context R-CNN, please contact
+[Sara Beery](https://beerys.github.io/).

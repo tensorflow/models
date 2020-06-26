@@ -16,14 +16,6 @@
 
 r"""Creates and runs TF2 object detection models.
 
-##################################
-NOTE: This module has not been fully tested; please bear with us while we iron
-out the kinks.
-##################################
-
-When a TPU device is available, this binary uses TPUStrategy. Otherwise, it uses
-GPUS with MirroredStrategy/MultiWorkerMirroredStrategy.
-
 For local training/evaluation run:
 PIPELINE_CONFIG_PATH=path/to/pipeline.config
 MODEL_DIR=/tmp/model_outputs
@@ -60,6 +52,8 @@ flags.DEFINE_string(
 
 flags.DEFINE_integer('eval_timeout', 3600, 'Number of seconds to wait for an'
                      'evaluation checkpoint before exiting.')
+
+flags.DEFINE_bool('use_tpu', False, 'Whether the job is executing on a TPU.')
 flags.DEFINE_integer(
     'num_workers', 1, 'When num_workers > 1, training uses '
     'MultiWorkerMirroredStrategy. When num_workers = 1 it uses '
@@ -84,7 +78,7 @@ def main(unused_argv):
         checkpoint_dir=FLAGS.checkpoint_dir,
         wait_interval=300, timeout=FLAGS.eval_timeout)
   else:
-    if tf.config.get_visible_devices('TPU'):
+    if FLAGS.use_tpu:
       resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
       tf.config.experimental_connect_to_cluster(resolver)
       tf.tpu.experimental.initialize_tpu_system(resolver)
