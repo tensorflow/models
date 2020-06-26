@@ -80,6 +80,7 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     projected_features = context_rcnn_lib.project_features(
         features,
         projection_dimension,
+        freeze_batchnorm=False,
         is_training=is_training,
         normalize=normalize)
 
@@ -102,7 +103,7 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     projection_layers = {"key": {}, "val": {}, "query": {}, "feature": {}}
     output_features = context_rcnn_lib.attention_block(
         input_features, context_features, bottleneck_dimension,
-        output_dimension, attention_temperature, valid_mask, is_training, projection_layers)
+        output_dimension, attention_temperature, valid_mask, is_training, False, projection_layers)
 
     # Makes sure the shape is correct.
     self.assertAllEqual(output_features.shape, [2, 3, output_dimension])
@@ -117,7 +118,8 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     projection_layers = {"key": {}, "val": {}, "query": {}, "feature": {}}
     attention_features = context_rcnn_lib.compute_box_context_attention(
         box_features, context_features, valid_context_size,
-        bottleneck_dimension, attention_temperature, is_training, projection_layers)
+        bottleneck_dimension, attention_temperature, is_training, 
+        False, projection_layers)
     # Makes sure the shape is correct.
     self.assertAllEqual(attention_features.shape, [2, 3, 1, 1, 4])
 

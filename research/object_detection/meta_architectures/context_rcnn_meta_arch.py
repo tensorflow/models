@@ -270,7 +270,8 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         context_rcnn_lib.compute_box_context_attention,
         bottleneck_dimension=attention_bottleneck_dimension,
         attention_temperature=attention_temperature,
-        is_training=is_training)
+        is_training=is_training,
+        freeze_batchnorm=freeze_batchnorm)
     
     self._attention_projections = {"key": {},
                                   "val": {},
