@@ -66,6 +66,11 @@ class InputDataFields(object):
     groundtruth_keypoint_weights: groundtruth weight factor for keypoints.
     groundtruth_label_weights: groundtruth label weights.
     groundtruth_weights: groundtruth weight factor for bounding boxes.
+    groundtruth_dp_num_points: The number of DensePose sampled points for each
+      instance.
+    groundtruth_dp_part_ids: Part indices for DensePose points.
+    groundtruth_dp_surface_coords: Image locations and UV coordinates for
+      DensePose points.
     num_groundtruth_boxes: number of groundtruth boxes.
     is_annotated: whether an image has been labeled or not.
     true_image_shapes: true shapes of images in the resized images, as resized
@@ -108,6 +113,9 @@ class InputDataFields(object):
   groundtruth_keypoint_weights = 'groundtruth_keypoint_weights'
   groundtruth_label_weights = 'groundtruth_label_weights'
   groundtruth_weights = 'groundtruth_weights'
+  groundtruth_dp_num_points = 'groundtruth_dp_num_points'
+  groundtruth_dp_part_ids = 'groundtruth_dp_part_ids'
+  groundtruth_dp_surface_coords = 'groundtruth_dp_surface_coords'
   num_groundtruth_boxes = 'num_groundtruth_boxes'
   is_annotated = 'is_annotated'
   true_image_shape = 'true_image_shape'
