@@ -74,6 +74,9 @@ class FakeModel(model.DetectionModel):
   def restore_map(self, checkpoint_path, from_detection_checkpoint):
     pass
 
+  def restore_from_objects(self, fine_tune_checkpoint_type):
+    pass
+
   def loss(self, prediction_dict, true_image_shapes):
     pass
 

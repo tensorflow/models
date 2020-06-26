@@ -57,6 +57,9 @@ class FakeModel(model.DetectionModel):
   def restore_map(self):
     return {}
 
+  def restore_from_objects(self, fine_tune_checkpoint_type):
+    pass
+
   def regularization_losses(self):
     return []
 

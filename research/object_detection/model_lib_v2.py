@@ -34,7 +34,6 @@ from object_detection.protos import train_pb2
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
-from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils as vutils
 
 # pylint: disable=g-import-not-at-top
@@ -47,13 +46,6 @@ except ImportError:
 
 MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 
-### NOTE: This file is a wip.
-### TODO(kaftan): Explore adding unit tests for individual methods
-### TODO(kaftan): Add unit test that checks training on a single image w/
-#### groundtruth, and verfiy that loss goes to zero.
-#### Possibly have version that takes it as the whole train & eval dataset,
-#### & verify the loss output from the eval_loop method.
-### TODO(kaftan): Make sure the unit tests run in TAP presubmits or Kokoro
 
 RESTORE_MAP_ERROR_TEMPLATE = (
     'Since we are restoring a v2 style checkpoint'
@@ -277,14 +269,21 @@ def validate_tf_v2_checkpoint_restore_map(checkpoint_restore_map):
   """
 
   for key, value in checkpoint_restore_map.items():
-    if not (isinstance(key, str) and isinstance(value, tf.Module)):
+    if not (isinstance(key, str) and
+            (isinstance(value, tf.Module)
+             or isinstance(value, tf.train.Checkpoint))):
       raise TypeError(RESTORE_MAP_ERROR_TEMPLATE.format(
           key.__class__.__name__, value.__class__.__name__))
 
 
+def is_object_based_checkpoint(checkpoint_path):
+  """Returns true if `checkpoint_path` points to an object-based checkpoint."""
+  var_names = [var[0] for var in tf.train.list_variables(checkpoint_path)]
+  return '_CHECKPOINTABLE_OBJECT_GRAPH' in var_names
+
+
 def load_fine_tune_checkpoint(
-    model, checkpoint_path, checkpoint_type, checkpoint_version,
-    load_all_detection_checkpoint_vars, input_dataset,
+    model, checkpoint_path, checkpoint_type, checkpoint_version, input_dataset,
     unpad_groundtruth_tensors):
   """Load a fine tuning classification or detection checkpoint.
 
@@ -292,8 +291,7 @@ def load_fine_tune_checkpoint(
   the model by computing a dummy loss. (Models might not have built their
   variables before their first execution)
 
-  It then loads a variable-name based classification or detection checkpoint
-  that comes from converted TF 1.x slim model checkpoints.
+  It then loads an object-based classification or detection checkpoint.
 
   This method updates the model in-place and does not return a value.
 
@@ -306,14 +304,22 @@ def load_fine_tune_checkpoint(
       classification checkpoint for initialization prior to training.
       Valid values: `detection`, `classification`.
     checkpoint_version: train_pb2.CheckpointVersion.V1 or V2 enum indicating
-      whether to load checkpoints in V1 style or V2 style.
-    load_all_detection_checkpoint_vars: whether to load all variables (when
-      `fine_tune_checkpoint_type` is `detection`). If False, only variables
-      within the feature extractor scopes are included. Default False.
+      whether to load checkpoints in V1 style or V2 style.  In this binary
+      we only support V2 style (object-based) checkpoints.
     input_dataset: The tf.data Dataset the model is being trained on. Needed
       to get the shapes for the dummy loss computation.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
+
+  Raises:
+    IOError: if `checkpoint_path` does not point at a valid object-based
+      checkpoint
+    ValueError: if `checkpoint_version` is not train_pb2.CheckpointVersion.V2
   """
+  if not is_object_based_checkpoint(checkpoint_path):
+    raise IOError('Checkpoint is expected to be an object-based checkpoint.')
+  if checkpoint_version == train_pb2.CheckpointVersion.V1:
+    raise ValueError('Checkpoint version should be V2')
+
   features, labels = iter(input_dataset).next()
 
   @tf.function
@@ -336,26 +342,11 @@ def load_fine_tune_checkpoint(
           labels,
       ))
 
-  if checkpoint_version == train_pb2.CheckpointVersion.V1:
-    var_map = model.restore_map(
-        fine_tune_checkpoint_type=checkpoint_type,
-        load_all_detection_checkpoint_vars=(
-            load_all_detection_checkpoint_vars))
-    available_var_map = variables_helper.get_variables_available_in_checkpoint(
-        var_map,
-        checkpoint_path,
-        include_global_step=False)
-    tf.train.init_from_checkpoint(checkpoint_path,
-                                  available_var_map)
-  elif checkpoint_version == train_pb2.CheckpointVersion.V2:
-    restore_map = model.restore_map(
-        fine_tune_checkpoint_type=checkpoint_type,
-        load_all_detection_checkpoint_vars=(
-            load_all_detection_checkpoint_vars))
-    validate_tf_v2_checkpoint_restore_map(restore_map)
-
-    ckpt = tf.train.Checkpoint(**restore_map)
-    ckpt.restore(checkpoint_path).assert_existing_objects_matched()
+  restore_from_objects_dict = model.restore_from_objects(
+      fine_tune_checkpoint_type=checkpoint_type)
+  validate_tf_v2_checkpoint_restore_map(restore_from_objects_dict)
+  ckpt = tf.train.Checkpoint(**restore_from_objects_dict)
+  ckpt.restore(checkpoint_path).assert_existing_objects_matched()
 
 
 def get_filepath(strategy, filepath):
@@ -464,8 +455,10 @@ def train_loop(
   if kwargs['use_bfloat16']:
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
-  load_all_detection_checkpoint_vars = (
-      train_config.load_all_detection_checkpoint_vars)
+  if train_config.load_all_detection_checkpoint_vars:
+    raise ValueError('train_pb2.load_all_detection_checkpoint_vars '
+                     'unsupported in TF2')
+
   config_util.update_fine_tune_checkpoint_type(train_config)
   fine_tune_checkpoint_type = train_config.fine_tune_checkpoint_type
   fine_tune_checkpoint_version = train_config.fine_tune_checkpoint_version
@@ -533,7 +526,6 @@ def train_loop(
                                     train_config.fine_tune_checkpoint,
                                     fine_tune_checkpoint_type,
                                     fine_tune_checkpoint_version,
-                                    load_all_detection_checkpoint_vars,
                                     train_input,
                                     unpad_groundtruth_tensors)
 
@@ -807,8 +799,10 @@ def eager_eval_loop(
     eval_metrics[loss_key] = loss_metrics[loss_key].result()
 
   eval_metrics = {str(k): v for k, v in eval_metrics.items()}
+  tf.logging.info('Eval metrics at step %d', global_step)
   for k in eval_metrics:
     tf.compat.v2.summary.scalar(k, eval_metrics[k], step=global_step)
+    tf.logging.info('\t+ %s: %f', k, eval_metrics[k])
 
   return eval_metrics
 

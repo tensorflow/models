@@ -1574,8 +1574,9 @@ class CenterNetMetaArchRestoreTest(test_case.TestCase):
     """Test restore map for a resnet backbone."""
 
     model = build_center_net_meta_arch(build_resnet=True)
-    restore_map = model.restore_map('classification')
-    self.assertIsInstance(restore_map['feature_extractor'], tf.keras.Model)
+    restore_from_objects_map = model.restore_from_objects('classification')
+    self.assertIsInstance(restore_from_objects_map['feature_extractor'],
+                          tf.keras.Model)
 
 
 class DummyFeatureExtractor(cnma.CenterNetFeatureExtractor):
@@ -1599,9 +1600,6 @@ class DummyFeatureExtractor(cnma.CenterNetFeatureExtractor):
     pass
 
   def postprocess(self):
-    pass
-
-  def restore_map(self):
     pass
 
   def call(self, inputs):

@@ -26,7 +26,8 @@ from object_detection.utils import shape_utils
 
 def create_conv_block(name, num_filters, kernel_size, strides, padding,
                       use_separable, apply_batchnorm, apply_activation,
-                      conv_hyperparams, is_training, freeze_batchnorm):
+                      conv_hyperparams, is_training, freeze_batchnorm,
+                      conv_bn_act_pattern=True):
   """Create Keras layers for regular or separable convolutions.
 
   Args:
@@ -50,6 +51,9 @@ def create_conv_block(name, num_filters, kernel_size, strides, padding,
       training or not. When training with a small batch size (e.g. 1), it is
       desirable to freeze batch norm update and use pretrained batch norm
       params.
+    conv_bn_act_pattern: Bool. By default, when True, the layers returned by
+      this function are in the order [conv, batchnorm, activation]. Otherwise,
+      when False, the order of the layers is [activation, conv, batchnorm].
 
   Returns:
     A list of keras layers, including (regular or seperable) convolution, and
@@ -73,7 +77,7 @@ def create_conv_block(name, num_filters, kernel_size, strides, padding,
             depth_multiplier=1,
             padding=padding,
             strides=strides,
-            name=name + '_separable_conv',
+            name=name + 'separable_conv',
             **kwargs))
   else:
     layers.append(
@@ -82,18 +86,22 @@ def create_conv_block(name, num_filters, kernel_size, strides, padding,
             kernel_size=kernel_size,
             padding=padding,
             strides=strides,
-            name=name + '_conv',
+            name=name + 'conv',
             **conv_hyperparams.params()))
 
   if apply_batchnorm:
     layers.append(
         conv_hyperparams.build_batch_norm(
             training=(is_training and not freeze_batchnorm),
-            name=name + '_batchnorm'))
+            name=name + 'batchnorm'))
 
   if apply_activation:
-    layers.append(
-        conv_hyperparams.build_activation_layer(name=name + '_activation'))
+    activation_layer = conv_hyperparams.build_activation_layer(
+        name=name + 'activation')
+    if conv_bn_act_pattern:
+      layers.append(activation_layer)
+    else:
+      layers = [activation_layer] + layers
 
   return layers
 
@@ -133,28 +141,28 @@ def create_downsample_feature_map_ops(scale, downsample_method,
             pool_size=kernel_size,
             strides=stride,
             padding=padding,
-            name=name + '_downsample_max_x{}'.format(stride)))
+            name=name + 'downsample_max_x{}'.format(stride)))
   elif downsample_method == 'avg_pooling':
     layers.append(
         tf.keras.layers.AveragePooling2D(
             pool_size=kernel_size,
             strides=stride,
             padding=padding,
-            name=name + '_downsample_avg_x{}'.format(stride)))
+            name=name + 'downsample_avg_x{}'.format(stride)))
   elif downsample_method == 'depthwise_conv':
     layers.append(
         tf.keras.layers.DepthwiseConv2D(
             kernel_size=kernel_size,
             strides=stride,
             padding=padding,
-            name=name + '_downsample_depthwise_x{}'.format(stride)))
+            name=name + 'downsample_depthwise_x{}'.format(stride)))
     layers.append(
         conv_hyperparams.build_batch_norm(
             training=(is_training and not freeze_batchnorm),
-            name=name + '_downsample_batchnorm'))
+            name=name + 'downsample_batchnorm'))
     layers.append(
         conv_hyperparams.build_activation_layer(name=name +
-                                                '_downsample_activation'))
+                                                'downsample_activation'))
   else:
     raise ValueError('Unknown downsample method: {}'.format(downsample_method))
 
