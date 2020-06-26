@@ -118,6 +118,8 @@ Importantly, these contextual images need not be labeled.
     novel camera deployment to improve performance at that camera, boosting
     model generalizeability.
 
+Read about Context R-CNN on the Google AI blog [here](https://ai.googleblog.com/2020/06/leveraging-temporal-context-for-object.html).
+
 We have provided code for generating data with associated context
 [here](g3doc/context_rcnn.md), and a sample config for a Context R-CNN
 model [here](samples/configs/context_rcnn_resnet101_snapshot_serengeti_sync.config).

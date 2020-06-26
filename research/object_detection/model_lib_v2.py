@@ -736,28 +736,25 @@ def eager_eval_loop(
 
     return eval_dict, losses_dict, class_agnostic
 
+  agnostic_categories = label_map_util.create_class_agnostic_category_index()
+  per_class_categories = label_map_util.create_category_index_from_labelmap(
+      eval_input_config.label_map_path)
+  keypoint_edges = [
+      (kp.start, kp.end) for kp in eval_config.keypoint_edge]
+
   for i, (features, labels) in enumerate(eval_dataset):
     eval_dict, losses_dict, class_agnostic = compute_eval_dict(features, labels)
+
+    if class_agnostic:
+      category_index = agnostic_categories
+    else:
+      category_index = per_class_categories
 
     if i % 100 == 0:
       tf.logging.info('Finished eval step %d', i)
 
     use_original_images = fields.InputDataFields.original_image in features
-    if not use_tpu and use_original_images:
-      # Summary for input images.
-      tf.compat.v2.summary.image(
-          name='eval_input_images',
-          step=global_step,
-          data=eval_dict['original_image'],
-          max_outputs=1)
-      # Summary for prediction/groundtruth side-by-side images.
-      if class_agnostic:
-        category_index = label_map_util.create_class_agnostic_category_index()
-      else:
-        category_index = label_map_util.create_category_index_from_labelmap(
-            eval_input_config.label_map_path)
-      keypoint_edges = [
-          (kp.start, kp.end) for kp in eval_config.keypoint_edge]
+    if use_original_images and i < eval_config.num_visualizations:
       sbys_image_list = vutils.draw_side_by_side_evaluation_image(
           eval_dict,
           category_index=category_index,
@@ -767,10 +764,10 @@ def eager_eval_loop(
           keypoint_edges=keypoint_edges or None)
       sbys_images = tf.concat(sbys_image_list, axis=0)
       tf.compat.v2.summary.image(
-          name='eval_side_by_side',
+          name='eval_side_by_side_' + str(i),
           step=global_step,
           data=sbys_images,
-          max_outputs=eval_config.num_visualizations)
+          max_outputs=1)
 
     if evaluators is None:
       if class_agnostic:
