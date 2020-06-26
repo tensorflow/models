@@ -95,13 +95,13 @@ class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
         .int64_list.value, [1])
     self.assertAllEqual(
         example.features.feature['image/object/class/text']
-        .bytes_list.value, ['animal'])
+        .bytes_list.value, [b'animal'])
     self.assertAllClose(
         example.features.feature['image/class/label']
         .int64_list.value, [1])
     self.assertAllEqual(
         example.features.feature['image/class/text']
-        .bytes_list.value, ['animal'])
+        .bytes_list.value, [b'animal'])
 
     # Check other essential attributes.
     self.assertAllEqual(
@@ -112,7 +112,7 @@ class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
         [self.IMAGE_WIDTH])
     self.assertAllEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        ['im_0'])
+        [b'im_0'])
     self.assertTrue(
         example.features.feature['image/encoded'].bytes_list.value)
 
@@ -134,13 +134,13 @@ class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
         .int64_list.value, [1])
     self.assertAllEqual(
         example.features.feature['image/object/class/text']
-        .bytes_list.value, ['animal'])
+        .bytes_list.value, [b'animal'])
     self.assertAllClose(
         example.features.feature['image/class/label']
         .int64_list.value, [1])
     self.assertAllEqual(
         example.features.feature['image/class/text']
-        .bytes_list.value, ['animal'])
+        .bytes_list.value, [b'animal'])
 
     # Check other essential attributes.
     self.assertAllEqual(
@@ -151,7 +151,7 @@ class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
         [self.IMAGE_WIDTH])
     self.assertAllEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        ['im_0'])
+        [b'im_0'])
     self.assertTrue(
         example.features.feature['image/encoded'].bytes_list.value)
 
