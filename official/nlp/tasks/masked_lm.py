@@ -21,7 +21,6 @@ from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
 from official.nlp.data import pretrain_dataloader
-from official.nlp.modeling import losses as loss_lib
 
 
 @dataclasses.dataclass
@@ -61,9 +60,10 @@ class MaskedLMTask(base_task.Task):
       sentence_labels = labels['next_sentence_labels']
       sentence_outputs = tf.cast(
           model_outputs['next_sentence'], dtype=tf.float32)
-      sentence_loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
-          labels=sentence_labels,
-          predictions=tf.nn.log_softmax(sentence_outputs, axis=-1))
+      sentence_loss = tf.keras.losses.sparse_categorical_crossentropy(
+          sentence_labels,
+          sentence_outputs,
+          from_logits=True)
       metrics['next_sentence_loss'].update_state(sentence_loss)
       total_loss = mlm_loss + sentence_loss
     else:

@@ -26,7 +26,6 @@ from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
 from official.nlp.data import sentence_prediction_dataloader
-from official.nlp.modeling import losses as loss_lib
 from official.nlp.tasks import utils
 
 
@@ -75,10 +74,10 @@ class SentencePredictionTask(base_task.Task):
       return bert.instantiate_bertpretrainer_from_cfg(self.task_config.model)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
-        labels=labels,
-        predictions=tf.nn.log_softmax(
-            tf.cast(model_outputs['sentence_prediction'], tf.float32), axis=-1))
+    loss = tf.keras.losses.sparse_categorical_crossentropy(
+        labels,
+        tf.cast(model_outputs['sentence_prediction'], tf.float32),
+        from_logits=True)
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
@@ -94,7 +93,7 @@ class SentencePredictionTask(base_task.Task):
             input_word_ids=dummy_ids,
             input_mask=dummy_ids,
             input_type_ids=dummy_ids)
-        y = tf.ones((1, 1), dtype=tf.int32)
+        y = tf.zeros((1, 1), dtype=tf.int32)
         return (x, y)
 
       dataset = tf.data.Dataset.range(1)
