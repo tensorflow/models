@@ -419,7 +419,7 @@ class ExportTfliteGraphTest(tf.test.TestCase):
     tflite_graph_file = self._export_graph_with_postprocessing_op(
         pipeline_config)
     self.assertTrue(os.path.exists(tflite_graph_file))
-    mock_get.assert_called_once()
+    self.assertEqual(1, mock_get.call_count)
 
 
 if __name__ == '__main__':
