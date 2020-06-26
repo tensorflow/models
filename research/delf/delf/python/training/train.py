@@ -64,6 +64,10 @@ def _record_accuracy(metric, logits, labels):
 
 def _attention_summaries(scores, global_step):
   """Record statistics of the attention score."""
+  tf.summary.image(
+      'batch_attention',
+      scores / tf.reduce_max(scores + 1e-3),
+      step=global_step)
   tf.summary.scalar('attention/max', tf.reduce_max(scores), step=global_step)
   tf.summary.scalar('attention/min', tf.reduce_min(scores), step=global_step)
   tf.summary.scalar('attention/mean', tf.reduce_mean(scores), step=global_step)
