@@ -58,7 +58,7 @@ class TaggingTest(tf.test.TestCase):
         init_checkpoint=saved_path,
         model=self._encoder_config,
         train_data=self._train_data_config,
-        num_classes=3)
+        class_names=["O", "B-PER", "I-PER"])
     task = tagging.TaggingTask(config)
     model = task.build_model()
     metrics = task.build_metrics()
@@ -74,7 +74,7 @@ class TaggingTest(tf.test.TestCase):
     config = tagging.TaggingConfig(
         model=self._encoder_config,
         train_data=self._train_data_config,
-        num_classes=3)
+        class_names=["O", "B-PER", "I-PER"])
 
     task = tagging.TaggingTask(config)
     model = task.build_model()
@@ -116,9 +116,30 @@ class TaggingTest(tf.test.TestCase):
     config = tagging.TaggingConfig(
         hub_module_url=hub_module_url,
         model=self._encoder_config,
-        num_classes=4,
+        class_names=["O", "B-PER", "I-PER"],
         train_data=self._train_data_config)
     self._run_task(config)
+
+  def test_seqeval_metrics(self):
+    config = tagging.TaggingConfig(
+        model=self._encoder_config,
+        train_data=self._train_data_config,
+        class_names=["O", "B-PER", "I-PER"])
+    task = tagging.TaggingTask(config)
+    model = task.build_model()
+    dataset = task.build_inputs(config.train_data)
+
+    iterator = iter(dataset)
+    strategy = tf.distribute.get_strategy()
+    distributed_outputs = strategy.run(
+        functools.partial(task.validation_step, model=model),
+        args=(next(iterator),))
+    outputs = tf.nest.map_structure(strategy.experimental_local_results,
+                                    distributed_outputs)
+    aggregated = task.aggregate_logs(step_outputs=outputs)
+    aggregated = task.aggregate_logs(state=aggregated, step_outputs=outputs)
+    self.assertCountEqual({"f1", "precision", "recall", "accuracy"},
+                          task.reduce_aggregated_logs(aggregated).keys())
 
 
 if __name__ == "__main__":

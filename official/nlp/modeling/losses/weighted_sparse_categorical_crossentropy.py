@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Sparse categorical cross-entropy losses."""
+"""Weighted sparse categorical cross-entropy losses."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -43,37 +43,7 @@ def _validate_rank(labels, predictions, weights):
          "predictions.shape was %s.") % (labels.shape, predictions.shape))
 
 
-def per_example_loss(labels, predictions, weights=None):
-  """Calculate a per-example sparse categorical crossentropy loss.
-
-  This loss function assumes that the predictions are post-softmax.
-  Args:
-    labels: The labels to evaluate against. Should be a set of integer indices
-      ranging from 0 to (vocab_size-1).
-    predictions: The network predictions. Should have softmax already applied.
-    weights: An optional weight array of the same shape as the 'labels' array.
-      If None, all examples will be used.
-
-  Returns:
-    A tensor of shape predictions.shape[:-1] containing the per-example
-      loss.
-  """
-  # When using these functions with the Keras core API, we will need to squeeze
-  # the labels tensor - Keras adds a spurious inner dimension.
-  labels, predictions = _adjust_labels(labels, predictions)
-  _validate_rank(labels, predictions, weights)
-
-  labels_one_hot = tf.one_hot(labels, predictions.shape[-1])
-  labels_one_hot = tf.cast(labels_one_hot, predictions.dtype)
-  per_example_loss_data = -tf.reduce_sum(
-      predictions * labels_one_hot, axis=[-1])
-  if weights is not None:
-    weights = tf.cast(weights, per_example_loss_data.dtype)
-    per_example_loss_data = weights * per_example_loss_data
-  return per_example_loss_data
-
-
-def loss(labels, predictions, weights=None):
+def loss(labels, predictions, weights=None, from_logits=False):
   """Calculate a per-batch sparse categorical crossentropy loss.
 
   This loss function assumes that the predictions are post-softmax.
@@ -83,6 +53,7 @@ def loss(labels, predictions, weights=None):
     predictions: The network predictions. Should have softmax already applied.
     weights: An optional weight array of the same shape as the 'labels' array.
       If None, all examples will be used.
+    from_logits: Whether the input predictions are logits.
 
   Returns:
     A loss scalar.
@@ -95,12 +66,11 @@ def loss(labels, predictions, weights=None):
   labels, predictions = _adjust_labels(labels, predictions)
   _validate_rank(labels, predictions, weights)
 
-  per_example_loss_data = per_example_loss(labels, predictions, weights)
+  example_losses = tf.keras.losses.sparse_categorical_crossentropy(
+      labels, predictions, from_logits=from_logits)
 
   if weights is None:
-    return tf.reduce_mean(per_example_loss_data)
-  else:
-    numerator = tf.reduce_sum(per_example_loss_data)
-    weights = tf.cast(weights, predictions.dtype)
-    denominator = tf.reduce_sum(weights) + 1e-5
-    return numerator / denominator
+    return tf.reduce_mean(example_losses)
+  weights = tf.cast(weights, predictions.dtype)
+  return tf.math.divide_no_nan(
+      tf.reduce_sum(example_losses * weights), tf.reduce_sum(weights))

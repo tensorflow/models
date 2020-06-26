@@ -45,6 +45,9 @@ def _get_requirements():
       os.path.join(os.path.dirname(__file__), '../requirements.txt'), 'r') as f:
     for line in f:
       package_name = line.strip()
+      # Skip empty line or comments starting with "#".
+      if not package_name or package_name[0] == '#':
+        continue
       if package_name.startswith('-e '):
         dependency_links_tmp.append(package_name[3:].strip())
       else:
