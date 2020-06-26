@@ -21,10 +21,13 @@ from __future__ import print_function
 import tensorflow.compat.v1 as tf
 import tf_slim as slim
 
+class BatchNormAndProj():
+  def __init__(self):
+    self.batch_norm = None
+    self.projection = None
 
 # The negative value used in padding the invalid weights.
 _NEGATIVE_PADDING_VALUE = -100000
-
 
 def filter_weight_value(weights, values, valid_mask):
   """Filters weights and values based on valid_mask.
@@ -96,8 +99,7 @@ def compute_valid_mask(num_valid_elements, num_elements):
   valid_mask = tf.less(batch_element_idxs, num_valid_elements)
   return valid_mask
 
-
-def project_features(features, projection_dimension, is_training, normalize):
+def project_features(features, projection_dimension, is_training, node=None, normalize=True):
   """Projects features to another feature space.
 
   Args:
@@ -111,6 +113,17 @@ def project_features(features, projection_dimension, is_training, normalize):
   Returns:
     A float Tensor of shape [batch, features_size, projection_dimension].
   """
+  if node is None:
+    node = {}
+  if 'batch_norm' not in node:
+    node['batch_norm'] = tf.keras.layers.BatchNormalization(epsilon=0.001, center=True, scale=True, momentum=0.97)
+  if 'projection' not in node:
+    print("Creating new projection")
+    node['projection'] = tf.keras.layers.Dense(units=projection_dimension,
+                                        activation=tf.nn.relu6,
+                                        use_bias=True)
+
+
   # TODO(guanhangwu) Figure out a better way of specifying the batch norm
   # params.
   batch_norm_params = {
@@ -120,16 +133,16 @@ def project_features(features, projection_dimension, is_training, normalize):
       "center": True,
       "scale": True
   }
-
-  batch_size, _, num_features = features.shape
+  shape_arr = features.shape
+  batch_size = shape_arr[0]
+  feature_size = shape_arr[1]
+  num_features = shape_arr[2]
   features = tf.reshape(features, [-1, num_features])
-  projected_features = slim.fully_connected(
-      features,
-      num_outputs=projection_dimension,
-      activation_fn=tf.nn.relu6,
-      normalizer_fn=slim.batch_norm,
-      normalizer_params=batch_norm_params)
+  
+  batch_norm_features = node['batch_norm'](features)
+  projected_features = node['projection'](batch_norm_features, training=is_training)
 
+  print(projected_features.shape)
   projected_features = tf.reshape(projected_features,
                                   [batch_size, -1, projection_dimension])
 
@@ -141,7 +154,7 @@ def project_features(features, projection_dimension, is_training, normalize):
 
 def attention_block(input_features, context_features, bottleneck_dimension,
                     output_dimension, attention_temperature, valid_mask,
-                    is_training):
+                    is_training, attention_projections):
   """Generic attention block.
 
   Args:
@@ -165,12 +178,13 @@ def attention_block(input_features, context_features, bottleneck_dimension,
 
   with tf.variable_scope("AttentionBlock"):
     queries = project_features(
-        input_features, bottleneck_dimension, is_training, normalize=True)
+        input_features, bottleneck_dimension, is_training, node=attention_projections["query"], normalize=True)
     keys = project_features(
-        context_features, bottleneck_dimension, is_training, normalize=True)
+        context_features, bottleneck_dimension, is_training, node=attention_projections["key"], normalize=True)
     values = project_features(
-        context_features, bottleneck_dimension, is_training, normalize=True)
+        context_features, bottleneck_dimension, is_training, node=attention_projections["val"], normalize=True)
 
+  print(attention_projections['query'])
   weights = tf.matmul(queries, keys, transpose_b=True)
 
   weights, values = filter_weight_value(weights, values, valid_mask)
@@ -179,13 +193,13 @@ def attention_block(input_features, context_features, bottleneck_dimension,
 
   features = tf.matmul(weights, values)
   output_features = project_features(
-      features, output_dimension, is_training, normalize=False)
+      features, output_dimension, is_training, node=attention_projections["feature"], normalize=False)
   return output_features
 
 
 def compute_box_context_attention(box_features, context_features,
                                   valid_context_size, bottleneck_dimension,
-                                  attention_temperature, is_training):
+                                  attention_temperature, is_training, attention_projections):
   """Computes the attention feature from the context given a batch of box.
 
   Args:
@@ -214,9 +228,9 @@ def compute_box_context_attention(box_features, context_features,
   box_features = tf.reduce_mean(box_features, [2, 3])
 
   output_features = attention_block(box_features, context_features,
-                                    bottleneck_dimension, channels.value,
+                                    bottleneck_dimension, channels,
                                     attention_temperature, valid_mask,
-                                    is_training)
+                                    is_training, attention_projections)
 
   # Expands the dimension back to match with the original feature map.
   output_features = output_features[:, :, tf.newaxis, tf.newaxis, :]

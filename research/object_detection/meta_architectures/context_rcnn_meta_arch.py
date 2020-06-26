@@ -75,7 +75,8 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                return_raw_detections_during_predict=False,
                output_final_box_features=False,
                attention_bottleneck_dimension=None,
-               attention_temperature=None):
+               attention_temperature=None,
+               attention_projections=None):
     """ContextRCNNMetaArch Constructor.
 
     Args:
@@ -213,6 +214,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       attention_bottleneck_dimension: A single integer. The bottleneck feature
         dimension of the attention block.
       attention_temperature: A single float. The attention temperature.
+      attention_projection_layers: 
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals` at
@@ -269,6 +271,11 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         bottleneck_dimension=attention_bottleneck_dimension,
         attention_temperature=attention_temperature,
         is_training=is_training)
+    
+    self._attention_projections = {"key": {},
+                                  "val": {},
+                                  "query": {},
+                                  "feature": {}}
 
   @staticmethod
   def get_side_inputs(features):
@@ -327,10 +334,13 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         features_to_crop, proposal_boxes_normalized,
         [self._initial_crop_size, self._initial_crop_size])
 
+    print(self._attention_projections)
     attention_features = self._context_feature_extract_fn(
         box_features=box_features,
         context_features=context_features,
-        valid_context_size=valid_context_size)
+        valid_context_size=valid_context_size,
+        attention_projections=self._attention_projections)
+    print(self._attention_projections)
 
     # Adds box features with attention features.
     box_features += attention_features
