@@ -2330,8 +2330,39 @@ class CenterNetMetaArch(model.DetectionModel):
   def regularization_losses(self):
     return []
 
-  def restore_map(self, fine_tune_checkpoint_type='classification',
+  def restore_map(self,
+                  fine_tune_checkpoint_type='detection',
                   load_all_detection_checkpoint_vars=False):
+    raise RuntimeError('CenterNetMetaArch not supported under TF1.x.')
+
+  def restore_from_objects(self, fine_tune_checkpoint_type='detection'):
+    """Returns a map of Trackable objects to load from a foreign checkpoint.
+
+    Returns a dictionary of Tensorflow 2 Trackable objects (e.g. tf.Module
+    or Checkpoint). This enables the model to initialize based on weights from
+    another task. For example, the feature extractor variables from a
+    classification model can be used to bootstrap training of an object
+    detector. When loading from an object detection model, the checkpoint model
+    should have the same parameters as this detection model with exception of
+    the num_classes parameter.
+
+    Note that this function is intended to be used to restore Keras-based
+    models when running Tensorflow 2, whereas restore_map (not implemented
+    in CenterNet) is intended to be used to restore Slim-based models when
+    running Tensorflow 1.x.
+
+    TODO(jonathanhuang): Make this function consistent with other
+    meta-architectures.
+
+    Args:
+      fine_tune_checkpoint_type: whether to restore from a full detection
+        checkpoint (with compatible variable names) or to restore from a
+        classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
+
+    Returns:
+      A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
+    """
 
     if fine_tune_checkpoint_type == 'classification':
       return {'feature_extractor': self._feature_extractor.get_base_model()}
@@ -2340,7 +2371,7 @@ class CenterNetMetaArch(model.DetectionModel):
       return {'feature_extractor': self._feature_extractor.get_model()}
 
     else:
-      raise ValueError('Unknown fine tune checkpoint type - {}'.format(
+      raise ValueError('Not supported  fine tune checkpoint type - {}'.format(
           fine_tune_checkpoint_type))
 
   def updates(self):

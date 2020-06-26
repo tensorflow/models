@@ -391,7 +391,9 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     pass
 
   @abc.abstractmethod
-  def restore_map(self, fine_tune_checkpoint_type='detection'):
+  def restore_map(self,
+                  fine_tune_checkpoint_type='detection',
+                  load_all_detection_checkpoint_vars=False):
     """Returns a map of variables to load from a foreign checkpoint.
 
     Returns a map of variable names to load from a checkpoint to variables in
@@ -407,10 +409,43 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
         Valid values: `detection`, `classification`. Default 'detection'.
+      load_all_detection_checkpoint_vars: whether to load all variables (when
+         `fine_tune_checkpoint_type` is `detection`). If False, only variables
+         within the feature extractor scope are included. Default False.
 
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    """
+    pass
+
+  @abc.abstractmethod
+  def restore_from_objects(self, fine_tune_checkpoint_type='detection'):
+    """Returns a map of variables to load from a foreign checkpoint.
+
+    Returns a dictionary of Tensorflow 2 Trackable objects (e.g. tf.Module
+    or Checkpoint). This enables the model to initialize based on weights from
+    another task. For example, the feature extractor variables from a
+    classification model can be used to bootstrap training of an object
+    detector. When loading from an object detection model, the checkpoint model
+    should have the same parameters as this detection model with exception of
+    the num_classes parameter.
+
+    Note that this function is intended to be used to restore Keras-based
+    models when running Tensorflow 2, whereas restore_map (above) is intended
+    to be used to restore Slim-based models when running Tensorflow 1.x.
+
+    TODO(jonathanhuang,rathodv): Check tf_version and raise unimplemented
+    error for both restore_map and restore_from_objects depending on version.
+
+    Args:
+      fine_tune_checkpoint_type: whether to restore from a full detection
+        checkpoint (with compatible variable names) or to restore from a
+        classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
+
+    Returns:
+      A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
     """
     pass
 

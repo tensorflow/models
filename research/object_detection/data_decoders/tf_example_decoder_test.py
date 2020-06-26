@@ -1096,8 +1096,8 @@ class TfExampleDecoderTest(test_case.TestCase):
       return example_decoder.decode(tf.convert_to_tensor(example))
 
     tensor_dict = self.execute_cpu(graph_fn, [])
-    self.assertTrue(
-        fields.InputDataFields.groundtruth_instance_masks not in tensor_dict)
+    self.assertNotIn(fields.InputDataFields.groundtruth_instance_masks,
+                     tensor_dict)
 
   def testDecodeImageLabels(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
@@ -1116,8 +1116,7 @@ class TfExampleDecoderTest(test_case.TestCase):
       return example_decoder.decode(tf.convert_to_tensor(example))
 
     tensor_dict = self.execute_cpu(graph_fn_1, [])
-    self.assertTrue(
-        fields.InputDataFields.groundtruth_image_classes in tensor_dict)
+    self.assertIn(fields.InputDataFields.groundtruth_image_classes, tensor_dict)
     self.assertAllEqual(
         tensor_dict[fields.InputDataFields.groundtruth_image_classes],
         np.array([1, 2]))
@@ -1152,8 +1151,7 @@ class TfExampleDecoderTest(test_case.TestCase):
       return example_decoder.decode(tf.convert_to_tensor(example))
 
     tensor_dict = self.execute_cpu(graph_fn_2, [])
-    self.assertTrue(
-        fields.InputDataFields.groundtruth_image_classes in tensor_dict)
+    self.assertIn(fields.InputDataFields.groundtruth_image_classes, tensor_dict)
     self.assertAllEqual(
         tensor_dict[fields.InputDataFields.groundtruth_image_classes],
         np.array([1, 3]))
@@ -1344,6 +1342,93 @@ class TfExampleDecoderTest(test_case.TestCase):
     self.assertAllEqual(
         expected_image_confidence,
         tensor_dict[fields.InputDataFields.groundtruth_image_confidences])
+
+  def testDecodeDensePose(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    bbox_ymins = [0.0, 4.0, 2.0]
+    bbox_xmins = [1.0, 5.0, 8.0]
+    bbox_ymaxs = [2.0, 6.0, 1.0]
+    bbox_xmaxs = [3.0, 7.0, 3.3]
+    densepose_num = [0, 4, 2]
+    densepose_part_index = [2, 2, 3, 4, 2, 9]
+    densepose_x = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+    densepose_y = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4]
+    densepose_u = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06]
+    densepose_v = [0.99, 0.98, 0.97, 0.96, 0.95, 0.94]
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/object/bbox/ymin':
+                      dataset_util.float_list_feature(bbox_ymins),
+                  'image/object/bbox/xmin':
+                      dataset_util.float_list_feature(bbox_xmins),
+                  'image/object/bbox/ymax':
+                      dataset_util.float_list_feature(bbox_ymaxs),
+                  'image/object/bbox/xmax':
+                      dataset_util.float_list_feature(bbox_xmaxs),
+                  'image/object/densepose/num':
+                      dataset_util.int64_list_feature(densepose_num),
+                  'image/object/densepose/part_index':
+                      dataset_util.int64_list_feature(densepose_part_index),
+                  'image/object/densepose/x':
+                      dataset_util.float_list_feature(densepose_x),
+                  'image/object/densepose/y':
+                      dataset_util.float_list_feature(densepose_y),
+                  'image/object/densepose/u':
+                      dataset_util.float_list_feature(densepose_u),
+                  'image/object/densepose/v':
+                      dataset_util.float_list_feature(densepose_v),
+
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder(
+          load_dense_pose=True)
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+      dp_num_points = output[fields.InputDataFields.groundtruth_dp_num_points]
+      dp_part_ids = output[fields.InputDataFields.groundtruth_dp_part_ids]
+      dp_surface_coords = output[
+          fields.InputDataFields.groundtruth_dp_surface_coords]
+      return dp_num_points, dp_part_ids, dp_surface_coords
+
+    dp_num_points, dp_part_ids, dp_surface_coords = self.execute_cpu(
+        graph_fn, [])
+
+    expected_dp_num_points = [0, 4, 2]
+    expected_dp_part_ids = [
+        [0, 0, 0, 0],
+        [2, 2, 3, 4],
+        [2, 9, 0, 0]
+    ]
+    expected_dp_surface_coords = np.array(
+        [
+            # Instance 0 (no points).
+            [[0., 0., 0., 0.],
+             [0., 0., 0., 0.],
+             [0., 0., 0., 0.],
+             [0., 0., 0., 0.]],
+            # Instance 1 (4 points).
+            [[0.9, 0.1, 0.99, 0.01],
+             [0.8, 0.2, 0.98, 0.02],
+             [0.7, 0.3, 0.97, 0.03],
+             [0.6, 0.4, 0.96, 0.04]],
+            # Instance 2 (2 points).
+            [[0.5, 0.5, 0.95, 0.05],
+             [0.4, 0.6, 0.94, 0.06],
+             [0., 0., 0., 0.],
+             [0., 0., 0., 0.]],
+        ], dtype=np.float32)
+
+    self.assertAllEqual(dp_num_points, expected_dp_num_points)
+    self.assertAllEqual(dp_part_ids, expected_dp_part_ids)
+    self.assertAllClose(dp_surface_coords, expected_dp_surface_coords)
 
 
 if __name__ == '__main__':

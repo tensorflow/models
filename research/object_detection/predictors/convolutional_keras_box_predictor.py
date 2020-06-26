@@ -314,7 +314,8 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
       self, inserted_layer_counter, target_channel):
     projection_layers = []
     if inserted_layer_counter >= 0:
-      use_bias = False if self._apply_batch_norm else True
+      use_bias = False if (self._apply_batch_norm and not
+                           self._conv_hyperparams.force_use_bias()) else True
       projection_layers.append(keras.Conv2D(
           target_channel, [1, 1], strides=1, padding='SAME',
           name='ProjectionLayer/conv2d_{}'.format(inserted_layer_counter),
@@ -331,7 +332,8 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
     conv_layers = []
     batch_norm_layers = []
     activation_layers = []
-    use_bias = False if self._apply_batch_norm else True
+    use_bias = False if (self._apply_batch_norm and not
+                         self._conv_hyperparams.force_use_bias()) else True
     for additional_conv_layer_idx in range(self._num_layers_before_predictor):
       layer_name = '{}/conv2d_{}'.format(
           tower_name_scope, additional_conv_layer_idx)
@@ -363,7 +365,9 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
             training=(self._is_training and not self._freeze_batchnorm),
             name='{}/conv2d_{}/BatchNorm/feature_{}'.format(
                 tower_name_scope, additional_conv_layer_idx, feature_index)))
-      activation_layers.append(tf.keras.layers.Lambda(tf.nn.relu6))
+      activation_layers.append(self._conv_hyperparams.build_activation_layer(
+          name='{}/conv2d_{}/activation_{}'.format(
+              tower_name_scope, additional_conv_layer_idx, feature_index)))
 
     # Set conv layers as the shared conv layers for different feature maps with
     # the same tower_name_scope.
