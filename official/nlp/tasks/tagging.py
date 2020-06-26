@@ -15,7 +15,12 @@
 # ==============================================================================
 """Tagging (e.g., NER/POS) task."""
 import logging
+from typing import List, Optional
+
 import dataclasses
+
+from seqeval import metrics as seqeval_metrics
+
 import tensorflow as tf
 import tensorflow_hub as hub
 
@@ -36,12 +41,12 @@ class TaggingConfig(cfg.TaskConfig):
   model: encoders.TransformerEncoderConfig = (
       encoders.TransformerEncoderConfig())
 
-  # The number of real labels. Note that a word may be tokenized into
-  # multiple word_pieces tokens, and we asssume the real label id (non-negative)
-  # is assigned to the first token of the word, and a negative label id is
-  # assigned to the remaining tokens. The negative label id will not contribute
-  # to loss and metrics.
-  num_classes: int = 0
+  # The real class names, the order of which should match real label id.
+  # Note that a word may be tokenized into multiple word_pieces tokens, and
+  # we asssume the real label id (non-negative) is assigned to the first token
+  # of the word, and a negative label id is assigned to the remaining tokens.
+  # The negative label id will not contribute to loss and metrics.
+  class_names: Optional[List[str]] = None
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
@@ -75,8 +80,8 @@ class TaggingTask(base_task.Task):
     if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
-    if params.num_classes == 0:
-      raise ValueError('TaggingConfig.num_classes cannot be 0.')
+    if not params.class_names:
+      raise ValueError('TaggingConfig.class_names cannot be empty.')
 
     if params.hub_module_url:
       self._hub_module = hub.load(params.hub_module_url)
@@ -92,7 +97,7 @@ class TaggingTask(base_task.Task):
 
     return models.BertTokenClassifier(
         network=encoder_network,
-        num_classes=self.task_config.num_classes,
+        num_classes=len(self.task_config.class_names),
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=self.task_config.model.initializer_range),
         dropout_rate=self.task_config.model.dropout_rate,
@@ -123,7 +128,7 @@ class TaggingTask(base_task.Task):
         y = tf.random.uniform(
             shape=(1, params.seq_length),
             minval=-1,
-            maxval=self.task_config.num_classes,
+            maxval=len(self.task_config.class_names),
             dtype=tf.dtypes.int32)
         return (x, y)
 
@@ -136,19 +141,66 @@ class TaggingTask(base_task.Task):
     dataset = tagging_data_loader.TaggingDataLoader(params).load(input_context)
     return dataset
 
-  def build_metrics(self, training=None):
-    del training
-    # TODO(chendouble): evaluate using seqeval's f1/precision/recall.
-    return [tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy')]
+  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+    """Validatation step.
 
-  def process_metrics(self, metrics, labels, model_outputs):
-    masked_labels, masked_weights = _masked_labels_and_weights(labels)
-    for metric in metrics:
-      metric.update_state(masked_labels, model_outputs, masked_weights)
+    Args:
+      inputs: a dictionary of input tensors.
+      model: the keras.Model.
+      metrics: a nested structure of metrics objects.
 
-  def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    masked_labels, masked_weights = _masked_labels_and_weights(labels)
-    compiled_metrics.update_state(masked_labels, model_outputs, masked_weights)
+    Returns:
+      A dictionary of logs.
+    """
+    features, labels = inputs
+    outputs = self.inference_step(features, model)
+    loss = self.build_losses(labels=labels, model_outputs=outputs)
+
+    # Negative label ids are padding labels which should be ignored.
+    real_label_index = tf.where(tf.greater_equal(labels, 0))
+    predict_ids = tf.math.argmax(outputs, axis=-1)
+    predict_ids = tf.gather_nd(predict_ids, real_label_index)
+    label_ids = tf.gather_nd(labels, real_label_index)
+    return {
+        self.loss: loss,
+        'predict_ids': predict_ids,
+        'label_ids': label_ids,
+    }
+
+  def aggregate_logs(self, state=None, step_outputs=None):
+    """Aggregates over logs returned from a validation step."""
+    if state is None:
+      state = {'predict_class': [], 'label_class': []}
+
+    def id_to_class_name(batched_ids):
+      class_names = []
+      for per_example_ids in batched_ids:
+        class_names.append([])
+        for per_token_id in per_example_ids.numpy().tolist():
+          class_names[-1].append(self.task_config.class_names[per_token_id])
+
+      return class_names
+
+    # Convert id to class names, because `seqeval_metrics` relies on the class
+    # name to decide IOB tags.
+    state['predict_class'].extend(id_to_class_name(step_outputs['predict_ids']))
+    state['label_class'].extend(id_to_class_name(step_outputs['label_ids']))
+    return state
+
+  def reduce_aggregated_logs(self, aggregated_logs):
+    """Reduces aggregated logs over validation steps."""
+    label_class = aggregated_logs['label_class']
+    predict_class = aggregated_logs['predict_class']
+    return {
+        'f1':
+            seqeval_metrics.f1_score(label_class, predict_class),
+        'precision':
+            seqeval_metrics.precision_score(label_class, predict_class),
+        'recall':
+            seqeval_metrics.recall_score(label_class, predict_class),
+        'accuracy':
+            seqeval_metrics.accuracy_score(label_class, predict_class),
+    }
 
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""
