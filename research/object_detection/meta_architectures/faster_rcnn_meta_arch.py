@@ -2801,7 +2801,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
       A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
     """
     if fine_tune_checkpoint_type == 'classification':
-      return {'feature_extractor': self.classification_backbone}
+      return {
+          'feature_extractor':
+              self._feature_extractor.classification_backbone
+      }
     elif fine_tune_checkpoint_type == 'detection':
       fake_model = tf.train.Checkpoint(
           _feature_extractor_for_box_classifier_features=
