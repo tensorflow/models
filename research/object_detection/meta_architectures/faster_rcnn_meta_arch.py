@@ -1308,7 +1308,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       rpn_features_to_crop: A list of 4-D float32 tensor with shape
         [batch, height, width, depth] representing image features to crop using
         the proposals boxes.
-      anchors: A BoxList representing anchors (for the RPN) in
+      anchors: A list of BoxList representing anchors (for the RPN) in
         absolute coordinates.
       image_shape: A 1-D tensor representing the input image shape.
     """
@@ -1322,11 +1322,13 @@ class FasterRCNNMetaArch(model.DetectionModel):
       rpn_features_to_crop = [rpn_features_to_crop]
 
     rpn_box_predictor_features = []
+    anchors = []
     for single_rpn_features_to_crop in rpn_features_to_crop:
       feature_map_shape = tf.shape(single_rpn_features_to_crop)
-      anchors = box_list_ops.concatenate(
+      level_anchors = box_list_ops.concatenate(
           self._first_stage_anchor_generator.generate([(feature_map_shape[1],
                                                         feature_map_shape[2])]))
+      anchors.append(level_anchors)
       single_rpn_box_predictor_features = (
         self._first_stage_box_predictor_first_conv(single_rpn_features_to_crop))
       rpn_box_predictor_features.append(single_rpn_box_predictor_features)
