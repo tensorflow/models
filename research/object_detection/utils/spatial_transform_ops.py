@@ -419,12 +419,13 @@ def multilevel_native_crop_and_resize(images, boxes, box_levels,
   Same as `multilevel_matmul_crop_and_resize` but uses tf.image.crop_and_resize.
   """
   if box_levels is None:
-    return native_crop_and_resize(images[0], boxes, crop_size, scope=None)
+    return native_crop_and_resize(images[0], boxes, crop_size, scope)
   cropped_feature_list = []
   for level, image in enumerate(images):
     # For each level, crop the feature according to all boxes
     # set the cropped feature not at this level to 0 tensor.
-    cropped = native_crop_and_resize(image, boxes, crop_size)
+    # TODO: consider more efficient way of computing cropped features.
+    cropped = native_crop_and_resize(image, boxes, crop_size, scope)
     cond = tf.tile(tf.equal(box_levels, level)[:, :, tf.newaxis],
               [1, 1] + [tf.math.reduce_prod(cropped.shape.as_list()[2:])])
     cond = tf.reshape(cond, cropped.shape)
