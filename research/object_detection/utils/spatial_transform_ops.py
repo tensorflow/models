@@ -411,7 +411,7 @@ def multilevel_roi_align(features, boxes, box_levels, output_size,
     return features_per_box
 
 
-def multilevel_native_crop_and_resize(images, boxes, box_levels, 
+def multilevel_native_crop_and_resize(images, boxes, box_levels,
                                       crop_size, scope=None):
   """Multilevel native crop and resize.
 
@@ -426,7 +426,7 @@ def multilevel_native_crop_and_resize(images, boxes, box_levels,
     # TODO: consider more efficient way of computing cropped features.
     cropped = native_crop_and_resize(image, boxes, crop_size, scope)
     cond = tf.tile(tf.equal(box_levels, level)[:, :, tf.newaxis],
-              [1, 1] + [tf.math.reduce_prod(cropped.shape.as_list()[2:])])
+                   [1, 1] + [tf.math.reduce_prod(cropped.shape.as_list()[2:])])
     cond = tf.reshape(cond, cropped.shape)
     cropped_final = tf.where(cond, cropped, tf.zeros_like(cropped))
     cropped_feature_list.append(cropped_final)
@@ -453,15 +453,15 @@ def native_crop_and_resize(image, boxes, crop_size, scope=None):
     return tf.reshape(cropped_regions, final_shape)
 
 
-def multilevel_matmul_crop_and_resize(images, boxes, box_levels, crop_size, 
+def multilevel_matmul_crop_and_resize(images, boxes, box_levels, crop_size,
                                       extrapolation_value=0.0, scope=None):
   """Multilevel native crop and resize.
 
   Same as `matmul_crop_and_resize` but crop images according to box levels.
 
   Args:
-    images: A list of 4-D tensor of shape 
-      [batch, image_height, image_width, depth] representing features of 
+    images: A list of 4-D tensor of shape
+      [batch, image_height, image_width, depth] representing features of
       different size.
     boxes: A `Tensor` of type `float32` or 'bfloat16'.
       A 3-D tensor of shape `[batch, num_boxes, 4]`. The boxes are specified in
@@ -481,7 +481,7 @@ def multilevel_matmul_crop_and_resize(images, boxes, box_levels, crop_size,
       to be positive.
     extrapolation_value: a float value to use for extrapolation.
     scope: A name for the operation (optional).
-  
+
   Returns:
     A 5-D tensor of shape `[batch, num_boxes, crop_height, crop_width, depth]`
   """
