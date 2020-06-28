@@ -19,7 +19,6 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
-import numpy as np
 
 
 def _coordinate_vector_1d(start, end, size, align_endpoints):
