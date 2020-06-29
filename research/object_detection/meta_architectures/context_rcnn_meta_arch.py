@@ -272,12 +272,12 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         is_training=is_training,
         freeze_batchnorm=freeze_batchnorm)
     
-    self._attention_projections = {'key': context_rcnn_lib.ContextProjection(
-                                      attention_bottleneck_dimension, freeze_batchnorm),
-                                   'val': context_rcnn_lib.ContextProjection(
-                                      attention_bottleneck_dimension, freeze_batchnorm),
-                                   'query': context_rcnn_lib.ContextProjection(
-                                      attention_bottleneck_dimension, freeze_batchnorm)}
+    self._atten_projs = {'key': context_rcnn_lib.ContextProjection(
+                            attention_bottleneck_dimension, freeze_batchnorm),
+                         'val': context_rcnn_lib.ContextProjection(
+                            attention_bottleneck_dimension, freeze_batchnorm),
+                         'query': context_rcnn_lib.ContextProjection(
+                            attention_bottleneck_dimension, freeze_batchnorm)}
 
   @staticmethod
   def get_side_inputs(features):
@@ -340,7 +340,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         box_features=box_features,
         context_features=context_features,
         valid_context_size=valid_context_size,
-        attention_projections=self._attention_projections)
+        attention_projections=self._atten_projs)
 
     # Adds box features with attention features.
     box_features += attention_features
