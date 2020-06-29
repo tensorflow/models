@@ -79,14 +79,6 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
     self.assertAllEqual(features_shapes[2].numpy(), [2, 14, 14, 256])
     self.assertAllEqual(features_shapes[3].numpy(), [2, 7, 7, 256])
 
-  def test_extract_proposal_features_dies_with_incorrect_rank_inputs(self):
-    feature_extractor = self._build_feature_extractor()
-    preprocessed_inputs = tf.random_uniform(
-        [224, 224, 3], maxval=255, dtype=tf.float32)
-    with self.assertRaises(tf.errors.InvalidArgumentError):
-      feature_extractor.get_proposal_feature_extractor_model(
-          name='TestScope')(preprocessed_inputs)
-
   def test_extract_box_classifier_features_returns_expected_size(self):
     feature_extractor = self._build_feature_extractor()
     proposal_feature_maps = tf.random_uniform(
