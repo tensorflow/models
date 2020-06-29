@@ -26,7 +26,7 @@ from object_detection.protos import hyperparams_pb2
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
+class FasterRCNNResnetV1FpnKerasFeatureExtractorTest(tf.test.TestCase):
 
   def _build_conv_hyperparams(self):
     conv_hyperparams = hyperparams_pb2.Hyperparams()
@@ -44,7 +44,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
     return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
 
   def _build_feature_extractor(self):
-    return frcnn_res_fpn.FasterRCNNResnet50FPNKerasFeatureExtractor(
+    return frcnn_res_fpn.FasterRCNNResnet50FpnKerasFeatureExtractor(
         is_training=False,
         conv_hyperparams=self._build_conv_hyperparams(),
         first_stage_features_stride=16,
