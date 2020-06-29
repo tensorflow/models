@@ -302,14 +302,15 @@ class PawsxProcessor(DataProcessor):
     """See base class."""
     lines = []
     for lang in PawsxProcessor.supported_languages:
-      lines.extend(self._read_tsv(os.path.join(data_dir, f"dev-{lang}.tsv")))
+      lines.extend(
+          self._read_tsv(os.path.join(data_dir, lang, "dev_2k.tsv"))[1:])
 
     examples = []
     for (i, line) in enumerate(lines):
       guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
+      text_a = self.process_text_fn(line[1])
+      text_b = self.process_text_fn(line[2])
+      label = self.process_text_fn(line[3])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
@@ -318,12 +319,12 @@ class PawsxProcessor(DataProcessor):
     """See base class."""
     examples_by_lang = {k: [] for k in self.supported_languages}
     for lang in self.supported_languages:
-      lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
+      lines = self._read_tsv(os.path.join(data_dir, lang, "test_2k.tsv"))[1:]
       for (i, line) in enumerate(lines):
         guid = "test-%d" % i
-        text_a = self.process_text_fn(line[0])
-        text_b = self.process_text_fn(line[1])
-        label = self.process_text_fn(line[2])
+        text_a = self.process_text_fn(line[1])
+        text_b = self.process_text_fn(line[2])
+        label = self.process_text_fn(line[3])
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
