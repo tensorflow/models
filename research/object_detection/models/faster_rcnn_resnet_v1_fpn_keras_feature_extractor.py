@@ -225,7 +225,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
 
 class FasterRCNNResnet50FpnKerasFeatureExtractor(
     FasterRCNNResnetV1FpnKerasFeatureExtractor):
-  """Faster RCNN with Resnet50 FPN feature extractor implementation."""
+  """Faster RCNN with Resnet50 FPN feature extractor."""
 
   def __init__(self,
                is_training,
@@ -272,7 +272,7 @@ class FasterRCNNResnet50FpnKerasFeatureExtractor(
 
 class FasterRCNNResnet101FpnKerasFeatureExtractor(
     FasterRCNNResnetV1FpnKerasFeatureExtractor):
-  """Faster RCNN with Resnet101 FPN feature extractor implementation."""
+  """Faster RCNN with Resnet101 FPN feature extractor."""
   def __init__(self,
                is_training,
                first_stage_features_stride=16,
@@ -318,7 +318,7 @@ class FasterRCNNResnet101FpnKerasFeatureExtractor(
 
 class FasterRCNNResnet152FpnKerasFeatureExtractor(
     FasterRCNNResnetV1FpnKerasFeatureExtractor):
-  """Faster RCNN with Resnet152 FPN feature extractor implementation."""
+  """Faster RCNN with Resnet152 FPN feature extractor."""
 
   def __init__(self,
                is_training,
