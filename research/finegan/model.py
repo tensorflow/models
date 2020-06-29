@@ -39,8 +39,6 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 
-# TODO: Add appropriate comments and information where necessary
-
 class GLU(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
         super(GLU, self).__init__(**kwargs)
@@ -135,6 +133,67 @@ class InitGenerator(tf.keras.Model):
         x = self.layer3(x)
         x = self.layer4(x)
         return self.layer5(x)
+
+
+class IntermediateGenerator(tf.keras.Model):
+    def __init__(self, cfg, gen_dims, hrc=1, num_residual=2, **kwargs):
+        super(IntermediateGenerator, self).__init__(**kwargs)
+        self.gf_dim = gen_dims
+        self.res = num_residual
+        if hrc == 1:
+            self.ef_dim = cfg.SUPER_CATEGORIES
+        else:
+            self.ef_dim = cfg.FINE_GRAINED_CATEGORIES
+
+        self.convblock = Sequential([
+            conv3x3(self.gf_dim*2),
+            BatchNormalization(self.gf_dim // 2),
+            GLU()
+        ])
+
+        self.residual = self._make_layer(ResidualBlock, self.gf_dim)
+        self.keepdims = KeepDimsBlock(self.gf_dim // 2)
+
+    def _make_layer(self, block, channel_num):
+        layers = []
+        for _ in range(self.res):
+            layers.append(block(channel_num))
+        return Sequential(*layers)
+
+    def call(self, h_code, code):
+        # TODO: Fix the Dimension error
+        # s_size = h_code.shape[2]
+        # code = tf.reshape((-1, self.ef_dim, 1, 1))
+        # code = tf.repeat(1, 1, s_size, s_size)
+        x = Concatenate([code, h_code], axis=1)   
+        x = self.convblock(x)
+        x = self.residual(x)
+        return self.keepdims(x)
+
+
+class GetImage(tf.keras.Model):
+    def __init__(self, gen_dims, **kwargs):
+        super(GetImage, self).__init__(**kwargs)
+        self.out_image = Sequential([
+            conv3x3(3),
+            Activation('tanh')
+        ])
+
+    def call(self, inputs):
+        # The inputs need to be h_code
+        return self.out_image(inputs)
+
+
+class GetMask(tf.keras.Model):
+    def __init__(self, gen_dims, **kwargs):
+        super(GetMask, self).__init__(**kwargs)
+        self.out_mask = Sequential([
+            conv3x3(1),
+            Activation('sigmoid')
+        ])
+
+    def call(self, inputs):
+        return self.out_mask(inputs)
 
 class CustomConfig(Config):
     def __init__(self, batch_size=16, **kwargs):
