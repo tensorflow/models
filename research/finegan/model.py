@@ -79,12 +79,27 @@ class ParentChildEncoder(tf.keras.layers.Layer):
         x = BatchNormalization()(x)
         x = LeakyReLU(alpha=0.2)(x)
         x = ZeroPadding2D(1)(x)
-        x = Conv2d(self.num_disc_features*4, 4, 2, use_bias=False)(x)
+        x = Conv2D(self.num_disc_features*4, 4, 2, use_bias=False)(x)
         x = BatchNormalization()(x)
         x = LeakyReLU(alpha=0.2)(x)
         x = ZeroPadding2D(1)(x)
-        x = Conv2d(self.num_disc_features*8, 4, 2, use_bias=False)(x)
+        x = Conv2D(self.num_disc_features*8, 4, 2, use_bias=False)(x)
         x = BatchNormalization()(x)
+        return LeakyReLU(alpha=0.2)(x)
+
+
+class BackgroundEncoder(tf.keras.layers.Layer):
+    """Encoder for the background"""
+    def __init__(self, num_disc_features, **kwargs):
+        super(BackgroundEncoder, self).__init__(**kwargs)
+        self.num_disc_features = num_disc_features
+
+    def call(self, inputs):
+        x = Conv2D(self.num_disc_features, 4, 2, use_bias=False)(inputs)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = Conv2D(self.num_disc_features*2, 4, 2, use_bias=False)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = Conv2D(self.num_disc_features*4, 4, 1, use_bias=False)(x)
         return LeakyReLU(alpha=0.2)(x)
 
 
@@ -302,6 +317,41 @@ class GeneratorArchitecture(tf.keras.Model):
         return fake_images, foreground_images, masks, foreground_masks       
 
 
+class DiscriminatorArchitecture(tf.keras.Model):
+    def __init__(self, cfg, stage_num, **kwargs):
+        super(DiscriminatorArchitecture, self).__init__(**kwargs)
+        self.disc_dims = cfg.GAN['DF_DIM']
+        self.stage_num = stage_num
+
+        if self.stage_num == 0:
+            self.encoder_dims = 1
+        elif self.stage_num == 1:
+            self.encoder_dims = cfg.SUPER_CATEGORIES
+        else:
+            self.encoder_dims = cfg.FINE_GRAINED_CATEGORIES
+
+        if self.stage_num == 0:
+            # Background Stage
+            self.patchgan_16 = BackgroundEncoder(self.disc_dims)
+            self.logits1 = Sequential([
+                Conv2D(1, 4, 1),
+                Activation('sigmoid')  
+            ])
+            self.logits2 = Sequential([
+                Conv2D(1, 4, 1),
+                Activation('sigmoid')
+            ])
+        else:
+            # TODO: ParentChildEncoder
+            pass
+
+    def call(self, x):
+        if self.stage_num == 0:
+            # TODO: Background Discriminator        
+            pass
+        else:
+            # TODO: Parent and Child Discriminator
+            pass
 
 
 class CustomConfig(Config):
