@@ -32,9 +32,9 @@ assert tf.version.VERSION.startswith('2.2')
 
 from config.config import Config
 from tensorflow.keras import Input, Model, Sequential
-from tensorflow.keras.layers import LeakyReLU, BatchNormalization, ReLU, Activation
+from tensorflow.keras.layers import LeakyReLU, BatchNormalization, ReLU, Activation, LeakyReLU
 from tensorflow.keras.layers import UpSampling2D, Conv2D, Concatenate, Dense, concatenate
-from tensorflow.keras.layers import Flatten, Lambda, Reshape, ZeroPadding2D, add
+from tensorflow.keras.layers import Flatten, Lambda, Reshape, ZeroPadding2D, add, dot
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -147,6 +147,7 @@ class IntermediateGenerator(tf.keras.Model):
 
         self.convblock = Sequential([
             conv3x3(self.gf_dim*2),
+            Activation('relu'),
             BatchNormalization(self.gf_dim // 2),
             GLU()
         ])
@@ -199,7 +200,7 @@ class GetMask(tf.keras.Model):
     
 class GeneratorArchitecture(tf.keras.Model):
     def __init__(self, cfg, **kwargs):
-        super(Generator, self).__init__(**kwargs)
+        super(GeneratorArchitecture, self).__init__(**kwargs)
         self.gen_dims = cfg.GAN['GF_DIM']
         self.upsampling = UpSampling2D(size=2, interpolation='bilinear')
         self.scale_foreground = UpSampling2D(size=2, interpolation='bilinear') 
@@ -234,29 +235,35 @@ class GeneratorArchitecture(tf.keras.Model):
 
         # Parent Stage
         fp_dims = self.parent_gen1(z_code, p_code)
-        p_dims = self.parent_gen2(fp_dims, p_code)
+        p_dims = self.parent_gen2(fp_dims, p_code) # Feature Representation (F_p)
         fake_parent_fg = self.image_gen2(p_dims) # Parent Foreground (P_f)
         fake_parent_mask = self.mask_gen2(p_dims) # Parent Mask (P_m)
-        # TODO: Compute P_fm = np.dot(P_f, P_m)
-        # TODO: Compute B_m = np.dot((1-P_m), B)
-        # TODO: Compute P = P_fm + B_m
-        # TODO: Append the fake_parent_image ---> P to fake_images
-        # TODO: Append the fake_parent_fg ---> P_f to foreground_images
-        # TODO: Append the fake_parent_mask ---> P_m to masks
-        # TODO: Append the parent_fg_mask ---> P_fm to foreground_masks
+        inverse_ones = tf.ones_like(fake_parent_mask)
+        inverse_mask = inverse_ones - fake_parent_mask # (1-P_m)
+        parent_foreground_mask = tf.math.multiply(fake_parent_fg, fake_parent_mask) # Parent Foreground Mask (P_fm)
+        background_mask = tf.math.multiply(fake_bg, inverse_mask) # Background Mask (B_m)
+        fake_parent_image = parent_foreground_mask + background_mask # Parent Image (P)
+        fake_images.append(fake_parent_image)
+        foreground_images.append(fake_parent_fg)
+        masks.append(fake_parent_mask)
+        foreground_masks.append(parent_foreground_mask)
 
         # Child Stage
-        # TODO: Test whther inclusion of the ResidualGen is necessary
+        # TODO: Test whether inclusion of the ResidualGen is necessary
         fc_dims = self.child_gen(p_dims, c_code)
-        fake_child_fg = self.image_child(fc_dims) # Parent Foreground (C_f)
+        fake_child_fg = self.image_child(fc_dims) # Child Foreground (C_f)
         fake_child_mask = self.mask_child(fc_dims) # Child Mask (C_m)
-        # TODO: Compute C_fm = np.dot(C_f, C_m)
-        # TODO: Compute P_m = np.dot((1-C_m), P)
-        # TODO: Compute C = C_fm + P_m
-        # TODO: Append the fake_child_image ---> C to fake_images
-        # TODO: Append the fake_child_fg ---> C_f to foreground_images
-        # TODO: Append the fake_child_mask ---> C_m to masks
-        # TODO: Append the child_fg_mask ---> C_fm to foreground_masks
+        inverse_ones = tf.ones_like(fake_child_mask)
+        inverse_mask = inverse_ones - fake_child_mask # (1-C_m)
+        child_foreground_mask = tf.math.multiply(fake_child_fg, fake_child_mask) # Child Foreground mask (C_fm)
+        child_parent_mask = tf.math.multiply(fake_parent_image, inverse_mask) # Parent Mask (P_m)
+        fake_child_image = child_foreground_mask + child_parent_mask # Child Image (C)
+        fake_images.append(fake_child_image)
+        foreground_images.append(fake_child_fg)
+        masks.append(fake_child_mask)
+        foreground_masks.append(child_foreground_mask)
+
+        return fake_images, foreground_images, masks, foreground_masks       
 
 
 class CustomConfig(Config):
