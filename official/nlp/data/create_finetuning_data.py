@@ -32,14 +32,16 @@ from official.nlp.data import sentence_retrieval_lib
 from official.nlp.data import squad_lib as squad_lib_wp
 # sentence-piece tokenizer based squad_lib
 from official.nlp.data import squad_lib_sp
+from official.nlp.data import tagging_data_lib
 
 FLAGS = flags.FLAGS
 
+# TODO(chendouble): consider moving each task to its own binary.
 flags.DEFINE_enum(
     "fine_tuning_task_type", "classification",
-    ["classification", "regression", "squad", "retrieval"],
+    ["classification", "regression", "squad", "retrieval", "tagging"],
     "The name of the BERT fine tuning task for which data "
-    "will be generated..")
+    "will be generated.")
 
 # BERT classification specific flags.
 flags.DEFINE_string(
@@ -56,9 +58,6 @@ flags.DEFINE_enum("classification_task_name", "MNLI",
                   "only and for XNLI is all languages combined. Same for "
                   "PAWS-X.")
 
-flags.DEFINE_enum("retrieval_task_name", "bucc", ["bucc", "tatoeba"],
-                  "The name of sentence retrieval task for scoring")
-
 # XNLI task specific flag.
 flags.DEFINE_string(
     "xnli_language", "en",
@@ -70,6 +69,14 @@ flags.DEFINE_string(
     "pawsx_language", "en",
     "Language of trainig data for PAWS-X task. If the value is 'all', the data "
     "of all languages will be used for training.")
+
+# Retrieva task specific flags
+flags.DEFINE_enum("retrieval_task_name", "bucc", ["bucc", "tatoeba"],
+                  "The name of sentence retrieval task for scoring")
+
+# Tagging task specific flags
+flags.DEFINE_enum("tagging_task_name", "panx", ["panx", "udpos"],
+                  "The name of BERT tagging (token classification) task.")
 
 # BERT Squad task specific flags.
 flags.DEFINE_string(
@@ -284,6 +291,34 @@ def generate_retrieval_dataset():
       FLAGS.max_seq_length)
 
 
+def generate_tagging_dataset():
+  """Generates tagging dataset."""
+  processors = {
+      "panx": tagging_data_lib.PanxProcessor,
+      "udpos": tagging_data_lib.UdposProcessor,
+  }
+  task_name = FLAGS.tagging_task_name.lower()
+  if task_name not in processors:
+    raise ValueError("Task not found: %s" % task_name)
+
+  if FLAGS.tokenizer_impl == "word_piece":
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+    processor_text_fn = tokenization.convert_to_unicode
+  elif FLAGS.tokenizer_impl == "sentence_piece":
+    tokenizer = tokenization.FullSentencePieceTokenizer(FLAGS.sp_model_file)
+    processor_text_fn = functools.partial(
+        tokenization.preprocess_text, lower=FLAGS.do_lower_case)
+  else:
+    raise ValueError("Unsupported tokenizer_impl: %s" % FLAGS.tokenizer_impl)
+
+  processor = processors[task_name]()
+  return tagging_data_lib.generate_tf_record_from_data_file(
+      processor, FLAGS.input_data_dir, tokenizer, FLAGS.max_seq_length,
+      FLAGS.train_data_output_path, FLAGS.eval_data_output_path,
+      FLAGS.test_data_output_path, processor_text_fn)
+
+
 def main(_):
   if FLAGS.tokenizer_impl == "word_piece":
     if not FLAGS.vocab_file:
@@ -304,8 +339,11 @@ def main(_):
     input_meta_data = generate_regression_dataset()
   elif FLAGS.fine_tuning_task_type == "retrieval":
     input_meta_data = generate_retrieval_dataset()
-  else:
+  elif FLAGS.fine_tuning_task_type == "squad":
     input_meta_data = generate_squad_dataset()
+  else:
+    assert FLAGS.fine_tuning_task_type == "tagging"
+    input_meta_data = generate_tagging_dataset()
 
   tf.io.gfile.makedirs(os.path.dirname(FLAGS.meta_data_file_path))
   with tf.io.gfile.GFile(FLAGS.meta_data_file_path, "w") as writer:
