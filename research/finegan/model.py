@@ -64,6 +64,30 @@ def conv3x3(filters=16):
             use_bias=False)
 
 
+class ParentChildEncoder(tf.keras.layers.Layer):
+    """Encoder for parent and child images"""
+    def __init__(self, num_disc_features, **kwargs):
+        super(ParentChildEncoder, self).__init__(**kwargs)
+        self.num_disc_features = num_disc_features
+
+    def call(self, inputs):
+        x = ZeroPadding2D(1)(inputs)
+        x = Conv2D(self.num_disc_features, 4, 2, use_bias=False)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = ZeroPadding2D(1)(x)
+        x = Conv2D(self.num_disc_features*2, 4, 2, use_bias=False)(x)
+        x = BatchNormalization()(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = ZeroPadding2D(1)(x)
+        x = Conv2d(self.num_disc_features*4, 4, 2, use_bias=False)(x)
+        x = BatchNormalization()(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = ZeroPadding2D(1)(x)
+        x = Conv2d(self.num_disc_features*8, 4, 2, use_bias=False)(x)
+        x = BatchNormalization()(x)
+        return LeakyReLU(alpha=0.2)(x)
+
+
 class UpSampleBlock(tf.keras.layers.Layer):
     def __init__(self, filters=16, **kwargs):
         super(UpSampleBlock, self).__init__(**kwargs)
@@ -75,6 +99,18 @@ class UpSampleBlock(tf.keras.layers.Layer):
         x = conv3x3(self.filters * 2)(x)
         x = BatchNormalization()(x)
         return  GLU()(x)
+
+
+class DownSampleBlock(tf.keras.layers.Layer):
+    def __init__(self, filters=16, **kwargs):
+        super(DownSampleBlock, self).__init__(**kwargs)
+        self.filters = filters
+
+    def call(self, inputs):
+        x = ZeroPadding2D(1)(inputs)
+        x = Conv2D(self.filters, 4, 2, use_bias=False)(x)
+        x = BatchNormalization()(x)
+        return LeakyReLU(alpha=0.2)(x)
 
 
 class KeepDimsBlock(tf.keras.layers.Layer):
@@ -264,6 +300,8 @@ class GeneratorArchitecture(tf.keras.Model):
         foreground_masks.append(child_foreground_mask)
 
         return fake_images, foreground_images, masks, foreground_masks       
+
+
 
 
 class CustomConfig(Config):
