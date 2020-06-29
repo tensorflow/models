@@ -444,18 +444,19 @@ def multilevel_native_crop_and_resize(images, boxes, box_levels,
   """
   if box_levels is None:
     return native_crop_and_resize(images[0], boxes, crop_size, scope)
-  cropped_feature_list = []
-  for level, image in enumerate(images):
-    # For each level, crop the feature according to all boxes
-    # set the cropped feature not at this level to 0 tensor.
-    # TODO: consider more efficient way of computing cropped features.
-    cropped = native_crop_and_resize(image, boxes, crop_size, scope)
-    cond = tf.tile(tf.equal(box_levels, level)[:, :, tf.newaxis],
-                   [1, 1] + [tf.math.reduce_prod(cropped.shape.as_list()[2:])])
-    cond = tf.reshape(cond, cropped.shape)
-    cropped_final = tf.where(cond, cropped, tf.zeros_like(cropped))
-    cropped_feature_list.append(cropped_final)
-  return tf.math.reduce_sum(cropped_feature_list, axis=0)
+  with tf.name_scope('MultiLevelNativeCropAndResize'):
+    cropped_feature_list = []
+    for level, image in enumerate(images):
+      # For each level, crop the feature according to all boxes
+      # set the cropped feature not at this level to 0 tensor.
+      # TODO: consider more efficient way of computing cropped features.
+      cropped = native_crop_and_resize(image, boxes, crop_size, scope)
+      cond = tf.tile(tf.equal(box_levels, level)[:, :, tf.newaxis],
+                    [1, 1] + [tf.math.reduce_prod(cropped.shape.as_list()[2:])])
+      cond = tf.reshape(cond, cropped.shape)
+      cropped_final = tf.where(cond, cropped, tf.zeros_like(cropped))
+      cropped_feature_list.append(cropped_final)
+    return tf.math.reduce_sum(cropped_feature_list, axis=0)
 
 
 def native_crop_and_resize(image, boxes, crop_size, scope=None):
@@ -510,7 +511,7 @@ def multilevel_matmul_crop_and_resize(images, boxes, box_levels, crop_size,
   Returns:
     A 5-D tensor of shape `[batch, num_boxes, crop_height, crop_width, depth]`
   """
-  with tf.name_scope(scope, 'MatMulCropAndResize'):
+  with tf.name_scope(scope, 'MultiLevelMatMulCropAndResize'):
     if box_levels is None:
       box_levels = tf.zeros(tf.shape(boxes)[:2], dtype=tf.int32)
     return multilevel_roi_align(images,
