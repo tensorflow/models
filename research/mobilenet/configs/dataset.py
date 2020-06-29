@@ -35,7 +35,15 @@ class ImageNetteConfig(dataset_factory.DatasetConfig):
   batch_size: int = 32
   num_classes: int = 10
   num_examples: int = 9469
+  num_eval_examples: int = 3925
+  mean_subtract: bool = True
+  standardize: bool = True
+  augmenter: dataset_factory.AugmentConfig = dataset_factory.AugmentConfig(
+    name='autoaugment'
+  )
+
   download: bool = True
+  builder: str = 'tfds'
 
 
 @dataclass
@@ -47,7 +55,20 @@ class ImageNetConfig(dataset_factory.DatasetConfig):
   batch_size: int = 32
   num_classes: int = 1000
   num_examples: int = 1281167
+  num_eval_examples: int = 50000
+  dtype: str = 'float32'
+  mean_subtract: bool = True
+  standardize: bool = True
+  augmenter: dataset_factory.AugmentConfig = dataset_factory.AugmentConfig(
+    name='autoaugment'
+  )
+
   download: bool = False
+  builder: str = 'records'
+  data_dir: str = 'gs://'
+  shuffle_buffer_size: int = 10000
+  # each file is around 130M, and in total 1000 files
+  file_shuffle_buffer_size: int = 100
 
 
 @dataclass
@@ -60,3 +81,6 @@ class MNISTConfig(dataset_factory.DatasetConfig):
   num_classes: int = 10
   num_examples: int = 60000
   download: bool = True
+  builder: str = 'tfds'
+  mean_subtract: bool = True
+  standardize: bool = True

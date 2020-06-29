@@ -28,7 +28,7 @@ layers = tf.keras.layers
 
 
 def hard_sigmoid(x):
-  return tf.nn.relu6(x + 3.) * (1. / 6.)
+  return tf.nn.relu6(x + 3) * 0.16667
 
 
 def hard_swish(x):
@@ -121,7 +121,7 @@ class MobileNetConfig(base_config.Config):
 
   """
   name: Text = 'MobileNet'
-  num_classes: int = 1000
+  num_classes: int = 1001
   # model specific
   min_depth: int = 8
   width_multiplier = 1.0
@@ -141,7 +141,7 @@ class MobileNetConfig(base_config.Config):
   batch_norm_decay: float = 0.9997
   batch_norm_epsilon: float = 0.001
   # dropout
-  dropout_keep_prob: float = 0.999
+  dropout_keep_prob: float = 0.8
 
 
 @dataclass
@@ -154,6 +154,19 @@ class MobileNetV1Config(MobileNetConfig):
 
   """
   name: Text = 'MobileNetV1'
+
+  # regularization
+  weight_decay: float = 0.00002
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'relu6'
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.8
 
   # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
@@ -217,6 +230,20 @@ class MobileNetV2Config(MobileNetConfig):
 
   """
   name: Text = 'MobileNetV2'
+  finegrain_classification_mode: bool = True
+
+  # regularization
+  weight_decay: float = 0.00002
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'relu6'
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.8
 
   # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
@@ -318,6 +345,20 @@ class MobileNetV3LargeConfig(MobileNetConfig):
 
   """
   name: Text = 'MobileNetV3Large'
+  finegrain_classification_mode: bool = True
+
+  # regularization
+  weight_decay: float = 0.00002
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'relu6'
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.8
 
   # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (
@@ -443,6 +484,20 @@ class MobileNetV3SmallConfig(MobileNetConfig):
 
   """
   name: Text = 'MobileNetV3Small'
+  finegrain_classification_mode: bool = True
+
+  # regularization
+  weight_decay: float = 0.00002
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'relu6'
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.8
 
   # base architecture
   blocks: Tuple[MobileNetBlockConfig, ...] = (

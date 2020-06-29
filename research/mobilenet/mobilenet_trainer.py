@@ -22,6 +22,7 @@ from typing import Mapping, Text, Any, Type, List, Dict
 from absl import app
 from absl import flags
 import tensorflow as tf
+import tensorflow_addons as tfa
 
 from research.mobilenet import dataset_loader
 from research.mobilenet import mobilenet_v1_model
@@ -84,26 +85,14 @@ def _get_metrics(one_hot: bool) -> Mapping[Text, Any]:
     }
 
 
-def _get_loss(one_hot: bool) -> Mapping[Text, Any]:
-  """Get a dict of available metrics to track."""
-  if one_hot:
-    return {
-      # (name, loss)
-      'cross_entropy': tf.keras.losses.CategoricalCrossentropy(),
-    }
-  else:
-    return {
-      # (name, loss)
-      'cross_entropy': tf.keras.losses.SparseCategoricalCrossentropy(),
-    }
-
-
 def _get_callback(model_dir: Text) -> List[tf.keras.callbacks.Callback]:
+  """Create callbacks for Keras model training."""
   check_point = tf.keras.callbacks.ModelCheckpoint(
     save_best_only=True,
     filepath=os.path.join(model_dir, 'model.ckpt-{epoch:04d}'),
     verbose=1)
-  tensorboard = tf.keras.callbacks.TensorBoard(log_dir=model_dir)
+  tensorboard = tf.keras.callbacks.TensorBoard(
+    log_dir=model_dir, update_freq=100)
   return [check_point, tensorboard]
 
 
@@ -115,6 +104,19 @@ def _get_optimizer(
     lr_params: Dict[Text, Any] = defaults.LR_CONFIG_DEFAULT,
     optimizer_params: Dict[Text, Any] = defaults.OP_CONFIG_DEFAULT,
 ) -> tf.keras.optimizers.Optimizer:
+  """Construct optimizer for model training.
+
+  Args:
+    batch_size: batch size
+    steps_per_epoch: number of steps per epoch
+    lr_name: learn rate scheduler name, e.g., exponential
+    optimizer_name: optimizer name, e.g., adam, rmsprop
+    lr_params: parameters for initiating learning rate scheduler object
+    optimizer_params: parameters for initiating optimizer object
+
+  Returns:
+    Return a tf.keras.optimizers.Optimizer object.
+  """
   learning_rate_config = base_configs.LearningRateConfig(
     name=lr_name,
     **lr_params)
@@ -171,8 +173,6 @@ def get_flags():
   Define the arguments with the default values and parses the arguments
   passed to the main program.
 
-  Args:
-      args_parser: (argparse.ArgumentParser)
   """
   flags.DEFINE_string(
     'model_name',
@@ -189,6 +189,11 @@ def get_flags():
     'model_dir',
     help='Working directory.',
     default='./tmp'
+  )
+  flags.DEFINE_string(
+    'data_dir',
+    help='Directory for training data.',
+    default=None
   )
   flags.DEFINE_bool(
     'resume_checkpoint',
@@ -232,14 +237,39 @@ def get_flags():
     default=2.4
   )
   flags.DEFINE_float(
+    'label_smoothing',
+    help='The amount of label smoothing.',
+    default=0.0,
+  )
+  flags.DEFINE_float(
+    'ma_decay_rate',
+    help='Exponential moving average decay rate.',
+    default=None
+  )
+  flags.DEFINE_float(
     'dropout_rate',
     help='Dropout rate.',
     default=0.2
   )
+  flags.DEFINE_float(
+    'std_weight_decay',
+    help='Standard weight decay.',
+    default=0.00004
+  )
+  flags.DEFINE_float(
+    'truncated_normal_stddev',
+    help='The standard deviation of the trunctated normal weight initializer.',
+    default=0.09
+  )
+  flags.DEFINE_float(
+    'batch_norm_decay',
+    help='Batch norm decay.',
+    default=0.9997
+  )
   flags.DEFINE_integer(
     'batch_size',
     help='Training batch size.',
-    default=2  # for testing purpose
+    default=4  # for testing purpose
   )
   flags.DEFINE_integer(
     'epochs',
@@ -248,26 +278,39 @@ def get_flags():
   )
 
 
-def get_dataset(config: Type[dataset_factory.DatasetConfig]) -> tf.data.Dataset:
+def get_dataset(config: dataset_factory.DatasetConfig,
+                slim_preprocess: bool = False) -> tf.data.Dataset:
   """Build dataset for training, evaluation and test"""
-  raw_dataset = dataset_loader.load_tfds(
-    dataset_name=config.name,
-    data_dir=config.data_dir,
-    download=config.download,
-    split=config.split
-  )
+  logging.info("Dataset Config: ")
+  logging.info(config)
+  if config.builder == 'tfds':
+    raw_dataset = dataset_loader.load_tfds(
+      dataset_name=config.name,
+      data_dir=config.data_dir,
+      download=config.download,
+      split=config.split
+    )
+  elif config.builder == 'records':
+    raw_dataset = dataset_loader.load_tfrecords(
+      data_dir=config.data_dir,
+      split=config.split,
+      file_shuffle_buffer_size=config.file_shuffle_buffer_size
+    )
+  else:
+    raise ValueError('Only support tfds and tfrecords builder.')
 
-  dataset = dataset_loader.pipeline(
+  processed_dataset = dataset_loader.pipeline(
     dataset=raw_dataset,
-    config=config
+    config=config,
+    slim_preprocess=slim_preprocess
   )
 
-  return dataset
+  return processed_dataset
 
 
 def build_model(model_name: Text,
-                dataset_config: Type[dataset_factory.DatasetConfig],
-                model_config: Type[archs.MobileNetConfig]
+                dataset_config: dataset_factory.DatasetConfig,
+                model_config: archs.MobileNetConfig
                 ) -> tf.keras.models.Model:
   """Build mobilenet model given configuration"""
 
@@ -287,24 +330,41 @@ def train_and_eval(params: flags.FlagValues) -> tf.keras.callbacks.History:
   logging.info('Run training for {} with {}'.format(params.model_name,
                                                     params.dataset_name))
   logging.info('The CLI params are: {}'.format(params.flag_values_dict()))
-  d_config = _get_dataset_config().get(params.dataset_name)
-  m_config = _get_model_config().get(params.model_name)
-  # override the batch size with CLI params
-  d_config.batch_size = params.batch_size
+  d_config = _get_dataset_config().get(params.dataset_name)()
+  m_config = _get_model_config().get(params.model_name)()
+
+  logging.info('Training dataset configuration:', d_config)
+  logging.info('Training model configuration:', m_config)
+
+  # override the model params with CLI params
+  m_config.num_classes = d_config.num_classes
   m_config.dropout_keep_prob = 1 - params.dropout_rate
+  m_config.weight_decay = params.std_weight_decay
+  m_config.stddev = params.truncated_normal_stddev
+  m_config.batch_norm_decay = params.batch_norm_decay
 
   strategy = tf.distribute.MirroredStrategy()
   with strategy.scope():
-    # build the dataset
-    global_batch_size = d_config.batch_size * strategy.num_replicas_in_sync
+    # override the dataset params with CLI params
+    if params.data_dir:
+      d_config.data_dir = params.data_dir
+    global_batch_size = params.batch_size * strategy.num_replicas_in_sync
+
+    # override the dataset params with CLI params
     # for distributed training, update batch size
     d_config.batch_size = global_batch_size
+    # determine whether one_hot is used based on label_smoothing
+    d_config.one_hot = params.label_smoothing and params.label_smoothing > 0
+
+    # build train dataset
     train_dataset = get_dataset(d_config)
+    # build validation dataset
     d_config.split = 'validation'
     eval_dataset = get_dataset(d_config)
 
     # compute number iterations per epoch
     steps_per_epoch = d_config.num_examples // d_config.batch_size
+    eval_steps = d_config.num_eval_examples // d_config.batch_size
 
     # build the model
     keras_model = build_model(
@@ -330,12 +390,26 @@ def train_and_eval(params: flags.FlagValues) -> tf.keras.callbacks.History:
       optimizer_params=optimizer_params
     )
 
+    logging.info('Exponential decay rate:{}'.format(params.ma_decay_rate))
+    if params.ma_decay_rate:
+      optimizer = tfa.optimizers.MovingAverage(
+        optimizer=optimizer,
+        average_decay=params.ma_decay_rate)
+
     # compile model
+    if d_config.one_hot:
+      loss_obj = tf.keras.losses.CategoricalCrossentropy(
+        label_smoothing=params.label_smoothing)
+    else:
+      loss_obj = tf.keras.losses.SparseCategoricalCrossentropy()
+
     keras_model.compile(
       optimizer=optimizer,
-      loss=[_get_loss(one_hot=d_config.one_hot)['cross_entropy']],
+      loss=loss_obj,
       metrics=[_get_metrics(one_hot=d_config.one_hot)['acc']],
     )
+
+    logging.info(keras_model.summary())
 
     initial_epoch = 0
     if params.resume_checkpoint:
@@ -352,7 +426,7 @@ def train_and_eval(params: flags.FlagValues) -> tf.keras.callbacks.History:
     steps_per_epoch=steps_per_epoch,
     epochs=params.epochs,
     validation_data=eval_dataset,
-    validation_steps=1000,
+    validation_steps=eval_steps,
     initial_epoch=initial_epoch,
     verbose=1,
     callbacks=callbacks_to_use
