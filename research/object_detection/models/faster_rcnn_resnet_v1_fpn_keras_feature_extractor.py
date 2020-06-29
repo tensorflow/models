@@ -215,6 +215,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
     """
     with tf.name_scope(name):
       with tf.name_scope('ResnetV1FPN'):
+        # TODO: Add a batchnorm layer between two fc layers.
         feature_extractor_model = tf.keras.models.Sequential([
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(units=1024, activation='relu'),
