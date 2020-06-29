@@ -42,8 +42,6 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
                resnet_v1_base_model_name,
                first_stage_features_stride,
                conv_hyperparams,
-               min_depth,
-               depth_multiplier,
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
@@ -61,9 +59,6 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
       conv_hyperparameters: a `hyperparams_builder.KerasLayerHyperparams` object
         containing convolution hyperparameters for the layers added on top of
         the base feature extractor.
-      min_depth: Minimum number of filters in the convolutional layers.
-      depth_multiplier: The depth multiplier to modify the number of filters
-        in the convolutional layers.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
       fpn_min_level: the highest resolution feature map to use in FPN. The valid
@@ -94,8 +89,6 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
     self._resnet_v1_base_model = resnet_v1_base_model
     self._resnet_v1_base_model_name = resnet_v1_base_model_name
     self._conv_hyperparams = conv_hyperparams
-    self._min_depth = min_depth
-    self._depth_multiplier = depth_multiplier
     self._fpn_min_level = fpn_min_level
     self._fpn_max_level = fpn_max_level
     self._additional_layer_depth = additional_layer_depth
@@ -152,8 +145,6 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
             conv_hyperparams=(self._conv_hyperparams
                               if self._override_base_feature_extractor_hyperparams
                               else None),
-            min_depth=self._min_depth,
-            depth_multiplier=self._depth_multiplier,
             classes=None,
             weights=None,
             include_top=False)
@@ -166,14 +157,12 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
         backbone_outputs = self.classification_backbone(full_resnet_v1_model.inputs)
 
         # construct FPN feature generator
-        self._depth_fn = lambda d: max(
-            int(d * self._depth_multiplier), self._min_depth)
         self._base_fpn_max_level = min(self._fpn_max_level, 5)
         self._num_levels = self._base_fpn_max_level + 1 - self._fpn_min_level
         self._fpn_features_generator = (
             feature_map_generators.KerasFpnTopDownFeatureMaps(
                 num_levels=self._num_levels,
-                depth=self._depth_fn(self._additional_layer_depth),
+                depth=self._additional_layer_depth,
                 is_training=self._is_training,
                 conv_hyperparams=self._conv_hyperparams,
                 freeze_batchnorm=self._freeze_batchnorm,
@@ -232,8 +221,6 @@ class FasterRCNNResnet50FpnKerasFeatureExtractor(
                is_training,
                first_stage_features_stride=16,
                conv_hyperparams=None,
-               min_depth=16,
-               depth_multiplier=1,
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
@@ -246,8 +233,6 @@ class FasterRCNNResnet50FpnKerasFeatureExtractor(
       is_training: See base class.
       first_stage_features_stride: See base class.
       conv_hyperparams: See base class.
-      min_depth: See base class.
-      depth_multiplier: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
@@ -259,8 +244,6 @@ class FasterRCNNResnet50FpnKerasFeatureExtractor(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
-        min_depth=min_depth,
-        depth_multiplier=depth_multiplier,
         resnet_v1_base_model=resnet_v1.resnet_v1_50,
         resnet_v1_base_model_name='resnet_v1_50',
         batch_norm_trainable=batch_norm_trainable,
@@ -278,8 +261,6 @@ class FasterRCNNResnet101FpnKerasFeatureExtractor(
                is_training,
                first_stage_features_stride=16,
                conv_hyperparams=None,
-               min_depth=16,
-               depth_multiplier=1,
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
@@ -292,8 +273,6 @@ class FasterRCNNResnet101FpnKerasFeatureExtractor(
       is_training: See base class.
       first_stage_features_stride: See base class.
       conv_hyperparams: See base class.
-      min_depth: See base class.
-      depth_multiplier: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
@@ -305,8 +284,6 @@ class FasterRCNNResnet101FpnKerasFeatureExtractor(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
-        min_depth=min_depth,
-        depth_multiplier=depth_multiplier,
         resnet_v1_base_model=resnet_v1.resnet_v1_101,
         resnet_v1_base_model_name='resnet_v1_101',
         batch_norm_trainable=batch_norm_trainable,
@@ -325,8 +302,6 @@ class FasterRCNNResnet152FpnKerasFeatureExtractor(
                is_training,
                first_stage_features_stride=16,
                conv_hyperparams=None,
-               min_depth=16,
-               depth_multiplier=1,
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
@@ -339,8 +314,6 @@ class FasterRCNNResnet152FpnKerasFeatureExtractor(
       is_training: See base class.
       first_stage_features_stride: See base class.
       conv_hyperparams: See base class.
-      min_depth: See base class.
-      depth_multiplier: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
@@ -352,8 +325,6 @@ class FasterRCNNResnet152FpnKerasFeatureExtractor(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
-        min_depth=min_depth,
-        depth_multiplier=depth_multiplier,
         resnet_v1_base_model=resnet_v1.resnet_v1_152,
         resnet_v1_base_model_name='resnet_v1_152',
         batch_norm_trainable=batch_norm_trainable,
