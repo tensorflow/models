@@ -1963,7 +1963,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     second stage box classifier for each proposal.
 
     Args:
-      features_to_crop: A list of float32 tensor with shape
+      features_to_crop: A float32 tensor with shape
         [batch_size, height, width, depth]
       proposal_boxes_normalized: A float32 tensor with shape [batch_size,
         num_proposals, box_code_size] containing proposal boxes in
@@ -1973,6 +1973,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Returns:
       A float32 tensor with shape [K, new_height, new_width, depth].
     """
+    features_to_crop = [features_to_crop]
     num_levels = len(features_to_crop)
     box_levels = None
     if num_levels != 1:
