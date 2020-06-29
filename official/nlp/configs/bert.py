@@ -126,10 +126,17 @@ class QADataConfig(cfg.DataConfig):
 class QADevDataConfig(cfg.DataConfig):
   """Dev Data config for queston answering (tasks/question_answering)."""
   input_path: str = ""
+  input_preprocessed_data_path: str = ""
+  version_2_with_negative: bool = False
+  doc_stride: int = 128
   global_batch_size: int = 48
   is_training: bool = False
   seq_length: int = 384
+  query_length: int = 64
   drop_remainder: bool = False
+  vocab_file: str = ""
+  tokenization: str = "WordPiece"  # WordPiece or SentencePiece
+  do_lower_case: bool = True
 
 
 @dataclasses.dataclass
