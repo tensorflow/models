@@ -273,10 +273,9 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         is_training=is_training,
         freeze_batchnorm=freeze_batchnorm)
     
-    self._attention_projections = {"key": {},
-                                  "val": {},
-                                  "query": {},
-                                  "feature": {}}
+    self._attention_projections = {"key": context_rcnn_lib.ContextProjection(attention_bottleneck_dimension, freeze_batchnorm),
+                                  "val": context_rcnn_lib.ContextProjection(attention_bottleneck_dimension, freeze_batchnorm),
+                                  "query": context_rcnn_lib.ContextProjection(attention_bottleneck_dimension, freeze_batchnorm)}
 
   @staticmethod
   def get_side_inputs(features):

@@ -82,7 +82,8 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
         projection_dimension,
         freeze_batchnorm=False,
         is_training=is_training,
-        normalize=normalize)
+        normalize=normalize,
+        node=context_rcnn_lib.ContextProjection(projection_dimension, False))
 
     # Makes sure the shape is correct.
     self.assertAllEqual(projected_features.shape, [2, 3, projection_dimension])
@@ -100,7 +101,9 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     context_features = tf.ones([2, 2, 3], tf.float32)
     valid_mask = tf.constant([[True, True], [False, False]], tf.bool)
     is_training = False
-    projection_layers = {"key": {}, "val": {}, "query": {}, "feature": {}}
+    projection_layers = {"key": context_rcnn_lib.ContextProjection(bottleneck_dimension, False), "val": context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
+                         "query": context_rcnn_lib.ContextProjection(bottleneck_dimension, False), "feature": context_rcnn_lib.ContextProjection(output_dimension, False)}
+
     output_features = context_rcnn_lib.attention_block(
         input_features, context_features, bottleneck_dimension,
         output_dimension, attention_temperature, valid_mask, is_training, False, projection_layers)
@@ -115,7 +118,8 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     valid_context_size = tf.constant((2, 3), tf.int32)
     bottleneck_dimension = 10
     attention_temperature = 1
-    projection_layers = {"key": {}, "val": {}, "query": {}, "feature": {}}
+    projection_layers = {"key": context_rcnn_lib.ContextProjection(bottleneck_dimension, False), "val": context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
+                         "query": context_rcnn_lib.ContextProjection(bottleneck_dimension, False), "feature": context_rcnn_lib.ContextProjection(box_features.shape[-1], False)}
     attention_features = context_rcnn_lib.compute_box_context_attention(
         box_features, context_features, valid_context_size,
         bottleneck_dimension, attention_temperature, is_training, 
