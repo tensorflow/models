@@ -416,6 +416,31 @@ def multilevel_native_crop_and_resize(images, boxes, box_levels,
   """Multilevel native crop and resize.
 
   Same as `multilevel_matmul_crop_and_resize` but uses tf.image.crop_and_resize.
+
+  Args:
+    images: A list of 4-D tensor of shape
+      [batch, image_height, image_width, depth] representing features of
+      different size.
+    boxes: A `Tensor` of type `float32` or 'bfloat16'.
+      A 3-D tensor of shape `[batch, num_boxes, 4]`. The boxes are specified in
+      normalized coordinates and are of the form `[y1, x1, y2, x2]`. A
+      normalized coordinate value of `y` is mapped to the image coordinate at
+      `y * (image_height - 1)`, so as the `[0, 1]` interval of normalized image
+      height is mapped to `[0, image_height - 1] in image height coordinates.
+      We do allow y1 > y2, in which case the sampled crop is an up-down flipped
+      version of the original image. The width dimension is treated similarly.
+      Normalized coordinates outside the `[0, 1]` range are allowed, in which
+      case we use `extrapolation_value` to extrapolate the input image values.
+    box_levels: A 2-D tensor of shape [batch, num_boxes] representing the level
+      of the box.
+    crop_size: A list of two integers `[crop_height, crop_width]`. All
+      cropped image patches are resized to this size. The aspect ratio of the
+      image content is not preserved. Both `crop_height` and `crop_width` need
+      to be positive.
+    scope: A name for the operation (optional).
+
+  Returns:
+    A 5-D tensor of shape `[batch, num_boxes, crop_height, crop_width, depth]`
   """
   if box_levels is None:
     return native_crop_and_resize(images[0], boxes, crop_size, scope)
