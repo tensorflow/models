@@ -32,7 +32,7 @@ _RESNET_MODEL_OUTPUT_LAYERS = {
 }
 
 
-class FasterRCNNResnetV1FPNKerasFeatureExtractor(
+class FasterRCNNResnetV1FpnKerasFeatureExtractor(
     faster_rcnn_meta_arch.FasterRCNNKerasFeatureExtractor):
   """Faster RCNN Feature Extractor using Keras-based Resnet V1 FPN features."""
 
@@ -85,7 +85,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
     if first_stage_features_stride != 8 and first_stage_features_stride != 16:
       raise ValueError('`first_stage_features_stride` must be 8 or 16.')
 
-    super(FasterRCNNResnetV1FPNKerasFeatureExtractor, self).__init__(
+    super(FasterRCNNResnetV1FpnKerasFeatureExtractor, self).__init__(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         batch_norm_trainable=batch_norm_trainable,
@@ -223,8 +223,8 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
         return feature_extractor_model
 
 
-class FasterRCNNResnet50FPNKerasFeatureExtractor(
-    FasterRCNNResnetV1FPNKerasFeatureExtractor):
+class FasterRCNNResnet50FpnKerasFeatureExtractor(
+    FasterRCNNResnetV1FpnKerasFeatureExtractor):
   """Faster RCNN with Resnet50 FPN feature extractor implementation."""
 
   def __init__(self,
@@ -254,7 +254,7 @@ class FasterRCNNResnet50FPNKerasFeatureExtractor(
       additional_layer_depth: See base class.
       override_base_feature_extractor_hyperparams: See base class.
     """
-    super(FasterRCNNResnet50FPNKerasFeatureExtractor, self).__init__(
+    super(FasterRCNNResnet50FpnKerasFeatureExtractor, self).__init__(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
@@ -270,8 +270,8 @@ class FasterRCNNResnet50FPNKerasFeatureExtractor(
         override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams)
 
 
-class FasterRCNNResnet101FPNKerasFeatureExtractor(
-    FasterRCNNResnetV1FPNKerasFeatureExtractor):
+class FasterRCNNResnet101FpnKerasFeatureExtractor(
+    FasterRCNNResnetV1FpnKerasFeatureExtractor):
   """Faster RCNN with Resnet101 FPN feature extractor implementation."""
   def __init__(self,
                is_training,
@@ -300,7 +300,7 @@ class FasterRCNNResnet101FPNKerasFeatureExtractor(
       additional_layer_depth: See base class.
       override_base_feature_extractor_hyperparams: See base class.
     """
-    super(FasterRCNNResnet101FPNKerasFeatureExtractor, self).__init__(
+    super(FasterRCNNResnet101FpnKerasFeatureExtractor, self).__init__(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
@@ -316,8 +316,8 @@ class FasterRCNNResnet101FPNKerasFeatureExtractor(
         override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams)
 
 
-class FasterRCNNResnet152FPNKerasFeatureExtractor(
-    FasterRCNNResnetV1FPNKerasFeatureExtractor):
+class FasterRCNNResnet152FpnKerasFeatureExtractor(
+    FasterRCNNResnetV1FpnKerasFeatureExtractor):
   """Faster RCNN with Resnet152 FPN feature extractor implementation."""
 
   def __init__(self,
@@ -347,7 +347,7 @@ class FasterRCNNResnet152FPNKerasFeatureExtractor(
       additional_layer_depth: See base class.
       override_base_feature_extractor_hyperparams: See base class.
     """
-    super(FasterRCNNResnet152FPNKerasFeatureExtractor, self).__init__(
+    super(FasterRCNNResnet152FpnKerasFeatureExtractor, self).__init__(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
