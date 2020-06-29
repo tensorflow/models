@@ -161,7 +161,7 @@ class IntermediateGenerator(tf.keras.Model):
         return Sequential(*layers)
 
     def call(self, h_code, code):
-        # TODO: Fix the Dimension error
+        # TODO: Fix the Dimension errors
         # s_size = h_code.shape[2]
         # code = tf.reshape((-1, self.ef_dim, 1, 1))
         # code = tf.repeat(1, 1, s_size, s_size)
@@ -193,7 +193,71 @@ class GetMask(tf.keras.Model):
         ])
 
     def call(self, inputs):
+        # The inputs need to be h_code
         return self.out_mask(inputs)
+
+    
+class GeneratorArchitecture(tf.keras.Model):
+    def __init__(self, cfg, **kwargs):
+        super(Generator, self).__init__(**kwargs)
+        self.gen_dims = cfg.GAN['GF_DIM']
+        self.upsampling = UpSampling2D(size=2, interpolation='bilinear')
+        self.scale_foreground = UpSampling2D(size=2, interpolation='bilinear') 
+        # TODO: Assert that scaled foreground needs to be of size [126, 126]
+
+        # Background Stage
+        self.background_gen = InitGenerator(cfg, self.gen_dims*16, 2)
+        self.image_bg = GetImage(self.gen_dims) # Background Image
+
+        # Parent Stage
+        self.parent_gen1 = InitGenerator(cfg, self.gen_dims*16, 1)
+        self.parent_gen2 = IntermediateGenerator(cfg, self.gen_dims, 1)
+        self.image_gen2 = GetImage(self.gen_dims // 2) # Parent Foreground
+        self.mask_gen2 = GetMask(self.gen_dims // 2) # Parent Mask
+
+        # Child Stage
+        # TODO: Include the ResidualGen before IntermediateGen
+        self.child_gen = IntermediateGenerator(cfg, self.gen_dims // 2, 0)
+        self.image_child = GetImage(self.gen_dims // 4) # Child Foreground
+        self.mask_child = GetMask(self.gen_dims // 4) # Child Mask
+
+    def call(self, z_code, c_code, p_code=None, bg_code=None):
+        fake_images = [] # [Background images, Parent images, Child images]
+        foreground_images = [] # [Parent foreground, Child foreground]
+        masks = [] # [Parent masks, Child masks]
+        foreground_masks = [] # [Parent foreground mask, Child foreground mask]
+
+        # Background Stage
+        bg_stage_code = self.background_gen(z_code, bg_code) # Upsampled Background
+        fake_bg = self.image_bg(bg_stage_code)
+        fake_images.append(self.scale_foreground(fake_bg))
+
+        # Parent Stage
+        fp_dims = self.parent_gen1(z_code, p_code)
+        p_dims = self.parent_gen2(fp_dims, p_code)
+        fake_parent_fg = self.image_gen2(p_dims) # Parent Foreground (P_f)
+        fake_parent_mask = self.mask_gen2(p_dims) # Parent Mask (P_m)
+        # TODO: Compute P_fm = np.dot(P_f, P_m)
+        # TODO: Compute B_m = np.dot((1-P_m), B)
+        # TODO: Compute P = P_fm + B_m
+        # TODO: Append the fake_parent_image ---> P to fake_images
+        # TODO: Append the fake_parent_fg ---> P_f to foreground_images
+        # TODO: Append the fake_parent_mask ---> P_m to masks
+        # TODO: Append the parent_fg_mask ---> P_fm to foreground_masks
+
+        # Child Stage
+        # TODO: Test whther inclusion of the ResidualGen is necessary
+        fc_dims = self.child_gen(p_dims, c_code)
+        fake_child_fg = self.image_child(fc_dims) # Parent Foreground (C_f)
+        fake_child_mask = self.mask_child(fc_dims) # Child Mask (C_m)
+        # TODO: Compute C_fm = np.dot(C_f, C_m)
+        # TODO: Compute P_m = np.dot((1-C_m), P)
+        # TODO: Compute C = C_fm + P_m
+        # TODO: Append the fake_child_image ---> C to fake_images
+        # TODO: Append the fake_child_fg ---> C_f to foreground_images
+        # TODO: Append the fake_child_mask ---> C_m to masks
+        # TODO: Append the child_fg_mask ---> C_fm to foreground_masks
+
 
 class CustomConfig(Config):
     def __init__(self, batch_size=16, **kwargs):
