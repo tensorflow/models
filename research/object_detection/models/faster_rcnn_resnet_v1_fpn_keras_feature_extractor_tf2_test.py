@@ -98,8 +98,3 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
     features_shape = tf.shape(proposal_classifier_features)
 
     self.assertAllEqual(features_shape.numpy(), [3, 1024])
-
-
-if __name__ == '__main__':
-  tf.enable_v2_behavior()
-  tf.test.main()
