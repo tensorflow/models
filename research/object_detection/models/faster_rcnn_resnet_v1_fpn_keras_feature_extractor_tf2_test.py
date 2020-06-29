@@ -64,6 +64,8 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractorTest(tf.test.TestCase):
     self.assertAllEqual(features_shapes[1].numpy(), [2, 56, 56, 256])
     self.assertAllEqual(features_shapes[2].numpy(), [2, 28, 28, 256])
     self.assertAllEqual(features_shapes[3].numpy(), [2, 14, 14, 256])
+    self.assertAllEqual(features_shapes[4].numpy(), [2, 7, 7, 256])
+    self.assertAllEqual(features_shapes[5].numpy(), [2, 4, 4, 256])
 
   def test_extract_proposal_features_half_size_input(self):
     feature_extractor = self._build_feature_extractor()
@@ -78,6 +80,8 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractorTest(tf.test.TestCase):
     self.assertAllEqual(features_shapes[1].numpy(), [2, 28, 28, 256])
     self.assertAllEqual(features_shapes[2].numpy(), [2, 14, 14, 256])
     self.assertAllEqual(features_shapes[3].numpy(), [2, 7, 7, 256])
+    self.assertAllEqual(features_shapes[4].numpy(), [2, 4, 4, 256])
+    self.assertAllEqual(features_shapes[5].numpy(), [2, 2, 2, 256])
 
   def test_extract_box_classifier_features_returns_expected_size(self):
     feature_extractor = self._build_feature_extractor()

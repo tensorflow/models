@@ -98,6 +98,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
     self._resnet_block_names = ['block1', 'block2', 'block3', 'block4']
     self.classification_backbone = None
     self._fpn_features_generator = None
+    self._coarse_feature_layers = []
 
   def preprocess(self, resized_inputs):
     """Faster R-CNN Resnet V1 preprocessing.
@@ -177,10 +178,41 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
             (feature_block, feature_block_map[feature_block])
             for feature_block in feature_block_list]
         fpn_features = self._fpn_features_generator(fpn_input_image_features)
-        features_maps = [fpn_feature for _, fpn_feature in fpn_features.items()]
+
+        # Construct coarse feature layers
+        for i in range(self._base_fpn_max_level, self._fpn_max_level):
+          layers = []
+          layer_name = 'bottom_up_block{}'.format(i)
+          layers.append(
+              tf.keras.layers.Conv2D(
+                  self._additional_layer_depth,
+                  [3, 3],
+                  padding='SAME',
+                  strides=2,
+                  name=layer_name + '_conv',
+                  **self._conv_hyperparams.params()))
+          layers.append(
+              self._conv_hyperparams.build_batch_norm(
+                  training=(self._is_training and not self._freeze_batchnorm),
+                  name=layer_name + '_batchnorm'))
+          layers.append(
+              self._conv_hyperparams.build_activation_layer(
+                  name=layer_name))
+          self._coarse_feature_layers.append(layers)
+        
+        feature_maps = []
+        for level in range(self._fpn_min_level, self._base_fpn_max_level + 1):
+          feature_maps.append(fpn_features['top_down_block{}'.format(level-1)])
+        last_feature_map = fpn_features['top_down_block{}'.format(
+            self._base_fpn_max_level - 1)]
+
+        for coarse_feature_layers in self._coarse_feature_layers:
+          for layer in coarse_feature_layers:
+            last_feature_map = layer(last_feature_map)
+          feature_maps.append(last_feature_map)
 
         feature_extractor_model = tf.keras.models.Model(
-            inputs=full_resnet_v1_model.inputs, outputs=features_maps)
+            inputs=full_resnet_v1_model.inputs, outputs=feature_maps)
         return feature_extractor_model
 
   def get_box_classifier_feature_extractor_model(self, name=None):
