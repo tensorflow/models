@@ -45,7 +45,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
-               fpn_max_level=7,
+               fpn_max_level=6,
                additional_layer_depth=256,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
@@ -256,7 +256,7 @@ class FasterRCNNResnet50FpnKerasFeatureExtractor(
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
-               fpn_max_level=7,
+               fpn_max_level=6,
                additional_layer_depth=256,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
@@ -296,7 +296,7 @@ class FasterRCNNResnet101FpnKerasFeatureExtractor(
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
-               fpn_max_level=7,
+               fpn_max_level=6,
                additional_layer_depth=256,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
@@ -337,7 +337,7 @@ class FasterRCNNResnet152FpnKerasFeatureExtractor(
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
-               fpn_max_level=7,
+               fpn_max_level=6,
                additional_layer_depth=256,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
