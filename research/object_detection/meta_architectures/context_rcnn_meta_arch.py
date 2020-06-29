@@ -75,8 +75,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                return_raw_detections_during_predict=False,
                output_final_box_features=False,
                attention_bottleneck_dimension=None,
-               attention_temperature=None,
-               attention_projections=None):
+               attention_temperature=None):
     """ContextRCNNMetaArch Constructor.
 
     Args:
@@ -273,9 +272,12 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         is_training=is_training,
         freeze_batchnorm=freeze_batchnorm)
     
-    self._attention_projections = {"key": context_rcnn_lib.ContextProjection(attention_bottleneck_dimension, freeze_batchnorm),
-                                  "val": context_rcnn_lib.ContextProjection(attention_bottleneck_dimension, freeze_batchnorm),
-                                  "query": context_rcnn_lib.ContextProjection(attention_bottleneck_dimension, freeze_batchnorm)}
+    self._attention_projections = {'key': context_rcnn_lib.ContextProjection(
+                                      attention_bottleneck_dimension, freeze_batchnorm),
+                                   'val': context_rcnn_lib.ContextProjection(
+                                      attention_bottleneck_dimension, freeze_batchnorm),
+                                   'query': context_rcnn_lib.ContextProjection(
+                                      attention_bottleneck_dimension, freeze_batchnorm)}
 
   @staticmethod
   def get_side_inputs(features):
@@ -334,13 +336,11 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         features_to_crop, proposal_boxes_normalized,
         [self._initial_crop_size, self._initial_crop_size])
 
-    print(self._attention_projections)
     attention_features = self._context_feature_extract_fn(
         box_features=box_features,
         context_features=context_features,
         valid_context_size=valid_context_size,
         attention_projections=self._attention_projections)
-    print(self._attention_projections)
 
     # Adds box features with attention features.
     box_features += attention_features

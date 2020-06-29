@@ -80,7 +80,6 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     projected_features = context_rcnn_lib.project_features(
         features,
         projection_dimension,
-        freeze_batchnorm=False,
         is_training=is_training,
         normalize=normalize,
         node=context_rcnn_lib.ContextProjection(projection_dimension, False))
@@ -101,12 +100,15 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     context_features = tf.ones([2, 2, 3], tf.float32)
     valid_mask = tf.constant([[True, True], [False, False]], tf.bool)
     is_training = False
-    projection_layers = {"key": context_rcnn_lib.ContextProjection(bottleneck_dimension, False), "val": context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
-                         "query": context_rcnn_lib.ContextProjection(bottleneck_dimension, False), "feature": context_rcnn_lib.ContextProjection(output_dimension, False)}
+    projection_layers = {context_rcnn_lib.KEY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False), context_rcnn_lib.VALUE_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
+                         context_rcnn_lib.QUERY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False)}
+    
+    #Add in the feature layer because this is further down the pipeline and it isn't automatically injected.
+    projection_layers['feature'] = context_rcnn_lib.ContextProjection(output_dimension, False)
 
     output_features = context_rcnn_lib.attention_block(
         input_features, context_features, bottleneck_dimension,
-        output_dimension, attention_temperature, valid_mask, is_training, False, projection_layers)
+        output_dimension, attention_temperature, valid_mask, is_training, projection_layers)
 
     # Makes sure the shape is correct.
     self.assertAllEqual(output_features.shape, [2, 3, output_dimension])
@@ -118,8 +120,8 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     valid_context_size = tf.constant((2, 3), tf.int32)
     bottleneck_dimension = 10
     attention_temperature = 1
-    projection_layers = {"key": context_rcnn_lib.ContextProjection(bottleneck_dimension, False), "val": context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
-                         "query": context_rcnn_lib.ContextProjection(bottleneck_dimension, False), "feature": context_rcnn_lib.ContextProjection(box_features.shape[-1], False)}
+    projection_layers = {context_rcnn_lib.KEY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False), context_rcnn_lib.VALUE_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
+                         context_rcnn_lib.QUERY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False)}
     attention_features = context_rcnn_lib.compute_box_context_attention(
         box_features, context_features, valid_context_size,
         bottleneck_dimension, attention_temperature, is_training, 

@@ -515,7 +515,6 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
           fields.InputDataFields.valid_context_size: valid_context_size
       }
 
-      print("sep")
       side_inputs = model.get_side_inputs(features)
 
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes,
