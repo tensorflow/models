@@ -36,6 +36,7 @@ from object_detection.protos import losses_pb2
 from object_detection.protos import model_pb2
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import tf_version
 
 ## Feature Extractors for TF
@@ -601,8 +602,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_localization_loss_weight)
 
   crop_and_resize_fn = (
-      ops.matmul_crop_and_resize if frcnn_config.use_matmul_crop_and_resize
-      else ops.native_crop_and_resize)
+      spatial_ops.multilevel_matmul_crop_and_resize
+      if frcnn_config.use_matmul_crop_and_resize
+      else spatial_ops.multilevel_native_crop_and_resize)
   clip_anchors_to_image = (
       frcnn_config.clip_anchors_to_image)
 
