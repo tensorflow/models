@@ -131,7 +131,7 @@ Assuming the TFRecord files were generated in the `gldv2_dataset/tfrecord/` dire
 the following command should start training a model and output the results in the `gldv2_training`
 directory:
 ```
-python train.py \
+python3 train.py \
   --train_file_pattern=gldv2_dataset/tfrecord/train* \
   --validation_file_pattern=gldv2_dataset/tfrecord/validation*
   --imagenet_checkpoint=resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5 \
@@ -149,9 +149,10 @@ On a multi-GPU machine the batch size can be increased to speed up the training 
 Assuming the training output, the TensorFlow checkpoint, is in the `gldv2_training` directory,
 running the following command exports the model in the `gldv2_model` directory:
 ```
-python model/export_model.py \
-  --ckpt_path=gs://dananghel-delf/training/internal/delf_weights \
-  --export_path=gldv2_model
+python3 model/export_model.py \
+  --ckpt_path=gldv2_training/delf_weights \
+  --export_path=gldv2_model \
+  --block3_strides=True
 ```
 
 ## Testing the Trained Model
@@ -192,27 +193,15 @@ image_scales: 2.0
 is_tf2_exported: true
 delf_local_config {
   use_pca: false
-  # Note that for the exported model provided as an example, layer_name and
-  # iou_threshold are hard-coded in the checkpoint. So, the layer_name and
-  # iou_threshold variables here have no effect on the provided
-  # extract_features.py script.
-  layer_name: "resnet_v1_50/block3"
-  iou_threshold: 1.0
   max_feature_num: 1000
   score_threshold: 100.0
-  pca_parameters {
-    mean_path: "parameters/delf_gld_20190411/pca/mean.datum"
-    projection_matrix_path: "parameters/delf_gld_20190411/pca/pca_proj_mat.datum"
-    pca_dim: 40
-    use_whitening: false
-  }
 }
 ```
 
 Run the following command to extract DELF features for the images `hertford_000056.jpg` and
 `oxford_000317.jpg`:
 ```
-python ../examples/extract_features.py \
+python3 ../examples/extract_features.py \
   --config_path delf_config_example.pbtxt \
   --list_images_path list_images.txt \
   --output_dir data/oxford5k_features
@@ -221,7 +210,7 @@ python ../examples/extract_features.py \
 Run the following command to perform feature matching between the images `hertford_000056.jpg` 
 and `oxford_000317.jpg`:
 ```
-python ../examples/match_images.py \
+python3 ../examples/match_images.py \
   --image_1_path data/oxford5k_images/hertford_000056.jpg \
   --image_2_path data/oxford5k_images/oxford_000317.jpg \
   --features_1_path data/oxford5k_features/hertford_000056.delf \
@@ -230,4 +219,5 @@ python ../examples/match_images.py \
 ```
 
 The generated image `matched_images.png` should look similar to this one:
-![MatchedImagesExample](../examples/matched_images_example.jpg)
+
+![MatchedImagesDemo](./matched_images_demo.png)
