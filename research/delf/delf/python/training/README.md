@@ -172,12 +172,13 @@ echo data/oxford5k_images/oxford_000317.jpg >> list_images.txt
 ````
 
 Make a copy of the [`delf_config_example.pbtxt`](../examples/delf_config_example.pbtxt) 
-protobuffer file which configures the DEFL feature extraction. Update the file by making the
+protobuffer file which configures the DELF feature extraction. Update the file by making the
 following changes:
 * set the `model_path` attribute to the directory containing the exported model, `gldv2_model`
   in this example
 * add at the root level the attribute `is_tf2_exported` with the value `true`
 * set to `false` the `use_pca` attribute inside `delf_local_config`
+
 The ensuing file should resemble the following:
 ```
 model_path: "gldv2_model"
