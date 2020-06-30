@@ -421,7 +421,7 @@ def multilevel_native_crop_and_resize(images, boxes, box_levels,
     images: A list of 4-D tensor of shape
       [batch, image_height, image_width, depth] representing features of
       different size.
-    boxes: A `Tensor` of type `float32` or 'bfloat16'.
+    boxes: A `Tensor` of type `float32`.
       A 3-D tensor of shape `[batch, num_boxes, 4]`. The boxes are specified in
       normalized coordinates and are of the form `[y1, x1, y2, x2]`. A
       normalized coordinate value of `y` is mapped to the image coordinate at
