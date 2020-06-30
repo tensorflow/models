@@ -22,13 +22,13 @@ import datetime
 import os
 import tempfile
 import unittest
+import apache_beam as beam
 import numpy as np
 import six
 import tensorflow.compat.v1 as tf
 
 from object_detection.dataset_tools.context_rcnn import add_context_to_examples
 from object_detection.utils import tf_version
-from apache_beam import runners
 
 
 @contextlib.contextmanager
@@ -329,19 +329,22 @@ class GenerateContextDataTest(tf.test.TestCase):
     with InMemoryTFRecord(
         [self._create_first_tf_example(),
          self._create_second_tf_example()]) as input_tfrecord:
-      runner = runners.DirectRunner()
       temp_dir = tempfile.mkdtemp(dir=os.environ.get('TEST_TMPDIR'))
       output_tfrecord = os.path.join(temp_dir, 'output_tfrecord')
       sequence_key = six.ensure_binary('image/seq_id')
       max_num_elements = 10
       num_shards = 1
-      pipeline = add_context_to_examples.construct_pipeline(
+      pipeline_options = beam.options.pipeline_options.PipelineOptions(
+          runner='DirectRunner')
+      p = beam.Pipeline(options=pipeline_options)
+      add_context_to_examples.construct_pipeline(
+          p,
           input_tfrecord,
           output_tfrecord,
           sequence_key,
           max_num_elements_in_context_features=max_num_elements,
           num_shards=num_shards)
-      runner.run(pipeline)
+      p.run()
       filenames = tf.io.gfile.glob(output_tfrecord + '-?????-of-?????')
       actual_output = []
       record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
@@ -355,20 +358,23 @@ class GenerateContextDataTest(tf.test.TestCase):
     with InMemoryTFRecord(
         [self._create_first_tf_example(),
          self._create_second_tf_example()]) as input_tfrecord:
-      runner = runners.DirectRunner()
       temp_dir = tempfile.mkdtemp(dir=os.environ.get('TEST_TMPDIR'))
       output_tfrecord = os.path.join(temp_dir, 'output_tfrecord')
       sequence_key = six.ensure_binary('image/seq_id')
       max_num_elements = 10
       num_shards = 1
-      pipeline = add_context_to_examples.construct_pipeline(
+      pipeline_options = beam.options.pipeline_options.PipelineOptions(
+          runner='DirectRunner')
+      p = beam.Pipeline(options=pipeline_options)
+      add_context_to_examples.construct_pipeline(
+          p,
           input_tfrecord,
           output_tfrecord,
           sequence_key,
           max_num_elements_in_context_features=max_num_elements,
           num_shards=num_shards,
           output_type='tf_sequence_example')
-      runner.run(pipeline)
+      p.run()
       filenames = tf.io.gfile.glob(output_tfrecord + '-?????-of-?????')
       actual_output = []
       record_iterator = tf.python_io.tf_record_iterator(
