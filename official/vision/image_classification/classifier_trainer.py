@@ -339,7 +339,8 @@ def train_and_eval(
     optimizer = optimizer_factory.build_optimizer(
         optimizer_name=params.model.optimizer.name,
         base_learning_rate=learning_rate,
-        params=params.model.optimizer.as_dict())
+        params=params.model.optimizer.as_dict(),
+        model=model)
 
     metrics_map = _get_metrics(one_hot)
     metrics = [metrics_map[metric] for metric in params.train.metrics]
