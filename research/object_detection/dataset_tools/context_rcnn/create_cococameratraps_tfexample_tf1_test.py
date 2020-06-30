@@ -21,13 +21,14 @@ import json
 import os
 import tempfile
 import unittest
+
+import apache_beam as beam
 import numpy as np
 
 from PIL import Image
 import tensorflow.compat.v1 as tf
 from object_detection.dataset_tools.context_rcnn import create_cococameratraps_tfexample_main
 from object_detection.utils import tf_version
-from apache_beam import runners
 
 
 @unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
@@ -156,16 +157,18 @@ class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
         example.features.feature['image/encoded'].bytes_list.value)
 
   def test_beam_pipeline(self):
-    runner = runners.DirectRunner()
     num_frames = 1
     temp_dir = tempfile.mkdtemp(dir=os.environ.get('TEST_TMPDIR'))
     json_path = self._create_json_file(temp_dir, num_frames)
     output_tfrecord = temp_dir+'/output'
     self._write_random_images_to_directory(temp_dir, num_frames)
-    pipeline = create_cococameratraps_tfexample_main.create_pipeline(
-        temp_dir, json_path,
+    pipeline_options = beam.options.pipeline_options.PipelineOptions(
+        runner='DirectRunner')
+    p = beam.Pipeline(options=pipeline_options)
+    create_cococameratraps_tfexample_main.create_pipeline(
+        p, temp_dir, json_path,
         output_tfrecord_prefix=output_tfrecord)
-    runner.run(pipeline)
+    p.run()
     filenames = tf.io.gfile.glob(output_tfrecord + '-?????-of-?????')
     actual_output = []
     record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
@@ -176,17 +179,19 @@ class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
         actual_output[0]))
 
   def test_beam_pipeline_bbox(self):
-    runner = runners.DirectRunner()
     num_frames = 1
     temp_dir = tempfile.mkdtemp(dir=os.environ.get('TEST_TMPDIR'))
     json_path = self._create_json_file(temp_dir, num_frames, keep_bboxes=True)
     output_tfrecord = temp_dir+'/output'
     self._write_random_images_to_directory(temp_dir, num_frames)
-    pipeline = create_cococameratraps_tfexample_main.create_pipeline(
-        temp_dir, json_path,
+    pipeline_options = beam.options.pipeline_options.PipelineOptions(
+        runner='DirectRunner')
+    p = beam.Pipeline(options=pipeline_options)
+    create_cococameratraps_tfexample_main.create_pipeline(
+        p, temp_dir, json_path,
         output_tfrecord_prefix=output_tfrecord,
         keep_bboxes=True)
-    runner.run(pipeline)
+    p.run()
     filenames = tf.io.gfile.glob(output_tfrecord+'-?????-of-?????')
     actual_output = []
     record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
