@@ -17,10 +17,12 @@
 
 BACKBONES = [
     'resnet',
+    'spinenet',
 ]
 
 MULTILEVEL_FEATURES = [
     'fpn',
+    'identity',
 ]
 
 # pylint: disable=line-too-long
@@ -117,6 +119,9 @@ BASE_CFG = {
     },
     'resnet': {
         'resnet_depth': 50,
+    },
+    'spinenet': {
+        'model_id': '49',
     },
     'fpn': {
         'fpn_feat_dims': 256,
