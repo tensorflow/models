@@ -297,6 +297,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
           "Please make sure context_features and valid_context_size are in the "
           "features")
 
+    print("In get side inputs, returning side features.")
     return {
         fields.InputDataFields.context_features:
             features[fields.InputDataFields.context_features],
