@@ -148,6 +148,9 @@ def _tokenize_example(example, max_length, tokenizer, text_preprocessing=None):
   new_examples = []
   new_example = InputExample(sentence_id=example.sentence_id)
   for i, word in enumerate(example.words):
+    if any([x < 0 for x in example.label_ids]):
+      raise ValueError("Unexpected negative label_id: %s" % example.label_ids)
+
     if text_preprocessing:
       word = text_preprocessing(word)
     subwords = tokenizer.tokenize(word)
@@ -177,11 +180,7 @@ def _convert_single_example(example, max_seq_length, tokenizer):
   tokens.extend(example.words)
   tokens.append("[SEP]")
   input_ids = tokenizer.convert_tokens_to_ids(tokens)
-
   label_ids = [_PADDING_LABEL_ID]
-  if any([x < 0 for x in example.label_ids]):
-    raise ValueError("Unexpected negative label_id: %s" % example.label_ids)
-
   label_ids.extend(example.label_ids)
   label_ids.append(_PADDING_LABEL_ID)
 
