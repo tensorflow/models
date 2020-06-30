@@ -172,8 +172,10 @@ def ExtractLocalFeatures(image, image_scales, max_feature_num, abs_thres, iou,
           final_boxes.get_field('scores'), 1)
 
 
+@tf.function
 def ExtractGlobalFeatures(image,
                           image_scales,
+                          global_scales_ind,
                           model_fn,
                           multi_scale_pool_type='None',
                           normalize_global_descriptor=False):
@@ -183,6 +185,8 @@ def ExtractGlobalFeatures(image,
     image: image tensor of type tf.uint8 with shape [h, w, channels].
     image_scales: 1D float tensor which contains float scales used for image
       pyramid construction.
+    global_scales_ind: Feature extraction happens only for a subset of
+      `image_scales`, those with corresponding indices from this tensor.
     model_fn: model function. Follows the signature:
       * Args:
         * `images`: Image tensor which is re-scaled.
@@ -204,59 +208,45 @@ def ExtractGlobalFeatures(image,
   """
   original_image_shape_float = tf.gather(
       tf.dtypes.cast(tf.shape(image), tf.float32), [0, 1])
-
   image_tensor = gld.NormalizeImages(
       image, pixel_value_offset=128.0, pixel_value_scale=128.0)
   image_tensor = tf.expand_dims(image_tensor, 0, name='image/expand_dims')
 
-  def _ProcessSingleScale(scale_index, global_descriptors=None):
-    """Resizes the image and runs feature extraction.
-
-       This function will be passed into tf.while_loop() and be called
-       repeatedly. We get the current scale by image_scales[scale_index], and
-       run image resizing / feature extraction. In the end, we concat the
-       previous global descriptors with current descriptor as the output.
+  def _ResizeAndExtract(scale_index):
+    """Helper function to resize image then extract global feature.
 
     Args:
       scale_index: A valid index in image_scales.
-      global_descriptors: Global descriptor tensor with the shape of [S, D]. If
-        None, no previous global descriptors are used, and the output will be of
-        shape [1, D].
 
     Returns:
-      scale_index: The next scale index for processing.
-      global_descriptors: A concatenated global descriptor tensor with the shape
-        of [S+1, D].
+      global_descriptor: [1,D] tensor denoting the extracted global descriptor.
     """
     scale = tf.gather(image_scales, scale_index)
     new_image_size = tf.dtypes.cast(
         tf.round(original_image_shape_float * scale), tf.int32)
     resized_image = tf.image.resize(image_tensor, new_image_size)
-
     global_descriptor = model_fn(resized_image)
-    if global_descriptors is None:
-      global_descriptors = global_descriptor
-    else:
-      global_descriptors = tf.concat([global_descriptors, global_descriptor], 0)
+    return global_descriptor
 
-    return scale_index + 1, global_descriptors
-
-  # Process the first scale separately, the following scales will reuse the
-  # graph variables.
-  (_, output_global) = _ProcessSingleScale(0)
-
-  i = tf.constant(1, dtype=tf.int32)
+  # First loop to find initial scale to be used.
   num_scales = tf.shape(image_scales)[0]
-  keep_going = lambda j, g: tf.less(j, num_scales)
+  initial_scale_index = tf.constant(-1, dtype=tf.int32)
+  for scale_index in tf.range(num_scales):
+    if tf.reduce_any(tf.equal(global_scales_ind, scale_index)):
+      initial_scale_index = scale_index
+      break
 
-  (_, output_global) = tf.nest.map_structure(
-      tf.stop_gradient,
-      tf.while_loop(
-          cond=keep_going,
-          body=_ProcessSingleScale,
-          loop_vars=[i, output_global],
-          shape_invariants=[i.get_shape(),
-                            tf.TensorShape([None, None])]))
+  output_global = _ResizeAndExtract(initial_scale_index)
+
+  # Loop over subsequent scales.
+  for scale_index in tf.range(initial_scale_index + 1, num_scales):
+    # Allow an undefined number of global feature scales to be extracted.
+    tf.autograph.experimental.set_loop_options(
+        shape_invariants=[(output_global, tf.TensorShape([None, None]))])
+
+    if tf.reduce_any(tf.equal(global_scales_ind, scale_index)):
+      global_descriptor = _ResizeAndExtract(scale_index)
+      output_global = tf.concat([output_global, global_descriptor], 0)
 
   normalization_axis = 1
   if multi_scale_pool_type == 'average':

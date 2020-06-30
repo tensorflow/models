@@ -52,19 +52,68 @@ flags.DEFINE_boolean('normalize_global_descriptor', False,
                      'If True, L2-normalizes global descriptor.')
 
 
-def _build_tensor_info(tensor_dict):
-  """Replace the dict's value by the tensor info.
+class _ExtractModule(tf.Module):
+  """Helper module to build and save global feature model."""
 
-  Args:
-    tensor_dict: A dictionary contains <string, tensor>.
+  def __init__(self,
+               multi_scale_pool_type='None',
+               normalize_global_descriptor=False,
+               input_scales_tensor=None):
+    """Initialization of global feature model.
 
-  Returns:
-    dict: New dictionary contains <string, tensor_info>.
-  """
-  return {
-      k: tf.compat.v1.saved_model.utils.build_tensor_info(t)
-      for k, t in tensor_dict.items()
-  }
+    Args:
+      multi_scale_pool_type: Type of multi-scale pooling to perform.
+      normalize_global_descriptor: Whether to L2-normalize global descriptor.
+      input_scales_tensor: If None, the exported function to be used should be
+        ExtractFeatures, where an input end-point "input_scales" is added for
+        the exported model. If not None, the specified 1D tensor of floats will
+        be hard-coded as the desired input scales, in conjunction with
+        ExtractFeaturesFixedScales.
+    """
+    self._multi_scale_pool_type = multi_scale_pool_type
+    self._normalize_global_descriptor = normalize_global_descriptor
+    if input_scales_tensor is None:
+      self._input_scales_tensor = []
+    else:
+      self._input_scales_tensor = input_scales_tensor
+
+    # Setup the DELF model for extraction.
+    self._model = delf_model.Delf(block3_strides=False, name='DELF')
+
+  def LoadWeights(self, checkpoint_path):
+    self._model.load_weights(checkpoint_path)
+
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None, None, 3], dtype=tf.uint8, name='input_image'),
+      tf.TensorSpec(shape=[None], dtype=tf.float32, name='input_scales'),
+      tf.TensorSpec(
+          shape=[None], dtype=tf.int32, name='input_global_scales_ind')
+  ])
+  def ExtractFeatures(self, input_image, input_scales, input_global_scales_ind):
+    extracted_features = export_model_utils.ExtractGlobalFeatures(
+        input_image,
+        input_scales,
+        input_global_scales_ind,
+        lambda x: self._model.backbone.build_call(x, training=False),
+        multi_scale_pool_type=self._multi_scale_pool_type,
+        normalize_global_descriptor=self._normalize_global_descriptor)
+
+    named_output_tensors = {}
+    if self._multi_scale_pool_type == 'None':
+      named_output_tensors['global_descriptors'] = tf.identity(
+          extracted_features, name='global_descriptors')
+    else:
+      named_output_tensors['global_descriptor'] = tf.identity(
+          extracted_features, name='global_descriptor')
+
+    return named_output_tensors
+
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None, None, 3], dtype=tf.uint8, name='input_image')
+  ])
+  def ExtractFeaturesFixedScales(self, input_image):
+    return self.ExtractFeatures(input_image, self._input_scales_tensor,
+                                tf.range(tf.size(self._input_scales_tensor)))
 
 
 def main(argv):
@@ -73,73 +122,33 @@ def main(argv):
 
   export_path = FLAGS.export_path
   if os.path.exists(export_path):
-    raise ValueError('Export_path already exists.')
+    raise ValueError('export_path %s already exists.' % export_path)
 
-  with tf.Graph().as_default() as g, tf.compat.v1.Session(graph=g) as sess:
+  if FLAGS.input_scales_list is None:
+    input_scales_tensor = None
+  else:
+    input_scales_tensor = tf.constant(
+        [float(s) for s in FLAGS.input_scales_list],
+        dtype=tf.float32,
+        shape=[len(FLAGS.input_scales_list)],
+        name='input_scales')
+  module = _ExtractModule(FLAGS.multi_scale_pool_type,
+                          FLAGS.normalize_global_descriptor,
+                          input_scales_tensor)
 
-    # Setup the model for extraction.
-    model = delf_model.Delf(block3_strides=False, name='DELF')
+  # Load the weights.
+  checkpoint_path = FLAGS.ckpt_path
+  module.LoadWeights(checkpoint_path)
+  print('Checkpoint loaded from ', checkpoint_path)
 
-    # Initial forward pass to build model.
-    images = tf.zeros((1, 321, 321, 3), dtype=tf.float32)
-    model(images)
+  # Save the module
+  if FLAGS.input_scales_list is None:
+    served_function = module.ExtractFeatures
+  else:
+    served_function = module.ExtractFeaturesFixedScales
 
-    # Setup the multiscale extraction.
-    input_image = tf.compat.v1.placeholder(
-        tf.uint8, shape=(None, None, 3), name='input_image')
-    if FLAGS.input_scales_list is None:
-      input_scales = tf.compat.v1.placeholder(
-          tf.float32, shape=[None], name='input_scales')
-    else:
-      input_scales = tf.constant([float(s) for s in FLAGS.input_scales_list],
-                                 dtype=tf.float32,
-                                 shape=[len(FLAGS.input_scales_list)],
-                                 name='input_scales')
-
-    extracted_features = export_model_utils.ExtractGlobalFeatures(
-        input_image,
-        input_scales,
-        lambda x: model.backbone(x, training=False),
-        multi_scale_pool_type=FLAGS.multi_scale_pool_type,
-        normalize_global_descriptor=FLAGS.normalize_global_descriptor)
-
-    # Load the weights.
-    checkpoint_path = FLAGS.ckpt_path
-    model.load_weights(checkpoint_path)
-    print('Checkpoint loaded from ', checkpoint_path)
-
-    named_input_tensors = {'input_image': input_image}
-    if FLAGS.input_scales_list is None:
-      named_input_tensors['input_scales'] = input_scales
-
-    # Outputs to the exported model.
-    named_output_tensors = {}
-    if FLAGS.multi_scale_pool_type == 'None':
-      named_output_tensors['global_descriptors'] = tf.identity(
-          extracted_features, name='global_descriptors')
-    else:
-      named_output_tensors['global_descriptor'] = tf.identity(
-          extracted_features, name='global_descriptor')
-
-    # Export the model.
-    signature_def = (
-        tf.compat.v1.saved_model.signature_def_utils.build_signature_def(
-            inputs=_build_tensor_info(named_input_tensors),
-            outputs=_build_tensor_info(named_output_tensors)))
-
-    print('Exporting trained model to:', export_path)
-    builder = tf.compat.v1.saved_model.builder.SavedModelBuilder(export_path)
-
-    init_op = None
-    builder.add_meta_graph_and_variables(
-        sess, [tf.compat.v1.saved_model.tag_constants.SERVING],
-        signature_def_map={
-            tf.compat.v1.saved_model.signature_constants
-            .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
-                signature_def
-        },
-        main_op=init_op)
-    builder.save()
+  tf.saved_model.save(
+      module, export_path, signatures={'serving_default': served_function})
 
 
 if __name__ == '__main__':
