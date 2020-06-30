@@ -147,6 +147,7 @@ def clear_fine_tune_checkpoint(pipeline_config_path,
   """Clears fine_tune_checkpoint and writes a new pipeline config file."""
   configs = get_configs_from_pipeline_file(pipeline_config_path)
   configs["train_config"].fine_tune_checkpoint = ""
+  configs["train_config"].load_all_detection_checkpoint_vars = False
   pipeline_proto = create_pipeline_proto_from_configs(configs)
   with tf.gfile.Open(new_pipeline_config_path, "wb") as f:
     f.write(text_format.MessageToString(pipeline_proto))

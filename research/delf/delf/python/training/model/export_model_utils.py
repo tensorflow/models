@@ -142,20 +142,21 @@ def ExtractLocalFeatures(image, image_scales, max_feature_num, abs_thres, iou,
   keep_going = lambda j, b, f, scales, scores: tf.less(j, num_scales)
 
   (_, output_boxes, output_features, output_scales,
-   output_scores) = tf.while_loop(
-       cond=keep_going,
-       body=_ProcessSingleScale,
-       loop_vars=[
-           i, output_boxes, output_features, output_scales, output_scores
-       ],
-       shape_invariants=[
-           i.get_shape(),
-           tf.TensorShape([None, 4]),
-           tf.TensorShape([None, feature_depth]),
-           tf.TensorShape([None]),
-           tf.TensorShape([None])
-       ],
-       back_prop=False)
+   output_scores) = tf.nest.map_structure(
+       tf.stop_gradient,
+       tf.while_loop(
+           cond=keep_going,
+           body=_ProcessSingleScale,
+           loop_vars=[
+               i, output_boxes, output_features, output_scales, output_scores
+           ],
+           shape_invariants=[
+               i.get_shape(),
+               tf.TensorShape([None, 4]),
+               tf.TensorShape([None, feature_depth]),
+               tf.TensorShape([None]),
+               tf.TensorShape([None])
+           ]))
 
   feature_boxes = box_list.BoxList(output_boxes)
   feature_boxes.add_field('features', output_features)
@@ -169,3 +170,109 @@ def ExtractLocalFeatures(image, image_scales, max_feature_num, abs_thres, iou,
   return final_boxes.get(), final_boxes.get_field(
       'features'), final_boxes.get_field('scales'), tf.expand_dims(
           final_boxes.get_field('scores'), 1)
+
+
+def ExtractGlobalFeatures(image,
+                          image_scales,
+                          model_fn,
+                          multi_scale_pool_type='None',
+                          normalize_global_descriptor=False):
+  """Extract global features for input image.
+
+  Args:
+    image: image tensor of type tf.uint8 with shape [h, w, channels].
+    image_scales: 1D float tensor which contains float scales used for image
+      pyramid construction.
+    model_fn: model function. Follows the signature:
+      * Args:
+        * `images`: Image tensor which is re-scaled.
+      * Returns:
+        * `global_descriptors`: Global descriptors for input images.
+    multi_scale_pool_type: If set, the global descriptor of each scale is pooled
+      and a 1D global descriptor is returned.
+    normalize_global_descriptor: If True, output global descriptors are
+      L2-normalized.
+
+  Returns:
+    global_descriptors: If `multi_scale_pool_type` is 'None', returns a [S, D]
+      float tensor. S is the number of scales, and D the global descriptor
+      dimensionality. Each D-dimensional entry is a global descriptor, which may
+      be L2-normalized depending on `normalize_global_descriptor`. If
+      `multi_scale_pool_type` is not 'None', returns a [D] float tensor with the
+      pooled global descriptor.
+
+  """
+  original_image_shape_float = tf.gather(
+      tf.dtypes.cast(tf.shape(image), tf.float32), [0, 1])
+
+  image_tensor = gld.NormalizeImages(
+      image, pixel_value_offset=128.0, pixel_value_scale=128.0)
+  image_tensor = tf.expand_dims(image_tensor, 0, name='image/expand_dims')
+
+  def _ProcessSingleScale(scale_index, global_descriptors=None):
+    """Resizes the image and runs feature extraction.
+
+       This function will be passed into tf.while_loop() and be called
+       repeatedly. We get the current scale by image_scales[scale_index], and
+       run image resizing / feature extraction. In the end, we concat the
+       previous global descriptors with current descriptor as the output.
+
+    Args:
+      scale_index: A valid index in image_scales.
+      global_descriptors: Global descriptor tensor with the shape of [S, D]. If
+        None, no previous global descriptors are used, and the output will be of
+        shape [1, D].
+
+    Returns:
+      scale_index: The next scale index for processing.
+      global_descriptors: A concatenated global descriptor tensor with the shape
+        of [S+1, D].
+    """
+    scale = tf.gather(image_scales, scale_index)
+    new_image_size = tf.dtypes.cast(
+        tf.round(original_image_shape_float * scale), tf.int32)
+    resized_image = tf.image.resize(image_tensor, new_image_size)
+
+    global_descriptor = model_fn(resized_image)
+    if global_descriptors is None:
+      global_descriptors = global_descriptor
+    else:
+      global_descriptors = tf.concat([global_descriptors, global_descriptor], 0)
+
+    return scale_index + 1, global_descriptors
+
+  # Process the first scale separately, the following scales will reuse the
+  # graph variables.
+  (_, output_global) = _ProcessSingleScale(0)
+
+  i = tf.constant(1, dtype=tf.int32)
+  num_scales = tf.shape(image_scales)[0]
+  keep_going = lambda j, g: tf.less(j, num_scales)
+
+  (_, output_global) = tf.nest.map_structure(
+      tf.stop_gradient,
+      tf.while_loop(
+          cond=keep_going,
+          body=_ProcessSingleScale,
+          loop_vars=[i, output_global],
+          shape_invariants=[i.get_shape(),
+                            tf.TensorShape([None, None])]))
+
+  normalization_axis = 1
+  if multi_scale_pool_type == 'average':
+    output_global = tf.reduce_mean(
+        output_global,
+        axis=0,
+        keepdims=False,
+        name='multi_scale_average_pooling')
+    normalization_axis = 0
+  elif multi_scale_pool_type == 'sum':
+    output_global = tf.reduce_sum(
+        output_global, axis=0, keepdims=False, name='multi_scale_sum_pooling')
+    normalization_axis = 0
+
+  if normalize_global_descriptor:
+    output_global = tf.nn.l2_normalize(
+        output_global, axis=normalization_axis, name='l2_normalization')
+
+  return output_global

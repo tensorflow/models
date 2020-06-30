@@ -116,6 +116,22 @@ class ElectraPretrainer(tf.keras.Model):
         units=1, kernel_initializer=mlm_initializer)
 
   def call(self, inputs):
+    """ELECTRA forward pass.
+
+    Args:
+      inputs: A dict of all inputs, same as the standard BERT model.
+
+    Returns:
+      outputs: A dict of pretrainer model outputs, including
+        (1) lm_outputs: a [batch_size, num_token_predictions, vocab_size] tensor
+        indicating logits on masked positions.
+        (2) sentence_outputs: a [batch_size, num_classes] tensor indicating
+        logits for nsp task.
+        (3) disc_logits: a [batch_size, sequence_length] tensor indicating
+        logits for discriminator replaced token detection task.
+        (4) disc_label: a [batch_size, sequence_length] tensor indicating
+        target labels for discriminator replaced token detection task.
+    """
     input_word_ids = inputs['input_word_ids']
     input_mask = inputs['input_mask']
     input_type_ids = inputs['input_type_ids']
@@ -152,7 +168,14 @@ class ElectraPretrainer(tf.keras.Model):
     disc_logits = self.discriminator_head(disc_sequence_output)
     disc_logits = tf.squeeze(disc_logits, axis=-1)
 
-    return lm_outputs, sentence_outputs, disc_logits, disc_label
+    outputs = {
+        'lm_outputs': lm_outputs,
+        'sentence_outputs': sentence_outputs,
+        'disc_logits': disc_logits,
+        'disc_label': disc_label,
+    }
+
+    return outputs
 
   def _get_fake_data(self, inputs, mlm_logits, duplicate=True):
     """Generate corrupted data for discriminator.

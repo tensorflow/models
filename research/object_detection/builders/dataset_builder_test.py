@@ -390,7 +390,7 @@ class DatasetBuilderTest(test_case.TestCase):
       return iter1.get_next(), iter2.get_next()
 
     output_dict1, output_dict2 = self.execute(graph_fn, [])
-    self.assertAllEqual(['0'], output_dict1[fields.InputDataFields.source_id])
+    self.assertAllEqual([b'0'], output_dict1[fields.InputDataFields.source_id])
     self.assertEqual([b'1'], output_dict2[fields.InputDataFields.source_id])
 
   def test_sample_one_of_n_shards(self):

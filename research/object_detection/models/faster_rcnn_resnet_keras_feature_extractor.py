@@ -175,23 +175,6 @@ class FasterRCNNResnetKerasFeatureExtractor(
           self._variable_dict[variable.name[:-2]] = variable
         return keras_model
 
-  def restore_from_classification_checkpoint_fn(
-      self,
-      first_stage_feature_extractor_scope,
-      second_stage_feature_extractor_scope):
-    """Returns a map for restoring from an (object-based) checkpoint.
-
-    Args:
-      first_stage_feature_extractor_scope: A scope name for the first stage
-        feature extractor (unused).
-      second_stage_feature_extractor_scope: A scope name for the second stage
-        feature extractor (unused).
-
-    Returns:
-      A dict mapping keys to Keras models
-    """
-    return {'feature_extractor': self.classification_backbone}
-
 
 class FasterRCNNResnet50KerasFeatureExtractor(
     FasterRCNNResnetKerasFeatureExtractor):

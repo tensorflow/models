@@ -200,7 +200,7 @@ class GenerateContextDataTest(tf.test.TestCase):
         seq_feature_dict['region/label/string'].feature[1].bytes_list.value[:])
 
   def assert_expected_key(self, key):
-    self.assertAllEqual(key, '01')
+    self.assertAllEqual(key, b'01')
 
   def assert_sorted(self, example_collection):
     example_list = list(example_collection)

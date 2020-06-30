@@ -185,6 +185,9 @@ class FakeDetectionModel(model.DetectionModel):
     """
     return {var.op.name: var for var in tf.global_variables()}
 
+  def restore_from_objects(self, fine_tune_checkpoint_type):
+    pass
+
   def updates(self):
     """Returns a list of update operators for this model.
 

@@ -73,6 +73,9 @@ class FakeModel(model.DetectionModel):
   def restore_map(self, checkpoint_path, fine_tune_checkpoint_type):
     pass
 
+  def restore_from_objects(self, fine_tune_checkpoint_type):
+    pass
+
   def loss(self, prediction_dict, true_image_shapes):
     pass
 
@@ -236,13 +239,13 @@ class GenerateEmbeddingData(tf.test.TestCase):
         .int64_list.value, [5])
     self.assertAllEqual(
         example.features.feature['image/object/class/text']
-        .bytes_list.value, ['hyena'])
+        .bytes_list.value, [b'hyena'])
     self.assertAllClose(
         example.features.feature['image/class/label']
         .int64_list.value, [5])
     self.assertAllEqual(
         example.features.feature['image/class/text']
-        .bytes_list.value, ['hyena'])
+        .bytes_list.value, [b'hyena'])
 
     # Check other essential attributes.
     self.assertAllEqual(
@@ -251,7 +254,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
         example.features.feature['image/width'].int64_list.value, [600])
     self.assertAllEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        ['image_id'])
+        [b'image_id'])
     self.assertTrue(
         example.features.feature['image/encoded'].bytes_list.value)
 
@@ -268,7 +271,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
                         .int64_list.value, [5])
     self.assertAllEqual(tf.train.Example.FromString(
         generated_example).features.feature['image/object/class/text']
-                        .bytes_list.value, ['hyena'])
+                        .bytes_list.value, [b'hyena'])
     output = inference_fn.process(generated_example)
     output_example = output[0]
     self.assert_expected_example(output_example)
@@ -304,7 +307,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
         .feature['image/object/class/label'].int64_list.value, [5])
     self.assertAllEqual(
         tf.train.Example.FromString(generated_example).features
-        .feature['image/object/class/text'].bytes_list.value, ['hyena'])
+        .feature['image/object/class/text'].bytes_list.value, [b'hyena'])
     output = inference_fn.process(generated_example)
     output_example = output[0]
     self.assert_expected_example(output_example, botk=True)

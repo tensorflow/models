@@ -48,12 +48,15 @@ flags.DEFINE_enum(
     'Google Landmarks dataset version, used to determine the'
     'number of classes.')
 flags.DEFINE_integer('seed', 0, 'Seed to training dataset.')
-flags.DEFINE_float('initial_lr', 0.001, 'Initial learning rate.')
+flags.DEFINE_float('initial_lr', 0.01, 'Initial learning rate.')
 flags.DEFINE_integer('batch_size', 32, 'Global batch size.')
 flags.DEFINE_integer('max_iters', 500000, 'Maximum iterations.')
-flags.DEFINE_boolean('block3_strides', False, 'Whether to use block3_strides.')
+flags.DEFINE_boolean('block3_strides', True, 'Whether to use block3_strides.')
 flags.DEFINE_boolean('use_augmentation', True,
                      'Whether to use ImageNet style augmentation.')
+flags.DEFINE_string(
+    'imagenet_checkpoint', None,
+    'ImageNet checkpoint for ResNet backbone. If None, no checkpoint is used.')
 
 
 def _record_accuracy(metric, logits, labels):
@@ -64,6 +67,10 @@ def _record_accuracy(metric, logits, labels):
 
 def _attention_summaries(scores, global_step):
   """Record statistics of the attention score."""
+  tf.summary.image(
+      'batch_attention',
+      scores / tf.reduce_max(scores + 1e-3),
+      step=global_step)
   tf.summary.scalar('attention/max', tf.reduce_max(scores), step=global_step)
   tf.summary.scalar('attention/min', tf.reduce_min(scores), step=global_step)
   tf.summary.scalar('attention/mean', tf.reduce_mean(scores), step=global_step)
@@ -124,7 +131,7 @@ def main(argv):
   max_iters = FLAGS.max_iters
   global_batch_size = FLAGS.batch_size
   image_size = 321
-  num_eval = 1000
+  num_eval_batches = int(50000 / global_batch_size)
   report_interval = 100
   eval_interval = 1000
   save_interval = 20000
@@ -137,7 +144,7 @@ def main(argv):
     tf.config.run_functions_eagerly(True)
     global_batch_size = 4
     max_iters = 100
-    num_eval = 1
+    num_eval_batches = 1
     save_interval = 1
     report_interval = 1
 
@@ -349,6 +356,19 @@ def main(argv):
       with tf.summary.record_if(
           tf.math.equal(0, optimizer.iterations % report_interval)):
 
+        # TODO(dananghel): try to load pretrained weights at backbone creation.
+        # Load pretrained weights for ResNet50 trained on ImageNet.
+        if FLAGS.imagenet_checkpoint is not None:
+          logging.info('Attempting to load ImageNet pretrained weights.')
+          input_batch = next(train_iter)
+          _, _ = distributed_train_step(input_batch)
+          model.backbone.restore_weights(FLAGS.imagenet_checkpoint)
+          logging.info('Done.')
+        else:
+          logging.info('Skip loading ImageNet pretrained weights.')
+        if FLAGS.debug:
+          model.backbone.log_weights()
+
         global_step_value = optimizer.iterations.numpy()
         while global_step_value < max_iters:
 
@@ -397,7 +417,7 @@ def main(argv):
 
           # Validate once in {eval_interval*n, n \in N} steps.
           if global_step_value % eval_interval == 0:
-            for i in range(num_eval):
+            for i in range(num_eval_batches):
               try:
                 validation_batch = next(validation_iter)
                 desc_validation_result, attn_validation_result = (
