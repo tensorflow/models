@@ -50,130 +50,136 @@ class ContextProjection(tf.keras.layers.Layer):
     return self.projection(self.batch_norm(input_features, is_training))
 
 class AttentionBlock(tf.keras.layers.Layer):
-  def __init__(self, bottleneck_dimension, attention_temperature, freeze_batchnorm, **kwargs):
+  def __init__(self, bottleneck_dimension, attention_temperature, freeze_batchnorm, output_dimension=None, **kwargs):
     self.key_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
     self.val_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
     self.query_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
     self.attention_temperature = attention_temperature
     self.freeze_batchnorm = freeze_batchnorm
     self.bottleneck_dimension = bottleneck_dimension
+    if output_dimension:
+      self.output_dimension = output_dimension
     super(AttentionBlock, self).__init__(**kwargs)
 
+  def set_output_dimension(self, new_output_dimension):
+    self.output_dimension = new_output_dimension
+
   def build(self, input_shapes):
-    self.feature_proj = ContextProjection(input_shapes[0][-1], self.freeze_batchnorm)
+    print(input_shapes)
+    self.feature_proj = ContextProjection(self.output_dimension, self.freeze_batchnorm)
     #self.key_proj.build(input_shapes[0])
     #self.val_proj.build(input_shapes[0])
     #self.query_proj.build(input_shapes[0])
     #self.feature_proj.build(input_shapes[0])
     pass
 
-  def filter_weight_value(self, weights, values, valid_mask):
-    """Filters weights and values based on valid_mask.
-
-    _NEGATIVE_PADDING_VALUE will be added to invalid elements in the weights to
-    avoid their contribution in softmax. 0 will be set for the invalid elements in
-    the values.
-
-    Args:
-      weights: A float Tensor of shape [batch_size, input_size, context_size].
-      values: A float Tensor of shape [batch_size, context_size,
-        projected_dimension].
-      valid_mask: A boolean Tensor of shape [batch_size, context_size]. True means
-        valid and False means invalid.
-
-    Returns:
-      weights: A float Tensor of shape [batch_size, input_size, context_size].
-      values: A float Tensor of shape [batch_size, context_size,
-        projected_dimension].
-
-    Raises:
-      ValueError: If shape of doesn't match.
-    """
-    w_batch_size, _, w_context_size = weights.shape
-    v_batch_size, v_context_size, _ = values.shape
-    m_batch_size, m_context_size = valid_mask.shape
-    if w_batch_size != v_batch_size or v_batch_size != m_batch_size:
-      raise ValueError("Please make sure the first dimension of the input"
-                      " tensors are the same.")
-
-    if w_context_size != v_context_size:
-      raise ValueError("Please make sure the third dimension of weights matches"
-                      " the second dimension of values.")
-
-    if w_context_size != m_context_size:
-      raise ValueError("Please make sure the third dimension of the weights"
-                      " matches the second dimension of the valid_mask.")
-
-    valid_mask = valid_mask[..., tf.newaxis]
-
-    # Force the invalid weights to be very negative so it won't contribute to
-    # the softmax.
-    weights += tf.transpose(
-        tf.cast(tf.math.logical_not(valid_mask), weights.dtype) *
-        _NEGATIVE_PADDING_VALUE,
-        perm=[0, 2, 1])
-
-    # Force the invalid values to be 0.
-    values *= tf.cast(valid_mask, values.dtype)
-
-    return weights, values
-
-  def run_projection(self, features, bottleneck_dimension, is_training, layer, normalize=True):
-    """Projects features to another feature space.
-
-    Args:
-      features: A float Tensor of shape [batch_size, features_size,
-        num_features].
-      projection_dimension: A int32 Tensor.
-      is_training: A boolean Tensor (affecting batch normalization).
-      node: Contains a custom layer specific to the particular operation
-            being performed (key, value, query, features)
-      normalize: A boolean Tensor. If true, the output features will be l2
-        normalized on the last dimension.
-
-    Returns:
-      A float Tensor of shape [batch, features_size, projection_dimension].
-    """
-    shape_arr = features.shape
-    batch_size, _, num_features = shape_arr
-    print("Orig", features.shape)
-    features = tf.reshape(features, [-1, num_features])
-
-    projected_features = layer(features, is_training)
-
-    projected_features = tf.reshape(projected_features, [batch_size, -1, bottleneck_dimension])
-    print(projected_features.shape)
-
-    if normalize:
-      projected_features = tf.keras.backend.l2_normalize(projected_features, axis=-1)
-
-    return projected_features
-
   def call(self, input_features, is_training, valid_mask):
     input_features, context_features = input_features
     with tf.variable_scope("AttentionBlock"):
-      queries = self.run_projection(
+      queries = project_features(
           input_features, self.bottleneck_dimension, is_training,
           self.query_proj, normalize=True)
-      keys = self.run_projection(
+      keys = project_features(
           context_features, self.bottleneck_dimension, is_training,
           self.key_proj, normalize=True)
-      values = self.run_projection(
+      values = project_features(
           context_features, self.bottleneck_dimension, is_training,
           self.val_proj, normalize=True)
 
     weights = tf.matmul(queries, keys, transpose_b=True)
 
-    weights, values = self.filter_weight_value(weights, values, valid_mask)
+    weights, values = filter_weight_value(weights, values, valid_mask)
 
     weights = tf.nn.softmax(weights / self.attention_temperature)
 
     features = tf.matmul(weights, values)
-    output_features = self.run_projection(
-        features, input_features.shape[-1], is_training,
+    output_features = project_features(
+        features, self.output_dimension, is_training,
         self.feature_proj, normalize=False)
     return output_features
 
+
+def filter_weight_value(weights, values, valid_mask):
+  """Filters weights and values based on valid_mask.
+
+  _NEGATIVE_PADDING_VALUE will be added to invalid elements in the weights to
+  avoid their contribution in softmax. 0 will be set for the invalid elements in
+  the values.
+
+  Args:
+    weights: A float Tensor of shape [batch_size, input_size, context_size].
+    values: A float Tensor of shape [batch_size, context_size,
+      projected_dimension].
+    valid_mask: A boolean Tensor of shape [batch_size, context_size]. True means
+      valid and False means invalid.
+
+  Returns:
+    weights: A float Tensor of shape [batch_size, input_size, context_size].
+    values: A float Tensor of shape [batch_size, context_size,
+      projected_dimension].
+
+  Raises:
+    ValueError: If shape of doesn't match.
+  """
+  w_batch_size, _, w_context_size = weights.shape
+  v_batch_size, v_context_size, _ = values.shape
+  m_batch_size, m_context_size = valid_mask.shape
+  if w_batch_size != v_batch_size or v_batch_size != m_batch_size:
+    raise ValueError("Please make sure the first dimension of the input"
+                    " tensors are the same.")
+
+  if w_context_size != v_context_size:
+    raise ValueError("Please make sure the third dimension of weights matches"
+                    " the second dimension of values.")
+
+  if w_context_size != m_context_size:
+    raise ValueError("Please make sure the third dimension of the weights"
+                    " matches the second dimension of the valid_mask.")
+
+  valid_mask = valid_mask[..., tf.newaxis]
+
+  # Force the invalid weights to be very negative so it won't contribute to
+  # the softmax.
+  weights += tf.transpose(
+      tf.cast(tf.math.logical_not(valid_mask), weights.dtype) *
+      _NEGATIVE_PADDING_VALUE,
+      perm=[0, 2, 1])
+
+  # Force the invalid values to be 0.
+  values *= tf.cast(valid_mask, values.dtype)
+
+  return weights, values
+
+def project_features(features, bottleneck_dimension, is_training, layer, normalize=True):
+  """Projects features to another feature space.
+
+  Args:
+    features: A float Tensor of shape [batch_size, features_size,
+      num_features].
+    projection_dimension: A int32 Tensor.
+    is_training: A boolean Tensor (affecting batch normalization).
+    node: Contains a custom layer specific to the particular operation
+          being performed (key, value, query, features)
+    normalize: A boolean Tensor. If true, the output features will be l2
+      normalized on the last dimension.
+
+  Returns:
+    A float Tensor of shape [batch, features_size, projection_dimension].
+  """
+  shape_arr = features.shape
+  batch_size, _, num_features = shape_arr
+  print("Orig", features.shape)
+  features = tf.reshape(features, [-1, num_features])
+
+  projected_features = layer(features, is_training)
+
+  projected_features = tf.reshape(projected_features, [batch_size, -1, bottleneck_dimension])
+  print(projected_features.shape)
+
+  if normalize:
+    projected_features = tf.keras.backend.l2_normalize(projected_features, axis=-1)
+
+  return projected_features
 
 def compute_valid_mask(num_valid_elements, num_elements):
     """Computes mask of valid entries within padded context feature.
@@ -222,6 +228,7 @@ def compute_box_context_attention(box_features, context_features,
   valid_mask = compute_valid_mask(valid_context_size, context_size)
 
   channels = box_features.shape[-1]
+  attention_block.set_output_dimension(channels)
   
   # Average pools over height and width dimension so that the shape of
   # box_features becomes [batch_size, max_num_proposals, channels].

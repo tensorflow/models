@@ -80,9 +80,9 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     projected_features = context_rcnn_lib.project_features(
         features,
         projection_dimension,
-        is_training=is_training,
-        normalize=normalize,
-        node=context_rcnn_lib.ContextProjection(projection_dimension, False))
+        is_training,
+        context_rcnn_lib.ContextProjection(projection_dimension, False),
+        normalize=normalize)
 
     # Makes sure the shape is correct.
     self.assertAllEqual(projected_features.shape, [2, 3, projection_dimension])
@@ -100,15 +100,15 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     context_features = tf.ones([2, 2, 3], tf.float32)
     valid_mask = tf.constant([[True, True], [False, False]], tf.bool)
     is_training = False
-    projection_layers = {context_rcnn_lib.KEY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False), context_rcnn_lib.VALUE_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
-                         context_rcnn_lib.QUERY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False)}
+    #projection_layers = {context_rcnn_lib.KEY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False), context_rcnn_lib.VALUE_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
+    #                     context_rcnn_lib.QUERY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False)}
     
     #Add in the feature layer because this is further down the pipeline and it isn't automatically injected.
-    projection_layers['feature'] = context_rcnn_lib.ContextProjection(output_dimension, False)
+    #projection_layers['feature'] = context_rcnn_lib.ContextProjection(output_dimension, False)
 
-    output_features = context_rcnn_lib.attention_block(
-        input_features, context_features, bottleneck_dimension,
-        output_dimension, attention_temperature, valid_mask, is_training, projection_layers)
+    attention_block = context_rcnn_lib.AttentionBlock(bottleneck_dimension, attention_temperature, False)
+    attention_block.set_output_dimension(output_dimension)
+    output_features = attention_block([input_features, context_features], is_training, valid_mask)
 
     # Makes sure the shape is correct.
     self.assertAllEqual(output_features.shape, [2, 3, output_dimension])
@@ -120,12 +120,11 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     valid_context_size = tf.constant((2, 3), tf.int32)
     bottleneck_dimension = 10
     attention_temperature = 1
-    projection_layers = {context_rcnn_lib.KEY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False), context_rcnn_lib.VALUE_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False),
-                         context_rcnn_lib.QUERY_NAME: context_rcnn_lib.ContextProjection(bottleneck_dimension, False)}
+    
     attention_features = context_rcnn_lib.compute_box_context_attention(
         box_features, context_features, valid_context_size,
         bottleneck_dimension, attention_temperature, is_training, 
-        False, projection_layers)
+        False, context_rcnn_lib.AttentionBlock(bottleneck_dimension, attention_temperature, False))
     # Makes sure the shape is correct.
     self.assertAllEqual(attention_features.shape, [2, 3, 1, 1, 4])
 
