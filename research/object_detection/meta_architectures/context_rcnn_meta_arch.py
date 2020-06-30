@@ -26,8 +26,9 @@ from __future__ import print_function
 import functools
 
 from object_detection.core import standard_fields as fields
-from object_detection.meta_architectures import context_rcnn_lib
+from object_detection.meta_architectures import context_rcnn_lib_v1, context_rcnn_lib_v2
 from object_detection.meta_architectures import faster_rcnn_meta_arch
+from object_detection.utils import tf_version
 
 
 class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
@@ -265,14 +266,18 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
             return_raw_detections_during_predict),
         output_final_box_features=output_final_box_features)
 
-    self._context_feature_extract_fn = functools.partial(
-        context_rcnn_lib.compute_box_context_attention,
+    if tf_version.is_tf1():
+      self._context_feature_extract_fn = functools.partial(
+        context_rcnn_lib_v1.compute_box_context_attention,
         bottleneck_dimension=attention_bottleneck_dimension,
         attention_temperature=attention_temperature,
-        is_training=is_training,
-        freeze_batchnorm=freeze_batchnorm)
-    
-    self._attention_block = context_rcnn_lib.AttentionBlock(attention_bottleneck_dimension, attention_temperature, freeze_batchnorm)
+        is_training=is_training)
+    else:
+      self._context_feature_extract_fn = functools.partial(
+          context_rcnn_lib_v2.compute_box_context_attention,
+          is_training=is_training,
+          attention_block=context_rcnn_lib_v2.AttentionBlock(
+              attention_bottleneck_dimension, attention_temperature, freeze_batchnorm))
 
   @staticmethod
   def get_side_inputs(features):
@@ -335,8 +340,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     attention_features = self._context_feature_extract_fn(
         box_features=box_features,
         context_features=context_features,
-        valid_context_size=valid_context_size,
-        attention_block=self._attention_block)
+        valid_context_size=valid_context_size)
 
     # Adds box features with attention features.
     box_features += attention_features
