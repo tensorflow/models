@@ -188,7 +188,7 @@ other than a one time experiment please use the [TensorFlow Serving][serving].
 
 [1]: https://github.com/tensorflow/tensorflow/blob/aaf7adc/tensorflow/contrib/rnn/python/tools/checkpoint_convert.py
 [2]: https://www.tensorflow.org/api_docs/python/tf/contrib/framework/assign_from_checkpoint_fn
-[serving]: https://tensorflow.github.io/serving/serving_basic
+[serving]: https://www.tensorflow.org/tfx/serving/serving_basic
 
 ## Disclaimer
 
