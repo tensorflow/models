@@ -152,7 +152,7 @@ running the following command exports the model in the `gldv2_model` directory:
 python3 model/export_model.py \
   --ckpt_path=gldv2_training/delf_weights \
   --export_path=gldv2_model \
-  --block3_strides=True
+  --block3_strides
 ```
 
 ## Testing the Trained Model
