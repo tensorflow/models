@@ -102,7 +102,15 @@ def MakeExtractor(config):
 
   Returns:
     Function that receives an image and returns features.
+
+  Raises:
+    ValueError: if config is invalid.
   """
+  # Assert the configuration
+  if config.use_global_features and hasattr(
+      config, 'is_tf2_exported') and config.is_tf2_exported:
+    raise ValueError('use_global_features is incompatible with is_tf2_exported')
+
   # Load model.
   model = tf.saved_model.load(config.model_path)
 
@@ -178,7 +186,8 @@ def MakeExtractor(config):
       else:
         global_pca_parameters['variances'] = None
 
-  model = model.prune(feeds=feeds, fetches=fetches)
+  if not hasattr(config, 'is_tf2_exported') or not config.is_tf2_exported:
+    model = model.prune(feeds=feeds, fetches=fetches)
 
   def ExtractorFn(image, resize_factor=1.0):
     """Receives an image and returns DELF global and/or local features.
@@ -197,7 +206,6 @@ def MakeExtractor(config):
         features (key 'local_features' mapping to a dict with keys 'locations',
         'descriptors', 'scales', 'attention').
     """
-
     resized_image, scale_factors = ResizeImage(
         image, config, resize_factor=resize_factor)
 
@@ -224,8 +232,20 @@ def MakeExtractor(config):
     output = None
 
     if config.use_local_features:
-      output = model(image_tensor, image_scales_tensor, score_threshold_tensor,
-                     max_feature_num_tensor)
+      if hasattr(config, 'is_tf2_exported') and config.is_tf2_exported:
+        predict = model.signatures['serving_default']
+        output_dict = predict(
+            input_image=image_tensor,
+            input_scales=image_scales_tensor,
+            input_max_feature_num=max_feature_num_tensor,
+            input_abs_thres=score_threshold_tensor)
+        output = [
+            output_dict['boxes'], output_dict['features'],
+            output_dict['scales'], output_dict['scores']
+        ]
+      else:
+        output = model(image_tensor, image_scales_tensor,
+                       score_threshold_tensor, max_feature_num_tensor)
     else:
       output = model(image_tensor, image_scales_tensor)
 

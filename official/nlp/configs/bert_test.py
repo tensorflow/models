@@ -26,7 +26,7 @@ class BertModelsTest(tf.test.TestCase):
   def test_network_invocation(self):
     config = bert.BertPretrainerConfig(
         encoder=encoders.TransformerEncoderConfig(vocab_size=10, num_layers=1))
-    _ = bert.instantiate_from_cfg(config)
+    _ = bert.instantiate_bertpretrainer_from_cfg(config)
 
     # Invokes with classification heads.
     config = bert.BertPretrainerConfig(
@@ -35,7 +35,7 @@ class BertModelsTest(tf.test.TestCase):
             bert.ClsHeadConfig(
                 inner_dim=10, num_classes=2, name="next_sentence")
         ])
-    _ = bert.instantiate_from_cfg(config)
+    _ = bert.instantiate_bertpretrainer_from_cfg(config)
 
     with self.assertRaises(ValueError):
       config = bert.BertPretrainerConfig(
@@ -47,7 +47,7 @@ class BertModelsTest(tf.test.TestCase):
               bert.ClsHeadConfig(
                   inner_dim=10, num_classes=2, name="next_sentence")
           ])
-      _ = bert.instantiate_from_cfg(config)
+      _ = bert.instantiate_bertpretrainer_from_cfg(config)
 
   def test_checkpoint_items(self):
     config = bert.BertPretrainerConfig(
@@ -56,7 +56,7 @@ class BertModelsTest(tf.test.TestCase):
             bert.ClsHeadConfig(
                 inner_dim=10, num_classes=2, name="next_sentence")
         ])
-    encoder = bert.instantiate_from_cfg(config)
+    encoder = bert.instantiate_bertpretrainer_from_cfg(config)
     self.assertSameElements(encoder.checkpoint_items.keys(),
                             ["encoder", "next_sentence.pooler_dense"])
 

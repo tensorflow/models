@@ -19,6 +19,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
 from absl.testing import parameterized
 import numpy as np
 import six
@@ -30,11 +31,12 @@ from object_detection.core import preprocessor
 from object_detection.core import preprocessor_cache
 from object_detection.core import standard_fields as fields
 from object_detection.utils import test_case
+from object_detection.utils import tf_version
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
 else:
-  from unittest import mock  # pylint: disable=g-import-not-at-top
+  mock = unittest.mock  # pylint: disable=g-import-not-at-top
 
 
 class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
@@ -118,7 +120,10 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     return tf.constant(keypoints, dtype=tf.float32)
 
   def createKeypointFlipPermutation(self):
-    return np.array([0, 2, 1], dtype=np.int32)
+    return [0, 2, 1]
+
+  def createKeypointRotPermutation(self):
+    return [0, 2, 1]
 
   def createTestLabels(self):
     labels = tf.constant([1, 2], dtype=tf.int32)
@@ -910,19 +915,22 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
                                 test_keypoints=True)
 
   def testRunRandomRotation90WithMaskAndKeypoints(self):
-    preprocess_options = [(preprocessor.random_rotation90, {})]
     image_height = 3
     image_width = 3
     images = tf.random_uniform([1, image_height, image_width, 3])
     boxes = self.createTestBoxes()
     masks = self.createTestMasks()
     keypoints, _ = self.createTestKeypoints()
+    keypoint_rot_permutation = self.createKeypointRotPermutation()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_instance_masks: masks,
         fields.InputDataFields.groundtruth_keypoints: keypoints
     }
+    preprocess_options = [(preprocessor.random_rotation90, {
+        'keypoint_rot_permutation': keypoint_rot_permutation
+    })]
     preprocessor_arg_map = preprocessor.get_default_func_arg_map(
         include_instance_masks=True, include_keypoints=True)
     tensor_dict = preprocessor.preprocess(
@@ -2819,6 +2827,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllEqual(images_shape, patched_images_shape)
     self.assertAllEqual(images, patched_images)
 
+  @unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
   def testAutoAugmentImage(self):
     def graph_fn():
       preprocessing_options = []

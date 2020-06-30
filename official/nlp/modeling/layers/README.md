@@ -9,12 +9,16 @@ assemble new layers, networks, or models.
     initialization parameters.
 
 *   [MultiHeadAttention](attention.py) implements an optionally masked attention
-    between two tensors, from_tensor and to_tensor, as described in
+    between query, key, value tensors as described in
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762). If
     `from_tensor` and `to_tensor` are the same, then this is self-attention.
 
 *   [CachedAttention](attention.py) implements an attention layer with cache
     used for auto-agressive decoding.
+
+*   [MultiChannelAttention](multi_channel_attention.py) implements an variant of
+    multi-head attention which can be used to merge multiple streams for
+    cross-attentions.
 
 *   [TalkingHeadsAttention](talking_heads_attention.py) implements the talking
     heads attention, as decribed in
@@ -23,6 +27,10 @@ assemble new layers, networks, or models.
 *   [Transformer](transformer.py) implements an optionally masked transformer as
     described in
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
+
+*   [TransformerDecoderLayer](transformer.py) TransformerDecoderLayer is made up
+    of self multi-head attention, cross multi-head attention and
+    feedforward network.
 
 *   [ReZeroTransformer](rezero_transformer.py) implements Transformer with
     ReZero described in
@@ -44,6 +52,9 @@ assemble new layers, networks, or models.
     positions where the data should be allowed through, and 0 where the data
     should be masked), the output will have masked positions set to
     approximately zero.
+
+*   [`MaskedLM`](masked_lm.py) implements a masked language model. It assumes
+    the embedding table variable is passed to it.
 
 *   [ClassificationHead](cls_head.py) A pooling head over a sequence of
     embeddings, commonly used by classification tasks.

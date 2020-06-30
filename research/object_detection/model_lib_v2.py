@@ -34,7 +34,6 @@ from object_detection.protos import train_pb2
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
-from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils as vutils
 
 # pylint: disable=g-import-not-at-top
@@ -47,13 +46,6 @@ except ImportError:
 
 MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 
-### NOTE: This file is a wip.
-### TODO(kaftan): Explore adding unit tests for individual methods
-### TODO(kaftan): Add unit test that checks training on a single image w/
-#### groundtruth, and verfiy that loss goes to zero.
-#### Possibly have version that takes it as the whole train & eval dataset,
-#### & verify the loss output from the eval_loop method.
-### TODO(kaftan): Make sure the unit tests run in TAP presubmits or Kokoro
 
 RESTORE_MAP_ERROR_TEMPLATE = (
     'Since we are restoring a v2 style checkpoint'
@@ -277,14 +269,21 @@ def validate_tf_v2_checkpoint_restore_map(checkpoint_restore_map):
   """
 
   for key, value in checkpoint_restore_map.items():
-    if not (isinstance(key, str) and isinstance(value, tf.Module)):
+    if not (isinstance(key, str) and
+            (isinstance(value, tf.Module)
+             or isinstance(value, tf.train.Checkpoint))):
       raise TypeError(RESTORE_MAP_ERROR_TEMPLATE.format(
           key.__class__.__name__, value.__class__.__name__))
 
 
+def is_object_based_checkpoint(checkpoint_path):
+  """Returns true if `checkpoint_path` points to an object-based checkpoint."""
+  var_names = [var[0] for var in tf.train.list_variables(checkpoint_path)]
+  return '_CHECKPOINTABLE_OBJECT_GRAPH' in var_names
+
+
 def load_fine_tune_checkpoint(
-    model, checkpoint_path, checkpoint_type, checkpoint_version,
-    load_all_detection_checkpoint_vars, input_dataset,
+    model, checkpoint_path, checkpoint_type, checkpoint_version, input_dataset,
     unpad_groundtruth_tensors):
   """Load a fine tuning classification or detection checkpoint.
 
@@ -292,8 +291,7 @@ def load_fine_tune_checkpoint(
   the model by computing a dummy loss. (Models might not have built their
   variables before their first execution)
 
-  It then loads a variable-name based classification or detection checkpoint
-  that comes from converted TF 1.x slim model checkpoints.
+  It then loads an object-based classification or detection checkpoint.
 
   This method updates the model in-place and does not return a value.
 
@@ -306,14 +304,22 @@ def load_fine_tune_checkpoint(
       classification checkpoint for initialization prior to training.
       Valid values: `detection`, `classification`.
     checkpoint_version: train_pb2.CheckpointVersion.V1 or V2 enum indicating
-      whether to load checkpoints in V1 style or V2 style.
-    load_all_detection_checkpoint_vars: whether to load all variables (when
-      `fine_tune_checkpoint_type` is `detection`). If False, only variables
-      within the feature extractor scopes are included. Default False.
+      whether to load checkpoints in V1 style or V2 style.  In this binary
+      we only support V2 style (object-based) checkpoints.
     input_dataset: The tf.data Dataset the model is being trained on. Needed
       to get the shapes for the dummy loss computation.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
+
+  Raises:
+    IOError: if `checkpoint_path` does not point at a valid object-based
+      checkpoint
+    ValueError: if `checkpoint_version` is not train_pb2.CheckpointVersion.V2
   """
+  if not is_object_based_checkpoint(checkpoint_path):
+    raise IOError('Checkpoint is expected to be an object-based checkpoint.')
+  if checkpoint_version == train_pb2.CheckpointVersion.V1:
+    raise ValueError('Checkpoint version should be V2')
+
   features, labels = iter(input_dataset).next()
 
   @tf.function
@@ -330,35 +336,20 @@ def load_fine_tune_checkpoint(
         labels)
 
   strategy = tf.compat.v2.distribute.get_strategy()
-  strategy.run(
+  strategy.experimental_run_v2(
       _dummy_computation_fn, args=(
           features,
           labels,
       ))
 
-  if checkpoint_version == train_pb2.CheckpointVersion.V1:
-    var_map = model.restore_map(
-        fine_tune_checkpoint_type=checkpoint_type,
-        load_all_detection_checkpoint_vars=(
-            load_all_detection_checkpoint_vars))
-    available_var_map = variables_helper.get_variables_available_in_checkpoint(
-        var_map,
-        checkpoint_path,
-        include_global_step=False)
-    tf.train.init_from_checkpoint(checkpoint_path,
-                                  available_var_map)
-  elif checkpoint_version == train_pb2.CheckpointVersion.V2:
-    restore_map = model.restore_map(
-        fine_tune_checkpoint_type=checkpoint_type,
-        load_all_detection_checkpoint_vars=(
-            load_all_detection_checkpoint_vars))
-    validate_tf_v2_checkpoint_restore_map(restore_map)
-
-    ckpt = tf.train.Checkpoint(**restore_map)
-    ckpt.restore(checkpoint_path).assert_existing_objects_matched()
+  restore_from_objects_dict = model.restore_from_objects(
+      fine_tune_checkpoint_type=checkpoint_type)
+  validate_tf_v2_checkpoint_restore_map(restore_from_objects_dict)
+  ckpt = tf.train.Checkpoint(**restore_from_objects_dict)
+  ckpt.restore(checkpoint_path).assert_existing_objects_matched()
 
 
-def _get_filepath(strategy, filepath):
+def get_filepath(strategy, filepath):
   """Get appropriate filepath for worker.
 
   Args:
@@ -377,7 +368,7 @@ def _get_filepath(strategy, filepath):
     return os.path.join(filepath, 'temp_worker_{:03d}'.format(task_id))
 
 
-def _clean_temporary_directories(strategy, filepath):
+def clean_temporary_directories(strategy, filepath):
   """Temporary directory clean up for MultiWorker Mirrored Strategy.
 
   This is needed for all non-chief workers.
@@ -392,14 +383,12 @@ def _clean_temporary_directories(strategy, filepath):
 
 
 def train_loop(
-    hparams,
     pipeline_config_path,
     model_dir,
     config_override=None,
     train_steps=None,
     use_tpu=False,
     save_final_config=False,
-    export_to_tpu=None,
     checkpoint_every_n=1000,
     checkpoint_max_to_keep=7,
     **kwargs):
@@ -417,7 +406,6 @@ def train_loop(
     8. Logs the training metrics as TensorBoard summaries.
 
   Args:
-    hparams: A `HParams`.
     pipeline_config_path: A path to a pipeline config file.
     model_dir:
       The directory to save checkpoints and summaries to.
@@ -428,10 +416,6 @@ def train_loop(
     use_tpu: Boolean, whether training and evaluation should run on TPU.
     save_final_config: Whether to save final config (obtained after applying
       overrides) to `model_dir`.
-    export_to_tpu: When use_tpu and export_to_tpu are true,
-      `export_savedmodel()` exports a metagraph for serving on TPU besides the
-      one on CPU. If export_to_tpu is not provided, we will look for it in
-      hparams too.
     checkpoint_every_n:
       Checkpoint every n training steps.
     checkpoint_max_to_keep:
@@ -453,7 +437,7 @@ def train_loop(
       'use_bfloat16': configs['train_config'].use_bfloat16 and use_tpu
   })
   configs = merge_external_params_with_configs(
-      configs, hparams, kwargs_dict=kwargs)
+      configs, None, kwargs_dict=kwargs)
   model_config = configs['model']
   train_config = configs['train_config']
   train_input_config = configs['train_input_config']
@@ -468,33 +452,14 @@ def train_loop(
   if train_steps is None and train_config.num_steps != 0:
     train_steps = train_config.num_steps
 
-  # Read export_to_tpu from hparams if not passed.
-  if export_to_tpu is None:
-    export_to_tpu = hparams.get('export_to_tpu', False)
-  tf.logging.info(
-      'train_loop: use_tpu %s, export_to_tpu %s', use_tpu,
-      export_to_tpu)
-
   if kwargs['use_bfloat16']:
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
-  # Parse the checkpoint fine tuning configs
-  if hparams.load_pretrained:
-    fine_tune_checkpoint_path = train_config.fine_tune_checkpoint
-  else:
-    fine_tune_checkpoint_path = None
-  load_all_detection_checkpoint_vars = (
-      train_config.load_all_detection_checkpoint_vars)
-  # TODO(kaftan) (or anyone else): move this piece of config munging to
-  ## utils/config_util.py
-  if not train_config.fine_tune_checkpoint_type:
-    # train_config.from_detection_checkpoint field is deprecated. For
-    # backward compatibility, set train_config.fine_tune_checkpoint_type
-    # based on train_config.from_detection_checkpoint.
-    if train_config.from_detection_checkpoint:
-      train_config.fine_tune_checkpoint_type = 'detection'
-    else:
-      train_config.fine_tune_checkpoint_type = 'classification'
+  if train_config.load_all_detection_checkpoint_vars:
+    raise ValueError('train_pb2.load_all_detection_checkpoint_vars '
+                     'unsupported in TF2')
+
+  config_util.update_fine_tune_checkpoint_type(train_config)
   fine_tune_checkpoint_type = train_config.fine_tune_checkpoint_type
   fine_tune_checkpoint_version = train_config.fine_tune_checkpoint_version
 
@@ -539,8 +504,8 @@ def train_loop(
   ## Train the model
   # Get the appropriate filepath (temporary or not) based on whether the worker
   # is the chief.
-  summary_writer_filepath = _get_filepath(strategy,
-                                          os.path.join(model_dir, 'train'))
+  summary_writer_filepath = get_filepath(strategy,
+                                         os.path.join(model_dir, 'train'))
   summary_writer = tf.compat.v2.summary.create_file_writer(
       summary_writer_filepath)
 
@@ -556,18 +521,18 @@ def train_loop(
       with tf.compat.v2.summary.record_if(
           lambda: global_step % num_steps_per_iteration == 0):
         # Load a fine-tuning checkpoint.
-        if fine_tune_checkpoint_path:
-          load_fine_tune_checkpoint(detection_model, fine_tune_checkpoint_path,
+        if train_config.fine_tune_checkpoint:
+          load_fine_tune_checkpoint(detection_model,
+                                    train_config.fine_tune_checkpoint,
                                     fine_tune_checkpoint_type,
                                     fine_tune_checkpoint_version,
-                                    load_all_detection_checkpoint_vars,
                                     train_input,
                                     unpad_groundtruth_tensors)
 
         ckpt = tf.compat.v2.train.Checkpoint(
             step=global_step, model=detection_model, optimizer=optimizer)
 
-        manager_dir = _get_filepath(strategy, model_dir)
+        manager_dir = get_filepath(strategy, model_dir)
         if not strategy.extended.should_checkpoint:
           checkpoint_max_to_keep = 1
         manager = tf.compat.v2.train.CheckpointManager(
@@ -597,7 +562,7 @@ def train_loop(
 
         def _sample_and_train(strategy, train_step_fn, data_iterator):
           features, labels = data_iterator.next()
-          per_replica_losses = strategy.run(
+          per_replica_losses = strategy.experimental_run_v2(
               train_step_fn, args=(features, labels))
           # TODO(anjalisridhar): explore if it is safe to remove the
           ## num_replicas scaling of the loss and switch this to a ReduceOp.Mean
@@ -615,6 +580,10 @@ def train_loop(
           return _sample_and_train(strategy, train_step_fn, data_iterator)
 
         train_input_iter = iter(train_input)
+
+        if int(global_step.value()) == 0:
+          manager.save()
+
         checkpointed_step = int(global_step.value())
         logged_step = global_step.value()
 
@@ -646,8 +615,8 @@ def train_loop(
   # Remove the checkpoint directories of the non-chief workers that
   # MultiWorkerMirroredStrategy forces us to save during sync distributed
   # training.
-  _clean_temporary_directories(strategy, manager_dir)
-  _clean_temporary_directories(strategy, summary_writer_filepath)
+  clean_temporary_directories(strategy, manager_dir)
+  clean_temporary_directories(strategy, summary_writer_filepath)
 
 
 def eager_eval_loop(
@@ -767,28 +736,25 @@ def eager_eval_loop(
 
     return eval_dict, losses_dict, class_agnostic
 
+  agnostic_categories = label_map_util.create_class_agnostic_category_index()
+  per_class_categories = label_map_util.create_category_index_from_labelmap(
+      eval_input_config.label_map_path)
+  keypoint_edges = [
+      (kp.start, kp.end) for kp in eval_config.keypoint_edge]
+
   for i, (features, labels) in enumerate(eval_dataset):
     eval_dict, losses_dict, class_agnostic = compute_eval_dict(features, labels)
+
+    if class_agnostic:
+      category_index = agnostic_categories
+    else:
+      category_index = per_class_categories
 
     if i % 100 == 0:
       tf.logging.info('Finished eval step %d', i)
 
     use_original_images = fields.InputDataFields.original_image in features
-    if not use_tpu and use_original_images:
-      # Summary for input images.
-      tf.compat.v2.summary.image(
-          name='eval_input_images',
-          step=global_step,
-          data=eval_dict['original_image'],
-          max_outputs=1)
-      # Summary for prediction/groundtruth side-by-side images.
-      if class_agnostic:
-        category_index = label_map_util.create_class_agnostic_category_index()
-      else:
-        category_index = label_map_util.create_category_index_from_labelmap(
-            eval_input_config.label_map_path)
-      keypoint_edges = [
-          (kp.start, kp.end) for kp in eval_config.keypoint_edge]
+    if use_original_images and i < eval_config.num_visualizations:
       sbys_image_list = vutils.draw_side_by_side_evaluation_image(
           eval_dict,
           category_index=category_index,
@@ -798,10 +764,10 @@ def eager_eval_loop(
           keypoint_edges=keypoint_edges or None)
       sbys_images = tf.concat(sbys_image_list, axis=0)
       tf.compat.v2.summary.image(
-          name='eval_side_by_side',
+          name='eval_side_by_side_' + str(i),
           step=global_step,
           data=sbys_images,
-          max_outputs=eval_config.num_visualizations)
+          max_outputs=1)
 
     if evaluators is None:
       if class_agnostic:
@@ -830,14 +796,15 @@ def eager_eval_loop(
     eval_metrics[loss_key] = loss_metrics[loss_key].result()
 
   eval_metrics = {str(k): v for k, v in eval_metrics.items()}
+  tf.logging.info('Eval metrics at step %d', global_step)
   for k in eval_metrics:
     tf.compat.v2.summary.scalar(k, eval_metrics[k], step=global_step)
+    tf.logging.info('\t+ %s: %f', k, eval_metrics[k])
 
   return eval_metrics
 
 
 def eval_continuously(
-    hparams,
     pipeline_config_path,
     config_override=None,
     train_steps=None,
@@ -846,7 +813,6 @@ def eval_continuously(
     use_tpu=False,
     override_eval_num_epochs=True,
     postprocess_on_cpu=False,
-    export_to_tpu=None,
     model_dir=None,
     checkpoint_dir=None,
     wait_interval=180,
@@ -859,7 +825,6 @@ def eval_continuously(
   on the evaluation data.
 
   Args:
-    hparams: A `HParams`.
     pipeline_config_path: A path to a pipeline config file.
     config_override: A pipeline_pb2.TrainEvalPipelineConfig text proto to
       override the config from `pipeline_config_path`.
@@ -875,10 +840,6 @@ def eval_continuously(
       eval_input.
     postprocess_on_cpu: When use_tpu and postprocess_on_cpu are true,
       postprocess is scheduled on the host cpu.
-    export_to_tpu: When use_tpu and export_to_tpu are true,
-      `export_savedmodel()` exports a metagraph for serving on TPU besides the
-      one on CPU. If export_to_tpu is not provided, we will look for it in
-      hparams too.
     model_dir: Directory to output resulting evaluation summaries to.
     checkpoint_dir: Directory that contains the training checkpoints.
     wait_interval: The mimmum number of seconds to wait before checking for a
@@ -906,7 +867,7 @@ def eval_continuously(
     tf.logging.warning(
         'Forced number of epochs for all eval validations to be 1.')
   configs = merge_external_params_with_configs(
-      configs, hparams, kwargs_dict=kwargs)
+      configs, None, kwargs_dict=kwargs)
   model_config = configs['model']
   train_input_config = configs['train_input_config']
   eval_config = configs['eval_config']
@@ -938,12 +899,6 @@ def eval_continuously(
         model=detection_model)
     eval_inputs.append((eval_input_config.name, next_eval_input))
 
-  # Read export_to_tpu from hparams if not passed.
-  if export_to_tpu is None:
-    export_to_tpu = hparams.get('export_to_tpu', False)
-  tf.logging.info('eval_continuously: use_tpu %s, export_to_tpu %s',
-                  use_tpu, export_to_tpu)
-
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)
 
@@ -956,7 +911,7 @@ def eval_continuously(
 
     for eval_name, eval_input in eval_inputs:
       summary_writer = tf.compat.v2.summary.create_file_writer(
-          model_dir + '/eval' + eval_name)
+          os.path.join(model_dir, 'eval', eval_name))
       with summary_writer.as_default():
         eager_eval_loop(
             detection_model,

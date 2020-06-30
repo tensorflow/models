@@ -52,6 +52,8 @@ EVAL_METRICS_CLASS_DICT = {
         coco_evaluation.CocoKeypointEvaluator,
     'coco_mask_metrics':
         coco_evaluation.CocoMaskEvaluator,
+    'coco_panoptic_metrics':
+        coco_evaluation.CocoPanopticSegmentationEvaluator,
     'oid_challenge_detection_metrics':
         object_detection_evaluation.OpenImagesDetectionChallengeEvaluator,
     'oid_challenge_segmentation_metrics':

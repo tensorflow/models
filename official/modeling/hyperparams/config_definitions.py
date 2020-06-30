@@ -162,19 +162,38 @@ class CallbacksConfig(base_config.Config):
 
 @dataclasses.dataclass
 class TrainerConfig(base_config.Config):
+  """Configuration for trainer.
+
+  Attributes:
+    optimizer_config: optimizer config, it includes optimizer, learning rate,
+      and warmup schedule configs.
+    train_tf_while_loop: whether or not to use tf while loop.
+    train_tf_function: whether or not to use tf_function for training loop.
+    eval_tf_function: whether or not to use tf_function for eval.
+    steps_per_loop: number of steps per loop.
+    summary_interval: number of steps between each summary.
+    checkpoint_intervals: number of steps between checkpoints.
+    max_to_keep: max checkpoints to keep.
+    continuous_eval_timeout: maximum number of seconds to wait between
+      checkpoints, if set to None, continuous eval will wait indefinetely.
+  """
   optimizer_config: OptimizationConfig = OptimizationConfig()
-  train_tf_while_loop: bool = True
-  train_tf_function: bool = True
-  eval_tf_function: bool = True
+  train_steps: int = 0
+  validation_steps: Optional[int] = None
+  validation_interval: int = 100
   steps_per_loop: int = 1000
   summary_interval: int = 1000
   checkpoint_interval: int = 1000
   max_to_keep: int = 5
+  continuous_eval_timeout: Optional[int] = None
+  train_tf_while_loop: bool = True
+  train_tf_function: bool = True
+  eval_tf_function: bool = True
 
 
 @dataclasses.dataclass
 class TaskConfig(base_config.Config):
-  network: base_config.Config = None
+  model: base_config.Config = None
   train_data: DataConfig = DataConfig()
   validation_data: DataConfig = DataConfig()
 
@@ -182,13 +201,9 @@ class TaskConfig(base_config.Config):
 @dataclasses.dataclass
 class ExperimentConfig(base_config.Config):
   """Top-level configuration."""
-  mode: str = "train"  # train, eval, train_and_eval.
   task: TaskConfig = TaskConfig()
   trainer: TrainerConfig = TrainerConfig()
   runtime: RuntimeConfig = RuntimeConfig()
-  train_steps: int = 0
-  validation_steps: Optional[int] = None
-  validation_interval: int = 100
 
 
 _REGISTERED_CONFIGS = {}

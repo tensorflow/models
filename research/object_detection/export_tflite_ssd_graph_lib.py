@@ -24,15 +24,18 @@ import tensorflow.compat.v1 as tf
 from tensorflow.core.framework import attr_value_pb2
 from tensorflow.core.framework import types_pb2
 from tensorflow.core.protobuf import saver_pb2
-from tensorflow.tools.graph_transforms import TransformGraph
 from object_detection import exporter
 from object_detection.builders import graph_rewriter_builder
 from object_detection.builders import model_builder
 from object_detection.builders import post_processing_builder
 from object_detection.core import box_list
+from object_detection.utils import tf_version
 
 _DEFAULT_NUM_CHANNELS = 3
 _DEFAULT_NUM_COORD_BOX = 4
+
+if tf_version.is_tf1():
+  from tensorflow.tools.graph_transforms import TransformGraph  # pylint: disable=g-import-not-at-top
 
 
 def get_const_center_size_encoded_anchors(anchors):

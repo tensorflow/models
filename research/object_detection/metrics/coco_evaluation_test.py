@@ -18,10 +18,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
 import numpy as np
 import tensorflow.compat.v1 as tf
 from object_detection.core import standard_fields
 from object_detection.metrics import coco_evaluation
+from object_detection.utils import tf_version
 
 
 def _get_categories_list():
@@ -250,6 +252,7 @@ class CocoDetectionEvaluationTest(tf.test.TestCase):
           })
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Only Supported in TF1.X')
 class CocoEvaluationPyFuncTest(tf.test.TestCase):
 
   def testGetOneMAPWithMatchingGroundtruthAndDetections(self):
@@ -926,6 +929,7 @@ class CocoKeypointEvaluationTest(tf.test.TestCase):
                            -1.0)
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Only Supported in TF1.X')
 class CocoKeypointEvaluationPyFuncTest(tf.test.TestCase):
 
   def testGetOneMAPWithMatchingKeypoints(self):
@@ -1438,6 +1442,7 @@ class CocoMaskEvaluationTest(tf.test.TestCase):
     self.assertFalse(coco_evaluator._detection_masks_list)
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Only Supported in TF1.X')
 class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
 
   def testAddEvalDict(self):
@@ -1714,6 +1719,222 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
     self.assertFalse(coco_evaluator._image_ids_with_detections)
     self.assertFalse(coco_evaluator._image_id_to_mask_shape_map)
     self.assertFalse(coco_evaluator._detection_masks_list)
+
+
+def _get_panoptic_test_data():
+  # image1 contains 3 people in gt, (2 normal annotation and 1 "is_crowd"
+  # annotation), and 3 people in prediction.
+  gt_masks1 = np.zeros((3, 50, 50), dtype=np.uint8)
+  result_masks1 = np.zeros((3, 50, 50), dtype=np.uint8)
+  gt_masks1[0, 10:20, 20:30] = 1
+  result_masks1[0, 10:18, 20:30] = 1
+  gt_masks1[1, 25:30, 25:35] = 1
+  result_masks1[1, 18:25, 25:30] = 1
+  gt_masks1[2, 40:50, 40:50] = 1
+  result_masks1[2, 47:50, 47:50] = 1
+  gt_class1 = np.array([1, 1, 1])
+  gt_is_crowd1 = np.array([0, 0, 1])
+  result_class1 = np.array([1, 1, 1])
+
+  # image2 contains 1 dog and 1 cat in gt, while 1 person and 1 dog in
+  # prediction.
+  gt_masks2 = np.zeros((2, 30, 40), dtype=np.uint8)
+  result_masks2 = np.zeros((2, 30, 40), dtype=np.uint8)
+  gt_masks2[0, 5:15, 20:35] = 1
+  gt_masks2[1, 20:30, 0:10] = 1
+  result_masks2[0, 20:25, 10:15] = 1
+  result_masks2[1, 6:15, 15:35] = 1
+  gt_class2 = np.array([2, 3])
+  gt_is_crowd2 = np.array([0, 0])
+  result_class2 = np.array([1, 2])
+
+  gt_class = [gt_class1, gt_class2]
+  gt_masks = [gt_masks1, gt_masks2]
+  gt_is_crowd = [gt_is_crowd1, gt_is_crowd2]
+  result_class = [result_class1, result_class2]
+  result_masks = [result_masks1, result_masks2]
+  return gt_class, gt_masks, gt_is_crowd, result_class, result_masks
+
+
+class CocoPanopticEvaluationTest(tf.test.TestCase):
+
+  def test_panoptic_quality(self):
+    pq_evaluator = coco_evaluation.CocoPanopticSegmentationEvaluator(
+        _get_categories_list(), include_metrics_per_category=True)
+    (gt_class, gt_masks, gt_is_crowd, result_class,
+     result_masks) = _get_panoptic_test_data()
+
+    for i in range(2):
+      pq_evaluator.add_single_ground_truth_image_info(
+          image_id='image%d' % i,
+          groundtruth_dict={
+              standard_fields.InputDataFields.groundtruth_classes:
+                  gt_class[i],
+              standard_fields.InputDataFields.groundtruth_instance_masks:
+                  gt_masks[i],
+              standard_fields.InputDataFields.groundtruth_is_crowd:
+                  gt_is_crowd[i]
+          })
+
+      pq_evaluator.add_single_detected_image_info(
+          image_id='image%d' % i,
+          detections_dict={
+              standard_fields.DetectionResultFields.detection_classes:
+                  result_class[i],
+              standard_fields.DetectionResultFields.detection_masks:
+                  result_masks[i]
+          })
+
+    metrics = pq_evaluator.evaluate()
+    self.assertAlmostEqual(metrics['PanopticQuality@0.50IOU_ByCategory/person'],
+                           0.32)
+    self.assertAlmostEqual(metrics['PanopticQuality@0.50IOU_ByCategory/dog'],
+                           135.0 / 195)
+    self.assertAlmostEqual(metrics['PanopticQuality@0.50IOU_ByCategory/cat'], 0)
+    self.assertAlmostEqual(metrics['SegmentationQuality@0.50IOU'],
+                           (0.8 + 135.0 / 195) / 3)
+    self.assertAlmostEqual(metrics['RecognitionQuality@0.50IOU'], (0.4 + 1) / 3)
+    self.assertAlmostEqual(metrics['PanopticQuality@0.50IOU'],
+                           (0.32 + 135.0 / 195) / 3)
+    self.assertEqual(metrics['NumValidClasses'], 3)
+    self.assertEqual(metrics['NumTotalClasses'], 3)
+
+
+@unittest.skipIf(tf_version.is_tf2(), 'Only Supported in TF1.X')
+class CocoPanopticEvaluationPyFuncTest(tf.test.TestCase):
+
+  def testPanopticQualityNoBatch(self):
+    pq_evaluator = coco_evaluation.CocoPanopticSegmentationEvaluator(
+        _get_categories_list(), include_metrics_per_category=True)
+
+    image_id = tf.placeholder(tf.string, shape=())
+    groundtruth_classes = tf.placeholder(tf.int32, shape=(None))
+    groundtruth_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
+    groundtruth_is_crowd = tf.placeholder(tf.int32, shape=(None))
+    detection_classes = tf.placeholder(tf.int32, shape=(None))
+    detection_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
+
+    input_data_fields = standard_fields.InputDataFields
+    detection_fields = standard_fields.DetectionResultFields
+    eval_dict = {
+        input_data_fields.key: image_id,
+        input_data_fields.groundtruth_classes: groundtruth_classes,
+        input_data_fields.groundtruth_instance_masks: groundtruth_masks,
+        input_data_fields.groundtruth_is_crowd: groundtruth_is_crowd,
+        detection_fields.detection_classes: detection_classes,
+        detection_fields.detection_masks: detection_masks,
+    }
+
+    eval_metric_ops = pq_evaluator.get_estimator_eval_metric_ops(eval_dict)
+
+    _, update_op = eval_metric_ops['PanopticQuality@0.50IOU']
+    (gt_class, gt_masks, gt_is_crowd, result_class,
+     result_masks) = _get_panoptic_test_data()
+
+    with self.test_session() as sess:
+      for i in range(2):
+        sess.run(
+            update_op,
+            feed_dict={
+                image_id: 'image%d' % i,
+                groundtruth_classes: gt_class[i],
+                groundtruth_masks: gt_masks[i],
+                groundtruth_is_crowd: gt_is_crowd[i],
+                detection_classes: result_class[i],
+                detection_masks: result_masks[i]
+            })
+    metrics = {}
+    for key, (value_op, _) in eval_metric_ops.items():
+      metrics[key] = value_op
+    metrics = sess.run(metrics)
+    self.assertAlmostEqual(metrics['PanopticQuality@0.50IOU'],
+                           (0.32 + 135.0 / 195) / 3)
+
+  def testPanopticQualityBatched(self):
+    pq_evaluator = coco_evaluation.CocoPanopticSegmentationEvaluator(
+        _get_categories_list(), include_metrics_per_category=True)
+    batch_size = 2
+    image_id = tf.placeholder(tf.string, shape=(batch_size))
+    groundtruth_classes = tf.placeholder(tf.int32, shape=(batch_size, None))
+    groundtruth_masks = tf.placeholder(
+        tf.uint8, shape=(batch_size, None, None, None))
+    groundtruth_is_crowd = tf.placeholder(tf.int32, shape=(batch_size, None))
+    detection_classes = tf.placeholder(tf.int32, shape=(batch_size, None))
+    detection_masks = tf.placeholder(
+        tf.uint8, shape=(batch_size, None, None, None))
+    num_gt_masks_per_image = tf.placeholder(tf.int32, shape=(batch_size))
+    num_det_masks_per_image = tf.placeholder(tf.int32, shape=(batch_size))
+
+    input_data_fields = standard_fields.InputDataFields
+    detection_fields = standard_fields.DetectionResultFields
+    eval_dict = {
+        input_data_fields.key: image_id,
+        input_data_fields.groundtruth_classes: groundtruth_classes,
+        input_data_fields.groundtruth_instance_masks: groundtruth_masks,
+        input_data_fields.groundtruth_is_crowd: groundtruth_is_crowd,
+        input_data_fields.num_groundtruth_boxes: num_gt_masks_per_image,
+        detection_fields.detection_classes: detection_classes,
+        detection_fields.detection_masks: detection_masks,
+        detection_fields.num_detections: num_det_masks_per_image,
+    }
+
+    eval_metric_ops = pq_evaluator.get_estimator_eval_metric_ops(eval_dict)
+
+    _, update_op = eval_metric_ops['PanopticQuality@0.50IOU']
+    (gt_class, gt_masks, gt_is_crowd, result_class,
+     result_masks) = _get_panoptic_test_data()
+    with self.test_session() as sess:
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id: ['image0', 'image1'],
+              groundtruth_classes:
+                  np.stack([
+                      gt_class[0],
+                      np.pad(gt_class[1], (0, 1), mode='constant')
+                  ],
+                           axis=0),
+              groundtruth_masks:
+                  np.stack([
+                      np.pad(
+                          gt_masks[0], ((0, 0), (0, 10), (0, 10)),
+                          mode='constant'),
+                      np.pad(
+                          gt_masks[1], ((0, 1), (0, 30), (0, 20)),
+                          mode='constant'),
+                  ],
+                           axis=0),
+              groundtruth_is_crowd:
+                  np.stack([
+                      gt_is_crowd[0],
+                      np.pad(gt_is_crowd[1], (0, 1), mode='constant')
+                  ],
+                           axis=0),
+              num_gt_masks_per_image: np.array([3, 2]),
+              detection_classes:
+                  np.stack([
+                      result_class[0],
+                      np.pad(result_class[1], (0, 1), mode='constant')
+                  ],
+                           axis=0),
+              detection_masks:
+                  np.stack([
+                      np.pad(
+                          result_masks[0], ((0, 0), (0, 10), (0, 10)),
+                          mode='constant'),
+                      np.pad(
+                          result_masks[1], ((0, 1), (0, 30), (0, 20)),
+                          mode='constant'),
+                  ],
+                           axis=0),
+              num_det_masks_per_image: np.array([3, 2]),
+          })
+    metrics = {}
+    for key, (value_op, _) in eval_metric_ops.items():
+      metrics[key] = value_op
+    metrics = sess.run(metrics)
+    self.assertAlmostEqual(metrics['PanopticQuality@0.50IOU'],
+                           (0.32 + 135.0 / 195) / 3)
 
 
 if __name__ == '__main__':
