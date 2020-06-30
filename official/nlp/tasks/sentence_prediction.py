@@ -125,25 +125,26 @@ class SentencePredictionTask(base_task.Task):
     outputs = self.inference_step(features, model)
     loss = self.build_losses(
         labels=labels, model_outputs=outputs, aux_losses=model.losses)
+    logs = {self.loss: loss}
     if self.metric_type == 'matthews_corrcoef':
-      return {
-          self.loss:
-              loss,
+      logs.update({
           'sentence_prediction':
               tf.expand_dims(
                   tf.math.argmax(outputs['sentence_prediction'], axis=1),
                   axis=0),
           'labels':
               labels,
-      }
+      })
     if self.metric_type == 'pearson_spearman_corr':
-      return {
-          self.loss: loss,
+      logs.update({
           'sentence_prediction': outputs['sentence_prediction'],
           'labels': labels,
-      }
+      })
+    return logs
 
   def aggregate_logs(self, state=None, step_outputs=None):
+    if self.metric_type == 'accuracy':
+      return None
     if state is None:
       state = {'sentence_prediction': [], 'labels': []}
     state['sentence_prediction'].append(
