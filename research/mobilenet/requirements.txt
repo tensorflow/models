@@ -5,8 +5,6 @@ mlperf_compliance==0.0.10
 numpy
 oauth2client
 pandas
-psutil
-py-cpuinfo
 scipy
 tensorflow>=2.1.0
 tensorflow-hub

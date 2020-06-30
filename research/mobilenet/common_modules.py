@@ -205,7 +205,7 @@ def conv2d_block(inputs: tf.Tensor,
     padding = 'VALID'
     inputs = FixedPadding(
       kernel_size=kernel,
-      name='Conv2d_{}_FP'.format(block_id))(inputs)
+      name='Conv2d_{}/FP'.format(block_id))(inputs)
 
   weights_init = get_initializer(stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
@@ -219,12 +219,12 @@ def conv2d_block(inputs: tf.Tensor,
                     name='Conv2d_{}'.format(block_id))(inputs)
 
   x = normalization_layer(axis=-1,
-                          name='Conv2d_{}_{}'.format(
+                          name='Conv2d_{}/{}'.format(
                             block_id, normalization_name),
                           **normalization_params)(x)
 
   outputs = layers.Activation(activation=activation_fn,
-                              name='Conv2d_{}_{}'.format(
+                              name='Conv2d_{}/{}'.format(
                                 block_id, activation_name))(x)
 
   return outputs
@@ -312,7 +312,7 @@ def depthwise_conv2d_block(inputs: tf.Tensor,
     padding = 'VALID'
     inputs = FixedPadding(
       kernel_size=kernel,
-      name='Conv2d_{}_FP'.format(block_id))(inputs)
+      name='Conv2d_{}/FP'.format(block_id))(inputs)
 
   # depth-wise convolution
   x = layers.DepthwiseConv2D(kernel_size=kernel,
@@ -323,13 +323,14 @@ def depthwise_conv2d_block(inputs: tf.Tensor,
                              kernel_regularizer=depth_regularizer,
                              dilation_rate=dilation_rate,
                              use_bias=False,
-                             name='Conv2d_{}_dw'.format(block_id))(inputs)
+                             name='Conv2d_{}/depthwise'.format(
+                               block_id))(inputs)
   x = normalization_layer(axis=-1,
-                          name='Conv2d_{}_dw_{}'.format(
+                          name='Conv2d_{}/depthwise/{}'.format(
                             block_id, normalization_name),
                           **normalization_params)(x)
   x = layers.Activation(activation=activation_fn,
-                        name='Conv2d_{}_dw_{}'.format(
+                        name='Conv2d_{}/depthwise/{}'.format(
                           block_id, activation_name))(x)
 
   # point-wise convolution
@@ -340,13 +341,13 @@ def depthwise_conv2d_block(inputs: tf.Tensor,
                     kernel_initializer=weights_init,
                     kernel_regularizer=regularizer,
                     use_bias=False,
-                    name='Conv2d_{}_pw'.format(block_id))(x)
+                    name='Conv2d_{}/pointwise'.format(block_id))(x)
   x = normalization_layer(axis=-1,
-                          name='Conv2d_{}_pw_{}'.format(
+                          name='Conv2d_{}/pointwise/{}'.format(
                             block_id, normalization_name),
                           **normalization_params)(x)
   outputs = layers.Activation(activation=activation_fn,
-                              name='Conv2d_{}_pw_{}'.format(
+                              name='Conv2d_{}/pointwise/{}'.format(
                                 block_id, activation_name))(x)
   return outputs
 
@@ -354,12 +355,13 @@ def depthwise_conv2d_block(inputs: tf.Tensor,
 def se_block(inputs: tf.Tensor,
              weight_decay: float,
              stddev: float,
+             prefix: Text,
              squeeze_factor: int = 4,
              divisible_by: int = 8,
              inner_activation_name: Text = 'relu',
-             gating_activation_name: Text = 'sigmoid',
+             gating_activation_name: Text = 'hard_sigmoid',
              squeeze_input_tensor: Optional[tf.Tensor] = None,
-             block_id: int = 0) -> tf.Tensor:
+             ) -> tf.Tensor:
   """Squeeze excite block for Mobilenet V3.
 
   If the squeeze_input_tensor - or the input_tensor if squeeze_input_tensor is
@@ -383,7 +385,9 @@ def se_block(inputs: tf.Tensor,
   Returns:
     Gated input_tensor. (e.g. X * SE(X))
   """
-  prefix = 'block_{}_'.format(block_id)
+
+  prefix = prefix + 'squeeze_excite/'
+
   if squeeze_input_tensor is None:
     squeeze_input_tensor = inputs
 
@@ -399,8 +403,9 @@ def se_block(inputs: tf.Tensor,
   weights_init = get_initializer(stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
 
-  x = layers.GlobalAveragePooling2D(name=prefix + 'se_GlobalPool')(inputs)
-  x = layers.Reshape((1, 1, input_channels))(x)
+  x = layers.GlobalAveragePooling2D(name=prefix + 'GlobalPool')(inputs)
+  x = layers.Reshape((1, 1, input_channels),
+                     name=prefix + 'Reshape')(x)
 
   x = layers.Conv2D(squeeze_channels,
                     kernel_size=1,
@@ -409,7 +414,7 @@ def se_block(inputs: tf.Tensor,
                     padding='SAME',
                     name=prefix + 'squeeze')(x)
   x = layers.Activation(activation=inner_activation_fn,
-                        name=prefix + 'squeeze_{}'.format(
+                        name=prefix + 'squeeze/{}'.format(
                           inner_activation_name))(x)
   x = layers.Conv2D(output_channels,
                     kernel_size=1,
@@ -418,10 +423,10 @@ def se_block(inputs: tf.Tensor,
                     padding='SAME',
                     name=prefix + 'excite')(x)
   x = layers.Activation(activation=gating_activation_fn,
-                        name=prefix + 'excite_{}'.format(
+                        name=prefix + 'excite/{}'.format(
                           gating_activation_name))(x)
 
-  x = layers.Multiply(name=prefix + 'se_Mul')([inputs, x])
+  x = layers.Multiply(name=prefix + 'Mul')([inputs, x])
   return x
 
 
@@ -504,7 +509,7 @@ def inverted_res_block(inputs: tf.Tensor,
     Tensor of depth num_outputs
   """
 
-  prefix = 'block_{}_'.format(block_id)
+  prefix = 'expanded_conv_{}/'.format(block_id)
   filters = width_multiplier_op_divisible(
     filters=filters,
     width_multiplier=width_multiplier,
@@ -523,25 +528,28 @@ def inverted_res_block(inputs: tf.Tensor,
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
   depth_regularizer = regularizer if regularize_depthwise else None
 
-  # Expand
+  x = inputs
   in_channels = inputs.shape.as_list()[-1]
-  expended_size = expand_input_by_factor(
-    num_inputs=in_channels,
-    expansion_size=expansion_size)
-  x = layers.Conv2D(filters=expended_size,
-                    kernel_size=(1, 1),
-                    strides=(1, 1),
-                    padding='SAME',
-                    kernel_initializer=weights_init,
-                    kernel_regularizer=regularizer,
-                    use_bias=False,
-                    name=prefix + 'expand')(inputs)
+  # Expand
+  if expansion_size > 1:
+    expended_size = expand_input_by_factor(
+      num_inputs=in_channels,
+      expansion_size=expansion_size)
+    x = layers.Conv2D(filters=expended_size,
+                      kernel_size=(1, 1),
+                      strides=(1, 1),
+                      padding='SAME',
+                      kernel_initializer=weights_init,
+                      kernel_regularizer=regularizer,
+                      use_bias=False,
+                      name=prefix + 'expand')(x)
 
-  x = normalization_layer(axis=-1,
-                          name=prefix + 'expend_{}'.format(normalization_name),
-                          **normalization_params)(x)
-  x = layers.Activation(activation=activation_fn,
-                        name=prefix + 'expand_{}'.format(activation_name))(x)
+    x = normalization_layer(axis=-1,
+                            name=prefix + 'expand/{}'.format(
+                              normalization_name),
+                            **normalization_params)(x)
+    x = layers.Activation(activation=activation_fn,
+                          name=prefix + 'expand/{}'.format(activation_name))(x)
 
   # Depthwise
   padding = 'SAME'
@@ -561,20 +569,19 @@ def inverted_res_block(inputs: tf.Tensor,
                              use_bias=False,
                              name=prefix + 'depthwise')(x)
   x = normalization_layer(axis=-1,
-                          name=prefix + 'depthwise_{}'.format(
+                          name=prefix + 'depthwise/{}'.format(
                             normalization_name),
                           **normalization_params)(x)
   x = layers.Activation(activation=depth_activation_fn,
-                        name=prefix + 'depthwise_{}'.format(
+                        name=prefix + 'depthwise/{}'.format(
                           depthwise_activation_name))(x)
 
   if squeeze_factor:
     x = se_block(inputs=x,
                  squeeze_factor=squeeze_factor,
-                 inner_activation_name=activation_name,
                  stddev=stddev,
                  weight_decay=weight_decay,
-                 block_id=block_id)
+                 prefix=prefix)
 
   # Project
   x = layers.Conv2D(filters=filters,
@@ -586,7 +593,7 @@ def inverted_res_block(inputs: tf.Tensor,
                     use_bias=False,
                     name=prefix + 'project')(x)
   x = normalization_layer(axis=-1,
-                          name=prefix + 'project_{}'.format(normalization_name),
+                          name=prefix + 'project/{}'.format(normalization_name),
                           **normalization_params)(x)
 
   if (residual and
@@ -692,7 +699,7 @@ def mobilenet_base(inputs: tf.Tensor,
         kernel=block_def.kernel,
         strides=block_def.stride,
         activation_name=block_def.activation_name,
-        width_multiplier=1,
+        width_multiplier=width_multiplier,
         min_depth=min_depth,
         weight_decay=weight_decay,
         stddev=stddev,
@@ -764,18 +771,18 @@ def mobilenet_head(inputs: tf.Tensor,
   spatial_squeeze = config.spatial_squeeze
 
   x = layers.Dropout(rate=1 - dropout_keep_prob,
-                     name='top_Dropout')(inputs)
+                     name='top/Dropout')(inputs)
   # 1 x 1 x num_classes
   x = layers.Conv2D(filters=num_classes,
                     kernel_size=(1, 1),
                     padding='SAME',
                     bias_initializer=tf.keras.initializers.Zeros(),
-                    name='top_Conv2d_1x1_output')(x)
+                    name='top/Conv2d_1x1_output')(x)
   if spatial_squeeze:
     x = layers.Reshape(target_shape=(num_classes,),
-                       name='top_SpatialSqueeze')(x)
+                       name='top/SpatialSqueeze')(x)
 
   x = layers.Activation(activation='softmax',
-                        name='top_Predictions')(x)
+                        name='top/Predictions')(x)
 
   return x

@@ -29,10 +29,8 @@ from research.mobilenet.configs import archs
 
 layers = tf.keras.layers
 
-MobileNetV3SmallConfig = archs.MobileNetV3SmallConfig
-MobileNetV3LargeConfig = archs.MobileNetV3LargeConfig
-
-MobileNetV3Config = Union[MobileNetV3SmallConfig, MobileNetV3LargeConfig]
+MobileNetV3Config = Union[archs.MobileNetV3SmallConfig,
+                          archs.MobileNetV3LargeConfig]
 
 
 def mobilenet_v3(config: MobileNetV3Config,
@@ -54,13 +52,13 @@ def mobilenet_v3(config: MobileNetV3Config,
   # build top
   # global average pooling.
   x = layers.GlobalAveragePooling2D(data_format='channels_last',
-                                    name='top_GlobalPool')(x)
-  x = layers.Reshape((1, 1, x.shape[1]), name='top_Reshape')(x)
+                                    name='top/GlobalPool')(x)
+  x = layers.Reshape((1, 1, x.shape[1]), name='top/Reshape')(x)
 
   # last layer of conv
-  if isinstance(config, MobileNetV3SmallConfig):
+  if isinstance(config, archs.MobileNetV3SmallConfig):
     last_conv_channels = 1024
-  elif isinstance(config, MobileNetV3LargeConfig):
+  elif isinstance(config, archs.MobileNetV3LargeConfig):
     last_conv_channels = 1280
   else:
     raise ValueError('Only support MobileNetV3S and MobileNetV3L')
@@ -75,10 +73,10 @@ def mobilenet_v3(config: MobileNetV3Config,
   x = layers.Conv2D(filters=last_conv_channels,
                     kernel_size=(1, 1),
                     padding='SAME',
-                    name='top_Conv2d_1x1')(x)
+                    name='top/Conv2d_1x1')(x)
   x = layers.Activation(
     activation=archs.get_activation_function()[activation_name],
-    name='top_Conv2d_1x1_{}'.format(activation_name))(x)
+    name='top/Conv2d_1x1_{}'.format(activation_name))(x)
 
   # build classification head
   x = common_modules.mobilenet_head(x, config)
@@ -90,19 +88,19 @@ def mobilenet_v3(config: MobileNetV3Config,
 
 def mobilenet_v3_small(
     input_shape: Tuple[int, int, int] = (224, 224, 3),
-    config: MobileNetV3SmallConfig = MobileNetV3SmallConfig()
+    config: archs.MobileNetV3SmallConfig = archs.MobileNetV3SmallConfig()
 ) -> tf.keras.models.Model:
   """Instantiates the MobileNet V3 Small Model."""
-  assert isinstance(config, MobileNetV3SmallConfig)
+  assert isinstance(config, archs.MobileNetV3SmallConfig)
   return mobilenet_v3(input_shape=input_shape, config=config)
 
 
 def mobilenet_v3_large(
     input_shape: Tuple[int, int, int] = (224, 224, 3),
-    config: MobileNetV3LargeConfig = MobileNetV3LargeConfig(),
+    config: archs.MobileNetV3LargeConfig = archs.MobileNetV3LargeConfig(),
 ) -> tf.keras.models.Model:
   """Instantiates the MobileNet V3 Large Model."""
-  assert isinstance(config, MobileNetV3LargeConfig)
+  assert isinstance(config, archs.MobileNetV3LargeConfig)
   return mobilenet_v3(input_shape=input_shape, config=config)
 
 
