@@ -42,67 +42,39 @@ flags.DEFINE_boolean('block3_strides', False,
 flags.DEFINE_float('iou', 1.0, 'IOU for non-max suppression.')
 
 
-def _build_tensor_info(tensor_dict):
-  """Replace the dict's value by the tensor info.
+class _ExtractModule(tf.Module):
+  """Helper module to build and save DELF model."""
 
-  Args:
-    tensor_dict: A dictionary contains <string, tensor>.
+  def __init__(self, block3_strides, iou):
+    """Initialization of DELF model.
 
-  Returns:
-    dict: New dictionary contains <string, tensor_info>.
-  """
-  return {
-      k: tf.compat.v1.saved_model.utils.build_tensor_info(t)
-      for k, t in tensor_dict.items()
-  }
-
-
-def main(argv):
-  if len(argv) > 1:
-    raise app.UsageError('Too many command-line arguments.')
-
-  export_path = FLAGS.export_path
-  if os.path.exists(export_path):
-    raise ValueError('Export_path already exists.')
-
-  with tf.Graph().as_default() as g, tf.compat.v1.Session(graph=g) as sess:
-
+    Args:
+      block3_strides: bool, whether to add strides to the output of block3.
+      iou: IOU for non-max suppression.
+    """
+    self._stride_factor = 2.0 if block3_strides else 1.0
+    self._iou = iou
     # Setup the DELF model for extraction.
-    model = delf_model.Delf(block3_strides=FLAGS.block3_strides, name='DELF')
+    self._model = delf_model.Delf(
+        block3_strides=block3_strides, name='DELF')
 
-    # Initial forward pass to build model.
-    images = tf.zeros((1, 321, 321, 3), dtype=tf.float32)
-    model(images)
+  def LoadWeights(self, checkpoint_path):
+    self._model.load_weights(checkpoint_path)
 
-    stride_factor = 2.0 if FLAGS.block3_strides else 1.0
-
-    # Setup the multiscale keypoint extraction.
-    input_image = tf.compat.v1.placeholder(
-        tf.uint8, shape=(None, None, 3), name='input_image')
-    input_abs_thres = tf.compat.v1.placeholder(
-        tf.float32, shape=(), name='input_abs_thres')
-    input_scales = tf.compat.v1.placeholder(
-        tf.float32, shape=[None], name='input_scales')
-    input_max_feature_num = tf.compat.v1.placeholder(
-        tf.int32, shape=(), name='input_max_feature_num')
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[None, None, 3], dtype=tf.uint8, name='input_image'),
+      tf.TensorSpec(shape=[None], dtype=tf.float32, name='input_scales'),
+      tf.TensorSpec(shape=(), dtype=tf.int32, name='input_max_feature_num'),
+      tf.TensorSpec(shape=(), dtype=tf.float32, name='input_abs_thres')
+  ])
+  def ExtractFeatures(self, input_image, input_scales, input_max_feature_num,
+                      input_abs_thres):
 
     extracted_features = export_model_utils.ExtractLocalFeatures(
         input_image, input_scales, input_max_feature_num, input_abs_thres,
-        FLAGS.iou, lambda x: model(x, training=False), stride_factor)
+        self._iou, lambda x: self._model(x, training=False),
+        self._stride_factor)
 
-    # Load the weights.
-    checkpoint_path = FLAGS.ckpt_path
-    model.load_weights(checkpoint_path)
-    print('Checkpoint loaded from ', checkpoint_path)
-
-    named_input_tensors = {
-        'input_image': input_image,
-        'input_scales': input_scales,
-        'input_abs_thres': input_abs_thres,
-        'input_max_feature_num': input_max_feature_num,
-    }
-
-    # Outputs to the exported model.
     named_output_tensors = {}
     named_output_tensors['boxes'] = tf.identity(
         extracted_features[0], name='boxes')
@@ -112,25 +84,27 @@ def main(argv):
         extracted_features[2], name='scales')
     named_output_tensors['scores'] = tf.identity(
         extracted_features[3], name='scores')
+    return named_output_tensors
 
-    # Export the model.
-    signature_def = tf.compat.v1.saved_model.signature_def_utils.build_signature_def(
-        inputs=_build_tensor_info(named_input_tensors),
-        outputs=_build_tensor_info(named_output_tensors))
 
-    print('Exporting trained model to:', export_path)
-    builder = tf.compat.v1.saved_model.builder.SavedModelBuilder(export_path)
+def main(argv):
+  if len(argv) > 1:
+    raise app.UsageError('Too many command-line arguments.')
 
-    init_op = None
-    builder.add_meta_graph_and_variables(
-        sess, [tf.compat.v1.saved_model.tag_constants.SERVING],
-        signature_def_map={
-            tf.compat.v1.saved_model.signature_constants
-            .DEFAULT_SERVING_SIGNATURE_DEF_KEY:
-                signature_def
-        },
-        main_op=init_op)
-    builder.save()
+  export_path = FLAGS.export_path
+  if os.path.exists(export_path):
+    raise ValueError(f'Export_path {export_path} already exists. Please '
+                     'specify a different path or delete the existing one.')
+
+  module = _ExtractModule(FLAGS.block3_strides, FLAGS.iou)
+
+  # Load the weights.
+  checkpoint_path = FLAGS.ckpt_path
+  module.LoadWeights(checkpoint_path)
+  print('Checkpoint loaded from ', checkpoint_path)
+
+  # Save the module
+  tf.saved_model.save(module, export_path)
 
 
 if __name__ == '__main__':
