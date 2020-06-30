@@ -119,6 +119,24 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     ])
     return tf.constant(keypoints, dtype=tf.float32)
 
+  def createTestDensePose(self):
+    dp_num_points = tf.constant([1, 3], dtype=tf.int32)
+    dp_part_ids = tf.constant(
+        [[4, 0, 0],
+         [1, 0, 5]], dtype=tf.int32)
+    dp_surface_coords = tf.constant(
+        [
+            # Instance 0.
+            [[0.1, 0.2, 0.6, 0.7],
+             [0.0, 0.0, 0.0, 0.0],
+             [0.0, 0.0, 0.0, 0.0]],
+            # Instance 1.
+            [[0.8, 0.9, 0.2, 0.4],
+             [0.1, 0.3, 0.2, 0.8],
+             [0.6, 1.0, 0.3, 0.4]],
+        ], dtype=tf.float32)
+    return dp_num_points, dp_part_ids, dp_surface_coords
+
   def createKeypointFlipPermutation(self):
     return [0, 2, 1]
 
@@ -694,7 +712,11 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
                                 test_masks=True,
                                 test_keypoints=True)
 
-  def testRunRandomHorizontalFlipWithMaskAndKeypoints(self):
+  @parameterized.parameters(
+      {'include_dense_pose': False},
+      {'include_dense_pose': True}
+  )
+  def testRunRandomHorizontalFlipWithMaskAndKeypoints(self, include_dense_pose):
 
     def graph_fn():
       preprocess_options = [(preprocessor.random_horizontal_flip, {})]
@@ -704,6 +726,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       boxes = self.createTestBoxes()
       masks = self.createTestMasks()
       keypoints, keypoint_visibilities = self.createTestKeypoints()
+      dp_num_point, dp_part_ids, dp_surface_coords = self.createTestDensePose()
       keypoint_flip_permutation = self.createKeypointFlipPermutation()
       tensor_dict = {
           fields.InputDataFields.image:
@@ -717,13 +740,21 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
           fields.InputDataFields.groundtruth_keypoint_visibilities:
               keypoint_visibilities
       }
+      if include_dense_pose:
+        tensor_dict.update({
+            fields.InputDataFields.groundtruth_dp_num_points: dp_num_point,
+            fields.InputDataFields.groundtruth_dp_part_ids: dp_part_ids,
+            fields.InputDataFields.groundtruth_dp_surface_coords:
+                dp_surface_coords
+        })
       preprocess_options = [(preprocessor.random_horizontal_flip, {
           'keypoint_flip_permutation': keypoint_flip_permutation
       })]
       preprocessor_arg_map = preprocessor.get_default_func_arg_map(
           include_instance_masks=True,
           include_keypoints=True,
-          include_keypoint_visibilities=True)
+          include_keypoint_visibilities=True,
+          include_dense_pose=include_dense_pose)
       tensor_dict = preprocessor.preprocess(
           tensor_dict, preprocess_options, func_arg_map=preprocessor_arg_map)
       boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
@@ -731,14 +762,26 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       keypoints = tensor_dict[fields.InputDataFields.groundtruth_keypoints]
       keypoint_visibilities = tensor_dict[
           fields.InputDataFields.groundtruth_keypoint_visibilities]
-      return [boxes, masks, keypoints, keypoint_visibilities]
+      output_tensors = [boxes, masks, keypoints, keypoint_visibilities]
+      if include_dense_pose:
+        dp_num_points = tensor_dict[
+            fields.InputDataFields.groundtruth_dp_num_points]
+        dp_part_ids = tensor_dict[
+            fields.InputDataFields.groundtruth_dp_part_ids]
+        dp_surface_coords = tensor_dict[
+            fields.InputDataFields.groundtruth_dp_surface_coords]
+        output_tensors.extend([dp_num_points, dp_part_ids, dp_surface_coords])
+      return output_tensors
 
-    boxes, masks, keypoints, keypoint_visibilities = self.execute_cpu(
-        graph_fn, [])
-    self.assertIsNotNone(boxes)
-    self.assertIsNotNone(masks)
-    self.assertIsNotNone(keypoints)
-    self.assertIsNotNone(keypoint_visibilities)
+    output_tensors = self.execute_cpu(graph_fn, [])
+    self.assertIsNotNone(output_tensors[0])  # Boxes.
+    self.assertIsNotNone(output_tensors[1])  # Masks.
+    self.assertIsNotNone(output_tensors[2])  # Keypoints
+    self.assertIsNotNone(output_tensors[3])  # Keypoint Visibilities.
+    if include_dense_pose:
+      self.assertIsNotNone(output_tensors[4])  # DensePose Num Points.
+      self.assertIsNotNone(output_tensors[5])  # DensePose Part IDs.
+      self.assertIsNotNone(output_tensors[6])  # DensePose Surface Coords
 
   def testRandomVerticalFlip(self):
 
@@ -1886,6 +1929,65 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       self.assertAllClose(
           distorted_keypoints_.flatten(), expected_keypoints.flatten())
 
+  def testRunRandomCropImageWithDensePose(self):
+    def graph_fn():
+      image = self.createColorfulTestImage()
+      boxes = self.createTestBoxes()
+      labels = self.createTestLabels()
+      weights = self.createTestGroundtruthWeights()
+      dp_num_points, dp_part_ids, dp_surface_coords = self.createTestDensePose()
+
+      tensor_dict = {
+          fields.InputDataFields.image: image,
+          fields.InputDataFields.groundtruth_boxes: boxes,
+          fields.InputDataFields.groundtruth_classes: labels,
+          fields.InputDataFields.groundtruth_weights: weights,
+          fields.InputDataFields.groundtruth_dp_num_points: dp_num_points,
+          fields.InputDataFields.groundtruth_dp_part_ids: dp_part_ids,
+          fields.InputDataFields.groundtruth_dp_surface_coords:
+              dp_surface_coords
+      }
+
+      preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+          include_dense_pose=True)
+
+      preprocessing_options = [(preprocessor.random_crop_image, {})]
+
+      with mock.patch.object(
+          tf.image,
+          'sample_distorted_bounding_box'
+      ) as mock_sample_distorted_bounding_box:
+        mock_sample_distorted_bounding_box.return_value = (
+            tf.constant([6, 40, 0], dtype=tf.int32),
+            tf.constant([134, 340, -1], dtype=tf.int32),
+            tf.constant([[[0.03, 0.1, 0.7, 0.95]]], dtype=tf.float32))
+        distorted_tensor_dict = preprocessor.preprocess(
+            tensor_dict,
+            preprocessing_options,
+            func_arg_map=preprocessor_arg_map)
+        distorted_image = distorted_tensor_dict[fields.InputDataFields.image]
+        distorted_dp_num_points = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_dp_num_points]
+        distorted_dp_part_ids = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_dp_part_ids]
+        distorted_dp_surface_coords = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_dp_surface_coords]
+        return [distorted_image, distorted_dp_num_points, distorted_dp_part_ids,
+                distorted_dp_surface_coords]
+    (distorted_image_, distorted_dp_num_points_, distorted_dp_part_ids_,
+     distorted_dp_surface_coords_) = self.execute_cpu(graph_fn, [])
+    expected_dp_num_points = np.array([1, 1])
+    expected_dp_part_ids = np.array([[4], [0]])
+    expected_dp_surface_coords = np.array([
+        [[0.10447761, 0.1176470, 0.6, 0.7]],
+        [[0.10447761, 0.2352941, 0.2, 0.8]],
+    ])
+    self.assertAllEqual(distorted_image_.shape, [1, 134, 340, 3])
+    self.assertAllEqual(distorted_dp_num_points_, expected_dp_num_points)
+    self.assertAllEqual(distorted_dp_part_ids_, expected_dp_part_ids)
+    self.assertAllClose(distorted_dp_surface_coords_,
+                        expected_dp_surface_coords)
+
   def testRunRetainBoxesAboveThreshold(self):
     def graph_fn():
       boxes = self.createTestBoxes()
@@ -2276,7 +2378,11 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
         padded_boxes_[:, 3] - padded_boxes_[:, 1])))
 
-  def testRandomPadImageWithKeypointsAndMasks(self):
+  @parameterized.parameters(
+      {'include_dense_pose': False},
+      {'include_dense_pose': True}
+  )
+  def testRandomPadImageWithKeypointsAndMasks(self, include_dense_pose):
     def graph_fn():
       preprocessing_options = [(preprocessor.normalize_image, {
           'original_minval': 0,
@@ -2290,12 +2396,15 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       labels = self.createTestLabels()
       masks = self.createTestMasks()
       keypoints, _ = self.createTestKeypoints()
+      _, _, dp_surface_coords = self.createTestDensePose()
       tensor_dict = {
           fields.InputDataFields.image: images,
           fields.InputDataFields.groundtruth_boxes: boxes,
           fields.InputDataFields.groundtruth_classes: labels,
           fields.InputDataFields.groundtruth_instance_masks: masks,
           fields.InputDataFields.groundtruth_keypoints: keypoints,
+          fields.InputDataFields.groundtruth_dp_surface_coords:
+              dp_surface_coords
       }
       tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
       images = tensor_dict[fields.InputDataFields.image]
@@ -2304,7 +2413,8 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       func_arg_map = preprocessor.get_default_func_arg_map(
           include_instance_masks=True,
           include_keypoints=True,
-          include_keypoint_visibilities=True)
+          include_keypoint_visibilities=True,
+          include_dense_pose=include_dense_pose)
       padded_tensor_dict = preprocessor.preprocess(tensor_dict,
                                                    preprocessing_options,
                                                    func_arg_map=func_arg_map)
@@ -2323,15 +2433,29 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       padded_keypoints_shape = tf.shape(padded_keypoints)
       images_shape = tf.shape(images)
       padded_images_shape = tf.shape(padded_images)
-      return [boxes_shape, padded_boxes_shape, padded_masks_shape,
-              keypoints_shape, padded_keypoints_shape, images_shape,
-              padded_images_shape, boxes, padded_boxes, keypoints,
-              padded_keypoints]
+      outputs = [boxes_shape, padded_boxes_shape, padded_masks_shape,
+                 keypoints_shape, padded_keypoints_shape, images_shape,
+                 padded_images_shape, boxes, padded_boxes, keypoints,
+                 padded_keypoints]
+      if include_dense_pose:
+        padded_dp_surface_coords = padded_tensor_dict[
+            fields.InputDataFields.groundtruth_dp_surface_coords]
+        outputs.extend([dp_surface_coords, padded_dp_surface_coords])
+      return outputs
 
-    (boxes_shape_, padded_boxes_shape_, padded_masks_shape_,
-     keypoints_shape_, padded_keypoints_shape_, images_shape_,
-     padded_images_shape_, boxes_, padded_boxes_,
-     keypoints_, padded_keypoints_) = self.execute_cpu(graph_fn, [])
+    outputs = self.execute_cpu(graph_fn, [])
+    boxes_shape_ = outputs[0]
+    padded_boxes_shape_ = outputs[1]
+    padded_masks_shape_ = outputs[2]
+    keypoints_shape_ = outputs[3]
+    padded_keypoints_shape_ = outputs[4]
+    images_shape_ = outputs[5]
+    padded_images_shape_ = outputs[6]
+    boxes_ = outputs[7]
+    padded_boxes_ = outputs[8]
+    keypoints_ = outputs[9]
+    padded_keypoints_ = outputs[10]
+
     self.assertAllEqual(boxes_shape_, padded_boxes_shape_)
     self.assertAllEqual(keypoints_shape_, padded_keypoints_shape_)
     self.assertTrue((images_shape_[1] >= padded_images_shape_[1] * 0.5).all)
@@ -2347,6 +2471,11 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
         padded_keypoints_[1, :, 0] - padded_keypoints_[0, :, 0])))
     self.assertTrue(np.all((keypoints_[1, :, 1] - keypoints_[0, :, 1]) >= (
         padded_keypoints_[1, :, 1] - padded_keypoints_[0, :, 1])))
+    if include_dense_pose:
+      dp_surface_coords = outputs[11]
+      padded_dp_surface_coords = outputs[12]
+      self.assertAllClose(padded_dp_surface_coords[:, :, 2:],
+                          dp_surface_coords[:, :, 2:])
 
   def testRandomAbsolutePadImage(self):
     height_padding = 10
