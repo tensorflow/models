@@ -2549,8 +2549,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
             image_shape[1], image_shape[2], check_range=False).get()
 
         flat_cropped_gt_mask = self._crop_and_resize_fn(
-            tf.expand_dims(flat_gt_masks, -1),
-            tf.expand_dims(flat_normalized_proposals, axis=1),
+            [tf.expand_dims(flat_gt_masks, -1)],
+            tf.expand_dims(flat_normalized_proposals, axis=1), None,
             [mask_height, mask_width])
         # Without stopping gradients into cropped groundtruth masks the
         # performance with 100-padded groundtruth masks when batch size > 1 is
