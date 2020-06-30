@@ -51,16 +51,19 @@ class ModelTest(tf.test.TestCase):
     self.chars_logit_shape = (self.batch_size, self.seq_length,
                               self.num_char_classes)
     self.length_logit_shape = (self.batch_size, self.seq_length + 1)
+    # Placeholder knows image dimensions, but not batch size.
+    self.input_images = tf.placeholder(
+        tf.float32,
+        shape=(None, self.image_height, self.image_width, 3),
+        name='input_node')
 
     self.initialize_fakes()
 
   def initialize_fakes(self):
     self.images_shape = (self.batch_size, self.image_height, self.image_width,
                          3)
-    self.fake_images = tf.constant(
-        self.rng.randint(low=0, high=255,
-                         size=self.images_shape).astype('float32'),
-        name='input_node')
+    self.fake_images = self.rng.randint(
+        low=0, high=255, size=self.images_shape).astype('float32')
     self.fake_conv_tower_np = self.rng.randn(
         *self.conv_tower_shape).astype('float32')
     self.fake_conv_tower = tf.constant(self.fake_conv_tower_np)
@@ -78,13 +81,15 @@ class ModelTest(tf.test.TestCase):
         charset=charset)
 
   def test_char_related_shapes(self):
-    ocr_model = self.create_model()
+    charset = create_fake_charset(self.num_char_classes)
+    ocr_model = self.create_model(charset=charset)
     with self.test_session() as sess:
       endpoints_tf = ocr_model.create_base(
-          images=self.fake_images, labels_one_hot=None)
-
+          images=self.input_images, labels_one_hot=None)
       sess.run(tf.global_variables_initializer())
-      endpoints = sess.run(endpoints_tf)
+      tf.tables_initializer().run()
+      endpoints = sess.run(
+          endpoints_tf, feed_dict={self.input_images: self.fake_images})
 
       self.assertEqual((self.batch_size, self.seq_length,
                         self.num_char_classes), endpoints.chars_logit.shape)
@@ -94,13 +99,17 @@ class ModelTest(tf.test.TestCase):
                        endpoints.predicted_chars.shape)
       self.assertEqual((self.batch_size, self.seq_length),
                        endpoints.predicted_scores.shape)
+      self.assertEqual((self.batch_size,), endpoints.predicted_text.shape)
+      self.assertEqual((self.batch_size,), endpoints.predicted_conf.shape)
+      self.assertEqual((self.batch_size,), endpoints.normalized_seq_conf.shape)
 
   def test_predicted_scores_are_within_range(self):
     ocr_model = self.create_model()
 
     _, _, scores = ocr_model.char_predictions(self.fake_logits)
     with self.test_session() as sess:
-      scores_np = sess.run(scores)
+      scores_np = sess.run(
+          scores, feed_dict={self.input_images: self.fake_images})
 
     values_in_range = (scores_np >= 0.0) & (scores_np <= 1.0)
     self.assertTrue(
@@ -111,10 +120,11 @@ class ModelTest(tf.test.TestCase):
   def test_conv_tower_shape(self):
     with self.test_session() as sess:
       ocr_model = self.create_model()
-      conv_tower = ocr_model.conv_tower_fn(self.fake_images)
+      conv_tower = ocr_model.conv_tower_fn(self.input_images)
 
       sess.run(tf.global_variables_initializer())
-      conv_tower_np = sess.run(conv_tower)
+      conv_tower_np = sess.run(
+          conv_tower, feed_dict={self.input_images: self.fake_images})
 
       self.assertEqual(self.conv_tower_shape, conv_tower_np.shape)
 
@@ -124,7 +134,7 @@ class ModelTest(tf.test.TestCase):
     # updates, gradients and variances. It also depends on the type of used
     # optimizer.
     ocr_model = self.create_model()
-    ocr_model.create_base(images=self.fake_images, labels_one_hot=None)
+    ocr_model.create_base(images=self.input_images, labels_one_hot=None)
     with self.test_session() as sess:
       tfprof_root = tf.profiler.profile(
           sess.graph,
@@ -158,7 +168,7 @@ class ModelTest(tf.test.TestCase):
 
     loss = model.sequence_loss_fn(self.fake_logits, self.fake_labels)
     with self.test_session() as sess:
-      loss_np = sess.run(loss)
+      loss_np = sess.run(loss, feed_dict={self.input_images: self.fake_images})
 
     # This test checks that the loss function is 'runnable'.
     self.assertEqual(loss_np.shape, tuple())
@@ -172,7 +182,8 @@ class ModelTest(tf.test.TestCase):
     Returns:
       a list of tensors with encoded image coordinates in them.
     """
-    batch_size, h, w, _ = net.shape.as_list()
+    batch_size = tf.shape(net)[0]
+    _, h, w, _ = net.shape.as_list()
     h_loc = [
       tf.tile(
           tf.reshape(
@@ -197,7 +208,8 @@ class ModelTest(tf.test.TestCase):
     conv_w_coords_tf = model.encode_coordinates_fn(self.fake_conv_tower)
 
     with self.test_session() as sess:
-      conv_w_coords = sess.run(conv_w_coords_tf)
+      conv_w_coords = sess.run(
+          conv_w_coords_tf, feed_dict={self.input_images: self.fake_images})
 
     batch_size, height, width, feature_size = self.conv_tower_shape
     self.assertEqual(conv_w_coords.shape, (batch_size, height, width,
@@ -209,7 +221,8 @@ class ModelTest(tf.test.TestCase):
     conv_w_coords_tf = model.encode_coordinates_fn(self.fake_conv_tower)
 
     with self.test_session() as sess:
-      conv_w_coords = sess.run(conv_w_coords_tf)
+      conv_w_coords = sess.run(
+          conv_w_coords_tf, feed_dict={self.input_images: self.fake_images})
 
     self.assertAllEqual(conv_w_coords, self.fake_conv_tower_np)
 
@@ -221,7 +234,8 @@ class ModelTest(tf.test.TestCase):
     conv_w_coords_tf = model.encode_coordinates_fn(fake_conv_tower)
 
     with self.test_session() as sess:
-      conv_w_coords = sess.run(conv_w_coords_tf)
+      conv_w_coords = sess.run(
+          conv_w_coords_tf, feed_dict={self.input_images: self.fake_images})
 
     # Original features
     self.assertAllEqual(conv_w_coords[0, :, :, :4],

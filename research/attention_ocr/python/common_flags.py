@@ -35,9 +35,17 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 
 
+_common_flags_defined = False
+
 def define():
   """Define common flags."""
   # yapf: disable
+  # common_flags.define() may be called multiple times in unit tests.
+  global _common_flags_defined
+  if _common_flags_defined:
+    return
+  _common_flags_defined = True
+
   flags.DEFINE_integer('batch_size', 32,
                        'Batch size.')
 

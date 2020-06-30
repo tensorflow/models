@@ -26,6 +26,7 @@ Usage example:
 import sys
 import collections
 import logging
+import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow.contrib.slim.nets import inception
@@ -36,7 +37,7 @@ import utils
 
 OutputEndpoints = collections.namedtuple('OutputEndpoints', [
   'chars_logit', 'chars_log_prob', 'predicted_chars', 'predicted_scores',
-  'predicted_text'
+  'predicted_text', 'predicted_length', 'predicted_conf', 'normalized_seq_conf'
 ])
 
 # TODO(gorban): replace with tf.HParams when it is released.
@@ -119,6 +120,143 @@ def get_softmax_loss_fn(label_smoothing):
         logits=logits, labels=labels)
 
   return loss_fn
+
+
+def get_tensor_dimensions(tensor):
+  """Returns the shape components of a 4D tensor with variable batch size.
+
+  Args:
+    tensor : A 4D tensor, whose last 3 dimensions are known at graph
+      construction time.
+
+  Returns:
+    batch_size : The first dimension as a tensor object.
+    height : The second dimension as a scalar value.
+    width : The third dimension as a scalar value.
+    num_features : The forth dimension as a scalar value.
+
+  Raises:
+    ValueError: if input tensor does not have 4 dimensions.
+  """
+  if len(tensor.get_shape().dims) != 4:
+    raise ValueError(
+        'Incompatible shape: len(tensor.get_shape().dims) != 4 (%d != 4)' % len(
+            tensor.get_shape().dims))
+  batch_size = tf.shape(tensor)[0]
+  height = tensor.get_shape().dims[1].value
+  width = tensor.get_shape().dims[2].value
+  num_features = tensor.get_shape().dims[3].value
+  return batch_size, height, width, num_features
+
+
+def lookup_indexed_value(indices, row_vecs):
+  """Lookup values in each row of 'row_vecs' indexed by 'indices'.
+
+  For each sample in the batch, look up the element for the corresponding
+  index.
+
+  Args:
+    indices : A tensor of shape (batch, )
+    row_vecs : A tensor of shape [batch, depth]
+
+  Returns:
+    A tensor of shape (batch, ) formed by row_vecs[i, indices[i]].
+  """
+  gather_indices = tf.stack(
+      (tf.range(tf.shape(row_vecs)[0], dtype=tf.int32),
+       tf.cast(indices, tf.int32)),
+      axis=1)
+  return tf.gather_nd(row_vecs, gather_indices)
+
+
+@utils.ConvertAllInputsToTensors
+def max_char_logprob_cumsum(char_log_prob):
+  """Computes the cumulative sum of character logprob for all sequence lengths.
+
+  Args:
+    char_log_prob: A tensor of shape [batch x seq_length x num_char_classes]
+      with log probabilities of a character.
+
+  Returns:
+    A tensor of shape [batch x (seq_length+1)] where each element x[_, j] is
+    the sum of the max char logprob for all positions upto j.
+    Note this duplicates the final column and produces (seq_length+1) columns
+    so the same function can be used regardless whether use_length_predictions
+    is true or false.
+  """
+  max_char_log_prob = tf.reduce_max(char_log_prob, reduction_indices=2)
+  # For an input array [a, b, c]) tf.cumsum returns [a, a + b, a + b + c] if
+  # exclusive set to False (default).
+  return tf.cumsum(max_char_log_prob, axis=1, exclusive=False)
+
+
+def find_length_by_null(predicted_chars, null_code):
+  """Determine sequence length by finding null_code among predicted char IDs.
+
+  Given the char class ID for each position, compute the sequence length.
+  Note that this function computes this based on the number of null_code,
+  instead of the position of the first null_code.
+
+  Args:
+    predicted_chars: A tensor of [batch x seq_length] where each element
+      stores the char class ID with max probability;
+    null_code: an int32, character id for the NULL.
+
+  Returns:
+    A [batch, ] tensor which stores the sequence length for each sample.
+  """
+  return tf.reduce_sum(
+      tf.cast(tf.not_equal(null_code, predicted_chars), tf.int32), axis=1)
+
+
+def axis_pad(tensor, axis, before=0, after=0, constant_values=0.0):
+  """Pad a tensor with the specified values along a single axis.
+
+  Args:
+    tensor: a Tensor;
+    axis: the dimension to add pad along to;
+    before: number of values to add before the contents of tensor in the
+      selected dimension;
+    after: number of values to add after the contents of tensor in the
+      selected dimension;
+    constant_values: the scalar pad value to use. Must be same type as tensor.
+
+  Returns:
+    A Tensor. Has the same type as the input tensor, but with a changed shape
+    along the specified dimension.
+  """
+  if before == 0 and after == 0:
+    return tensor
+  ndims = tensor.shape.ndims
+  padding_size = np.zeros((ndims, 2), dtype='int32')
+  padding_size[axis] = before, after
+  return tf.pad(
+      tensor=tensor,
+      paddings=tf.constant(padding_size),
+      constant_values=constant_values)
+
+
+def null_based_length_prediction(chars_log_prob, null_code):
+  """Computes length and confidence of prediction based on positions of NULLs.
+
+  Args:
+    chars_log_prob: A tensor of shape [batch x seq_length x num_char_classes]
+      with log probabilities of a character;
+    null_code: an int32, character id for the NULL.
+
+  Returns:
+    A tuple (text_log_prob, predicted_length), where
+    text_log_prob - is a tensor of the same shape as length_log_prob.
+    Element #0 of the output corresponds to probability of the empty string,
+    element #seq_length - is the probability of length=seq_length.
+    predicted_length is a tensor with shape [batch].
+  """
+  predicted_chars = tf.to_int32(tf.argmax(chars_log_prob, axis=2))
+  # We do right pad to support sequences with seq_length elements.
+  text_log_prob = max_char_logprob_cumsum(
+      axis_pad(chars_log_prob, axis=1, after=1))
+  predicted_length = find_length_by_null(predicted_chars, null_code)
+  return text_log_prob, predicted_length
 
 
 class Model(object):
@@ -279,9 +417,10 @@ class Model(object):
     """
     with tf.variable_scope('pool_views_fn/STCK'):
       net = tf.concat(nets, 1)
-      batch_size = net.get_shape().dims[0].value
+      batch_size = tf.shape(net)[0]
+      image_size = net.get_shape().dims[1].value * net.get_shape().dims[2].value
       feature_size = net.get_shape().dims[3].value
-      return tf.reshape(net, [batch_size, -1, feature_size])
+      return tf.reshape(net, tf.stack([batch_size, image_size, feature_size]))
 
   def char_predictions(self, chars_logit):
     """Returns confidence scores (softmax values) for predicted characters.
@@ -306,7 +445,10 @@ class Model(object):
       slim.one_hot_encoding(ids, self._params.num_char_classes), tf.bool)
     all_scores = tf.nn.softmax(chars_logit)
     selected_scores = tf.boolean_mask(all_scores, mask, name='char_scores')
-    scores = tf.reshape(selected_scores, shape=(-1, self._params.seq_length))
+    scores = tf.reshape(
+        selected_scores,
+        shape=(-1, self._params.seq_length),
+        name='predicted_scores')
     return ids, log_prob, scores
 
   def encode_coordinates_fn(self, net):
@@ -323,12 +465,12 @@ class Model(object):
     """
     mparams = self._mparams['encode_coordinates_fn']
     if mparams.enabled:
-      batch_size, h, w, _ = net.shape.as_list()
+      batch_size, h, w, _ = get_tensor_dimensions(net)
       x, y = tf.meshgrid(tf.range(w), tf.range(h))
       w_loc = slim.one_hot_encoding(x, num_classes=w)
       h_loc = slim.one_hot_encoding(y, num_classes=h)
       loc = tf.concat([h_loc, w_loc], 2)
-      loc = tf.tile(tf.expand_dims(loc, 0), [batch_size, 1, 1, 1])
+      loc = tf.tile(tf.expand_dims(loc, 0), tf.stack([batch_size, 1, 1, 1]))
       return tf.concat([net, loc], 3)
     else:
       return net
@@ -341,7 +483,8 @@ class Model(object):
     """Creates a base part of the Model (no gradients, losses or summaries).
 
     Args:
-      images: A tensor of shape [batch_size, height, width, channels].
+      images: A tensor of shape [batch_size, height, width, channels] with pixel
+        values in the range [0.0, 1.0].
       labels_one_hot: Optional (can be None) one-hot encoding for ground truth
         labels. If provided the function will create a model for training.
       scope: Optional variable_scope.
@@ -353,6 +496,11 @@ class Model(object):
     """
     logging.debug('images: %s', images)
     is_training = labels_one_hot is not None
+
+    # Normalize image pixel values to have a symmetrical range around zero.
+    images = tf.subtract(images, 0.5)
+    images = tf.multiply(images, 2.5)
+
     with tf.variable_scope(scope, reuse=reuse):
       views = tf.split(
         value=images, num_or_size_splits=self._params.num_views, axis=2)
@@ -380,12 +528,29 @@ class Model(object):
         predicted_text = character_mapper.get_text(predicted_chars)
       else:
         predicted_text = tf.constant([])
+
+      text_log_prob, predicted_length = null_based_length_prediction(
+            chars_log_prob, self._params.null_code)
+      predicted_conf = lookup_indexed_value(predicted_length, text_log_prob)
+      # Convert predicted confidence from sum of logs to geometric mean
+      normalized_seq_conf = tf.exp(
+          tf.divide(predicted_conf,
+                    tf.cast(predicted_length + 1, predicted_conf.dtype)),
+          name='normalized_seq_conf')
+      predicted_conf = tf.identity(predicted_conf, name='predicted_conf')
+      predicted_text = tf.identity(predicted_text, name='predicted_text')
+      predicted_length = tf.identity(predicted_length, name='predicted_length')
+
     return OutputEndpoints(
       chars_logit=chars_logit,
       chars_log_prob=chars_log_prob,
       predicted_chars=predicted_chars,
       predicted_scores=predicted_scores,
-      predicted_text=predicted_text)
+      predicted_length=predicted_length,
+      predicted_text=predicted_text,
+      predicted_conf=predicted_conf,
+      normalized_seq_conf=normalized_seq_conf
+    )
 
   def create_loss(self, data, endpoints):
     """Creates all losses required to train the model.
