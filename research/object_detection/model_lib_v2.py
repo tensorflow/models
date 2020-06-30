@@ -120,7 +120,7 @@ def _compute_losses_and_predictions_dicts(
   prediction_dict = model.predict(
       preprocessed_images,
       features[fields.InputDataFields.true_image_shape],
-      model.get_side_inputs(features))
+      **model.get_side_inputs(features))
   prediction_dict = ops.bfloat16_to_float32_nested(prediction_dict)
 
   losses_dict = model.loss(
