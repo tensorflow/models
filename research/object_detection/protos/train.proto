@@ -59,7 +59,8 @@ message TrainConfig {
 
   // Whether to load all checkpoint vars that match model variable names and
   // sizes. This option is only available if `from_detection_checkpoint` is
-  // True.
+  // True.  This option is *not* supported for TF2 --- setting it to true
+  // will raise an error.
   optional bool load_all_detection_checkpoint_vars = 19 [default = false];
 
   // Number of steps to train the DetectionModel for. If 0, will train the model

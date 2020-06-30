@@ -218,7 +218,7 @@ def get_callbacks():
     time_callback = keras_utils.TimeHistory(
         FLAGS.batch_size,
         FLAGS.log_steps,
-        FLAGS.model_dir if FLAGS.enable_tensorboard else None)
+        logdir=FLAGS.model_dir if FLAGS.enable_tensorboard else None)
     callbacks.append(time_callback)
 
   if FLAGS.enable_tensorboard:

@@ -2,6 +2,7 @@ syntax = "proto2";
 
 package object_detection.protos;
 
+import "object_detection/protos/center_net.proto";
 import "object_detection/protos/faster_rcnn.proto";
 import "object_detection/protos/ssd.proto";
 
@@ -17,6 +18,7 @@ message DetectionModel {
     // value to a function that builds your model.
     ExperimentalModel experimental_model = 3;
 
+    CenterNet center_net = 4;
   }
 }
 

@@ -134,6 +134,30 @@ flags.DEFINE_string('config_override', '',
                     'text proto to override pipeline_config_path.')
 flags.DEFINE_boolean('write_inference_graph', False,
                      'If true, writes inference graph to disk.')
+flags.DEFINE_string('additional_output_tensor_names', None,
+                    'Additional Tensors to output, to be specified as a comma '
+                    'separated list of tensor names.')
+flags.DEFINE_boolean('use_side_inputs', False,
+                     'If True, uses side inputs as well as image inputs.')
+flags.DEFINE_string('side_input_shapes', None,
+                    'If use_side_inputs is True, this explicitly sets '
+                    'the shape of the side input tensors to a fixed size. The '
+                    'dimensions are to be provided as a comma-separated list '
+                    'of integers. A value of -1 can be used for unknown '
+                    'dimensions. A `/` denotes a break, starting the shape of '
+                    'the next side input tensor. This flag is required if '
+                    'using side inputs.')
+flags.DEFINE_string('side_input_types', None,
+                    'If use_side_inputs is True, this explicitly sets '
+                    'the type of the side input tensors. The '
+                    'dimensions are to be provided as a comma-separated list '
+                    'of types, each of `string`, `integer`, or `float`. '
+                    'This flag is required if using side inputs.')
+flags.DEFINE_string('side_input_names', None,
+                    'If use_side_inputs is True, this explicitly sets '
+                    'the names of the side input tensors required by the model '
+                    'assuming the names will be a comma-separated list of '
+                    'strings. This flag is required if using side inputs.')
 tf.app.flags.mark_flag_as_required('pipeline_config_path')
 tf.app.flags.mark_flag_as_required('trained_checkpoint_prefix')
 tf.app.flags.mark_flag_as_required('output_directory')
@@ -152,10 +176,30 @@ def main(_):
     ]
   else:
     input_shape = None
+  if FLAGS.use_side_inputs:
+    side_input_shapes, side_input_names, side_input_types = (
+        exporter.parse_side_inputs(
+            FLAGS.side_input_shapes,
+            FLAGS.side_input_names,
+            FLAGS.side_input_types))
+  else:
+    side_input_shapes = None
+    side_input_names = None
+    side_input_types = None
+  if FLAGS.additional_output_tensor_names:
+    additional_output_tensor_names = list(
+        FLAGS.additional_output_tensor_names.split(','))
+  else:
+    additional_output_tensor_names = None
   exporter.export_inference_graph(
       FLAGS.input_type, pipeline_config, FLAGS.trained_checkpoint_prefix,
       FLAGS.output_directory, input_shape=input_shape,
-      write_inference_graph=FLAGS.write_inference_graph)
+      write_inference_graph=FLAGS.write_inference_graph,
+      additional_output_tensor_names=additional_output_tensor_names,
+      use_side_inputs=FLAGS.use_side_inputs,
+      side_input_shapes=side_input_shapes,
+      side_input_names=side_input_names,
+      side_input_types=side_input_types)
 
 
 if __name__ == '__main__':

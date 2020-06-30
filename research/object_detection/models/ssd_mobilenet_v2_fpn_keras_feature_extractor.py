@@ -123,7 +123,7 @@ class SSDMobileNetV2FpnKerasFeatureExtractor(
       self._conv_defs = _create_modified_mobilenet_config()
     self._use_native_resize_op = use_native_resize_op
     self._feature_blocks = ['layer_4', 'layer_7', 'layer_14', 'layer_19']
-    self._mobilenet_v2 = None
+    self.classification_backbone = None
     self._fpn_features_generator = None
     self._coarse_feature_layers = []
 
@@ -147,7 +147,7 @@ class SSDMobileNetV2FpnKerasFeatureExtractor(
       outputs.append(full_mobilenet_v2.get_layer(output_layer_name).output)
     layer_19 = full_mobilenet_v2.get_layer(name='out_relu').output
     outputs.append(layer_19)
-    self._mobilenet_v2 = tf.keras.Model(
+    self.classification_backbone = tf.keras.Model(
         inputs=full_mobilenet_v2.inputs,
         outputs=outputs)
     # pylint:disable=g-long-lambda
@@ -216,7 +216,7 @@ class SSDMobileNetV2FpnKerasFeatureExtractor(
     preprocessed_inputs = shape_utils.check_min_image_dim(
         33, preprocessed_inputs)
 
-    image_features = self._mobilenet_v2(
+    image_features = self.classification_backbone(
         ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple))
 
     feature_block_list = []

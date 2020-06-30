@@ -17,9 +17,12 @@
 
 import tensorflow.compat.v1 as tf
 
-
-from tensorflow.contrib import opt as tf_opt
 from object_detection.utils import learning_schedules
+
+try:
+  from tensorflow.contrib import opt as tf_opt  # pylint: disable=g-import-not-at-top
+except:  # pylint: disable=bare-except
+  pass
 
 
 def build_optimizers_tf_v1(optimizer_config, global_step=None):

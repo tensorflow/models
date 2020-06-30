@@ -14,7 +14,6 @@
 # limitations under the License.
 # ==============================================================================
 """Optimizer factory class."""
-
 from typing import Union
 
 import tensorflow as tf
@@ -29,7 +28,8 @@ OPTIMIZERS_CLS = {
     'sgd': tf.keras.optimizers.SGD,
     'adam': tf.keras.optimizers.Adam,
     'adamw': nlp_optimization.AdamWeightDecay,
-    'lamb': tfa_optimizers.LAMB
+    'lamb': tfa_optimizers.LAMB,
+    'rmsprop': tf.keras.optimizers.RMSprop
 }
 
 LR_CLS = {

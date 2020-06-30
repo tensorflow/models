@@ -271,3 +271,19 @@ class GraphContextOrNone(object):
       return False
     else:
       return self.graph.__exit__(ttype, value, traceback)
+
+
+def image_with_dynamic_shape(height, width, channels):
+  """Returns a single image with dynamic shape."""
+  h = tf.random.uniform([], minval=height, maxval=height+1, dtype=tf.int32)
+  w = tf.random.uniform([], minval=width, maxval=width+1, dtype=tf.int32)
+  image = tf.random.uniform([h, w, channels])
+  return image
+
+
+def keypoints_with_dynamic_shape(num_instances, num_keypoints, num_coordinates):
+  """Returns keypoints with dynamic shape."""
+  n = tf.random.uniform([], minval=num_instances, maxval=num_instances+1,
+                        dtype=tf.int32)
+  keypoints = tf.random.uniform([n, num_keypoints, num_coordinates])
+  return keypoints

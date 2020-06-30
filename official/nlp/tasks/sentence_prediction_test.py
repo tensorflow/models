@@ -16,6 +16,8 @@
 """Tests for official.nlp.tasks.sentence_prediction."""
 import functools
 import os
+
+from absl.testing import parameterized
 import tensorflow as tf
 
 from official.nlp.bert import configs
@@ -25,7 +27,24 @@ from official.nlp.configs import encoders
 from official.nlp.tasks import sentence_prediction
 
 
-class SentencePredictionTaskTest(tf.test.TestCase):
+class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
+
+  def setUp(self):
+    super(SentencePredictionTaskTest, self).setUp()
+    self._train_data_config = bert.SentencePredictionDataConfig(
+        input_path="dummy", seq_length=128, global_batch_size=1)
+
+  def get_model_config(self, num_classes):
+    return bert.BertPretrainerConfig(
+        encoder=encoders.TransformerEncoderConfig(
+            vocab_size=30522, num_layers=1),
+        num_masked_tokens=0,
+        cls_heads=[
+            bert.ClsHeadConfig(
+                inner_dim=10,
+                num_classes=num_classes,
+                name="sentence_prediction")
+        ])
 
   def _run_task(self, config):
     task = sentence_prediction.SentencePredictionTask(config)
@@ -43,15 +62,9 @@ class SentencePredictionTaskTest(tf.test.TestCase):
 
   def test_task(self):
     config = sentence_prediction.SentencePredictionConfig(
-        network=bert.BertPretrainerConfig(
-            encoders.TransformerEncoderConfig(vocab_size=30522, num_layers=1),
-            num_masked_tokens=0,
-            cls_heads=[
-                bert.ClsHeadConfig(
-                    inner_dim=10, num_classes=3, name="sentence_prediction")
-            ]),
-        train_data=bert.BertSentencePredictionDataConfig(
-            input_path="dummy", seq_length=128, global_batch_size=1))
+        init_checkpoint=self.get_temp_dir(),
+        model=self.get_model_config(2),
+        train_data=self._train_data_config)
     task = sentence_prediction.SentencePredictionTask(config)
     model = task.build_model()
     metrics = task.build_metrics()
@@ -61,6 +74,58 @@ class SentencePredictionTaskTest(tf.test.TestCase):
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
+
+    # Saves a checkpoint.
+    pretrain_cfg = bert.BertPretrainerConfig(
+        encoder=encoders.TransformerEncoderConfig(
+            vocab_size=30522, num_layers=1),
+        num_masked_tokens=20,
+        cls_heads=[
+            bert.ClsHeadConfig(
+                inner_dim=10, num_classes=3, name="next_sentence")
+        ])
+    pretrain_model = bert.instantiate_bertpretrainer_from_cfg(pretrain_cfg)
+    ckpt = tf.train.Checkpoint(
+        model=pretrain_model, **pretrain_model.checkpoint_items)
+    ckpt.save(config.init_checkpoint)
+    task.initialize(model)
+
+  @parameterized.parameters(("matthews_corrcoef", 2),
+                            ("pearson_spearman_corr", 1))
+  def test_np_metrics(self, metric_type, num_classes):
+    config = sentence_prediction.SentencePredictionConfig(
+        metric_type=metric_type,
+        init_checkpoint=self.get_temp_dir(),
+        model=self.get_model_config(num_classes),
+        train_data=self._train_data_config)
+    task = sentence_prediction.SentencePredictionTask(config)
+    model = task.build_model()
+    dataset = task.build_inputs(config.train_data)
+
+    iterator = iter(dataset)
+    strategy = tf.distribute.get_strategy()
+    distributed_outputs = strategy.run(
+        functools.partial(task.validation_step, model=model),
+        args=(next(iterator),))
+    outputs = tf.nest.map_structure(strategy.experimental_local_results,
+                                    distributed_outputs)
+    aggregated = task.aggregate_logs(step_outputs=outputs)
+    aggregated = task.aggregate_logs(state=aggregated, step_outputs=outputs)
+    self.assertIn(metric_type, task.reduce_aggregated_logs(aggregated))
+
+  def test_task_with_fit(self):
+    config = sentence_prediction.SentencePredictionConfig(
+        model=self.get_model_config(2), train_data=self._train_data_config)
+    task = sentence_prediction.SentencePredictionTask(config)
+    model = task.build_model()
+    model = task.compile_model(
+        model,
+        optimizer=tf.keras.optimizers.SGD(lr=0.1),
+        train_step=task.train_step,
+        metrics=task.build_metrics())
+    dataset = task.build_inputs(config.train_data)
+    logs = model.fit(dataset, epochs=1, steps_per_epoch=2)
+    self.assertIn("loss", logs.history)
 
   def _export_bert_tfhub(self):
     bert_config = configs.BertConfig(
@@ -89,15 +154,8 @@ class SentencePredictionTaskTest(tf.test.TestCase):
     hub_module_url = self._export_bert_tfhub()
     config = sentence_prediction.SentencePredictionConfig(
         hub_module_url=hub_module_url,
-        network=bert.BertPretrainerConfig(
-            encoders.TransformerEncoderConfig(vocab_size=30522, num_layers=1),
-            num_masked_tokens=0,
-            cls_heads=[
-                bert.ClsHeadConfig(
-                    inner_dim=10, num_classes=3, name="sentence_prediction")
-            ]),
-        train_data=bert.BertSentencePredictionDataConfig(
-            input_path="dummy", seq_length=128, global_batch_size=10))
+        model=self.get_model_config(2),
+        train_data=self._train_data_config)
     self._run_task(config)
 
 

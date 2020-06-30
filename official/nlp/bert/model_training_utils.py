@@ -111,6 +111,7 @@ def run_customized_training_loop(
     model_dir=None,
     train_input_fn=None,
     steps_per_epoch=None,
+    num_eval_per_epoch=1,
     steps_per_loop=None,
     epochs=1,
     eval_input_fn=None,
@@ -144,6 +145,7 @@ def run_customized_training_loop(
       steps_per_epoch: Number of steps to run per epoch. At the end of each
         epoch, model checkpoint will be saved and evaluation will be conducted
         if evaluation dataset is provided.
+      num_eval_per_epoch: Number of evaluations per epoch.
       steps_per_loop: Number of steps per graph-mode loop. In order to reduce
         communication in eager context, training logs are printed every
         steps_per_loop.
@@ -158,16 +160,17 @@ def run_customized_training_loop(
       init_checkpoint: Optional checkpoint to load to `sub_model` returned by
         `model_fn`.
       custom_callbacks: A list of Keras Callbacks objects to run during
-        training. More specifically, `on_batch_begin()`, `on_batch_end()`,
-        `on_epoch_begin()`, `on_epoch_end()` methods are invoked during
-        training.  Note that some metrics may be missing from `logs`.
+        training. More specifically, `on_train_begin(), on_train_end(),
+        on_batch_begin()`, `on_batch_end()`, `on_epoch_begin()`,
+        `on_epoch_end()` methods are invoked during training.
+        Note that some metrics may be missing from `logs`.
       run_eagerly: Whether to run model training in pure eager execution. This
         should be disable for TPUStrategy.
       sub_model_export_name: If not None, will export `sub_model` returned by
         `model_fn` into checkpoint files. The name of intermediate checkpoint
         file is {sub_model_export_name}_step_{step}.ckpt and the last
-        checkpint's name is {sub_model_export_name}.ckpt;
-        if None, `sub_model` will not be exported as checkpoint.
+        checkpint's name is {sub_model_export_name}.ckpt; if None, `sub_model`
+        will not be exported as checkpoint.
       explicit_allreduce: Whether to explicitly perform gradient allreduce,
         instead of relying on implicit allreduce in optimizer.apply_gradients().
         default is False. For now, if training using FP16 mixed precision,
@@ -177,10 +180,10 @@ def run_customized_training_loop(
       pre_allreduce_callbacks: A list of callback functions that takes gradients
         and model variables pairs as input, manipulate them, and returns a new
         gradients and model variables paris. The callback functions will be
-        invoked in the list order and before gradients are allreduced.
-        With mixed precision training, the pre_allreduce_allbacks will be
-        applied on scaled_gradients. Default is no callbacks.
-        Only used when explicit_allreduce=True.
+        invoked in the list order and before gradients are allreduced. With
+        mixed precision training, the pre_allreduce_allbacks will be applied on
+        scaled_gradients. Default is no callbacks. Only used when
+        explicit_allreduce=True.
       post_allreduce_callbacks: A list of callback functions that takes
         gradients and model variables pairs as input, manipulate them, and
         returns a new gradients and model variables paris. The callback
@@ -208,6 +211,8 @@ def run_customized_training_loop(
   required_arguments = [
       strategy, model_fn, loss_fn, model_dir, steps_per_epoch, train_input_fn
   ]
+
+  steps_between_evals = int(steps_per_epoch / num_eval_per_epoch)
   if [arg for arg in required_arguments if arg is None]:
     raise ValueError('`strategy`, `model_fn`, `loss_fn`, `model_dir`, '
                      '`steps_per_epoch` and `train_input_fn` are required '
@@ -216,17 +221,17 @@ def run_customized_training_loop(
     if tf.config.list_logical_devices('TPU'):
       # One can't fully utilize a TPU with steps_per_loop=1, so in this case
       # default users to a more useful value.
-      steps_per_loop = min(1000, steps_per_epoch)
+      steps_per_loop = min(1000, steps_between_evals)
     else:
       steps_per_loop = 1
     logging.info('steps_per_loop not specified. Using steps_per_loop=%d',
                  steps_per_loop)
-  if steps_per_loop > steps_per_epoch:
+  if steps_per_loop > steps_between_evals:
     logging.warning(
         'steps_per_loop: %d is specified to be greater than '
-        ' steps_per_epoch: %d, we will use steps_per_epoch as'
-        ' steps_per_loop.', steps_per_loop, steps_per_epoch)
-    steps_per_loop = steps_per_epoch
+        ' steps_between_evals: %d, we will use steps_between_evals as'
+        ' steps_per_loop.', steps_per_loop, steps_between_evals)
+    steps_per_loop = steps_between_evals
   assert tf.executing_eagerly()
 
   if run_eagerly:
@@ -242,12 +247,9 @@ def run_customized_training_loop(
     raise ValueError(
         'if `metric_fn` is specified, metric_fn must be a callable.')
 
-  callback_list = tf.keras.callbacks.CallbackList(custom_callbacks)
-
   total_training_steps = steps_per_epoch * epochs
   train_iterator = _get_input_iterator(train_input_fn, strategy)
-  eval_loss_metric = tf.keras.metrics.Mean(
-      'training_loss', dtype=tf.float32)
+  eval_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
 
   with distribution_utils.get_strategy_scope(strategy):
     # To correctly place the model weights on accelerators,
@@ -260,6 +262,9 @@ def run_customized_training_loop(
       raise ValueError('sub_model_export_name is specified as %s, but '
                        'sub_model is None.' % sub_model_export_name)
 
+    callback_list = tf.keras.callbacks.CallbackList(
+        callbacks=custom_callbacks, model=model)
+
     optimizer = model.optimizer
 
     if init_checkpoint:
@@ -270,8 +275,7 @@ def run_customized_training_loop(
       checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
       logging.info('Loading from checkpoint file completed')
 
-    train_loss_metric = tf.keras.metrics.Mean(
-        'training_loss', dtype=tf.float32)
+    train_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
     eval_metrics = [metric_fn()] if metric_fn else []
     # If evaluation is required, make a copy of metric as it will be used by
     # both train and evaluation.
@@ -440,18 +444,20 @@ def run_customized_training_loop(
 
     latest_checkpoint_file = tf.train.latest_checkpoint(model_dir)
     if latest_checkpoint_file:
-      logging.info(
-          'Checkpoint file %s found and restoring from '
-          'checkpoint', latest_checkpoint_file)
+      logging.info('Checkpoint file %s found and restoring from '
+                   'checkpoint', latest_checkpoint_file)
       checkpoint.restore(latest_checkpoint_file)
       logging.info('Loading from checkpoint file completed')
 
     current_step = optimizer.iterations.numpy()
     checkpoint_name = 'ctl_step_{step}.ckpt'
 
-    while current_step < total_training_steps:
+    logs = {}
+    callback_list.on_train_begin()
+    while current_step < total_training_steps and not model.stop_training:
       if current_step % steps_per_epoch == 0:
-        callback_list.on_epoch_begin(int(current_step / steps_per_epoch) + 1)
+        callback_list.on_epoch_begin(
+            int(current_step / steps_per_epoch) + 1)
 
       # Training loss/metric are taking average over steps inside micro
       # training loop. We reset the their values before each round.
@@ -461,7 +467,7 @@ def run_customized_training_loop(
 
       callback_list.on_batch_begin(current_step)
       # Runs several steps in the host while loop.
-      steps = steps_to_run(current_step, steps_per_epoch, steps_per_loop)
+      steps = steps_to_run(current_step, steps_between_evals, steps_per_loop)
 
       if tf.config.list_physical_devices('GPU'):
         # TODO(zongweiz): merge with train_steps once tf.while_loop
@@ -470,11 +476,9 @@ def run_customized_training_loop(
           train_single_step(train_iterator)
       else:
         # Converts steps to a Tensor to avoid tf.function retracing.
-        train_steps(train_iterator,
-                    tf.convert_to_tensor(steps, dtype=tf.int32))
+        train_steps(train_iterator, tf.convert_to_tensor(steps, dtype=tf.int32))
       train_loss = _float_metric_value(train_loss_metric)
       current_step += steps
-      callback_list.on_batch_end(current_step - 1, {'loss': train_loss})
 
       # Updates training logging.
       training_status = 'Train Step: %d/%d  / loss = %s' % (
@@ -492,8 +496,7 @@ def run_customized_training_loop(
               'learning_rate',
               optimizer.learning_rate(current_step),
               step=current_step)
-        tf.summary.scalar(
-            train_loss_metric.name, train_loss, step=current_step)
+        tf.summary.scalar(train_loss_metric.name, train_loss, step=current_step)
         for metric in train_metrics + model.metrics:
           metric_value = _float_metric_value(metric)
           training_status += '  %s = %f' % (metric.name, metric_value)
@@ -501,7 +504,11 @@ def run_customized_training_loop(
         summary_writer.flush()
       logging.info(training_status)
 
-      if current_step % steps_per_epoch == 0:
+      # If no need for evaluation, we only call on_batch_end with train_loss,
+      # this is to ensure we get granular global_step/sec on Tensorboard.
+      if current_step % steps_between_evals:
+        callback_list.on_batch_end(current_step - 1, {'loss': train_loss})
+      else:
         # Save a submodel with the step in the file name after each epoch.
         if sub_model_export_name:
           _save_checkpoint(
@@ -514,7 +521,6 @@ def run_customized_training_loop(
         if current_step < total_training_steps:
           _save_checkpoint(strategy, checkpoint, model_dir,
                            checkpoint_name.format(step=current_step))
-          logs = None
           if eval_input_fn:
             logging.info('Running evaluation after step: %s.', current_step)
             logs = _run_evaluation(current_step,
@@ -523,8 +529,15 @@ def run_customized_training_loop(
             eval_loss_metric.reset_states()
             for metric in eval_metrics + model.metrics:
               metric.reset_states()
+        # We add train_loss here rather than call on_batch_end twice to make
+        # sure that no duplicated values are generated.
+        logs['loss'] = train_loss
+        callback_list.on_batch_end(current_step - 1, logs)
 
-          callback_list.on_epoch_end(int(current_step / steps_per_epoch), logs)
+      # Calls on_epoch_end after each real epoch ends to prevent mis-calculation
+      # of training steps.
+      if current_step % steps_per_epoch == 0:
+        callback_list.on_epoch_end(int(current_step / steps_per_epoch), logs)
 
     if sub_model_export_name:
       _save_checkpoint(strategy, sub_model_checkpoint, model_dir,
@@ -532,14 +545,11 @@ def run_customized_training_loop(
 
     _save_checkpoint(strategy, checkpoint, model_dir,
                      checkpoint_name.format(step=current_step))
-    logs = None
     if eval_input_fn:
       logging.info('Running final evaluation after training is complete.')
       logs = _run_evaluation(current_step,
                              _get_input_iterator(eval_input_fn, strategy))
-
     callback_list.on_epoch_end(int(current_step / steps_per_epoch), logs)
-
     training_summary = {
         'total_training_steps': total_training_steps,
         'train_loss': _float_metric_value(train_loss_metric),
@@ -556,5 +566,7 @@ def run_customized_training_loop(
 
     if not _should_export_summary(strategy):
       tf.io.gfile.rmtree(summary_dir)
+
+    callback_list.on_train_end()
 
     return model

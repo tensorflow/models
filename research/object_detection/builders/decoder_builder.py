@@ -48,7 +48,7 @@ def build(input_reader_config):
     if input_reader_config.HasField('label_map_path'):
       label_map_proto_file = input_reader_config.label_map_path
     input_type = input_reader_config.input_type
-    if input_type == input_reader_pb2.InputType.TF_EXAMPLE:
+    if input_type == input_reader_pb2.InputType.Value('TF_EXAMPLE'):
       decoder = tf_example_decoder.TfExampleDecoder(
           load_instance_masks=input_reader_config.load_instance_masks,
           load_multiclass_scores=input_reader_config.load_multiclass_scores,
@@ -60,7 +60,7 @@ def build(input_reader_config):
           num_keypoints=input_reader_config.num_keypoints,
           expand_hierarchy_labels=input_reader_config.expand_labels_hierarchy)
       return decoder
-    elif input_type == input_reader_pb2.InputType.TF_SEQUENCE_EXAMPLE:
+    elif input_type == input_reader_pb2.InputType.Value('TF_SEQUENCE_EXAMPLE'):
       decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder(
           label_map_proto_file=label_map_proto_file,
           load_context_features=input_reader_config.load_context_features)
