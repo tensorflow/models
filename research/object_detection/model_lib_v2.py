@@ -911,7 +911,7 @@ def eval_continuously(
 
     for eval_name, eval_input in eval_inputs:
       summary_writer = tf.compat.v2.summary.create_file_writer(
-          model_dir + '/eval' + eval_name)
+          os.path.join(model_dir, 'eval', eval_name))
       with summary_writer.as_default():
         eager_eval_loop(
             detection_model,
