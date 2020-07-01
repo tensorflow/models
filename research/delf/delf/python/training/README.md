@@ -119,7 +119,8 @@ Generating the TFRecord files containing the TRAIN and VALIDATION splits of the
 GLDv2 images have been downloaded to the `gldv2_dataset` folder, the script can
 be run as follows:
 
-```python3
+```
+python3
 --train_csv_path=gldv2_dataset/train/train.csv \
 --train_clean_csv_path=gldv2_dataset/train/train_clean.csv \
 --train_directory=gldv2_dataset/train/*/*/*/ \
