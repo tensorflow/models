@@ -1332,6 +1332,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       single_rpn_box_predictor_features = (
         self._first_stage_box_predictor_first_conv(single_rpn_features_to_crop))
       rpn_box_predictor_features.append(single_rpn_box_predictor_features)
+      anchors = tf.concat(anchors, axis=0)
     return (rpn_box_predictor_features, rpn_features_to_crop,
             anchors, image_shape)
 
