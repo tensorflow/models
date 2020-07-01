@@ -3,10 +3,10 @@
 ### Installation script
 
 We now have a script to do the entire installation in one shot. Navigate to the
-directory `tensorflow/models/research/delf/delf/python/training`, then run:
+directory `models/research/delf/delf/python/training`, then run:
 
 ```bash
-# From tensorflow/models/research/delf/delf/python/training
+# From models/research/delf/delf/python/training
 bash install_delf.sh
 ```
 
