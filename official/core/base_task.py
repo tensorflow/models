@@ -107,6 +107,7 @@ class Task(tf.Module):
     """Returns a dataset or a nested structure of dataset functions.
 
     Dataset functions define per-host datasets with the per-replica batch size.
+    With distributed training, this method runs on remote hosts.
 
     Args:
       params: hyperparams to create input pipelines.
@@ -172,6 +173,8 @@ class Task(tf.Module):
                  metrics=None):
     """Does forward and backward.
 
+    With distribution strategies, this method runs on devices.
+
     Args:
       inputs: a dictionary of input tensors.
       model: the model, forward pass definition.
@@ -219,6 +222,8 @@ class Task(tf.Module):
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     """Validatation step.
 
+    With distribution strategies, this method runs on devices.
+
     Args:
       inputs: a dictionary of input tensors.
       model: the keras.Model.
@@ -244,7 +249,17 @@ class Task(tf.Module):
     return logs
 
   def inference_step(self, inputs, model: tf.keras.Model):
-    """Performs the forward step."""
+    """Performs the forward step.
+
+    With distribution strategies, this method runs on devices.
+
+    Args:
+      inputs: a dictionary of input tensors.
+      model: the keras.Model.
+
+    Returns:
+      Model outputs.
+    """
     return model(inputs, training=False)
 
   def aggregate_logs(self, state, step_logs):
