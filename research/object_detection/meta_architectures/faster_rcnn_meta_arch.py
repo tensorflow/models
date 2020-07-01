@@ -1332,7 +1332,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       single_rpn_box_predictor_features = (
         self._first_stage_box_predictor_first_conv(single_rpn_features_to_crop))
       rpn_box_predictor_features.append(single_rpn_box_predictor_features)
-      anchors = tf.concat(anchors, axis=0)
+    anchors = box_list_ops.concatenate(anchors)
     return (rpn_box_predictor_features, rpn_features_to_crop,
             anchors, image_shape)
 
@@ -2533,6 +2533,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
             box_list.BoxList(tf.reshape(proposal_boxes, [-1, 4])),
             image_shape[1], image_shape[2], check_range=False).get()
 
+        # TODO(syiming): check this!
         flat_cropped_gt_mask = self._crop_and_resize_fn(
             [tf.expand_dims(flat_gt_masks, -1)],
             tf.expand_dims(flat_normalized_proposals, axis=1), None,
