@@ -78,11 +78,8 @@ import contextlib
 import csv
 import os
 import random
-import subprocess
 import sys
-import tarfile
 import zipfile
-import tempfile
 import collections
 import glob
 
@@ -91,14 +88,10 @@ from absl import flags
 from absl import logging
 from six.moves import range
 from six.moves import urllib
-from six.moves import zip
 import tensorflow.compat.v1 as tf
-import numpy as np
 import cv2
 
-from object_detection.dataset_tools import tf_record_creation_util
 from object_detection.utils import dataset_util
-from object_detection.utils import label_map_util
 
 GLOBAL_SOURCE_ID = 0
 POSSIBLE_TIMESTAMPS = range(902, 1798)
@@ -229,7 +222,6 @@ class Ava(object):
 
         filepath = glob.glob(
             video_path_format_string.format(media_id) + "*")[0]
-        filename = filepath.split("/")[-1]
         cur_vid = cv2.VideoCapture(filepath)
         width = cur_vid.get(cv2.CAP_PROP_FRAME_WIDTH)
         height = cur_vid.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -255,8 +247,8 @@ class Ava(object):
 
             cur_vid.set(cv2.CAP_PROP_POS_MSEC,
                         (windowed_timestamp) * SECONDS_TO_MILLI)
-            success, image = cur_vid.read()
-            success, buffer = cv2.imencode('.jpg', image)
+            _, image = cur_vid.read()
+            _, buffer = cv2.imencode('.jpg', image)
 
             bufstring = buffer.tostring()
             total_images.append(dataset_util.bytes_feature(bufstring))
@@ -293,15 +285,14 @@ class Ava(object):
 
             #Display the image and bounding boxes being
             #processed (for debugging purposes)
-            """
-            for i in range(len(xmins)):
-              cv2.rectangle(image, (int(xmins[i] * width), 
-                                    int(ymaxs[i] * height)), 
-                                    (int(xmaxs[i] * width), 
-                                    int(ymins[i] * height)), (255, 0, 0), 2)
-            cv2.imshow("mywindow", image)
-            cv2.waitKey(1000)
-            """
+
+            #for i in range(len(xmins)):
+            #  cv2.rectangle(image, (int(xmins[i] * width),
+            #                        int(ymaxs[i] * height)),
+            #                        (int(xmaxs[i] * width),
+            #                        int(ymins[i] * height)), (255, 0, 0), 2)
+            #cv2.imshow("mywindow", image)
+            #cv2.waitKey(1000)
 
             total_xmins.append(dataset_util.float_list_feature(xmins))
             total_xmaxs.append(dataset_util.float_list_feature(xmaxs))
@@ -351,14 +342,14 @@ class Ava(object):
                     feature_list=sequence_feature_dict))
 
           #Move middle_time_frame, skipping excluded frames
-          frames_moved = 0
+          frames_mv = 0
           frames_excluded_count = 0
-          while (frames_moved < hop_between_sequences + frames_excluded_count
-                and middle_frame_time + frames_moved < POSSIBLE_TIMESTAMPS[-1]):
-            frames_moved += 1
-            if (media_id, windowed_timestamp + frames_moved) in frame_excluded:
+          while (frames_mv < hop_between_sequences + frames_excluded_count
+                 and middle_frame_time + frames_mv < POSSIBLE_TIMESTAMPS[-1]):
+            frames_mv += 1
+            if (media_id, windowed_timestamp + frames_mv) in frame_excluded:
               frames_excluded_count += 1
-          middle_frame_time += frames_moved
+          middle_frame_time += frames_mv
 
         cur_vid.release()
 
@@ -418,8 +409,7 @@ def bytes23(string):
   """Creates a bytes string in either Python 2 or  3."""
   if sys.version_info >= (3, 0):
     return bytes(string, "utf8")
-  else:
-    return bytes(string)
+  return bytes(string)
 
 @contextlib.contextmanager
 def _close_on_exit(writers):
