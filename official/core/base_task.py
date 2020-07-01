@@ -59,7 +59,7 @@ class Task(tf.Module):
   def initialize(self, model: tf.keras.Model):
     """A callback function used as CheckpointManager's init_fn.
 
-    This function will be called when no checkpoint found for the model.
+    This function will be called when no checkpoint is found for the model.
     If there is a checkpoint, the checkpoint will be loaded and this function
     will not be called. You can use this callback function to load a pretrained
     checkpoint, saved under a directory other than the model_dir.
@@ -71,7 +71,7 @@ class Task(tf.Module):
 
   @abc.abstractmethod
   def build_model(self) -> tf.keras.Model:
-    """Creates the model architecture.
+    """Creates model architecture.
 
     Returns:
       A model instance.
@@ -135,7 +135,7 @@ class Task(tf.Module):
     Args:
       labels: optional label tensors.
       model_outputs: a nested structure of output tensors.
-      aux_losses: auxiliarly loss tensors, i.e. `losses` in keras.Model.
+      aux_losses: auxiliary loss tensors, i.e. `losses` in keras.Model.
 
     Returns:
       The total loss tensor.
@@ -232,7 +232,7 @@ class Task(tf.Module):
     return logs
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
-    """Validatation step.
+    """Validation step.
 
     With distribution strategies, this method runs on devices.
 
