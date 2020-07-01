@@ -222,4 +222,3 @@ def compute_box_context_attention(box_features, context_features,
   output_features = output_features[:, :, tf.newaxis, tf.newaxis, :]
 
   return output_features
-  
