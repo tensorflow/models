@@ -54,8 +54,8 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
 class QuestionAnsweringTask(base_task.Task):
   """Task object for question answering."""
 
-  def __init__(self, params=cfg.TaskConfig):
-    super(QuestionAnsweringTask, self).__init__(params)
+  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
+    super(QuestionAnsweringTask, self).__init__(params, logging_dir)
     if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
@@ -71,6 +71,10 @@ class QuestionAnsweringTask(base_task.Task):
     else:
       raise ValueError('Unsupported tokenization method: {}'.format(
           params.validation_data.tokenization))
+
+    if params.validation_data.input_path:
+      self._tf_record_input_path, self._eval_examples, self._eval_features = (
+          self._preprocess_eval_data(params.validation_data))
 
   def build_model(self):
     if self._hub_module:
@@ -107,7 +111,11 @@ class QuestionAnsweringTask(base_task.Task):
         is_training=False,
         version_2_with_negative=params.version_2_with_negative)
 
-    temp_file_path = params.input_preprocessed_data_path or '/tmp'
+    temp_file_path = params.input_preprocessed_data_path or self.logging_dir
+    if not temp_file_path:
+      raise ValueError('You must specify a temporary directory, either in '
+                       'params.input_preprocessed_data_path or logging_dir to '
+                       'store intermediate evaluation TFRecord data.')
     eval_writer = self.squad_lib.FeatureWriter(
         filename=os.path.join(temp_file_path, 'eval.tf_record'),
         is_training=False)
@@ -168,8 +176,7 @@ class QuestionAnsweringTask(base_task.Task):
     if params.is_training:
       input_path = params.input_path
     else:
-      input_path, self._eval_examples, self._eval_features = (
-          self._preprocess_eval_data(params))
+      input_path = self._tf_record_input_path
 
     batch_size = input_context.get_per_replica_batch_size(
         params.global_batch_size) if input_context else params.global_batch_size
