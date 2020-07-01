@@ -57,7 +57,7 @@ class RetinanetModel(base_model.Model):
         params.postprocess)
 
     self._transpose_input = params.train.transpose_input
-    assert not self._transpose_input, 'Transpose input is not supportted.'
+    assert not self._transpose_input, 'Transpose input is not supported.'
     # Input layer.
     input_shape = (
         params.retinanet_parser.output_size +
