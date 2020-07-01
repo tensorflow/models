@@ -479,12 +479,9 @@ class SSDMetaArch(model.DetectionModel):
       ValueError: if inputs tensor does not have type tf.float32
     """
     with tf.name_scope('Preprocessor'):
-      (resized_inputs,
-       true_image_shapes) = shape_utils.resize_images_and_return_shapes(
-           inputs, self._image_resizer_fn)
-
-      return (self._feature_extractor.preprocess(resized_inputs),
-              true_image_shapes)
+      normalized_inputs = self._feature_extractor.preprocess(inputs)
+      return shape_utils.resize_images_and_return_shapes(
+          normalized_inputs, self._image_resizer_fn)
 
   def _compute_clip_window(self, preprocessed_images, true_image_shapes):
     """Computes clip window to use during post_processing.

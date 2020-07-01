@@ -1293,6 +1293,51 @@ class DataTransformationFnTest(test_case.TestCase, parameterized.TestCase):
         groundtruth_keypoint_weights,
         [[1.0, 1.0], [1.0, 1.0]])
 
+  def test_groundtruth_dense_pose(self):
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                   np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32)),
+          fields.InputDataFields.groundtruth_dp_num_points:
+              tf.constant([0, 2], dtype=tf.int32),
+          fields.InputDataFields.groundtruth_dp_part_ids:
+              tf.constant([[0, 0], [4, 23]], dtype=tf.int32),
+          fields.InputDataFields.groundtruth_dp_surface_coords:
+              tf.constant([[[0., 0., 0., 0.,], [0., 0., 0., 0.,]],
+                           [[0.1, 0.2, 0.3, 0.4,], [0.6, 0.8, 0.6, 0.7,]]],
+                          dtype=tf.float32),
+      }
+
+      num_classes = 1
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_resize50_preprocess_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes)
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      transformed_dp_num_points = transformed_inputs[
+          fields.InputDataFields.groundtruth_dp_num_points]
+      transformed_dp_part_ids = transformed_inputs[
+          fields.InputDataFields.groundtruth_dp_part_ids]
+      transformed_dp_surface_coords = transformed_inputs[
+          fields.InputDataFields.groundtruth_dp_surface_coords]
+      return (transformed_dp_num_points, transformed_dp_part_ids,
+              transformed_dp_surface_coords)
+
+    dp_num_points, dp_part_ids, dp_surface_coords = self.execute_cpu(
+        graph_fn, [])
+    self.assertAllEqual(dp_num_points, [0, 2])
+    self.assertAllEqual(dp_part_ids, [[0, 0], [4, 23]])
+    self.assertAllClose(
+        dp_surface_coords,
+        [[[0., 0., 0., 0.,], [0., 0., 0., 0.,]],
+         [[0.1, 0.1, 0.3, 0.4,], [0.6, 0.4, 0.6, 0.7,]]])
+
 
 class PadInputDataToStaticShapesFnTest(test_case.TestCase):
 
@@ -1453,6 +1498,35 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
         padded_tensor_dict[
             fields.InputDataFields.groundtruth_keypoint_visibilities]
         .shape.as_list(), [3, 16])
+
+  def test_dense_pose(self):
+    input_tensor_dict = {
+        fields.InputDataFields.groundtruth_dp_num_points:
+            tf.constant([0, 2], dtype=tf.int32),
+        fields.InputDataFields.groundtruth_dp_part_ids:
+            tf.constant([[0, 0], [4, 23]], dtype=tf.int32),
+        fields.InputDataFields.groundtruth_dp_surface_coords:
+            tf.constant([[[0., 0., 0., 0.,], [0., 0., 0., 0.,]],
+                         [[0.1, 0.2, 0.3, 0.4,], [0.6, 0.8, 0.6, 0.7,]]],
+                        dtype=tf.float32),
+    }
+
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=1,
+        spatial_image_shape=[128, 128],
+        max_dp_points=200)
+
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_dp_num_points]
+        .shape.as_list(), [3])
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_dp_part_ids]
+        .shape.as_list(), [3, 200])
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_dp_surface_coords]
+        .shape.as_list(), [3, 200, 4])
 
   def test_context_features(self):
     context_memory_size = 8
