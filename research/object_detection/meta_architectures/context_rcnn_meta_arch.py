@@ -349,7 +349,10 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     print(attention_features.shape)
 
     # Adds box features with attention features.
+    print("box", box_features.shape)
+    print("attention", attention_features.shape)
     box_features += attention_features
+    print("after adding", box_features.shape)
 
     flattened_feature_maps = self._flatten_first_two_dimensions(box_features)
 

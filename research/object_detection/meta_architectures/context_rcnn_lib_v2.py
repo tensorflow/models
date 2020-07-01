@@ -74,6 +74,7 @@ class AttentionBlock(tf.keras.layers.Layer):
     print("CALLED")
     input_features, context_features = input_features
     print(input_features.shape)
+    print(context_features.shape)
 
     _, context_size, _ = context_features.shape
     valid_mask = compute_valid_mask(valid_context_size, context_size)
