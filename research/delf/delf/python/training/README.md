@@ -192,14 +192,30 @@ the batch size to `256`:
 ## Exporting the Trained Model
 
 Assuming the training output, the TensorFlow checkpoint, is in the
-`gldv2_training` directory, running the following command exports the model in
-the `gldv2_model` directory:
+`gldv2_training` directory, running the following commands exports the model.
+
+### DELF local feature model
 
 ```
 python3 model/export_model.py \
   --ckpt_path=gldv2_training/delf_weights \
-  --export_path=gldv2_model \
+  --export_path=gldv2_model_local \
   --block3_strides
+```
+
+### Kaggle-compatible global feature model
+
+To export a global feature model in the format required by the
+[2020 Landmark Retrieval challenge](https://www.kaggle.com/c/landmark-retrieval-2020),
+you can use the following command:
+
+```
+python3 model/export_global_model.py \
+  --ckpt_path=gldv2_training/delf_weights \
+  --export_path=gldv2_model_global \
+  --input_scales_list=0.70710677,1.0,1.4142135 \
+  --multi_scale_pool_type=sum \
+  --normalize_global_descriptor
 ```
 
 ## Testing the Trained Model
@@ -227,14 +243,14 @@ file which configures the DELF feature extraction. Update the file by making the
 following changes:
 
 *   set the `model_path` attribute to the directory containing the exported
-    model, `gldv2_model` in this example
+    model, `gldv2_model_local` in this example
 *   add at the root level the attribute `is_tf2_exported` with the value `true`
 *   set to `false` the `use_pca` attribute inside `delf_local_config`
 
 The ensuing file should resemble the following:
 
 ```
-model_path: "gldv2_model"
+model_path: "gldv2_model_local"
 image_scales: .25
 image_scales: .3536
 image_scales: .5
