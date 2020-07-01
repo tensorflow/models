@@ -199,7 +199,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
               self._conv_hyperparams.build_activation_layer(
                   name=layer_name))
           self._coarse_feature_layers.append(layers)
-        
+
         feature_maps = []
         for level in range(self._fpn_min_level, self._base_fpn_max_level + 1):
           feature_maps.append(fpn_features['top_down_block{}'.format(level-1)])
