@@ -27,6 +27,7 @@ from object_detection.builders import model_builder
 from object_detection.builders import preprocessor_builder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
+from object_detection.core import densepose_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
@@ -289,6 +290,13 @@ def transform_input_data(tensor_dict,
             out_tensor_dict[flds_gt_kpt_vis],
             keypoint_type_weight))
 
+  dp_surface_coords_fld = fields.InputDataFields.groundtruth_dp_surface_coords
+  if dp_surface_coords_fld in tensor_dict:
+    dp_surface_coords = out_tensor_dict[dp_surface_coords_fld]
+    realigned_dp_surface_coords = densepose_ops.change_coordinate_frame(
+        dp_surface_coords, im_box)
+    out_tensor_dict[dp_surface_coords_fld] = realigned_dp_surface_coords
+
   if use_bfloat16:
     preprocessed_resized_image = tf.cast(
         preprocessed_resized_image, tf.bfloat16)
@@ -355,7 +363,8 @@ def pad_input_data_to_static_shapes(tensor_dict,
                                     num_classes,
                                     spatial_image_shape=None,
                                     max_num_context_features=None,
-                                    context_feature_length=None):
+                                    context_feature_length=None,
+                                    max_dp_points=336):
   """Pads input tensors to static shapes.
 
   In case num_additional_channels > 0, we assume that the additional channels
@@ -372,6 +381,11 @@ def pad_input_data_to_static_shapes(tensor_dict,
     max_num_context_features (optional): The maximum number of context
       features needed to compute shapes padding.
     context_feature_length (optional): The length of the context feature.
+    max_dp_points (optional): The maximum number of DensePose sampled points per
+      instance. The default (336) is selected since the original DensePose paper
+      (https://arxiv.org/pdf/1802.00434.pdf) indicates that the maximum number
+      of samples per part is 14, and therefore 24 * 14 = 336 is the maximum
+      sampler per instance.
 
   Returns:
     A dictionary keyed by fields.InputDataFields containing padding shapes for
@@ -476,6 +490,15 @@ def pad_input_data_to_static_shapes(tensor_dict,
     padding_shape = [max_num_boxes, shape_utils.get_dim_as_int(tensor_shape[1])]
     padding_shapes[fields.InputDataFields.
                    groundtruth_keypoint_weights] = padding_shape
+  if fields.InputDataFields.groundtruth_dp_num_points in tensor_dict:
+    padding_shapes[
+        fields.InputDataFields.groundtruth_dp_num_points] = [max_num_boxes]
+    padding_shapes[
+        fields.InputDataFields.groundtruth_dp_part_ids] = [
+            max_num_boxes, max_dp_points]
+    padding_shapes[
+        fields.InputDataFields.groundtruth_dp_surface_coords] = [
+            max_num_boxes, max_dp_points, 4]
 
   # Prepare for ContextRCNN related fields.
   if fields.InputDataFields.context_features in tensor_dict:
@@ -535,6 +558,10 @@ def augment_input_data(tensor_dict, data_augmentation_options):
                                in tensor_dict)
   include_multiclass_scores = (fields.InputDataFields.multiclass_scores in
                                tensor_dict)
+  dense_pose_fields = [fields.InputDataFields.groundtruth_dp_num_points,
+                       fields.InputDataFields.groundtruth_dp_part_ids,
+                       fields.InputDataFields.groundtruth_dp_surface_coords]
+  include_dense_pose = all(field in tensor_dict for field in dense_pose_fields)
   tensor_dict = preprocessor.preprocess(
       tensor_dict, data_augmentation_options,
       func_arg_map=preprocessor.get_default_func_arg_map(
@@ -543,7 +570,8 @@ def augment_input_data(tensor_dict, data_augmentation_options):
           include_multiclass_scores=include_multiclass_scores,
           include_instance_masks=include_instance_masks,
           include_keypoints=include_keypoints,
-          include_keypoint_visibilities=include_keypoint_visibilities))
+          include_keypoint_visibilities=include_keypoint_visibilities,
+          include_dense_pose=include_dense_pose))
   tensor_dict[fields.InputDataFields.image] = tf.squeeze(
       tensor_dict[fields.InputDataFields.image], axis=0)
   return tensor_dict
@@ -572,6 +600,9 @@ def _get_labels_dict(input_dict):
       fields.InputDataFields.groundtruth_difficult,
       fields.InputDataFields.groundtruth_keypoint_visibilities,
       fields.InputDataFields.groundtruth_keypoint_weights,
+      fields.InputDataFields.groundtruth_dp_num_points,
+      fields.InputDataFields.groundtruth_dp_part_ids,
+      fields.InputDataFields.groundtruth_dp_surface_coords
   ]
 
   for key in optional_label_keys:
@@ -720,6 +751,17 @@ def train_input(train_config, train_input_config,
         groundtruth visibilities for each keypoint.
       labels[fields.InputDataFields.groundtruth_labeled_classes] is a
         [batch_size, num_classes] float32 k-hot tensor of classes.
+      labels[fields.InputDataFields.groundtruth_dp_num_points] is a
+        [batch_size, num_boxes] int32 tensor with the number of sampled
+        DensePose points per object.
+      labels[fields.InputDataFields.groundtruth_dp_part_ids] is a
+        [batch_size, num_boxes, max_sampled_points] int32 tensor with the
+        DensePose part ids (0-indexed) per object.
+      labels[fields.InputDataFields.groundtruth_dp_surface_coords] is a
+        [batch_size, num_boxes, max_sampled_points, 4] float32 tensor with the
+        DensePose surface coordinates. The format is (y, x, v, u), where (y, x)
+        are normalized image coordinates and (v, u) are normalized surface part
+        coordinates.
 
   Raises:
     TypeError: if the `train_config`, `train_input_config` or `model_config`
@@ -861,6 +903,17 @@ def eval_input(eval_config, eval_input_config, model_config,
         same class which heavily occlude each other.
       labels[fields.InputDataFields.groundtruth_labeled_classes] is a
         [num_boxes, num_classes] float32 k-hot tensor of classes.
+      labels[fields.InputDataFields.groundtruth_dp_num_points] is a
+        [batch_size, num_boxes] int32 tensor with the number of sampled
+        DensePose points per object.
+      labels[fields.InputDataFields.groundtruth_dp_part_ids] is a
+        [batch_size, num_boxes, max_sampled_points] int32 tensor with the
+        DensePose part ids (0-indexed) per object.
+      labels[fields.InputDataFields.groundtruth_dp_surface_coords] is a
+        [batch_size, num_boxes, max_sampled_points, 4] float32 tensor with the
+        DensePose surface coordinates. The format is (y, x, v, u), where (y, x)
+        are normalized image coordinates and (v, u) are normalized surface part
+        coordinates.
 
   Raises:
     TypeError: if the `eval_config`, `eval_input_config` or `model_config`
