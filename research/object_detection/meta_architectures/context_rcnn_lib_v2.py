@@ -56,23 +56,41 @@ class AttentionBlock(tf.keras.layers.Layer):
     self.key_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
     self.val_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
     self.query_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
+    self.feature_proj = None
     self.attention_temperature = attention_temperature
     self.freeze_batchnorm = freeze_batchnorm
     self.bottleneck_dimension = bottleneck_dimension
-    if output_dimension:
-      self.output_dimension = output_dimension
+    self.output_dimension = output_dimension
     super(AttentionBlock, self).__init__(**kwargs)
 
-  def set_output_dimension(self, new_output_dimension):
-    self.output_dimension = new_output_dimension
+  def set_output_dimension(self, output_dim):
+    self.output_dimension = output_dim
 
   def build(self, input_shapes):
-    self.feature_proj = ContextProjection(self.output_dimension,
-                                          self.freeze_batchnorm)
+    pass
 
-  def call(self, input_features, is_training, valid_mask):
+  def call(self, input_features, is_training, valid_context_size):
     """Handles a call by performing attention"""
+    print("CALLED")
     input_features, context_features = input_features
+    print(input_features.shape)
+
+    _, context_size, _ = context_features.shape
+    valid_mask = compute_valid_mask(valid_context_size, context_size)
+
+    channels = input_features.shape[-1]
+
+    #Build the feature projection layer
+    if (not self.output_dimension):
+      self.output_dimension = channels
+    if (not self.feature_proj):
+      self.feature_proj = ContextProjection(self.output_dimension,
+                                            self.freeze_batchnorm)
+
+    # Average pools over height and width dimension so that the shape of
+    # box_features becomes [batch_size, max_num_proposals, channels].
+    input_features = tf.reduce_mean(input_features, [2, 3])
+    
     with tf.variable_scope("AttentionBlock"):
       queries = project_features(
           input_features, self.bottleneck_dimension, is_training,
@@ -94,6 +112,10 @@ class AttentionBlock(tf.keras.layers.Layer):
     output_features = project_features(
         features, self.output_dimension, is_training,
         self.feature_proj, normalize=False)
+
+    output_features = output_features[:, :, tf.newaxis, tf.newaxis, :]
+
+    print(output_features.shape)
     return output_features
 
 
@@ -197,45 +219,3 @@ def compute_valid_mask(num_valid_elements, num_elements):
   num_valid_elements = num_valid_elements[..., tf.newaxis]
   valid_mask = tf.less(batch_element_idxs, num_valid_elements)
   return valid_mask
-
-def compute_box_context_attention(box_features, context_features,
-                                  valid_context_size, is_training,
-                                  attention_block):
-  """Computes the attention feature from the context given a batch of box.
-
-  Args:
-    box_features: A float Tensor of shape [batch_size, max_num_proposals,
-      height, width, channels]. It is pooled features from first stage
-      proposals.
-    context_features: A float Tensor of shape [batch_size, context_size,
-      num_context_features].
-    valid_context_size: A int32 Tensor of shape [batch_size].
-    bottleneck_dimension: A int32 Tensor representing the bottleneck dimension
-      for intermediate projections.
-    attention_temperature: A float Tensor. It controls the temperature of the
-      softmax for weights calculation. The formula for calculation as follows:
-        weights = exp(weights / temperature) / sum(exp(weights / temperature))
-    is_training: A boolean Tensor (affecting batch normalization).
-    freeze_batchnorm: Whether to freeze batch normalization weights.
-    attention_projections: Dictionary of the projection layers.
-
-  Returns:
-    A float Tensor of shape [batch_size, max_num_proposals, 1, 1, channels].
-  """
-  _, context_size, _ = context_features.shape
-  valid_mask = compute_valid_mask(valid_context_size, context_size)
-
-  channels = box_features.shape[-1]
-  attention_block.set_output_dimension(channels)
-
-  # Average pools over height and width dimension so that the shape of
-  # box_features becomes [batch_size, max_num_proposals, channels].
-  box_features = tf.reduce_mean(box_features, [2, 3])
-
-  output_features = attention_block([box_features, context_features],
-                                    is_training, valid_mask)
-
-  # Expands the dimension back to match with the original feature map.
-  output_features = output_features[:, :, tf.newaxis, tf.newaxis, :]
-
-  return output_features

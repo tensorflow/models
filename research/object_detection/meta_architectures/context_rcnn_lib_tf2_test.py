@@ -106,27 +106,15 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
     #Add in the feature layer because this is further down the pipeline and it isn't automatically injected.
     #projection_layers['feature'] = context_rcnn_lib.ContextProjection(output_dimension, False)
 
-    attention_block = context_rcnn_lib.AttentionBlock(bottleneck_dimension, attention_temperature, False)
-    attention_block.set_output_dimension(output_dimension)
-    output_features = attention_block([input_features, context_features], is_training, valid_mask)
+    attention_block = context_rcnn_lib.AttentionBlock(bottleneck_dimension, attention_temperature, False, output_dimension)
+    valid_context_size = tf.random_uniform((2,),
+                                             minval=0,
+                                             maxval=10,
+                                             dtype=tf.int32)
+    output_features = attention_block([input_features, context_features], is_training, valid_context_size)
 
     # Makes sure the shape is correct.
     self.assertAllEqual(output_features.shape, [2, 3, output_dimension])
-
-  @parameterized.parameters(True, False)
-  def test_compute_box_context_attention(self, is_training):
-    box_features = tf.ones([2, 3, 4, 4, 4], tf.float32)
-    context_features = tf.ones([2, 5, 6], tf.float32)
-    valid_context_size = tf.constant((2, 3), tf.int32)
-    bottleneck_dimension = 10
-    attention_temperature = 1
-    
-    attention_features = context_rcnn_lib.compute_box_context_attention(
-        box_features, context_features, valid_context_size,
-        is_training, context_rcnn_lib.AttentionBlock(bottleneck_dimension, attention_temperature, False))
-    # Makes sure the shape is correct.
-    self.assertAllEqual(attention_features.shape, [2, 3, 1, 1, 4])
-
 
 if __name__ == '__main__':
   tf.test.main()
