@@ -1,8 +1,28 @@
 ## DELF installation
 
+### Installation script
+
+We now have a script to do the entire installation in one shot. Navigate to the
+directory `tensorflow/models/research/delf/delf/python/training`, then run:
+
+```bash
+# From tensorflow/models/research/delf/delf/python/training
+bash install_delf.sh
+```
+
+If this works, you are done! If not, see below for detailed instructions for
+installing this codebase and its dependencies.
+
+*Please note that the current installation only works on 64 bits Linux
+architectures due to the `protoc` binary downloaded by the installation script.
+If you wish to install the DELF library on other architectures please update the
+[`install_delf.sh`](./install_delf.sh) script by referencing the desired
+`protoc`
+[binary release](https://github.com/protocolbuffers/protobuf/releases).*
+
 ### Tensorflow
 
-[![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
+[![TensorFlow 2.2](https://img.shields.io/badge/tensorflow-2.2-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0)
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
 For detailed steps to install Tensorflow, follow the
@@ -11,9 +31,9 @@ typical user can install Tensorflow using one of the following commands:
 
 ```bash
 # For CPU:
-pip3 install 'tensorflow'
+pip3 install 'tensorflow>=2.2.0'
 # For GPU:
-pip3 install 'tensorflow-gpu'
+pip3 install 'tensorflow-gpu>=2.2.0'
 ```
 
 ### TF-Slim
