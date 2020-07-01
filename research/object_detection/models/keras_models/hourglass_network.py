@@ -43,6 +43,15 @@ def _get_padding_for_kernel_size(kernel_size):
         kernel_size))
 
 
+def batchnorm():
+  try:
+    return tf.keras.layers.experimental.SyncBatchNormalization(
+        name='batchnorm', epsilon=1e-5, momentum=0.1)
+  except AttributeError:
+    return tf.keras.layers.BatchNormalization(
+        name='batchnorm', epsilon=1e-5, momentum=0.1, fused=BATCH_NORM_FUSED)
+
+
 class ConvolutionalBlock(tf.keras.layers.Layer):
   """Block that aggregates Convolution + Norm layer + ReLU."""
 
@@ -73,8 +82,7 @@ class ConvolutionalBlock(tf.keras.layers.Layer):
         filters=out_channels, kernel_size=kernel_size, use_bias=False,
         strides=stride, padding=padding)
 
-    self.norm = tf.keras.layers.experimental.SyncBatchNormalization(
-        name='batchnorm', epsilon=1e-5, momentum=0.1)
+    self.norm = batchnorm()
 
     if relu:
       self.relu = tf.keras.layers.ReLU()
@@ -124,8 +132,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     self.conv = tf.keras.layers.Conv2D(
         filters=out_channels, kernel_size=kernel_size, use_bias=False,
         strides=1, padding=padding)
-    self.norm = tf.keras.layers.experimental.SyncBatchNormalization(
-        name='batchnorm', epsilon=1e-5, momentum=0.1)
+    self.norm = batchnorm()
 
     if skip_conv:
       self.skip = SkipConvolution(out_channels=out_channels,

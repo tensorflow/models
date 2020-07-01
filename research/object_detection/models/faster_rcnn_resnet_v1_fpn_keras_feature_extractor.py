@@ -32,7 +32,7 @@ _RESNET_MODEL_OUTPUT_LAYERS = {
 }
 
 
-class FasterRCNNResnetV1FPNKerasFeatureExtractor(
+class FasterRCNNResnetV1FpnKerasFeatureExtractor(
     faster_rcnn_meta_arch.FasterRCNNKerasFeatureExtractor):
   """Faster RCNN Feature Extractor using Keras-based Resnet V1 FPN features."""
 
@@ -42,12 +42,10 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
                resnet_v1_base_model_name,
                first_stage_features_stride,
                conv_hyperparams,
-               min_depth,
-               depth_multiplier,
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
-               fpn_max_level=7,
+               fpn_max_level=6,
                additional_layer_depth=256,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
@@ -61,9 +59,6 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
       conv_hyperparameters: a `hyperparams_builder.KerasLayerHyperparams` object
         containing convolution hyperparameters for the layers added on top of
         the base feature extractor.
-      min_depth: Minimum number of filters in the convolutional layers.
-      depth_multiplier: The depth multiplier to modify the number of filters
-        in the convolutional layers.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
       fpn_min_level: the highest resolution feature map to use in FPN. The valid
@@ -85,7 +80,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
     if first_stage_features_stride != 8 and first_stage_features_stride != 16:
       raise ValueError('`first_stage_features_stride` must be 8 or 16.')
 
-    super(FasterRCNNResnetV1FPNKerasFeatureExtractor, self).__init__(
+    super(FasterRCNNResnetV1FpnKerasFeatureExtractor, self).__init__(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         batch_norm_trainable=batch_norm_trainable,
@@ -94,8 +89,6 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
     self._resnet_v1_base_model = resnet_v1_base_model
     self._resnet_v1_base_model_name = resnet_v1_base_model_name
     self._conv_hyperparams = conv_hyperparams
-    self._min_depth = min_depth
-    self._depth_multiplier = depth_multiplier
     self._fpn_min_level = fpn_min_level
     self._fpn_max_level = fpn_max_level
     self._additional_layer_depth = additional_layer_depth
@@ -105,6 +98,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
     self._resnet_block_names = ['block1', 'block2', 'block3', 'block4']
     self.classification_backbone = None
     self._fpn_features_generator = None
+    self._coarse_feature_layers = []
 
   def preprocess(self, resized_inputs):
     """Faster R-CNN Resnet V1 preprocessing.
@@ -152,8 +146,6 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
             conv_hyperparams=(self._conv_hyperparams
                               if self._override_base_feature_extractor_hyperparams
                               else None),
-            min_depth=self._min_depth,
-            depth_multiplier=self._depth_multiplier,
             classes=None,
             weights=None,
             include_top=False)
@@ -166,14 +158,12 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
         backbone_outputs = self.classification_backbone(full_resnet_v1_model.inputs)
 
         # construct FPN feature generator
-        self._depth_fn = lambda d: max(
-            int(d * self._depth_multiplier), self._min_depth)
         self._base_fpn_max_level = min(self._fpn_max_level, 5)
         self._num_levels = self._base_fpn_max_level + 1 - self._fpn_min_level
         self._fpn_features_generator = (
             feature_map_generators.KerasFpnTopDownFeatureMaps(
                 num_levels=self._num_levels,
-                depth=self._depth_fn(self._additional_layer_depth),
+                depth=self._additional_layer_depth,
                 is_training=self._is_training,
                 conv_hyperparams=self._conv_hyperparams,
                 freeze_batchnorm=self._freeze_batchnorm,
@@ -188,10 +178,41 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
             (feature_block, feature_block_map[feature_block])
             for feature_block in feature_block_list]
         fpn_features = self._fpn_features_generator(fpn_input_image_features)
-        features_maps = [fpn_feature for _, fpn_feature in fpn_features.items()]
+
+        # Construct coarse feature layers
+        for i in range(self._base_fpn_max_level, self._fpn_max_level):
+          layers = []
+          layer_name = 'bottom_up_block{}'.format(i)
+          layers.append(
+              tf.keras.layers.Conv2D(
+                  self._additional_layer_depth,
+                  [3, 3],
+                  padding='SAME',
+                  strides=2,
+                  name=layer_name + '_conv',
+                  **self._conv_hyperparams.params()))
+          layers.append(
+              self._conv_hyperparams.build_batch_norm(
+                  training=(self._is_training and not self._freeze_batchnorm),
+                  name=layer_name + '_batchnorm'))
+          layers.append(
+              self._conv_hyperparams.build_activation_layer(
+                  name=layer_name))
+          self._coarse_feature_layers.append(layers)
+        
+        feature_maps = []
+        for level in range(self._fpn_min_level, self._base_fpn_max_level + 1):
+          feature_maps.append(fpn_features['top_down_block{}'.format(level-1)])
+        last_feature_map = fpn_features['top_down_block{}'.format(
+            self._base_fpn_max_level - 1)]
+
+        for coarse_feature_layers in self._coarse_feature_layers:
+          for layer in coarse_feature_layers:
+            last_feature_map = layer(last_feature_map)
+          feature_maps.append(last_feature_map)
 
         feature_extractor_model = tf.keras.models.Model(
-            inputs=full_resnet_v1_model.inputs, outputs=features_maps)
+            inputs=full_resnet_v1_model.inputs, outputs=feature_maps)
         return feature_extractor_model
 
   def get_box_classifier_feature_extractor_model(self, name=None):
@@ -215,6 +236,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
     """
     with tf.name_scope(name):
       with tf.name_scope('ResnetV1FPN'):
+        # TODO: Add a batchnorm layer between two fc layers.
         feature_extractor_model = tf.keras.models.Sequential([
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(units=1024, activation='relu'),
@@ -223,20 +245,18 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractor(
         return feature_extractor_model
 
 
-class FasterRCNNResnet50FPNKerasFeatureExtractor(
-    FasterRCNNResnetV1FPNKerasFeatureExtractor):
-  """Faster RCNN with Resnet50 FPN feature extractor implementation."""
+class FasterRCNNResnet50FpnKerasFeatureExtractor(
+    FasterRCNNResnetV1FpnKerasFeatureExtractor):
+  """Faster RCNN with Resnet50 FPN feature extractor."""
 
   def __init__(self,
                is_training,
                first_stage_features_stride=16,
                conv_hyperparams=None,
-               min_depth=16,
-               depth_multiplier=1,
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
-               fpn_max_level=7,
+               fpn_max_level=6,
                additional_layer_depth=256,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
@@ -245,8 +265,6 @@ class FasterRCNNResnet50FPNKerasFeatureExtractor(
       is_training: See base class.
       first_stage_features_stride: See base class.
       conv_hyperparams: See base class.
-      min_depth: See base class.
-      depth_multiplier: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
@@ -254,12 +272,10 @@ class FasterRCNNResnet50FPNKerasFeatureExtractor(
       additional_layer_depth: See base class.
       override_base_feature_extractor_hyperparams: See base class.
     """
-    super(FasterRCNNResnet50FPNKerasFeatureExtractor, self).__init__(
+    super(FasterRCNNResnet50FpnKerasFeatureExtractor, self).__init__(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
-        min_depth=min_depth,
-        depth_multiplier=depth_multiplier,
         resnet_v1_base_model=resnet_v1.resnet_v1_50,
         resnet_v1_base_model_name='resnet_v1_50',
         batch_norm_trainable=batch_norm_trainable,
@@ -270,19 +286,17 @@ class FasterRCNNResnet50FPNKerasFeatureExtractor(
         override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams)
 
 
-class FasterRCNNResnet101FPNKerasFeatureExtractor(
-    FasterRCNNResnetV1FPNKerasFeatureExtractor):
-  """Faster RCNN with Resnet101 FPN feature extractor implementation."""
+class FasterRCNNResnet101FpnKerasFeatureExtractor(
+    FasterRCNNResnetV1FpnKerasFeatureExtractor):
+  """Faster RCNN with Resnet101 FPN feature extractor."""
   def __init__(self,
                is_training,
                first_stage_features_stride=16,
                conv_hyperparams=None,
-               min_depth=16,
-               depth_multiplier=1,
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
-               fpn_max_level=7,
+               fpn_max_level=6,
                additional_layer_depth=256,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
@@ -291,8 +305,6 @@ class FasterRCNNResnet101FPNKerasFeatureExtractor(
       is_training: See base class.
       first_stage_features_stride: See base class.
       conv_hyperparams: See base class.
-      min_depth: See base class.
-      depth_multiplier: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
@@ -300,12 +312,10 @@ class FasterRCNNResnet101FPNKerasFeatureExtractor(
       additional_layer_depth: See base class.
       override_base_feature_extractor_hyperparams: See base class.
     """
-    super(FasterRCNNResnet101FPNKerasFeatureExtractor, self).__init__(
+    super(FasterRCNNResnet101FpnKerasFeatureExtractor, self).__init__(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
-        min_depth=min_depth,
-        depth_multiplier=depth_multiplier,
         resnet_v1_base_model=resnet_v1.resnet_v1_101,
         resnet_v1_base_model_name='resnet_v1_101',
         batch_norm_trainable=batch_norm_trainable,
@@ -316,20 +326,18 @@ class FasterRCNNResnet101FPNKerasFeatureExtractor(
         override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams)
 
 
-class FasterRCNNResnet152FPNKerasFeatureExtractor(
-    FasterRCNNResnetV1FPNKerasFeatureExtractor):
-  """Faster RCNN with Resnet152 FPN feature extractor implementation."""
+class FasterRCNNResnet152FpnKerasFeatureExtractor(
+    FasterRCNNResnetV1FpnKerasFeatureExtractor):
+  """Faster RCNN with Resnet152 FPN feature extractor."""
 
   def __init__(self,
                is_training,
                first_stage_features_stride=16,
                conv_hyperparams=None,
-               min_depth=16,
-               depth_multiplier=1,
                batch_norm_trainable=False,
                weight_decay=0.0,
                fpn_min_level=2,
-               fpn_max_level=7,
+               fpn_max_level=6,
                additional_layer_depth=256,
                override_base_feature_extractor_hyperparams=False):
     """Constructor.
@@ -338,8 +346,6 @@ class FasterRCNNResnet152FPNKerasFeatureExtractor(
       is_training: See base class.
       first_stage_features_stride: See base class.
       conv_hyperparams: See base class.
-      min_depth: See base class.
-      depth_multiplier: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
@@ -347,12 +353,10 @@ class FasterRCNNResnet152FPNKerasFeatureExtractor(
       additional_layer_depth: See base class.
       override_base_feature_extractor_hyperparams: See base class.
     """
-    super(FasterRCNNResnet152FPNKerasFeatureExtractor, self).__init__(
+    super(FasterRCNNResnet152FpnKerasFeatureExtractor, self).__init__(
         is_training=is_training,
         first_stage_features_stride=first_stage_features_stride,
         conv_hyperparams=conv_hyperparams,
-        min_depth=min_depth,
-        depth_multiplier=depth_multiplier,
         resnet_v1_base_model=resnet_v1.resnet_v1_152,
         resnet_v1_base_model_name='resnet_v1_152',
         batch_norm_trainable=batch_norm_trainable,

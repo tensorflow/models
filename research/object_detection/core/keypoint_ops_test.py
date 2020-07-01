@@ -180,6 +180,21 @@ class KeypointOpsTest(test_case.TestCase):
           [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
           [[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]]
       ])
+      expected_keypoints = tf.constant([
+          [[0.1, 0.9], [0.2, 0.8], [0.3, 0.7]],
+          [[0.4, 0.6], [0.5, 0.5], [0.6, 0.4]],
+      ])
+      output = keypoint_ops.flip_horizontal(keypoints, 0.5)
+      return output, expected_keypoints
+
+    output, expected_keypoints = self.execute(graph_fn, [])
+    self.assertAllClose(output, expected_keypoints)
+
+  def test_flip_horizontal_permutation(self):
+
+    def graph_fn():
+      keypoints = tf.constant([[[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+                               [[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]]])
       flip_permutation = [0, 2, 1]
 
       expected_keypoints = tf.constant([
@@ -197,6 +212,22 @@ class KeypointOpsTest(test_case.TestCase):
           [[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
           [[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]]
       ])
+
+      expected_keypoints = tf.constant([
+          [[0.9, 0.1], [0.8, 0.2], [0.7, 0.3]],
+          [[0.6, 0.4], [0.5, 0.5], [0.4, 0.6]],
+      ])
+      output = keypoint_ops.flip_vertical(keypoints, 0.5)
+      return output, expected_keypoints
+
+    output, expected_keypoints = self.execute(graph_fn, [])
+    self.assertAllClose(output, expected_keypoints)
+
+  def test_flip_vertical_permutation(self):
+
+    def graph_fn():
+      keypoints = tf.constant([[[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+                               [[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]]])
       flip_permutation = [0, 2, 1]
 
       expected_keypoints = tf.constant([
@@ -220,6 +251,23 @@ class KeypointOpsTest(test_case.TestCase):
       ])
       output = keypoint_ops.rot90(keypoints)
       return output, expected_keypoints
+    output, expected_keypoints = self.execute(graph_fn, [])
+    self.assertAllClose(output, expected_keypoints)
+
+  def test_rot90_permutation(self):
+
+    def graph_fn():
+      keypoints = tf.constant([[[0.1, 0.1], [0.2, 0.2], [0.3, 0.3]],
+                               [[0.4, 0.6], [0.5, 0.6], [0.6, 0.7]]])
+      rot_permutation = [0, 2, 1]
+      expected_keypoints = tf.constant([
+          [[0.9, 0.1], [0.7, 0.3], [0.8, 0.2]],
+          [[0.4, 0.4], [0.3, 0.6], [0.4, 0.5]],
+      ])
+      output = keypoint_ops.rot90(keypoints,
+                                  rotation_permutation=rot_permutation)
+      return output, expected_keypoints
+
     output, expected_keypoints = self.execute(graph_fn, [])
     self.assertAllClose(output, expected_keypoints)
 

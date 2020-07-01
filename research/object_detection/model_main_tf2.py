@@ -16,14 +16,6 @@
 
 r"""Creates and runs TF2 object detection models.
 
-##################################
-NOTE: This module has not been fully tested; please bear with us while we iron
-out the kinks.
-##################################
-
-When a TPU device is available, this binary uses TPUStrategy. Otherwise, it uses
-GPUS with MirroredStrategy/MultiWorkerMirroredStrategy.
-
 For local training/evaluation run:
 PIPELINE_CONFIG_PATH=path/to/pipeline.config
 MODEL_DIR=/tmp/model_outputs
@@ -37,7 +29,6 @@ python model_main_tf2.py -- \
 """
 from absl import flags
 import tensorflow.compat.v2 as tf
-from object_detection import model_hparams
 from object_detection import model_lib_v2
 
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
@@ -52,10 +43,6 @@ flags.DEFINE_integer('sample_1_of_n_eval_on_train_examples', 5, 'Will sample '
                      'where n is provided. This is only used if '
                      '`eval_training_data` is True.')
 flags.DEFINE_string(
-    'hparams_overrides', None, 'Hyperparameter overrides, '
-    'represented as a string containing comma-separated '
-    'hparam_name=value pairs.')
-flags.DEFINE_string(
     'model_dir', None, 'Path to output model directory '
                        'where event and checkpoint files will be written.')
 flags.DEFINE_string(
@@ -65,6 +52,8 @@ flags.DEFINE_string(
 
 flags.DEFINE_integer('eval_timeout', 3600, 'Number of seconds to wait for an'
                      'evaluation checkpoint before exiting.')
+
+flags.DEFINE_bool('use_tpu', False, 'Whether the job is executing on a TPU.')
 flags.DEFINE_integer(
     'num_workers', 1, 'When num_workers > 1, training uses '
     'MultiWorkerMirroredStrategy. When num_workers = 1 it uses '
@@ -80,7 +69,6 @@ def main(unused_argv):
 
   if FLAGS.checkpoint_dir:
     model_lib_v2.eval_continuously(
-        hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
         pipeline_config_path=FLAGS.pipeline_config_path,
         model_dir=FLAGS.model_dir,
         train_steps=FLAGS.num_train_steps,
@@ -90,7 +78,7 @@ def main(unused_argv):
         checkpoint_dir=FLAGS.checkpoint_dir,
         wait_interval=300, timeout=FLAGS.eval_timeout)
   else:
-    if tf.config.get_visible_devices('TPU'):
+    if FLAGS.use_tpu:
       resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
       tf.config.experimental_connect_to_cluster(resolver)
       tf.tpu.experimental.initialize_tpu_system(resolver)
@@ -102,11 +90,10 @@ def main(unused_argv):
 
     with strategy.scope():
       model_lib_v2.train_loop(
-          hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
           pipeline_config_path=FLAGS.pipeline_config_path,
           model_dir=FLAGS.model_dir,
           train_steps=FLAGS.num_train_steps,
           use_tpu=FLAGS.use_tpu)
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()

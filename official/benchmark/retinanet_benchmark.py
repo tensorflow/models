@@ -271,6 +271,23 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     FLAGS.strategy_type = 'tpu'
     self._run_and_report_benchmark(params, do_eval=False, warmup=0)
 
+  @flagsaver.flagsaver
+  def benchmark_2x2_tpu_spinenet_coco(self):
+    """Run SpineNet with RetinaNet model accuracy test with 4 TPUs."""
+    self._setup()
+    params = self._params()
+    params['architecture']['backbone'] = 'spinenet'
+    params['architecture']['multilevel_features'] = 'identity'
+    params['architecture']['use_bfloat16'] = False
+    params['train']['batch_size'] = 64
+    params['train']['total_steps'] = 1875  # One epoch.
+    params['train']['iterations_per_loop'] = 500
+    params['train']['checkpoint']['path'] = ''
+    FLAGS.model_dir = self._get_model_dir(
+        'real_benchmark_2x2_tpu_spinenet_coco')
+    FLAGS.strategy_type = 'tpu'
+    self._run_and_report_benchmark(params, do_eval=False, warmup=0)
+
 
 if __name__ == '__main__':
   tf.test.main()

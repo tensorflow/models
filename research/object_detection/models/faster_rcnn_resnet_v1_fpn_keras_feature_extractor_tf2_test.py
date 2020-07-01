@@ -26,7 +26,7 @@ from object_detection.protos import hyperparams_pb2
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
+class FasterRCNNResnetV1FpnKerasFeatureExtractorTest(tf.test.TestCase):
 
   def _build_conv_hyperparams(self):
     conv_hyperparams = hyperparams_pb2.Hyperparams()
@@ -44,7 +44,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
     return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
 
   def _build_feature_extractor(self):
-    return frcnn_res_fpn.FasterRCNNResnet50FPNKerasFeatureExtractor(
+    return frcnn_res_fpn.FasterRCNNResnet50FpnKerasFeatureExtractor(
         is_training=False,
         conv_hyperparams=self._build_conv_hyperparams(),
         first_stage_features_stride=16,
@@ -64,6 +64,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
     self.assertAllEqual(features_shapes[1].numpy(), [2, 56, 56, 256])
     self.assertAllEqual(features_shapes[2].numpy(), [2, 28, 28, 256])
     self.assertAllEqual(features_shapes[3].numpy(), [2, 14, 14, 256])
+    self.assertAllEqual(features_shapes[4].numpy(), [2, 7, 7, 256])
 
   def test_extract_proposal_features_half_size_input(self):
     feature_extractor = self._build_feature_extractor()
@@ -78,14 +79,7 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
     self.assertAllEqual(features_shapes[1].numpy(), [2, 28, 28, 256])
     self.assertAllEqual(features_shapes[2].numpy(), [2, 14, 14, 256])
     self.assertAllEqual(features_shapes[3].numpy(), [2, 7, 7, 256])
-
-  def test_extract_proposal_features_dies_with_incorrect_rank_inputs(self):
-    feature_extractor = self._build_feature_extractor()
-    preprocessed_inputs = tf.random_uniform(
-        [224, 224, 3], maxval=255, dtype=tf.float32)
-    with self.assertRaises(tf.errors.InvalidArgumentError):
-      feature_extractor.get_proposal_feature_extractor_model(
-          name='TestScope')(preprocessed_inputs)
+    self.assertAllEqual(features_shapes[4].numpy(), [2, 4, 4, 256])
 
   def test_extract_box_classifier_features_returns_expected_size(self):
     feature_extractor = self._build_feature_extractor()
@@ -98,8 +92,3 @@ class FasterRCNNResnetV1FPNKerasFeatureExtractorTest(tf.test.TestCase):
     features_shape = tf.shape(proposal_classifier_features)
 
     self.assertAllEqual(features_shape.numpy(), [3, 1024])
-
-
-if __name__ == '__main__':
-  tf.enable_v2_behavior()
-  tf.test.main()

@@ -30,6 +30,7 @@ from object_detection.core import data_decoder
 from object_detection.core import standard_fields as fields
 from object_detection.protos import input_reader_pb2
 from object_detection.utils import label_map_util
+from object_detection.utils import shape_utils
 
 # pylint: disable=g-import-not-at-top
 try:
@@ -170,7 +171,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                num_additional_channels=0,
                load_multiclass_scores=False,
                load_context_features=False,
-               expand_hierarchy_labels=False):
+               expand_hierarchy_labels=False,
+               load_dense_pose=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -201,6 +203,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         account the provided hierarchy in the label_map_proto_file. For positive
         classes, the labels are extended to ancestor. For negative classes,
         the labels are expanded to descendants.
+      load_dense_pose: Whether to load DensePose annotations.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
@@ -371,6 +374,34 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                     self._decode_png_instance_masks))
       else:
         raise ValueError('Did not recognize the `instance_mask_type` option.')
+    if load_dense_pose:
+      self.keys_to_features['image/object/densepose/num'] = (
+          tf.VarLenFeature(tf.int64))
+      self.keys_to_features['image/object/densepose/part_index'] = (
+          tf.VarLenFeature(tf.int64))
+      self.keys_to_features['image/object/densepose/x'] = (
+          tf.VarLenFeature(tf.float32))
+      self.keys_to_features['image/object/densepose/y'] = (
+          tf.VarLenFeature(tf.float32))
+      self.keys_to_features['image/object/densepose/u'] = (
+          tf.VarLenFeature(tf.float32))
+      self.keys_to_features['image/object/densepose/v'] = (
+          tf.VarLenFeature(tf.float32))
+      self.items_to_handlers[
+          fields.InputDataFields.groundtruth_dp_num_points] = (
+              slim_example_decoder.Tensor('image/object/densepose/num'))
+      self.items_to_handlers[fields.InputDataFields.groundtruth_dp_part_ids] = (
+          slim_example_decoder.ItemHandlerCallback(
+              ['image/object/densepose/part_index',
+               'image/object/densepose/num'], self._dense_pose_part_indices))
+      self.items_to_handlers[
+          fields.InputDataFields.groundtruth_dp_surface_coords] = (
+              slim_example_decoder.ItemHandlerCallback(
+                  ['image/object/densepose/x', 'image/object/densepose/y',
+                   'image/object/densepose/u', 'image/object/densepose/v',
+                   'image/object/densepose/num'],
+                  self._dense_pose_surface_coordinates))
+
     if label_map_proto_file:
       # If the label_map_proto is provided, try to use it in conjunction with
       # the class text, and fall back to a materialized ID.
@@ -547,6 +578,14 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       group_of = fields.InputDataFields.groundtruth_group_of
       tensor_dict[group_of] = tf.cast(tensor_dict[group_of], dtype=tf.bool)
 
+    if fields.InputDataFields.groundtruth_dp_num_points in tensor_dict:
+      tensor_dict[fields.InputDataFields.groundtruth_dp_num_points] = tf.cast(
+          tensor_dict[fields.InputDataFields.groundtruth_dp_num_points],
+          dtype=tf.int32)
+      tensor_dict[fields.InputDataFields.groundtruth_dp_part_ids] = tf.cast(
+          tensor_dict[fields.InputDataFields.groundtruth_dp_part_ids],
+          dtype=tf.int32)
+
     return tensor_dict
 
   def _reshape_keypoints(self, keys_to_tensors):
@@ -696,6 +735,97 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         tf.greater(tf.size(png_masks), 0),
         lambda: tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32),
         lambda: tf.zeros(tf.cast(tf.stack([0, height, width]), dtype=tf.int32)))
+
+  def _dense_pose_part_indices(self, keys_to_tensors):
+    """Creates a tensor that contains part indices for each DensePose point.
+
+    Args:
+      keys_to_tensors: a dictionary from keys to tensors.
+
+    Returns:
+      A 2-D int32 tensor of shape [num_instances, num_points] where each element
+      contains the DensePose part index (0-23). The value `num_points`
+      corresponds to the maximum number of sampled points across all instances
+      in the image. Note that instances with less sampled points will be padded
+      with zeros in the last dimension.
+    """
+    num_points_per_instances = keys_to_tensors['image/object/densepose/num']
+    part_index = keys_to_tensors['image/object/densepose/part_index']
+    if isinstance(num_points_per_instances, tf.SparseTensor):
+      num_points_per_instances = tf.sparse_tensor_to_dense(
+          num_points_per_instances)
+    if isinstance(part_index, tf.SparseTensor):
+      part_index = tf.sparse_tensor_to_dense(part_index)
+    part_index = tf.cast(part_index, dtype=tf.int32)
+    max_points_per_instance = tf.cast(
+        tf.math.reduce_max(num_points_per_instances), dtype=tf.int32)
+    num_points_cumulative = tf.concat([
+        [0], tf.math.cumsum(num_points_per_instances)], axis=0)
+
+    def pad_parts_tensor(instance_ind):
+      points_range_start = num_points_cumulative[instance_ind]
+      points_range_end = num_points_cumulative[instance_ind + 1]
+      part_inds = part_index[points_range_start:points_range_end]
+      return shape_utils.pad_or_clip_nd(part_inds,
+                                        output_shape=[max_points_per_instance])
+
+    return tf.map_fn(pad_parts_tensor,
+                     tf.range(tf.size(num_points_per_instances)),
+                     dtype=tf.int32)
+
+  def _dense_pose_surface_coordinates(self, keys_to_tensors):
+    """Creates a tensor that contains surface coords for each DensePose point.
+
+    Args:
+      keys_to_tensors: a dictionary from keys to tensors.
+
+    Returns:
+      A 3-D float32 tensor of shape [num_instances, num_points, 4] where each
+      point contains (y, x, v, u) data for each sampled DensePose point. The
+      (y, x) coordinate has normalized image locations for the point, and (v, u)
+      contains the surface coordinate (also normalized) for the part. The value
+      `num_points` corresponds to the maximum number of sampled points across
+      all instances in the image. Note that instances with less sampled points
+      will be padded with zeros in dim=1.
+    """
+    num_points_per_instances = keys_to_tensors['image/object/densepose/num']
+    dp_y = keys_to_tensors['image/object/densepose/y']
+    dp_x = keys_to_tensors['image/object/densepose/x']
+    dp_v = keys_to_tensors['image/object/densepose/v']
+    dp_u = keys_to_tensors['image/object/densepose/u']
+    if isinstance(num_points_per_instances, tf.SparseTensor):
+      num_points_per_instances = tf.sparse_tensor_to_dense(
+          num_points_per_instances)
+    if isinstance(dp_y, tf.SparseTensor):
+      dp_y = tf.sparse_tensor_to_dense(dp_y)
+    if isinstance(dp_x, tf.SparseTensor):
+      dp_x = tf.sparse_tensor_to_dense(dp_x)
+    if isinstance(dp_v, tf.SparseTensor):
+      dp_v = tf.sparse_tensor_to_dense(dp_v)
+    if isinstance(dp_u, tf.SparseTensor):
+      dp_u = tf.sparse_tensor_to_dense(dp_u)
+    max_points_per_instance = tf.cast(
+        tf.math.reduce_max(num_points_per_instances), dtype=tf.int32)
+    num_points_cumulative = tf.concat([
+        [0], tf.math.cumsum(num_points_per_instances)], axis=0)
+
+    def pad_surface_coordinates_tensor(instance_ind):
+      """Pads DensePose surface coordinates for each instance."""
+      points_range_start = num_points_cumulative[instance_ind]
+      points_range_end = num_points_cumulative[instance_ind + 1]
+      y = dp_y[points_range_start:points_range_end]
+      x = dp_x[points_range_start:points_range_end]
+      v = dp_v[points_range_start:points_range_end]
+      u = dp_u[points_range_start:points_range_end]
+      # Create [num_points_i, 4] tensor, where num_points_i is the number of
+      # sampled points for instance i.
+      unpadded_tensor = tf.stack([y, x, v, u], axis=1)
+      return shape_utils.pad_or_clip_nd(
+          unpadded_tensor, output_shape=[max_points_per_instance, 4])
+
+    return tf.map_fn(pad_surface_coordinates_tensor,
+                     tf.range(tf.size(num_points_per_instances)),
+                     dtype=tf.float32)
 
   def _expand_image_label_hierarchy(self, image_classes, image_confidences):
     """Expand image level labels according to the hierarchy.

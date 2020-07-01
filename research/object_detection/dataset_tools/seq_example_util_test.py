@@ -288,7 +288,7 @@ class SeqExampleUtilTest(tf.test.TestCase):
         [0.75, 1.],
         seq_feature_dict['region/bbox/xmax'].feature[0].float_list.value[:])
     self.assertAllEqual(
-        ['cat', 'frog'],
+        [b'cat', b'frog'],
         seq_feature_dict['region/label/string'].feature[0].bytes_list.value[:])
     self.assertAllClose(
         [0.],
@@ -332,7 +332,7 @@ class SeqExampleUtilTest(tf.test.TestCase):
         [0.75],
         seq_feature_dict['region/bbox/xmax'].feature[1].float_list.value[:])
     self.assertAllEqual(
-        ['cat'],
+        [b'cat'],
         seq_feature_dict['region/label/string'].feature[1].bytes_list.value[:])
     self.assertAllClose(
         [],

@@ -181,7 +181,7 @@ def translate_file(model,
       raise ValueError("File output is a directory, will not save outputs to "
                        "file.")
     logging.info("Writing to file %s", output_file)
-    with tf.compat.v1.gfile.Open(output_file, "w") as f:
+    with tf.io.gfile.GFile(output_file, "w") as f:
       for i in sorted_keys:
         f.write("%s\n" % translations[i])
 
