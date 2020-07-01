@@ -42,6 +42,7 @@ from object_detection.protos import box_predictor_pb2
 from object_detection.protos import hyperparams_pb2
 from object_detection.protos import post_processing_pb2
 from object_detection.utils import ops
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 from object_detection.utils import tf_version
@@ -363,8 +364,9 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
           max_negatives_per_positive=None)
 
     crop_and_resize_fn = (
-        ops.matmul_crop_and_resize
-        if use_matmul_crop_and_resize else ops.native_crop_and_resize)
+        spatial_ops.multilevel_matmul_crop_and_resize
+        if use_matmul_crop_and_resize
+        else spatial_ops.multilevel_native_crop_and_resize)
     common_kwargs = {
         'is_training':
             is_training,
@@ -529,7 +531,8 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
     (rpn_box_predictor_features, rpn_box_encodings, refined_box_encodings,
      proposal_boxes_normalized, proposal_boxes) = execute_fn(graph_fn, [],
                                                              graph=g)
-    self.assertAllEqual(rpn_box_predictor_features.shape, [2, 20, 20, 512])
+    self.assertAllEqual(len(rpn_box_predictor_features), 1)
+    self.assertAllEqual(rpn_box_predictor_features[0].shape, [2, 20, 20, 512])
     self.assertAllEqual(rpn_box_encodings.shape, [2, 3600, 4])
     self.assertAllEqual(refined_box_encodings.shape, [16, 42, 4])
     self.assertAllEqual(proposal_boxes_normalized.shape, [2, 8, 4])
