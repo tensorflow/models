@@ -24,34 +24,9 @@ cd models/research/delf/delf/python/training
 
 ## Install the DELF Library
 
-The DELF Python library can be installed by running the
-[`install_delf.sh`](./install_delf.sh) script using the command:
-
-```
-bash install_delf.sh
-```
-
-The script installs both the DELF library and its dependencies in the following
-sequence:
-
-*   Install TensorFlow 2.2 and TensorFlow 2.2 for GPU.
-*   Install the [TF-Slim](https://github.com/google-research/tf-slim) library
-    from source.
-*   Download [protoc](https://github.com/protocolbuffers/protobuf) and compile
-    the DELF Protocol Buffers.
-*   Install the matplotlib, numpy, scikit-image, scipy and python3-tk Python
-    libraries.
-*   Install the
-    [TensorFlow Object Detection API](https://github.com/tensorflow/models/tree/master/research/object_detection)
-    from the cloned TensorFlow Model Garden repository.
-*   Install the DELF package.
-
-*Please note that the current installation only works on 64 bits Linux
-architectures due to the `protoc` binary downloaded by the installation script.
-If you wish to install the DELF library on other architectures please update the
-[`install_delf.sh`](./install_delf.sh) script by referencing the desired
-`protoc`
-[binary release](https://github.com/protocolbuffers/protobuf/releases).*
+To be able to use this code, please follow
+[these instructions](../../../INSTALL_INSTRUCTIONS.md) to properly install the
+DELF library.
 
 ## Download the GLDv2 Training Data
 
