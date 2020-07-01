@@ -70,12 +70,8 @@ class AttentionBlock(tf.keras.layers.Layer):
     pass
 
   def call(self, input_features, is_training, valid_context_size):
-    """Handles a call by performing attention"""
-    print("CALLED")
+    """Handles a call by performing attention."""
     input_features, context_features = input_features
-    print(input_features.shape)
-    print(context_features.shape)
-
     _, context_size, _ = context_features.shape
     valid_mask = compute_valid_mask(valid_context_size, context_size)
 
@@ -116,7 +112,6 @@ class AttentionBlock(tf.keras.layers.Layer):
 
     output_features = output_features[:, :, tf.newaxis, tf.newaxis, :]
 
-    print(output_features.shape)
     return output_features
 
 
@@ -178,9 +173,9 @@ def project_features(features, bottleneck_dimension, is_training,
   Args:
     features: A float Tensor of shape [batch_size, features_size,
       num_features].
-    projection_dimension: A int32 Tensor.
+    bottleneck_dimension: A int32 Tensor.
     is_training: A boolean Tensor (affecting batch normalization).
-    node: Contains a custom layer specific to the particular operation
+    layer: Contains a custom layer specific to the particular operation
           being performed (key, value, query, features)
     normalize: A boolean Tensor. If true, the output features will be l2
       normalized on the last dimension.

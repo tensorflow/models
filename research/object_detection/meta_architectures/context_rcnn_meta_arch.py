@@ -29,7 +29,6 @@ from object_detection.core import standard_fields as fields
 from object_detection.meta_architectures import context_rcnn_lib, context_rcnn_lib_v2
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.utils import tf_version
-import tensorflow as tf
 
 class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
   """Context R-CNN Meta-architecture definition."""
@@ -214,7 +213,6 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       attention_bottleneck_dimension: A single integer. The bottleneck feature
         dimension of the attention block.
       attention_temperature: A single float. The attention temperature.
-      attention_projection_layers: 
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals` at
@@ -268,13 +266,14 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
 
     if tf_version.is_tf1():
       self._context_feature_extract_fn = functools.partial(
-        context_rcnn_lib.compute_box_context_attention,
-        bottleneck_dimension=attention_bottleneck_dimension,
-        attention_temperature=attention_temperature,
-        is_training=is_training)
+          context_rcnn_lib.compute_box_context_attention,
+          bottleneck_dimension=attention_bottleneck_dimension,
+          attention_temperature=attention_temperature,
+          is_training=is_training)
     else:
       self._attention_block = context_rcnn_lib_v2.AttentionBlock(
-              attention_bottleneck_dimension, attention_temperature, freeze_batchnorm)
+          attention_bottleneck_dimension, attention_temperature,
+          freeze_batchnorm)
       self._is_training = is_training
 
   @staticmethod
@@ -331,7 +330,6 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     Returns:
       A float32 Tensor with shape [K, new_height, new_width, depth].
     """
-    print("INSIDE META ARCH")
 
     box_features = self._crop_and_resize_fn(
         features_to_crop, proposal_boxes_normalized,
@@ -343,16 +341,12 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
           context_features=context_features,
           valid_context_size=valid_context_size)
     else:
-      print("CALLING ATTENTION")
-      attention_features = self._attention_block([box_features, context_features], self._is_training, valid_context_size)
-
-    print(attention_features.shape)
+      attention_features = self._attention_block(
+          [box_features, context_features], self._is_training,
+          valid_context_size)
 
     # Adds box features with attention features.
-    print("box", box_features.shape)
-    print("attention", attention_features.shape)
     box_features += attention_features
-    print("after adding", box_features.shape)
 
     flattened_feature_maps = self._flatten_first_two_dimensions(box_features)
 

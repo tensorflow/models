@@ -218,9 +218,7 @@ def compute_box_context_attention(box_features, context_features,
                                     attention_temperature, valid_mask,
                                     is_training)
 
-  print("before expansion", output_features.shape)
   # Expands the dimension back to match with the original feature map.
   output_features = output_features[:, :, tf.newaxis, tf.newaxis, :]
-  print("after expansion", output_features.shape)
   return output_features
   
