@@ -190,7 +190,7 @@ serializing float tensors (`datum.proto`), configuring DELF/DELG extraction
 ### `delf/python`
 
 This directory contains files for several different purposes, such as:
-reading/writing tensors/features (`box_io.py`, `datum_io.py`, `feature_io.py`);
+reading/writing tensors/features (`box_io.py`, `datum_io.py`, `feature_io.py`),
 local feature aggregation extraction and similarity computation
 (`feature_aggregation_extractor.py`, `feature_aggregation_similarity.py`) and
 helper functions for image/feature loading/processing (`utils.py`,
@@ -198,7 +198,7 @@ helper functions for image/feature loading/processing (`utils.py`,
 
 The subdirectory `delf/python/examples` contains sample scripts to run DELF/DELG
 feature extraction/matching (`extractor.py`, `extract_features.py`,
-`match_images.py`), and object detection (`detector.py`, `extract_boxes.py`).
+`match_images.py`) and object detection (`detector.py`, `extract_boxes.py`).
 `delf_config_example.pbtxt` shows an example instantiation of the DelfConfig
 proto, used for DELF feature extraction.
 
