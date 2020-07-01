@@ -24,6 +24,7 @@ from official.nlp.bert import configs
 from official.nlp.bert import export_tfhub
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
+from official.nlp.data import sentence_prediction_dataloader
 from official.nlp.tasks import sentence_prediction
 
 
@@ -31,8 +32,9 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(SentencePredictionTaskTest, self).setUp()
-    self._train_data_config = bert.SentencePredictionDataConfig(
-        input_path="dummy", seq_length=128, global_batch_size=1)
+    self._train_data_config = (
+        sentence_prediction_dataloader.SentencePredictionDataConfig(
+            input_path="dummy", seq_length=128, global_batch_size=1))
 
   def get_model_config(self, num_classes):
     return bert.BertPretrainerConfig(

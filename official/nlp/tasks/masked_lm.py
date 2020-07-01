@@ -20,7 +20,7 @@ import tensorflow as tf
 from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
-from official.nlp.data import pretrain_dataloader
+from official.nlp.data import data_loader_factory
 
 
 @dataclasses.dataclass
@@ -95,8 +95,7 @@ class MaskedLMTask(base_task.Task):
           dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       return dataset
 
-    return pretrain_dataloader.BertPretrainDataLoader(params).load(
-        input_context)
+    return data_loader_factory.get_data_loader(params).load(input_context)
 
   def build_metrics(self, training=None):
     del training
