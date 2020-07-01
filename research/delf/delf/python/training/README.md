@@ -25,8 +25,8 @@ cd models/research/delf/delf/python/training
 ## Install the DELF Library
 
 To be able to use this code, please follow
-[these instructions](INSTALL_INSTRUCTIONS.md) to properly install the DELF
-library.
+[these instructions](../../../INSTALL_INSTRUCTIONS.md) to properly install the
+DELF library.
 
 ## Download the GLDv2 Training Data
 
