@@ -23,6 +23,7 @@ from official.vision.detection.modeling.architecture import heads
 from official.vision.detection.modeling.architecture import identity
 from official.vision.detection.modeling.architecture import nn_ops
 from official.vision.detection.modeling.architecture import resnet
+from official.vision.detection.modeling.architecture import spinenet
 
 
 def norm_activation_generator(params):
@@ -42,6 +43,9 @@ def backbone_generator(params):
         activation=params.norm_activation.activation,
         norm_activation=norm_activation_generator(
             params.norm_activation))
+  elif params.architecture.backbone == 'spinenet':
+    spinenet_params = params.spinenet
+    backbone_fn = spinenet.SpineNetBuilder(model_id=spinenet_params.model_id)
   else:
     raise ValueError('Backbone model `{}` is not supported.'
                      .format(params.architecture.backbone))

@@ -26,7 +26,6 @@ from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
 from official.nlp.data import sentence_prediction_dataloader
-from official.nlp.modeling import losses as loss_lib
 from official.nlp.tasks import utils
 
 
@@ -36,6 +35,7 @@ class SentencePredictionConfig(cfg.TaskConfig):
   # At most one of `init_checkpoint` and `hub_module_url` can
   # be specified.
   init_checkpoint: str = ''
+  init_cls_pooler: bool = False
   hub_module_url: str = ''
   metric_type: str = 'accuracy'
   model: bert.BertPretrainerConfig = bert.BertPretrainerConfig(
@@ -55,11 +55,11 @@ class SentencePredictionConfig(cfg.TaskConfig):
 class SentencePredictionTask(base_task.Task):
   """Task object for sentence_prediction."""
 
-  def __init__(self, params=cfg.TaskConfig):
-    super(SentencePredictionTask, self).__init__(params)
+  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
+    super(SentencePredictionTask, self).__init__(params, logging_dir)
     if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
-                       '`pretrain_checkpoint_dir` can be specified.')
+                       '`init_checkpoint` can be specified.')
     if params.hub_module_url:
       self._hub_module = hub.load(params.hub_module_url)
     else:
@@ -75,10 +75,10 @@ class SentencePredictionTask(base_task.Task):
       return bert.instantiate_bertpretrainer_from_cfg(self.task_config.model)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
-        labels=labels,
-        predictions=tf.nn.log_softmax(
-            tf.cast(model_outputs['sentence_prediction'], tf.float32), axis=-1))
+    loss = tf.keras.losses.sparse_categorical_crossentropy(
+        labels,
+        tf.cast(model_outputs['sentence_prediction'], tf.float32),
+        from_logits=True)
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
@@ -94,7 +94,7 @@ class SentencePredictionTask(base_task.Task):
             input_word_ids=dummy_ids,
             input_mask=dummy_ids,
             input_type_ids=dummy_ids)
-        y = tf.ones((1, 1), dtype=tf.int32)
+        y = tf.zeros((1, 1), dtype=tf.int32)
         return (x, y)
 
       dataset = tf.data.Dataset.range(1)
@@ -126,25 +126,26 @@ class SentencePredictionTask(base_task.Task):
     outputs = self.inference_step(features, model)
     loss = self.build_losses(
         labels=labels, model_outputs=outputs, aux_losses=model.losses)
+    logs = {self.loss: loss}
     if self.metric_type == 'matthews_corrcoef':
-      return {
-          self.loss:
-              loss,
+      logs.update({
           'sentence_prediction':
               tf.expand_dims(
                   tf.math.argmax(outputs['sentence_prediction'], axis=1),
                   axis=0),
           'labels':
               labels,
-      }
+      })
     if self.metric_type == 'pearson_spearman_corr':
-      return {
-          self.loss: loss,
+      logs.update({
           'sentence_prediction': outputs['sentence_prediction'],
           'labels': labels,
-      }
+      })
+    return logs
 
   def aggregate_logs(self, state=None, step_outputs=None):
+    if self.metric_type == 'accuracy':
+      return None
     if state is None:
       state = {'sentence_prediction': [], 'labels': []}
     state['sentence_prediction'].append(
@@ -178,13 +179,16 @@ class SentencePredictionTask(base_task.Task):
       return
 
     pretrain2finetune_mapping = {
-        'encoder':
-            model.checkpoint_items['encoder'],
-        'next_sentence.pooler_dense':
-            model.checkpoint_items['sentence_prediction.pooler_dense'],
+        'encoder': model.checkpoint_items['encoder'],
     }
+    # TODO(b/160251903): Investigate why no pooler dense improves finetuning
+    # accuracies.
+    if self.task_config.init_cls_pooler:
+      pretrain2finetune_mapping[
+          'next_sentence.pooler_dense'] = model.checkpoint_items[
+              'sentence_prediction.pooler_dense']
     ckpt = tf.train.Checkpoint(**pretrain2finetune_mapping)
-    status = ckpt.restore(ckpt_dir_or_file)
+    status = ckpt.read(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
     logging.info('finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)

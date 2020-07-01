@@ -302,6 +302,21 @@ def _write_relabeling_rules(relabeling_rules):
       csv_writer.writerow([new_label, old_label])
 
 
+def _shuffle_by_columns(np_array, random_state):
+  """Shuffle the columns of a 2D numpy array.
+
+  Args:
+    np_array: array to shuffle.
+    random_state: numpy RandomState to be used for shuffling.
+  Returns:
+    The shuffled array.
+  """
+  columns = np_array.shape[1]
+  columns_indices = np.arange(columns)
+  random_state.shuffle(columns_indices)
+  return np_array[:, columns_indices]
+
+
 def _build_train_and_validation_splits(image_paths, file_ids, labels,
                                        validation_split_size, seed):
   """Create TRAIN and VALIDATION splits containg all labels in equal proportion.
@@ -353,19 +368,21 @@ def _build_train_and_validation_splits(image_paths, file_ids, labels,
   for label, indexes in image_attrs_idx_by_label.items():
     # Create the subset for the current label.
     image_attrs_label = image_attrs[:, indexes]
-    images_per_label = image_attrs_label.shape[1]
     # Shuffle the current label subset.
-    columns_indices = np.arange(images_per_label)
-    rs.shuffle(columns_indices)
-    image_attrs_label = image_attrs_label[:, columns_indices]
+    image_attrs_label = _shuffle_by_columns(image_attrs_label, rs)
     # Split the current label subset into TRAIN and VALIDATION splits and add
     # each split to the list of all splits.
+    images_per_label = image_attrs_label.shape[1]
     cutoff_idx = max(1, int(validation_split_size * images_per_label))
     splits[_VALIDATION_SPLIT].append(image_attrs_label[:, 0 : cutoff_idx])
     splits[_TRAIN_SPLIT].append(image_attrs_label[:, cutoff_idx : ])
 
-  validation_split = np.concatenate(splits[_VALIDATION_SPLIT], axis=1)
-  train_split = np.concatenate(splits[_TRAIN_SPLIT], axis=1)
+  # Concatenate all subsets of image attributes into TRAIN and VALIDATION splits
+  # and reshuffle them again to ensure variance of labels across batches.
+  validation_split = _shuffle_by_columns(
+      np.concatenate(splits[_VALIDATION_SPLIT], axis=1), rs)
+  train_split = _shuffle_by_columns(
+      np.concatenate(splits[_TRAIN_SPLIT], axis=1), rs)
 
   # Unstack the image attribute arrays in the TRAIN and VALIDATION splits and
   # convert them back to lists. Convert labels back to 'int' from 'str'

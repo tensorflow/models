@@ -14,8 +14,10 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for official.nlp.tasks.question_answering."""
-import functools
+import itertools
+import json
 import os
+from absl.testing import parameterized
 import tensorflow as tf
 
 from official.nlp.bert import configs
@@ -25,30 +27,67 @@ from official.nlp.configs import encoders
 from official.nlp.tasks import question_answering
 
 
-class QuestionAnsweringTaskTest(tf.test.TestCase):
+class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(QuestionAnsweringTaskTest, self).setUp()
     self._encoder_config = encoders.TransformerEncoderConfig(
         vocab_size=30522, num_layers=1)
     self._train_data_config = bert.QADataConfig(
-        input_path="dummy", seq_length=128, global_batch_size=1)
+        input_path="dummy",
+        seq_length=128,
+        global_batch_size=1)
+
+    val_data = {"version": "1.1",
+                "data": [{"paragraphs": [
+                    {"context": "Sky is blue.",
+                     "qas": [{"question": "What is blue?", "id": "1234",
+                              "answers": [{"text": "Sky", "answer_start": 0},
+                                          {"text": "Sky", "answer_start": 0},
+                                          {"text": "Sky", "answer_start": 0}]
+                              }]}]}]}
+    self._val_input_path = os.path.join(self.get_temp_dir(), "val_data.json")
+    with tf.io.gfile.GFile(self._val_input_path, "w") as writer:
+      writer.write(json.dumps(val_data, indent=4) + "\n")
+
+    self._test_vocab = os.path.join(self.get_temp_dir(), "vocab.txt")
+    with tf.io.gfile.GFile(self._test_vocab, "w") as writer:
+      writer.write("[PAD]\n[UNK]\n[CLS]\n[SEP]\n[MASK]\nsky\nis\nblue\n")
+
+  def _get_validation_data_config(self, version_2_with_negative=False):
+    return bert.QADevDataConfig(
+        input_path=self._val_input_path,
+        input_preprocessed_data_path=self.get_temp_dir(),
+        seq_length=128,
+        global_batch_size=1,
+        version_2_with_negative=version_2_with_negative,
+        vocab_file=self._test_vocab,
+        tokenization="WordPiece",
+        do_lower_case=True)
 
   def _run_task(self, config):
     task = question_answering.QuestionAnsweringTask(config)
     model = task.build_model()
     metrics = task.build_metrics()
+    task.initialize(model)
 
-    strategy = tf.distribute.get_strategy()
-    dataset = strategy.experimental_distribute_datasets_from_function(
-        functools.partial(task.build_inputs, config.train_data))
-
-    iterator = iter(dataset)
+    train_dataset = task.build_inputs(config.train_data)
+    train_iterator = iter(train_dataset)
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
-    task.train_step(next(iterator), model, optimizer, metrics=metrics)
-    task.validation_step(next(iterator), model, metrics=metrics)
+    task.train_step(next(train_iterator), model, optimizer, metrics=metrics)
 
-  def test_task(self):
+    val_dataset = task.build_inputs(config.validation_data)
+    val_iterator = iter(val_dataset)
+    logs = task.validation_step(next(val_iterator), model, metrics=metrics)
+    logs = task.aggregate_logs(step_outputs=logs)
+    metrics = task.reduce_aggregated_logs(logs)
+    self.assertIn("final_f1", metrics)
+
+  @parameterized.parameters(itertools.product(
+      (False, True),
+      ("WordPiece", "SentencePiece"),
+  ))
+  def test_task(self, version_2_with_negative, tokenization):
     # Saves a checkpoint.
     pretrain_cfg = bert.BertPretrainerConfig(
         encoder=self._encoder_config,
@@ -65,22 +104,16 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
     config = question_answering.QuestionAnsweringConfig(
         init_checkpoint=saved_path,
         model=self._encoder_config,
-        train_data=self._train_data_config)
-    task = question_answering.QuestionAnsweringTask(config)
-    model = task.build_model()
-    metrics = task.build_metrics()
-    dataset = task.build_inputs(config.train_data)
-
-    iterator = iter(dataset)
-    optimizer = tf.keras.optimizers.SGD(lr=0.1)
-    task.train_step(next(iterator), model, optimizer, metrics=metrics)
-    task.validation_step(next(iterator), model, metrics=metrics)
-    task.initialize(model)
+        train_data=self._train_data_config,
+        validation_data=self._get_validation_data_config(
+            version_2_with_negative))
+    self._run_task(config)
 
   def test_task_with_fit(self):
     config = question_answering.QuestionAnsweringConfig(
         model=self._encoder_config,
-        train_data=self._train_data_config)
+        train_data=self._train_data_config,
+        validation_data=self._get_validation_data_config())
     task = question_answering.QuestionAnsweringTask(config)
     model = task.build_model()
     model = task.compile_model(
@@ -122,7 +155,8 @@ class QuestionAnsweringTaskTest(tf.test.TestCase):
     config = question_answering.QuestionAnsweringConfig(
         hub_module_url=hub_module_url,
         model=self._encoder_config,
-        train_data=self._train_data_config)
+        train_data=self._train_data_config,
+        validation_data=self._get_validation_data_config())
     self._run_task(config)
 
 

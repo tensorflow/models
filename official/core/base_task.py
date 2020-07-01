@@ -37,12 +37,24 @@ class Task(tf.Module):
   # Special keys in train/validate step returned logs.
   loss = "loss"
 
-  def __init__(self, params: cfg.TaskConfig):
+  def __init__(self, params: cfg.TaskConfig, logging_dir: str = None):
+    """Task initialization.
+
+    Args:
+      params: cfg.TaskConfig instance.
+      logging_dir: a string pointing to where the model, summaries etc. will be
+        saved. You can also write additional stuff in this directory.
+    """
     self._task_config = params
+    self._logging_dir = logging_dir
 
   @property
   def task_config(self) -> cfg.TaskConfig:
     return self._task_config
+
+  @property
+  def logging_dir(self) -> str:
+    return self._logging_dir
 
   def initialize(self, model: tf.keras.Model):
     """A callback function used as CheckpointManager's init_fn.
@@ -107,6 +119,7 @@ class Task(tf.Module):
     """Returns a dataset or a nested structure of dataset functions.
 
     Dataset functions define per-host datasets with the per-replica batch size.
+    With distributed training, this method runs on remote hosts.
 
     Args:
       params: hyperparams to create input pipelines.
@@ -172,6 +185,8 @@ class Task(tf.Module):
                  metrics=None):
     """Does forward and backward.
 
+    With distribution strategies, this method runs on devices.
+
     Args:
       inputs: a dictionary of input tensors.
       model: the model, forward pass definition.
@@ -219,6 +234,8 @@ class Task(tf.Module):
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     """Validatation step.
 
+    With distribution strategies, this method runs on devices.
+
     Args:
       inputs: a dictionary of input tensors.
       model: the keras.Model.
@@ -244,7 +261,17 @@ class Task(tf.Module):
     return logs
 
   def inference_step(self, inputs, model: tf.keras.Model):
-    """Performs the forward step."""
+    """Performs the forward step.
+
+    With distribution strategies, this method runs on devices.
+
+    Args:
+      inputs: a dictionary of input tensors.
+      model: the keras.Model.
+
+    Returns:
+      Model outputs.
+    """
     return model(inputs, training=False)
 
   def aggregate_logs(self, state, step_logs):
