@@ -55,8 +55,8 @@ class SentencePredictionConfig(cfg.TaskConfig):
 class SentencePredictionTask(base_task.Task):
   """Task object for sentence_prediction."""
 
-  def __init__(self, params=cfg.TaskConfig):
-    super(SentencePredictionTask, self).__init__(params)
+  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
+    super(SentencePredictionTask, self).__init__(params, logging_dir)
     if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
