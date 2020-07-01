@@ -529,7 +529,8 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
     (rpn_box_predictor_features, rpn_box_encodings, refined_box_encodings,
      proposal_boxes_normalized, proposal_boxes) = execute_fn(graph_fn, [],
                                                              graph=g)
-    self.assertAllEqual(rpn_box_predictor_features.shape, [2, 20, 20, 512])
+    self.assertAllEqual(len(rpn_box_predictor_features), 1)
+    self.assertAllEqual(rpn_box_predictor_features[0].shape, [2, 20, 20, 512])
     self.assertAllEqual(rpn_box_encodings.shape, [2, 3600, 4])
     self.assertAllEqual(refined_box_encodings.shape, [16, 42, 4])
     self.assertAllEqual(proposal_boxes_normalized.shape, [2, 8, 4])
