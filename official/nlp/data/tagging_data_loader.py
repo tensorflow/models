@@ -15,15 +15,26 @@
 # ==============================================================================
 """Loads dataset for the tagging (e.g., NER/POS) task."""
 from typing import Mapping, Optional
+import dataclasses
 import tensorflow as tf
 
 from official.core import input_reader
+from official.modeling.hyperparams import config_definitions as cfg
+from official.nlp.data import data_loader_factory
 
 
+@dataclasses.dataclass
+class TaggingDataConfig(cfg.DataConfig):
+  """Data config for tagging (tasks/tagging)."""
+  is_training: bool = True
+  seq_length: int = 128
+
+
+@data_loader_factory.register_data_loader_cls(TaggingDataConfig)
 class TaggingDataLoader:
   """A class to load dataset for tagging (e.g., NER and POS) task."""
 
-  def __init__(self, params):
+  def __init__(self, params: TaggingDataConfig):
     self._params = params
     self._seq_length = params.seq_length
 

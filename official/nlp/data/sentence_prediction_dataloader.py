@@ -15,11 +15,24 @@
 # ==============================================================================
 """Loads dataset for the sentence prediction (classification) task."""
 from typing import Mapping, Optional
+import dataclasses
 import tensorflow as tf
 
 from official.core import input_reader
+from official.modeling.hyperparams import config_definitions as cfg
+from official.nlp.data import data_loader_factory
 
 
+@dataclasses.dataclass
+class SentencePredictionDataConfig(cfg.DataConfig):
+  """Data config for sentence prediction task (tasks/sentence_prediction)."""
+  input_path: str = ''
+  global_batch_size: int = 32
+  is_training: bool = True
+  seq_length: int = 128
+
+
+@data_loader_factory.register_data_loader_cls(SentencePredictionDataConfig)
 class SentencePredictionDataLoader:
   """A class to load dataset for sentence prediction (classification) task."""
 
