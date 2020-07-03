@@ -110,11 +110,11 @@ if tf_version.is_tf2():
           frcnn_resnet_keras.FasterRCNNResnet152KerasFeatureExtractor,
       'faster_rcnn_inception_resnet_v2_keras':
       frcnn_inc_res_keras.FasterRCNNInceptionResnetV2KerasFeatureExtractor,
-      'fasret_rcnn_resnet50_fpn_keras':
+      'faster_rcnn_resnet50_fpn_keras':
           frcnn_resnet_fpn_keras.FasterRCNNResnet50FpnKerasFeatureExtractor,
-      'fasret_rcnn_resnet101_fpn_keras':
+      'faster_rcnn_resnet101_fpn_keras':
           frcnn_resnet_fpn_keras.FasterRCNNResnet101FpnKerasFeatureExtractor,
-      'fasret_rcnn_resnet152_fpn_keras':
+      'faster_rcnn_resnet152_fpn_keras':
           frcnn_resnet_fpn_keras.FasterRCNNResnet152FpnKerasFeatureExtractor,
   }
 
