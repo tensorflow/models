@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Functions to build the Attention OCR model.
 
 Usage example:
@@ -36,29 +35,28 @@ import sequence_layers
 import utils
 
 OutputEndpoints = collections.namedtuple('OutputEndpoints', [
-  'chars_logit', 'chars_log_prob', 'predicted_chars', 'predicted_scores',
-  'predicted_text', 'predicted_length', 'predicted_conf', 'normalized_seq_conf'
+    'chars_logit', 'chars_log_prob', 'predicted_chars', 'predicted_scores',
+    'predicted_text', 'predicted_length', 'predicted_conf',
+    'normalized_seq_conf'
 ])
 
 # TODO(gorban): replace with tf.HParams when it is released.
-ModelParams = collections.namedtuple('ModelParams', [
-  'num_char_classes', 'seq_length', 'num_views', 'null_code'
-])
+ModelParams = collections.namedtuple(
+    'ModelParams', ['num_char_classes', 'seq_length', 'num_views', 'null_code'])
 
 ConvTowerParams = collections.namedtuple('ConvTowerParams', ['final_endpoint'])
 
 SequenceLogitsParams = collections.namedtuple('SequenceLogitsParams', [
-  'use_attention', 'use_autoregression', 'num_lstm_units', 'weight_decay',
-  'lstm_state_clip_value'
+    'use_attention', 'use_autoregression', 'num_lstm_units', 'weight_decay',
+    'lstm_state_clip_value'
 ])
 
-SequenceLossParams = collections.namedtuple('SequenceLossParams', [
-  'label_smoothing', 'ignore_nulls', 'average_across_timesteps'
-])
+SequenceLossParams = collections.namedtuple(
+    'SequenceLossParams',
+    ['label_smoothing', 'ignore_nulls', 'average_across_timesteps'])
 
-EncodeCoordinatesParams = collections.namedtuple('EncodeCoordinatesParams', [
-  'enabled'
-])
+EncodeCoordinatesParams = collections.namedtuple('EncodeCoordinatesParams',
+                                                 ['enabled'])
 
 
 def _dict_to_array(id_to_char, default_character):
@@ -86,16 +84,16 @@ class CharsetMapper(object):
     """
     mapping_strings = tf.constant(_dict_to_array(charset, default_character))
     self.table = tf.contrib.lookup.index_to_string_table_from_tensor(
-      mapping=mapping_strings, default_value=default_character)
+        mapping=mapping_strings, default_value=default_character)
 
   def get_text(self, ids):
     """Returns a string corresponding to a sequence of character ids.
 
         Args:
           ids: a tensor with shape [batch_size, max_sequence_length]
-        """
+    """
     return tf.reduce_join(
-      self.table.lookup(tf.to_int64(ids)), reduction_indices=1)
+        self.table.lookup(tf.to_int64(ids)), reduction_indices=1)
 
 
 def get_softmax_loss_fn(label_smoothing):
@@ -112,12 +110,12 @@ def get_softmax_loss_fn(label_smoothing):
 
     def loss_fn(labels, logits):
       return (tf.nn.softmax_cross_entropy_with_logits(
-        logits=logits, labels=labels))
+          logits=logits, labels=labels))
   else:
 
     def loss_fn(labels, logits):
       return tf.nn.sparse_softmax_cross_entropy_with_logits(
-        logits=logits, labels=labels)
+          logits=logits, labels=labels)
 
   return loss_fn
 
@@ -140,8 +138,8 @@ def get_tensor_dimensions(tensor):
   """
   if len(tensor.get_shape().dims) != 4:
     raise ValueError(
-        'Incompatible shape: len(tensor.get_shape().dims) != 4 (%d != 4)' % len(
-            tensor.get_shape().dims))
+        'Incompatible shape: len(tensor.get_shape().dims) != 4 (%d != 4)' %
+        len(tensor.get_shape().dims))
   batch_size = tf.shape(tensor)[0]
   height = tensor.get_shape().dims[1].value
   width = tensor.get_shape().dims[2].value
@@ -162,10 +160,9 @@ def lookup_indexed_value(indices, row_vecs):
   Returns:
     A tensor of shape (batch, ) formed by row_vecs[i, indices[i]].
   """
-  gather_indices = tf.stack(
-      (tf.range(tf.shape(row_vecs)[0], dtype=tf.int32),
-       tf.cast(indices, tf.int32)),
-      axis=1)
+  gather_indices = tf.stack((tf.range(
+      tf.shape(row_vecs)[0], dtype=tf.int32), tf.cast(indices, tf.int32)),
+                            axis=1)
   return tf.gather_nd(row_vecs, gather_indices)
 
 
@@ -198,8 +195,8 @@ def find_length_by_null(predicted_chars, null_code):
   instead of the position of the first null_code.
 
   Args:
-    predicted_chars: A tensor of [batch x seq_length] where each element
-      stores the char class ID with max probability;
+    predicted_chars: A tensor of [batch x seq_length] where each element stores
+      the char class ID with max probability;
     null_code: an int32, character id for the NULL.
 
   Returns:
@@ -217,8 +214,8 @@ def axis_pad(tensor, axis, before=0, after=0, constant_values=0.0):
     axis: the dimension to add pad along to;
     before: number of values to add before the contents of tensor in the
       selected dimension;
-    after: number of values to add after the contents of tensor in the
-      selected dimension;
+    after: number of values to add after the contents of tensor in the selected
+      dimension;
     constant_values: the scalar pad value to use. Must be same type as tensor.
 
   Returns:
@@ -275,24 +272,24 @@ class Model(object):
       num_char_classes: size of character set.
       seq_length: number of characters in a sequence.
       num_views: Number of views (conv towers) to use.
-      null_code: A character code corresponding to a character which
-        indicates end of a sequence.
-      mparams: a dictionary with hyper parameters for methods,  keys -
-        function names, values - corresponding namedtuples.
+      null_code: A character code corresponding to a character which indicates
+        end of a sequence.
+      mparams: a dictionary with hyper parameters for methods,  keys - function
+        names, values - corresponding namedtuples.
       charset: an optional dictionary with a mapping between character ids and
-        utf8 strings. If specified the OutputEndpoints.predicted_text will
-        utf8 encoded strings corresponding to the character ids returned by
+        utf8 strings. If specified the OutputEndpoints.predicted_text will utf8
+        encoded strings corresponding to the character ids returned by
         OutputEndpoints.predicted_chars (by default the predicted_text contains
-        an empty vector). 
+        an empty vector).
         NOTE: Make sure you call tf.tables_initializer().run() if the charset
-        specified.
+          specified.
     """
     super(Model, self).__init__()
     self._params = ModelParams(
-      num_char_classes=num_char_classes,
-      seq_length=seq_length,
-      num_views=num_views,
-      null_code=null_code)
+        num_char_classes=num_char_classes,
+        seq_length=seq_length,
+        num_views=num_views,
+        null_code=null_code)
     self._mparams = self.default_mparams()
     if mparams:
       self._mparams.update(mparams)
@@ -300,21 +297,22 @@ class Model(object):
 
   def default_mparams(self):
     return {
-      'conv_tower_fn':
-        ConvTowerParams(final_endpoint='Mixed_5d'),
-      'sequence_logit_fn':
-        SequenceLogitsParams(
-          use_attention=True,
-          use_autoregression=True,
-          num_lstm_units=256,
-          weight_decay=0.00004,
-          lstm_state_clip_value=10.0),
-      'sequence_loss_fn':
-        SequenceLossParams(
-          label_smoothing=0.1,
-          ignore_nulls=True,
-          average_across_timesteps=False),
-      'encode_coordinates_fn': EncodeCoordinatesParams(enabled=False)
+        'conv_tower_fn':
+            ConvTowerParams(final_endpoint='Mixed_5d'),
+        'sequence_logit_fn':
+            SequenceLogitsParams(
+                use_attention=True,
+                use_autoregression=True,
+                num_lstm_units=256,
+                weight_decay=0.00004,
+                lstm_state_clip_value=10.0),
+        'sequence_loss_fn':
+            SequenceLossParams(
+                label_smoothing=0.1,
+                ignore_nulls=True,
+                average_across_timesteps=False),
+        'encode_coordinates_fn':
+            EncodeCoordinatesParams(enabled=False)
     }
 
   def set_mparam(self, function, **kwargs):
@@ -343,7 +341,7 @@ class Model(object):
         with slim.arg_scope([slim.batch_norm, slim.dropout],
                             is_training=is_training):
           net, _ = inception.inception_v3_base(
-            images, final_endpoint=mparams.final_endpoint)
+              images, final_endpoint=mparams.final_endpoint)
       return net
 
   def _create_lstm_inputs(self, net):
@@ -360,10 +358,10 @@ class Model(object):
     """
     num_features = net.get_shape().dims[1].value
     if num_features < self._params.seq_length:
-      raise AssertionError('Incorrect dimension #1 of input tensor'
-                           ' %d should be bigger than %d (shape=%s)' %
-                           (num_features, self._params.seq_length,
-                            net.get_shape()))
+      raise AssertionError(
+          'Incorrect dimension #1 of input tensor'
+          ' %d should be bigger than %d (shape=%s)' %
+          (num_features, self._params.seq_length, net.get_shape()))
     elif num_features > self._params.seq_length:
       logging.warning('Ignoring some features: use %d of %d (shape=%s)',
                       self._params.seq_length, num_features, net.get_shape())
@@ -390,7 +388,7 @@ class Model(object):
       A tensor with the same size as any input tensors.
     """
     batch_size, height, width, num_features = [
-      d.value for d in nets_list[0].get_shape().dims
+        d.value for d in nets_list[0].get_shape().dims
     ]
     xy_flat_shape = (batch_size, 1, height * width, num_features)
     nets_for_merge = []
@@ -399,7 +397,7 @@ class Model(object):
         nets_for_merge.append(tf.reshape(net, xy_flat_shape))
       merged_net = tf.concat(nets_for_merge, 1)
       net = slim.max_pool2d(
-        merged_net, kernel_size=[len(nets_list), 1], stride=1)
+          merged_net, kernel_size=[len(nets_list), 1], stride=1)
       net = tf.reshape(net, (batch_size, height, width, num_features))
     return net
 
@@ -426,8 +424,8 @@ class Model(object):
     """Returns confidence scores (softmax values) for predicted characters.
 
     Args:
-      chars_logit: chars logits, a tensor with shape
-        [batch_size x seq_length x num_char_classes]
+      chars_logit: chars logits, a tensor with shape [batch_size x seq_length x
+        num_char_classes]
 
     Returns:
       A tuple (ids, log_prob, scores), where:
@@ -442,7 +440,7 @@ class Model(object):
     log_prob = utils.logits_to_log_prob(chars_logit)
     ids = tf.to_int32(tf.argmax(log_prob, axis=2), name='predicted_chars')
     mask = tf.cast(
-      slim.one_hot_encoding(ids, self._params.num_char_classes), tf.bool)
+        slim.one_hot_encoding(ids, self._params.num_char_classes), tf.bool)
     all_scores = tf.nn.softmax(chars_logit)
     selected_scores = tf.boolean_mask(all_scores, mask, name='char_scores')
     scores = tf.reshape(
@@ -503,12 +501,12 @@ class Model(object):
 
     with tf.variable_scope(scope, reuse=reuse):
       views = tf.split(
-        value=images, num_or_size_splits=self._params.num_views, axis=2)
+          value=images, num_or_size_splits=self._params.num_views, axis=2)
       logging.debug('Views=%d single view: %s', len(views), views[0])
 
       nets = [
-        self.conv_tower_fn(v, is_training, reuse=(i != 0))
-        for i, v in enumerate(views)
+          self.conv_tower_fn(v, is_training, reuse=(i != 0))
+          for i, v in enumerate(views)
       ]
       logging.debug('Conv tower: %s', nets[0])
 
@@ -522,7 +520,7 @@ class Model(object):
       logging.debug('chars_logit: %s', chars_logit)
 
       predicted_chars, chars_log_prob, predicted_scores = (
-        self.char_predictions(chars_logit))
+          self.char_predictions(chars_logit))
       if self._charset:
         character_mapper = CharsetMapper(self._charset)
         predicted_text = character_mapper.get_text(predicted_chars)
@@ -530,7 +528,7 @@ class Model(object):
         predicted_text = tf.constant([])
 
       text_log_prob, predicted_length = null_based_length_prediction(
-            chars_log_prob, self._params.null_code)
+          chars_log_prob, self._params.null_code)
       predicted_conf = lookup_indexed_value(predicted_length, text_log_prob)
       # Convert predicted confidence from sum of logs to geometric mean
       normalized_seq_conf = tf.exp(
@@ -542,15 +540,14 @@ class Model(object):
       predicted_length = tf.identity(predicted_length, name='predicted_length')
 
     return OutputEndpoints(
-      chars_logit=chars_logit,
-      chars_log_prob=chars_log_prob,
-      predicted_chars=predicted_chars,
-      predicted_scores=predicted_scores,
-      predicted_length=predicted_length,
-      predicted_text=predicted_text,
-      predicted_conf=predicted_conf,
-      normalized_seq_conf=normalized_seq_conf
-    )
+        chars_logit=chars_logit,
+        chars_log_prob=chars_log_prob,
+        predicted_chars=predicted_chars,
+        predicted_scores=predicted_scores,
+        predicted_length=predicted_length,
+        predicted_text=predicted_text,
+        predicted_conf=predicted_conf,
+        normalized_seq_conf=normalized_seq_conf)
 
   def create_loss(self, data, endpoints):
     """Creates all losses required to train the model.
@@ -578,15 +575,15 @@ class Model(object):
     Uses the same method as in https://arxiv.org/abs/1512.00567.
 
     Args:
-      chars_labels: ground truth ids of charactes,
-        shape=[batch_size, seq_length];
+      chars_labels: ground truth ids of charactes, shape=[batch_size,
+        seq_length];
       weight: label-smoothing regularization weight.
 
     Returns:
       A sensor with the same shape as the input.
     """
     one_hot_labels = tf.one_hot(
-      chars_labels, depth=self._params.num_char_classes, axis=-1)
+        chars_labels, depth=self._params.num_char_classes, axis=-1)
     pos_weight = 1.0 - weight
     neg_weight = weight / self._params.num_char_classes
     return one_hot_labels * pos_weight + neg_weight
@@ -598,10 +595,10 @@ class Model(object):
     also ignore all null chars after the first one.
 
     Args:
-      chars_logits: logits for predicted characters,
-        shape=[batch_size, seq_length, num_char_classes];
-      chars_labels: ground truth ids of characters,
-        shape=[batch_size, seq_length];
+      chars_logits: logits for predicted characters, shape=[batch_size,
+        seq_length, num_char_classes];
+      chars_labels: ground truth ids of characters, shape=[batch_size,
+        seq_length];
       mparams: method hyper parameters.
 
     Returns:
@@ -611,7 +608,7 @@ class Model(object):
     with tf.variable_scope('sequence_loss_fn/SLF'):
       if mparams.label_smoothing > 0:
         smoothed_one_hot_labels = self.label_smoothing_regularization(
-          chars_labels, mparams.label_smoothing)
+            chars_labels, mparams.label_smoothing)
         labels_list = tf.unstack(smoothed_one_hot_labels, axis=1)
       else:
         # NOTE: in case of sparse softmax we are not using one-hot
@@ -624,20 +621,20 @@ class Model(object):
       else:
         # Suppose that reject character is the last in the charset.
         reject_char = tf.constant(
-          self._params.num_char_classes - 1,
-          shape=(batch_size, seq_length),
-          dtype=tf.int64)
+            self._params.num_char_classes - 1,
+            shape=(batch_size, seq_length),
+            dtype=tf.int64)
         known_char = tf.not_equal(chars_labels, reject_char)
         weights = tf.to_float(known_char)
 
       logits_list = tf.unstack(chars_logits, axis=1)
       weights_list = tf.unstack(weights, axis=1)
       loss = tf.contrib.legacy_seq2seq.sequence_loss(
-        logits_list,
-        labels_list,
-        weights_list,
-        softmax_loss_function=get_softmax_loss_fn(mparams.label_smoothing),
-        average_across_timesteps=mparams.average_across_timesteps)
+          logits_list,
+          labels_list,
+          weights_list,
+          softmax_loss_function=get_softmax_loss_fn(mparams.label_smoothing),
+          average_across_timesteps=mparams.average_across_timesteps)
       tf.losses.add_loss(loss)
       return loss
 
@@ -647,8 +644,8 @@ class Model(object):
     Args:
       data: InputEndpoints namedtuple.
       endpoints: OutputEndpoints namedtuple.
-      charset: A dictionary with mapping between character codes and
-        unicode characters. Use the one provided by a dataset.charset.
+      charset: A dictionary with mapping between character codes and unicode
+        characters. Use the one provided by a dataset.charset.
       is_training: If True will create summary prefixes for training job,
         otherwise - for evaluation.
 
@@ -672,7 +669,7 @@ class Model(object):
 
     if is_training:
       tf.summary.image(
-        sname('image/orig'), data.images_orig, max_outputs=max_outputs)
+          sname('image/orig'), data.images_orig, max_outputs=max_outputs)
       for var in tf.trainable_variables():
         tf.summary.histogram(var.op.name, var)
       return None
@@ -685,32 +682,35 @@ class Model(object):
         names_to_values[name] = value_update_tuple[0]
         names_to_updates[name] = value_update_tuple[1]
 
-      use_metric('CharacterAccuracy',
-                 metrics.char_accuracy(
-                   endpoints.predicted_chars,
-                   data.labels,
-                   streaming=True,
-                   rej_char=self._params.null_code))
+      use_metric(
+          'CharacterAccuracy',
+          metrics.char_accuracy(
+              endpoints.predicted_chars,
+              data.labels,
+              streaming=True,
+              rej_char=self._params.null_code))
       # Sequence accuracy computed by cutting sequence at the first null char
-      use_metric('SequenceAccuracy',
-                 metrics.sequence_accuracy(
-                   endpoints.predicted_chars,
-                   data.labels,
-                   streaming=True,
-                   rej_char=self._params.null_code))
+      use_metric(
+          'SequenceAccuracy',
+          metrics.sequence_accuracy(
+              endpoints.predicted_chars,
+              data.labels,
+              streaming=True,
+              rej_char=self._params.null_code))
 
       for name, value in names_to_values.items():
         summary_name = 'eval/' + name
         tf.summary.scalar(summary_name, tf.Print(value, [value], summary_name))
       return list(names_to_updates.values())
 
-  def create_init_fn_to_restore(self, master_checkpoint,
+  def create_init_fn_to_restore(self,
+                                master_checkpoint,
                                 inception_checkpoint=None):
     """Creates an init operations to restore weights from various checkpoints.
 
     Args:
-      master_checkpoint: path to a checkpoint which contains all weights for
-        the whole model.
+      master_checkpoint: path to a checkpoint which contains all weights for the
+        whole model.
       inception_checkpoint: path to a checkpoint which contains weights for the
         inception part only.
 
@@ -721,8 +721,8 @@ class Model(object):
     all_feed_dict = {}
 
     def assign_from_checkpoint(variables, checkpoint):
-      logging.info('Request to re-store %d weights from %s',
-                   len(variables), checkpoint)
+      logging.info('Request to re-store %d weights from %s', len(variables),
+                   checkpoint)
       if not variables:
         logging.error('Can\'t find any variables to restore.')
         sys.exit(1)
@@ -730,15 +730,18 @@ class Model(object):
       all_assign_ops.append(assign_op)
       all_feed_dict.update(feed_dict)
 
-    logging.info('variables_to_restore:\n%s' % utils.variables_to_restore().keys())
-    logging.info('moving_average_variables:\n%s' % [v.op.name for v in tf.moving_average_variables()])
-    logging.info('trainable_variables:\n%s' % [v.op.name for v in tf.trainable_variables()])
+    logging.info('variables_to_restore:\n%s',
+                 utils.variables_to_restore().keys())
+    logging.info('moving_average_variables:\n%s',
+                 [v.op.name for v in tf.moving_average_variables()])
+    logging.info('trainable_variables:\n%s',
+                 [v.op.name for v in tf.trainable_variables()])
     if master_checkpoint:
       assign_from_checkpoint(utils.variables_to_restore(), master_checkpoint)
 
     if inception_checkpoint:
       variables = utils.variables_to_restore(
-        'AttentionOcr_v1/conv_tower_fn/INCE', strip_scope=True)
+          'AttentionOcr_v1/conv_tower_fn/INCE', strip_scope=True)
       assign_from_checkpoint(variables, inception_checkpoint)
 
     def init_assign_fn(sess):

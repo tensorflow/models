@@ -24,7 +24,8 @@ import common_flags
 import model_export
 
 _CHECKPOINT = 'model.ckpt-399731'
-_CHECKPOINT_URL = 'http://download.tensorflow.org/models/attention_ocr_2017_08_09.tar.gz'
+_CHECKPOINT_URL = (
+    'http://download.tensorflow.org/models/attention_ocr_2017_08_09.tar.gz')
 
 
 def _clean_up():

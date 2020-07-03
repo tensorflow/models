@@ -14,10 +14,10 @@
 # ==============================================================================
 
 """Define flags are common for both train.py and eval.py scripts."""
+import logging
 import sys
 
 from tensorflow.python.platform import flags
-import logging
 
 import datasets
 import model
@@ -82,7 +82,7 @@ def define():
                       'the optimizer to use')
 
   flags.DEFINE_float('momentum', 0.9,
-                      'momentum value for the momentum optimizer if used')
+                     'momentum value for the momentum optimizer if used')
 
   flags.DEFINE_bool('use_augment_input', True,
                     'If True will use image augmentation')

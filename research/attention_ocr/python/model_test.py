@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Tests for the model."""
+import string
 
 import numpy as np
-import string
 import tensorflow as tf
 from tensorflow.contrib import slim
 
@@ -32,6 +31,7 @@ def create_fake_charset(num_char_classes):
 
 
 class ModelTest(tf.test.TestCase):
+
   def setUp(self):
     tf.test.TestCase.setUp(self)
 
@@ -64,8 +64,8 @@ class ModelTest(tf.test.TestCase):
                          3)
     self.fake_images = self.rng.randint(
         low=0, high=255, size=self.images_shape).astype('float32')
-    self.fake_conv_tower_np = self.rng.randn(
-        *self.conv_tower_shape).astype('float32')
+    self.fake_conv_tower_np = self.rng.randn(*self.conv_tower_shape).astype(
+        'float32')
     self.fake_conv_tower = tf.constant(self.fake_conv_tower_np)
     self.fake_logits = tf.constant(
         self.rng.randn(*self.chars_logit_shape).astype('float32'))
@@ -77,7 +77,10 @@ class ModelTest(tf.test.TestCase):
 
   def create_model(self, charset=None):
     return model.Model(
-        self.num_char_classes, self.seq_length, num_views=4, null_code=62,
+        self.num_char_classes,
+        self.seq_length,
+        num_views=4,
+        null_code=62,
         charset=charset)
 
   def test_char_related_shapes(self):
@@ -91,10 +94,12 @@ class ModelTest(tf.test.TestCase):
       endpoints = sess.run(
           endpoints_tf, feed_dict={self.input_images: self.fake_images})
 
-      self.assertEqual((self.batch_size, self.seq_length,
-                        self.num_char_classes), endpoints.chars_logit.shape)
-      self.assertEqual((self.batch_size, self.seq_length,
-                        self.num_char_classes), endpoints.chars_log_prob.shape)
+      self.assertEqual(
+          (self.batch_size, self.seq_length, self.num_char_classes),
+          endpoints.chars_logit.shape)
+      self.assertEqual(
+          (self.batch_size, self.seq_length, self.num_char_classes),
+          endpoints.chars_log_prob.shape)
       self.assertEqual((self.batch_size, self.seq_length),
                        endpoints.predicted_chars.shape)
       self.assertEqual((self.batch_size, self.seq_length),
@@ -138,7 +143,8 @@ class ModelTest(tf.test.TestCase):
     with self.test_session() as sess:
       tfprof_root = tf.profiler.profile(
           sess.graph,
-          options=tf.profiler.ProfileOptionBuilder.trainable_variables_parameter())
+          options=tf.profiler.ProfileOptionBuilder
+          .trainable_variables_parameter())
 
       model_size_bytes = 4 * tfprof_root.total_parameters
       self.assertLess(model_size_bytes, 1 * 2**30)
@@ -185,17 +191,17 @@ class ModelTest(tf.test.TestCase):
     batch_size = tf.shape(net)[0]
     _, h, w, _ = net.shape.as_list()
     h_loc = [
-      tf.tile(
-          tf.reshape(
-              tf.contrib.layers.one_hot_encoding(
-                  tf.constant([i]), num_classes=h), [h, 1]), [1, w])
-      for i in range(h)
+        tf.tile(
+            tf.reshape(
+                tf.contrib.layers.one_hot_encoding(
+                    tf.constant([i]), num_classes=h), [h, 1]), [1, w])
+        for i in range(h)
     ]
     h_loc = tf.concat([tf.expand_dims(t, 2) for t in h_loc], 2)
     w_loc = [
-      tf.tile(
-          tf.contrib.layers.one_hot_encoding(tf.constant([i]), num_classes=w),
-          [h, 1]) for i in range(w)
+        tf.tile(
+            tf.contrib.layers.one_hot_encoding(tf.constant([i]), num_classes=w),
+            [h, 1]) for i in range(w)
     ]
     w_loc = tf.concat([tf.expand_dims(t, 2) for t in w_loc], 2)
     loc = tf.concat([h_loc, w_loc], 2)
@@ -212,8 +218,8 @@ class ModelTest(tf.test.TestCase):
           conv_w_coords_tf, feed_dict={self.input_images: self.fake_images})
 
     batch_size, height, width, feature_size = self.conv_tower_shape
-    self.assertEqual(conv_w_coords.shape, (batch_size, height, width,
-                                           feature_size + height + width))
+    self.assertEqual(conv_w_coords.shape,
+                     (batch_size, height, width, feature_size + height + width))
 
   def test_disabled_coordinate_encoding_returns_features_unchanged(self):
     model = self.create_model()
@@ -275,10 +281,11 @@ class ModelTest(tf.test.TestCase):
 
 
 class CharsetMapperTest(tf.test.TestCase):
+
   def test_text_corresponds_to_ids(self):
     charset = create_fake_charset(36)
-    ids = tf.constant(
-        [[17, 14, 21, 21, 24], [32, 24, 27, 21, 13]], dtype=tf.int64)
+    ids = tf.constant([[17, 14, 21, 21, 24], [32, 24, 27, 21, 13]],
+                      dtype=tf.int64)
     charset_mapper = model.CharsetMapper(charset)
 
     with self.test_session() as sess:
