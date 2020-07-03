@@ -24,7 +24,6 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
-from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
 from official.nlp.modeling import layers
 from official.nlp.modeling.models import bert_pretrainer
@@ -72,29 +71,3 @@ def instantiate_bertpretrainer_from_cfg(
       encoder_network=encoder_network,
       classification_heads=instantiate_classification_heads_from_cfgs(
           config.cls_heads))
-
-
-@dataclasses.dataclass
-class QADataConfig(cfg.DataConfig):
-  """Data config for question answering task (tasks/question_answering)."""
-  input_path: str = ""
-  global_batch_size: int = 48
-  is_training: bool = True
-  seq_length: int = 384
-
-
-@dataclasses.dataclass
-class QADevDataConfig(cfg.DataConfig):
-  """Dev Data config for queston answering (tasks/question_answering)."""
-  input_path: str = ""
-  input_preprocessed_data_path: str = ""
-  version_2_with_negative: bool = False
-  doc_stride: int = 128
-  global_batch_size: int = 48
-  is_training: bool = False
-  seq_length: int = 384
-  query_length: int = 64
-  drop_remainder: bool = False
-  vocab_file: str = ""
-  tokenization: str = "WordPiece"  # WordPiece or SentencePiece
-  do_lower_case: bool = True

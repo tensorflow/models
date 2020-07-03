@@ -24,11 +24,11 @@ import tensorflow_hub as hub
 
 from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
-from official.nlp.bert import input_pipeline
 from official.nlp.bert import squad_evaluate_v1_1
 from official.nlp.bert import squad_evaluate_v2_0
 from official.nlp.bert import tokenization
 from official.nlp.configs import encoders
+from official.nlp.data import data_loader_factory
 from official.nlp.data import squad_lib as squad_lib_wp
 from official.nlp.data import squad_lib_sp
 from official.nlp.modeling import models
@@ -174,20 +174,13 @@ class QuestionAnsweringTask(base_task.Task):
       return dataset
 
     if params.is_training:
-      input_path = params.input_path
+      dataloader_params = params
     else:
       input_path = self._tf_record_input_path
+      dataloader_params = params.replace(input_path=input_path)
 
-    batch_size = input_context.get_per_replica_batch_size(
-        params.global_batch_size) if input_context else params.global_batch_size
-    # TODO(chendouble): add and use nlp.data.question_answering_dataloader.
-    dataset = input_pipeline.create_squad_dataset(
-        input_path,
-        params.seq_length,
-        batch_size,
-        is_training=params.is_training,
-        input_pipeline_context=input_context)
-    return dataset
+    return data_loader_factory.get_data_loader(
+        dataloader_params).load(input_context)
 
   def build_metrics(self, training=None):
     del training
