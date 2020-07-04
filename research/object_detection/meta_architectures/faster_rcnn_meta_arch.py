@@ -2547,7 +2547,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
       if second_stage_mask_loss is not None:
         mask_loss = tf.multiply(self._second_stage_mask_loss_weight,
                                 second_stage_mask_loss, name='mask_loss')
-        loss_dict[mask_loss.op.name] = mask_loss
+        loss_dict['Loss/BoxClassifierLoss/mask_loss'] = mask_loss
     return loss_dict
 
   def _get_mask_proposal_boxes_and_classes(
