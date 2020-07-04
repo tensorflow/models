@@ -99,7 +99,9 @@ def write_txt_summary(training_summary, summary_dir):
 
 
 @deprecation.deprecated(
-    None, 'This function is deprecated. Please use Keras compile/fit instead.')
+    None, 'This function is deprecated and we do not expect adding new '
+    'functionalities. Please do not have your code depending '
+    'on this library.')
 def run_customized_training_loop(
     # pylint: disable=invalid-name
     _sentinel=None,
