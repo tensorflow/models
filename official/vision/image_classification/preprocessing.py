@@ -379,12 +379,12 @@ def preprocess_for_train(image_bytes: tf.Tensor,
   """
   images = decode_crop_and_flip(image_bytes=image_bytes)
   images = resize_image(images, height=image_size, width=image_size)
+  if augmenter is not None:
+    images = augmenter.distort(images)
   if mean_subtract:
     images = mean_image_subtraction(image_bytes=images, means=MEAN_RGB)
   if standardize:
     images = standardize_image(image_bytes=images, stddev=STDDEV_RGB)
-  if augmenter is not None:
-    images = augmenter.distort(images)
   if dtype is not None:
     images = tf.image.convert_image_dtype(images, dtype)
 
