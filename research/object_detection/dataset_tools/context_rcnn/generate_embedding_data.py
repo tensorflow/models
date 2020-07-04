@@ -52,8 +52,6 @@ import datetime
 import os
 import threading
 
-from absl import app
-
 import apache_beam as beam
 import numpy as np
 import six
@@ -410,5 +408,7 @@ def main(argv=None, save_main_session=True):
 
   p.run()
 
+
 if __name__ == '__main__':
-  app.run(main)
+  main()
+

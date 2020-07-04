@@ -51,7 +51,6 @@ import itertools
 import json
 import os
 
-from absl import app
 import apache_beam as beam
 import numpy as np
 import PIL.Image
@@ -932,4 +931,4 @@ def main(argv=None, save_main_session=True):
 
 
 if __name__ == '__main__':
-  app.run(main)
+  main()

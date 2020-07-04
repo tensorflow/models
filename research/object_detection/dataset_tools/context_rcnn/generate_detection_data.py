@@ -48,7 +48,6 @@ from __future__ import print_function
 import argparse
 import os
 import threading
-from absl import app
 import apache_beam as beam
 import tensorflow.compat.v1 as tf
 
@@ -290,4 +289,4 @@ def main(argv=None, save_main_session=True):
 
 
 if __name__ == '__main__':
-  app.run(main)
+  main()

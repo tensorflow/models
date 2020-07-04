@@ -45,6 +45,7 @@ from object_detection.box_coders import mean_stddev_box_coder
 from object_detection.core import box_coder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
+from object_detection.core import densepose_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import matcher as mat
 from object_detection.core import region_similarity_calculator as sim_calc
@@ -799,17 +800,15 @@ def get_batch_predictions_from_indices(batch_predictions, indices):
   function.
 
   Args:
-    batch_predictions: A tensor of shape [batch_size, height, width, 2] for
-      single class offsets and [batch_size, height, width, class, 2] for
-      multiple classes offsets (e.g. keypoint joint offsets) representing the
-      (height, width) or (y_offset, x_offset) predictions over a batch.
-    indices: A tensor of shape [num_instances, 3] for single class offset and
-      [num_instances, 4] for multiple classes offsets representing the indices
-      in the batch to be penalized in a loss function
+    batch_predictions: A tensor of shape [batch_size, height, width, channels]
+      or [batch_size, height, width, class, channels] for class-specific
+      features (e.g. keypoint joint offsets).
+    indices: A tensor of shape [num_instances, 3] for single class features or
+      [num_instances, 4] for multiple classes features.
 
   Returns:
-    values: A tensor of shape [num_instances, 2] holding the predicted values
-      at the given indices.
+    values: A tensor of shape [num_instances, channels] holding the predicted
+      values at the given indices.
   """
   return tf.gather_nd(batch_predictions, indices)
 
@@ -1657,3 +1656,118 @@ class CenterNetMaskTargetAssigner(object):
 
     segmentation_target = tf.stack(segmentation_targets_list, axis=0)
     return segmentation_target
+
+
+class CenterNetDensePoseTargetAssigner(object):
+  """Wrapper to compute targets for DensePose task."""
+
+  def __init__(self, stride, num_parts=24):
+    self._stride = stride
+    self._num_parts = num_parts
+
+  def assign_part_and_coordinate_targets(self,
+                                         height,
+                                         width,
+                                         gt_dp_num_points_list,
+                                         gt_dp_part_ids_list,
+                                         gt_dp_surface_coords_list,
+                                         gt_weights_list=None):
+    """Returns the DensePose part_id and coordinate targets and their indices.
+
+    The returned values are expected to be used with predicted tensors
+    of size (batch_size, height//self._stride, width//self._stride, 2). The
+    predicted values at the relevant indices can be retrieved with the
+    get_batch_predictions_from_indices function.
+
+    Args:
+      height: int, height of input to the model. This is used to determine the
+        height of the output.
+      width: int, width of the input to the model. This is used to determine the
+        width of the output.
+      gt_dp_num_points_list: a list of 1-D tf.int32 tensors of shape [num_boxes]
+        containing the number of DensePose sampled points per box.
+      gt_dp_part_ids_list: a list of 2-D tf.int32 tensors of shape
+        [num_boxes, max_sampled_points] containing the DensePose part ids
+        (0-indexed) for each sampled point. Note that there may be padding, as
+        boxes may contain a different number of sampled points.
+      gt_dp_surface_coords_list: a list of 3-D tf.float32 tensors of shape
+        [num_boxes, max_sampled_points, 4] containing the DensePose surface
+        coordinates (normalized) for each sampled point. Note that there may be
+        padding.
+      gt_weights_list: A list of 1-D tensors with shape [num_boxes]
+        corresponding to the weight of each groundtruth detection box.
+
+    Returns:
+      batch_indices: an integer tensor of shape [num_total_points, 4] holding
+        the indices inside the predicted tensor which should be penalized. The
+        first column indicates the index along the batch dimension and the
+        second and third columns indicate the index along the y and x
+        dimensions respectively. The fourth column is the part index.
+      batch_part_ids: an int tensor of shape [num_total_points, num_parts]
+        holding 1-hot encodings of parts for each sampled point.
+      batch_surface_coords: a float tensor of shape [num_total_points, 2]
+        holding the expected (v, u) coordinates for each sampled point.
+      batch_weights: a float tensor of shape [num_total_points] indicating the
+        weight of each prediction.
+      Note that num_total_points = batch_size * num_boxes * max_sampled_points.
+    """
+
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_dp_num_points_list)
+
+    batch_indices = []
+    batch_part_ids = []
+    batch_surface_coords = []
+    batch_weights = []
+
+    for i, (num_points, part_ids, surface_coords, weights) in enumerate(
+        zip(gt_dp_num_points_list, gt_dp_part_ids_list,
+            gt_dp_surface_coords_list, gt_weights_list)):
+      num_boxes, max_sampled_points = (
+          shape_utils.combined_static_and_dynamic_shape(part_ids))
+      part_ids_flattened = tf.reshape(part_ids, [-1])
+      part_ids_one_hot = tf.one_hot(part_ids_flattened, depth=self._num_parts)
+      # Get DensePose coordinates in the output space.
+      surface_coords_abs = densepose_ops.to_absolute_coordinates(
+          surface_coords, height // self._stride, width // self._stride)
+      surface_coords_abs = tf.reshape(surface_coords_abs, [-1, 4])
+      # Each tensor has shape [num_boxes * max_sampled_points].
+      yabs, xabs, v, u = tf.unstack(surface_coords_abs, axis=-1)
+
+      # Get the indices (in output space) for the DensePose coordinates. Note
+      # that if self._stride is larger than 1, this will have the effect of
+      # reducing spatial resolution of the groundtruth points.
+      indices_y = tf.cast(yabs, tf.int32)
+      indices_x = tf.cast(xabs, tf.int32)
+
+      # Assign ones if weights are not provided.
+      if weights is None:
+        weights = tf.ones(num_boxes, dtype=tf.float32)
+      # Create per-point weights.
+      weights_per_point = tf.reshape(
+          tf.tile(weights[:, tf.newaxis], multiples=[1, max_sampled_points]),
+          shape=[-1])
+      # Mask out invalid (i.e. padded) DensePose points.
+      num_points_tiled = tf.tile(num_points[:, tf.newaxis],
+                                 multiples=[1, max_sampled_points])
+      range_tiled = tf.tile(tf.range(max_sampled_points)[tf.newaxis, :],
+                            multiples=[num_boxes, 1])
+      valid_points = tf.math.less(range_tiled, num_points_tiled)
+      valid_points = tf.cast(tf.reshape(valid_points, [-1]), dtype=tf.float32)
+      weights_per_point = weights_per_point * valid_points
+
+      # Shape of [num_boxes * max_sampled_points] integer tensor filled with
+      # current batch index.
+      batch_index = i * tf.ones_like(indices_y, dtype=tf.int32)
+      batch_indices.append(
+          tf.stack([batch_index, indices_y, indices_x, part_ids_flattened],
+                   axis=1))
+      batch_part_ids.append(part_ids_one_hot)
+      batch_surface_coords.append(tf.stack([v, u], axis=1))
+      batch_weights.append(weights_per_point)
+
+    batch_indices = tf.concat(batch_indices, axis=0)
+    batch_part_ids = tf.concat(batch_part_ids, axis=0)
+    batch_surface_coords = tf.concat(batch_surface_coords, axis=0)
+    batch_weights = tf.concat(batch_weights, axis=0)
+    return batch_indices, batch_part_ids, batch_surface_coords, batch_weights
