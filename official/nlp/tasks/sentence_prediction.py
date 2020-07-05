@@ -189,5 +189,5 @@ class SentencePredictionTask(base_task.Task):
     ckpt = tf.train.Checkpoint(**pretrain2finetune_mapping)
     status = ckpt.read(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
-    logging.info('finished loading pretrained checkpoint from %s',
+    logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)

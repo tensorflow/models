@@ -217,7 +217,7 @@ class BertPretrainerV2(tf.keras.Model):
   @property
   def checkpoint_items(self):
     """Returns a dictionary of items to be additionally checkpointed."""
-    items = dict(encoder=self.encoder_network)
+    items = dict(encoder=self.encoder_network, masked_lm=self.masked_lm)
     for head in self.classification_heads:
       for key, item in head.checkpoint_items.items():
         items['.'.join([head.name, key])] = item
