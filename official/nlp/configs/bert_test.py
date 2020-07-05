@@ -57,8 +57,9 @@ class BertModelsTest(tf.test.TestCase):
                 inner_dim=10, num_classes=2, name="next_sentence")
         ])
     encoder = bert.instantiate_bertpretrainer_from_cfg(config)
-    self.assertSameElements(encoder.checkpoint_items.keys(),
-                            ["encoder", "next_sentence.pooler_dense"])
+    self.assertSameElements(
+        encoder.checkpoint_items.keys(),
+        ["encoder", "masked_lm", "next_sentence.pooler_dense"])
 
 
 if __name__ == "__main__":
