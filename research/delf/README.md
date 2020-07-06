@@ -41,7 +41,7 @@ DELG:
 ```
 "Unifying Deep Local and Global Features for Image Search",
 B. Cao*, A. Araujo* and J. Sim,
-arxiv:2001.05027
+Proc. ECCV'20
 ```
 
 GLDv2:
@@ -55,11 +55,11 @@ Proc. CVPR'20
 
 ## News
 
+-   [Jul'20] Check out our ECCV'20 paper:
+    ["Unifying Deep Local and Global Features for Image Search"](https://arxiv.org/abs/2001.05027)
 -   [Apr'20] Check out our CVPR'20 paper: ["Google Landmarks Dataset v2 - A
     Large-Scale Benchmark for Instance-Level Recognition and
     Retrieval"](https://arxiv.org/abs/2004.01804)
--   [Jan'20] Check out our new paper:
-    ["Unifying Deep Local and Global Features for Image Search"](https://arxiv.org/abs/2001.05027)
 -   [Jun'19] DELF achieved 2nd place in
     [CVPR Visual Localization challenge (Local Features track)](https://sites.google.com/corp/view/ltvl2019).
     See our slides
