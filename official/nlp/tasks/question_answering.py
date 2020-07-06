@@ -23,6 +23,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
+from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.bert import squad_evaluate_v1_1
 from official.nlp.bert import squad_evaluate_v2_0
@@ -36,6 +37,13 @@ from official.nlp.tasks import utils
 
 
 @dataclasses.dataclass
+class ModelConfig(base_config.Config):
+  """A base span labeler configuration."""
+  encoder: encoders.TransformerEncoderConfig = (
+      encoders.TransformerEncoderConfig())
+
+
+@dataclasses.dataclass
 class QuestionAnsweringConfig(cfg.TaskConfig):
   """The model config."""
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
@@ -44,8 +52,7 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
   n_best_size: int = 20
   max_answer_length: int = 30
   null_score_diff_threshold: float = 0.0
-  model: encoders.TransformerEncoderConfig = (
-      encoders.TransformerEncoderConfig())
+  model: ModelConfig = ModelConfig()
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
@@ -81,12 +88,12 @@ class QuestionAnsweringTask(base_task.Task):
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
       encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.model)
-
+          self.task_config.model.encoder)
+    # Currently, we only supports bert-style question answering finetuning.
     return models.BertSpanLabeler(
         network=encoder_network,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.model.initializer_range))
+            stddev=self.task_config.model.encoder.initializer_range))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     start_positions = labels['start_positions']

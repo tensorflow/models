@@ -42,7 +42,6 @@ class ClsHeadConfig(base_config.Config):
 @dataclasses.dataclass
 class BertPretrainerConfig(base_config.Config):
   """BERT encoder configuration."""
-  num_masked_tokens: int = 76
   encoder: encoders.TransformerEncoderConfig = (
       encoders.TransformerEncoderConfig())
   cls_heads: List[ClsHeadConfig] = dataclasses.field(default_factory=list)
@@ -55,16 +54,15 @@ def instantiate_classification_heads_from_cfgs(
     ] if cls_head_configs else []
 
 
-def instantiate_bertpretrainer_from_cfg(
+def instantiate_pretrainer_from_cfg(
     config: BertPretrainerConfig,
     encoder_network: Optional[tf.keras.Model] = None
-    ) -> bert_pretrainer.BertPretrainerV2:
+) -> bert_pretrainer.BertPretrainerV2:
   """Instantiates a BertPretrainer from the config."""
   encoder_cfg = config.encoder
   if encoder_network is None:
     encoder_network = encoders.instantiate_encoder_from_cfg(encoder_cfg)
   return bert_pretrainer.BertPretrainerV2(
-      config.num_masked_tokens,
       mlm_activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
