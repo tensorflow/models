@@ -23,10 +23,21 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
+from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
-from official.nlp.configs import bert
+from official.nlp.configs import encoders
 from official.nlp.data import data_loader_factory
+from official.nlp.modeling import models
 from official.nlp.tasks import utils
+
+
+@dataclasses.dataclass
+class ModelConfig(base_config.Config):
+  """A classifier/regressor configuration."""
+  num_classes: int = 0
+  use_encoder_pooler: bool = False
+  encoder: encoders.TransformerEncoderConfig = (
+      encoders.TransformerEncoderConfig())
 
 
 @dataclasses.dataclass
@@ -38,15 +49,8 @@ class SentencePredictionConfig(cfg.TaskConfig):
   init_cls_pooler: bool = False
   hub_module_url: str = ''
   metric_type: str = 'accuracy'
-  model: bert.BertPretrainerConfig = bert.BertPretrainerConfig(
-      num_masked_tokens=0,  # No masked language modeling head.
-      cls_heads=[
-          bert.ClsHeadConfig(
-              inner_dim=768,
-              num_classes=3,
-              dropout_rate=0.1,
-              name='sentence_prediction')
-      ])
+  # Defines the concrete model config at instantiation time.
+  model: ModelConfig = ModelConfig()
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
@@ -68,17 +72,22 @@ class SentencePredictionTask(base_task.Task):
 
   def build_model(self):
     if self._hub_module:
-      encoder_from_hub = utils.get_encoder_from_hub(self._hub_module)
-      return bert.instantiate_bertpretrainer_from_cfg(
-          self.task_config.model, encoder_network=encoder_from_hub)
+      encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
-      return bert.instantiate_bertpretrainer_from_cfg(self.task_config.model)
+      encoder_network = encoders.instantiate_encoder_from_cfg(
+          self.task_config.model.encoder)
+
+    # Currently, we only supports bert-style sentence prediction finetuning.
+    return models.BertClassifier(
+        network=encoder_network,
+        num_classes=self.task_config.model.num_classes,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=self.task_config.model.encoder.initializer_range),
+        use_encoder_pooler=self.task_config.model.use_encoder_pooler)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     loss = tf.keras.losses.sparse_categorical_crossentropy(
-        labels,
-        tf.cast(model_outputs['sentence_prediction'], tf.float32),
-        from_logits=True)
+        labels, tf.cast(model_outputs, tf.float32), from_logits=True)
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
@@ -112,10 +121,10 @@ class SentencePredictionTask(base_task.Task):
 
   def process_metrics(self, metrics, labels, model_outputs):
     for metric in metrics:
-      metric.update_state(labels, model_outputs['sentence_prediction'])
+      metric.update_state(labels, model_outputs)
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    compiled_metrics.update_state(labels, model_outputs['sentence_prediction'])
+    compiled_metrics.update_state(labels, model_outputs)
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     if self.metric_type == 'accuracy':
@@ -129,15 +138,13 @@ class SentencePredictionTask(base_task.Task):
     if self.metric_type == 'matthews_corrcoef':
       logs.update({
           'sentence_prediction':
-              tf.expand_dims(
-                  tf.math.argmax(outputs['sentence_prediction'], axis=1),
-                  axis=0),
+              tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=0),
           'labels':
               labels,
       })
     if self.metric_type == 'pearson_spearman_corr':
       logs.update({
-          'sentence_prediction': outputs['sentence_prediction'],
+          'sentence_prediction': outputs,
           'labels': labels,
       })
     return logs

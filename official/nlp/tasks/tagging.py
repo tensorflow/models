@@ -25,6 +25,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
+from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
 from official.nlp.data import data_loader_factory
@@ -33,13 +34,21 @@ from official.nlp.tasks import utils
 
 
 @dataclasses.dataclass
+class ModelConfig(base_config.Config):
+  """A base span labeler configuration."""
+  encoder: encoders.TransformerEncoderConfig = (
+      encoders.TransformerEncoderConfig())
+  head_dropout: float = 0.1
+  head_initializer_range: float = 0.02
+
+
+@dataclasses.dataclass
 class TaggingConfig(cfg.TaskConfig):
   """The model config."""
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
-  model: encoders.TransformerEncoderConfig = (
-      encoders.TransformerEncoderConfig())
+  model: ModelConfig = ModelConfig()
 
   # The real class names, the order of which should match real label id.
   # Note that a word may be tokenized into multiple word_pieces tokens, and
@@ -93,14 +102,14 @@ class TaggingTask(base_task.Task):
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
       encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.model)
+          self.task_config.model.encoder)
 
     return models.BertTokenClassifier(
         network=encoder_network,
         num_classes=len(self.task_config.class_names),
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.model.initializer_range),
-        dropout_rate=self.task_config.model.dropout_rate,
+            stddev=self.task_config.model.head_initializer_range),
+        dropout_rate=self.task_config.model.head_dropout,
         output='logits')
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
