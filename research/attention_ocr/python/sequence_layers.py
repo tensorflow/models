@@ -111,7 +111,7 @@ class SequenceLayerBase(object):
     self._mparams = method_params
     self._net = net
     self._labels_one_hot = labels_one_hot
-    self._batch_size = net.get_shape().dims[0].value
+    self._batch_size = tf.shape(net)[0]
 
     # Initialize parameters for char logits which will be computed on the fly
     # inside an LSTM decoder.
@@ -275,7 +275,7 @@ class NetSlice(SequenceLayerBase):
   def __init__(self, *args, **kwargs):
     super(NetSlice, self).__init__(*args, **kwargs)
     self._zero_label = tf.zeros(
-        [self._batch_size, self._params.num_char_classes])
+        tf.stack([self._batch_size, self._params.num_char_classes]))
 
   def get_image_feature(self, char_index):
     """Returns a subset of image features for a character.
@@ -352,7 +352,7 @@ class Attention(SequenceLayerBase):
   def __init__(self, *args, **kwargs):
     super(Attention, self).__init__(*args, **kwargs)
     self._zero_label = tf.zeros(
-        [self._batch_size, self._params.num_char_classes])
+        tf.stack([self._batch_size, self._params.num_char_classes]))
 
   def get_eval_input(self, prev, i):
     """See SequenceLayerBase.get_eval_input for details."""
