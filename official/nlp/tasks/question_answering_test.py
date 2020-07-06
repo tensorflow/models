@@ -24,6 +24,7 @@ from official.nlp.bert import configs
 from official.nlp.bert import export_tfhub
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
+from official.nlp.data import question_answering_dataloader
 from official.nlp.tasks import question_answering
 
 
@@ -33,7 +34,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
     super(QuestionAnsweringTaskTest, self).setUp()
     self._encoder_config = encoders.TransformerEncoderConfig(
         vocab_size=30522, num_layers=1)
-    self._train_data_config = bert.QADataConfig(
+    self._train_data_config = question_answering_dataloader.QADataConfig(
         input_path="dummy",
         seq_length=128,
         global_batch_size=1)
@@ -55,7 +56,8 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
       writer.write("[PAD]\n[UNK]\n[CLS]\n[SEP]\n[MASK]\nsky\nis\nblue\n")
 
   def _get_validation_data_config(self, version_2_with_negative=False):
-    return bert.QADevDataConfig(
+    return question_answering_dataloader.QADataConfig(
+        is_training=False,
         input_path=self._val_input_path,
         input_preprocessed_data_path=self.get_temp_dir(),
         seq_length=128,

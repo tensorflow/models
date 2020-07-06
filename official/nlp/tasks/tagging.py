@@ -27,7 +27,7 @@ import tensorflow_hub as hub
 from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
-from official.nlp.data import tagging_data_loader
+from official.nlp.data import data_loader_factory
 from official.nlp.modeling import models
 from official.nlp.tasks import utils
 
@@ -138,8 +138,7 @@ class TaggingTask(base_task.Task):
           dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       return dataset
 
-    dataset = tagging_data_loader.TaggingDataLoader(params).load(input_context)
-    return dataset
+    return data_loader_factory.get_data_loader(params).load(input_context)
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     """Validatation step.
@@ -213,5 +212,5 @@ class TaggingTask(base_task.Task):
     ckpt = tf.train.Checkpoint(**model.checkpoint_items)
     status = ckpt.restore(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
-    logging.info('finished loading pretrained checkpoint from %s',
+    logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)

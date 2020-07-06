@@ -16,11 +16,27 @@
 """Loads dataset for the BERT pretraining task."""
 from typing import Mapping, Optional
 
+import dataclasses
 import tensorflow as tf
 
 from official.core import input_reader
+from official.modeling.hyperparams import config_definitions as cfg
+from official.nlp.data import data_loader_factory
 
 
+@dataclasses.dataclass
+class BertPretrainDataConfig(cfg.DataConfig):
+  """Data config for BERT pretraining task (tasks/masked_lm)."""
+  input_path: str = ''
+  global_batch_size: int = 512
+  is_training: bool = True
+  seq_length: int = 512
+  max_predictions_per_seq: int = 76
+  use_next_sentence_label: bool = True
+  use_position_id: bool = False
+
+
+@data_loader_factory.register_data_loader_cls(BertPretrainDataConfig)
 class BertPretrainDataLoader:
   """A class to load dataset for bert pretraining task."""
 
@@ -91,7 +107,5 @@ class BertPretrainDataLoader:
   def load(self, input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a tf.dataset.Dataset."""
     reader = input_reader.InputReader(
-        params=self._params,
-        decoder_fn=self._decode,
-        parser_fn=self._parse)
+        params=self._params, decoder_fn=self._decode, parser_fn=self._parse)
     return reader.read(input_context)

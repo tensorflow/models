@@ -25,7 +25,7 @@ import tensorflow_hub as hub
 from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
-from official.nlp.data import sentence_prediction_dataloader
+from official.nlp.data import data_loader_factory
 from official.nlp.tasks import utils
 
 
@@ -103,8 +103,7 @@ class SentencePredictionTask(base_task.Task):
           dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       return dataset
 
-    return sentence_prediction_dataloader.SentencePredictionDataLoader(
-        params).load(input_context)
+    return data_loader_factory.get_data_loader(params).load(input_context)
 
   def build_metrics(self, training=None):
     del training
@@ -190,5 +189,5 @@ class SentencePredictionTask(base_task.Task):
     ckpt = tf.train.Checkpoint(**pretrain2finetune_mapping)
     status = ckpt.read(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
-    logging.info('finished loading pretrained checkpoint from %s',
+    logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)

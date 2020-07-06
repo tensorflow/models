@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Loads dataset for the tagging (e.g., NER/POS) task."""
+"""Loads dataset for the question answering (e.g, SQuAD) task."""
 from typing import Mapping, Optional
 import dataclasses
 import tensorflow as tf
@@ -24,19 +24,31 @@ from official.nlp.data import data_loader_factory
 
 
 @dataclasses.dataclass
-class TaggingDataConfig(cfg.DataConfig):
-  """Data config for tagging (tasks/tagging)."""
+class QADataConfig(cfg.DataConfig):
+  """Data config for question answering task (tasks/question_answering)."""
+  input_path: str = ''
+  global_batch_size: int = 48
   is_training: bool = True
-  seq_length: int = 128
+  seq_length: int = 384
+  # Settings below are question answering specific.
+  version_2_with_negative: bool = False
+  # Settings below are only used for eval mode.
+  input_preprocessed_data_path: str = ''
+  doc_stride: int = 128
+  query_length: int = 64
+  vocab_file: str = ''
+  tokenization: str = 'WordPiece'  # WordPiece or SentencePiece
+  do_lower_case: bool = True
 
 
-@data_loader_factory.register_data_loader_cls(TaggingDataConfig)
-class TaggingDataLoader:
-  """A class to load dataset for tagging (e.g., NER and POS) task."""
+@data_loader_factory.register_data_loader_cls(QADataConfig)
+class QuestionAnsweringDataLoader:
+  """A class to load dataset for sentence prediction (classification) task."""
 
-  def __init__(self, params: TaggingDataConfig):
+  def __init__(self, params):
     self._params = params
     self._seq_length = params.seq_length
+    self._is_training = params.is_training
 
   def _decode(self, record: tf.Tensor):
     """Decodes a serialized tf.Example."""
@@ -44,8 +56,12 @@ class TaggingDataLoader:
         'input_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'input_mask': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'segment_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'label_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
     }
+    if self._is_training:
+      name_to_features['start_positions'] = tf.io.FixedLenFeature([], tf.int64)
+      name_to_features['end_positions'] = tf.io.FixedLenFeature([], tf.int64)
+    else:
+      name_to_features['unique_ids'] = tf.io.FixedLenFeature([], tf.int64)
     example = tf.io.parse_single_example(record, name_to_features)
 
     # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
@@ -60,12 +76,16 @@ class TaggingDataLoader:
 
   def _parse(self, record: Mapping[str, tf.Tensor]):
     """Parses raw tensors into a dict of tensors to be consumed by the model."""
-    x = {
-        'input_word_ids': record['input_ids'],
-        'input_mask': record['input_mask'],
-        'input_type_ids': record['segment_ids']
-    }
-    y = record['label_ids']
+    x, y = {}, {}
+    for name, tensor in record.items():
+      if name in ('start_positions', 'end_positions'):
+        y[name] = tensor
+      elif name == 'input_ids':
+        x['input_word_ids'] = tensor
+      elif name == 'segment_ids':
+        x['input_type_ids'] = tensor
+      else:
+        x[name] = tensor
     return (x, y)
 
   def load(self, input_context: Optional[tf.distribute.InputContext] = None):
