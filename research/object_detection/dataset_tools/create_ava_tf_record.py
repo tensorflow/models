@@ -241,6 +241,7 @@ class Ava(object):
           total_images = []
           total_source_ids = []
           total_confidences = []
+          total_is_annotated = []
           windowed_timestamp = start_time
           while windowed_timestamp < end_time:
             skipped_frame_count = 0;
@@ -256,6 +257,7 @@ class Ava(object):
             source_id = str(GLOBAL_SOURCE_ID) + "_" + media_id
             total_source_ids.append(dataset_util.bytes_feature(
                 source_id.encode("utf8")))
+            total_is_annotated.append(dataset_util.int64_feature(1))
             GLOBAL_SOURCE_ID += 1
             if (media_id, windowed_timestamp) in frame_excluded:
               end_time += 1
@@ -326,7 +328,7 @@ class Ava(object):
               'region/label/confidence':
                   feature_list_feature(total_confidences), #all ones
               'region/is_annotated':
-                  feature_list_feature(total_confidences) #all ones
+                  feature_list_feature(total_is_annotated) #all ones
           }
 
           if len(total_xmins) > 0:
