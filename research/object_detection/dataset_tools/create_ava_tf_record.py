@@ -327,8 +327,8 @@ class Ava(object):
                   feature_list_feature(total_label_strings),
               'region/label/confidence':
                   feature_list_feature(total_confidences), #all ones
-              'region/is_annotated':
-                  feature_list_feature(total_is_annotated) #all ones
+              #'region/is_annotated':
+              #    feature_list_feature(total_is_annotated) #all ones
           }
 
           if len(total_xmins) > 0:
