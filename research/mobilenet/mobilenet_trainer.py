@@ -218,7 +218,7 @@ def get_flags():
   )
   flags.DEFINE_float(
     'op_decay_rate',
-    help='Optimizer decay.',
+    help='Optimizer discounting factor for gradient.',
     default=0.9
   )
   flags.DEFINE_float(
@@ -258,7 +258,7 @@ def get_flags():
   )
   flags.DEFINE_float(
     'truncated_normal_stddev',
-    help='The standard deviation of the trunctated normal weight initializer.',
+    help='The standard deviation of the truncated normal weight initializer.',
     default=0.09
   )
   flags.DEFINE_float(

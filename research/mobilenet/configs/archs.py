@@ -124,7 +124,7 @@ class MobileNetConfig(base_config.Config):
   num_classes: int = 1001
   # model specific
   min_depth: int = 8
-  width_multiplier = 1.0
+  width_multiplier: float = 1.0
   output_stride: int = None
   finegrain_classification_mode: bool = False
   use_explicit_padding: bool = False
@@ -154,6 +154,7 @@ class MobileNetV1Config(MobileNetConfig):
 
   """
   name: Text = 'MobileNetV1'
+  width_multiplier: float = 1.0
 
   # regularization
   weight_decay: float = 0.00002
@@ -230,6 +231,7 @@ class MobileNetV2Config(MobileNetConfig):
 
   """
   name: Text = 'MobileNetV2'
+  width_multiplier: float = 1.0
   finegrain_classification_mode: bool = True
 
   # regularization
@@ -345,6 +347,7 @@ class MobileNetV3LargeConfig(MobileNetConfig):
 
   """
   name: Text = 'MobileNetV3Large'
+  width_multiplier: float = 1.0
   finegrain_classification_mode: bool = True
 
   # regularization
@@ -484,6 +487,7 @@ class MobileNetV3SmallConfig(MobileNetConfig):
 
   """
   name: Text = 'MobileNetV3Small'
+  width_multiplier: float = 1.0
   finegrain_classification_mode: bool = True
 
   # regularization
