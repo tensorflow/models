@@ -61,7 +61,7 @@ def get_flags():
   )
   flags.DEFINE_string(
     'checkpoint_path',
-    help='Path of tf1 checkpoing.',
+    help='Path of tf1 checkpoint.',
     default=None
   )
 
