@@ -16,7 +16,9 @@ done
 rm "ava_file_names_trainval_v2.1.txt"
 cd ..
 
-#Trimming causes issues with frame seeking in the python script, so it is best left out.
+# Trimming causes issues with frame seeking in the python script, so it is best left out.
+# If included, need to modify the python script to subtract 900 seconds wheen seeking.
+
 #echo "Trimming all videos."
 
 #mkdir ava_vids_trimmed

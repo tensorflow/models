@@ -208,7 +208,7 @@ class Ava(object):
       reader = csv.DictReader(annotations, fieldnames)
       frame_annotations = collections.defaultdict(list)
       ids = set()
-      # aggreggate by video and timestamp:
+      # aggregate by video and timestamp:
       for row in reader:
         ids.add(row["id"])
         key = (row["id"], int(float(row["timestamp_seconds"])))
@@ -284,15 +284,7 @@ class Ava(object):
                   logging.warning("Unknown label: %s", row["action_label"])
 
             #Display the image and bounding boxes being
-            #processed (for debugging purposes)
-
-            #for i in range(len(xmins)):
-            #  cv2.rectangle(image, (int(xmins[i] * width),
-            #                        int(ymaxs[i] * height)),
-            #                        (int(xmaxs[i] * width),
-            #                        int(ymins[i] * height)), (255, 0, 0), 2)
-            #cv2.imshow("mywindow", image)
-            #cv2.waitKey(1000)
+            #processed (for debugging purposes) if desired.
 
             total_xmins.append(dataset_util.float_list_feature(xmins))
             total_xmaxs.append(dataset_util.float_list_feature(xmaxs))
@@ -332,7 +324,9 @@ class Ava(object):
               'region/label/string':
                   feature_list_feature(total_label_strings),
               'region/label/confidence':
-                  feature_list_feature(total_confidences)
+                  feature_list_feature(total_confidences), #all ones
+              'region/is_annotated':
+                  feature_list_feature(total_confidences) #all ones
           }
 
           if len(total_xmins) > 0:
