@@ -93,19 +93,18 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
     # Saves a checkpoint.
     pretrain_cfg = bert.BertPretrainerConfig(
         encoder=self._encoder_config,
-        num_masked_tokens=20,
         cls_heads=[
             bert.ClsHeadConfig(
                 inner_dim=10, num_classes=3, name="next_sentence")
         ])
-    pretrain_model = bert.instantiate_bertpretrainer_from_cfg(pretrain_cfg)
+    pretrain_model = bert.instantiate_pretrainer_from_cfg(pretrain_cfg)
     ckpt = tf.train.Checkpoint(
         model=pretrain_model, **pretrain_model.checkpoint_items)
     saved_path = ckpt.save(self.get_temp_dir())
 
     config = question_answering.QuestionAnsweringConfig(
         init_checkpoint=saved_path,
-        model=self._encoder_config,
+        model=question_answering.ModelConfig(encoder=self._encoder_config),
         train_data=self._train_data_config,
         validation_data=self._get_validation_data_config(
             version_2_with_negative))
@@ -113,7 +112,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_task_with_fit(self):
     config = question_answering.QuestionAnsweringConfig(
-        model=self._encoder_config,
+        model=question_answering.ModelConfig(encoder=self._encoder_config),
         train_data=self._train_data_config,
         validation_data=self._get_validation_data_config())
     task = question_answering.QuestionAnsweringTask(config)
@@ -156,7 +155,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
     hub_module_url = self._export_bert_tfhub()
     config = question_answering.QuestionAnsweringConfig(
         hub_module_url=hub_module_url,
-        model=self._encoder_config,
+        model=question_answering.ModelConfig(encoder=self._encoder_config),
         train_data=self._train_data_config,
         validation_data=self._get_validation_data_config())
     self._run_task(config)

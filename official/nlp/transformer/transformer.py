@@ -52,7 +52,6 @@ def create_model(params, is_train):
       logits = tf.keras.layers.Lambda(lambda x: x, name="logits",
                                       dtype=tf.float32)(logits)
       model = tf.keras.Model([inputs, targets], logits)
-      # TODO(reedwm): Can we do this loss in float16 instead of float32?
       loss = metrics.transformer_loss(
           logits, targets, label_smoothing, vocab_size)
       model.add_loss(loss)
@@ -238,7 +237,6 @@ class Transformer(tf.keras.Model):
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
         max_decode_length, dtype=self.params["dtype"])
 
-    # TODO(b/139770046): Refactor code with better naming of i.
     def symbols_to_logits_fn(ids, i, cache):
       """Generate logits for next potential IDs.
 

@@ -53,16 +53,16 @@ def build_groundtruth_vrd_dictionary(data, class_label_map,
 
   boxes = np.zeros(data_boxes.shape[0], dtype=vrd_evaluation.vrd_box_data_type)
   boxes['subject'] = data_boxes[['YMin1', 'XMin1', 'YMax1',
-                                 'XMax1']].as_matrix()
-  boxes['object'] = data_boxes[['YMin2', 'XMin2', 'YMax2', 'XMax2']].as_matrix()
+                                 'XMax1']].to_numpy()
+  boxes['object'] = data_boxes[['YMin2', 'XMin2', 'YMax2', 'XMax2']].to_numpy()
 
   labels = np.zeros(data_boxes.shape[0], dtype=vrd_evaluation.label_data_type)
   labels['subject'] = data_boxes['LabelName1'].map(
-      lambda x: class_label_map[x]).as_matrix()
+      lambda x: class_label_map[x]).to_numpy()
   labels['object'] = data_boxes['LabelName2'].map(
-      lambda x: class_label_map[x]).as_matrix()
+      lambda x: class_label_map[x]).to_numpy()
   labels['relation'] = data_boxes['RelationshipLabel'].map(
-      lambda x: relationship_label_map[x]).as_matrix()
+      lambda x: relationship_label_map[x]).to_numpy()
 
   return {
       standard_fields.InputDataFields.groundtruth_boxes:
@@ -71,7 +71,7 @@ def build_groundtruth_vrd_dictionary(data, class_label_map,
           labels,
       standard_fields.InputDataFields.groundtruth_image_classes:
           data_labels['LabelName'].map(lambda x: class_label_map[x])
-          .as_matrix(),
+          .to_numpy(),
   }
 
 
@@ -104,16 +104,16 @@ def build_predictions_vrd_dictionary(data, class_label_map,
 
   boxes = np.zeros(data_boxes.shape[0], dtype=vrd_evaluation.vrd_box_data_type)
   boxes['subject'] = data_boxes[['YMin1', 'XMin1', 'YMax1',
-                                 'XMax1']].as_matrix()
-  boxes['object'] = data_boxes[['YMin2', 'XMin2', 'YMax2', 'XMax2']].as_matrix()
+                                 'XMax1']].to_numpy()
+  boxes['object'] = data_boxes[['YMin2', 'XMin2', 'YMax2', 'XMax2']].to_numpy()
 
   labels = np.zeros(data_boxes.shape[0], dtype=vrd_evaluation.label_data_type)
   labels['subject'] = data_boxes['LabelName1'].map(
-      lambda x: class_label_map[x]).as_matrix()
+      lambda x: class_label_map[x]).to_numpy()
   labels['object'] = data_boxes['LabelName2'].map(
-      lambda x: class_label_map[x]).as_matrix()
+      lambda x: class_label_map[x]).to_numpy()
   labels['relation'] = data_boxes['RelationshipLabel'].map(
-      lambda x: relationship_label_map[x]).as_matrix()
+      lambda x: relationship_label_map[x]).to_numpy()
 
   return {
       standard_fields.DetectionResultFields.detection_boxes:
@@ -121,5 +121,5 @@ def build_predictions_vrd_dictionary(data, class_label_map,
       standard_fields.DetectionResultFields.detection_classes:
           labels,
       standard_fields.DetectionResultFields.detection_scores:
-          data_boxes['Score'].as_matrix()
+          data_boxes['Score'].to_numpy()
   }

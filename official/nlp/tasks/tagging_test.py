@@ -56,7 +56,7 @@ class TaggingTest(tf.test.TestCase):
 
     config = tagging.TaggingConfig(
         init_checkpoint=saved_path,
-        model=self._encoder_config,
+        model=tagging.ModelConfig(encoder=self._encoder_config),
         train_data=self._train_data_config,
         class_names=["O", "B-PER", "I-PER"])
     task = tagging.TaggingTask(config)
@@ -72,7 +72,7 @@ class TaggingTest(tf.test.TestCase):
 
   def test_task_with_fit(self):
     config = tagging.TaggingConfig(
-        model=self._encoder_config,
+        model=tagging.ModelConfig(encoder=self._encoder_config),
         train_data=self._train_data_config,
         class_names=["O", "B-PER", "I-PER"])
 
@@ -115,14 +115,13 @@ class TaggingTest(tf.test.TestCase):
     hub_module_url = self._export_bert_tfhub()
     config = tagging.TaggingConfig(
         hub_module_url=hub_module_url,
-        model=self._encoder_config,
         class_names=["O", "B-PER", "I-PER"],
         train_data=self._train_data_config)
     self._run_task(config)
 
   def test_seqeval_metrics(self):
     config = tagging.TaggingConfig(
-        model=self._encoder_config,
+        model=tagging.ModelConfig(encoder=self._encoder_config),
         train_data=self._train_data_config,
         class_names=["O", "B-PER", "I-PER"])
     task = tagging.TaggingTask(config)
