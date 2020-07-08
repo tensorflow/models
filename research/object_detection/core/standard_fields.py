@@ -141,6 +141,8 @@ class DetectionResultFields(object):
       for detection boxes in the image including background class.
     detection_classes: detection-level class labels.
     detection_masks: contains a segmentation mask for each detection box.
+    detection_surface_coords: contains DensePose surface coordinates for each
+      box.
     detection_boundaries: contains an object boundary for each detection box.
     detection_keypoints: contains detection keypoints for each detection box.
     detection_keypoint_scores: contains detection keypoint scores.
@@ -161,6 +163,7 @@ class DetectionResultFields(object):
   detection_features = 'detection_features'
   detection_classes = 'detection_classes'
   detection_masks = 'detection_masks'
+  detection_surface_coords = 'detection_surface_coords'
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   detection_keypoint_scores = 'detection_keypoint_scores'
@@ -182,7 +185,11 @@ class BoxListFields(object):
     masks: masks per bounding box.
     boundaries: boundaries per bounding box.
     keypoints: keypoints per bounding box.
+    keypoint_visibilities: keypoint visibilities per bounding box.
     keypoint_heatmaps: keypoint heatmaps per bounding box.
+    densepose_num_points: number of DensePose points per bounding box.
+    densepose_part_ids: DensePose part ids per bounding box.
+    densepose_surface_coords: DensePose surface coordinates per bounding box.
     is_crowd: is_crowd annotation per bounding box.
   """
   boxes = 'boxes'
@@ -196,6 +203,9 @@ class BoxListFields(object):
   keypoints = 'keypoints'
   keypoint_visibilities = 'keypoint_visibilities'
   keypoint_heatmaps = 'keypoint_heatmaps'
+  densepose_num_points = 'densepose_num_points'
+  densepose_part_ids = 'densepose_part_ids'
+  densepose_surface_coords = 'densepose_surface_coords'
   is_crowd = 'is_crowd'
   group_of = 'group_of'
 

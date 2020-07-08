@@ -22,7 +22,6 @@ import contextlib
 import os
 import tempfile
 import unittest
-import apache_beam as beam
 import numpy as np
 import six
 import tensorflow.compat.v1 as tf
@@ -38,6 +37,11 @@ if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
 else:
   mock = unittest.mock
+
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class FakeModel(model.DetectionModel):
