@@ -213,4 +213,16 @@ message FasterRcnnFeatureExtractor {
   // When training with a relative large batch size (e.g. 8), it could be
   // desirable to enable batch norm update.
   optional bool batch_norm_trainable = 3 [default = false];
+
+  // Hyperparameters that affect the layers of feature extractor added on top
+  // of the base feature extractor.
+  optional Hyperparams conv_hyperparams = 4;
+
+  // if the value is set to true, the base feature extractor's hyperparams will
+  // be overridden with the `conv_hyperparams`.
+  optional bool override_base_feature_extractor_hyperparams = 9
+      [default = false];
+
+  // Feature Pyramid Networks config.
+  optional FeaturePyramidNetworks fpn = 10;
 }
