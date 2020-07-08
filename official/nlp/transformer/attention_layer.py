@@ -89,7 +89,7 @@ class Attention(tf.keras.layers.Layer):
     }
 
   def call(self, query_input, source_input, bias, training, cache=None,
-           decode_loop_step=None, use_bias=True):
+           decode_loop_step=None):
     """Apply attention mechanism to query_input and source_input.
 
     Args:
@@ -146,8 +146,7 @@ class Attention(tf.keras.layers.Layer):
 
     # Calculate dot product attention
     logits = tf.einsum("BTNH,BFNH->BNFT", key, query)
-    if (use_bias):
-      logits += bias
+    logits += bias
     # Note that softmax internally performs math operations using float32
     # for numeric stability. When training with float16, we keep the input
     # and output in float16 for better performance.
@@ -166,6 +165,6 @@ class SelfAttention(Attention):
   """Multiheaded self-attention layer."""
 
   def call(self, query_input, bias, training, cache=None,
-           decode_loop_step=None, use_bias=True):
+           decode_loop_step=None):
     return super(SelfAttention, self).call(
-        query_input, query_input, bias, training, cache, decode_loop_step, use_bias)
+        query_input, query_input, bias, training, cache, decode_loop_step)
