@@ -34,7 +34,8 @@ python tensorflow_models/object_detection/export_inference_graph.py \
     --input_type tf_example \
     --pipeline_config_path path/to/faster_rcnn_model.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
-    --output_directory path/to/exported_model_directory
+    --output_directory path/to/exported_model_directory \
+    --additional_output_tensor_names detection_features
 
 python generate_embedding_data.py \
     --alsologtostderr \
@@ -52,10 +53,14 @@ import datetime
 import os
 import threading
 
-import apache_beam as beam
 import numpy as np
 import six
 import tensorflow.compat.v1 as tf
+
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class GenerateEmbeddingDataFn(beam.DoFn):

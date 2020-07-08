@@ -39,11 +39,15 @@ import io
 import json
 import logging
 import os
-import apache_beam as beam
 import numpy as np
 import PIL.Image
 import tensorflow.compat.v1 as tf
 from object_detection.utils import dataset_util
+
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class ParseImage(beam.DoFn):
