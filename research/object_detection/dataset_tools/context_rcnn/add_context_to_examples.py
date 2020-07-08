@@ -50,12 +50,15 @@ import io
 import itertools
 import json
 import os
-
-import apache_beam as beam
 import numpy as np
 import PIL.Image
 import six
 import tensorflow.compat.v1 as tf
+
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class ReKeyDataFn(beam.DoFn):

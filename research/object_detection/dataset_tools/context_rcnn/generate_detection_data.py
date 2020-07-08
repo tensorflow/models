@@ -48,8 +48,11 @@ from __future__ import print_function
 import argparse
 import os
 import threading
-import apache_beam as beam
 import tensorflow.compat.v1 as tf
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class GenerateDetectionDataFn(beam.DoFn):
