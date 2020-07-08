@@ -25,9 +25,9 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 
 from research.mobilenet import dataset_loader
-from research.mobilenet import mobilenet_v1_model
-from research.mobilenet import mobilenet_v2_model
-from research.mobilenet import mobilenet_v3_model
+from research.mobilenet import mobilenet_v1
+from research.mobilenet import mobilenet_v2
+from research.mobilenet import mobilenet_v3
 from research.mobilenet.configs import defaults
 from research.mobilenet.configs import archs
 from research.mobilenet.configs import dataset
@@ -48,10 +48,10 @@ def _get_model_config() -> Mapping[Text, Type[archs.MobileNetConfig]]:
 
 def _get_model_builder() -> Mapping[Text, Any]:
   return {
-    'mobilenet_v1': mobilenet_v1_model.mobilenet_v1,
-    'mobilenet_v2': mobilenet_v2_model.mobilenet_v2,
-    'mobilenet_v3_small': mobilenet_v3_model.mobilenet_v3_small,
-    'mobilenet_v3_large': mobilenet_v3_model.mobilenet_v3_large
+    'mobilenet_v1': mobilenet_v1.mobilenet_v1,
+    'mobilenet_v2': mobilenet_v2.mobilenet_v2,
+    'mobilenet_v3_small': mobilenet_v3.mobilenet_v3_small,
+    'mobilenet_v3_large': mobilenet_v3.mobilenet_v3_large
   }
 
 

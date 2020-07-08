@@ -32,7 +32,7 @@ CHECKPOINT_PATH=/Users/luoshixin/Downloads/mobilenet_v1_1.0_224/mobilenet_v1_1.0
 GCS_DATA_DIR=gs://tf_mobilenet/imagenet/imagenet-2012-tfrecord
 LOCAL_DATA_DIR=~/Downloads/imagenet/imagenet-2012-tfrecord
 
-python -m research.mobilenet.tf1_loader.mobilenet_evaluator \
+python -m research.mobilenet.tf1_loader.evaluator \
   --model_name ${MODEL_NAME} \
   --dataset_name ${DATASET_NAME} \
   --data_dir ${GCS_DATA_DIR} \
