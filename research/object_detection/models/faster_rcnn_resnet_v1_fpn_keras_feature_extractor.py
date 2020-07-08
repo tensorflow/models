@@ -278,8 +278,8 @@ class FasterRCNNResnet50FpnKerasFeatureExtractor(
   def __init__(self,
                is_training,
                first_stage_features_stride=16,
-               conv_hyperparams=None,
                batch_norm_trainable=False,
+               conv_hyperparams=None,
                weight_decay=0.0,
                fpn_min_level=2,
                fpn_max_level=6,
@@ -290,8 +290,8 @@ class FasterRCNNResnet50FpnKerasFeatureExtractor(
     Args:
       is_training: See base class.
       first_stage_features_stride: See base class.
-      conv_hyperparams: See base class.
       batch_norm_trainable: See base class.
+      conv_hyperparams: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
       fpn_max_level: See base class.
@@ -318,8 +318,8 @@ class FasterRCNNResnet101FpnKerasFeatureExtractor(
   def __init__(self,
                is_training,
                first_stage_features_stride=16,
-               conv_hyperparams=None,
                batch_norm_trainable=False,
+               conv_hyperparams=None,
                weight_decay=0.0,
                fpn_min_level=2,
                fpn_max_level=6,
@@ -330,8 +330,8 @@ class FasterRCNNResnet101FpnKerasFeatureExtractor(
     Args:
       is_training: See base class.
       first_stage_features_stride: See base class.
-      conv_hyperparams: See base class.
       batch_norm_trainable: See base class.
+      conv_hyperparams: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
       fpn_max_level: See base class.
@@ -359,8 +359,8 @@ class FasterRCNNResnet152FpnKerasFeatureExtractor(
   def __init__(self,
                is_training,
                first_stage_features_stride=16,
-               conv_hyperparams=None,
                batch_norm_trainable=False,
+               conv_hyperparams=None,
                weight_decay=0.0,
                fpn_min_level=2,
                fpn_max_level=6,
@@ -371,8 +371,8 @@ class FasterRCNNResnet152FpnKerasFeatureExtractor(
     Args:
       is_training: See base class.
       first_stage_features_stride: See base class.
-      conv_hyperparams: See base class.
       batch_norm_trainable: See base class.
+      conv_hyperparams: See base class.
       weight_decay: See base class.
       fpn_min_level: See base class.
       fpn_max_level: See base class.
