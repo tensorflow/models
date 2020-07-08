@@ -22,17 +22,17 @@ from absl import app
 from absl import flags
 
 from research.mobilenet import mobilenet_trainer
-from research.mobilenet.tf1_loader import mobilenet_v1_loader
-from research.mobilenet.tf1_loader import mobilenet_v2_loader
-from research.mobilenet.tf1_loader import mobilenet_v3_loader
+from research.mobilenet.tf1_loader import v1_loader
+from research.mobilenet.tf1_loader import v2_loader
+from research.mobilenet.tf1_loader import v3_loader
 
 
 def _get_model_loader() -> Mapping[Text, Any]:
   return {
-    'mobilenet_v1': mobilenet_v1_loader.load_mobilenet_v1,
-    'mobilenet_v2': mobilenet_v2_loader.load_mobilenet_v2,
-    'mobilenet_v3_small': mobilenet_v3_loader.load_mobilenet_v3,
-    'mobilenet_v3_large': mobilenet_v3_loader.load_mobilenet_v3
+    'mobilenet_v1': v1_loader.load_mobilenet_v1,
+    'mobilenet_v2': v2_loader.load_mobilenet_v2,
+    'mobilenet_v3_small': v3_loader.load_mobilenet_v3,
+    'mobilenet_v3_large': v3_loader.load_mobilenet_v3
   }
 
 

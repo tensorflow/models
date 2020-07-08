@@ -22,7 +22,7 @@ https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1
 
 from typing import Text
 
-from research.mobilenet import mobilenet_v1_model
+from research.mobilenet import mobilenet_v1
 
 from research.mobilenet.configs import archs
 from research.mobilenet.tf1_loader import utils
@@ -80,7 +80,7 @@ def load_mobilenet_v1(
     exclude_filters=exclue_filters,
     use_mv_average=True)
 
-  mobilenet_model = mobilenet_v1_model.mobilenet_v1(config=config)
+  mobilenet_model = mobilenet_v1.mobilenet_v1(config=config)
 
   utils.load_tf2_keras_model_weights(
     keras_model=mobilenet_model,
