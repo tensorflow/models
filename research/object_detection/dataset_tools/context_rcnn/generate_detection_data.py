@@ -45,26 +45,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import os
 import threading
-from absl import app
-from absl import flags
-import apache_beam as beam
 import tensorflow.compat.v1 as tf
-from apache_beam import runners
-
-
-flags.DEFINE_string('detection_input_tfrecord', None, 'TFRecord containing '
-                    'images in tf.Example format for object detection.')
-flags.DEFINE_string('detection_output_tfrecord', None,
-                    'TFRecord containing detections in tf.Example format.')
-flags.DEFINE_string('detection_model_dir', None, 'Path to directory containing'
-                    'an object detection SavedModel.')
-flags.DEFINE_float('confidence_threshold', 0.9,
-                   'Min confidence to keep bounding boxes')
-flags.DEFINE_integer('num_shards', 0, 'Number of output shards.')
-
-FLAGS = flags.FLAGS
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class GenerateDetectionDataFn(beam.DoFn):
@@ -205,58 +193,103 @@ class GenerateDetectionDataFn(beam.DoFn):
     return [example]
 
 
-def construct_pipeline(input_tfrecord, output_tfrecord, model_dir,
+def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
                        confidence_threshold, num_shards):
   """Returns a Beam pipeline to run object detection inference.
 
   Args:
+    pipeline: Initialized beam pipeline.
     input_tfrecord: A TFRecord of tf.train.Example protos containing images.
     output_tfrecord: A TFRecord of tf.train.Example protos that contain images
       in the input TFRecord and the detections from the model.
     model_dir: Path to `saved_model` to use for inference.
     confidence_threshold: Threshold to use when keeping detection results.
     num_shards: The number of output shards.
-  Returns:
-    pipeline: A Beam pipeline.
   """
-  def pipeline(root):
-    input_collection = (
-        root | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
-            input_tfrecord,
-            coder=beam.coders.BytesCoder()))
-    output_collection = input_collection | 'RunInference' >> beam.ParDo(
-        GenerateDetectionDataFn(model_dir, confidence_threshold))
-    output_collection = output_collection | 'Reshuffle' >> beam.Reshuffle()
-    _ = output_collection | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
-        output_tfrecord,
-        num_shards=num_shards,
-        coder=beam.coders.ProtoCoder(tf.train.Example))
-  return pipeline
+  input_collection = (
+      pipeline | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
+          input_tfrecord,
+          coder=beam.coders.BytesCoder()))
+  output_collection = input_collection | 'RunInference' >> beam.ParDo(
+      GenerateDetectionDataFn(model_dir, confidence_threshold))
+  output_collection = output_collection | 'Reshuffle' >> beam.Reshuffle()
+  _ = output_collection | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
+      output_tfrecord,
+      num_shards=num_shards,
+      coder=beam.coders.ProtoCoder(tf.train.Example))
 
 
-def main(_):
+def parse_args(argv):
+  """Command-line argument parser.
+
+  Args:
+    argv: command line arguments
+  Returns:
+    beam_args: Arguments for the beam pipeline.
+    pipeline_args: Arguments for the pipeline options, such as runner type.
+  """
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--detection_input_tfrecord',
+      dest='detection_input_tfrecord',
+      required=True,
+      help='TFRecord containing images in tf.Example format for object '
+      'detection.')
+  parser.add_argument(
+      '--detection_output_tfrecord',
+      dest='detection_output_tfrecord',
+      required=True,
+      help='TFRecord containing detections in tf.Example format.')
+  parser.add_argument(
+      '--detection_model_dir',
+      dest='detection_model_dir',
+      required=True,
+      help='Path to directory containing an object detection SavedModel.')
+  parser.add_argument(
+      '--confidence_threshold',
+      dest='confidence_threshold',
+      default=0.9,
+      help='Min confidence to keep bounding boxes.')
+  parser.add_argument(
+      '--num_shards',
+      dest='num_shards',
+      default=0,
+      help='Number of output shards.')
+  beam_args, pipeline_args = parser.parse_known_args(argv)
+  return beam_args, pipeline_args
+
+
+def main(argv=None, save_main_session=True):
   """Runs the Beam pipeline that performs inference.
 
   Args:
-    _: unused
+    argv: Command line arguments.
+    save_main_session: Whether to save the main session.
   """
-  # must create before flags are used
-  runner = runners.DirectRunner()
 
-  dirname = os.path.dirname(FLAGS.detection_output_tfrecord)
+  args, pipeline_args = parse_args(argv)
+
+  pipeline_options = beam.options.pipeline_options.PipelineOptions(
+            pipeline_args)
+  pipeline_options.view_as(
+      beam.options.pipeline_options.SetupOptions).save_main_session = (
+          save_main_session)
+
+  dirname = os.path.dirname(args.detection_output_tfrecord)
   tf.io.gfile.makedirs(dirname)
-  runner.run(
-      construct_pipeline(FLAGS.detection_input_tfrecord,
-                         FLAGS.detection_output_tfrecord,
-                         FLAGS.detection_model_dir,
-                         FLAGS.confidence_threshold,
-                         FLAGS.num_shards))
+
+  p = beam.Pipeline(options=pipeline_options)
+
+  construct_pipeline(
+      p,
+      args.detection_input_tfrecord,
+      args.detection_output_tfrecord,
+      args.detection_model_dir,
+      args.confidence_threshold,
+      args.num_shards)
+
+  p.run()
 
 
 if __name__ == '__main__':
-  flags.mark_flags_as_required([
-      'detection_input_tfrecord',
-      'detection_output_tfrecord',
-      'detection_model_dir'
-  ])
-  app.run(main)
+  main()

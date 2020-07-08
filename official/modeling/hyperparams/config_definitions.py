@@ -180,7 +180,7 @@ class TrainerConfig(base_config.Config):
   optimizer_config: OptimizationConfig = OptimizationConfig()
   train_steps: int = 0
   validation_steps: Optional[int] = None
-  validation_interval: int = 100
+  validation_interval: int = 1000
   steps_per_loop: int = 1000
   summary_interval: int = 1000
   checkpoint_interval: int = 1000

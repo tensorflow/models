@@ -102,7 +102,7 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     Args:
       field: a string key, options are
         fields.BoxListFields.{boxes,classes,masks,keypoints,
-        keypoint_visibilities} or
+        keypoint_visibilities, densepose_*}
         fields.InputDataFields.is_annotated.
 
     Returns:
@@ -123,7 +123,7 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     Args:
       field: a string key, options are
         fields.BoxListFields.{boxes,classes,masks,keypoints,
-        keypoint_visibilities} or
+        keypoint_visibilities, densepose_*} or
         fields.InputDataFields.is_annotated.
 
     Returns:
@@ -288,19 +288,23 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     """
     pass
 
-  def provide_groundtruth(self,
-                          groundtruth_boxes_list,
-                          groundtruth_classes_list,
-                          groundtruth_masks_list=None,
-                          groundtruth_keypoints_list=None,
-                          groundtruth_keypoint_visibilities_list=None,
-                          groundtruth_weights_list=None,
-                          groundtruth_confidences_list=None,
-                          groundtruth_is_crowd_list=None,
-                          groundtruth_group_of_list=None,
-                          groundtruth_area_list=None,
-                          is_annotated_list=None,
-                          groundtruth_labeled_classes=None):
+  def provide_groundtruth(
+      self,
+      groundtruth_boxes_list,
+      groundtruth_classes_list,
+      groundtruth_masks_list=None,
+      groundtruth_keypoints_list=None,
+      groundtruth_keypoint_visibilities_list=None,
+      groundtruth_dp_num_points_list=None,
+      groundtruth_dp_part_ids_list=None,
+      groundtruth_dp_surface_coords_list=None,
+      groundtruth_weights_list=None,
+      groundtruth_confidences_list=None,
+      groundtruth_is_crowd_list=None,
+      groundtruth_group_of_list=None,
+      groundtruth_area_list=None,
+      is_annotated_list=None,
+      groundtruth_labeled_classes=None):
     """Provide groundtruth tensors.
 
     Args:
@@ -324,6 +328,15 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
         `groundtruth_keypoint_visibilities_list`).
       groundtruth_keypoint_visibilities_list: a list of 3-D tf.bool tensors
         of shape [num_boxes, num_keypoints] containing keypoint visibilities.
+      groundtruth_dp_num_points_list: a list of 1-D tf.int32 tensors of shape
+        [num_boxes] containing the number of DensePose sampled points.
+      groundtruth_dp_part_ids_list: a list of 2-D tf.int32 tensors of shape
+        [num_boxes, max_sampled_points] containing the DensePose part ids
+        (0-indexed) for each sampled point. Note that there may be padding.
+      groundtruth_dp_surface_coords_list: a list of 3-D tf.float32 tensors of
+        shape [num_boxes, max_sampled_points, 4] containing the DensePose
+        surface coordinates for each sampled point. Note that there may be
+        padding.
       groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
         [num_boxes] containing weights for groundtruth boxes.
       groundtruth_confidences_list: A list of 2-D tf.float32 tensors of shape
@@ -361,6 +374,18 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       self._groundtruth_lists[
           fields.BoxListFields.keypoint_visibilities] = (
               groundtruth_keypoint_visibilities_list)
+    if groundtruth_dp_num_points_list:
+      self._groundtruth_lists[
+          fields.BoxListFields.densepose_num_points] = (
+              groundtruth_dp_num_points_list)
+    if groundtruth_dp_part_ids_list:
+      self._groundtruth_lists[
+          fields.BoxListFields.densepose_part_ids] = (
+              groundtruth_dp_part_ids_list)
+    if groundtruth_dp_surface_coords_list:
+      self._groundtruth_lists[
+          fields.BoxListFields.densepose_surface_coords] = (
+              groundtruth_dp_surface_coords_list)
     if groundtruth_is_crowd_list:
       self._groundtruth_lists[
           fields.BoxListFields.is_crowd] = groundtruth_is_crowd_list

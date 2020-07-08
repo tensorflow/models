@@ -30,12 +30,17 @@ from object_detection.core import model
 from object_detection.dataset_tools.context_rcnn import generate_embedding_data
 from object_detection.protos import pipeline_pb2
 from object_detection.utils import tf_version
-from apache_beam import runners
+
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
 else:
   mock = unittest.mock
+
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class FakeModel(model.DetectionModel):
@@ -314,17 +319,19 @@ class GenerateEmbeddingData(tf.test.TestCase):
 
   def test_beam_pipeline(self):
     with InMemoryTFRecord([self._create_tf_example()]) as input_tfrecord:
-      runner = runners.DirectRunner()
       temp_dir = tempfile.mkdtemp(dir=os.environ.get('TEST_TMPDIR'))
       output_tfrecord = os.path.join(temp_dir, 'output_tfrecord')
       saved_model_path = self._export_saved_model()
       top_k_embedding_count = 1
       bottom_k_embedding_count = 0
       num_shards = 1
-      pipeline = generate_embedding_data.construct_pipeline(
-          input_tfrecord, output_tfrecord, saved_model_path,
+      pipeline_options = beam.options.pipeline_options.PipelineOptions(
+          runner='DirectRunner')
+      p = beam.Pipeline(options=pipeline_options)
+      generate_embedding_data.construct_pipeline(
+          p, input_tfrecord, output_tfrecord, saved_model_path,
           top_k_embedding_count, bottom_k_embedding_count, num_shards)
-      runner.run(pipeline)
+      p.run()
       filenames = tf.io.gfile.glob(
           output_tfrecord + '-?????-of-?????')
       actual_output = []

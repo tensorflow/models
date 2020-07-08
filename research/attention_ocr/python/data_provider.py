@@ -144,9 +144,6 @@ def preprocess_image(image, augment=False, central_crop_size=None,
         images = [augment_image(img) for img in images]
       image = tf.concat(images, 1)
 
-    image = tf.subtract(image, 0.5)
-    image = tf.multiply(image, 2.5)
-
   return image
 
 

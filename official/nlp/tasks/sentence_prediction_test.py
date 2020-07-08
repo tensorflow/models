@@ -24,6 +24,7 @@ from official.nlp.bert import configs
 from official.nlp.bert import export_tfhub
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
+from official.nlp.data import sentence_prediction_dataloader
 from official.nlp.tasks import sentence_prediction
 
 
@@ -31,20 +32,15 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(SentencePredictionTaskTest, self).setUp()
-    self._train_data_config = bert.SentencePredictionDataConfig(
-        input_path="dummy", seq_length=128, global_batch_size=1)
+    self._train_data_config = (
+        sentence_prediction_dataloader.SentencePredictionDataConfig(
+            input_path="dummy", seq_length=128, global_batch_size=1))
 
   def get_model_config(self, num_classes):
-    return bert.BertPretrainerConfig(
+    return sentence_prediction.ModelConfig(
         encoder=encoders.TransformerEncoderConfig(
             vocab_size=30522, num_layers=1),
-        num_masked_tokens=0,
-        cls_heads=[
-            bert.ClsHeadConfig(
-                inner_dim=10,
-                num_classes=num_classes,
-                name="sentence_prediction")
-        ])
+        num_classes=num_classes)
 
   def _run_task(self, config):
     task = sentence_prediction.SentencePredictionTask(config)
@@ -79,12 +75,11 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     pretrain_cfg = bert.BertPretrainerConfig(
         encoder=encoders.TransformerEncoderConfig(
             vocab_size=30522, num_layers=1),
-        num_masked_tokens=20,
         cls_heads=[
             bert.ClsHeadConfig(
                 inner_dim=10, num_classes=3, name="next_sentence")
         ])
-    pretrain_model = bert.instantiate_bertpretrainer_from_cfg(pretrain_cfg)
+    pretrain_model = bert.instantiate_pretrainer_from_cfg(pretrain_cfg)
     ckpt = tf.train.Checkpoint(
         model=pretrain_model, **pretrain_model.checkpoint_items)
     ckpt.save(config.init_checkpoint)

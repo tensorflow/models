@@ -23,16 +23,24 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
+from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
-from official.nlp.bert import input_pipeline
 from official.nlp.bert import squad_evaluate_v1_1
 from official.nlp.bert import squad_evaluate_v2_0
 from official.nlp.bert import tokenization
 from official.nlp.configs import encoders
+from official.nlp.data import data_loader_factory
 from official.nlp.data import squad_lib as squad_lib_wp
 from official.nlp.data import squad_lib_sp
 from official.nlp.modeling import models
 from official.nlp.tasks import utils
+
+
+@dataclasses.dataclass
+class ModelConfig(base_config.Config):
+  """A base span labeler configuration."""
+  encoder: encoders.TransformerEncoderConfig = (
+      encoders.TransformerEncoderConfig())
 
 
 @dataclasses.dataclass
@@ -44,8 +52,7 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
   n_best_size: int = 20
   max_answer_length: int = 30
   null_score_diff_threshold: float = 0.0
-  model: encoders.TransformerEncoderConfig = (
-      encoders.TransformerEncoderConfig())
+  model: ModelConfig = ModelConfig()
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
@@ -54,8 +61,8 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
 class QuestionAnsweringTask(base_task.Task):
   """Task object for question answering."""
 
-  def __init__(self, params=cfg.TaskConfig):
-    super(QuestionAnsweringTask, self).__init__(params)
+  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
+    super(QuestionAnsweringTask, self).__init__(params, logging_dir)
     if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
@@ -72,17 +79,21 @@ class QuestionAnsweringTask(base_task.Task):
       raise ValueError('Unsupported tokenization method: {}'.format(
           params.validation_data.tokenization))
 
+    if params.validation_data.input_path:
+      self._tf_record_input_path, self._eval_examples, self._eval_features = (
+          self._preprocess_eval_data(params.validation_data))
+
   def build_model(self):
     if self._hub_module:
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
       encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.model)
-
+          self.task_config.model.encoder)
+    # Currently, we only supports bert-style question answering finetuning.
     return models.BertSpanLabeler(
         network=encoder_network,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.model.initializer_range))
+            stddev=self.task_config.model.encoder.initializer_range))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     start_positions = labels['start_positions']
@@ -107,7 +118,11 @@ class QuestionAnsweringTask(base_task.Task):
         is_training=False,
         version_2_with_negative=params.version_2_with_negative)
 
-    temp_file_path = params.input_preprocessed_data_path or '/tmp'
+    temp_file_path = params.input_preprocessed_data_path or self.logging_dir
+    if not temp_file_path:
+      raise ValueError('You must specify a temporary directory, either in '
+                       'params.input_preprocessed_data_path or logging_dir to '
+                       'store intermediate evaluation TFRecord data.')
     eval_writer = self.squad_lib.FeatureWriter(
         filename=os.path.join(temp_file_path, 'eval.tf_record'),
         is_training=False)
@@ -166,21 +181,13 @@ class QuestionAnsweringTask(base_task.Task):
       return dataset
 
     if params.is_training:
-      input_path = params.input_path
+      dataloader_params = params
     else:
-      input_path, self._eval_examples, self._eval_features = (
-          self._preprocess_eval_data(params))
+      input_path = self._tf_record_input_path
+      dataloader_params = params.replace(input_path=input_path)
 
-    batch_size = input_context.get_per_replica_batch_size(
-        params.global_batch_size) if input_context else params.global_batch_size
-    # TODO(chendouble): add and use nlp.data.question_answering_dataloader.
-    dataset = input_pipeline.create_squad_dataset(
-        input_path,
-        params.seq_length,
-        batch_size,
-        is_training=params.is_training,
-        input_pipeline_context=input_context)
-    return dataset
+    return data_loader_factory.get_data_loader(
+        dataloader_params).load(input_context)
 
   def build_metrics(self, training=None):
     del training
@@ -280,7 +287,7 @@ class QuestionAnsweringTask(base_task.Task):
       return
 
     ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-    status = ckpt.restore(ckpt_dir_or_file)
+    status = ckpt.read(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
-    logging.info('finished loading pretrained checkpoint from %s',
+    logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)

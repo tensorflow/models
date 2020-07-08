@@ -1,6 +1,6 @@
 # Deep Local and Global Image Features
 
-[![TensorFlow 2.1](https://img.shields.io/badge/tensorflow-2.1-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.1.0)
+[![TensorFlow 2.2](https://img.shields.io/badge/tensorflow-2.2-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0)
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)
 
 This project presents code for deep local and global image feature methods,
@@ -41,7 +41,7 @@ DELG:
 ```
 "Unifying Deep Local and Global Features for Image Search",
 B. Cao*, A. Araujo* and J. Sim,
-arxiv:2001.05027
+Proc. ECCV'20
 ```
 
 GLDv2:
@@ -55,11 +55,11 @@ Proc. CVPR'20
 
 ## News
 
+-   [Jul'20] Check out our ECCV'20 paper:
+    ["Unifying Deep Local and Global Features for Image Search"](https://arxiv.org/abs/2001.05027)
 -   [Apr'20] Check out our CVPR'20 paper: ["Google Landmarks Dataset v2 - A
     Large-Scale Benchmark for Instance-Level Recognition and
     Retrieval"](https://arxiv.org/abs/2004.01804)
--   [Jan'20] Check out our new paper:
-    ["Unifying Deep Local and Global Features for Image Search"](https://arxiv.org/abs/2001.05027)
 -   [Jun'19] DELF achieved 2nd place in
     [CVPR Visual Localization challenge (Local Features track)](https://sites.google.com/corp/view/ltvl2019).
     See our slides
@@ -182,104 +182,55 @@ directories therein, `protos` and `python`.
 
 ### `delf/protos`
 
-This directory contains protobufs:
-
--   `aggregation_config.proto`: protobuf for configuring local feature
-    aggregation.
--   `box.proto`: protobuf for serializing detected boxes.
--   `datum.proto`: general-purpose protobuf for serializing float tensors.
--   `delf_config.proto`: protobuf for configuring DELF/DELG extraction.
--   `feature.proto`: protobuf for serializing DELF features.
+This directory contains protobufs for local feature aggregation
+(`aggregation_config.proto`), serializing detected boxes (`box.proto`),
+serializing float tensors (`datum.proto`), configuring DELF/DELG extraction
+(`delf_config.proto`), serializing local features (`feature.proto`).
 
 ### `delf/python`
 
-This directory contains files for several different purposes:
+This directory contains files for several different purposes, such as:
+reading/writing tensors/features (`box_io.py`, `datum_io.py`, `feature_io.py`),
+local feature aggregation extraction and similarity computation
+(`feature_aggregation_extractor.py`, `feature_aggregation_similarity.py`) and
+helper functions for image/feature loading/processing (`utils.py`,
+`feature_extractor.py`).
 
--   `box_io.py`, `datum_io.py`, `feature_io.py` are helper files for reading and
-    writing tensors and features.
--   `delf_v1.py` contains code to create DELF models.
--   `feature_aggregation_extractor.py` contains a module to perform local
-    feature aggregation.
--   `feature_aggregation_similarity.py` contains a module to perform similarity
-    computation for aggregated local features.
--   `feature_extractor.py` contains the code to extract features using DELF.
-    This is particularly useful for extracting features over multiple scales,
-    with keypoint selection based on attention scores, and PCA/whitening
-    post-processing.
-
-The subdirectory `delf/python/examples` contains sample scripts to run DELF
-feature extraction/matching, and object detection:
-
--   `delf_config_example.pbtxt` shows an example instantiation of the DelfConfig
-    proto, used for DELF feature extraction.
--   `detector.py` is a module to construct an object detector function.
--   `extract_boxes.py` enables object detection from a list of images.
--   `extract_features.py` enables DELF extraction from a list of images.
--   `extractor.py` is a module to construct a DELF/DELG local feature extraction
-    function.
--   `match_images.py` supports image matching using DELF features extracted
-    using `extract_features.py`.
+The subdirectory `delf/python/examples` contains sample scripts to run DELF/DELG
+feature extraction/matching (`extractor.py`, `extract_features.py`,
+`match_images.py`) and object detection (`detector.py`, `extract_boxes.py`).
+`delf_config_example.pbtxt` shows an example instantiation of the DelfConfig
+proto, used for DELF feature extraction.
 
 The subdirectory `delf/python/delg` contains sample scripts/configs related to
-the DELG paper:
-
--   `delg_gld_config.pbtxt` gives the DelfConfig used in DELG paper.
--   `extract_features.py` for local+global feature extraction on Revisited
-    datasets.
--   `perform_retrieval.py` for performing retrieval/evaluating methods on
-    Revisited datasets.
+the DELG paper: `extract_features.py` for local+global feature extraction (with
+and example `delg_gld_config.pbtxt`) and `perform_retrieval.py` for performing
+retrieval/scoring.
 
 The subdirectory `delf/python/detect_to_retrieve` contains sample
-scripts/configs related to the Detect-to-Retrieve paper:
-
--   `aggregation_extraction.py` is a library to extract/save feature
-    aggregation.
--   `boxes_and_features_extraction.py` is a library to extract/save boxes and
-    DELF features.
--   `cluster_delf_features.py` for local feature clustering.
--   `dataset.py` for parsing/evaluating results on Revisited Oxford/Paris
-    datasets.
--   `delf_gld_config.pbtxt` gives the DelfConfig used in Detect-to-Retrieve
-    paper.
--   `extract_aggregation.py` for aggregated local feature extraction.
--   `extract_index_boxes_and_features.py` for index image local feature
-    extraction / bounding box detection on Revisited datasets.
--   `extract_query_features.py` for query image local feature extraction on
-    Revisited datasets.
--   `image_reranking.py` is a module to re-rank images with geometric
-    verification.
--   `perform_retrieval.py` for performing retrieval/evaluating methods using
-    aggregated local features on Revisited datasets.
--   `index_aggregation_config.pbtxt`, `query_aggregation_config.pbtxt` give
-    AggregationConfig's for Detect-to-Retrieve experiments.
+scripts/configs related to the Detect-to-Retrieve paper, for feature/box
+extraction/aggregation/clustering (`aggregation_extraction.py`,
+`boxes_and_features_extraction.py`, `cluster_delf_features.py`,
+`extract_aggregation.py`, `extract_index_boxes_and_features.py`,
+`extract_query_features.py`), image retrieval/reranking (`perform_retrieval.py`,
+`image_reranking.py`), along with configs used for feature
+extraction/aggregation (`delf_gld_config.pbtxt`,
+`index_aggregation_config.pbtxt`, `query_aggregation_config.pbtxt`) and
+Revisited Oxford/Paris dataset parsing/evaluation (`dataset.py`).
 
 The subdirectory `delf/python/google_landmarks_dataset` contains sample
-scripts/modules for computing GLD metrics / reproducing results from the GLDv2
-paper:
-
--   `compute_recognition_metrics.py` performs recognition metric computation
-    given input predictions and solution files.
--   `compute_retrieval_metrics.py` performs retrieval metric computation given
-    input predictions and solution files.
--   `dataset_file_io.py` is a module for dataset-related file IO.
--   `metrics.py` is a module for GLD metric computation.
--   `rn101_af_gldv2clean_config.pbtxt` gives the DelfConfig used in the
-    ResNet101-ArcFace (trained on GLDv2-train-clean) baseline used in the GLDv2
-    paper.
+scripts/modules for computing GLD metrics (`metrics.py`,
+`compute_recognition_metrics.py`, `compute_retrieval_metrics.py`), GLD file IO
+(`dataset_file_io.py`) / reproducing results from the GLDv2 paper
+(`rn101_af_gldv2clean_config.pbtxt` and the instructions therein).
 
 The subdirectory `delf/python/training` contains sample scripts/modules for
-performing DELF training:
-
--   `datasets/googlelandmarks.py` is the dataset module used for training.
--   `model/delf_model.py` is the model module used for training.
--   `model/export_model.py` is a script for exporting trained models in the
-    format used by the inference code.
--   `model/export_model_utils.py` is a module with utilities for model
-    exporting.
--   `model/resnet50.py` is a module with a backbone RN50 implementation.
--   `build_image_dataset.py` converts downloaded dataset into TFRecords format
-    for training.
--   `train.py` is the main training script.
+performing model training (`train.py`) based on a ResNet50 DELF model
+(`model/resnet50.py`, `model/delf_model.py`), also presenting relevant model
+exporting scripts and associated utils (`model/export_model.py`,
+`model/export_global_model.py`, `model/export_model_utils.py`) and dataset
+downloading/preprocessing (`download_dataset.sh`, `build_image_dataset.py`,
+`datasets/googlelandmarks.py`).
 
 Besides these, other files in the different subdirectories contain tests for the
 various modules.
@@ -289,6 +240,16 @@ various modules.
 Andr&eacute; Araujo (@andrefaraujo)
 
 ## Release history
+
+### Jul, 2020
+
+-   Full TF2 support. Only one minor `compat.v1` usage left. Updated
+    instructions to require TF2.2
+-   Refactored / much improved training code, with very detailed, step-by-step
+    instructions
+
+**Thanks to contributors**: Dan Anghel, Barbara Fusinska and Andr&eacute;
+Araujo.
 
 ### May, 2020
 
