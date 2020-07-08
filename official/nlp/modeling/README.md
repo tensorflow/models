@@ -1,6 +1,6 @@
 # NLP Modeling Library
 
-This libary provides a set of Keras primitives (Layers, Networks, and Models)
+This library provides a set of Keras primitives (Layers, Networks, and Models)
 that can be assembled into transformer-based models. They are
 flexible, validated, interoperable, and both TF1 and TF2 compatible.
 
@@ -15,6 +15,10 @@ standardized configuration.
 * [`models`](models) are combinations of layers and networks that would be trained. Pre-built canned models are provided as both convenience functions and canonical examples.
 
 * [`losses`](losses) contains common loss computation used in NLP tasks.
+
+Please see the colab
+[Introduction_to_NLP_Modeling_Library.ipynb](https://colab.sandbox.google.com/github/tensorflow/models/blob/master/official/colab/nlp/nlp_modeling_library_intro.ipynb)
+for how to build transformer-based NLP models using above primitives.
 
 Besides the pre-defined primitives, it also provides scaffold classes to allow
 easy experimentation with noval achitectures, e.g., you don’t need to fork a whole Transformer object to try a different kind of attention primitive, for instance.
