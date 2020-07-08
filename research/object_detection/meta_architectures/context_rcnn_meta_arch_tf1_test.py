@@ -20,8 +20,8 @@ from __future__ import print_function
 
 import functools
 import unittest
+from unittest import mock  # pylint: disable=g-importing-member
 from absl.testing import parameterized
-import mock
 import tensorflow.compat.v1 as tf
 import tf_slim as slim
 
