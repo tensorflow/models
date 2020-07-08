@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-assert tf.version.VERSION.startswith('2.2')
+assert tf.version.VERSION.startswith('2.')
 
 from config.config import Config
 from tensorflow.keras import Input, Model, Sequential
@@ -89,7 +89,7 @@ class ParentChildEncoder(tf.keras.layers.Layer):
 
 
 class BackgroundEncoder(tf.keras.layers.Layer):
-    """Encoder for the background"""
+    """Encoder for the background image"""
     def __init__(self, num_disc_features, **kwargs):
         super(BackgroundEncoder, self).__init__(**kwargs)
         self.num_disc_features = num_disc_features
@@ -213,10 +213,9 @@ class IntermediateGenerator(tf.keras.Model):
         return Sequential(*layers)
 
     def call(self, h_code, code):
-        # TODO: Fix the Dimension errors
-        # s_size = h_code.shape[2]
-        # code = tf.reshape((-1, self.ef_dim, 1, 1))
-        # code = tf.repeat(1, 1, s_size, s_size)
+        s_size = h_code.shape[2]
+        code = tf.reshape(code, [-1, self.ef_dim, 1, 1])
+        code = tf.repeat(code, [1, 1, s_size, s_size])
         x = Concatenate([code, h_code], axis=1)   
         x = self.convblock(x)
         x = self.residual(x)
@@ -341,17 +340,42 @@ class DiscriminatorArchitecture(tf.keras.Model):
                 Conv2D(1, 4, 1),
                 Activation('sigmoid')
             ])
-        else:
-            # TODO: ParentChildEncoder
-            pass
 
-    def call(self, x):
-        if self.stage_num == 0:
-            # TODO: Background Discriminator        
-            pass
         else:
-            # TODO: Parent and Child Discriminator
-            pass
+            self.code_16 = ParentChildEncoder(self.disc_dims)
+            self.code_32 = DownSampleBlock(self.disc_dims*16)
+            self.code = Sequential([
+                conv3x3(self.disc_dims*8),
+                LeakyReLU(alpha=0.2)
+            ])
+            self.logits_pc = Sequential([
+                Conv2D(self.encoder_dims, 4, 4)
+            ])
+            self.jointConv = Sequential([
+                conv3x3(self.disc_dims*8),
+                LeakyReLU(alpha=0.2)
+            ])
+            self.logits_pc1 = Sequential([
+                Conv2D(1, 4, 4),
+                Activation('sigmoid')
+            ])
+
+
+    def call(self, inputs):
+        if self.stage_num == 0:
+            x = self.patchgan_16(inputs)
+            back_fore = self.logits1(x) # Background/Foreground classification (D_aux)
+            real_fake = self.logits2(x) # Real/Fake classification (D_adv)
+            return [back_fore, real_fake]
+            
+        else:
+            x = self.code_16(inputs)
+            x = self.code_32(x)
+            x = self.code(x)
+            x = self.jointConv(x)
+            p_c = self.logits_pc(x) # Information maximising code (D_pinfo or D_cinfo)
+            real_fake_child = self.logits_pc1(x) # Real/Fake classification - child (D_adv)
+            return [tf.reshape(p_c, [-1, self.encoder_dims]), tf.reshape(real_fake_child, [-1])]
 
 
 class CustomConfig(Config):
