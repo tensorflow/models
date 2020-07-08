@@ -491,7 +491,6 @@ def _build_faster_rcnn_feature_extractor(
   first_stage_features_stride = (
       feature_extractor_config.first_stage_features_stride)
   batch_norm_trainable = feature_extractor_config.batch_norm_trainable
-  print(feature_type)
 
   if feature_type not in FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP:
     raise ValueError('Unknown Faster R-CNN feature_extractor: {}'.format(
