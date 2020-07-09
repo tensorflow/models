@@ -22,7 +22,6 @@ from absl import flags
 
 import tensorflow.compat.v1 as tf
 
-from object_detection import model_hparams
 from object_detection import model_lib
 
 flags.DEFINE_string(
@@ -41,10 +40,6 @@ flags.DEFINE_integer('sample_1_of_n_eval_on_train_examples', 5, 'Will sample '
                      'one of every n train input examples for evaluation, '
                      'where n is provided. This is only used if '
                      '`eval_training_data` is True.')
-flags.DEFINE_string(
-    'hparams_overrides', None, 'Hyperparameter overrides, '
-    'represented as a string containing comma-separated '
-    'hparam_name=value pairs.')
 flags.DEFINE_string(
     'checkpoint_dir', None, 'Path to directory holding a checkpoint.  If '
     '`checkpoint_dir` is provided, this binary operates in eval-only mode, '
@@ -68,7 +63,6 @@ def main(unused_argv):
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
-      hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
       pipeline_config_path=FLAGS.pipeline_config_path,
       train_steps=FLAGS.num_train_steps,
       sample_1_of_n_eval_examples=FLAGS.sample_1_of_n_eval_examples,

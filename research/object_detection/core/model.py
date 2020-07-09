@@ -251,9 +251,14 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
         detection_classes: [batch, max_detections]
           (If a model is producing class-agnostic detections, this field may be
           missing)
-        instance_masks: [batch, max_detections, image_height, image_width]
+        detection_masks: [batch, max_detections, mask_height, mask_width]
           (optional)
-        keypoints: [batch, max_detections, num_keypoints, 2] (optional)
+        detection_keypoints: [batch, max_detections, num_keypoints, 2]
+          (optional)
+        detection_keypoint_scores: [batch, max_detections, num_keypoints]
+          (optional)
+        detection_surface_coords: [batch, max_detections, mask_height,
+          mask_width, 2] (optional)
         num_detections: [batch]
 
         In addition to the above fields this stage also outputs the following
