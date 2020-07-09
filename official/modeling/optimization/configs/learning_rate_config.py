@@ -21,6 +21,20 @@ from official.modeling.hyperparams import base_config
 
 
 @dataclasses.dataclass
+class ConstantLrConfig(base_config.Config):
+  """Configuration for constant learning rate.
+
+  This class is a containers for the constant learning rate decay configs.
+
+  Attributes:
+    name: The name of the learning rate schedule. Defaults to Constant.
+    learning_rate: A float. The learning rate. Defaults to 0.1.
+  """
+  name: str = 'Constant'
+  learning_rate: float = 0.1
+
+
+@dataclasses.dataclass
 class StepwiseLrConfig(base_config.Config):
   """Configuration for stepwise learning rate decay.
 
