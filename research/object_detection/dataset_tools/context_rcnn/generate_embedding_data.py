@@ -103,7 +103,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
               self._session, [tf.saved_model.tag_constants.SERVING],
               self._model_dir)
         signature = meta_graph.signature_def['serving_default']
-        input_tensor_name = signature.inputs['inputs'].name
+        input_tensor_name = signature.inputs['input_tensor'].name
         detection_features_name = signature.outputs['detection_features'].name
         detection_boxes_name = signature.outputs['detection_boxes'].name
         num_detections_name = signature.outputs['num_detections'].name
