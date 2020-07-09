@@ -83,9 +83,8 @@ def main(unused_argv):
         wait_interval=300, timeout=FLAGS.eval_timeout)
   else:
     if FLAGS.use_tpu:
-      if FLAGS.tpu_name is None:
-        raise ValueError('--tpu_name needs to be specified when use_tpu'
-                         ' is set.')
+      # TPU is automatically inferred if tpu_name is None and
+      # we are running under cloud ai-platform.
       resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
           FLAGS.tpu_name)
       tf.config.experimental_connect_to_cluster(resolver)
