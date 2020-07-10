@@ -55,12 +55,14 @@ class LrConfig(oneof.OneOfConfig):
 
   Attributes:
     type: 'str', type of lr schedule to be used, on the of fields below.
+    constant: constant learning rate config.
     stepwise: stepwise learning rate config.
     exponential: exponential learning rate config.
     polynomial: polynomial learning rate config.
     cosine: cosine learning rate config.
   """
   type: Optional[str] = None
+  constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
   stepwise: lr_cfg.StepwiseLrConfig = lr_cfg.StepwiseLrConfig()
   exponential: lr_cfg.ExponentialLrConfig = lr_cfg.ExponentialLrConfig()
   polynomial: lr_cfg.PolynomialLrConfig = lr_cfg.PolynomialLrConfig()
