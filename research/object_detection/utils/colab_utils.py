@@ -17,6 +17,8 @@
 
 from google.colab import output
 from google.colab.output import eval_js
+from typing import List, Dict, Union
+import json
 
 def draw_bbox(image_urls, callbackId):
     """
