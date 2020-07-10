@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Tensorflow Object Detection API uses protobuf files to configure the
+The TensorFlow Object Detection API uses protobuf files to configure the
 training and evaluation process. The schema for the training pipeline can be
 found in object_detection/protos/pipeline.proto. At a high level, the config
 file is split into 5 parts:
@@ -60,7 +60,7 @@ to a value suited for the dataset the user is training on.
 
 ## Defining Inputs
 
-The Tensorflow Object Detection API accepts inputs in the TFRecord file format.
+The TensorFlow Object Detection API accepts inputs in the TFRecord file format.
 Users must specify the locations of both the training and evaluation files.
 Additionally, users should also specify a label map, which define the mapping
 between a class id and class name. The label map should be identical between
@@ -125,24 +125,6 @@ data_augmentation_options {
   }
 }
 ```
-
-### Model Parameter Initialization
-
-While optional, it is highly recommended that users utilize other object
-detection checkpoints. Training an object detector from scratch can take days.
-To speed up the training process, it is recommended that users re-use the
-feature extractor parameters from a pre-existing image classification or
-object detection checkpoint. `train_config` provides two fields to specify
-pre-existing checkpoints: `fine_tune_checkpoint` and
-`from_detection_checkpoint`. `fine_tune_checkpoint` should provide a path to
-the pre-existing checkpoint
-(ie:"/usr/home/username/checkpoint/model.ckpt-#####").
-`from_detection_checkpoint` is a boolean value. If false, it assumes the
-checkpoint was from an object classification checkpoint. Note that starting
-from a detection checkpoint will usually result in a faster training job than
-a classification checkpoint.
-
-The list of provided checkpoints can be found [here](detection_model_zoo.md).
 
 ### Input Preprocessing
 
