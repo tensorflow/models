@@ -15,7 +15,6 @@ tensorflow-addons
 dataclasses
 gin-config
 tf_slim>=1.1.0
-typing
 Cython
 matplotlib
 pyyaml

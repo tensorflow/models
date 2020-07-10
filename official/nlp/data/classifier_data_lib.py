@@ -31,7 +31,7 @@ from official.nlp.bert import tokenization
 
 
 class InputExample(object):
-  """A single training/test example for simple sequence classification."""
+  """A single training/test example for simple seq regression/classification."""
 
   def __init__(self,
                guid,
@@ -48,8 +48,9 @@ class InputExample(object):
         sequence tasks, only this sequence must be specified.
       text_b: (Optional) string. The untokenized text of the second sequence.
         Only must be specified for sequence pair tasks.
-      label: (Optional) string. The label of the example. This should be
-        specified for train and dev examples, but not for test examples.
+      label: (Optional) string for classification, float for regression. The
+        label of the example. This should be specified for train and dev
+        examples, but not for test examples.
       weight: (Optional) float. The weight of the example to be used during
         training.
       int_iden: (Optional) int. The int identification number of example in the
@@ -84,10 +85,12 @@ class InputFeatures(object):
 
 
 class DataProcessor(object):
-  """Base class for data converters for sequence classification data sets."""
+  """Base class for converters for seq regression/classification datasets."""
 
   def __init__(self, process_text_fn=tokenization.convert_to_unicode):
     self.process_text_fn = process_text_fn
+    self.is_regression = False
+    self.label_type = None
 
   def get_train_examples(self, data_dir):
     """Gets a collection of `InputExample`s for the train set."""
@@ -121,277 +124,50 @@ class DataProcessor(object):
       return lines
 
 
-class XnliProcessor(DataProcessor):
-  """Processor for the XNLI data set."""
-  supported_languages = [
-      "ar", "bg", "de", "el", "en", "es", "fr", "hi", "ru", "sw", "th", "tr",
-      "ur", "vi", "zh"
-  ]
-
-  def __init__(self,
-               language="en",
-               process_text_fn=tokenization.convert_to_unicode):
-    super(XnliProcessor, self).__init__(process_text_fn)
-    if language == "all":
-      self.languages = XnliProcessor.supported_languages
-    elif language not in XnliProcessor.supported_languages:
-      raise ValueError("language %s is not supported for XNLI task." % language)
-    else:
-      self.languages = [language]
+class ColaProcessor(DataProcessor):
+  """Processor for the CoLA data set (GLUE version)."""
 
   def get_train_examples(self, data_dir):
     """See base class."""
-    lines = []
-    for language in self.languages:
-      # Skips the header.
-      lines.extend(
-          self._read_tsv(
-              os.path.join(data_dir, "multinli",
-                           "multinli.train.%s.tsv" % language))[1:])
-
-    examples = []
-    for (i, line) in enumerate(lines):
-      guid = "train-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      if label == self.process_text_fn("contradictory"):
-        label = self.process_text_fn("contradiction")
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "xnli.dev.tsv"))
-    examples = []
-    for (i, line) in enumerate(lines):
-      if i == 0:
-        continue
-      guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[6])
-      text_b = self.process_text_fn(line[7])
-      label = self.process_text_fn(line[1])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "xnli.test.tsv"))
-    examples_by_lang = {k: [] for k in XnliProcessor.supported_languages}
-    for (i, line) in enumerate(lines):
-      if i == 0:
-        continue
-      guid = "test-%d" % i
-      language = self.process_text_fn(line[0])
-      text_a = self.process_text_fn(line[6])
-      text_b = self.process_text_fn(line[7])
-      label = self.process_text_fn(line[1])
-      examples_by_lang[language].append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples_by_lang
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
 
   def get_labels(self):
     """See base class."""
-    return ["contradiction", "entailment", "neutral"]
+    return ["0", "1"]
 
   @staticmethod
   def get_processor_name():
     """See base class."""
-    return "XNLI"
+    return "COLA"
 
-
-class XtremeXnliProcessor(DataProcessor):
-  """Processor for the XTREME XNLI data set."""
-  supported_languages = [
-      "ar", "bg", "de", "el", "en", "es", "fr", "hi", "ru", "sw", "th", "tr",
-      "ur", "vi", "zh"
-  ]
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
-
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training and dev sets."""
     examples = []
     for (i, line) in enumerate(lines):
-      guid = "train-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
-    examples = []
-    for (i, line) in enumerate(lines):
-      guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    examples_by_lang = {k: [] for k in self.supported_languages}
-    for lang in self.supported_languages:
-      lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
-      for (i, line) in enumerate(lines):
-        guid = f"test-{i}"
-        text_a = self.process_text_fn(line[0])
-        text_b = self.process_text_fn(line[1])
-        label = "contradiction"
-        examples_by_lang[lang].append(
-            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples_by_lang
-
-  def get_labels(self):
-    """See base class."""
-    return ["contradiction", "entailment", "neutral"]
-
-  @staticmethod
-  def get_processor_name():
-    """See base class."""
-    return "XTREME-XNLI"
-
-
-class PawsxProcessor(DataProcessor):
-  """Processor for the PAWS-X data set."""
-  supported_languages = ["de", "en", "es", "fr", "ja", "ko", "zh"]
-
-  def __init__(self,
-               language="en",
-               process_text_fn=tokenization.convert_to_unicode):
-    super(PawsxProcessor, self).__init__(process_text_fn)
-    if language == "all":
-      self.languages = PawsxProcessor.supported_languages
-    elif language not in PawsxProcessor.supported_languages:
-      raise ValueError("language %s is not supported for PAWS-X task." %
-                       language)
-    else:
-      self.languages = [language]
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    lines = []
-    for language in self.languages:
-      if language == "en":
-        train_tsv = "train.tsv"
-      else:
-        train_tsv = "translated_train.tsv"
-      # Skips the header.
-      lines.extend(
-          self._read_tsv(os.path.join(data_dir, language, train_tsv))[1:])
-
-    examples = []
-    for (i, line) in enumerate(lines):
-      guid = "train-%d" % i
-      text_a = self.process_text_fn(line[1])
-      text_b = self.process_text_fn(line[2])
-      label = self.process_text_fn(line[3])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    lines = []
-    for lang in PawsxProcessor.supported_languages:
-      lines.extend(
-          self._read_tsv(os.path.join(data_dir, lang, "dev_2k.tsv"))[1:])
-
-    examples = []
-    for (i, line) in enumerate(lines):
-      guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[1])
-      text_b = self.process_text_fn(line[2])
-      label = self.process_text_fn(line[3])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    examples_by_lang = {k: [] for k in self.supported_languages}
-    for lang in self.supported_languages:
-      lines = self._read_tsv(os.path.join(data_dir, lang, "test_2k.tsv"))[1:]
-      for (i, line) in enumerate(lines):
-        guid = "test-%d" % i
+      # Only the test set has a header
+      if set_type == "test" and i == 0:
+        continue
+      guid = "%s-%s" % (set_type, i)
+      if set_type == "test":
         text_a = self.process_text_fn(line[1])
-        text_b = self.process_text_fn(line[2])
-        label = self.process_text_fn(line[3])
-        examples_by_lang[lang].append(
-            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples_by_lang
-
-  def get_labels(self):
-    """See base class."""
-    return ["0", "1"]
-
-  @staticmethod
-  def get_processor_name():
-    """See base class."""
-    return "XTREME-PAWS-X"
-
-
-class XtremePawsxProcessor(DataProcessor):
-  """Processor for the XTREME PAWS-X data set."""
-  supported_languages = ["de", "en", "es", "fr", "ja", "ko", "zh"]
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
-    examples = []
-    for (i, line) in enumerate(lines):
-      guid = "train-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
-
-    examples = []
-    for (i, line) in enumerate(lines):
-      guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    examples_by_lang = {k: [] for k in self.supported_languages}
-    for lang in self.supported_languages:
-      lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
-      for (i, line) in enumerate(lines):
-        guid = "test-%d" % i
-        text_a = self.process_text_fn(line[0])
-        text_b = self.process_text_fn(line[1])
         label = "0"
-        examples_by_lang[lang].append(
-            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples_by_lang
-
-  def get_labels(self):
-    """See base class."""
-    return ["0", "1"]
-
-  @staticmethod
-  def get_processor_name():
-    """See base class."""
-    return "XTREME-PAWS-X"
+      else:
+        text_a = self.process_text_fn(line[3])
+        label = self.process_text_fn(line[1])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+    return examples
 
 
 class MnliProcessor(DataProcessor):
@@ -485,6 +261,132 @@ class MrpcProcessor(DataProcessor):
     return examples
 
 
+class PawsxProcessor(DataProcessor):
+  """Processor for the PAWS-X data set."""
+  supported_languages = ["de", "en", "es", "fr", "ja", "ko", "zh"]
+
+  def __init__(self,
+               language="en",
+               process_text_fn=tokenization.convert_to_unicode):
+    super(PawsxProcessor, self).__init__(process_text_fn)
+    if language == "all":
+      self.languages = PawsxProcessor.supported_languages
+    elif language not in PawsxProcessor.supported_languages:
+      raise ValueError("language %s is not supported for PAWS-X task." %
+                       language)
+    else:
+      self.languages = [language]
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    lines = []
+    for language in self.languages:
+      if language == "en":
+        train_tsv = "train.tsv"
+      else:
+        train_tsv = "translated_train.tsv"
+      # Skips the header.
+      lines.extend(
+          self._read_tsv(os.path.join(data_dir, language, train_tsv))[1:])
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "train-%d" % i
+      text_a = self.process_text_fn(line[1])
+      text_b = self.process_text_fn(line[2])
+      label = self.process_text_fn(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    lines = []
+    for lang in PawsxProcessor.supported_languages:
+      lines.extend(
+          self._read_tsv(os.path.join(data_dir, lang, "dev_2k.tsv"))[1:])
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "dev-%d" % i
+      text_a = self.process_text_fn(line[1])
+      text_b = self.process_text_fn(line[2])
+      label = self.process_text_fn(line[3])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    examples_by_lang = {k: [] for k in self.supported_languages}
+    for lang in self.supported_languages:
+      lines = self._read_tsv(os.path.join(data_dir, lang, "test_2k.tsv"))[1:]
+      for (i, line) in enumerate(lines):
+        guid = "test-%d" % i
+        text_a = self.process_text_fn(line[1])
+        text_b = self.process_text_fn(line[2])
+        label = self.process_text_fn(line[3])
+        examples_by_lang[lang].append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples_by_lang
+
+  def get_labels(self):
+    """See base class."""
+    return ["0", "1"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "XTREME-PAWS-X"
+
+
+class QnliProcessor(DataProcessor):
+  """Processor for the QNLI data set (GLUE version)."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev_matched")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    return ["entailment", "not_entailment"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "QNLI"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training and dev sets."""
+    examples = []
+    for (i, line) in enumerate(lines):
+      if i == 0:
+        continue
+      guid = "%s-%s" % (set_type, 1)
+      if set_type == "test":
+        text_a = tokenization.convert_to_unicode(line[1])
+        text_b = tokenization.convert_to_unicode(line[2])
+        label = "entailment"
+      else:
+        text_a = tokenization.convert_to_unicode(line[1])
+        text_b = tokenization.convert_to_unicode(line[2])
+        label = tokenization.convert_to_unicode(line[-1])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+
 class QqpProcessor(DataProcessor):
   """Processor for the QQP data set (GLUE version)."""
 
@@ -527,52 +429,6 @@ class QqpProcessor(DataProcessor):
         continue
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
-    return examples
-
-
-class ColaProcessor(DataProcessor):
-  """Processor for the CoLA data set (GLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
-
-  def get_labels(self):
-    """See base class."""
-    return ["0", "1"]
-
-  @staticmethod
-  def get_processor_name():
-    """See base class."""
-    return "COLA"
-
-  def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
-    examples = []
-    for (i, line) in enumerate(lines):
-      # Only the test set has a header
-      if set_type == "test" and i == 0:
-        continue
-      guid = "%s-%s" % (set_type, i)
-      if set_type == "test":
-        text_a = self.process_text_fn(line[1])
-        label = "0"
-      else:
-        text_a = self.process_text_fn(line[3])
-        label = self.process_text_fn(line[1])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
     return examples
 
 
@@ -668,8 +524,14 @@ class SstProcessor(DataProcessor):
     return examples
 
 
-class QnliProcessor(DataProcessor):
-  """Processor for the QNLI data set (GLUE version)."""
+class StsBProcessor(DataProcessor):
+  """Processor for the STS-B data set (GLUE version)."""
+
+  def __init__(self, process_text_fn=tokenization.convert_to_unicode):
+    super(StsBProcessor, self).__init__(process_text_fn=process_text_fn)
+    self.is_regression = True
+    self.label_type = float
+    self._labels = None
 
   def get_train_examples(self, data_dir):
     """See base class."""
@@ -679,7 +541,7 @@ class QnliProcessor(DataProcessor):
   def get_dev_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev_matched")
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
 
   def get_test_examples(self, data_dir):
     """See base class."""
@@ -688,28 +550,26 @@ class QnliProcessor(DataProcessor):
 
   def get_labels(self):
     """See base class."""
-    return ["entailment", "not_entailment"]
+    return self._labels
 
   @staticmethod
   def get_processor_name():
     """See base class."""
-    return "QNLI"
+    return "STS-B"
 
   def _create_examples(self, lines, set_type):
     """Creates examples for the training and dev sets."""
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       if i == 0:
         continue
-      guid = "%s-%s" % (set_type, 1)
+      guid = "%s-%s" % (set_type, i)
+      text_a = tokenization.convert_to_unicode(line[7])
+      text_b = tokenization.convert_to_unicode(line[8])
       if set_type == "test":
-        text_a = tokenization.convert_to_unicode(line[1])
-        text_b = tokenization.convert_to_unicode(line[2])
-        label = "entailment"
+        label = 0.0
       else:
-        text_a = tokenization.convert_to_unicode(line[1])
-        text_b = tokenization.convert_to_unicode(line[2])
-        label = tokenization.convert_to_unicode(line[-1])
+        label = self.label_type(tokenization.convert_to_unicode(line[9]))
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
@@ -729,6 +589,8 @@ class TfdsProcessor(DataProcessor):
     tfds_params="dataset=glue/mrpc,text_key=sentence1,text_b_key=sentence2"
     tfds_params="dataset=glue/stsb,text_key=sentence1,text_b_key=sentence2,"
                 "is_regression=true,label_type=float"
+    tfds_params="dataset=snli,text_key=premise,text_b_key=hypothesis,"
+                "skip_label=-1"
   Possible parameters (please refer to the documentation of Tensorflow Datasets
   (TFDS) for the meaning of individual parameters):
     dataset: Required dataset name (potentially with subset and version number).
@@ -746,6 +608,7 @@ class TfdsProcessor(DataProcessor):
     label_type: Type of the label key (defaults to `int`).
     weight_key: Key of the float sample weight (is not used if not provided).
     is_regression: Whether the task is a regression problem (defaults to False).
+    skip_label: Skip examples with given label (defaults to None).
   """
 
   def __init__(self,
@@ -785,6 +648,9 @@ class TfdsProcessor(DataProcessor):
     self.label_type = dtype_map[d.get("label_type", "int")]
     self.is_regression = cast_str_to_bool(d.get("is_regression", "False"))
     self.weight_key = d.get("weight_key", None)
+    self.skip_label = d.get("skip_label", None)
+    if self.skip_label is not None:
+      self.skip_label = self.label_type(self.skip_label)
 
   def get_train_examples(self, data_dir):
     assert data_dir is None
@@ -823,6 +689,8 @@ class TfdsProcessor(DataProcessor):
         if self.text_b_key:
           text_b = self.process_text_fn(example[self.text_b_key])
         label = self.label_type(example[self.label_key])
+        if self.skip_label is not None and label == self.skip_label:
+          continue
       if self.weight_key:
         weight = float(example[self.weight_key])
       examples.append(
@@ -878,6 +746,200 @@ class WnliProcessor(DataProcessor):
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
+
+
+class XnliProcessor(DataProcessor):
+  """Processor for the XNLI data set."""
+  supported_languages = [
+      "ar", "bg", "de", "el", "en", "es", "fr", "hi", "ru", "sw", "th", "tr",
+      "ur", "vi", "zh"
+  ]
+
+  def __init__(self,
+               language="en",
+               process_text_fn=tokenization.convert_to_unicode):
+    super(XnliProcessor, self).__init__(process_text_fn)
+    if language == "all":
+      self.languages = XnliProcessor.supported_languages
+    elif language not in XnliProcessor.supported_languages:
+      raise ValueError("language %s is not supported for XNLI task." % language)
+    else:
+      self.languages = [language]
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    lines = []
+    for language in self.languages:
+      # Skips the header.
+      lines.extend(
+          self._read_tsv(
+              os.path.join(data_dir, "multinli",
+                           "multinli.train.%s.tsv" % language))[1:])
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "train-%d" % i
+      text_a = self.process_text_fn(line[0])
+      text_b = self.process_text_fn(line[1])
+      label = self.process_text_fn(line[2])
+      if label == self.process_text_fn("contradictory"):
+        label = self.process_text_fn("contradiction")
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    lines = self._read_tsv(os.path.join(data_dir, "xnli.dev.tsv"))
+    examples = []
+    for (i, line) in enumerate(lines):
+      if i == 0:
+        continue
+      guid = "dev-%d" % i
+      text_a = self.process_text_fn(line[6])
+      text_b = self.process_text_fn(line[7])
+      label = self.process_text_fn(line[1])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    lines = self._read_tsv(os.path.join(data_dir, "xnli.test.tsv"))
+    examples_by_lang = {k: [] for k in XnliProcessor.supported_languages}
+    for (i, line) in enumerate(lines):
+      if i == 0:
+        continue
+      guid = "test-%d" % i
+      language = self.process_text_fn(line[0])
+      text_a = self.process_text_fn(line[6])
+      text_b = self.process_text_fn(line[7])
+      label = self.process_text_fn(line[1])
+      examples_by_lang[language].append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples_by_lang
+
+  def get_labels(self):
+    """See base class."""
+    return ["contradiction", "entailment", "neutral"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "XNLI"
+
+
+class XtremePawsxProcessor(DataProcessor):
+  """Processor for the XTREME PAWS-X data set."""
+  supported_languages = ["de", "en", "es", "fr", "ja", "ko", "zh"]
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "train-%d" % i
+      text_a = self.process_text_fn(line[0])
+      text_b = self.process_text_fn(line[1])
+      label = self.process_text_fn(line[2])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "dev-%d" % i
+      text_a = self.process_text_fn(line[0])
+      text_b = self.process_text_fn(line[1])
+      label = self.process_text_fn(line[2])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    examples_by_lang = {k: [] for k in self.supported_languages}
+    for lang in self.supported_languages:
+      lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
+      for (i, line) in enumerate(lines):
+        guid = "test-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = "0"
+        examples_by_lang[lang].append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples_by_lang
+
+  def get_labels(self):
+    """See base class."""
+    return ["0", "1"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "XTREME-PAWS-X"
+
+
+class XtremeXnliProcessor(DataProcessor):
+  """Processor for the XTREME XNLI data set."""
+  supported_languages = [
+      "ar", "bg", "de", "el", "en", "es", "fr", "hi", "ru", "sw", "th", "tr",
+      "ur", "vi", "zh"
+  ]
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
+
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "train-%d" % i
+      text_a = self.process_text_fn(line[0])
+      text_b = self.process_text_fn(line[1])
+      label = self.process_text_fn(line[2])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
+    examples = []
+    for (i, line) in enumerate(lines):
+      guid = "dev-%d" % i
+      text_a = self.process_text_fn(line[0])
+      text_b = self.process_text_fn(line[1])
+      label = self.process_text_fn(line[2])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    examples_by_lang = {k: [] for k in self.supported_languages}
+    for lang in self.supported_languages:
+      lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
+      for (i, line) in enumerate(lines):
+        guid = f"test-{i}"
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = "contradiction"
+        examples_by_lang[lang].append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples_by_lang
+
+  def get_labels(self):
+    """See base class."""
+    return ["contradiction", "entailment", "neutral"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "XTREME-XNLI"
 
 
 def convert_single_example(ex_index, example, label_list, max_seq_length,

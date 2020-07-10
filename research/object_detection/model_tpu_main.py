@@ -26,17 +26,7 @@ from absl import flags
 import tensorflow.compat.v1 as tf
 
 
-from object_detection import model_hparams
 from object_detection import model_lib
-
-# pylint: disable=g-import-not-at-top
-try:
-  from tensorflow.contrib import cluster_resolver as contrib_cluster_resolver
-  from tensorflow.contrib import tpu as contrib_tpu
-except ImportError:
-  # TF 2.0 doesn't ship with contrib.
-  pass
-# pylint: enable=g-import-not-at-top
 
 tf.flags.DEFINE_bool('use_tpu', True, 'Use TPUs rather than plain CPUs')
 
@@ -67,10 +57,6 @@ flags.DEFINE_string('mode', 'train',
 flags.DEFINE_integer('train_batch_size', None, 'Batch size for training. If '
                      'this is not provided, batch size is read from training '
                      'config.')
-
-flags.DEFINE_string(
-    'hparams_overrides', None, 'Comma-separated list of '
-    'hyperparameters to override defaults.')
 flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
 flags.DEFINE_boolean('eval_training_data', False,
                      'If training data should be evaluated for this job.')
@@ -99,15 +85,15 @@ def main(unused_argv):
   flags.mark_flag_as_required('pipeline_config_path')
 
   tpu_cluster_resolver = (
-      contrib_cluster_resolver.TPUClusterResolver(
+      tf.distribute.cluster_resolver.TPUClusterResolver(
           tpu=[FLAGS.tpu_name], zone=FLAGS.tpu_zone, project=FLAGS.gcp_project))
   tpu_grpc_url = tpu_cluster_resolver.get_master()
 
-  config = contrib_tpu.RunConfig(
+  config = tf.estimator.tpu.RunConfig(
       master=tpu_grpc_url,
       evaluation_master=tpu_grpc_url,
       model_dir=FLAGS.model_dir,
-      tpu_config=contrib_tpu.TPUConfig(
+      tpu_config=tf.estimator.tpu.TPUConfig(
           iterations_per_loop=FLAGS.iterations_per_loop,
           num_shards=FLAGS.num_shards))
 
@@ -117,7 +103,6 @@ def main(unused_argv):
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
-      hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
       pipeline_config_path=FLAGS.pipeline_config_path,
       train_steps=FLAGS.num_train_steps,
       sample_1_of_n_eval_examples=FLAGS.sample_1_of_n_eval_examples,
