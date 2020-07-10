@@ -14,34 +14,23 @@
 # ==============================================================================
 """Utils for the colab tutorials located in colab_tutorials/
 """
-
-import matplotlib
-import matplotlib.pyplot as plt
-
 import os
 import random
 import uuid
 import io
-import scipy.misc
-import numpy as np
-from six import BytesIO
-from PIL import Image, ImageDraw, ImageFont
+import operator
+import json
 
-import tensorflow as tf
-
-from object_detection.utils import label_map_util
-from object_detection.utils import config_util
-from object_detection.utils import visualization_utils as viz_utils
-from object_detection.utils import colab_utils
-from object_detection.builders import model_builder
-
+from typing import List, Dict, Union
+from base64 import b64decode, b64encode
 from IPython.display import display, Javascript
 from google.colab import output
 from google.colab.output import eval_js
-from base64 import b64decode, b64encode
-from typing import List, Dict, Union
-import operator
-import json
+
+import tensorflow as tf
+import numpy as np
+from six import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
 def image_from_numpy(image):
   """
