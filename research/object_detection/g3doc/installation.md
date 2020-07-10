@@ -18,14 +18,15 @@ Tensorflow Object Detection API depends on the following libraries:
 *   cocoapi
 
 For detailed steps to install Tensorflow, follow the [Tensorflow installation
-instructions](https://www.tensorflow.org/install/). A typical user can install
-Tensorflow using one of the following commands:
+instructions](https://www.tensorflow.org/install/). Note that as of now, tf2.x
+versions are not supported. A typical user can install Tensorflow using one
+of the following commands:
 
 ``` bash
 # For CPU
-pip install tensorflow
+pip install tensorflow==1.15
 # For GPU
-pip install tensorflow-gpu
+pip install tensorflow-gpu==1.15
 ```
 
 The remaining libraries can be installed on Ubuntu 16.04 using via apt-get:
