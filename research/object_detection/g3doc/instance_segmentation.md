@@ -67,7 +67,7 @@ your own models:
 1.  <a href="https://github.com/tensorflow/models/blob/master/research/object_detection/samples/configs/mask_rcnn_resnet50_atrous_coco.config" target=_blank>mask_rcnn_resnet50_atrous_coco</a>
 1.  <a href="https://github.com/tensorflow/models/blob/master/research/object_detection/samples/configs/mask_rcnn_inception_v2_coco.config" target=_blank>mask_rcnn_inception_v2_coco</a>
 
-For more details see the [detection model zoo](detection_model_zoo.md).
+For more details see the [detection model zoo](tf1_detection_zoo.md).
 
 ### Updating a Faster R-CNN config file
 

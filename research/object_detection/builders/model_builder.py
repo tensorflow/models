@@ -870,6 +870,22 @@ def mask_proto_to_params(mask_config):
       heatmap_bias_init=mask_config.heatmap_bias_init)
 
 
+def densepose_proto_to_params(densepose_config):
+  """Converts CenterNet.DensePoseEstimation proto to parameter namedtuple."""
+  classification_loss, localization_loss, _, _, _, _, _ = (
+      losses_builder.build(densepose_config.loss))
+  return center_net_meta_arch.DensePoseParams(
+      class_id=densepose_config.class_id,
+      classification_loss=classification_loss,
+      localization_loss=localization_loss,
+      part_loss_weight=densepose_config.part_loss_weight,
+      coordinate_loss_weight=densepose_config.coordinate_loss_weight,
+      num_parts=densepose_config.num_parts,
+      task_loss_weight=densepose_config.task_loss_weight,
+      upsample_to_input_res=densepose_config.upsample_to_input_res,
+      heatmap_bias_init=densepose_config.heatmap_bias_init)
+
+
 def _build_center_net_model(center_net_config, is_training, add_summaries):
   """Build a CenterNet detection model.
 
@@ -922,6 +938,11 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
   if center_net_config.HasField('mask_estimation_task'):
     mask_params = mask_proto_to_params(center_net_config.mask_estimation_task)
 
+  densepose_params = None
+  if center_net_config.HasField('densepose_estimation_task'):
+    densepose_params = densepose_proto_to_params(
+        center_net_config.densepose_estimation_task)
+
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
@@ -931,7 +952,8 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       object_center_params=object_center_params,
       object_detection_params=object_detection_params,
       keypoint_params_dict=keypoint_params_dict,
-      mask_params=mask_params)
+      mask_params=mask_params,
+      densepose_params=densepose_params)
 
 
 def _build_center_net_feature_extractor(

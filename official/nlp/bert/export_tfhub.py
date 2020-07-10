@@ -79,7 +79,7 @@ def export_bert_tfhub(bert_config: configs.BertConfig,
                  do_lower_case, vocab_file)
   core_model, encoder = create_bert_model(bert_config)
   checkpoint = tf.train.Checkpoint(model=encoder)
-  checkpoint.restore(model_checkpoint_path).assert_consumed()
+  checkpoint.restore(model_checkpoint_path).assert_existing_objects_matched()
   core_model.vocab_file = tf.saved_model.Asset(vocab_file)
   core_model.do_lower_case = tf.Variable(do_lower_case, trainable=False)
   core_model.save(hub_destination, include_optimizer=False, save_format="tf")
