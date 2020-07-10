@@ -12,577 +12,436 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Evaluator class for Visual Relations Detection.
-
-VRDDetectionEvaluator is a class which manages ground truth information of a
-visual relations detection (vrd) dataset, and computes frequently used detection
-metrics such as Precision, Recall, Recall@k, of the provided vrd detection
-results.
-It supports the following operations:
-1) Adding ground truth information of images sequentially.
-2) Adding detection results of images sequentially.
-3) Evaluating detection metrics on already inserted detection results.
-
-Note1: groundtruth should be inserted before evaluation.
-Note2: This module operates on numpy boxes and box lists.
+"""Utils for the colab tutorials located in colab_tutorials/
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from google.colab import output
+from google.colab.output import eval_js
 
-from abc import abstractmethod
-import collections
-import logging
-import numpy as np
-import six
-from six.moves import range
+def draw_bbox(image_urls, callbackId):
+    """
+    Open the bounding box UI and send the results to a callback function.
 
-from object_detection.core import standard_fields
-from object_detection.utils import metrics
-from object_detection.utils import object_detection_evaluation
-from object_detection.utils import per_image_vrd_evaluation
+    Parameters
+    ----------
+    image_urls: list[str | np.ndarray]
+        List of locations from where to load the images from. If a np.ndarray is
+        given, the array is interpretted as an image and sent to the frontend. If
+        a str is given, the string is interpreted as a path and is read as a
+        np.ndarray before being sent to the frontend.
 
-# Below standard input numpy datatypes are defined:
-# box_data_type - datatype of the groundtruth visual relations box annotations;
-# this datatype consists of two named boxes: subject bounding box and object
-# bounding box. Each box is of the format [y_min, x_min, y_max, x_max], each
-# coordinate being of type float32.
-# label_data_type - corresponding datatype of the visual relations label
-# annotaions; it consists of three numerical class labels: subject class label,
-# object class label and relation class label, each class label being of type
-# int32.
-vrd_box_data_type = np.dtype([('subject', 'f4', (4,)), ('object', 'f4', (4,))])
-single_box_data_type = np.dtype([('box', 'f4', (4,))])
-label_data_type = np.dtype([('subject', 'i4'), ('object', 'i4'), ('relation',
-                                                                  'i4')])
+    callbackId: str
+        The ID for the callback function to send the bounding box results to
+        when the user hits submit.
+    """
+    js = Javascript('''
+                async function load_image(imgs, callbackId) {
+                    //init organizational elements
+                    const div = document.createElement('div');
+                    var image_cont = document.createElement('div');
+                    var errorlog = document.createElement('div');
+                    var crosshair_h = document.createElement('div');
+                    crosshair_h.style.position = "absolute";
+                    crosshair_h.style.backgroundColor = "transparent";
+                    crosshair_h.style.width = "100%";
+                    crosshair_h.style.height = "0px";
+                    crosshair_h.style.zIndex = 9998;
+                    crosshair_h.style.borderStyle = "dotted";
+                    crosshair_h.style.borderWidth = "2px";
+                    crosshair_h.style.borderColor = "rgba(255, 0, 0, 0.75)";
+                    crosshair_h.style.cursor = "crosshair";
+                    var crosshair_v = document.createElement('div');
+                    crosshair_v.style.position = "absolute";
+                    crosshair_v.style.backgroundColor = "transparent";
+                    crosshair_v.style.width = "0px";
+                    crosshair_v.style.height = "100%";
+                    crosshair_v.style.zIndex = 9999;
+                    crosshair_v.style.top = "0px";
+                    crosshair_v.style.borderStyle = "dotted";
+                    crosshair_v.style.borderWidth = "2px";
+                    crosshair_v.style.borderColor = "rgba(255, 0, 0, 0.75)";
+                    crosshair_v.style.cursor = "crosshair";
+                    crosshair_v.style.marginTop = "23px";
+                    var brdiv = document.createElement('br');
 
 
-class VRDDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
-  """A class to evaluate VRD detections.
+                    //init control elements
+                    var next = document.createElement('button');
+                    var prev = document.createElement('button');
+                    var submit = document.createElement('button');
+                    var deleteButton = document.createElement('button');
+                    var deleteAllbutton = document.createElement('button');
 
-  This class serves as a base class for VRD evaluation in two settings:
-  - phrase detection
-  - relation detection.
+                    //init image containers
+                    var image = new Image();
+                    var canvas_img = document.createElement('canvas');
+                    var ctx = canvas_img.getContext("2d");
+                    canvas_img.style.cursor = "crosshair";
+                    canvas_img.setAttribute('draggable', false);
+                    crosshair_v.setAttribute('draggable', false);
+                    crosshair_h.setAttribute('draggable', false);
+
+                    // bounding box containers
+                    const height = 600
+                    var allBoundingBoxes = [];
+                    var curr_image = 0
+                    var im_height = 0;
+                    var im_width = 0;
+
+                    //initialize bounding boxes
+                    for (var i = 0; i < imgs.length; i++) {
+                      allBoundingBoxes[i] = [];
+                    }
+                    
+                    //initialize image view
+                    errorlog.id = 'errorlog';
+                    image.style.display = 'block';
+                    image.setAttribute('draggable', false);
+
+                    //load the first image
+                    img = imgs[curr_image];
+                    image.src = "data:image/png;base64," + img;
+                    image.onload = function() {
+                        // normalize display height and canvas
+                        image.height = height;
+                        image_cont.height = canvas_img.height = image.height;
+                        image_cont.width = canvas_img.width = image.naturalWidth;
+                        crosshair_v.style.height = image_cont.height + "px";
+                        crosshair_h.style.width = image_cont.width + "px";
+
+                        // draw the new image
+                        ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0,  canvas_img.width,  canvas_img.height);
+
+                    };
+
+                    // move to next image in array
+                    next.textContent = "next image";
+                    next.onclick = function(){
+                        if (curr_image < imgs.length - 1){
+                            // clear canvas and load new image
+                            curr_image += 1;
+                            errorlog.innerHTML = "";
+                        }
+                        else{
+                            errorlog.innerHTML = "All images completed!!";
+                        }
+                        resetcanvas();
+                    }
+
+                    //move forward through list of images
+                    prev.textContent = "prev image"
+                    prev.onclick = function(){
+                        if (curr_image > 0){
+                            // clear canvas and load new image
+                            curr_image -= 1;
+                            errorlog.innerHTML = "";
+                        }
+                        else{
+                            errorlog.innerHTML = "at the beginning";
+                        }
+                        resetcanvas();
+                    }
+                    
+                    // on delete, deletes the last bounding box
+                    deleteButton.textContent = "undo bbox";
+                    deleteButton.onclick = function(){
+                      boundingBoxes.pop();
+                      ctx.clearRect(0, 0, canvas_img.width, canvas_img.height);
+                      image.src = "data:image/png;base64," + img;
+                      image.onload = function() {
+                          ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0,  canvas_img.width,  canvas_img.height);
+                          boundingBoxes.map(r => {drawRect(r)});
+                      };
+                    }
+                    
+                    // on all delete, deletes all of the bounding box
+                    deleteAllbutton.textContent = "delete all"
+                    deleteAllbutton.onclick = function(){
+                      boundingBoxes = [];
+                      ctx.clearRect(0, 0, canvas_img.width, canvas_img.height);
+                      image.src = "data:image/png;base64," + img;
+                      image.onload = function() {
+                          ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0,  canvas_img.width,  canvas_img.height);
+                          //boundingBoxes.map(r => {drawRect(r)});
+                      };
+                    }
+
+                    // on submit, send the boxes to display
+                    submit.textContent = "submit";
+                    submit.onclick = function(){
+                      errorlog.innerHTML = "";
+
+                      // send box data to callback fucntion
+                      google.colab.kernel.invokeFunction(callbackId, [allBoundingBoxes], {});
+                    }
+
+                  // init template for annotations
+                  const annotation = {
+                        x: 0,
+                        y: 0,
+                        w: 0,
+                        h: 0,
+                  };
+
+                  // the array of all rectangles
+                  let boundingBoxes = allBoundingBoxes[curr_image];
+
+                  // the actual rectangle, the one that is being drawn
+                  let o = {};
+
+                  // a variable to store the mouse position
+                  let m = {},
+
+                  // a variable to store the point where you begin to draw the
+                  // rectangle
+                  start = {};
+
+                  // a boolean variable to store the drawing state
+                  let isDrawing = false;
+                  var elem = null;
+
+                  function handleMouseDown(e) {
+                    // on mouse click set change the cursor and start tracking the mouse position
+                    start = oMousePos(canvas_img, e);
+
+                    // configure is drawing to true
+                    isDrawing = true; 
+                  }
+
+                  function handleMouseMove(e) {
+                      // move crosshairs, but only within the bounds of the canvas
+                      if (document.elementsFromPoint(e.pageX, e.pageY).includes(canvas_img)) {
+                        crosshair_h.style.top = e.pageY + "px";
+                        crosshair_v.style.left = e.pageX + "px";
+                      }
+
+                      // move the bounding box
+                      if(isDrawing){
+                        m = oMousePos(canvas_img, e);
+                        draw();
+                      }
+                  }
+
+                  function handleMouseUp(e) {
+                      if (isDrawing) {
+                          // on mouse release, push a bounding box to array and draw all boxes
+                          isDrawing = false;
+
+                          const box = Object.create(annotation);
+
+                          // calculate the position of the rectangle
+                          if (o.w > 0){
+                            box.x = o.x;
+                          }
+                          else{
+                            box.x = o.x + o.w; 
+                          }
+                          if (o.h > 0){
+                            box.y = o.y;
+                          }
+                          else{
+                            box.y = o.y + o.h; 
+                          }
+                          box.w = Math.abs(o.w); 
+                          box.h = Math.abs(o.h);
+
+                          // add the bounding box to the image
+                          boundingBoxes.push(box);
+                          draw();
+                      }
+                  }
+
+                  function draw() {  
+                      o.x = (start.x)/image.width;  // start position of x
+                      o.y = (start.y)/image.height;  // start position of y
+                      o.w = (m.x - start.x)/image.width;  // width
+                      o.h = (m.y - start.y)/image.height;  // height
+
+                      ctx.clearRect(0, 0, canvas_img.width, canvas_img.height);
+                      ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0,  canvas_img.width,  canvas_img.height);
+                      // draw all the rectangles saved in the rectsRy
+                      boundingBoxes.map(r => {drawRect(r)});
+                      // draw the actual rectangle
+                      drawRect(o);  
+                  }
+
+                  // add the handlers needed for dragging
+                  crosshair_h.addEventListener("mousedown", handleMouseDown);
+                  crosshair_v.addEventListener("mousedown", handleMouseDown);
+                  document.addEventListener("mousemove", handleMouseMove);
+                  document.addEventListener("mouseup", handleMouseUp);
+
+
+                  function resetcanvas(){
+                      // clear canvas
+                      ctx.clearRect(0, 0, canvas_img.width, canvas_img.height);
+                      img = imgs[curr_image]
+                      image.src = "data:image/png;base64," + img;
+
+                      // onload init new canvas and display image 
+                      image.onload = function() {
+                          // normalize display height and canvas
+                          image.height = height;
+                          image_cont.height = canvas_img.height = image.height;
+                          image_cont.width = canvas_img.width = image.naturalWidth;
+                          crosshair_v.style.height = image_cont.height + "px";
+                          crosshair_h.style.width = image_cont.width + "px";
+
+                          // draw the new image
+                          ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0,  canvas_img.width,  canvas_img.height);
+
+                          // draw bounding boxes
+                          boundingBoxes = allBoundingBoxes[curr_image];
+                          boundingBoxes.map(r => {drawRect(r)});
+                      };
+                  }
+
+                  function drawRect(o){
+                      // draw a predefined rectangle 
+                      ctx.strokeStyle = "red";
+                      ctx.lineWidth = 2;
+                      ctx.beginPath(o);
+                      ctx.rect(o.x * image.width, o.y * image.height, o.w * image.width, o.h * image.height);
+                      ctx.stroke();
+                  }
+
+                  // Function to detect the mouse position
+                  function oMousePos(canvas_img, evt) {
+                    let ClientRect = canvas_img.getBoundingClientRect();
+                      return { 
+                        x: evt.clientX - ClientRect.left,
+                        y: evt.clientY - ClientRect.top
+                      };
+                  }
+
+
+                  //configure colab output display
+                  google.colab.output.setIframeHeight(document.documentElement.scrollHeight, true);
+
+                  //build the html document that will be seen in output
+                  div.appendChild(document.createElement('br'))
+                  div.appendChild(image_cont)
+                  image_cont.appendChild(canvas_img)
+                  image_cont.appendChild(crosshair_h)
+                  image_cont.appendChild(crosshair_v)
+                  div.appendChild(document.createElement('br'))
+                  div.appendChild(errorlog)
+                  div.appendChild(prev)
+                  div.appendChild(next)
+                  div.appendChild(deleteButton)
+                  div.appendChild(deleteAllbutton)
+                  div.appendChild(document.createElement('br'))
+                  div.appendChild(brdiv)
+                  div.appendChild(submit)
+                  document.querySelector("#output-area").appendChild(div);
+                  return
+              }''')
+    
+    #load the images as a byte array
+    bytearrays = []
+    for image in image_urls:
+        if isinstance(image, str):
+            bytearrays.append(image_from_path(image))
+        elif isinstance(image, np.ndarray):
+            bytearrays.append(image_from_numpy(image))
+        else:
+            raise TypeError(f"Image has unsupported type {type(image)}. Only str and np.ndarray are supported.")
+
+    #format arrays for input
+    image_data = json.dumps(bytearrays)
+    del bytearrays
+
+    #call java script function pass string byte array(image_data) as input
+    display(js)
+    eval_js(f"load_image({image_data}, '{callbackId}')")
+    return
+
+def annotate(imgs: List[Union[str, np.ndarray]], box_storage_pointer: List[np.ndarray], callbackId: str = None):
+  """
+  Open the bounding box UI and prompt the user for input.
+
+  Parameters
+  ----------
+  imgs: list[str | np.ndarray]
+      List of locations from where to load the images from. If a np.ndarray is
+      given, the array is interpretted as an image and sent to the frontend. If
+      a str is given, the string is interpreted as a path and is read as a
+      np.ndarray before being sent to the frontend.
+
+  box_storage_pointer: list[np.ndarray]
+      Destination list for bounding box arrays. Each array in this list
+      corresponds to one of the images given in imgs. The array is a
+      N x 4 array where N is the number of bounding boxes given by the user
+      for that particular image. If there are no bounding boxes for an image,
+      None is used instead of an empty array.
+
+  callbackId: str, optional
+      The ID for the callback function that communicates between the fontend
+      and the backend. If no ID is given, a random UUID string is used instead.
   """
 
-  def __init__(self, matching_iou_threshold=0.5, metric_prefix=None):
-    """Constructor.
+  # Set a random ID for the callback function
+  if callbackId is None:
+    callbackId = str(uuid.uuid1()).replace('-', '')
 
-    Args:
-      matching_iou_threshold: IOU threshold to use for matching groundtruth
-        boxes to detection boxes.
-      metric_prefix: (optional) string prefix for metric name; if None, no
-        prefix is used.
+  def dictToList(input):
+    '''
+    This function converts the dictionary from the frontend (if the format
+    {x, y, w, h} as shown in callbackFunction) into a list
+    ([y_min, x_min, y_max, x_max])
+    '''
 
+    return (input['y'], input['x'], input['y'] + input['h'], input['x'] + input['w'])
+
+  def callbackFunction(annotations: List[List[Dict[str, float]]]):
     """
-    super(VRDDetectionEvaluator, self).__init__([])
-    self._matching_iou_threshold = matching_iou_threshold
-    self._evaluation = _VRDDetectionEvaluation(
-        matching_iou_threshold=self._matching_iou_threshold)
-    self._image_ids = set([])
-    self._metric_prefix = (metric_prefix + '_') if metric_prefix else ''
-    self._evaluatable_labels = {}
-    self._negative_labels = {}
+    This is the call back function to capture the data from the frontend and
+    convert the data into a numpy array.
 
-  @abstractmethod
-  def _process_groundtruth_boxes(self, groundtruth_box_tuples):
-    """Pre-processes boxes before adding them to the VRDDetectionEvaluation.
+    Parameters
+    ----------
+    annotations: list[list[dict[str, float]]]
+        The input of the call back function is a list of list of objects
+        corresponding to the annotations. The format of annotations is shown
+        below
 
-    Phrase detection and Relation detection subclasses re-implement this method
-    depending on the task.
-
-    Args:
-      groundtruth_box_tuples:  A numpy array of structures with the shape
-        [M, 1], each structure containing the same number of named bounding
-        boxes. Each box is of the format [y_min, x_min, y_max, x_max] (see
-        datatype vrd_box_data_type, single_box_data_type above).
-    """
-    raise NotImplementedError(
-        '_process_groundtruth_boxes method should be implemented in subclasses'
-        'of VRDDetectionEvaluator.')
-
-  @abstractmethod
-  def _process_detection_boxes(self, detections_box_tuples):
-    """Pre-processes boxes before adding them to the VRDDetectionEvaluation.
-
-    Phrase detection and Relation detection subclasses re-implement this method
-    depending on the task.
-
-    Args:
-      detections_box_tuples:  A numpy array of structures with the shape
-        [M, 1], each structure containing the same number of named bounding
-        boxes. Each box is of the format [y_min, x_min, y_max, x_max] (see
-        datatype vrd_box_data_type, single_box_data_type above).
-    """
-    raise NotImplementedError(
-        '_process_detection_boxes method should be implemented in subclasses'
-        'of VRDDetectionEvaluator.')
-
-  def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
-    """Adds groundtruth for a single image to be used for evaluation.
-
-    Args:
-      image_id: A unique string/integer identifier for the image.
-      groundtruth_dict: A dictionary containing -
-        standard_fields.InputDataFields.groundtruth_boxes: A numpy array
-          of structures with the shape [M, 1], representing M tuples, each tuple
-          containing the same number of named bounding boxes.
-          Each box is of the format [y_min, x_min, y_max, x_max] (see
-          datatype vrd_box_data_type, single_box_data_type above).
-        standard_fields.InputDataFields.groundtruth_classes: A numpy array of
-          structures shape [M, 1], representing  the class labels of the
-          corresponding bounding boxes and possibly additional classes (see
-          datatype label_data_type above).
-        standard_fields.InputDataFields.groundtruth_image_classes: numpy array
-          of shape [K] containing verified labels.
-    Raises:
-      ValueError: On adding groundtruth for an image more than once.
-    """
-    if image_id in self._image_ids:
-      raise ValueError('Image with id {} already added.'.format(image_id))
-
-    groundtruth_class_tuples = (
-        groundtruth_dict[standard_fields.InputDataFields.groundtruth_classes])
-    groundtruth_box_tuples = (
-        groundtruth_dict[standard_fields.InputDataFields.groundtruth_boxes])
-
-    self._evaluation.add_single_ground_truth_image_info(
-        image_key=image_id,
-        groundtruth_box_tuples=self._process_groundtruth_boxes(
-            groundtruth_box_tuples),
-        groundtruth_class_tuples=groundtruth_class_tuples)
-    self._image_ids.update([image_id])
-    all_classes = []
-    for field in groundtruth_box_tuples.dtype.fields:
-      all_classes.append(groundtruth_class_tuples[field])
-    groudtruth_positive_classes = np.unique(np.concatenate(all_classes))
-    verified_labels = groundtruth_dict.get(
-        standard_fields.InputDataFields.groundtruth_image_classes,
-        np.array([], dtype=int))
-    self._evaluatable_labels[image_id] = np.unique(
-        np.concatenate((verified_labels, groudtruth_positive_classes)))
-
-    self._negative_labels[image_id] = np.setdiff1d(verified_labels,
-                                                   groudtruth_positive_classes)
-
-  def add_single_detected_image_info(self, image_id, detections_dict):
-    """Adds detections for a single image to be used for evaluation.
-
-    Args:
-      image_id: A unique string/integer identifier for the image.
-      detections_dict: A dictionary containing -
-        standard_fields.DetectionResultFields.detection_boxes: A numpy array of
-          structures with shape [N, 1], representing N tuples, each tuple
-          containing the same number of named bounding boxes.
-          Each box is of the format [y_min, x_min, y_max, x_max] (as an example
-          see datatype vrd_box_data_type, single_box_data_type above).
-        standard_fields.DetectionResultFields.detection_scores: float32 numpy
-          array of shape [N] containing detection scores for the boxes.
-        standard_fields.DetectionResultFields.detection_classes: A numpy array
-          of structures shape [N, 1], representing the class labels of the
-          corresponding bounding boxes and possibly additional classes (see
-          datatype label_data_type above).
-    """
-    if image_id not in self._image_ids:
-      logging.warning('No groundtruth for the image with id %s.', image_id)
-      # Since for the correct work of evaluator it is assumed that groundtruth
-      # is inserted first we make sure to break the code if is it not the case.
-      self._image_ids.update([image_id])
-      self._negative_labels[image_id] = np.array([])
-      self._evaluatable_labels[image_id] = np.array([])
-
-    num_detections = detections_dict[
-        standard_fields.DetectionResultFields.detection_boxes].shape[0]
-    detection_class_tuples = detections_dict[
-        standard_fields.DetectionResultFields.detection_classes]
-    detection_box_tuples = detections_dict[
-        standard_fields.DetectionResultFields.detection_boxes]
-    negative_selector = np.zeros(num_detections, dtype=bool)
-    selector = np.ones(num_detections, dtype=bool)
-    # Only check boxable labels
-    for field in detection_box_tuples.dtype.fields:
-      # Verify if one of the labels is negative (this is sure FP)
-      negative_selector |= np.isin(detection_class_tuples[field],
-                                   self._negative_labels[image_id])
-      # Verify if all labels are verified
-      selector &= np.isin(detection_class_tuples[field],
-                          self._evaluatable_labels[image_id])
-    selector |= negative_selector
-    self._evaluation.add_single_detected_image_info(
-        image_key=image_id,
-        detected_box_tuples=self._process_detection_boxes(
-            detection_box_tuples[selector]),
-        detected_scores=detections_dict[
-            standard_fields.DetectionResultFields.detection_scores][selector],
-        detected_class_tuples=detection_class_tuples[selector])
-
-  def evaluate(self, relationships=None):
-    """Compute evaluation result.
-
-    Args:
-      relationships: A dictionary of numerical label-text label mapping; if
-        specified, returns per-relationship AP.
-
-    Returns:
-      A dictionary of metrics with the following fields -
-
-      summary_metrics:
-        'weightedAP@<matching_iou_threshold>IOU' : weighted average precision
-        at the specified IOU threshold.
-        'AP@<matching_iou_threshold>IOU/<relationship>' : AP per relationship.
-        'mAP@<matching_iou_threshold>IOU': mean average precision at the
-        specified IOU threshold.
-        'Recall@50@<matching_iou_threshold>IOU': recall@50 at the specified IOU
-        threshold.
-        'Recall@100@<matching_iou_threshold>IOU': recall@100 at the specified
-        IOU threshold.
-      if relationships is specified, returns <relationship> in AP metrics as
-      readable names, otherwise the names correspond to class numbers.
-    """
-    (weighted_average_precision, mean_average_precision, average_precisions, _,
-     _, recall_50, recall_100, _, _) = (
-         self._evaluation.evaluate())
-
-    vrd_metrics = {
-        (self._metric_prefix + 'weightedAP@{}IOU'.format(
-            self._matching_iou_threshold)):
-            weighted_average_precision,
-        self._metric_prefix + 'mAP@{}IOU'.format(self._matching_iou_threshold):
-            mean_average_precision,
-        self._metric_prefix + 'Recall@50@{}IOU'.format(
-            self._matching_iou_threshold):
-            recall_50,
-        self._metric_prefix + 'Recall@100@{}IOU'.format(
-            self._matching_iou_threshold):
-            recall_100,
-    }
-    if relationships:
-      for key, average_precision in six.iteritems(average_precisions):
-        vrd_metrics[self._metric_prefix + 'AP@{}IOU/{}'.format(
-            self._matching_iou_threshold,
-            relationships[key])] = average_precision
-    else:
-      for key, average_precision in six.iteritems(average_precisions):
-        vrd_metrics[self._metric_prefix + 'AP@{}IOU/{}'.format(
-            self._matching_iou_threshold, key)] = average_precision
-
-    return vrd_metrics
-
-  def clear(self):
-    """Clears the state to prepare for a fresh evaluation."""
-    self._evaluation = _VRDDetectionEvaluation(
-        matching_iou_threshold=self._matching_iou_threshold)
-    self._image_ids.clear()
-    self._negative_labels.clear()
-    self._evaluatable_labels.clear()
-
-
-class VRDRelationDetectionEvaluator(VRDDetectionEvaluator):
-  """A class to evaluate VRD detections in relations setting.
-
-  Expected groundtruth box datatype is vrd_box_data_type, expected groudtruth
-  labels datatype is label_data_type.
-  Expected detection box datatype is vrd_box_data_type, expected detection
-  labels
-  datatype is label_data_type.
-  """
-
-  def __init__(self, matching_iou_threshold=0.5):
-    super(VRDRelationDetectionEvaluator, self).__init__(
-        matching_iou_threshold=matching_iou_threshold,
-        metric_prefix='VRDMetric_Relationships')
-
-  def _process_groundtruth_boxes(self, groundtruth_box_tuples):
-    """Pre-processes boxes before adding them to the VRDDetectionEvaluation.
-
-    Args:
-      groundtruth_box_tuples: A numpy array of structures with the shape
-        [M, 1], each structure containing the same number of named bounding
-        boxes. Each box is of the format [y_min, x_min, y_max, x_max].
-
-    Returns:
-      Unchanged input.
+        [
+          // stuff for image 1
+          [
+            // stuff for rect 1
+            {x, y, w, h},
+            // stuff for rect 2
+            {x, y, w, h},
+            ...
+          ],
+          // stuff for image 2
+          [
+            // stuff for rect 1
+            {x, y, w, h},
+            // stuff for rect 2
+            {x, y, w, h},
+            ...
+          ],
+          ...
+        ]
     """
 
-    return groundtruth_box_tuples
+    # reset the boxes list
+    nonlocal box_storage_pointer
+    boxes: List[np.ndarray] = box_storage_pointer
+    boxes.clear()
 
-  def _process_detection_boxes(self, detections_box_tuples):
-    """Pre-processes boxes before adding them to the VRDDetectionEvaluation.
+    # load the new annotations into the boxes list
+    for annotationsPerImg in annotations:
+      rectanglesAsArrays = [np.clip(dictToList(annotation), 0, 1) for annotation in annotationsPerImg]
+      if rectanglesAsArrays:
+        boxes.append(np.stack(rectanglesAsArrays))
+      else:
+        boxes.append(None)
 
-    Phrase detection and Relation detection subclasses re-implement this method
-    depending on the task.
-
-    Args:
-      detections_box_tuples:  A numpy array of structures with the shape
-        [M, 1], each structure containing the same number of named bounding
-        boxes. Each box is of the format [y_min, x_min, y_max, x_max] (see
-        datatype vrd_box_data_type, single_box_data_type above).
-    Returns:
-      Unchanged input.
-    """
-    return detections_box_tuples
-
-
-class VRDPhraseDetectionEvaluator(VRDDetectionEvaluator):
-  """A class to evaluate VRD detections in phrase setting.
-
-  Expected groundtruth box datatype is vrd_box_data_type, expected groudtruth
-  labels datatype is label_data_type.
-  Expected detection box datatype is single_box_data_type, expected detection
-  labels datatype is label_data_type.
-  """
-
-  def __init__(self, matching_iou_threshold=0.5):
-    super(VRDPhraseDetectionEvaluator, self).__init__(
-        matching_iou_threshold=matching_iou_threshold,
-        metric_prefix='VRDMetric_Phrases')
-
-  def _process_groundtruth_boxes(self, groundtruth_box_tuples):
-    """Pre-processes boxes before adding them to the VRDDetectionEvaluation.
-
-    In case of phrase evaluation task, evaluation expects exactly one bounding
-    box containing all objects in the phrase. This bounding box is computed
-    as an enclosing box of all groundtruth boxes of a phrase.
-
-    Args:
-      groundtruth_box_tuples: A numpy array of structures with the shape
-        [M, 1], each structure containing the same number of named bounding
-        boxes. Each box is of the format [y_min, x_min, y_max, x_max]. See
-        vrd_box_data_type for an example of structure.
-
-    Returns:
-      result: A numpy array of structures with the shape [M, 1], each
-        structure containing exactly one named bounding box. i-th output
-        structure corresponds to the result of processing i-th input structure,
-        where the named bounding box is computed as an enclosing bounding box
-        of all bounding boxes of the i-th input structure.
-    """
-    first_box_key = next(six.iterkeys(groundtruth_box_tuples.dtype.fields))
-    miny = groundtruth_box_tuples[first_box_key][:, 0]
-    minx = groundtruth_box_tuples[first_box_key][:, 1]
-    maxy = groundtruth_box_tuples[first_box_key][:, 2]
-    maxx = groundtruth_box_tuples[first_box_key][:, 3]
-    for fields in groundtruth_box_tuples.dtype.fields:
-      miny = np.minimum(groundtruth_box_tuples[fields][:, 0], miny)
-      minx = np.minimum(groundtruth_box_tuples[fields][:, 1], minx)
-      maxy = np.maximum(groundtruth_box_tuples[fields][:, 2], maxy)
-      maxx = np.maximum(groundtruth_box_tuples[fields][:, 3], maxx)
-    data_result = []
-    for i in range(groundtruth_box_tuples.shape[0]):
-      data_result.append(([miny[i], minx[i], maxy[i], maxx[i]],))
-    result = np.array(data_result, dtype=[('box', 'f4', (4,))])
-    return result
-
-  def _process_detection_boxes(self, detections_box_tuples):
-    """Pre-processes boxes before adding them to the VRDDetectionEvaluation.
-
-    In case of phrase evaluation task, evaluation expects exactly one bounding
-    box containing all objects in the phrase. This bounding box is computed
-    as an enclosing box of all groundtruth boxes of a phrase.
-
-    Args:
-      detections_box_tuples: A numpy array of structures with the shape
-        [M, 1], each structure containing the same number of named bounding
-        boxes. Each box is of the format [y_min, x_min, y_max, x_max]. See
-        vrd_box_data_type for an example of this structure.
-
-    Returns:
-      result: A numpy array of structures with the shape [M, 1], each
-        structure containing exactly one named bounding box. i-th output
-        structure corresponds to the result of processing i-th input structure,
-        where the named bounding box is computed as an enclosing bounding box
-        of all bounding boxes of the i-th input structure.
-    """
-    first_box_key = next(six.iterkeys(detections_box_tuples.dtype.fields))
-    miny = detections_box_tuples[first_box_key][:, 0]
-    minx = detections_box_tuples[first_box_key][:, 1]
-    maxy = detections_box_tuples[first_box_key][:, 2]
-    maxx = detections_box_tuples[first_box_key][:, 3]
-    for fields in detections_box_tuples.dtype.fields:
-      miny = np.minimum(detections_box_tuples[fields][:, 0], miny)
-      minx = np.minimum(detections_box_tuples[fields][:, 1], minx)
-      maxy = np.maximum(detections_box_tuples[fields][:, 2], maxy)
-      maxx = np.maximum(detections_box_tuples[fields][:, 3], maxx)
-    data_result = []
-    for i in range(detections_box_tuples.shape[0]):
-      data_result.append(([miny[i], minx[i], maxy[i], maxx[i]],))
-    result = np.array(data_result, dtype=[('box', 'f4', (4,))])
-    return result
-
-
-VRDDetectionEvalMetrics = collections.namedtuple('VRDDetectionEvalMetrics', [
-    'weighted_average_precision', 'mean_average_precision',
-    'average_precisions', 'precisions', 'recalls', 'recall_50', 'recall_100',
-    'median_rank_50', 'median_rank_100'
-])
-
-
-class _VRDDetectionEvaluation(object):
-  """Performs metric computation for the VRD task. This class is internal.
-  """
-
-  def __init__(self, matching_iou_threshold=0.5):
-    """Constructor.
-
-    Args:
-      matching_iou_threshold: IOU threshold to use for matching groundtruth
-        boxes to detection boxes.
-    """
-    self._per_image_eval = per_image_vrd_evaluation.PerImageVRDEvaluation(
-        matching_iou_threshold=matching_iou_threshold)
-
-    self._groundtruth_box_tuples = {}
-    self._groundtruth_class_tuples = {}
-    self._num_gt_instances = 0
-    self._num_gt_imgs = 0
-    self._num_gt_instances_per_relationship = {}
-
-    self.clear_detections()
-
-  def clear_detections(self):
-    """Clears detections."""
-    self._detection_keys = set()
-    self._scores = []
-    self._relation_field_values = []
-    self._tp_fp_labels = []
-    self._average_precisions = {}
-    self._precisions = []
-    self._recalls = []
-
-  def add_single_ground_truth_image_info(
-      self, image_key, groundtruth_box_tuples, groundtruth_class_tuples):
-    """Adds groundtruth for a single image to be used for evaluation.
-
-    Args:
-      image_key: A unique string/integer identifier for the image.
-      groundtruth_box_tuples: A numpy array of structures with the shape
-          [M, 1], representing M tuples, each tuple containing the same number
-          of named bounding boxes.
-          Each box is of the format [y_min, x_min, y_max, x_max].
-      groundtruth_class_tuples: A numpy array of structures shape [M, 1],
-          representing  the class labels of the corresponding bounding boxes and
-          possibly additional classes.
-    """
-    if image_key in self._groundtruth_box_tuples:
-      logging.warning(
-          'image %s has already been added to the ground truth database.',
-          image_key)
-      return
-
-    self._groundtruth_box_tuples[image_key] = groundtruth_box_tuples
-    self._groundtruth_class_tuples[image_key] = groundtruth_class_tuples
-
-    self._update_groundtruth_statistics(groundtruth_class_tuples)
-
-  def add_single_detected_image_info(self, image_key, detected_box_tuples,
-                                     detected_scores, detected_class_tuples):
-    """Adds detections for a single image to be used for evaluation.
-
-    Args:
-      image_key: A unique string/integer identifier for the image.
-      detected_box_tuples: A numpy array of structures with shape [N, 1],
-          representing N tuples, each tuple containing the same number of named
-          bounding boxes.
-          Each box is of the format [y_min, x_min, y_max, x_max].
-      detected_scores: A float numpy array of shape [N, 1], representing
-          the confidence scores of the detected N object instances.
-      detected_class_tuples: A numpy array of structures shape [N, 1],
-          representing the class labels of the corresponding bounding boxes and
-          possibly additional classes.
-    """
-    self._detection_keys.add(image_key)
-    if image_key in self._groundtruth_box_tuples:
-      groundtruth_box_tuples = self._groundtruth_box_tuples[image_key]
-      groundtruth_class_tuples = self._groundtruth_class_tuples[image_key]
-    else:
-      groundtruth_box_tuples = np.empty(
-          shape=[0, 4], dtype=detected_box_tuples.dtype)
-      groundtruth_class_tuples = np.array([], dtype=detected_class_tuples.dtype)
-
-    scores, tp_fp_labels, mapping = (
-        self._per_image_eval.compute_detection_tp_fp(
-            detected_box_tuples=detected_box_tuples,
-            detected_scores=detected_scores,
-            detected_class_tuples=detected_class_tuples,
-            groundtruth_box_tuples=groundtruth_box_tuples,
-            groundtruth_class_tuples=groundtruth_class_tuples))
-
-    self._scores += [scores]
-    self._tp_fp_labels += [tp_fp_labels]
-    self._relation_field_values += [detected_class_tuples[mapping]['relation']]
-
-  def _update_groundtruth_statistics(self, groundtruth_class_tuples):
-    """Updates grouth truth statistics.
-
-    Args:
-      groundtruth_class_tuples: A numpy array of structures shape [M, 1],
-          representing  the class labels of the corresponding bounding boxes and
-          possibly additional classes.
-    """
-    self._num_gt_instances += groundtruth_class_tuples.shape[0]
-    self._num_gt_imgs += 1
-    for relation_field_value in np.unique(groundtruth_class_tuples['relation']):
-      if relation_field_value not in self._num_gt_instances_per_relationship:
-        self._num_gt_instances_per_relationship[relation_field_value] = 0
-      self._num_gt_instances_per_relationship[relation_field_value] += np.sum(
-          groundtruth_class_tuples['relation'] == relation_field_value)
-
-  def evaluate(self):
-    """Computes evaluation result.
-
-    Returns:
-      A named tuple with the following fields -
-        average_precision: a float number corresponding to average precision.
-        precisions: an array of precisions.
-        recalls: an array of recalls.
-        recall@50: recall computed on 50 top-scoring samples.
-        recall@100: recall computed on 100 top-scoring samples.
-        median_rank@50: median rank computed on 50 top-scoring samples.
-        median_rank@100: median rank computed on 100 top-scoring samples.
-    """
-    if self._num_gt_instances == 0:
-      logging.warning('No ground truth instances')
-
-    if not self._scores:
-      scores = np.array([], dtype=float)
-      tp_fp_labels = np.array([], dtype=bool)
-    else:
-      scores = np.concatenate(self._scores)
-      tp_fp_labels = np.concatenate(self._tp_fp_labels)
-      relation_field_values = np.concatenate(self._relation_field_values)
-
-    for relation_field_value, _ in (six.iteritems(
-        self._num_gt_instances_per_relationship)):
-      precisions, recalls = metrics.compute_precision_recall(
-          scores[relation_field_values == relation_field_value],
-          tp_fp_labels[relation_field_values == relation_field_value],
-          self._num_gt_instances_per_relationship[relation_field_value])
-      self._average_precisions[
-          relation_field_value] = metrics.compute_average_precision(
-              precisions, recalls)
-
-    self._mean_average_precision = np.mean(
-        list(self._average_precisions.values()))
-
-    self._precisions, self._recalls = metrics.compute_precision_recall(
-        scores, tp_fp_labels, self._num_gt_instances)
-    self._weighted_average_precision = metrics.compute_average_precision(
-        self._precisions, self._recalls)
-
-    self._recall_50 = (
-        metrics.compute_recall_at_k(self._tp_fp_labels, self._num_gt_instances,
-                                    50))
-    self._median_rank_50 = (
-        metrics.compute_median_rank_at_k(self._tp_fp_labels, 50))
-    self._recall_100 = (
-        metrics.compute_recall_at_k(self._tp_fp_labels, self._num_gt_instances,
-                                    100))
-    self._median_rank_100 = (
-        metrics.compute_median_rank_at_k(self._tp_fp_labels, 100))
-
-    return VRDDetectionEvalMetrics(
-        self._weighted_average_precision, self._mean_average_precision,
-        self._average_precisions, self._precisions, self._recalls,
-        self._recall_50, self._recall_100, self._median_rank_50,
-        self._median_rank_100)
+    # output the annotations to the errorlog
+    with output.redirect_to_element('#errorlog'):
+      display("--boxes array populated--")
+      
+  output.register_callback(callbackId, callbackFunction)
+  draw_bbox(imgs, callbackId)
