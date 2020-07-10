@@ -1,4 +1,7 @@
-# Tensorflow detection model zoo
+# TensorFlow 1 Detection Model Zoo
+
+[![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
+[![Python 3.6](https://img.shields.io/badge/Python-3.6-3776AB)](https://www.python.org/downloads/release/python-360/)
 
 We provide a collection of detection models pre-trained on the
 [COCO dataset](http://cocodataset.org), the
@@ -64,9 +67,9 @@ Some remarks on frozen inference graphs:
     metrics.
 *   Our frozen inference graphs are generated using the
     [v1.12.0](https://github.com/tensorflow/tensorflow/tree/v1.12.0) release
-    version of Tensorflow and we do not guarantee that these will work with
+    version of TensorFlow and we do not guarantee that these will work with
     other versions; this being said, each frozen inference graph can be
-    regenerated using your current version of Tensorflow by re-running the
+    regenerated using your current version of TensorFlow by re-running the
     [exporter](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/exporting_models.md),
     pointing it at the model directory as well as the corresponding config file
     in

@@ -1,5 +1,7 @@
 # Context R-CNN
 
+[![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
+
 Context R-CNN is an object detection model that uses contextual features to
 improve object detection. See https://arxiv.org/abs/1912.03538 for more details.
 

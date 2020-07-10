@@ -1,6 +1,8 @@
 # Quick Start: Distributed Training on the Oxford-IIIT Pets Dataset on Google Cloud
 
-This page is a walkthrough for training an object detector using the Tensorflow
+[![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
+
+This page is a walkthrough for training an object detector using the TensorFlow
 Object Detection API. In this tutorial, we'll be training on the Oxford-IIIT Pets
 dataset to build a system to detect various breeds of cats and dogs. The output
 of the detector will look like the following:
@@ -40,10 +42,10 @@ export YOUR_GCS_BUCKET=${YOUR_GCS_BUCKET}
 It is also possible to run locally by following
 [the running locally instructions](running_locally.md).
 
-## Installing Tensorflow and the Tensorflow Object Detection API
+## Installing TensorFlow and the TensorFlow Object Detection API
 
 Please run through the [installation instructions](installation.md) to install
-Tensorflow and all it dependencies. Ensure the Protobuf libraries are
+TensorFlow and all it dependencies. Ensure the Protobuf libraries are
 compiled and the library directories are added to `PYTHONPATH`.
 
 ## Getting the Oxford-IIIT Pets Dataset and Uploading it to Google Cloud Storage
@@ -77,7 +79,7 @@ should appear as follows:
 ... other files and directories
 ```
 
-The Tensorflow Object Detection API expects data to be in the TFRecord format,
+The TensorFlow Object Detection API expects data to be in the TFRecord format,
 so we'll now run the `create_pet_tf_record` script to convert from the raw
 Oxford-IIIT Pet dataset into TFRecords. Run the following commands from the
 `tensorflow/models/research/` directory:
@@ -134,7 +136,7 @@ in the following step.
 
 ## Configuring the Object Detection Pipeline
 
-In the Tensorflow Object Detection API, the model parameters, training
+In the TensorFlow Object Detection API, the model parameters, training
 parameters and eval parameters are all defined by a config file. More details
 can be found [here](configuring_jobs.md). For this tutorial, we will use some
 predefined templates provided with the source code. In the
@@ -188,10 +190,10 @@ browser](https://console.cloud.google.com/storage/browser).
 
 Before we can start a job on Google Cloud ML Engine, we must:
 
-1. Package the Tensorflow Object Detection code.
+1. Package the TensorFlow Object Detection code.
 2. Write a cluster configuration for our Google Cloud ML job.
 
-To package the Tensorflow Object Detection code, run the following commands from
+To package the TensorFlow Object Detection code, run the following commands from
 the `tensorflow/models/research/` directory:
 
 ```bash
@@ -248,7 +250,7 @@ web browser. You should see something similar to the following:
 
 ![](img/tensorboard.png)
 
-Make sure your Tensorboard version is the same minor version as your Tensorflow (1.x)
+Make sure your Tensorboard version is the same minor version as your TensorFlow (1.x)
 
 You will also want to click on the images tab to see example detections made by
 the model while it trains. After about an hour and a half of training, you can
@@ -265,9 +267,9 @@ the training jobs are configured to go for much longer than is necessary for
 convergence.  To save money, we recommend killing your jobs once you've seen
 that they've converged.
 
-## Exporting the Tensorflow Graph
+## Exporting the TensorFlow Graph
 
-After your model has been trained, you should export it to a Tensorflow graph
+After your model has been trained, you should export it to a TensorFlow graph
 proto. First, you need to identify a candidate checkpoint to export. You can
 search your bucket using the [Google Cloud Storage
 Browser](https://console.cloud.google.com/storage/browser). The file should be
