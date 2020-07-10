@@ -784,7 +784,16 @@ def eager_eval_loop(
           name='eval_side_by_side_' + str(i),
           step=global_step,
           data=sbys_images,
-          max_outputs=1)
+          max_outputs=eval_config.num_visualizations)
+      if eval_util.has_densepose(eval_dict):
+        dp_image_list = vutils.draw_densepose_visualizations(
+            eval_dict)
+        dp_images = tf.concat(dp_image_list, axis=0)
+        tf.compat.v2.summary.image(
+            name='densepose_detections_' + str(i),
+            step=global_step,
+            data=dp_images,
+            max_outputs=eval_config.num_visualizations)
 
     if evaluators is None:
       if class_agnostic:
