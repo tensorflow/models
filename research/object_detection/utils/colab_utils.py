@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,59 +13,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utils for colab tutorials located in object_detection/colab_tutorials/"""
-import os
-import random
-import uuid
+"""Utils for colab tutorials located in object_detection/colab_tutorials/..."""
+import base64
 import io
-import operator
 import json
+from typing import Dict
+from typing import List
+from typing import Union
+import uuid
 
-from typing import List, Dict, Union
-from base64 import b64decode, b64encode
-from IPython.display import display, Javascript
+from IPython.display import display
+from IPython.display import Javascript
+import numpy as np
+from PIL import Image
+
 from google.colab import output
 from google.colab.output import eval_js
 
-import tensorflow as tf
-import numpy as np
-from six import BytesIO
-from PIL import Image, ImageDraw, ImageFont
 
 def image_from_numpy(image):
-  """
-  Open an image at the specified path and encode it in Base64.
+  """Open an image at the specified path and encode it in Base64.
 
-  Parameters
-  ----------
-  image: np.ndarray
+  Args:
+    image: np.ndarray
       Image represented as a numpy array
 
-  Returns
-  -------
-  str
-      Encoded Base64 representation of the image
+  Returns:
+    An encoded Base64 representation of the image
   """
 
-  with io.BytesIO() as output:
-      Image.fromarray(image).save(output, format="JPEG")
-      data = output.getvalue()
-  data = str(b64encode(data))[2:-1]
+  with io.BytesIO() as img_output:
+    Image.fromarray(image).save(img_output, format='JPEG')
+    data = output.getvalue()
+  data = str(base64.b64encode(data))[2:-1]
   return data
 
-def draw_bbox(image_urls, callbackId):
-  """
-  Open the bounding box UI and send the results to a callback function.
 
-  Parameters
-  ----------
-  image_urls: list[str | np.ndarray]
+def draw_bbox(image_urls, callbackId):  # pylint: disable=invalid-name
+  """Open the bounding box UI and send the results to a callback function.
+
+  Args:
+    image_urls: list[str | np.ndarray]
       List of locations from where to load the images from. If a np.ndarray is
-      given, the array is interpretted as an image and sent to the frontend. If
-      a str is given, the string is interpreted as a path and is read as a
+      given, the array is interpretted as an image and sent to the frontend.
+      If a str is given, the string is interpreted as a path and is read as a
       np.ndarray before being sent to the frontend.
 
-  callbackId: str
+    callbackId: str
       The ID for the callback function to send the bounding box results to
       when the user hits submit.
   """
@@ -126,7 +121,6 @@ def draw_bbox(image_urls, callbackId):
                   for (var i = 0; i < imgs.length; i++) {
                     allBoundingBoxes[i] = [];
                   }
-                  
                   //initialize image view
                   errorlog.id = 'errorlog';
                   image.style.display = 'block';
@@ -175,7 +169,6 @@ def draw_bbox(image_urls, callbackId):
                       }
                       resetcanvas();
                   }
-                  
                   // on delete, deletes the last bounding box
                   deleteButton.textContent = "undo bbox";
                   deleteButton.onclick = function(){
@@ -187,7 +180,6 @@ def draw_bbox(image_urls, callbackId):
                         boundingBoxes.map(r => {drawRect(r)});
                     };
                   }
-                  
                   // on all delete, deletes all of the bounding box
                   deleteAllbutton.textContent = "delete all"
                   deleteAllbutton.onclick = function(){
@@ -239,7 +231,7 @@ def draw_bbox(image_urls, callbackId):
                   start = oMousePos(canvas_img, e);
 
                   // configure is drawing to true
-                  isDrawing = true; 
+                  isDrawing = true;
                 }
 
                 function handleMouseMove(e) {
@@ -268,15 +260,15 @@ def draw_bbox(image_urls, callbackId):
                           box.x = o.x;
                         }
                         else{
-                          box.x = o.x + o.w; 
+                          box.x = o.x + o.w;
                         }
                         if (o.h > 0){
                           box.y = o.y;
                         }
                         else{
-                          box.y = o.y + o.h; 
+                          box.y = o.y + o.h;
                         }
-                        box.w = Math.abs(o.w); 
+                        box.w = Math.abs(o.w);
                         box.h = Math.abs(o.h);
 
                         // add the bounding box to the image
@@ -285,7 +277,7 @@ def draw_bbox(image_urls, callbackId):
                     }
                 }
 
-                function draw() {  
+                function draw() {
                     o.x = (start.x)/image.width;  // start position of x
                     o.y = (start.y)/image.height;  // start position of y
                     o.w = (m.x - start.x)/image.width;  // width
@@ -296,7 +288,7 @@ def draw_bbox(image_urls, callbackId):
                     // draw all the rectangles saved in the rectsRy
                     boundingBoxes.map(r => {drawRect(r)});
                     // draw the actual rectangle
-                    drawRect(o);  
+                    drawRect(o);
                 }
 
                 // add the handlers needed for dragging
@@ -312,7 +304,7 @@ def draw_bbox(image_urls, callbackId):
                     img = imgs[curr_image]
                     image.src = "data:image/png;base64," + img;
 
-                    // onload init new canvas and display image 
+                    // onload init new canvas and display image
                     image.onload = function() {
                         // normalize display height and canvas
                         image.height = height;
@@ -331,7 +323,7 @@ def draw_bbox(image_urls, callbackId):
                 }
 
                 function drawRect(o){
-                    // draw a predefined rectangle 
+                    // draw a predefined rectangle
                     ctx.strokeStyle = "red";
                     ctx.lineWidth = 2;
                     ctx.beginPath(o);
@@ -342,7 +334,7 @@ def draw_bbox(image_urls, callbackId):
                 // Function to detect the mouse position
                 function oMousePos(canvas_img, evt) {
                   let ClientRect = canvas_img.getBoundingClientRect();
-                    return { 
+                    return {
                       x: evt.clientX - ClientRect.left,
                       y: evt.clientY - ClientRect.top
                     };
@@ -370,46 +362,45 @@ def draw_bbox(image_urls, callbackId):
                 document.querySelector("#output-area").appendChild(div);
                 return
             }''')
-  
-  #load the images as a byte array
+
+  # load the images as a byte array
   bytearrays = []
   for image in image_urls:
-      if isinstance(image, str):
-          bytearrays.append(image_from_path(image))
-      elif isinstance(image, np.ndarray):
-          bytearrays.append(image_from_numpy(image))
-      else:
-          raise TypeError(f"Image has unsupported type {type(image)}. Only str and np.ndarray are supported.")
+    if isinstance(image, np.ndarray):
+      bytearrays.append(image_from_numpy(image))
+    else:
+      raise TypeError('Image has unsupported type {}.'.format(type(image)))
 
-  #format arrays for input
+  # format arrays for input
   image_data = json.dumps(bytearrays)
   del bytearrays
 
-  #call java script function pass string byte array(image_data) as input
+  # call java script function pass string byte array(image_data) as input
   display(js)
-  eval_js(f"load_image({image_data}, '{callbackId}')")
+  eval_js('load_image({}, \'{}\')'.format(image_data, callbackId))
   return
 
-def annotate(imgs: List[Union[str, np.ndarray]], box_storage_pointer: List[np.ndarray], callbackId: str = None):
-  """
-  Open the bounding box UI and prompt the user for input.
 
-  Parameters
-  ----------
-  imgs: list[str | np.ndarray]
+def annotate(imgs: List[Union[str, np.ndarray]],  # pylint: disable=invalid-name
+             box_storage_pointer: List[np.ndarray],
+             callbackId: str = None):
+  """Open the bounding box UI and prompt the user for input.
+
+  Args:
+    imgs: list[str | np.ndarray]
       List of locations from where to load the images from. If a np.ndarray is
       given, the array is interpretted as an image and sent to the frontend. If
       a str is given, the string is interpreted as a path and is read as a
       np.ndarray before being sent to the frontend.
 
-  box_storage_pointer: list[np.ndarray]
+    box_storage_pointer: list[np.ndarray]
       Destination list for bounding box arrays. Each array in this list
       corresponds to one of the images given in imgs. The array is a
       N x 4 array where N is the number of bounding boxes given by the user
       for that particular image. If there are no bounding boxes for an image,
       None is used instead of an empty array.
 
-  callbackId: str, optional
+    callbackId: str, optional
       The ID for the callback function that communicates between the fontend
       and the backend. If no ID is given, a random UUID string is used instead.
   """
@@ -418,23 +409,30 @@ def annotate(imgs: List[Union[str, np.ndarray]], box_storage_pointer: List[np.nd
   if callbackId is None:
     callbackId = str(uuid.uuid1()).replace('-', '')
 
-  def dictToList(input):
-    '''
+  def dictToList(input_bbox):  # pylint: disable=invalid-name
+    """Convert bbox.
+
     This function converts the dictionary from the frontend (if the format
     {x, y, w, h} as shown in callbackFunction) into a list
     ([y_min, x_min, y_max, x_max])
-    '''
 
-    return (input['y'], input['x'], input['y'] + input['h'], input['x'] + input['w'])
+    Args:
+      input_bbox:
 
-  def callbackFunction(annotations: List[List[Dict[str, float]]]):
+    Returns:
+      A list with bbox coordinates in the form [ymin, xmin, ymax, xmax].
     """
+    return (input_bbox['y'], input_bbox['x'], input_bbox['y'] + input_bbox['h'],
+            input_bbox['x'] + input_bbox['w'])
+
+  def callbackFunction(annotations: List[List[Dict[str, float]]]):  # pylint: disable=invalid-name
+    """Callback function.
+
     This is the call back function to capture the data from the frontend and
     convert the data into a numpy array.
 
-    Parameters
-    ----------
-    annotations: list[list[dict[str, float]]]
+    Args:
+      annotations: list[list[dict[str, float]]]
         The input of the call back function is a list of list of objects
         corresponding to the annotations. The format of annotations is shown
         below
@@ -466,16 +464,17 @@ def annotate(imgs: List[Union[str, np.ndarray]], box_storage_pointer: List[np.nd
     boxes.clear()
 
     # load the new annotations into the boxes list
-    for annotationsPerImg in annotations:
-      rectanglesAsArrays = [np.clip(dictToList(annotation), 0, 1) for annotation in annotationsPerImg]
-      if rectanglesAsArrays:
-        boxes.append(np.stack(rectanglesAsArrays))
+    for annotations_per_img in annotations:
+      rectangles_as_arrays = [np.clip(dictToList(annotation), 0, 1)
+                              for annotation in annotations_per_img]
+      if rectangles_as_arrays:
+        boxes.append(np.stack(rectangles_as_arrays))
       else:
         boxes.append(None)
 
     # output the annotations to the errorlog
     with output.redirect_to_element('#errorlog'):
-      display("--boxes array populated--")
-      
+      display('--boxes array populated--')
+
   output.register_callback(callbackId, callbackFunction)
   draw_bbox(imgs, callbackId)
