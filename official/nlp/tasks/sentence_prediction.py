@@ -91,7 +91,7 @@ class SentencePredictionTask(base_task.Task):
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
-    return loss
+    return tf.reduce_mean(loss)
 
   def build_inputs(self, params, input_context=None):
     """Returns tf.data.Dataset for sentence_prediction task."""
