@@ -39,6 +39,9 @@ class ModelBuilderTest(test_case.TestCase, parameterized.TestCase):
   def ssd_feature_extractors(self):
     raise NotImplementedError
 
+  def get_override_base_feature_extractor_hyperparams(self, extractor_type):
+    raise NotImplementedError
+
   def faster_rcnn_feature_extractors(self):
     raise NotImplementedError
 
@@ -70,7 +73,6 @@ class ModelBuilderTest(test_case.TestCase, parameterized.TestCase):
                 }
               }
           }
-          override_base_feature_extractor_hyperparams: true
         }
         box_coder {
           faster_rcnn_box_coder {
@@ -205,6 +207,8 @@ class ModelBuilderTest(test_case.TestCase, parameterized.TestCase):
     for extractor_type, extractor_class in self.ssd_feature_extractors().items(
     ):
       model_proto.ssd.feature_extractor.type = extractor_type
+      model_proto.ssd.feature_extractor.override_base_feature_extractor_hyperparams = (
+          self.get_override_base_feature_extractor_hyperparams(extractor_type))
       model = model_builder.build(model_proto, is_training=True)
       self.assertIsInstance(model, ssd_meta_arch.SSDMetaArch)
       self.assertIsInstance(model._feature_extractor, extractor_class)

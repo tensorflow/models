@@ -432,14 +432,9 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     return eval_metric_ops
 
 
-def _check_mask_type_and_value(array_name, masks):
-  """Checks whether mask dtype is uint8 and the values are either 0 or 1."""
-  if masks.dtype != np.uint8:
-    raise ValueError('{} must be of type np.uint8. Found {}.'.format(
-        array_name, masks.dtype))
-  if np.any(np.logical_and(masks != 0, masks != 1)):
-    raise ValueError('{} elements can only be either 0 or 1.'.format(
-        array_name))
+def convert_masks_to_binary(masks):
+  """Converts masks to 0 or 1 and uint8 type."""
+  return (masks > 0).astype(np.uint8)
 
 
 class CocoKeypointEvaluator(CocoDetectionEvaluator):
@@ -952,9 +947,8 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
 
     groundtruth_instance_masks = groundtruth_dict[
         standard_fields.InputDataFields.groundtruth_instance_masks]
-    _check_mask_type_and_value(standard_fields.InputDataFields.
-                               groundtruth_instance_masks,
-                               groundtruth_instance_masks)
+    groundtruth_instance_masks = convert_masks_to_binary(
+        groundtruth_instance_masks)
     self._groundtruth_list.extend(
         coco_tools.
         ExportSingleImageGroundtruthToCoco(
@@ -1013,9 +1007,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                        'are incompatible: {} vs {}'.format(
                            groundtruth_masks_shape,
                            detection_masks.shape))
-    _check_mask_type_and_value(standard_fields.DetectionResultFields.
-                               detection_masks,
-                               detection_masks)
+    detection_masks = convert_masks_to_binary(detection_masks)
     self._detection_masks_list.extend(
         coco_tools.ExportSingleImageDetectionMasksToCoco(
             image_id=image_id,

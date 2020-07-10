@@ -28,6 +28,7 @@ class TaggingDataConfig(cfg.DataConfig):
   """Data config for tagging (tasks/tagging)."""
   is_training: bool = True
   seq_length: int = 128
+  include_sentence_id: bool = False
 
 
 @data_loader_factory.register_data_loader_cls(TaggingDataConfig)
@@ -37,6 +38,7 @@ class TaggingDataLoader:
   def __init__(self, params: TaggingDataConfig):
     self._params = params
     self._seq_length = params.seq_length
+    self._include_sentence_id = params.include_sentence_id
 
   def _decode(self, record: tf.Tensor):
     """Decodes a serialized tf.Example."""
@@ -46,6 +48,9 @@ class TaggingDataLoader:
         'segment_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'label_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
     }
+    if self._include_sentence_id:
+      name_to_features['sentence_id'] = tf.io.FixedLenFeature([], tf.int64)
+
     example = tf.io.parse_single_example(record, name_to_features)
 
     # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
@@ -65,6 +70,8 @@ class TaggingDataLoader:
         'input_mask': record['input_mask'],
         'input_type_ids': record['segment_ids']
     }
+    if self._include_sentence_id:
+      x['sentence_id'] = record['sentence_id']
     y = record['label_ids']
     return (x, y)
 

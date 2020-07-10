@@ -26,7 +26,6 @@ import math
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.nlp.modeling.layers import attention
-from official.nlp.modeling.layers import dense_einsum
 from official.nlp.modeling.layers import masked_softmax
 
 
@@ -67,28 +66,26 @@ class VotingAttention(tf.keras.layers.Layer):
     self._bias_constraint = tf.keras.constraints.get(bias_constraint)
 
   def build(self, unused_input_shapes):
-    self._query_dense = dense_einsum.DenseEinsum(
-        output_shape=(self._num_heads, self._head_size),
+    common_kwargs = dict(
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
-        name="encdocatt_query")
-    self._key_dense = dense_einsum.DenseEinsum(
-        output_shape=(self._num_heads, self._head_size),
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
-        name="encdocatt_key")
+        bias_constraint=self._bias_constraint)
+    self._query_dense = tf.keras.layers.experimental.EinsumDense(
+        "BAE,ENH->BANH",
+        output_shape=(None, self._num_heads, self._head_size),
+        bias_axes="NH",
+        name="query",
+        **common_kwargs)
+    self._key_dense = tf.keras.layers.experimental.EinsumDense(
+        "BAE,ENH->BANH",
+        output_shape=(None, self._num_heads, self._head_size),
+        bias_axes="NH",
+        name="key",
+        **common_kwargs)
     super(VotingAttention, self).build(unused_input_shapes)
 
   def call(self, encoder_outputs, doc_attention_mask):

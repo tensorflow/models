@@ -2749,6 +2749,14 @@ class CenterNetMetaArch(model.DetectionModel):
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
         Valid values: `detection`, `classification`. Default 'detection'.
+        'detection': used when loading in the Hourglass model pre-trained on
+          other detection task.
+        'classification': used when loading in the ResNet model pre-trained on
+          image classification task. Note that only the image feature encoding
+          part is loaded but not those upsampling layers.
+        'fine_tune': used when loading the entire CenterNet feature extractor
+          pre-trained on other tasks. The checkpoints saved during CenterNet
+          model training can be directly loaded using this mode.
 
     Returns:
       A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
@@ -2757,10 +2765,13 @@ class CenterNetMetaArch(model.DetectionModel):
     if fine_tune_checkpoint_type == 'classification':
       return {'feature_extractor': self._feature_extractor.get_base_model()}
 
-    if fine_tune_checkpoint_type == 'detection':
-      fake_model = tf.train.Checkpoint(
+    elif fine_tune_checkpoint_type == 'detection':
+      return {'feature_extractor': self._feature_extractor.get_model()}
+
+    elif fine_tune_checkpoint_type == 'fine_tune':
+      feature_extractor_model = tf.train.Checkpoint(
           _feature_extractor=self._feature_extractor)
-      return {'model': fake_model}
+      return {'model': feature_extractor_model}
 
     else:
       raise ValueError('Not supported  fine tune checkpoint type - {}'.format(
