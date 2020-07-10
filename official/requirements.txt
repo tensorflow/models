@@ -15,7 +15,7 @@ tensorflow-hub>=0.6.0
 tensorflow-model-optimization>=0.2.1
 dataclasses
 gin-config
-typing
+typing==3.7.4.1
 sentencepiece
 Cython
 matplotlib
