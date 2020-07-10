@@ -43,6 +43,27 @@ from typing import List, Dict, Union
 import operator
 import json
 
+def image_from_numpy(image):
+    """
+    Open an image at the specified path and encode it in Base64.
+
+    Parameters
+    ----------
+    image: np.ndarray
+        Image represented as a numpy array
+
+    Returns
+    -------
+    str
+        Encoded Base64 representation of the image
+    """
+
+    with io.BytesIO() as output:
+        Image.fromarray(image).save(output, format="JPEG")
+        data = output.getvalue()
+    data = str(b64encode(data))[2:-1]
+    return data
+
 def draw_bbox(image_urls, callbackId):
     """
     Open the bounding box UI and send the results to a callback function.
