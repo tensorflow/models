@@ -1,6 +1,6 @@
 # Supported object detection evaluation protocols
 
-The Tensorflow Object Detection API currently supports three evaluation protocols,
+The TensorFlow Object Detection API currently supports three evaluation protocols,
 that can be configured in `EvalConfig` by setting `metrics_set` to the
 corresponding value.
 

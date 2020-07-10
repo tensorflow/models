@@ -1,6 +1,6 @@
 # Preparing Inputs
 
-Tensorflow Object Detection API reads data using the TFRecord file format. Two
+TensorFlow Object Detection API reads data using the TFRecord file format. Two
 sample scripts (`create_pascal_tf_record.py` and `create_pet_tf_record.py`) are
 provided to convert from the PASCAL VOC dataset and Oxford-IIIT Pet dataset to
 TFRecords.
