@@ -17,12 +17,9 @@ with the same or improved speed and performance with each new TensorFlow build.
 The team is actively developing new models.
 In the near future, we will add:
 
-* State-of-the-art language understanding models:
-  More members in Transformer family
-* State-of-the-art image classification models:
-  EfficientNet, MnasNet, and variants
-* State-of-the-art objection detection and instance segmentation models:
-  RetinaNet, Mask R-CNN, SpineNet, and variants
+* State-of-the-art language understanding models.
+* State-of-the-art image classification models.
+* State-of-the-art objection detection and instance segmentation models.
 
 ## Table of Contents
 
