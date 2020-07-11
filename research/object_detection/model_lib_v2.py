@@ -353,11 +353,18 @@ def load_fine_tune_checkpoint(
         labels)
 
   strategy = tf.compat.v2.distribute.get_strategy()
-  strategy.experimental_run_v2(
-      _dummy_computation_fn, args=(
-          features,
-          labels,
-      ))
+  if hasattr(tf.distribute.Strategy, 'run'):
+    strategy.run(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
+  else:
+    strategy.experimental_run_v2(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
 
   restore_from_objects_dict = model.restore_from_objects(
       fine_tune_checkpoint_type=checkpoint_type)
@@ -579,8 +586,12 @@ def train_loop(
 
         def _sample_and_train(strategy, train_step_fn, data_iterator):
           features, labels = data_iterator.next()
-          per_replica_losses = strategy.experimental_run_v2(
-              train_step_fn, args=(features, labels))
+          if hasattr(tf.distribute.Strategy, 'run'):
+            per_replica_losses = strategy.run(
+                train_step_fn, args=(features, labels))
+          else:
+            per_replica_losses = strategy.experimental_run_v2(
+                train_step_fn, args=(features, labels))
           # TODO(anjalisridhar): explore if it is safe to remove the
           ## num_replicas scaling of the loss and switch this to a ReduceOp.Mean
           return strategy.reduce(tf.distribute.ReduceOp.SUM,
