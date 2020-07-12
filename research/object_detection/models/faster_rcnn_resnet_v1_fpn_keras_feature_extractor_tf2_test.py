@@ -21,8 +21,8 @@ from google.protobuf import text_format
 
 from object_detection.builders import hyperparams_builder
 from object_detection.models import faster_rcnn_resnet_v1_fpn_keras_feature_extractor as frcnn_res_fpn
-from object_detection.utils import tf_version
 from object_detection.protos import hyperparams_pb2
+from object_detection.utils import tf_version
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
@@ -40,7 +40,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractorTest(tf.test.TestCase):
         }
       }
     """
-    text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams)
+    text_format.Parse(conv_hyperparams_text_proto, conv_hyperparams)
     return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
 
   def _build_feature_extractor(self):

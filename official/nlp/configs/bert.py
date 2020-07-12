@@ -24,7 +24,6 @@ import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
-from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
 from official.nlp.modeling import layers
 from official.nlp.modeling.models import bert_pretrainer
@@ -43,7 +42,6 @@ class ClsHeadConfig(base_config.Config):
 @dataclasses.dataclass
 class BertPretrainerConfig(base_config.Config):
   """BERT encoder configuration."""
-  num_masked_tokens: int = 76
   encoder: encoders.TransformerEncoderConfig = (
       encoders.TransformerEncoderConfig())
   cls_heads: List[ClsHeadConfig] = dataclasses.field(default_factory=list)
@@ -56,103 +54,18 @@ def instantiate_classification_heads_from_cfgs(
     ] if cls_head_configs else []
 
 
-def instantiate_bertpretrainer_from_cfg(
+def instantiate_pretrainer_from_cfg(
     config: BertPretrainerConfig,
     encoder_network: Optional[tf.keras.Model] = None
-    ) -> bert_pretrainer.BertPretrainerV2:
+) -> bert_pretrainer.BertPretrainerV2:
   """Instantiates a BertPretrainer from the config."""
   encoder_cfg = config.encoder
   if encoder_network is None:
     encoder_network = encoders.instantiate_encoder_from_cfg(encoder_cfg)
   return bert_pretrainer.BertPretrainerV2(
-      config.num_masked_tokens,
       mlm_activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
       encoder_network=encoder_network,
       classification_heads=instantiate_classification_heads_from_cfgs(
           config.cls_heads))
-
-
-@dataclasses.dataclass
-class BertPretrainDataConfig(cfg.DataConfig):
-  """Data config for BERT pretraining task (tasks/masked_lm)."""
-  input_path: str = ""
-  global_batch_size: int = 512
-  is_training: bool = True
-  seq_length: int = 512
-  max_predictions_per_seq: int = 76
-  use_next_sentence_label: bool = True
-  use_position_id: bool = False
-
-
-@dataclasses.dataclass
-class BertPretrainEvalDataConfig(BertPretrainDataConfig):
-  """Data config for the eval set in BERT pretraining task (tasks/masked_lm)."""
-  input_path: str = ""
-  global_batch_size: int = 512
-  is_training: bool = False
-
-
-@dataclasses.dataclass
-class SentencePredictionDataConfig(cfg.DataConfig):
-  """Data config for sentence prediction task (tasks/sentence_prediction)."""
-  input_path: str = ""
-  global_batch_size: int = 32
-  is_training: bool = True
-  seq_length: int = 128
-
-
-@dataclasses.dataclass
-class SentencePredictionDevDataConfig(cfg.DataConfig):
-  """Dev Data config for sentence prediction (tasks/sentence_prediction)."""
-  input_path: str = ""
-  global_batch_size: int = 32
-  is_training: bool = False
-  seq_length: int = 128
-  drop_remainder: bool = False
-
-
-@dataclasses.dataclass
-class QADataConfig(cfg.DataConfig):
-  """Data config for question answering task (tasks/question_answering)."""
-  input_path: str = ""
-  global_batch_size: int = 48
-  is_training: bool = True
-  seq_length: int = 384
-
-
-@dataclasses.dataclass
-class QADevDataConfig(cfg.DataConfig):
-  """Dev Data config for queston answering (tasks/question_answering)."""
-  input_path: str = ""
-  input_preprocessed_data_path: str = ""
-  version_2_with_negative: bool = False
-  doc_stride: int = 128
-  global_batch_size: int = 48
-  is_training: bool = False
-  seq_length: int = 384
-  query_length: int = 64
-  drop_remainder: bool = False
-  vocab_file: str = ""
-  tokenization: str = "WordPiece"  # WordPiece or SentencePiece
-  do_lower_case: bool = True
-
-
-@dataclasses.dataclass
-class TaggingDataConfig(cfg.DataConfig):
-  """Data config for tagging (tasks/tagging)."""
-  input_path: str = ""
-  global_batch_size: int = 48
-  is_training: bool = True
-  seq_length: int = 384
-
-
-@dataclasses.dataclass
-class TaggingDevDataConfig(cfg.DataConfig):
-  """Dev Data config for tagging (tasks/tagging)."""
-  input_path: str = ""
-  global_batch_size: int = 48
-  is_training: bool = False
-  seq_length: int = 384
-  drop_remainder: bool = False

@@ -88,7 +88,6 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-# TODO(hongkuny): consider moving custom string-map lookup to keras api.
 def get_activation(identifier):
   """Maps a identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
 

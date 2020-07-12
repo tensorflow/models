@@ -1906,6 +1906,99 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
         expected_seg_target, segmentation_target)
 
 
+class CenterNetDensePoseTargetAssignerTest(test_case.TestCase):
+
+  def test_assign_part_and_coordinate_targets(self):
+    def graph_fn():
+      gt_dp_num_points_list = [
+          # Example 0.
+          tf.constant([2, 0, 3], dtype=tf.int32),
+          # Example 1.
+          tf.constant([1, 1], dtype=tf.int32),
+      ]
+      gt_dp_part_ids_list = [
+          # Example 0.
+          tf.constant([[1, 6, 0],
+                       [0, 0, 0],
+                       [0, 2, 3]], dtype=tf.int32),
+          # Example 1.
+          tf.constant([[7, 0, 0],
+                       [0, 0, 0]], dtype=tf.int32),
+      ]
+      gt_dp_surface_coords_list = [
+          # Example 0.
+          tf.constant(
+              [[[0.11, 0.2, 0.3, 0.4],  # Box 0.
+                [0.6, 0.4, 0.1, 0.0],
+                [0.0, 0.0, 0.0, 0.0]],
+               [[0.0, 0.0, 0.0, 0.0],  # Box 1.
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0]],
+               [[0.22, 0.1, 0.6, 0.8],  # Box 2.
+                [0.0, 0.4, 0.5, 1.0],
+                [0.3, 0.2, 0.4, 0.1]]],
+              dtype=tf.float32),
+          # Example 1.
+          tf.constant(
+              [[[0.5, 0.5, 0.3, 1.0],  # Box 0.
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0]],
+               [[0.2, 0.2, 0.5, 0.8],  # Box 1.
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0]]],
+              dtype=tf.float32),
+      ]
+      gt_weights_list = [
+          # Example 0.
+          tf.constant([1.0, 1.0, 0.5], dtype=tf.float32),
+          # Example 1.
+          tf.constant([0.0, 1.0], dtype=tf.float32),
+      ]
+      cn_assigner = targetassigner.CenterNetDensePoseTargetAssigner(stride=4)
+      batch_indices, batch_part_ids, batch_surface_coords, batch_weights = (
+          cn_assigner.assign_part_and_coordinate_targets(
+              height=120,
+              width=80,
+              gt_dp_num_points_list=gt_dp_num_points_list,
+              gt_dp_part_ids_list=gt_dp_part_ids_list,
+              gt_dp_surface_coords_list=gt_dp_surface_coords_list,
+              gt_weights_list=gt_weights_list))
+
+      return batch_indices, batch_part_ids, batch_surface_coords, batch_weights
+    batch_indices, batch_part_ids, batch_surface_coords, batch_weights = (
+        self.execute(graph_fn, []))
+
+    expected_batch_indices = np.array([
+        # Example 0. e.g.
+        # The first set of indices is calculated as follows:
+        # floor(0.11*120/4) = 3, floor(0.2*80/4) = 4.
+        [0, 3, 4, 1], [0, 18, 8, 6], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0],
+        [0, 0, 0, 0], [0, 6, 2, 0], [0, 0, 8, 2], [0, 9, 4, 3],
+        # Example 1.
+        [1, 15, 10, 7], [1, 0, 0, 0], [1, 0, 0, 0], [1, 6, 4, 0], [1, 0, 0, 0],
+        [1, 0, 0, 0]
+    ], dtype=np.int32)
+    expected_batch_part_ids = tf.one_hot(
+        [1, 6, 0, 0, 0, 0, 0, 2, 3, 7, 0, 0, 0, 0, 0], depth=24).numpy()
+    expected_batch_surface_coords = np.array([
+        # Box 0.
+        [0.3, 0.4], [0.1, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0],
+        [0.6, 0.8], [0.5, 1.0], [0.4, 0.1],
+        # Box 1.
+        [0.3, 1.0], [0.0, 0.0], [0.0, 0.0], [0.5, 0.8], [0.0, 0.0], [0.0, 0.0],
+    ], np.float32)
+    expected_batch_weights = np.array([
+        # Box 0.
+        1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5,
+        # Box 1.
+        0.0, 0.0, 0.0, 1.0, 0.0, 0.0
+    ], dtype=np.float32)
+    self.assertAllEqual(expected_batch_indices, batch_indices)
+    self.assertAllEqual(expected_batch_part_ids, batch_part_ids)
+    self.assertAllClose(expected_batch_surface_coords, batch_surface_coords)
+    self.assertAllClose(expected_batch_weights, batch_weights)
+
+
 if __name__ == '__main__':
   tf.enable_v2_behavior()
   tf.test.main()

@@ -145,7 +145,7 @@ message Ssd {
   optional MaskHead mask_head_config = 25;
 }
 
-// Next id: 19.
+// Next id: 20.
 message SsdFeatureExtractor {
   reserved 6;
 
@@ -185,8 +185,13 @@ message SsdFeatureExtractor {
   // feature maps added by SSD.
   optional bool use_depthwise = 8 [default = false];
 
-  // Feature Pyramid Networks config.
-  optional FeaturePyramidNetworks fpn = 10;
+  oneof feature_pyramid_oneof {
+    // Feature Pyramid Networks config.
+    FeaturePyramidNetworks fpn = 10;
+
+    // Bidirectional Feature Pyramid Networks config.
+    BidirectionalFeaturePyramidNetworks bifpn = 19;
+  }
 
   // If true, replace preprocess function of feature extractor with a
   // placeholder. This should only be used if all the image preprocessing steps
@@ -223,5 +228,25 @@ message FeaturePyramidNetworks {
   // channel depth for additional coarse feature layers.
   optional int32 additional_layer_depth = 3 [default = 256];
 
+}
+
+// Configuration for Bidirectional Feature Pyramid Networks.
+message BidirectionalFeaturePyramidNetworks {
+  // minimum level in the feature pyramid.
+  optional int32 min_level = 1 [default = 3];
+
+  // maximum level in the feature pyramid.
+  optional int32 max_level = 2 [default = 7];
+
+  // The number of repeated top-down bottom-up iterations for BiFPN-based
+  // feature extractors (bidirectional feature pyramid networks).
+  optional int32 num_iterations = 3;
+
+  // The number of filters (channels) to use in feature pyramid layers for
+  // BiFPN-based feature extractors (bidirectional feature pyramid networks).
+  optional int32 num_filters = 4;
+
+  // Method used to combine inputs to BiFPN nodes.
+  optional string combine_method = 5 [default = 'fast_attention'];
 }
 

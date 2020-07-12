@@ -54,6 +54,10 @@ flags.DEFINE_integer('eval_timeout', 3600, 'Number of seconds to wait for an'
                      'evaluation checkpoint before exiting.')
 
 flags.DEFINE_bool('use_tpu', False, 'Whether the job is executing on a TPU.')
+flags.DEFINE_string(
+    'tpu_name',
+    default=None,
+    help='Name of the Cloud TPU for Cluster Resolvers.')
 flags.DEFINE_integer(
     'num_workers', 1, 'When num_workers > 1, training uses '
     'MultiWorkerMirroredStrategy. When num_workers = 1 it uses '
@@ -79,7 +83,10 @@ def main(unused_argv):
         wait_interval=300, timeout=FLAGS.eval_timeout)
   else:
     if FLAGS.use_tpu:
-      resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
+      # TPU is automatically inferred if tpu_name is None and
+      # we are running under cloud ai-platform.
+      resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+          FLAGS.tpu_name)
       tf.config.experimental_connect_to_cluster(resolver)
       tf.tpu.experimental.initialize_tpu_system(resolver)
       strategy = tf.distribute.experimental.TPUStrategy(resolver)

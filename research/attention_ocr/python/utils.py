@@ -78,3 +78,20 @@ def variables_to_restore(scope=None, strip_scope=False):
     return variable_map
   else:
     return {v.op.name: v for v in slim.get_variables_to_restore()}
+
+
+def ConvertAllInputsToTensors(func):
+  """A decorator to convert all function's inputs into tensors.
+
+  Args:
+    func: a function to decorate.
+
+  Returns:
+    A decorated function.
+  """
+
+  def FuncWrapper(*args):
+    tensors = [tf.convert_to_tensor(a) for a in args]
+    return func(*tensors)
+
+  return FuncWrapper

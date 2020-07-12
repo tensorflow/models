@@ -56,7 +56,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
         the resnet_v1.resnet_v1_{50,101,152} models.
       resnet_v1_base_model_name: model name under which to construct resnet v1.
       first_stage_features_stride: See base class.
-      conv_hyperparameters: a `hyperparams_builder.KerasLayerHyperparams` object
+      conv_hyperparams: a `hyperparams_builder.KerasLayerHyperparams` object
         containing convolution hyperparameters for the layers added on top of
         the base feature extractor.
       batch_norm_trainable: See base class.
@@ -143,19 +143,21 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
       with tf.name_scope('ResnetV1FPN'):
         full_resnet_v1_model = self._resnet_v1_base_model(
             batchnorm_training=self._train_batch_norm,
-            conv_hyperparams=(self._conv_hyperparams
-                              if self._override_base_feature_extractor_hyperparams
+            conv_hyperparams=(self._conv_hyperparams if
+                              self._override_base_feature_extractor_hyperparams
                               else None),
             classes=None,
             weights=None,
             include_top=False)
-        output_layers = _RESNET_MODEL_OUTPUT_LAYERS[self._resnet_v1_base_model_name]
+        output_layers = _RESNET_MODEL_OUTPUT_LAYERS[
+            self._resnet_v1_base_model_name]
         outputs = [full_resnet_v1_model.get_layer(output_layer_name).output
                    for output_layer_name in output_layers]
         self.classification_backbone = tf.keras.Model(
             inputs=full_resnet_v1_model.inputs,
             outputs=outputs)
-        backbone_outputs = self.classification_backbone(full_resnet_v1_model.inputs)
+        backbone_outputs = self.classification_backbone(
+            full_resnet_v1_model.inputs)
 
         # construct FPN feature generator
         self._base_fpn_max_level = min(self._fpn_max_level, 5)
@@ -199,7 +201,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
               self._conv_hyperparams.build_activation_layer(
                   name=layer_name))
           self._coarse_feature_layers.append(layers)
-        
+
         feature_maps = []
         for level in range(self._fpn_min_level, self._base_fpn_max_level + 1):
           feature_maps.append(fpn_features['top_down_block{}'.format(level-1)])
@@ -236,7 +238,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
     """
     with tf.name_scope(name):
       with tf.name_scope('ResnetV1FPN'):
-        # TODO: Add a batchnorm layer between two fc layers.
+        # TODO(yiming): Add a batchnorm layer between two fc layers.
         feature_extractor_model = tf.keras.models.Sequential([
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(units=1024, activation='relu'),
@@ -283,12 +285,15 @@ class FasterRCNNResnet50FpnKerasFeatureExtractor(
         fpn_min_level=fpn_min_level,
         fpn_max_level=fpn_max_level,
         additional_layer_depth=additional_layer_depth,
-        override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams)
+        override_base_feature_extractor_hyperparams=
+        override_base_feature_extractor_hyperparams
+    )
 
 
 class FasterRCNNResnet101FpnKerasFeatureExtractor(
     FasterRCNNResnetV1FpnKerasFeatureExtractor):
   """Faster RCNN with Resnet101 FPN feature extractor."""
+
   def __init__(self,
                is_training,
                first_stage_features_stride=16,
@@ -323,7 +328,8 @@ class FasterRCNNResnet101FpnKerasFeatureExtractor(
         fpn_min_level=fpn_min_level,
         fpn_max_level=fpn_max_level,
         additional_layer_depth=additional_layer_depth,
-        override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams)
+        override_base_feature_extractor_hyperparams=
+        override_base_feature_extractor_hyperparams)
 
 
 class FasterRCNNResnet152FpnKerasFeatureExtractor(
@@ -364,4 +370,5 @@ class FasterRCNNResnet152FpnKerasFeatureExtractor(
         fpn_min_level=fpn_min_level,
         fpn_max_level=fpn_max_level,
         additional_layer_depth=additional_layer_depth,
-        override_base_feature_extractor_hyperparams=override_base_feature_extractor_hyperparams)
+        override_base_feature_extractor_hyperparams=
+        override_base_feature_extractor_hyperparams)

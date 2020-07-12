@@ -22,13 +22,17 @@ import os
 import tempfile
 import unittest
 
-import apache_beam as beam
 import numpy as np
 
 from PIL import Image
 import tensorflow.compat.v1 as tf
 from object_detection.dataset_tools.context_rcnn import create_cococameratraps_tfexample_main
 from object_detection.utils import tf_version
+
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 @unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')

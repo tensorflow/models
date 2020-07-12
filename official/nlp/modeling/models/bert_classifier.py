@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 
 
@@ -43,23 +44,25 @@ class BertClassifier(tf.keras.Model):
     num_classes: Number of classes to predict from the classification network.
     initializer: The initializer (if any) to use in the classification networks.
       Defaults to a Glorot uniform initializer.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'.
+    dropout_rate: The dropout probability of the cls head.
+    use_encoder_pooler: Whether to use the pooler layer pre-defined inside
+      the encoder.
   """
 
   def __init__(self,
                network,
                num_classes,
                initializer='glorot_uniform',
-               output='logits',
                dropout_rate=0.1,
+               use_encoder_pooler=True,
                **kwargs):
     self._self_setattr_tracking = False
+    self._network = network
     self._config = {
         'network': network,
         'num_classes': num_classes,
         'initializer': initializer,
-        'output': output,
+        'use_encoder_pooler': use_encoder_pooler,
     }
 
     # We want to use the inputs of the passed network as the inputs to this
@@ -67,21 +70,35 @@ class BertClassifier(tf.keras.Model):
     # when we construct the Model object at the end of init.
     inputs = network.inputs
 
-    # Because we have a copy of inputs to create this Model object, we can
-    # invoke the Network object with its own input tensors to start the Model.
-    _, cls_output = network(inputs)
-    cls_output = tf.keras.layers.Dropout(rate=dropout_rate)(cls_output)
+    if use_encoder_pooler:
+      # Because we have a copy of inputs to create this Model object, we can
+      # invoke the Network object with its own input tensors to start the Model.
+      _, cls_output = network(inputs)
+      cls_output = tf.keras.layers.Dropout(rate=dropout_rate)(cls_output)
 
-    self.classifier = networks.Classification(
-        input_width=cls_output.shape[-1],
-        num_classes=num_classes,
-        initializer=initializer,
-        output=output,
-        name='classification')
-    predictions = self.classifier(cls_output)
+      self.classifier = networks.Classification(
+          input_width=cls_output.shape[-1],
+          num_classes=num_classes,
+          initializer=initializer,
+          output='logits',
+          name='sentence_prediction')
+      predictions = self.classifier(cls_output)
+    else:
+      sequence_output, _ = network(inputs)
+      self.classifier = layers.ClassificationHead(
+          inner_dim=sequence_output.shape[-1],
+          num_classes=num_classes,
+          initializer=initializer,
+          dropout_rate=dropout_rate,
+          name='sentence_prediction')
+      predictions = self.classifier(sequence_output)
 
     super(BertClassifier, self).__init__(
         inputs=inputs, outputs=predictions, **kwargs)
+
+  @property
+  def checkpoint_items(self):
+    return dict(encoder=self._network)
 
   def get_config(self):
     return self._config

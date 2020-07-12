@@ -93,6 +93,12 @@ def _compute_losses_and_predictions_dicts(
           instance masks for objects.
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           float32 tensor containing keypoints for each box.
+        labels[fields.InputDataFields.groundtruth_dp_num_points] is an int32
+          tensor with the number of sampled DensePose points per object.
+        labels[fields.InputDataFields.groundtruth_dp_part_ids] is an int32
+          tensor with the DensePose part ids (0-indexed) per object.
+        labels[fields.InputDataFields.groundtruth_dp_surface_coords] is a
+          float32 tensor with the DensePose surface coordinates.
         labels[fields.InputDataFields.groundtruth_group_of] is a tf.bool tensor
           containing group_of annotations.
         labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
@@ -196,6 +202,17 @@ def eager_train_step(detection_model,
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           [batch_size, num_boxes, num_keypoints, 2] float32 tensor containing
           keypoints for each box.
+        labels[fields.InputDataFields.groundtruth_dp_num_points] is a
+          [batch_size, num_boxes] int32 tensor with the number of DensePose
+          sampled points per instance.
+        labels[fields.InputDataFields.groundtruth_dp_part_ids] is a
+          [batch_size, num_boxes, max_sampled_points] int32 tensor with the
+          part ids (0-indexed) for each instance.
+        labels[fields.InputDataFields.groundtruth_dp_surface_coords] is a
+          [batch_size, num_boxes, max_sampled_points, 4] float32 tensor with the
+          surface coordinates for each point. Each surface coordinate is of the
+          form (y, x, v, u) where (y, x) are normalized image locations and
+          (v, u) are part-relative normalized surface coordinates.
         labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
           k-hot tensor of classes.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
@@ -337,11 +354,18 @@ def load_fine_tune_checkpoint(
         labels)
 
   strategy = tf.compat.v2.distribute.get_strategy()
-  strategy.experimental_run_v2(
-      _dummy_computation_fn, args=(
-          features,
-          labels,
-      ))
+  if hasattr(tf.distribute.Strategy, 'run'):
+    strategy.run(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
+  else:
+    strategy.experimental_run_v2(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
 
   restore_from_objects_dict = model.restore_from_objects(
       fine_tune_checkpoint_type=checkpoint_type)
@@ -563,8 +587,12 @@ def train_loop(
 
         def _sample_and_train(strategy, train_step_fn, data_iterator):
           features, labels = data_iterator.next()
-          per_replica_losses = strategy.experimental_run_v2(
-              train_step_fn, args=(features, labels))
+          if hasattr(tf.distribute.Strategy, 'run'):
+            per_replica_losses = strategy.run(
+                train_step_fn, args=(features, labels))
+          else:
+            per_replica_losses = strategy.experimental_run_v2(
+                train_step_fn, args=(features, labels))
           # TODO(anjalisridhar): explore if it is safe to remove the
           ## num_replicas scaling of the loss and switch this to a ReduceOp.Mean
           return strategy.reduce(tf.distribute.ReduceOp.SUM,
@@ -768,7 +796,16 @@ def eager_eval_loop(
           name='eval_side_by_side_' + str(i),
           step=global_step,
           data=sbys_images,
-          max_outputs=1)
+          max_outputs=eval_config.num_visualizations)
+      if eval_util.has_densepose(eval_dict):
+        dp_image_list = vutils.draw_densepose_visualizations(
+            eval_dict)
+        dp_images = tf.concat(dp_image_list, axis=0)
+        tf.compat.v2.summary.image(
+            name='densepose_detections_' + str(i),
+            step=global_step,
+            data=dp_images,
+            max_outputs=eval_config.num_visualizations)
 
     if evaluators is None:
       if class_agnostic:

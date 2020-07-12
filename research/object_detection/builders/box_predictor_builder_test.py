@@ -17,9 +17,8 @@
 """Tests for box_predictor_builder."""
 
 import unittest
-import mock
+from unittest import mock  # pylint: disable=g-importing-member
 import tensorflow.compat.v1 as tf
-
 from google.protobuf import text_format
 from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
