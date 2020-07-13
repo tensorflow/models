@@ -389,6 +389,15 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.dtype = 'bf16'
     self._run_and_report_benchmark()
 
+  @owner_utils.Owner('tf-graph-compiler')
+  def benchmark_2x2_tpu_bf16_mlir(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 1024
+    FLAGS.dtype = 'bf16'
+    tf.config.experimental.enable_mlir_bridge()
+    self._run_and_report_benchmark()
+
   def benchmark_4x4_tpu_bf16(self):
     self._setup()
     self._set_df_common()
