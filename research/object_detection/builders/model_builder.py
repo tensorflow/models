@@ -72,7 +72,6 @@ if tf_version.is_tf1():
   from object_detection.models import faster_rcnn_resnet_v1_feature_extractor as frcnn_resnet_v1
   from object_detection.models import ssd_resnet_v1_fpn_feature_extractor as ssd_resnet_v1_fpn
   from object_detection.models import ssd_resnet_v1_ppn_feature_extractor as ssd_resnet_v1_ppn
-  from object_detection.models import faster_rcnn_resnet_v1_fpn_keras_feature_extractor as frcnn_resnet_fpn_keras
   from object_detection.models.embedded_ssd_mobilenet_v1_feature_extractor import EmbeddedSSDMobileNetV1FeatureExtractor
   from object_detection.models.ssd_inception_v2_feature_extractor import SSDInceptionV2FeatureExtractor
   from object_detection.models.ssd_mobilenet_v2_fpn_feature_extractor import SSDMobileNetV2FpnFeatureExtractor
@@ -230,19 +229,9 @@ if tf_version.is_tf1():
       frcnn_resnet_v1.FasterRCNNResnet152FeatureExtractor,
   }
 
-  FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
-      'faster_rcnn_resnet50_fpn_keras':
-          frcnn_resnet_fpn_keras.FasterRCNNResnet50FpnKerasFeatureExtractor,
-      'faster_rcnn_resnet101_fpn_keras':
-          frcnn_resnet_fpn_keras.FasterRCNNResnet101FpnKerasFeatureExtractor,
-      'faster_rcnn_resnet152_fpn_keras':
-          frcnn_resnet_fpn_keras.FasterRCNNResnet152FpnKerasFeatureExtractor,
-  }
-
   FEATURE_EXTRACTOR_MAPS = [
       SSD_FEATURE_EXTRACTOR_CLASS_MAP,
-      FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP,
-      FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
+      FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP
   ]
 
 
@@ -586,7 +575,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
   _check_feature_extractor_exists(frcnn_config.feature_extractor.type)
   is_keras = tf_version.is_tf2()
 
-  if is_keras or True:
+  if is_keras:
     feature_extractor = _build_faster_rcnn_keras_feature_extractor(
         frcnn_config.feature_extractor, is_training,
         inplace_batchnorm_update=frcnn_config.inplace_batchnorm_update)
