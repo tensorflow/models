@@ -8,6 +8,7 @@ import "object_detection/protos/hyperparams.proto";
 import "object_detection/protos/image_resizer.proto";
 import "object_detection/protos/losses.proto";
 import "object_detection/protos/post_processing.proto";
+import "object_detection/protos/fpn.proto";
 
 // Configuration for Faster R-CNN models.
 // See meta_architectures/faster_rcnn_meta_arch.py and models/model_builder.py
