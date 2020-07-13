@@ -341,8 +341,8 @@ class Controller(object):
 
     # Calculates steps to run for the next train loop.
     current_step = self.global_step.numpy()
-    logging.info("Entering training loop at step %s of %s", current_step,
-                 num_steps)
+    logging.info("Entering training loop at step %s to run %s steps",
+                 current_step, num_steps)
     current_step += num_steps
     num_steps = tf.convert_to_tensor(num_steps, dtype=tf.int32)
 
