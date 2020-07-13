@@ -451,11 +451,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
     # in the future.
     super(FasterRCNNMetaArch, self).__init__(num_classes=num_classes)
 
-    if not isinstance(first_stage_anchor_generator,
-                      grid_anchor_generator.GridAnchorGenerator):
-      raise ValueError('first_stage_anchor_generator must be of type '
-                       'grid_anchor_generator.GridAnchorGenerator.')
-
     self._is_training = is_training
     self._image_resizer_fn = image_resizer_fn
     self._resize_masks = resize_masks
@@ -492,9 +487,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
                   hyperparams_builder.KerasLayerHyperparams):
       num_anchors_per_location = (
           self._first_stage_anchor_generator.num_anchors_per_location())
-      if len(num_anchors_per_location) != 1:
-        raise ValueError('anchor_generator is expected to generate anchors '
-                         'corresponding to a single feature map.')
+
       conv_hyperparams = (
           first_stage_box_predictor_arg_scope_fn)
       self._first_stage_box_predictor_first_conv = (
@@ -1321,18 +1314,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
     if not isinstance(rpn_features_to_crop, list):
       rpn_features_to_crop = [rpn_features_to_crop]
 
+    feature_map_shapes = []
     rpn_box_predictor_features = []
-    anchors = []
     for single_rpn_features_to_crop in rpn_features_to_crop:
-      feature_map_shape = tf.shape(single_rpn_features_to_crop)
-      level_anchors = box_list_ops.concatenate(
-          self._first_stage_anchor_generator.generate([(feature_map_shape[1],
-                                                        feature_map_shape[2])]))
-      anchors.append(level_anchors)
+      single_shape = tf.shape(single_rpn_features_to_crop)
+      feature_map_shapes.append((single_shape[1], single_shape[2]))
       single_rpn_box_predictor_features = (
-        self._first_stage_box_predictor_first_conv(single_rpn_features_to_crop))
+      self._first_stage_box_predictor_first_conv(single_rpn_features_to_crop))
       rpn_box_predictor_features.append(single_rpn_box_predictor_features)
-    anchors = box_list_ops.concatenate(anchors)
+    anchors = box_list_ops.concatenate(
+        self._first_stage_anchor_generator.generate(feature_map_shapes))
     return (rpn_box_predictor_features, rpn_features_to_crop,
             anchors, image_shape)
 
@@ -1379,9 +1370,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
     """
     num_anchors_per_location = (
         self._first_stage_anchor_generator.num_anchors_per_location())
-    if len(num_anchors_per_location) != 1:
-      raise RuntimeError('anchor_generator is expected to generate anchors '
-                         'corresponding to a single feature map.')
+    # if len(num_anchors_per_location) != 1:
+    #   raise RuntimeError('anchor_generator is expected to generate anchors '
+    #                      'corresponding to a single feature map.')
     if self._first_stage_box_predictor.is_keras_model:
       box_predictions = self._first_stage_box_predictor(
           rpn_box_predictor_features)
