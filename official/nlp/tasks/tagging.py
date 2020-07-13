@@ -262,7 +262,7 @@ def predict(task: TaggingTask, params: cfg.DataConfig,
           label_mask=label_mask,
           sentence_ids=sentence_ids)
 
-    outputs = tf.distribute.get_strategy().experimental_run_v2(
+    outputs = tf.distribute.get_strategy().run(
         _replicated_step, args=(next(iterator),))
     return tf.nest.map_structure(
         tf.distribute.get_strategy().experimental_local_results, outputs)
