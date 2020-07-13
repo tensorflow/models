@@ -265,7 +265,8 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
         feature_extractor_model = tf.keras.models.Sequential([
             tf.keras.layers.Flatten(),
             tf.keras.layers.Dense(units=1024, activation='relu'),
-            tf.keras.layers.Dense(units=1024, activation='relu')
+            tf.keras.layers.Dense(units=1024, activation='relu'),
+            tf.keras.layers.Reshape((1, 1, 1024))
         ])
         return feature_extractor_model
 
