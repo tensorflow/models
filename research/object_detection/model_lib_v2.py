@@ -413,7 +413,7 @@ def train_loop(
     train_steps=None,
     use_tpu=False,
     save_final_config=False,
-    checkpoint_every_n=1000,
+    checkpoint_every_n=5000,
     checkpoint_max_to_keep=7,
     **kwargs):
   """Trains a model using eager + functions.
@@ -854,6 +854,7 @@ def eval_continuously(
     checkpoint_dir=None,
     wait_interval=180,
     timeout=3600,
+    eval_index=None,
     **kwargs):
   """Run continuous evaluation of a detection model eagerly.
 
@@ -883,6 +884,8 @@ def eval_continuously(
       new checkpoint.
     timeout: The maximum number of seconds to wait for a checkpoint. Execution
       will terminate if no new checkpoints are found after these many seconds.
+    eval_index: int, optional If give, only evaluate the dataset at the given
+      index.
 
     **kwargs: Additional keyword arguments for configuration override.
   """
@@ -935,6 +938,11 @@ def eval_continuously(
         model_config=model_config,
         model=detection_model)
     eval_inputs.append((eval_input_config.name, next_eval_input))
+
+  if eval_index is not None:
+    eval_inputs = [eval_inputs[eval_index]]
+    tf.logging.info('eval_index selected - {}'.format(
+        eval_inputs))
 
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)

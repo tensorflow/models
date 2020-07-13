@@ -80,5 +80,3 @@ We provide a large collection of models that are trained on COCO 2017 in the
       Supported object detection evaluation protocols</a><br>
 *   <a href='tpu_compatibility.md'>
       TPU compatible detection pipelines</a><br>
-*   <a href='tf2_training_and_evaluation.md'>
-      Training and evaluation guide (CPU, GPU, or TPU)</a><br>

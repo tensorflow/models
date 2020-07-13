@@ -54,21 +54,16 @@ Note: The models we provide in [TF2 Zoo](g3doc/tf2_detection_zoo.md) and
 [TF1 Zoo](g3doc/tf1_detection_zoo.md) are specific to the TensorFlow major
 version and are not interoperable.
 
-Please select one of the links below for TensorFlow version-specific
+Please select one of the two links below for TensorFlow version specific
 documentation of the Object Detection API:
 
 <!-- mdlint off(WHITESPACE_LINE_LENGTH) -->
-### Tensorflow 2.x
-  *   <a href='g3doc/tf2.md'>
-        Object Detection API TensorFlow 2</a><br>
-  *   <a href='g3doc/tf2_detection_zoo.md'>
-        TensorFlow 2 Model Zoo</a><br>
 
-### Tensorflow 1.x
-  *   <a href='g3doc/tf1.md'>
-        Object Detection API TensorFlow 1</a><br>
-  *   <a href='g3doc/tf1_detection_zoo.md'>
-        TensorFlow 1 Model Zoo</a><br>
+
+| [![Object Detection API TensorFlow 2](https://img.shields.io/badge/Object%20Detection%20API-TensorFlow%202-orange)](g3doc/tf2.md) | [![TensorFlow 2 Model Zoo](https://img.shields.io/badge/Model%20Zoo-TensorFlow%202-Orange)](g3doc/tf2_detection_zoo.md) |
+|---|---|
+| [![Object Detection API TensorFlow 1](https://img.shields.io/badge/Object%20Detection%20API-TensorFlow%201-orange)](g3doc/tf1.md) | [![TensorFlow 1 Model Zoo](https://img.shields.io/badge/Model%20Zoo-TensorFlow%201-Orange)](g3doc/tf1_detection_zoo.md) |
+
 <!-- mdlint on -->
 
 ## Whats New
