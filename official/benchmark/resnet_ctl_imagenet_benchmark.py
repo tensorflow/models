@@ -38,13 +38,18 @@ FLAGS = flags.FLAGS
 class CtlBenchmark(PerfZeroBenchmark):
   """Base benchmark class with methods to simplify testing."""
 
-  def __init__(self, output_dir=None, default_flags=None, flag_methods=None):
+  def __init__(self,
+               output_dir=None,
+               default_flags=None,
+               flag_methods=None,
+               **kwargs):
     self.default_flags = default_flags or {}
     self.flag_methods = flag_methods or {}
     super(CtlBenchmark, self).__init__(
         output_dir=output_dir,
         default_flags=self.default_flags,
-        flag_methods=self.flag_methods)
+        flag_methods=self.flag_methods,
+        **kwargs)
 
   def _report_benchmark(self,
                         stats,
@@ -190,13 +195,14 @@ class Resnet50CtlAccuracy(CtlBenchmark):
 class Resnet50CtlBenchmarkBase(CtlBenchmark):
   """Resnet50 benchmarks."""
 
-  def __init__(self, output_dir=None, default_flags=None):
+  def __init__(self, output_dir=None, default_flags=None, **kwargs):
     flag_methods = [common.define_keras_flags]
 
     super(Resnet50CtlBenchmarkBase, self).__init__(
         output_dir=output_dir,
         flag_methods=flag_methods,
-        default_flags=default_flags)
+        default_flags=default_flags,
+        **kwargs)
 
   @benchmark_wrappers.enable_runtime_flags
   def _run_and_report_benchmark(self):
@@ -381,12 +387,14 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.single_l2_loss_op = True
     FLAGS.use_tf_function = True
     FLAGS.enable_checkpoint_and_export = False
+    FLAGS.data_dir = gs://mlcompass-data/imagenet/imagenet-2012-tfrecord
 
   def benchmark_2x2_tpu_bf16(self):
     self._setup()
     self._set_df_common()
     FLAGS.batch_size = 1024
     FLAGS.dtype = 'bf16'
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_bf16')
     self._run_and_report_benchmark()
 
   @owner_utils.Owner('tf-graph-compiler')
@@ -396,6 +404,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.batch_size = 1024
     FLAGS.dtype = 'bf16'
     tf.config.experimental.enable_mlir_bridge()
+    FLAGS.model_dir = self._get_model_dir('benchmark_2x2_tpu_bf16_mlir')
     self._run_and_report_benchmark()
 
   def benchmark_4x4_tpu_bf16(self):
@@ -403,6 +412,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._set_df_common()
     FLAGS.batch_size = 4096
     FLAGS.dtype = 'bf16'
+    FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_bf16')
     self._run_and_report_benchmark()
 
   @owner_utils.Owner('tf-graph-compiler')
@@ -412,6 +422,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._set_df_common()
     FLAGS.batch_size = 4096
     FLAGS.dtype = 'bf16'
+    FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_bf16_mlir')
     tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
@@ -439,7 +450,7 @@ class Resnet50CtlBenchmarkSynth(Resnet50CtlBenchmarkBase):
     def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkSynth, self).__init__(
-        output_dir=output_dir, default_flags=def_flags)
+        output_dir=output_dir, default_flags=def_flags, **kwargs)
 
 
 class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
@@ -454,7 +465,7 @@ class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
     def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkReal, self).__init__(
-        output_dir=output_dir, default_flags=def_flags)
+        output_dir=output_dir, default_flags=def_flags, **kwargs)
 
 
 if __name__ == '__main__':
