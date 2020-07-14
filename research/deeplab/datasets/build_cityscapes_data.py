@@ -142,13 +142,17 @@ def _convert_dataset(dataset_split):
   label_files = _get_files('label', dataset_split)
 
   num_images = len(image_files)
+  num_labels = len(label_files)
   num_per_shard = int(math.ceil(num_images / _NUM_SHARDS))
+
+  if num_images != num_labels:
+    raise RuntimeError("The number of images and labels doesn't match: {} {}".format(num_images, num_labels))
 
   image_reader = build_data.ImageReader('png', channels=3)
   label_reader = build_data.ImageReader('png', channels=1)
 
   for shard_id in range(_NUM_SHARDS):
-    shard_filename = '%s-%05d-of-%05d.tfrecord' % (
+    shard_filename = '%s_fine-%05d-of-%05d.tfrecord' % (
         dataset_split, shard_id, _NUM_SHARDS)
     output_filename = os.path.join(FLAGS.output_dir, shard_filename)
     with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
