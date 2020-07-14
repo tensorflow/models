@@ -151,8 +151,10 @@ class Controller(object):
           checkpoint_interval, steps_per_loop, interval_name="checkpoint")
 
       model_restored = self.restore_checkpoint()
-      if not model_restored and checkpoint_interval:
-        # If the model is not restored from a checkpoint, save an initial
+      if not model_restored and (checkpoint_interval and
+                                 self.trainer is not None):
+        # If the model is not restored from a checkpoint, and
+        # `checkpoint_interval` is enabled for training, save an initial
         # checkpoint.
         self.save_checkpoint()
 
