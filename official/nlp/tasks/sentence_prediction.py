@@ -14,9 +14,12 @@
 # limitations under the License.
 # ==============================================================================
 """Sentence prediction (classification) task."""
+from typing import List, Union
+
 from absl import logging
 import dataclasses
 import numpy as np
+import orbit
 from scipy import stats
 from sklearn import metrics as sklearn_metrics
 import tensorflow as tf
@@ -223,3 +226,52 @@ class SentencePredictionTask(base_task.Task):
     status.expect_partial().assert_existing_objects_matched()
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
+
+
+def predict(task: SentencePredictionTask, params: cfg.DataConfig,
+            model: tf.keras.Model) -> List[Union[int, float]]:
+  """Predicts on the input data.
+
+  Args:
+    task: A `SentencePredictionTask` object.
+    params: A `cfg.DataConfig` object.
+    model: A keras.Model.
+
+  Returns:
+    A list of predictions with length of `num_examples`. For regression task,
+      each element in the list is the predicted score; for classification task,
+      each element is the predicted class id.
+  """
+  is_regression = task.task_config.model.num_classes == 1
+
+  @tf.function
+  def predict_step(iterator):
+    """Predicts on distributed devices."""
+
+    def _replicated_step(inputs):
+      """Replicated prediction calculation."""
+      x, _ = inputs
+      outputs = task.inference_step(x, model)
+      if is_regression:
+        return outputs
+      else:
+        return tf.argmax(outputs, axis=-1)
+
+    outputs = tf.distribute.get_strategy().run(
+        _replicated_step, args=(next(iterator),))
+    return tf.nest.map_structure(
+        tf.distribute.get_strategy().experimental_local_results, outputs)
+
+  def reduce_fn(state, outputs):
+    """Concatenates model's outputs."""
+    for per_replica_batch_predictions in outputs:
+      state.extend(per_replica_batch_predictions)
+    return state
+
+  loop_fn = orbit.utils.create_loop_fn(predict_step)
+  dataset = orbit.utils.make_distributed_dataset(tf.distribute.get_strategy(),
+                                                 task.build_inputs, params)
+  # Set `num_steps` to -1 to exhaust the dataset.
+  predictions = loop_fn(
+      iter(dataset), num_steps=-1, state=[], reduce_fn=reduce_fn)
+  return predictions
