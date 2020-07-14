@@ -389,6 +389,15 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.dtype = 'bf16'
     self._run_and_report_benchmark()
 
+  @owner_utils.Owner('tf-graph-compiler')
+  def benchmark_2x2_tpu_bf16_mlir(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 1024
+    FLAGS.dtype = 'bf16'
+    tf.config.experimental.enable_mlir_bridge()
+    self._run_and_report_benchmark()
+
   def benchmark_4x4_tpu_bf16(self):
     self._setup()
     self._set_df_common()
@@ -426,7 +435,7 @@ class Resnet50CtlBenchmarkSynth(Resnet50CtlBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['use_synthetic_data'] = True
     def_flags['train_steps'] = 110
-    def_flags['steps_per_loop'] = 20
+    def_flags['steps_per_loop'] = 10
     def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkSynth, self).__init__(
@@ -441,7 +450,7 @@ class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
     def_flags['skip_eval'] = True
     def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 110
-    def_flags['steps_per_loop'] = 20
+    def_flags['steps_per_loop'] = 10
     def_flags['log_steps'] = 10
 
     super(Resnet50CtlBenchmarkReal, self).__init__(

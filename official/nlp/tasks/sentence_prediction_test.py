@@ -18,6 +18,7 @@ import functools
 import os
 
 from absl.testing import parameterized
+import numpy as np
 import tensorflow as tf
 
 from official.nlp.bert import configs
@@ -26,6 +27,35 @@ from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.data import sentence_prediction_dataloader
 from official.nlp.tasks import sentence_prediction
+
+
+def _create_fake_dataset(output_path, seq_length, num_classes, num_examples):
+  """Creates a fake dataset."""
+  writer = tf.io.TFRecordWriter(output_path)
+
+  def create_int_feature(values):
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
+
+  def create_float_feature(values):
+    return tf.train.Feature(float_list=tf.train.FloatList(value=list(values)))
+
+  for _ in range(num_examples):
+    features = {}
+    input_ids = np.random.randint(100, size=(seq_length))
+    features["input_ids"] = create_int_feature(input_ids)
+    features["input_mask"] = create_int_feature(np.ones_like(input_ids))
+    features["segment_ids"] = create_int_feature(np.ones_like(input_ids))
+    features["segment_ids"] = create_int_feature(np.ones_like(input_ids))
+
+    if num_classes == 1:
+      features["label_ids"] = create_float_feature([np.random.random()])
+    else:
+      features["label_ids"] = create_int_feature(
+          [np.random.random_integers(0, num_classes - 1, size=())])
+
+    tf_example = tf.train.Example(features=tf.train.Features(feature=features))
+    writer.write(tf_example.SerializeToString())
+  writer.close()
 
 
 class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
@@ -84,6 +114,42 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
         model=pretrain_model, **pretrain_model.checkpoint_items)
     ckpt.save(config.init_checkpoint)
     task.initialize(model)
+
+  @parameterized.named_parameters(
+      {
+          "testcase_name": "regression",
+          "num_classes": 1,
+      },
+      {
+          "testcase_name": "classification",
+          "num_classes": 2,
+      },
+  )
+  def test_metrics_and_losses(self, num_classes):
+    config = sentence_prediction.SentencePredictionConfig(
+        init_checkpoint=self.get_temp_dir(),
+        model=self.get_model_config(num_classes),
+        train_data=self._train_data_config)
+    task = sentence_prediction.SentencePredictionTask(config)
+    model = task.build_model()
+    metrics = task.build_metrics()
+    if num_classes == 1:
+      self.assertIsInstance(metrics[0], tf.keras.metrics.MeanSquaredError)
+    else:
+      self.assertIsInstance(
+          metrics[0], tf.keras.metrics.SparseCategoricalAccuracy)
+
+    dataset = task.build_inputs(config.train_data)
+    iterator = iter(dataset)
+    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    task.train_step(next(iterator), model, optimizer, metrics=metrics)
+
+    logs = task.validation_step(next(iterator), model, metrics=metrics)
+    loss = logs["loss"].numpy()
+    if num_classes == 1:
+      self.assertAlmostEqual(loss, 42.77483, places=3)
+    else:
+      self.assertAlmostEqual(loss, 3.57627e-6, places=3)
 
   @parameterized.parameters(("matthews_corrcoef", 2),
                             ("pearson_spearman_corr", 1))
@@ -152,6 +218,35 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
         model=self.get_model_config(2),
         train_data=self._train_data_config)
     self._run_task(config)
+
+  @parameterized.named_parameters(("classification", 5), ("regression", 1))
+  def test_prediction(self, num_classes):
+    task_config = sentence_prediction.SentencePredictionConfig(
+        model=self.get_model_config(num_classes=num_classes),
+        train_data=self._train_data_config)
+    task = sentence_prediction.SentencePredictionTask(task_config)
+    model = task.build_model()
+
+    test_data_path = os.path.join(self.get_temp_dir(), "test.tf_record")
+    seq_length = 16
+    num_examples = 100
+    _create_fake_dataset(
+        test_data_path,
+        seq_length=seq_length,
+        num_classes=num_classes,
+        num_examples=num_examples)
+
+    test_data_config = (
+        sentence_prediction_dataloader.SentencePredictionDataConfig(
+            input_path=test_data_path,
+            seq_length=seq_length,
+            is_training=False,
+            label_type="int" if num_classes > 1 else "float",
+            global_batch_size=16,
+            drop_remainder=False))
+
+    predictions = sentence_prediction.predict(task, test_data_config, model)
+    self.assertLen(predictions, num_examples)
 
 
 if __name__ == "__main__":
