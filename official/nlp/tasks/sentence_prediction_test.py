@@ -85,6 +85,42 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     ckpt.save(config.init_checkpoint)
     task.initialize(model)
 
+  @parameterized.named_parameters(
+      {
+          "testcase_name": "regression",
+          "num_classes": 1,
+      },
+      {
+          "testcase_name": "classification",
+          "num_classes": 2,
+      },
+  )
+  def test_metrics_and_losses(self, num_classes):
+    config = sentence_prediction.SentencePredictionConfig(
+        init_checkpoint=self.get_temp_dir(),
+        model=self.get_model_config(num_classes),
+        train_data=self._train_data_config)
+    task = sentence_prediction.SentencePredictionTask(config)
+    model = task.build_model()
+    metrics = task.build_metrics()
+    if num_classes == 1:
+      self.assertIsInstance(metrics[0], tf.keras.metrics.MeanSquaredError)
+    else:
+      self.assertIsInstance(
+          metrics[0], tf.keras.metrics.SparseCategoricalAccuracy)
+
+    dataset = task.build_inputs(config.train_data)
+    iterator = iter(dataset)
+    optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    task.train_step(next(iterator), model, optimizer, metrics=metrics)
+
+    logs = task.validation_step(next(iterator), model, metrics=metrics)
+    loss = logs["loss"].numpy()
+    if num_classes == 1:
+      self.assertAlmostEqual(loss, 42.77483, places=3)
+    else:
+      self.assertAlmostEqual(loss, 3.57627e-6, places=3)
+
   @parameterized.parameters(("matthews_corrcoef", 2),
                             ("pearson_spearman_corr", 1))
   def test_np_metrics(self, metric_type, num_classes):
