@@ -142,7 +142,11 @@ def _convert_dataset(dataset_split):
   label_files = _get_files('label', dataset_split)
 
   num_images = len(image_files)
+  num_labels = len(label_files)
   num_per_shard = int(math.ceil(num_images / _NUM_SHARDS))
+
+  if num_images != num_labels:
+    raise RuntimeError("The number of images and labels doesn't match: {} {}".format(num_images, num_labels))
 
   image_reader = build_data.ImageReader('png', channels=3)
   label_reader = build_data.ImageReader('png', channels=1)
