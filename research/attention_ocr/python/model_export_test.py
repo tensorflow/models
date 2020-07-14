@@ -29,7 +29,7 @@ _CHECKPOINT_URL = (
 
 
 def _clean_up():
-  tf.gfile.DeleteRecursively(tf.test.get_temp_dir())
+  tf.io.gfile.rmtree(tf.compat.v1.test.get_temp_dir())
 
 
 def _create_tf_example_string(image):
@@ -47,7 +47,7 @@ class AttentionOcrExportTest(tf.test.TestCase):
     for suffix in ['.meta', '.index', '.data-00000-of-00001']:
       filename = _CHECKPOINT + suffix
       self.assertTrue(
-          tf.gfile.Exists(filename),
+          tf.io.gfile.exists(filename),
           msg='Missing checkpoint file %s. '
           'Please download and extract it from %s' %
           (filename, _CHECKPOINT_URL))
@@ -57,7 +57,8 @@ class AttentionOcrExportTest(tf.test.TestCase):
         os.path.dirname(__file__), 'datasets/testdata/fsns')
     tf.test.TestCase.setUp(self)
     _clean_up()
-    self.export_dir = os.path.join(tf.test.get_temp_dir(), 'exported_model')
+    self.export_dir = os.path.join(
+        tf.compat.v1.test.get_temp_dir(), 'exported_model')
     self.minimal_output_signature = {
         'predictions': 'AttentionOcr_v1/predicted_chars:0',
         'scores': 'AttentionOcr_v1/predicted_scores:0',
@@ -93,10 +94,10 @@ class AttentionOcrExportTest(tf.test.TestCase):
                               size=self.dataset.image_shape).astype('uint8'),
     }
     signature_def = graph_def.signature_def[
-        tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY]
+        tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY]
     if serving:
       input_name = signature_def.inputs[
-          tf.saved_model.signature_constants.CLASSIFY_INPUTS].name
+          tf.saved_model.CLASSIFY_INPUTS].name
       # Model for serving takes input: inputs['inputs'] = 'tf_example:0'
       feed_dict = {
           input_name: [
@@ -126,11 +127,11 @@ class AttentionOcrExportTest(tf.test.TestCase):
       export_for_serving: True if the model was exported for Serving. This
         affects how input is fed into the model.
     """
-    tf.reset_default_graph()
-    sess = tf.Session()
-    graph_def = tf.saved_model.loader.load(
+    tf.compat.v1.reset_default_graph()
+    sess = tf.compat.v1.Session()
+    graph_def = tf.compat.v1.saved_model.loader.load(
         sess=sess,
-        tags=[tf.saved_model.tag_constants.SERVING],
+        tags=[tf.saved_model.SERVING],
         export_dir=self.export_dir)
     feed_dict = self.create_input_feed(graph_def, export_for_serving)
     results = sess.run(self.minimal_output_signature, feed_dict=feed_dict)
