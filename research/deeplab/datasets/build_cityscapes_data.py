@@ -119,12 +119,12 @@ def _get_files(data, dataset_split):
     A list of sorted file names or None when getting label for
       test set.
   """
-  if data == 'label' and dataset_split == 'test_fine':
-    return None
   if dataset_split == 'train_fine':
     split_dir = 'train'
   elif dataset_split == 'val_fine':
     split_dir = 'val'
+  elif dataset_split == 'test_fine':
+    split_dir = 'test'
   else:
     raise RuntimeError("Split {} is not supported".format(dataset_split))
   pattern = '*%s.%s' % (_POSTFIX_MAP[data], _DATA_FORMAT_MAP[data])
@@ -189,8 +189,8 @@ def _convert_dataset(dataset_split):
 
 
 def main(unused_argv):
-  # Only support converting 'train_fine' and 'val_fine' sets for now.
-  for dataset_split in ['train_fine', 'val_fine']:
+  # Only support converting 'train_fine', 'val_fine' and 'test_fine' sets for now.
+  for dataset_split in ['train_fine', 'val_fine', 'test_fine']:
     _convert_dataset(dataset_split)
 
 
