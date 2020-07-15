@@ -643,7 +643,7 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_localization_loss_weight)
 
   crop_and_resize_fn = (
-      ops.multilevel_native_crop_and_resize
+      ops.multilevel_matmul_crop_and_resize
       if frcnn_config.use_matmul_crop_and_resize
       else ops.multilevel_native_crop_and_resize)
   clip_anchors_to_image = (
