@@ -125,7 +125,7 @@ def run(flags_obj):
 
   per_epoch_steps, train_epochs, eval_steps = get_num_train_iterations(
       flags_obj)
-  if flags_obj.steps_per_loop is None:
+  if not flags_obj.steps_per_loop:
     steps_per_loop = per_epoch_steps
   elif flags_obj.steps_per_loop > per_epoch_steps:
     steps_per_loop = per_epoch_steps
