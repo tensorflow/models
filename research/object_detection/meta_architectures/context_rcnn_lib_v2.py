@@ -52,7 +52,7 @@ class ContextProjection(tf.keras.layers.Layer):
 class AttentionBlock(tf.keras.layers.Layer):
   """Custom layer to perform all attention."""
   def __init__(self, bottleneck_dimension, attention_temperature,
-               freeze_batchnorm, output_dimension=None, **kwargs):
+               freeze_batchnorm, output_dimension=None, is_training=False, **kwargs):
     self._key_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
     self._val_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
     self._query_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)

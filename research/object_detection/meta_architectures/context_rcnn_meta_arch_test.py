@@ -518,8 +518,6 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
       }
 
       side_inputs = model.get_side_inputs(features)
-      print('preprocessed', preprocessed_inputs.shape)
-      print('context', context_features.shape)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes,
                                       **side_inputs)
       return (prediction_dict['rpn_box_predictor_features'],
