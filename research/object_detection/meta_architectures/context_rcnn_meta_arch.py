@@ -26,7 +26,8 @@ from __future__ import print_function
 import functools
 
 from object_detection.core import standard_fields as fields
-from object_detection.meta_architectures import context_rcnn_lib, context_rcnn_lib_v2
+from object_detection.meta_architectures import context_rcnn_lib
+from object_detection.meta_architectures import context_rcnn_lib_v2
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.utils import tf_version
 
@@ -271,10 +272,11 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
           attention_temperature=attention_temperature,
           is_training=is_training)
     else:
-      self._attention_block = context_rcnn_lib_v2.AttentionBlock(
-          attention_bottleneck_dimension, attention_temperature,
-          freeze_batchnorm)
-      self._is_training = is_training
+      self._context_feature_extract_fn = context_rcnn_lib_v2.AttentionBlock(
+          bottleneck_dimension=attention_bottleneck_dimension,
+          attention_temperature=attention_temperature,
+          freeze_batchnorm=freeze_batchnorm,
+          is_training=is_training)
 
   @staticmethod
   def get_side_inputs(features):
@@ -335,15 +337,10 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         features_to_crop, proposal_boxes_normalized,
         [self._initial_crop_size, self._initial_crop_size])
 
-    if tf_version.is_tf1():
-      attention_features = self._context_feature_extract_fn(
-          box_features=box_features,
-          context_features=context_features,
-          valid_context_size=valid_context_size)
-    else:
-      attention_features = self._attention_block(
-          [box_features, context_features], self._is_training,
-          valid_context_size)
+    attention_features = self._context_feature_extract_fn(
+        box_features=box_features,
+        context_features=context_features,
+        valid_context_size=valid_context_size)
 
     # Adds box features with attention features.
     box_features += attention_features

@@ -53,36 +53,35 @@ class AttentionBlock(tf.keras.layers.Layer):
   """Custom layer to perform all attention."""
   def __init__(self, bottleneck_dimension, attention_temperature,
                freeze_batchnorm, output_dimension=None, **kwargs):
-    self.key_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
-    self.val_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
-    self.query_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
-    self.feature_proj = None
-    self.attention_temperature = attention_temperature
-    self.freeze_batchnorm = freeze_batchnorm
-    self.bottleneck_dimension = bottleneck_dimension
-    self.output_dimension = output_dimension
+    self._key_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
+    self._val_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
+    self._query_proj = ContextProjection(bottleneck_dimension, freeze_batchnorm)
+    self._feature_proj = None
+    self._attention_temperature = attention_temperature
+    self._freeze_batchnorm = freeze_batchnorm
+    self._bottleneck_dimension = bottleneck_dimension
+    self._output_dimension = output_dimension
+    self._is_training = is_training
     super(AttentionBlock, self).__init__(**kwargs)
 
   def set_output_dimension(self, output_dim):
-    self.output_dimension = output_dim
+    self._output_dimension = output_dim
 
   def build(self, input_shapes):
     pass
 
-  def call(self, input_features, is_training, valid_context_size):
+  def call(self, input_features, context_features, valid_context_size):
     """Handles a call by performing attention."""
-    input_features, context_features = input_features
     _, context_size, _ = context_features.shape
     valid_mask = compute_valid_mask(valid_context_size, context_size)
-
     channels = input_features.shape[-1]
 
     #Build the feature projection layer
-    if (not self.output_dimension):
-      self.output_dimension = channels
-    if (not self.feature_proj):
-      self.feature_proj = ContextProjection(self.output_dimension,
-                                            self.freeze_batchnorm)
+    if (not self._output_dimension):
+      self._output_dimension = channels
+    if (not self._feature_proj):
+      self._feature_proj = ContextProjection(self._output_dimension,
+                                            self._freeze_batchnorm)
 
     # Average pools over height and width dimension so that the shape of
     # box_features becomes [batch_size, max_num_proposals, channels].
@@ -90,25 +89,25 @@ class AttentionBlock(tf.keras.layers.Layer):
     
     with tf.variable_scope("AttentionBlock"):
       queries = project_features(
-          input_features, self.bottleneck_dimension, is_training,
-          self.query_proj, normalize=True)
+          input_features, self._bottleneck_dimension, self._is_training,
+          self._query_proj, normalize=True)
       keys = project_features(
-          context_features, self.bottleneck_dimension, is_training,
-          self.key_proj, normalize=True)
+          context_features, self._bottleneck_dimension, self._is_training,
+          self._key_proj, normalize=True)
       values = project_features(
-          context_features, self.bottleneck_dimension, is_training,
-          self.val_proj, normalize=True)
+          context_features, self._bottleneck_dimension, self._is_training,
+          self._val_proj, normalize=True)
 
     weights = tf.matmul(queries, keys, transpose_b=True)
 
     weights, values = filter_weight_value(weights, values, valid_mask)
 
-    weights = tf.nn.softmax(weights / self.attention_temperature)
+    weights = tf.nn.softmax(weights / self._attention_temperature)
 
     features = tf.matmul(weights, values)
     output_features = project_features(
-        features, self.output_dimension, is_training,
-        self.feature_proj, normalize=False)
+        features, self._output_dimension, self._is_training,
+        self._feature_proj, normalize=False)
 
     output_features = output_features[:, :, tf.newaxis, tf.newaxis, :]
 
