@@ -1,21 +1,22 @@
-# Copyright 2019 The MediaPipe Authors.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# ==============================================================================
 
 # Modified by Kaushik Shivakumar for the AVA Actions Dataset
 # to work without MediaPipe, code started by Bryan Seybold.
 
-r"""Code to download and parse the AVA dataset for TensorFlow models.
+r"""Code to download and parse the AVA Actions dataset for TensorFlow models.
 
 The [AVA data set](
 https://research.google.com/ava/index.html)
@@ -27,40 +28,20 @@ from the following website:
 https://github.com/cvdfoundation/ava-datset
 
 Prior to running this script, please run download_and_preprocess_ava.sh to
-download and trim input videos.
+download input videos.
 
 Running this code as a module generates the data set on disk. First, the
 required files are downloaded (_download_data) which enables constructing the
 label map. Then (in generate_examples), for each split in the data set, the
-metadata is generated from the annotations for each example
-(_generate_metadata), and MediaPipe is used to fill in the video frames
-(_run_mediapipe). This script processes local video files defined in a custom
-CSV in a comparable manner to the Kinetics data set for evaluating and
-predicting values on your own data. The data set is written to disk as a set of
+metadata and image frames are generated from the annotations for each sequence
+example (_generate_metadata). The data set is written to disk as a set of
 numbered TFRecord files.
 
-The custom CSV format must match the Kinetics data set format, with columns
-corresponding to [[label_name], video, start, end, split] followed by lines with
-those fields. (Label_name is optional.) These field names can be used to
-construct the paths to the video files using the Python string formatting
-specification and the video_path_format_string flag:
-   --video_path_format_string="/path/to/video/{video}.mp4"
-
 Generating the data on disk can take considerable time and disk space.
-(Image compression quality is the primary determiner of disk usage. TVL1 flow
-determines runtime.)
+(Image compression quality is the primary determiner of disk usage.
 
-Once the data is on disk, reading the data as a tf.data.Dataset is accomplished
-with the following lines:
-
-   kinetics = Kinetics("kinetics_data_path")
-   dataset = kinetics.as_dataset("custom")
-   # implement additional processing and batching here
-   images_and_labels = dataset.make_one_shot_iterator().get_next()
-   images = images_and_labels["images"]
-   labels = image_and_labels["labels"]
-
-IF using TFOD API, use the sequence example configuration in the config.proto.
+IF using the Tensorflow Object Detection API, set the input_type field 
+in the input_reader to TF_SEQUENCE_EXAMPLE. 
 
 This data is structured for per-clip action classification where images is
 the sequence of images and labels are a one-hot encoded value. See
@@ -68,6 +49,10 @@ as_dataset() for more details.
 
 Note that the number of videos changes in the data set over time, so it will
 likely be necessary to change the expected number of examples.
+
+The argument video_path_format_string expects a value as such:
+  "/path/to/videos/{0}"
+
 """
 
 from __future__ import absolute_import
@@ -183,7 +168,7 @@ class Ava(object):
   def _generate_metadata(self, annotation_file, excluded_file, label_map,
                          seconds_per_sequence, hop_between_sequences,
                          video_path_format_string):
-    """For each row in the annotation CSV, generates the corresponding metadata.
+    """For each row in the annotation CSV, generates the corresponding metadata
 
     Args:
       annotation_file: path to the file of AVA CSV annotations.
@@ -193,7 +178,7 @@ class Ava(object):
       hop_between_sequences: The hop between sequences. If less than
           seconds_per_sequence, will overlap.
     Yields:
-      Each tf.SequenceExample of metadata, ready to pass to MediaPipe.
+      Each prepared tf.SequenceExample of metadata also containing video frames
     """
     global GLOBAL_SOURCE_ID
     fieldnames = ["id", "timestamp_seconds", "xmin", "ymin", "xmax", "ymax",
@@ -246,6 +231,13 @@ class Ava(object):
           while windowed_timestamp < end_time:
             skipped_frame_count = 0;
 
+            if (media_id, windowed_timestamp) in frame_excluded:
+              end_time += 1
+              windowed_timestamp += 1
+              skipped_frame_count += 1
+              logging.info("Ignoring and skipping excluded frame.")
+              continue
+
             cur_vid.set(cv2.CAP_PROP_POS_MSEC,
                         (windowed_timestamp) * SECONDS_TO_MILLI)
             _, image = cur_vid.read()
@@ -253,37 +245,30 @@ class Ava(object):
 
             bufstring = buffer.tostring()
             total_images.append(dataset_util.bytes_feature(bufstring))
-
             source_id = str(GLOBAL_SOURCE_ID) + "_" + media_id
             total_source_ids.append(dataset_util.bytes_feature(
                 source_id.encode("utf8")))
             total_is_annotated.append(dataset_util.int64_feature(1))
             GLOBAL_SOURCE_ID += 1
-            if (media_id, windowed_timestamp) in frame_excluded:
-              end_time += 1
-              windowed_timestamp += 1
-              skipped_frame_count += 1
-              logging.info("Ignoring and skipping excluded frame.")
-              continue
-            else:
-              xmins = []
-              xmaxs = []
-              ymins = []
-              ymaxs = []
-              labels = []
-              label_strings = []
-              confidences = []
-              for row in frame_annotations[(media_id, windowed_timestamp)]:
-                if len(row) > 2 and int(row["action_label"]) in label_map:
-                  xmins.append(float(row["xmin"]))
-                  xmaxs.append(float(row["xmax"]))
-                  ymins.append(float(row["ymin"]))
-                  ymaxs.append(float(row["ymax"]))
-                  labels.append(int(row["action_label"]))
-                  label_strings.append(label_map[int(row["action_label"])])
-                  confidences.append(1)
-                else:
-                  logging.warning("Unknown label: %s", row["action_label"])
+
+            xmins = []
+            xmaxs = []
+            ymins = []
+            ymaxs = []
+            labels = []
+            label_strings = []
+            confidences = []
+            for row in frame_annotations[(media_id, windowed_timestamp)]:
+              if len(row) > 2 and int(row["action_label"]) in label_map:
+                xmins.append(float(row["xmin"]))
+                xmaxs.append(float(row["xmax"]))
+                ymins.append(float(row["ymin"]))
+                ymaxs.append(float(row["ymax"]))
+                labels.append(int(row["action_label"]))
+                label_strings.append(label_map[int(row["action_label"])])
+                confidences.append(1)
+              else:
+                logging.warning("Unknown label: %s", row["action_label"])
 
             #Display the image and bounding boxes being
             #processed (for debugging purposes) if desired.
