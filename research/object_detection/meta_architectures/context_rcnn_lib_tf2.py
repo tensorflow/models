@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 # The negative value used in padding the invalid weights.
 _NEGATIVE_PADDING_VALUE = -100000
@@ -88,7 +88,7 @@ class AttentionBlock(tf.keras.layers.Layer):
     # box_features becomes [batch_size, max_num_proposals, channels].
     input_features = tf.reduce_mean(input_features, [2, 3])
 
-    with tf.variable_scope("AttentionBlock"):
+    with tf.name_scope("AttentionBlock"):
       queries = project_features(
           input_features, self._bottleneck_dimension, self._is_training,
           self._query_proj, normalize=True)

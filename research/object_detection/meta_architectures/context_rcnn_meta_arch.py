@@ -27,7 +27,7 @@ import functools
 
 from object_detection.core import standard_fields as fields
 from object_detection.meta_architectures import context_rcnn_lib
-from object_detection.meta_architectures import context_rcnn_lib_v2
+from object_detection.meta_architectures import context_rcnn_lib_tf2
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.utils import tf_version
 
@@ -272,7 +272,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
           attention_temperature=attention_temperature,
           is_training=is_training)
     else:
-      self._context_feature_extract_fn = context_rcnn_lib_v2.AttentionBlock(
+      self._context_feature_extract_fn = context_rcnn_lib_tf2.AttentionBlock(
           bottleneck_dimension=attention_bottleneck_dimension,
           attention_temperature=attention_temperature,
           freeze_batchnorm=freeze_batchnorm,
