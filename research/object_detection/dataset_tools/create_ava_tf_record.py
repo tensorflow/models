@@ -316,6 +316,8 @@ class Ava(object):
                   feature_list_feature(total_is_annotated) #all ones
           }
 
+          assert len(total_xmins) == seconds_per_sequence
+
           if len(total_xmins) > 0:
             yield tf.train.SequenceExample(
                 context=tf.train.Features(feature=context_feature_dict),
