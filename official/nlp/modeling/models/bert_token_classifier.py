@@ -36,6 +36,9 @@ class BertTokenClassifier(tf.keras.Model):
   instantiates a token classification network based on the passed `num_classes`
   argument.
 
+  *Note* that the model is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding

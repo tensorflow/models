@@ -27,6 +27,8 @@ class SpanLabeling(tf.keras.Model):
   """Span labeling network head for BERT modeling.
 
   This network implements a simple single-span labeler based on a dense layer.
+  *Note* that the network is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
 
   Arguments:
     input_width: The innermost dimension of the input tensor to this network.
