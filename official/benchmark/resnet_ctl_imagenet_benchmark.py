@@ -387,7 +387,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.single_l2_loss_op = True
     FLAGS.use_tf_function = True
     FLAGS.enable_checkpoint_and_export = False
-    FLAGS.data_dir = gs://mlcompass-data/imagenet/imagenet-2012-tfrecord
+    FLAGS.data_dir = 'gs://mlcompass-data/imagenet/imagenet-2012-tfrecord'
 
   def benchmark_2x2_tpu_bf16(self):
     self._setup()
