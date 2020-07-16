@@ -32,8 +32,11 @@ class BertSpanLabeler(tf.keras.Model):
   encoder as described in "BERT: Pre-training of Deep Bidirectional Transformers
   for Language Understanding" (https://arxiv.org/abs/1810.04805).
 
-  The BertSpanLabeler allows a user to pass in a transformer stack, and
+  The BertSpanLabeler allows a user to pass in a transformer encoder, and
   instantiates a span labeling network based on a single dense layer.
+
+  *Note* that the model is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
 
   Arguments:
     network: A transformer network. This network should output a sequence output

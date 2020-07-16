@@ -40,6 +40,8 @@ class AlbertTransformerEncoder(tf.keras.Model):
   The default values for this object are taken from the ALBERT-Base
   implementation described in the paper.
 
+  *Note* that the network is constructed by Keras Functional API.
+
   Arguments:
     vocab_size: The size of the token vocabulary.
     embedding_width: The width of the word embeddings. If the embedding width is
