@@ -29,6 +29,9 @@ class Classification(tf.keras.Model):
   This network implements a simple classifier head based on a dense layer. If
   num_classes is one, it can be considered as a regression problem.
 
+  *Note* that the network is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     input_width: The innermost dimension of the input tensor to this network.
     num_classes: The number of classes that this network should classify to. If
