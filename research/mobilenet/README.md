@@ -393,6 +393,10 @@ launched within [scripts/](scripts). For example
 sh train_mbnv1.sh train
 ```
 
+## Example
+
+See this [ipython notebook](notebooks/MNV1_Migrate_TF1_to_TF2_Keras.ipynb).
+
 ## License
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
