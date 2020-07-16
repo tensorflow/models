@@ -44,7 +44,7 @@ def image_from_numpy(image):
 
   with io.BytesIO() as img_output:
     Image.fromarray(image).save(img_output, format='JPEG')
-    data = output.getvalue()
+    data = img_output.getvalue()
   data = str(base64.b64encode(data))[2:-1]
   return data
 

@@ -37,6 +37,9 @@ class BertClassifier(tf.keras.Model):
   instantiates a classification network based on the passed `num_classes`
   argument. If `num_classes` is set to 1, a regression network is instantiated.
 
+  *Note* that the model is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
