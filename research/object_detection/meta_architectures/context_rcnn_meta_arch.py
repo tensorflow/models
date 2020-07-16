@@ -337,7 +337,8 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         [self._initial_crop_size, self._initial_crop_size])
 
     attention_features = self._context_feature_extract_fn(
-        box_features, context_features,
+        box_features,
+        context_features,
         valid_context_size=valid_context_size)
 
     # Adds box features with attention features.
