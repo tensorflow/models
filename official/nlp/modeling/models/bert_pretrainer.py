@@ -41,6 +41,9 @@ class BertPretrainer(tf.keras.Model):
   instantiates the masked language model and classification networks that are
   used to create the training objectives.
 
+  *Note* that the model is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     network: A transformer network. This network should output a sequence output
       and a classification output.

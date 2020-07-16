@@ -49,6 +49,9 @@ class EncoderScaffold(tf.keras.Model):
   If the hidden_cls is not overridden, a default transformer layer will be
   instantiated.
 
+  *Note* that the network is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     pooled_output_dim: The dimension of pooled output.
     pooler_layer_initializer: The initializer for the classification
