@@ -23,8 +23,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 from official.nlp.modeling.layers import position_embedding
+from official.nlp.modeling.ops import beam_search
 from official.nlp.transformer import attention_layer
-from official.nlp.transformer import beam_search
 from official.nlp.transformer import embedding_layer
 from official.nlp.transformer import ffn_layer
 from official.nlp.transformer import metrics
