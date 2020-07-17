@@ -48,6 +48,7 @@ from object_detection.utils import tf_version
 # pylint: disable=g-import-not-at-top
 if tf_version.is_tf2():
   from object_detection.models import center_net_hourglass_feature_extractor
+  from object_detection.models import center_net_mobilenet_v2_feature_extractor
   from object_detection.models import center_net_resnet_feature_extractor
   from object_detection.models import center_net_resnet_v1_fpn_feature_extractor
   from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
@@ -148,7 +149,10 @@ if tf_version.is_tf2():
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
       'resnet_v1_101_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_101_fpn,
-      'hourglass_104': center_net_hourglass_feature_extractor.hourglass_104,
+      'hourglass_104':
+          center_net_hourglass_feature_extractor.hourglass_104,
+      'mobilenet_v2':
+          center_net_mobilenet_v2_feature_extractor.mobilenet_v2,
   }
 
   FEATURE_EXTRACTOR_MAPS = [
