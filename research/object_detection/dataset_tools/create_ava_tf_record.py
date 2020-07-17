@@ -229,12 +229,9 @@ class Ava(object):
           total_is_annotated = []
           windowed_timestamp = start_time
           while windowed_timestamp < end_time:
-            skipped_frame_count = 0;
-
             if (media_id, windowed_timestamp) in frame_excluded:
               end_time += 1
               windowed_timestamp += 1
-              skipped_frame_count += 1
               logging.info("Ignoring and skipping excluded frame.")
               continue
 
