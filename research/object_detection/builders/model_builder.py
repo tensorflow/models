@@ -140,6 +140,10 @@ if tf_version.is_tf2():
   CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
       'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
       'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v1_18_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_18_fpn,
+      'resnet_v1_34_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_34_fpn,
       'resnet_v1_50_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
       'resnet_v1_101_fpn':
