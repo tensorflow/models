@@ -33,6 +33,8 @@ _RESNET_MODEL_OUTPUT_LAYERS = {
 }
 
 class ResnetFPN(tf.keras.layers.Layer):
+  """Construct Resnet FPN layer."""
+
     def __init__(self,
                  backbone_classifier,
                  fpn_features_generator,
@@ -40,6 +42,19 @@ class ResnetFPN(tf.keras.layers.Layer):
                  fpn_min_level,
                  resnet_block_names,
                  base_fpn_max_level):
+      """Constructor.
+
+    Args:
+      backbone_classifier: Classifier backbone. Should be one of 'resnet_v1_50',
+        'resnet_v1_101', 'resnet_v1_152'.
+      fpn_features_generator: KerasFpnTopDownFeatureMaps that accepts a
+        dictionary of features and returns a ordered dictionary of fpn features.
+      coarse_feature_layers: Coarse feature layers for fpn.
+      fpn_min_level: the highest resolution feature map to use in FPN. The valid
+        values are {2, 3, 4, 5} which map to Resnet v1 layers.
+      resnet_block_names: a list of block names of resnet.
+      base_fpn_max_level: maximum level of fpn without coarse feature layers.
+    """
       super(ResnetFPN, self).__init__()
       self.classification_backbone = backbone_classifier
       self.fpn_features_generator = fpn_features_generator
