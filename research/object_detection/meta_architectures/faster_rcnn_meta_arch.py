@@ -1309,7 +1309,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     rpn_features_to_crop, self.endpoints = self._extract_proposal_features(
         preprocessed_inputs)
-    
+
     # decide if rpn_features_to_crop is a list. If not make it a list
     if not isinstance(rpn_features_to_crop, list):
       rpn_features_to_crop = [rpn_features_to_crop]
@@ -1949,11 +1949,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Returns:
       A float32 tensor with shape [K, new_height, new_width, depth].
     """
-    features_to_crop = [features_to_crop]
     num_levels = len(features_to_crop)
     box_levels = None
     if num_levels != 1:
-      # If there are multiple levels to select, get the box levels
+      # If there are mutiple levels to select, get the box levels
       box_levels = ops.fpn_feature_levels(num_levels, num_levels - 1,
                                           1.0/224, proposal_boxes_normalized)
     cropped_regions = self._flatten_first_two_dimensions(
