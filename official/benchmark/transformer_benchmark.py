@@ -67,6 +67,8 @@ class TransformerBenchmark(PerfZeroBenchmark):
     else:
       root_data_dir = GPU_DATA_DIR
 
+    root_data_dir = root_data_dir if root_data_dir else ''
+
     self.train_data_dir = os.path.join(root_data_dir,
                                        TRANSFORMER_EN2DE_DATA_DIR_NAME)
     self.vocab_file = os.path.join(root_data_dir,
