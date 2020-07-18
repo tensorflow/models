@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +15,14 @@
 # ==============================================================================
 """An abstraction that users can easily handle their custom training loops."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import abc
 from typing import Any, Dict, Optional, Text
 from orbit import runner
 from orbit import utils
-import six
 import tensorflow as tf
 
 
-@six.add_metaclass(abc.ABCMeta)
-class StandardTrainer(runner.AbstractTrainer):
+class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
   """Implements the standard functionality of AbstractTrainer APIs."""
 
   def __init__(self,
@@ -145,8 +139,7 @@ class StandardTrainer(runner.AbstractTrainer):
     self._train_iter = None
 
 
-@six.add_metaclass(abc.ABCMeta)
-class StandardEvaluator(runner.AbstractEvaluator):
+class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
   """Implements the standard functionality of AbstractEvaluator APIs."""
 
   def __init__(self, eval_dataset, use_tf_function=True):

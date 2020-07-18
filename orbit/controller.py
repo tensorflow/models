@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,14 +15,8 @@
 # ==============================================================================
 """A light weight utilities to train TF2 models."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import time
 from typing import Callable, Optional, Text, Union
-
 from absl import logging
 from orbit import runner
 from orbit import utils
@@ -43,7 +38,7 @@ def _validate_interval(interval: Optional[int], steps_per_loop: Optional[int],
                          interval_name, interval, steps_per_loop))
 
 
-class Controller(object):
+class Controller:
   """Class that facilitates training and evaluation of models."""
 
   def __init__(
@@ -396,7 +391,7 @@ class Controller(object):
     return False
 
 
-class StepTimer(object):
+class StepTimer:
   """Utility class for measuring steps/second."""
 
   def __init__(self, step):
