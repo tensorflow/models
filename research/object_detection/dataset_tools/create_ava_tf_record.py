@@ -13,19 +13,16 @@
 # limitations under the License.
 # ==============================================================================
 
-# Modified by Kaushik Shivakumar for the AVA Actions Dataset
-# to work without MediaPipe, code started by Bryan Seybold.
-
 r"""Code to download and parse the AVA Actions dataset for TensorFlow models.
 
-The [AVA data set](
+The [AVA Actions data set](
 https://research.google.com/ava/index.html)
-is a data set for human action recognition.
+is a dataset for human action recognition.
 
 This script downloads the annotations and prepares data from similar annotations
 if local video files are available. The video files can be downloaded
 from the following website:
-https://github.com/cvdfoundation/ava-datset
+https://github.com/cvdfoundation/ava-dataset
 
 Prior to running this script, please run download_and_preprocess_ava.sh to
 download input videos.
@@ -40,7 +37,7 @@ numbered TFRecord files.
 Generating the data on disk can take considerable time and disk space.
 (Image compression quality is the primary determiner of disk usage.
 
-IF using the Tensorflow Object Detection API, set the input_type field 
+If using the Tensorflow Object Detection API, set the input_type field 
 in the input_reader to TF_SEQUENCE_EXAMPLE. 
 
 This data is structured for per-clip action classification where images is
@@ -55,9 +52,9 @@ The argument video_path_format_string expects a value as such:
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+import absolute_import
+import division
+import print_function
 
 import contextlib
 import csv
@@ -78,7 +75,6 @@ import cv2
 
 from object_detection.utils import dataset_util
 
-GLOBAL_SOURCE_ID = 0
 POSSIBLE_TIMESTAMPS = range(902, 1798)
 ANNOTATION_URL = "https://research.google.com/ava/download/ava_v2.2.zip"
 SECONDS_TO_MILLI = 1000
@@ -111,7 +107,7 @@ def feature_list_feature(value):
   return tf.train.FeatureList(feature=value)
 
 class Ava(object):
-  """Generates and loads the Kinetics data set."""
+  """Generates and loads the AVA Actions 2.2 data set."""
 
   def __init__(self, path_to_output_dir, path_to_data_download):
     if not path_to_output_dir:
@@ -143,6 +139,7 @@ class Ava(object):
       hop_between_sequences: The gap between the centers of
       successive sequences.
     """
+    global_source_id = 0
     logging.info("Downloading data.")
     download_output = self._download_data(download_labels_for_map)
     for key in splits_to_process.split(","):
@@ -150,7 +147,7 @@ class Ava(object):
       all_metadata = list(self._generate_metadata(
           download_output[0][key][0], download_output[0][key][1],
           download_output[1], seconds_per_sequence, hop_between_sequences,
-          video_path_format_string))
+          video_path_format_string, global_source_id))
       logging.info("An example of the metadata: ")
       logging.info(all_metadata[0])
       random.seed(47)
@@ -266,9 +263,6 @@ class Ava(object):
                 confidences.append(1)
               else:
                 logging.warning("Unknown label: %s", row["action_label"])
-
-            #Display the image and bounding boxes being
-            #processed (for debugging purposes) if desired.
 
             total_xmins.append(dataset_util.float_list_feature(xmins))
             total_xmaxs.append(dataset_util.float_list_feature(xmaxs))
