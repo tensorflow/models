@@ -14,10 +14,6 @@
 # limitations under the License.
 # ==============================================================================
 """Library functions for ContextRCNN."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 # The negative value used in padding the invalid weights.
