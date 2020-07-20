@@ -61,7 +61,7 @@ def _get_configs_for_model(model_name):
       configs, kwargs_dict=override_dict)
 
 
-def _get_configs_for_model_sequence_example(model_name):
+def _get_configs_for_model_sequence_example(model_name, frame_index=-1):
   """Returns configurations for model."""
   fname = os.path.join(tf.resource_loader.get_data_files_path(),
                        'test_data/' + model_name + '.config')
@@ -74,7 +74,8 @@ def _get_configs_for_model_sequence_example(model_name):
   override_dict = {
       'train_input_path': data_path,
       'eval_input_path': data_path,
-      'label_map_path': label_map_path
+      'label_map_path': label_map_path,
+      'frame_index': frame_index
   }
   return config_util.merge_external_params_with_configs(
       configs, kwargs_dict=override_dict)
@@ -311,6 +312,46 @@ class InputFnTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(
         tf.float32,
         labels[fields.InputDataFields.groundtruth_weights].dtype)
+
+  def test_context_rcnn_resnet50_train_input_with_sequence_example_frame_index(
+      self, train_batch_size=8):
+    """Tests the training input function for FasterRcnnResnet50."""
+    configs = _get_configs_for_model_sequence_example(
+        'context_rcnn_camera_trap', frame_index=2)
+    model_config = configs['model']
+    train_config = configs['train_config']
+    train_config.batch_size = train_batch_size
+    train_input_fn = inputs.create_train_input_fn(
+        train_config, configs['train_input_config'], model_config)
+    features, labels = _make_initializable_iterator(train_input_fn()).get_next()
+
+    self.assertAllEqual([train_batch_size, 640, 640, 3],
+                        features[fields.InputDataFields.image].shape.as_list())
+    self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
+    self.assertAllEqual([train_batch_size],
+                        features[inputs.HASH_KEY].shape.as_list())
+    self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, 4],
+        labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_boxes].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_classes].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_weights].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_confidences].shape.as_list())
+    self.assertEqual(
+        tf.float32,
+        labels[fields.InputDataFields.groundtruth_confidences].dtype)
 
   def test_ssd_inceptionV2_train_input(self):
     """Tests the training input function for SSDInceptionV2."""
