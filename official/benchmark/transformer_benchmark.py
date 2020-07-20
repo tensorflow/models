@@ -47,7 +47,7 @@ class TransformerBenchmark(PerfZeroBenchmark):
 
   def __init__(self, output_dir=None, default_flags=None, root_data_dir=None,
                flag_methods=None, tpu=None):
-    self._set_data_files()
+    self._set_data_files(root_data_dir=root_data_dir)
 
     if default_flags is None:
       default_flags = {}
@@ -60,11 +60,13 @@ class TransformerBenchmark(PerfZeroBenchmark):
         flag_methods=flag_methods,
         tpu=tpu)
 
-  def _set_data_files(self, tpu_run=False):
+  def _set_data_files(self, root_data_dir=None, tpu_run=False):
     """Sets train_data_dir, vocab_file, bleu_source and bleu_ref."""
+    # Use remote storage for TPU, remote storage for GPU if defined, else
+    # use environment provided root_data_dir.
     if tpu_run:
       root_data_dir = TPU_DATA_DIR
-    else:
+    elif GPU_DATA_DIR is not None:
       root_data_dir = GPU_DATA_DIR
 
     root_data_dir = root_data_dir if root_data_dir else ''
