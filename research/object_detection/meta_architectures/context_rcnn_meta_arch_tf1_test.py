@@ -41,7 +41,7 @@ from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.protos import box_predictor_pb2
 from object_detection.protos import hyperparams_pb2
 from object_detection.protos import post_processing_pb2
-from object_detection.utils import ops
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 from object_detection.utils import tf_version
@@ -363,8 +363,9 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
           max_negatives_per_positive=None)
 
     crop_and_resize_fn = (
-        ops.matmul_crop_and_resize
-        if use_matmul_crop_and_resize else ops.native_crop_and_resize)
+        spatial_ops.multilevel_matmul_crop_and_resize
+        if use_matmul_crop_and_resize
+        else spatial_ops.multilevel_native_crop_and_resize)
     common_kwargs = {
         'is_training':
             is_training,
