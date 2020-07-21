@@ -31,7 +31,7 @@ from official.nlp.modeling.layers import multi_channel_attention
 from official.nlp.nhnet import configs
 from official.nlp.nhnet import decoder
 from official.nlp.nhnet import utils
-from official.nlp.transformer import beam_search
+from official.nlp.modeling.ops import beam_search
 
 
 def embedding_linear(embedding_matrix, x):

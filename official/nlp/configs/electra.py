@@ -34,6 +34,8 @@ class ELECTRAPretrainerConfig(base_config.Config):
   sequence_length: int = 512
   num_classes: int = 2
   discriminator_loss_weight: float = 50.0
+  tie_embeddings: bool = True
+  disallow_correct: bool = False
   generator_encoder: encoders.TransformerEncoderConfig = (
       encoders.TransformerEncoderConfig())
   discriminator_encoder: encoders.TransformerEncoderConfig = (
@@ -60,23 +62,30 @@ def instantiate_pretrainer_from_cfg(
   """Instantiates ElectraPretrainer from the config."""
   generator_encoder_cfg = config.generator_encoder
   discriminator_encoder_cfg = config.discriminator_encoder
-  if generator_network is None:
-    generator_network = encoders.instantiate_encoder_from_cfg(
-        generator_encoder_cfg)
+  # Copy discriminator's embeddings to generator for easier model serialization.
   if discriminator_network is None:
     discriminator_network = encoders.instantiate_encoder_from_cfg(
         discriminator_encoder_cfg)
+  if generator_network is None:
+    if config.tie_embeddings:
+      embedding_layer = discriminator_network.get_embedding_layer()
+      generator_network = encoders.instantiate_encoder_from_cfg(
+          generator_encoder_cfg, embedding_layer=embedding_layer)
+    else:
+      generator_network = encoders.instantiate_encoder_from_cfg(
+          generator_encoder_cfg)
+
   return electra_pretrainer.ElectraPretrainer(
       generator_network=generator_network,
       discriminator_network=discriminator_network,
       vocab_size=config.generator_encoder.vocab_size,
       num_classes=config.num_classes,
       sequence_length=config.sequence_length,
-      last_hidden_dim=config.generator_encoder.hidden_size,
       num_token_predictions=config.num_masked_tokens,
       mlm_activation=tf_utils.get_activation(
           generator_encoder_cfg.hidden_activation),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=generator_encoder_cfg.initializer_range),
       classification_heads=instantiate_classification_heads_from_cfgs(
-          config.cls_heads))
+          config.cls_heads),
+      disallow_correct=config.disallow_correct)

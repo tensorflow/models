@@ -21,9 +21,14 @@
 import tensorflow.compat.v1 as tf
 
 from object_detection.meta_architectures.center_net_meta_arch import CenterNetFeatureExtractor
+from object_detection.models.keras_models import resnet_v1
 
 
 _RESNET_MODEL_OUTPUT_LAYERS = {
+    'resnet_v1_18': ['conv2_block2_out', 'conv3_block2_out',
+                     'conv4_block2_out', 'conv5_block2_out'],
+    'resnet_v1_34': ['conv2_block3_out', 'conv3_block4_out',
+                     'conv4_block6_out', 'conv5_block3_out'],
     'resnet_v1_50': ['conv2_block3_out', 'conv3_block4_out',
                      'conv4_block6_out', 'conv5_block3_out'],
     'resnet_v1_101': ['conv2_block3_out', 'conv3_block4_out',
@@ -69,6 +74,10 @@ class CenterNetResnetV1FpnFeatureExtractor(CenterNetFeatureExtractor):
       self._base_model = tf.keras.applications.ResNet50(weights=None)
     elif resnet_type == 'resnet_v1_101':
       self._base_model = tf.keras.applications.ResNet101(weights=None)
+    elif resnet_type == 'resnet_v1_18':
+      self._base_model = resnet_v1.resnet_v1_18(weights=None)
+    elif resnet_type == 'resnet_v1_34':
+      self._base_model = resnet_v1.resnet_v1_34(weights=None)
     else:
       raise ValueError('Unknown Resnet Model {}'.format(resnet_type))
     output_layers = _RESNET_MODEL_OUTPUT_LAYERS[resnet_type]
@@ -171,6 +180,27 @@ def resnet_v1_50_fpn(channel_means, channel_stds, bgr_ordering):
 
   return CenterNetResnetV1FpnFeatureExtractor(
       resnet_type='resnet_v1_50',
+      channel_means=channel_means,
+      channel_stds=channel_stds,
+      bgr_ordering=bgr_ordering)
+
+
+def resnet_v1_34_fpn(channel_means, channel_stds, bgr_ordering):
+  """The ResNet v1 34 FPN feature extractor."""
+
+  return CenterNetResnetV1FpnFeatureExtractor(
+      resnet_type='resnet_v1_34',
+      channel_means=channel_means,
+      channel_stds=channel_stds,
+      bgr_ordering=bgr_ordering
+  )
+
+
+def resnet_v1_18_fpn(channel_means, channel_stds, bgr_ordering):
+  """The ResNet v1 18 FPN feature extractor."""
+
+  return CenterNetResnetV1FpnFeatureExtractor(
+      resnet_type='resnet_v1_18',
       channel_means=channel_means,
       channel_stds=channel_stds,
       bgr_ordering=bgr_ordering)

@@ -353,11 +353,18 @@ def load_fine_tune_checkpoint(
         labels)
 
   strategy = tf.compat.v2.distribute.get_strategy()
-  strategy.experimental_run_v2(
-      _dummy_computation_fn, args=(
-          features,
-          labels,
-      ))
+  if hasattr(tf.distribute.Strategy, 'run'):
+    strategy.run(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
+  else:
+    strategy.experimental_run_v2(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
 
   restore_from_objects_dict = model.restore_from_objects(
       fine_tune_checkpoint_type=checkpoint_type)
@@ -406,7 +413,7 @@ def train_loop(
     train_steps=None,
     use_tpu=False,
     save_final_config=False,
-    checkpoint_every_n=1000,
+    checkpoint_every_n=5000,
     checkpoint_max_to_keep=7,
     **kwargs):
   """Trains a model using eager + functions.
@@ -579,8 +586,12 @@ def train_loop(
 
         def _sample_and_train(strategy, train_step_fn, data_iterator):
           features, labels = data_iterator.next()
-          per_replica_losses = strategy.experimental_run_v2(
-              train_step_fn, args=(features, labels))
+          if hasattr(tf.distribute.Strategy, 'run'):
+            per_replica_losses = strategy.run(
+                train_step_fn, args=(features, labels))
+          else:
+            per_replica_losses = strategy.experimental_run_v2(
+                train_step_fn, args=(features, labels))
           # TODO(anjalisridhar): explore if it is safe to remove the
           ## num_replicas scaling of the loss and switch this to a ReduceOp.Mean
           return strategy.reduce(tf.distribute.ReduceOp.SUM,
@@ -784,7 +795,16 @@ def eager_eval_loop(
           name='eval_side_by_side_' + str(i),
           step=global_step,
           data=sbys_images,
-          max_outputs=1)
+          max_outputs=eval_config.num_visualizations)
+      if eval_util.has_densepose(eval_dict):
+        dp_image_list = vutils.draw_densepose_visualizations(
+            eval_dict)
+        dp_images = tf.concat(dp_image_list, axis=0)
+        tf.compat.v2.summary.image(
+            name='densepose_detections_' + str(i),
+            step=global_step,
+            data=dp_images,
+            max_outputs=eval_config.num_visualizations)
 
     if evaluators is None:
       if class_agnostic:
@@ -834,6 +854,7 @@ def eval_continuously(
     checkpoint_dir=None,
     wait_interval=180,
     timeout=3600,
+    eval_index=None,
     **kwargs):
   """Run continuous evaluation of a detection model eagerly.
 
@@ -863,6 +884,8 @@ def eval_continuously(
       new checkpoint.
     timeout: The maximum number of seconds to wait for a checkpoint. Execution
       will terminate if no new checkpoints are found after these many seconds.
+    eval_index: int, optional If give, only evaluate the dataset at the given
+      index.
 
     **kwargs: Additional keyword arguments for configuration override.
   """
@@ -915,6 +938,11 @@ def eval_continuously(
         model_config=model_config,
         model=detection_model)
     eval_inputs.append((eval_input_config.name, next_eval_input))
+
+  if eval_index is not None:
+    eval_inputs = [eval_inputs[eval_index]]
+    tf.logging.info('eval_index selected - {}'.format(
+        eval_inputs))
 
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)

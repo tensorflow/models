@@ -1,4 +1,5 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Lint as: python3
+# Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +15,12 @@
 # ==============================================================================
 """An abstraction that users can easily handle their custom training loops."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import abc
-import six
-import tensorflow.compat.v2 as tf
 from typing import Dict, Optional, Text
+import tensorflow as tf
 
 
-@six.add_metaclass(abc.ABCMeta)
-class AbstractTrainable(tf.Module):
+class AbstractTrainer(tf.Module, metaclass=abc.ABCMeta):
   """An abstract class defining the APIs required for training."""
 
   @abc.abstractmethod
@@ -50,14 +44,13 @@ class AbstractTrainable(tf.Module):
         one update to model parameters, e.g. if training a GAN).
 
     Returns:
-      The function may return a dictionary of `Tensors`, which will be
-      written to logs and as TensorBoard summaries.
+      The function may return a dictionary of `Tensors` or numpy arrays, which
+      will be written to logs and as TensorBoard summaries.
     """
     pass
 
 
-@six.add_metaclass(abc.ABCMeta)
-class AbstractEvaluable(tf.Module):
+class AbstractEvaluator(tf.Module, metaclass=abc.ABCMeta):
   """An abstract class defining the APIs required for evaluation."""
 
   @abc.abstractmethod
@@ -73,7 +66,7 @@ class AbstractEvaluable(tf.Module):
         is `None`.
 
     Returns:
-      The function may return a dictionary of `Tensors`, which will be
-      written to logs and as TensorBoard summaries.
+      The function may return a dictionary of `Tensors` or numpy arrays, which
+      will be written to logs and as TensorBoard summaries.
     """
     pass

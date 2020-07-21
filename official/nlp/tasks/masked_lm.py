@@ -40,8 +40,9 @@ class MaskedLMConfig(cfg.TaskConfig):
 class MaskedLMTask(base_task.Task):
   """Mock task object for testing."""
 
-  def build_model(self):
-    return bert.instantiate_pretrainer_from_cfg(self.task_config.model)
+  def build_model(self, params=None):
+    params = params or self.task_config.model
+    return bert.instantiate_pretrainer_from_cfg(params)
 
   def build_losses(self,
                    labels,
@@ -62,10 +63,10 @@ class MaskedLMTask(base_task.Task):
       sentence_labels = labels['next_sentence_labels']
       sentence_outputs = tf.cast(
           model_outputs['next_sentence'], dtype=tf.float32)
-      sentence_loss = tf.keras.losses.sparse_categorical_crossentropy(
-          sentence_labels,
-          sentence_outputs,
-          from_logits=True)
+      sentence_loss = tf.reduce_mean(
+          tf.keras.losses.sparse_categorical_crossentropy(sentence_labels,
+                                                          sentence_outputs,
+                                                          from_logits=True))
       metrics['next_sentence_loss'].update_state(sentence_loss)
       total_loss = mlm_loss + sentence_loss
     else:

@@ -366,12 +366,16 @@ class MultiHeadAttention(tf.keras.layers.Layer):
       attention_output: Multi-headed outputs of attention computation.
       attention_scores: Multi-headed attention weights.
     """
+    # Note: Applying scalar multiply at the smaller end of einsum improves
+    # XLA performance, but may introduce slight numeric differences in
+    # the Transformer attention head.
+    query_tensor = tf.multiply(query_tensor,
+                               1.0 / math.sqrt(float(self._key_size)))
+
     # Take the dot product between "query" and "key" to get the raw
     # attention scores.
     attention_scores = tf.einsum(self._dot_product_equation, key_tensor,
                                  query_tensor)
-    attention_scores = tf.multiply(attention_scores,
-                                   1.0 / math.sqrt(float(self._key_size)))
 
     # Normalize the attention scores to probabilities.
     # `attention_scores` = [B, N, T, S]

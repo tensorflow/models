@@ -20,13 +20,13 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras import backend
 from official.vision.detection.dataloader import anchor
 from official.vision.detection.dataloader import mode_keys
 from official.vision.detection.evaluation import factory as eval_factory
 from official.vision.detection.modeling import base_model
 from official.vision.detection.modeling import losses
 from official.vision.detection.modeling.architecture import factory
+from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.ops import postprocess_ops
 from official.vision.detection.utils import box_utils
 
@@ -265,7 +265,7 @@ class ShapeMaskModel(base_model.Model):
   def build_model(self, params, mode):
     if self._keras_model is None:
       input_layers = self.build_input_layers(self._params, mode)
-      with backend.get_graph().as_default():
+      with keras_utils.maybe_enter_backend_graph():
         outputs = self.model_outputs(input_layers, mode)
 
         model = tf.keras.models.Model(

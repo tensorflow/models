@@ -1,4 +1,5 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Lint as: python3
+# Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +15,13 @@
 # ==============================================================================
 """Some layered modules/functions to help users writing custom training loop."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import abc
+import contextlib
+import functools
 import inspect
-import six
 
-import tensorflow.compat.v2 as tf
+import numpy as np
+import tensorflow as tf
 
 
 def create_loop_fn(step_fn):
@@ -79,7 +77,6 @@ def create_tf_while_loop_fn(step_fn):
     A callable defined as the `loop_fn` defination below.
   """
 
-  @tf.function
   def loop_fn(iterator, num_steps):
     """A loop function with multiple steps.
 
@@ -130,10 +127,7 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
     # names, pass `ctx` as the value of `input_context` when calling
     # `dataset_or_fn`. Otherwise `ctx` will not be used when calling
     # `dataset_or_fn`.
-    if six.PY3:
-      argspec = inspect.getfullargspec(dataset_or_fn)
-    else:
-      argspec = inspect.getargspec(dataset_or_fn)
+    argspec = inspect.getfullargspec(dataset_or_fn)
     args_names = argspec.args
 
     if "input_context" in args_names:
@@ -144,96 +138,62 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
   return strategy.experimental_distribute_datasets_from_function(dataset_fn)
 
 
-class SummaryManager(object):
+class SummaryManager:
   """A class manages writing summaries."""
 
-  def __init__(self,
-               summary_writer,
-               summary_fn,
-               global_step=None,
-               summary_interval=None):
+  def __init__(self, summary_dir, summary_fn, global_step=None):
     """Construct a summary manager object.
 
     Args:
-      summary_writer: A `tf.summary.SummaryWriter` instance for writing
-        summaries.
+      summary_dir: the directory to write summaries.
       summary_fn: A callable defined as `def summary_fn(name, tensor,
         step=None)`, which describes the summary operation.
-      global_step: A `tf.Variable` instance for checking the current global step
-        value, in case users want to save summaries every N steps.
-      summary_interval: An integer, indicates the minimum step interval between
-        two summaries.
+      global_step: A `tf.Variable` instance for the global step.
     """
-    if summary_writer is not None:
-      self._summary_writer = summary_writer
-      self._enabled = True
-    else:
-      self._summary_writer = tf.summary.create_noop_writer()
-      self._enabled = False
+    self._enabled = (summary_dir is not None)
+    self._summary_dir = summary_dir
     self._summary_fn = summary_fn
+    self._summary_writer = None
 
     if global_step is None:
       self._global_step = tf.summary.experimental.get_step()
     else:
       self._global_step = global_step
 
-    if summary_interval is not None:
-      if self._global_step is None:
-        raise ValueError("`summary_interval` is not None, but no `global_step` "
-                         "can be obtained ")
-      self._last_summary_step = self._global_step.numpy()
-    self._summary_interval = summary_interval
-
-  @property
-  def summary_interval(self):
-    return self._summary_interval
-
   @property
   def summary_writer(self):
     """Returns the underlying summary writer."""
+    if self._summary_writer is not None:
+      return self._summary_writer
+    if self._enabled:
+      self._summary_writer = tf.summary.create_file_writer(self._summary_dir)
+    else:
+      self._summary_writer = tf.summary.create_noop_writer()
     return self._summary_writer
 
   def flush(self):
     """Flush the underlying summary writer."""
     if self._enabled:
-      tf.summary.flush(self._summary_writer)
+      tf.summary.flush(self.summary_writer)
 
-  def write_summaries(self, items, always_write=True):
+  def write_summaries(self, items):
     """Write a bulk of summaries.
 
     Args:
       items: a dictionary of `Tensors` for writing summaries.
-      always_write: An optional boolean. If `True`, the manager will always
-        write summaries unless the summaries have been written for the same
-        step. Otherwise the manager will only write the summaries if the
-        interval between summaries are larger than `summary_interval`.
-
-    Returns:
-      A boolean indicates whether the summaries are written or not.
     """
     # TODO(rxsang): Support writing summaries with nested structure, so users
     # can split the summaries into different directories for nicer visualization
     # in Tensorboard, like train and eval metrics.
     if not self._enabled:
-      return False
+      return
 
-    if self._summary_interval is not None:
-      current_step = self._global_step.numpy()
-      if current_step == self._last_summary_step:
-        return False
-      if not always_write and current_step < (self._last_summary_step +
-                                              self._summary_interval):
-        return False
-      self._last_summary_step = current_step
-
-    with self._summary_writer.as_default():
+    with self.summary_writer.as_default():
       for name, tensor in items.items():
         self._summary_fn(name, tensor, step=self._global_step)
-    return True
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Trigger(object):
+class Trigger(metaclass=abc.ABCMeta):
   """An abstract class representing a "trigger" for some event."""
 
   @abc.abstractmethod
@@ -294,7 +254,7 @@ class IntervalTrigger(Trigger):
     self._last_trigger_value = 0
 
 
-class EpochHelper(object):
+class EpochHelper:
   """A Helper class to handle epochs in Customized Training Loop."""
 
   def __init__(self, epoch_steps, global_step):
@@ -340,3 +300,86 @@ class EpochHelper(object):
   @property
   def current_epoch(self):
     return self._current_epoch
+
+
+@contextlib.contextmanager
+def _soft_device_placement():
+  """Context manager for soft device placement, allowing summaries on CPU."""
+  original_setting = tf.config.get_soft_device_placement()
+  try:
+    tf.config.set_soft_device_placement(True)
+    yield
+  finally:
+    tf.config.set_soft_device_placement(original_setting)
+
+
+def train_function_with_summaries(*args, **kwargs):
+  """Utility function to support TPU summaries via multiple `tf.function`s.
+
+  This permits interleaving summaries inside TPU-compatible code, but without
+  any performance impact on steps that do not write summaries.
+
+  Usage is as a decorator, similar to `tf.function`, and any `tf.function`
+  arguments will be passed through if supplied:
+
+      @trainer.train_function_with_summaries
+      def train(self, num_steps):
+        ...
+
+  The decorated function is assumed to be a loop method accepting a `num_steps`
+  parameter, as for instance would be called within the `Controller`'s outer
+  train loop. The implementation here assumes that `summary_frequency` is
+  divisible by `steps_per_loop`. The decorated method should accept two
+  arguments, `self` and `num_steps`.
+
+  Two `tf.function` versions of `train_fn` are created: one inside a summary
+  writer scope with soft device placement enabled (used on steps that require
+  summary writing), and one with no summary writer present and soft device
+  placement disabled (used on all other steps).
+
+  Args:
+    *args: Arguments to pass through to `tf.function`.
+    **kwargs: Keyword arguments to pass through to `tf.function`.
+
+  Returns:
+    If the first argument is a callable, returns the decorated callable.
+    Otherwise, returns a decorator.
+  """
+
+  def decorator(train_fn):
+    # TODO(dhr): Validate the signature of train_fn?
+
+    train_fn_with_summaries = tf.function(train_fn, *args, **kwargs)
+    train_fn_without_summaries = tf.function(train_fn, *args, **kwargs)
+
+    @functools.wraps(train_fn)
+    def wrapper(self, num_steps):
+      if tf.summary.should_record_summaries():
+        with _soft_device_placement():
+          output = train_fn_with_summaries(self, tf.constant(1))
+          num_steps -= 1
+      if num_steps >= 1:
+        with tf.summary.record_if(False):
+          output = train_fn_without_summaries(self, num_steps)
+      return output
+
+    return wrapper
+
+  if args and callable(args[0]):
+    train_fn, args = args[0], args[1:]
+    return decorator(train_fn)
+  return decorator
+
+
+def get_value(x) -> np.ndarray:
+  """Returns the value of a variable/tensor.
+
+  Args:
+      x: input variable.
+
+  Returns:
+      A Numpy array.
+  """
+  if not tf.is_tensor(x):
+    return x
+  return x.numpy()

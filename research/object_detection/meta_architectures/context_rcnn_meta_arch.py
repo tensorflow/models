@@ -324,7 +324,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       A float32 Tensor with shape [K, new_height, new_width, depth].
     """
     box_features = self._crop_and_resize_fn(
-        features_to_crop, proposal_boxes_normalized,
+        [features_to_crop], proposal_boxes_normalized, None,
         [self._initial_crop_size, self._initial_crop_size])
 
     attention_features = self._context_feature_extract_fn(

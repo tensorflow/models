@@ -31,7 +31,7 @@ enum InputType {
   TF_SEQUENCE_EXAMPLE = 2;        // TfSequenceExample Input
 }
 
-// Next id: 32
+// Next id: 33
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -132,6 +132,10 @@ message InputReader {
 
   // Whether input data type is tf.Examples or tf.SequenceExamples
   optional InputType input_type = 30 [default = TF_EXAMPLE];
+
+  // Which frame to choose from the input if Sequence Example. -1 indicates
+  // random choice.
+  optional int32 frame_index = 32 [default = -1];
 
   oneof input_reader {
     TFRecordInputReader tf_record_input_reader = 8;

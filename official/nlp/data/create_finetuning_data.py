@@ -59,27 +59,32 @@ flags.DEFINE_enum("classification_task_name", "MNLI",
                   "only and for XNLI is all languages combined. Same for "
                   "PAWS-X.")
 
-# XNLI task specific flag.
+# MNLI task-specific flag.
+flags.DEFINE_enum(
+    "mnli_type", "matched", ["matched", "mismatched"],
+    "The type of MNLI dataset.")
+
+# XNLI task-specific flag.
 flags.DEFINE_string(
     "xnli_language", "en",
-    "Language of training data for XNIL task. If the value is 'all', the data "
+    "Language of training data for XNLI task. If the value is 'all', the data "
     "of all languages will be used for training.")
 
-# PAWS-X task specific flag.
+# PAWS-X task-specific flag.
 flags.DEFINE_string(
     "pawsx_language", "en",
-    "Language of trainig data for PAWS-X task. If the value is 'all', the data "
+    "Language of training data for PAWS-X task. If the value is 'all', the data "
     "of all languages will be used for training.")
 
-# Retrieva task specific flags
+# Retrieval task-specific flags.
 flags.DEFINE_enum("retrieval_task_name", "bucc", ["bucc", "tatoeba"],
                   "The name of sentence retrieval task for scoring")
 
-# Tagging task specific flags
+# Tagging task-specific flags.
 flags.DEFINE_enum("tagging_task_name", "panx", ["panx", "udpos"],
                   "The name of BERT tagging (token classification) task.")
 
-# BERT Squad task specific flags.
+# BERT Squad task-specific flags.
 flags.DEFINE_string(
     "squad_data_file", None,
     "The input data file in for generating training data for BERT squad task.")
@@ -179,7 +184,8 @@ def generate_classifier_dataset():
         "cola":
             classifier_data_lib.ColaProcessor,
         "mnli":
-            classifier_data_lib.MnliProcessor,
+            functools.partial(classifier_data_lib.MnliProcessor,
+                              mnli_type=FLAGS.mnli_type),
         "mrpc":
             classifier_data_lib.MrpcProcessor,
         "qnli":
