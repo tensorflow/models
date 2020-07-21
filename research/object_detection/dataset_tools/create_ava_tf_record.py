@@ -52,10 +52,6 @@ The argument video_path_format_string expects a value as such:
 
 """
 
-import absolute_import
-import division
-import print_function
-
 import contextlib
 import csv
 import os
@@ -115,10 +111,9 @@ class Ava(object):
     self.path_to_data_download = path_to_data_download
     self.path_to_output_dir = path_to_output_dir
 
-  def generate_examples(self,
+  def generate_and_write_records(self,
                         splits_to_process="train,val,test",
                         video_path_format_string=None,
-                        download_labels_for_map=True,
                         seconds_per_sequence=10,
                         hop_between_sequences=10):
     """Downloads data and generates sharded TFRecords.
@@ -133,18 +128,16 @@ class Ava(object):
         a custom CSV with the CSV flag. The original data is still downloaded
         to generate the label_map.
       video_path_format_string: The format string for the path to local files.
-      download_labels_for_map: If true, download the annotations to create the
-        label map.
       seconds_per_sequence: The length of each sequence, in seconds.
       hop_between_sequences: The gap between the centers of
       successive sequences.
     """
     global_source_id = 0
     logging.info("Downloading data.")
-    download_output = self._download_data(download_labels_for_map)
+    download_output = self._download_data()
     for key in splits_to_process.split(","):
-      logging.info("Generating metadata for split: %s", key)
-      all_metadata = list(self._generate_metadata(
+      logging.info("Generating examples for split: %s", key)
+      all_metadata = list(self._generate_examples(
           download_output[0][key][0], download_output[0][key][1],
           download_output[1], seconds_per_sequence, hop_between_sequences,
           video_path_format_string, global_source_id))
@@ -162,10 +155,16 @@ class Ava(object):
           writers[i % len(writers)].write(seq_ex.SerializeToString())
     logging.info("Data extraction complete.")
 
-  def _generate_metadata(self, annotation_file, excluded_file, label_map,
+  def _generate_examples(self, annotation_file, excluded_file, label_map,
                          seconds_per_sequence, hop_between_sequences,
                          video_path_format_string):
-    """For each row in the annotation CSV, generates the corresponding metadata
+    """For each row in the annotation CSV, generates the corresponding examples.
+    When iterating through frames for a single sequence example, skips over 
+    excluded frames. When moving to the next sequence example, also skips over 
+    excluded frames as if they don't exist. Generates equal-length sequence
+    examples, each with length seconds_per_sequence (1 fps) and gaps of
+    hop_between_sequences frames (and seconds) between them, possible greater
+    due to excluded frames.
 
     Args:
       annotation_file: path to the file of AVA CSV annotations.
@@ -325,7 +324,7 @@ class Ava(object):
 
         cur_vid.release()
 
-  def _download_data(self, download_labels_for_map):
+  def _download_data(self):
     """Downloads and extracts data if not already available."""
     if sys.version_info >= (3, 0):
       urlretrieve = urllib.request.urlretrieve
@@ -335,20 +334,20 @@ class Ava(object):
     tf.io.gfile.makedirs(self.path_to_data_download)
     logging.info("Downloading annotations.")
     paths = {}
-    if download_labels_for_map:
-      zip_path = os.path.join(self.path_to_data_download,
-                              ANNOTATION_URL.split("/")[-1])
-      urlretrieve(ANNOTATION_URL, zip_path)
-      with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-          zip_ref.extractall(self.path_to_data_download)
-      for split in ["train", "test", "val"]:
-        csv_path = os.path.join(self.path_to_data_download,
-                                "ava_%s_v2.2.csv" % split)
-        excl_name = "ava_%s_excluded_timestamps_v2.2.csv" % split
-        excluded_csv_path = os.path.join(self.path_to_data_download, excl_name)
-        SPLITS[split]["csv"] = csv_path
-        SPLITS[split]["excluded-csv"] = excluded_csv_path
-        paths[split] = (csv_path, excluded_csv_path)
+    
+    zip_path = os.path.join(self.path_to_data_download,
+                            ANNOTATION_URL.split("/")[-1])
+    urlretrieve(ANNOTATION_URL, zip_path)
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(self.path_to_data_download)
+    for split in ["train", "test", "val"]:
+      csv_path = os.path.join(self.path_to_data_download,
+                              "ava_%s_v2.2.csv" % split)
+      excl_name = "ava_%s_excluded_timestamps_v2.2.csv" % split
+      excluded_csv_path = os.path.join(self.path_to_data_download, excl_name)
+      SPLITS[split]["csv"] = csv_path
+      SPLITS[split]["excluded-csv"] = excluded_csv_path
+      paths[split] = (csv_path, excluded_csv_path)
 
     label_map = self.get_label_map(os.path.join(self.path_to_data_download,
                                                 "ava_action_list_v2.2.pbtxt"))
@@ -396,10 +395,9 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
   Ava(flags.FLAGS.path_to_output_dir,
-      flags.FLAGS.path_to_download_data).generate_examples(
+      flags.FLAGS.path_to_download_data).generate_and_write_records(
           flags.FLAGS.splits_to_process,
           flags.FLAGS.video_path_format_string,
-          flags.FLAGS.download_labels_for_map,
           flags.FLAGS.seconds_per_sequence,
           flags.FLAGS.hop_between_sequences)
 
@@ -410,10 +408,6 @@ if __name__ == "__main__":
   flags.DEFINE_string("path_to_output_dir",
                       "",
                       "Path to directory to write data to.")
-  flags.DEFINE_boolean("download_labels_for_map",
-                       True,
-                       "If true, download the annotations to construct the "
-                       "label map.")
   flags.DEFINE_string("splits_to_process",
                       "train,val",
                       "Process these splits. Useful for custom data splits.")
