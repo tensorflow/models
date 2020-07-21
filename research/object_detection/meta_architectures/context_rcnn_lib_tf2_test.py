@@ -28,8 +28,7 @@ from object_detection.utils import tf_version
 
 _NEGATIVE_PADDING_VALUE = -100000
 
-class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase,
-                         tf.test.TestCase):
+class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase):
   """Tests for the functions in context_rcnn_lib."""
 
   def test_compute_valid_mask(self):
