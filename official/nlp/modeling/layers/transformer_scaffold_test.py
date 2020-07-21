@@ -39,10 +39,10 @@ class ValidatedAttentionLayer(attention.MultiHeadAttention):
     super(ValidatedAttentionLayer, self).__init__(**kwargs)
     self.list = call_list
 
-  def call(self, inputs, attention_mask=None):
+  def call(self, query, value, attention_mask=None):
     self.list.append(True)
     return super(ValidatedAttentionLayer, self).call(
-        inputs, attention_mask=attention_mask)
+        query, value, attention_mask=attention_mask)
 
   def get_config(self):
     config = super(ValidatedAttentionLayer, self).get_config()

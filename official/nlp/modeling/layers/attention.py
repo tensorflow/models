@@ -33,7 +33,7 @@ EinsumDense = tf.keras.layers.experimental.EinsumDense
 _CHR_IDX = string.ascii_lowercase
 
 
-def _build_attention_equation(qkv_rank, attn_axes):
+def _build_attention_equation(rank, attn_axes):
   """Builds einsum equations for the attention computation.
 
   Query, key, value inputs after projection are expected to have the shape as:
@@ -50,19 +50,19 @@ def _build_attention_equation(qkv_rank, attn_axes):
   <query attention dims>, num_heads, channels)
 
   Args:
-    qkv_rank: the rank of query, key, value tensors.
+    rank: the rank of query, key, value tensors.
     attn_axes: a list/tuple of axes, [1, rank), that will do attention.
 
   Returns:
     Einsum equations.
   """
-  target_notation = _CHR_IDX[:qkv_rank]
+  target_notation = _CHR_IDX[:rank]
   # `batch_dims` includes the head dim.
-  batch_dims = tuple(np.delete(range(qkv_rank), attn_axes + (qkv_rank - 1,)))
-  letter_offset = qkv_rank
+  batch_dims = tuple(np.delete(range(rank), attn_axes + (rank - 1,)))
+  letter_offset = rank
   source_notation = ""
-  for i in range(qkv_rank):
-    if i in batch_dims or i == qkv_rank - 1:
+  for i in range(rank):
+    if i in batch_dims or i == rank - 1:
       source_notation += target_notation[i]
     else:
       source_notation += _CHR_IDX[letter_offset]
@@ -167,8 +167,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
       sequence dims. If not specified, projects back to the key feature dim.
     attention_axes: axes over which the attention is applied. `None` means
       attention over all axes, but batch, heads, and features.
-    return_attention_scores: bool, if `True`, returns the multi-head
-      attention scores as an additional output argument.
+    return_attention_scores: bool, if `True`, returns the multi-head attention
+      scores as an additional output argument.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -176,6 +176,13 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     activity_regularizer: Regularizer for dense layer activity.
     kernel_constraint: Constraint for dense layer kernels.
     bias_constraint: Constraint for dense layer kernels.
+  Call args:
+    query: Query `Tensor` of shape `[B, T, dim]`.
+    value: Value `Tensor` of shape `[B, S, dim]`.
+    key: Optional key `Tensor` of shape `[B, S, dim]`. If not given, will use
+      `value` for both `key` and `value`, which is the most common case.
+    attention_mask: a boolean mask of shape `[B, T, S]`, that prevents attention
+      to certain positions.
   """
 
   def __init__(self,
@@ -214,6 +221,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
       self._attention_axes = (attention_axes,)
     else:
       self._attention_axes = attention_axes
+    self._built_from_signature = False
 
   def get_config(self):
     config = {
@@ -251,17 +259,31 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     base_config = super(MultiHeadAttention, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
-  def build(self, input_shape):
-    inputs_len = len(input_shape)
-    if inputs_len > 3 or inputs_len < 2:
-      raise ValueError(
-          "Expects inputs list of length 2 or 3, namely [query, value] or "
-          "[query, value, key]. "
-          "Given length: %d" % inputs_len)
-    tensor_shapes = tf.nest.map_structure(tf.TensorShape, input_shape)
-    query_shape = tensor_shapes[0]
-    value_shape = tensor_shapes[1]
-    key_shape = tensor_shapes[2] if inputs_len == 3 else value_shape
+  def _build_from_signature(self, query, value, key=None):
+    """Builds layers and variables.
+
+    Once the method is called, self._built_from_signature will be set to True.
+
+    Args:
+      query: query tensor or TensorShape.
+      value: value tensor or TensorShape.
+      key: key tensor or TensorShape.
+    """
+    self._built_from_signature = True
+    if hasattr(query, "shape"):
+      query_shape = tf.TensorShape(query.shape)
+    else:
+      query_shape = query
+    if hasattr(value, "shape"):
+      value_shape = tf.TensorShape(value.shape)
+    else:
+      value_shape = value
+    if key is None:
+      key_shape = value_shape
+    elif hasattr(key, "shape"):
+      key_shape = tf.TensorShape(key.shape)
+    else:
+      key_shape = key
 
     common_kwargs = dict(
         kernel_initializer=self._kernel_initializer,
@@ -271,84 +293,79 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
+    with tf.init_scope():
+      free_dims = query_shape.rank - 1
+      einsum_equation, bias_axes, output_rank = _build_proj_equation(
+          free_dims, bound_dims=1, output_dims=2)
+      self._query_dense = EinsumDense(
+          einsum_equation,
+          output_shape=_get_output_shape(output_rank - 1,
+                                         [self._num_heads, self._key_size]),
+          bias_axes=bias_axes if self._use_bias else None,
+          name="query",
+          **common_kwargs)
+      einsum_equation, bias_axes, output_rank = _build_proj_equation(
+          key_shape.rank - 1, bound_dims=1, output_dims=2)
+      self._key_dense = EinsumDense(
+          einsum_equation,
+          output_shape=_get_output_shape(output_rank - 1,
+                                         [self._num_heads, self._key_size]),
+          bias_axes=bias_axes if self._use_bias else None,
+          name="key",
+          **common_kwargs)
+      einsum_equation, bias_axes, output_rank = _build_proj_equation(
+          value_shape.rank - 1, bound_dims=1, output_dims=2)
+      self._value_dense = EinsumDense(
+          einsum_equation,
+          output_shape=_get_output_shape(output_rank - 1,
+                                         [self._num_heads, self._value_size]),
+          bias_axes=bias_axes if self._use_bias else None,
+          name="value",
+          **common_kwargs)
 
-    free_dims = query_shape.rank - 1
-    einsum_equation, bias_axes, output_rank = _build_proj_equation(
-        free_dims, bound_dims=1, output_dims=2)
-    self._query_dense = EinsumDense(
-        einsum_equation,
-        output_shape=_get_output_shape(output_rank - 1,
-                                       [self._num_heads, self._key_size]),
-        bias_axes=bias_axes if self._use_bias else None,
-        name="query",
-        **common_kwargs)
-    einsum_equation, bias_axes, output_rank = _build_proj_equation(
-        key_shape.rank - 1, bound_dims=1, output_dims=2)
-    self._key_dense = EinsumDense(
-        einsum_equation,
-        output_shape=_get_output_shape(output_rank - 1,
-                                       [self._num_heads, self._key_size]),
-        bias_axes=bias_axes if self._use_bias else None,
-        name="key",
-        **common_kwargs)
-    einsum_equation, bias_axes, output_rank = _build_proj_equation(
-        value_shape.rank - 1, bound_dims=1, output_dims=2)
-    self._value_dense = EinsumDense(
-        einsum_equation,
-        output_shape=_get_output_shape(output_rank - 1,
-                                       [self._num_heads, self._value_size]),
-        bias_axes=bias_axes if self._use_bias else None,
-        name="value",
-        **common_kwargs)
-
-    # Builds the attention computations for multi-head dot product attention.
-    # These computations could be wrapped into the keras attention layer once it
-    # support mult-head einsum computations.
-    self._build_attention(output_rank)
-    if self._output_shape:
-      if not isinstance(self._output_shape, collections.abc.Sized):
-        output_shape = [self._output_shape]
+      # Builds the attention computations for multi-head dot product attention.
+      # These computations could be wrapped into the keras attention layer once
+      # it support mult-head einsum computations.
+      self.build_attention(output_rank)
+      if self._output_shape:
+        if not isinstance(self._output_shape, collections.abc.Sized):
+          output_shape = [self._output_shape]
+        else:
+          output_shape = self._output_shape
       else:
-        output_shape = self._output_shape
-    else:
-      output_shape = [query_shape[-1]]
-    einsum_equation, bias_axes, output_rank = _build_proj_equation(
-        free_dims, bound_dims=2, output_dims=len(output_shape))
-    self._output_dense = EinsumDense(
-        einsum_equation,
-        output_shape=_get_output_shape(output_rank - 1, output_shape),
-        bias_axes=bias_axes if self._use_bias else None,
-        name="attention_output",
-        **common_kwargs)
-    super(MultiHeadAttention, self).build(input_shape)
+        output_shape = [query_shape[-1]]
+      einsum_equation, bias_axes, output_rank = _build_proj_equation(
+          free_dims, bound_dims=2, output_dims=len(output_shape))
+      self._output_dense = EinsumDense(
+          einsum_equation,
+          output_shape=_get_output_shape(output_rank - 1, output_shape),
+          bias_axes=bias_axes if self._use_bias else None,
+          name="attention_output",
+          **common_kwargs)
 
-  def _build_attention(self, qkv_rank):
+  def build_attention(self, rank):
     """Builds multi-head dot-product attention computations.
 
-    This function builds attributes necessary for `_compute_attention` to
+    This function builds attributes necessary for `compute_attention` to
     costomize attention computation to replace the default dot-product
     attention.
 
     Args:
-      qkv_rank: the rank of query, key, value tensors.
+      rank: the rank of query, key, value tensors.
     """
     if self._attention_axes is None:
-      self._attention_axes = tuple(range(1, qkv_rank - 2))
+      self._attention_axes = tuple(range(1, rank - 2))
     else:
       self._attention_axes = tuple(self._attention_axes)
     self._dot_product_equation, self._combine_equation, attn_scores_rank = (
-        _build_attention_equation(qkv_rank, attn_axes=self._attention_axes))
+        _build_attention_equation(rank, attn_axes=self._attention_axes))
     norm_axes = tuple(
         range(attn_scores_rank - len(self._attention_axes), attn_scores_rank))
     self._masked_softmax = masked_softmax.MaskedSoftmax(
         mask_expansion_axes=[1], normalization_axes=norm_axes)
     self._dropout_layer = tf.keras.layers.Dropout(rate=self._dropout)
 
-  def _compute_attention(self,
-                         query_tensor,
-                         key_tensor,
-                         value_tensor,
-                         attention_mask=None):
+  def compute_attention(self, query, key, value, attention_mask=None):
     """Applies Dot-product attention with query, key, value tensors.
 
     This function defines the computation inside `call` with projected
@@ -356,9 +373,9 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     attention implementation.
 
     Args:
-      query_tensor: Projected query `Tensor` of shape `[B, T, N, key_size]`.
-      key_tensor: Projected key `Tensor` of shape `[B, T, N, key_size]`.
-      value_tensor: Projected value `Tensor` of shape `[B, T, N, value_size]`.
+      query: Projected query `Tensor` of shape `[B, T, N, key_size]`.
+      key: Projected key `Tensor` of shape `[B, T, N, key_size]`.
+      value: Projected value `Tensor` of shape `[B, T, N, value_size]`.
       attention_mask: a boolean mask of shape `[B, T, S]`, that prevents
         attention to certain positions.
 
@@ -369,13 +386,11 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     # Note: Applying scalar multiply at the smaller end of einsum improves
     # XLA performance, but may introduce slight numeric differences in
     # the Transformer attention head.
-    query_tensor = tf.multiply(query_tensor,
-                               1.0 / math.sqrt(float(self._key_size)))
+    query = tf.multiply(query, 1.0 / math.sqrt(float(self._key_size)))
 
     # Take the dot product between "query" and "key" to get the raw
     # attention scores.
-    attention_scores = tf.einsum(self._dot_product_equation, key_tensor,
-                                 query_tensor)
+    attention_scores = tf.einsum(self._dot_product_equation, key, query)
 
     # Normalize the attention scores to probabilities.
     # `attention_scores` = [B, N, T, S]
@@ -387,10 +402,10 @@ class MultiHeadAttention(tf.keras.layers.Layer):
 
     # `context_layer` = [B, T, N, H]
     attention_output = tf.einsum(self._combine_equation,
-                                 attention_scores_dropout, value_tensor)
+                                 attention_scores_dropout, value)
     return attention_output, attention_scores
 
-  def call(self, inputs, attention_mask=None):
+  def call(self, query, value, key=None, attention_mask=None):
     """Implements the forward pass.
 
     Size glossary:
@@ -403,11 +418,10 @@ class MultiHeadAttention(tf.keras.layers.Layer):
       * Value (source) attention axes shape (S), the rank must match the target.
 
     Args:
-      inputs: List of the following tensors:
-        * query: Query `Tensor` of shape `[B, T, dim]`.
-        * value: Value `Tensor` of shape `[B, S, dim]`.
-        * key: Optional key `Tensor` of shape `[B, S, dim]`. If not given, will
-          use `value` for both `key` and `value`, which is the most common case.
+      query: Query `Tensor` of shape `[B, T, dim]`.
+      value: Value `Tensor` of shape `[B, S, dim]`.
+      key: Optional key `Tensor` of shape `[B, S, dim]`. If not given, will use
+        `value` for both `key` and `value`, which is the most common case.
       attention_mask: a boolean mask of shape `[B, T, S]`, that prevents
         attention to certain positions.
 
@@ -420,29 +434,24 @@ class MultiHeadAttention(tf.keras.layers.Layer):
       attention
         axes.
     """
-    inputs_len = len(inputs)
-    if inputs_len > 3 or inputs_len < 2:
-      raise ValueError(
-          "Expects inputs list of length 2 or 3, namely [query, value] or "
-          "[query, value, key]. "
-          "Given length: %d" % inputs_len)
-    query = inputs[0]
-    value = inputs[1]
-    key = inputs[2] if inputs_len == 3 else value
+    if not self._built_from_signature:
+      self._build_from_signature(query=query, value=value, key=key)
+    if key is None:
+      key = value
 
     #   N = `num_attention_heads`
     #   H = `size_per_head`
-    # `query_tensor` = [B, T, N ,H]
-    query_tensor = self._query_dense(query)
+    # `query` = [B, T, N ,H]
+    query = self._query_dense(query)
 
-    # `key_tensor` = [B, S, N, H]
-    key_tensor = self._key_dense(key)
+    # `key` = [B, S, N, H]
+    key = self._key_dense(key)
 
-    # `value_tensor` = [B, S, N, H]
-    value_tensor = self._value_dense(value)
+    # `value` = [B, S, N, H]
+    value = self._value_dense(value)
 
-    attention_output, attention_scores = self._compute_attention(
-        query_tensor, key_tensor, value_tensor, attention_mask)
+    attention_output, attention_scores = self.compute_attention(
+        query, key, value, attention_mask)
     attention_output = self._output_dense(attention_output)
 
     if self._return_attention_scores:
@@ -457,40 +466,42 @@ class CachedAttention(MultiHeadAttention):
   Arguments are the same as `MultiHeadAttention` layer.
   """
 
-  def _update_cache(self, key_tensor, value_tensor, cache, decode_loop_step):
+  def _update_cache(self, key, value, cache, decode_loop_step):
     """Updates cache states and gets full-length key/value tensors."""
     # Combines cached keys and values with new keys and values.
     if decode_loop_step is not None:
       # TPU special case.
       key_seq_dim = cache["key"].shape.as_list()[1]
       indices = tf.reshape(
-          tf.one_hot(decode_loop_step, key_seq_dim, dtype=key_tensor.dtype),
+          tf.one_hot(decode_loop_step, key_seq_dim, dtype=key.dtype),
           [1, key_seq_dim, 1, 1])
-      key_tensor = cache["key"] + key_tensor * indices
+      key = cache["key"] + key * indices
       value_seq_dim = cache["value"].shape.as_list()[1]
       indices = tf.reshape(
-          tf.one_hot(decode_loop_step, value_seq_dim, dtype=value_tensor.dtype),
+          tf.one_hot(decode_loop_step, value_seq_dim, dtype=value.dtype),
           [1, value_seq_dim, 1, 1])
-      value_tensor = cache["value"] + value_tensor * indices
+      value = cache["value"] + value * indices
     else:
-      key_tensor = tf.concat(
-          [tf.cast(cache["key"], key_tensor.dtype), key_tensor], axis=1)
-      value_tensor = tf.concat(
-          [tf.cast(cache["value"], value_tensor.dtype), value_tensor], axis=1)
+      key = tf.concat([tf.cast(cache["key"], key.dtype), key], axis=1)
+      value = tf.concat([tf.cast(cache["value"], value.dtype), value], axis=1)
 
     # Update cache
-    cache["key"] = key_tensor
-    cache["value"] = value_tensor
+    cache["key"] = key
+    cache["value"] = value
 
-    return key_tensor, value_tensor
+    return key, value
 
   def call(self,
-           inputs,
+           query,
+           value,
+           key=None,
            attention_mask=None,
            cache=None,
            decode_loop_step=None):
-    from_tensor = inputs[0]
-    to_tensor = inputs[1]
+    if not self._built_from_signature:
+      self._build_from_signature(query=query, value=value, key=key)
+    if key is None:
+      key = value
 
     # Scalar dimensions referenced here:
     #   B = batch size (number of sequences)
@@ -498,23 +509,21 @@ class CachedAttention(MultiHeadAttention):
     #   T = `to_tensor` sequence length
     #   N = `num_attention_heads`
     #   H = `size_per_head`
-    # `query_tensor` = [B, F, N ,H]
-    query_tensor = self._query_dense(from_tensor)
+    # `query` = [B, F, N ,H]
+    query = self._query_dense(query)
 
-    # `key_tensor` = [B, T, N, H]
-    key_tensor = self._key_dense(to_tensor)
+    # `key` = [B, T, N, H]
+    key = self._key_dense(key)
 
-    # `value_tensor` = [B, T, N, H]
-    value_tensor = self._value_dense(to_tensor)
+    # `value` = [B, T, N, H]
+    value = self._value_dense(value)
 
     if cache:
-      key_tensor, value_tensor = self._update_cache(key_tensor, value_tensor,
-                                                    cache, decode_loop_step)
+      key, value = self._update_cache(key, value, cache, decode_loop_step)
 
     # Take the dot product between "query" and "key" to get the raw
     # attention scores.
-    attention_scores = tf.einsum(self._dot_product_equation, key_tensor,
-                                 query_tensor)
+    attention_scores = tf.einsum(self._dot_product_equation, key, query)
     attention_scores = tf.multiply(attention_scores,
                                    1.0 / math.sqrt(float(self._key_size)))
 
@@ -527,7 +536,7 @@ class CachedAttention(MultiHeadAttention):
     attention_scores = self._dropout_layer(attention_scores)
     # `context_layer` = [B, F, N, H]
     attention_output = tf.einsum(self._combine_equation, attention_scores,
-                                 value_tensor)
+                                 value)
     attention_output = self._output_dense(attention_output)
     if self._return_attention_scores:
       return attention_output, attention_scores, cache
