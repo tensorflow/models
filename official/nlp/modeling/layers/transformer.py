@@ -120,7 +120,9 @@ class Transformer(tf.keras.layers.Layer):
         name="self_attention",
         **common_kwargs)
     # pylint: disable=protected-access
-    self._attention_layer.build([input_tensor_shape] * 3)
+    # Temporarily handling for checkpoint compatible changes.
+    self._attention_layer._build_from_signature(
+        query=input_tensor_shape, value=input_tensor_shape)
     self._attention_output_dense = self._attention_layer._output_dense
     # pylint: enable=protected-access
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
@@ -202,9 +204,9 @@ class Transformer(tf.keras.layers.Layer):
       attention_mask = attention_mask[:, 0:self._output_range, :]
     else:
       target_tensor = input_tensor
-    attention_inputs = [target_tensor, input_tensor]
 
-    attention_output = self._attention_layer(attention_inputs, attention_mask)
+    attention_output = self._attention_layer(
+        query=target_tensor, value=input_tensor, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = self._attention_layer_norm(target_tensor +
                                                   attention_output)
@@ -382,21 +384,23 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
           "TransformerDecoderLayer must have 4 inputs, but it got: %d" %
           len(inputs))
     input_tensor, memory, attention_mask, self_attention_mask = inputs[:4]
-    self_attention_inputs = [input_tensor, input_tensor]
     self_attention_output, cache = self.self_attention(
-        self_attention_inputs,
+        query=input_tensor,
+        value=input_tensor,
         attention_mask=self_attention_mask,
         cache=cache,
         decode_loop_step=decode_loop_step)
     self_attention_output = self.self_attention_dropout(self_attention_output)
     self_attention_output = self.self_attention_layer_norm(
         input_tensor + self_attention_output)
-
-    cross_attn_inputs = [self_attention_output, memory]
+    cross_attn_inputs = dict(
+        query=self_attention_output,
+        value=memory,
+        attention_mask=attention_mask)
     if self.multi_channel_cross_attention:
       # Accesses the 5-th input tensor for the doc-attention probabilities.
-      cross_attn_inputs.append(inputs[-1])
-    attention_output = self.encdec_attention(cross_attn_inputs, attention_mask)
+      cross_attn_inputs["context_attention_weights"] = inputs[-1]
+    attention_output = self.encdec_attention(**cross_attn_inputs)
     attention_output = self.encdec_attention_dropout(attention_output)
     attention_output = self.encdec_attention_layer_norm(self_attention_output +
                                                         attention_output)

@@ -213,9 +213,9 @@ class ReZeroTransformer(tf.keras.layers.Layer):
       attention_mask = attention_mask[:, 0:self._output_range, :]
     else:
       target_tensor = input_tensor
-    attention_inputs = [target_tensor, input_tensor]
 
-    attention_output = self._attention_layer(attention_inputs, attention_mask)
+    attention_output = self._attention_layer(
+        query=target_tensor, value=input_tensor, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = target_tensor + self._rezero_a * attention_output
     if self._use_layer_norm:
