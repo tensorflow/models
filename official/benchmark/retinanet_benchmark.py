@@ -272,6 +272,44 @@ class RetinanetBenchmarkReal(RetinanetAccuracy):
     self._run_and_report_benchmark(params, do_eval=False, warmup=0)
 
   @flagsaver.flagsaver
+  def benchmark_4x4_tpu_coco(self):
+    """Run RetinaNet model accuracy test with 4 TPUs."""
+    self._setup()
+    params = self._params()
+    params['train']['batch_size'] = 256
+    params['train']['total_steps'] = 469  # One epoch.
+    params['train']['iterations_per_loop'] = 500
+    FLAGS.model_dir = self._get_model_dir('real_benchmark_4x4_tpu_coco')
+    FLAGS.strategy_type = 'tpu'
+    self._run_and_report_benchmark(params, do_eval=False, warmup=0)
+
+  @flagsaver.flagsaver
+  def benchmark_2x2_tpu_coco_mlir(self):
+    """Run RetinaNet model accuracy test with 4 TPUs."""
+    self._setup()
+    params = self._params()
+    params['train']['batch_size'] = 64
+    params['train']['total_steps'] = 1875  # One epoch.
+    params['train']['iterations_per_loop'] = 500
+    FLAGS.model_dir = self._get_model_dir('real_benchmark_2x2_tpu_coco_mlir')
+    FLAGS.strategy_type = 'tpu'
+    tf.config.experimental.enable_mlir_bridge()
+    self._run_and_report_benchmark(params, do_eval=False, warmup=0)
+
+  @flagsaver.flagsaver
+  def benchmark_4x4_tpu_coco_mlir(self):
+    """Run RetinaNet model accuracy test with 4 TPUs."""
+    self._setup()
+    params = self._params()
+    params['train']['batch_size'] = 256
+    params['train']['total_steps'] = 469  # One epoch.
+    params['train']['iterations_per_loop'] = 500
+    FLAGS.model_dir = self._get_model_dir('real_benchmark_4x4_tpu_coco_mlir')
+    FLAGS.strategy_type = 'tpu'
+    tf.config.experimental.enable_mlir_bridge()
+    self._run_and_report_benchmark(params, do_eval=False, warmup=0)
+
+  @flagsaver.flagsaver
   def benchmark_2x2_tpu_spinenet_coco(self):
     """Run SpineNet with RetinaNet model accuracy test with 4 TPUs."""
     self._setup()

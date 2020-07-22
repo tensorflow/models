@@ -55,14 +55,10 @@ def export_bert_model(model_export_path: typing.Text,
     raise ValueError('model must be a tf.keras.Model object.')
 
   if checkpoint_dir:
-    # Keras compile/fit() was used to save checkpoint using
-    # model.save_weights().
     if restore_model_using_load_weights:
       model_weight_path = os.path.join(checkpoint_dir, 'checkpoint')
       assert tf.io.gfile.exists(model_weight_path)
       model.load_weights(model_weight_path)
-
-    # tf.train.Checkpoint API was used via custom training loop logic.
     else:
       checkpoint = tf.train.Checkpoint(model=model)
 

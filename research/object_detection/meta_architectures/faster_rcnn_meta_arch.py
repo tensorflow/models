@@ -1948,9 +1948,16 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Returns:
       A float32 tensor with shape [K, new_height, new_width, depth].
     """
+    features_to_crop = [features_to_crop]
+    num_levels = len(features_to_crop)
+    box_levels = None
+    if num_levels != 1:
+      # If there are multiple levels to select, get the box levels
+      box_levels = ops.fpn_feature_levels(num_levels, num_levels - 1,
+                                          1.0/224, proposal_boxes_normalized)
     cropped_regions = self._flatten_first_two_dimensions(
         self._crop_and_resize_fn(
-            features_to_crop, proposal_boxes_normalized,
+            features_to_crop, proposal_boxes_normalized, box_levels,
             [self._initial_crop_size, self._initial_crop_size]))
     return self._maxpool_layer(cropped_regions)
 
@@ -2517,8 +2524,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
             image_shape[1], image_shape[2], check_range=False).get()
 
         flat_cropped_gt_mask = self._crop_and_resize_fn(
-            tf.expand_dims(flat_gt_masks, -1),
-            tf.expand_dims(flat_normalized_proposals, axis=1),
+            [tf.expand_dims(flat_gt_masks, -1)],
+            tf.expand_dims(flat_normalized_proposals, axis=1), None,
             [mask_height, mask_width])
         # Without stopping gradients into cropped groundtruth masks the
         # performance with 100-padded groundtruth masks when batch size > 1 is

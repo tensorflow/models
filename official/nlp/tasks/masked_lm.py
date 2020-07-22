@@ -40,8 +40,9 @@ class MaskedLMConfig(cfg.TaskConfig):
 class MaskedLMTask(base_task.Task):
   """Mock task object for testing."""
 
-  def build_model(self):
-    return bert.instantiate_pretrainer_from_cfg(self.task_config.model)
+  def build_model(self, params=None):
+    params = params or self.task_config.model
+    return bert.instantiate_pretrainer_from_cfg(params)
 
   def build_losses(self,
                    labels,

@@ -22,7 +22,8 @@ import functools
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.keras import backend
+
+from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 from official.vision.detection.ops import spatial_transform_ops
 
@@ -127,7 +128,7 @@ class RpnHead(tf.keras.layers.Layer):
     scores_outputs = {}
     box_outputs = {}
 
-    with backend.get_graph().as_default(), tf.name_scope('rpn_head'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('rpn_head'):
       for level in range(self._min_level, self._max_level + 1):
         scores_output, box_output = self._shared_rpn_heads(
             features[level], self._anchors_per_location, level, is_training)
@@ -249,7 +250,8 @@ class FastrcnnHead(tf.keras.layers.Layer):
         predictions.
     """
 
-    with backend.get_graph().as_default(), tf.name_scope('fast_rcnn_head'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope(
+        'fast_rcnn_head'):
       # reshape inputs beofre FC.
       _, num_rois, height, width, filters = roi_features.get_shape().as_list()
 
@@ -368,7 +370,7 @@ class MaskrcnnHead(tf.keras.layers.Layer):
         boxes is not 4.
     """
 
-    with backend.get_graph().as_default():
+    with keras_utils.maybe_enter_backend_graph():
       with tf.name_scope('mask_head'):
         _, num_rois, height, width, filters = roi_features.get_shape().as_list()
         net = tf.reshape(roi_features, [-1, height, width, filters])
@@ -552,7 +554,8 @@ class RetinanetHead(object):
     """Returns outputs of RetinaNet head."""
     class_outputs = {}
     box_outputs = {}
-    with backend.get_graph().as_default(), tf.name_scope('retinanet_head'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope(
+        'retinanet_head'):
       for level in range(self._min_level, self._max_level + 1):
         features = fpn_features[level]
 
@@ -644,7 +647,7 @@ class ShapemaskPriorHead(object):
       detection_priors: A float Tensor of shape [batch_size * num_instances,
         mask_size, mask_size, 1].
     """
-    with backend.get_graph().as_default(), tf.name_scope('prior_mask'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('prior_mask'):
       batch_size, num_instances, _ = boxes.get_shape().as_list()
       outer_boxes = tf.cast(outer_boxes, tf.float32)
       boxes = tf.cast(boxes, tf.float32)
@@ -807,7 +810,7 @@ class ShapemaskCoarsemaskHead(object):
       mask_outputs: instance mask prediction as a float Tensor of shape
         [batch_size, num_instances, mask_size, mask_size].
     """
-    with backend.get_graph().as_default(), tf.name_scope('coarse_mask'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('coarse_mask'):
       # Transform detection priors to have the same dimension as features.
       detection_priors = tf.expand_dims(detection_priors, axis=-1)
       detection_priors = self._coarse_mask_fc(detection_priors)
@@ -939,7 +942,7 @@ class ShapemaskFinemaskHead(object):
     """
     # Extract the foreground mean features
     # with tf.variable_scope('fine_mask', reuse=tf.AUTO_REUSE):
-    with backend.get_graph().as_default(), tf.name_scope('fine_mask'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('fine_mask'):
       mask_probs = tf.nn.sigmoid(mask_logits)
       # Compute instance embedding for hard average.
       binary_mask = tf.cast(tf.greater(mask_probs, 0.5), features.dtype)

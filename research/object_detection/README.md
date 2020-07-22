@@ -109,6 +109,18 @@ Sergi Caelles Prat, Shan Yang, Sudheendra Vijayanarasimhan, Tina Tian, Tomer
 Kaftan, Vighnesh Birodkar, Vishnu Banna, Vivek Rathod, Yanhui Liang, Yiming Shi,
 Yixin Shi, Yu-hui Chen, Zhichao Lu.
 
+### MobileDet GPU
+
+We have released SSDLite with MobileDet GPU backbone, which achieves 17% mAP
+higher than the MobileNetV2 SSDLite (27.5 mAP vs 23.5 mAP) on a NVIDIA Jetson
+Xavier at comparable latency (3.2ms vs 3.3ms).
+
+Along with the model definition, we are also releasing model checkpoints trained
+on the COCO dataset.
+
+<b>Thanks to contributors</b>: Yongzhe Wang, Bo Chen, Hanxiao Liu, Le An
+(NVIDIA), Yu-Te Cheng (NVIDIA), Oliver Knieps (NVIDIA), and Josh Park (NVIDIA).
+
 ### Context R-CNN
 
 We have released [Context R-CNN](https://arxiv.org/abs/1912.03538), a model that

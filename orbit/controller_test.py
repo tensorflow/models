@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +14,6 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for orbit.controller."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 from absl import logging
@@ -203,7 +200,7 @@ class TestTrainerWithSummaries(standard_runner.StandardTrainer):
 class ControllerTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    super(ControllerTest, self).setUp()
+    super().setUp()
     self.model_dir = self.get_temp_dir()
 
   def test_no_checkpoint(self):

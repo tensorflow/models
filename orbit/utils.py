@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +15,12 @@
 # ==============================================================================
 """Some layered modules/functions to help users writing custom training loop."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import abc
 import contextlib
 import functools
 import inspect
 
 import numpy as np
-import six
 import tensorflow as tf
 
 
@@ -132,10 +127,7 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
     # names, pass `ctx` as the value of `input_context` when calling
     # `dataset_or_fn`. Otherwise `ctx` will not be used when calling
     # `dataset_or_fn`.
-    if six.PY3:
-      argspec = inspect.getfullargspec(dataset_or_fn)
-    else:
-      argspec = inspect.getargspec(dataset_or_fn)  # pylint: disable=deprecated-method
+    argspec = inspect.getfullargspec(dataset_or_fn)
     args_names = argspec.args
 
     if "input_context" in args_names:
@@ -146,7 +138,7 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
   return strategy.experimental_distribute_datasets_from_function(dataset_fn)
 
 
-class SummaryManager(object):
+class SummaryManager:
   """A class manages writing summaries."""
 
   def __init__(self, summary_dir, summary_fn, global_step=None):
@@ -201,8 +193,7 @@ class SummaryManager(object):
         self._summary_fn(name, tensor, step=self._global_step)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Trigger(object):
+class Trigger(metaclass=abc.ABCMeta):
   """An abstract class representing a "trigger" for some event."""
 
   @abc.abstractmethod
@@ -263,7 +254,7 @@ class IntervalTrigger(Trigger):
     self._last_trigger_value = 0
 
 
-class EpochHelper(object):
+class EpochHelper:
   """A Helper class to handle epochs in Customized Training Loop."""
 
   def __init__(self, epoch_steps, global_step):
