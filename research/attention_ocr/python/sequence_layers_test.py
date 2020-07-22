@@ -29,13 +29,13 @@ import sequence_layers
 
 def fake_net(batch_size, num_features, feature_size):
   return tf.convert_to_tensor(
-      np.random.uniform(size=(batch_size, num_features, feature_size)),
+      value=np.random.uniform(size=(batch_size, num_features, feature_size)),
       dtype=tf.float32)
 
 
 def fake_labels(batch_size, seq_length, num_char_classes):
   labels_np = tf.convert_to_tensor(
-      np.random.randint(
+      value=np.random.randint(
           low=0, high=num_char_classes, size=(batch_size, seq_length)))
   return slim.one_hot_encoding(labels_np, num_classes=num_char_classes)
 

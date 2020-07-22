@@ -52,7 +52,7 @@ class ModelTest(tf.test.TestCase):
                               self.num_char_classes)
     self.length_logit_shape = (self.batch_size, self.seq_length + 1)
     # Placeholder knows image dimensions, but not batch size.
-    self.input_images = tf.placeholder(
+    self.input_images = tf.compat.v1.placeholder(
         tf.float32,
         shape=(None, self.image_height, self.image_width, 3),
         name='input_node')
@@ -89,8 +89,8 @@ class ModelTest(tf.test.TestCase):
     with self.test_session() as sess:
       endpoints_tf = ocr_model.create_base(
           images=self.input_images, labels_one_hot=None)
-      sess.run(tf.global_variables_initializer())
-      tf.tables_initializer().run()
+      sess.run(tf.compat.v1.global_variables_initializer())
+      tf.compat.v1.tables_initializer().run()
       endpoints = sess.run(
           endpoints_tf, feed_dict={self.input_images: self.fake_images})
 
@@ -127,7 +127,7 @@ class ModelTest(tf.test.TestCase):
       ocr_model = self.create_model()
       conv_tower = ocr_model.conv_tower_fn(self.input_images)
 
-      sess.run(tf.global_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
       conv_tower_np = sess.run(
           conv_tower, feed_dict={self.input_images: self.fake_images})
 
@@ -141,9 +141,9 @@ class ModelTest(tf.test.TestCase):
     ocr_model = self.create_model()
     ocr_model.create_base(images=self.input_images, labels_one_hot=None)
     with self.test_session() as sess:
-      tfprof_root = tf.profiler.profile(
+      tfprof_root = tf.compat.v1.profiler.profile(
           sess.graph,
-          options=tf.profiler.ProfileOptionBuilder
+          options=tf.compat.v1.profiler.ProfileOptionBuilder
           .trainable_variables_parameter())
 
       model_size_bytes = 4 * tfprof_root.total_parameters
@@ -163,9 +163,9 @@ class ModelTest(tf.test.TestCase):
     summaries = ocr_model.create_summaries(
         data, endpoints, charset, is_training=False)
     with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
-      sess.run(tf.local_variables_initializer())
-      tf.tables_initializer().run()
+      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.compat.v1.local_variables_initializer())
+      tf.compat.v1.tables_initializer().run()
       sess.run(summaries)  # just check it is runnable
 
   def test_sequence_loss_function_without_label_smoothing(self):
@@ -188,7 +188,7 @@ class ModelTest(tf.test.TestCase):
     Returns:
       a list of tensors with encoded image coordinates in them.
     """
-    batch_size = tf.shape(net)[0]
+    batch_size = tf.shape(input=net)[0]
     _, h, w, _ = net.shape.as_list()
     h_loc = [
         tf.tile(
@@ -200,7 +200,8 @@ class ModelTest(tf.test.TestCase):
     h_loc = tf.concat([tf.expand_dims(t, 2) for t in h_loc], 2)
     w_loc = [
         tf.tile(
-            tf.contrib.layers.one_hot_encoding(tf.constant([i]), num_classes=w),
+            tf.contrib.layers.one_hot_encoding(
+                tf.constant([i]), num_classes=w),
             [h, 1]) for i in range(w)
     ]
     w_loc = tf.concat([tf.expand_dims(t, 2) for t in w_loc], 2)
@@ -272,8 +273,8 @@ class ModelTest(tf.test.TestCase):
       endpoints_tf = ocr_model.create_base(
           images=self.fake_images, labels_one_hot=None)
 
-      sess.run(tf.global_variables_initializer())
-      tf.tables_initializer().run()
+      sess.run(tf.compat.v1.global_variables_initializer())
+      tf.compat.v1.tables_initializer().run()
       endpoints = sess.run(endpoints_tf)
 
       self.assertEqual(endpoints.predicted_text.shape, (self.batch_size,))
@@ -289,7 +290,7 @@ class CharsetMapperTest(tf.test.TestCase):
     charset_mapper = model.CharsetMapper(charset)
 
     with self.test_session() as sess:
-      tf.tables_initializer().run()
+      tf.compat.v1.tables_initializer().run()
       text = sess.run(charset_mapper.get_text(ids))
 
     self.assertAllEqual(text, [b'hello', b'world'])

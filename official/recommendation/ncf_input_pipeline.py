@@ -25,10 +25,8 @@ import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
 from official.recommendation import constants as rconst
-from official.recommendation import movielens
 from official.recommendation import data_pipeline
-
-NUM_SHARDS = 16
+from official.recommendation import movielens
 
 
 def create_dataset_from_tf_record_files(input_file_pattern,
@@ -36,32 +34,23 @@ def create_dataset_from_tf_record_files(input_file_pattern,
                                         batch_size,
                                         is_training=True):
   """Creates dataset from (tf)records files for training/evaluation."""
+  if pre_batch_size != batch_size:
+    raise ValueError("Pre-batch ({}) size is not equal to batch "
+                     "size ({})".format(pre_batch_size, batch_size))
 
   files = tf.data.Dataset.list_files(input_file_pattern, shuffle=is_training)
 
-  def make_dataset(files_dataset, shard_index):
-    """Returns dataset for sharded tf record files."""
-    if pre_batch_size != batch_size:
-      raise ValueError("Pre-batch ({}) size is not equal to batch "
-                       "size ({})".format(pre_batch_size, batch_size))
-    files_dataset = files_dataset.shard(NUM_SHARDS, shard_index)
-    dataset = files_dataset.interleave(
-        tf.data.TFRecordDataset,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    decode_fn = functools.partial(
-        data_pipeline.DatasetManager.deserialize,
-        batch_size=pre_batch_size,
-        is_training=is_training)
-    dataset = dataset.map(
-        decode_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    return dataset
-
-  dataset = tf.data.Dataset.range(NUM_SHARDS)
-  map_fn = functools.partial(make_dataset, files)
-  dataset = dataset.interleave(
-      map_fn,
-      cycle_length=NUM_SHARDS,
+  dataset = files.interleave(
+      tf.data.TFRecordDataset,
+      cycle_length=16,
       num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  decode_fn = functools.partial(
+      data_pipeline.DatasetManager.deserialize,
+      batch_size=pre_batch_size,
+      is_training=is_training)
+  dataset = dataset.map(
+      decode_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
   dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
   return dataset
 

@@ -110,34 +110,52 @@ class VotingAttention(tf.keras.layers.Layer):
 class MultiChannelAttention(attention.MultiHeadAttention):
   """Multi-channel Attention layer.
 
-  Introduced in: https://arxiv.org/abs/2001.09386. Expects multiple
-  cross-attention target sequences.
+  Introduced in, [Generating Representative Headlines for News Stories
+  ](https://arxiv.org/abs/2001.09386). Expects multiple cross-attention
+  target sequences.
+
+  Call args:
+    query: Query `Tensor` of shape `[B, T, dim]`.
+    value: Value `Tensor` of shape `[B, A, S, dim]`, where A denotes the
+    context_attention_weights: Context weights of shape `[B, N, T, A]`, where N
+      is the number of attention heads. Combines multi-channel sources
+      context tensors according to the distribution among channels.
+    key: Optional key `Tensor` of shape `[B, A, S, dim]`. If not given, will use
+      `value` for both `key` and `value`, which is the most common case.
+    attention_mask: a boolean mask of shape `[B, T, S]`, that prevents attention
+      to certain positions.
   """
 
-  def _build_attention(self, qkv_rank):
-    super(MultiChannelAttention, self)._build_attention(qkv_rank)
+  def build_attention(self, rank):
+    super(MultiChannelAttention, self).build_attention(rank)
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
-  def call(self, inputs, attention_mask=None):
-    from_tensor = inputs[0]
-    to_tensor = inputs[1]
-    doc_attention_probs = inputs[2]
+  def call(self,
+           query,
+           value,
+           key=None,
+           context_attention_weights=None,
+           attention_mask=None):
+    if not self._built_from_signature:
+      self._build_from_signature(query, value, key=key)
+    if key is None:
+      key = value
 
     # Scalar dimensions referenced here:
     #   B = batch size (number of stories)
     #   A = num_docs (number of docs)
-    #   F = `from_tensor` sequence length
-    #   T = `to_tensor` sequence length
+    #   F = target sequence length
+    #   T = source sequence length
     #   N = `num_attention_heads`
     #   H = `size_per_head`
     # `query_tensor` = [B, F, N ,H]
-    query_tensor = self._query_dense(from_tensor)
+    query_tensor = self._query_dense(query)
 
     # `key_tensor` = [B, A, T, N, H]
-    key_tensor = self._key_dense(to_tensor)
+    key_tensor = self._key_dense(key)
 
     # `value_tensor` = [B, A, T, N, H]
-    value_tensor = self._value_dense(to_tensor)
+    value_tensor = self._value_dense(value)
 
     # Take the dot product between "query" and "key" to get the raw
     # attention scores.
@@ -156,7 +174,7 @@ class MultiChannelAttention(attention.MultiHeadAttention):
     # `context_layer` = [B, F, N, H]
     context_layer = tf.einsum("BANFT,BATNH->BAFNH", attention_probs,
                               value_tensor)
-    attention_output = tf.einsum("BNFA,BAFNH->BFNH", doc_attention_probs,
+    attention_output = tf.einsum("BNFA,BAFNH->BFNH", context_attention_weights,
                                  context_layer)
     attention_output = self._output_dense(attention_output)
     return attention_output

@@ -92,8 +92,8 @@ class CharsetMapper(object):
         Args:
           ids: a tensor with shape [batch_size, max_sequence_length]
     """
-    return tf.reduce_join(
-        self.table.lookup(tf.to_int64(ids)), reduction_indices=1)
+    return tf.strings.reduce_join(
+        inputs=self.table.lookup(tf.cast(ids, dtype=tf.int64)), axis=1)
 
 
 def get_softmax_loss_fn(label_smoothing):
@@ -110,7 +110,7 @@ def get_softmax_loss_fn(label_smoothing):
 
     def loss_fn(labels, logits):
       return (tf.nn.softmax_cross_entropy_with_logits(
-          logits=logits, labels=labels))
+          logits=logits, labels=tf.stop_gradient(labels)))
   else:
 
     def loss_fn(labels, logits):
@@ -140,7 +140,7 @@ def get_tensor_dimensions(tensor):
     raise ValueError(
         'Incompatible shape: len(tensor.get_shape().dims) != 4 (%d != 4)' %
         len(tensor.get_shape().dims))
-  batch_size = tf.shape(tensor)[0]
+  batch_size = tf.shape(input=tensor)[0]
   height = tensor.get_shape().dims[1].value
   width = tensor.get_shape().dims[2].value
   num_features = tensor.get_shape().dims[3].value
@@ -161,8 +161,8 @@ def lookup_indexed_value(indices, row_vecs):
     A tensor of shape (batch, ) formed by row_vecs[i, indices[i]].
   """
   gather_indices = tf.stack((tf.range(
-      tf.shape(row_vecs)[0], dtype=tf.int32), tf.cast(indices, tf.int32)),
-                            axis=1)
+      tf.shape(input=row_vecs)[0], dtype=tf.int32), tf.cast(indices, tf.int32)),
+      axis=1)
   return tf.gather_nd(row_vecs, gather_indices)
 
 
@@ -181,7 +181,7 @@ def max_char_logprob_cumsum(char_log_prob):
     so the same function can be used regardless whether use_length_predictions
     is true or false.
   """
-  max_char_log_prob = tf.reduce_max(char_log_prob, reduction_indices=2)
+  max_char_log_prob = tf.reduce_max(input_tensor=char_log_prob, axis=2)
   # For an input array [a, b, c]) tf.cumsum returns [a, a + b, a + b + c] if
   # exclusive set to False (default).
   return tf.cumsum(max_char_log_prob, axis=1, exclusive=False)
@@ -203,7 +203,7 @@ def find_length_by_null(predicted_chars, null_code):
     A [batch, ] tensor which stores the sequence length for each sample.
   """
   return tf.reduce_sum(
-      tf.cast(tf.not_equal(null_code, predicted_chars), tf.int32), axis=1)
+      input_tensor=tf.cast(tf.not_equal(null_code, predicted_chars), tf.int32), axis=1)
 
 
 def axis_pad(tensor, axis, before=0, after=0, constant_values=0.0):
@@ -248,7 +248,8 @@ def null_based_length_prediction(chars_log_prob, null_code):
     element #seq_length - is the probability of length=seq_length.
     predicted_length is a tensor with shape [batch].
   """
-  predicted_chars = tf.to_int32(tf.argmax(chars_log_prob, axis=2))
+  predicted_chars = tf.cast(
+      tf.argmax(input=chars_log_prob, axis=2), dtype=tf.int32)
   # We do right pad to support sequences with seq_length elements.
   text_log_prob = max_char_logprob_cumsum(
       axis_pad(chars_log_prob, axis=1, after=1))
@@ -334,9 +335,9 @@ class Model(object):
     """
     mparams = self._mparams['conv_tower_fn']
     logging.debug('Using final_endpoint=%s', mparams.final_endpoint)
-    with tf.variable_scope('conv_tower_fn/INCE'):
+    with tf.compat.v1.variable_scope('conv_tower_fn/INCE'):
       if reuse:
-        tf.get_variable_scope().reuse_variables()
+        tf.compat.v1.get_variable_scope().reuse_variables()
       with slim.arg_scope(inception.inception_v3_arg_scope()):
         with slim.arg_scope([slim.batch_norm, slim.dropout],
                             is_training=is_training):
@@ -372,7 +373,7 @@ class Model(object):
   def sequence_logit_fn(self, net, labels_one_hot):
     mparams = self._mparams['sequence_logit_fn']
     # TODO(gorban): remove /alias suffixes from the scopes.
-    with tf.variable_scope('sequence_logit_fn/SQLR'):
+    with tf.compat.v1.variable_scope('sequence_logit_fn/SQLR'):
       layer_class = sequence_layers.get_layer_class(mparams.use_attention,
                                                     mparams.use_autoregression)
       layer = layer_class(net, labels_one_hot, self._params, mparams)
@@ -392,7 +393,7 @@ class Model(object):
     ]
     xy_flat_shape = (batch_size, 1, height * width, num_features)
     nets_for_merge = []
-    with tf.variable_scope('max_pool_views', values=nets_list):
+    with tf.compat.v1.variable_scope('max_pool_views', values=nets_list):
       for net in nets_list:
         nets_for_merge.append(tf.reshape(net, xy_flat_shape))
       merged_net = tf.concat(nets_for_merge, 1)
@@ -413,10 +414,11 @@ class Model(object):
     Returns:
       A tensor of shape [batch_size, seq_length, features_size].
     """
-    with tf.variable_scope('pool_views_fn/STCK'):
+    with tf.compat.v1.variable_scope('pool_views_fn/STCK'):
       net = tf.concat(nets, 1)
-      batch_size = tf.shape(net)[0]
-      image_size = net.get_shape().dims[1].value * net.get_shape().dims[2].value
+      batch_size = tf.shape(input=net)[0]
+      image_size = net.get_shape().dims[1].value * \
+          net.get_shape().dims[2].value
       feature_size = net.get_shape().dims[3].value
       return tf.reshape(net, tf.stack([batch_size, image_size, feature_size]))
 
@@ -438,11 +440,13 @@ class Model(object):
           with shape [batch_size x seq_length].
     """
     log_prob = utils.logits_to_log_prob(chars_logit)
-    ids = tf.to_int32(tf.argmax(log_prob, axis=2), name='predicted_chars')
+    ids = tf.cast(tf.argmax(input=log_prob, axis=2),
+                  name='predicted_chars', dtype=tf.int32)
     mask = tf.cast(
         slim.one_hot_encoding(ids, self._params.num_char_classes), tf.bool)
     all_scores = tf.nn.softmax(chars_logit)
-    selected_scores = tf.boolean_mask(all_scores, mask, name='char_scores')
+    selected_scores = tf.boolean_mask(
+        tensor=all_scores, mask=mask, name='char_scores')
     scores = tf.reshape(
         selected_scores,
         shape=(-1, self._params.seq_length),
@@ -499,7 +503,7 @@ class Model(object):
     images = tf.subtract(images, 0.5)
     images = tf.multiply(images, 2.5)
 
-    with tf.variable_scope(scope, reuse=reuse):
+    with tf.compat.v1.variable_scope(scope, reuse=reuse):
       views = tf.split(
           value=images, num_or_size_splits=self._params.num_views, axis=2)
       logging.debug('Views=%d single view: %s', len(views), views[0])
@@ -566,7 +570,7 @@ class Model(object):
     # multiple losses including regularization losses.
     self.sequence_loss_fn(endpoints.chars_logit, data.labels)
     total_loss = slim.losses.get_total_loss()
-    tf.summary.scalar('TotalLoss', total_loss)
+    tf.compat.v1.summary.scalar('TotalLoss', total_loss)
     return total_loss
 
   def label_smoothing_regularization(self, chars_labels, weight=0.1):
@@ -605,7 +609,7 @@ class Model(object):
       A Tensor with shape [batch_size] - the log-perplexity for each sequence.
     """
     mparams = self._mparams['sequence_loss_fn']
-    with tf.variable_scope('sequence_loss_fn/SLF'):
+    with tf.compat.v1.variable_scope('sequence_loss_fn/SLF'):
       if mparams.label_smoothing > 0:
         smoothed_one_hot_labels = self.label_smoothing_regularization(
             chars_labels, mparams.label_smoothing)
@@ -625,7 +629,7 @@ class Model(object):
             shape=(batch_size, seq_length),
             dtype=tf.int64)
         known_char = tf.not_equal(chars_labels, reject_char)
-        weights = tf.to_float(known_char)
+        weights = tf.cast(known_char, dtype=tf.float32)
 
       logits_list = tf.unstack(chars_logits, axis=1)
       weights_list = tf.unstack(weights, axis=1)
@@ -635,7 +639,7 @@ class Model(object):
           weights_list,
           softmax_loss_function=get_softmax_loss_fn(mparams.label_smoothing),
           average_across_timesteps=mparams.average_across_timesteps)
-      tf.losses.add_loss(loss)
+      tf.compat.v1.losses.add_loss(loss)
       return loss
 
   def create_summaries(self, data, endpoints, charset, is_training):
@@ -665,13 +669,14 @@ class Model(object):
     # tf.summary.text(sname('text/pr'), pr_text)
     # gt_text = charset_mapper.get_text(data.labels[:max_outputs,:])
     # tf.summary.text(sname('text/gt'), gt_text)
-    tf.summary.image(sname('image'), data.images, max_outputs=max_outputs)
+    tf.compat.v1.summary.image(
+        sname('image'), data.images, max_outputs=max_outputs)
 
     if is_training:
-      tf.summary.image(
+      tf.compat.v1.summary.image(
           sname('image/orig'), data.images_orig, max_outputs=max_outputs)
-      for var in tf.trainable_variables():
-        tf.summary.histogram(var.op.name, var)
+      for var in tf.compat.v1.trainable_variables():
+        tf.compat.v1.summary.histogram(var.op.name, var)
       return None
 
     else:
@@ -700,7 +705,8 @@ class Model(object):
 
       for name, value in names_to_values.items():
         summary_name = 'eval/' + name
-        tf.summary.scalar(summary_name, tf.Print(value, [value], summary_name))
+        tf.compat.v1.summary.scalar(
+            summary_name, tf.compat.v1.Print(value, [value], summary_name))
       return list(names_to_updates.values())
 
   def create_init_fn_to_restore(self,
@@ -733,9 +739,9 @@ class Model(object):
     logging.info('variables_to_restore:\n%s',
                  utils.variables_to_restore().keys())
     logging.info('moving_average_variables:\n%s',
-                 [v.op.name for v in tf.moving_average_variables()])
+                 [v.op.name for v in tf.compat.v1.moving_average_variables()])
     logging.info('trainable_variables:\n%s',
-                 [v.op.name for v in tf.trainable_variables()])
+                 [v.op.name for v in tf.compat.v1.trainable_variables()])
     if master_checkpoint:
       assign_from_checkpoint(utils.variables_to_restore(), master_checkpoint)
 

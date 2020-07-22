@@ -43,6 +43,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
       self.shared_weights = self.add_weight(
           "weights",
           shape=[self.vocab_size, self.hidden_size],
+          dtype=tf.float32,
           initializer=tf.random_normal_initializer(
               mean=0., stddev=self.hidden_size**-0.5))
     super(EmbeddingSharedWeights, self).build(input_shape)
