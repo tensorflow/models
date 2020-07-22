@@ -70,6 +70,7 @@ import tensorflow.compat.v1 as tf
 import cv2
 
 from object_detection.utils import dataset_util
+from object_detection.dataset_tools import seq_example_util
 
 POSSIBLE_TIMESTAMPS = range(902, 1798)
 ANNOTATION_URL = "https://research.google.com/ava/download/ava_v2.2.zip"
@@ -224,6 +225,7 @@ class Ava(object):
           total_confidences = []
           total_is_annotated = []
           windowed_timestamp = start_time
+
           while windowed_timestamp < end_time:
             if (media_id, windowed_timestamp) in frame_excluded:
               end_time += 1
