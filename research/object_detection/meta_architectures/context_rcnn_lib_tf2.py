@@ -85,9 +85,7 @@ class AttentionBlock(tf.keras.layers.Layer):
           self._val_proj, normalize=True)
 
     weights = tf.matmul(queries, keys, transpose_b=True)
-
     weights, values = filter_weight_value(weights, values, valid_mask)
-
     weights = tf.nn.softmax(weights / self._attention_temperature)
 
     features = tf.matmul(weights, values)
