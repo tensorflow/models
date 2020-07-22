@@ -275,7 +275,6 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       self._context_feature_extract_fn = context_rcnn_lib_tf2.AttentionBlock(
           bottleneck_dimension=attention_bottleneck_dimension,
           attention_temperature=attention_temperature,
-          freeze_batchnorm=freeze_batchnorm,
           is_training=is_training)
 
   @staticmethod

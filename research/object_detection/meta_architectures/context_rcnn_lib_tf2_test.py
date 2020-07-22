@@ -80,7 +80,7 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase):
         features,
         projection_dimension,
         is_training,
-        context_rcnn_lib.ContextProjection(projection_dimension, False),
+        context_rcnn_lib.ContextProjection(projection_dimension),
         normalize=normalize)
 
     # Makes sure the shape is correct.
@@ -97,10 +97,8 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase):
                            attention_temperature):
     input_features = tf.ones([2, 8, 3, 3, 3], tf.float32)
     context_features = tf.ones([2, 20, 10], tf.float32)
-    is_training = False
     attention_block = context_rcnn_lib.AttentionBlock(bottleneck_dimension, 
-                                                      attention_temperature, 
-                                                      freeze_batchnorm=False,
+                                                      attention_temperature,
                                                       output_dimension=output_dimension,
                                                       is_training=False)
     valid_context_size = tf.random_uniform((2,),
