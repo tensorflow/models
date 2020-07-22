@@ -43,6 +43,23 @@ class FineGAN(object):
         self.num_batches = len(dataset)
         self.summary_writer = tf.summary.create_file_writer('./logs')
 
+        # TODO: Define in the train step
+        self.discriminators = []
+        self.generator = GeneratorArchitecture()
+
+        self.optimizer_gen_list = []
+        self.optimizer_disc_list = []
+
+        self.foreground_masks = []
+        self.fake_images = []
+        self.num_disc = 2
+        self.class_loss = tf.keras.losses.CategoricalCrossentropy()
+        self.loss = tf.keras.losses.CategoricalCrossentropy()
+        self.loss1 = tf.keras.losses.BinaryCrossentropy()
+        self.real_fimages, self.real_cimages, self.bbox = [], [], []
+        self.child_code, self.parent_code = None, None
+
+
     def prepare_dataset(self, batch_size=32):
         data = tf.data.Dataset.list_files('./dataset/*')
         data = data.map(lambda image: tf.image.resize(image, (128,128,3)), num_parallel_calls=AUTOTUNE)
@@ -72,22 +89,63 @@ class FineGAN(object):
 
         return foreground_img, real_vfimages, real_vcimages, vc_code, bbox
 
-    def train_generator(self):
-        # TODO: Train the Generators
+    def load_models():
+        # TODO: Load all the weights
         pass
 
+    @tf.function
+    def train_generator(self):
+        generator_error = 0.0
+        batch_size = self.batch_size
+        loss1, class_loss, child_code, parent_code = self.loss1, self.class_loss, self.child_code, self.parent_code
+
+        with tf.GradientTape() as tape:
+            for i in range(self.num_disc):
+                outputs = self.discriminators[i](self.fake_images[1])
+
+                if i==0 or i==2:
+                    real_labels = tf.ones_like(outputs[1])
+                    gen_loss = loss1(outputs[1], real_labels)
+
+                    if i==0:
+                        gen_loss *= cfg.TRAIN['BG_LOSS_WT']
+                        # Background/Foreground classification loss for the fake background
+                        gen_class = class_loss(outputs[0], real_labels)
+                        gen_loss += gen_class
+
+                    generator_error += gen_loss
+
+                if i==1:
+                    # Information maximizing loss for parent stage
+                    parent_prediction = self.discriminators[i](self.foreground_masks[i-1])
+                    gen_info_loss = class_loss(parent_prediction[0], tf.where(parent_code)[:, 1])
+                elif i==2:
+                    # Information maximizing loss for child stage
+                    child_prediction = self.discriminators[2](self.foreground_masks[i-1])
+                    gen_info_loss = class_loss(child_prediction[0], tf.where(child_code)[:, 1])
+
+                if i>0:
+                    generator_error += gen_info_loss
+
+            # TODO: Tensorboard Summary for train_generator
+
+        grads = tape.gradient(generator_error, self.generator.trainable_variables)
+
+        for index in range(len(self.discriminators)):
+            self.optimizer_gen_list[index].apply_gradients(zip(grads, self.generator.trainable_variables))           
+
+        return generator_error
+
+    @tf.function
     def train_discriminator(self, stage, count):
-        # TODO: Train the Discriminator
         if stage==0 or stage==2:
 
             with tf.GradientTape() as tape:
-                batch_size = self.batch_size
+                batch_size = self.real_fimages.shape[0]
                 loss, loss1 = self.loss, self.loss1 # Binary Crossentropy
 
-                # TODO: Load the network and optimizer for Discriminator stage
-                # optimizer = optimizer_disc_list[stage] # stage_wise optimizer
-                disc_network = tf.keras.models.load_model('temp.h5')
-                optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+                optimizer = self.optimizer_disc_list[stage] # stage_wise optimizer
+                disc_network = self.discriminators[stage]
 
                 if stage==0:
                     real_images = self.real_fimages[0]
@@ -145,9 +203,12 @@ class FineGAN(object):
                     error_fake = loss1(fake_logits[1], fake_labels) # Real/Fake loss for the fake image   
                     discriminator_error = error_real + error_fake
 
+                # TODO: Tensorboard Summary for train_discriminator
+
             grads = tape.gradient(discriminator_error, disc_network.trainable_variables)
             optimizer.apply_gradients(zip(grads, disc_network.trainable_variables))
 
+            return discriminator_error
 
 
     @tf.function
@@ -158,6 +219,7 @@ class FineGAN(object):
         self.patch_stride = 4.0 # Receptive field stride for Backround Stage Discriminator 
         self.num_out = 24 # Patch output size in NxN
         self.receptive_field = 34 # Receptive field of every patch in NxN
+
 
 if __name__ == '__main__':
     cfg = Config(32)
