@@ -58,6 +58,6 @@ class HungarianBipartiteMatcher(matcher.Matcher):
       return tf.numpy_function(numpy_matching, inputs, Tout=[tf.int32])
 
     matching_result = tf.autograph.experimental.do_not_convert(
-                        numpy_wrapper)([distance_matrix])
-    
+        numpy_wrapper)([distance_matrix])
+
     return tf.reshape(matching_result, [-1])
