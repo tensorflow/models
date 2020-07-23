@@ -169,7 +169,7 @@ class EvaluatorOverrides:
     use_tf_function: A boolean indicates whether a `tf.function` will be used.
       If False, training will run on pure eager mode.
   """
-  use_tf_function: bool = False
+  use_tf_function: bool = True
 
 
 class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
