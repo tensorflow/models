@@ -50,15 +50,16 @@ class AttentionBlock(tf.keras.layers.Layer):
     """Constructs an attention block.
 
     Args:
-    bottleneck_dimension: A int32 Tensor representing the bottleneck dimension
-      for intermediate projections.
-    attention_temperature: A float Tensor. It controls the temperature of the
-      softmax for weights calculation. The formula for calculation as follows:
-        weights = exp(weights / temperature) / sum(exp(weights / temperature))
-    output_dimension: A int32 Tensor representing the last dimension of the
-      output feature.
-    is_training: A boolean Tensor (affecting batch normalization).
-    name: A string describing what to name the variables in this block.
+      bottleneck_dimension: A int32 Tensor representing the bottleneck dimension
+        for intermediate projections.
+      attention_temperature: A float Tensor. It controls the temperature of the
+        softmax for weights calculation. The formula for calculation as follows:
+          weights = exp(weights / temperature) / sum(exp(weights / temperature))
+      output_dimension: A int32 Tensor representing the last dimension of the
+        output feature.
+      is_training: A boolean Tensor (affecting batch normalization).
+      name: A string describing what to name the variables in this block.
+      **kwargs: Additional keyword arguments.
     """
 
     self._key_proj = ContextProjection(bottleneck_dimension)
