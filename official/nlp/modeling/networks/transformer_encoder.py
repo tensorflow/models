@@ -39,6 +39,9 @@ class TransformerEncoder(tf.keras.Model):
   in "BERT: Pre-training of Deep Bidirectional Transformers for Language
   Understanding".
 
+  *Note* that the network is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     vocab_size: The size of the token vocabulary.
     hidden_size: The size of the transformer hidden layers.

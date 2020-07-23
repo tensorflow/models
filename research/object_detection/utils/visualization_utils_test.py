@@ -373,6 +373,38 @@ class VisualizationUtilsTest(test_case.TestCase):
                                                  color='Blue', alpha=.5)
     self.assertAllEqual(test_image, expected_result)
 
+  def test_draw_part_mask_on_image_array(self):
+    test_image = np.asarray([[[0, 0, 0], [0, 0, 0]],
+                             [[0, 0, 0], [0, 0, 0]]], dtype=np.uint8)
+    mask = np.asarray([[0, 1],
+                       [1, 6]], dtype=np.uint8)
+
+    visualization_utils.draw_part_mask_on_image_array(test_image, mask,
+                                                      alpha=.5)
+    self.assertAllEqual([0, 0, 0], test_image[0, 0])
+    self.assertAllGreater(test_image[0, 1], 0)
+    self.assertAllGreater(test_image[1, 0], 0)
+    self.assertAllGreater(test_image[1, 1], 0)
+    self.assertAllEqual(test_image[0, 1], test_image[1, 0])
+
+  def test_draw_float_channel_on_image_array(self):
+    test_image = np.asarray([[[0, 0, 0], [0, 0, 0]],
+                             [[0, 0, 0], [0, 0, 0]]], dtype=np.uint8)
+    channel = np.asarray([[0., 0.5],
+                          [0., 1.]], dtype=np.float32)
+    mask = np.asarray([[0, 1],
+                       [1, 1]], dtype=np.uint8)
+
+    # The colormap ('bwr') maps the values as follows:
+    # 0.0 -> Blue
+    # 0.5 -> White
+    # 1.0 -> Red
+    visualization_utils.draw_float_channel_on_image_array(
+        test_image, channel, mask, alpha=1.0, cmap='bwr')
+    expected_result = np.asarray([[[0, 0, 0], [255, 254, 254]],
+                                  [[0, 0, 255], [255, 0, 0]]], dtype=np.uint8)
+    self.assertAllEqual(test_image, expected_result)
+
   def test_draw_heatmaps_on_image(self):
     test_image = self.create_colorful_test_image()
     test_image = Image.fromarray(test_image)

@@ -23,7 +23,6 @@ import gin
 import tensorflow as tf
 
 from official.nlp.modeling.layers import attention
-from official.nlp.modeling.layers import dense_einsum
 from official.nlp.modeling.layers import multi_channel_attention
 from official.nlp.modeling.layers.util import tf_function_if_eager
 
@@ -106,21 +105,24 @@ class Transformer(tf.keras.layers.Layer):
           "The input size (%d) is not a multiple of the number of attention "
           "heads (%d)" % (hidden_size, self._num_heads))
     self._attention_head_size = int(hidden_size // self._num_heads)
-
-    self._attention_layer = attention.MultiHeadAttention(
-        num_heads=self._num_heads,
-        key_size=self._attention_head_size,
-        dropout=self._attention_dropout_rate,
+    common_kwargs = dict(
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="self_attention")
+        bias_constraint=self._bias_constraint)
+    self._attention_layer = attention.MultiHeadAttention(
+        num_heads=self._num_heads,
+        key_size=self._attention_head_size,
+        dropout=self._attention_dropout_rate,
+        name="self_attention",
+        **common_kwargs)
     # pylint: disable=protected-access
-    self._attention_layer.build([input_tensor_shape] * 3)
+    # Temporarily handling for checkpoint compatible changes.
+    self._attention_layer._build_from_signature(
+        query=input_tensor_shape, value=input_tensor_shape)
     self._attention_output_dense = self._attention_layer._output_dense
     # pylint: enable=protected-access
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
@@ -132,17 +134,12 @@ class Transformer(tf.keras.layers.Layer):
             axis=-1,
             epsilon=1e-12,
             dtype=tf.float32))
-    self._intermediate_dense = dense_einsum.DenseEinsum(
-        output_shape=self._intermediate_size,
-        activation=None,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="intermediate")
+    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+        "abc,cd->abd",
+        output_shape=(None, self._intermediate_size),
+        bias_axes="d",
+        name="intermediate",
+        **common_kwargs)
     policy = tf.keras.mixed_precision.experimental.global_policy()
     if policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
@@ -151,16 +148,12 @@ class Transformer(tf.keras.layers.Layer):
       policy = tf.float32
     self._intermediate_activation_layer = tf.keras.layers.Activation(
         self._intermediate_activation, dtype=policy)
-    self._output_dense = dense_einsum.DenseEinsum(
-        output_shape=hidden_size,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="output")
+    self._output_dense = tf.keras.layers.experimental.EinsumDense(
+        "abc,cd->abd",
+        output_shape=(None, hidden_size),
+        bias_axes="d",
+        name="output",
+        **common_kwargs)
     self._output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
@@ -211,9 +204,9 @@ class Transformer(tf.keras.layers.Layer):
       attention_mask = attention_mask[:, 0:self._output_range, :]
     else:
       target_tensor = input_tensor
-    attention_inputs = [target_tensor, input_tensor]
 
-    attention_output = self._attention_layer(attention_inputs, attention_mask)
+    attention_output = self._attention_layer(
+        query=target_tensor, value=input_tensor, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = self._attention_layer_norm(target_tensor +
                                                   attention_output)
@@ -312,30 +305,27 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
           "The hidden size (%d) is not a multiple of the number of attention "
           "heads (%d)" % (hidden_size, self.num_attention_heads))
     self.attention_head_size = int(hidden_size / self.num_attention_heads)
+    common_kwargs = dict(
+        kernel_initializer=self._kernel_initializer,
+        bias_initializer=self._bias_initializer,
+        kernel_regularizer=self._kernel_regularizer,
+        bias_regularizer=self._bias_regularizer,
+        activity_regularizer=self._activity_regularizer,
+        kernel_constraint=self._kernel_constraint,
+        bias_constraint=self._bias_constraint)
     # Self attention.
     self.self_attention = attention.CachedAttention(
         num_heads=self.num_attention_heads,
         key_size=self.attention_head_size,
         dropout=self.attention_dropout_rate,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="self_attention")
-    self.self_attention_output_dense = dense_einsum.DenseEinsum(
-        output_shape=hidden_size,
-        num_summed_dimensions=2,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="self_attention_output")
+        name="self_attention",
+        **common_kwargs)
+    self.self_attention_output_dense = tf.keras.layers.experimental.EinsumDense(
+        "abc,cd->abd",
+        output_shape=(None, hidden_size),
+        bias_axes="d",
+        name="output",
+        **common_kwargs)
     self.self_attention_dropout = tf.keras.layers.Dropout(
         rate=self.dropout_rate)
     self.self_attention_layer_norm = (
@@ -347,14 +337,8 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
         key_size=self.attention_head_size,
         dropout=self.attention_dropout_rate,
         output_shape=hidden_size,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="attention/encdec")
+        name="attention/encdec",
+        **common_kwargs)
 
     self.encdec_attention_dropout = tf.keras.layers.Dropout(
         rate=self.dropout_rate)
@@ -363,29 +347,20 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
             name="attention/encdec_output_layer_norm", axis=-1, epsilon=1e-12))
 
     # Feed-forward projection.
-    self.intermediate_dense = dense_einsum.DenseEinsum(
-        output_shape=self.intermediate_size,
-        activation=None,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="intermediate")
+    self.intermediate_dense = tf.keras.layers.experimental.EinsumDense(
+        "abc,cd->abd",
+        output_shape=(None, self.intermediate_size),
+        bias_axes="d",
+        name="intermediate",
+        **common_kwargs)
     self.intermediate_activation_layer = tf.keras.layers.Activation(
         self.intermediate_activation)
-    self.output_dense = dense_einsum.DenseEinsum(
-        output_shape=hidden_size,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        name="output")
+    self.output_dense = tf.keras.layers.experimental.EinsumDense(
+        "abc,cd->abd",
+        output_shape=(None, hidden_size),
+        bias_axes="d",
+        name="output",
+        **common_kwargs)
     self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm", axis=-1, epsilon=1e-12)
@@ -409,21 +384,23 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
           "TransformerDecoderLayer must have 4 inputs, but it got: %d" %
           len(inputs))
     input_tensor, memory, attention_mask, self_attention_mask = inputs[:4]
-    self_attention_inputs = [input_tensor, input_tensor]
     self_attention_output, cache = self.self_attention(
-        self_attention_inputs,
+        query=input_tensor,
+        value=input_tensor,
         attention_mask=self_attention_mask,
         cache=cache,
         decode_loop_step=decode_loop_step)
     self_attention_output = self.self_attention_dropout(self_attention_output)
     self_attention_output = self.self_attention_layer_norm(
         input_tensor + self_attention_output)
-
-    cross_attn_inputs = [self_attention_output, memory]
+    cross_attn_inputs = dict(
+        query=self_attention_output,
+        value=memory,
+        attention_mask=attention_mask)
     if self.multi_channel_cross_attention:
       # Accesses the 5-th input tensor for the doc-attention probabilities.
-      cross_attn_inputs.append(inputs[-1])
-    attention_output = self.encdec_attention(cross_attn_inputs, attention_mask)
+      cross_attn_inputs["context_attention_weights"] = inputs[-1]
+    attention_output = self.encdec_attention(**cross_attn_inputs)
     attention_output = self.encdec_attention_dropout(attention_output)
     attention_output = self.encdec_attention_layer_norm(self_attention_output +
                                                         attention_output)

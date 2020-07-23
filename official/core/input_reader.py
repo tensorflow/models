@@ -171,6 +171,9 @@ class InputReader:
         as_supervised=self._tfds_as_supervised,
         decoders=decoders,
         read_config=read_config)
+
+    if self._is_training:
+      dataset = dataset.repeat()
     return dataset
 
   @property

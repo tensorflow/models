@@ -21,6 +21,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow.python.util import deprecation
+
 _CHR_IDX = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"]
 
 
@@ -57,6 +59,9 @@ class DenseEinsum(tf.keras.layers.Layer):
       `(batch_size, units)`.
   """
 
+  @deprecation.deprecated(
+      None, "DenseEinsum is deprecated. Please use "
+      "tf.keras.experimental.EinsumDense layer instead.")
   def __init__(self,
                output_shape,
                num_summed_dimensions=1,

@@ -111,12 +111,12 @@ class SequenceLayerBase(object):
     self._mparams = method_params
     self._net = net
     self._labels_one_hot = labels_one_hot
-    self._batch_size = net.get_shape().dims[0].value
+    self._batch_size = tf.shape(input=net)[0]
 
     # Initialize parameters for char logits which will be computed on the fly
     # inside an LSTM decoder.
     self._char_logits = {}
-    regularizer = slim.l2_regularizer(self._mparams.weight_decay)
+    regularizer = tf.keras.regularizers.l2(0.5 * (self._mparams.weight_decay))
     self._softmax_w = slim.model_variable(
         'softmax_w',
         [self._mparams.num_lstm_units, self._params.num_char_classes],
@@ -124,7 +124,7 @@ class SequenceLayerBase(object):
         regularizer=regularizer)
     self._softmax_b = slim.model_variable(
         'softmax_b', [self._params.num_char_classes],
-        initializer=tf.zeros_initializer(),
+        initializer=tf.compat.v1.zeros_initializer(),
         regularizer=regularizer)
 
   @abc.abstractmethod
@@ -203,8 +203,8 @@ class SequenceLayerBase(object):
       A tensor with shape [batch_size, num_char_classes]
     """
     if char_index not in self._char_logits:
-      self._char_logits[char_index] = tf.nn.xw_plus_b(inputs, self._softmax_w,
-                                                      self._softmax_b)
+      self._char_logits[char_index] = tf.compat.v1.nn.xw_plus_b(inputs, self._softmax_w,
+                                                                self._softmax_b)
     return self._char_logits[char_index]
 
   def char_one_hot(self, logit):
@@ -216,7 +216,7 @@ class SequenceLayerBase(object):
     Returns:
       A tensor with shape [batch_size, num_char_classes]
     """
-    prediction = tf.argmax(logit, axis=1)
+    prediction = tf.argmax(input=logit, axis=1)
     return slim.one_hot_encoding(prediction, self._params.num_char_classes)
 
   def get_input(self, prev, i):
@@ -244,10 +244,10 @@ class SequenceLayerBase(object):
     Returns:
       A tensor with shape [batch_size, seq_length, num_char_classes].
     """
-    with tf.variable_scope('LSTM'):
+    with tf.compat.v1.variable_scope('LSTM'):
       first_label = self.get_input(prev=None, i=0)
       decoder_inputs = [first_label] + [None] * (self._params.seq_length - 1)
-      lstm_cell = tf.contrib.rnn.LSTMCell(
+      lstm_cell = tf.compat.v1.nn.rnn_cell.LSTMCell(
           self._mparams.num_lstm_units,
           use_peepholes=False,
           cell_clip=self._mparams.lstm_state_clip_value,
@@ -259,9 +259,9 @@ class SequenceLayerBase(object):
           loop_function=self.get_input,
           cell=lstm_cell)
 
-    with tf.variable_scope('logits'):
+    with tf.compat.v1.variable_scope('logits'):
       logits_list = [
-          tf.expand_dims(self.char_logit(logit, i), dim=1)
+          tf.expand_dims(self.char_logit(logit, i), axis=1)
           for i, logit in enumerate(lstm_outputs)
       ]
 
@@ -275,7 +275,7 @@ class NetSlice(SequenceLayerBase):
   def __init__(self, *args, **kwargs):
     super(NetSlice, self).__init__(*args, **kwargs)
     self._zero_label = tf.zeros(
-        [self._batch_size, self._params.num_char_classes])
+        tf.stack([self._batch_size, self._params.num_char_classes]))
 
   def get_image_feature(self, char_index):
     """Returns a subset of image features for a character.
@@ -352,7 +352,7 @@ class Attention(SequenceLayerBase):
   def __init__(self, *args, **kwargs):
     super(Attention, self).__init__(*args, **kwargs)
     self._zero_label = tf.zeros(
-        [self._batch_size, self._params.num_char_classes])
+        tf.stack([self._batch_size, self._params.num_char_classes]))
 
   def get_eval_input(self, prev, i):
     """See SequenceLayerBase.get_eval_input for details."""

@@ -152,7 +152,10 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     _ = new_layer([input_data, mask_data])
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor = new_layer([input_data, mask_data])
-    self.assertAllClose(new_output_tensor, output_tensor[:, 0:1, :])
+    self.assertAllClose(new_output_tensor,
+                        output_tensor[:, 0:1, :],
+                        atol=5e-5,
+                        rtol=0.003)
 
   def test_layer_invocation_with_float16_dtype(self, transformer_cls):
     tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
