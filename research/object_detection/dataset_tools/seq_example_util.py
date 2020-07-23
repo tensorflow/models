@@ -138,7 +138,7 @@ def boxes_to_box_components(bboxes):
   xmax_list = []
   for bbox in bboxes:
     bbox = np.array(bbox).astype(np.float32)
-    ymin, xmin, ymax, xmax = np.split(bbox, 4, axis=0)
+    ymin, xmin, ymax, xmax = np.split(bbox, 4, axis=1)
     ymin_list.append(np.reshape(ymin, [-1]))
     xmin_list.append(np.reshape(xmin, [-1]))
     ymax_list.append(np.reshape(ymax, [-1]))

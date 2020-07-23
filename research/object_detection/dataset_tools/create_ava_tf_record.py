@@ -213,10 +213,7 @@ class Ava(object):
               0 if seconds_per_sequence % 2 == 0 else 1)
           end_time = middle_frame_time + (seconds_per_sequence // 2)
 
-          total_xmins = []
-          total_xmaxs = []
-          total_ymins = []
-          total_ymaxs = []
+          total_boxes = []
           total_labels = []
           total_label_strings = []
           total_images = []
@@ -243,38 +240,31 @@ class Ava(object):
             total_source_ids.append(source_id)
             total_is_annotated.append(1)
 
-            xmins = []
-            xmaxs = []
-            ymins = []
-            ymaxs = []
+            boxes = []
             labels = []
             label_strings = []
             confidences = []
             for row in frame_annotations[(media_id, windowed_timestamp)]:
               if len(row) > 2 and int(row["action_label"]) in label_map:
-                xmins.append(float(row["xmin"]))
-                xmaxs.append(float(row["xmax"]))
-                ymins.append(float(row["ymin"]))
-                ymaxs.append(float(row["ymax"]))
+                boxes.append([float(row["ymin"]), float(row["xmin"]),
+                              float(row["ymax"]), float(row["xmax"])])
                 labels.append(int(row["action_label"]))
                 label_strings.append(label_map[int(row["action_label"])])
                 confidences.append(1)
               else:
                 logging.warning("Unknown label: %s", row["action_label"])
 
-            total_xmins.append(xmins)
-            total_xmaxs.append(xmaxs)
-            total_ymins.append(ymins)
-            total_ymaxs.append(ymaxs)
+            total_boxes.append(boxes)
             total_labels.append(labels)
             total_label_strings.append(label_strings)
             total_confidences.append(confidences)
             windowed_timestamp += 1
 
-          if len(total_xmins) > 0:
+          if len(total_boxes) > 0:
+            print(total_boxes)
             yield seq_example_util.make_sequence_example("AVA", media_id, total_images,
                 int(height), int(width), 'jpeg', total_source_ids, None, total_is_annotated,
-                [list(z) for z in zip(ymins, xmins, ymaxs, xmaxs)], total_label_strings)
+                total_boxes, total_label_strings)
 
           #Move middle_time_frame, skipping excluded frames
           frames_mv = 0
