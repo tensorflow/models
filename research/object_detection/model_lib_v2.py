@@ -23,6 +23,7 @@ import os
 import time
 
 import tensorflow.compat.v1 as tf
+import tensorflow.compat.v2 as tf2
 
 from object_detection import eval_util
 from object_detection import inputs
@@ -414,8 +415,9 @@ def train_loop(
     train_steps=None,
     use_tpu=False,
     save_final_config=False,
-    checkpoint_every_n=5000,
+    checkpoint_every_n=1000,
     checkpoint_max_to_keep=7,
+    record_summaries=True,
     **kwargs):
   """Trains a model using eager + functions.
 
@@ -445,6 +447,7 @@ def train_loop(
       Checkpoint every n training steps.
     checkpoint_max_to_keep:
       int, the number of most recent checkpoints to keep in the model directory.
+    record_summaries: Boolean, whether or not to record summaries.
     **kwargs: Additional keyword arguments for configuration override.
   """
   ## Parse the configs
@@ -531,8 +534,11 @@ def train_loop(
   # is the chief.
   summary_writer_filepath = get_filepath(strategy,
                                          os.path.join(model_dir, 'train'))
-  summary_writer = tf.compat.v2.summary.create_file_writer(
-      summary_writer_filepath)
+  if record_summaries:
+    summary_writer = tf.compat.v2.summary.create_file_writer(
+        summary_writer_filepath)
+  else:
+    summary_writer = tf2.summary.create_noop_writer()
 
   if use_tpu:
     num_steps_per_iteration = 100
@@ -604,7 +610,9 @@ def train_loop(
 
           if num_steps_per_iteration > 1:
             for _ in tf.range(num_steps_per_iteration - 1):
-              _sample_and_train(strategy, train_step_fn, data_iterator)
+              # Following suggestion on yaqs/5402607292645376
+              with tf.name_scope(''):
+                _sample_and_train(strategy, train_step_fn, data_iterator)
 
           return _sample_and_train(strategy, train_step_fn, data_iterator)
 
