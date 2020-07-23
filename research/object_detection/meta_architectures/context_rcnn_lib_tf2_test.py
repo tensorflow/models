@@ -28,6 +28,7 @@ from object_detection.utils import tf_version
 
 _NEGATIVE_PADDING_VALUE = -100000
 
+@unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase):
   """Tests for the functions in context_rcnn_lib."""
 
