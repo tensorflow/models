@@ -90,9 +90,9 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase):
   @parameterized.parameters(
       (2, 10, 1),
       (3, 10, 2),
-      (4, 20, 3),
+      (4, None, 3),
       (5, 20, 4),
-      (7, 20, 5),
+      (7, None, 5),
   )
   def test_attention_block(self, bottleneck_dimension, output_dimension,
                            attention_temperature):
@@ -106,10 +106,10 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase):
                                              minval=0,
                                              maxval=10,
                                              dtype=tf.int32)
-    output_features = attention_block(input_features, context_features, valid_context_size)
+    output_features = attention_block([input_features, context_features], valid_context_size)
 
     # Makes sure the shape is correct.
-    self.assertAllEqual(output_features.shape, [2, 8, 1, 1, output_dimension])
+    self.assertAllEqual(output_features.shape, [2, 8, 1, 1, (output_dimension or 3)])
 
 if __name__ == '__main__':
   tf.test.main()
