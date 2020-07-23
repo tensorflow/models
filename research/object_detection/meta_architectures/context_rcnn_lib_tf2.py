@@ -73,16 +73,15 @@ class AttentionBlock(tf.keras.layers.Layer):
     # box_features becomes [batch_size, max_num_proposals, channels].
     box_features = tf.reduce_mean(box_features, [2, 3])
 
-    with tf.name_scope("AttentionBlock"):
-      queries = project_features(
-          box_features, self._bottleneck_dimension, self._is_training,
-          self._query_proj, normalize=True)
-      keys = project_features(
-          context_features, self._bottleneck_dimension, self._is_training,
-          self._key_proj, normalize=True)
-      values = project_features(
-          context_features, self._bottleneck_dimension, self._is_training,
-          self._val_proj, normalize=True)
+    queries = project_features(
+        box_features, self._bottleneck_dimension, self._is_training,
+        self._query_proj, normalize=True)
+    keys = project_features(
+        context_features, self._bottleneck_dimension, self._is_training,
+        self._key_proj, normalize=True)
+    values = project_features(
+        context_features, self._bottleneck_dimension, self._is_training,
+        self._val_proj, normalize=True)
 
     weights = tf.matmul(queries, keys, transpose_b=True)
     weights, values = filter_weight_value(weights, values, valid_mask)
