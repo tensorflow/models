@@ -16,6 +16,7 @@
 """
 
 import os
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -31,6 +32,15 @@ AUTOTUNE = tf.data.experimental.AUTOTUNE
 def save_images():
     # TODO: Save images to the folder
     pass
+
+def load_finegan_network():
+    # TODO: Load the FineGAN network
+    start_epoch = 0
+    return GeneratorArchitecture(), [DiscriminatorArchitecture() for i in range(2)], len(list(range(2))), start_epoch
+
+def define_optimizers(gen, disc):
+    # TODO: Define the appropriate optimizers to be used
+    return tf.keras.optimizers.Adam(), tf.keras.optimizers.Adam()
 
 
 class FineGAN(object):
@@ -53,11 +63,7 @@ class FineGAN(object):
         self.foreground_masks = []
         self.fake_images = []
         self.num_disc = 2
-        self.class_loss = tf.keras.losses.CategoricalCrossentropy()
-        self.loss = tf.keras.losses.CategoricalCrossentropy()
-        self.loss1 = tf.keras.losses.BinaryCrossentropy()
-        self.real_fimages, self.real_cimages, self.bbox = [], [], []
-        self.child_code, self.parent_code = None, None
+        self.parent_code = None
 
 
     def prepare_dataset(self, batch_size=32):
@@ -89,14 +95,13 @@ class FineGAN(object):
 
         return foreground_img, real_vfimages, real_vcimages, vc_code, bbox
 
-    def load_models():
+    def load_models(self):
         # TODO: Load all the weights
         pass
 
     @tf.function
     def train_generator(self):
         generator_error = 0.0
-        batch_size = self.batch_size
         loss1, class_loss, child_code, parent_code = self.loss1, self.class_loss, self.child_code, self.parent_code
 
         with tf.GradientTape() as tape:
@@ -141,7 +146,7 @@ class FineGAN(object):
         if stage==0 or stage==2:
 
             with tf.GradientTape() as tape:
-                batch_size = self.real_fimages.shape[0]
+                batch_size = tf.shape(self.real_fimages)[0]
                 loss, loss1 = self.loss, self.loss1 # Binary Crossentropy
 
                 optimizer = self.optimizer_disc_list[stage] # stage_wise optimizer
@@ -216,9 +221,54 @@ class FineGAN(object):
         # TODO: Train the entire FineGAN
         # TODO: Only for Background and Child phases
 
+        # TODO: Define in appropriate locations
         self.patch_stride = 4.0 # Receptive field stride for Backround Stage Discriminator 
         self.num_out = 24 # Patch output size in NxN
         self.receptive_field = 34 # Receptive field of every patch in NxN
+
+        self.generator, self.discriminators, self.num_disc, start_epoch = load_finegan_network()
+        # TODO: Deepcopy the weights for generator?
+        # Deepcopy here:
+
+        self.optimizer_gen_list, self.optimizer_disc_list = define_optimizers(self.generator, self.discriminators)
+
+        self.loss = tf.keras.losses.BinaryCrossentropy(reduction=False)
+        self.loss1 = tf.keras.losses.BinaryCrossentropy()
+        self.class_loss = tf.keras.losses.CategoricalCrossentropy()
+
+        self.real_labels = tf.Variable(tf.ones_like(self.batch_size, dtype=tf.float32))
+        self.fake_labels = tf.Variable(tf.zeros_like(self.batch_size, dtype=tf.float32))
+
+        z_dims = cfg.GAN['Z_DIM']
+        latent_noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
+        fixed_noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
+        # hard_noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
+
+        print(f'[INFO] Starting FineGAN Training...')
+
+        for epoch in range(start_epoch, self.num_epochs):
+            start_time = time.time()
+
+            for step, data in enumerate(self.dataset):
+                self.imgs_tcpu, self.real_fimages, self.real_cimages, self.child_code, self.bbox = self.prepare_data(data)
+
+                # TODO: Feedforward through Generator. Obtain stagewise fake images
+
+
+                # TODO: Obtain the parent code given the child code
+
+
+                # TODO: Update Discriminator networks
+
+
+                # TODO: Update the Generator networks
+
+
+        print(f'[INFO] Saving model after {self.num_epochs} epochs')
+        # TODO: save the model
+
+
+        # TODO [OPTIONAL]: Hard Negative Mining
 
 
 if __name__ == '__main__':
