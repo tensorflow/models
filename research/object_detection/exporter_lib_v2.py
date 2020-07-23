@@ -133,7 +133,11 @@ DETECTION_MODULE_MAP = {
 def export_inference_graph(input_type,
                            pipeline_config,
                            trained_checkpoint_dir,
-                           output_directory):
+                           output_directory,
+                           use_side_inputs,
+                           side_input_shapes,
+                           side_input_types,
+                           side_input_names):
   """Exports inference graph for the model specified in the pipeline config.
 
   This function creates `output_directory` if it does not already exist,

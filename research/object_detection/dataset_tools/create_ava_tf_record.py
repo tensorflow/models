@@ -133,7 +133,6 @@ class Ava(object):
       hop_between_sequences: The gap between the centers of
       successive sequences.
     """
-    global_source_id = 0
     logging.info("Downloading data.")
     download_output = self._download_data()
     for key in splits_to_process.split(","):
@@ -141,7 +140,7 @@ class Ava(object):
       all_metadata = list(self._generate_examples(
           download_output[0][key][0], download_output[0][key][1],
           download_output[1], seconds_per_sequence, hop_between_sequences,
-          video_path_format_string, global_source_id))
+          video_path_format_string))
       logging.info("An example of the metadata: ")
       logging.info(all_metadata[0])
       random.seed(47)
@@ -177,7 +176,6 @@ class Ava(object):
     Yields:
       Each prepared tf.SequenceExample of metadata also containing video frames
     """
-    global GLOBAL_SOURCE_ID
     fieldnames = ["id", "timestamp_seconds", "xmin", "ymin", "xmax", "ymax",
                   "action_label"]
     frame_excluded = {}
@@ -199,6 +197,8 @@ class Ava(object):
       logging.info("Generating metadata...")
       media_num = 1
       for media_id in ids:
+        if media_num > 2:
+          continue
         logging.info("%d/%d, ignore warnings.\n" % (media_num, len(ids)))
         media_num += 1
 
@@ -213,7 +213,6 @@ class Ava(object):
               0 if seconds_per_sequence % 2 == 0 else 1)
           end_time = middle_frame_time + (seconds_per_sequence // 2)
 
-          GLOBAL_SOURCE_ID += 1
           total_xmins = []
           total_xmaxs = []
           total_ymins = []
@@ -239,12 +238,10 @@ class Ava(object):
             _, buffer = cv2.imencode('.jpg', image)
 
             bufstring = buffer.tostring()
-            total_images.append(dataset_util.bytes_feature(bufstring))
-            source_id = str(GLOBAL_SOURCE_ID) + "_" + media_id
-            total_source_ids.append(dataset_util.bytes_feature(
-                source_id.encode("utf8")))
-            total_is_annotated.append(dataset_util.int64_feature(1))
-            GLOBAL_SOURCE_ID += 1
+            total_images.append(bufstring)
+            source_id = str(windowed_timestamp) + "_" + media_id
+            total_source_ids.append(source_id)
+            total_is_annotated.append(1)
 
             xmins = []
             xmaxs = []
@@ -265,54 +262,19 @@ class Ava(object):
               else:
                 logging.warning("Unknown label: %s", row["action_label"])
 
-            total_xmins.append(dataset_util.float_list_feature(xmins))
-            total_xmaxs.append(dataset_util.float_list_feature(xmaxs))
-            total_ymins.append(dataset_util.float_list_feature(ymins))
-            total_ymaxs.append(dataset_util.float_list_feature(ymaxs))
-            total_labels.append(dataset_util.int64_list_feature(labels))
-            total_label_strings.append(
-                dataset_util.bytes_list_feature(label_strings))
-            total_confidences.append(
-                dataset_util.float_list_feature(confidences))
+            total_xmins.append(xmins)
+            total_xmaxs.append(xmaxs)
+            total_ymins.append(ymins)
+            total_ymaxs.append(ymaxs)
+            total_labels.append(labels)
+            total_label_strings.append(label_strings)
+            total_confidences.append(confidences)
             windowed_timestamp += 1
 
-          context_feature_dict = {
-              'image/height':
-                  dataset_util.int64_feature(int(height)),
-              'image/width':
-                  dataset_util.int64_feature(int(width)),
-              'image/format':
-                  dataset_util.bytes_feature('jpeg'.encode('utf8')),
-          }
-
-          sequence_feature_dict = {
-              'image/source_id':
-                  feature_list_feature(total_source_ids),
-              'image/encoded':
-                  feature_list_feature(total_images),
-              'region/bbox/xmin':
-                  feature_list_feature(total_xmins),
-              'region/bbox/xmax':
-                  feature_list_feature(total_xmaxs),
-              'region/bbox/ymin':
-                  feature_list_feature(total_ymins),
-              'region/bbox/ymax':
-                  feature_list_feature(total_ymaxs),
-              'region/label/index':
-                  feature_list_feature(total_labels),
-              'region/label/string':
-                  feature_list_feature(total_label_strings),
-              'region/label/confidence':
-                  feature_list_feature(total_confidences), #all ones
-              'region/is_annotated':
-                  feature_list_feature(total_is_annotated) #all ones
-          }
-
           if len(total_xmins) > 0:
-            yield tf.train.SequenceExample(
-                context=tf.train.Features(feature=context_feature_dict),
-                feature_lists=tf.train.FeatureLists(
-                    feature_list=sequence_feature_dict))
+            yield seq_example_util.make_sequence_example("AVA", media_id, total_images,
+                int(height), int(width), 'jpeg', total_source_ids, None, total_is_annotated,
+                [list(z) for z in zip(ymins, xmins, ymaxs, xmaxs)], total_label_strings)
 
           #Move middle_time_frame, skipping excluded frames
           frames_mv = 0
