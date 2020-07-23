@@ -106,7 +106,7 @@ class ContextRcnnLibTest(parameterized.TestCase, test_case.TestCase):
                                              minval=0,
                                              maxval=10,
                                              dtype=tf.int32)
-    output_features = attention_block([input_features, context_features], valid_context_size)
+    output_features = attention_block(input_features, context_features, valid_context_size)
 
     # Makes sure the shape is correct.
     self.assertAllEqual(output_features.shape, [2, 8, 1, 1, (output_dimension or 3)])
