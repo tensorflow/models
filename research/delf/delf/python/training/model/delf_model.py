@@ -132,10 +132,12 @@ class Delf(tf.keras.Model):
             self.attn_classification.trainable_weights)
 
   def call(self, input_image, training=True):
-    blocks = {'block3': None}
-    self.backbone(input_image, intermediates_dict=blocks, training=training)
+    blocks = {}
 
-    features = blocks['block3']
+    self.backbone.build_call(
+        input_image, intermediates_dict=blocks, training=training)
+
+    features = blocks['block3']  # pytype: disable=key-error
     _, probs, _ = self.attention(features, training=training)
 
     return probs, features

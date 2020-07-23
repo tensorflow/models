@@ -42,8 +42,7 @@ class BertClassifierTest(keras_parameterized.TestCase):
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network,
-        num_classes=num_classes)
+        test_network, num_classes=num_classes)
 
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -89,7 +88,7 @@ class BertClassifierTest(keras_parameterized.TestCase):
     # Create a BERT trainer with the created network. (Note that all the args
     # are different, so we can catch any serialization mismatches.)
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network, num_classes=4, initializer='zeros', output='predictions')
+        test_network, num_classes=4, initializer='zeros')
 
     # Create another BERT trainer via serialization and deserialization.
     config = bert_trainer_model.get_config()

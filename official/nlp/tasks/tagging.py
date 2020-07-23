@@ -15,16 +15,32 @@
 # ==============================================================================
 """Tagging (e.g., NER/POS) task."""
 import logging
+from typing import List, Optional, Tuple
+
 import dataclasses
+import orbit
+
+from seqeval import metrics as seqeval_metrics
+
 import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
+from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
-from official.nlp.data import tagging_data_loader
+from official.nlp.data import data_loader_factory
 from official.nlp.modeling import models
 from official.nlp.tasks import utils
+
+
+@dataclasses.dataclass
+class ModelConfig(base_config.Config):
+  """A base span labeler configuration."""
+  encoder: encoders.TransformerEncoderConfig = (
+      encoders.TransformerEncoderConfig())
+  head_dropout: float = 0.1
+  head_initializer_range: float = 0.02
 
 
 @dataclasses.dataclass
@@ -33,15 +49,14 @@ class TaggingConfig(cfg.TaskConfig):
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
   init_checkpoint: str = ''
   hub_module_url: str = ''
-  model: encoders.TransformerEncoderConfig = (
-      encoders.TransformerEncoderConfig())
+  model: ModelConfig = ModelConfig()
 
-  # The number of real labels. Note that a word may be tokenized into
-  # multiple word_pieces tokens, and we asssume the real label id (non-negative)
-  # is assigned to the first token of the word, and a negative label id is
-  # assigned to the remaining tokens. The negative label id will not contribute
-  # to loss and metrics.
-  num_classes: int = 0
+  # The real class names, the order of which should match real label id.
+  # Note that a word may be tokenized into multiple word_pieces tokens, and
+  # we asssume the real label id (non-negative) is assigned to the first token
+  # of the word, and a negative label id is assigned to the remaining tokens.
+  # The negative label id will not contribute to loss and metrics.
+  class_names: Optional[List[str]] = None
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
@@ -70,13 +85,13 @@ def _masked_labels_and_weights(y_true):
 class TaggingTask(base_task.Task):
   """Task object for tagging (e.g., NER or POS)."""
 
-  def __init__(self, params=cfg.TaskConfig):
-    super(TaggingTask, self).__init__(params)
+  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
+    super(TaggingTask, self).__init__(params, logging_dir)
     if params.hub_module_url and params.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
-    if params.num_classes == 0:
-      raise ValueError('TaggingConfig.num_classes cannot be 0.')
+    if not params.class_names:
+      raise ValueError('TaggingConfig.class_names cannot be empty.')
 
     if params.hub_module_url:
       self._hub_module = hub.load(params.hub_module_url)
@@ -88,14 +103,14 @@ class TaggingTask(base_task.Task):
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
       encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.model)
+          self.task_config.model.encoder)
 
     return models.BertTokenClassifier(
         network=encoder_network,
-        num_classes=self.task_config.num_classes,
+        num_classes=len(self.task_config.class_names),
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.model.initializer_range),
-        dropout_rate=self.task_config.model.dropout_rate,
+            stddev=self.task_config.model.head_initializer_range),
+        dropout_rate=self.task_config.model.head_dropout,
         output='logits')
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
@@ -108,7 +123,7 @@ class TaggingTask(base_task.Task):
     loss = tf.math.divide_no_nan(numerator_loss, denominator_loss)
     return loss
 
-  def build_inputs(self, params, input_context=None):
+  def build_inputs(self, params: cfg.DataConfig, input_context=None):
     """Returns tf.data.Dataset for sentence_prediction task."""
     if params.input_path == 'dummy':
 
@@ -123,7 +138,7 @@ class TaggingTask(base_task.Task):
         y = tf.random.uniform(
             shape=(1, params.seq_length),
             minval=-1,
-            maxval=self.task_config.num_classes,
+            maxval=len(self.task_config.class_names),
             dtype=tf.dtypes.int32)
         return (x, y)
 
@@ -133,22 +148,72 @@ class TaggingTask(base_task.Task):
           dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       return dataset
 
-    dataset = tagging_data_loader.TaggingDataLoader(params).load(input_context)
-    return dataset
+    return data_loader_factory.get_data_loader(params).load(input_context)
 
-  def build_metrics(self, training=None):
-    del training
-    # TODO(chendouble): evaluate using seqeval's f1/precision/recall.
-    return [tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy')]
+  def inference_step(self, inputs, model: tf.keras.Model):
+    """Performs the forward step."""
+    logits = model(inputs, training=False)
+    return {'logits': logits, 'predict_ids': tf.argmax(logits, axis=-1)}
 
-  def process_metrics(self, metrics, labels, model_outputs):
-    masked_labels, masked_weights = _masked_labels_and_weights(labels)
-    for metric in metrics:
-      metric.update_state(masked_labels, model_outputs, masked_weights)
+  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+    """Validatation step.
 
-  def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    masked_labels, masked_weights = _masked_labels_and_weights(labels)
-    compiled_metrics.update_state(masked_labels, model_outputs, masked_weights)
+    Args:
+      inputs: a dictionary of input tensors.
+      model: the keras.Model.
+      metrics: a nested structure of metrics objects.
+
+    Returns:
+      A dictionary of logs.
+    """
+    features, labels = inputs
+    outputs = self.inference_step(features, model)
+    loss = self.build_losses(labels=labels, model_outputs=outputs['logits'])
+
+    # Negative label ids are padding labels which should be ignored.
+    real_label_index = tf.where(tf.greater_equal(labels, 0))
+    predict_ids = tf.gather_nd(outputs['predict_ids'], real_label_index)
+    label_ids = tf.gather_nd(labels, real_label_index)
+    return {
+        self.loss: loss,
+        'predict_ids': predict_ids,
+        'label_ids': label_ids,
+    }
+
+  def aggregate_logs(self, state=None, step_outputs=None):
+    """Aggregates over logs returned from a validation step."""
+    if state is None:
+      state = {'predict_class': [], 'label_class': []}
+
+    def id_to_class_name(batched_ids):
+      class_names = []
+      for per_example_ids in batched_ids:
+        class_names.append([])
+        for per_token_id in per_example_ids.numpy().tolist():
+          class_names[-1].append(self.task_config.class_names[per_token_id])
+
+      return class_names
+
+    # Convert id to class names, because `seqeval_metrics` relies on the class
+    # name to decide IOB tags.
+    state['predict_class'].extend(id_to_class_name(step_outputs['predict_ids']))
+    state['label_class'].extend(id_to_class_name(step_outputs['label_ids']))
+    return state
+
+  def reduce_aggregated_logs(self, aggregated_logs):
+    """Reduces aggregated logs over validation steps."""
+    label_class = aggregated_logs['label_class']
+    predict_class = aggregated_logs['predict_class']
+    return {
+        'f1':
+            seqeval_metrics.f1_score(label_class, predict_class),
+        'precision':
+            seqeval_metrics.precision_score(label_class, predict_class),
+        'recall':
+            seqeval_metrics.recall_score(label_class, predict_class),
+        'accuracy':
+            seqeval_metrics.accuracy_score(label_class, predict_class),
+    }
 
   def initialize(self, model):
     """Load a pretrained checkpoint (if exists) and then train from iter 0."""
@@ -161,5 +226,69 @@ class TaggingTask(base_task.Task):
     ckpt = tf.train.Checkpoint(**model.checkpoint_items)
     status = ckpt.restore(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
-    logging.info('finished loading pretrained checkpoint from %s',
+    logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
+
+
+def predict(task: TaggingTask, params: cfg.DataConfig,
+            model: tf.keras.Model) -> Tuple[List[List[int]], List[int]]:
+  """Predicts on the input data.
+
+  Args:
+    task: A `TaggingTask` object.
+    params: A `cfg.DataConfig` object.
+    model: A keras.Model.
+
+  Returns:
+    A tuple of `predict_ids` and `sentence_ids`, which are list with length
+      of `num_examples`. Each element in `predict_ids` is a sequence of
+      predicted per-word label id, and each element in `sentence_ids` is the
+      sentence id of the corresponding example.
+  """
+
+  @tf.function
+  def predict_step(iterator):
+    """Predicts on distributed devices."""
+
+    def _replicated_step(inputs):
+      """Replicated prediction calculation."""
+      x, y = inputs
+      sentence_ids = x.pop('sentence_id')
+      outputs = task.inference_step(x, model)
+      predict_ids = outputs['predict_ids']
+      label_mask = tf.greater_equal(y, 0)
+      return dict(
+          predict_ids=predict_ids,
+          label_mask=label_mask,
+          sentence_ids=sentence_ids)
+
+    outputs = tf.distribute.get_strategy().run(
+        _replicated_step, args=(next(iterator),))
+    return tf.nest.map_structure(
+        tf.distribute.get_strategy().experimental_local_results, outputs)
+
+  def reduce_fn(state, outputs):
+    """Concatenates model's outputs."""
+    cur_predict_ids, cur_sentence_ids = state
+    for batch_predict_ids, batch_label_mask, batch_sentence_ids in zip(
+        outputs['predict_ids'], outputs['label_mask'],
+        outputs['sentence_ids']):
+      for tmp_predict_ids, tmp_label_mask, tmp_sentence_id in zip(
+          batch_predict_ids.numpy(), batch_label_mask.numpy(),
+          batch_sentence_ids.numpy()):
+        cur_sentence_ids.append(tmp_sentence_id)
+        cur_predict_ids.append([])
+        assert len(tmp_predict_ids) == len(tmp_label_mask)
+        for i in range(len(tmp_predict_ids)):
+          # Skip the padding label.
+          if tmp_label_mask[i]:
+            cur_predict_ids[-1].append(tmp_predict_ids[i])
+    return cur_predict_ids, cur_sentence_ids
+
+  loop_fn = orbit.utils.create_loop_fn(predict_step)
+  dataset = orbit.utils.make_distributed_dataset(tf.distribute.get_strategy(),
+                                                 task.build_inputs, params)
+  # Set `num_steps` to -1 to exhaust the dataset.
+  predict_ids, sentence_ids = loop_fn(
+      iter(dataset), num_steps=-1, state=([], []), reduce_fn=reduce_fn)
+  return predict_ids, sentence_ids

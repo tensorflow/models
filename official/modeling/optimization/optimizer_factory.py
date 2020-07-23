@@ -60,7 +60,7 @@ class OptimizerFactory(object):
   params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
         },
         'learning_rate': {
             'type': 'stepwise',
@@ -88,11 +88,14 @@ class OptimizerFactory(object):
     self._optimizer_config = config.optimizer.get()
     self._optimizer_type = config.optimizer.type
 
-    if self._optimizer_config is None:
+    if self._optimizer_type is None:
       raise ValueError('Optimizer type must be specified')
 
     self._lr_config = config.learning_rate.get()
     self._lr_type = config.learning_rate.type
+
+    if self._lr_type is None:
+      raise ValueError('Learning rate type must be specified')
 
     self._warmup_config = config.warmup.get()
     self._warmup_type = config.warmup.type
@@ -101,18 +104,15 @@ class OptimizerFactory(object):
     """Build learning rate.
 
     Builds learning rate from config. Learning rate schedule is built according
-    to the learning rate config. If there is no learning rate config, optimizer
-    learning rate is returned.
+    to the learning rate config. If learning rate type is consant,
+    lr_config.learning_rate is returned.
 
     Returns:
-      tf.keras.optimizers.schedules.LearningRateSchedule instance. If no
-      learning rate schedule defined, optimizer_config.learning_rate is
-      returned.
+      tf.keras.optimizers.schedules.LearningRateSchedule instance. If
+      learning rate type is consant, lr_config.learning_rate is returned.
     """
-
-    # TODO(arashwan): Explore if we want to only allow explicit const lr sched.
-    if not self._lr_config:
-      lr = self._optimizer_config.learning_rate
+    if self._lr_type == 'constant':
+      lr = self._lr_config.learning_rate
     else:
       lr = LR_CLS[self._lr_type](**self._lr_config.as_dict())
 

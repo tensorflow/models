@@ -34,7 +34,6 @@ from object_detection.protos import train_pb2
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
-from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils as vutils
 
 # pylint: disable=g-import-not-at-top
@@ -47,13 +46,6 @@ except ImportError:
 
 MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 
-### NOTE: This file is a wip.
-### TODO(kaftan): Explore adding unit tests for individual methods
-### TODO(kaftan): Add unit test that checks training on a single image w/
-#### groundtruth, and verfiy that loss goes to zero.
-#### Possibly have version that takes it as the whole train & eval dataset,
-#### & verify the loss output from the eval_loop method.
-### TODO(kaftan): Make sure the unit tests run in TAP presubmits or Kokoro
 
 RESTORE_MAP_ERROR_TEMPLATE = (
     'Since we are restoring a v2 style checkpoint'
@@ -101,6 +93,12 @@ def _compute_losses_and_predictions_dicts(
           instance masks for objects.
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           float32 tensor containing keypoints for each box.
+        labels[fields.InputDataFields.groundtruth_dp_num_points] is an int32
+          tensor with the number of sampled DensePose points per object.
+        labels[fields.InputDataFields.groundtruth_dp_part_ids] is an int32
+          tensor with the DensePose part ids (0-indexed) per object.
+        labels[fields.InputDataFields.groundtruth_dp_surface_coords] is a
+          float32 tensor with the DensePose surface coordinates.
         labels[fields.InputDataFields.groundtruth_group_of] is a tf.bool tensor
           containing group_of annotations.
         labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
@@ -203,6 +201,17 @@ def eager_train_step(detection_model,
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           [batch_size, num_boxes, num_keypoints, 2] float32 tensor containing
           keypoints for each box.
+        labels[fields.InputDataFields.groundtruth_dp_num_points] is a
+          [batch_size, num_boxes] int32 tensor with the number of DensePose
+          sampled points per instance.
+        labels[fields.InputDataFields.groundtruth_dp_part_ids] is a
+          [batch_size, num_boxes, max_sampled_points] int32 tensor with the
+          part ids (0-indexed) for each instance.
+        labels[fields.InputDataFields.groundtruth_dp_surface_coords] is a
+          [batch_size, num_boxes, max_sampled_points, 4] float32 tensor with the
+          surface coordinates for each point. Each surface coordinate is of the
+          form (y, x, v, u) where (y, x) are normalized image locations and
+          (v, u) are part-relative normalized surface coordinates.
         labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
           k-hot tensor of classes.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
@@ -277,14 +286,21 @@ def validate_tf_v2_checkpoint_restore_map(checkpoint_restore_map):
   """
 
   for key, value in checkpoint_restore_map.items():
-    if not (isinstance(key, str) and isinstance(value, tf.Module)):
+    if not (isinstance(key, str) and
+            (isinstance(value, tf.Module)
+             or isinstance(value, tf.train.Checkpoint))):
       raise TypeError(RESTORE_MAP_ERROR_TEMPLATE.format(
           key.__class__.__name__, value.__class__.__name__))
 
 
+def is_object_based_checkpoint(checkpoint_path):
+  """Returns true if `checkpoint_path` points to an object-based checkpoint."""
+  var_names = [var[0] for var in tf.train.list_variables(checkpoint_path)]
+  return '_CHECKPOINTABLE_OBJECT_GRAPH' in var_names
+
+
 def load_fine_tune_checkpoint(
-    model, checkpoint_path, checkpoint_type, checkpoint_version,
-    load_all_detection_checkpoint_vars, input_dataset,
+    model, checkpoint_path, checkpoint_type, checkpoint_version, input_dataset,
     unpad_groundtruth_tensors):
   """Load a fine tuning classification or detection checkpoint.
 
@@ -292,8 +308,7 @@ def load_fine_tune_checkpoint(
   the model by computing a dummy loss. (Models might not have built their
   variables before their first execution)
 
-  It then loads a variable-name based classification or detection checkpoint
-  that comes from converted TF 1.x slim model checkpoints.
+  It then loads an object-based classification or detection checkpoint.
 
   This method updates the model in-place and does not return a value.
 
@@ -306,14 +321,22 @@ def load_fine_tune_checkpoint(
       classification checkpoint for initialization prior to training.
       Valid values: `detection`, `classification`.
     checkpoint_version: train_pb2.CheckpointVersion.V1 or V2 enum indicating
-      whether to load checkpoints in V1 style or V2 style.
-    load_all_detection_checkpoint_vars: whether to load all variables (when
-      `fine_tune_checkpoint_type` is `detection`). If False, only variables
-      within the feature extractor scopes are included. Default False.
+      whether to load checkpoints in V1 style or V2 style.  In this binary
+      we only support V2 style (object-based) checkpoints.
     input_dataset: The tf.data Dataset the model is being trained on. Needed
       to get the shapes for the dummy loss computation.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
+
+  Raises:
+    IOError: if `checkpoint_path` does not point at a valid object-based
+      checkpoint
+    ValueError: if `checkpoint_version` is not train_pb2.CheckpointVersion.V2
   """
+  if not is_object_based_checkpoint(checkpoint_path):
+    raise IOError('Checkpoint is expected to be an object-based checkpoint.')
+  if checkpoint_version == train_pb2.CheckpointVersion.V1:
+    raise ValueError('Checkpoint version should be V2')
+
   features, labels = iter(input_dataset).next()
 
   @tf.function
@@ -330,32 +353,24 @@ def load_fine_tune_checkpoint(
         labels)
 
   strategy = tf.compat.v2.distribute.get_strategy()
-  strategy.experimental_run_v2(
-      _dummy_computation_fn, args=(
-          features,
-          labels,
-      ))
+  if hasattr(tf.distribute.Strategy, 'run'):
+    strategy.run(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
+  else:
+    strategy.experimental_run_v2(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
 
-  if checkpoint_version == train_pb2.CheckpointVersion.V1:
-    var_map = model.restore_map(
-        fine_tune_checkpoint_type=checkpoint_type,
-        load_all_detection_checkpoint_vars=(
-            load_all_detection_checkpoint_vars))
-    available_var_map = variables_helper.get_variables_available_in_checkpoint(
-        var_map,
-        checkpoint_path,
-        include_global_step=False)
-    tf.train.init_from_checkpoint(checkpoint_path,
-                                  available_var_map)
-  elif checkpoint_version == train_pb2.CheckpointVersion.V2:
-    restore_map = model.restore_map(
-        fine_tune_checkpoint_type=checkpoint_type,
-        load_all_detection_checkpoint_vars=(
-            load_all_detection_checkpoint_vars))
-    validate_tf_v2_checkpoint_restore_map(restore_map)
-
-    ckpt = tf.train.Checkpoint(**restore_map)
-    ckpt.restore(checkpoint_path).assert_existing_objects_matched()
+  restore_from_objects_dict = model.restore_from_objects(
+      fine_tune_checkpoint_type=checkpoint_type)
+  validate_tf_v2_checkpoint_restore_map(restore_from_objects_dict)
+  ckpt = tf.train.Checkpoint(**restore_from_objects_dict)
+  ckpt.restore(checkpoint_path).assert_existing_objects_matched()
 
 
 def get_filepath(strategy, filepath):
@@ -398,7 +413,7 @@ def train_loop(
     train_steps=None,
     use_tpu=False,
     save_final_config=False,
-    checkpoint_every_n=1000,
+    checkpoint_every_n=5000,
     checkpoint_max_to_keep=7,
     **kwargs):
   """Trains a model using eager + functions.
@@ -464,8 +479,10 @@ def train_loop(
   if kwargs['use_bfloat16']:
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
-  load_all_detection_checkpoint_vars = (
-      train_config.load_all_detection_checkpoint_vars)
+  if train_config.load_all_detection_checkpoint_vars:
+    raise ValueError('train_pb2.load_all_detection_checkpoint_vars '
+                     'unsupported in TF2')
+
   config_util.update_fine_tune_checkpoint_type(train_config)
   fine_tune_checkpoint_type = train_config.fine_tune_checkpoint_type
   fine_tune_checkpoint_version = train_config.fine_tune_checkpoint_version
@@ -533,7 +550,6 @@ def train_loop(
                                     train_config.fine_tune_checkpoint,
                                     fine_tune_checkpoint_type,
                                     fine_tune_checkpoint_version,
-                                    load_all_detection_checkpoint_vars,
                                     train_input,
                                     unpad_groundtruth_tensors)
 
@@ -570,8 +586,12 @@ def train_loop(
 
         def _sample_and_train(strategy, train_step_fn, data_iterator):
           features, labels = data_iterator.next()
-          per_replica_losses = strategy.experimental_run_v2(
-              train_step_fn, args=(features, labels))
+          if hasattr(tf.distribute.Strategy, 'run'):
+            per_replica_losses = strategy.run(
+                train_step_fn, args=(features, labels))
+          else:
+            per_replica_losses = strategy.experimental_run_v2(
+                train_step_fn, args=(features, labels))
           # TODO(anjalisridhar): explore if it is safe to remove the
           ## num_replicas scaling of the loss and switch this to a ReduceOp.Mean
           return strategy.reduce(tf.distribute.ReduceOp.SUM,
@@ -744,28 +764,25 @@ def eager_eval_loop(
 
     return eval_dict, losses_dict, class_agnostic
 
+  agnostic_categories = label_map_util.create_class_agnostic_category_index()
+  per_class_categories = label_map_util.create_category_index_from_labelmap(
+      eval_input_config.label_map_path)
+  keypoint_edges = [
+      (kp.start, kp.end) for kp in eval_config.keypoint_edge]
+
   for i, (features, labels) in enumerate(eval_dataset):
     eval_dict, losses_dict, class_agnostic = compute_eval_dict(features, labels)
+
+    if class_agnostic:
+      category_index = agnostic_categories
+    else:
+      category_index = per_class_categories
 
     if i % 100 == 0:
       tf.logging.info('Finished eval step %d', i)
 
     use_original_images = fields.InputDataFields.original_image in features
-    if not use_tpu and use_original_images:
-      # Summary for input images.
-      tf.compat.v2.summary.image(
-          name='eval_input_images',
-          step=global_step,
-          data=eval_dict['original_image'],
-          max_outputs=1)
-      # Summary for prediction/groundtruth side-by-side images.
-      if class_agnostic:
-        category_index = label_map_util.create_class_agnostic_category_index()
-      else:
-        category_index = label_map_util.create_category_index_from_labelmap(
-            eval_input_config.label_map_path)
-      keypoint_edges = [
-          (kp.start, kp.end) for kp in eval_config.keypoint_edge]
+    if use_original_images and i < eval_config.num_visualizations:
       sbys_image_list = vutils.draw_side_by_side_evaluation_image(
           eval_dict,
           category_index=category_index,
@@ -775,10 +792,19 @@ def eager_eval_loop(
           keypoint_edges=keypoint_edges or None)
       sbys_images = tf.concat(sbys_image_list, axis=0)
       tf.compat.v2.summary.image(
-          name='eval_side_by_side',
+          name='eval_side_by_side_' + str(i),
           step=global_step,
           data=sbys_images,
           max_outputs=eval_config.num_visualizations)
+      if eval_util.has_densepose(eval_dict):
+        dp_image_list = vutils.draw_densepose_visualizations(
+            eval_dict)
+        dp_images = tf.concat(dp_image_list, axis=0)
+        tf.compat.v2.summary.image(
+            name='densepose_detections_' + str(i),
+            step=global_step,
+            data=dp_images,
+            max_outputs=eval_config.num_visualizations)
 
     if evaluators is None:
       if class_agnostic:
@@ -807,8 +833,10 @@ def eager_eval_loop(
     eval_metrics[loss_key] = loss_metrics[loss_key].result()
 
   eval_metrics = {str(k): v for k, v in eval_metrics.items()}
+  tf.logging.info('Eval metrics at step %d', global_step)
   for k in eval_metrics:
     tf.compat.v2.summary.scalar(k, eval_metrics[k], step=global_step)
+    tf.logging.info('\t+ %s: %f', k, eval_metrics[k])
 
   return eval_metrics
 
@@ -826,6 +854,7 @@ def eval_continuously(
     checkpoint_dir=None,
     wait_interval=180,
     timeout=3600,
+    eval_index=None,
     **kwargs):
   """Run continuous evaluation of a detection model eagerly.
 
@@ -855,6 +884,8 @@ def eval_continuously(
       new checkpoint.
     timeout: The maximum number of seconds to wait for a checkpoint. Execution
       will terminate if no new checkpoints are found after these many seconds.
+    eval_index: int, optional If give, only evaluate the dataset at the given
+      index.
 
     **kwargs: Additional keyword arguments for configuration override.
   """
@@ -908,6 +939,11 @@ def eval_continuously(
         model=detection_model)
     eval_inputs.append((eval_input_config.name, next_eval_input))
 
+  if eval_index is not None:
+    eval_inputs = [eval_inputs[eval_index]]
+    tf.logging.info('eval_index selected - {}'.format(
+        eval_inputs))
+
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)
 
@@ -920,7 +956,7 @@ def eval_continuously(
 
     for eval_name, eval_input in eval_inputs:
       summary_writer = tf.compat.v2.summary.create_file_writer(
-          model_dir + '/eval' + eval_name)
+          os.path.join(model_dir, 'eval', eval_name))
       with summary_writer.as_default():
         eager_eval_loop(
             detection_model,

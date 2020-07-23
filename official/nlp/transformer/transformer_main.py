@@ -241,14 +241,13 @@ class TransformerTask(object):
     if params["use_ctl"]:
       train_ds_iterator = iter(train_ds)
 
-    callbacks = self._create_callbacks(flags_obj.model_dir, 0, params)
+    callbacks = self._create_callbacks(flags_obj.model_dir, params)
 
     # Only TimeHistory callback is supported for CTL
     if params["use_ctl"]:
       callbacks = [cb for cb in callbacks
                    if isinstance(cb, keras_utils.TimeHistory)]
 
-    # TODO(b/139418525): Refactor the custom training loop logic.
     @tf.function
     def train_steps(iterator, steps):
       """Training steps function for TPU runs.
@@ -408,14 +407,9 @@ class TransformerTask(object):
     for i in range(length):
       translate.translate_from_input(val_outputs[i], subtokenizer)
 
-  def _create_callbacks(self, cur_log_dir, init_steps, params):
+  def _create_callbacks(self, cur_log_dir, params):
     """Creates a list of callbacks."""
-    sfunc = optimizer.LearningRateFn(params["learning_rate"],
-                                     params["hidden_size"],
-                                     params["learning_rate_warmup_steps"])
-    scheduler_callback = optimizer.LearningRateScheduler(sfunc, init_steps)
     callbacks = misc.get_callbacks()
-    callbacks.append(scheduler_callback)
     if params["enable_checkpointing"]:
       ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
       callbacks.append(
@@ -427,8 +421,6 @@ class TransformerTask(object):
     """Loads model weights when it is provided."""
     if init_weight_path:
       logging.info("Load weights: {}".format(init_weight_path))
-      # TODO(b/139414977): Having the same variable restoring method for both
-      # TPU and GPU.
       if self.use_tpu:
         checkpoint = tf.train.Checkpoint(
             model=model, optimizer=self._create_optimizer())
@@ -445,7 +437,7 @@ class TransformerTask(object):
         params["learning_rate"], params["hidden_size"],
         params["learning_rate_warmup_steps"])
     opt = tf.keras.optimizers.Adam(
-        lr_schedule if self.use_tpu else params["learning_rate"],
+        lr_schedule,
         params["optimizer_adam_beta1"],
         params["optimizer_adam_beta2"],
         epsilon=params["optimizer_adam_epsilon"])

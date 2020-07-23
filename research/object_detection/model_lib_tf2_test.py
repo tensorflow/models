@@ -123,6 +123,9 @@ class SimpleModel(model.DetectionModel):
     return []
 
   def restore_map(self, *args, **kwargs):
+    pass
+
+  def restore_from_objects(self, fine_tune_checkpoint_type):
     return {'model': self}
 
   def preprocess(self, _):
@@ -174,7 +177,7 @@ class ModelCheckpointTest(tf.test.TestCase):
 
 class IncompatibleModel(SimpleModel):
 
-  def restore_map(self, *args, **kwargs):
+  def restore_from_objects(self, *args, **kwargs):
     return {'weight': self.weight}
 
 
@@ -207,7 +210,6 @@ class CheckpointV2Test(tf.test.TestCase):
     model_lib_v2.load_fine_tune_checkpoint(
         self._model, self._ckpt_path, checkpoint_type='',
         checkpoint_version=train_pb2.CheckpointVersion.V2,
-        load_all_detection_checkpoint_vars=True,
         input_dataset=self._train_input_fn(),
         unpad_groundtruth_tensors=True)
     np.testing.assert_allclose(self._model.weight.numpy(), 42)
@@ -220,7 +222,6 @@ class CheckpointV2Test(tf.test.TestCase):
       model_lib_v2.load_fine_tune_checkpoint(
           IncompatibleModel(), self._ckpt_path, checkpoint_type='',
           checkpoint_version=train_pb2.CheckpointVersion.V2,
-          load_all_detection_checkpoint_vars=True,
           input_dataset=self._train_input_fn(),
           unpad_groundtruth_tensors=True)
 

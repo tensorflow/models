@@ -30,12 +30,17 @@ from object_detection.core import model
 from object_detection.dataset_tools.context_rcnn import generate_embedding_data
 from object_detection.protos import pipeline_pb2
 from object_detection.utils import tf_version
-from apache_beam import runners
+
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
 else:
   mock = unittest.mock
+
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class FakeModel(model.DetectionModel):
@@ -71,6 +76,9 @@ class FakeModel(model.DetectionModel):
     return postprocessed_tensors
 
   def restore_map(self, checkpoint_path, fine_tune_checkpoint_type):
+    pass
+
+  def restore_from_objects(self, fine_tune_checkpoint_type):
     pass
 
   def loss(self, prediction_dict, true_image_shapes):
@@ -236,13 +244,13 @@ class GenerateEmbeddingData(tf.test.TestCase):
         .int64_list.value, [5])
     self.assertAllEqual(
         example.features.feature['image/object/class/text']
-        .bytes_list.value, ['hyena'])
+        .bytes_list.value, [b'hyena'])
     self.assertAllClose(
         example.features.feature['image/class/label']
         .int64_list.value, [5])
     self.assertAllEqual(
         example.features.feature['image/class/text']
-        .bytes_list.value, ['hyena'])
+        .bytes_list.value, [b'hyena'])
 
     # Check other essential attributes.
     self.assertAllEqual(
@@ -251,7 +259,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
         example.features.feature['image/width'].int64_list.value, [600])
     self.assertAllEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        ['image_id'])
+        [b'image_id'])
     self.assertTrue(
         example.features.feature['image/encoded'].bytes_list.value)
 
@@ -268,7 +276,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
                         .int64_list.value, [5])
     self.assertAllEqual(tf.train.Example.FromString(
         generated_example).features.feature['image/object/class/text']
-                        .bytes_list.value, ['hyena'])
+                        .bytes_list.value, [b'hyena'])
     output = inference_fn.process(generated_example)
     output_example = output[0]
     self.assert_expected_example(output_example)
@@ -304,24 +312,26 @@ class GenerateEmbeddingData(tf.test.TestCase):
         .feature['image/object/class/label'].int64_list.value, [5])
     self.assertAllEqual(
         tf.train.Example.FromString(generated_example).features
-        .feature['image/object/class/text'].bytes_list.value, ['hyena'])
+        .feature['image/object/class/text'].bytes_list.value, [b'hyena'])
     output = inference_fn.process(generated_example)
     output_example = output[0]
     self.assert_expected_example(output_example, botk=True)
 
   def test_beam_pipeline(self):
     with InMemoryTFRecord([self._create_tf_example()]) as input_tfrecord:
-      runner = runners.DirectRunner()
       temp_dir = tempfile.mkdtemp(dir=os.environ.get('TEST_TMPDIR'))
       output_tfrecord = os.path.join(temp_dir, 'output_tfrecord')
       saved_model_path = self._export_saved_model()
       top_k_embedding_count = 1
       bottom_k_embedding_count = 0
       num_shards = 1
-      pipeline = generate_embedding_data.construct_pipeline(
-          input_tfrecord, output_tfrecord, saved_model_path,
+      pipeline_options = beam.options.pipeline_options.PipelineOptions(
+          runner='DirectRunner')
+      p = beam.Pipeline(options=pipeline_options)
+      generate_embedding_data.construct_pipeline(
+          p, input_tfrecord, output_tfrecord, saved_model_path,
           top_k_embedding_count, bottom_k_embedding_count, num_shards)
-      runner.run(pipeline)
+      p.run()
       filenames = tf.io.gfile.glob(
           output_tfrecord + '-?????-of-?????')
       actual_output = []

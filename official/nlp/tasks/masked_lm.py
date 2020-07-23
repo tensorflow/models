@@ -14,19 +14,20 @@
 # limitations under the License.
 # ==============================================================================
 """Masked language task."""
+from absl import logging
 import dataclasses
 import tensorflow as tf
 
 from official.core import base_task
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
-from official.nlp.data import pretrain_dataloader
-from official.nlp.modeling import losses as loss_lib
+from official.nlp.data import data_loader_factory
 
 
 @dataclasses.dataclass
 class MaskedLMConfig(cfg.TaskConfig):
   """The model config."""
+  init_checkpoint: str = ''
   model: bert.BertPretrainerConfig = bert.BertPretrainerConfig(cls_heads=[
       bert.ClsHeadConfig(
           inner_dim=768, num_classes=2, dropout_rate=0.1, name='next_sentence')
@@ -39,8 +40,9 @@ class MaskedLMConfig(cfg.TaskConfig):
 class MaskedLMTask(base_task.Task):
   """Mock task object for testing."""
 
-  def build_model(self):
-    return bert.instantiate_bertpretrainer_from_cfg(self.task_config.model)
+  def build_model(self, params=None):
+    params = params or self.task_config.model
+    return bert.instantiate_pretrainer_from_cfg(params)
 
   def build_losses(self,
                    labels,
@@ -61,9 +63,10 @@ class MaskedLMTask(base_task.Task):
       sentence_labels = labels['next_sentence_labels']
       sentence_outputs = tf.cast(
           model_outputs['next_sentence'], dtype=tf.float32)
-      sentence_loss = loss_lib.weighted_sparse_categorical_crossentropy_loss(
-          labels=sentence_labels,
-          predictions=tf.nn.log_softmax(sentence_outputs, axis=-1))
+      sentence_loss = tf.reduce_mean(
+          tf.keras.losses.sparse_categorical_crossentropy(sentence_labels,
+                                                          sentence_outputs,
+                                                          from_logits=True))
       metrics['next_sentence_loss'].update_state(sentence_loss)
       total_loss = mlm_loss + sentence_loss
     else:
@@ -95,8 +98,7 @@ class MaskedLMTask(base_task.Task):
           dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       return dataset
 
-    return pretrain_dataloader.BertPretrainDataLoader(params).load(
-        input_context)
+    return data_loader_factory.get_data_loader(params).load(input_context)
 
   def build_metrics(self, training=None):
     del training
@@ -172,3 +174,17 @@ class MaskedLMTask(base_task.Task):
         aux_losses=model.losses)
     self.process_metrics(metrics, inputs, outputs)
     return {self.loss: loss}
+
+  def initialize(self, model: tf.keras.Model):
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+    if not ckpt_dir_or_file:
+      return
+    # Restoring all modules defined by the model, e.g. encoder, masked_lm and
+    # cls pooler. The best initialization may vary case by case.
+    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+    status = ckpt.read(ckpt_dir_or_file)
+    status.expect_partial().assert_existing_objects_matched()
+    logging.info('Finished loading pretrained checkpoint from %s',
+                 ckpt_dir_or_file)

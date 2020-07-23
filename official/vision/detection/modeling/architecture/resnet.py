@@ -25,7 +25,7 @@ from __future__ import print_function
 
 from absl import logging
 import tensorflow as tf
-from tensorflow.python.keras import backend
+from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 
 # TODO(b/140112644): Refactor the code with Keras style, i.e. build and call.
@@ -90,7 +90,7 @@ class Resnet(object):
       The values are corresponding feature hierarchy in ResNet with shape
       [batch_size, height_l, width_l, num_filters].
     """
-    with backend.get_graph().as_default():
+    with keras_utils.maybe_enter_backend_graph():
       with tf.name_scope('resnet%s' % self._resnet_depth):
         return self._resnet_fn(inputs, is_training)
 

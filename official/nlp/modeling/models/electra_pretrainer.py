@@ -39,6 +39,9 @@ class ElectraPretrainer(tf.keras.Model):
   model (at generator side) and classification networks (at discriminator side)
   that are used to create the training objectives.
 
+  *Note* that the model is constructed by Keras Subclass API, where layers are
+  defined inside __init__ and call() implements the computation.
+
   Arguments:
     generator_network: A transformer network for generator, this network should
       output a sequence output and an optional classification output.
@@ -48,7 +51,6 @@ class ElectraPretrainer(tf.keras.Model):
     num_classes: Number of classes to predict from the classification network
       for the generator network (not used now)
     sequence_length: Input sequence length
-    last_hidden_dim: Last hidden dim of generator transformer output
     num_token_predictions: Number of tokens to predict from the masked LM.
     mlm_activation: The activation (if any) to use in the masked LM and
       classification networks. If None, no activation will be used.
@@ -66,7 +68,6 @@ class ElectraPretrainer(tf.keras.Model):
                vocab_size,
                num_classes,
                sequence_length,
-               last_hidden_dim,
                num_token_predictions,
                mlm_activation=None,
                mlm_initializer='glorot_uniform',
@@ -80,7 +81,6 @@ class ElectraPretrainer(tf.keras.Model):
         'vocab_size': vocab_size,
         'num_classes': num_classes,
         'sequence_length': sequence_length,
-        'last_hidden_dim': last_hidden_dim,
         'num_token_predictions': num_token_predictions,
         'mlm_activation': mlm_activation,
         'mlm_initializer': mlm_initializer,
@@ -95,7 +95,6 @@ class ElectraPretrainer(tf.keras.Model):
     self.vocab_size = vocab_size
     self.num_classes = num_classes
     self.sequence_length = sequence_length
-    self.last_hidden_dim = last_hidden_dim
     self.num_token_predictions = num_token_predictions
     self.mlm_activation = mlm_activation
     self.mlm_initializer = mlm_initializer
@@ -108,14 +107,35 @@ class ElectraPretrainer(tf.keras.Model):
         output=output_type,
         name='generator_masked_lm')
     self.classification = layers.ClassificationHead(
-        inner_dim=last_hidden_dim,
+        inner_dim=generator_network._config_dict['hidden_size'],
         num_classes=num_classes,
         initializer=mlm_initializer,
         name='generator_classification_head')
+    self.discriminator_projection = tf.keras.layers.Dense(
+        units=discriminator_network._config_dict['hidden_size'],
+        activation=mlm_activation,
+        kernel_initializer=mlm_initializer,
+        name='discriminator_projection_head')
     self.discriminator_head = tf.keras.layers.Dense(
         units=1, kernel_initializer=mlm_initializer)
 
   def call(self, inputs):
+    """ELECTRA forward pass.
+
+    Args:
+      inputs: A dict of all inputs, same as the standard BERT model.
+
+    Returns:
+      outputs: A dict of pretrainer model outputs, including
+        (1) lm_outputs: a [batch_size, num_token_predictions, vocab_size] tensor
+        indicating logits on masked positions.
+        (2) sentence_outputs: a [batch_size, num_classes] tensor indicating
+        logits for nsp task.
+        (3) disc_logits: a [batch_size, sequence_length] tensor indicating
+        logits for discriminator replaced token detection task.
+        (4) disc_label: a [batch_size, sequence_length] tensor indicating
+        target labels for discriminator replaced token detection task.
+    """
     input_word_ids = inputs['input_word_ids']
     input_mask = inputs['input_mask']
     input_type_ids = inputs['input_type_ids']
@@ -149,10 +169,18 @@ class ElectraPretrainer(tf.keras.Model):
     if isinstance(disc_sequence_output, list):
       disc_sequence_output = disc_sequence_output[-1]
 
-    disc_logits = self.discriminator_head(disc_sequence_output)
+    disc_logits = self.discriminator_head(
+        self.discriminator_projection(disc_sequence_output))
     disc_logits = tf.squeeze(disc_logits, axis=-1)
 
-    return lm_outputs, sentence_outputs, disc_logits, disc_label
+    outputs = {
+        'lm_outputs': lm_outputs,
+        'sentence_outputs': sentence_outputs,
+        'disc_logits': disc_logits,
+        'disc_label': disc_label,
+    }
+
+    return outputs
 
   def _get_fake_data(self, inputs, mlm_logits, duplicate=True):
     """Generate corrupted data for discriminator.
@@ -190,6 +218,12 @@ class ElectraPretrainer(tf.keras.Model):
         'is_fake_tokens': labels,
         'sampled_tokens': sampled_tokens
     }
+
+  @property
+  def checkpoint_items(self):
+    """Returns a dictionary of items to be additionally checkpointed."""
+    items = dict(encoder=self.discriminator_network)
+    return items
 
   def get_config(self):
     return self._config

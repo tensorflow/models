@@ -86,6 +86,9 @@ message DelfConfig {
   // Path to DELF model.
   optional string model_path = 1;  // Required.
 
+  // Whether model has been exported using TF version 2+.
+  optional bool is_tf2_exported = 10 [default = false];
+
   // Image scales to be used.
   repeated float image_scales = 2;
 

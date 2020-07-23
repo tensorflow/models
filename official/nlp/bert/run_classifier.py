@@ -343,7 +343,10 @@ def export_classifier(model_export_path, input_meta_data, bert_config,
   # Export uses float32 for now, even if training uses mixed precision.
   tf.keras.mixed_precision.experimental.set_policy('float32')
   classifier_model = bert_models.classifier_model(
-      bert_config, input_meta_data.get('num_labels', 1))[0]
+      bert_config,
+      input_meta_data.get('num_labels', 1),
+      hub_module_url=FLAGS.hub_module_url,
+      hub_module_trainable=False)[0]
 
   model_saving_utils.export_bert_model(
       model_export_path, model=classifier_model, checkpoint_dir=model_dir)

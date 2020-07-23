@@ -93,8 +93,11 @@ class Unet3DAccuracyBenchmark(keras_benchmark.KerasBenchmark):
     """Runs and reports the benchmark given the provided configuration."""
     params = unet_training_lib.extract_params(FLAGS)
     strategy = unet_training_lib.create_distribution_strategy(params)
-    if params.use_bfloat16:
-      policy = tf.keras.mixed_precision.experimental.Policy('mixed_bfloat16')
+
+    input_dtype = params.dtype
+    if input_dtype == 'float16' or input_dtype == 'bfloat16':
+      policy = tf.keras.mixed_precision.experimental.Policy(
+          'mixed_bfloat16' if input_dtype == 'bfloat16' else 'mixed_float16')
       tf.keras.mixed_precision.experimental.set_policy(policy)
 
     stats = {}

@@ -19,6 +19,7 @@ import tensorflow as tf
 
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
+from official.nlp.data import pretrain_dataloader
 from official.nlp.tasks import masked_lm
 
 
@@ -26,14 +27,14 @@ class MLMTaskTest(tf.test.TestCase):
 
   def test_task(self):
     config = masked_lm.MaskedLMConfig(
+        init_checkpoint=self.get_temp_dir(),
         model=bert.BertPretrainerConfig(
             encoders.TransformerEncoderConfig(vocab_size=30522, num_layers=1),
-            num_masked_tokens=20,
             cls_heads=[
                 bert.ClsHeadConfig(
                     inner_dim=10, num_classes=2, name="next_sentence")
             ]),
-        train_data=bert.BertPretrainDataConfig(
+        train_data=pretrain_dataloader.BertPretrainDataConfig(
             input_path="dummy",
             max_predictions_per_seq=20,
             seq_length=128,
@@ -47,6 +48,12 @@ class MLMTaskTest(tf.test.TestCase):
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
+
+    # Saves a checkpoint.
+    ckpt = tf.train.Checkpoint(
+        model=model, **model.checkpoint_items)
+    ckpt.save(config.init_checkpoint)
+    task.initialize(model)
 
 
 if __name__ == "__main__":
