@@ -139,7 +139,7 @@ def create_tf_example(example):
 
 
 def main(_):
-  writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+  writer = tf.io.TFRecordWriter(FLAGS.output_path)
 
   # TODO(user): Write code to read in your dataset to examples variable
 
