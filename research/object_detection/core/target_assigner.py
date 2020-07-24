@@ -1659,6 +1659,8 @@ class CenterNetMaskTargetAssigner(object):
       # Shape: [h, w, num_classes].
       segmentations_for_image = tf.reduce_max(
           gt_masks * gt_classes_reshaped, axis=0)
+      # Avoid the case where max of an empty array is -inf.
+      segmentations_for_image = tf.maximum(segmentations_for_image, 0.0)
       segmentation_targets_list.append(segmentations_for_image)
 
     segmentation_target = tf.stack(segmentation_targets_list, axis=0)
