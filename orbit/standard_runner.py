@@ -124,6 +124,12 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
     context" for generality, to allow e.g. multiple iterator dequeues and calls
     to `strategy.run`.
 
+    Note that if `use_tf_function=True`, all the code inside `train_step` should
+    be tf.function compatible, as they will be traced with tf.function. This
+    means you cannot put arbitrary python code in this function. If users have
+    any numpy operations, they should be put in `train_loop_begin` or
+    `train_loop_end` functions.
+
     Args:
       iterator: A tf.nest-compatible structure of tf.data Iterator or
         DistributedIterator.
@@ -227,6 +233,12 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
     strategies, the call to this method should take place in the "cross-replica
     context" for generality, to allow e.g. multiple iterator dequeues and calls
     to `strategy.run`.
+
+    Note that if `use_tf_function=True`, all the code inside `eval_step` should
+    be tf.function compatible, as they will be traced with tf.function. This
+    means you cannot put arbitrary python code in this function. If users have
+    any numpy operations, they should be put in `eval_begin`, `eval_end` or
+    `eval_reduce` functions.
 
     Args:
       iterator: A tf.nest-compatible structure of tf.data Iterator or
