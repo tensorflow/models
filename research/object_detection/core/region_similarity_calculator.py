@@ -31,11 +31,12 @@ import tensorflow.compat.v1 as tf
 from object_detection.core import box_list_ops
 from object_detection.core import standard_fields as fields
 
+EPSILON = 1e-8
 
 class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
   """Abstract base class for region similarity calculator."""
 
-  def compare(self, boxlist1, boxlist2, scope=None):
+  def compare(self, boxlist1, boxlist2, scope=None, groundtruth_labels=None, predicted_labels=None):
     """Computes matrix of pairwise similarity between BoxLists.
 
     This op (to be overridden) computes a measure of pairwise similarity between
@@ -53,10 +54,10 @@ class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
       a (float32) tensor of shape [N, M] with pairwise similarity score.
     """
     with tf.name_scope(scope, 'Compare', [boxlist1, boxlist2]) as scope:
-      return self._compare(boxlist1, boxlist2)
+      return self._compare(boxlist1, boxlist2, groundtruth_labels, predicted_labels)
 
   @abstractmethod
-  def _compare(self, boxlist1, boxlist2):
+  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
     pass
 
 
@@ -78,6 +79,27 @@ class IouSimilarity(RegionSimilarityCalculator):
     """
     return box_list_ops.iou(boxlist1, boxlist2)
 
+class DETRSimiliarity(RegionSimilarityCalculator):
+  """Class to compute similarity based on Intersection over Union (IOU) metric.
+
+  This class computes pairwise similarity between two BoxLists based on IOU.
+  """
+
+  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
+    """Compute pairwise IOU similarity between the two BoxLists.
+
+    Args:
+      boxlist1: BoxList holding N boxes.
+      boxlist2: BoxList holding M boxes.
+
+    Returns:
+      A tensor with shape [N, M] representing pairwise iou scores.
+    """
+    classification_scores = tf.matmul(groundtruth_labels,
+        tf.nn.softmax(predicted_labels), transpose_b=True)
+    return -5 * box_list_ops.l1(boxlist1, boxlist2) + \
+           classification_scores + \
+           2 * (1 - box_list_ops.giou_loss(boxlist1, boxlist2))
 
 class NegSqDistSimilarity(RegionSimilarityCalculator):
   """Class to compute similarity based on the squared distance metric.
@@ -86,7 +108,7 @@ class NegSqDistSimilarity(RegionSimilarityCalculator):
   negative squared distance metric.
   """
 
-  def _compare(self, boxlist1, boxlist2):
+  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
     """Compute matrix of (negated) sq distances.
 
     Args:
@@ -98,7 +120,6 @@ class NegSqDistSimilarity(RegionSimilarityCalculator):
     """
     return -1 * box_list_ops.sq_dist(boxlist1, boxlist2)
 
-
 class IoaSimilarity(RegionSimilarityCalculator):
   """Class to compute similarity based on Intersection over Area (IOA) metric.
 
@@ -106,7 +127,7 @@ class IoaSimilarity(RegionSimilarityCalculator):
   pairwise intersections divided by the areas of second BoxLists.
   """
 
-  def _compare(self, boxlist1, boxlist2):
+  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
     """Compute pairwise IOA similarity between the two BoxLists.
 
     Args:
@@ -138,7 +159,7 @@ class ThresholdedIouSimilarity(RegionSimilarityCalculator):
     super(ThresholdedIouSimilarity, self).__init__()
     self._iou_threshold = iou_threshold
 
-  def _compare(self, boxlist1, boxlist2):
+  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
     """Compute pairwise IOU similarity between the two BoxLists and score.
 
     Args:
