@@ -228,8 +228,6 @@ def make_sequence_example(dataset_name,
       'image/timestamp': sequence_int64_feature(image_timestamps),
   }
 
-  print("Source IDs", image_source_ids)
-
   # Add optional fields.
   if image_format is not None:
     context_dict['image/format'] = context_bytes_feature([image_format])
