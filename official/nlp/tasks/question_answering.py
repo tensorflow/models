@@ -274,8 +274,21 @@ class QuestionAnsweringTask(base_task.Task):
     if self.task_config.validation_data.version_2_with_negative:
       eval_metrics = squad_evaluate_v2_0.evaluate(
           pred_dataset, all_predictions, scores_diff)
+      # Filter out useless metrics, such as start_position_accuracy that
+      # we did not actually compute.
+      eval_metrics = {
+          'exact_match': eval_metrics['final_exact'],
+          'exact_match_threshold': eval_metrics['final_exact_thresh'],
+          'final_f1': eval_metrics['final_f1'] / 100.0,  # scale back to [0, 1].
+          'f1_threshold': eval_metrics['final_f1_thresh'],
+          'has_answer_exact_match': eval_metrics['HasAns_exact'],
+          'has_answer_f1': eval_metrics['HasAns_f1']}
     else:
       eval_metrics = squad_evaluate_v1_1.evaluate(pred_dataset, all_predictions)
+      # Filter out useless metrics, such as start_position_accuracy that
+      # we did not actually compute.
+      eval_metrics = {'exact_match': eval_metrics['exact_match'],
+                      'final_f1': eval_metrics['final_f1']}
     return eval_metrics
 
   def initialize(self, model):
