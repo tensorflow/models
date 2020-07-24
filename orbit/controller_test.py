@@ -33,19 +33,15 @@ def create_model():
 
 
 def summaries_with_matching_keyword(keyword, summary_dir):
-  """Yields summary protos matching given keyword from event file."""
+  """Returns summary protos matching given keyword from event file."""
+  matches = []
   event_paths = tf.io.gfile.glob(os.path.join(summary_dir, "events*"))
   for event in tf.compat.v1.train.summary_iterator(event_paths[-1]):
     if event.summary is not None:
       for value in event.summary.value:
         if keyword in value.tag:
-          logging.info(event)
-          yield event.summary
-
-
-def check_eventfile_for_keyword(keyword, summary_dir):
-  """Checks event files for the keyword."""
-  return any(summaries_with_matching_keyword(keyword, summary_dir))
+          matches.append(event.summary)
+  return matches
 
 
 def dataset_fn(ctx):
@@ -219,13 +215,13 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     # Loss and accuracy values should be written into summaries.
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/train")))
-    self.assertTrue(
-        check_eventfile_for_keyword(
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
             "loss", os.path.join(self.model_dir, "summaries/train")))
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/eval")))
-    self.assertTrue(
-        check_eventfile_for_keyword(
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
             "eval_loss", os.path.join(self.model_dir, "summaries/eval")))
     # No checkpoint, so global step starts from 0.
     test_runner.global_step.assign(0)
@@ -275,13 +271,13 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     # Loss and accuracy values should be written into summaries.
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/train")))
-    self.assertTrue(
-        check_eventfile_for_keyword(
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
             "loss", os.path.join(self.model_dir, "summaries/train")))
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/eval")))
-    self.assertTrue(
-        check_eventfile_for_keyword(
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
             "eval_loss", os.path.join(self.model_dir, "summaries/eval")))
 
   def test_train_only(self):
@@ -311,8 +307,8 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     # Only train summaries are written.
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/train")))
-    self.assertTrue(
-        check_eventfile_for_keyword(
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
             "loss", os.path.join(self.model_dir, "summaries/train")))
     self.assertFalse(
         tf.io.gfile.exists(os.path.join(self.model_dir, "summaries/eval")))
@@ -340,8 +336,8 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
         tf.io.gfile.exists(os.path.join(self.model_dir, "summaries/train")))
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/eval")))
-    self.assertTrue(
-        check_eventfile_for_keyword(
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
             "eval_loss", os.path.join(self.model_dir, "summaries/eval")))
 
     # Tests continuous eval with timeout and timeout_fn.
@@ -423,8 +419,8 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     # Only train summaries are written.
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/train")))
-    self.assertTrue(
-        check_eventfile_for_keyword(
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
             "loss", os.path.join(self.model_dir, "summaries/train")))
     self.assertFalse(
         tf.io.gfile.exists(os.path.join(self.model_dir, "summaries/eval")))
@@ -453,12 +449,12 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     # Loss and accuracy values should be written into summaries.
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries")))
-    self.assertTrue(
-        check_eventfile_for_keyword("loss",
-                                    os.path.join(self.model_dir, "summaries")))
-    self.assertTrue(
-        check_eventfile_for_keyword("eval_loss",
-                                    os.path.join(self.model_dir, "summaries")))
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
+            "loss", os.path.join(self.model_dir, "summaries")))
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
+            "eval_loss", os.path.join(self.model_dir, "summaries")))
 
   def test_early_stop_on_eval_loss(self):
     test_runner = TestRunner()
@@ -518,8 +514,8 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     # Only eval summaries are written
     self.assertNotEmpty(
         tf.io.gfile.listdir(os.path.join(self.model_dir, "summaries/eval")))
-    self.assertTrue(
-        check_eventfile_for_keyword(
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
             "eval_loss", os.path.join(self.model_dir, "summaries/eval")))
 
   def test_train_and_evaluate_reset_datasets(self):
@@ -545,6 +541,34 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
 
     test_controller.train_and_evaluate(
         train_steps=10, eval_steps=2, eval_interval=6)
+
+  def test_eval_and_checkpoint_interval(self):
+    test_runner = TestRunner()
+
+    checkpoint = tf.train.Checkpoint(
+        model=test_runner.model, optimizer=test_runner.optimizer)
+    checkpoint_manager = tf.train.CheckpointManager(
+        checkpoint,
+        self.model_dir,
+        max_to_keep=None,
+        step_counter=test_runner.global_step,
+        checkpoint_interval=5)
+    test_controller = controller.Controller(
+        trainer=test_runner,
+        evaluator=test_runner,
+        global_step=test_runner.global_step,
+        steps_per_loop=10,
+        checkpoint_manager=checkpoint_manager)
+    test_controller.train_and_evaluate(
+        train_steps=10, eval_steps=2, eval_interval=5)
+
+    # Expect 3 checkpoints to be saved at step: 0, 5, 10.
+    self.assertLen(
+        tf.io.gfile.glob(os.path.join(self.model_dir, "ckpt-*.data*")), 3)
+    # Expect evaluation is performed 2 times at step: 5, 10.
+    self.assertLen(
+        summaries_with_matching_keyword("eval_loss", self.model_dir), 2)
+
 
 if __name__ == "__main__":
   tf.test.main()
