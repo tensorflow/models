@@ -122,6 +122,13 @@ def sequence_bytes_feature(ndarray):
       feature.bytes_list.value[:] = row
   return feature_list
 
+def sequence_strings_feature(strings):
+  new_str_arr = []
+  for str in strings:
+    new_str_arr.append(tf.train.Feature(
+        bytes_list=tf.train.BytesList(
+            value=[str.encode("utf8")])))
+  return tf.train.FeatureList(feature=new_str_arr)
 
 def boxes_to_box_components(bboxes):
   """Converts a list of numpy arrays (boxes) to box components.
@@ -137,8 +144,11 @@ def boxes_to_box_components(bboxes):
   ymax_list = []
   xmax_list = []
   for bbox in bboxes:
-    bbox = np.array(bbox).astype(np.float32)
-    ymin, xmin, ymax, xmax = np.split(bbox, 4, axis=1)
+    if bbox != []:
+      bbox = np.array(bbox).astype(np.float32)
+      ymin, xmin, ymax, xmax = np.split(bbox, 4, axis=1)
+    else:
+      ymin, xmin, ymax, xmax = [], [], [], []
     ymin_list.append(np.reshape(ymin, [-1]))
     xmin_list.append(np.reshape(xmin, [-1]))
     ymax_list.append(np.reshape(ymax, [-1]))
@@ -159,7 +169,8 @@ def make_sequence_example(dataset_name,
                           label_strings=None,
                           detection_bboxes=None,
                           detection_classes=None,
-                          detection_scores=None):
+                          detection_scores=None,
+                          use_strs_for_source_id=False):
   """Constructs tf.SequenceExamples.
 
   Args:
@@ -217,11 +228,17 @@ def make_sequence_example(dataset_name,
       'image/timestamp': sequence_int64_feature(image_timestamps),
   }
 
+  print("Source IDs", image_source_ids)
+
   # Add optional fields.
   if image_format is not None:
     context_dict['image/format'] = context_bytes_feature([image_format])
   if image_source_ids is not None:
-    feature_list['image/source_id'] = sequence_bytes_feature(image_source_ids)
+    if (use_strs_for_source_id):
+      feature_list['image/source_id'] = sequence_strings_feature(
+          image_source_ids)
+    else:
+      feature_list['image/source_id'] = sequence_bytes_feature(image_source_ids)
   if bboxes is not None:
     bbox_ymin, bbox_xmin, bbox_ymax, bbox_xmax = boxes_to_box_components(bboxes)
     feature_list['region/bbox/xmin'] = sequence_float_feature(bbox_xmin)

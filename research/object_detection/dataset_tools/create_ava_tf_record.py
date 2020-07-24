@@ -264,7 +264,7 @@ class Ava(object):
             print(total_boxes)
             yield seq_example_util.make_sequence_example("AVA", media_id, total_images,
                 int(height), int(width), 'jpeg', total_source_ids, None, total_is_annotated,
-                total_boxes, total_label_strings)
+                total_boxes, total_label_strings, use_strs_for_source_id=True)
 
           #Move middle_time_frame, skipping excluded frames
           frames_mv = 0

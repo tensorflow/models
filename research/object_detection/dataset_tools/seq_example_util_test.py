@@ -122,7 +122,8 @@ class SeqExampleUtilTest(tf.test.TestCase):
     bboxes = [
         np.array([[0., 0., 0., 0.],
                   [0., 0., 1., 1.]], dtype=np.float32),
-        np.zeros([0, 4], dtype=np.float32)
+        np.zeros([0, 4], dtype=np.float32),
+        np.array([], dtype=np.float32)
     ]
     label_strings = [
         np.array(labels),
