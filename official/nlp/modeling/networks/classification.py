@@ -37,8 +37,8 @@ class Classification(tf.keras.Model):
     num_classes: The number of classes that this network should classify to. If
       equal to 1, a regression problem is assumed.
     activation: The activation, if any, for the dense layer in this network.
-    initializer: The intializer for the dense layer in this network. Defaults to
-      a Glorot uniform initializer.
+    initializer: The initializer for the dense layer in this network. Defaults
+      to a Glorot uniform initializer.
     output: The output style for this network. Can be either 'logits' or
       'predictions'.
   """

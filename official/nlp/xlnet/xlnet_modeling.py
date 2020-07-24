@@ -55,7 +55,7 @@ def rel_shift(x, klen=-1):
 
 
 def _get_initializer(flags):
-  """Get variable intializer."""
+  """Get variable initializer."""
   if flags.init_method == 'uniform':
     initializer = tf.keras.initializers.RandomUniform(
         minval=-flags.init_range, maxval=flags.init_range)
