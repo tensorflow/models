@@ -67,12 +67,17 @@ class IouSimilarity(RegionSimilarityCalculator):
   This class computes pairwise similarity between two BoxLists based on IOU.
   """
 
-  def _compare(self, boxlist1, boxlist2):
+  def _compare(self, boxlist1, boxlist2,
+               groundtruth_labels=None, predicted_labels=None):
     """Compute pairwise IOU similarity between the two BoxLists.
 
     Args:
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
+      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
+        containing groundtruth labels.
+      predicted_labels: a Tensor of shape [num_boxes, num_classes]
+        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing pairwise iou scores.
@@ -80,17 +85,23 @@ class IouSimilarity(RegionSimilarityCalculator):
     return box_list_ops.iou(boxlist1, boxlist2)
 
 class DETRSimiliarity(RegionSimilarityCalculator):
-  """Class to compute similarity based on Intersection over Union (IOU) metric.
+  """Class to compute similarity for the Detection Transformer model.
 
-  This class computes pairwise similarity between two BoxLists based on IOU.
+  This class computes pairwise similarity between two BoxLists using a weighted
+  combination of IOU, classification scores, and the L1 loss.
   """
 
-  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2,
+               groundtruth_labels=None, predicted_labels=None):
     """Compute pairwise IOU similarity between the two BoxLists.
 
     Args:
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
+      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
+        containing groundtruth labels.
+      predicted_labels: a Tensor of shape [num_boxes, num_classes]
+        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing pairwise iou scores.
@@ -108,12 +119,17 @@ class NegSqDistSimilarity(RegionSimilarityCalculator):
   negative squared distance metric.
   """
 
-  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2,
+               groundtruth_labels=None, predicted_labels=None):
     """Compute matrix of (negated) sq distances.
 
     Args:
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
+      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
+        containing groundtruth labels.
+      predicted_labels: a Tensor of shape [num_boxes, num_classes]
+        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing negated pairwise squared distance.
@@ -127,12 +143,17 @@ class IoaSimilarity(RegionSimilarityCalculator):
   pairwise intersections divided by the areas of second BoxLists.
   """
 
-  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2,
+               groundtruth_labels=None, predicted_labels=None):
     """Compute pairwise IOA similarity between the two BoxLists.
 
     Args:
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
+      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
+        containing groundtruth labels.
+      predicted_labels: a Tensor of shape [num_boxes, num_classes]
+        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing pairwise IOA scores.
@@ -159,12 +180,17 @@ class ThresholdedIouSimilarity(RegionSimilarityCalculator):
     super(ThresholdedIouSimilarity, self).__init__()
     self._iou_threshold = iou_threshold
 
-  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2,
+               groundtruth_labels=None, predicted_labels=None):
     """Compute pairwise IOU similarity between the two BoxLists and score.
 
     Args:
       boxlist1: BoxList holding N boxes. Must have a score field.
       boxlist2: BoxList holding M boxes.
+      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
+        containing groundtruth labels.
+      predicted_labels: a Tensor of shape [num_boxes, num_classes]
+        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing scores threholded by pairwise

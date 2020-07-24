@@ -239,7 +239,7 @@ class WeightedGIOULocalizationLoss(Loss):
                           #                               #1.0 - box_list_ops.matched_iou(predicted_boxes,
                           #                               target_boxes)
     #print("Weights", weights)
-    return tf.reshape(weights, [-1]) * per_anchor_iou_loss # * per_anchor_iou_loss
+    return tf.reshape(weights, [-1]) * per_anchor_iou_loss
 
 
 class WeightedSigmoidClassificationLoss(Loss):
