@@ -21,8 +21,9 @@ import numpy as np
 from object_detection.core import matcher
 from scipy.optimize import linear_sum_assignment
 
+
 class HungarianBipartiteMatcher(matcher.Matcher):
-  """Wraps a Tensorflow greedy bipartite matcher."""
+  """Wraps a Hungarian bipartite matcher into TensorFlow."""
 
   def __init__(self):
     """Constructs a Matcher."""
@@ -51,8 +52,7 @@ class HungarianBipartiteMatcher(matcher.Matcher):
       def numpy_matching(input_matrix):
         row_indices, col_indices = linear_sum_assignment(input_matrix)
         match_results = np.full(input_matrix.shape[1], -1)
-        for i in range(len(col_indices)):
-          match_results[col_indices[i]] = row_indices[i]
+        match_results[col_indices] = row_indices
         return match_results.astype(np.int32)
 
       return tf.numpy_function(numpy_matching, inputs, Tout=[tf.int32])

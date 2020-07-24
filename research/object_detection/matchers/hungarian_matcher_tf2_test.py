@@ -87,5 +87,18 @@ class HungarianBipartiteMatcherTest(test_case.TestCase):
     self.assertAllEqual(match_results_out._match_results.numpy(),
                         expected_match_results)
 
+  def test_get_expected_matches_with_two_valid_rows(self):
+    similarity_matrix = np.array([[0.15, 0.2, 0.3], [0.50, 0.1, 0.8],
+                                  [0.84, 0.32, 0.2]],
+                                 dtype=np.float32)
+    valid_rows = np.array([True, False, True], dtype=np.bool)
+    expected_match_results = [1, -1, 0]
+
+    matcher = hungarian_matcher.HungarianBipartiteMatcher()
+    match_results_out = matcher.match(similarity_matrix, valid_rows=valid_rows)
+
+    self.assertAllEqual(match_results_out._match_results.numpy(),
+                        expected_match_results)
+
 if __name__ == '__main__':
   tf.test.main()
