@@ -34,8 +34,8 @@ class TokenClassification(tf.keras.Model):
     input_width: The innermost dimension of the input tensor to this network.
     num_classes: The number of classes that this network should classify to.
     activation: The activation, if any, for the dense layer in this network.
-    initializer: The intializer for the dense layer in this network. Defaults to
-      a Glorot uniform initializer.
+    initializer: The initializer for the dense layer in this network. Defaults
+      to a Glorot uniform initializer.
     output: The output style for this network. Can be either 'logits' or
       'predictions'.
   """

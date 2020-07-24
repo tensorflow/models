@@ -1905,6 +1905,22 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
     np.testing.assert_array_almost_equal(
         expected_seg_target, segmentation_target)
 
+  def test_assign_segmentation_targets_no_objects(self):
+    def graph_fn():
+      gt_masks_list = [tf.zeros((0, 5, 5))]
+      gt_classes_list = [tf.zeros((0, 10))]
+      cn_assigner = targetassigner.CenterNetMaskTargetAssigner(stride=1)
+      segmentation_target = cn_assigner.assign_segmentation_targets(
+          gt_masks_list=gt_masks_list,
+          gt_classes_list=gt_classes_list,
+          mask_resize_method=targetassigner.ResizeMethod.NEAREST_NEIGHBOR)
+      return segmentation_target
+
+    segmentation_target = self.execute(graph_fn, [])
+    expected_seg_target = np.zeros((1, 5, 5, 10))
+    np.testing.assert_array_almost_equal(
+        expected_seg_target, segmentation_target)
+
 
 class CenterNetDensePoseTargetAssignerTest(test_case.TestCase):
 
