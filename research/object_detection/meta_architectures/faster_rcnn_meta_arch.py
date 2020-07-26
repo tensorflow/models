@@ -1955,11 +1955,12 @@ class FasterRCNNMetaArch(model.DetectionModel):
     num_levels = len(features_to_crop)
     box_levels = None
     if num_levels != 1:
-      # If there are mutiple levels to select, get the box levels 
-      box_levels = ops.fpn_feature_levels(num_levels, num_levels - 2,
-                                          tf.sqrt(self._resize_shape[1] * self._resize_shape[2] * 1.0) / 224.0,
-                                          proposal_boxes_normalized)
-      
+      # If there are mutiple levels to select, get the box levels
+      box_levels = ops.fpn_feature_levels(
+          num_levels, num_levels - 2,
+          tf.sqrt(self._resize_shape[1] * self._resize_shape[2] * 1.0) / 224.0,
+          proposal_boxes_normalized)
+
     cropped_regions = self._flatten_first_two_dimensions(
         self._crop_and_resize_fn(
             features_to_crop, proposal_boxes_normalized, box_levels,
@@ -2528,7 +2529,6 @@ class FasterRCNNMetaArch(model.DetectionModel):
             box_list.BoxList(tf.reshape(proposal_boxes, [-1, 4])),
             image_shape[1], image_shape[2], check_range=False).get()
 
-        # TODO(syiming): check this!
         flat_cropped_gt_mask = self._crop_and_resize_fn(
             [tf.expand_dims(flat_gt_masks, -1)],
             tf.expand_dims(flat_normalized_proposals, axis=1), None,
