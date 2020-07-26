@@ -30,7 +30,8 @@ from research.mobilenet.configs import archs
 layers = tf.keras.layers
 
 MobileNetV3Config = Union[archs.MobileNetV3SmallConfig,
-                          archs.MobileNetV3LargeConfig]
+                          archs.MobileNetV3LargeConfig,
+                          archs.MobileNetV3EdgeTPUConfig]
 
 
 def mobilenet_v3(config: MobileNetV3Config,
@@ -55,28 +56,29 @@ def mobilenet_v3(config: MobileNetV3Config,
                                     name='top/GlobalPool')(x)
   x = layers.Reshape((1, 1, x.shape[1]), name='top/Reshape')(x)
 
-  # last layer of conv
-  if isinstance(config, archs.MobileNetV3SmallConfig):
-    last_conv_channels = 1024
-  elif isinstance(config, archs.MobileNetV3LargeConfig):
-    last_conv_channels = 1280
-  else:
-    raise ValueError('Only support MobileNetV3S and MobileNetV3L')
+  if not isinstance(config, archs.MobileNetV3EdgeTPUConfig):
+    # last layer of conv
+    if isinstance(config, archs.MobileNetV3SmallConfig):
+      last_conv_channels = 1024
+    elif isinstance(config, archs.MobileNetV3LargeConfig):
+      last_conv_channels = 1280
+    else:
+      raise ValueError('Only support MobileNetV3S and MobileNetV3L')
 
-  if (not finegrain_classification_mode
-      or (finegrain_classification_mode and width_multiplier > 1.0)):
-    last_conv_channels = common_modules.width_multiplier_op_divisible(
-      filters=last_conv_channels,
-      width_multiplier=width_multiplier,
-      min_depth=min_depth)
+    if (not finegrain_classification_mode
+        or (finegrain_classification_mode and width_multiplier > 1.0)):
+      last_conv_channels = common_modules.width_multiplier_op_divisible(
+        filters=last_conv_channels,
+        width_multiplier=width_multiplier,
+        min_depth=min_depth)
 
-  x = layers.Conv2D(filters=last_conv_channels,
-                    kernel_size=(1, 1),
-                    padding='SAME',
-                    name='top/Conv2d_1x1')(x)
-  x = layers.Activation(
-    activation=archs.get_activation_function()[activation_name],
-    name='top/Conv2d_1x1_{}'.format(activation_name))(x)
+    x = layers.Conv2D(filters=last_conv_channels,
+                      kernel_size=(1, 1),
+                      padding='SAME',
+                      name='top/Conv2d_1x1')(x)
+    x = layers.Activation(
+      activation=archs.get_activation_function()[activation_name],
+      name='top/Conv2d_1x1_{}'.format(activation_name))(x)
 
   # build classification head
   x = common_modules.mobilenet_head(x, config)
@@ -104,6 +106,15 @@ def mobilenet_v3_large(
   return mobilenet_v3(input_shape=input_shape, config=config)
 
 
+def mobilenet_v3_edge_tpu(
+    input_shape: Tuple[int, int, int] = (224, 224, 3),
+    config: archs.MobileNetV3EdgeTPUConfig = archs.MobileNetV3EdgeTPUConfig(),
+) -> tf.keras.models.Model:
+  """Instantiates the MobileNet V3 Large Model."""
+  assert isinstance(config, archs.MobileNetV3EdgeTPUConfig)
+  return mobilenet_v3(input_shape=input_shape, config=config)
+
+
 if __name__ == '__main__':
   logging.basicConfig(
     format='%(asctime)-15s:%(levelname)s:%(module)s:%(message)s',
@@ -121,3 +132,10 @@ if __name__ == '__main__':
     loss=tf.keras.losses.categorical_crossentropy,
     metrics=[tf.keras.metrics.categorical_crossentropy])
   logging.info(model_large.summary())
+
+  model_edge_tpu = mobilenet_v3_edge_tpu()
+  model_edge_tpu.compile(
+    optimizer='adam',
+    loss=tf.keras.losses.categorical_crossentropy,
+    metrics=[tf.keras.metrics.categorical_crossentropy])
+  logging.info(model_edge_tpu.summary())

@@ -444,6 +444,7 @@ def inverted_res_block(inputs: tf.Tensor,
                        expansion_size: float = 6.,
                        regularize_depthwise: bool = False,
                        use_explicit_padding: bool = False,
+                       depthwise: bool = True,
                        residual=True,
                        squeeze_factor: Optional[int] = None,
                        kernel: Union[int, Tuple[int, int]] = (3, 3),
@@ -488,6 +489,7 @@ def inverted_res_block(inputs: tf.Tensor,
     use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
       inputs so that the output dimensions are the same as if 'SAME' padding
       were used.
+    depthwise: whether to uses fused convolutions instead of depthwise
     residual: whether to include residual connection between input
       and output.
     squeeze_factor: the factor of squeezing in the inner fully connected layer
@@ -536,8 +538,8 @@ def inverted_res_block(inputs: tf.Tensor,
       num_inputs=in_channels,
       expansion_size=expansion_size)
     x = layers.Conv2D(filters=expended_size,
-                      kernel_size=(1, 1),
-                      strides=(1, 1),
+                      kernel_size=(1, 1) if depthwise else kernel,
+                      strides=(1, 1) if depthwise else strides,
                       padding='SAME',
                       kernel_initializer=weights_init,
                       kernel_regularizer=regularizer,
@@ -552,29 +554,30 @@ def inverted_res_block(inputs: tf.Tensor,
                           name=prefix + 'expand/{}'.format(activation_name))(x)
 
   # Depthwise
-  padding = 'SAME'
-  if use_explicit_padding:
-    padding = 'VALID'
-    x = FixedPadding(
-      kernel_size=kernel,
-      name=prefix + 'pad')(x)
+  if depthwise:
+    padding = 'SAME'
+    if use_explicit_padding:
+      padding = 'VALID'
+      x = FixedPadding(
+        kernel_size=kernel,
+        name=prefix + 'pad')(x)
 
-  x = layers.DepthwiseConv2D(kernel_size=kernel,
-                             padding=padding,
-                             depth_multiplier=1,
-                             strides=strides,
-                             kernel_initializer=weights_init,
-                             kernel_regularizer=depth_regularizer,
-                             dilation_rate=dilation_rate,
-                             use_bias=False,
-                             name=prefix + 'depthwise')(x)
-  x = normalization_layer(axis=-1,
+    x = layers.DepthwiseConv2D(kernel_size=kernel,
+                               padding=padding,
+                               depth_multiplier=1,
+                               strides=strides,
+                               kernel_initializer=weights_init,
+                               kernel_regularizer=depth_regularizer,
+                               dilation_rate=dilation_rate,
+                               use_bias=False,
+                               name=prefix + 'depthwise')(x)
+    x = normalization_layer(axis=-1,
+                            name=prefix + 'depthwise/{}'.format(
+                              normalization_name),
+                            **normalization_params)(x)
+    x = layers.Activation(activation=depth_activation_fn,
                           name=prefix + 'depthwise/{}'.format(
-                            normalization_name),
-                          **normalization_params)(x)
-  x = layers.Activation(activation=depth_activation_fn,
-                        name=prefix + 'depthwise/{}'.format(
-                          depthwise_activation_name))(x)
+                            depthwise_activation_name))(x)
 
   if squeeze_factor:
     x = se_block(inputs=x,
@@ -745,6 +748,8 @@ def mobilenet_base(inputs: tf.Tensor,
         expansion_size=block_def.expansion_size,
         squeeze_factor=block_def.squeeze_factor,
         activation_name=block_def.activation_name,
+        depthwise=block_def.depthwise,
+        residual=block_def.residual,
         dilation_rate=use_rate,
         width_multiplier=width_multiplier,
         min_depth=min_depth,
