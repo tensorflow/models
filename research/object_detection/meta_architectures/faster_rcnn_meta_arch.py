@@ -453,6 +453,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     self._is_training = is_training
     self._image_resizer_fn = image_resizer_fn
+    self._resize_shape = None
     self._resize_masks = resize_masks
     self._feature_extractor = feature_extractor
     if isinstance(feature_extractor, FasterRCNNKerasFeatureExtractor):
@@ -686,6 +687,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
       (resized_inputs,
        true_image_shapes) = shape_utils.resize_images_and_return_shapes(
            inputs, self._image_resizer_fn)
+
+      self._resize_shape = resized_inputs.shape.as_list()
 
       return (self._feature_extractor.preprocess(resized_inputs),
               true_image_shapes)
@@ -1952,9 +1955,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
     num_levels = len(features_to_crop)
     box_levels = None
     if num_levels != 1:
-      # If there are mutiple levels to select, get the box levels
-      box_levels = ops.fpn_feature_levels(num_levels, num_levels - 1,
-                                          1.0/224, proposal_boxes_normalized)
+      # If there are mutiple levels to select, get the box levels 
+      box_levels = ops.fpn_feature_levels(num_levels, num_levels - 2,
+                                          tf.sqrt(self._resize_shape[1] * self._resize_shape[2] * 1.0) / 224.0,
+                                          proposal_boxes_normalized)
+      
     cropped_regions = self._flatten_first_two_dimensions(
         self._crop_and_resize_fn(
             features_to_crop, proposal_boxes_normalized, box_levels,
