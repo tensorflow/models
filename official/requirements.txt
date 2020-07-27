@@ -21,7 +21,7 @@ pyyaml
 # CV related dependencies
 opencv-python-headless
 Pillow
--e git+https://github.com/cocodataset/cocoapi#egg=pycocotools&subdirectory=PythonAPI
+pycocotools
 # NLP related dependencies
 seqeval
 sentencepiece
