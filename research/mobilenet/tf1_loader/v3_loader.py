@@ -28,7 +28,8 @@ from research.mobilenet.configs import archs
 from research.mobilenet.tf1_loader import utils
 
 MobileNetV3Config = Union[archs.MobileNetV3SmallConfig,
-                          archs.MobileNetV3LargeConfig]
+                          archs.MobileNetV3LargeConfig,
+                          archs.MobileNetV3EdgeTPUConfig]
 
 
 def mobinetv3_tf1_tf2_name_convert(tf2_layer_name: Text) -> Text:
@@ -37,7 +38,6 @@ def mobinetv3_tf1_tf2_name_convert(tf2_layer_name: Text) -> Text:
   Conv2d_0/batch_norm -> Conv/BatchNorm
   Conv2d_16 -> Conv_1
   Conv2d_16/batch_norm -> Conv_1/BatchNorm
-  top/Conv2d_1x1 ->  Conv_2
 
   expanded_conv_1/project -> expanded_conv/project
   expanded_conv_1/depthwise -> expanded_conv/depthwise
@@ -56,11 +56,9 @@ def mobinetv3_tf1_tf2_name_convert(tf2_layer_name: Text) -> Text:
   Returns:
     name of TF1 layer
   """
-
+  conv_block_num = None
   if 'top/Conv2d_1x1_output' in tf2_layer_name:
     tf1_layer_name = 'Logits/Conv2d_1c_1x1'
-  elif 'top/Conv2d_1x1' in tf2_layer_name:
-    tf1_layer_name = 'Conv_2'
   else:
     if 'batch_norm' in tf2_layer_name:
       tf2_layer_name = tf2_layer_name.replace('batch_norm', 'BatchNorm')
@@ -68,24 +66,28 @@ def mobinetv3_tf1_tf2_name_convert(tf2_layer_name: Text) -> Text:
     tf2_layer_name_split = tf2_layer_name.split('/')
     layer_num_re, reminder = tf2_layer_name_split[0], tf2_layer_name_split[1:]
     layer_num_re_split = layer_num_re.split('_')
-    layer_type = '_'.join(layer_num_re_split[0:-1])
-    layer_num = int(layer_num_re_split[-1])
+    if 'Conv2d' in layer_num_re:
+      layer_type = '_'.join(layer_num_re_split[0:-2])
+      layer_num = int(layer_num_re_split[-2])
+      conv_block_num = int(layer_num_re_split[-1])
+    else:
+      layer_type = '_'.join(layer_num_re_split[0:-1])
+      layer_num = int(layer_num_re_split[-1])
 
     # process layer type and layer number
     if layer_type == 'Conv2d':
       layer_type = 'Conv'
-      if layer_num == 0:
-        target_num = ''
-      else:
-        target_num = '1'
+      layer_num = conv_block_num + 1
     elif layer_type == 'expanded_conv':
-      if layer_num == 1:
-        target_num = ''
-      else:
-        target_num = str(layer_num - 1)
+      layer_type = 'expanded_conv'
     else:
       raise ValueError('The layer number and type combination is not '
                        'supported: {}, {}'.format(layer_type, str(layer_num)))
+
+    if layer_num == 1:
+      target_num = ''
+    else:
+      target_num = str(layer_num - 1)
 
     # process squeeze_excite layer
     if 'squeeze_excite' in ''.join(reminder):
@@ -128,8 +130,11 @@ def load_mobilenet_v3(
     mobilenet_model = mobilenet_v3.mobilenet_v3_large(config=config)
   elif isinstance(config, archs.MobileNetV3SmallConfig):
     mobilenet_model = mobilenet_v3.mobilenet_v3_small(config=config)
+  elif isinstance(config, archs.MobileNetV3EdgeTPUConfig):
+    mobilenet_model = mobilenet_v3.mobilenet_v3_edge_tpu(config=config)
   else:
-    raise ValueError('Only support MobileNetV3S and MobileNetV3L')
+    raise ValueError(
+      'Only support MobileNetV3S, MobileNetV3L, MobileNetEdgeTPU')
 
   utils.load_tf2_keras_model_weights(
     keras_model=mobilenet_model,

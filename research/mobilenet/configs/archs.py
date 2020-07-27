@@ -70,6 +70,7 @@ class MobileNetBlockConfig(base_config.Config):
   kernel: Tuple[int, int] = (3, 3)
   stride: int = 1
   filters: int = 32
+  use_biase: bool = False
   normalization: bool = True
   activation_name: Text = 'relu6'
   # used for block type InvertedResConv
@@ -478,6 +479,14 @@ class MobileNetV3LargeConfig(MobileNetConfig):
       kernel=(1, 1), stride=1, filters=960,
       activation_name='hard_swish',
       block_type=BlockType.Conv.value),
+    MobileNetBlockConfig.from_args(
+      block_type=BlockType.GobalPooling.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(1, 1), stride=1, filters=1280,
+      activation_name='hard_swish',
+      normalization=False,
+      use_biase=True,
+      block_type=BlockType.Conv.value),
     # pylint: enable=bad-whitespace
   )
 
@@ -593,6 +602,14 @@ class MobileNetV3SmallConfig(MobileNetConfig):
     MobileNetBlockConfig.from_args(
       kernel=(1, 1), stride=1, filters=576,
       activation_name='hard_swish',
+      block_type=BlockType.Conv.value),
+    MobileNetBlockConfig.from_args(
+      block_type=BlockType.GobalPooling.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(1, 1), stride=1, filters=1024,
+      activation_name='hard_swish',
+      normalization=False,
+      use_biase=True,
       block_type=BlockType.Conv.value),
     # pylint: enable=bad-whitespace
   )

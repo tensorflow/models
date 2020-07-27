@@ -32,7 +32,8 @@ def _get_model_loader() -> Mapping[Text, Any]:
     'mobilenet_v1': v1_loader.load_mobilenet_v1,
     'mobilenet_v2': v2_loader.load_mobilenet_v2,
     'mobilenet_v3_small': v3_loader.load_mobilenet_v3,
-    'mobilenet_v3_large': v3_loader.load_mobilenet_v3
+    'mobilenet_v3_large': v3_loader.load_mobilenet_v3,
+    'mobilenet_v3_edge_tpu': v3_loader.load_mobilenet_v3
   }
 
 
@@ -46,7 +47,7 @@ def get_flags():
   flags.DEFINE_string(
     'model_name',
     help='MobileNet version name: mobilenet_v1, mobilenet_v2, '
-         'mobilenet_v3_small and mobilenet_v3_large',
+         'mobilenet_v3_small, mobilenet_v3_large, mobilenet_v3_edge_tpu',
     default='mobilenet_v1'
   )
   flags.DEFINE_string(

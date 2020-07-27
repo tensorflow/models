@@ -53,6 +53,7 @@ def mobinetv2_tf1_tf2_name_convert(tf2_layer_name: Text) -> Text:
     name of TF1 layer
   """
 
+  conv_block_num = None
   if 'top/Conv2d_1x1_output' in tf2_layer_name:
     tf1_layer_name = 'Logits/Conv2d_1c_1x1'
   else:
@@ -62,24 +63,28 @@ def mobinetv2_tf1_tf2_name_convert(tf2_layer_name: Text) -> Text:
     tf2_layer_name_split = tf2_layer_name.split('/')
     layer_num_re, reminder = tf2_layer_name_split[0], tf2_layer_name_split[1:]
     layer_num_re_split = layer_num_re.split('_')
-    layer_type = '_'.join(layer_num_re_split[0:-1])
-    layer_num = int(layer_num_re_split[-1])
+    if 'Conv2d' in layer_num_re:
+      layer_type = '_'.join(layer_num_re_split[0:-2])
+      layer_num = int(layer_num_re_split[-2])
+      conv_block_num = int(layer_num_re_split[-1])
+    else:
+      layer_type = '_'.join(layer_num_re_split[0:-1])
+      layer_num = int(layer_num_re_split[-1])
 
     # process layer type and layer number
     if layer_type == 'Conv2d':
       layer_type = 'Conv'
-      if layer_num == 0:
-        target_num = ''
-      else:
-        target_num = '1'
+      layer_num = conv_block_num + 1
     elif layer_type == 'expanded_conv':
-      if layer_num == 1:
-        target_num = ''
-      else:
-        target_num = str(layer_num - 1)
+      layer_type = 'expanded_conv'
     else:
       raise ValueError('The layer number and type combination is not '
                        'supported: {}, {}'.format(layer_type, str(layer_num)))
+
+    if layer_num == 1:
+      target_num = ''
+    else:
+      target_num = str(layer_num - 1)
 
     if target_num:
       tf1_layer_name = '/'.join(['_'.join([layer_type, target_num])] + reminder)
