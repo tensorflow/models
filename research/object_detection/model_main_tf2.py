@@ -34,7 +34,6 @@ from object_detection import model_lib_v2
 flags.DEFINE_string('pipeline_config_path', None, 'Path to pipeline config '
                     'file.')
 flags.DEFINE_integer('num_train_steps', None, 'Number of train steps.')
-flags.DEFINE_bool('use_tpu', False, 'Whether to use TPUs')
 flags.DEFINE_bool('eval_on_train_data', False, 'Enable evaluating on train '
                   'data (only supported in distributed training).')
 flags.DEFINE_integer('sample_1_of_n_eval_examples', None, 'Will sample one of '
