@@ -743,7 +743,7 @@ class MobileNetV3EdgeTPUConfig(MobileNetConfig):
       block_type=BlockType.InvertedResConv.value),
 
     MobileNetBlockConfig.from_args(
-      kernel=(3, 3), stride=2, filters=96,
+      kernel=(3, 3), stride=1, filters=96,
       activation_name='relu',
       squeeze_factor=None,
       expansion_size=8,
