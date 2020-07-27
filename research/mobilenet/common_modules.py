@@ -128,6 +128,25 @@ def get_initializer(stddev: float) -> tf.keras.initializers.Initializer:
   return weight_intitializer
 
 
+def global_pooling_block(inputs: tf.Tensor,
+                         block_id: int = 0):
+  """Apply global pooling to reduce shape.
+
+  Args:
+    inputs: Input tensor of shape [batch_size, height, width, channels]
+    block_id: A unique identification designating the block number
+
+  Returns:
+    Output tensor of block of shape [batch_size, 1, 1, filters]
+  """
+  x = layers.GlobalAveragePooling2D(
+    data_format='channels_last',
+    name='GlobalPool_{}'.format(block_id))(inputs)
+  outputs = layers.Reshape((1, 1, x.shape[1]),
+                           name='Reshape_{}'.format(block_id))(x)
+  return outputs
+
+
 def conv2d_block(inputs: tf.Tensor,
                  filters: int,
                  width_multiplier: float,

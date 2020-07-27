@@ -61,6 +61,7 @@ class BlockType(enum.Enum):
   DepSepConv = 'DepSepConv'
   InvertedResConv = 'InvertedResConv'
   FusedInvertedResConv = 'FusedInvertedResConv'
+  GobalPooling = 'GlobalPooling'
 
 
 @dataclass
@@ -69,6 +70,7 @@ class MobileNetBlockConfig(base_config.Config):
   kernel: Tuple[int, int] = (3, 3)
   stride: int = 1
   filters: int = 32
+  normalization: bool = True
   activation_name: Text = 'relu6'
   # used for block type InvertedResConv
   expansion_size: float = 6.
