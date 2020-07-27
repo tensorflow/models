@@ -42,7 +42,6 @@ import tensorflow.compat.v2 as tf2
 
 from object_detection.box_coders import faster_rcnn_box_coder
 from object_detection.box_coders import mean_stddev_box_coder
-from object_detection.box_coders import detr_box_coder
 from object_detection.core import box_coder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops

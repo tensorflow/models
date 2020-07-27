@@ -339,16 +339,12 @@ def giou_loss(boxlist1, boxlist2, scope=None):
   Returns:
     a tensor with shape [N, M] representing the pairwise GIoU loss.
   """
-  # Import done internally so this dependency is not required for
-  # the OD API as a whole.
-  import tensorflow_addons as tfa
-
   with tf.name_scope(scope, "PairwiseGIoU"):
     N = boxlist1.num_boxes()
     M = boxlist2.num_boxes()
     boxes1 = tf.repeat(boxlist1.get(), repeats=M, axis=0)
     boxes2 = tf.tile(boxlist2.get(), multiples=[N, 1])
-    return tf.reshape(tfa.losses.giou_loss(boxes1, boxes2), [N, M])
+    return tf.reshape(1.0 - ops.giou(boxes1, boxes2), [N, M])
 
 def matched_iou(boxlist1, boxlist2, scope=None):
   """Compute intersection-over-union between corresponding boxes in boxlists.
@@ -365,15 +361,10 @@ def matched_iou(boxlist1, boxlist2, scope=None):
     intersections = matched_intersection(boxlist1, boxlist2)
     areas1 = area(boxlist1)
     areas2 = area(boxlist2)
-    print("AREAS AND INTERSECTION", areas1, areas2, intersections)
     unions = areas1 + areas2 - intersections
     return tf.where(
         tf.equal(intersections, 0.0),
         tf.zeros_like(intersections), tf.truediv(intersections, unions))
-
-def matched_giou(boxlist1, boxlist2, scope=None):
-  with tf.name_scope(scope, 'MatchedGIOU'):
-    pass
 
 def ioa(boxlist1, boxlist2, scope=None):
   """Computes pairwise intersection-over-area between box collections.

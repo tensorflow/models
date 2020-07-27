@@ -37,7 +37,7 @@ from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-import tensorflow_addons as tfa
+
 
 class Loss(six.with_metaclass(abc.ABCMeta, object)):
   """Abstract base class for loss functions."""
@@ -181,6 +181,7 @@ class WeightedSmoothL1LocalizationLoss(Loss):
         reduction=tf.losses.Reduction.NONE
     ), axis=2)
 
+
 class WeightedIOULocalizationLoss(Loss):
   """IOU localization loss function.
 
@@ -208,6 +209,8 @@ class WeightedIOULocalizationLoss(Loss):
     per_anchor_iou_loss = 1.0 - box_list_ops.matched_iou(predicted_boxes,
                                                          target_boxes)
     return tf.reshape(weights, [-1]) * per_anchor_iou_loss
+
+
 
 class WeightedGIOULocalizationLoss(Loss):
   """IOU localization loss function.

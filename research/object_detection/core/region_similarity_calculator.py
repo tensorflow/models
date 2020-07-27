@@ -31,8 +31,6 @@ import tensorflow.compat.v1 as tf
 from object_detection.core import box_list_ops
 from object_detection.core import standard_fields as fields
 
-EPSILON = 1e-8
-
 class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
   """Abstract base class for region similarity calculator."""
 
@@ -109,8 +107,8 @@ class DETRSimiliarity(RegionSimilarityCalculator):
     classification_scores = tf.matmul(groundtruth_labels,
         tf.nn.softmax(predicted_labels), transpose_b=True)
     return -5 * box_list_ops.l1(boxlist1, boxlist2) + \
-           classification_scores + \
-           2 * (1 - box_list_ops.giou_loss(boxlist1, boxlist2))
+           2 * (1 - box_list_ops.giou_loss(boxlist1, boxlist2)) + \
+           classification_scores
 
 class NegSqDistSimilarity(RegionSimilarityCalculator):
   """Class to compute similarity based on the squared distance metric.
