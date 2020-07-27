@@ -163,7 +163,6 @@ class TargetAssigner(object):
       ValueError: if anchors or groundtruth_boxes are not of type
         box_list.BoxList
     """
-    
     if not isinstance(anchors, box_list.BoxList):
       raise ValueError('anchors must be an BoxList')
     if not isinstance(groundtruth_boxes, box_list.BoxList):
