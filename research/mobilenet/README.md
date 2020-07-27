@@ -18,7 +18,7 @@ They can be built upon for classification, detection, embeddings and
 segmentation similar to how other popular large scale models, such as Inception,
 are used.
 
-We provide the full model building codes for [MobileNetV1], [MobileNetV2] and [MobilenetV3] 
+We provide the full model building codes for [MobileNetV1], [MobileNetV2] and [MobilenetV3] (including EdgeTPU)
 networks using [TensorFlow 2 with the Keras API](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/python/keras).
 
 In particular, this module consists of
@@ -27,7 +27,7 @@ In particular, this module consists of
 - Complete model building codes for
     - MobilenetV1 in [mobilenet_v1.py](mobilenet_v1.py)
     - MobilenetV2 in [mobilenet_v2.py](mobilenet_v2.py)
-    - MobilenetV3 in [mobilenet_v3.py](mobilenet_v3.py)
+    - MobilenetV3 in [mobilenet_v3.py](mobilenet_v3.py) including EdgeTPU
 - Utilities helping load the pre-trained 
 [TF1.X checkpoints](../slim/nets/mobilenet) into TensorFlow 2 Keras defined versions.
     - MobilenetV1 TF1 checkpoint loader in [tf1_loader/v1_loader.py](tf1_loader/v1_loader.py) 
