@@ -36,7 +36,7 @@ import tensorflow.compat.v1 as tf
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.utils import ops
-from object_detection.box_coders import detr_box_coder
+from object_detection.utils import shape_utils
 import tensorflow_addons as tfa
 
 class Loss(six.with_metaclass(abc.ABCMeta, object)):
@@ -203,11 +203,10 @@ class WeightedIOULocalizationLoss(Loss):
       loss: a float tensor of shape [batch_size, num_anchors] tensor
         representing the value of the loss function.
     """
-    predicted_boxes = prediction_tensor# box_list.BoxList(tf.reshape(prediction_tensor, [-1, 4]))
-    target_boxes = target_tensor #box_list.BoxList(tf.reshape(target_tensor, [-1, 4]))
+    predicted_boxes = box_list.BoxList(tf.reshape(prediction_tensor, [-1, 4]))
+    target_boxes = box_list.BoxList(tf.reshape(target_tensor, [-1, 4]))
     per_anchor_iou_loss = 1.0 - box_list_ops.matched_iou(predicted_boxes,
                                                          target_boxes)
-    print("Weights", weights)
     return tf.reshape(weights, [-1]) * per_anchor_iou_loss
 
 class WeightedGIOULocalizationLoss(Loss):
@@ -232,14 +231,16 @@ class WeightedGIOULocalizationLoss(Loss):
       loss: a float tensor of shape [batch_size, num_anchors] tensor
         representing the value of the loss function.
     """
-    predicted_boxes = prediction_tensor# box_list.BoxList(tf.reshape(prediction_tensor, [-1, 4]))
-    target_boxes = target_tensor #box_list.BoxList(tf.reshape(target_tensor, [-1, 4]))
-    #loss_function = tfa.losses.GIouLoss()
-    per_anchor_iou_loss = tfa.losses.giou_loss(predicted_boxes,target_boxes) 
-                          #                               #1.0 - box_list_ops.matched_iou(predicted_boxes,
-                          #                               target_boxes)
-    #print("Weights", weights)
-    return tf.reshape(weights, [-1]) * per_anchor_iou_loss
+    batch_size, num_anchors, _ = shape_utils.combined_static_and_dynamic_shape(
+        prediction_tensor)
+    predicted_boxes = ops.cy_cx_h_w_to_ymin_xmin_ymax_xmax_coords(
+        tf.reshape(prediction_tensor, [-1, 4]))
+    target_boxes = ops.cy_cx_h_w_to_ymin_xmin_ymax_xmax_coords(
+        tf.reshape(target_tensor, [-1, 4]))
+
+    per_anchor_iou_loss = 1 - ops.giou(predicted_boxes, target_boxes)
+    return tf.reshape(tf.reshape(weights, [-1]) * per_anchor_iou_loss,
+                      [batch_size, num_anchors])
 
 
 class WeightedSigmoidClassificationLoss(Loss):

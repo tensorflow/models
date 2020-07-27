@@ -1630,8 +1630,47 @@ class TestGatherWithPaddingValues(test_case.TestCase):
     self.assertAllClose(expected_gathered_tensor, gathered_tensor_np)
 
 
+class TestGIoU(test_case.TestCase):
+
+  def test_giou(self):
+    expected_giou_tensor = [
+        1, 0, -1/3, 1/25, 1, -3/4
+    ]
+
+    def graph_fn():
+      boxes1 = tf.constant([[3, 3, 5, 5], [3, 4, 5, 6],
+                            [3, 3, 5, 5], [2, 1, 7, 6],
+                            [1, 1, 1, 1], [0, 0, 0, 0]], dtype=tf.float32)
+      boxes2 = tf.constant([[3, 3, 5, 5], [3, 2, 5, 4],
+                                 [3, 7, 5, 9], [4, 3, 5, 4],
+                                 [1, 1, 1, 1], [5, 5, 10, 10]], dtype=tf.float32)
+
+      giou = ops.giou(boxes1, boxes2)
+      self.assertEqual(giou.dtype, tf.float32)
+
+      return giou
+
+    giou = self.execute(graph_fn, [])
+    self.assertAllClose(expected_giou_tensor, giou)
 
 
+class TestCoordinateConversion(test_case.TestCase):
+
+  def test_coord_conv(self):
+    expected_box_tensor = [
+        [0.5, 0.5, 5.5, 5.5], [2, 1, 4, 7]
+    ]
+
+    def graph_fn():
+      boxes = tf.constant([[3, 3, 5, 5], [3, 4, 2, 6]], dtype=tf.float32)
+
+      converted = ops.cy_cx_h_w_to_ymin_xmin_ymax_xmax_coords(boxes)
+      self.assertEqual(converted.dtype, tf.float32)
+
+      return converted
+
+    converted = self.execute(graph_fn, [])
+    self.assertAllClose(expected_box_tensor, converted)
 
 
 
