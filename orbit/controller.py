@@ -30,14 +30,6 @@ def _log_info(message: Text):
   print(message)
 
 
-def _validate_interval(interval: Optional[int], steps_per_loop: Optional[int],
-                       interval_name: str):
-  if interval and steps_per_loop and (interval % steps_per_loop != 0):
-    raise ValueError("The {} interval ({}) must be a multiple "
-                     "of the steps_per_loop ({})".format(
-                         interval_name, interval, steps_per_loop))
-
-
 class Controller:
   """Class that facilitates training and evaluation of models."""
 
@@ -103,8 +95,10 @@ class Controller:
       if summary_interval is not None:
         if summary_interval <= 0:
           raise ValueError("`summary_interval` should be larger than 0")
-        _validate_interval(
-            summary_interval, steps_per_loop, interval_name="summary")
+        if summary_interval % steps_per_loop != 0:
+          raise ValueError("The summary interval ({}) must be a multiple "
+                           "of the steps_per_loop ({})".format(
+                               summary_interval, steps_per_loop))
 
     self.trainer = trainer
     self.evaluator = evaluator
@@ -142,9 +136,6 @@ class Controller:
     # TODO(momernick): We probably only want to do this on certain occasions?
     if self.checkpoint_manager is not None:
       checkpoint_interval = self.checkpoint_manager.checkpoint_interval
-      _validate_interval(
-          checkpoint_interval, steps_per_loop, interval_name="checkpoint")
-
       model_restored = self.restore_checkpoint()
       if not model_restored and (checkpoint_interval and
                                  self.trainer is not None):
@@ -271,15 +262,15 @@ class Controller:
       train_steps: The global step count to train up to.
       eval_steps: The number of steps to run during an evaluation. If None,
         this method will evaluate over the entire evaluation dataset.
-      eval_interval: The number of training steps to run between evalutions.
-        Must be a multiple of the controller's `steps_per_loop` init arg. If
-        None, evaluation will only be performed after training is complete.
+      eval_interval: The number of training steps to run between evaluations.
+        If set, training will always stop every `eval_interval` steps, even if
+        this results in a shorter inner loop than specified by `steps_per_loop`
+        setting. If None, evaluation will only be performed after training is
+        complete.
 
     Raises:
       ValueError: If eval_interval is not a multiple of self.steps_per_loop.
     """
-    _validate_interval(eval_interval, self.steps_per_loop, interval_name="eval")
-
     current_step = self.global_step.numpy()  # This is an expensive access.
     eval_interval = eval_interval or (train_steps - current_step)
     while current_step < train_steps:
