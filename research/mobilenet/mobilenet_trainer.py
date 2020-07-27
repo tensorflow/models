@@ -43,7 +43,7 @@ def _get_model_config() -> Mapping[Text, Type[archs.MobileNetConfig]]:
     'mobilenet_v2': archs.MobileNetV2Config,
     'mobilenet_v3_small': archs.MobileNetV3SmallConfig,
     'mobilenet_v3_large': archs.MobileNetV3LargeConfig,
-    'mobilenet_v3_edge_TPU': archs.MobileNetV3EdgeTPUConfig
+    'mobilenet_v3_edge_tpu': archs.MobileNetV3EdgeTPUConfig
   }
 
 
@@ -53,7 +53,7 @@ def _get_model_builder() -> Mapping[Text, Any]:
     'mobilenet_v2': mobilenet_v2.mobilenet_v2,
     'mobilenet_v3_small': mobilenet_v3.mobilenet_v3_small,
     'mobilenet_v3_large': mobilenet_v3.mobilenet_v3_large,
-    'mobilenet_v3_edge_TPU': mobilenet_v3.mobilenet_v3_edge_tpu
+    'mobilenet_v3_edge_tpu': mobilenet_v3.mobilenet_v3_edge_tpu
   }
 
 
