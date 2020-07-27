@@ -549,19 +549,19 @@ class MobileNetV3SmallConfig(MobileNetConfig):
 
     MobileNetBlockConfig.from_args(
       kernel=(5, 5), stride=2, filters=40,
-      activation_name='relu',
+      activation_name='hard_swish',
       squeeze_factor=4,
       expansion_size=4,
       block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(5, 5), stride=1, filters=40,
-      activation_name='relu',
+      activation_name='hard_swish',
       squeeze_factor=4,
       expansion_size=6,
       block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(5, 5), stride=1, filters=40,
-      activation_name='relu',
+      activation_name='hard_swish',
       squeeze_factor=4,
       expansion_size=6,
       block_type=BlockType.InvertedResConv.value),
