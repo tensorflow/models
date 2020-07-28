@@ -15,13 +15,13 @@
 """Keras layers of XLNet model in TF 2.0."""
 
 import copy
-import functools
 
 import tensorflow as tf
 from official.nlp.xlnet import data_utils
 
 
-gelu = functools.partial(tf.keras.activations.gelu, approximate=True)
+def gelu(x):
+  return tf.keras.activations.gelu(x, approximate=True)
 
 
 def rel_shift(x, klen=-1):
