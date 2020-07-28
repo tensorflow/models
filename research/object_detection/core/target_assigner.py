@@ -142,6 +142,8 @@ class TargetAssigner(object):
         aware of groundtruth weights. Additionally, `cls_weights` and
         `reg_weights` are calculated using groundtruth weights as an added
         safety.
+      class_predictions: a float tensor of shape [N, num_classes] containing class
+        predictions from the model, to be used in certain matchers.
 
     Returns:
       cls_targets: a float32 tensor with shape [num_anchors, d_1, d_2 ... d_k],
