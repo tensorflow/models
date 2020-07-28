@@ -1373,9 +1373,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     """
     num_anchors_per_location = (
         self._first_stage_anchor_generator.num_anchors_per_location())
-    # if len(num_anchors_per_location) != 1:
-    #   raise RuntimeError('anchor_generator is expected to generate anchors '
-    #                      'corresponding to a single feature map.')
+
     if self._first_stage_box_predictor.is_keras_model:
       box_predictions = self._first_stage_box_predictor(
           rpn_box_predictor_features)
