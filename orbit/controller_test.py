@@ -329,7 +329,7 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
         checkpoint_manager=checkpoint_manager,
         summary_dir=os.path.join(self.model_dir, "summaries/train"),
         eval_summary_dir=os.path.join(self.model_dir, "summaries/eval"))
-    test_controller.evaluate(steps=2)
+    eval_results = test_controller.evaluate(steps=2)
 
     # Only eval summaries are written
     self.assertFalse(
@@ -339,6 +339,7 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotEmpty(
         summaries_with_matching_keyword(
             "eval_loss", os.path.join(self.model_dir, "summaries/eval")))
+    self.assertIn("eval_loss", eval_results)
 
     # Tests continuous eval with timeout and timeout_fn.
     done_file = os.path.join(self.model_dir, "summaries/eval/Done")

@@ -16,8 +16,9 @@
 """A light weight utilities to train TF2 models."""
 
 import time
-from typing import Callable, Optional, Text, Union
+from typing import Callable, Dict, Optional, Text, Union
 from absl import logging
+import numpy as np
 from orbit import runner
 from orbit import utils
 
@@ -177,7 +178,7 @@ class Controller:
     if checkpoint_at_completion:
       self.save_checkpoint()
 
-  def evaluate(self, steps: int = None):
+  def evaluate(self, steps: int = None) -> Optional[Dict[Text, np.number]]:
     """Runs evaluation.
 
     This method calls the `evaluate` method on the Evaluator object for `steps`
@@ -186,10 +187,12 @@ class Controller:
     Args:
       steps: The number of steps to evaluate for.
 
+    Returns:
+      The evaluation results as a dictionary of numpy values.
+
     Raises:
       ValueError: If no checkpoint found in `self.checkpoint_manager.directory`.
       ValueError: If `evaluator` is not provided.
-
     """
     if self.evaluator is None:
       raise ValueError("`evaluator` must be provided to call `evaluate()` "
@@ -216,6 +219,8 @@ class Controller:
 
     self.eval_summary_manager.write_summaries(eval_outputs)
     self.eval_summary_manager.flush()
+
+    return eval_outputs
 
   def restore_checkpoint(self, checkpoint_path: Text = None):
     """Restore or initialize the model.
