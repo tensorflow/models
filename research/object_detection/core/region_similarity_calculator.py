@@ -47,6 +47,10 @@ class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
       scope: Op scope name. Defaults to 'Compare' if None.
+      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
+        containing groundtruth labels.
+      predicted_labels: a Tensor of shape [num_boxes, num_classes]
+        containing predicted labels.
 
     Returns:
       a (float32) tensor of shape [N, M] with pairwise similarity score.
