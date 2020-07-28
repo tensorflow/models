@@ -817,7 +817,7 @@ def mobilenet_base(inputs: tf.Tensor,
         normalization_params=normalization_params,
         block_id=i
       )
-    elif block_def.block_type == archs.BlockType.GobalPooling.value:
+    elif block_def.block_type == archs.BlockType.GlobalPooling.value:
       net = global_pooling_block(
         inputs=net,
         block_id=i
