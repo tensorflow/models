@@ -436,4 +436,4 @@ if __name__ == "__main__":
   logging.set_verbosity(logging.INFO)
   define_data_download_flags()
   FLAGS = flags.FLAGS
-  absl_app.run(main)
+  tf.app.run(main)
