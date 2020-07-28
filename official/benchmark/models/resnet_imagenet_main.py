@@ -26,7 +26,7 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-from tensorflow_model_optimization.python.core.clustering.keras import cluster
+
 import tensorflow_model_optimization as tfmot
 from official.modeling import performance
 from official.utils.flags import core as flags_core
@@ -39,56 +39,38 @@ from official.vision.image_classification.resnet import imagenet_preprocessing
 from official.vision.image_classification.resnet import resnet_model
 
 
-def selective_layers_to_cluster(model):
-  last_3conv2d_layers_to_cluster = [
-      layer.name
-      for layer in model.layers
+def cluster_last_three_conv2d_layers(model):
+  last_three_conv2d_layers =  [
+      layer for layer in model.layers
       if isinstance(layer, tf.keras.layers.Conv2D) and
       not isinstance(layer, tf.keras.layers.DepthwiseConv2D)
-  ]
-  last_3conv2d_layers_to_cluster = last_3conv2d_layers_to_cluster[-3:]
-  return last_3conv2d_layers_to_cluster
+    ]
+  last_three_conv2d_layers = last_three_conv2d_layers[-3:]
 
+  cluster_weights = tfmot.clustering.keras.cluster_weights
+  CentroidInitialization = tfmot.clustering.keras.CentroidInitialization
+  clustering_params1 = {
+      'number_of_clusters': 256,
+      'cluster_centroids_init': CentroidInitialization.LINEAR
+  }
+  clustering_params2 = {
+      'number_of_clusters': 32,
+      'cluster_centroids_init': CentroidInitialization.LINEAR
+  }
 
-def selective_clustering_clone_wrapper(clustering_params1, clustering_params2,
-                                       model):
+  def cluster_fn(layer):
+    if layer not in last_three_conv2d_layers:
+        return layer
 
-  def apply_clustering_to_conv2d_but_depthwise(layer):
-    layers_list = selective_layers_to_cluster(model)
-    if layer.name in layers_list:
-      if layer.name != layers_list[-1]:
-        print("Wrapped layer " + layer.name +
-              " with " +
-              str(clustering_params1["number_of_clusters"]) + " clusters.")
-        return cluster.cluster_weights(layer, **clustering_params1)
-      else:
-        print("Wrapped layer " + layer.name +
-              " with " +
-              str(clustering_params2["number_of_clusters"]) + " clusters.")
-        return cluster.cluster_weights(layer, **clustering_params2)
-    return layer
+    if layer == last_three_conv2d_layers[0] or layer == last_three_conv2d_layers[1]:
+        clustered = cluster_weights(layer, **clustering_params1)
+        print("Clustered {} with {} clusters".format(layer.name, clustering_params1['number_of_clusters']))
+    else:
+        clustered = cluster_weights(layer, **clustering_params2)
+        print("Clustered {} with {} clusters".format(layer.name, clustering_params2['number_of_clusters']))
+    return clustered
 
-  return apply_clustering_to_conv2d_but_depthwise
-
-
-def cluster_model_selectively(model, selective_layers_to_cluster,
-                              clustering_params1, clustering_params2):
-  result_layer_model = tf.keras.models.clone_model(
-      model,
-      clone_function=selective_clustering_clone_wrapper(clustering_params1,
-                                                        clustering_params2,
-                                                        model),
-  )
-  return result_layer_model
-
-
-def get_selectively_clustered_model(model, clustering_params1,
-                                    clustering_params2):
-  clustered_model = cluster_model_selectively(model,
-                                              selective_layers_to_cluster,
-                                              clustering_params1,
-                                              clustering_params2)
-  return clustered_model
+  return tf.keras.models.clone_model(model, clone_function=cluster_fn)
 
 
 def run(flags_obj):
@@ -244,12 +226,8 @@ def run(flags_obj):
           layers=tf.keras.layers)
     elif flags_obj.model == 'mobilenet_pretrained':
       model = tf.keras.applications.mobilenet.MobileNet(
-          alpha=1.0,
-          depth_multiplier=1,
           dropout=1e-7,
-          include_top=True,
           weights='imagenet',
-          pooling=None,
           classes=1000,
           layers=tf.keras.layers)
 
@@ -277,16 +255,7 @@ def run(flags_obj):
       if dtype != tf.float32 or flags_obj.fp16_implementation == 'graph_rewrite':
         raise NotImplementedError(
             'Clustering is currently only supported on dtype=tf.float32.')
-      clustering_params1 = {
-          'number_of_clusters': flags_obj.number_of_clusters,
-          'cluster_centroids_init': 'linear'
-      }
-      clustering_params2 = {
-          'number_of_clusters': 32,
-          'cluster_centroids_init': 'linear'
-      }
-      model = get_selectively_clustered_model(model, clustering_params1,
-                                              clustering_params2)
+      model = cluster_last_three_conv2d_layers(model)
     elif flags_obj.clustering_method:
       raise NotImplementedError(
           'Only selective_clustering is implemented.')
@@ -324,7 +293,6 @@ def run(flags_obj):
     num_eval_steps = None
     validation_data = None
 
-  # if not strategy and flags_obj.explicit_gpu_placement:
   if not strategy and flags_obj.explicit_gpu_placement:
     # TODO(b/135607227): Add device scope automatically in Keras training loop
     # when not using distribution strategy.
@@ -350,7 +318,7 @@ def run(flags_obj):
     model = tfmot.sparsity.keras.strip_pruning(model)
 
   if flags_obj.clustering_method:
-    model = cluster.strip_clustering(model)
+    model = tfmot.clustering.keras.strip_clustering(model)
 
   if flags_obj.enable_checkpoint_and_export:
     if dtype == tf.bfloat16:
@@ -362,14 +330,6 @@ def run(flags_obj):
 
   if not strategy and flags_obj.explicit_gpu_placement:
     no_dist_strat_device.__exit__()
-
-  if flags_obj.clustering_method:
-    if flags_obj.save_files_to:
-      keras_file = os.path.join(flags_obj.save_files_to, 'clustered.h5')
-    else:
-      keras_file = './clustered.h5'
-    print('Saving clustered and stripped model to: ', keras_file)
-    tf.keras.models.save_model(model, keras_file)
 
   stats = common.build_stats(history, eval_output, callbacks)
   return stats

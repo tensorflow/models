@@ -355,11 +355,8 @@ def define_pruning_flags():
 def define_clustering_flags():
   """Define flags for clustering methods."""
   flags.DEFINE_string('clustering_method', None,
-                      'None (no clustering) or selective_clustering.')
-  flags.DEFINE_integer('number_of_clusters', 256,
-                       'Number of clusters used in each layer.')
-  flags.DEFINE_string('save_files_to', None,
-                      'The path to save Keras models and tflite models.')
+                      'None (no clustering) or selective_clustering'\
+                      '(cluster last three Conv2D layers of the model).')
 
 def get_synth_input_fn(height,
                        width,

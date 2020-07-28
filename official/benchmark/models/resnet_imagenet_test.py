@@ -26,7 +26,7 @@ from official.benchmark.models import resnet_imagenet_main
 from official.utils.testing import integration
 from official.vision.image_classification.resnet import imagenet_preprocessing
 
-# TBC: joint clustering and tuning is not supported yet so only one flag should be selected
+
 @parameterized.parameters(
     "resnet",
     # "resnet_polynomial_decay",  b/151854314
