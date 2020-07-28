@@ -378,7 +378,7 @@ def get_value(x) -> np.ndarray:
       x: input variable.
 
   Returns:
-      A Numpy array.
+      A Numpy array or number.
   """
   if not tf.is_tensor(x):
     return x
