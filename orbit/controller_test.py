@@ -158,6 +158,57 @@ class TestEvaluator(standard_runner.StandardEvaluator):
     }
 
 
+class TestEvaluatorWithNestedSummary(standard_runner.StandardEvaluator):
+  """Implements the training and evaluation APIs for the test model."""
+
+  def __init__(self):
+    self.strategy = tf.distribute.get_strategy()
+    self.model = create_model()
+    dataset = self.strategy.experimental_distribute_datasets_from_function(
+        dataset_fn)
+    dataset2 = self.strategy.experimental_distribute_datasets_from_function(
+        dataset_fn)
+    self.loss = tf.keras.metrics.Mean("loss", dtype=tf.float32)
+    self.accuracy = tf.keras.metrics.CategoricalAccuracy(
+        "accuracy", dtype=tf.float32)
+    self.loss2 = tf.keras.metrics.Mean("loss", dtype=tf.float32)
+    self.accuracy2 = tf.keras.metrics.CategoricalAccuracy(
+        "accuracy", dtype=tf.float32)
+    standard_runner.StandardEvaluator.__init__(
+        self, eval_dataset={
+            "dataset": dataset,
+            "dataset2": dataset2
+        })
+
+  def eval_step(self, iterator):
+
+    def _replicated_step(loss, accuracy, inputs):
+      """Replicated evaluation step."""
+      inputs, targets = inputs
+      outputs = self.model(inputs)
+      loss.update_state(tf.keras.losses.MSE(targets, outputs))
+      accuracy.update_state(targets, outputs)
+
+    self.strategy.run(
+        lambda inputs: _replicated_step(self.loss, self.accuracy, inputs),
+        args=(next(iterator["dataset"]),))
+    self.strategy.run(
+        lambda inputs: _replicated_step(self.loss2, self.accuracy2, inputs),
+        args=(next(iterator["dataset2"]),))
+
+  def eval_end(self):
+    return {
+        "dataset": {
+            "loss": self.loss.result(),
+            "accuracy": self.accuracy.result()
+        },
+        "dataset2": {
+            "loss": self.loss2.result(),
+            "accuracy": self.accuracy2.result()
+        },
+    }
+
+
 class TestTrainerWithSummaries(standard_runner.StandardTrainer):
   """A Trainer model with summaries for testing purposes."""
 
@@ -570,6 +621,31 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     self.assertLen(
         summaries_with_matching_keyword("eval_loss", self.model_dir), 2)
 
+  def test_evaluate_with_nested_summaries(self):
+    test_evaluator = TestEvaluatorWithNestedSummary()
+    test_controller = controller.Controller(
+        evaluator=test_evaluator,
+        global_step=tf.Variable(0, dtype=tf.int64),
+        eval_summary_dir=self.model_dir)
+    test_controller.evaluate(steps=5)
+
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(self.model_dir, "dataset")))
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
+            "loss", os.path.join(self.model_dir, "dataset")))
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
+            "accuracy", os.path.join(self.model_dir, "dataset")))
+
+    self.assertNotEmpty(
+        tf.io.gfile.listdir(os.path.join(self.model_dir, "dataset2")))
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
+            "loss", os.path.join(self.model_dir, "dataset2")))
+    self.assertNotEmpty(
+        summaries_with_matching_keyword(
+            "accuracy", os.path.join(self.model_dir, "dataset2")))
 
 if __name__ == "__main__":
   tf.test.main()
