@@ -32,7 +32,7 @@ _RESNET_MODEL_OUTPUT_LAYERS = {
                       'conv4_block36_out', 'conv5_block3_out'],
 }
 
-class ResnetFPN(tf.keras.layers.Layer):
+class _ResnetFPN(tf.keras.layers.Layer):
   """Construct Resnet FPN layer."""
 
   def __init__(self,
@@ -56,7 +56,7 @@ class ResnetFPN(tf.keras.layers.Layer):
       resnet_block_names: a list of block names of resnet.
       base_fpn_max_level: maximum level of fpn without coarse feature layers.
     """
-    super(ResnetFPN, self).__init__()
+    super(_ResnetFPN, self).__init__()
     self.classification_backbone = backbone_classifier
     self.fpn_features_generator = fpn_features_generator
     self.coarse_feature_layers = coarse_feature_layers
@@ -66,7 +66,7 @@ class ResnetFPN(tf.keras.layers.Layer):
     self._base_fpn_max_level = base_fpn_max_level
 
   def call(self, inputs):
-    """Create ResnetFPN layer.
+    """Create internal ResnetFPN layer.
 
     Args:
       inputs: A [batch, height_out, width_out, channels] float32 tensor
@@ -261,7 +261,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
                   name=layer_name))
           self._coarse_feature_layers.append(layers)
 
-        feature_extractor_model = ResnetFPN(self.classification_backbone,
+        feature_extractor_model = _ResnetFPN(self.classification_backbone,
                                             self._fpn_features_generator,
                                             self._coarse_feature_layers,
                                             self._pad_to_multiple,
