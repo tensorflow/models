@@ -1299,7 +1299,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     Returns:
       rpn_box_predictor_features: A list of 4-D float32 tensor with shape
-        [batch, height, width, depth] to be used for predicting proposal boxes
+        [batch, height_i, width_j, depth] to be used for predicting proposal boxes
         and corresponding objectness scores.
       rpn_features_to_crop: A list of 4-D float32 tensor with shape
         [batch, height, width, depth] representing image features to crop using
@@ -1354,7 +1354,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     Args:
       rpn_box_predictor_features: A list of 4-D float32 tensor with shape
-        [batch, height, width, depth] to be used for predicting proposal boxes
+        [batch, height_i, width_j, depth] to be used for predicting proposal boxes
         and corresponding objectness scores.
 
     Returns:
