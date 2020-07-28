@@ -698,7 +698,8 @@ class DistributedExecutor(object):
       logging.info(
           'Checkpoint file %s found and restoring from '
           'checkpoint', checkpoint_path)
-      checkpoint.restore(checkpoint_path)
+      status = checkpoint.restore(checkpoint_path)
+      status.expect_partial().assert_existing_objects_matched()
 
       self.global_train_step = model.optimizer.iterations
       eval_iterator = self._get_input_iterator(eval_input_fn, strategy)
