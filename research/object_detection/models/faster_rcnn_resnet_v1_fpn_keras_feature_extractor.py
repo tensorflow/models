@@ -286,7 +286,7 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractor(
 
       And returns proposal_classifier_features:
         A 4-D float tensor with shape
-        [batch_size * self.max_num_proposals, 1024]
+        [batch_size * self.max_num_proposals, 1, 1, 1024]
         representing box classifier features for each proposal.
     """
     with tf.name_scope(name):
