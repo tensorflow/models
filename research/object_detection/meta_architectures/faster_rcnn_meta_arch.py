@@ -1954,6 +1954,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
     box_levels = None
     if num_levels != 1:
       # If there are mutiple levels to select, get the box levels
+      # unit_scale_index: num_levels-2 is chosen based on section 4.2 of
+      # https://arxiv.org/pdf/1612.03144.pdf and works best for Resnet based
+      # feature extractor.
       box_levels = ops.fpn_feature_levels(
           num_levels, num_levels - 2,
           tf.sqrt(self._resize_shape[1] * self._resize_shape[2] * 1.0) / 224.0,
