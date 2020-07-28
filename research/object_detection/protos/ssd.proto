@@ -203,24 +203,3 @@ message SsdFeatureExtractor {
   optional int32 num_layers = 12 [default = 6];
 
 }
-
-// Configuration for Bidirectional Feature Pyramid Networks.
-message BidirectionalFeaturePyramidNetworks {
-  // minimum level in the feature pyramid.
-  optional int32 min_level = 1 [default = 3];
-
-  // maximum level in the feature pyramid.
-  optional int32 max_level = 2 [default = 7];
-
-  // The number of repeated top-down bottom-up iterations for BiFPN-based
-  // feature extractors (bidirectional feature pyramid networks).
-  optional int32 num_iterations = 3;
-
-  // The number of filters (channels) to use in feature pyramid layers for
-  // BiFPN-based feature extractors (bidirectional feature pyramid networks).
-  optional int32 num_filters = 4;
-
-  // Method used to combine inputs to BiFPN nodes.
-  optional string combine_method = 5 [default = 'fast_attention'];
-}
-
