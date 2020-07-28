@@ -112,6 +112,42 @@ class FakeFasterRCNNKerasFeatureExtractor(
         3, kernel_size=1, padding='SAME', name=name + '_layer2')])
 
 
+class FakeFasterRCNNKerasMultilevelFeatureExtractor(
+    faster_rcnn_meta_arch.FasterRCNNKerasFeatureExtractor):
+  """Fake feature extractor to use in tests."""
+
+  def __init__(self):
+    super(FakeFasterRCNNKerasMultilevelFeatureExtractor, self).__init__(
+        is_training=False,
+        first_stage_features_stride=32,
+        weight_decay=0.0)
+
+  def preprocess(self, resized_inputs):
+    return tf.identity(resized_inputs)
+
+  def get_proposal_feature_extractor_model(self, name):
+
+    class ProposalFeatureExtractor(tf.keras.Model):
+      """Dummy proposal feature extraction."""
+
+      def __init__(self, name):
+        super(ProposalFeatureExtractor, self).__init__(name=name)
+        self.conv = None
+
+      def build(self, input_shape):
+        self.conv = tf.keras.layers.Conv2D(
+            3, kernel_size=3, name='layer1')
+        self.conv_1 = tf.keras.layers.Conv2D(
+            3, kernel_size=3, name='layer1')
+
+      def call(self, inputs):
+        output_1 = self.conv(inputs)
+        output_2 = self.conv_1(output_1)
+        return [output_1,  output_2]
+
+    return ProposalFeatureExtractor(name=name)
+
+
 class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
   """Base class to test Faster R-CNN and R-FCN meta architectures."""
 
@@ -234,7 +270,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                    calibration_mapping_value=None,
                    share_box_across_classes=False,
                    return_raw_detections_during_predict=False,
-                   output_final_box_features=False):
+                   output_final_box_features=False,
+                   multi_level=False):
     use_keras = tf_version.is_tf2()
     def image_resizer_fn(image, masks=None):
       """Fake image resizer function."""
@@ -273,7 +310,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         use_matmul_gather=use_matmul_gather_in_matcher)
 
     if use_keras:
-      fake_feature_extractor = FakeFasterRCNNKerasFeatureExtractor()
+      if multi_level:
+        fake_feature_extractor = FakeFasterRCNNKerasMultilevelFeatureExtractor()
+      else:
+        fake_feature_extractor = FakeFasterRCNNKerasFeatureExtractor()
     else:
       fake_feature_extractor = FakeFasterRCNNFeatureExtractor()
 
@@ -519,6 +559,87 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         results[4].shape,
         expected_output_shapes['rpn_objectness_predictions_with_background'])
     self.assertAllEqual(results[5].shape,
+                        expected_output_shapes['anchors'])
+
+    # Check that anchors are clipped to window.
+    anchors = results[5]
+    self.assertTrue(np.all(np.greater_equal(anchors, 0)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 0], height)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 1], width)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 2], height)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 3], width)))
+
+  def test_predict_shape_in_inference_mode_first_stage_only_multi_level(
+      self, use_static_shapes=False):
+    batch_size = 2
+    height = 10
+    width = 12
+    input_image_shape = (batch_size, height, width, 3)
+
+    with test_utils.GraphContextOrNone() as g:
+      model = self._build_model(
+          is_training=False,
+          number_of_stages=1,
+          second_stage_batch_size=2,
+          clip_anchors_to_image=use_static_shapes,
+          use_static_shapes=use_static_shapes,
+          multi_level=True)
+    def graph_fn(images):
+      """Function to construct tf graph for the test."""
+
+      preprocessed_inputs, true_image_shapes = model.preprocess(images)
+      prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
+      return (prediction_dict['rpn_box_predictor_features'][0],
+              prediction_dict['rpn_box_predictor_features'][1],
+              prediction_dict['rpn_features_to_crop'][0],
+              prediction_dict['rpn_features_to_crop'][1],
+              prediction_dict['image_shape'],
+              prediction_dict['rpn_box_encodings'],
+              prediction_dict['rpn_objectness_predictions_with_background'],
+              prediction_dict['anchors'])
+
+    images = np.zeros(input_image_shape, dtype=np.float32)
+
+    # In inference mode, anchors are clipped to the image window, but not
+    # pruned.  Since MockFasterRCNN.extract_proposal_features returns a
+    # tensor with the same shape as its input, the expected number of anchors
+    # is height * width * the number of anchors per location (i.e. 3x3).
+    expected_num_anchors = height * width * 3 * 3
+    expected_output_shapes = {
+        'rpn_box_predictor_features_0': (batch_size, height-2, width-2, 512),
+        'rpn_box_predictor_features_1': (batch_size, height-4, width-4, 512),
+        'rpn_features_to_crop_0': (batch_size, height-2, width-2, 3),
+        'rpn_features_to_crop_1': (batch_size, height-4, width-4, 3),
+        'rpn_box_encodings': (batch_size, expected_num_anchors, 4),
+        'rpn_objectness_predictions_with_background':
+        (batch_size, expected_num_anchors, 2),
+        'anchors': (expected_num_anchors, 4)
+    }
+    print(expected_output_shapes)
+
+    if use_static_shapes:
+      results = self.execute(graph_fn, [images], graph=g)
+    else:
+      results = self.execute_cpu(graph_fn, [images], graph=g)
+    print(results)
+    self.assertAllEqual(0, 1)
+
+    self.assertAllEqual(results[0].shape,
+                        expected_output_shapes['rpn_box_predictor_features_0'])
+    self.assertAllEqual(results[1].shape,
+                        expected_output_shapes['rpn_box_predictor_features_1'])
+    self.assertAllEqual(results[2].shape,
+                        expected_output_shapes['rpn_features_to_crop_0'])
+    self.assertAllEqual(results[3].shape,
+                        expected_output_shapes['rpn_features_to_crop_1'])
+    self.assertAllEqual(results[4],
+                        input_image_shape)
+    self.assertAllEqual(results[5].shape,
+                        expected_output_shapes['rpn_box_encodings'])
+    self.assertAllEqual(
+        results[6].shape,
+        expected_output_shapes['rpn_objectness_predictions_with_background'])
+    self.assertAllEqual(results[7].shape,
                         expected_output_shapes['anchors'])
 
     # Check that anchors are clipped to window.
