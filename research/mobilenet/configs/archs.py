@@ -60,6 +60,8 @@ class BlockType(enum.Enum):
   Conv = 'Conv'
   DepSepConv = 'DepSepConv'
   InvertedResConv = 'InvertedResConv'
+  FusedInvertedResConv = 'FusedInvertedResConv'
+  GobalPooling = 'GlobalPooling'
 
 
 @dataclass
@@ -68,11 +70,15 @@ class MobileNetBlockConfig(base_config.Config):
   kernel: Tuple[int, int] = (3, 3)
   stride: int = 1
   filters: int = 32
+  use_biase: bool = False
+  normalization: bool = True
   activation_name: Text = 'relu6'
   # used for block type InvertedResConv
   expansion_size: float = 6.
   # used for block type InvertedResConv with SE
   squeeze_factor: int = None
+  depthwise: bool = True
+  residual: bool = True
   block_type: Text = BlockType.Conv.value
 
 
@@ -473,6 +479,14 @@ class MobileNetV3LargeConfig(MobileNetConfig):
       kernel=(1, 1), stride=1, filters=960,
       activation_name='hard_swish',
       block_type=BlockType.Conv.value),
+    MobileNetBlockConfig.from_args(
+      block_type=BlockType.GobalPooling.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(1, 1), stride=1, filters=1280,
+      activation_name='hard_swish',
+      normalization=False,
+      use_biase=True,
+      block_type=BlockType.Conv.value),
     # pylint: enable=bad-whitespace
   )
 
@@ -535,19 +549,19 @@ class MobileNetV3SmallConfig(MobileNetConfig):
 
     MobileNetBlockConfig.from_args(
       kernel=(5, 5), stride=2, filters=40,
-      activation_name='relu',
+      activation_name='hard_swish',
       squeeze_factor=4,
       expansion_size=4,
       block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(5, 5), stride=1, filters=40,
-      activation_name='relu',
+      activation_name='hard_swish',
       squeeze_factor=4,
       expansion_size=6,
       block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(5, 5), stride=1, filters=40,
-      activation_name='relu',
+      activation_name='hard_swish',
       squeeze_factor=4,
       expansion_size=6,
       block_type=BlockType.InvertedResConv.value),
@@ -588,6 +602,208 @@ class MobileNetV3SmallConfig(MobileNetConfig):
     MobileNetBlockConfig.from_args(
       kernel=(1, 1), stride=1, filters=576,
       activation_name='hard_swish',
+      block_type=BlockType.Conv.value),
+    MobileNetBlockConfig.from_args(
+      block_type=BlockType.GobalPooling.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(1, 1), stride=1, filters=1024,
+      activation_name='hard_swish',
+      normalization=False,
+      use_biase=True,
+      block_type=BlockType.Conv.value),
+    # pylint: enable=bad-whitespace
+  )
+
+@dataclass
+class MobileNetV3EdgeTPUConfig(MobileNetConfig):
+  """Configuration for the MobileNetV3 Edge TPU model.
+
+    Attributes:
+      name: name of the target model.
+      blocks: base architecture
+
+  """
+  name: Text = 'MobileNetV3EdgeTPU'
+  width_multiplier: float = 1.0
+  finegrain_classification_mode: bool = True
+
+  # regularization
+  weight_decay: float = 0.00002
+  stddev: float = 0.09
+  regularize_depthwise: bool = False
+  # activation
+  activation_name: Text = 'relu6'
+  # normalization
+  normalization_name: Text = 'batch_norm'
+  batch_norm_decay: float = 0.9997
+  batch_norm_epsilon: float = 0.001
+  # dropout
+  dropout_keep_prob: float = 0.8
+
+  # base architecture
+  blocks: Tuple[MobileNetBlockConfig, ...] = (
+    # (kernel, stride, depth)
+    # pylint: disable=bad-whitespace
+    # base normal conv
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=32,
+      activation_name='relu',
+      block_type=BlockType.Conv.value),
+
+    # inverted res conv
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=16,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=1,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=32,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=8,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=32,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=32,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=32,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=48,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=8,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=48,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=48,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=48,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      depthwise=False,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=2, filters=96,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=8,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=8,
+      residule=False,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=96,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=2, filters=160,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=8,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=160,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=160,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+    MobileNetBlockConfig.from_args(
+      kernel=(5, 5), stride=1, filters=160,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=4,
+      block_type=BlockType.InvertedResConv.value),
+
+    MobileNetBlockConfig.from_args(
+      kernel=(3, 3), stride=1, filters=192,
+      activation_name='relu',
+      squeeze_factor=None,
+      expansion_size=8,
+      block_type=BlockType.InvertedResConv.value),
+
+    # Last conv
+    MobileNetBlockConfig.from_args(
+      kernel=(1, 1), stride=1, filters=1280,
+      activation_name='relu',
       block_type=BlockType.Conv.value),
     # pylint: enable=bad-whitespace
   )

@@ -73,6 +73,30 @@ class FixedPadding(layers.Layer):
     return padded_inputs
 
 
+def reduced_kernel_size_for_small_input(input_tensor: tf.Tensor,
+                                        kernel_size: Tuple[int, int]
+                                        ) -> Tuple[int, int]:
+  """Define kernel size which is automatically reduced for small input.
+
+  If the shape of the input images is unknown at graph construction time this
+  function assumes that the input images are large enough.
+
+  Args:
+    input_tensor: input tensor of size [batch_size, height, width, channels].
+    kernel_size: desired kernel size of length 2: [kernel_height, kernel_width]
+
+  Returns:
+    a tensor with the kernel size.
+  """
+  shape = input_tensor.get_shape().as_list()
+  if shape[1] is None or shape[2] is None:
+    kernel_size_out = kernel_size
+  else:
+    kernel_size_out = (min(shape[1], kernel_size[0]),
+                       min(shape[2], kernel_size[1]))
+  return kernel_size_out
+
+
 def make_divisible(value: float,
                    divisor: int,
                    min_value: Optional[float] = None
@@ -128,6 +152,25 @@ def get_initializer(stddev: float) -> tf.keras.initializers.Initializer:
   return weight_intitializer
 
 
+def global_pooling_block(inputs: tf.Tensor,
+                         block_id: int = 0):
+  """Apply global pooling to reduce shape.
+
+  Args:
+    inputs: Input tensor of shape [batch_size, height, width, channels]
+    block_id: A unique identification designating the block number
+
+  Returns:
+    Output tensor of block of shape [batch_size, 1, 1, filters]
+  """
+  x = layers.GlobalAveragePooling2D(
+    data_format='channels_last',
+    name='GlobalPool_{}'.format(block_id))(inputs)
+  outputs = layers.Reshape((1, 1, x.shape[1]),
+                           name='Reshape_{}'.format(block_id))(x)
+  return outputs
+
+
 def conv2d_block(inputs: tf.Tensor,
                  filters: int,
                  width_multiplier: float,
@@ -135,13 +178,16 @@ def conv2d_block(inputs: tf.Tensor,
                  weight_decay: float,
                  stddev: float,
                  activation_name: Text = 'relu6',
+                 use_biase: bool = False,
+                 normalization: bool = True,
                  normalization_name: Text = 'batch_norm',
                  normalization_params: Dict = {},
                  use_explicit_padding: bool = False,
                  kernel: Union[int, Tuple[int, int]] = (3, 3),
                  strides: Union[int, Tuple[int, int]] = (1, 1),
                  divisable: bool = False,
-                 block_id: int = 0
+                 block_id: int = 0,
+                 conv_block_id: int = 0,
                  ) -> tf.Tensor:
   """Adds an initial convolution layer (with batch normalization).
 
@@ -163,6 +209,8 @@ def conv2d_block(inputs: tf.Tensor,
     weight_decay: The weight decay to use for regularizing the model.
     stddev: The standard deviation of the trunctated normal weight initializer.
     activation_name: Name of the activation function
+    use_biase: whether use biase
+    normalization: whether apply normalization at end.
     normalization_name: Name of the normalization layer
     normalization_params: Parameters passed to normalization layer
     use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
@@ -181,6 +229,7 @@ def conv2d_block(inputs: tf.Tensor,
         any `dilation_rate` value != 1.
     divisable: Ensure the number of filters is divisable.
     block_id: A unique identification designating the block number.
+    conv_block_id: A unique identification designating the conv block number.
 
   Returns
     Output tensor of block of shape [batch_size, height, width, filters].
@@ -205,7 +254,7 @@ def conv2d_block(inputs: tf.Tensor,
     padding = 'VALID'
     inputs = FixedPadding(
       kernel_size=kernel,
-      name='Conv2d_{}/FP'.format(block_id))(inputs)
+      name='Conv2d_{}_{}/FP'.format(block_id, conv_block_id))(inputs)
 
   weights_init = get_initializer(stddev)
   regularizer = tf.keras.regularizers.L1L2(l2=weight_decay)
@@ -215,17 +264,18 @@ def conv2d_block(inputs: tf.Tensor,
                     padding=padding,
                     kernel_initializer=weights_init,
                     kernel_regularizer=regularizer,
-                    use_bias=False,
-                    name='Conv2d_{}'.format(block_id))(inputs)
+                    use_bias=use_biase,
+                    name='Conv2d_{}_{}'.format(block_id, conv_block_id))(inputs)
 
-  x = normalization_layer(axis=-1,
-                          name='Conv2d_{}/{}'.format(
-                            block_id, normalization_name),
-                          **normalization_params)(x)
+  if normalization:
+    x = normalization_layer(axis=-1,
+                            name='Conv2d_{}_{}/{}'.format(
+                              block_id, conv_block_id, normalization_name),
+                            **normalization_params)(x)
 
   outputs = layers.Activation(activation=activation_fn,
-                              name='Conv2d_{}/{}'.format(
-                                block_id, activation_name))(x)
+                              name='Conv2d_{}_{}/{}'.format(
+                                block_id, conv_block_id, activation_name))(x)
 
   return outputs
 
@@ -444,6 +494,7 @@ def inverted_res_block(inputs: tf.Tensor,
                        expansion_size: float = 6.,
                        regularize_depthwise: bool = False,
                        use_explicit_padding: bool = False,
+                       depthwise: bool = True,
                        residual=True,
                        squeeze_factor: Optional[int] = None,
                        kernel: Union[int, Tuple[int, int]] = (3, 3),
@@ -488,6 +539,7 @@ def inverted_res_block(inputs: tf.Tensor,
     use_explicit_padding: Use 'VALID' padding for convolutions, but prepad
       inputs so that the output dimensions are the same as if 'SAME' padding
       were used.
+    depthwise: whether to uses fused convolutions instead of depthwise
     residual: whether to include residual connection between input
       and output.
     squeeze_factor: the factor of squeezing in the inner fully connected layer
@@ -536,8 +588,8 @@ def inverted_res_block(inputs: tf.Tensor,
       num_inputs=in_channels,
       expansion_size=expansion_size)
     x = layers.Conv2D(filters=expended_size,
-                      kernel_size=(1, 1),
-                      strides=(1, 1),
+                      kernel_size=(1, 1) if depthwise else kernel,
+                      strides=(1, 1) if depthwise else strides,
                       padding='SAME',
                       kernel_initializer=weights_init,
                       kernel_regularizer=regularizer,
@@ -552,29 +604,30 @@ def inverted_res_block(inputs: tf.Tensor,
                           name=prefix + 'expand/{}'.format(activation_name))(x)
 
   # Depthwise
-  padding = 'SAME'
-  if use_explicit_padding:
-    padding = 'VALID'
-    x = FixedPadding(
-      kernel_size=kernel,
-      name=prefix + 'pad')(x)
+  if depthwise:
+    padding = 'SAME'
+    if use_explicit_padding:
+      padding = 'VALID'
+      x = FixedPadding(
+        kernel_size=kernel,
+        name=prefix + 'pad')(x)
 
-  x = layers.DepthwiseConv2D(kernel_size=kernel,
-                             padding=padding,
-                             depth_multiplier=1,
-                             strides=strides,
-                             kernel_initializer=weights_init,
-                             kernel_regularizer=depth_regularizer,
-                             dilation_rate=dilation_rate,
-                             use_bias=False,
-                             name=prefix + 'depthwise')(x)
-  x = normalization_layer(axis=-1,
+    x = layers.DepthwiseConv2D(kernel_size=kernel,
+                               padding=padding,
+                               depth_multiplier=1,
+                               strides=strides,
+                               kernel_initializer=weights_init,
+                               kernel_regularizer=depth_regularizer,
+                               dilation_rate=dilation_rate,
+                               use_bias=False,
+                               name=prefix + 'depthwise')(x)
+    x = normalization_layer(axis=-1,
+                            name=prefix + 'depthwise/{}'.format(
+                              normalization_name),
+                            **normalization_params)(x)
+    x = layers.Activation(activation=depth_activation_fn,
                           name=prefix + 'depthwise/{}'.format(
-                            normalization_name),
-                          **normalization_params)(x)
-  x = layers.Activation(activation=depth_activation_fn,
-                        name=prefix + 'depthwise/{}'.format(
-                          depthwise_activation_name))(x)
+                            depthwise_activation_name))(x)
 
   if squeeze_factor:
     x = se_block(inputs=x,
@@ -648,7 +701,8 @@ def mobilenet_base(inputs: tf.Tensor,
       if output_stride == 0 or (output_stride > 1 and output_stride % 2):
         raise ValueError('Output stride must be None, 1 or a multiple of 2.')
 
-  if (isinstance(config, archs.MobileNetV2Config)
+  # This adjustment applies to V2 and V3
+  if (not isinstance(config, archs.MobileNetV1Config)
       and finegrain_classification_mode
       and width_multiplier < 1.0):
     blocks[-1].filters /= width_multiplier
@@ -664,6 +718,7 @@ def mobilenet_base(inputs: tf.Tensor,
   rate = 1
 
   net = inputs
+  con_block_tracker = 0
   for i, block_def in enumerate(blocks):
     if output_stride is not None and current_stride == output_stride:
       # If we have reached the target output_stride, then we need to employ
@@ -699,6 +754,8 @@ def mobilenet_base(inputs: tf.Tensor,
         kernel=block_def.kernel,
         strides=block_def.stride,
         activation_name=block_def.activation_name,
+        use_biase=block_def.use_biase,
+        normalization=block_def.normalization,
         width_multiplier=width_multiplier,
         min_depth=min_depth,
         weight_decay=weight_decay,
@@ -707,8 +764,10 @@ def mobilenet_base(inputs: tf.Tensor,
         normalization_name=normalization_name,
         normalization_params=normalization_params,
         divisable=divisable,
-        block_id=i
+        block_id=i,
+        conv_block_id=con_block_tracker
       )
+      con_block_tracker += 1
     elif block_def.block_type == archs.BlockType.DepSepConv.value:
       net = depthwise_conv2d_block(
         inputs=net,
@@ -745,6 +804,8 @@ def mobilenet_base(inputs: tf.Tensor,
         expansion_size=block_def.expansion_size,
         squeeze_factor=block_def.squeeze_factor,
         activation_name=block_def.activation_name,
+        depthwise=block_def.depthwise,
+        residual=block_def.residual,
         dilation_rate=use_rate,
         width_multiplier=width_multiplier,
         min_depth=min_depth,
@@ -754,6 +815,11 @@ def mobilenet_base(inputs: tf.Tensor,
         use_explicit_padding=use_explicit_padding,
         normalization_name=normalization_name,
         normalization_params=normalization_params,
+        block_id=i
+      )
+    elif block_def.block_type == archs.BlockType.GobalPooling.value:
+      net = global_pooling_block(
+        inputs=net,
         block_id=i
       )
     else:
@@ -769,9 +835,24 @@ def mobilenet_head(inputs: tf.Tensor,
   dropout_keep_prob = config.dropout_keep_prob
   num_classes = config.num_classes
   spatial_squeeze = config.spatial_squeeze
+  global_pool = config.global_pool
+
+  # build top
+  if global_pool:
+    # global average pooling.
+    x = layers.GlobalAveragePooling2D(data_format='channels_last',
+                                      name='top/GlobalPool')(inputs)
+    x = layers.Reshape((1, 1, x.shape[1]), name='top/Reshape')(x)
+  else:
+    # pooling with a fixed kernel size
+    kernel_size = reduced_kernel_size_for_small_input(inputs, (7, 7))
+    x = layers.AvgPool2D(pool_size=kernel_size,
+                         padding='VALID',
+                         data_format='channels_last',
+                         name='top/AvgPool')(inputs)
 
   x = layers.Dropout(rate=1 - dropout_keep_prob,
-                     name='top/Dropout')(inputs)
+                     name='top/Dropout')(x)
   # 1 x 1 x num_classes
   x = layers.Conv2D(filters=num_classes,
                     kernel_size=(1, 1),

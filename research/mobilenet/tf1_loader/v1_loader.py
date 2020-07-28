@@ -45,6 +45,9 @@ def mobinetv1_tf1_tf2_name_convert(tf2_layer_name: Text) -> Text:
   if 'top/Conv2d_1x1_output' in tf2_layer_name:
     tf1_layer_name = 'Logits/Conv2d_1c_1x1'
   else:
+    if 'Conv2d_0_0' in tf2_layer_name:
+      tf2_layer_name = tf2_layer_name.replace('Conv2d_0_0', 'Conv2d_0')
+
     if 'batch_norm' in tf2_layer_name:
       tf2_layer_name = tf2_layer_name.replace('batch_norm', 'BatchNorm')
 
