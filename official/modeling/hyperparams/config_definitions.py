@@ -179,6 +179,7 @@ class TrainerConfig(base_config.Config):
     max_to_keep: max checkpoints to keep.
     continuous_eval_timeout: maximum number of seconds to wait between
       checkpoints, if set to None, continuous eval will wait indefinitely.
+      This is only used continuous_train_and_eval and continuous_eval modes.
     train_steps: number of train steps.
     validation_steps: number of eval steps. If `None`, the entire eval dataset
       is used.
@@ -205,6 +206,7 @@ class TrainerConfig(base_config.Config):
 
 @dataclasses.dataclass
 class TaskConfig(base_config.Config):
+  init_checkpoint: str = ""
   model: base_config.Config = None
   train_data: DataConfig = DataConfig()
   validation_data: DataConfig = DataConfig()

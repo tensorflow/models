@@ -14,7 +14,6 @@
 # limitations under the License.
 # ==============================================================================
 """Tagging (e.g., NER/POS) task."""
-import logging
 from typing import List, Optional, Tuple
 
 import dataclasses
@@ -214,20 +213,6 @@ class TaggingTask(base_task.Task):
         'accuracy':
             seqeval_metrics.accuracy_score(label_class, predict_class),
     }
-
-  def initialize(self, model):
-    """Load a pretrained checkpoint (if exists) and then train from iter 0."""
-    ckpt_dir_or_file = self.task_config.init_checkpoint
-    if tf.io.gfile.isdir(ckpt_dir_or_file):
-      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
-    if not ckpt_dir_or_file:
-      return
-
-    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-    status = ckpt.restore(ckpt_dir_or_file)
-    status.expect_partial().assert_existing_objects_matched()
-    logging.info('Finished loading pretrained checkpoint from %s',
-                 ckpt_dir_or_file)
 
 
 def predict(task: TaggingTask, params: cfg.DataConfig,
