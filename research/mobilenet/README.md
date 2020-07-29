@@ -299,6 +299,25 @@ the following code can be used
 keras_model.save(save_path, save_format='tf')
 ```
 
+To perform quantization on the TF2 SavedModel
+```python
+converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
+tflite_model = converter.convert()
+
+# write it out to a tflite file
+tflite_models_dir = pathlib.Path("./mobilenet_tflite_models/")
+tflite_models_dir.mkdir(exist_ok=True, parents=True)
+tflite_model_file = tflite_models_dir/"mobilenet_model.tflite"
+tflite_model_file.write_bytes(tflite_model)
+
+# converts the model into a Tensorflow Lite flatbuffer with dynamic range quantization
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+tflite_quant_model = converter.convert()
+
+tflite_model_quant_file = tflite_models_dir/"mobilenet_model_quant.tflite"
+tflite_model_quant_file.write_bytes(tflite_quant_model)
+```
+
 ## How to build various sizes of MobileNets
 
 Width multiplier `alpha` is the key parameter to control the size of MobileNets.

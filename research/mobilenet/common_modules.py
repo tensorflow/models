@@ -24,7 +24,8 @@ layers = tf.keras.layers
 MobileNetConfig = Union[archs.MobileNetV1Config,
                         archs.MobileNetV2Config,
                         archs.MobileNetV3SmallConfig,
-                        archs.MobileNetV3LargeConfig]
+                        archs.MobileNetV3LargeConfig,
+                        archs.MobileNetV3EdgeTPUConfig]
 
 
 class FixedPadding(layers.Layer):
