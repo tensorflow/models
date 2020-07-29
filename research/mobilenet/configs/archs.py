@@ -90,6 +90,8 @@ class MobileNetConfig(base_config.Config):
       num_classes: number of predicted classes. If 0 or None, the logits layer
         is omitted and the input features to the logits layer (before dropout)
         are returned instead.
+      input_shape: the input shape of the images. Default values set align to
+      imagenet.
       min_depth: Minimum depth value (number of channels) for all convolution ops.
         Enforced when width_multiplier < 1, and not an active constraint when
         width_multiplier >= 1.
@@ -127,6 +129,7 @@ class MobileNetConfig(base_config.Config):
   """
   name: Text = 'MobileNet'
   num_classes: int = 1001
+  input_shape: Tuple[int, int, int] = (224, 224, 3)
   # model specific
   min_depth: int = 8
   width_multiplier: float = 1.0

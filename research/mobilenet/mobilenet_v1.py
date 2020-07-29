@@ -30,7 +30,6 @@ As described in https://arxiv.org/abs/1704.04861.
 """
 
 import logging
-from typing import Tuple
 
 import tensorflow as tf
 
@@ -42,12 +41,12 @@ layers = tf.keras.layers
 MobileNetV1Config = archs.MobileNetV1Config
 
 
-def mobilenet_v1(input_shape: Tuple[int, int, int] = (224, 224, 3),
-                 config: MobileNetV1Config = MobileNetV1Config()
+def mobilenet_v1(config: MobileNetV1Config = MobileNetV1Config()
                  ) -> tf.keras.models.Model:
   """Instantiates the MobileNet Model."""
 
   model_name = config.name
+  input_shape = config.input_shape
 
   img_input = layers.Input(shape=input_shape, name='Input')
 

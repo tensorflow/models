@@ -17,7 +17,7 @@
 
 import os
 import logging
-from typing import Mapping, Text, Any, Type, List, Dict
+from typing import Mapping, Text, Any, Type, List, Dict, Optional
 
 from absl import app
 from absl import flags
@@ -311,18 +311,19 @@ def get_dataset(config: dataset_factory.DatasetConfig,
 
 
 def build_model(model_name: Text,
-                dataset_config: dataset_factory.DatasetConfig,
-                model_config: archs.MobileNetConfig
+                model_config: archs.MobileNetConfig,
+                dataset_config: Optional[dataset_factory.DatasetConfig] = None,
                 ) -> tf.keras.models.Model:
   """Build mobilenet model given configuration"""
 
   model_build_function = _get_model_builder().get(model_name)
   if model_build_function:
-    image_size = dataset_config.image_size
-    channels = dataset_config.num_channels
-    model_config.num_classes = dataset_config.num_classes
-    return model_build_function(input_shape=(image_size, image_size, channels),
-                                config=model_config)
+    if dataset_config:
+      image_size = dataset_config.image_size
+      channels = dataset_config.num_channels
+      model_config.input_shape = (image_size, image_size, channels)
+      model_config.num_classes = dataset_config.num_classes
+    return model_build_function(config=model_config)
   else:
     raise ValueError('The model {} is not supported.'.format(model_name))
 
