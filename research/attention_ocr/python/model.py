@@ -665,10 +665,10 @@ class Model(object):
     # TODO(gorban): uncomment, when tf.summary.text released.
     charset_mapper = CharsetMapper(charset)
     pr_text = charset_mapper.get_text(
-        endpoints.predicted_chars[:max_outputs,:])
-    tf.summary.text(sname('text/pr'), pr_text)
-    gt_text = charset_mapper.get_text(data.labels[:max_outputs,:])
-    tf.summary.text(sname('text/gt'), gt_text)
+        endpoints.predicted_chars[:max_outputs, :])
+    tf.compat.v1.summary.text(sname('text/pr'), pr_text)
+    gt_text = charset_mapper.get_text(data.labels[:max_outputs, :])
+    tf.compat.v1.summary.text(sname('text/gt'), gt_text)
     tf.compat.v1.summary.image(
         sname('image'), data.images, max_outputs=max_outputs)
 
