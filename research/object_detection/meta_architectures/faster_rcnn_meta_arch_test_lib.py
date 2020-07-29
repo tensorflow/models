@@ -23,6 +23,7 @@ import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 from object_detection.anchor_generators import grid_anchor_generator
+from object_detection.anchor_generators import multiscale_grid_anchor_generator
 from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
 from object_detection.builders import post_processing_builder
@@ -297,13 +298,25 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
 
     # anchors in this test are designed so that a subset of anchors are inside
     # the image and a subset of anchors are outside.
-    first_stage_anchor_scales = (0.001, 0.005, 0.1)
-    first_stage_anchor_aspect_ratios = (0.5, 1.0, 2.0)
-    first_stage_anchor_strides = (1, 1)
-    first_stage_anchor_generator = grid_anchor_generator.GridAnchorGenerator(
-        first_stage_anchor_scales,
-        first_stage_anchor_aspect_ratios,
-        anchor_stride=first_stage_anchor_strides)
+    first_stage_anchor_generator = None
+    if multi_level:
+      min_level = 0
+      max_level = 1
+      anchor_scale = 0.1
+      aspect_ratios = [1.0, 2.0, 0.5]
+      scales_per_octave = 2
+      normalize_coordinates = False
+      first_stage_anchor_generator = multiscale_grid_anchor_generator.MultiscaleGridAnchorGenerator(
+        min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+        normalize_coordinates)
+    else:
+      first_stage_anchor_scales = (0.001, 0.005, 0.1)
+      first_stage_anchor_aspect_ratios = (0.5, 1.0, 2.0)
+      first_stage_anchor_strides = (1, 1)
+      first_stage_anchor_generator = grid_anchor_generator.GridAnchorGenerator(
+          first_stage_anchor_scales,
+          first_stage_anchor_aspect_ratios,
+          anchor_stride=first_stage_anchor_strides)
     first_stage_target_assigner = target_assigner.create_target_assigner(
         'FasterRCNN',
         'proposal',
@@ -572,8 +585,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
   def test_predict_shape_in_inference_mode_first_stage_only_multi_level(
       self, use_static_shapes=False):
     batch_size = 2
-    height = 10
-    width = 12
+    height = 50
+    width = 52
     input_image_shape = (batch_size, height, width, 3)
 
     with test_utils.GraphContextOrNone() as g:
@@ -604,7 +617,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     # pruned.  Since MockFasterRCNN.extract_proposal_features returns a
     # tensor with the same shape as its input, the expected number of anchors
     # is height * width * the number of anchors per location (i.e. 3x3).
-    expected_num_anchors = height * width * 3 * 3
+    expected_num_anchors = ((height-2) * (width-2) + (height-4) * (width-4)) * 6
     expected_output_shapes = {
         'rpn_box_predictor_features_0': (batch_size, height-2, width-2, 512),
         'rpn_box_predictor_features_1': (batch_size, height-4, width-4, 512),
@@ -613,16 +626,13 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         'rpn_box_encodings': (batch_size, expected_num_anchors, 4),
         'rpn_objectness_predictions_with_background':
         (batch_size, expected_num_anchors, 2),
-        'anchors': (expected_num_anchors, 4)
+        'anchors': (18300, 4)
     }
-    print(expected_output_shapes)
 
     if use_static_shapes:
       results = self.execute(graph_fn, [images], graph=g)
     else:
       results = self.execute_cpu(graph_fn, [images], graph=g)
-    print(results)
-    self.assertAllEqual(0, 1)
 
     self.assertAllEqual(results[0].shape,
                         expected_output_shapes['rpn_box_predictor_features_0'])
