@@ -55,7 +55,7 @@ import threading
 
 import numpy as np
 import six
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 try:
   import apache_beam as beam  # pylint:disable=g-import-not-at-top
@@ -95,27 +95,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     # one instance across all threads in the worker. This is possible since
     # tf.Session.run() is thread safe.
     with self.session_lock:
-      if self._session is None:
-        graph = tf.Graph()
-        self._session = tf.Session(graph=graph)
-        with graph.as_default():
-          meta_graph = tf.saved_model.loader.load(
-              self._session, [tf.saved_model.tag_constants.SERVING],
-              self._model_dir)
-        signature = meta_graph.signature_def['serving_default']
-        input_tensor_name = signature.inputs['inputs'].name
-        detection_features_name = signature.outputs['detection_features'].name
-        detection_boxes_name = signature.outputs['detection_boxes'].name
-        num_detections_name = signature.outputs['num_detections'].name
-        self._input = graph.get_tensor_by_name(input_tensor_name)
-        self._embedding_node = graph.get_tensor_by_name(detection_features_name)
-        self._box_node = graph.get_tensor_by_name(detection_boxes_name)
-        self._scores_node = graph.get_tensor_by_name(
-            signature.outputs['detection_scores'].name)
-        self._num_detections = graph.get_tensor_by_name(num_detections_name)
-        tf.logging.info(signature.outputs['detection_features'].name)
-        tf.logging.info(signature.outputs['detection_boxes'].name)
-        tf.logging.info(signature.outputs['num_detections'].name)
+      self._detect_fn = tf.saved_model.load(self._model_dir)
 
   def process(self, tfrecord_entry):
     return self._run_inference_and_generate_embedding(tfrecord_entry)
@@ -184,13 +164,12 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     example.features.feature['image/unix_time'].float_list.value.extend(
         [unix_time])
 
-    (detection_features, detection_boxes, num_detections,
-     detection_scores) = self._session.run(
-         [
-             self._embedding_node, self._box_node, self._num_detections[0],
-             self._scores_node
-         ],
-         feed_dict={self._input: [tfrecord_entry]})
+    detections = self._detect_fn.signatures['serving_default'](
+        (tf.expand_dims(tf.convert_to_tensor(tfrecord_entry), 0)))
+    detection_features = detections['detection_features']
+    detection_boxes = detections['detection_boxes']
+    num_detections = detections['num_detections']
+    detection_scores = detections['detection_scores']
 
     num_detections = int(num_detections)
     embed_all = []

@@ -25,9 +25,11 @@ import unittest
 import numpy as np
 
 from PIL import Image
-import tensorflow.compat.v1 as tf
-from object_detection.dataset_tools.context_rcnn import create_cococameratraps_tfexample_main
+import tensorflow as tf
 from object_detection.utils import tf_version
+
+if tf_version.is_tf2():
+  from object_detection.dataset_tools.context_rcnn import create_cococameratraps_tfexample_main  # pylint:disable=g-import-not-at-top
 
 try:
   import apache_beam as beam  # pylint:disable=g-import-not-at-top
@@ -35,7 +37,7 @@ except ModuleNotFoundError:
   pass
 
 
-@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
+@unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
 
   IMAGE_HEIGHT = 360
@@ -175,7 +177,8 @@ class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
     p.run()
     filenames = tf.io.gfile.glob(output_tfrecord + '-?????-of-?????')
     actual_output = []
-    record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
+    record_iterator = tf.data.TFRecordDataset(
+        tf.convert_to_tensor(filenames)).as_numpy_iterator()
     for record in record_iterator:
       actual_output.append(record)
     self.assertEqual(len(actual_output), num_frames)
@@ -198,7 +201,8 @@ class CreateCOCOCameraTrapsTfexampleTest(tf.test.TestCase):
     p.run()
     filenames = tf.io.gfile.glob(output_tfrecord+'-?????-of-?????')
     actual_output = []
-    record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
+    record_iterator = tf.data.TFRecordDataset(
+        tf.convert_to_tensor(filenames)).as_numpy_iterator()
     for record in record_iterator:
       actual_output.append(record)
     self.assertEqual(len(actual_output), num_frames)
