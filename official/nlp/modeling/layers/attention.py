@@ -521,7 +521,7 @@ class CachedAttention(MultiHeadAttention):
     if cache:
       key, value = self._update_cache(key, value, cache, decode_loop_step)
 
-    query = tf.multiply(query,1.0 / math.sqrt(float(self._key_size)))
+    query = tf.multiply(query, 1.0 / math.sqrt(float(self._key_size)))
 
     # Take the dot product between "query" and "key" to get the raw
     # attention scores.
