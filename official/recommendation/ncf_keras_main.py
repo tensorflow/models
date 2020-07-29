@@ -488,19 +488,19 @@ def run_ncf_custom_training(params,
         c.on_batch_end(current_step)
 
     train_loss /= num_train_steps
-    logging.info("Done training epoch %s, epoch loss=%s.", epoch + 1,
+    logging.info("Done training epoch %s, epoch loss=%.3f", epoch + 1,
                  train_loss)
 
-    eval_input_iterator = iter(
-        strategy.experimental_distribute_dataset(eval_input_dataset))
-    hr_sum = 0
-    hr_count = 0
+    eval_input_iterator = iter(eval_input_dataset)
+
+    hr_sum = 0.0
+    hr_count = 0.0
     for _ in range(num_eval_steps):
       step_hr_sum, step_hr_count = eval_step(eval_input_iterator)
       hr_sum += step_hr_sum
       hr_count += step_hr_count
 
-    logging.info("Done eval epoch %s, hit_rate=%s.", epoch + 1,
+    logging.info("Done eval epoch %s, hit_rate=%.3f", epoch + 1,
                  hr_sum / hr_count)
     if eval_summary_writer:
       with eval_summary_writer.as_default():

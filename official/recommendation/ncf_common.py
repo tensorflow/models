@@ -94,7 +94,7 @@ def parse_flags(flags_obj):
       "beta2": flags_obj.beta2,
       "epsilon": flags_obj.epsilon,
       "match_mlperf": flags_obj.ml_perf,
-      "epochs_between_evals": FLAGS.epochs_between_evals,
+      "epochs_between_evals": flags_obj.epochs_between_evals,
       "keras_use_ctl": flags_obj.keras_use_ctl,
       "hr_threshold": flags_obj.hr_threshold,
       "stream_files": flags_obj.tpu is not None,

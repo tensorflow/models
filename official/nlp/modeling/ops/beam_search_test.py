@@ -14,32 +14,18 @@
 # ==============================================================================
 """Test beam search helper methods."""
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
-from official.nlp.transformer import beam_search_v1 as beam_search
+from official.nlp.modeling.ops import beam_search
 
 
 class BeamSearchHelperTests(tf.test.TestCase):
 
-  def setUp(self):
-    super(BeamSearchHelperTests, self).setUp()
-    tf.compat.v1.disable_eager_execution()
-
   def test_expand_to_beam_size(self):
     x = tf.ones([7, 4, 2, 5])
     x = beam_search._expand_to_beam_size(x, 3)
-    with self.session() as sess:
-      shape = sess.run(tf.shape(x))
+    shape = tf.shape(x)
     self.assertAllEqual([7, 3, 4, 2, 5], shape)
-
-  def test_shape_list(self):
-    y = tf.compat.v1.placeholder(dtype=tf.int32, shape=[])
-    x = tf.ones([7, y, 2, 5])
-    shape = beam_search._shape_list(x)
-    self.assertIsInstance(shape[0], int)
-    self.assertIsInstance(shape[1], tf.Tensor)
-    self.assertIsInstance(shape[2], int)
-    self.assertIsInstance(shape[3], int)
 
   def test_get_shape_keep_last_dim(self):
     y = tf.constant(4.0)
@@ -51,16 +37,12 @@ class BeamSearchHelperTests(tf.test.TestCase):
   def test_flatten_beam_dim(self):
     x = tf.ones([7, 4, 2, 5])
     x = beam_search._flatten_beam_dim(x)
-    with self.session() as sess:
-      shape = sess.run(tf.shape(x))
-    self.assertAllEqual([28, 2, 5], shape)
+    self.assertAllEqual([28, 2, 5], tf.shape(x))
 
   def test_unflatten_beam_dim(self):
     x = tf.ones([28, 2, 5])
     x = beam_search._unflatten_beam_dim(x, 7, 4)
-    with self.session() as sess:
-      shape = sess.run(tf.shape(x))
-    self.assertAllEqual([7, 4, 2, 5], shape)
+    self.assertAllEqual([7, 4, 2, 5], tf.shape(x))
 
   def test_gather_beams(self):
     x = tf.reshape(tf.range(24), [2, 3, 4])
@@ -73,9 +55,6 @@ class BeamSearchHelperTests(tf.test.TestCase):
     #                  [20 21 22 23]]]
 
     y = beam_search._gather_beams(x, [[1, 2], [0, 2]], 2, 2)
-    with self.session() as sess:
-      y = sess.run(y)
-
     self.assertAllEqual([[[4, 5, 6, 7],
                           [8, 9, 10, 11]],
                          [[12, 13, 14, 15],
@@ -87,9 +66,6 @@ class BeamSearchHelperTests(tf.test.TestCase):
     x_scores = [[0, 1, 1], [1, 0, 1]]
 
     y = beam_search._gather_topk_beams(x, x_scores, 2, 2)
-    with self.session() as sess:
-      y = sess.run(y)
-
     self.assertAllEqual([[[4, 5, 6, 7],
                           [8, 9, 10, 11]],
                          [[12, 13, 14, 15],

@@ -255,7 +255,7 @@ def define_keras_flags(
       name='tpu', default='', help='TPU address to connect to.')
   flags.DEFINE_integer(
       name='steps_per_loop',
-      default=500,
+      default=None,
       help='Number of steps per training loop. Only training step happens '
       'inside the loop. Callbacks will not be called inside. Will be capped at '
       'steps per epoch.')

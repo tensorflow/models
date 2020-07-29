@@ -23,6 +23,7 @@ import os
 import time
 
 import tensorflow.compat.v1 as tf
+import tensorflow.compat.v2 as tf2
 
 from object_detection import eval_util
 from object_detection import inputs
@@ -117,7 +118,8 @@ def _compute_losses_and_predictions_dicts(
 
   prediction_dict = model.predict(
       preprocessed_images,
-      features[fields.InputDataFields.true_image_shape])
+      features[fields.InputDataFields.true_image_shape],
+      **model.get_side_inputs(features))
   prediction_dict = ops.bfloat16_to_float32_nested(prediction_dict)
 
   losses_dict = model.loss(
@@ -415,6 +417,7 @@ def train_loop(
     save_final_config=False,
     checkpoint_every_n=1000,
     checkpoint_max_to_keep=7,
+    record_summaries=True,
     **kwargs):
   """Trains a model using eager + functions.
 
@@ -444,6 +447,7 @@ def train_loop(
       Checkpoint every n training steps.
     checkpoint_max_to_keep:
       int, the number of most recent checkpoints to keep in the model directory.
+    record_summaries: Boolean, whether or not to record summaries.
     **kwargs: Additional keyword arguments for configuration override.
   """
   ## Parse the configs
@@ -530,8 +534,11 @@ def train_loop(
   # is the chief.
   summary_writer_filepath = get_filepath(strategy,
                                          os.path.join(model_dir, 'train'))
-  summary_writer = tf.compat.v2.summary.create_file_writer(
-      summary_writer_filepath)
+  if record_summaries:
+    summary_writer = tf.compat.v2.summary.create_file_writer(
+        summary_writer_filepath)
+  else:
+    summary_writer = tf2.summary.create_noop_writer()
 
   if use_tpu:
     num_steps_per_iteration = 100
@@ -603,7 +610,9 @@ def train_loop(
 
           if num_steps_per_iteration > 1:
             for _ in tf.range(num_steps_per_iteration - 1):
-              _sample_and_train(strategy, train_step_fn, data_iterator)
+              # Following suggestion on yaqs/5402607292645376
+              with tf.name_scope(''):
+                _sample_and_train(strategy, train_step_fn, data_iterator)
 
           return _sample_and_train(strategy, train_step_fn, data_iterator)
 
@@ -854,6 +863,7 @@ def eval_continuously(
     checkpoint_dir=None,
     wait_interval=180,
     timeout=3600,
+    eval_index=None,
     **kwargs):
   """Run continuous evaluation of a detection model eagerly.
 
@@ -883,6 +893,8 @@ def eval_continuously(
       new checkpoint.
     timeout: The maximum number of seconds to wait for a checkpoint. Execution
       will terminate if no new checkpoints are found after these many seconds.
+    eval_index: int, optional If give, only evaluate the dataset at the given
+      index.
 
     **kwargs: Additional keyword arguments for configuration override.
   """
@@ -935,6 +947,11 @@ def eval_continuously(
         model_config=model_config,
         model=detection_model)
     eval_inputs.append((eval_input_config.name, next_eval_input))
+
+  if eval_index is not None:
+    eval_inputs = [eval_inputs[eval_index]]
+    tf.logging.info('eval_index selected - {}'.format(
+        eval_inputs))
 
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)
