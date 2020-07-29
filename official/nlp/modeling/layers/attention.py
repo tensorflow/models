@@ -523,9 +523,8 @@ class CachedAttention(MultiHeadAttention):
 
     # Take the dot product between "query" and "key" to get the raw
     # attention scores.
+    query = tf.multiply(query,1.0 / math.sqrt(float(self._key_size)))
     attention_scores = tf.einsum(self._dot_product_equation, key, query)
-    attention_scores = tf.multiply(attention_scores,
-                                   1.0 / math.sqrt(float(self._key_size)))
 
     # Normalize the attention scores to probabilities.
     # `attention_scores` = [B, N, F, T]
