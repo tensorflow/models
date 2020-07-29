@@ -49,6 +49,10 @@ class Transformer(tf.keras.layers.Layer):
     activity_regularizer: Regularizer for dense layer activity.
     kernel_constraint: Constraint for dense layer kernels.
     bias_constraint: Constraint for dense layer kernels.
+    use_bias: Whether to enable use_bias in attention layer.
+    norm_first: Whether to normalize inputs to attention and intermediate dense
+      layers.
+    norm_epsilon: Epsilon value to initialize normalization layers.
   """
 
   def __init__(self,
@@ -277,6 +281,10 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
     activity_regularizer: Regularizer for dense layer activity.
     kernel_constraint: Constraint for dense layer kernels.
     bias_constraint: Constraint for dense layer kernels.
+    use_bias: Whether to enable use_bias in attention layer.
+    norm_first: Whether to normalize inputs to attention and intermediate dense
+      layers.
+    norm_epsilon: Epsilon value to initialize normalization layers.
   """
 
   def __init__(self,
