@@ -604,7 +604,7 @@ def train_loop(
           return strategy.reduce(tf.distribute.ReduceOp.SUM,
                                  per_replica_losses, axis=None)
 
-        @tf.function
+        #@tf.function
         def _dist_train_step(data_iterator):
           """A distributed train step."""
 
