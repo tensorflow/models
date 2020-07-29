@@ -60,8 +60,7 @@ class BlockType(enum.Enum):
   Conv = 'Conv'
   DepSepConv = 'DepSepConv'
   InvertedResConv = 'InvertedResConv'
-  FusedInvertedResConv = 'FusedInvertedResConv'
-  GobalPooling = 'GlobalPooling'
+  GlobalPooling = 'GlobalPooling'
 
 
 @dataclass
@@ -480,7 +479,7 @@ class MobileNetV3LargeConfig(MobileNetConfig):
       activation_name='hard_swish',
       block_type=BlockType.Conv.value),
     MobileNetBlockConfig.from_args(
-      block_type=BlockType.GobalPooling.value),
+      block_type=BlockType.GlobalPooling.value),
     MobileNetBlockConfig.from_args(
       kernel=(1, 1), stride=1, filters=1280,
       activation_name='hard_swish',
@@ -604,7 +603,7 @@ class MobileNetV3SmallConfig(MobileNetConfig):
       activation_name='hard_swish',
       block_type=BlockType.Conv.value),
     MobileNetBlockConfig.from_args(
-      block_type=BlockType.GobalPooling.value),
+      block_type=BlockType.GlobalPooling.value),
     MobileNetBlockConfig.from_args(
       kernel=(1, 1), stride=1, filters=1024,
       activation_name='hard_swish',
