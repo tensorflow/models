@@ -1,0 +1,53 @@
+// Policy Role for Code Deploy
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "autoscaling:PutLifecycleHook",
+        "autoscaling:DeleteLifecycleHook",
+        "autoscaling:RecordLifecycleActionHeartbeat",
+        "autoscaling:CompleteLifecycleAction",
+        "autoscaling:DescribeAutoscalingGroups",
+        "autoscaling:PutInstanceInStandby",
+        "autoscaling:PutInstanceInService",
+        "ec2:Describe*"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+
+// Policy Trust for Code Deploy
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": [
+          "codedeploy.us-west-2.amazonaws.com",
+          "codedeploy.us-east-1.amazonaws.com"
+        ]
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+
+// Instance Role for EC2 Instance
+{ 
+    "Version": "2012-10-17", 
+    "Statement": [   
+      {     
+          "Action": [       
+              "s3:Get*",       
+              "s3:List*"     
+          ],     
+          "Effect": "Allow",     
+          "Resource": "*"   
+      } 
+    ]
+}
