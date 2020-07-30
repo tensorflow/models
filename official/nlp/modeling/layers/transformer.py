@@ -119,12 +119,6 @@ class Transformer(tf.keras.layers.Layer):
         dropout=self._attention_dropout_rate,
         name="self_attention",
         **common_kwargs)
-    # pylint: disable=protected-access
-    # Temporarily handling for checkpoint compatible changes.
-    self._attention_layer._build_from_signature(
-        query=input_tensor_shape, value=input_tensor_shape)
-    self._attention_output_dense = self._attention_layer._output_dense
-    # pylint: enable=protected-access
     self._attention_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
