@@ -221,7 +221,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
 @keras_parameterized.run_all_keras_modes
 class TransformerArgumentTest(keras_parameterized.TestCase):
 
-  def test_use_bias(self):
+  def test_use_bias_norm_first(self):
     num_attention_heads = 2
     hidden_size = 16
     encoder_block = transformer.Transformer(
@@ -289,7 +289,7 @@ class TransformerDecoderLayerTest(keras_parameterized.TestCase):
     self.assertEqual(output.shape, (2, 4, hidden_size))
     self.assertEqual(cache['value'].shape, (2, 4, 2, 8))
 
-  def test_use_bias(self):
+  def test_use_bias_norm_first(self):
     num_attention_heads = 2
     hidden_size = 16
     decoder_block = transformer.TransformerDecoderLayer(
