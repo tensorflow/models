@@ -34,13 +34,15 @@ class Config(object):
 
     TRAIN = {
         'FLAG': True,
-        'BATCH_SIZE': 16,
+        'BATCH_SIZE': 64,
         'MAX_EPOCH': 600,
         'HARDNEG_MAX_ITER': 1500,
         'SNAPSHOT_INTERVAL': 4000,
         'SNAPSHOT_INTERVAL_HARDNEG': 500,
         'DISCRIMINATOR_LR': 0.0002,
-        'GENERATOR_LR': 0.0002
+        'GENERATOR_LR': 0.0002,
+        'VIS_COUNT': 64,
+        'BG_LOSS_WT': 10
     }
 
     GAN = {
@@ -50,7 +52,7 @@ class Config(object):
         'R_NUM': 2
     }
 
-    def __init__(self, batch_size=16):
+    def __init__(self, batch_size=64):
         self.BATCH_SIZE = batch_size
 
     def display(self):
