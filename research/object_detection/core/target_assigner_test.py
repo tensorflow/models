@@ -116,6 +116,57 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertEqual(reg_targets_out.dtype, np.float32)
     self.assertEqual(reg_weights_out.dtype, np.float32)
 
+  def test_assign_detr(self):
+    def graph_fn(anchor_means, groundtruth_box_corners,
+                 groundtruth_labels, predicted_labels):
+      similarity_calc = region_similarity_calculator.DETRSimilarity()
+      matcher = hungarian_matcher.HungarianBipartiteMatcher()
+      box_coder = detr_box_coder.DETRBoxCoder()
+      target_assigner = targetassigner.TargetAssigner(
+          similarity_calc, matcher, box_coder)
+      anchors_boxlist = box_list.BoxList(anchor_means)
+      groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
+      result = target_assigner.assign(
+          anchors_boxlist, groundtruth_boxlist,
+          unmatched_class_label=tf.constant(
+              [1, 0], dtype=tf.float32),
+          groundtruth_labels=groundtruth_labels,
+          class_predictions=predicted_labels)
+      (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
+      return (cls_targets, cls_weights, reg_targets, reg_weights)
+
+    anchor_means = np.array([[0.0, 0.0, 0.4, 0.2],
+                             [0.5, 0.5, 1.0, 0.8],
+                             [0.9, 0.5, 0.1, 1.0]], dtype=np.float32)
+    groundtruth_box_corners = np.array([[0.0, 0.0, 0.5, 0.5],
+                                        [0.5, 0.5, 0.9, 0.9]],
+                                       dtype=np.float32)
+    predicted_labels = np.array([[-3.0, 3.0], [2.0, 9.4], [5.0, 1.0]],
+                                dtype=np.float32)
+    groundtruth_labels = np.array([[0.0, 1.0], [0.0, 1.0]],
+                                  dtype=np.float32)
+    
+    exp_cls_targets = [[1], [1], [0]]
+    exp_cls_weights = [[1], [1], [1]]
+    exp_reg_targets = [[0.0, 0.0, 0.5, 0.5],
+                       [0.5, 0.5, 0.9, 0.9],
+                       [0, 0, 0, 0]]
+    exp_reg_weights = [1, 1, 0]
+
+    (cls_targets_out,
+     cls_weights_out, reg_targets_out, reg_weights_out) = self.execute(
+         graph_fn, [anchor_means, groundtruth_box_corners,
+                    groundtruth_labels, predicted_labels])
+    self.assertAllClose(cls_targets_out, exp_cls_targets)
+    self.assertAllClose(cls_weights_out, exp_cls_weights)
+    self.assertAllClose(reg_targets_out, exp_reg_targets)
+    self.assertAllClose(reg_weights_out, exp_reg_weights)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
+
+
   def test_assign_agnostic_with_keypoints(self):
     def graph_fn(anchor_means, groundtruth_box_corners,
                  groundtruth_keypoints):
@@ -1922,52 +1973,6 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
     expected_seg_target = np.zeros((1, 5, 5, 10))
     np.testing.assert_array_almost_equal(
         expected_seg_target, segmentation_target)
-
-  def test_assign_detr(self):
-    def graph_fn(anchor_means, groundtruth_box_corners,
-                 groundtruth_labels, predicted_labels):
-      similarity_calc = region_similarity_calculator.DETRSimilarity()
-      matcher = hungarian_matcher.HungarianBipartiteMatcher()
-      box_coder = detr_box_coder.DETRBoxCoder()
-      target_assigner = targetassigner.TargetAssigner(
-          similarity_calc, matcher, box_coder)
-      anchors_boxlist = box_list.BoxList(anchor_means)
-      groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
-      result = target_assigner.assign(
-          anchors_boxlist, groundtruth_boxlist, unmatched_class_label=None,
-          groundtruth_labels=groundtruth_labels, class_predictions=predicted_labels)
-      (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
-      return (cls_targets, cls_weights, reg_targets, reg_weights)
-
-    anchor_means = np.array([[0.0, 0.0, 0.4, 0.2],
-                             [0.5, 0.5, 1.0, 0.8],
-                             [0.9, 0.5, 0.1, 1.0]], dtype=np.float32)
-    groundtruth_box_corners = np.array([[0.0, 0.0, 0.5, 0.5],
-                                        [0.5, 0.5, 0.9, 0.9]],
-                                       dtype=np.float32)
-    predicted_labels = np.array([[-3, 3], [2, 9], [5, 1]])
-    groundtruth_labels = np.array([[0, 1], [0, 1]])
-    
-    exp_cls_targets = [[1], [1], [0]]
-    exp_cls_weights = [[1], [1], [1]]
-    exp_reg_targets = [[0.0, 0.0, 0.5, 0.5],
-                       [0.5, 0.5, 0.9, 0.9],
-                       [0, 0, 0, 0]]
-    exp_reg_weights = [1, 1, 0]
-
-    (cls_targets_out,
-     cls_weights_out, reg_targets_out, reg_weights_out) = self.execute(
-         graph_fn, [anchor_means, groundtruth_box_corners,
-                    groundtruth_labels, predicted_labels])
-    self.assertAllClose(cls_targets_out, exp_cls_targets)
-    self.assertAllClose(cls_weights_out, exp_cls_weights)
-    self.assertAllClose(reg_targets_out, exp_reg_targets)
-    self.assertAllClose(reg_weights_out, exp_reg_weights)
-    self.assertEqual(cls_targets_out.dtype, np.float32)
-    self.assertEqual(cls_weights_out.dtype, np.float32)
-    self.assertEqual(reg_targets_out.dtype, np.float32)
-    self.assertEqual(reg_weights_out.dtype, np.float32)
-
 
 class CenterNetDensePoseTargetAssignerTest(test_case.TestCase):
 
