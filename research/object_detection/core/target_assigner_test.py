@@ -19,6 +19,7 @@ import tensorflow.compat.v1 as tf
 
 from object_detection.box_coders import keypoint_box_coder
 from object_detection.box_coders import mean_stddev_box_coder
+from object_detection.box_coders import detr_box_coder
 from object_detection.core import box_list
 from object_detection.core import region_similarity_calculator
 from object_detection.core import standard_fields as fields
@@ -1927,7 +1928,7 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
                  groundtruth_labels, predicted_labels):
       similarity_calc = region_similarity_calculator.DETRSimilarity()
       matcher = hungarian_matcher.HungarianBipartiteMatcher()
-      box_coder = box
+      box_coder = detr_box_coder.DETRBoxCoder()
       target_assigner = targetassigner.TargetAssigner(
           similarity_calc, matcher, box_coder)
       anchors_boxlist = box_list.BoxList(anchor_means)

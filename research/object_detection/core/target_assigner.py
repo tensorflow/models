@@ -446,7 +446,7 @@ def create_target_assigner(reference, stage=None,
   elif reference == 'DETR':
     similarity_calc = sim_calc.DETRSimilarity()
     matcher = hungarian_matcher.HungarianBipartiteMatcher()
-    box_coder_instance = None
+    box_coder_instance = detr_box_coder.DETRBoxCoder()
 
   else:
     raise ValueError('No valid combination of reference and stage.')
@@ -481,6 +481,7 @@ def batch_assign(target_assigner,
       function (which have shape [num_gt_boxes, d_1, d_2, ..., d_k]).
     gt_weights_batch: A list of 1-D tf.float32 tensors of shape
       [num_boxes] containing weights for groundtruth boxes.
+    class_predictions: A 
 
   Returns:
     batch_cls_targets: a tensor with shape [batch_size, num_anchors,
@@ -521,7 +522,10 @@ def batch_assign(target_assigner,
   match_list = []
   if gt_weights_batch is None:
     gt_weights_batch = [None] * len(gt_class_targets_batch)
-  class_predictions = tf.unstack(class_predictions)
+  if class_predictions:
+    class_predictions = tf.unstack(class_predictions)
+  else:
+    class_predictions = [None] * len(gt_class_targets_batch)
   for anchors, gt_boxes, gt_class_targets, gt_weights, class_preds in zip(
       anchors_batch, gt_box_batch, gt_class_targets_batch, gt_weights_batch,
       class_predictions):
