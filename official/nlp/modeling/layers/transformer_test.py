@@ -152,10 +152,8 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     _ = new_layer([input_data, mask_data])
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor = new_layer([input_data, mask_data])
-    self.assertAllClose(new_output_tensor,
-                        output_tensor[:, 0:1, :],
-                        atol=5e-5,
-                        rtol=0.003)
+    self.assertAllClose(
+        new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
 
   def test_layer_invocation_with_float16_dtype(self, transformer_cls):
     tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
@@ -218,6 +216,45 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     self.assertAllEqual([1, input_length, width], output_data.shape)
 
 
+@keras_parameterized.run_all_keras_modes
+class TransformerArgumentTest(keras_parameterized.TestCase):
+
+  def test_use_bias_norm_first(self):
+    num_attention_heads = 2
+    hidden_size = 16
+    encoder_block = transformer.Transformer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6)
+    # Forward path.
+    dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
+    inputs = [dummy_tensor, dummy_mask]
+    output = encoder_block(inputs)
+    self.assertEqual(output.shape, (2, 4, hidden_size))
+
+  def test_get_config(self):
+    num_attention_heads = 2
+    encoder_block = transformer.Transformer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6)
+    encoder_block_config = encoder_block.get_config()
+    new_encoder_block = transformer.Transformer.from_config(
+        encoder_block_config)
+    self.assertEqual(encoder_block_config, new_encoder_block.get_config())
+
+
 def _create_cache(batch_size, init_decode_length, num_heads, head_size):
   return {
       'key':
@@ -250,6 +287,41 @@ class TransformerDecoderLayerTest(keras_parameterized.TestCase):
     output, cache = decoder_block(inputs, cache)
     self.assertEqual(output.shape, (2, 4, hidden_size))
     self.assertEqual(cache['value'].shape, (2, 4, 2, 8))
+
+  def test_use_bias_norm_first(self):
+    num_attention_heads = 2
+    hidden_size = 16
+    decoder_block = transformer.TransformerDecoderLayer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6)
+    # Forward path.
+    dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
+    inputs = [dummy_tensor, dummy_tensor, dummy_mask, dummy_mask]
+    output, _ = decoder_block(inputs)
+    self.assertEqual(output.shape, (2, 4, hidden_size))
+
+  def test_get_config(self):
+    num_attention_heads = 2
+    decoder_block = transformer.TransformerDecoderLayer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6)
+    decoder_block_config = decoder_block.get_config()
+    new_decoder_block = transformer.TransformerDecoderLayer.from_config(
+        decoder_block_config)
+    self.assertEqual(decoder_block_config, new_decoder_block.get_config())
 
 
 if __name__ == '__main__':
