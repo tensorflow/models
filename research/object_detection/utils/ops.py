@@ -1185,7 +1185,7 @@ def giou(boxes1, boxes2):
 
   return shape_utils.static_or_dynamic_map_fn(two_boxes_giou, [boxes1, boxes2])
 
-def cy_cx_h_w_to_ymin_xmin_ymax_xmax_coords(input_tensor):
+def cy_cx_h_w_to_ymin_xmin_ymax_xmax(input_tensor):
   """Converts input boxes from center to corner representation."""
   reshaped_encodings = tf.reshape(input_tensor, [-1, 4])
   ycenter = tf.gather(reshaped_encodings, [0], axis=1)

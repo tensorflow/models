@@ -142,8 +142,8 @@ class TargetAssigner(object):
         aware of groundtruth weights. Additionally, `cls_weights` and
         `reg_weights` are calculated using groundtruth weights as an added
         safety.
-      class_predictions: a float tensor of shape [N, num_classes] containing class
-        predictions from the model, to be used in certain matchers.
+      class_predictions: A tensor with shape [max_num_boxes, d_1, d_2, ..., d_k]
+        to be used by certain similarity calculators.
 
     Returns:
       cls_targets: a float32 tensor with shape [num_anchors, d_1, d_2 ... d_k],
@@ -200,10 +200,11 @@ class TargetAssigner(object):
     with tf.control_dependencies(
         [unmatched_shape_assert, labels_and_box_shapes_assert]):
       
-      match_quality_matrix = self._similarity_calc.compare(groundtruth_boxes,
-                                                           anchors,
-                                                           groundtruth_labels=groundtruth_labels,
-                                                           predicted_labels=class_predictions)
+      match_quality_matrix = self._similarity_calc.compare(
+          groundtruth_boxes,
+          anchors,
+          groundtruth_labels=groundtruth_labels,
+          predicted_labels=class_predictions)
       match = self._matcher.match(match_quality_matrix,
                                   valid_rows=tf.greater(groundtruth_weights, 0))
 
@@ -481,7 +482,8 @@ def batch_assign(target_assigner,
       function (which have shape [num_gt_boxes, d_1, d_2, ..., d_k]).
     gt_weights_batch: A list of 1-D tf.float32 tensors of shape
       [num_boxes] containing weights for groundtruth boxes.
-    class_predictions: A 
+    class_predictions: A tensor with shape [batch_size, max_num_boxes,
+      d_1, d_2, ..., d_k] to be used by certain similarity calculators.
 
   Returns:
     batch_cls_targets: a tensor with shape [batch_size, num_anchors,
@@ -531,8 +533,8 @@ def batch_assign(target_assigner,
       class_predictions):
     (cls_targets, cls_weights,
      reg_targets, reg_weights, match) = target_assigner.assign(
-         anchors, gt_boxes, gt_class_targets, unmatched_class_label, gt_weights,
-         class_preds)
+         anchors, gt_boxes, gt_class_targets, unmatched_class_label,
+         gt_weights, class_preds)
     cls_targets_list.append(cls_targets)
     cls_weights_list.append(cls_weights)
     reg_targets_list.append(reg_targets)

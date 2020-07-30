@@ -34,7 +34,8 @@ from object_detection.core import standard_fields as fields
 class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
   """Abstract base class for region similarity calculator."""
 
-  def compare(self, boxlist1, boxlist2, scope=None, groundtruth_labels=None, predicted_labels=None):
+  def compare(self, boxlist1, boxlist2, scope=None,
+              groundtruth_labels=None, predicted_labels=None):
     """Computes matrix of pairwise similarity between BoxLists.
 
     This op (to be overridden) computes a measure of pairwise similarity between
@@ -59,7 +60,8 @@ class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
       return self._compare(boxlist1, boxlist2, groundtruth_labels, predicted_labels)
 
   @abstractmethod
-  def _compare(self, boxlist1, boxlist2, groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2,
+               groundtruth_labels=None, predicted_labels=None):
     pass
 
 

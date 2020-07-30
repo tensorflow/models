@@ -225,7 +225,7 @@ class WeightedGIOULocalizationLoss(Loss):
 
     Args:
       prediction_tensor: A float tensor of shape [batch_size, num_anchors, 4]
-        representing the decoded predicted boxes
+        representing the predicted boxes in the form
       target_tensor: A float tensor of shape [batch_size, num_anchors, 4]
         representing the decoded target boxes
       weights: a float tensor of shape [batch_size, num_anchors]
@@ -236,10 +236,8 @@ class WeightedGIOULocalizationLoss(Loss):
     """
     batch_size, num_anchors, _ = shape_utils.combined_static_and_dynamic_shape(
         prediction_tensor)
-    predicted_boxes = ops.cy_cx_h_w_to_ymin_xmin_ymax_xmax_coords(
-        tf.reshape(prediction_tensor, [-1, 4]))
-    target_boxes = ops.cy_cx_h_w_to_ymin_xmin_ymax_xmax_coords(
-        tf.reshape(target_tensor, [-1, 4]))
+    predicted_boxes = tf.reshape(prediction_tensor, [-1, 4])
+    target_boxes = tf.reshape(target_tensor, [-1, 4])
 
     per_anchor_iou_loss = 1 - ops.giou(predicted_boxes, target_boxes)
     return tf.reshape(tf.reshape(weights, [-1]) * per_anchor_iou_loss,

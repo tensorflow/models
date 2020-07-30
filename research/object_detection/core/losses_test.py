@@ -28,6 +28,7 @@ from object_detection.core import box_list
 from object_detection.core import losses
 from object_detection.core import matcher
 from object_detection.utils import test_case
+from object_detection.utils import ops
 
 
 class WeightedL2LocalizationLossTest(test_case.TestCase):
@@ -206,10 +207,12 @@ class WeightedGIOULocalizationLossTest(test_case.TestCase):
                                         [0, 0, 0, 0]]])
       target_tensor = tf.constant([[[1.5, 0, 2.4, 1],
                                     [0, 0, 1, 1],
-                                    [7.5, 7.5, 2.5, 2.5]]])
+                                    [5, 5, 10, 10]]])
       weights = [[1.0, .5, 2.0]]
       loss_op = losses.WeightedGIOULocalizationLoss()
-      loss = loss_op(prediction_tensor, target_tensor, weights=weights)
+      loss = loss_op(prediction_tensor,
+                     target_tensor,
+                     weights=weights)
       loss = tf.reduce_sum(loss)
       return loss
     exp_loss = 3.5

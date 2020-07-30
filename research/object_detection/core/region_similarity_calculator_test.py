@@ -102,7 +102,8 @@ class RegionSimilarityCalculatorTest(test_case.TestCase):
       boxes1 = box_list.BoxList(corners1)
       boxes2 = box_list.BoxList(corners2)
       detr_similarity_calculator = region_similarity_calculator.DETRSimilarity()
-      detr_similarity = detr_similarity_calculator.compare(boxes1, boxes2, None, groundtruth_labels, predicted_labels)
+      detr_similarity = detr_similarity_calculator.compare(
+          boxes1, boxes2, None, groundtruth_labels, predicted_labels)
       return detr_similarity
     exp_output = [[2.0, -2.0/3.0 + 1.0 - 20.0]]
     sim_output = self.execute(graph_fn, [])

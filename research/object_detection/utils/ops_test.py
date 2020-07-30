@@ -1664,7 +1664,7 @@ class TestCoordinateConversion(test_case.TestCase):
     def graph_fn():
       boxes = tf.constant([[3, 3, 5, 5], [3, 4, 2, 6]], dtype=tf.float32)
 
-      converted = ops.cy_cx_h_w_to_ymin_xmin_ymax_xmax_coords(boxes)
+      converted = ops.cy_cx_h_w_to_ymin_xmin_ymax_xmax(boxes)
       self.assertEqual(converted.dtype, tf.float32)
 
       return converted
