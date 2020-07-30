@@ -17,7 +17,13 @@
 
 import os
 import time
+import PIL
+import pickle
 import numpy as np
+import pandas as pd
+
+from PIL import Image
+
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
@@ -29,9 +35,132 @@ from .config.config import Config
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
-def save_images():
-    # TODO: Save images to the folder
-    pass
+def save_images(imgs_tcpu, fake_imgs, epoch):
+
+    num = cfg.TRAIN['VIS_COUNT']
+    real_img = imgs_tcpu[-1][0:num]
+
+    image = plt.figure()
+    ax = image.add_subplot(1,1,1)
+    ax.imshow(real_img[0])
+    ax.axis("off")
+    plt.savefig(f'test/{epoch}_real_sample.png')
+
+    for i in range(len(fake_imgs)):
+        fake_img = fake_imgs[i][0:num]
+
+        image = plt.figure()
+        ax = image.add_subplot(1,1,1)
+        ax.imshow(fake_img)
+        ax.axis("off")
+        plt.savefig(f'test/{epoch}_fake_sample_{i}.png')
+
+def normalize(input_image):
+    input_image = (input_image / 127.5) - 1
+    return input_image
+
+def load_class_ids_filenames(class_id_path, filename_path):
+    with open(class_id_path, 'rb') as file:
+        class_id = pickle.load(file, encoding='latin1')
+
+    with open(filename_path, 'rb') as file:
+        filename = pickle.load(file, encoding='latin1')
+
+    return class_id, filename
+
+def load_bbox(data_path='../../CUB data/CUB_200_2011'):
+    bbox_path = data_path + '/bounding_boxes.txt'
+    image_path = data_path + '/images.txt'
+
+    bbox_df = pd.read_csv(bbox_path, delim_whitespace=True, header=None).astype(int)
+    filename_df = pd.read_csv(image_path, delim_whitespace=True, header=None)
+
+    filenames = filename_df[1].tolist()
+    bbox_dict = {i[:-4]:[] for i in filenames[:2]}
+
+    for i in range(0, len(filenames)):
+        bbox = bbox_df.iloc[i][1:].tolist()
+        dict_key = filenames[i][:-4]
+        bbox_dict[dict_key] = bbox
+
+    return bbox_dict
+
+def load_images(image_path, bounding_box, size):
+    """Crops the image to the bounding box and then resizes it.
+    """
+    base_size=64
+
+    imsize = []
+    for _ in range(3):
+        imsize.append(base_size)
+        base_size *= 2
+
+    image = Image.open(image_path).convert('RGB')
+
+    w, h = image.size
+
+    if bounding_box is not None:
+        r = int(np.maximum(bounding_box[2], bounding_box[3]) * 0.75)
+        c_x = int((bounding_box[0] + bounding_box[2]) / 2)
+        c_y = int((bounding_box[1] + bounding_box[3]) / 2)
+        y1 = np.maximum(0, c_y - r)
+        y2 = np.minimum(h, c_y + r)
+        x1 = np.maximum(0, c_x - r)
+        x2 = np.minimum(w, c_x + r)
+        fimg = image.copy()
+        fimg_arr = np.array(fimg)
+        fimg = Image.fromarray(fimg_arr)
+        cimg = image.crop([x1, y1, x2, y2])
+        
+    retf = []
+    retc = []
+    re_cimg = cimg.resize([imsize[1], imsize[1]])
+    retc.append(re_cimg)
+    
+    # TODO: Random Crop + Flip and Modify bbox accordingly
+    # re_fimg = tf.image.resize(fimg, size=(126*76/64))
+    # re_width, re_height = re_fimg.size
+    # TODO: Normalize before append
+    fimg = fimg.resize([126, 126])
+    retf.append(fimg)
+
+    return fimg, re_cimg, bounding_box
+
+def load_data(filename_path, class_id_path, dataset_path, size):
+    """Loads the Dataset.
+    """
+    _, filenames = load_class_ids_filenames(class_id_path, filename_path)
+    bbox_dict = load_bbox(dataset_path)
+
+    fimgs_list, cimgs_list, child_code_list, key_list, mod_bbox_list = [], [], [], [], []
+
+    for _, filename in enumerate(filenames):
+        bbox = bbox_dict[filename]
+
+        try:
+            image_path = f'{dataset_path}/images/{filename}.jpg'
+            fimgs, cimgs, mod_bbox = load_images(image_path, bbox, size)
+
+            rand_class = list(np.random.choice(range(200), 1))
+            child_code = np.zeros([200,])
+            child_code[rand_class] = 1
+
+            fimgs_list.append(normalize(np.array(fimgs)))
+            cimgs_list.append(normalize(np.array(cimgs)))
+            child_code_list.append(child_code)
+            key_list.append(filename)
+            mod_bbox_list.append(mod_bbox)
+
+        except Exception as e:
+            print(f'{e}')
+
+    fimgs_list = np.array(fimgs_list)
+    cimgs_list = np.array(cimgs_list)
+    child_code_list = np.array(child_code_list)
+    key_list = np.array(key_list)
+    mod_bbox_list = np.array(mod_bbox_list)
+
+    return (fimgs_list, cimgs_list, child_code_list, key_list, mod_bbox_list)
 
 def load_finegan_network():
     # TODO: Load the FineGAN network
@@ -45,13 +174,13 @@ def define_optimizers(gen, disc):
 
 class FineGAN(object):
     """The FineGAN Architecture"""
-    def __init__(self, cfg, out_path, img_path, dataset, **kwargs):
+    def __init__(self, cfg, img_path, train_dataset, **kwargs):
         super(FineGAN, self).__init__(**kwargs)
         self.batch_size = cfg.TRAIN['BATCH_SIZE']
         self.num_epochs = cfg.TRAIN['MAX_EPOCH']
-        self.dataset = dataset
-        self.num_batches = len(dataset)
-        self.summary_writer = tf.summary.create_file_writer('./logs')
+        self.data_dir = img_path
+        self.train_dataset = train_dataset
+        # self.summary_writer = tf.summary.create_file_writer('./logs')
 
         # TODO: Define in the train step
         self.discriminators = []
@@ -66,11 +195,12 @@ class FineGAN(object):
         self.parent_code = None
 
 
-    def prepare_dataset(self, batch_size=32):
-        data = tf.data.Dataset.list_files('./dataset/*')
-        data = data.map(lambda image: tf.image.resize(image, (128,128,3)), num_parallel_calls=AUTOTUNE)
-        data = data.cache().shuffle(1000).repeat(2)
-        return data.batch(self.batch_size).prefetch(num_parallel_calls=AUTOTUNE)
+    # def prepare_dataset(self, batch_size=64):
+    #     data_dir = self.data_dir
+    #     data = tf.data.Dataset.list_files(str(data_dir + '/images/*/*'))
+    #     data = data.map(lambda image: tf.image.resize(image, (128,128,3)), num_parallel_calls=AUTOTUNE)
+    #     data = data.cache().shuffle(1000).repeat(2)
+    #     return data.batch(self.batch_size).prefetch(num_parallel_calls=AUTOTUNE)
 
     def plot_images(self, images, num_cols=None):
         num_cols = num_cols or len(images)
@@ -102,7 +232,7 @@ class FineGAN(object):
     @tf.function
     def train_generator(self):
         generator_error = 0.0
-        loss1, class_loss, child_code, parent_code = self.loss1, self.class_loss, self.child_code, self.parent_code
+        loss1, class_loss, c_code, parent_code = self.loss1, self.class_loss, self.c_code, self.parent_code
 
         with tf.GradientTape() as tape:
             for i in range(self.num_disc):
@@ -127,7 +257,7 @@ class FineGAN(object):
                 elif i==2:
                     # Information maximizing loss for child stage
                     child_prediction = self.discriminators[2](self.foreground_masks[i-1])
-                    gen_info_loss = class_loss(child_prediction[0], tf.where(child_code)[:, 1])
+                    gen_info_loss = class_loss(child_prediction[0], tf.where(c_code)[:, 1])
 
                 if i>0:
                     generator_error += gen_info_loss
@@ -142,7 +272,7 @@ class FineGAN(object):
         return generator_error
 
     @tf.function
-    def train_discriminator(self, stage, count):
+    def train_discriminator(self, stage, count=0):
         if stage==0 or stage==2:
 
             with tf.GradientTape() as tape:
@@ -158,7 +288,7 @@ class FineGAN(object):
                     real_images = self.real_cimages[0]
 
                 fake_images = self.fake_images[stage]
-                real_logits = disc_network(real_images) # Labels?
+                real_logits = disc_network(real_images)
 
                 if stage==2:
                     fake_labels = tf.zeros_like(real_logits[1])
@@ -175,11 +305,16 @@ class FineGAN(object):
                         y1 =  self.bbox[1][i]
                         y2 =  self.bbox[3][i]
 
-                        """All the patches in NxN from a1:a2 (along rows) and b1:b2 (along columns) will be masked, and loss will only be computed from remaining members in NxN"""
-                        a1 = tf.math.maximum(tf.Variable(0.0), tf.math.ceil((x1 - self.receptive_field)/(self.patch_stride)))
-                        a2 = tf.math.minimum(tf.Variable(tf.cast(self.num_out-1, tf.float32)), tf.math.floor((self.num_out-1) - ((126 - self.receptive_field) - x2)/(self.patch_stride))) + 1
-                        b1 = tf.math.maximum(tf.Variable(0.0), tf.math.ceil((y1 - self.receptive_field)/self.patch_stride))
-                        b2 = tf.math.minimum(tf.Variable(tf.cast(self.num_out-1, tf.float32)), tf.math.floor((self.num_out-1) - ((126 - self.receptive_field) - y2)/(self.patch_stride))) + 1
+                        """All the patches in NxN from a1:a2 (along rows) and b1:b2 (along columns) will be masked, 
+                        and loss will only be computed from remaining members in NxN"""
+                        a1 = tf.math.maximum(tf.Variable(0.0), 
+                                tf.math.ceil((x1 - self.receptive_field)/(self.patch_stride)))
+                        a2 = tf.math.minimum(tf.Variable(tf.cast(self.num_out-1, tf.float32)), 
+                                tf.math.floor((self.num_out-1) - ((126 - self.receptive_field) - x2)/(self.patch_stride))) + 1
+                        b1 = tf.math.maximum(tf.Variable(0.0), 
+                                tf.math.ceil((y1 - self.receptive_field)/self.patch_stride))
+                        b2 = tf.math.minimum(tf.Variable(tf.cast(self.num_out-1, tf.float32)), 
+                                tf.math.floor((self.num_out-1) - ((126 - self.receptive_field) - y2)/(self.patch_stride))) + 1
 
                         if x1 != x2 and y1 != y2:
                             real_weights[i, a1:a2, b1:b2, :] = 0.0
@@ -218,10 +353,7 @@ class FineGAN(object):
 
     @tf.function
     def train(self):
-        # TODO: Train the entire FineGAN
-        # TODO: Only for Background and Child phases
-
-        # TODO: Define in appropriate locations
+        
         self.patch_stride = 4.0 # Receptive field stride for Backround Stage Discriminator 
         self.num_out = 24 # Patch output size in NxN
         self.receptive_field = 34 # Receptive field of every patch in NxN
@@ -240,8 +372,9 @@ class FineGAN(object):
         self.fake_labels = tf.Variable(tf.zeros_like(self.batch_size, dtype=tf.float32))
 
         z_dims = cfg.GAN['Z_DIM']
-        latent_noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
-        fixed_noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
+        noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
+        # latent_noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
+        # fixed_noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
         # hard_noise = tf.Variable(tf.random.normal(shape=(self.batch_size, z_dims)))
 
         print(f'[INFO] Starting FineGAN Training...')
@@ -249,20 +382,25 @@ class FineGAN(object):
         for epoch in range(start_epoch, self.num_epochs):
             start_time = time.time()
 
-            for step, data in enumerate(self.dataset):
-                self.imgs_tcpu, self.real_fimages, self.real_cimages, self.child_code, self.bbox = self.prepare_data(data)
+            for _, data in enumerate(self.train_dataset):
+                self.imgs_tcpu, self.real_fimages, self.real_cimages, self.c_code, self.bbox = self.prepare_data(data)
 
-                # TODO: Feedforward through Generator. Obtain stagewise fake images
+                self.fake_images, self.foreground_images, self.mask_images, self.foreground_masks = self.generator(noise, self.c_code)
 
+                self.parent_code = child_to_parent(self.c_code, cfg.FINE_GRAINED_CATEGORIES, cfg.SUPER_CATEGORIES) 
 
-                # TODO: Obtain the parent code given the child code
+                total_discriminator_error = 0.0
+                for index in range(self.num_disc):
+                    if index==0 or index==2:
+                        discriminator_error = self.train_discriminator(index)
+                        total_discriminator_error += discriminator_error
 
+                total_generator_error = self.train_generator()
+                # TODO: 0.999 * avg_weights + 0.1 * actual_weights ---> Stable model
+                print(f'[INFO] FineGAN Gen Error: {total_generator_error}. Disc Error: {total_discriminator_error}')
 
-                # TODO: Update Discriminator networks
-
-
-                # TODO: Update the Generator networks
-
+            end_time = time.time()
+            print(f'[INFO] Epoch: {epoch}/{self.num_epochs} took {(end_time-start_time):.2}s.') 
 
         print(f'[INFO] Saving model after {self.num_epochs} epochs')
         # TODO: save the model
@@ -273,4 +411,25 @@ class FineGAN(object):
 
 if __name__ == '__main__':
     cfg = Config(32)
-    gen = GeneratorArchitecture(cfg, '', '')
+    print(f'[INFO] Initialize CUB Dataset...')
+
+    data_dir = '../../CUB data/CUB_200_2011'
+    filename_path = data_dir + "/filenames.pickle"
+    class_id_path = data_dir + "/class_info.pickle"
+    dataset_path = "../../CUB data/CUB_200_2011"
+    print(f'[INFO] Before loading CUB Dataset...')
+    train_dataset = load_data(filename_path, class_id_path, dataset_path, size=(128,128))
+
+    print(f'[INFO] After loading CUB Dataset...')
+
+    # algo = FineGAN(cfg, data_dir, train_dataset)
+
+    # print(f'[INFO] CUB Dataset Initialized...')
+
+    # print(f'[INFO] FineGAN Initialization Complete...')
+    # print(f'[INFO] FineGAN Training starts...')
+    # start_t = time.time()
+    # algo.train()
+    # end_t = time.time()
+    # print(f'Total time for training: {end_t - start_t}')
+    # print(f'[INFO] FineGAN Training Complete...')
