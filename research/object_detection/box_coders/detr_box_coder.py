@@ -13,13 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Faster RCNN box coder.
+"""DETR box coder.
 
-Faster RCNN box coder follows the coding schema described below:
-  ty = (y - ya) / ha
-  tx = (x - xa) / wa
-  th = log(h / ha)
-  tw = log(w / wa)
+DETR box coder follows the coding schema described below:
+  ty = y
+  tx = x
+  th = h
+  tw = w
   where x, y, w, h denote the box's center coordinates, width and height
   respectively. Similarly, xa, ya, wa, ha denote the anchor's center
   coordinates, width and height. tx, ty, tw and th denote the anchor-encoded
@@ -39,19 +39,15 @@ EPSILON = 1e-8
 class DETRBoxCoder(box_coder.BoxCoder):
   """Faster RCNN box coder."""
 
-  def __init__(self, scale_factors=None):
-    """Constructor for FasterRcnnBoxCoder.
+  def __init__(self):
+    """Constructor for DETRBoxCoder.
 
     Args:
       scale_factors: List of 4 positive scalars to scale ty, tx, th and tw.
         If set to None, does not perform scaling. For Faster RCNN,
         the open-source implementation recommends using [10.0, 10.0, 5.0, 5.0].
     """
-    if None:
-      assert len(scale_factors) == 4
-      for scalar in scale_factors:
-        assert scalar > 0
-    self._scale_factors = scale_factors
+    pass
 
   @property
   def code_size(self):
@@ -69,16 +65,7 @@ class DETRBoxCoder(box_coder.BoxCoder):
       [ty, tx, th, tw].
     """
     # Convert anchors to the center coordinate representation.
-    ycenter, xcenter, h, w = boxes.get_center_coordinates_and_sizes()
-    # Avoid NaN in division and log below.
-    h += EPSILON
-    w += EPSILON
-
-    tx = xcenter
-    ty = ycenter
-    tw = w #tf.log(w)
-    th = h #tf.log(h)
-    
+    ty, tx, th, tw = boxes.get_center_coordinates_and_sizes()
     return tf.transpose(tf.stack([ty, tx, th, tw]))
 
   def _decode(self, rel_codes, anchors):
@@ -92,14 +79,9 @@ class DETRBoxCoder(box_coder.BoxCoder):
       boxes: BoxList holding N bounding boxes.
     """
     ty, tx, th, tw = tf.unstack(tf.transpose(rel_codes))
-
-    w = tw
-    h = th 
-    ycenter = ty
-    xcenter = tx
-    ymin = ycenter - h / 2.
-    xmin = xcenter - w / 2.
-    ymax = ycenter + h / 2.
-    xmax = xcenter + w / 2.
+    ymin = ty - th / 2.
+    xmin = tx - tw / 2.
+    ymax = ty + th / 2.
+    xmax = tx + tw / 2.
     return box_list.BoxList(tf.transpose(tf.stack([ymin, xmin, ymax, xmax])))
 
