@@ -24,6 +24,7 @@ from object_detection.core import region_similarity_calculator
 from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner as targetassigner
 from object_detection.matchers import argmax_matcher
+from object_detection.matchers import hungarian_matcher
 from object_detection.utils import np_box_ops
 from object_detection.utils import test_case
 from object_detection.utils import tf_version
@@ -1924,9 +1925,8 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
   def test_assign_detr(self):
     def graph_fn(anchor_means, groundtruth_box_corners):
       similarity_calc = region_similarity_calculator.DETRSimilarity()
-      matcher = argmax_matcher.ArgMaxMatcher(matched_threshold=0.5,
-                                             unmatched_threshold=0.5)
-      box_coder = mean_stddev_box_coder.MeanStddevBoxCoder(stddev=0.1)
+      matcher = hungarian_matcher.HungarianBipartiteMatcher()
+      box_coder = None
       target_assigner = targetassigner.TargetAssigner(
           similarity_calc, matcher, box_coder)
       anchors_boxlist = box_list.BoxList(anchor_means)
@@ -1936,12 +1936,15 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
       (cls_targets, cls_weights, reg_targets, reg_weights, _) = result
       return (cls_targets, cls_weights, reg_targets, reg_weights)
 
-    anchor_means = np.array([[0.0, 0.0, 0.5, 0.5],
+    anchor_means = np.array([[0.0, 0.0, 0.2, 0.2],
                              [0.5, 0.5, 1.0, 0.8],
                              [0, 0.5, .5, 1.0]], dtype=np.float32)
     groundtruth_box_corners = np.array([[0.0, 0.0, 0.5, 0.5],
                                         [0.5, 0.5, 0.9, 0.9]],
                                        dtype=np.float32)
+    predicted_labels = np.array([[7, 3], [2, 9], [1, 5]])
+    groundtruth = np.array([[0, 1], [2, 9], [1, 5]])
+    
     exp_cls_targets = [[1], [1], [0]]
     exp_cls_weights = [[1], [1], [1]]
     exp_reg_targets = [[0, 0, 0, 0],

@@ -86,7 +86,7 @@ class IouSimilarity(RegionSimilarityCalculator):
     """
     return box_list_ops.iou(boxlist1, boxlist2)
 
-class DETRSimiliarity(RegionSimilarityCalculator):
+class DETRSimilarity(RegionSimilarityCalculator):
   """Class to compute similarity for the Detection Transformer model.
 
   This class computes pairwise similarity between two BoxLists using a weighted

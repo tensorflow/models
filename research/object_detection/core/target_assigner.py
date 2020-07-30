@@ -444,7 +444,7 @@ def create_target_assigner(reference, stage=None,
     box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder()
 
   elif reference == 'DETR':
-    similarity_calc = sim_calc.DETRSimiliarity()
+    similarity_calc = sim_calc.DETRSimilarity()
     matcher = hungarian_matcher.HungarianBipartiteMatcher()
     box_coder_instance = None
 
