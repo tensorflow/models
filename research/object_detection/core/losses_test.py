@@ -28,7 +28,6 @@ from object_detection.core import box_list
 from object_detection.core import losses
 from object_detection.core import matcher
 from object_detection.utils import test_case
-from object_detection.utils import ops
 
 
 class WeightedL2LocalizationLossTest(test_case.TestCase):

@@ -225,7 +225,7 @@ class WeightedGIOULocalizationLoss(Loss):
 
     Args:
       prediction_tensor: A float tensor of shape [batch_size, num_anchors, 4]
-        representing the predicted boxes in the form
+        representing the decoded predicted boxes
       target_tensor: A float tensor of shape [batch_size, num_anchors, 4]
         representing the decoded target boxes
       weights: a float tensor of shape [batch_size, num_anchors]
