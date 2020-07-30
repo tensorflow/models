@@ -341,7 +341,7 @@ def load_fine_tune_checkpoint(
 
   features, labels = iter(input_dataset).next()
 
-  #@tf.function
+  @tf.function
   def _dummy_computation_fn(features, labels):
     model._is_training = False  # pylint: disable=protected-access
     tf.keras.backend.set_learning_phase(False)
@@ -716,7 +716,7 @@ def eager_eval_loop(
   evaluators = None
   loss_metrics = {}
 
-  #@tf.function
+  @tf.function
   def compute_eval_dict(features, labels):
     """Compute the evaluation result on an image."""
     # For evaling on train data, it is necessary to check whether groundtruth
