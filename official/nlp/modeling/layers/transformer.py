@@ -447,9 +447,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
         "norm_first":
             self._norm_first,
         "norm_epsilon":
-            self._norm_epsilon,
-        "cross_attention_cls":
-            self._cross_attention_cls
+            self._norm_epsilon
     }
     base_config = super(TransformerDecoderLayer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
