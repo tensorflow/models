@@ -235,6 +235,7 @@ def run_ncf(_):
 
   params = ncf_common.parse_flags(FLAGS)
   params["distribute_strategy"] = strategy
+  params["use_tpu"] = (FLAGS.distribution_strategy == "tpu")
 
   if params["use_tpu"] and not params["keras_use_ctl"]:
     logging.error("Custom training loop must be used when using TPUStrategy.")
@@ -491,7 +492,8 @@ def run_ncf_custom_training(params,
     logging.info("Done training epoch %s, epoch loss=%.3f", epoch + 1,
                  train_loss)
 
-    eval_input_iterator = iter(eval_input_dataset)
+    eval_input_iterator = iter(
+        strategy.experimental_distribute_dataset(eval_input_dataset))
 
     hr_sum = 0.0
     hr_count = 0.0
