@@ -45,7 +45,8 @@ class AbstractTrainer(tf.Module, metaclass=abc.ABCMeta):
 
     Returns:
       The function may return a dictionary of `Tensors` or numpy arrays, which
-      will be written to logs and as TensorBoard summaries.
+      will be written to logs and as TensorBoard summaries. It can also be a
+      nested dictionary, yielding a hierarchy of summary directories.
     """
     pass
 
@@ -67,6 +68,7 @@ class AbstractEvaluator(tf.Module, metaclass=abc.ABCMeta):
 
     Returns:
       The function may return a dictionary of `Tensors` or numpy arrays, which
-      will be written to logs and as TensorBoard summaries.
+      will be written to logs and as TensorBoard summaries. It can also be a
+      nested dictionary, yielding a hierarchy of summary directories.
     """
     pass

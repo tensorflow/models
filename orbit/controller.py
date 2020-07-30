@@ -16,8 +16,9 @@
 """A light weight utilities to train TF2 models."""
 
 import time
-from typing import Callable, Optional, Text, Union
+from typing import Callable, Dict, Optional, Text, Union
 from absl import logging
+import numpy as np
 from orbit import runner
 from orbit import utils
 
@@ -28,14 +29,6 @@ def _log_info(message: Text):
   """Logs `message` to the `info` log, and also prints to stdout."""
   logging.info(message)
   print(message)
-
-
-def _validate_interval(interval: Optional[int], steps_per_loop: Optional[int],
-                       interval_name: str):
-  if interval and steps_per_loop and (interval % steps_per_loop != 0):
-    raise ValueError("The {} interval ({}) must be a multiple "
-                     "of the steps_per_loop ({})".format(
-                         interval_name, interval, steps_per_loop))
 
 
 class Controller:
@@ -103,8 +96,10 @@ class Controller:
       if summary_interval is not None:
         if summary_interval <= 0:
           raise ValueError("`summary_interval` should be larger than 0")
-        _validate_interval(
-            summary_interval, steps_per_loop, interval_name="summary")
+        if summary_interval % steps_per_loop != 0:
+          raise ValueError("The summary interval ({}) must be a multiple "
+                           "of the steps_per_loop ({})".format(
+                               summary_interval, steps_per_loop))
 
     self.trainer = trainer
     self.evaluator = evaluator
@@ -142,9 +137,6 @@ class Controller:
     # TODO(momernick): We probably only want to do this on certain occasions?
     if self.checkpoint_manager is not None:
       checkpoint_interval = self.checkpoint_manager.checkpoint_interval
-      _validate_interval(
-          checkpoint_interval, steps_per_loop, interval_name="checkpoint")
-
       model_restored = self.restore_checkpoint()
       if not model_restored and (checkpoint_interval and
                                  self.trainer is not None):
@@ -186,7 +178,7 @@ class Controller:
     if checkpoint_at_completion:
       self.save_checkpoint()
 
-  def evaluate(self, steps: int = None):
+  def evaluate(self, steps: int = None) -> Optional[Dict[Text, np.number]]:
     """Runs evaluation.
 
     This method calls the `evaluate` method on the Evaluator object for `steps`
@@ -195,10 +187,12 @@ class Controller:
     Args:
       steps: The number of steps to evaluate for.
 
+    Returns:
+      The evaluation results as a dictionary of numpy values.
+
     Raises:
       ValueError: If no checkpoint found in `self.checkpoint_manager.directory`.
       ValueError: If `evaluator` is not provided.
-
     """
     if self.evaluator is None:
       raise ValueError("`evaluator` must be provided to call `evaluate()` "
@@ -213,7 +207,7 @@ class Controller:
     else:
       logging.info("Evaluating at train step: %s", current_step)
 
-    with self.eval_summary_manager.summary_writer.as_default():
+    with self.eval_summary_manager.summary_writer().as_default():
       eval_outputs = self.evaluator.evaluate(steps)
 
     if eval_outputs:
@@ -225,6 +219,8 @@ class Controller:
 
     self.eval_summary_manager.write_summaries(eval_outputs)
     self.eval_summary_manager.flush()
+
+    return eval_outputs
 
   def restore_checkpoint(self, checkpoint_path: Text = None):
     """Restore or initialize the model.
@@ -271,15 +267,15 @@ class Controller:
       train_steps: The global step count to train up to.
       eval_steps: The number of steps to run during an evaluation. If None,
         this method will evaluate over the entire evaluation dataset.
-      eval_interval: The number of training steps to run between evalutions.
-        Must be a multiple of the controller's `steps_per_loop` init arg. If
-        None, evaluation will only be performed after training is complete.
+      eval_interval: The number of training steps to run between evaluations.
+        If set, training will always stop every `eval_interval` steps, even if
+        this results in a shorter inner loop than specified by `steps_per_loop`
+        setting. If None, evaluation will only be performed after training is
+        complete.
 
     Raises:
       ValueError: If eval_interval is not a multiple of self.steps_per_loop.
     """
-    _validate_interval(eval_interval, self.steps_per_loop, interval_name="eval")
-
     current_step = self.global_step.numpy()  # This is an expensive access.
     eval_interval = eval_interval or (train_steps - current_step)
     while current_step < train_steps:
@@ -343,7 +339,7 @@ class Controller:
     current_step += num_steps
     num_steps = tf.convert_to_tensor(num_steps, dtype=tf.int32)
 
-    with self.summary_manager.summary_writer.as_default():
+    with self.summary_manager.summary_writer().as_default():
       # Create a lambda that returns true when summaries should be written.
       should_record = False  # Allows static optimization in no-summary cases.
       if self.summary_interval:

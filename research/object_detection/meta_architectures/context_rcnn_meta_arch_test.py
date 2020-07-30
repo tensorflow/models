@@ -109,7 +109,6 @@ class FakeFasterRCNNKerasFeatureExtractor(
     ])
 
 
-@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
 class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
 
   def _get_model(self, box_predictor, **common_kwargs):
@@ -440,15 +439,16 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
             masks_are_class_agnostic=masks_are_class_agnostic,
             share_box_across_classes=share_box_across_classes), **common_kwargs)
 
+  @unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
   @mock.patch.object(context_rcnn_meta_arch, 'context_rcnn_lib')
-  def test_prediction_mock(self, mock_context_rcnn_lib):
-    """Mocks the context_rcnn_lib module to test the prediction.
+  def test_prediction_mock_tf1(self, mock_context_rcnn_lib_v1):
+    """Mocks the context_rcnn_lib_v1 module to test the prediction.
 
     Using mock object so that we can ensure compute_box_context_attention is
     called in side the prediction function.
 
     Args:
-      mock_context_rcnn_lib: mock module for the context_rcnn_lib.
+      mock_context_rcnn_lib_v1: mock module for the context_rcnn_lib_v1.
     """
     model = self._build_model(
         is_training=False,
@@ -457,7 +457,7 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
         num_classes=42)
     mock_tensor = tf.ones([2, 8, 3, 3, 3], tf.float32)
 
-    mock_context_rcnn_lib.compute_box_context_attention.return_value = mock_tensor
+    mock_context_rcnn_lib_v1.compute_box_context_attention.return_value = mock_tensor
     inputs_shape = (2, 20, 20, 3)
     inputs = tf.cast(
         tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32),
@@ -479,7 +479,7 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
     side_inputs = model.get_side_inputs(features)
 
     _ = model.predict(preprocessed_inputs, true_image_shapes, **side_inputs)
-    mock_context_rcnn_lib.compute_box_context_attention.assert_called_once()
+    mock_context_rcnn_lib_v1.compute_box_context_attention.assert_called_once()
 
   @parameterized.named_parameters(
       {'testcase_name': 'static_shapes', 'static_shapes': True},
@@ -518,7 +518,6 @@ class ContextRCNNMetaArchTest(test_case.TestCase, parameterized.TestCase):
       }
 
       side_inputs = model.get_side_inputs(features)
-
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes,
                                       **side_inputs)
       return (prediction_dict['rpn_box_predictor_features'],

@@ -1,4 +1,5 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Lint as: python3
+# Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Networks package definition."""
-from official.nlp.modeling.networks.albert_transformer_encoder import AlbertTransformerEncoder
-from official.nlp.modeling.networks.classification import Classification
-from official.nlp.modeling.networks.encoder_scaffold import EncoderScaffold
-from official.nlp.modeling.networks.span_labeling import SpanLabeling
-from official.nlp.modeling.networks.transformer_encoder import TransformerEncoder
+"""Tests for orbit.utils."""
+
+from orbit import utils
+
+import tensorflow as tf
+
+
+class UtilsTest(tf.test.TestCase):
+
+  def test_create_global_step(self):
+    step = utils.create_global_step()
+    self.assertEqual(step.dtype, tf.int64)
+    self.assertEqual(step, 0)
+    step.assign_add(1)
+    self.assertEqual(step, 1)
+
+
+if __name__ == '__main__':
+  tf.test.main()

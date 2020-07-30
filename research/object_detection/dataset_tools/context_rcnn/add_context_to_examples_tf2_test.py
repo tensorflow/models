@@ -25,11 +25,12 @@ import unittest
 
 import numpy as np
 import six
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
-from object_detection.dataset_tools.context_rcnn import add_context_to_examples
 from object_detection.utils import tf_version
 
+if tf_version.is_tf2():
+  from object_detection.dataset_tools.context_rcnn import add_context_to_examples  # pylint:disable=g-import-not-at-top
 
 try:
   import apache_beam as beam  # pylint:disable=g-import-not-at-top
@@ -42,7 +43,7 @@ def InMemoryTFRecord(entries):
   temp = tempfile.NamedTemporaryFile(delete=False)
   filename = temp.name
   try:
-    with tf.python_io.TFRecordWriter(filename) as writer:
+    with tf.io.TFRecordWriter(filename) as writer:
       for value in entries:
         writer.write(value)
     yield filename
@@ -70,13 +71,12 @@ def FloatListFeature(value):
   return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
 
-@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
+@unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class GenerateContextDataTest(tf.test.TestCase):
 
   def _create_first_tf_example(self):
-    with self.test_session():
-      encoded_image = tf.image.encode_jpeg(
-          tf.constant(np.ones((4, 4, 3)).astype(np.uint8))).eval()
+    encoded_image = tf.io.encode_jpeg(
+        tf.constant(np.ones((4, 4, 3)).astype(np.uint8))).numpy()
 
     example = tf.train.Example(features=tf.train.Features(feature={
         'image/encoded': BytesFeature(encoded_image),
@@ -105,9 +105,8 @@ class GenerateContextDataTest(tf.test.TestCase):
     return example.SerializeToString()
 
   def _create_second_tf_example(self):
-    with self.test_session():
-      encoded_image = tf.image.encode_jpeg(
-          tf.constant(np.ones((4, 4, 3)).astype(np.uint8))).eval()
+    encoded_image = tf.io.encode_jpeg(
+        tf.constant(np.ones((4, 4, 3)).astype(np.uint8))).numpy()
 
     example = tf.train.Example(features=tf.train.Features(feature={
         'image/encoded': BytesFeature(encoded_image),
@@ -353,7 +352,8 @@ class GenerateContextDataTest(tf.test.TestCase):
       p.run()
       filenames = tf.io.gfile.glob(output_tfrecord + '-?????-of-?????')
       actual_output = []
-      record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
+      record_iterator = tf.data.TFRecordDataset(
+          tf.convert_to_tensor(filenames)).as_numpy_iterator()
       for record in record_iterator:
         actual_output.append(record)
       self.assertEqual(len(actual_output), 2)
@@ -383,8 +383,8 @@ class GenerateContextDataTest(tf.test.TestCase):
       p.run()
       filenames = tf.io.gfile.glob(output_tfrecord + '-?????-of-?????')
       actual_output = []
-      record_iterator = tf.python_io.tf_record_iterator(
-          path=filenames[0])
+      record_iterator = tf.data.TFRecordDataset(
+          tf.convert_to_tensor(filenames)).as_numpy_iterator()
       for record in record_iterator:
         actual_output.append(record)
       self.assertEqual(len(actual_output), 1)

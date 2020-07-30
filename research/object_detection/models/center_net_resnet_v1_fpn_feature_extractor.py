@@ -137,10 +137,6 @@ class CenterNetResnetV1FpnFeatureExtractor(CenterNetFeatureExtractor):
   def load_feature_extractor_weights(self, path):
     self._base_model.load_weights(path)
 
-  def get_base_model(self):
-    """Get base resnet model for inspection and testing."""
-    return self._base_model
-
   def call(self, inputs):
     """Returns image features extracted by the backbone.
 
@@ -162,6 +158,15 @@ class CenterNetResnetV1FpnFeatureExtractor(CenterNetFeatureExtractor):
   @property
   def out_stride(self):
     return 4
+
+  def get_sub_model(self, sub_model_type):
+    if sub_model_type == 'classification':
+      return self._base_model
+    else:
+      supported_types = ['classification']
+      raise ValueError(
+          ('Sub model {} is not defined for ResNet FPN.'.format(sub_model_type)
+           + 'Supported types are {}.'.format(supported_types)))
 
 
 def resnet_v1_101_fpn(channel_means, channel_stds, bgr_ordering):

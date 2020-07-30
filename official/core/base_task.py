@@ -18,6 +18,7 @@ import abc
 import functools
 from typing import Any, Callable, Optional
 
+from absl import logging
 import six
 import tensorflow as tf
 
@@ -67,7 +68,19 @@ class Task(tf.Module):
     Args:
       model: The keras.Model built or used by this task.
     """
-    pass
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    logging.info("Trying to load pretrained checkpoint from %s",
+                 ckpt_dir_or_file)
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+    if not ckpt_dir_or_file:
+      return
+
+    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+    status = ckpt.restore(ckpt_dir_or_file)
+    status.expect_partial().assert_existing_objects_matched()
+    logging.info("Finished loading pretrained checkpoint from %s",
+                 ckpt_dir_or_file)
 
   @abc.abstractmethod
   def build_model(self) -> tf.keras.Model:

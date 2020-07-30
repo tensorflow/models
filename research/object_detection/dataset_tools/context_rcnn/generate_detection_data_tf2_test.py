@@ -24,14 +24,16 @@ import tempfile
 import unittest
 import numpy as np
 import six
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
-from object_detection import exporter
+from object_detection import exporter_lib_v2
 from object_detection.builders import model_builder
 from object_detection.core import model
-from object_detection.dataset_tools.context_rcnn import generate_detection_data
 from object_detection.protos import pipeline_pb2
 from object_detection.utils import tf_version
+
+if tf_version.is_tf2():
+  from object_detection.dataset_tools.context_rcnn import generate_detection_data  # pylint:disable=g-import-not-at-top
 
 if six.PY2:
   import mock  # pylint: disable=g-import-not-at-top
@@ -45,17 +47,23 @@ except ModuleNotFoundError:
 
 
 class FakeModel(model.DetectionModel):
-  """A Fake Detection model with expected output nodes from post-processing."""
+
+  def __init__(self, conv_weight_scalar=1.0):
+    super(FakeModel, self).__init__(num_classes=5)
+    self._conv = tf.keras.layers.Conv2D(
+        filters=1, kernel_size=1, strides=(1, 1), padding='valid',
+        kernel_initializer=tf.keras.initializers.Constant(
+            value=conv_weight_scalar))
 
   def preprocess(self, inputs):
     true_image_shapes = []  # Doesn't matter for the fake model.
     return tf.identity(inputs), true_image_shapes
 
   def predict(self, preprocessed_inputs, true_image_shapes):
-    return {'image': tf.layers.conv2d(preprocessed_inputs, 3, 1)}
+    return {'image': self._conv(preprocessed_inputs)}
 
   def postprocess(self, prediction_dict, true_image_shapes):
-    with tf.control_dependencies(prediction_dict.values()):
+    with tf.control_dependencies(list(prediction_dict.values())):
       postprocessed_tensors = {
           'detection_boxes': tf.constant([[[0.0, 0.1, 0.5, 0.6],
                                            [0.5, 0.5, 0.8, 0.8]]], tf.float32),
@@ -89,7 +97,7 @@ def InMemoryTFRecord(entries):
   temp = tempfile.NamedTemporaryFile(delete=False)
   filename = temp.name
   try:
-    with tf.python_io.TFRecordWriter(filename) as writer:
+    with tf.io.TFRecordWriter(filename) as writer:
       for value in entries:
         writer.write(value)
     yield filename
@@ -97,7 +105,7 @@ def InMemoryTFRecord(entries):
     os.unlink(filename)
 
 
-@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only test.')
+@unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
 class GenerateDetectionDataTest(tf.test.TestCase):
 
   def _save_checkpoint_from_mock_model(self, checkpoint_path):
@@ -106,64 +114,39 @@ class GenerateDetectionDataTest(tf.test.TestCase):
     Args:
       checkpoint_path: Path to save checkpoint from Fake model.
     """
-    g = tf.Graph()
-    with g.as_default():
-      mock_model = FakeModel(num_classes=5)
-      preprocessed_inputs, true_image_shapes = mock_model.preprocess(
-          tf.placeholder(tf.float32, shape=[None, None, None, 3]))
-      predictions = mock_model.predict(preprocessed_inputs, true_image_shapes)
-      mock_model.postprocess(predictions, true_image_shapes)
-      tf.train.get_or_create_global_step()
-      saver = tf.train.Saver()
-      init = tf.global_variables_initializer()
-      with self.test_session(graph=g) as sess:
-        sess.run(init)
-        saver.save(sess, checkpoint_path)
+    mock_model = FakeModel()
+    fake_image = tf.zeros(shape=[1, 10, 10, 3], dtype=tf.float32)
+    preprocessed_inputs, true_image_shapes = mock_model.preprocess(fake_image)
+    predictions = mock_model.predict(preprocessed_inputs, true_image_shapes)
+    mock_model.postprocess(predictions, true_image_shapes)
+    ckpt = tf.train.Checkpoint(model=mock_model)
+    exported_checkpoint_manager = tf.train.CheckpointManager(
+        ckpt, checkpoint_path, max_to_keep=1)
+    exported_checkpoint_manager.save(checkpoint_number=0)
 
   def _export_saved_model(self):
     tmp_dir = self.get_temp_dir()
-    checkpoint_path = os.path.join(tmp_dir, 'model.ckpt')
-    self._save_checkpoint_from_mock_model(checkpoint_path)
+    self._save_checkpoint_from_mock_model(tmp_dir)
     output_directory = os.path.join(tmp_dir, 'output')
     saved_model_path = os.path.join(output_directory, 'saved_model')
     tf.io.gfile.makedirs(output_directory)
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = FakeModel(num_classes=5)
+      mock_builder.return_value = FakeModel()
+      output_directory = os.path.join(tmp_dir, 'output')
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
-      pipeline_config.eval_config.use_moving_averages = False
-      detection_model = model_builder.build(pipeline_config.model,
-                                            is_training=False)
-      outputs, placeholder_tensor = exporter.build_detection_graph(
+      exporter_lib_v2.export_inference_graph(
           input_type='tf_example',
-          detection_model=detection_model,
-          input_shape=None,
-          output_collection_name='inference_op',
-          graph_hook_fn=None)
-      output_node_names = ','.join(outputs.keys())
-      saver = tf.train.Saver()
-      input_saver_def = saver.as_saver_def()
-      frozen_graph_def = exporter.freeze_graph_with_def_protos(
-          input_graph_def=tf.get_default_graph().as_graph_def(),
-          input_saver_def=input_saver_def,
-          input_checkpoint=checkpoint_path,
-          output_node_names=output_node_names,
-          restore_op_name='save/restore_all',
-          filename_tensor_name='save/Const:0',
-          output_graph='',
-          clear_devices=True,
-          initializer_nodes='')
-      exporter.write_saved_model(
-          saved_model_path=saved_model_path,
-          frozen_graph_def=frozen_graph_def,
-          inputs=placeholder_tensor,
-          outputs=outputs)
-      return saved_model_path
+          pipeline_config=pipeline_config,
+          trained_checkpoint_dir=tmp_dir,
+          output_directory=output_directory)
+      saved_model_path = os.path.join(output_directory, 'saved_model')
+    return saved_model_path
 
   def _create_tf_example(self):
     with self.test_session():
-      encoded_image = tf.image.encode_jpeg(
-          tf.constant(np.ones((4, 6, 3)).astype(np.uint8))).eval()
+      encoded_image = tf.io.encode_jpeg(
+          tf.constant(np.ones((4, 6, 3)).astype(np.uint8))).numpy()
 
     def BytesFeature(value):
       return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
@@ -264,7 +247,8 @@ class GenerateDetectionDataTest(tf.test.TestCase):
       p.run()
       filenames = tf.io.gfile.glob(output_tfrecord + '-?????-of-?????')
       actual_output = []
-      record_iterator = tf.python_io.tf_record_iterator(path=filenames[0])
+      record_iterator = tf.data.TFRecordDataset(
+          tf.convert_to_tensor(filenames)).as_numpy_iterator()
       for record in record_iterator:
         actual_output.append(record)
       self.assertEqual(len(actual_output), 1)
