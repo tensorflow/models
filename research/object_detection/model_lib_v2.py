@@ -157,7 +157,8 @@ def eager_train_step(detection_model,
                      add_regularization_loss=True,
                      clip_gradients_value=None,
                      global_step=None,
-                     num_replicas=1.0):
+                     num_replicas=1.0,
+                     num_visualizations=0):
   """Process a single training batch.
 
   This method computes the loss for the model on a single training batch,
@@ -231,6 +232,8 @@ def eager_train_step(detection_model,
     num_replicas: The number of replicas in the current distribution strategy.
       This is used to scale the total loss so that training in a distribution
       strategy works correctly.
+    num_visualizations: The number of train input images to be displayed in
+      TensorBoard.
 
   Returns:
     The total loss observed at this training step
@@ -267,11 +270,17 @@ def eager_train_step(detection_model,
     gradients, _ = tf.clip_by_global_norm(gradients, clip_gradients_value)
   optimizer.apply_gradients(zip(gradients, trainable_variables))
   tf.compat.v2.summary.scalar('learning_rate', learning_rate, step=global_step)
-  tf.compat.v2.summary.image(
-      name='train_input_images',
-      step=global_step,
-      data=features[fields.InputDataFields.image],
-      max_outputs=3)
+
+  if num_visualizations > 0:
+    # Rescale visualized images from range (-1, 1) to (0, 1)
+    image_data = (features[fields.InputDataFields.image]
+                  [:num_visualizations] + 1) / 2
+    tf.compat.v2.summary.image(
+        name='train_input_images',
+        step=global_step,
+        data=image_data,
+        max_outputs=num_visualizations)
+
   return total_loss
 
 
@@ -475,6 +484,7 @@ def train_loop(
   clip_gradients_value = None
   if train_config.gradient_clipping_by_norm > 0:
     clip_gradients_value = train_config.gradient_clipping_by_norm
+  num_visualizations = train_config.num_visualizations
 
   # update train_steps from config but only when non-zero value is provided
   if train_steps is None and train_config.num_steps != 0:
@@ -587,7 +597,8 @@ def train_loop(
               add_regularization_loss=add_regularization_loss,
               clip_gradients_value=clip_gradients_value,
               global_step=global_step,
-              num_replicas=strategy.num_replicas_in_sync)
+              num_replicas=strategy.num_replicas_in_sync,
+              num_visualizations=num_visualizations)
           global_step.assign_add(1)
           return loss
 
