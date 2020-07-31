@@ -86,7 +86,7 @@ def _create_albert_model(cfg):
       activation=activations.gelu,
       dropout_rate=cfg.hidden_dropout_prob,
       attention_dropout_rate=cfg.attention_probs_dropout_prob,
-      sequence_length=cfg.max_position_embeddings,
+      max_sequence_length=cfg.max_position_embeddings,
       type_vocab_size=cfg.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=cfg.initializer_range))
