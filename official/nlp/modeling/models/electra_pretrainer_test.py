@@ -36,9 +36,13 @@ class ElectraPretrainerTest(keras_parameterized.TestCase):
     vocab_size = 100
     sequence_length = 512
     test_generator_network = networks.TransformerEncoder(
-        vocab_size=vocab_size, num_layers=2, sequence_length=sequence_length)
+        vocab_size=vocab_size,
+        num_layers=2,
+        max_sequence_length=sequence_length)
     test_discriminator_network = networks.TransformerEncoder(
-        vocab_size=vocab_size, num_layers=2, sequence_length=sequence_length)
+        vocab_size=vocab_size,
+        num_layers=2,
+        max_sequence_length=sequence_length)
 
     # Create a ELECTRA trainer with the created network.
     num_classes = 3
@@ -48,7 +52,6 @@ class ElectraPretrainerTest(keras_parameterized.TestCase):
         discriminator_network=test_discriminator_network,
         vocab_size=vocab_size,
         num_classes=num_classes,
-        sequence_length=sequence_length,
         num_token_predictions=num_token_predictions,
         disallow_correct=True)
 

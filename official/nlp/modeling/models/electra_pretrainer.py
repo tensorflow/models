@@ -50,7 +50,6 @@ class ElectraPretrainer(tf.keras.Model):
     vocab_size: Size of generator output vocabulary
     num_classes: Number of classes to predict from the classification network
       for the generator network (not used now)
-    sequence_length: Input sequence length
     num_token_predictions: Number of tokens to predict from the masked LM.
     mlm_activation: The activation (if any) to use in the masked LM and
       classification networks. If None, no activation will be used.
@@ -67,7 +66,6 @@ class ElectraPretrainer(tf.keras.Model):
                discriminator_network,
                vocab_size,
                num_classes,
-               sequence_length,
                num_token_predictions,
                mlm_activation=None,
                mlm_initializer='glorot_uniform',
@@ -80,7 +78,6 @@ class ElectraPretrainer(tf.keras.Model):
         'discriminator_network': discriminator_network,
         'vocab_size': vocab_size,
         'num_classes': num_classes,
-        'sequence_length': sequence_length,
         'num_token_predictions': num_token_predictions,
         'mlm_activation': mlm_activation,
         'mlm_initializer': mlm_initializer,
@@ -94,7 +91,6 @@ class ElectraPretrainer(tf.keras.Model):
     self.discriminator_network = discriminator_network
     self.vocab_size = vocab_size
     self.num_classes = num_classes
-    self.sequence_length = sequence_length
     self.num_token_predictions = num_token_predictions
     self.mlm_activation = mlm_activation
     self.mlm_initializer = mlm_initializer

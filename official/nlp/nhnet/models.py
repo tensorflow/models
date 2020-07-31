@@ -413,7 +413,6 @@ def get_bert2bert_layers(params: configs.BERT2BERTConfig):
       activation=tf_utils.get_activation(bert_config.hidden_act),
       dropout_rate=bert_config.hidden_dropout_prob,
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-      sequence_length=None,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(

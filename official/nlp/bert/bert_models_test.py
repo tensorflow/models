@@ -56,8 +56,6 @@ class BertModelsTest(tf.test.TestCase):
     # Expect two output from encoder: sequence and classification output.
     self.assertIsInstance(encoder.output, list)
     self.assertLen(encoder.output, 2)
-    # shape should be [batch size, seq_length, hidden_size]
-    self.assertEqual(encoder.output[0].shape.as_list(), [None, 5, 16])
     # shape should be [batch size, hidden_size]
     self.assertEqual(encoder.output[1].shape.as_list(), [None, 16])
 
@@ -74,16 +72,12 @@ class BertModelsTest(tf.test.TestCase):
     # Expect two output from model: start positions and end positions
     self.assertIsInstance(model.output, list)
     self.assertLen(model.output, 2)
-    # shape should be [batch size, seq_length]
-    self.assertEqual(model.output[0].shape.as_list(), [None, 5])
-    # shape should be [batch size, seq_length]
-    self.assertEqual(model.output[1].shape.as_list(), [None, 5])
 
     # Expect two output from core_model: sequence and classification output.
     self.assertIsInstance(core_model.output, list)
     self.assertLen(core_model.output, 2)
-    # shape should be [batch size, seq_length, hidden_size]
-    self.assertEqual(core_model.output[0].shape.as_list(), [None, 5, 16])
+    # shape should be [batch size, None, hidden_size]
+    self.assertEqual(core_model.output[0].shape.as_list(), [None, None, 16])
     # shape should be [batch size, hidden_size]
     self.assertEqual(core_model.output[1].shape.as_list(), [None, 16])
 
@@ -104,8 +98,8 @@ class BertModelsTest(tf.test.TestCase):
     # Expect two output from core_model: sequence and classification output.
     self.assertIsInstance(core_model.output, list)
     self.assertLen(core_model.output, 2)
-    # shape should be [batch size, 1, hidden_size]
-    self.assertEqual(core_model.output[0].shape.as_list(), [None, 1, 16])
+    # shape should be [batch size, None, hidden_size]
+    self.assertEqual(core_model.output[0].shape.as_list(), [None, None, 16])
     # shape should be [batch size, hidden_size]
     self.assertEqual(core_model.output[1].shape.as_list(), [None, 16])
 
