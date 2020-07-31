@@ -18,6 +18,7 @@ import dataclasses
 import tensorflow as tf
 
 from official.core import base_task
+from official.core import task_factory
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
 from official.nlp.data import data_loader_factory
@@ -34,7 +35,7 @@ class MaskedLMConfig(cfg.TaskConfig):
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@base_task.register_task_cls(MaskedLMConfig)
+@task_factory.register_task_cls(MaskedLMConfig)
 class MaskedLMTask(base_task.Task):
   """Mock task object for testing."""
 

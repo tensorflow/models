@@ -21,7 +21,6 @@ import dataclasses
 
 from official.modeling.hyperparams import base_config
 from official.modeling.optimization.configs import optimization_config
-from official.utils import registry
 
 OptimizationConfig = optimization_config.OptimizationConfig
 
@@ -219,16 +218,3 @@ class ExperimentConfig(base_config.Config):
   trainer: TrainerConfig = TrainerConfig()
   runtime: RuntimeConfig = RuntimeConfig()
 
-
-_REGISTERED_CONFIGS = {}
-
-
-def register_config_factory(name):
-  """Register ExperimentConfig factory method."""
-  return registry.register(_REGISTERED_CONFIGS, name)
-
-
-def get_exp_config_creater(exp_name: str):
-  """Looks up ExperimentConfig factory methods."""
-  exp_creater = registry.lookup(_REGISTERED_CONFIGS, exp_name)
-  return exp_creater

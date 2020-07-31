@@ -23,6 +23,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
+from official.core import task_factory
 from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.bert import squad_evaluate_v1_1
@@ -57,7 +58,7 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@base_task.register_task_cls(QuestionAnsweringConfig)
+@task_factory.register_task_cls(QuestionAnsweringConfig)
 class QuestionAnsweringTask(base_task.Task):
   """Task object for question answering."""
 

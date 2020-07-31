@@ -26,6 +26,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
+from official.core import task_factory
 from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
@@ -62,7 +63,7 @@ class SentencePredictionConfig(cfg.TaskConfig):
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@base_task.register_task_cls(SentencePredictionConfig)
+@task_factory.register_task_cls(SentencePredictionConfig)
 class SentencePredictionTask(base_task.Task):
   """Task object for sentence_prediction."""
 
