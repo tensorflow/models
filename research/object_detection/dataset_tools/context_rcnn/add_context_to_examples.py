@@ -926,6 +926,7 @@ def main(argv=None, save_main_session=True):
       args.context_features_score_threshold,
       args.keep_only_positives_gt,
       args.max_num_elements_in_context_features,
+      args.num_shards,
       args.output_type,
       args.max_clip_length,
       args.context_feature_length)
