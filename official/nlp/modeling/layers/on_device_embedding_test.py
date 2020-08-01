@@ -193,40 +193,6 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
     output = model.predict(input_data)
     self.assertEqual(tf.float16, output.dtype)
 
-  def test_use_scale_layer_creation(self):
-    vocab_size = 31
-    embedding_width = 27
-    test_layer = on_device_embedding.OnDeviceEmbedding(
-        vocab_size=vocab_size, embedding_width=embedding_width, use_scale=True)
-    # Create a 2-dimensional input (the first dimension is implicit).
-    sequence_length = 23
-    input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
-    output_tensor = test_layer(input_tensor)
-
-    # The output should be the same as the input, save that it has an extra
-    # embedding_width dimension on the end.
-    expected_output_shape = [None, sequence_length, embedding_width]
-    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
-    self.assertEqual(output_tensor.dtype, tf.float32)
-
-  def test_use_scale_layer_creation_with_mixed_precision(self):
-    vocab_size = 31
-    embedding_width = 27
-    policy = tf.keras.mixed_precision.experimental.Policy("mixed_float16")
-    test_layer = on_device_embedding.OnDeviceEmbedding(
-        vocab_size=vocab_size, embedding_width=embedding_width, dtype=policy,
-        use_scale=True)
-    # Create a 2-dimensional input (the first dimension is implicit).
-    sequence_length = 23
-    input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
-    output_tensor = test_layer(input_tensor)
-
-    # The output should be the same as the input, save that it has an extra
-    # embedding_width dimension on the end.
-    expected_output_shape = [None, sequence_length, embedding_width]
-    self.assertEqual(expected_output_shape, output_tensor.shape.as_list())
-    self.assertEqual(output_tensor.dtype, tf.float16)
-
   def test_use_scale_layer_invocation(self):
     vocab_size = 31
     embedding_width = 27
