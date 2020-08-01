@@ -23,7 +23,6 @@ The base model gives 72.2% accuracy on ImageNet, with 300MMadds,
 """
 
 import logging
-from typing import Tuple
 
 import tensorflow as tf
 
@@ -35,12 +34,12 @@ layers = tf.keras.layers
 MobileNetV2Config = archs.MobileNetV2Config
 
 
-def mobilenet_v2(input_shape: Tuple[int, int, int] = (224, 224, 3),
-                 config: MobileNetV2Config = MobileNetV2Config()
+def mobilenet_v2(config: MobileNetV2Config = MobileNetV2Config()
                  ) -> tf.keras.models.Model:
   """Instantiates the MobileNet Model."""
 
   model_name = config.name
+  input_shape = config.input_shape
 
   img_input = layers.Input(shape=input_shape, name='Input')
 

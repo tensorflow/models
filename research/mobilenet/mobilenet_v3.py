@@ -34,12 +34,11 @@ MobileNetV3Config = Union[archs.MobileNetV3SmallConfig,
                           archs.MobileNetV3EdgeTPUConfig]
 
 
-def mobilenet_v3(config: MobileNetV3Config,
-                 input_shape: Tuple[int, int, int] = (224, 224, 3),
-                 ) -> tf.keras.models.Model:
+def mobilenet_v3(config: MobileNetV3Config) -> tf.keras.models.Model:
   """Instantiates the MobileNet V3 Model."""
 
   model_name = config.name
+  input_shape = config.input_shape
 
   img_input = layers.Input(shape=input_shape, name='Input')
 
@@ -55,30 +54,27 @@ def mobilenet_v3(config: MobileNetV3Config,
 
 
 def mobilenet_v3_small(
-    input_shape: Tuple[int, int, int] = (224, 224, 3),
     config: archs.MobileNetV3SmallConfig = archs.MobileNetV3SmallConfig()
 ) -> tf.keras.models.Model:
   """Instantiates the MobileNet V3 Small Model."""
   assert isinstance(config, archs.MobileNetV3SmallConfig)
-  return mobilenet_v3(input_shape=input_shape, config=config)
+  return mobilenet_v3(config=config)
 
 
 def mobilenet_v3_large(
-    input_shape: Tuple[int, int, int] = (224, 224, 3),
     config: archs.MobileNetV3LargeConfig = archs.MobileNetV3LargeConfig(),
 ) -> tf.keras.models.Model:
   """Instantiates the MobileNet V3 Large Model."""
   assert isinstance(config, archs.MobileNetV3LargeConfig)
-  return mobilenet_v3(input_shape=input_shape, config=config)
+  return mobilenet_v3(config=config)
 
 
 def mobilenet_v3_edge_tpu(
-    input_shape: Tuple[int, int, int] = (224, 224, 3),
     config: archs.MobileNetV3EdgeTPUConfig = archs.MobileNetV3EdgeTPUConfig(),
 ) -> tf.keras.models.Model:
   """Instantiates the MobileNet V3 Large Model."""
   assert isinstance(config, archs.MobileNetV3EdgeTPUConfig)
-  return mobilenet_v3(input_shape=input_shape, config=config)
+  return mobilenet_v3(config=config)
 
 
 if __name__ == '__main__':
