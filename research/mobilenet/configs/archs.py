@@ -749,7 +749,7 @@ class MobileNetV3EdgeTPUConfig(MobileNetConfig):
       activation_name='relu',
       squeeze_factor=None,
       expansion_size=8,
-      residule=False,
+      residual=False,
       block_type=BlockType.InvertedResConv.value),
     MobileNetBlockConfig.from_args(
       kernel=(3, 3), stride=1, filters=96,
