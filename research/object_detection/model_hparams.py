@@ -38,6 +38,8 @@ class HParams():
             self.__dict__[key] = value
     def values(self):
         return self.params
+    def get(self,key,default):
+        return self.params.get(key,default)
 
 def create_hparams(hparams_overrides=None):
   """Returns hyperparameters, including any flag value overrides.
