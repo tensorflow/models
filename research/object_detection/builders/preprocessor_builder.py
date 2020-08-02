@@ -409,4 +409,4 @@ def build(preprocessor_step_config):
         'num_scales': config.num_scales
     }
 
-  raise ValueError('Unknown preprocessing step.')
+  raise ValueError(f'Unknown preprocessing step.{step_type}')
