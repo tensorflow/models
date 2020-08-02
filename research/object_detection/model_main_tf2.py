@@ -64,7 +64,7 @@ flags.DEFINE_string(
     'checkpoint_dir', None, 'Path to directory holding a checkpoint.  If '
     '`checkpoint_dir` is provided, this binary operates in eval-only mode, '
     'writing resulting metrics to `model_dir`.')
-
+flags.DEFINE_bool('use_tpu', True, 'Use TPUs rather than plain CPUs')
 flags.DEFINE_integer('eval_timeout', 3600, 'Number of seconds to wait for an'
                      'evaluation checkpoint before exiting.')
 flags.DEFINE_integer(
