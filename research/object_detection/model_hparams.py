@@ -29,6 +29,15 @@ except ImportError:
   pass
 # pylint: enable=g-import-not-at-top
 
+class HParams():
+    def __init__(self,*args,**kwargs):
+        self.params = {key:value for key,value in kwargs.items()}
+        if 'load_pretrained' not in self.params:
+            self.params['load_pretrained'] = True
+        for (key, value) in self.params.items():
+            self.__dict__[key] = value
+    def values(self):
+        return self.params
 
 def create_hparams(hparams_overrides=None):
   """Returns hyperparameters, including any flag value overrides.
@@ -49,5 +58,5 @@ def create_hparams(hparams_overrides=None):
     #  hparams = hparams.parse(hparams_overrides)
     return hparams_overrides
   #hp.HParam('load_pretrained', hp.Discrete([True]))
-  hparams = {'load_pretrained':True}
+  hparams = HParams(load_pretrained = True)
   return hparams
