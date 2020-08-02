@@ -37,6 +37,8 @@ python model_main_tf2.py -- \
 """
 from absl import flags
 import tensorflow.compat.v2 as tf
+import tensorflow.compat.v1 as tf_v1
+
 from object_detection import model_hparams
 from object_detection import model_lib_v2
 
@@ -109,4 +111,4 @@ def main(unused_argv):
           use_tpu=FLAGS.use_tpu)
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf_v1.app.run()
