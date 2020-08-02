@@ -40,11 +40,12 @@ def create_hparams(hparams_overrides=None):
   Returns:
     The hyperparameters as a tf.HParams object.
   """
-  hparams = contrib_training.HParams(
+  #hparams = contrib_training.HParams(
       # Whether a fine tuning checkpoint (provided in the pipeline config)
       # should be loaded for training.
-      load_pretrained=True)
+  #    load_pretrained=True)
   # Override any of the preceding hyperparameter values.
-  if hparams_overrides:
-    hparams = hparams.parse(hparams_overrides)
+  #if hparams_overrides:
+  #  hparams = hparams.parse(hparams_overrides)
+  hparams = {'load_pretrained':True}
   return hparams
