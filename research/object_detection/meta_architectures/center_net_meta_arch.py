@@ -118,6 +118,19 @@ class CenterNetFeatureExtractor(tf.keras.Model):
     """Ther number of feature outputs returned by the feature extractor."""
     pass
 
+  @abc.abstractmethod
+  def get_sub_model(self, sub_model_type):
+    """Returns the underlying keras model for the given sub_model_type.
+
+    This function is useful when we only want to get a subset of weights to
+    be restored from a checkpoint.
+
+    Args:
+      sub_model_type: string, the type of sub model. Currently, CenterNet
+        feature extractors support 'detection' and 'classification'.
+    """
+    pass
+
 
 def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
                         bias_fill=None):
@@ -2762,20 +2775,8 @@ class CenterNetMetaArch(model.DetectionModel):
       A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
     """
 
-    if fine_tune_checkpoint_type == 'classification':
-      return {'feature_extractor': self._feature_extractor.get_base_model()}
-
-    elif fine_tune_checkpoint_type == 'detection':
-      return {'feature_extractor': self._feature_extractor.get_model()}
-
-    elif fine_tune_checkpoint_type == 'fine_tune':
-      feature_extractor_model = tf.train.Checkpoint(
-          _feature_extractor=self._feature_extractor)
-      return {'model': feature_extractor_model}
-
-    else:
-      raise ValueError('Not supported  fine tune checkpoint type - {}'.format(
-          fine_tune_checkpoint_type))
+    sub_model = self._feature_extractor.get_sub_model(fine_tune_checkpoint_type)
+    return {'feature_extractor': sub_model}
 
   def updates(self):
     raise RuntimeError('This model is intended to be used with model_lib_v2 '

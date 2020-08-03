@@ -31,7 +31,7 @@ from official.nlp.modeling.layers import multi_channel_attention
 from official.nlp.nhnet import configs
 from official.nlp.nhnet import decoder
 from official.nlp.nhnet import utils
-from official.nlp.transformer import beam_search
+from official.nlp.modeling.ops import beam_search
 
 
 def embedding_linear(embedding_matrix, x):
@@ -413,7 +413,6 @@ def get_bert2bert_layers(params: configs.BERT2BERTConfig):
       activation=tf_utils.get_activation(bert_config.hidden_act),
       dropout_rate=bert_config.hidden_dropout_prob,
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-      sequence_length=None,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(

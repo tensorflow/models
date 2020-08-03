@@ -20,12 +20,12 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras import backend
 from official.vision.detection.dataloader import mode_keys
 from official.vision.detection.evaluation import factory as eval_factory
 from official.vision.detection.modeling import base_model
 from official.vision.detection.modeling import losses
 from official.vision.detection.modeling.architecture import factory
+from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.ops import postprocess_ops
 
 
@@ -59,11 +59,8 @@ class RetinanetModel(base_model.Model):
     self._transpose_input = params.train.transpose_input
     assert not self._transpose_input, 'Transpose input is not supported.'
     # Input layer.
-    input_shape = (
-        params.retinanet_parser.output_size +
-        [params.retinanet_parser.num_channels])
     self._input_layer = tf.keras.layers.Input(
-        shape=input_shape, name='',
+        shape=(None, None, params.retinanet_parser.num_channels), name='',
         dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32)
 
   def build_outputs(self, inputs, mode):
@@ -120,7 +117,7 @@ class RetinanetModel(base_model.Model):
 
   def build_model(self, params, mode=None):
     if self._keras_model is None:
-      with backend.get_graph().as_default():
+      with keras_utils.maybe_enter_backend_graph():
         outputs = self.model_outputs(self._input_layer, mode)
 
         model = tf.keras.models.Model(

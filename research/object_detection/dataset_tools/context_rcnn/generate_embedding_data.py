@@ -55,12 +55,21 @@ import threading
 
 import numpy as np
 import six
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 try:
   import apache_beam as beam  # pylint:disable=g-import-not-at-top
 except ModuleNotFoundError:
   pass
+
+
+def add_keys(serialized_example):
+  key = hash(serialized_example)
+  return key, serialized_example
+
+
+def drop_keys(key_value_tuple):
+  return key_value_tuple[1]
 
 
 class GenerateEmbeddingDataFn(beam.DoFn):
@@ -95,33 +104,14 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     # one instance across all threads in the worker. This is possible since
     # tf.Session.run() is thread safe.
     with self.session_lock:
-      if self._session is None:
-        graph = tf.Graph()
-        self._session = tf.Session(graph=graph)
-        with graph.as_default():
-          meta_graph = tf.saved_model.loader.load(
-              self._session, [tf.saved_model.tag_constants.SERVING],
-              self._model_dir)
-        signature = meta_graph.signature_def['serving_default']
-        input_tensor_name = signature.inputs['inputs'].name
-        detection_features_name = signature.outputs['detection_features'].name
-        detection_boxes_name = signature.outputs['detection_boxes'].name
-        num_detections_name = signature.outputs['num_detections'].name
-        self._input = graph.get_tensor_by_name(input_tensor_name)
-        self._embedding_node = graph.get_tensor_by_name(detection_features_name)
-        self._box_node = graph.get_tensor_by_name(detection_boxes_name)
-        self._scores_node = graph.get_tensor_by_name(
-            signature.outputs['detection_scores'].name)
-        self._num_detections = graph.get_tensor_by_name(num_detections_name)
-        tf.logging.info(signature.outputs['detection_features'].name)
-        tf.logging.info(signature.outputs['detection_boxes'].name)
-        tf.logging.info(signature.outputs['num_detections'].name)
+      self._detect_fn = tf.saved_model.load(self._model_dir)
 
-  def process(self, tfrecord_entry):
-    return self._run_inference_and_generate_embedding(tfrecord_entry)
+  def process(self, tfexample_key_value):
+    return self._run_inference_and_generate_embedding(tfexample_key_value)
 
-  def _run_inference_and_generate_embedding(self, tfrecord_entry):
-    input_example = tf.train.Example.FromString(tfrecord_entry)
+  def _run_inference_and_generate_embedding(self, tfexample_key_value):
+    key, tfexample = tfexample_key_value
+    input_example = tf.train.Example.FromString(tfexample)
     # Convert date_captured datetime string to unix time integer and store
 
     def get_date_captured(example):
@@ -181,16 +171,16 @@ class GenerateEmbeddingDataFn(beam.DoFn):
         (date_captured - datetime.datetime.fromtimestamp(0)).total_seconds())
 
     example = tf.train.Example()
+    example.CopyFrom(input_example)
     example.features.feature['image/unix_time'].float_list.value.extend(
         [unix_time])
 
-    (detection_features, detection_boxes, num_detections,
-     detection_scores) = self._session.run(
-         [
-             self._embedding_node, self._box_node, self._num_detections[0],
-             self._scores_node
-         ],
-         feed_dict={self._input: [tfrecord_entry]})
+    detections = self._detect_fn.signatures['serving_default'](
+        (tf.expand_dims(tf.convert_to_tensor(tfexample), 0)))
+    detection_features = detections['detection_features']
+    detection_boxes = detections['detection_boxes']
+    num_detections = detections['num_detections']
+    detection_scores = detections['detection_scores']
 
     num_detections = int(num_detections)
     embed_all = []
@@ -251,60 +241,8 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     example.features.feature['image/embedding_count'].int64_list.value.append(
         embedding_count)
 
-    # Add other essential example attributes
-    example.features.feature['image/encoded'].bytes_list.value.extend(
-        input_example.features.feature['image/encoded'].bytes_list.value)
-    example.features.feature['image/height'].int64_list.value.extend(
-        input_example.features.feature['image/height'].int64_list.value)
-    example.features.feature['image/width'].int64_list.value.extend(
-        input_example.features.feature['image/width'].int64_list.value)
-    example.features.feature['image/source_id'].bytes_list.value.extend(
-        input_example.features.feature['image/source_id'].bytes_list.value)
-    example.features.feature['image/location'].bytes_list.value.extend(
-        input_example.features.feature['image/location'].bytes_list.value)
-
-    example.features.feature['image/date_captured'].bytes_list.value.extend(
-        input_example.features.feature['image/date_captured'].bytes_list.value)
-
-    example.features.feature['image/class/text'].bytes_list.value.extend(
-        input_example.features.feature['image/class/text'].bytes_list.value)
-    example.features.feature['image/class/label'].int64_list.value.extend(
-        input_example.features.feature['image/class/label'].int64_list.value)
-
-    example.features.feature['image/seq_id'].bytes_list.value.extend(
-        input_example.features.feature['image/seq_id'].bytes_list.value)
-    example.features.feature['image/seq_num_frames'].int64_list.value.extend(
-        input_example.features.feature['image/seq_num_frames'].int64_list.value)
-    example.features.feature['image/seq_frame_num'].int64_list.value.extend(
-        input_example.features.feature['image/seq_frame_num'].int64_list.value)
-
-    example.features.feature['image/object/bbox/ymax'].float_list.value.extend(
-        input_example.features.feature[
-            'image/object/bbox/ymax'].float_list.value)
-    example.features.feature['image/object/bbox/ymin'].float_list.value.extend(
-        input_example.features.feature[
-            'image/object/bbox/ymin'].float_list.value)
-    example.features.feature['image/object/bbox/xmax'].float_list.value.extend(
-        input_example.features.feature[
-            'image/object/bbox/xmax'].float_list.value)
-    example.features.feature['image/object/bbox/xmin'].float_list.value.extend(
-        input_example.features.feature[
-            'image/object/bbox/xmin'].float_list.value)
-    example.features.feature[
-        'image/object/class/score'].float_list.value.extend(
-            input_example.features.feature[
-                'image/object/class/score'].float_list.value)
-    example.features.feature[
-        'image/object/class/label'].int64_list.value.extend(
-            input_example.features.feature[
-                'image/object/class/label'].int64_list.value)
-    example.features.feature[
-        'image/object/class/text'].bytes_list.value.extend(
-            input_example.features.feature[
-                'image/object/class/text'].bytes_list.value)
-
     self._num_examples_processed.inc(1)
-    return [example]
+    return [(key, example)]
 
 
 def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
@@ -324,16 +262,17 @@ def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
   """
   input_collection = (
       pipeline | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
-          input_tfrecord,
-          coder=beam.coders.BytesCoder()))
+          input_tfrecord, coder=beam.coders.BytesCoder())
+      | 'AddKeys' >> beam.Map(add_keys))
   output_collection = input_collection | 'ExtractEmbedding' >> beam.ParDo(
       GenerateEmbeddingDataFn(model_dir, top_k_embedding_count,
                               bottom_k_embedding_count))
   output_collection = output_collection | 'Reshuffle' >> beam.Reshuffle()
-  _ = output_collection | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
-      output_tfrecord,
-      num_shards=num_shards,
-      coder=beam.coders.ProtoCoder(tf.train.Example))
+  _ = output_collection | 'DropKeys' >> beam.Map(
+      drop_keys) | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
+          output_tfrecord,
+          num_shards=num_shards,
+          coder=beam.coders.ProtoCoder(tf.train.Example))
 
 
 def parse_args(argv):
@@ -416,4 +355,3 @@ def main(argv=None, save_main_session=True):
 
 if __name__ == '__main__':
   main()
-

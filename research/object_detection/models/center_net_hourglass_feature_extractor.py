@@ -62,8 +62,14 @@ class CenterNetHourglassFeatureExtractor(
     """Ther number of feature outputs returned by the feature extractor."""
     return self._network.num_hourglasses
 
-  def get_model(self):
-    return self._network
+  def get_sub_model(self, sub_model_type):
+    if sub_model_type == 'detection':
+      return self._network
+    else:
+      supported_types = ['detection']
+      raise ValueError(
+          ('Sub model {} is not defined for Hourglass.'.format(sub_model_type) +
+           'Supported types are {}.'.format(supported_types)))
 
 
 def hourglass_104(channel_means, channel_stds, bgr_ordering):

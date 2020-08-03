@@ -91,4 +91,4 @@ class FasterRCNNResnetV1FpnKerasFeatureExtractorTest(tf.test.TestCase):
         model(proposal_feature_maps))
     features_shape = tf.shape(proposal_classifier_features)
 
-    self.assertAllEqual(features_shape.numpy(), [3, 1024])
+    self.assertAllEqual(features_shape.numpy(), [3, 1, 1, 1024])

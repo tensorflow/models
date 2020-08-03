@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Trainer network for BERT-style models."""
+"""BERT cls-token classifier."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import tensorflow as tf
 
@@ -36,6 +32,9 @@ class BertClassifier(tf.keras.Model):
   The BertClassifier allows a user to pass in a transformer stack, and
   instantiates a classification network based on the passed `num_classes`
   argument. If `num_classes` is set to 1, a regression network is instantiated.
+
+  *Note* that the model is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
 
   Arguments:
     network: A transformer network. This network should output a sequence output

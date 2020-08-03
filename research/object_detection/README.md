@@ -54,16 +54,21 @@ Note: The models we provide in [TF2 Zoo](g3doc/tf2_detection_zoo.md) and
 [TF1 Zoo](g3doc/tf1_detection_zoo.md) are specific to the TensorFlow major
 version and are not interoperable.
 
-Please select one of the two links below for TensorFlow version specific
+Please select one of the links below for TensorFlow version-specific
 documentation of the Object Detection API:
 
 <!-- mdlint off(WHITESPACE_LINE_LENGTH) -->
+### Tensorflow 2.x
+  *   <a href='g3doc/tf2.md'>
+        Object Detection API TensorFlow 2</a><br>
+  *   <a href='g3doc/tf2_detection_zoo.md'>
+        TensorFlow 2 Model Zoo</a><br>
 
-
-| [![Object Detection API TensorFlow 2](https://img.shields.io/badge/Object%20Detection%20API-TensorFlow%202-orange)](g3doc/tf2.md) | [![TensorFlow 2 Model Zoo](https://img.shields.io/badge/Model%20Zoo-TensorFlow%202-Orange)](g3doc/tf2_detection_zoo.md) |
-|---|---|
-| [![Object Detection API TensorFlow 1](https://img.shields.io/badge/Object%20Detection%20API-TensorFlow%201-orange)](g3doc/tf1.md) | [![TensorFlow 1 Model Zoo](https://img.shields.io/badge/Model%20Zoo-TensorFlow%201-Orange)](g3doc/tf1_detection_zoo.md) |
-
+### Tensorflow 1.x
+  *   <a href='g3doc/tf1.md'>
+        Object Detection API TensorFlow 1</a><br>
+  *   <a href='g3doc/tf1_detection_zoo.md'>
+        TensorFlow 1 Model Zoo</a><br>
 <!-- mdlint on -->
 
 ## Whats New
@@ -103,6 +108,18 @@ Kaushik Shivakumar, Lu He, Mingxing Tan, Pengchong Jin, Ronny Votel, Sara Beery,
 Sergi Caelles Prat, Shan Yang, Sudheendra Vijayanarasimhan, Tina Tian, Tomer
 Kaftan, Vighnesh Birodkar, Vishnu Banna, Vivek Rathod, Yanhui Liang, Yiming Shi,
 Yixin Shi, Yu-hui Chen, Zhichao Lu.
+
+### MobileDet GPU
+
+We have released SSDLite with MobileDet GPU backbone, which achieves 17% mAP
+higher than the MobileNetV2 SSDLite (27.5 mAP vs 23.5 mAP) on a NVIDIA Jetson
+Xavier at comparable latency (3.2ms vs 3.3ms).
+
+Along with the model definition, we are also releasing model checkpoints trained
+on the COCO dataset.
+
+<b>Thanks to contributors</b>: Yongzhe Wang, Bo Chen, Hanxiao Liu, Le An
+(NVIDIA), Yu-Te Cheng (NVIDIA), Oliver Knieps (NVIDIA), and Josh Park (NVIDIA).
 
 ### Context R-CNN
 

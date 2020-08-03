@@ -17,7 +17,9 @@
 from __future__ import division
 
 import functools
+import re
 import unittest
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v1 as tf
@@ -1787,6 +1789,15 @@ class CenterNetMetaArchRestoreTest(test_case.TestCase):
     restore_from_objects_map = model.restore_from_objects('classification')
     self.assertIsInstance(restore_from_objects_map['feature_extractor'],
                           tf.keras.Model)
+
+  def test_retore_map_error(self):
+    """Test that restoring unsupported checkpoint type raises an error."""
+
+    model = build_center_net_meta_arch(build_resnet=True)
+    msg = ("Sub model detection is not defined for ResNet."
+           "Supported types are ['classification'].")
+    with self.assertRaisesRegex(ValueError, re.escape(msg)):
+      model.restore_from_objects('detection')
 
 
 class DummyFeatureExtractor(cnma.CenterNetFeatureExtractor):

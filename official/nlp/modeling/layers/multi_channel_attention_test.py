@@ -48,7 +48,11 @@ class MultiChannelAttentionTest(tf.test.TestCase):
     mask_data = np.random.randint(2, size=(3, num_docs, 4, 2))
     doc_probs = np.random.randint(
         2, size=(3, num_heads, 4, num_docs)).astype(float)
-    outputs = attention_layer([from_data, to_data, doc_probs], mask_data)
+    outputs = attention_layer(
+        query=from_data,
+        value=to_data,
+        context_attention_weights=doc_probs,
+        attention_mask=mask_data)
     self.assertEqual(outputs.shape, (3, 4, 8))
 
 

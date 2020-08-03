@@ -42,7 +42,8 @@ flags.DEFINE_integer(
     'image_height', None,
     'Image height used during training(or crop height if used)'
     ' If not set, the dataset default is used instead.')
-flags.DEFINE_string('work_dir', '/tmp', 'A directory to store temporary files.')
+flags.DEFINE_string('work_dir', '/tmp',
+                    'A directory to store temporary files.')
 flags.DEFINE_integer('version_number', 1, 'Version number of the model')
 flags.DEFINE_bool(
     'export_for_serving', True,
@@ -116,7 +117,7 @@ def export_model(export_dir,
   image_height = crop_image_height or dataset_image_height
 
   if export_for_serving:
-    images_orig = tf.placeholder(
+    images_orig = tf.compat.v1.placeholder(
         tf.string, shape=[batch_size], name='tf_example')
     images_orig_float = model_export_lib.generate_tfexample_image(
         images_orig,
@@ -126,22 +127,23 @@ def export_model(export_dir,
         name='float_images')
   else:
     images_shape = (batch_size, image_height, image_width, image_depth)
-    images_orig = tf.placeholder(
+    images_orig = tf.compat.v1.placeholder(
         tf.uint8, shape=images_shape, name='original_image')
     images_orig_float = tf.image.convert_image_dtype(
         images_orig, dtype=tf.float32, name='float_images')
 
   endpoints = model.create_base(images_orig_float, labels_one_hot=None)
 
-  sess = tf.Session()
-  saver = tf.train.Saver(slim.get_variables_to_restore(), sharded=True)
+  sess = tf.compat.v1.Session()
+  saver = tf.compat.v1.train.Saver(
+      slim.get_variables_to_restore(), sharded=True)
   saver.restore(sess, get_checkpoint_path())
-  tf.logging.info('Model restored successfully.')
+  tf.compat.v1.logging.info('Model restored successfully.')
 
   # Create model signature.
   if export_for_serving:
     input_tensors = {
-        tf.saved_model.signature_constants.CLASSIFY_INPUTS: images_orig
+        tf.saved_model.CLASSIFY_INPUTS: images_orig
     }
   else:
     input_tensors = {'images': images_orig}
@@ -163,21 +165,21 @@ def export_model(export_dir,
           dataset.max_sequence_length)):
     output_tensors['attention_mask_%d' % i] = t
   signature_outputs = model_export_lib.build_tensor_info(output_tensors)
-  signature_def = tf.saved_model.signature_def_utils.build_signature_def(
+  signature_def = tf.compat.v1.saved_model.signature_def_utils.build_signature_def(
       signature_inputs, signature_outputs,
-      tf.saved_model.signature_constants.CLASSIFY_METHOD_NAME)
+      tf.saved_model.CLASSIFY_METHOD_NAME)
   # Save model.
-  builder = tf.saved_model.builder.SavedModelBuilder(export_dir)
+  builder = tf.compat.v1.saved_model.builder.SavedModelBuilder(export_dir)
   builder.add_meta_graph_and_variables(
-      sess, [tf.saved_model.tag_constants.SERVING],
+      sess, [tf.saved_model.SERVING],
       signature_def_map={
-          tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
+          tf.saved_model.DEFAULT_SERVING_SIGNATURE_DEF_KEY:
               signature_def
       },
-      main_op=tf.tables_initializer(),
+      main_op=tf.compat.v1.tables_initializer(),
       strip_default_attrs=True)
   builder.save()
-  tf.logging.info('Model has been exported to %s' % export_dir)
+  tf.compat.v1.logging.info('Model has been exported to %s' % export_dir)
 
   return signature_def
 

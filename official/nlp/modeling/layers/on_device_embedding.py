@@ -38,6 +38,9 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
       lookup. Defaults to False (that is, using tf.gather). Setting this option
       to True may improve performance, especially on small vocabulary sizes, but
       will generally require more memory.
+    use_scale: Whether to scale the output embeddings. Defaults to False (that
+      is, not to scale). Setting this option to True will let values in output
+      embeddings multiplied by self._embedding_width ** 0.5.
   """
 
   def __init__(self,
@@ -45,6 +48,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
                embedding_width,
                initializer="glorot_uniform",
                use_one_hot=False,
+               use_scale=False,
                **kwargs):
 
     super(OnDeviceEmbedding, self).__init__(**kwargs)
@@ -52,6 +56,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
     self._embedding_width = embedding_width
     self._initializer = initializer
     self._use_one_hot = use_one_hot
+    self._use_scale = use_scale
 
   def get_config(self):
     config = {
@@ -59,6 +64,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
         "embedding_width": self._embedding_width,
         "initializer": self._initializer,
         "use_one_hot": self._use_one_hot,
+        "use_scale": self._use_scale,
     }
     base_config = super(OnDeviceEmbedding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -85,4 +91,6 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
         # Work around b/142213824: prefer concat to shape over a Python list.
         tf.concat([tf.shape(inputs), [self._embedding_width]], axis=0))
     embeddings.set_shape(inputs.shape.as_list() + [self._embedding_width])
+    if self._use_scale:
+      embeddings *= self._embedding_width ** 0.5
     return embeddings

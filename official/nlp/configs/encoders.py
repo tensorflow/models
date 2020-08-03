@@ -17,12 +17,13 @@
 
 Includes configurations and instantiation methods.
 """
+from typing import Optional
 import dataclasses
-import gin
 import tensorflow as tf
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
+from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 
 
@@ -40,18 +41,19 @@ class TransformerEncoderConfig(base_config.Config):
   max_position_embeddings: int = 512
   type_vocab_size: int = 2
   initializer_range: float = 0.02
+  embedding_size: Optional[int] = None
 
 
-@gin.configurable
-def instantiate_encoder_from_cfg(config: TransformerEncoderConfig,
-                                 encoder_cls=networks.TransformerEncoder):
+def instantiate_encoder_from_cfg(
+    config: TransformerEncoderConfig,
+    encoder_cls=networks.TransformerEncoder,
+    embedding_layer: Optional[layers.OnDeviceEmbedding] = None):
   """Instantiate a Transformer encoder network from TransformerEncoderConfig."""
   if encoder_cls.__name__ == "EncoderScaffold":
     embedding_cfg = dict(
         vocab_size=config.vocab_size,
         type_vocab_size=config.type_vocab_size,
         hidden_size=config.hidden_size,
-        seq_length=None,
         max_seq_length=config.max_position_embeddings,
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=config.initializer_range),
@@ -87,9 +89,10 @@ def instantiate_encoder_from_cfg(config: TransformerEncoderConfig,
       activation=tf_utils.get_activation(config.hidden_activation),
       dropout_rate=config.dropout_rate,
       attention_dropout_rate=config.attention_dropout_rate,
-      sequence_length=None,
       max_sequence_length=config.max_position_embeddings,
       type_vocab_size=config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=config.initializer_range))
+          stddev=config.initializer_range),
+      embedding_width=config.embedding_size,
+      embedding_layer=embedding_layer)
   return encoder_network

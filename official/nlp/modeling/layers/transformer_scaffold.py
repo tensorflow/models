@@ -262,9 +262,8 @@ class TransformerScaffold(tf.keras.layers.Layer):
     else:
       input_tensor, attention_mask = (inputs, None)
 
-    attention_inputs = [input_tensor, input_tensor]
-
-    attention_output = self._attention_layer(attention_inputs, attention_mask)
+    attention_output = self._attention_layer(
+        query=input_tensor, value=input_tensor, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = self._attention_layer_norm(input_tensor +
                                                   attention_output)

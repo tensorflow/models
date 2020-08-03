@@ -18,11 +18,11 @@ import abc
 import functools
 from typing import Any, Callable, Optional
 
+from absl import logging
 import six
 import tensorflow as tf
 
 from official.modeling.hyperparams import config_definitions as cfg
-from official.utils import registry
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -67,7 +67,19 @@ class Task(tf.Module):
     Args:
       model: The keras.Model built or used by this task.
     """
-    pass
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    logging.info("Trying to load pretrained checkpoint from %s",
+                 ckpt_dir_or_file)
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+    if not ckpt_dir_or_file:
+      return
+
+    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+    status = ckpt.restore(ckpt_dir_or_file)
+    status.expect_partial().assert_existing_objects_matched()
+    logging.info("Finished loading pretrained checkpoint from %s",
+                 ckpt_dir_or_file)
 
   @abc.abstractmethod
   def build_model(self) -> tf.keras.Model:
@@ -282,49 +294,3 @@ class Task(tf.Module):
     """Optional reduce of aggregated logs over validation steps."""
     return {}
 
-
-_REGISTERED_TASK_CLS = {}
-
-
-# TODO(b/158268740): Move these outside the base class file.
-# TODO(b/158741360): Add type annotations once pytype checks across modules.
-def register_task_cls(task_config_cls):
-  """Decorates a factory of Tasks for lookup by a subclass of TaskConfig.
-
-  This decorator supports registration of tasks as follows:
-
-  ```
-  @dataclasses.dataclass
-  class MyTaskConfig(TaskConfig):
-    # Add fields here.
-    pass
-
-  @register_task_cls(MyTaskConfig)
-  class MyTask(Task):
-    # Inherits def __init__(self, task_config).
-    pass
-
-  my_task_config = MyTaskConfig()
-  my_task = get_task(my_task_config)  # Returns MyTask(my_task_config).
-  ```
-
-  Besisdes a class itself, other callables that create a Task from a TaskConfig
-  can be decorated by the result of this function, as long as there is at most
-  one registration for each config class.
-
-  Args:
-    task_config_cls: a subclass of TaskConfig (*not* an instance of TaskConfig).
-      Each task_config_cls can only be used for a single registration.
-
-  Returns:
-    A callable for use as class decorator that registers the decorated class
-    for creation from an instance of task_config_cls.
-  """
-  return registry.register(_REGISTERED_TASK_CLS, task_config_cls)
-
-
-# The user-visible get_task() is defined after classes have been registered.
-# TODO(b/158741360): Add type annotations once pytype checks across modules.
-def get_task_cls(task_config_cls):
-  task_cls = registry.lookup(_REGISTERED_TASK_CLS, task_config_cls)
-  return task_cls

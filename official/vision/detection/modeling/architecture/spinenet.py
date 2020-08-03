@@ -24,8 +24,8 @@ import math
 from absl import logging
 import tensorflow as tf
 
-from tensorflow.python.keras import backend
 from official.modeling import tf_utils
+from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_blocks
 
 layers = tf.keras.layers
@@ -486,7 +486,7 @@ class SpineNetBuilder(object):
     self._norm_epsilon = norm_epsilon
 
   def __call__(self, inputs, is_training=None):
-    with backend.get_graph().as_default():
+    with keras_utils.maybe_enter_backend_graph():
       model = SpineNet(
           input_specs=self._input_specs,
           min_level=self._min_level,

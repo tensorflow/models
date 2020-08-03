@@ -39,6 +39,7 @@ from object_detection.protos import losses_pb2
 from object_detection.protos import model_pb2
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import tf_version
 
 ## Feature Extractors for TF
@@ -48,6 +49,7 @@ from object_detection.utils import tf_version
 # pylint: disable=g-import-not-at-top
 if tf_version.is_tf2():
   from object_detection.models import center_net_hourglass_feature_extractor
+  from object_detection.models import center_net_mobilenet_v2_feature_extractor
   from object_detection.models import center_net_resnet_feature_extractor
   from object_detection.models import center_net_resnet_v1_fpn_feature_extractor
   from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
@@ -140,11 +142,18 @@ if tf_version.is_tf2():
   CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
       'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
       'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v1_18_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_18_fpn,
+      'resnet_v1_34_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_34_fpn,
       'resnet_v1_50_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
       'resnet_v1_101_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_101_fpn,
-      'hourglass_104': center_net_hourglass_feature_extractor.hourglass_104,
+      'hourglass_104':
+          center_net_hourglass_feature_extractor.hourglass_104,
+      'mobilenet_v2':
+          center_net_mobilenet_v2_feature_extractor.mobilenet_v2,
   }
 
   FEATURE_EXTRACTOR_MAPS = [
@@ -648,8 +657,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_localization_loss_weight)
 
   crop_and_resize_fn = (
-      ops.matmul_crop_and_resize if frcnn_config.use_matmul_crop_and_resize
-      else ops.native_crop_and_resize)
+      spatial_ops.multilevel_matmul_crop_and_resize
+      if frcnn_config.use_matmul_crop_and_resize
+      else spatial_ops.multilevel_native_crop_and_resize)
   clip_anchors_to_image = (
       frcnn_config.clip_anchors_to_image)
 

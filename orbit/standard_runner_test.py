@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for orbit.standard_runner."""
-# pylint: disable=g-bad-import-order
 
 from orbit import standard_runner
 

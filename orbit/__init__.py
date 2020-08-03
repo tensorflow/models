@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+"""Orbit package definition."""
 
 from orbit import utils
 from orbit.controller import Controller

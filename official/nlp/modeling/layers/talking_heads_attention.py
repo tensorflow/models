@@ -58,7 +58,7 @@ class TalkingHeadsAttention(attention.MultiHeadAttention):
     bias_constraint: Constraint for dense layer kernels.
   """
 
-  def _build_attention(self, qkv_rank):
+  def build_attention(self, qkv_rank):
     """Builds multi-head dot-product attention computations.
 
     This function overrides base class to create additional linear projection
@@ -67,7 +67,7 @@ class TalkingHeadsAttention(attention.MultiHeadAttention):
     Args:
       qkv_rank: the rank of query, key, value tensors after projection.
     """
-    super(TalkingHeadsAttention, self)._build_attention(qkv_rank)
+    super(TalkingHeadsAttention, self).build_attention(qkv_rank)
 
     # Build an equation:
     # (<batch_dims>, num_heads_a, ...),(num_heads_a, num_heads_b) ->
@@ -103,11 +103,11 @@ class TalkingHeadsAttention(attention.MultiHeadAttention):
         dtype=self.dtype,
         trainable=True)
 
-  def _compute_attention(self,
-                         query_tensor,
-                         key_tensor,
-                         value_tensor,
-                         attention_mask=None):
+  def compute_attention(self,
+                        query_tensor,
+                        key_tensor,
+                        value_tensor,
+                        attention_mask=None):
     """Applies Dot-product attention with query, key, value tensors.
 
     This function overrides base class to apply additional linear projection

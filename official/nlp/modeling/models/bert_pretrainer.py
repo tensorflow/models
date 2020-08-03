@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Trainer network for BERT-style models."""
+"""BERT Pre-training model."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import copy
 from typing import List, Optional
@@ -40,6 +36,9 @@ class BertPretrainer(tf.keras.Model):
   The BertPretrainer allows a user to pass in a transformer stack, and
   instantiates the masked language model and classification networks that are
   used to create the training objectives.
+
+  *Note* that the model is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
 
   Arguments:
     network: A transformer network. This network should output a sequence output
@@ -95,7 +94,8 @@ class BertPretrainer(tf.keras.Model):
     if isinstance(cls_output, list):
       cls_output = cls_output[-1]
     sequence_output_length = sequence_output.shape.as_list()[1]
-    if sequence_output_length < num_token_predictions:
+    if sequence_output_length is not None and (sequence_output_length <
+                                               num_token_predictions):
       raise ValueError(
           "The passed network's output length is %s, which is less than the "
           'requested num_token_predictions %s.' %
