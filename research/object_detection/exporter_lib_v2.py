@@ -40,7 +40,11 @@ def _decode_tf_example(tf_example_string_tensor):
 class DetectionInferenceModule(tf.Module):
   """Detection Inference Module."""
 
-  def __init__(self, detection_model):
+  def __init__(self, detection_model,
+               use_side_inputs=False,
+               side_input_shapes=None,
+               side_input_types=None,
+               side_input_names=None):
     """Initializes a module for detection.
 
     Args:
@@ -48,7 +52,7 @@ class DetectionInferenceModule(tf.Module):
     """
     self._model = detection_model
 
-  def _run_inference_on_images(self, image):
+  def _run_inference_on_images(self, image, **kwargs):
     """Cast image to float and run inference.
 
     Args:
@@ -60,7 +64,7 @@ class DetectionInferenceModule(tf.Module):
 
     image = tf.cast(image, tf.float32)
     image, shapes = self._model.preprocess(image)
-    prediction_dict = self._model.predict(image, shapes)
+    prediction_dict = self._model.predict(image, shapes, **kwargs)
     detections = self._model.postprocess(prediction_dict, shapes)
     classes_field = fields.DetectionResultFields.detection_classes
     detections[classes_field] = (
@@ -71,15 +75,39 @@ class DetectionInferenceModule(tf.Module):
 
     return detections
 
-
 class DetectionFromImageModule(DetectionInferenceModule):
   """Detection Inference Module for image inputs."""
 
-  @tf.function(
-      input_signature=[
-          tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8)])
-  def __call__(self, input_tensor):
-    return self._run_inference_on_images(input_tensor)
+  def __init__(self, detection_model,
+               use_side_inputs=False,
+               side_input_shapes="",
+               side_input_types="",
+               side_input_names=""):
+    """Initializes a module for detection.
+
+    Args:
+      detection_model: The detection model to use for inference.
+    """
+    self.side_input_names = side_input_names
+    sig = [tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8)]
+    if use_side_inputs:
+      for info in zip(side_input_shapes.split("/"),
+                      side_input_types.split(","),
+                      side_input_names.split(",")):
+        sig.append(tf.TensorSpec(shape=eval("[" + info[0] + "]"),
+                                 dtype=eval(info[1]),
+                                 name=info[2]))
+
+    def __call__(input_tensor, *side_inputs):
+      kwargs = dict(zip(self.side_input_names.split(","), side_inputs))
+      return self._run_inference_on_images(input_tensor, **kwargs)
+
+    self.__call__ = tf.function(__call__, input_signature=sig)
+
+    super(DetectionFromImageModule, self).__init__(detection_model,
+                                                   side_input_shapes,
+                                                   side_input_types,
+                                                   side_input_names)
 
 
 class DetectionFromFloatImageModule(DetectionInferenceModule):
@@ -133,7 +161,11 @@ DETECTION_MODULE_MAP = {
 def export_inference_graph(input_type,
                            pipeline_config,
                            trained_checkpoint_dir,
-                           output_directory):
+                           output_directory,
+                           use_side_inputs=False,
+                           side_input_shapes="",
+                           side_input_types="",
+                           side_input_names=""):
   """Exports inference graph for the model specified in the pipeline config.
 
   This function creates `output_directory` if it does not already exist,
@@ -164,7 +196,13 @@ def export_inference_graph(input_type,
 
   if input_type not in DETECTION_MODULE_MAP:
     raise ValueError('Unrecognized `input_type`')
-  detection_module = DETECTION_MODULE_MAP[input_type](detection_model)
+  if use_side_inputs and input_type != 'image_tensor':
+    raise ValueError('Side inputs supported for image_tensor input type only.')
+  detection_module = DETECTION_MODULE_MAP[input_type](detection_model,
+                                                      use_side_inputs,
+                                                      side_input_shapes,
+                                                      side_input_types,
+                                                      side_input_names)
   # Getting the concrete function traces the graph and forces variables to
   # be constructed --- only after this can we save the checkpoint and
   # saved model.

@@ -49,13 +49,18 @@ class FakeModel(model.DetectionModel):
         filters=1, kernel_size=1, strides=(1, 1), padding='valid',
         kernel_initializer=tf.keras.initializers.Constant(
             value=conv_weight_scalar))
+    #self._conv(tf.ones([1, 10, 10, 3]))
 
   def preprocess(self, inputs):
     true_image_shapes = []  # Doesn't matter for the fake model.
     return tf.identity(inputs), true_image_shapes
 
-  def predict(self, preprocessed_inputs, true_image_shapes):
-    return {'image': self._conv(preprocessed_inputs)}
+  def predict(self, preprocessed_inputs, true_image_shapes, **side_inputs):
+    return_dict = {'image': self._conv(preprocessed_inputs)}
+    print("SIDE INPUTS: ", side_inputs)
+    if 'side_inp' in side_inputs:
+      return_dict['image'] += side_inputs['side_inp']
+    return return_dict
 
   def postprocess(self, prediction_dict, true_image_shapes):
     predict_tensor_sum = tf.reduce_sum(prediction_dict['image'])
@@ -189,7 +194,7 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
       saved_model_path = os.path.join(output_directory, 'saved_model')
       detect_fn = tf.saved_model.load(saved_model_path)
       image = self.get_dummy_input(input_type)
-      detections = detect_fn(image)
+      detections = detect_fn.signatures['serving_default'](tf.constant(image))
 
       detection_fields = fields.DetectionResultFields
       self.assertAllClose(detections[detection_fields.detection_boxes],
@@ -199,6 +204,45 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
                             [0.0, 0.0, 0.0, 0.0]]])
       self.assertAllClose(detections[detection_fields.detection_scores],
                           [[0.7, 0.6], [0.9, 0.0]])
+      self.assertAllClose(detections[detection_fields.detection_classes],
+                          [[1, 2], [2, 1]])
+      self.assertAllClose(detections[detection_fields.num_detections], [2, 1])
+
+  def test_export_saved_model_and_run_inference_with_side_inputs(
+      self, input_type='image_tensor'):
+    tmp_dir = self.get_temp_dir()
+    self._save_checkpoint_from_mock_model(tmp_dir)
+    with mock.patch.object(
+        model_builder, 'build', autospec=True) as mock_builder:
+      mock_builder.return_value = FakeModel()
+      output_directory = os.path.join(tmp_dir, 'output')
+      pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+      exporter_lib_v2.export_inference_graph(
+          input_type=input_type,
+          pipeline_config=pipeline_config,
+          trained_checkpoint_dir=tmp_dir,
+          output_directory=output_directory,
+          use_side_inputs=True,
+          side_input_shapes="1",
+          side_input_names="side_inp",
+          side_input_types="tf.float32")
+
+      saved_model_path = os.path.join(output_directory, 'saved_model')
+      detect_fn = tf.saved_model.load(saved_model_path)
+      detect_fn_sig = detect_fn.signatures['serving_default']
+      image = tf.constant(self.get_dummy_input(input_type))
+      side_input = np.ones((1,), dtype=np.float32)
+      #detections_one = tf.saved_model.load(saved_model_path)(image, side_input)
+      detections = detect_fn_sig(input_tensor=image, side_inp=tf.constant(side_input))
+
+      detection_fields = fields.DetectionResultFields
+      self.assertAllClose(detections[detection_fields.detection_boxes],
+                          [[[0.0, 0.0, 0.5, 0.5],
+                            [0.5, 0.5, 0.8, 0.8]],
+                           [[0.5, 0.5, 1.0, 1.0],
+                            [0.0, 0.0, 0.0, 0.0]]])
+      self.assertAllClose(detections[detection_fields.detection_scores],
+                          [[400.7, 400.6], [400.9, 400.0]])
       self.assertAllClose(detections[detection_fields.detection_classes],
                           [[1, 2], [2, 1]])
       self.assertAllClose(detections[detection_fields.num_detections], [2, 1])
