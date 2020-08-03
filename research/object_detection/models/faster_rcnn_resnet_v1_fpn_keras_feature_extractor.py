@@ -77,8 +77,7 @@ class _ResnetFPN(tf.keras.layers.Layer):
       feature_maps: A list of tensors with shape [batch, height, width, depth]
         represent extracted features.
     """
-    inputs = 
-    .pad_to_multiple(inputs, self.pad_to_multiple)
+    inputs = ops.pad_to_multiple(inputs, self.pad_to_multiple)
     backbone_outputs = self.classification_backbone(inputs)
 
     feature_block_list = []
