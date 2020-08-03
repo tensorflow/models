@@ -39,15 +39,17 @@ class TransformerEncoder(tf.keras.Model):
   in "BERT: Pre-training of Deep Bidirectional Transformers for Language
   Understanding".
 
+  *Note* that the network is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     vocab_size: The size of the token vocabulary.
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.
     num_attention_heads: The number of attention heads for each transformer. The
       hidden size must be divisible by the number of attention heads.
-    sequence_length: The sequence length that this encoder expects. If None, the
-      sequence length is dynamic; if an integer, the encoder will require
-      sequences padded to this length.
+    sequence_length: [Deprecated]. TODO(hongkuny): remove this argument once no
+      user is using it.
     max_sequence_length: The maximum sequence length that this encoder can
       consume. If None, max_sequence_length uses the value from sequence length.
       This determines the variable shape for positional embeddings.
@@ -60,7 +62,7 @@ class TransformerEncoder(tf.keras.Model):
     initializer: The initialzer to use for all weights in this encoder.
     return_all_encoder_outputs: Whether to output sequence embedding outputs of
       all encoder transformer layers.
-    output_range: the sequence output range, [0, output_range), by slicing the
+    output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yeilds the full
       output.
@@ -69,6 +71,10 @@ class TransformerEncoder(tf.keras.Model):
       two matrices in the shape of ['vocab_size', 'embedding_width'] and
       ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
       smaller than 'hidden_size').
+    embedding_layer: The word embedding layer. `None` means we will create a new
+      embedding layer. Otherwise, we will reuse the given embedding layer. This
+      parameter is originally added for ELECTRA model which needs to tie the
+      generator embeddings with the discriminator embeddings.
   """
 
   def __init__(self,
@@ -76,8 +82,8 @@ class TransformerEncoder(tf.keras.Model):
                hidden_size=768,
                num_layers=12,
                num_attention_heads=12,
-               sequence_length=512,
-               max_sequence_length=None,
+               sequence_length=None,
+               max_sequence_length=512,
                type_vocab_size=16,
                intermediate_size=3072,
                activation=activations.gelu,
@@ -87,19 +93,17 @@ class TransformerEncoder(tf.keras.Model):
                return_all_encoder_outputs=False,
                output_range=None,
                embedding_width=None,
+               embedding_layer=None,
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
 
-    if not max_sequence_length:
-      max_sequence_length = sequence_length
     self._self_setattr_tracking = False
     self._config_dict = {
         'vocab_size': vocab_size,
         'hidden_size': hidden_size,
         'num_layers': num_layers,
         'num_attention_heads': num_attention_heads,
-        'sequence_length': sequence_length,
         'max_sequence_length': max_sequence_length,
         'type_vocab_size': type_vocab_size,
         'intermediate_size': intermediate_size,
@@ -113,19 +117,22 @@ class TransformerEncoder(tf.keras.Model):
     }
 
     word_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_word_ids')
+        shape=(None,), dtype=tf.int32, name='input_word_ids')
     mask = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_mask')
+        shape=(None,), dtype=tf.int32, name='input_mask')
     type_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_type_ids')
+        shape=(None,), dtype=tf.int32, name='input_type_ids')
 
     if embedding_width is None:
       embedding_width = hidden_size
-    self._embedding_layer = layers.OnDeviceEmbedding(
-        vocab_size=vocab_size,
-        embedding_width=embedding_width,
-        initializer=initializer,
-        name='word_embeddings')
+    if embedding_layer is None:
+      self._embedding_layer = layers.OnDeviceEmbedding(
+          vocab_size=vocab_size,
+          embedding_width=embedding_width,
+          initializer=initializer,
+          name='word_embeddings')
+    else:
+      self._embedding_layer = embedding_layer
     word_embeddings = self._embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
@@ -208,6 +215,9 @@ class TransformerEncoder(tf.keras.Model):
 
   def get_embedding_table(self):
     return self._embedding_layer.embeddings
+
+  def get_embedding_layer(self):
+    return self._embedding_layer
 
   def get_config(self):
     return self._config_dict

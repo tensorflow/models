@@ -27,11 +27,11 @@ from typing import Optional, Text
 from official.modeling import tf_utils
 from official.modeling.hyperparams import params_dict
 from official.nlp.modeling import networks
+from official.nlp.modeling.layers import multi_channel_attention
 from official.nlp.nhnet import configs
 from official.nlp.nhnet import decoder
-from official.nlp.nhnet import multi_channel_attention
 from official.nlp.nhnet import utils
-from official.nlp.transformer import beam_search
+from official.nlp.modeling.ops import beam_search
 
 
 def embedding_linear(embedding_matrix, x):
@@ -273,7 +273,7 @@ class NHNet(Bert2Bert):
 
   def __init__(self, params, bert_layer, decoder_layer, name=None):
     super(NHNet, self).__init__(params, bert_layer, decoder_layer, name=name)
-    self.doc_attention = multi_channel_attention.DocAttention(
+    self.doc_attention = multi_channel_attention.VotingAttention(
         num_heads=params.num_decoder_attn_heads,
         head_size=params.hidden_size // params.num_decoder_attn_heads)
 
@@ -413,7 +413,6 @@ def get_bert2bert_layers(params: configs.BERT2BERTConfig):
       activation=tf_utils.get_activation(bert_config.hidden_act),
       dropout_rate=bert_config.hidden_dropout_prob,
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-      sequence_length=None,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(

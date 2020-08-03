@@ -118,10 +118,9 @@ class BertPretrainerTest(keras_parameterized.TestCase):
         vocab_size=vocab_size, num_layers=2, sequence_length=sequence_length)
 
     # Create a BERT trainer with the created network.
-    num_token_predictions = 2
     bert_trainer_model = bert_pretrainer.BertPretrainerV2(
-        encoder_network=test_network, num_masked_tokens=num_token_predictions)
-
+        encoder_network=test_network)
+    num_token_predictions = 20
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -145,7 +144,7 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     # Create a BERT trainer with the created network. (Note that all the args
     # are different, so we can catch any serialization mismatches.)
     bert_trainer_model = bert_pretrainer.BertPretrainerV2(
-        encoder_network=test_network, num_masked_tokens=2)
+        encoder_network=test_network)
 
     # Create another BERT trainer via serialization and deserialization.
     config = bert_trainer_model.get_config()

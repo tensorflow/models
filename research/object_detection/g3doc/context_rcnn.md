@@ -1,5 +1,7 @@
 # Context R-CNN
 
+[![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
+
 Context R-CNN is an object detection model that uses contextual features to
 improve object detection. See https://arxiv.org/abs/1912.03538 for more details.
 
@@ -21,6 +23,21 @@ In this section, we will walk through the process of generating TfRecords with
 contextual features. We focus on building context from object-centric features
 generated with a pre-trained Faster R-CNN model, but you can adapt the provided
 code to use alternative feature extractors.
+
+Each of these data processing scripts uses Apache Beam, which can be installed
+using
+
+```
+pip install apache-beam
+```
+
+and can be run locally, or on a cluster for efficient processing of large
+amounts of data. Note that generate_detection_data.py and
+generate_embedding_data.py both involve running inference, and may be very slow
+to run locally. See the
+[Apache Beam documentation](https://beam.apache.org/documentation/runners/dataflow/)
+for more information, and Google Cloud Documentation for a tutorial on
+[running Beam jobs on DataFlow](https://cloud.google.com/dataflow/docs/quickstarts/quickstart-python).
 
 ### Generating TfRecords from a set of images and a COCO-CameraTraps style JSON
 
@@ -99,6 +116,10 @@ python object_detection/export_inference_graph.py \
   --additional_output_tensor_names detection_features
 ```
 
+Make sure that you have set `output_final_box_features: true` within
+your config file before exporting. This is needed to export the features as an
+output, but it does not need to be set during training.
+
 To generate and save contextual features for your data, run
 
 ```
@@ -111,7 +132,8 @@ python object_detection/dataset_tools/context_rcnn/generate_embedding_data.py \
 
 ### Building up contextual memory banks and storing them for each context group
 
-To build the context features into memory banks, run
+To build the context features you just added for each image into memory banks,
+run
 
 ```
 python object_detection/dataset_tools/context_rcnn/add_context_to_examples.py \
@@ -120,6 +142,9 @@ python object_detection/dataset_tools/context_rcnn/add_context_to_examples.py \
   --sequence_key image/location \
   --time_horizon month
 ```
+
+where the input_tfrecords for add_context_to_examples.py are the
+output_tfrecords from generate_embedding_data.py.
 
 For all options, see add_context_to_examples.py. By default, this code builds
 TfSequenceExamples, which are more data efficient (this allows you to store the
@@ -171,3 +196,6 @@ python export_inference_graph.py \
     --side_input_types float,int
 
 ```
+
+If you have questions about Context R-CNN, please contact
+[Sara Beery](https://beerys.github.io/).

@@ -38,12 +38,11 @@ class BertClassifierTest(keras_parameterized.TestCase):
     vocab_size = 100
     sequence_length = 512
     test_network = networks.TransformerEncoder(
-        vocab_size=vocab_size, num_layers=2, sequence_length=sequence_length)
+        vocab_size=vocab_size, num_layers=2)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network,
-        num_classes=num_classes)
+        test_network, num_classes=num_classes)
 
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -63,7 +62,7 @@ class BertClassifierTest(keras_parameterized.TestCase):
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
     test_network = networks.TransformerEncoder(
-        vocab_size=100, num_layers=2, sequence_length=2)
+        vocab_size=100, num_layers=2)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_classifier.BertClassifier(
@@ -84,12 +83,12 @@ class BertClassifierTest(keras_parameterized.TestCase):
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
     test_network = networks.TransformerEncoder(
-        vocab_size=100, num_layers=2, sequence_length=5)
+        vocab_size=100, num_layers=2)
 
     # Create a BERT trainer with the created network. (Note that all the args
     # are different, so we can catch any serialization mismatches.)
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network, num_classes=4, initializer='zeros', output='predictions')
+        test_network, num_classes=4, initializer='zeros')
 
     # Create another BERT trainer via serialization and deserialization.
     config = bert_trainer_model.get_config()

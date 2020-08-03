@@ -2,7 +2,6 @@ syntax = "proto2";
 
 package object_detection.protos;
 
-import "object_detection/protos/image_resizer.proto";
 
 // Configuration proto for defining input readers that generate Object Detection
 // Examples from input sources. Input readers are expected to generate a
@@ -31,7 +30,7 @@ enum InputType {
   TF_SEQUENCE_EXAMPLE = 2;        // TfSequenceExample Input
 }
 
-// Next id: 31
+// Next id: 33
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -119,6 +118,10 @@ message InputReader {
   // Type of instance mask.
   optional InstanceMaskType mask_type = 10 [default = NUMERICAL_MASKS];
 
+  // Whether to load DensePose data. If set, must also set load_instance_masks
+  // to true.
+  optional bool load_dense_pose = 31 [default = false];
+
   // Whether to use the display name when decoding examples. This is only used
   // when mapping class text strings to integers.
   optional bool use_display_name = 17 [default = false];
@@ -128,6 +131,10 @@ message InputReader {
 
   // Whether input data type is tf.Examples or tf.SequenceExamples
   optional InputType input_type = 30 [default = TF_EXAMPLE];
+
+  // Which frame to choose from the input if Sequence Example. -1 indicates
+  // random choice.
+  optional int32 frame_index = 32 [default = -1];
 
   oneof input_reader {
     TFRecordInputReader tf_record_input_reader = 8;

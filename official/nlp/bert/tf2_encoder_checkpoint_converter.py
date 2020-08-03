@@ -61,7 +61,7 @@ def _create_bert_model(cfg):
       activation=activations.gelu,
       dropout_rate=cfg.hidden_dropout_prob,
       attention_dropout_rate=cfg.attention_probs_dropout_prob,
-      sequence_length=cfg.max_position_embeddings,
+      max_sequence_length=cfg.max_position_embeddings,
       type_vocab_size=cfg.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=cfg.initializer_range),
@@ -73,6 +73,7 @@ def _create_bert_model(cfg):
 def convert_checkpoint(bert_config, output_path, v1_checkpoint):
   """Converts a V1 checkpoint into an OO V2 checkpoint."""
   output_dir, _ = os.path.split(output_path)
+  tf.io.gfile.makedirs(output_dir)
 
   # Create a temporary V1 name-converted checkpoint in the output directory.
   temporary_checkpoint_dir = os.path.join(output_dir, "temp_v1")

@@ -667,6 +667,67 @@ class KerasHyperparamsBuilderTest(tf.test.TestCase):
     self.assertIsInstance(identity_layer,
                           tf.keras.layers.Lambda)
 
+  def test_do_not_use_bias_if_batch_norm_center_keras(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l2_regularizer {
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+      batch_norm {
+        decay: 0.7
+        center: true
+        scale: true
+        epsilon: 0.03
+        train: true
+      }
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    keras_config = hyperparams_builder.KerasLayerHyperparams(
+        conv_hyperparams_proto)
+
+    self.assertTrue(keras_config.use_batch_norm())
+    batch_norm_params = keras_config.batch_norm_params()
+    self.assertTrue(batch_norm_params['center'])
+    self.assertTrue(batch_norm_params['scale'])
+    hyperparams = keras_config.params()
+    self.assertFalse(hyperparams['use_bias'])
+
+  def test_force_use_bias_if_batch_norm_center_keras(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l2_regularizer {
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+      batch_norm {
+        decay: 0.7
+        center: true
+        scale: true
+        epsilon: 0.03
+        train: true
+      }
+      force_use_bias: true
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Merge(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    keras_config = hyperparams_builder.KerasLayerHyperparams(
+        conv_hyperparams_proto)
+
+    self.assertTrue(keras_config.use_batch_norm())
+    batch_norm_params = keras_config.batch_norm_params()
+    self.assertTrue(batch_norm_params['center'])
+    self.assertTrue(batch_norm_params['scale'])
+    hyperparams = keras_config.params()
+    self.assertTrue(hyperparams['use_bias'])
+
   def test_use_none_activation_keras(self):
     conv_hyperparams_text_proto = """
       regularizer {

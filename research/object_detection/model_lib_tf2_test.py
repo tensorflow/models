@@ -24,9 +24,9 @@ import unittest
 import numpy as np
 import six
 import tensorflow.compat.v1 as tf
+import tensorflow.compat.v2 as tf2
 
 from object_detection import inputs
-from object_detection import model_hparams
 from object_detection import model_lib_v2
 from object_detection.builders import model_builder
 from object_detection.core import model
@@ -82,24 +82,25 @@ class ModelLibTest(tf.test.TestCase):
 
   def test_train_loop_then_eval_loop(self):
     """Tests that Estimator and input function are constructed correctly."""
-    hparams = model_hparams.create_hparams(
-        hparams_overrides='load_pretrained=false')
-    pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
-    config_kwarg_overrides = _get_config_kwarg_overrides()
     model_dir = tf.test.get_temp_dir()
+    pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
+    new_pipeline_config_path = os.path.join(model_dir, 'new_pipeline.config')
+    config_util.clear_fine_tune_checkpoint(pipeline_config_path,
+                                           new_pipeline_config_path)
+    config_kwarg_overrides = _get_config_kwarg_overrides()
 
     train_steps = 2
-    model_lib_v2.train_loop(
-        hparams,
-        pipeline_config_path,
-        model_dir=model_dir,
-        train_steps=train_steps,
-        checkpoint_every_n=1,
-        **config_kwarg_overrides)
+    strategy = tf2.distribute.OneDeviceStrategy(device='/cpu:0')
+    with strategy.scope():
+      model_lib_v2.train_loop(
+          new_pipeline_config_path,
+          model_dir=model_dir,
+          train_steps=train_steps,
+          checkpoint_every_n=1,
+          **config_kwarg_overrides)
 
     model_lib_v2.eval_continuously(
-        hparams,
-        pipeline_config_path,
+        new_pipeline_config_path,
         model_dir=model_dir,
         checkpoint_dir=model_dir,
         train_steps=train_steps,
@@ -122,6 +123,9 @@ class SimpleModel(model.DetectionModel):
     return []
 
   def restore_map(self, *args, **kwargs):
+    pass
+
+  def restore_from_objects(self, fine_tune_checkpoint_type):
     return {'model': self}
 
   def preprocess(self, _):
@@ -148,21 +152,24 @@ class ModelCheckpointTest(tf.test.TestCase):
   def test_checkpoint_max_to_keep(self):
     """Test that only the most recent checkpoints are kept."""
 
+    strategy = tf2.distribute.OneDeviceStrategy(device='/cpu:0')
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
-      mock_builder.return_value = SimpleModel()
-
-      hparams = model_hparams.create_hparams(
-          hparams_overrides='load_pretrained=false')
-      pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
-      config_kwarg_overrides = _get_config_kwarg_overrides()
+      with strategy.scope():
+        mock_builder.return_value = SimpleModel()
       model_dir = tempfile.mkdtemp(dir=self.get_temp_dir())
+      pipeline_config_path = get_pipeline_config_path(MODEL_NAME_FOR_TEST)
+      new_pipeline_config_path = os.path.join(model_dir, 'new_pipeline.config')
+      config_util.clear_fine_tune_checkpoint(pipeline_config_path,
+                                             new_pipeline_config_path)
+      config_kwarg_overrides = _get_config_kwarg_overrides()
 
-      model_lib_v2.train_loop(
-          hparams, pipeline_config_path, model_dir=model_dir,
-          train_steps=20, checkpoint_every_n=2, checkpoint_max_to_keep=3,
-          **config_kwarg_overrides
-      )
+      with strategy.scope():
+        model_lib_v2.train_loop(
+            new_pipeline_config_path, model_dir=model_dir,
+            train_steps=20, checkpoint_every_n=2, checkpoint_max_to_keep=3,
+            **config_kwarg_overrides
+        )
       ckpt_files = tf.io.gfile.glob(os.path.join(model_dir, 'ckpt-*.index'))
       self.assertEqual(len(ckpt_files), 3,
                        '{} not of length 3.'.format(ckpt_files))
@@ -170,7 +177,7 @@ class ModelCheckpointTest(tf.test.TestCase):
 
 class IncompatibleModel(SimpleModel):
 
-  def restore_map(self, *args, **kwargs):
+  def restore_from_objects(self, *args, **kwargs):
     return {'weight': self.weight}
 
 
@@ -203,7 +210,6 @@ class CheckpointV2Test(tf.test.TestCase):
     model_lib_v2.load_fine_tune_checkpoint(
         self._model, self._ckpt_path, checkpoint_type='',
         checkpoint_version=train_pb2.CheckpointVersion.V2,
-        load_all_detection_checkpoint_vars=True,
         input_dataset=self._train_input_fn(),
         unpad_groundtruth_tensors=True)
     np.testing.assert_allclose(self._model.weight.numpy(), 42)
@@ -216,8 +222,9 @@ class CheckpointV2Test(tf.test.TestCase):
       model_lib_v2.load_fine_tune_checkpoint(
           IncompatibleModel(), self._ckpt_path, checkpoint_type='',
           checkpoint_version=train_pb2.CheckpointVersion.V2,
-          load_all_detection_checkpoint_vars=True,
           input_dataset=self._train_input_fn(),
           unpad_groundtruth_tensors=True)
 
 
+if __name__ == '__main__':
+  tf.test.main()

@@ -1,0 +1,50 @@
+syntax = "proto2";
+
+package object_detection.protos;
+
+// Configuration for Feature Pyramid Networks.
+message FeaturePyramidNetworks {
+  // We recommend to use multi_resolution_feature_map_generator with FPN, and
+  // the levels there must match the levels defined below for better
+  // performance.
+  // Correspondence from FPN levels to Resnet/Mobilenet V1 feature maps:
+  // FPN Level        Resnet Feature Map      Mobilenet-V1 Feature Map
+  //     2               Block 1                Conv2d_3_pointwise
+  //     3               Block 2                Conv2d_5_pointwise
+  //     4               Block 3                Conv2d_11_pointwise
+  //     5               Block 4                Conv2d_13_pointwise
+  //     6               Bottomup_5             bottom_up_Conv2d_14
+  //     7               Bottomup_6             bottom_up_Conv2d_15
+  //     8               Bottomup_7             bottom_up_Conv2d_16
+  //     9               Bottomup_8             bottom_up_Conv2d_17
+
+  // minimum level in feature pyramid
+  optional int32 min_level = 1 [default = 3];
+
+  // maximum level in feature pyramid
+  optional int32 max_level = 2 [default = 7];
+
+  // channel depth for additional coarse feature layers.
+  optional int32 additional_layer_depth = 3 [default = 256];
+
+}
+
+// Configuration for Bidirectional Feature Pyramid Networks.
+message BidirectionalFeaturePyramidNetworks {
+  // minimum level in the feature pyramid.
+  optional int32 min_level = 1 [default = 3];
+
+  // maximum level in the feature pyramid.
+  optional int32 max_level = 2 [default = 7];
+
+  // The number of repeated top-down bottom-up iterations for BiFPN-based
+  // feature extractors (bidirectional feature pyramid networks).
+  optional int32 num_iterations = 3;
+
+  // The number of filters (channels) to use in feature pyramid layers for
+  // BiFPN-based feature extractors (bidirectional feature pyramid networks).
+  optional int32 num_filters = 4;
+
+  // Method used to combine inputs to BiFPN nodes.
+  optional string combine_method = 5 [default = 'fast_attention'];
+}

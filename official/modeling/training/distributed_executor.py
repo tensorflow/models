@@ -63,8 +63,8 @@ def metrics_as_dict(metric):
   """Puts input metric(s) into a list.
 
   Args:
-    metric: metric(s) to be put into the list. `metric` could be a object, a
-      list or a dict of tf.keras.metrics.Metric or has the `required_method`.
+    metric: metric(s) to be put into the list. `metric` could be an object, a
+      list, or a dict of tf.keras.metrics.Metric or has the `required_method`.
 
   Returns:
     A dictionary of valid metrics.
@@ -351,7 +351,8 @@ class DistributedExecutor(object):
       train_input_fn: (params: dict) -> tf.data.Dataset training data input
         function.
       eval_input_fn: (Optional) same type as train_input_fn. If not None, will
-        trigger evaluting metric on eval data. If None, will not run eval step.
+        trigger evaluating metric on eval data. If None, will not run the eval
+        step.
       model_dir: the folder path for model checkpoints.
       total_steps: total training steps.
       iterations_per_loop: train steps per loop. After each loop, this job will
@@ -672,7 +673,7 @@ class DistributedExecutor(object):
       raise ValueError('if `eval_metric_fn` is specified, '
                        'eval_metric_fn must be a callable.')
 
-    old_phrase = tf.keras.backend.learning_phase()
+    old_phase = tf.keras.backend.learning_phase()
     tf.keras.backend.set_learning_phase(0)
     params = self._params
     strategy = self._strategy
@@ -698,7 +699,8 @@ class DistributedExecutor(object):
       logging.info(
           'Checkpoint file %s found and restoring from '
           'checkpoint', checkpoint_path)
-      checkpoint.restore(checkpoint_path)
+      status = checkpoint.restore(checkpoint_path)
+      status.expect_partial().assert_existing_objects_matched()
 
       self.global_train_step = model.optimizer.iterations
       eval_iterator = self._get_input_iterator(eval_input_fn, strategy)
@@ -709,7 +711,7 @@ class DistributedExecutor(object):
       summary_writer(metrics=eval_metric_result, step=current_step)
       reset_states(eval_metric)
 
-    tf.keras.backend.set_learning_phase(old_phrase)
+    tf.keras.backend.set_learning_phase(old_phase)
     return eval_metric_result, current_step
 
   def predict(self):
@@ -759,7 +761,7 @@ class ExecutorBuilder(object):
 
     Args:
       strategy_type: string. One of 'tpu', 'mirrored', 'multi_worker_mirrored'.
-        If None. User is responsible to set the strategy before calling
+        If None, the user is responsible to set the strategy before calling
         build_executor(...).
       strategy_config: necessary config for constructing the proper Strategy.
         Check strategy_flags_dict() for examples of the structure.

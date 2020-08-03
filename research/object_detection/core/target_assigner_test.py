@@ -1905,6 +1905,290 @@ class CenterNetMaskTargetAssignerTest(test_case.TestCase):
     np.testing.assert_array_almost_equal(
         expected_seg_target, segmentation_target)
 
+  def test_assign_segmentation_targets_no_objects(self):
+    def graph_fn():
+      gt_masks_list = [tf.zeros((0, 5, 5))]
+      gt_classes_list = [tf.zeros((0, 10))]
+      cn_assigner = targetassigner.CenterNetMaskTargetAssigner(stride=1)
+      segmentation_target = cn_assigner.assign_segmentation_targets(
+          gt_masks_list=gt_masks_list,
+          gt_classes_list=gt_classes_list,
+          mask_resize_method=targetassigner.ResizeMethod.NEAREST_NEIGHBOR)
+      return segmentation_target
+
+    segmentation_target = self.execute(graph_fn, [])
+    expected_seg_target = np.zeros((1, 5, 5, 10))
+    np.testing.assert_array_almost_equal(
+        expected_seg_target, segmentation_target)
+
+
+class CenterNetDensePoseTargetAssignerTest(test_case.TestCase):
+
+  def test_assign_part_and_coordinate_targets(self):
+    def graph_fn():
+      gt_dp_num_points_list = [
+          # Example 0.
+          tf.constant([2, 0, 3], dtype=tf.int32),
+          # Example 1.
+          tf.constant([1, 1], dtype=tf.int32),
+      ]
+      gt_dp_part_ids_list = [
+          # Example 0.
+          tf.constant([[1, 6, 0],
+                       [0, 0, 0],
+                       [0, 2, 3]], dtype=tf.int32),
+          # Example 1.
+          tf.constant([[7, 0, 0],
+                       [0, 0, 0]], dtype=tf.int32),
+      ]
+      gt_dp_surface_coords_list = [
+          # Example 0.
+          tf.constant(
+              [[[0.11, 0.2, 0.3, 0.4],  # Box 0.
+                [0.6, 0.4, 0.1, 0.0],
+                [0.0, 0.0, 0.0, 0.0]],
+               [[0.0, 0.0, 0.0, 0.0],  # Box 1.
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0]],
+               [[0.22, 0.1, 0.6, 0.8],  # Box 2.
+                [0.0, 0.4, 0.5, 1.0],
+                [0.3, 0.2, 0.4, 0.1]]],
+              dtype=tf.float32),
+          # Example 1.
+          tf.constant(
+              [[[0.5, 0.5, 0.3, 1.0],  # Box 0.
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0]],
+               [[0.2, 0.2, 0.5, 0.8],  # Box 1.
+                [0.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0]]],
+              dtype=tf.float32),
+      ]
+      gt_weights_list = [
+          # Example 0.
+          tf.constant([1.0, 1.0, 0.5], dtype=tf.float32),
+          # Example 1.
+          tf.constant([0.0, 1.0], dtype=tf.float32),
+      ]
+      cn_assigner = targetassigner.CenterNetDensePoseTargetAssigner(stride=4)
+      batch_indices, batch_part_ids, batch_surface_coords, batch_weights = (
+          cn_assigner.assign_part_and_coordinate_targets(
+              height=120,
+              width=80,
+              gt_dp_num_points_list=gt_dp_num_points_list,
+              gt_dp_part_ids_list=gt_dp_part_ids_list,
+              gt_dp_surface_coords_list=gt_dp_surface_coords_list,
+              gt_weights_list=gt_weights_list))
+
+      return batch_indices, batch_part_ids, batch_surface_coords, batch_weights
+    batch_indices, batch_part_ids, batch_surface_coords, batch_weights = (
+        self.execute(graph_fn, []))
+
+    expected_batch_indices = np.array([
+        # Example 0. e.g.
+        # The first set of indices is calculated as follows:
+        # floor(0.11*120/4) = 3, floor(0.2*80/4) = 4.
+        [0, 3, 4, 1], [0, 18, 8, 6], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0],
+        [0, 0, 0, 0], [0, 6, 2, 0], [0, 0, 8, 2], [0, 9, 4, 3],
+        # Example 1.
+        [1, 15, 10, 7], [1, 0, 0, 0], [1, 0, 0, 0], [1, 6, 4, 0], [1, 0, 0, 0],
+        [1, 0, 0, 0]
+    ], dtype=np.int32)
+    expected_batch_part_ids = tf.one_hot(
+        [1, 6, 0, 0, 0, 0, 0, 2, 3, 7, 0, 0, 0, 0, 0], depth=24).numpy()
+    expected_batch_surface_coords = np.array([
+        # Box 0.
+        [0.3, 0.4], [0.1, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0], [0.0, 0.0],
+        [0.6, 0.8], [0.5, 1.0], [0.4, 0.1],
+        # Box 1.
+        [0.3, 1.0], [0.0, 0.0], [0.0, 0.0], [0.5, 0.8], [0.0, 0.0], [0.0, 0.0],
+    ], np.float32)
+    expected_batch_weights = np.array([
+        # Box 0.
+        1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5,
+        # Box 1.
+        0.0, 0.0, 0.0, 1.0, 0.0, 0.0
+    ], dtype=np.float32)
+    self.assertAllEqual(expected_batch_indices, batch_indices)
+    self.assertAllEqual(expected_batch_part_ids, batch_part_ids)
+    self.assertAllClose(expected_batch_surface_coords, batch_surface_coords)
+    self.assertAllClose(expected_batch_weights, batch_weights)
+
+
+class CornerOffsetTargetAssignerTest(test_case.TestCase):
+
+  def test_filter_overlap_min_area_empty(self):
+    """Test that empty masks work on CPU."""
+    def graph_fn(masks):
+      return targetassigner.filter_mask_overlap_min_area(masks)
+
+    masks = self.execute_cpu(graph_fn, [np.zeros((0, 5, 5), dtype=np.float32)])
+    self.assertEqual(masks.shape, (0, 5, 5))
+
+  def test_filter_overlap_min_area(self):
+    """Test the object with min. area is selected instead of overlap."""
+    def graph_fn(masks):
+      return targetassigner.filter_mask_overlap_min_area(masks)
+
+    masks = np.zeros((3, 4, 4), dtype=np.float32)
+    masks[0, :2, :2] = 1.0
+    masks[1, :3, :3] = 1.0
+    masks[2, 3, 3] = 1.0
+
+    masks = self.execute(graph_fn, [masks])
+
+    self.assertAllClose(masks[0],
+                        [[1, 1, 0, 0],
+                         [1, 1, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 0]])
+    self.assertAllClose(masks[1],
+                        [[0, 0, 1, 0],
+                         [0, 0, 1, 0],
+                         [1, 1, 1, 0],
+                         [0, 0, 0, 0]])
+
+    self.assertAllClose(masks[2],
+                        [[0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 1]])
+
+  def test_assign_corner_offset_single_object(self):
+    """Test that corner offsets are correct with a single object."""
+    assigner = targetassigner.CenterNetCornerOffsetTargetAssigner(stride=1)
+
+    def graph_fn():
+      boxes = [
+          tf.constant([[0., 0., 1., 1.]])
+      ]
+      mask = np.zeros((1, 4, 4), dtype=np.float32)
+      mask[0, 1:3, 1:3] = 1.0
+
+      masks = [tf.constant(mask)]
+      return assigner.assign_corner_offset_targets(boxes, masks)
+
+    corner_offsets, foreground = self.execute(graph_fn, [])
+    self.assertAllClose(foreground[0],
+                        [[0, 0, 0, 0],
+                         [0, 1, 1, 0],
+                         [0, 1, 1, 0],
+                         [0, 0, 0, 0]])
+
+    self.assertAllClose(corner_offsets[0, :, :, 0],
+                        [[0, 0, 0, 0],
+                         [0, -1, -1, 0],
+                         [0, -2, -2, 0],
+                         [0, 0, 0, 0]])
+    self.assertAllClose(corner_offsets[0, :, :, 1],
+                        [[0, 0, 0, 0],
+                         [0, -1, -2, 0],
+                         [0, -1, -2, 0],
+                         [0, 0, 0, 0]])
+    self.assertAllClose(corner_offsets[0, :, :, 2],
+                        [[0, 0, 0, 0],
+                         [0, 3, 3, 0],
+                         [0, 2, 2, 0],
+                         [0, 0, 0, 0]])
+    self.assertAllClose(corner_offsets[0, :, :, 3],
+                        [[0, 0, 0, 0],
+                         [0, 3, 2, 0],
+                         [0, 3, 2, 0],
+                         [0, 0, 0, 0]])
+
+  def test_assign_corner_offset_multiple_objects(self):
+    """Test corner offsets are correct with multiple objects."""
+    assigner = targetassigner.CenterNetCornerOffsetTargetAssigner(stride=1)
+
+    def graph_fn():
+      boxes = [
+          tf.constant([[0., 0., 1., 1.], [0., 0., 0., 0.]]),
+          tf.constant([[0., 0., .25, .25], [.25, .25, 1., 1.]])
+      ]
+      mask1 = np.zeros((2, 4, 4), dtype=np.float32)
+      mask1[0, 0, 0] = 1.0
+      mask1[0, 3, 3] = 1.0
+
+      mask2 = np.zeros((2, 4, 4), dtype=np.float32)
+      mask2[0, :2, :2] = 1.0
+      mask2[1, 1:, 1:] = 1.0
+
+      masks = [tf.constant(mask1), tf.constant(mask2)]
+      return assigner.assign_corner_offset_targets(boxes, masks)
+
+    corner_offsets, foreground = self.execute(graph_fn, [])
+    self.assertEqual(corner_offsets.shape, (2, 4, 4, 4))
+    self.assertEqual(foreground.shape, (2, 4, 4))
+
+    self.assertAllClose(foreground[0],
+                        [[1, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 1]])
+
+    self.assertAllClose(corner_offsets[0, :, :, 0],
+                        [[0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, -3]])
+    self.assertAllClose(corner_offsets[0, :, :, 1],
+                        [[0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, -3]])
+    self.assertAllClose(corner_offsets[0, :, :, 2],
+                        [[4, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 1]])
+    self.assertAllClose(corner_offsets[0, :, :, 3],
+                        [[4, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 0],
+                         [0, 0, 0, 1]])
+
+    self.assertAllClose(foreground[1],
+                        [[1, 1, 0, 0],
+                         [1, 1, 1, 1],
+                         [0, 1, 1, 1],
+                         [0, 1, 1, 1]])
+
+    self.assertAllClose(corner_offsets[1, :, :, 0],
+                        [[0, 0, 0, 0],
+                         [-1, -1, 0, 0],
+                         [0, -1, -1, -1],
+                         [0, -2, -2, -2]])
+    self.assertAllClose(corner_offsets[1, :, :, 1],
+                        [[0, -1, 0, 0],
+                         [0, -1, -1, -2],
+                         [0, 0, -1, -2],
+                         [0, 0, -1, -2]])
+    self.assertAllClose(corner_offsets[1, :, :, 2],
+                        [[1, 1, 0, 0],
+                         [0, 0, 3, 3],
+                         [0, 2, 2, 2],
+                         [0, 1, 1, 1]])
+    self.assertAllClose(corner_offsets[1, :, :, 3],
+                        [[1, 0, 0, 0],
+                         [1, 0, 2, 1],
+                         [0, 3, 2, 1],
+                         [0, 3, 2, 1]])
+
+  def test_assign_corner_offsets_no_objects(self):
+    """Test assignment works with empty input on cpu."""
+    assigner = targetassigner.CenterNetCornerOffsetTargetAssigner(stride=1)
+
+    def graph_fn():
+      boxes = [
+          tf.zeros((0, 4), dtype=tf.float32)
+      ]
+      masks = [tf.zeros((0, 5, 5), dtype=tf.float32)]
+      return assigner.assign_corner_offset_targets(boxes, masks)
+
+    corner_offsets, foreground = self.execute_cpu(graph_fn, [])
+    self.assertAllClose(corner_offsets, np.zeros((1, 5, 5, 4)))
+    self.assertAllClose(foreground, np.zeros((1, 5, 5)))
+
 
 if __name__ == '__main__':
   tf.enable_v2_behavior()

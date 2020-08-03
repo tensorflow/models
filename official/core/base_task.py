@@ -18,11 +18,11 @@ import abc
 import functools
 from typing import Any, Callable, Optional
 
+from absl import logging
 import six
 import tensorflow as tf
 
 from official.modeling.hyperparams import config_definitions as cfg
-from official.utils import registry
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -37,17 +37,29 @@ class Task(tf.Module):
   # Special keys in train/validate step returned logs.
   loss = "loss"
 
-  def __init__(self, params: cfg.TaskConfig):
+  def __init__(self, params: cfg.TaskConfig, logging_dir: str = None):
+    """Task initialization.
+
+    Args:
+      params: cfg.TaskConfig instance.
+      logging_dir: a string pointing to where the model, summaries etc. will be
+        saved. You can also write additional stuff in this directory.
+    """
     self._task_config = params
+    self._logging_dir = logging_dir
 
   @property
   def task_config(self) -> cfg.TaskConfig:
     return self._task_config
 
+  @property
+  def logging_dir(self) -> str:
+    return self._logging_dir
+
   def initialize(self, model: tf.keras.Model):
     """A callback function used as CheckpointManager's init_fn.
 
-    This function will be called when no checkpoint found for the model.
+    This function will be called when no checkpoint is found for the model.
     If there is a checkpoint, the checkpoint will be loaded and this function
     will not be called. You can use this callback function to load a pretrained
     checkpoint, saved under a directory other than the model_dir.
@@ -55,11 +67,23 @@ class Task(tf.Module):
     Args:
       model: The keras.Model built or used by this task.
     """
-    pass
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    logging.info("Trying to load pretrained checkpoint from %s",
+                 ckpt_dir_or_file)
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+    if not ckpt_dir_or_file:
+      return
+
+    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+    status = ckpt.restore(ckpt_dir_or_file)
+    status.expect_partial().assert_existing_objects_matched()
+    logging.info("Finished loading pretrained checkpoint from %s",
+                 ckpt_dir_or_file)
 
   @abc.abstractmethod
   def build_model(self) -> tf.keras.Model:
-    """Creates the model architecture.
+    """Creates model architecture.
 
     Returns:
       A model instance.
@@ -107,6 +131,7 @@ class Task(tf.Module):
     """Returns a dataset or a nested structure of dataset functions.
 
     Dataset functions define per-host datasets with the per-replica batch size.
+    With distributed training, this method runs on remote hosts.
 
     Args:
       params: hyperparams to create input pipelines.
@@ -122,7 +147,7 @@ class Task(tf.Module):
     Args:
       labels: optional label tensors.
       model_outputs: a nested structure of output tensors.
-      aux_losses: auxiliarly loss tensors, i.e. `losses` in keras.Model.
+      aux_losses: auxiliary loss tensors, i.e. `losses` in keras.Model.
 
     Returns:
       The total loss tensor.
@@ -172,6 +197,8 @@ class Task(tf.Module):
                  metrics=None):
     """Does forward and backward.
 
+    With distribution strategies, this method runs on devices.
+
     Args:
       inputs: a dictionary of input tensors.
       model: the model, forward pass definition.
@@ -217,7 +244,9 @@ class Task(tf.Module):
     return logs
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
-    """Validatation step.
+    """Validation step.
+
+    With distribution strategies, this method runs on devices.
 
     Args:
       inputs: a dictionary of input tensors.
@@ -244,52 +273,24 @@ class Task(tf.Module):
     return logs
 
   def inference_step(self, inputs, model: tf.keras.Model):
-    """Performs the forward step."""
+    """Performs the forward step.
+
+    With distribution strategies, this method runs on devices.
+
+    Args:
+      inputs: a dictionary of input tensors.
+      model: the keras.Model.
+
+    Returns:
+      Model outputs.
+    """
     return model(inputs, training=False)
 
-
-_REGISTERED_TASK_CLS = {}
-
-
-# TODO(b/158268740): Move these outside the base class file.
-# TODO(b/158741360): Add type annotations once pytype checks across modules.
-def register_task_cls(task_config_cls):
-  """Decorates a factory of Tasks for lookup by a subclass of TaskConfig.
-
-  This decorator supports registration of tasks as follows:
-
-  ```
-  @dataclasses.dataclass
-  class MyTaskConfig(TaskConfig):
-    # Add fields here.
+  def aggregate_logs(self, state, step_logs):
+    """Optional aggregation over logs returned from a validation step."""
     pass
 
-  @register_task_cls(MyTaskConfig)
-  class MyTask(Task):
-    # Inherits def __init__(self, task_config).
-    pass
+  def reduce_aggregated_logs(self, aggregated_logs):
+    """Optional reduce of aggregated logs over validation steps."""
+    return {}
 
-  my_task_config = MyTaskConfig()
-  my_task = get_task(my_task_config)  # Returns MyTask(my_task_config).
-  ```
-
-  Besisdes a class itself, other callables that create a Task from a TaskConfig
-  can be decorated by the result of this function, as long as there is at most
-  one registration for each config class.
-
-  Args:
-    task_config_cls: a subclass of TaskConfig (*not* an instance of TaskConfig).
-      Each task_config_cls can only be used for a single registration.
-
-  Returns:
-    A callable for use as class decorator that registers the decorated class
-    for creation from an instance of task_config_cls.
-  """
-  return registry.register(_REGISTERED_TASK_CLS, task_config_cls)
-
-
-# The user-visible get_task() is defined after classes have been registered.
-# TODO(b/158741360): Add type annotations once pytype checks across modules.
-def get_task_cls(task_config_cls):
-  task_cls = registry.lookup(_REGISTERED_TASK_CLS, task_config_cls)
-  return task_cls

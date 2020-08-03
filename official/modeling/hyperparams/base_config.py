@@ -126,10 +126,10 @@ class Config(params_dict.ParamsDict):
     subconfig_type = Config
     if k in cls.__annotations__:
       # Directly Config subtype.
-      type_annotation = cls.__annotations__[k]
+      type_annotation = cls.__annotations__[k]  # pytype: disable=invalid-annotation
       if (isinstance(type_annotation, type) and
           issubclass(type_annotation, Config)):
-        subconfig_type = cls.__annotations__[k]
+        subconfig_type = cls.__annotations__[k]  # pytype: disable=invalid-annotation
       else:
         # Check if the field is a sequence of subtypes.
         field_type = getattr(type_annotation, '__origin__', type(None))

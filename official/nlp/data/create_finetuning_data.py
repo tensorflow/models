@@ -27,18 +27,21 @@ from absl import flags
 import tensorflow as tf
 from official.nlp.bert import tokenization
 from official.nlp.data import classifier_data_lib
+from official.nlp.data import sentence_retrieval_lib
 # word-piece tokenizer based squad_lib
 from official.nlp.data import squad_lib as squad_lib_wp
 # sentence-piece tokenizer based squad_lib
 from official.nlp.data import squad_lib_sp
+from official.nlp.data import tagging_data_lib
 
 FLAGS = flags.FLAGS
 
+# TODO(chendouble): consider moving each task to its own binary.
 flags.DEFINE_enum(
     "fine_tuning_task_type", "classification",
-    ["classification", "regression", "squad"],
+    ["classification", "regression", "squad", "retrieval", "tagging"],
     "The name of the BERT fine tuning task for which data "
-    "will be generated..")
+    "will be generated.")
 
 # BERT classification specific flags.
 flags.DEFINE_string(
@@ -47,23 +50,41 @@ flags.DEFINE_string(
     "for the task.")
 
 flags.DEFINE_enum("classification_task_name", "MNLI",
-                  ["COLA", "MNLI", "MRPC", "QNLI", "QQP", "SST-2", "XNLI",
-                   "PAWS-X"],
-                  "The name of the task to train BERT classifier.")
+                  ["COLA", "MNLI", "MRPC", "PAWS-X", "QNLI", "QQP", "RTE",
+                   "SST-2", "STS-B", "WNLI", "XNLI", "XTREME-XNLI",
+                   "XTREME-PAWS-X"],
+                  "The name of the task to train BERT classifier. The "
+                  "difference between XTREME-XNLI and XNLI is: 1. the format "
+                  "of input tsv files; 2. the dev set for XTREME is english "
+                  "only and for XNLI is all languages combined. Same for "
+                  "PAWS-X.")
 
-# XNLI task specific flag.
+# MNLI task-specific flag.
+flags.DEFINE_enum(
+    "mnli_type", "matched", ["matched", "mismatched"],
+    "The type of MNLI dataset.")
+
+# XNLI task-specific flag.
 flags.DEFINE_string(
     "xnli_language", "en",
-    "Language of training data for XNIL task. If the value is 'all', the data "
+    "Language of training data for XNLI task. If the value is 'all', the data "
     "of all languages will be used for training.")
 
-# PAWS-X task specific flag.
+# PAWS-X task-specific flag.
 flags.DEFINE_string(
     "pawsx_language", "en",
-    "Language of trainig data for PAWS-X task. If the value is 'all', the data "
+    "Language of training data for PAWS-X task. If the value is 'all', the data "
     "of all languages will be used for training.")
 
-# BERT Squad task specific flags.
+# Retrieval task-specific flags.
+flags.DEFINE_enum("retrieval_task_name", "bucc", ["bucc", "tatoeba"],
+                  "The name of sentence retrieval task for scoring")
+
+# Tagging task-specific flags.
+flags.DEFINE_enum("tagging_task_name", "panx", ["panx", "udpos"],
+                  "The name of BERT tagging (token classification) task.")
+
+# BERT Squad task-specific flags.
 flags.DEFINE_string(
     "squad_data_file", None,
     "The input data file in for generating training data for BERT squad task.")
@@ -163,20 +184,29 @@ def generate_classifier_dataset():
         "cola":
             classifier_data_lib.ColaProcessor,
         "mnli":
-            classifier_data_lib.MnliProcessor,
+            functools.partial(classifier_data_lib.MnliProcessor,
+                              mnli_type=FLAGS.mnli_type),
         "mrpc":
             classifier_data_lib.MrpcProcessor,
         "qnli":
             classifier_data_lib.QnliProcessor,
         "qqp": classifier_data_lib.QqpProcessor,
+        "rte": classifier_data_lib.RteProcessor,
         "sst-2":
             classifier_data_lib.SstProcessor,
+        "sts-b":
+            classifier_data_lib.StsBProcessor,
         "xnli":
             functools.partial(classifier_data_lib.XnliProcessor,
                               language=FLAGS.xnli_language),
         "paws-x":
             functools.partial(classifier_data_lib.PawsxProcessor,
-                              language=FLAGS.pawsx_language)
+                              language=FLAGS.pawsx_language),
+        "wnli": classifier_data_lib.WnliProcessor,
+        "xtreme-xnli":
+            functools.partial(classifier_data_lib.XtremeXnliProcessor),
+        "xtreme-paws-x":
+            functools.partial(classifier_data_lib.XtremePawsxProcessor)
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:
@@ -237,6 +267,67 @@ def generate_squad_dataset():
         FLAGS.max_query_length, FLAGS.doc_stride, FLAGS.version_2_with_negative)
 
 
+def generate_retrieval_dataset():
+  """Generate retrieval test and dev dataset and returns input meta data."""
+  assert (FLAGS.input_data_dir and FLAGS.retrieval_task_name)
+  if FLAGS.tokenizer_impl == "word_piece":
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+    processor_text_fn = tokenization.convert_to_unicode
+  else:
+    assert FLAGS.tokenizer_impl == "sentence_piece"
+    tokenizer = tokenization.FullSentencePieceTokenizer(FLAGS.sp_model_file)
+    processor_text_fn = functools.partial(
+        tokenization.preprocess_text, lower=FLAGS.do_lower_case)
+
+  processors = {
+      "bucc": sentence_retrieval_lib.BuccProcessor,
+      "tatoeba": sentence_retrieval_lib.TatoebaProcessor,
+  }
+
+  task_name = FLAGS.retrieval_task_name.lower()
+  if task_name not in processors:
+    raise ValueError("Task not found: %s" % task_name)
+
+  processor = processors[task_name](process_text_fn=processor_text_fn)
+
+  return sentence_retrieval_lib.generate_sentence_retrevial_tf_record(
+      processor,
+      FLAGS.input_data_dir,
+      tokenizer,
+      FLAGS.eval_data_output_path,
+      FLAGS.test_data_output_path,
+      FLAGS.max_seq_length)
+
+
+def generate_tagging_dataset():
+  """Generates tagging dataset."""
+  processors = {
+      "panx": tagging_data_lib.PanxProcessor,
+      "udpos": tagging_data_lib.UdposProcessor,
+  }
+  task_name = FLAGS.tagging_task_name.lower()
+  if task_name not in processors:
+    raise ValueError("Task not found: %s" % task_name)
+
+  if FLAGS.tokenizer_impl == "word_piece":
+    tokenizer = tokenization.FullTokenizer(
+        vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
+    processor_text_fn = tokenization.convert_to_unicode
+  elif FLAGS.tokenizer_impl == "sentence_piece":
+    tokenizer = tokenization.FullSentencePieceTokenizer(FLAGS.sp_model_file)
+    processor_text_fn = functools.partial(
+        tokenization.preprocess_text, lower=FLAGS.do_lower_case)
+  else:
+    raise ValueError("Unsupported tokenizer_impl: %s" % FLAGS.tokenizer_impl)
+
+  processor = processors[task_name]()
+  return tagging_data_lib.generate_tf_record_from_data_file(
+      processor, FLAGS.input_data_dir, tokenizer, FLAGS.max_seq_length,
+      FLAGS.train_data_output_path, FLAGS.eval_data_output_path,
+      FLAGS.test_data_output_path, processor_text_fn)
+
+
 def main(_):
   if FLAGS.tokenizer_impl == "word_piece":
     if not FLAGS.vocab_file:
@@ -248,12 +339,20 @@ def main(_):
       raise ValueError(
           "FLAG sp_model_file for sentence-piece tokenizer is not specified.")
 
+  if FLAGS.fine_tuning_task_type != "retrieval":
+    flags.mark_flag_as_required("train_data_output_path")
+
   if FLAGS.fine_tuning_task_type == "classification":
     input_meta_data = generate_classifier_dataset()
   elif FLAGS.fine_tuning_task_type == "regression":
     input_meta_data = generate_regression_dataset()
-  else:
+  elif FLAGS.fine_tuning_task_type == "retrieval":
+    input_meta_data = generate_retrieval_dataset()
+  elif FLAGS.fine_tuning_task_type == "squad":
     input_meta_data = generate_squad_dataset()
+  else:
+    assert FLAGS.fine_tuning_task_type == "tagging"
+    input_meta_data = generate_tagging_dataset()
 
   tf.io.gfile.makedirs(os.path.dirname(FLAGS.meta_data_file_path))
   with tf.io.gfile.GFile(FLAGS.meta_data_file_path, "w") as writer:
@@ -261,6 +360,5 @@ def main(_):
 
 
 if __name__ == "__main__":
-  flags.mark_flag_as_required("train_data_output_path")
   flags.mark_flag_as_required("meta_data_file_path")
   app.run(main)

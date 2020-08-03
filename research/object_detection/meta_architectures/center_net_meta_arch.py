@@ -118,6 +118,19 @@ class CenterNetFeatureExtractor(tf.keras.Model):
     """Ther number of feature outputs returned by the feature extractor."""
     pass
 
+  @abc.abstractmethod
+  def get_sub_model(self, sub_model_type):
+    """Returns the underlying keras model for the given sub_model_type.
+
+    This function is useful when we only want to get a subset of weights to
+    be restored from a checkpoint.
+
+    Args:
+      sub_model_type: string, the type of sub model. Currently, CenterNet
+        feature extractors support 'detection' and 'classification'.
+    """
+    pass
+
 
 def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
                         bias_fill=None):
@@ -924,13 +937,16 @@ def convert_strided_predictions_to_normalized_keypoints(
 
 
 def convert_strided_predictions_to_instance_masks(
-    boxes, classes, masks, stride, mask_height, mask_width,
-    true_image_shapes, score_threshold=0.5):
+    boxes, classes, masks, true_image_shapes,
+    densepose_part_heatmap=None, densepose_surface_coords=None, stride=4,
+    mask_height=256, mask_width=256, score_threshold=0.5,
+    densepose_class_index=-1):
   """Converts predicted full-image masks into instance masks.
 
   For each predicted detection box:
-    * Crop and resize the predicted mask based on the detected bounding box
-      coordinates and class prediction. Uses bilinear resampling.
+    * Crop and resize the predicted mask (and optionally DensePose coordinates)
+      based on the detected bounding box coordinates and class prediction. Uses
+      bilinear resampling.
     * Binarize the mask using the provided score threshold.
 
   Args:
@@ -940,57 +956,212 @@ def convert_strided_predictions_to_instance_masks(
       detected class for each box (0-indexed).
     masks: A [batch, output_height, output_width, num_classes] float32
       tensor with class probabilities.
+    true_image_shapes: A tensor of shape [batch, 3] representing the true
+      shape of the inputs not considering padding.
+    densepose_part_heatmap: (Optional) A [batch, output_height, output_width,
+      num_parts] float32 tensor with part scores (i.e. logits).
+    densepose_surface_coords: (Optional) A [batch, output_height, output_width,
+      2 * num_parts] float32 tensor with predicted part coordinates (in
+      vu-format).
     stride: The stride in the output space.
     mask_height: The desired resized height for instance masks.
     mask_width: The desired resized width for instance masks.
-    true_image_shapes: A tensor of shape [batch, 3] representing the true
-      shape of the inputs not considering padding.
     score_threshold: The threshold at which to convert predicted mask
        into foreground pixels.
+    densepose_class_index: The class index (0-indexed) corresponding to the
+      class which has DensePose labels (e.g. person class).
 
   Returns:
-    A [batch_size, max_detections, mask_height, mask_width] uint8 tensor with
-    predicted foreground mask for each instance. The masks take values in
-    {0, 1}.
+    A tuple of masks and surface_coords.
+    instance_masks: A [batch_size, max_detections, mask_height, mask_width]
+      uint8 tensor with predicted foreground mask for each
+      instance. If DensePose tensors are provided, then each pixel value in the
+      mask encodes the 1-indexed part.
+    surface_coords: A [batch_size, max_detections, mask_height, mask_width, 2]
+      float32 tensor with (v, u) coordinates. Note that v, u coordinates are
+      only defined on instance masks, and the coordinates at each location of
+      the foreground mask correspond to coordinates on a local part coordinate
+      system (the specific part can be inferred from the `instance_masks`
+      output. If DensePose feature maps are not passed to this function, this
+      output will be None.
+
+  Raises:
+    ValueError: If one but not both of `densepose_part_heatmap` and
+    `densepose_surface_coords` is provided.
   """
-  _, output_height, output_width, _ = (
+  batch_size, output_height, output_width, _ = (
       shape_utils.combined_static_and_dynamic_shape(masks))
   input_height = stride * output_height
   input_width = stride * output_width
 
+  true_heights, true_widths, _ = tf.unstack(true_image_shapes, axis=1)
+  # If necessary, create dummy DensePose tensors to simplify the map function.
+  densepose_present = True
+  if ((densepose_part_heatmap is not None) ^
+      (densepose_surface_coords is not None)):
+    raise ValueError('To use DensePose, both `densepose_part_heatmap` and '
+                     '`densepose_surface_coords` must be provided')
+  if densepose_part_heatmap is None and densepose_surface_coords is None:
+    densepose_present = False
+    densepose_part_heatmap = tf.zeros(
+        (batch_size, output_height, output_width, 1), dtype=tf.float32)
+    densepose_surface_coords = tf.zeros(
+        (batch_size, output_height, output_width, 2), dtype=tf.float32)
+  crop_and_threshold_fn = functools.partial(
+      crop_and_threshold_masks, input_height=input_height,
+      input_width=input_width, mask_height=mask_height, mask_width=mask_width,
+      score_threshold=score_threshold,
+      densepose_class_index=densepose_class_index)
+
+  instance_masks, surface_coords = shape_utils.static_or_dynamic_map_fn(
+      crop_and_threshold_fn,
+      elems=[boxes, classes, masks, densepose_part_heatmap,
+             densepose_surface_coords, true_heights, true_widths],
+      dtype=[tf.uint8, tf.float32],
+      back_prop=False)
+  surface_coords = surface_coords if densepose_present else None
+  return instance_masks, surface_coords
+
+
+def crop_and_threshold_masks(elems, input_height, input_width, mask_height=256,
+                             mask_width=256, score_threshold=0.5,
+                             densepose_class_index=-1):
+  """Crops and thresholds masks based on detection boxes.
+
+  Args:
+    elems: A tuple of
+      boxes - float32 tensor of shape [max_detections, 4]
+      classes - int32 tensor of shape [max_detections] (0-indexed)
+      masks - float32 tensor of shape [output_height, output_width, num_classes]
+      part_heatmap - float32 tensor of shape [output_height, output_width,
+        num_parts]
+      surf_coords - float32 tensor of shape [output_height, output_width,
+        2 * num_parts]
+      true_height - scalar int tensor
+      true_width - scalar int tensor
+    input_height: Input height to network.
+    input_width: Input width to network.
+    mask_height: Height for resizing mask crops.
+    mask_width: Width for resizing mask crops.
+    score_threshold: The threshold at which to convert predicted mask
+      into foreground pixels.
+    densepose_class_index: scalar int tensor with the class index (0-indexed)
+      for DensePose.
+
+  Returns:
+    A tuple of
+    all_instances: A [max_detections, mask_height, mask_width] uint8 tensor
+      with a predicted foreground mask for each instance. Background is encoded
+      as 0, and foreground is encoded as a positive integer. Specific part
+      indices are encoded as 1-indexed parts (for classes that have part
+      information).
+    surface_coords: A [max_detections, mask_height, mask_width, 2]
+      float32 tensor with (v, u) coordinates. for each part.
+  """
+  (boxes, classes, masks, part_heatmap, surf_coords, true_height,
+   true_width) = elems
   # Boxes are in normalized coordinates relative to true image shapes. Convert
   # coordinates to be normalized relative to input image shapes (since masks
   # may still have padding).
-  # Then crop and resize each mask.
-  def crop_and_threshold_masks(args):
-    """Crops masks based on detection boxes."""
-    boxes, classes, masks, true_height, true_width = args
-    boxlist = box_list.BoxList(boxes)
-    y_scale = true_height / input_height
-    x_scale = true_width / input_width
-    boxlist = box_list_ops.scale(boxlist, y_scale, x_scale)
-    boxes = boxlist.get()
-    # Convert masks from [input_height, input_width, num_classes] to
-    # [num_classes, input_height, input_width, 1].
-    masks_4d = tf.transpose(masks, perm=[2, 0, 1])[:, :, :, tf.newaxis]
-    cropped_masks = tf2.image.crop_and_resize(
-        masks_4d,
-        boxes=boxes,
-        box_indices=classes,
-        crop_size=[mask_height, mask_width],
-        method='bilinear')
-    masks_3d = tf.squeeze(cropped_masks, axis=3)
-    masks_binarized = tf.math.greater_equal(masks_3d, score_threshold)
-    return tf.cast(masks_binarized, tf.uint8)
+  boxlist = box_list.BoxList(boxes)
+  y_scale = true_height / input_height
+  x_scale = true_width / input_width
+  boxlist = box_list_ops.scale(boxlist, y_scale, x_scale)
+  boxes = boxlist.get()
+  # Convert masks from [output_height, output_width, num_classes] to
+  # [num_classes, output_height, output_width, 1].
+  num_classes = tf.shape(masks)[-1]
+  masks_4d = tf.transpose(masks, perm=[2, 0, 1])[:, :, :, tf.newaxis]
+  # Tile part and surface coordinate masks for all classes.
+  part_heatmap_4d = tf.tile(part_heatmap[tf.newaxis, :, :, :],
+                            multiples=[num_classes, 1, 1, 1])
+  surf_coords_4d = tf.tile(surf_coords[tf.newaxis, :, :, :],
+                           multiples=[num_classes, 1, 1, 1])
+  feature_maps_concat = tf.concat([masks_4d, part_heatmap_4d, surf_coords_4d],
+                                  axis=-1)
+  # The following tensor has shape
+  # [max_detections, mask_height, mask_width, 1 + 3 * num_parts].
+  cropped_masks = tf2.image.crop_and_resize(
+      feature_maps_concat,
+      boxes=boxes,
+      box_indices=classes,
+      crop_size=[mask_height, mask_width],
+      method='bilinear')
 
-  true_heights, true_widths, _ = tf.unstack(true_image_shapes, axis=1)
-  masks_for_image = shape_utils.static_or_dynamic_map_fn(
-      crop_and_threshold_masks,
-      elems=[boxes, classes, masks, true_heights, true_widths],
-      dtype=tf.uint8,
-      back_prop=False)
-  masks = tf.stack(masks_for_image, axis=0)
-  return masks
+  # Split the cropped masks back into instance masks, part masks, and surface
+  # coordinates.
+  num_parts = tf.shape(part_heatmap)[-1]
+  instance_masks, part_heatmap_cropped, surface_coords_cropped = tf.split(
+      cropped_masks, [1, num_parts, 2 * num_parts], axis=-1)
+
+  # Threshold the instance masks. Resulting tensor has shape
+  # [max_detections, mask_height, mask_width, 1].
+  instance_masks_int = tf.cast(
+      tf.math.greater_equal(instance_masks, score_threshold), dtype=tf.int32)
+
+  # Produce a binary mask that is 1.0 only:
+  #  - in the foreground region for an instance
+  #  - in detections corresponding to the DensePose class
+  det_with_parts = tf.equal(classes, densepose_class_index)
+  det_with_parts = tf.cast(
+      tf.reshape(det_with_parts, [-1, 1, 1, 1]), dtype=tf.int32)
+  instance_masks_with_parts = tf.math.multiply(instance_masks_int,
+                                               det_with_parts)
+
+  # Similarly, produce a binary mask that holds the foreground masks only for
+  # instances without parts (i.e. non-DensePose classes).
+  det_without_parts = 1 - det_with_parts
+  instance_masks_without_parts = tf.math.multiply(instance_masks_int,
+                                                  det_without_parts)
+
+  # Assemble a tensor that has standard instance segmentation masks for
+  # non-DensePose classes (with values in [0, 1]), and part segmentation masks
+  # for DensePose classes (with vaues in [0, 1, ..., num_parts]).
+  part_mask_int_zero_indexed = tf.math.argmax(
+      part_heatmap_cropped, axis=-1, output_type=tf.int32)[:, :, :, tf.newaxis]
+  part_mask_int_one_indexed = part_mask_int_zero_indexed + 1
+  all_instances = (instance_masks_without_parts +
+                   instance_masks_with_parts * part_mask_int_one_indexed)
+
+  # Gather the surface coordinates for the parts.
+  surface_coords_cropped = tf.reshape(
+      surface_coords_cropped, [-1, mask_height, mask_width, num_parts, 2])
+  surface_coords = gather_surface_coords_for_parts(surface_coords_cropped,
+                                                   part_mask_int_zero_indexed)
+  surface_coords = (
+      surface_coords * tf.cast(instance_masks_with_parts, tf.float32))
+
+  return [tf.squeeze(all_instances, axis=3), surface_coords]
+
+
+def gather_surface_coords_for_parts(surface_coords_cropped,
+                                    highest_scoring_part):
+  """Gathers the (v, u) coordinates for the highest scoring DensePose parts.
+
+  Args:
+    surface_coords_cropped: A [max_detections, height, width, num_parts, 2]
+      float32 tensor with (v, u) surface coordinates.
+    highest_scoring_part: A [max_detections, height, width] integer tensor with
+      the highest scoring part (0-indexed) indices for each location.
+
+  Returns:
+    A [max_detections, height, width, 2] float32 tensor with the (v, u)
+    coordinates selected from the highest scoring parts.
+  """
+  max_detections, height, width, num_parts, _ = (
+      shape_utils.combined_static_and_dynamic_shape(surface_coords_cropped))
+  flattened_surface_coords = tf.reshape(surface_coords_cropped, [-1, 2])
+  flattened_part_ids = tf.reshape(highest_scoring_part, [-1])
+
+  # Produce lookup indices that represent the locations of the highest scoring
+  # parts in the `flattened_surface_coords` tensor.
+  flattened_lookup_indices = (
+      num_parts * tf.range(max_detections * height * width) +
+      flattened_part_ids)
+
+  vu_coords_flattened = tf.gather(flattened_surface_coords,
+                                  flattened_lookup_indices, axis=0)
+  return tf.reshape(vu_coords_flattened, [max_detections, height, width, 2])
 
 
 class ObjectDetectionParams(
@@ -1235,6 +1406,64 @@ class MaskParams(
                               score_threshold, heatmap_bias_init)
 
 
+class DensePoseParams(
+    collections.namedtuple('DensePoseParams', [
+        'class_id', 'classification_loss', 'localization_loss',
+        'part_loss_weight', 'coordinate_loss_weight', 'num_parts',
+        'task_loss_weight', 'upsample_to_input_res', 'upsample_method',
+        'heatmap_bias_init'
+    ])):
+  """Namedtuple to store DensePose prediction related parameters."""
+
+  __slots__ = ()
+
+  def __new__(cls,
+              class_id,
+              classification_loss,
+              localization_loss,
+              part_loss_weight=1.0,
+              coordinate_loss_weight=1.0,
+              num_parts=24,
+              task_loss_weight=1.0,
+              upsample_to_input_res=True,
+              upsample_method='bilinear',
+              heatmap_bias_init=-2.19):
+    """Constructor with default values for DensePoseParams.
+
+    Args:
+      class_id: the ID of the class that contains the DensePose groundtruth.
+        This should typically correspond to the "person" class. Note that the ID
+        is 0-based, meaning that class 0 corresponds to the first non-background
+        object class.
+      classification_loss: an object_detection.core.losses.Loss object to
+        compute the loss for the body part predictions in CenterNet.
+      localization_loss: an object_detection.core.losses.Loss object to compute
+        the loss for the surface coordinate regression in CenterNet.
+      part_loss_weight: The loss weight to apply to part prediction.
+      coordinate_loss_weight: The loss weight to apply to surface coordinate
+        prediction.
+      num_parts: The number of DensePose parts to predict.
+      task_loss_weight: float, the loss weight for the DensePose task.
+      upsample_to_input_res: Whether to upsample the DensePose feature maps to
+        the input resolution before applying loss. Note that the prediction
+        outputs are still at the standard CenterNet output stride.
+      upsample_method: Method for upsampling DensePose feature maps. Options are
+        either 'bilinear' or 'nearest'). This takes no effect when
+        `upsample_to_input_res` is False.
+      heatmap_bias_init: float, the initial value of bias in the convolutional
+        kernel of the part prediction head. If set to None, the
+        bias is initialized with zeros.
+
+    Returns:
+      An initialized DensePoseParams namedtuple.
+    """
+    return super(DensePoseParams,
+                 cls).__new__(cls, class_id, classification_loss,
+                              localization_loss, part_loss_weight,
+                              coordinate_loss_weight, num_parts,
+                              task_loss_weight, upsample_to_input_res,
+                              upsample_method, heatmap_bias_init)
+
 # The following constants are used to generate the keys of the
 # (prediction, loss, target assigner,...) dictionaries used in CenterNetMetaArch
 # class.
@@ -1247,6 +1476,9 @@ KEYPOINT_HEATMAP = 'keypoint/heatmap'
 KEYPOINT_OFFSET = 'keypoint/offset'
 SEGMENTATION_TASK = 'segmentation_task'
 SEGMENTATION_HEATMAP = 'segmentation/heatmap'
+DENSEPOSE_TASK = 'densepose_task'
+DENSEPOSE_HEATMAP = 'densepose/heatmap'
+DENSEPOSE_REGRESSION = 'densepose/regression'
 LOSS_KEY_PREFIX = 'Loss'
 
 
@@ -1290,7 +1522,8 @@ class CenterNetMetaArch(model.DetectionModel):
                object_center_params,
                object_detection_params=None,
                keypoint_params_dict=None,
-               mask_params=None):
+               mask_params=None,
+               densepose_params=None):
     """Initializes a CenterNet model.
 
     Args:
@@ -1318,6 +1551,10 @@ class CenterNetMetaArch(model.DetectionModel):
       mask_params: A MaskParams namedtuple. This object
         holds the hyper-parameters for segmentation. Please see the class
         definition for more details.
+      densepose_params: A DensePoseParams namedtuple. This object holds the
+        hyper-parameters for DensePose prediction. Please see the class
+        definition for more details. Note that if this is provided, it is
+        expected that `mask_params` is also provided.
     """
     assert object_detection_params or keypoint_params_dict
     # Shorten the name for convenience and better formatting.
@@ -1333,6 +1570,10 @@ class CenterNetMetaArch(model.DetectionModel):
     self._od_params = object_detection_params
     self._kp_params_dict = keypoint_params_dict
     self._mask_params = mask_params
+    if densepose_params is not None and mask_params is None:
+      raise ValueError('To run DensePose prediction, `mask_params` must also '
+                       'be supplied.')
+    self._densepose_params = densepose_params
 
     # Construct the prediction head nets.
     self._prediction_head_dict = self._construct_prediction_heads(
@@ -1413,8 +1654,18 @@ class CenterNetMetaArch(model.DetectionModel):
     if self._mask_params is not None:
       prediction_heads[SEGMENTATION_HEATMAP] = [
           make_prediction_net(num_classes,
-                              bias_fill=class_prediction_bias_init)
+                              bias_fill=self._mask_params.heatmap_bias_init)
           for _ in range(num_feature_outputs)]
+    if self._densepose_params is not None:
+      prediction_heads[DENSEPOSE_HEATMAP] = [
+          make_prediction_net(  # pylint: disable=g-complex-comprehension
+              self._densepose_params.num_parts,
+              bias_fill=self._densepose_params.heatmap_bias_init)
+          for _ in range(num_feature_outputs)]
+      prediction_heads[DENSEPOSE_REGRESSION] = [
+          make_prediction_net(2 * self._densepose_params.num_parts)
+          for _ in range(num_feature_outputs)
+      ]
     return prediction_heads
 
   def _initialize_target_assigners(self, stride, min_box_overlap_iou):
@@ -1449,6 +1700,10 @@ class CenterNetMetaArch(model.DetectionModel):
     if self._mask_params is not None:
       target_assigners[SEGMENTATION_TASK] = (
           cn_assigner.CenterNetMaskTargetAssigner(stride))
+    if self._densepose_params is not None:
+      dp_stride = 1 if self._densepose_params.upsample_to_input_res else stride
+      target_assigners[DENSEPOSE_TASK] = (
+          cn_assigner.CenterNetDensePoseTargetAssigner(dp_stride))
 
     return target_assigners
 
@@ -1860,6 +2115,113 @@ class CenterNetMetaArch(model.DetectionModel):
         float(len(segmentation_predictions)) * total_pixels_in_loss)
     return total_loss
 
+  def _compute_densepose_losses(self, input_height, input_width,
+                                prediction_dict):
+    """Computes the weighted DensePose losses.
+
+    Args:
+      input_height: An integer scalar tensor representing input image height.
+      input_width: An integer scalar tensor representing input image width.
+      prediction_dict: A dictionary holding predicted tensors output by the
+        "predict" function. See the "predict" function for more detailed
+        description.
+
+    Returns:
+      A dictionary of scalar float tensors representing the weighted losses for
+      the DensePose task:
+         DENSEPOSE_HEATMAP: the weighted part segmentation loss.
+         DENSEPOSE_REGRESSION: the weighted part surface coordinate loss.
+    """
+    dp_heatmap_loss, dp_regression_loss = (
+        self._compute_densepose_part_and_coordinate_losses(
+            input_height=input_height,
+            input_width=input_width,
+            part_predictions=prediction_dict[DENSEPOSE_HEATMAP],
+            surface_coord_predictions=prediction_dict[DENSEPOSE_REGRESSION]))
+    loss_dict = {}
+    loss_dict[DENSEPOSE_HEATMAP] = (
+        self._densepose_params.part_loss_weight * dp_heatmap_loss)
+    loss_dict[DENSEPOSE_REGRESSION] = (
+        self._densepose_params.coordinate_loss_weight * dp_regression_loss)
+    return loss_dict
+
+  def _compute_densepose_part_and_coordinate_losses(
+      self, input_height, input_width, part_predictions,
+      surface_coord_predictions):
+    """Computes the individual losses for the DensePose task.
+
+    Args:
+      input_height: An integer scalar tensor representing input image height.
+      input_width: An integer scalar tensor representing input image width.
+      part_predictions: A list of float tensors of shape [batch_size,
+        out_height, out_width, num_parts].
+      surface_coord_predictions: A list of float tensors of shape [batch_size,
+        out_height, out_width, 2 * num_parts].
+
+    Returns:
+      A tuple with two scalar loss tensors: part_prediction_loss and
+      surface_coord_loss.
+    """
+    gt_dp_num_points_list = self.groundtruth_lists(
+        fields.BoxListFields.densepose_num_points)
+    gt_dp_part_ids_list = self.groundtruth_lists(
+        fields.BoxListFields.densepose_part_ids)
+    gt_dp_surface_coords_list = self.groundtruth_lists(
+        fields.BoxListFields.densepose_surface_coords)
+    gt_weights_list = self.groundtruth_lists(fields.BoxListFields.weights)
+
+    assigner = self._target_assigner_dict[DENSEPOSE_TASK]
+    batch_indices, batch_part_ids, batch_surface_coords, batch_weights = (
+        assigner.assign_part_and_coordinate_targets(
+            height=input_height,
+            width=input_width,
+            gt_dp_num_points_list=gt_dp_num_points_list,
+            gt_dp_part_ids_list=gt_dp_part_ids_list,
+            gt_dp_surface_coords_list=gt_dp_surface_coords_list,
+            gt_weights_list=gt_weights_list))
+
+    part_prediction_loss = 0
+    surface_coord_loss = 0
+    classification_loss_fn = self._densepose_params.classification_loss
+    localization_loss_fn = self._densepose_params.localization_loss
+    num_predictions = float(len(part_predictions))
+    num_valid_points = tf.math.count_nonzero(batch_weights)
+    num_valid_points = tf.cast(tf.math.maximum(num_valid_points, 1), tf.float32)
+    for part_pred, surface_coord_pred in zip(part_predictions,
+                                             surface_coord_predictions):
+      # Potentially upsample the feature maps, so that better quality (i.e.
+      # higher res) groundtruth can be applied.
+      if self._densepose_params.upsample_to_input_res:
+        part_pred = tf.keras.layers.UpSampling2D(
+            self._stride, interpolation=self._densepose_params.upsample_method)(
+                part_pred)
+        surface_coord_pred = tf.keras.layers.UpSampling2D(
+            self._stride, interpolation=self._densepose_params.upsample_method)(
+                surface_coord_pred)
+      # Compute the part prediction loss.
+      part_pred = cn_assigner.get_batch_predictions_from_indices(
+          part_pred, batch_indices[:, 0:3])
+      part_prediction_loss += classification_loss_fn(
+          part_pred[:, tf.newaxis, :],
+          batch_part_ids[:, tf.newaxis, :],
+          weights=batch_weights[:, tf.newaxis, tf.newaxis])
+      # Compute the surface coordinate loss.
+      batch_size, out_height, out_width, _ = _get_shape(
+          surface_coord_pred, 4)
+      surface_coord_pred = tf.reshape(
+          surface_coord_pred, [batch_size, out_height, out_width, -1, 2])
+      surface_coord_pred = cn_assigner.get_batch_predictions_from_indices(
+          surface_coord_pred, batch_indices)
+      surface_coord_loss += localization_loss_fn(
+          surface_coord_pred,
+          batch_surface_coords,
+          weights=batch_weights[:, tf.newaxis])
+    part_prediction_loss = tf.reduce_sum(part_prediction_loss) / (
+        num_predictions * num_valid_points)
+    surface_coord_loss = tf.reduce_sum(surface_coord_loss) / (
+        num_predictions * num_valid_points)
+    return part_prediction_loss, surface_coord_loss
+
   def preprocess(self, inputs):
     outputs = shape_utils.resize_images_and_return_shapes(
         inputs, self._image_resizer_fn)
@@ -1909,6 +2271,13 @@ class CenterNetMetaArch(model.DetectionModel):
         'segmentation/heatmap' - [optional] A list of size num_feature_outputs
           holding float tensors of size [batch_size, output_height,
           output_width, num_classes] representing the mask logits.
+        'densepose/heatmap' - [optional] A list of size num_feature_outputs
+          holding float tensors of size [batch_size, output_height,
+          output_width, num_parts] representing the mask logits for each part.
+        'densepose/regression' - [optional] A list of size num_feature_outputs
+          holding float tensors of size [batch_size, output_height,
+          output_width, 2 * num_parts] representing the DensePose surface
+          coordinate predictions.
         Note the $TASK_NAME is provided by the KeypointEstimation namedtuple
         used to differentiate between different keypoint tasks.
     """
@@ -1938,10 +2307,16 @@ class CenterNetMetaArch(model.DetectionModel):
       scope: Optional scope name.
 
     Returns:
-      A dictionary mapping the keys ['Loss/object_center', 'Loss/box/scale',
-        'Loss/box/offset', 'Loss/$TASK_NAME/keypoint/heatmap',
-        'Loss/$TASK_NAME/keypoint/offset',
-        'Loss/$TASK_NAME/keypoint/regression', 'Loss/segmentation/heatmap'] to
+      A dictionary mapping the keys [
+        'Loss/object_center',
+        'Loss/box/scale',  (optional)
+        'Loss/box/offset', (optional)
+        'Loss/$TASK_NAME/keypoint/heatmap', (optional)
+        'Loss/$TASK_NAME/keypoint/offset', (optional)
+        'Loss/$TASK_NAME/keypoint/regression', (optional)
+        'Loss/segmentation/heatmap', (optional)
+        'Loss/densepose/heatmap', (optional)
+        'Loss/densepose/regression]' (optional)
         scalar tensors corresponding to the losses for different tasks. Note the
         $TASK_NAME is provided by the KeypointEstimation namedtuple used to
         differentiate between different keypoint tasks.
@@ -1999,6 +2374,16 @@ class CenterNetMetaArch(model.DetectionModel):
         seg_losses[key] = seg_losses[key] * self._mask_params.task_loss_weight
       losses.update(seg_losses)
 
+    if self._densepose_params is not None:
+      densepose_losses = self._compute_densepose_losses(
+          input_height=input_height,
+          input_width=input_width,
+          prediction_dict=prediction_dict)
+      for key in densepose_losses:
+        densepose_losses[key] = (
+            densepose_losses[key] * self._densepose_params.task_loss_weight)
+      losses.update(densepose_losses)
+
     # Prepend the LOSS_KEY_PREFIX to the keys in the dictionary such that the
     # losses will be grouped together in Tensorboard.
     return dict([('%s/%s' % (LOSS_KEY_PREFIX, key), val)
@@ -2033,9 +2418,14 @@ class CenterNetMetaArch(model.DetectionModel):
           invalid keypoints have their coordinates and scores set to 0.0.
         detection_keypoint_scores: (Optional) A float tensor of shape [batch,
           max_detection, num_keypoints] with scores for each keypoint.
-        detection_masks: (Optional) An int tensor of shape [batch,
-          max_detections, mask_height, mask_width] with binarized masks for each
-          detection.
+        detection_masks: (Optional) A uint8 tensor of shape [batch,
+          max_detections, mask_height, mask_width] with masks for each
+          detection. Background is specified with 0, and foreground is specified
+          with positive integers (1 for standard instance segmentation mask, and
+          1-indexed parts for DensePose task).
+        detection_surface_coords: (Optional) A float32 tensor of shape [batch,
+          max_detection, mask_height, mask_width, 2] with DensePose surface
+          coordinates, in (v, u) format.
     """
     object_center_prob = tf.nn.sigmoid(prediction_dict[OBJECT_CENTER][-1])
     # Get x, y and channel indices corresponding to the top indices in the class
@@ -2076,14 +2466,27 @@ class CenterNetMetaArch(model.DetectionModel):
 
     if self._mask_params:
       masks = tf.nn.sigmoid(prediction_dict[SEGMENTATION_HEATMAP][-1])
-      instance_masks = convert_strided_predictions_to_instance_masks(
-          boxes, classes, masks, self._stride, self._mask_params.mask_height,
-          self._mask_params.mask_width, true_image_shapes,
-          self._mask_params.score_threshold)
-      postprocess_dict.update({
-          fields.DetectionResultFields.detection_masks:
-              instance_masks
-      })
+      densepose_part_heatmap, densepose_surface_coords = None, None
+      densepose_class_index = 0
+      if self._densepose_params:
+        densepose_part_heatmap = prediction_dict[DENSEPOSE_HEATMAP][-1]
+        densepose_surface_coords = prediction_dict[DENSEPOSE_REGRESSION][-1]
+        densepose_class_index = self._densepose_params.class_id
+      instance_masks, surface_coords = (
+          convert_strided_predictions_to_instance_masks(
+              boxes, classes, masks, true_image_shapes,
+              densepose_part_heatmap, densepose_surface_coords,
+              stride=self._stride, mask_height=self._mask_params.mask_height,
+              mask_width=self._mask_params.mask_width,
+              score_threshold=self._mask_params.score_threshold,
+              densepose_class_index=densepose_class_index))
+      postprocess_dict[
+          fields.DetectionResultFields.detection_masks] = instance_masks
+      if self._densepose_params:
+        postprocess_dict[
+            fields.DetectionResultFields.detection_surface_coords] = (
+                surface_coords)
+
     return postprocess_dict
 
   def _postprocess_keypoints(self, prediction_dict, classes, y_indices,
@@ -2330,18 +2733,50 @@ class CenterNetMetaArch(model.DetectionModel):
   def regularization_losses(self):
     return []
 
-  def restore_map(self, fine_tune_checkpoint_type='classification',
+  def restore_map(self,
+                  fine_tune_checkpoint_type='detection',
                   load_all_detection_checkpoint_vars=False):
+    raise RuntimeError('CenterNetMetaArch not supported under TF1.x.')
 
-    if fine_tune_checkpoint_type == 'classification':
-      return {'feature_extractor': self._feature_extractor.get_base_model()}
+  def restore_from_objects(self, fine_tune_checkpoint_type='detection'):
+    """Returns a map of Trackable objects to load from a foreign checkpoint.
 
-    if fine_tune_checkpoint_type == 'detection':
-      return {'feature_extractor': self._feature_extractor.get_model()}
+    Returns a dictionary of Tensorflow 2 Trackable objects (e.g. tf.Module
+    or Checkpoint). This enables the model to initialize based on weights from
+    another task. For example, the feature extractor variables from a
+    classification model can be used to bootstrap training of an object
+    detector. When loading from an object detection model, the checkpoint model
+    should have the same parameters as this detection model with exception of
+    the num_classes parameter.
 
-    else:
-      raise ValueError('Unknown fine tune checkpoint type - {}'.format(
-          fine_tune_checkpoint_type))
+    Note that this function is intended to be used to restore Keras-based
+    models when running Tensorflow 2, whereas restore_map (not implemented
+    in CenterNet) is intended to be used to restore Slim-based models when
+    running Tensorflow 1.x.
+
+    TODO(jonathanhuang): Make this function consistent with other
+    meta-architectures.
+
+    Args:
+      fine_tune_checkpoint_type: whether to restore from a full detection
+        checkpoint (with compatible variable names) or to restore from a
+        classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
+        'detection': used when loading in the Hourglass model pre-trained on
+          other detection task.
+        'classification': used when loading in the ResNet model pre-trained on
+          image classification task. Note that only the image feature encoding
+          part is loaded but not those upsampling layers.
+        'fine_tune': used when loading the entire CenterNet feature extractor
+          pre-trained on other tasks. The checkpoints saved during CenterNet
+          model training can be directly loaded using this mode.
+
+    Returns:
+      A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
+    """
+
+    sub_model = self._feature_extractor.get_sub_model(fine_tune_checkpoint_type)
+    return {'feature_extractor': sub_model}
 
   def updates(self):
     raise RuntimeError('This model is intended to be used with model_lib_v2 '

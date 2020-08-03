@@ -34,7 +34,8 @@ python tensorflow_models/object_detection/export_inference_graph.py \
     --input_type tf_example \
     --pipeline_config_path path/to/faster_rcnn_model.config \
     --trained_checkpoint_prefix path/to/model.ckpt \
-    --output_directory path/to/exported_model_directory
+    --output_directory path/to/exported_model_directory \
+    --additional_output_tensor_names detection_features
 
 python generate_embedding_data.py \
     --alsologtostderr \
@@ -47,34 +48,19 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import datetime
 import os
 import threading
-from absl import app
-from absl import flags
-import apache_beam as beam
+
 import numpy as np
 import six
-import tensorflow.compat.v1 as tf
-from apache_beam import runners
+import tensorflow as tf
 
-flags.DEFINE_string('embedding_input_tfrecord', None, 'TFRecord containing'
-                    'images in tf.Example format for object detection.')
-flags.DEFINE_string('embedding_output_tfrecord', None,
-                    'TFRecord containing embeddings in tf.Example format.')
-flags.DEFINE_string('embedding_model_dir', None, 'Path to directory containing'
-                    'an object detection SavedModel with'
-                    'detection_box_classifier_features in the output.')
-flags.DEFINE_integer('top_k_embedding_count', 1,
-                     'The number of top k embeddings to add to the memory bank.'
-                    )
-flags.DEFINE_integer('bottom_k_embedding_count', 0,
-                     'The number of bottom k embeddings to add to the memory '
-                     'bank.')
-flags.DEFINE_integer('num_shards', 0, 'Number of output shards.')
-
-
-FLAGS = flags.FLAGS
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class GenerateEmbeddingDataFn(beam.DoFn):
@@ -109,27 +95,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     # one instance across all threads in the worker. This is possible since
     # tf.Session.run() is thread safe.
     with self.session_lock:
-      if self._session is None:
-        graph = tf.Graph()
-        self._session = tf.Session(graph=graph)
-        with graph.as_default():
-          meta_graph = tf.saved_model.loader.load(
-              self._session, [tf.saved_model.tag_constants.SERVING],
-              self._model_dir)
-        signature = meta_graph.signature_def['serving_default']
-        input_tensor_name = signature.inputs['inputs'].name
-        detection_features_name = signature.outputs['detection_features'].name
-        detection_boxes_name = signature.outputs['detection_boxes'].name
-        num_detections_name = signature.outputs['num_detections'].name
-        self._input = graph.get_tensor_by_name(input_tensor_name)
-        self._embedding_node = graph.get_tensor_by_name(detection_features_name)
-        self._box_node = graph.get_tensor_by_name(detection_boxes_name)
-        self._scores_node = graph.get_tensor_by_name(
-            signature.outputs['detection_scores'].name)
-        self._num_detections = graph.get_tensor_by_name(num_detections_name)
-        tf.logging.info(signature.outputs['detection_features'].name)
-        tf.logging.info(signature.outputs['detection_boxes'].name)
-        tf.logging.info(signature.outputs['num_detections'].name)
+      self._detect_fn = tf.saved_model.load(self._model_dir)
 
   def process(self, tfrecord_entry):
     return self._run_inference_and_generate_embedding(tfrecord_entry)
@@ -198,13 +164,12 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     example.features.feature['image/unix_time'].float_list.value.extend(
         [unix_time])
 
-    (detection_features, detection_boxes, num_detections,
-     detection_scores) = self._session.run(
-         [
-             self._embedding_node, self._box_node, self._num_detections[0],
-             self._scores_node
-         ],
-         feed_dict={self._input: [tfrecord_entry]})
+    detections = self._detect_fn.signatures['serving_default'](
+        (tf.expand_dims(tf.convert_to_tensor(tfrecord_entry), 0)))
+    detection_features = detections['detection_features']
+    detection_boxes = detections['detection_boxes']
+    num_detections = detections['num_detections']
+    detection_scores = detections['detection_scores']
 
     num_detections = int(num_detections)
     embed_all = []
@@ -321,12 +286,13 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     return [example]
 
 
-def construct_pipeline(input_tfrecord, output_tfrecord, model_dir,
+def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
                        top_k_embedding_count, bottom_k_embedding_count,
                        num_shards):
   """Returns a beam pipeline to run object detection inference.
 
   Args:
+    pipeline: Initialized beam pipeline.
     input_tfrecord: An TFRecord of tf.train.Example protos containing images.
     output_tfrecord: An TFRecord of tf.train.Example protos that contain images
       in the input TFRecord and the detections from the model.
@@ -335,44 +301,98 @@ def construct_pipeline(input_tfrecord, output_tfrecord, model_dir,
     bottom_k_embedding_count: The number of low-confidence embeddings to store.
     num_shards: The number of output shards.
   """
-  def pipeline(root):
-    input_collection = (
-        root | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
-            input_tfrecord,
-            coder=beam.coders.BytesCoder()))
-    output_collection = input_collection | 'ExtractEmbedding' >> beam.ParDo(
-        GenerateEmbeddingDataFn(model_dir, top_k_embedding_count,
-                                bottom_k_embedding_count))
-    output_collection = output_collection | 'Reshuffle' >> beam.Reshuffle()
-    _ = output_collection | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
-        output_tfrecord,
-        num_shards=num_shards,
-        coder=beam.coders.ProtoCoder(tf.train.Example))
-  return pipeline
+  input_collection = (
+      pipeline | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
+          input_tfrecord,
+          coder=beam.coders.BytesCoder()))
+  output_collection = input_collection | 'ExtractEmbedding' >> beam.ParDo(
+      GenerateEmbeddingDataFn(model_dir, top_k_embedding_count,
+                              bottom_k_embedding_count))
+  output_collection = output_collection | 'Reshuffle' >> beam.Reshuffle()
+  _ = output_collection | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
+      output_tfrecord,
+      num_shards=num_shards,
+      coder=beam.coders.ProtoCoder(tf.train.Example))
 
 
-def main(_):
+def parse_args(argv):
+  """Command-line argument parser.
+
+  Args:
+    argv: command line arguments
+  Returns:
+    beam_args: Arguments for the beam pipeline.
+    pipeline_args: Arguments for the pipeline options, such as runner type.
+  """
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--embedding_input_tfrecord',
+      dest='embedding_input_tfrecord',
+      required=True,
+      help='TFRecord containing images in tf.Example format for object '
+      'detection.')
+  parser.add_argument(
+      '--embedding_output_tfrecord',
+      dest='embedding_output_tfrecord',
+      required=True,
+      help='TFRecord containing embeddings in tf.Example format.')
+  parser.add_argument(
+      '--embedding_model_dir',
+      dest='embedding_model_dir',
+      required=True,
+      help='Path to directory containing an object detection SavedModel with'
+      'detection_box_classifier_features in the output.')
+  parser.add_argument(
+      '--top_k_embedding_count',
+      dest='top_k_embedding_count',
+      default=1,
+      help='The number of top k embeddings to add to the memory bank.')
+  parser.add_argument(
+      '--bottom_k_embedding_count',
+      dest='bottom_k_embedding_count',
+      default=0,
+      help='The number of bottom k embeddings to add to the memory bank.')
+  parser.add_argument(
+      '--num_shards',
+      dest='num_shards',
+      default=0,
+      help='Number of output shards.')
+  beam_args, pipeline_args = parser.parse_known_args(argv)
+  return beam_args, pipeline_args
+
+
+def main(argv=None, save_main_session=True):
   """Runs the Beam pipeline that performs inference.
 
   Args:
-    _: unused
+    argv: Command line arguments.
+    save_main_session: Whether to save the main session.
   """
-  # must create before flags are used
-  runner = runners.DirectRunner()
+  args, pipeline_args = parse_args(argv)
 
-  dirname = os.path.dirname(FLAGS.embedding_output_tfrecord)
+  pipeline_options = beam.options.pipeline_options.PipelineOptions(
+            pipeline_args)
+  pipeline_options.view_as(
+      beam.options.pipeline_options.SetupOptions).save_main_session = (
+          save_main_session)
+
+  dirname = os.path.dirname(args.embedding_output_tfrecord)
   tf.io.gfile.makedirs(dirname)
-  runner.run(
-      construct_pipeline(FLAGS.embedding_input_tfrecord,
-                         FLAGS.embedding_output_tfrecord,
-                         FLAGS.embedding_model_dir, FLAGS.top_k_embedding_count,
-                         FLAGS.bottom_k_embedding_count, FLAGS.num_shards))
+
+  p = beam.Pipeline(options=pipeline_options)
+
+  construct_pipeline(
+      p,
+      args.embedding_input_tfrecord,
+      args.embedding_output_tfrecord,
+      args.embedding_model_dir,
+      args.top_k_embedding_count,
+      args.bottom_k_embedding_count,
+      args.num_shards)
+
+  p.run()
 
 
 if __name__ == '__main__':
-  flags.mark_flags_as_required([
-      'embedding_input_tfrecord',
-      'embedding_output_tfrecord',
-      'embedding_model_dir'
-  ])
-  app.run(main)
+  main()
+

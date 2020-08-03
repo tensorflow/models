@@ -15,91 +15,72 @@
 # ==============================================================================
 """Tests for optimizer_factory.py."""
 
+from absl.testing import parameterized
+
 import tensorflow as tf
-import tensorflow_addons.optimizers as tfa_optimizers
 
 from official.modeling.optimization import optimizer_factory
 from official.modeling.optimization.configs import optimization_config
-from official.nlp import optimization as nlp_optimization
 
 
-class OptimizerFactoryTest(tf.test.TestCase):
+class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_sgd_optimizer(self):
+  @parameterized.parameters(
+      ('sgd'),
+      ('rmsprop'),
+      ('adam'),
+      ('adamw'),
+      ('lamb'))
+  def test_optimizers(self, optimizer_type):
+    params = {
+        'optimizer': {
+            'type': optimizer_type
+        },
+        'learning_rate': {
+            'type': 'constant',
+            'constant': {
+                'learning_rate': 0.1
+            }
+        }
+    }
+    optimizer_cls = optimizer_factory.OPTIMIZERS_CLS[optimizer_type]
+    expected_optimizer_config = optimizer_cls().get_config()
+    expected_optimizer_config['learning_rate'] = 0.1
+
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+    optimizer = opt_factory.build_optimizer(lr)
+
+    self.assertIsInstance(optimizer, optimizer_cls)
+    self.assertEqual(expected_optimizer_config, optimizer.get_config())
+
+  def test_missing_types(self):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
         }
     }
-    expected_optimizer_config = {
-        'name': 'SGD',
-        'learning_rate': 0.1,
-        'decay': 0.0,
-        'momentum': 0.9,
-        'nesterov': False
-    }
-    opt_config = optimization_config.OptimizationConfig(params)
-    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
-    lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
-
-    self.assertIsInstance(optimizer, tf.keras.optimizers.SGD)
-    self.assertEqual(expected_optimizer_config, optimizer.get_config())
-
-  def test_adam_optimizer(self):
-
-    # Define adam optimizer with default values.
+    with self.assertRaises(ValueError):
+      optimizer_factory.OptimizerFactory(
+          optimization_config.OptimizationConfig(params))
     params = {
-        'optimizer': {
-            'type': 'adam'
+        'learning_rate': {
+            'type': 'stepwise',
+            'stepwise': {'boundaries': [10000, 20000],
+                         'values': [0.1, 0.01, 0.001]}
         }
     }
-    expected_optimizer_config = tf.keras.optimizers.Adam().get_config()
-
-    opt_config = optimization_config.OptimizationConfig(params)
-    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
-    lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
-
-    self.assertIsInstance(optimizer, tf.keras.optimizers.Adam)
-    self.assertEqual(expected_optimizer_config, optimizer.get_config())
-
-  def test_adam_weight_decay_optimizer(self):
-    params = {
-        'optimizer': {
-            'type': 'adamw'
-        }
-    }
-    expected_optimizer_config = nlp_optimization.AdamWeightDecay().get_config()
-    opt_config = optimization_config.OptimizationConfig(params)
-    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
-    lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
-
-    self.assertIsInstance(optimizer, nlp_optimization.AdamWeightDecay)
-    self.assertEqual(expected_optimizer_config, optimizer.get_config())
-
-  def test_lamb_optimizer(self):
-    params = {
-        'optimizer': {
-            'type': 'lamb'
-        }
-    }
-    expected_optimizer_config = tfa_optimizers.LAMB().get_config()
-    opt_config = optimization_config.OptimizationConfig(params)
-    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
-    lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
-
-    self.assertIsInstance(optimizer, tfa_optimizers.LAMB)
-    self.assertEqual(expected_optimizer_config, optimizer.get_config())
+    with self.assertRaises(ValueError):
+      optimizer_factory.OptimizerFactory(
+          optimization_config.OptimizationConfig(params))
 
   def test_stepwise_lr_schedule(self):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
         },
         'learning_rate': {
             'type': 'stepwise',
@@ -126,7 +107,7 @@ class OptimizerFactoryTest(tf.test.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
         },
         'learning_rate': {
             'type': 'stepwise',
@@ -159,7 +140,7 @@ class OptimizerFactoryTest(tf.test.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
         },
         'learning_rate': {
             'type': 'exponential',
@@ -189,7 +170,7 @@ class OptimizerFactoryTest(tf.test.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
         },
         'learning_rate': {
             'type': 'polynomial',
@@ -213,7 +194,7 @@ class OptimizerFactoryTest(tf.test.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
         },
         'learning_rate': {
             'type': 'cosine',
@@ -239,7 +220,13 @@ class OptimizerFactoryTest(tf.test.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
+        },
+        'learning_rate': {
+            'type': 'constant',
+            'constant': {
+                'learning_rate': 0.1
+            }
         },
         'warmup': {
             'type': 'linear',
@@ -263,7 +250,7 @@ class OptimizerFactoryTest(tf.test.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'learning_rate': 0.1, 'momentum': 0.9}
+            'sgd': {'momentum': 0.9}
         },
         'learning_rate': {
             'type': 'stepwise',

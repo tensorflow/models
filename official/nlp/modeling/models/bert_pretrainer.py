@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Trainer network for BERT-style models."""
+"""BERT Pre-training model."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import copy
 from typing import List, Optional
@@ -40,6 +36,9 @@ class BertPretrainer(tf.keras.Model):
   The BertPretrainer allows a user to pass in a transformer stack, and
   instantiates the masked language model and classification networks that are
   used to create the training objectives.
+
+  *Note* that the model is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
 
   Arguments:
     network: A transformer network. This network should output a sequence output
@@ -95,7 +94,8 @@ class BertPretrainer(tf.keras.Model):
     if isinstance(cls_output, list):
       cls_output = cls_output[-1]
     sequence_output_length = sequence_output.shape.as_list()[1]
-    if sequence_output_length < num_token_predictions:
+    if sequence_output_length is not None and (sequence_output_length <
+                                               num_token_predictions):
       raise ValueError(
           "The passed network's output length is %s, which is less than the "
           'requested num_token_predictions %s.' %
@@ -147,11 +147,9 @@ class BertPretrainerV2(tf.keras.Model):
 
   (Experimental).
   Adds the masked language model head and optional classification heads upon the
-  transformer encoder. When num_masked_tokens == 0, there won't be MaskedLM
-  head.
+  transformer encoder.
 
   Arguments:
-    num_masked_tokens: Number of tokens to predict from the masked LM.
     encoder_network: A transformer network. This network should output a
       sequence output and a classification output.
     mlm_activation: The activation (if any) to use in the masked LM network. If
@@ -169,7 +167,6 @@ class BertPretrainerV2(tf.keras.Model):
 
   def __init__(
       self,
-      num_masked_tokens: int,
       encoder_network: tf.keras.Model,
       mlm_activation=None,
       mlm_initializer='glorot_uniform',
@@ -179,7 +176,6 @@ class BertPretrainerV2(tf.keras.Model):
     self._self_setattr_tracking = False
     self._config = {
         'encoder_network': encoder_network,
-        'num_masked_tokens': num_masked_tokens,
         'mlm_initializer': mlm_initializer,
         'classification_heads': classification_heads,
         'name': name,
@@ -195,19 +191,16 @@ class BertPretrainerV2(tf.keras.Model):
       raise ValueError('Classification heads should have unique names.')
 
     outputs = dict()
-    if num_masked_tokens > 0:
-      self.masked_lm = layers.MaskedLM(
-          embedding_table=self.encoder_network.get_embedding_table(),
-          activation=mlm_activation,
-          initializer=mlm_initializer,
-          name='cls/predictions')
-      masked_lm_positions = tf.keras.layers.Input(
-          shape=(num_masked_tokens,),
-          name='masked_lm_positions',
-          dtype=tf.int32)
-      inputs.append(masked_lm_positions)
-      outputs['lm_output'] = self.masked_lm(
-          sequence_output, masked_positions=masked_lm_positions)
+    self.masked_lm = layers.MaskedLM(
+        embedding_table=self.encoder_network.get_embedding_table(),
+        activation=mlm_activation,
+        initializer=mlm_initializer,
+        name='cls/predictions')
+    masked_lm_positions = tf.keras.layers.Input(
+        shape=(None,), name='masked_lm_positions', dtype=tf.int32)
+    inputs.append(masked_lm_positions)
+    outputs['lm_output'] = self.masked_lm(
+        sequence_output, masked_positions=masked_lm_positions)
     for cls_head in self.classification_heads:
       outputs[cls_head.name] = cls_head(sequence_output)
 
@@ -217,7 +210,7 @@ class BertPretrainerV2(tf.keras.Model):
   @property
   def checkpoint_items(self):
     """Returns a dictionary of items to be additionally checkpointed."""
-    items = dict(encoder=self.encoder_network)
+    items = dict(encoder=self.encoder_network, masked_lm=self.masked_lm)
     for head in self.classification_heads:
       for key, item in head.checkpoint_items.items():
         items['.'.join([head.name, key])] = item

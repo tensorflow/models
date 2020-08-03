@@ -29,11 +29,7 @@ import tensorflow as tf
 
 class _GoogleLandmarksInfo(object):
   """Metadata about the Google Landmarks dataset."""
-  num_classes = {
-      'gld_v1': 14951,
-      'gld_v2': 203094,
-      'gld_v2_clean': 81313
-  }
+  num_classes = {'gld_v1': 14951, 'gld_v2': 203094, 'gld_v2_clean': 81313}
 
 
 class _DataAugmentationParams(object):
@@ -123,6 +119,8 @@ def _ParseFunction(example, name_to_features, image_size, augmentation):
   # Parse to get image.
   image = parsed_example['image/encoded']
   image = tf.io.decode_jpeg(image)
+  image = NormalizeImages(
+      image, pixel_value_scale=128.0, pixel_value_offset=128.0)
   if augmentation:
     image = _ImageNetCrop(image)
   else:
@@ -130,6 +128,7 @@ def _ParseFunction(example, name_to_features, image_size, augmentation):
     image.set_shape([image_size, image_size, 3])
   # Parse to get label.
   label = parsed_example['image/class/label']
+
   return image, label
 
 
@@ -162,6 +161,7 @@ def CreateDataset(file_pattern,
       'image/width': tf.io.FixedLenFeature([], tf.int64, default_value=0),
       'image/channels': tf.io.FixedLenFeature([], tf.int64, default_value=0),
       'image/format': tf.io.FixedLenFeature([], tf.string, default_value=''),
+      'image/id': tf.io.FixedLenFeature([], tf.string, default_value=''),
       'image/filename': tf.io.FixedLenFeature([], tf.string, default_value=''),
       'image/encoded': tf.io.FixedLenFeature([], tf.string, default_value=''),
       'image/class/label': tf.io.FixedLenFeature([], tf.int64, default_value=0),

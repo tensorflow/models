@@ -151,6 +151,7 @@ def build(preprocessor_step_config):
             {
                 'keypoint_flip_permutation': tuple(
                     config.keypoint_flip_permutation) or None,
+                'probability': config.probability or None,
             })
 
   if step_type == 'random_vertical_flip':
@@ -159,10 +160,17 @@ def build(preprocessor_step_config):
             {
                 'keypoint_flip_permutation': tuple(
                     config.keypoint_flip_permutation) or None,
+                'probability': config.probability or None,
             })
 
   if step_type == 'random_rotation90':
-    return (preprocessor.random_rotation90, {})
+    config = preprocessor_step_config.random_rotation90
+    return (preprocessor.random_rotation90,
+            {
+                'keypoint_rot_permutation': tuple(
+                    config.keypoint_rot_permutation) or None,
+                'probability': config.probability or None,
+            })
 
   if step_type == 'random_crop_image':
     config = preprocessor_step_config.random_crop_image
@@ -407,6 +415,14 @@ def build(preprocessor_step_config):
         'scale_max': config.scale_max,
         'max_border': config.max_border,
         'num_scales': config.num_scales
+    }
+
+  if step_type == 'random_scale_crop_and_pad_to_square':
+    config = preprocessor_step_config.random_scale_crop_and_pad_to_square
+    return preprocessor.random_scale_crop_and_pad_to_square, {
+        'scale_min': config.scale_min,
+        'scale_max': config.scale_max,
+        'output_size': config.output_size,
     }
 
   raise ValueError('Unknown preprocessing step.')

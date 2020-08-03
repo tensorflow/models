@@ -49,6 +49,9 @@ class EncoderScaffold(tf.keras.Model):
   If the hidden_cls is not overridden, a default transformer layer will be
   instantiated.
 
+  *Note* that the network is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     pooled_output_dim: The dimension of pooled output.
     pooler_layer_initializer: The initializer for the classification
@@ -126,16 +129,17 @@ class EncoderScaffold(tf.keras.Model):
       embeddings, attention_mask = self._embedding_network(inputs)
     else:
       self._embedding_network = None
+      seq_length = embedding_cfg.get('seq_length', None)
       word_ids = tf.keras.layers.Input(
-          shape=(embedding_cfg['seq_length'],),
+          shape=(seq_length,),
           dtype=tf.int32,
           name='input_word_ids')
       mask = tf.keras.layers.Input(
-          shape=(embedding_cfg['seq_length'],),
+          shape=(seq_length,),
           dtype=tf.int32,
           name='input_mask')
       type_ids = tf.keras.layers.Input(
-          shape=(embedding_cfg['seq_length'],),
+          shape=(seq_length,),
           dtype=tf.int32,
           name='input_type_ids')
       inputs = [word_ids, mask, type_ids]

@@ -119,8 +119,29 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     ])
     return tf.constant(keypoints, dtype=tf.float32)
 
+  def createTestDensePose(self):
+    dp_num_points = tf.constant([1, 3], dtype=tf.int32)
+    dp_part_ids = tf.constant(
+        [[4, 0, 0],
+         [1, 0, 5]], dtype=tf.int32)
+    dp_surface_coords = tf.constant(
+        [
+            # Instance 0.
+            [[0.1, 0.2, 0.6, 0.7],
+             [0.0, 0.0, 0.0, 0.0],
+             [0.0, 0.0, 0.0, 0.0]],
+            # Instance 1.
+            [[0.8, 0.9, 0.2, 0.4],
+             [0.1, 0.3, 0.2, 0.8],
+             [0.6, 1.0, 0.3, 0.4]],
+        ], dtype=tf.float32)
+    return dp_num_points, dp_part_ids, dp_surface_coords
+
   def createKeypointFlipPermutation(self):
-    return np.array([0, 2, 1], dtype=np.int32)
+    return [0, 2, 1]
+
+  def createKeypointRotPermutation(self):
+    return [0, 2, 1]
 
   def createTestLabels(self):
     labels = tf.constant([1, 2], dtype=tf.int32)
@@ -691,51 +712,6 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
                                 test_masks=True,
                                 test_keypoints=True)
 
-  def testRunRandomHorizontalFlipWithMaskAndKeypoints(self):
-
-    def graph_fn():
-      preprocess_options = [(preprocessor.random_horizontal_flip, {})]
-      image_height = 3
-      image_width = 3
-      images = tf.random_uniform([1, image_height, image_width, 3])
-      boxes = self.createTestBoxes()
-      masks = self.createTestMasks()
-      keypoints, keypoint_visibilities = self.createTestKeypoints()
-      keypoint_flip_permutation = self.createKeypointFlipPermutation()
-      tensor_dict = {
-          fields.InputDataFields.image:
-              images,
-          fields.InputDataFields.groundtruth_boxes:
-              boxes,
-          fields.InputDataFields.groundtruth_instance_masks:
-              masks,
-          fields.InputDataFields.groundtruth_keypoints:
-              keypoints,
-          fields.InputDataFields.groundtruth_keypoint_visibilities:
-              keypoint_visibilities
-      }
-      preprocess_options = [(preprocessor.random_horizontal_flip, {
-          'keypoint_flip_permutation': keypoint_flip_permutation
-      })]
-      preprocessor_arg_map = preprocessor.get_default_func_arg_map(
-          include_instance_masks=True,
-          include_keypoints=True,
-          include_keypoint_visibilities=True)
-      tensor_dict = preprocessor.preprocess(
-          tensor_dict, preprocess_options, func_arg_map=preprocessor_arg_map)
-      boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
-      masks = tensor_dict[fields.InputDataFields.groundtruth_instance_masks]
-      keypoints = tensor_dict[fields.InputDataFields.groundtruth_keypoints]
-      keypoint_visibilities = tensor_dict[
-          fields.InputDataFields.groundtruth_keypoint_visibilities]
-      return [boxes, masks, keypoints, keypoint_visibilities]
-
-    boxes, masks, keypoints, keypoint_visibilities = self.execute_cpu(
-        graph_fn, [])
-    self.assertIsNotNone(boxes)
-    self.assertIsNotNone(masks)
-    self.assertIsNotNone(keypoints)
-    self.assertIsNotNone(keypoint_visibilities)
 
   def testRandomVerticalFlip(self):
 
@@ -912,19 +888,22 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
                                 test_keypoints=True)
 
   def testRunRandomRotation90WithMaskAndKeypoints(self):
-    preprocess_options = [(preprocessor.random_rotation90, {})]
     image_height = 3
     image_width = 3
     images = tf.random_uniform([1, image_height, image_width, 3])
     boxes = self.createTestBoxes()
     masks = self.createTestMasks()
     keypoints, _ = self.createTestKeypoints()
+    keypoint_rot_permutation = self.createKeypointRotPermutation()
     tensor_dict = {
         fields.InputDataFields.image: images,
         fields.InputDataFields.groundtruth_boxes: boxes,
         fields.InputDataFields.groundtruth_instance_masks: masks,
         fields.InputDataFields.groundtruth_keypoints: keypoints
     }
+    preprocess_options = [(preprocessor.random_rotation90, {
+        'keypoint_rot_permutation': keypoint_rot_permutation
+    })]
     preprocessor_arg_map = preprocessor.get_default_func_arg_map(
         include_instance_masks=True, include_keypoints=True)
     tensor_dict = preprocessor.preprocess(
@@ -1880,6 +1859,65 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       self.assertAllClose(
           distorted_keypoints_.flatten(), expected_keypoints.flatten())
 
+  def testRunRandomCropImageWithDensePose(self):
+    def graph_fn():
+      image = self.createColorfulTestImage()
+      boxes = self.createTestBoxes()
+      labels = self.createTestLabels()
+      weights = self.createTestGroundtruthWeights()
+      dp_num_points, dp_part_ids, dp_surface_coords = self.createTestDensePose()
+
+      tensor_dict = {
+          fields.InputDataFields.image: image,
+          fields.InputDataFields.groundtruth_boxes: boxes,
+          fields.InputDataFields.groundtruth_classes: labels,
+          fields.InputDataFields.groundtruth_weights: weights,
+          fields.InputDataFields.groundtruth_dp_num_points: dp_num_points,
+          fields.InputDataFields.groundtruth_dp_part_ids: dp_part_ids,
+          fields.InputDataFields.groundtruth_dp_surface_coords:
+              dp_surface_coords
+      }
+
+      preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+          include_dense_pose=True)
+
+      preprocessing_options = [(preprocessor.random_crop_image, {})]
+
+      with mock.patch.object(
+          tf.image,
+          'sample_distorted_bounding_box'
+      ) as mock_sample_distorted_bounding_box:
+        mock_sample_distorted_bounding_box.return_value = (
+            tf.constant([6, 40, 0], dtype=tf.int32),
+            tf.constant([134, 340, -1], dtype=tf.int32),
+            tf.constant([[[0.03, 0.1, 0.7, 0.95]]], dtype=tf.float32))
+        distorted_tensor_dict = preprocessor.preprocess(
+            tensor_dict,
+            preprocessing_options,
+            func_arg_map=preprocessor_arg_map)
+        distorted_image = distorted_tensor_dict[fields.InputDataFields.image]
+        distorted_dp_num_points = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_dp_num_points]
+        distorted_dp_part_ids = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_dp_part_ids]
+        distorted_dp_surface_coords = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_dp_surface_coords]
+        return [distorted_image, distorted_dp_num_points, distorted_dp_part_ids,
+                distorted_dp_surface_coords]
+    (distorted_image_, distorted_dp_num_points_, distorted_dp_part_ids_,
+     distorted_dp_surface_coords_) = self.execute_cpu(graph_fn, [])
+    expected_dp_num_points = np.array([1, 1])
+    expected_dp_part_ids = np.array([[4], [0]])
+    expected_dp_surface_coords = np.array([
+        [[0.10447761, 0.1176470, 0.6, 0.7]],
+        [[0.10447761, 0.2352941, 0.2, 0.8]],
+    ])
+    self.assertAllEqual(distorted_image_.shape, [1, 134, 340, 3])
+    self.assertAllEqual(distorted_dp_num_points_, expected_dp_num_points)
+    self.assertAllEqual(distorted_dp_part_ids_, expected_dp_part_ids)
+    self.assertAllClose(distorted_dp_surface_coords_,
+                        expected_dp_surface_coords)
+
   def testRunRetainBoxesAboveThreshold(self):
     def graph_fn():
       boxes = self.createTestBoxes()
@@ -2270,7 +2308,10 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
         padded_boxes_[:, 3] - padded_boxes_[:, 1])))
 
-  def testRandomPadImageWithKeypointsAndMasks(self):
+  @parameterized.parameters(
+      {'include_dense_pose': False},
+  )
+  def testRandomPadImageWithKeypointsAndMasks(self, include_dense_pose):
     def graph_fn():
       preprocessing_options = [(preprocessor.normalize_image, {
           'original_minval': 0,
@@ -2284,12 +2325,15 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       labels = self.createTestLabels()
       masks = self.createTestMasks()
       keypoints, _ = self.createTestKeypoints()
+      _, _, dp_surface_coords = self.createTestDensePose()
       tensor_dict = {
           fields.InputDataFields.image: images,
           fields.InputDataFields.groundtruth_boxes: boxes,
           fields.InputDataFields.groundtruth_classes: labels,
           fields.InputDataFields.groundtruth_instance_masks: masks,
           fields.InputDataFields.groundtruth_keypoints: keypoints,
+          fields.InputDataFields.groundtruth_dp_surface_coords:
+              dp_surface_coords
       }
       tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
       images = tensor_dict[fields.InputDataFields.image]
@@ -2298,7 +2342,8 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       func_arg_map = preprocessor.get_default_func_arg_map(
           include_instance_masks=True,
           include_keypoints=True,
-          include_keypoint_visibilities=True)
+          include_keypoint_visibilities=True,
+          include_dense_pose=include_dense_pose)
       padded_tensor_dict = preprocessor.preprocess(tensor_dict,
                                                    preprocessing_options,
                                                    func_arg_map=func_arg_map)
@@ -2317,15 +2362,29 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       padded_keypoints_shape = tf.shape(padded_keypoints)
       images_shape = tf.shape(images)
       padded_images_shape = tf.shape(padded_images)
-      return [boxes_shape, padded_boxes_shape, padded_masks_shape,
-              keypoints_shape, padded_keypoints_shape, images_shape,
-              padded_images_shape, boxes, padded_boxes, keypoints,
-              padded_keypoints]
+      outputs = [boxes_shape, padded_boxes_shape, padded_masks_shape,
+                 keypoints_shape, padded_keypoints_shape, images_shape,
+                 padded_images_shape, boxes, padded_boxes, keypoints,
+                 padded_keypoints]
+      if include_dense_pose:
+        padded_dp_surface_coords = padded_tensor_dict[
+            fields.InputDataFields.groundtruth_dp_surface_coords]
+        outputs.extend([dp_surface_coords, padded_dp_surface_coords])
+      return outputs
 
-    (boxes_shape_, padded_boxes_shape_, padded_masks_shape_,
-     keypoints_shape_, padded_keypoints_shape_, images_shape_,
-     padded_images_shape_, boxes_, padded_boxes_,
-     keypoints_, padded_keypoints_) = self.execute_cpu(graph_fn, [])
+    outputs = self.execute_cpu(graph_fn, [])
+    boxes_shape_ = outputs[0]
+    padded_boxes_shape_ = outputs[1]
+    padded_masks_shape_ = outputs[2]
+    keypoints_shape_ = outputs[3]
+    padded_keypoints_shape_ = outputs[4]
+    images_shape_ = outputs[5]
+    padded_images_shape_ = outputs[6]
+    boxes_ = outputs[7]
+    padded_boxes_ = outputs[8]
+    keypoints_ = outputs[9]
+    padded_keypoints_ = outputs[10]
+
     self.assertAllEqual(boxes_shape_, padded_boxes_shape_)
     self.assertAllEqual(keypoints_shape_, padded_keypoints_shape_)
     self.assertTrue((images_shape_[1] >= padded_images_shape_[1] * 0.5).all)
@@ -2341,6 +2400,11 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
         padded_keypoints_[1, :, 0] - padded_keypoints_[0, :, 0])))
     self.assertTrue(np.all((keypoints_[1, :, 1] - keypoints_[0, :, 1]) >= (
         padded_keypoints_[1, :, 1] - padded_keypoints_[0, :, 1])))
+    if include_dense_pose:
+      dp_surface_coords = outputs[11]
+      padded_dp_surface_coords = outputs[12]
+      self.assertAllClose(padded_dp_surface_coords[:, :, 2:],
+                          dp_surface_coords[:, :, 2:])
 
   def testRandomAbsolutePadImage(self):
     height_padding = 10
@@ -3776,6 +3840,90 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
 
     size = max(image.shape)
     self.assertAlmostEqual(scale * 256.0, size)
+
+    self.assertAllClose(image[:, :, 0], masks[0, :, :])
+
+  @parameterized.named_parameters(('scale_0_1', 0.1), ('scale_1_0', 1.0),
+                                  ('scale_2_0', 2.0))
+  def test_random_scale_crop_and_pad_to_square(self, scale):
+
+    def graph_fn():
+      image = np.random.randn(512, 256, 1)
+      box_centers = [0.25, 0.5, 0.75]
+      box_size = 0.1
+      box_corners = []
+      box_labels = []
+      box_label_weights = []
+      keypoints = []
+      masks = []
+      for center_y in box_centers:
+        for center_x in box_centers:
+          box_corners.append(
+              [center_y - box_size / 2.0, center_x - box_size / 2.0,
+               center_y + box_size / 2.0, center_x + box_size / 2.0])
+          box_labels.append([1])
+          box_label_weights.append([1.])
+          keypoints.append(
+              [[center_y - box_size / 2.0, center_x - box_size / 2.0],
+               [center_y + box_size / 2.0, center_x + box_size / 2.0]])
+          masks.append(image[:, :, 0].reshape(512, 256))
+
+      image = tf.constant(image)
+      boxes = tf.constant(box_corners)
+      labels = tf.constant(box_labels)
+      label_weights = tf.constant(box_label_weights)
+      keypoints = tf.constant(keypoints)
+      masks = tf.constant(np.stack(masks))
+
+      (new_image, new_boxes, _, _, new_masks,
+       new_keypoints) = preprocessor.random_scale_crop_and_pad_to_square(
+           image,
+           boxes,
+           labels,
+           label_weights,
+           masks=masks,
+           keypoints=keypoints,
+           scale_min=scale,
+           scale_max=scale,
+           output_size=512)
+      return new_image, new_boxes, new_masks, new_keypoints
+
+    image, boxes, masks, keypoints = self.execute_cpu(graph_fn, [])
+
+    # Since random_scale_crop_and_pad_to_square may prune and clip boxes,
+    # we only need to find one of the boxes that was not clipped and check
+    # that it matches the expected dimensions. Note, assertAlmostEqual(a, b)
+    # is equivalent to round(a-b, 7) == 0.
+    any_box_has_correct_size = False
+    effective_scale_y = int(scale * 512) / 512.0
+    effective_scale_x = int(scale * 256) / 512.0
+    expected_size_y = 0.1 * effective_scale_y
+    expected_size_x = 0.1 * effective_scale_x
+    for box in boxes:
+      ymin, xmin, ymax, xmax = box
+      any_box_has_correct_size |= (
+          (round(ymin, 7) != 0.0) and (round(xmin, 7) != 0.0) and
+          (round(ymax, 7) != 1.0) and (round(xmax, 7) != 1.0) and
+          (round((ymax - ymin) - expected_size_y, 7) == 0.0) and
+          (round((xmax - xmin) - expected_size_x, 7) == 0.0))
+    self.assertTrue(any_box_has_correct_size)
+
+    # Similar to the approach above where we check for at least one box with the
+    # expected dimensions, we check for at least one pair of keypoints whose
+    # distance matches the expected dimensions.
+    any_keypoint_pair_has_correct_dist = False
+    for keypoint_pair in keypoints:
+      ymin, xmin = keypoint_pair[0]
+      ymax, xmax = keypoint_pair[1]
+      any_keypoint_pair_has_correct_dist |= (
+          (round(ymin, 7) != 0.0) and (round(xmin, 7) != 0.0) and
+          (round(ymax, 7) != 1.0) and (round(xmax, 7) != 1.0) and
+          (round((ymax - ymin) - expected_size_y, 7) == 0.0) and
+          (round((xmax - xmin) - expected_size_x, 7) == 0.0))
+    self.assertTrue(any_keypoint_pair_has_correct_dist)
+
+    self.assertAlmostEqual(512.0, image.shape[0])
+    self.assertAlmostEqual(512.0, image.shape[1])
 
     self.assertAllClose(image[:, :, 0],
                         masks[0, :, :])

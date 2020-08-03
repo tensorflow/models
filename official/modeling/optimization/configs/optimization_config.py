@@ -39,12 +39,14 @@ class OptimizerConfig(oneof.OneOfConfig):
     adam: adam optimizer config.
     adamw: adam with weight decay.
     lamb: lamb optimizer.
+    rmsprop: rmsprop optimizer.
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = opt_cfg.SGDConfig()
   adam: opt_cfg.AdamConfig = opt_cfg.AdamConfig()
   adamw: opt_cfg.AdamWeightDecayConfig = opt_cfg.AdamWeightDecayConfig()
   lamb: opt_cfg.LAMBConfig = opt_cfg.LAMBConfig()
+  rmsprop: opt_cfg.RMSPropConfig = opt_cfg.RMSPropConfig()
 
 
 @dataclasses.dataclass
@@ -53,12 +55,14 @@ class LrConfig(oneof.OneOfConfig):
 
   Attributes:
     type: 'str', type of lr schedule to be used, on the of fields below.
+    constant: constant learning rate config.
     stepwise: stepwise learning rate config.
     exponential: exponential learning rate config.
     polynomial: polynomial learning rate config.
     cosine: cosine learning rate config.
   """
   type: Optional[str] = None
+  constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
   stepwise: lr_cfg.StepwiseLrConfig = lr_cfg.StepwiseLrConfig()
   exponential: lr_cfg.ExponentialLrConfig = lr_cfg.ExponentialLrConfig()
   polynomial: lr_cfg.PolynomialLrConfig = lr_cfg.PolynomialLrConfig()

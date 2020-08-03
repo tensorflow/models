@@ -102,7 +102,7 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     Args:
       field: a string key, options are
         fields.BoxListFields.{boxes,classes,masks,keypoints,
-        keypoint_visibilities} or
+        keypoint_visibilities, densepose_*}
         fields.InputDataFields.is_annotated.
 
     Returns:
@@ -123,7 +123,7 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     Args:
       field: a string key, options are
         fields.BoxListFields.{boxes,classes,masks,keypoints,
-        keypoint_visibilities} or
+        keypoint_visibilities, densepose_*} or
         fields.InputDataFields.is_annotated.
 
     Returns:
@@ -251,9 +251,14 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
         detection_classes: [batch, max_detections]
           (If a model is producing class-agnostic detections, this field may be
           missing)
-        instance_masks: [batch, max_detections, image_height, image_width]
+        detection_masks: [batch, max_detections, mask_height, mask_width]
           (optional)
-        keypoints: [batch, max_detections, num_keypoints, 2] (optional)
+        detection_keypoints: [batch, max_detections, num_keypoints, 2]
+          (optional)
+        detection_keypoint_scores: [batch, max_detections, num_keypoints]
+          (optional)
+        detection_surface_coords: [batch, max_detections, mask_height,
+          mask_width, 2] (optional)
         num_detections: [batch]
 
         In addition to the above fields this stage also outputs the following
@@ -288,19 +293,23 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     """
     pass
 
-  def provide_groundtruth(self,
-                          groundtruth_boxes_list,
-                          groundtruth_classes_list,
-                          groundtruth_masks_list=None,
-                          groundtruth_keypoints_list=None,
-                          groundtruth_keypoint_visibilities_list=None,
-                          groundtruth_weights_list=None,
-                          groundtruth_confidences_list=None,
-                          groundtruth_is_crowd_list=None,
-                          groundtruth_group_of_list=None,
-                          groundtruth_area_list=None,
-                          is_annotated_list=None,
-                          groundtruth_labeled_classes=None):
+  def provide_groundtruth(
+      self,
+      groundtruth_boxes_list,
+      groundtruth_classes_list,
+      groundtruth_masks_list=None,
+      groundtruth_keypoints_list=None,
+      groundtruth_keypoint_visibilities_list=None,
+      groundtruth_dp_num_points_list=None,
+      groundtruth_dp_part_ids_list=None,
+      groundtruth_dp_surface_coords_list=None,
+      groundtruth_weights_list=None,
+      groundtruth_confidences_list=None,
+      groundtruth_is_crowd_list=None,
+      groundtruth_group_of_list=None,
+      groundtruth_area_list=None,
+      is_annotated_list=None,
+      groundtruth_labeled_classes=None):
     """Provide groundtruth tensors.
 
     Args:
@@ -324,6 +333,15 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
         `groundtruth_keypoint_visibilities_list`).
       groundtruth_keypoint_visibilities_list: a list of 3-D tf.bool tensors
         of shape [num_boxes, num_keypoints] containing keypoint visibilities.
+      groundtruth_dp_num_points_list: a list of 1-D tf.int32 tensors of shape
+        [num_boxes] containing the number of DensePose sampled points.
+      groundtruth_dp_part_ids_list: a list of 2-D tf.int32 tensors of shape
+        [num_boxes, max_sampled_points] containing the DensePose part ids
+        (0-indexed) for each sampled point. Note that there may be padding.
+      groundtruth_dp_surface_coords_list: a list of 3-D tf.float32 tensors of
+        shape [num_boxes, max_sampled_points, 4] containing the DensePose
+        surface coordinates for each sampled point. Note that there may be
+        padding.
       groundtruth_weights_list: A list of 1-D tf.float32 tensors of shape
         [num_boxes] containing weights for groundtruth boxes.
       groundtruth_confidences_list: A list of 2-D tf.float32 tensors of shape
@@ -361,6 +379,18 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       self._groundtruth_lists[
           fields.BoxListFields.keypoint_visibilities] = (
               groundtruth_keypoint_visibilities_list)
+    if groundtruth_dp_num_points_list:
+      self._groundtruth_lists[
+          fields.BoxListFields.densepose_num_points] = (
+              groundtruth_dp_num_points_list)
+    if groundtruth_dp_part_ids_list:
+      self._groundtruth_lists[
+          fields.BoxListFields.densepose_part_ids] = (
+              groundtruth_dp_part_ids_list)
+    if groundtruth_dp_surface_coords_list:
+      self._groundtruth_lists[
+          fields.BoxListFields.densepose_surface_coords] = (
+              groundtruth_dp_surface_coords_list)
     if groundtruth_is_crowd_list:
       self._groundtruth_lists[
           fields.BoxListFields.is_crowd] = groundtruth_is_crowd_list
@@ -391,7 +421,9 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
     pass
 
   @abc.abstractmethod
-  def restore_map(self, fine_tune_checkpoint_type='detection'):
+  def restore_map(self,
+                  fine_tune_checkpoint_type='detection',
+                  load_all_detection_checkpoint_vars=False):
     """Returns a map of variables to load from a foreign checkpoint.
 
     Returns a map of variable names to load from a checkpoint to variables in
@@ -407,10 +439,43 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
         Valid values: `detection`, `classification`. Default 'detection'.
+      load_all_detection_checkpoint_vars: whether to load all variables (when
+         `fine_tune_checkpoint_type` is `detection`). If False, only variables
+         within the feature extractor scope are included. Default False.
 
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
       the model graph.
+    """
+    pass
+
+  @abc.abstractmethod
+  def restore_from_objects(self, fine_tune_checkpoint_type='detection'):
+    """Returns a map of variables to load from a foreign checkpoint.
+
+    Returns a dictionary of Tensorflow 2 Trackable objects (e.g. tf.Module
+    or Checkpoint). This enables the model to initialize based on weights from
+    another task. For example, the feature extractor variables from a
+    classification model can be used to bootstrap training of an object
+    detector. When loading from an object detection model, the checkpoint model
+    should have the same parameters as this detection model with exception of
+    the num_classes parameter.
+
+    Note that this function is intended to be used to restore Keras-based
+    models when running Tensorflow 2, whereas restore_map (above) is intended
+    to be used to restore Slim-based models when running Tensorflow 1.x.
+
+    TODO(jonathanhuang,rathodv): Check tf_version and raise unimplemented
+    error for both restore_map and restore_from_objects depending on version.
+
+    Args:
+      fine_tune_checkpoint_type: whether to restore from a full detection
+        checkpoint (with compatible variable names) or to restore from a
+        classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
+
+    Returns:
+      A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
     """
     pass
 

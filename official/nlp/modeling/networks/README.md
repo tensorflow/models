@@ -20,8 +20,5 @@ into two smaller matrices and shares parameters across layers.
 intended for use as a classification or regression (if number of classes is set
 to 1) head.
 
-* [`TokenClassification`](token_classification.py) contains a single hidden
-layer, and is intended for use as a token classification head.
-
 * [`SpanLabeling`](span_labeling.py) implements a single-span labeler (that is, a prediction head that can predict one start and end index per batch item) based on a single dense hidden layer. It can be used in the SQuAD task.
 

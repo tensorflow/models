@@ -28,16 +28,35 @@ class SGDConfig(base_config.Config):
 
   Attributes:
     name: name of the optimizer.
-    learning_rate: learning_rate for SGD optimizer.
     decay: decay rate for SGD optimizer.
     nesterov: nesterov for SGD optimizer.
     momentum: momentum for SGD optimizer.
   """
   name: str = "SGD"
-  learning_rate: float = 0.01
   decay: float = 0.0
   nesterov: bool = False
   momentum: float = 0.0
+
+
+@dataclasses.dataclass
+class RMSPropConfig(base_config.Config):
+  """Configuration for RMSProp optimizer.
+
+  The attributes for this class matches the arguments of
+  tf.keras.optimizers.RMSprop.
+
+  Attributes:
+    name: name of the optimizer.
+    rho: discounting factor for RMSprop optimizer.
+    momentum: momentum for RMSprop optimizer.
+    epsilon: epsilon value for RMSprop optimizer, help with numerical stability.
+    centered: Whether to normalize gradients or not.
+  """
+  name: str = "RMSprop"
+  rho: float = 0.9
+  momentum: float = 0.0
+  epsilon: float = 1e-7
+  centered: bool = False
 
 
 @dataclasses.dataclass
@@ -49,7 +68,6 @@ class AdamConfig(base_config.Config):
 
   Attributes:
     name: name of the optimizer.
-    learning_rate: learning_rate for Adam optimizer.
     beta_1: decay rate for 1st order moments.
     beta_2: decay rate for 2st order moments.
     epsilon: epsilon value used for numerical stability in Adam optimizer.
@@ -57,7 +75,6 @@ class AdamConfig(base_config.Config):
     the paper "On the Convergence of Adam and beyond".
   """
   name: str = "Adam"
-  learning_rate: float = 0.001
   beta_1: float = 0.9
   beta_2: float = 0.999
   epsilon: float = 1e-07
@@ -70,7 +87,6 @@ class AdamWeightDecayConfig(base_config.Config):
 
   Attributes:
     name: name of the optimizer.
-    learning_rate: learning_rate for the optimizer.
     beta_1: decay rate for 1st order moments.
     beta_2: decay rate for 2st order moments.
     epsilon: epsilon value used for numerical stability in the optimizer.
@@ -83,7 +99,6 @@ class AdamWeightDecayConfig(base_config.Config):
                              include in weight decay.
   """
   name: str = "AdamWeightDecay"
-  learning_rate: float = 0.001
   beta_1: float = 0.9
   beta_2: float = 0.999
   epsilon: float = 1e-07
@@ -102,7 +117,6 @@ class LAMBConfig(base_config.Config):
 
   Attributes:
     name: name of the optimizer.
-    learning_rate: learning_rate for Adam optimizer.
     beta_1: decay rate for 1st order moments.
     beta_2: decay rate for 2st order moments.
     epsilon: epsilon value used for numerical stability in LAMB optimizer.
@@ -116,7 +130,6 @@ class LAMBConfig(base_config.Config):
                                    be excluded.
   """
   name: str = "LAMB"
-  learning_rate: float = 0.001
   beta_1: float = 0.9
   beta_2: float = 0.999
   epsilon: float = 1e-6

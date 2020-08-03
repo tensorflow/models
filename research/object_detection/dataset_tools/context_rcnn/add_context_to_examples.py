@@ -43,70 +43,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import copy
 import datetime
 import io
 import itertools
 import json
 import os
-
-from absl import app
-from absl import flags
-import apache_beam as beam
 import numpy as np
 import PIL.Image
 import six
 import tensorflow as tf
 
-from apache_beam import runners
-
-
-flags.DEFINE_string('input_tfrecord', None, 'TFRecord containing images in '
-                    'tf.Example format for object detection, with bounding'
-                    'boxes and contextual feature embeddings.')
-flags.DEFINE_string('output_tfrecord', None,
-                    'TFRecord containing images in tf.Example format, with '
-                    'added contextual memory banks.')
-flags.DEFINE_string('sequence_key', None, 'Key to use when grouping sequences: '
-                    'so far supports `image/seq_id` and `image/location`.')
-flags.DEFINE_string('time_horizon', None, 'What time horizon to use when '
-                    'splitting the data, if any. Options are: `year`, `month`,'
-                    ' `week`, `day `, `hour`, `minute`, `None`.')
-flags.DEFINE_integer('subsample_context_features_rate', 0, 'Whether to '
-                     'subsample the context_features, and if so how many to '
-                     'sample. If the rate is set to X, it will sample context '
-                     'from 1 out of every X images. Default is sampling from '
-                     'every image, which is X=0.')
-flags.DEFINE_boolean('reduce_image_size', True, 'downsamples images to'
-                     'have longest side max_image_dimension, maintaining aspect'
-                     ' ratio')
-flags.DEFINE_integer('max_image_dimension', 1024, 'sets max image dimension')
-flags.DEFINE_boolean('add_context_features', True, 'adds a memory bank of'
-                     'embeddings to each clip')
-flags.DEFINE_boolean('sorted_image_ids', True, 'whether the image source_ids '
-                     'are sortable to deal with date_captured tie-breaks')
-flags.DEFINE_string('image_ids_to_keep', 'All', 'path to .json list of image'
-                    'ids to keep, used for ground truth eval creation')
-flags.DEFINE_boolean('keep_context_features_image_id_list', False, 'Whether or '
-                     'not to keep a list of the image_ids corresponding to the '
-                     'memory bank')
-flags.DEFINE_boolean('keep_only_positives', False, 'Whether or not to '
-                     'keep only positive boxes based on score')
-flags.DEFINE_boolean('keep_only_positives_gt', False, 'Whether or not to '
-                     'keep only positive boxes based on gt class')
-flags.DEFINE_float('context_features_score_threshold', 0.7, 'What score '
-                   'threshold to use for boxes in context_features')
-flags.DEFINE_integer('max_num_elements_in_context_features', 2000, 'Sets max '
-                     'num elements per memory bank')
-flags.DEFINE_integer('num_shards', 0, 'Number of output shards.')
-flags.DEFINE_string('output_type', 'tf_sequence_example', 'Output type, one of '
-                    '`tf_example`, `tf_sequence_example`')
-flags.DEFINE_integer('max_clip_length', None, 'Max length for sequence '
-                     'example outputs.')
-
-FLAGS = flags.FLAGS
-
-DEFAULT_FEATURE_LENGTH = 2057
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class ReKeyDataFn(beam.DoFn):
@@ -406,7 +358,8 @@ class GenerateContextFn(beam.DoFn):
                keep_only_positives_gt=False,
                max_num_elements_in_context_features=5000,
                pad_context_features=False,
-               output_type='tf_example', max_clip_length=None):
+               output_type='tf_example', max_clip_length=None,
+               context_feature_length=2057):
     """Initialization function.
 
     Args:
@@ -432,6 +385,8 @@ class GenerateContextFn(beam.DoFn):
       output_type: What type of output, tf_example of tf_sequence_example
       max_clip_length: The maximum length of a sequence example, before
         splitting into multiple
+      context_feature_length: The length of the context feature embeddings
+        stored in the input data.
     """
     self._session = None
     self._num_examples_processed = beam.metrics.Metrics.counter(
@@ -456,6 +411,7 @@ class GenerateContextFn(beam.DoFn):
     self._context_features_score_threshold = context_features_score_threshold
     self._max_num_elements_in_context_features = (
         max_num_elements_in_context_features)
+    self._context_feature_length = context_feature_length
 
     self._images_kept = beam.metrics.Metrics.counter(
         'sequence_data_generation', 'images_kept')
@@ -506,9 +462,9 @@ class GenerateContextFn(beam.DoFn):
       context_features_image_id_list.append(example_image_id)
 
     if not example_embedding:
-      example_embedding.append(np.zeros(DEFAULT_FEATURE_LENGTH))
+      example_embedding.append(np.zeros(self._context_feature_length))
 
-    feature_length = DEFAULT_FEATURE_LENGTH
+    feature_length = self._context_feature_length
 
     # If the example_list is not empty and image/embedding_length is in the
     # featture dict, feature_length will be assigned to that. Otherwise, it will
@@ -703,7 +659,8 @@ class GenerateContextFn(beam.DoFn):
     return list_of_examples
 
 
-def construct_pipeline(input_tfrecord,
+def construct_pipeline(pipeline,
+                       input_tfrecord,
                        output_tfrecord,
                        sequence_key,
                        time_horizon=None,
@@ -720,10 +677,12 @@ def construct_pipeline(input_tfrecord,
                        max_num_elements_in_context_features=5000,
                        num_shards=0,
                        output_type='tf_example',
-                       max_clip_length=None):
+                       max_clip_length=None,
+                       context_feature_length=2057):
   """Returns a beam pipeline to run object detection inference.
 
   Args:
+    pipeline: Initialized beam pipeline.
     input_tfrecord: An TFRecord of tf.train.Example protos containing images.
     output_tfrecord: An TFRecord of tf.train.Example protos that contain images
       in the input TFRecord and the detections from the model.
@@ -755,91 +714,225 @@ def construct_pipeline(input_tfrecord,
     output_type: What type of output, tf_example of tf_sequence_example
     max_clip_length: The maximum length of a sequence example, before
       splitting into multiple
+    context_feature_length: The length of the context feature embeddings stored
+      in the input data.
   """
-  def pipeline(root):
-    if output_type == 'tf_example':
-      coder = beam.coders.ProtoCoder(tf.train.Example)
-    elif output_type == 'tf_sequence_example':
-      coder = beam.coders.ProtoCoder(tf.train.SequenceExample)
-    else:
-      raise ValueError('Unsupported output type.')
-    input_collection = (
-        root | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
-            input_tfrecord,
-            coder=beam.coders.BytesCoder()))
-    rekey_collection = input_collection | 'RekeyExamples' >> beam.ParDo(
-        ReKeyDataFn(sequence_key, time_horizon,
-                    reduce_image_size, max_image_dimension))
-    grouped_collection = (
-        rekey_collection | 'GroupBySequenceKey' >> beam.GroupByKey())
-    grouped_collection = (
-        grouped_collection | 'ReshuffleGroups' >> beam.Reshuffle())
-    ordered_collection = (
-        grouped_collection | 'OrderByFrameNumber' >> beam.ParDo(
-            SortGroupedDataFn(sequence_key, sorted_image_ids,
-                              max_num_elements_in_context_features)))
-    ordered_collection = (
-        ordered_collection | 'ReshuffleSortedGroups' >> beam.Reshuffle())
-    output_collection = (
-        ordered_collection | 'AddContextToExamples' >> beam.ParDo(
-            GenerateContextFn(
-                sequence_key, add_context_features, image_ids_to_keep,
-                keep_context_features_image_id_list=(
-                    keep_context_features_image_id_list),
-                subsample_context_features_rate=subsample_context_features_rate,
-                keep_only_positives=keep_only_positives,
-                keep_only_positives_gt=keep_only_positives_gt,
-                context_features_score_threshold=(
-                    context_features_score_threshold),
-                max_num_elements_in_context_features=(
-                    max_num_elements_in_context_features),
-                output_type=output_type,
-                max_clip_length=max_clip_length)))
+  if output_type == 'tf_example':
+    coder = beam.coders.ProtoCoder(tf.train.Example)
+  elif output_type == 'tf_sequence_example':
+    coder = beam.coders.ProtoCoder(tf.train.SequenceExample)
+  else:
+    raise ValueError('Unsupported output type.')
+  input_collection = (
+      pipeline | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
+          input_tfrecord,
+          coder=beam.coders.BytesCoder()))
+  rekey_collection = input_collection | 'RekeyExamples' >> beam.ParDo(
+      ReKeyDataFn(sequence_key, time_horizon,
+                  reduce_image_size, max_image_dimension))
+  grouped_collection = (
+      rekey_collection | 'GroupBySequenceKey' >> beam.GroupByKey())
+  grouped_collection = (
+      grouped_collection | 'ReshuffleGroups' >> beam.Reshuffle())
+  ordered_collection = (
+      grouped_collection | 'OrderByFrameNumber' >> beam.ParDo(
+          SortGroupedDataFn(sequence_key, sorted_image_ids,
+                            max_num_elements_in_context_features)))
+  ordered_collection = (
+      ordered_collection | 'ReshuffleSortedGroups' >> beam.Reshuffle())
+  output_collection = (
+      ordered_collection | 'AddContextToExamples' >> beam.ParDo(
+          GenerateContextFn(
+              sequence_key, add_context_features, image_ids_to_keep,
+              keep_context_features_image_id_list=(
+                  keep_context_features_image_id_list),
+              subsample_context_features_rate=subsample_context_features_rate,
+              keep_only_positives=keep_only_positives,
+              keep_only_positives_gt=keep_only_positives_gt,
+              context_features_score_threshold=(
+                  context_features_score_threshold),
+              max_num_elements_in_context_features=(
+                  max_num_elements_in_context_features),
+              output_type=output_type,
+              max_clip_length=max_clip_length,
+              context_feature_length=context_feature_length)))
 
-    output_collection = (
-        output_collection | 'ReshuffleExamples' >> beam.Reshuffle())
-    _ = output_collection | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
-        output_tfrecord,
-        num_shards=num_shards,
-        coder=coder)
-  return pipeline
+  output_collection = (
+      output_collection | 'ReshuffleExamples' >> beam.Reshuffle())
+  _ = output_collection | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
+      output_tfrecord,
+      num_shards=num_shards,
+      coder=coder)
 
 
-def main(_):
-  """Runs the Beam pipeline that builds context features.
+def parse_args(argv):
+  """Command-line argument parser.
 
   Args:
-    _: unused
+    argv: command line arguments
+  Returns:
+    beam_args: Arguments for the beam pipeline.
+    pipeline_args: Arguments for the pipeline options, such as runner type.
   """
-  # must create before flags are used
-  runner = runners.DirectRunner()
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--input_tfrecord',
+      dest='input_tfrecord',
+      required=True,
+      help='TFRecord containing images in tf.Example format for object '
+      'detection, with bounding boxes and contextual feature embeddings.')
+  parser.add_argument(
+      '--output_tfrecord',
+      dest='output_tfrecord',
+      required=True,
+      help='TFRecord containing images in tf.Example format, with added '
+      'contextual memory banks.')
+  parser.add_argument(
+      '--sequence_key',
+      dest='sequence_key',
+      default='image/location',
+      help='Key to use when grouping sequences: so far supports `image/seq_id` '
+      'and `image/location`.')
+  parser.add_argument(
+      '--context_feature_length',
+      dest='context_feature_length',
+      default=2057,
+      help='The length of the context feature embeddings stored in the input '
+      'data.')
+  parser.add_argument(
+      '--time_horizon',
+      dest='time_horizon',
+      default=None,
+      help='What time horizon to use when splitting the data, if any. Options '
+      'are: `year`, `month`, `week`, `day `, `hour`, `minute`, `None`.')
+  parser.add_argument(
+      '--subsample_context_features_rate',
+      dest='subsample_context_features_rate',
+      default=0,
+      help='Whether to subsample the context_features, and if so how many to '
+      'sample. If the rate is set to X, it will sample context from 1 out of '
+      'every X images. Default is sampling from every image, which is X=0.')
+  parser.add_argument(
+      '--reduce_image_size',
+      dest='reduce_image_size',
+      default=True,
+      help='downsamples images to have longest side max_image_dimension, '
+      'maintaining aspect ratio')
+  parser.add_argument(
+      '--max_image_dimension',
+      dest='max_image_dimension',
+      default=1024,
+      help='Sets max image dimension for resizing.')
+  parser.add_argument(
+      '--add_context_features',
+      dest='add_context_features',
+      default=True,
+      help='Adds a memory bank of embeddings to each clip')
+  parser.add_argument(
+      '--sorted_image_ids',
+      dest='sorted_image_ids',
+      default=True,
+      help='Whether the image source_ids are sortable to deal with '
+      'date_captured tie-breaks.')
+  parser.add_argument(
+      '--image_ids_to_keep',
+      dest='image_ids_to_keep',
+      default='All',
+      help='Path to .json list of image ids to keep, used for ground truth '
+      'eval creation.')
+  parser.add_argument(
+      '--keep_context_features_image_id_list',
+      dest='keep_context_features_image_id_list',
+      default=False,
+      help='Whether or not to keep a list of the image_ids corresponding to '
+      'the memory bank.')
+  parser.add_argument(
+      '--keep_only_positives',
+      dest='keep_only_positives',
+      default=False,
+      help='Whether or not to keep only positive boxes based on score.')
+  parser.add_argument(
+      '--context_features_score_threshold',
+      dest='context_features_score_threshold',
+      default=0.7,
+      help='What score threshold to use for boxes in context_features, when '
+      '`keep_only_positives` is set to `True`.')
+  parser.add_argument(
+      '--keep_only_positives_gt',
+      dest='keep_only_positives_gt',
+      default=False,
+      help='Whether or not to keep only positive boxes based on gt class.')
+  parser.add_argument(
+      '--max_num_elements_in_context_features',
+      dest='max_num_elements_in_context_features',
+      default=2000,
+      help='Sets max number of context feature elements per memory bank. '
+      'If the number of images in the context group is greater than '
+      '`max_num_elements_in_context_features`, the context group will be split.'
+      )
+  parser.add_argument(
+      '--output_type',
+      dest='output_type',
+      default='tf_example',
+      help='Output type, one of `tf_example`, `tf_sequence_example`.')
+  parser.add_argument(
+      '--max_clip_length',
+      dest='max_clip_length',
+      default=None,
+      help='Max length for sequence example outputs.')
+  parser.add_argument(
+      '--num_shards',
+      dest='num_shards',
+      default=0,
+      help='Number of output shards.')
+  beam_args, pipeline_args = parser.parse_known_args(argv)
+  return beam_args, pipeline_args
 
-  dirname = os.path.dirname(FLAGS.output_tfrecord)
+
+def main(argv=None, save_main_session=True):
+  """Runs the Beam pipeline that performs inference.
+
+  Args:
+    argv: Command line arguments.
+    save_main_session: Whether to save the main session.
+  """
+  args, pipeline_args = parse_args(argv)
+
+  pipeline_options = beam.options.pipeline_options.PipelineOptions(
+            pipeline_args)
+  pipeline_options.view_as(
+      beam.options.pipeline_options.SetupOptions).save_main_session = (
+          save_main_session)
+
+  dirname = os.path.dirname(args.output_tfrecord)
   tf.io.gfile.makedirs(dirname)
-  runner.run(
-      construct_pipeline(FLAGS.input_tfrecord,
-                         FLAGS.output_tfrecord,
-                         FLAGS.sequence_key,
-                         FLAGS.time_horizon,
-                         FLAGS.subsample_context_features_rate,
-                         FLAGS.reduce_image_size,
-                         FLAGS.max_image_dimension,
-                         FLAGS.add_context_features,
-                         FLAGS.sorted_image_ids,
-                         FLAGS.image_ids_to_keep,
-                         FLAGS.keep_context_features_image_id_list,
-                         FLAGS.keep_only_positives,
-                         FLAGS.context_features_score_threshold,
-                         FLAGS.keep_only_positives_gt,
-                         FLAGS.max_num_elements_in_context_features,
-                         FLAGS.num_shards,
-                         FLAGS.output_type,
-                         FLAGS.max_clip_length))
+
+  p = beam.Pipeline(options=pipeline_options)
+
+  construct_pipeline(
+      p,
+      args.input_tfrecord,
+      args.output_tfrecord,
+      args.sequence_key,
+      args.time_horizon,
+      args.subsample_context_features_rate,
+      args.reduce_image_size,
+      args.max_image_dimension,
+      args.add_context_features,
+      args.sorted_image_ids,
+      args.image_ids_to_keep,
+      args.keep_context_features_image_id_list,
+      args.keep_only_positives,
+      args.context_features_score_threshold,
+      args.keep_only_positives_gt,
+      args.max_num_elements_in_context_features,
+      args.num_shards,
+      args.output_type,
+      args.max_clip_length,
+      args.context_feature_length)
+
+  p.run()
 
 
 if __name__ == '__main__':
-  flags.mark_flags_as_required([
-      'input_tfrecord',
-      'output_tfrecord'
-  ])
-  app.run(main)
+  main()

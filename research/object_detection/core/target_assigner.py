@@ -45,6 +45,7 @@ from object_detection.box_coders import mean_stddev_box_coder
 from object_detection.core import box_coder
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
+from object_detection.core import densepose_ops
 from object_detection.core import keypoint_ops
 from object_detection.core import matcher as mat
 from object_detection.core import region_similarity_calculator as sim_calc
@@ -799,17 +800,15 @@ def get_batch_predictions_from_indices(batch_predictions, indices):
   function.
 
   Args:
-    batch_predictions: A tensor of shape [batch_size, height, width, 2] for
-      single class offsets and [batch_size, height, width, class, 2] for
-      multiple classes offsets (e.g. keypoint joint offsets) representing the
-      (height, width) or (y_offset, x_offset) predictions over a batch.
-    indices: A tensor of shape [num_instances, 3] for single class offset and
-      [num_instances, 4] for multiple classes offsets representing the indices
-      in the batch to be penalized in a loss function
+    batch_predictions: A tensor of shape [batch_size, height, width, channels]
+      or [batch_size, height, width, class, channels] for class-specific
+      features (e.g. keypoint joint offsets).
+    indices: A tensor of shape [num_instances, 3] for single class features or
+      [num_instances, 4] for multiple classes features.
 
   Returns:
-    values: A tensor of shape [num_instances, 2] holding the predicted values
-      at the given indices.
+    values: A tensor of shape [num_instances, channels] holding the predicted
+      values at the given indices.
   """
   return tf.gather_nd(batch_predictions, indices)
 
@@ -1601,6 +1600,17 @@ class CenterNetKeypointTargetAssigner(object):
     return (batch_indices, batch_offsets, batch_weights)
 
 
+def _resize_masks(masks, height, width, method):
+  # Resize segmentation masks to conform to output dimensions. Use TF2
+  # image resize because TF1's version is buggy:
+  # https://yaqs.corp.google.com/eng/q/4970450458378240
+  masks = tf2.image.resize(
+      masks[:, :, :, tf.newaxis],
+      size=(height, width),
+      method=method)
+  return masks[:, :, :, 0]
+
+
 class CenterNetMaskTargetAssigner(object):
   """Wrapper to compute targets for segmentation masks."""
 
@@ -1642,18 +1652,248 @@ class CenterNetMaskTargetAssigner(object):
 
     segmentation_targets_list = []
     for gt_masks, gt_classes in zip(gt_masks_list, gt_classes_list):
-      # Resize segmentation masks to conform to output dimensions. Use TF2
-      # image resize because TF1's version is buggy:
-      # https://yaqs.corp.google.com/eng/q/4970450458378240
-      gt_masks = tf2.image.resize(
-          gt_masks[:, :, :, tf.newaxis],
-          size=(output_height, output_width),
-          method=mask_resize_method)
+      gt_masks = _resize_masks(gt_masks, output_height, output_width,
+                               mask_resize_method)
+      gt_masks = gt_masks[:, :, :, tf.newaxis]
       gt_classes_reshaped = tf.reshape(gt_classes, [-1, 1, 1, num_classes])
       # Shape: [h, w, num_classes].
       segmentations_for_image = tf.reduce_max(
           gt_masks * gt_classes_reshaped, axis=0)
+      # Avoid the case where max of an empty array is -inf.
+      segmentations_for_image = tf.maximum(segmentations_for_image, 0.0)
       segmentation_targets_list.append(segmentations_for_image)
 
     segmentation_target = tf.stack(segmentation_targets_list, axis=0)
     return segmentation_target
+
+
+class CenterNetDensePoseTargetAssigner(object):
+  """Wrapper to compute targets for DensePose task."""
+
+  def __init__(self, stride, num_parts=24):
+    self._stride = stride
+    self._num_parts = num_parts
+
+  def assign_part_and_coordinate_targets(self,
+                                         height,
+                                         width,
+                                         gt_dp_num_points_list,
+                                         gt_dp_part_ids_list,
+                                         gt_dp_surface_coords_list,
+                                         gt_weights_list=None):
+    """Returns the DensePose part_id and coordinate targets and their indices.
+
+    The returned values are expected to be used with predicted tensors
+    of size (batch_size, height//self._stride, width//self._stride, 2). The
+    predicted values at the relevant indices can be retrieved with the
+    get_batch_predictions_from_indices function.
+
+    Args:
+      height: int, height of input to the model. This is used to determine the
+        height of the output.
+      width: int, width of the input to the model. This is used to determine the
+        width of the output.
+      gt_dp_num_points_list: a list of 1-D tf.int32 tensors of shape [num_boxes]
+        containing the number of DensePose sampled points per box.
+      gt_dp_part_ids_list: a list of 2-D tf.int32 tensors of shape
+        [num_boxes, max_sampled_points] containing the DensePose part ids
+        (0-indexed) for each sampled point. Note that there may be padding, as
+        boxes may contain a different number of sampled points.
+      gt_dp_surface_coords_list: a list of 3-D tf.float32 tensors of shape
+        [num_boxes, max_sampled_points, 4] containing the DensePose surface
+        coordinates (normalized) for each sampled point. Note that there may be
+        padding.
+      gt_weights_list: A list of 1-D tensors with shape [num_boxes]
+        corresponding to the weight of each groundtruth detection box.
+
+    Returns:
+      batch_indices: an integer tensor of shape [num_total_points, 4] holding
+        the indices inside the predicted tensor which should be penalized. The
+        first column indicates the index along the batch dimension and the
+        second and third columns indicate the index along the y and x
+        dimensions respectively. The fourth column is the part index.
+      batch_part_ids: an int tensor of shape [num_total_points, num_parts]
+        holding 1-hot encodings of parts for each sampled point.
+      batch_surface_coords: a float tensor of shape [num_total_points, 2]
+        holding the expected (v, u) coordinates for each sampled point.
+      batch_weights: a float tensor of shape [num_total_points] indicating the
+        weight of each prediction.
+      Note that num_total_points = batch_size * num_boxes * max_sampled_points.
+    """
+
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_dp_num_points_list)
+
+    batch_indices = []
+    batch_part_ids = []
+    batch_surface_coords = []
+    batch_weights = []
+
+    for i, (num_points, part_ids, surface_coords, weights) in enumerate(
+        zip(gt_dp_num_points_list, gt_dp_part_ids_list,
+            gt_dp_surface_coords_list, gt_weights_list)):
+      num_boxes, max_sampled_points = (
+          shape_utils.combined_static_and_dynamic_shape(part_ids))
+      part_ids_flattened = tf.reshape(part_ids, [-1])
+      part_ids_one_hot = tf.one_hot(part_ids_flattened, depth=self._num_parts)
+      # Get DensePose coordinates in the output space.
+      surface_coords_abs = densepose_ops.to_absolute_coordinates(
+          surface_coords, height // self._stride, width // self._stride)
+      surface_coords_abs = tf.reshape(surface_coords_abs, [-1, 4])
+      # Each tensor has shape [num_boxes * max_sampled_points].
+      yabs, xabs, v, u = tf.unstack(surface_coords_abs, axis=-1)
+
+      # Get the indices (in output space) for the DensePose coordinates. Note
+      # that if self._stride is larger than 1, this will have the effect of
+      # reducing spatial resolution of the groundtruth points.
+      indices_y = tf.cast(yabs, tf.int32)
+      indices_x = tf.cast(xabs, tf.int32)
+
+      # Assign ones if weights are not provided.
+      if weights is None:
+        weights = tf.ones(num_boxes, dtype=tf.float32)
+      # Create per-point weights.
+      weights_per_point = tf.reshape(
+          tf.tile(weights[:, tf.newaxis], multiples=[1, max_sampled_points]),
+          shape=[-1])
+      # Mask out invalid (i.e. padded) DensePose points.
+      num_points_tiled = tf.tile(num_points[:, tf.newaxis],
+                                 multiples=[1, max_sampled_points])
+      range_tiled = tf.tile(tf.range(max_sampled_points)[tf.newaxis, :],
+                            multiples=[num_boxes, 1])
+      valid_points = tf.math.less(range_tiled, num_points_tiled)
+      valid_points = tf.cast(tf.reshape(valid_points, [-1]), dtype=tf.float32)
+      weights_per_point = weights_per_point * valid_points
+
+      # Shape of [num_boxes * max_sampled_points] integer tensor filled with
+      # current batch index.
+      batch_index = i * tf.ones_like(indices_y, dtype=tf.int32)
+      batch_indices.append(
+          tf.stack([batch_index, indices_y, indices_x, part_ids_flattened],
+                   axis=1))
+      batch_part_ids.append(part_ids_one_hot)
+      batch_surface_coords.append(tf.stack([v, u], axis=1))
+      batch_weights.append(weights_per_point)
+
+    batch_indices = tf.concat(batch_indices, axis=0)
+    batch_part_ids = tf.concat(batch_part_ids, axis=0)
+    batch_surface_coords = tf.concat(batch_surface_coords, axis=0)
+    batch_weights = tf.concat(batch_weights, axis=0)
+    return batch_indices, batch_part_ids, batch_surface_coords, batch_weights
+
+
+def filter_mask_overlap_min_area(masks):
+  """If a pixel belongs to 2 instances, remove it from the larger instance."""
+
+  num_instances = tf.shape(masks)[0]
+  def _filter_min_area():
+    """Helper function to filter non empty masks."""
+    areas = tf.reduce_sum(masks, axis=[1, 2], keepdims=True)
+    per_pixel_area = masks * areas
+    # Make sure background is ignored in argmin.
+    per_pixel_area = (masks * per_pixel_area +
+                      (1 - masks) * per_pixel_area.dtype.max)
+    min_index = tf.cast(tf.argmin(per_pixel_area, axis=0), tf.int32)
+
+    filtered_masks = (
+        tf.range(num_instances)[:, tf.newaxis, tf.newaxis]
+        ==
+        min_index[tf.newaxis, :, :]
+    )
+
+    return tf.cast(filtered_masks, tf.float32) * masks
+
+  return tf.cond(num_instances > 0, _filter_min_area,
+                 lambda: masks)
+
+
+def filter_mask_overlap(masks, method='min_area'):
+
+  if method == 'min_area':
+    return filter_mask_overlap_min_area(masks)
+  else:
+    raise ValueError('Unknown mask overlap filter type - {}'.format(method))
+
+
+class CenterNetCornerOffsetTargetAssigner(object):
+  """Wrapper to compute corner offsets for boxes using masks."""
+
+  def __init__(self, stride, overlap_resolution='min_area'):
+    """Initializes the corner offset target assigner.
+
+    Args:
+      stride: int, the stride of the network in output pixels.
+      overlap_resolution: string, specifies how we handle overlapping
+        instance masks. Currently only 'min_area' is supported which assigns
+        overlapping pixels to the instance with the minimum area.
+    """
+
+    self._stride = stride
+    self._overlap_resolution = overlap_resolution
+
+  def assign_corner_offset_targets(
+      self, gt_boxes_list, gt_masks_list):
+    """Computes the corner offset targets and foreground map.
+
+    For each pixel that is part of any object's foreground, this function
+    computes the relative offsets to the top-left and bottom-right corners of
+    that instance's bounding box. It also returns a foreground map to indicate
+    which pixels contain valid corner offsets.
+
+    Args:
+      gt_boxes_list: A list of float tensors with shape [num_boxes, 4]
+        representing the groundtruth detection bounding boxes for each sample in
+        the batch. The coordinates are expected in normalized coordinates.
+      gt_masks_list: A list of float tensors with shape [num_boxes,
+        input_height, input_width] with values in {0, 1} representing instance
+        masks for each object.
+
+    Returns:
+      corner_offsets: A float tensor of shape [batch_size, height, width, 4]
+        containing, in order, the (y, x) offsets to the top left corner and
+        the (y, x) offsets to the bottom right corner for each foregroung pixel
+      foreground: A float tensor of shape [batch_size, height, width] in which
+        each pixel is set to 1 if it is a part of any instance's foreground
+        (and thus contains valid corner offsets) and 0 otherwise.
+
+    """
+    _, input_height, input_width = (
+        shape_utils.combined_static_and_dynamic_shape(gt_masks_list[0]))
+    output_height = input_height // self._stride
+    output_width = input_width // self._stride
+    y_grid, x_grid = tf.meshgrid(
+        tf.range(output_height), tf.range(output_width),
+        indexing='ij')
+    y_grid, x_grid = tf.cast(y_grid, tf.float32), tf.cast(x_grid, tf.float32)
+
+    corner_targets = []
+    foreground_targets = []
+    for gt_masks, gt_boxes in zip(gt_masks_list, gt_boxes_list):
+      gt_masks = _resize_masks(gt_masks, output_height, output_width,
+                               method=ResizeMethod.NEAREST_NEIGHBOR)
+      gt_masks = filter_mask_overlap(gt_masks, self._overlap_resolution)
+
+      ymin, xmin, ymax, xmax = tf.unstack(gt_boxes, axis=1)
+      ymin, ymax = ymin * output_height, ymax * output_height
+      xmin, xmax = xmin * output_width, xmax * output_width
+
+      top_y = ymin[:, tf.newaxis, tf.newaxis] - y_grid[tf.newaxis]
+      left_x = xmin[:, tf.newaxis, tf.newaxis] - x_grid[tf.newaxis]
+      bottom_y = ymax[:, tf.newaxis, tf.newaxis] - y_grid[tf.newaxis]
+      right_x = xmax[:, tf.newaxis, tf.newaxis] - x_grid[tf.newaxis]
+
+      foreground_target = tf.cast(tf.reduce_sum(gt_masks, axis=0) > 0.5,
+                                  tf.float32)
+      foreground_targets.append(foreground_target)
+
+      corner_target = tf.stack([
+          tf.reduce_sum(top_y * gt_masks, axis=0),
+          tf.reduce_sum(left_x * gt_masks, axis=0),
+          tf.reduce_sum(bottom_y * gt_masks, axis=0),
+          tf.reduce_sum(right_x * gt_masks, axis=0),
+      ], axis=2)
+
+      corner_targets.append(corner_target)
+
+    return (tf.stack(corner_targets, axis=0),
+            tf.stack(foreground_targets, axis=0))

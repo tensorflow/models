@@ -33,31 +33,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
 import hashlib
 import io
 import json
-import logging
 import os
-from absl import app
-from absl import flags
-import apache_beam as beam
 import numpy as np
 import PIL.Image
-import tensorflow.compat.v1 as tf
-from apache_beam import runners
+import tensorflow as tf
 from object_detection.utils import dataset_util
 
-flags.DEFINE_string('image_directory', None, 'Directory where images are '
-                    'stored')
-flags.DEFINE_string('output_tfrecord_prefix', None,
-                    'TFRecord containing images in tf.Example format.')
-flags.DEFINE_string('input_annotations_file', None, 'Path to Coco-CameraTraps'
-                    'style annotations file')
-flags.DEFINE_integer('num_images_per_shard',
-                     200,
-                     'The number of  images to be stored in each shard.')
-
-FLAGS = flags.FLAGS
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class ParseImage(beam.DoFn):
@@ -120,16 +109,9 @@ class ParseImage(beam.DoFn):
         encoded_jpg = fid.read()
       encoded_jpg_io = io.BytesIO(encoded_jpg)
       image = PIL.Image.open(encoded_jpg_io)
-      # Ensure the image can be read by tf
-      with tf.Graph().as_default():
-        image = tf.image.decode_jpeg(encoded_jpg, channels=3)
-        init_op = tf.initialize_all_tables()
-        with tf.Session() as sess:
-          sess.run(init_op)
-          sess.run(image)
-    except Exception as e:  # pylint: disable=broad-except
+      image = tf.io.decode_jpeg(encoded_jpg, channels=3)
+    except Exception:  # pylint: disable=broad-except
       # The image file is missing or corrupt
-      tf.logging.error(str(e))
       return []
 
     key = hashlib.sha256(encoded_jpg).hexdigest()
@@ -243,13 +225,14 @@ class ParseImage(beam.DoFn):
     return [(example)]
 
 
-def _load_json_data(data_file):
+def load_json_data(data_file):
   with tf.io.gfile.GFile(data_file, 'r') as fid:
     data_dict = json.load(fid)
   return data_dict
 
 
-def create_pipeline(image_directory,
+def create_pipeline(pipeline,
+                    image_directory,
                     input_annotations_file,
                     output_tfrecord_prefix=None,
                     num_images_per_shard=200,
@@ -257,68 +240,95 @@ def create_pipeline(image_directory,
   """Creates a beam pipeline for producing a COCO-CameraTraps Image dataset.
 
   Args:
+    pipeline: Initialized beam pipeline.
     image_directory: Path to image directory
     input_annotations_file: Path to a coco-cameratraps annotation file
     output_tfrecord_prefix: Absolute path for tfrecord outputs. Final files will
       be named {output_tfrecord_prefix}@N.
     num_images_per_shard: The number of images to store in each shard
     keep_bboxes: Whether to keep any bounding boxes that exist in the json file
-
-  Returns:
-    A Beam pipeline.
   """
 
-  logging.info('Reading data from COCO-CameraTraps Dataset.')
-
-  data = _load_json_data(input_annotations_file)
+  data = load_json_data(input_annotations_file)
 
   num_shards = int(np.ceil(float(len(data['images']))/num_images_per_shard))
 
-  def pipeline(root):
-    """Builds beam pipeline."""
-
-    image_examples = (
-        root
-        | ('CreateCollections') >> beam.Create(
-            [im['id'] for im in data['images']])
-        | ('ParseImage') >> beam.ParDo(ParseImage(
-            image_directory, data['images'], data['annotations'],
-            data['categories'], keep_bboxes=keep_bboxes)))
-    _ = (image_examples
-         | ('Reshuffle') >> beam.Reshuffle()
-         | ('WriteTfImageExample') >> beam.io.tfrecordio.WriteToTFRecord(
-             output_tfrecord_prefix,
-             num_shards=num_shards,
-             coder=beam.coders.ProtoCoder(tf.train.Example)))
-
-  return pipeline
+  image_examples = (
+      pipeline | ('CreateCollections') >> beam.Create(
+          [im['id'] for im in data['images']])
+      | ('ParseImage') >> beam.ParDo(ParseImage(
+          image_directory, data['images'], data['annotations'],
+          data['categories'], keep_bboxes=keep_bboxes)))
+  _ = (image_examples
+       | ('Reshuffle') >> beam.Reshuffle()
+       | ('WriteTfImageExample') >> beam.io.tfrecordio.WriteToTFRecord(
+           output_tfrecord_prefix,
+           num_shards=num_shards,
+           coder=beam.coders.ProtoCoder(tf.train.Example)))
 
 
-def main(_):
+def parse_args(argv):
+  """Command-line argument parser.
+
+  Args:
+    argv: command line arguments
+  Returns:
+    beam_args: Arguments for the beam pipeline.
+    pipeline_args: Arguments for the pipeline options, such as runner type.
+  """
+  parser = argparse.ArgumentParser()
+  parser.add_argument(
+      '--image_directory',
+      dest='image_directory',
+      required=True,
+      help='Path to the directory where the images are stored.')
+  parser.add_argument(
+      '--output_tfrecord_prefix',
+      dest='output_tfrecord_prefix',
+      required=True,
+      help='Path and prefix to store TFRecords containing images in tf.Example'
+      'format.')
+  parser.add_argument(
+      '--input_annotations_file',
+      dest='input_annotations_file',
+      required=True,
+      help='Path to Coco-CameraTraps style annotations file.')
+  parser.add_argument(
+      '--num_images_per_shard',
+      dest='num_images_per_shard',
+      default=200,
+      help='The number of  images to be stored in each outputshard.')
+  beam_args, pipeline_args = parser.parse_known_args(argv)
+  return beam_args, pipeline_args
+
+
+def main(argv=None, save_main_session=True):
   """Runs the Beam pipeline that performs inference.
 
   Args:
-    _: unused
+    argv: Command line arguments.
+    save_main_session: Whether to save the main session.
   """
+  args, pipeline_args = parse_args(argv)
 
-  # must create before flags are used
-  runner = runners.DirectRunner()
+  pipeline_options = beam.options.pipeline_options.PipelineOptions(
+            pipeline_args)
+  pipeline_options.view_as(
+      beam.options.pipeline_options.SetupOptions).save_main_session = (
+          save_main_session)
 
-  dirname = os.path.dirname(FLAGS.output_tfrecord_prefix)
+  dirname = os.path.dirname(args.output_tfrecord_prefix)
   tf.io.gfile.makedirs(dirname)
 
-  runner.run(
-      create_pipeline(
-          image_directory=FLAGS.image_directory,
-          input_annotations_file=FLAGS.input_annotations_file,
-          output_tfrecord_prefix=FLAGS.output_tfrecord_prefix,
-          num_images_per_shard=FLAGS.num_images_per_shard))
+  p = beam.Pipeline(options=pipeline_options)
+  create_pipeline(
+      pipeline=p,
+      image_directory=args.image_directory,
+      input_annotations_file=args.input_annotations_file,
+      output_tfrecord_prefix=args.output_tfrecord_prefix,
+      num_images_per_shard=args.num_images_per_shard)
+  p.run()
 
 
 if __name__ == '__main__':
-  flags.mark_flags_as_required([
-      'image_directory',
-      'input_annotations_file',
-      'output_tfrecord_prefix'
-  ])
-  app.run(main)
+  main()
