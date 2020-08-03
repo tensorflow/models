@@ -50,12 +50,12 @@ def _zip_side_inputs(side_input_shapes="",
   Returns:
     a zipped list of side input tuples.
   """
-  side_input_shapes = list(map(lambda x: eval('[' + x + ']'),
-                                side_input_shapes.split("/")))
-  side_input_types = list(map(eval, side_input_types.split(",")))
-  return zip(side_input_shapes,
-              side_input_types,
-              side_input_names.split(","))
+  if (side_input_shapes)
+  side_input_shapes = list(map(lambda x: eval('[' + x + ']'), side_input_shapes.split("/")))
+  side_input_types = map(eval, side_input_types.split(","))
+  print(list(side_input_types))
+  #side_input_types = list(map(eval, side_input_types.split(",")))
+  return zip(side_input_shapes, side_input_types, side_input_names.split(","))
 
 class DetectionInferenceModule(tf.Module):
   """Detection Inference Module."""
