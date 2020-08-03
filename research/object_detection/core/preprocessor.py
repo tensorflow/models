@@ -3971,9 +3971,10 @@ def _get_crop_border(border, size):
 
 
 def random_square_crop_by_scale(image, boxes, labels, label_weights,
-                                masks=None, keypoints=None, max_border=128,
-                                scale_min=0.6, scale_max=1.3, num_scales=8,
-                                seed=None, preprocess_vars_cache=None):
+                                label_confidences=None, masks=None,
+                                keypoints=None, max_border=128, scale_min=0.6,
+                                scale_max=1.3, num_scales=8, seed=None,
+                                preprocess_vars_cache=None):
   """Randomly crop a square in proportion to scale and image size.
 
    Extract a square sized crop from an image whose side length is sampled by
@@ -3993,6 +3994,8 @@ def random_square_crop_by_scale(image, boxes, labels, label_weights,
     labels: rank 1 int32 tensor containing the object classes.
     label_weights: float32 tensor of shape [num_instances] representing the
       weight for each box.
+    label_confidences: (optional) float32 tensor of shape [num_instances]
+      representing the confidence for each box.
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
@@ -4021,6 +4024,8 @@ def random_square_crop_by_scale(image, boxes, labels, label_weights,
            Boxes are in normalized form.
     labels: new labels.
     label_weights: rank 1 float32 tensor with shape [num_instances].
+    label_confidences: (optional) float32 tensor of shape [num_instances]
+      representing the confidence for each box.
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
 
@@ -4109,6 +4114,9 @@ def random_square_crop_by_scale(image, boxes, labels, label_weights,
   return_values = [output_image, boxlist.get(),
                    tf.gather(labels, indices),
                    tf.gather(label_weights, indices)]
+
+  if label_confidences is not None:
+    return_values.append(tf.gather(label_confidences, indices))
 
   if masks is not None:
     new_masks = tf.expand_dims(masks, -1)
@@ -4483,8 +4491,8 @@ def get_default_func_arg_map(include_label_weights=True,
           (fields.InputDataFields.image,
            fields.InputDataFields.groundtruth_boxes,
            fields.InputDataFields.groundtruth_classes,
-           groundtruth_label_weights, groundtruth_instance_masks,
-           groundtruth_keypoints),
+           groundtruth_label_weights, groundtruth_label_confidences,
+           groundtruth_instance_masks, groundtruth_keypoints),
       random_scale_crop_and_pad_to_square:
           (fields.InputDataFields.image,
            fields.InputDataFields.groundtruth_boxes,
@@ -4541,7 +4549,6 @@ def preprocess(tensor_dict,
   """
   if func_arg_map is None:
     func_arg_map = get_default_func_arg_map()
-
   # changes the images to image (rank 4 to rank 3) since the functions
   # receive rank 3 tensor for image
   if fields.InputDataFields.image in tensor_dict:
