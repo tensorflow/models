@@ -245,34 +245,25 @@ def predict(task: SentencePredictionTask, params: cfg.DataConfig,
   """
   is_regression = task.task_config.model.num_classes == 1
 
-  @tf.function
-  def predict_step(iterator):
-    """Predicts on distributed devices."""
+  def predict_step(inputs):
+    """Replicated prediction calculation."""
+    x, _ = inputs
+    outputs = task.inference_step(x, model)
+    if is_regression:
+      return outputs
+    else:
+      return tf.argmax(outputs, axis=-1)
 
-    def _replicated_step(inputs):
-      """Replicated prediction calculation."""
-      x, _ = inputs
-      outputs = task.inference_step(x, model)
-      if is_regression:
-        return outputs
-      else:
-        return tf.argmax(outputs, axis=-1)
-
-    outputs = tf.distribute.get_strategy().run(
-        _replicated_step, args=(next(iterator),))
-    return tf.nest.map_structure(
-        tf.distribute.get_strategy().experimental_local_results, outputs)
-
-  def reduce_fn(state, outputs):
+  def aggregate_fn(state, outputs):
     """Concatenates model's outputs."""
+    if state is None:
+      state = {'predictions': []}
+
     for per_replica_batch_predictions in outputs:
-      state.extend(per_replica_batch_predictions)
+      state['predictions'].extend(per_replica_batch_predictions)
     return state
 
-  loop_fn = orbit.utils.create_loop_fn(predict_step)
   dataset = orbit.utils.make_distributed_dataset(tf.distribute.get_strategy(),
                                                  task.build_inputs, params)
-  # Set `num_steps` to -1 to exhaust the dataset.
-  predictions = loop_fn(
-      iter(dataset), num_steps=-1, state=[], reduce_fn=reduce_fn)
-  return predictions
+  outputs = utils.predict(predict_step, aggregate_fn, dataset)
+  return outputs['predictions']
