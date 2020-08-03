@@ -57,7 +57,6 @@ class FakeModel(model.DetectionModel):
 
   def predict(self, preprocessed_inputs, true_image_shapes, **side_inputs):
     return_dict = {'image': self._conv(preprocessed_inputs)}
-    print("SIDE INPUTS: ", side_inputs)
     if 'side_inp' in side_inputs:
       return_dict['image'] += side_inputs['side_inp']
     return return_dict
