@@ -232,30 +232,25 @@ def predict(task: TaggingTask, params: cfg.DataConfig,
       sentence id of the corresponding example.
   """
 
-  @tf.function
-  def predict_step(iterator):
-    """Predicts on distributed devices."""
+  def predict_step(inputs):
+    """Replicated prediction calculation."""
+    x, y = inputs
+    sentence_ids = x.pop('sentence_id')
+    outputs = task.inference_step(x, model)
+    predict_ids = outputs['predict_ids']
+    label_mask = tf.greater_equal(y, 0)
+    return dict(
+        predict_ids=predict_ids,
+        label_mask=label_mask,
+        sentence_ids=sentence_ids)
 
-    def _replicated_step(inputs):
-      """Replicated prediction calculation."""
-      x, y = inputs
-      sentence_ids = x.pop('sentence_id')
-      outputs = task.inference_step(x, model)
-      predict_ids = outputs['predict_ids']
-      label_mask = tf.greater_equal(y, 0)
-      return dict(
-          predict_ids=predict_ids,
-          label_mask=label_mask,
-          sentence_ids=sentence_ids)
-
-    outputs = tf.distribute.get_strategy().run(
-        _replicated_step, args=(next(iterator),))
-    return tf.nest.map_structure(
-        tf.distribute.get_strategy().experimental_local_results, outputs)
-
-  def reduce_fn(state, outputs):
+  def aggregate_fn(state, outputs):
     """Concatenates model's outputs."""
-    cur_predict_ids, cur_sentence_ids = state
+    if state is None:
+      state = {'predict_ids': [], 'sentence_ids': []}
+
+    cur_predict_ids = state['predict_ids']
+    cur_sentence_ids = state['sentence_ids']
     for batch_predict_ids, batch_label_mask, batch_sentence_ids in zip(
         outputs['predict_ids'], outputs['label_mask'],
         outputs['sentence_ids']):
@@ -269,12 +264,9 @@ def predict(task: TaggingTask, params: cfg.DataConfig,
           # Skip the padding label.
           if tmp_label_mask[i]:
             cur_predict_ids[-1].append(tmp_predict_ids[i])
-    return cur_predict_ids, cur_sentence_ids
+    return state
 
-  loop_fn = orbit.utils.create_loop_fn(predict_step)
   dataset = orbit.utils.make_distributed_dataset(tf.distribute.get_strategy(),
                                                  task.build_inputs, params)
-  # Set `num_steps` to -1 to exhaust the dataset.
-  predict_ids, sentence_ids = loop_fn(
-      iter(dataset), num_steps=-1, state=([], []), reduce_fn=reduce_fn)
-  return predict_ids, sentence_ids
+  outputs = utils.predict(predict_step, aggregate_fn, dataset)
+  return outputs['predict_ids'], outputs['sentence_ids']
