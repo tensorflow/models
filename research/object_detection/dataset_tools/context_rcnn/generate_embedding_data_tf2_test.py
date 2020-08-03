@@ -258,8 +258,8 @@ class GenerateEmbeddingData(tf.test.TestCase):
     self.assertAllEqual(tf.train.Example.FromString(
         generated_example).features.feature['image/object/class/text']
                         .bytes_list.value, [b'hyena'])
-    output = inference_fn.process(generated_example)
-    output_example = output[0]
+    output = inference_fn.process(('dummy_key', generated_example))
+    output_example = output[0][1]
     self.assert_expected_example(output_example)
 
   def test_generate_embedding_data_with_top_k_boxes(self):
@@ -276,8 +276,8 @@ class GenerateEmbeddingData(tf.test.TestCase):
     self.assertAllEqual(
         tf.train.Example.FromString(generated_example).features
         .feature['image/object/class/text'].bytes_list.value, [b'hyena'])
-    output = inference_fn.process(generated_example)
-    output_example = output[0]
+    output = inference_fn.process(('dummy_key', generated_example))
+    output_example = output[0][1]
     self.assert_expected_example(output_example, topk=True)
 
   def test_generate_embedding_data_with_bottom_k_boxes(self):
@@ -294,8 +294,8 @@ class GenerateEmbeddingData(tf.test.TestCase):
     self.assertAllEqual(
         tf.train.Example.FromString(generated_example).features
         .feature['image/object/class/text'].bytes_list.value, [b'hyena'])
-    output = inference_fn.process(generated_example)
-    output_example = output[0]
+    output = inference_fn.process(('dummy_key', generated_example))
+    output_example = output[0][1]
     self.assert_expected_example(output_example, botk=True)
 
   def test_beam_pipeline(self):
