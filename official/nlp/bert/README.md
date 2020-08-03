@@ -46,6 +46,8 @@ The new checkpoints are:**
     12-layer, 768-hidden, 12-heads , 110M parameters
 *   **[`BERT-Large, Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/cased_L-24_H-1024_A-16.tar.gz)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
+*   **[`BERT-Base, Multilingual Cased`](https://storage.googleapis.com/cloud-tpu-checkpoints/bert/keras_bert/multi_cased_L-12_H-768_A-12.tar.gz)**:
+    104 languages, 12-layer, 768-hidden, 12-heads, 110M parameters
 
 We recommend to host checkpoints on Google Cloud storage buckets when you use
 Cloud GPU/TPU.
