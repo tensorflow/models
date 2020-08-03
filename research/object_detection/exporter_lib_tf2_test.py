@@ -194,7 +194,7 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
       saved_model_path = os.path.join(output_directory, 'saved_model')
       detect_fn = tf.saved_model.load(saved_model_path)
       image = self.get_dummy_input(input_type)
-      detections = detect_fn.signatures['serving_default'](tf.constant(image))
+      detections = detect_fn(tf.constant(image))
 
       detection_fields = fields.DetectionResultFields
       self.assertAllClose(detections[detection_fields.detection_boxes],
@@ -232,8 +232,8 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
       detect_fn_sig = detect_fn.signatures['serving_default']
       image = tf.constant(self.get_dummy_input(input_type))
       side_input = np.ones((1,), dtype=np.float32)
-      #detections_one = tf.saved_model.load(saved_model_path)(image, side_input)
-      detections = detect_fn_sig(input_tensor=image, side_inp=tf.constant(side_input))
+      detections = detect_fn_sig(input_tensor=image,
+                                 side_inp=tf.constant(side_input))
 
       detection_fields = fields.DetectionResultFields
       self.assertAllClose(detections[detection_fields.detection_boxes],
