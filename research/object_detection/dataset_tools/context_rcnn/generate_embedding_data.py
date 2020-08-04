@@ -184,7 +184,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
           [unix_time])
       temporal_embedding = embed_date_captured(date_captured)
     except Exception:  # pylint: disable=broad-except
-      pass
+      temporal_embedding = None
 
     detections = self._detect_fn.signatures['serving_default'](
         (tf.expand_dims(tf.convert_to_tensor(tfexample), 0)))
