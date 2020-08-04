@@ -1151,15 +1151,8 @@ def giou(boxes1, boxes2):
   def two_boxes_giou(boxes):
     boxes1, boxes2 = boxes
 
-    pred_ymin = tf.gather_nd(boxes1, [0])
-    pred_xmin = tf.gather_nd(boxes1, [1])
-    pred_ymax = tf.gather_nd(boxes1, [2])
-    pred_xmax = tf.gather_nd(boxes1, [3])
-
-    gt_ymin = tf.gather_nd(boxes2, [0])
-    gt_xmin = tf.gather_nd(boxes2, [1])
-    gt_ymax = tf.gather_nd(boxes2, [2])
-    gt_xmax = tf.gather_nd(boxes2, [3])
+    pred_ymin, pred_xmin, pred_ymax, pred_xmax = tf.unstack(boxes1)
+    gt_ymin, gt_xmin, gt_ymax, gt_xmax = tf.unstack(boxes2)
 
     gt_area = (gt_ymax - gt_ymin) * (gt_xmax - gt_xmin)
     pred_area = (pred_ymax - pred_ymin) * (pred_xmax - pred_xmin)
@@ -1168,9 +1161,7 @@ def giou(boxes1, boxes2):
     x2I = tf.minimum(pred_xmax, gt_xmax)
     y1I = tf.maximum(pred_ymin, gt_ymin)
     y2I = tf.minimum(pred_ymax, gt_ymax)
-    intersection_area = tf.where(tf.math.logical_and(
-        tf.greater(y2I, y1I), tf.greater(x2I, x1I)),
-        (y2I - y1I) * (x2I - x1I), 0.0)
+    intersection_area = tf.maximum(0.0, y2I - y1I) * tf.maximum(0.0, x2I - x1I)
 
     x1C = tf.minimum(pred_xmin, gt_xmin)
     x2C = tf.maximum(pred_xmax, gt_xmax)
@@ -1179,14 +1170,16 @@ def giou(boxes1, boxes2):
     hull_area = (y2C - y1C) * (x2C - x1C)
 
     union_area = gt_area + pred_area - intersection_area
-    IoU = tf.where(tf.equal(union_area, 0.0), 0.0, intersection_area/union_area)
-    gIoU = IoU - tf.where(tf.equal(hull_area, 0.0), 0.0, (hull_area - union_area) / hull_area)
+    IoU = tf.where(tf.equal(union_area, 0.0), 0.0,
+        intersection_area/union_area)
+    gIoU = IoU - tf.where(hull_area > 0.0,
+        (hull_area - union_area) / hull_area, IoU)
 
     return gIoU
 
   return shape_utils.static_or_dynamic_map_fn(two_boxes_giou, [boxes1, boxes2])
 
-def cy_cx_h_w_to_ymin_xmin_ymax_xmax(input_tensor):
+def center_to_corner_coordinate(input_tensor):
   """Converts input boxes from center to corner representation."""
   reshaped_encodings = tf.reshape(input_tensor, [-1, 4])
   ycenter = tf.gather(reshaped_encodings, [0], axis=1)

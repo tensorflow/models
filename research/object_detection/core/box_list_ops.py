@@ -317,14 +317,14 @@ def l1(boxlist1, boxlist2, scope=None):
   with tf.name_scope(scope, 'PairwiseL1'):
     ycenter1, xcenter1, h1, w1 = boxlist1.get_center_coordinates_and_sizes()
     ycenter2, xcenter2, h2, w2 = boxlist2.get_center_coordinates_and_sizes()
-    ycenters = tf.abs(tf.expand_dims(ycenter2, axis=0) - \
-        tf.expand_dims(tf.transpose(ycenter1), axis=1))
-    xcenters = tf.abs(tf.expand_dims(xcenter2, axis=0) - \
-        tf.expand_dims(tf.transpose(xcenter1), axis=1))
-    heights = tf.abs(tf.expand_dims(h2, axis=0) - \
-        tf.expand_dims(tf.transpose(h1), axis=1))
-    widths = tf.abs(tf.expand_dims(w2, axis=0) - \
-        tf.expand_dims(tf.transpose(w1), axis=1))
+    ycenters = tf.abs(tf.expand_dims(ycenter2, axis=0) - tf.expand_dims(
+        tf.transpose(ycenter1), axis=1))
+    xcenters = tf.abs(tf.expand_dims(xcenter2, axis=0) - tf.expand_dims(
+        tf.transpose(xcenter1), axis=1))
+    heights = tf.abs(tf.expand_dims(h2, axis=0) - tf.expand_dims(
+        tf.transpose(h1), axis=1))
+    widths = tf.abs(tf.expand_dims(w2, axis=0) - tf.expand_dims(
+        tf.transpose(w1), axis=1))
     return ycenters + xcenters + heights + widths
 
 def giou_loss(boxlist1, boxlist2, scope=None):
