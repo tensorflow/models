@@ -39,7 +39,6 @@ RETINANET_CFG.override({
         'max_num_instances': 100,
     },
     'retinanet_head': {
-        'anchors_per_location': 9,
         'num_convs': 4,
         'num_filters': 256,
         'use_separable_conv': False,
