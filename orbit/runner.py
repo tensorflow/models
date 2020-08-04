@@ -34,7 +34,7 @@ class AbstractTrainer(tf.Module, metaclass=abc.ABCMeta):
     large in Eager mode. It is usually encouraged to create a host training loop
     (e.g. using a `tf.range` wrapping `strategy.run` inside a
     `tf.function`) in the TPU case. For the cases that don't require host
-    training loop to acheive peak performance, users can just implement a simple
+    training loop to achieve peak performance, users can just implement a simple
     python loop to drive each step.
 
     Args:
