@@ -54,6 +54,7 @@ def instantiate_encoder_from_cfg(
         vocab_size=config.vocab_size,
         type_vocab_size=config.type_vocab_size,
         hidden_size=config.hidden_size,
+        seq_length=None,
         max_seq_length=config.max_position_embeddings,
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=config.initializer_range),
@@ -89,6 +90,7 @@ def instantiate_encoder_from_cfg(
       activation=tf_utils.get_activation(config.hidden_activation),
       dropout_rate=config.dropout_rate,
       attention_dropout_rate=config.attention_dropout_rate,
+      sequence_length=None,
       max_sequence_length=config.max_position_embeddings,
       type_vocab_size=config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(

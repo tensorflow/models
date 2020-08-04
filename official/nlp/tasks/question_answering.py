@@ -23,7 +23,6 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
-from official.core import task_factory
 from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.bert import squad_evaluate_v1_1
@@ -58,7 +57,7 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@task_factory.register_task_cls(QuestionAnsweringConfig)
+@base_task.register_task_cls(QuestionAnsweringConfig)
 class QuestionAnsweringTask(base_task.Task):
   """Task object for question answering."""
 
@@ -291,3 +290,17 @@ class QuestionAnsweringTask(base_task.Task):
       eval_metrics = {'exact_match': eval_metrics['exact_match'],
                       'final_f1': eval_metrics['final_f1']}
     return eval_metrics
+
+  def initialize(self, model):
+    """Load a pretrained checkpoint (if exists) and then train from iter 0."""
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+    if not ckpt_dir_or_file:
+      return
+
+    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+    status = ckpt.read(ckpt_dir_or_file)
+    status.expect_partial().assert_existing_objects_matched()
+    logging.info('Finished loading pretrained checkpoint from %s',
+                 ckpt_dir_or_file)

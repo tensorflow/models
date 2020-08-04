@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""BERT cls-token classifier."""
+"""Trainer network for BERT-style models."""
 # pylint: disable=g-classes-have-attributes
+from __future__ import absolute_import
+from __future__ import division
+# from __future__ import google_type_annotations
+from __future__ import print_function
 
 import tensorflow as tf
 

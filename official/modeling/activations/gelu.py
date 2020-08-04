@@ -14,6 +14,12 @@
 # ==============================================================================
 """Gaussian error linear unit."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import math
+
 import tensorflow as tf
 
 
@@ -29,4 +35,6 @@ def gelu(x):
   Returns:
     `x` with the GELU activation applied.
   """
-  return tf.keras.activations.gelu(x, approximate=True)
+  cdf = 0.5 * (1.0 + tf.tanh(
+      (math.sqrt(2 / math.pi) * (x + 0.044715 * tf.pow(x, 3)))))
+  return x * cdf

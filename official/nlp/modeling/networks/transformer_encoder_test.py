@@ -42,6 +42,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     test_network = transformer_encoder.TransformerEncoder(
         vocab_size=100,
         hidden_size=hidden_size,
+        sequence_length=sequence_length,
         num_attention_heads=2,
         num_layers=3)
     # Create the inputs (note that the first dimension is implicit).
@@ -70,6 +71,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     test_network = transformer_encoder.TransformerEncoder(
         vocab_size=100,
         hidden_size=hidden_size,
+        sequence_length=sequence_length,
         num_attention_heads=2,
         num_layers=3,
         return_all_encoder_outputs=True)
@@ -98,6 +100,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     test_network = transformer_encoder.TransformerEncoder(
         vocab_size=100,
         hidden_size=hidden_size,
+        sequence_length=sequence_length,
         num_attention_heads=2,
         num_layers=3)
     # Create the inputs (note that the first dimension is implicit).
@@ -129,6 +132,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     test_network = transformer_encoder.TransformerEncoder(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
+        sequence_length=sequence_length,
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types,
@@ -159,6 +163,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     test_network = transformer_encoder.TransformerEncoder(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
+        sequence_length=sequence_length,
         max_sequence_length=max_sequence_length,
         num_attention_heads=2,
         num_layers=3,
@@ -172,6 +177,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
     test_network = transformer_encoder.TransformerEncoder(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
+        sequence_length=sequence_length,
         max_sequence_length=max_sequence_length,
         num_attention_heads=2,
         num_layers=3,
@@ -190,6 +196,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
         hidden_size=32,
         num_layers=3,
         num_attention_heads=2,
+        sequence_length=21,
         max_sequence_length=21,
         type_vocab_size=12,
         intermediate_size=1223,

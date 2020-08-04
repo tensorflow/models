@@ -1631,10 +1631,9 @@ class TestGatherWithPaddingValues(test_case.TestCase):
 
 
 class TestGIoU(test_case.TestCase):
-
-  def test_giou(self):
+  def test_giou_general(self):
     expected_giou_tensor = [
-        1, 0, -1/3, 1/25, 1, -3/4
+        1, 0, -1/3, 1/25, 0, -3/4
     ]
 
     def graph_fn():
@@ -1652,7 +1651,6 @@ class TestGIoU(test_case.TestCase):
 
     giou = self.execute(graph_fn, [])
     self.assertAllClose(expected_giou_tensor, giou)
-
 
 class TestCoordinateConversion(test_case.TestCase):
 

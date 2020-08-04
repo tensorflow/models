@@ -18,7 +18,6 @@ import dataclasses
 import tensorflow as tf
 
 from official.core import base_task
-from official.core import task_factory
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
 from official.nlp.configs import electra
@@ -40,7 +39,7 @@ class ELECTRAPretrainConfig(cfg.TaskConfig):
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@task_factory.register_task_cls(ELECTRAPretrainConfig)
+@base_task.register_task_cls(ELECTRAPretrainConfig)
 class ELECTRAPretrainTask(base_task.Task):
   """ELECTRA Pretrain Task (Masked LM + Replaced Token Detection)."""
 

@@ -14,14 +14,32 @@
 # ==============================================================================
 """Keras layers of XLNet model in TF 2.0."""
 
+from __future__ import absolute_import
+from __future__ import division
+# from __future__ import google_type_annotations
+from __future__ import print_function
+
 import copy
+import numpy as np
 
 import tensorflow as tf
 from official.nlp.xlnet import data_utils
 
 
 def gelu(x):
-  return tf.keras.activations.gelu(x, approximate=True)
+  """Gaussian Error Linear Unit.
+
+  This is a smoother version of the RELU.
+  Original paper: https://arxiv.org/abs/1606.08415
+  Args:
+    x: float Tensor to perform activation.
+
+  Returns:
+    `x` with the GELU activation applied.
+  """
+  cdf = 0.5 * (1.0 + tf.tanh(
+      (np.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3)))))
+  return x * cdf
 
 
 def rel_shift(x, klen=-1):

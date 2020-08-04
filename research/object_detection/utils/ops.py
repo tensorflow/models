@@ -1168,8 +1168,9 @@ def giou(boxes1, boxes2):
     x2I = tf.minimum(pred_xmax, gt_xmax)
     y1I = tf.maximum(pred_ymin, gt_ymin)
     y2I = tf.minimum(pred_ymax, gt_ymax)
-    intersection_area = (y2I - y1I) * (x2I - x1I) if (y2I > y1I and
-                                                      x2I > x1I) else 0.0
+    intersection_area = tf.where(tf.math.logical_and(
+        tf.greater(y2I, y1I), tf.greater(x2I, x1I)),
+        (y2I - y1I) * (x2I - x1I), 0.0)
 
     x1C = tf.minimum(pred_xmin, gt_xmin)
     x2C = tf.maximum(pred_xmax, gt_xmax)
@@ -1178,8 +1179,8 @@ def giou(boxes1, boxes2):
     hull_area = (y2C - y1C) * (x2C - x1C)
 
     union_area = gt_area + pred_area - intersection_area
-    IoU = intersection_area/union_area if union_area != 0.0 else 1.0
-    gIoU = IoU - (hull_area - union_area) / hull_area if hull_area != 0.0 else IoU
+    IoU = tf.where(tf.equal(union_area, 0.0), 0.0, intersection_area/union_area)
+    gIoU = IoU - tf.where(tf.equal(hull_area, 0.0), 0.0, (hull_area - union_area) / hull_area)
 
     return gIoU
 
