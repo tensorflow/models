@@ -847,7 +847,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     Returns:
       prediction_dict: a dictionary holding "raw" prediction tensors:
         1) rpn_box_predictor_features: A 4-D float32/bfloat16 tensor with shape
-          [batch_size, height__i, width_j, depth] to be used for predicting proposal
+          [batch_size, height_i, width_j, depth] to be used for predicting proposal
           boxes and corresponding objectness scores.
         2) rpn_features_to_crop: A list of 4-D float32/bfloat16 tensor with shape
           [batch_size, height, width, depth] representing image features to crop
