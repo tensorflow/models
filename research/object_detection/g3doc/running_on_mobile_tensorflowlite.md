@@ -93,7 +93,17 @@ bazel run -c opt tensorflow/lite/toco:toco -- \
 --inference_type=FLOAT \
 --allow_custom_ops
 ```
-
+[TOCO](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/toco) has been deprecated since Tensorflow 1.12, and we can use [tflite_convert](https://www.tensorflow.org/lite/convert/cmdline) to convert the frozen graph into TFLite model. For a floating point model, run this: 
+```shell
+tflite_convert \
+--graph_def_file=$OUTPUT_DIR/tflite_graph.pb \
+--output_file=$OUTPUT_DIR/detect.tflite \
+--input_shapes=1,300,300,3 \
+--input_arrays=normalized_input_image_tensor \
+--output_arrays='TFLite_Detection_PostProcess','TFLite_Detection_PostProcess:1','TFLite_Detection_PostProcess:2','TFLite_Detection_PostProcess:3' \
+--inference_type=FLOAT \
+--allow_custom_ops
+```
 # Running our model on Android
 
 To run our TensorFlow Lite model on device, we will use Android Studio to build
