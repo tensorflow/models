@@ -147,9 +147,9 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     logs = task.validation_step(next(iterator), model, metrics=metrics)
     loss = logs["loss"].numpy()
     if num_classes == 1:
-      self.assertAlmostEqual(loss, 42.77483, places=3)
+      self.assertGreater(loss, 1.0)
     else:
-      self.assertAlmostEqual(loss, 3.57627e-6, places=3)
+      self.assertLess(loss, 1.0)
 
   @parameterized.parameters(("matthews_corrcoef", 2),
                             ("pearson_spearman_corr", 1))
