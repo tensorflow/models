@@ -1962,11 +1962,10 @@ class FasterRCNNMetaArch(model.DetectionModel):
       # unit_scale_index: num_levels-2 is chosen based on section 4.2 of
       # https://arxiv.org/pdf/1612.03144.pdf and works best for Resnet based
       # feature extractor.
-      image_shape = image_shape.as_list()
       box_levels = ops.fpn_feature_levels(
           num_levels, num_levels - 2,
-
-          tf.sqrt(image_shape[1] * image_shape[2] * 1.0) / 224.0,
+          tf.sqrt(
+            tf.cast(image_shape[1] * image_shape[2], tf.float32)) / 224.0,
           proposal_boxes_normalized)
 
     cropped_regions = self._flatten_first_two_dimensions(
