@@ -582,8 +582,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(np.all(np.less_equal(anchors[:, 2], height)))
     self.assertTrue(np.all(np.less_equal(anchors[:, 3], width)))
 
+  @parameterized.parameters(
+      {'use_static_shapes': False},
+      {'use_static_shapes': True},
+  )
   def test_predict_shape_in_inference_mode_first_stage_only_multi_level(
-      self, use_static_shapes=False):
+      self, use_static_shapes):
     batch_size = 2
     height = 50
     width = 52
