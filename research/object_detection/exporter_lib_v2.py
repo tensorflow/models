@@ -16,12 +16,13 @@
 
 """Functions to export object detection inference graph."""
 import os
+import ast
+
 import tensorflow.compat.v2 as tf
 from object_detection.builders import model_builder
 from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.utils import config_util
-import ast
 
 def _decode_image(encoded_image_string_tensor):
   image_tensor = tf.image.decode_image(encoded_image_string_tensor,
@@ -51,7 +52,7 @@ def _zip_side_inputs(side_input_shapes="",
     a zipped list of side input tuples.
   """
   side_input_shapes = list(map(lambda x: ast.literal_eval('[' + x + ']'),
-      side_input_shapes.split('/')))
+                               side_input_shapes.split('/')))
   side_input_types = eval('[' + side_input_types + ']')
   side_input_names = side_input_names.split(',')
   return zip(side_input_shapes, side_input_types, side_input_names)
@@ -65,7 +66,9 @@ class DetectionInferenceModule(tf.Module):
     """Initializes a module for detection.
 
     Args:
-      detection_model: The detection model to use for inference.
+      detection_model: the detection model to use for inference.
+      use_side_inputs: whether to use side inputs.
+      zipped_side_inputs: the zipped side inputs.
     """
     self._model = detection_model
 
@@ -102,8 +105,9 @@ class DetectionFromImageModule(DetectionInferenceModule):
     """Initializes a module for detection.
 
     Args:
-      detection_model: The detection model to use for inference.
-
+      detection_model: the detection model to use for inference.
+      use_side_inputs: whether to use side inputs.
+      zipped_side_inputs: the zipped side inputs.
     """
     self.side_input_names = []
     sig = [tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8)]
@@ -114,11 +118,11 @@ class DetectionFromImageModule(DetectionInferenceModule):
                                  dtype=info[1],
                                  name=info[2]))
 
-    def __call__(input_tensor, *side_inputs):
+    def call_func(self, input_tensor, *side_inputs):
       kwargs = dict(zip(self.side_input_names, side_inputs))
       return self._run_inference_on_images(input_tensor, **kwargs)
 
-    self.__call__ = tf.function(__call__, input_signature=sig)
+    self.__call__ = tf.function(self.call_func, input_signature=sig)
 
     super(DetectionFromImageModule, self).__init__(detection_model,
                                                    use_side_inputs,
