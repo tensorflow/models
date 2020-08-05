@@ -20,12 +20,13 @@ object detection. To verify the consistency of the two models, we compare:
   2. Number of global variables.
 """
 import unittest
+
+from absl.testing import parameterized
 import numpy as np
 from six.moves import zip
 import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
-
 from object_detection.builders import hyperparams_builder
 from object_detection.models.keras_models import resnet_v1
 from object_detection.protos import hyperparams_pb2
@@ -178,6 +179,47 @@ class ResnetV1Test(test_case.TestCase):
     for model_index, var_num in enumerate(variable_nums):
       variables = self._get_variables(model_index)
       self.assertEqual(len(variables), var_num)
+
+
+class ResnetShapeTest(test_case.TestCase, parameterized.TestCase):
+
+  @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
+  @parameterized.parameters(
+      {
+          'resnet_type':
+              'resnet_v1_34',
+          'output_layer_names': [
+              'conv2_block3_out', 'conv3_block4_out', 'conv4_block6_out',
+              'conv5_block3_out'
+          ]
+      }, {
+          'resnet_type':
+              'resnet_v1_18',
+          'output_layer_names': [
+              'conv2_block2_out', 'conv3_block2_out', 'conv4_block2_out',
+              'conv5_block2_out'
+          ]
+      })
+  def test_output_shapes(self, resnet_type, output_layer_names):
+    if resnet_type == 'resnet_v1_34':
+      model = resnet_v1.resnet_v1_34(weights=None)
+    else:
+      model = resnet_v1.resnet_v1_18(weights=None)
+    outputs = [
+        model.get_layer(output_layer_name).output
+        for output_layer_name in output_layer_names
+    ]
+    resnet_model = tf.keras.models.Model(inputs=model.input, outputs=outputs)
+    outputs = resnet_model(np.zeros((2, 64, 64, 3), dtype=np.float32))
+
+    # Check the shape of 'conv2_block3_out':
+    self.assertEqual(outputs[0].shape, [2, 16, 16, 64])
+    # Check the shape of 'conv3_block4_out':
+    self.assertEqual(outputs[1].shape, [2, 8, 8, 128])
+    # Check the shape of 'conv4_block6_out':
+    self.assertEqual(outputs[2].shape, [2, 4, 4, 256])
+    # Check the shape of 'conv5_block3_out':
+    self.assertEqual(outputs[3].shape, [2, 2, 2, 512])
 
 
 if __name__ == '__main__':

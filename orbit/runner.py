@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,19 +15,12 @@
 # ==============================================================================
 """An abstraction that users can easily handle their custom training loops."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import abc
 from typing import Dict, Optional, Text
-import six
 import tensorflow as tf
 
 
-@six.add_metaclass(abc.ABCMeta)
-class AbstractTrainer(tf.Module):
+class AbstractTrainer(tf.Module, metaclass=abc.ABCMeta):
   """An abstract class defining the APIs required for training."""
 
   @abc.abstractmethod
@@ -51,13 +45,13 @@ class AbstractTrainer(tf.Module):
 
     Returns:
       The function may return a dictionary of `Tensors` or numpy arrays, which
-      will be written to logs and as TensorBoard summaries.
+      will be written to logs and as TensorBoard summaries. It can also be a
+      nested dictionary, yielding a hierarchy of summary directories.
     """
     pass
 
 
-@six.add_metaclass(abc.ABCMeta)
-class AbstractEvaluator(tf.Module):
+class AbstractEvaluator(tf.Module, metaclass=abc.ABCMeta):
   """An abstract class defining the APIs required for evaluation."""
 
   @abc.abstractmethod
@@ -74,6 +68,7 @@ class AbstractEvaluator(tf.Module):
 
     Returns:
       The function may return a dictionary of `Tensors` or numpy arrays, which
-      will be written to logs and as TensorBoard summaries.
+      will be written to logs and as TensorBoard summaries. It can also be a
+      nested dictionary, yielding a hierarchy of summary directories.
     """
     pass

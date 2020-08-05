@@ -160,7 +160,6 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
         "hidden_size": self._hidden_size,
         "min_timescale": self._min_timescale,
         "max_timescale": self._max_timescale,
-        "length": self._length,
     }
     base_config = super(RelativePositionEmbedding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))

@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +15,36 @@
 # ==============================================================================
 """An abstraction that users can easily handle their custom training loops."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import abc
 from typing import Any, Dict, Optional, Text
+import dataclasses
 from orbit import runner
 from orbit import utils
-import six
 import tensorflow as tf
 
 
-@six.add_metaclass(abc.ABCMeta)
-class StandardTrainer(runner.AbstractTrainer):
+@dataclasses.dataclass(frozen=True)
+class TrainerOverrides:
+  """Advanced overrides for Orbit trainers.
+
+  Attributes:
+    use_tf_while_loop: A boolean indicates whether to wrap the train step with
+      a `tf.while_loop`.
+    use_tf_function: A boolean indicates whether a `tf.function` will be used.
+      If False, training will run on pure eager mode.
+    use_tpu_summary_optimization: A boolean indicates whether to enable the
+      performance optimization for summaries in TPUs. In TPUs, writing
+      summaries with outside compilation inside train step is slow. If True,
+      it creates two `tf.function` with two XLA programs: one with summaries
+      and one without, and run the program with summaries (slow one) only if
+      necessary.
+  """
+  use_tf_while_loop: bool = True
+  use_tf_function: bool = True
+  use_tpu_summary_optimization: bool = False
+
+
+class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
   """Implements the standard functionality of AbstractTrainer APIs."""
 
   def __init__(self,
@@ -108,6 +124,12 @@ class StandardTrainer(runner.AbstractTrainer):
     context" for generality, to allow e.g. multiple iterator dequeues and calls
     to `strategy.run`.
 
+    Note that if `use_tf_function=True`, all the code inside `train_step` should
+    be tf.function compatible, as they will be traced with tf.function. This
+    means you cannot put arbitrary python code in this function. If users have
+    any numpy operations, they should be put in `train_loop_begin` or
+    `train_loop_end` functions.
+
     Args:
       iterator: A tf.nest-compatible structure of tf.data Iterator or
         DistributedIterator.
@@ -122,7 +144,8 @@ class StandardTrainer(runner.AbstractTrainer):
 
     Returns:
       The function may return a dictionary of `Tensors`, which will be
-      written to logs and as TensorBoard summaries.
+      written to logs and as TensorBoard summaries. It can also be a
+      nested dictionary, yielding a hierarchy of summary directories.
     """
     pass
 
@@ -145,8 +168,18 @@ class StandardTrainer(runner.AbstractTrainer):
     self._train_iter = None
 
 
-@six.add_metaclass(abc.ABCMeta)
-class StandardEvaluator(runner.AbstractEvaluator):
+@dataclasses.dataclass(frozen=True)
+class EvaluatorOverrides:
+  """Advanced overrides for Orbit evaluators.
+
+  Attributes:
+    use_tf_function: A boolean indicates whether a `tf.function` will be used.
+      If False, training will run on pure eager mode.
+  """
+  use_tf_function: bool = True
+
+
+class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
   """Implements the standard functionality of AbstractEvaluator APIs."""
 
   def __init__(self, eval_dataset, use_tf_function=True):
@@ -202,6 +235,12 @@ class StandardEvaluator(runner.AbstractEvaluator):
     context" for generality, to allow e.g. multiple iterator dequeues and calls
     to `strategy.run`.
 
+    Note that if `use_tf_function=True`, all the code inside `eval_step` should
+    be tf.function compatible, as they will be traced with tf.function. This
+    means you cannot put arbitrary python code in this function. If users have
+    any numpy operations, they should be put in `eval_begin`, `eval_end` or
+    `eval_reduce` functions.
+
     Args:
       iterator: A tf.nest-compatible structure of tf.data Iterator or
         DistributedIterator.
@@ -223,7 +262,8 @@ class StandardEvaluator(runner.AbstractEvaluator):
 
     Returns:
       The function may return a dictionary of `Tensors`, which will be
-      written to logs and as TensorBoard summaries.
+      written to logs and as TensorBoard summaries. It can also be a
+      nested dictionary, yielding a hierarchy of summary directories.
     """
     pass
 

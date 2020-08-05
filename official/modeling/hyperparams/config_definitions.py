@@ -112,6 +112,8 @@ class RuntimeConfig(base_config.Config):
     run_eagerly: Whether or not to run the experiment eagerly.
     batchnorm_spatial_persistent: Whether or not to enable the spatial
       persistent mode for CuDNN batch norm kernel for improved GPU performance.
+    allow_tpu_summary: Whether to allow summary happen inside the XLA program
+      runs on TPU through automatic outside compilation.
   """
   distribution_strategy: str = "mirrored"
   enable_xla: bool = False
@@ -183,14 +185,19 @@ class TrainerConfig(base_config.Config):
     validation_interval: number of training steps to run between evaluations.
   """
   optimizer_config: OptimizationConfig = OptimizationConfig()
+  # Orbit settings.
   train_tf_while_loop: bool = True
   train_tf_function: bool = True
   eval_tf_function: bool = True
+  allow_tpu_summary: bool = False
+  # Trainer intervals.
   steps_per_loop: int = 1000
   summary_interval: int = 1000
   checkpoint_interval: int = 1000
+  # Checkpoint manager.
   max_to_keep: int = 5
   continuous_eval_timeout: Optional[int] = None
+  # Train/Eval routines.
   train_steps: int = 0
   validation_steps: Optional[int] = None
   validation_interval: int = 1000
