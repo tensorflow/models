@@ -843,9 +843,9 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     Returns:
       prediction_dict: a dictionary holding "raw" prediction tensors:
-        1) rpn_box_predictor_features: A 4-D float32/bfloat16 tensor with shape
-          [batch_size, height_i, width_j, depth] to be used for predicting proposal
-          boxes and corresponding objectness scores.
+        1) rpn_box_predictor_features: A list of 4-D float32/bfloat16 tensor
+          with shape [batch_size, height_i, width_j, depth] to be used for
+          predicting proposal boxes and corresponding objectness scores.
         2) rpn_features_to_crop: A list of 4-D float32/bfloat16 tensor with shape
           [batch_size, height, width, depth] representing image features to crop
           using the proposal boxes predicted by the RPN.
@@ -941,8 +941,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         predictions (logits) for each of the anchors.  Note that this
         tensor *includes* background class predictions (at class index 0).
       rpn_features_to_crop: A list of 4-D float32 or bfloat16 tensor with shape
-        [batch_size, height, width, depth] representing image features to crop
-        using the proposal boxes predicted by the RPN.
+        [batch_size, height_i, width_i, depth] representing image features to
+        crop using the proposal boxes predicted by the RPN.
       anchors: 2-D float tensor of shape
         [num_anchors, self._box_coder.code_size].
       image_shape: A 1D int32 tensors of size [4] containing the image shape.
@@ -1006,8 +1006,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
 
     Args:
       rpn_features_to_crop: A list 4-D float32 or bfloat16 tensor with shape
-        [batch_size, height, width, depth] representing image features to crop
-        using the proposal boxes predicted by the RPN.
+        [batch_size, height_i, width_i, depth] representing image features to
+        crop using the proposal boxes predicted by the RPN.
       proposal_boxes_normalized: A float tensor with shape [batch_size,
         max_num_proposals, 4] representing the (potentially zero padded)
         proposal boxes for all images in the batch.  These boxes are represented
