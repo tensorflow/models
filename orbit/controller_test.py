@@ -221,7 +221,10 @@ class TestTrainerWithSummaries(standard_runner.StandardTrainer):
         self.strategy.experimental_distribute_datasets_from_function(dataset_fn)
     )
     standard_runner.StandardTrainer.__init__(
-        self, train_dataset, use_tpu_summary_optimization=True)
+        self,
+        train_dataset,
+        options=standard_runner.StandardTrainerOptions(
+            use_tpu_summary_optimization=True))
 
   def build_train_dataset(self):
     return self.strategy.experimental_distribute_datasets_from_function(
