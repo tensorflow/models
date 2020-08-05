@@ -25,6 +25,7 @@ from official.nlp.bert import export_tfhub
 from official.nlp.configs import bert
 from official.nlp.configs import encoders
 from official.nlp.data import question_answering_dataloader
+from official.nlp.tasks import masked_lm
 from official.nlp.tasks import question_answering
 
 
@@ -32,21 +33,37 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super(QuestionAnsweringTaskTest, self).setUp()
-    self._encoder_config = encoders.TransformerEncoderConfig(
-        vocab_size=30522, num_layers=1)
+    self._encoder_config = encoders.EncoderConfig(
+        bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1))
     self._train_data_config = question_answering_dataloader.QADataConfig(
-        input_path="dummy",
-        seq_length=128,
-        global_batch_size=1)
+        input_path="dummy", seq_length=128, global_batch_size=1)
 
-    val_data = {"version": "1.1",
-                "data": [{"paragraphs": [
-                    {"context": "Sky is blue.",
-                     "qas": [{"question": "What is blue?", "id": "1234",
-                              "answers": [{"text": "Sky", "answer_start": 0},
-                                          {"text": "Sky", "answer_start": 0},
-                                          {"text": "Sky", "answer_start": 0}]
-                              }]}]}]}
+    val_data = {
+        "version":
+            "1.1",
+        "data": [{
+            "paragraphs": [{
+                "context":
+                    "Sky is blue.",
+                "qas": [{
+                    "question":
+                        "What is blue?",
+                    "id":
+                        "1234",
+                    "answers": [{
+                        "text": "Sky",
+                        "answer_start": 0
+                    }, {
+                        "text": "Sky",
+                        "answer_start": 0
+                    }, {
+                        "text": "Sky",
+                        "answer_start": 0
+                    }]
+                }]
+            }]
+        }]
+    }
     self._val_input_path = os.path.join(self.get_temp_dir(), "val_data.json")
     with tf.io.gfile.GFile(self._val_input_path, "w") as writer:
       writer.write(json.dumps(val_data, indent=4) + "\n")
@@ -87,19 +104,20 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
     metrics = task.reduce_aggregated_logs(logs)
     self.assertIn("final_f1", metrics)
 
-  @parameterized.parameters(itertools.product(
-      (False, True),
-      ("WordPiece", "SentencePiece"),
-  ))
+  @parameterized.parameters(
+      itertools.product(
+          (False, True),
+          ("WordPiece", "SentencePiece"),
+      ))
   def test_task(self, version_2_with_negative, tokenization):
     # Saves a checkpoint.
-    pretrain_cfg = bert.BertPretrainerConfig(
+    pretrain_cfg = bert.PretrainerConfig(
         encoder=self._encoder_config,
         cls_heads=[
             bert.ClsHeadConfig(
                 inner_dim=10, num_classes=3, name="next_sentence")
         ])
-    pretrain_model = bert.instantiate_pretrainer_from_cfg(pretrain_cfg)
+    pretrain_model = masked_lm.MaskedLMTask(None).build_model(pretrain_cfg)
     ckpt = tf.train.Checkpoint(
         model=pretrain_model, **pretrain_model.checkpoint_items)
     saved_path = ckpt.save(self.get_temp_dir())
