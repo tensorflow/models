@@ -626,8 +626,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         'rpn_box_encodings': (batch_size, expected_num_anchors, 4),
         'rpn_objectness_predictions_with_background':
         (batch_size, expected_num_anchors, 2),
-        'anchors': (18300, 4)
     }
+
+    if use_static_shapes:
+      expected_output_shapes['anchors'] = (expected_num_anchors, 4)
+    else:
+      expected_output_shapes['anchors'] = (18300, 4)
 
     if use_static_shapes:
       results = self.execute(graph_fn, [images], graph=g)
