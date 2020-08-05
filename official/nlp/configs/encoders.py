@@ -15,20 +15,23 @@
 # ==============================================================================
 """Transformer Encoders.
 
-Includes configurations and instantiation methods.
+Includes configurations and factory methods.
 """
 from typing import Optional
+
+from absl import logging
 import dataclasses
+import gin
 import tensorflow as tf
 
+from official.modeling import hyperparams
 from official.modeling import tf_utils
-from official.modeling.hyperparams import base_config
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 
 
 @dataclasses.dataclass
-class TransformerEncoderConfig(base_config.Config):
+class BertEncoderConfig(hyperparams.Config):
   """BERT encoder configuration."""
   vocab_size: int = 30522
   hidden_size: int = 768
@@ -44,55 +47,86 @@ class TransformerEncoderConfig(base_config.Config):
   embedding_size: Optional[int] = None
 
 
-def instantiate_encoder_from_cfg(
-    config: TransformerEncoderConfig,
-    encoder_cls=networks.TransformerEncoder,
-    embedding_layer: Optional[layers.OnDeviceEmbedding] = None):
-  """Instantiate a Transformer encoder network from TransformerEncoderConfig."""
+@dataclasses.dataclass
+class EncoderConfig(hyperparams.OneOfConfig):
+  """Encoder configuration."""
+  type: Optional[str] = "bert"
+  bert: BertEncoderConfig = BertEncoderConfig()
+
+
+ENCODER_CLS = {
+    "bert": networks.TransformerEncoder,
+}
+
+
+@gin.configurable
+def build_encoder(config: EncoderConfig,
+                  embedding_layer: Optional[layers.OnDeviceEmbedding] = None,
+                  encoder_cls=None,
+                  bypass_config: bool = False):
+  """Instantiate a Transformer encoder network from EncoderConfig.
+
+  Args:
+    config: the one-of encoder config, which provides encoder parameters of a
+      chosen encoder.
+    embedding_layer: an external embedding layer passed to the encoder.
+    encoder_cls: an external encoder cls not included in the supported encoders,
+      usually used by gin.configurable.
+    bypass_config: whether to ignore config instance to create the object with
+      `encoder_cls`.
+
+  Returns:
+    An encoder instance.
+  """
+  encoder_type = config.type
+  encoder_cfg = config.get()
+  encoder_cls = encoder_cls or ENCODER_CLS[encoder_type]
+  logging.info("Encoder class: %s to build...", encoder_cls.__name__)
+  if bypass_config:
+    return encoder_cls()
   if encoder_cls.__name__ == "EncoderScaffold":
     embedding_cfg = dict(
-        vocab_size=config.vocab_size,
-        type_vocab_size=config.type_vocab_size,
-        hidden_size=config.hidden_size,
-        max_seq_length=config.max_position_embeddings,
+        vocab_size=encoder_cfg.vocab_size,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        max_seq_length=encoder_cfg.max_position_embeddings,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=config.initializer_range),
-        dropout_rate=config.dropout_rate,
+            stddev=encoder_cfg.initializer_range),
+        dropout_rate=encoder_cfg.dropout_rate,
     )
     hidden_cfg = dict(
-        num_attention_heads=config.num_attention_heads,
-        intermediate_size=config.intermediate_size,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        intermediate_size=encoder_cfg.intermediate_size,
         intermediate_activation=tf_utils.get_activation(
-            config.hidden_activation),
-        dropout_rate=config.dropout_rate,
-        attention_dropout_rate=config.attention_dropout_rate,
+            encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
         kernel_initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=config.initializer_range),
+            stddev=encoder_cfg.initializer_range),
     )
     kwargs = dict(
         embedding_cfg=embedding_cfg,
         hidden_cfg=hidden_cfg,
-        num_hidden_instances=config.num_layers,
-        pooled_output_dim=config.hidden_size,
+        num_hidden_instances=encoder_cfg.num_layers,
+        pooled_output_dim=encoder_cfg.hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=config.initializer_range))
+            stddev=encoder_cfg.initializer_range))
     return encoder_cls(**kwargs)
 
-  if encoder_cls.__name__ != "TransformerEncoder":
-    raise ValueError("Unknown encoder network class. %s" % str(encoder_cls))
-  encoder_network = encoder_cls(
-      vocab_size=config.vocab_size,
-      hidden_size=config.hidden_size,
-      num_layers=config.num_layers,
-      num_attention_heads=config.num_attention_heads,
-      intermediate_size=config.intermediate_size,
-      activation=tf_utils.get_activation(config.hidden_activation),
-      dropout_rate=config.dropout_rate,
-      attention_dropout_rate=config.attention_dropout_rate,
-      max_sequence_length=config.max_position_embeddings,
-      type_vocab_size=config.type_vocab_size,
+  # Uses the default BERTEncoder configuration schema to create the encoder.
+  # If it does not match, please add a switch branch by the encoder type.
+  return encoder_cls(
+      vocab_size=encoder_cfg.vocab_size,
+      hidden_size=encoder_cfg.hidden_size,
+      num_layers=encoder_cfg.num_layers,
+      num_attention_heads=encoder_cfg.num_attention_heads,
+      intermediate_size=encoder_cfg.intermediate_size,
+      activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+      dropout_rate=encoder_cfg.dropout_rate,
+      attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+      max_sequence_length=encoder_cfg.max_position_embeddings,
+      type_vocab_size=encoder_cfg.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=config.initializer_range),
-      embedding_width=config.embedding_size,
+          stddev=encoder_cfg.initializer_range),
+      embedding_width=encoder_cfg.embedding_size,
       embedding_layer=embedding_layer)
-  return encoder_network

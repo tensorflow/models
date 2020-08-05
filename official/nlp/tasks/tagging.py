@@ -37,8 +37,7 @@ from official.nlp.tasks import utils
 @dataclasses.dataclass
 class ModelConfig(base_config.Config):
   """A base span labeler configuration."""
-  encoder: encoders.TransformerEncoderConfig = (
-      encoders.TransformerEncoderConfig())
+  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
   head_dropout: float = 0.1
   head_initializer_range: float = 0.02
 
@@ -102,8 +101,7 @@ class TaggingTask(base_task.Task):
     if self._hub_module:
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
-      encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.model.encoder)
+      encoder_network = encoders.build_encoder(self.task_config.model.encoder)
 
     return models.BertTokenClassifier(
         network=encoder_network,

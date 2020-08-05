@@ -44,8 +44,7 @@ class ModelConfig(base_config.Config):
   """A classifier/regressor configuration."""
   num_classes: int = 0
   use_encoder_pooler: bool = False
-  encoder: encoders.TransformerEncoderConfig = (
-      encoders.TransformerEncoderConfig())
+  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
 
 
 @dataclasses.dataclass
@@ -85,15 +84,14 @@ class SentencePredictionTask(base_task.Task):
     if self._hub_module:
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
-      encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.model.encoder)
-
+      encoder_network = encoders.build_encoder(self.task_config.model.encoder)
+    encoder_cfg = self.task_config.model.encoder.get()
     # Currently, we only support bert-style sentence prediction finetuning.
     return models.BertClassifier(
         network=encoder_network,
         num_classes=self.task_config.model.num_classes,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.model.encoder.initializer_range),
+            stddev=encoder_cfg.initializer_range),
         use_encoder_pooler=self.task_config.model.use_encoder_pooler)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
