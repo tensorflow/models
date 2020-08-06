@@ -1134,3 +1134,64 @@ def decode_image(tensor_dict):
       tensor_dict[fields.InputDataFields.image], channels=3)
   tensor_dict[fields.InputDataFields.image].set_shape([None, None, 3])
   return tensor_dict
+
+
+def giou(boxes1, boxes2):
+  """Computes generalized IOU between two tensors.
+
+  Each box should be represented as [ymin, xmin, ymax, xmax].
+
+  Args:
+    boxes1: a tensor with shape [num_boxes, 4]
+    boxes2: a tensor with shape [num_boxes, 4]
+
+  Returns:
+    a tensor of shape [num_boxes] containing GIoUs
+
+  """
+  def _two_boxes_giou(boxes):
+    """Compute giou between two boxes."""
+    boxes1, boxes2 = boxes
+
+    pred_ymin, pred_xmin, pred_ymax, pred_xmax = tf.unstack(boxes1)
+    gt_ymin, gt_xmin, gt_ymax, gt_xmax = tf.unstack(boxes2)
+
+    gt_area = (gt_ymax - gt_ymin) * (gt_xmax - gt_xmin)
+    pred_area = (pred_ymax - pred_ymin) * (pred_xmax - pred_xmin)
+
+    x1_i = tf.maximum(pred_xmin, gt_xmin)
+    x2_i = tf.minimum(pred_xmax, gt_xmax)
+    y1_i = tf.maximum(pred_ymin, gt_ymin)
+    y2_i = tf.minimum(pred_ymax, gt_ymax)
+    intersection_area = tf.maximum(0.0, y2_i - y1_i) * tf.maximum(0.0,
+                                                                  x2_i - x1_i)
+
+    x1_c = tf.minimum(pred_xmin, gt_xmin)
+    x2_c = tf.maximum(pred_xmax, gt_xmax)
+    y1_c = tf.minimum(pred_ymin, gt_ymin)
+    y2_c = tf.maximum(pred_ymax, gt_ymax)
+    hull_area = (y2_c - y1_c) * (x2_c - x1_c)
+
+    union_area = gt_area + pred_area - intersection_area
+    iou = tf.where(
+        tf.equal(union_area, 0.0), 0.0, intersection_area / union_area)
+    giou_ = iou - tf.where(hull_area > 0.0,
+                           (hull_area - union_area) / hull_area, iou)
+
+    return giou_
+
+  return shape_utils.static_or_dynamic_map_fn(_two_boxes_giou, [boxes1, boxes2])
+
+
+def center_to_corner_coordinate(input_tensor):
+  """Converts input boxes from center to corner representation."""
+  reshaped_encodings = tf.reshape(input_tensor, [-1, 4])
+  ycenter = tf.gather(reshaped_encodings, [0], axis=1)
+  xcenter = tf.gather(reshaped_encodings, [1], axis=1)
+  h = tf.gather(reshaped_encodings, [2], axis=1)
+  w = tf.gather(reshaped_encodings, [3], axis=1)
+  ymin = ycenter - h / 2.
+  xmin = xcenter - w / 2.
+  ymax = ycenter + h / 2.
+  xmax = xcenter + w / 2.
+  return tf.squeeze(tf.stack([ymin, xmin, ymax, xmax], axis=1))
