@@ -1707,7 +1707,7 @@ class TestGIoU(test_case.TestCase):
     giou = self.execute(graph_fn, [])
     self.assertAllClose(expected_giou_tensor, giou)
 
-  def test_giou_correlates_with_same_l1(self):
+  def test_giou_different_with_l1_same(self):
     expected_giou_tensor = [
         2/3, 3/5
     ]
