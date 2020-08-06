@@ -212,7 +212,7 @@ class GenerateDetectionDataTest(tf.test.TestCase):
     confidence_threshold = 0.8
     inference_fn = generate_detection_data.GenerateDetectionDataFn(
         saved_model_path, confidence_threshold)
-    inference_fn.start_bundle()
+    inference_fn.setup()
     generated_example = self._create_tf_example()
     self.assertAllEqual(tf.train.Example.FromString(
         generated_example).features.feature['image/object/class/label']

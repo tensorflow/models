@@ -157,7 +157,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
     self._top_k_embedding_count = top_k_embedding_count
     self._bottom_k_embedding_count = bottom_k_embedding_count
 
-  def start_bundle(self):
+  def setup(self):
     self._load_inference_model()
 
   def _load_inference_model(self):
