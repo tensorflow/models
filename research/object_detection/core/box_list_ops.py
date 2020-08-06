@@ -327,7 +327,7 @@ def l1(boxlist1, boxlist2, scope=None):
         tf.transpose(w1), axis=1))
     return ycenters + xcenters + heights + widths
 
-def giou_loss(boxlist1, boxlist2, scope=None):
+def giou(boxlist1, boxlist2, scope=None):
   """
   Computes generalized IOU loss between two boxlists pairwise,
   as described at giou.stanford.edu.
@@ -345,7 +345,7 @@ def giou_loss(boxlist1, boxlist2, scope=None):
     M = boxlist2.num_boxes()
     boxes1 = tf.repeat(boxlist1.get(), repeats=M, axis=0)
     boxes2 = tf.tile(boxlist2.get(), multiples=[N, 1])
-    return tf.reshape(1.0 - ops.giou(boxes1, boxes2), [N, M])
+    return tf.reshape(ops.giou(boxes1, boxes2), [N, M])
 
 def matched_iou(boxlist1, boxlist2, scope=None):
   """Compute intersection-over-union between corresponding boxes in boxlists.

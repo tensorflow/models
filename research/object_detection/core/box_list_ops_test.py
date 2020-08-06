@@ -247,9 +247,9 @@ class BoxListOpsTest(test_case.TestCase):
       corners2 = tf.constant([[5.0, 7.0, 7.0, 9.0], [5.0, 11.0, 7.0, 13.0]])
       boxes1 = box_list.BoxList(corners1)
       boxes2 = box_list.BoxList(corners2)
-      giou = box_list_ops.giou_loss(boxes1, boxes2)
+      giou = box_list_ops.giou(boxes1, boxes2)
       return giou
-    exp_output = [[0.0, 4.0 / 3.0]]
+    exp_output = [[1.0, -1.0 / 3.0]]
     giou_output = self.execute(graph_fn, [])
     self.assertAllClose(giou_output, exp_output)
 

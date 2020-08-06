@@ -1631,19 +1631,19 @@ class TestGatherWithPaddingValues(test_case.TestCase):
 
 
 class TestGIoU(test_case.TestCase):
-  def test_giou_general(self):
+  def test_giou_with_no_overlap(self):
     expected_giou_tensor = [
-        0, -1/3, 1/25, -3/4, 0, -98/100
+        0, -1/3, -3/4, 0, -98/100
     ]
 
     def graph_fn():
       boxes1 = tf.constant([[3, 4, 5, 6], [3, 3, 5, 5],
-                            [2, 1, 7, 6], [0, 0, 0, 0],
-                            [3, 3, 5, 5], [9, 9, 10, 10]],
+                            [0, 0, 0, 0], [3, 3, 5, 5],
+                            [9, 9, 10, 10]],
                             dtype=tf.float32)
       boxes2 = tf.constant([[3, 2, 5, 4], [3, 7, 5, 9],
-                            [4, 3, 5, 4], [5, 5, 10, 10],
-                            [3, 5, 5, 7], [0, 0, 1, 1]], dtype=tf.float32)
+                            [5, 5, 10, 10], [3, 5, 5, 7],
+                            [0, 0, 1, 1]], dtype=tf.float32)
 
       giou = ops.giou(boxes1, boxes2)
       self.assertEqual(giou.dtype, tf.float32)
@@ -1653,15 +1653,33 @@ class TestGIoU(test_case.TestCase):
     giou = self.execute(graph_fn, [])
     self.assertAllClose(expected_giou_tensor, giou)
 
-  def test_giou_edge_cases(self):
+  def test_giou_with_overlaps(self):
     expected_giou_tensor = [
-        1, 0
+        1/25, 1/4, 1/3, 1/7 - 2/9
     ]
 
     def graph_fn():
-      boxes1 = tf.constant([[3, 3, 5, 5], [1, 1, 1, 1]],
+      boxes1 = tf.constant([[2, 1, 7, 6], [2, 2, 4, 4],
+                            [2, 2, 4, 4], [2, 2, 4, 4]],
+                            dtype=tf.float32)
+      boxes2 = tf.constant([[4, 3, 5, 4], [3, 3, 4, 4],
+                            [2, 3, 4, 5], [3, 3, 5, 5]], dtype=tf.float32)
+
+      giou = ops.giou(boxes1, boxes2)
+      self.assertEqual(giou.dtype, tf.float32)
+
+      return giou
+
+    giou = self.execute(graph_fn, [])
+    self.assertAllClose(expected_giou_tensor, giou)
+
+  def test_giou_with_perfect_overlap(self):
+    expected_giou_tensor = [1]
+
+    def graph_fn():
+      boxes1 = tf.constant([[3, 3, 5, 5]],
           dtype=tf.float32)
-      boxes2 = tf.constant([[3, 3, 5, 5], [1, 1, 1, 1]],
+      boxes2 = tf.constant([[3, 3, 5, 5]],
           dtype=tf.float32)
 
       giou = ops.giou(boxes1, boxes2)
@@ -1672,7 +1690,24 @@ class TestGIoU(test_case.TestCase):
     giou = self.execute(graph_fn, [])
     self.assertAllClose(expected_giou_tensor, giou)
 
-  def test_giou_l1_same(self):
+  def test_giou_with_zero_area_boxes(self):
+    expected_giou_tensor = [0]
+
+    def graph_fn():
+      boxes1 = tf.constant([[1, 1, 1, 1]],
+          dtype=tf.float32)
+      boxes2 = tf.constant([[1, 1, 1, 1]],
+          dtype=tf.float32)
+
+      giou = ops.giou(boxes1, boxes2)
+      self.assertEqual(giou.dtype, tf.float32)
+
+      return giou
+
+    giou = self.execute(graph_fn, [])
+    self.assertAllClose(expected_giou_tensor, giou)
+
+  def test_giou_correlates_with_same_l1(self):
     expected_giou_tensor = [
         2/3, 3/5
     ]
