@@ -56,8 +56,8 @@ class FakeModel(model.DetectionModel):
 
   def predict(self, preprocessed_inputs, true_image_shapes, **side_inputs):
     return_dict = {'image': self._conv(preprocessed_inputs)}
-    if 'side_inp' in side_inputs:
-      return_dict['image'] += side_inputs['side_inp']
+    if 'side_inp_1' in side_inputs:
+      return_dict['image'] += side_inputs['side_inp_1']
     return return_dict
 
   def postprocess(self, prediction_dict, true_image_shapes):
@@ -145,9 +145,9 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
     """Get dummy input for the given input type."""
 
     if input_type == 'image_tensor':
-      return np.zeros(shape=(1, 20, 20, 3), dtype=np.uint8)
+      return np.zeros((1, 20, 20, 3), dtype=np.uint8)
     if input_type == 'float_image_tensor':
-      return np.zeros(shape=(1, 20, 20, 3), dtype=np.float32)
+      return np.zeros((1, 20, 20, 3), dtype=np.float32)
     elif input_type == 'encoded_image_string_tensor':
       image = Image.new('RGB', (20, 20))
       byte_io = io.BytesIO()
@@ -221,17 +221,19 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
           trained_checkpoint_dir=tmp_dir,
           output_directory=output_directory,
           use_side_inputs=True,
-          side_input_shapes="1",
-          side_input_names="side_inp",
-          side_input_types="tf.float32")
+          side_input_shapes="1/2,2",
+          side_input_names="side_inp_1,side_inp_2",
+          side_input_types="tf.float32,tf.uint8")
 
       saved_model_path = os.path.join(output_directory, 'saved_model')
       detect_fn = tf.saved_model.load(saved_model_path)
       detect_fn_sig = detect_fn.signatures['serving_default']
       image = tf.constant(self.get_dummy_input(input_type))
-      side_input = np.ones((1,), dtype=np.float32)
+      side_input_1 = np.ones((1,), dtype=np.float32)
+      side_input_2 = np.ones((2, 2), dtype=np.uint8)
       detections = detect_fn_sig(input_tensor=image,
-                                 side_inp=tf.constant(side_input))
+                                 side_inp_1=tf.constant(side_input_1),
+                                 side_inp_2=tf.constant(side_input_2))
 
       detection_fields = fields.DetectionResultFields
       self.assertAllClose(detections[detection_fields.detection_boxes],

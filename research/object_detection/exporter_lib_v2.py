@@ -37,9 +37,10 @@ def _decode_tf_example(tf_example_string_tensor):
   image_tensor = tensor_dict[fields.InputDataFields.image]
   return image_tensor
 
-def _zip_side_inputs(side_input_shapes="",
-                     side_input_types="",
-                     side_input_names=""):
+
+def _combine_side_inputs(side_input_shapes="",
+                         side_input_types="",
+                         side_input_names=""):
   """Zips the side inputs together.
 
   Args:
@@ -57,12 +58,13 @@ def _zip_side_inputs(side_input_shapes="",
   side_input_names = side_input_names.split(',')
   return zip(side_input_shapes, side_input_types, side_input_names)
 
+
 class DetectionInferenceModule(tf.Module):
   """Detection Inference Module."""
 
   def __init__(self, detection_model,
                use_side_inputs=False,
-               zipped_side_inputs=None):
+               zipped_side_inputs=[]):
     """Initializes a module for detection.
 
     Args:
@@ -71,6 +73,19 @@ class DetectionInferenceModule(tf.Module):
       zipped_side_inputs: the zipped side inputs.
     """
     self._model = detection_model
+
+  def _get_side_input_signature(self, zipped_side_inputs):
+    sig = []
+    side_input_names = []
+    for info in zipped_side_inputs:
+      sig.append(tf.TensorSpec(shape=info[0],
+                                dtype=info[1],
+                                name=info[2]))
+      side_input_names.append(info[2])
+    return sig
+
+  def _get_side_names_from_zip(self, zipped_side_inputs):
+    return [side[2] for side in zipped_side_inputs]
 
   def _run_inference_on_images(self, image, **kwargs):
     """Cast image to float and run inference.
@@ -109,20 +124,20 @@ class DetectionFromImageModule(DetectionInferenceModule):
       use_side_inputs: whether to use side inputs.
       zipped_side_inputs: the zipped side inputs.
     """
-    self.side_input_names = []
-    sig = [tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8)]
+    if zipped_side_inputs is None:
+      zipped_side_inputs = []
+    sig = [tf.TensorSpec(shape=[1, None, None, 3],
+                         dtype=tf.uint8,
+                         name='input_tensor')]
     if use_side_inputs:
-      for info in zipped_side_inputs:
-        self.side_input_names.append(info[2])
-        sig.append(tf.TensorSpec(shape=info[0],
-                                 dtype=info[1],
-                                 name=info[2]))
+      sig.extend(self._get_side_input_signature(zipped_side_inputs))
+    self._side_input_names = self._get_side_names_from_zip(zipped_side_inputs)
 
-    def call_func(self, input_tensor, *side_inputs):
-      kwargs = dict(zip(self.side_input_names, side_inputs))
+    def call_func(input_tensor, *side_inputs):
+      kwargs = dict(zip(self._side_input_names, side_inputs))
       return self._run_inference_on_images(input_tensor, **kwargs)
 
-    self.__call__ = tf.function(self.call_func, input_signature=sig)
+    self.__call__ = tf.function(call_func, input_signature=sig)
 
     super(DetectionFromImageModule, self).__init__(detection_model,
                                                    use_side_inputs,
@@ -224,14 +239,15 @@ def export_inference_graph(input_type,
   if use_side_inputs and input_type != 'image_tensor':
     raise ValueError('Side inputs supported for image_tensor input type only.')
 
-  zipped_side_inputs = None
+  zipped_side_inputs = []
   if use_side_inputs:
-    zipped_side_inputs = _zip_side_inputs(side_input_shapes,
-                                          side_input_types,
-                                          side_input_names)
+    zipped_side_inputs = _combine_side_inputs(side_input_shapes,
+                                              side_input_types,
+                                              side_input_names)
+
   detection_module = DETECTION_MODULE_MAP[input_type](detection_model,
                                                       use_side_inputs,
-                                                      zipped_side_inputs)
+                                                      list(zipped_side_inputs))
   # Getting the concrete function traces the graph and forces variables to
   # be constructed --- only after this can we save the checkpoint and
   # saved model.

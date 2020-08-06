@@ -50,6 +50,10 @@ python exporter_main_v2.py \
     --pipeline_config_path path/to/ssd_inception_v2.config \
     --trained_checkpoint_dir path/to/checkpoint \
     --output_directory path/to/exported_model_directory
+    --use_side_inputs True/False \
+    --side_input_shapes dim_0,dim_1,...dim_a/.../dim_0,dim_1,...,dim_z \
+    --side_input_names name_a,name_b,...,name_c \
+    --side_input_types type_1,type_2
 
 The expected output would be in the directory
 path/to/exported_model_directory (which is created if it does not exist)
@@ -80,6 +84,13 @@ python exporter_main_v2.py \
                 } \
               } \
             }"
+
+If side inputs are desired, the following arguments could be appended
+(the example below is for Context R-CNN).
+   --use_side_inputs True \
+   --side_input_shapes 1,2000,2057/1 \
+   --side_input_names context_features,valid_context_size \
+   --side_input_types tf.float32,tf.int32
 """
 from absl import app
 from absl import flags
