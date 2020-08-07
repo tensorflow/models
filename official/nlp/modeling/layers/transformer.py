@@ -223,7 +223,7 @@ class Transformer(tf.keras.layers.Layer):
         "intermediate_dropout":
             self._intermediate_dropout,
         "attention_initializer":
-            tf.keras.constraints.serialize(self._attention_initializer)
+            tf.keras.initializers.serialize(self._attention_initializer)
     }
     base_config = super(Transformer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -486,7 +486,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
         "intermediate_dropout":
             self._intermediate_dropout,
         "attention_initializer":
-            tf.keras.constraints.serialize(self._attention_initializer)
+            tf.keras.initializers.serialize(self._attention_initializer)
     }
     base_config = super(TransformerDecoderLayer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
