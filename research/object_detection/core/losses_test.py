@@ -197,6 +197,7 @@ class WeightedIOULocalizationLossTest(test_case.TestCase):
     loss_output = self.execute(graph_fn, [])
     self.assertAllClose(loss_output, exp_loss)
 
+
 class WeightedGIOULocalizationLossTest(test_case.TestCase):
 
   def testReturnsCorrectLoss(self):

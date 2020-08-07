@@ -15,20 +15,15 @@
 
 """Hungarian bipartite matcher implementation."""
 
-import tensorflow.compat.v1 as tf
 import numpy as np
-
-from object_detection.core import matcher
 from scipy.optimize import linear_sum_assignment
+
+import tensorflow.compat.v1 as tf
+from object_detection.core import matcher
 
 
 class HungarianBipartiteMatcher(matcher.Matcher):
   """Wraps a Hungarian bipartite matcher into TensorFlow."""
-
-  def __init__(self):
-    """Constructs a Matcher."""
-
-    super(HungarianBipartiteMatcher, self).__init__()
 
   def _match(self, similarity_matrix, valid_rows):
     """Optimally bipartite matches a collection rows and columns.

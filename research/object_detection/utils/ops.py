@@ -216,13 +216,13 @@ def pad_to_multiple(tensor, multiple):
     height_pad = tf.zeros([
         batch_size, padded_tensor_height - tensor_height, tensor_width,
         tensor_depth
-    ])
+    ], dtype=tensor.dtype)
     tensor = tf.concat([tensor, height_pad], 1)
   if padded_tensor_width != tensor_width:
     width_pad = tf.zeros([
         batch_size, padded_tensor_height, padded_tensor_width - tensor_width,
         tensor_depth
-    ])
+    ], dtype=tensor.dtype)
     tensor = tf.concat([tensor, width_pad], 2)
 
   return tensor
@@ -1135,10 +1135,11 @@ def decode_image(tensor_dict):
   tensor_dict[fields.InputDataFields.image].set_shape([None, None, 3])
   return tensor_dict
 
+
 def giou(boxes1, boxes2):
-  """
-  Computes generalized IOU between two tensors. Each box should be
-  represented as [ymin, xmin, ymax, xmax].
+  """Computes generalized IOU between two tensors.
+
+  Each box should be represented as [ymin, xmin, ymax, xmax].
 
   Args:
     boxes1: a tensor with shape [num_boxes, 4]
@@ -1146,46 +1147,43 @@ def giou(boxes1, boxes2):
 
   Returns:
     a tensor of shape [num_boxes] containing GIoUs
-  
+
   """
-  def two_boxes_giou(boxes):
+  def _two_boxes_giou(boxes):
+    """Compute giou between two boxes."""
     boxes1, boxes2 = boxes
 
-    pred_ymin = tf.gather_nd(boxes1, [0])
-    pred_xmin = tf.gather_nd(boxes1, [1])
-    pred_ymax = tf.gather_nd(boxes1, [2])
-    pred_xmax = tf.gather_nd(boxes1, [3])
-
-    gt_ymin = tf.gather_nd(boxes2, [0])
-    gt_xmin = tf.gather_nd(boxes2, [1])
-    gt_ymax = tf.gather_nd(boxes2, [2])
-    gt_xmax = tf.gather_nd(boxes2, [3])
+    pred_ymin, pred_xmin, pred_ymax, pred_xmax = tf.unstack(boxes1)
+    gt_ymin, gt_xmin, gt_ymax, gt_xmax = tf.unstack(boxes2)
 
     gt_area = (gt_ymax - gt_ymin) * (gt_xmax - gt_xmin)
     pred_area = (pred_ymax - pred_ymin) * (pred_xmax - pred_xmin)
 
-    x1I = tf.maximum(pred_xmin, gt_xmin)
-    x2I = tf.minimum(pred_xmax, gt_xmax)
-    y1I = tf.maximum(pred_ymin, gt_ymin)
-    y2I = tf.minimum(pred_ymax, gt_ymax)
-    intersection_area = (y2I - y1I) * (x2I - x1I) if (y2I > y1I and
-                                                      x2I > x1I) else 0.0
+    x1_i = tf.maximum(pred_xmin, gt_xmin)
+    x2_i = tf.minimum(pred_xmax, gt_xmax)
+    y1_i = tf.maximum(pred_ymin, gt_ymin)
+    y2_i = tf.minimum(pred_ymax, gt_ymax)
+    intersection_area = tf.maximum(0.0, y2_i - y1_i) * tf.maximum(0.0,
+                                                                  x2_i - x1_i)
 
-    x1C = tf.minimum(pred_xmin, gt_xmin)
-    x2C = tf.maximum(pred_xmax, gt_xmax)
-    y1C = tf.minimum(pred_ymin, gt_ymin)
-    y2C = tf.maximum(pred_ymax, gt_ymax)
-    hull_area = (y2C - y1C) * (x2C - x1C)
+    x1_c = tf.minimum(pred_xmin, gt_xmin)
+    x2_c = tf.maximum(pred_xmax, gt_xmax)
+    y1_c = tf.minimum(pred_ymin, gt_ymin)
+    y2_c = tf.maximum(pred_ymax, gt_ymax)
+    hull_area = (y2_c - y1_c) * (x2_c - x1_c)
 
     union_area = gt_area + pred_area - intersection_area
-    IoU = intersection_area/union_area if union_area != 0.0 else 1.0
-    gIoU = IoU - (hull_area - union_area) / hull_area if hull_area != 0.0 else IoU
+    iou = tf.where(
+        tf.equal(union_area, 0.0), 0.0, intersection_area / union_area)
+    giou_ = iou - tf.where(hull_area > 0.0,
+                           (hull_area - union_area) / hull_area, iou)
 
-    return gIoU
+    return giou_
 
-  return shape_utils.static_or_dynamic_map_fn(two_boxes_giou, [boxes1, boxes2])
+  return shape_utils.static_or_dynamic_map_fn(_two_boxes_giou, [boxes1, boxes2])
 
-def cy_cx_h_w_to_ymin_xmin_ymax_xmax(input_tensor):
+
+def center_to_corner_coordinate(input_tensor):
   """Converts input boxes from center to corner representation."""
   reshaped_encodings = tf.reshape(input_tensor, [-1, 4])
   ycenter = tf.gather(reshaped_encodings, [0], axis=1)

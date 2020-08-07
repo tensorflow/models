@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -99,6 +99,7 @@ class HungarianBipartiteMatcherTest(test_case.TestCase):
 
     self.assertAllEqual(match_results_out._match_results.numpy(),
                         expected_match_results)
+
 
 if __name__ == '__main__':
   tf.test.main()

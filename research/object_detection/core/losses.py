@@ -211,12 +211,11 @@ class WeightedIOULocalizationLoss(Loss):
     return tf.reshape(weights, [-1]) * per_anchor_iou_loss
 
 
-
 class WeightedGIOULocalizationLoss(Loss):
-  """IOU localization loss function.
+  """GIOU localization loss function.
 
-  Sums the IOU for corresponding pairs of predicted/groundtruth boxes
-  and for each pair assign a loss of 1 - IOU.  We then compute a weighted
+  Sums the GIOU loss for corresponding pairs of predicted/groundtruth boxes
+  and for each pair assign a loss of 1 - GIOU.  We then compute a weighted
   sum over all pairs which is returned as the total loss.
   """
 
