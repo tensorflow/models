@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +34,7 @@ class AbstractTrainer(tf.Module, metaclass=abc.ABCMeta):
     large in Eager mode. It is usually encouraged to create a host training loop
     (e.g. using a `tf.range` wrapping `strategy.run` inside a
     `tf.function`) in the TPU case. For the cases that don't require host
-    training loop to acheive peak performance, users can just implement a simple
+    training loop to achieve peak performance, users can just implement a simple
     python loop to drive each step.
 
     Args:
@@ -45,7 +44,8 @@ class AbstractTrainer(tf.Module, metaclass=abc.ABCMeta):
 
     Returns:
       The function may return a dictionary of `Tensors` or numpy arrays, which
-      will be written to logs and as TensorBoard summaries.
+      will be written to logs and as TensorBoard summaries. It can also be a
+      nested dictionary, yielding a hierarchy of summary directories.
     """
     pass
 
@@ -67,6 +67,7 @@ class AbstractEvaluator(tf.Module, metaclass=abc.ABCMeta):
 
     Returns:
       The function may return a dictionary of `Tensors` or numpy arrays, which
-      will be written to logs and as TensorBoard summaries.
+      will be written to logs and as TensorBoard summaries. It can also be a
+      nested dictionary, yielding a hierarchy of summary directories.
     """
     pass

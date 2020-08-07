@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +19,7 @@ import contextlib
 import functools
 import inspect
 
+import os
 import numpy as np
 import tensorflow as tf
 
@@ -95,6 +95,30 @@ def create_tf_while_loop_fn(step_fn):
   return loop_fn
 
 
+def create_global_step() -> tf.Variable:
+  """Creates a `tf.Variable` suitable for use as a global step counter.
+
+  Creating and managing a global step variable may be necessary for
+  `AbstractTrainer` subclasses that perform multiple parameter updates per
+  `Controller` "step", or use different optimizers on different steps.
+
+  In these cases, an `optimizer.iterations` property generally can't be used
+  directly, since it would correspond to parameter updates instead of iterations
+  in the `Controller`'s training loop. Such use cases should simply call
+  `step.assign_add(1)` at the end of each step.
+
+  Returns:
+    A non-trainable scalar `tf.Variable` of dtype `tf.int64`, with only the
+    first replica's value retained when synchronizing across replicas in
+    a distributed setting.
+  """
+  return tf.Variable(
+      0,
+      dtype=tf.int64,
+      trainable=False,
+      aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA)
+
+
 def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
   """A helper function to create distributed dataset.
 
@@ -153,44 +177,81 @@ class SummaryManager:
     self._enabled = (summary_dir is not None)
     self._summary_dir = summary_dir
     self._summary_fn = summary_fn
-    self._summary_writer = None
+    self._summary_writers = {}
 
     if global_step is None:
       self._global_step = tf.summary.experimental.get_step()
     else:
       self._global_step = global_step
 
-  @property
-  def summary_writer(self):
-    """Returns the underlying summary writer."""
-    if self._summary_writer is not None:
-      return self._summary_writer
-    if self._enabled:
-      self._summary_writer = tf.summary.create_file_writer(self._summary_dir)
-    else:
-      self._summary_writer = tf.summary.create_noop_writer()
-    return self._summary_writer
-
-  def flush(self):
-    """Flush the underlying summary writer."""
-    if self._enabled:
-      tf.summary.flush(self.summary_writer)
-
-  def write_summaries(self, items):
-    """Write a bulk of summaries.
+  def summary_writer(self, relative_path=""):
+    """Returns the underlying summary writer.
 
     Args:
-      items: a dictionary of `Tensors` for writing summaries.
+      relative_path: The current path in which to write summaries, relative to
+        the summary directory. By default it is empty, which specifies the root
+        directory.
     """
-    # TODO(rxsang): Support writing summaries with nested structure, so users
-    # can split the summaries into different directories for nicer visualization
-    # in Tensorboard, like train and eval metrics.
+    if self._summary_writers and relative_path in self._summary_writers:
+      return self._summary_writers[relative_path]
+    if self._enabled:
+      self._summary_writers[relative_path] = tf.summary.create_file_writer(
+          os.path.join(self._summary_dir, relative_path))
+    else:
+      self._summary_writers[relative_path] = tf.summary.create_noop_writer()
+    return self._summary_writers[relative_path]
+
+  def flush(self):
+    """Flush the underlying summary writers."""
+    if self._enabled:
+      tf.nest.map_structure(tf.summary.flush, self._summary_writers)
+
+  def write_summaries(self, summary_dict):
+    """Write summaries for the given values.
+
+    This recursively creates subdirectories for any nested dictionaries
+    provided in `summary_dict`, yielding a hierarchy of directories which will
+    then be reflected in the TensorBoard UI as different colored curves.
+
+    E.g. users may evaluate on muliple datasets and return `summary_dict` as a
+    nested dictionary.
+
+    ```
+    {
+        "dataset": {
+            "loss": loss,
+            "accuracy": accuracy
+        },
+        "dataset2": {
+            "loss": loss2,
+            "accuracy": accuracy2
+        },
+    }
+    ```
+
+    This will create two subdirectories "dataset" and "dataset2" inside the
+    summary root directory. Each directory will contain event files including
+    both "loss" and "accuracy" summaries.
+
+    Args:
+      summary_dict: A dictionary of values. If any value in `summary_dict` is
+        itself a dictionary, then the function will recursively create
+        subdirectories with names given by the keys in the dictionary. The
+        Tensor values are summarized using the summary writer instance specific
+        to the parent relative path.
+    """
     if not self._enabled:
       return
+    self._write_summaries(summary_dict)
 
-    with self.summary_writer.as_default():
-      for name, tensor in items.items():
-        self._summary_fn(name, tensor, step=self._global_step)
+  def _write_summaries(self, summary_dict, relative_path=""):
+    for name, value in summary_dict.items():
+      if isinstance(value, dict):
+        self._write_summaries(
+            value, relative_path=os.path.join(relative_path, name))
+      else:
+        with self.summary_writer(relative_path).as_default():
+          self._summary_fn(name, value, step=self._global_step)
 
 
 class Trigger(metaclass=abc.ABCMeta):
@@ -371,14 +432,14 @@ def train_function_with_summaries(*args, **kwargs):
   return decorator
 
 
-def get_value(x) -> np.ndarray:
+def get_value(x) -> np.number:
   """Returns the value of a variable/tensor.
 
   Args:
       x: input variable.
 
   Returns:
-      A Numpy array.
+      A Numpy array or number.
   """
   if not tf.is_tensor(x):
     return x

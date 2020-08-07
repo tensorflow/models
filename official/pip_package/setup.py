@@ -20,7 +20,7 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.2.0'
+version = '2.3.0'
 
 project_name = 'tf-models-official'
 
@@ -60,7 +60,7 @@ if project_name == 'tf-models-nightly':
   version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
   install_requires.append('tf-nightly')
 else:
-  install_requires.append('tensorflow>=2.2.0')
+  install_requires.append('tensorflow>=2.3.0')
 
 print('install_requires: ', install_requires)
 print('dependency_links: ', dependency_links)

@@ -46,15 +46,15 @@ class Anchor(object):
       num_scales: integer number representing intermediate scales added
         on each level. For instances, num_scales=2 adds one additional
         intermediate anchor scales [2^0, 2^0.5] on each level.
-      aspect_ratios: list of float numbers representing the aspect raito anchors
+      aspect_ratios: list of float numbers representing the aspect ratio anchors
         added on each level. The number indicates the ratio of width to height.
         For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors on each
         scale level.
       anchor_size: float number representing the scale of size of the base
         anchor to the feature stride 2^level.
       image_size: a list of integer numbers or Tensors representing
-        [height, width] of the input image size.The image_size should be divided
-        by the largest feature stride 2^max_level.
+        [height, width] of the input image size.The image_size should be
+        divisible by the largest feature stride 2^max_level.
     """
     self.min_level = min_level
     self.max_level = max_level
@@ -77,8 +77,8 @@ class Anchor(object):
       for scale in range(self.num_scales):
         for aspect_ratio in self.aspect_ratios:
           stride = 2 ** level
-          intermidate_scale = 2 ** (scale / float(self.num_scales))
-          base_anchor_size = self.anchor_size * stride * intermidate_scale
+          intermediate_scale = 2 ** (scale / float(self.num_scales))
+          base_anchor_size = self.anchor_size * stride * intermediate_scale
           aspect_x = aspect_ratio ** 0.5
           aspect_y = aspect_ratio ** -0.5
           half_anchor_size_x = base_anchor_size * aspect_x / 2.0
