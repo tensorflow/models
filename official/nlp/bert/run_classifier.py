@@ -448,7 +448,7 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
   if FLAGS.mode == 'predict':
     with strategy.scope():
       classifier_model = bert_models.classifier_model(
-          bert_config, input_meta_data['num_labels'])[0]
+          bert_config, input_meta_data.get('num_labels', 1))[0]
       checkpoint = tf.train.Checkpoint(model=classifier_model)
       latest_checkpoint_file = (
           FLAGS.predict_checkpoint_path or
