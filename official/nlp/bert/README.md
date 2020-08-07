@@ -186,7 +186,7 @@ python ../data/create_finetuning_data.py \
  --fine_tuning_task_type=squad --max_seq_length=384
 ```
 
-Note: To create fine-tuning data with SQUAD 2.0, you need to add flag `--version_2_with_negative=True`
+Note: To create fine-tuning data with SQUAD 2.0, you need to add flag `--version_2_with_negative=True`.
 
 ## Fine-tuning with BERT
 
