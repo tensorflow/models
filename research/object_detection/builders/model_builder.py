@@ -524,9 +524,31 @@ def _build_faster_rcnn_keras_feature_extractor(
         feature_type))
   feature_extractor_class = FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP[
       feature_type]
+
+  kwargs = {}
+
+  if feature_extractor_config.HasField('conv_hyperparams'):
+    kwargs.update({
+        'conv_hyperparams':
+            hyperparams_builder.KerasLayerHyperparams(
+                feature_extractor_config.conv_hyperparams),
+        'override_base_feature_extractor_hyperparams':
+            feature_extractor_config.override_base_feature_extractor_hyperparams
+    })
+
+  if feature_extractor_config.HasField('fpn'):
+    kwargs.update({
+        'fpn_min_level':
+            feature_extractor_config.fpn.min_level,
+        'fpn_max_level':
+            feature_extractor_config.fpn.max_level,
+        'additional_layer_depth':
+            feature_extractor_config.fpn.additional_layer_depth,
+    })
+
   return feature_extractor_class(
       is_training, first_stage_features_stride,
-      batch_norm_trainable)
+      batch_norm_trainable, **kwargs)
 
 
 def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
