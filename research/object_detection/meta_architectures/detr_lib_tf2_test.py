@@ -38,7 +38,7 @@ class DETRLibTest(parameterized.TestCase, test_case.TestCase,
   @parameterized.named_parameters(
       ("max_heads", 8, 8, 3, 7),
       ("two_heads", 2, 8, 3, 7),
-      ("large", 8, 128, 300, 70),
+      ("large", 8, 128, 300, 70)
   )
   def test_multihead_attention(self, num_heads, hidden_size,
                                query_length, kv_length):
@@ -53,9 +53,9 @@ class DETRLibTest(parameterized.TestCase, test_case.TestCase,
   @parameterized.named_parameters(
       ("max_heads", 8, 8, 3),
       ("two_heads", 2, 8, 3),
-      ("large", 8, 128, 300),
+      ("large", 8, 128, 300)
   )
-  def test_multihead_attention(self, num_heads, hidden_size,
+  def test_self_attention(self, num_heads, hidden_size,
                                qkv_length):
     attention_layer = detr_lib.SelfAttention(hidden_size, num_heads, 0.0)
     batch_size = 5
@@ -63,6 +63,17 @@ class DETRLibTest(parameterized.TestCase, test_case.TestCase,
     value = tf.ones([batch_size, qkv_length, hidden_size])
     result = attention_layer(query, value, training=False)
     self.assertAllEqual(result.shape, [batch_size, qkv_length, hidden_size])
+
+  @parameterized.named_parameters(
+      ("ffn_small", 20, 10),
+      ("ffn_large", 2000, 10000)
+  )
+  def test_ffn(self, hidden_size, filter_size):
+    ffn = detr_lib.FeedForwardNetwork(hidden_size, filter_size, 0.0)
+    batch_size = 5
+    input_data = tf.ones([batch_size, hidden_size])
+    result = ffn(input_data, training=False)
+    self.assertAllEqual(result.shape, [batch_size, hidden_size])
 
 if __name__ == '__main__':
   tf.test.main()

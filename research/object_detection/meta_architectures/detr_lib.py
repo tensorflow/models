@@ -194,10 +194,6 @@ class FeedForwardNetwork(tf.keras.layers.Layer):
       Output of the feedforward network.
       tensor with shape [batch_size, length, hidden_size]
     """
-    # Retrieve dynamically known shapes
-    batch_size = tf.shape(x)[0]
-    length = tf.shape(x)[1]
-
     output = self.filter_dense_layer(x)
     
     #output = tf.keras.layers.Dropout(self.relu_dropout)(output, training=training)
