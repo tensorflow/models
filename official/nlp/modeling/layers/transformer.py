@@ -100,7 +100,8 @@ class Transformer(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._intermediate_dropout = intermediate_dropout
     if attention_initializer:
-      self._attention_initializer = attention_initializer
+      self._attention_initializer = tf.keras.initializers.get(
+          attention_initializer)
     else:
       self._attention_initializer = self._kernel_initializer
 
@@ -222,7 +223,7 @@ class Transformer(tf.keras.layers.Layer):
         "intermediate_dropout":
             self._intermediate_dropout,
         "attention_initializer":
-            self._attention_initializer
+            tf.keras.constraints.serialize(self._attention_initializer)
     }
     base_config = super(Transformer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -355,7 +356,8 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._intermediate_dropout = intermediate_dropout
     if attention_initializer:
-      self._attention_initializer = attention_initializer
+      self._attention_initializer = tf.keras.initializers.get(
+          attention_initializer)
     else:
       self._attention_initializer = self._kernel_initializer
     if self.multi_channel_cross_attention:
@@ -484,7 +486,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
         "intermediate_dropout":
             self._intermediate_dropout,
         "attention_initializer":
-            self._attention_initializer
+            tf.keras.constraints.serialize(self._attention_initializer)
     }
     base_config = super(TransformerDecoderLayer, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
