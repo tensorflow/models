@@ -524,13 +524,14 @@ def run_customized_training_loop(
           _save_checkpoint(strategy, checkpoint, model_dir,
                            checkpoint_name.format(step=current_step))
           if eval_input_fn:
-            logging.info('Running evaluation after step: %s.', current_step)
-            logs = _run_evaluation(current_step,
-                                   _get_input_iterator(eval_input_fn, strategy))
             # Re-initialize evaluation metric.
             eval_loss_metric.reset_states()
             for metric in eval_metrics + model.metrics:
               metric.reset_states()
+
+            logging.info('Running evaluation after step: %s.', current_step)
+            logs = _run_evaluation(current_step,
+                                   _get_input_iterator(eval_input_fn, strategy))
         # We add train_loss here rather than call on_batch_end twice to make
         # sure that no duplicated values are generated.
         logs['loss'] = train_loss
@@ -548,6 +549,11 @@ def run_customized_training_loop(
     _save_checkpoint(strategy, checkpoint, model_dir,
                      checkpoint_name.format(step=current_step))
     if eval_input_fn:
+      # Re-initialize evaluation metric.
+      eval_loss_metric.reset_states()
+      for metric in eval_metrics + model.metrics:
+        metric.reset_states()
+
       logging.info('Running final evaluation after training is complete.')
       logs = _run_evaluation(current_step,
                              _get_input_iterator(eval_input_fn, strategy))
