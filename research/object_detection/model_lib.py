@@ -102,6 +102,8 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
       'groundtruth_dp_surface_coords_list': [batch_size, num_boxes,
         max_sampled_points, 4] containing the DensePose surface coordinates for
         each sampled point (if provided in groundtruth).
+      'groundtruth_track_ids_list': [batch_size, num_boxes] int32 tensor
+        with track ID for each instance (if provided in groundtruth).
       'groundtruth_group_of': [batch_size, num_boxes] bool tensor indicating
         group_of annotations (if provided in groundtruth).
       'groundtruth_labeled_classes': [batch_size, num_classes] int64
@@ -187,6 +189,11 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
     groundtruth[input_data_fields.groundtruth_dp_surface_coords] = tf.stack(
         detection_model.groundtruth_lists(
             fields.BoxListFields.densepose_surface_coords))
+
+  if detection_model.groundtruth_has_field(fields.BoxListFields.track_ids):
+    groundtruth[input_data_fields.groundtruth_track_ids] = tf.stack(
+        detection_model.groundtruth_lists(fields.BoxListFields.track_ids))
+
   groundtruth[input_data_fields.num_groundtruth_boxes] = (
       tf.tile([max_number_of_boxes], multiples=[groundtruth_boxes_shape[0]]))
   return groundtruth
@@ -245,6 +252,7 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
         fields.InputDataFields.groundtruth_dp_num_points,
         fields.InputDataFields.groundtruth_dp_part_ids,
         fields.InputDataFields.groundtruth_dp_surface_coords,
+        fields.InputDataFields.groundtruth_track_ids,
         fields.InputDataFields.groundtruth_group_of,
         fields.InputDataFields.groundtruth_difficult,
         fields.InputDataFields.groundtruth_is_crowd,
@@ -307,6 +315,10 @@ def provide_groundtruth(model, labels):
   if fields.InputDataFields.groundtruth_dp_surface_coords in labels:
     gt_dp_surface_coords_list = labels[
         fields.InputDataFields.groundtruth_dp_surface_coords]
+  gt_track_ids_list = None
+  if fields.InputDataFields.groundtruth_track_ids in labels:
+    gt_track_ids_list = labels[
+        fields.InputDataFields.groundtruth_track_ids]
   gt_weights_list = None
   if fields.InputDataFields.groundtruth_weights in labels:
     gt_weights_list = labels[fields.InputDataFields.groundtruth_weights]
@@ -341,7 +353,8 @@ def provide_groundtruth(model, labels):
       groundtruth_weights_list=gt_weights_list,
       groundtruth_is_crowd_list=gt_is_crowd_list,
       groundtruth_group_of_list=gt_group_of_list,
-      groundtruth_area_list=gt_area_list)
+      groundtruth_area_list=gt_area_list,
+      groundtruth_track_ids_list=gt_track_ids_list)
 
 
 def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,

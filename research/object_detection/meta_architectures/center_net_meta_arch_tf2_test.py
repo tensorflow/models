@@ -1046,6 +1046,41 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
       np.testing.assert_allclose(kpt_scores_np[:, i, :],
                                  kpt_scores_padded[:, inst_ind, :])
 
+  def test_predicted_embeddings_at_object_centers(self):
+    batch_size = 2
+    embedding_size = 5
+    num_instances = 6
+    predicted_embedding_feature_map_np = np.random.randn(
+        batch_size, 10, 10, embedding_size).astype(np.float32)
+    y_indices = np.random.choice(10, (batch_size, num_instances))
+    x_indices = np.random.choice(10, (batch_size, num_instances))
+
+    def graph_fn():
+      predicted_embedding_feature_map = tf.constant(
+          predicted_embedding_feature_map_np, dtype=tf.float32)
+
+      gathered_predicted_embeddings = (
+          cnma.predicted_embeddings_at_object_centers(
+              predicted_embedding_feature_map,
+              tf.constant(y_indices, dtype=tf.int32),
+              tf.constant(x_indices, dtype=tf.int32)))
+      return gathered_predicted_embeddings
+
+    gathered_predicted_embeddings = self.execute(graph_fn, [])
+
+    expected_gathered_embeddings_0 = predicted_embedding_feature_map_np[
+        0, y_indices[0], x_indices[0], :]
+    expected_gathered_embeddings_1 = predicted_embedding_feature_map_np[
+        1, y_indices[1], x_indices[1], :]
+    expected_gathered_embeddings = np.stack([
+        expected_gathered_embeddings_0,
+        expected_gathered_embeddings_1], axis=0)
+    expected_gathered_embeddings = np.reshape(
+        expected_gathered_embeddings,
+        [batch_size, num_instances, embedding_size])
+    np.testing.assert_allclose(expected_gathered_embeddings,
+                               gathered_predicted_embeddings)
+
 
 # Common parameters for setting up testing examples across tests.
 _NUM_CLASSES = 10
@@ -1053,6 +1088,9 @@ _KEYPOINT_INDICES = [0, 1, 2, 3]
 _NUM_KEYPOINTS = len(_KEYPOINT_INDICES)
 _DENSEPOSE_NUM_PARTS = 24
 _TASK_NAME = 'human_pose'
+_NUM_TRACK_IDS = 3
+_REID_EMBED_SIZE = 2
+_NUM_FC_LAYERS = 1
 
 
 def get_fake_center_params():
@@ -1108,6 +1146,16 @@ def get_fake_densepose_params():
       upsample_method='nearest')
 
 
+def get_fake_track_params():
+  """Returns the fake object tracking parameter namedtuple."""
+  return cnma.TrackParams(
+      num_track_ids=_NUM_TRACK_IDS,
+      reid_embed_size=_REID_EMBED_SIZE,
+      num_fc_layers=_NUM_FC_LAYERS,
+      classification_loss=losses.WeightedSoftmaxClassificationLoss(),
+      task_loss_weight=1.0)
+
+
 def build_center_net_meta_arch(build_resnet=False):
   """Builds the CenterNet meta architecture."""
   if build_resnet:
@@ -1136,7 +1184,8 @@ def build_center_net_meta_arch(build_resnet=False):
       object_detection_params=get_fake_od_params(),
       keypoint_params_dict={_TASK_NAME: get_fake_kp_params()},
       mask_params=get_fake_mask_params(),
-      densepose_params=get_fake_densepose_params())
+      densepose_params=get_fake_densepose_params(),
+      track_params=get_fake_track_params())
 
 
 def _logit(p):
@@ -1230,6 +1279,11 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
         fake_feature_map)
     self.assertEqual((4, 128, 128, 2 * _DENSEPOSE_NUM_PARTS), output.shape)
 
+    # "track embedding" head:
+    output = model._prediction_head_dict[cnma.TRACK_REID][-1](
+        fake_feature_map)
+    self.assertEqual((4, 128, 128, _REID_EMBED_SIZE), output.shape)
+
   def test_initialize_target_assigners(self):
     model = build_center_net_meta_arch()
     assigner_dict = model._initialize_target_assigners(
@@ -1257,6 +1311,10 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     self.assertIsInstance(assigner_dict[cnma.DENSEPOSE_TASK],
                           cn_assigner.CenterNetDensePoseTargetAssigner)
 
+    # Track estimation target assigner:
+    self.assertIsInstance(assigner_dict[cnma.TRACK_TASK],
+                          cn_assigner.CenterNetTrackTargetAssigner)
+
   def test_predict(self):
     """Test the predict function."""
 
@@ -1281,6 +1339,8 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
                      (2, 32, 32, _DENSEPOSE_NUM_PARTS))
     self.assertEqual(prediction_dict[cnma.DENSEPOSE_REGRESSION][0].shape,
                      (2, 32, 32, 2 * _DENSEPOSE_NUM_PARTS))
+    self.assertEqual(prediction_dict[cnma.TRACK_REID][0].shape,
+                     (2, 32, 32, _REID_EMBED_SIZE))
 
   def test_loss(self):
     """Test the loss function."""
@@ -1299,7 +1359,16 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
         groundtruth_dp_part_ids_list=groundtruth_dict[
             fields.BoxListFields.densepose_part_ids],
         groundtruth_dp_surface_coords_list=groundtruth_dict[
-            fields.BoxListFields.densepose_surface_coords])
+            fields.BoxListFields.densepose_surface_coords],
+        groundtruth_track_ids_list=groundtruth_dict[
+            fields.BoxListFields.track_ids])
+
+    kernel_initializer = tf.constant_initializer(
+        [[1, 1, 0], [-1000000, -1000000, 1000000]])
+    model.track_reid_classification_net = tf.keras.layers.Dense(
+        _NUM_TRACK_IDS,
+        kernel_initializer=kernel_initializer,
+        input_shape=(_REID_EMBED_SIZE,))
 
     prediction_dict = get_fake_prediction_dict(
         input_height=16, input_width=32, stride=4)
@@ -1341,6 +1410,9 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     self.assertGreater(
         0.01, loss_dict['%s/%s' % (cnma.LOSS_KEY_PREFIX,
                                    cnma.DENSEPOSE_REGRESSION)])
+    self.assertGreater(
+        0.01, loss_dict['%s/%s' % (cnma.LOSS_KEY_PREFIX,
+                                   cnma.TRACK_REID)])
 
   @parameterized.parameters(
       {'target_class_id': 1},
@@ -1386,6 +1458,11 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
 
     dp_surf_coords = np.random.randn(1, 32, 32, 2 * _DENSEPOSE_NUM_PARTS)
 
+    embedding_size = 100
+    track_reid_embedding = np.zeros((1, 32, 32, embedding_size),
+                                    dtype=np.float32)
+    track_reid_embedding[0, 16, 16, :] = np.ones(embedding_size)
+
     class_center = tf.constant(class_center)
     height_width = tf.constant(height_width)
     offset = tf.constant(offset)
@@ -1395,6 +1472,7 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     segmentation_heatmap = tf.constant(segmentation_heatmap, dtype=tf.float32)
     dp_part_heatmap = tf.constant(dp_part_heatmap, dtype=tf.float32)
     dp_surf_coords = tf.constant(dp_surf_coords, dtype=tf.float32)
+    track_reid_embedding = tf.constant(track_reid_embedding, dtype=tf.float32)
 
     prediction_dict = {
         cnma.OBJECT_CENTER: [class_center],
@@ -1408,7 +1486,8 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
             [keypoint_regression],
         cnma.SEGMENTATION_HEATMAP: [segmentation_heatmap],
         cnma.DENSEPOSE_HEATMAP: [dp_part_heatmap],
-        cnma.DENSEPOSE_REGRESSION: [dp_surf_coords]
+        cnma.DENSEPOSE_REGRESSION: [dp_surf_coords],
+        cnma.TRACK_REID: [track_reid_embedding]
     }
 
     def graph_fn():
@@ -1422,6 +1501,14 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
                         np.array([55, 46, 75, 86]) / 128.0)
     self.assertAllClose(detections['detection_scores'][0],
                         [.75, .5, .5, .5, .5])
+    # The output embedding extracted at the object center will be a 3-D array of
+    # shape [batch, num_boxes, embedding_size]. The valid predicted embedding
+    # will be the first embedding in the first batch. It is a 1-D array of
+    # shape [embedding_size] with values all ones. All the values of the
+    # embedding will then be divided by the square root of 'embedding_size'
+    # after the L2 normalization.
+    self.assertAllClose(detections['detection_embeddings'][0, 0],
+                        np.ones(embedding_size) / embedding_size**0.5)
     self.assertEqual(detections['detection_classes'][0, 0], target_class_id)
     self.assertEqual(detections['num_detections'], [5])
     self.assertAllEqual([1, max_detection, num_keypoints, 2],
@@ -1430,6 +1517,8 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
                         detections['detection_keypoint_scores'].shape)
     self.assertAllEqual([1, max_detection, 4, 4],
                         detections['detection_masks'].shape)
+    self.assertAllEqual([1, max_detection, embedding_size],
+                        detections['detection_embeddings'].shape)
 
     # Masks should be empty for everything but the first detection.
     self.assertAllEqual(
@@ -1539,6 +1628,10 @@ def get_fake_prediction_dict(input_height, input_width, stride):
   # (5 * 2, 5 * 2 + 1), or (10, 11).
   densepose_regression[0, 2, 4, 10:12] = 0.4, 0.7
 
+  track_reid_embedding = np.zeros((2, output_height, output_width,
+                                   _REID_EMBED_SIZE), dtype=np.float32)
+  track_reid_embedding[0, 2, 4, :] = np.arange(_REID_EMBED_SIZE)
+
   prediction_dict = {
       'preprocessed_inputs':
           tf.zeros((2, input_height, input_width, 3)),
@@ -1577,6 +1670,10 @@ def get_fake_prediction_dict(input_height, input_width, stride):
       cnma.DENSEPOSE_REGRESSION: [
           tf.constant(densepose_regression),
           tf.constant(densepose_regression),
+      ],
+      cnma.TRACK_REID: [
+          tf.constant(track_reid_embedding),
+          tf.constant(track_reid_embedding),
       ]
   }
   return prediction_dict
@@ -1635,6 +1732,10 @@ def get_fake_groundtruth_dict(input_height, input_width, stride):
       tf.constant(densepose_surface_coords_np),
       tf.zeros_like(densepose_surface_coords_np)
   ]
+  track_ids = [
+      tf.constant([2], dtype=tf.int32),
+      tf.constant([1], dtype=tf.int32),
+  ]
   groundtruth_dict = {
       fields.BoxListFields.boxes: boxes,
       fields.BoxListFields.weights: weights,
@@ -1645,6 +1746,7 @@ def get_fake_groundtruth_dict(input_height, input_width, stride):
       fields.BoxListFields.densepose_part_ids: densepose_part_ids,
       fields.BoxListFields.densepose_surface_coords:
           densepose_surface_coords,
+      fields.BoxListFields.track_ids: track_ids,
       fields.InputDataFields.groundtruth_labeled_classes: labeled_classes,
   }
   return groundtruth_dict
@@ -1774,6 +1876,27 @@ class CenterNetMetaComputeLossTest(test_case.TestCase):
       return loss
 
     loss = self.execute(graph_fn, [])
+
+    # The prediction and groundtruth are curated to produce very low loss.
+    self.assertGreater(0.01, loss)
+
+  def test_compute_track_embedding_loss(self):
+    default_fc = self.model.track_reid_classification_net
+    # Initialize the kernel to extreme values so that the classification score
+    # is close to (0, 0, 1) after the softmax layer.
+    kernel_initializer = tf.constant_initializer(
+        [[1, 1, 0], [-1000000, -1000000, 1000000]])
+    self.model.track_reid_classification_net = tf.keras.layers.Dense(
+        _NUM_TRACK_IDS,
+        kernel_initializer=kernel_initializer,
+        input_shape=(_REID_EMBED_SIZE,))
+
+    loss = self.model._compute_track_embedding_loss(
+        input_height=self.input_height,
+        input_width=self.input_width,
+        object_reid_predictions=self.prediction_dict[cnma.TRACK_REID])
+
+    self.model.track_reid_classification_net = default_fc
 
     # The prediction and groundtruth are curated to produce very low loss.
     self.assertGreater(0.01, loss)

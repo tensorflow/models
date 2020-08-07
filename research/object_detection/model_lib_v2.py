@@ -104,6 +104,8 @@ def _compute_losses_and_predictions_dicts(
           containing group_of annotations.
         labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
           k-hot tensor of classes.
+        labels[fields.InputDataFields.groundtruth_track_ids] is a int32
+          tensor of track IDs.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
 
@@ -216,6 +218,8 @@ def eager_train_step(detection_model,
           (v, u) are part-relative normalized surface coordinates.
         labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
           k-hot tensor of classes.
+        labels[fields.InputDataFields.groundtruth_track_ids] is a int32
+          tensor of track IDs.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
     learning_rate: The learning rate tensor for the current training step.
