@@ -28,7 +28,6 @@ import tensorflow.compat.v2 as tf2
 from object_detection import eval_util
 from object_detection import inputs
 from object_detection import model_lib
-from object_detection.builders import model_builder
 from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
 from object_detection.protos import train_pb2
@@ -503,7 +502,7 @@ def train_loop(
   # Build the model, optimizer, and training input
   strategy = tf.compat.v2.distribute.get_strategy()
   with strategy.scope():
-    detection_model = model_builder.build(
+    detection_model = MODEL_BUILD_UTIL_MAP['detection_model_fn_base'](
         model_config=model_config, is_training=True)
 
     def train_dataset_fn(input_context):
@@ -939,7 +938,7 @@ def eval_continuously(
   if kwargs['use_bfloat16']:
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
-  detection_model = model_builder.build(
+  detection_model = MODEL_BUILD_UTIL_MAP['detection_model_fn_base'](
       model_config=model_config, is_training=True)
 
   # Create the inputs.

@@ -244,6 +244,42 @@ message CenterNet {
     optional ClassificationLoss classification_loss = 5;
   }
   optional TrackEstimation track_estimation_task = 10;
+
+  // BEGIN GOOGLE-INTERNAL
+  // Experimental Occupancy network head, use with caution.
+  message OccupancyNetMaskPrediction {
+    // The loss used for penalizing mask predictions.
+    optional ClassificationLoss classification_loss = 1;
+
+    // Number of points to sample within a box while training occupancy net.
+    optional int32 num_samples = 2 [default = 1000];
+
+    // The dimension of the occupancy embedding.
+    optional int32 dim = 3 [default = 256];
+
+    // Weight of occupancy embedding loss.
+    optional float task_loss_weight = 4 [default = 1.0];
+
+    // The stride in pixels at test time when computing the mask. THis is
+    // useful is computing the full mask is too expensive.
+    optional int32 mask_stride = 5 [default = 1];
+
+    // If set, concatenate the occupancy embedding features to (x, y)
+    // coordinates before feeding it to the occupancy network head.
+    optional bool concat_features = 6 [default = true];
+
+    // If set to a positive value, defines the length to which the embedding
+    // is clipped before concatenating to the (x, y) coordinates when
+    // concat_features=true.
+    optional int32 concat_clip = 7 [default = -1];
+
+    // The probability threshold to apply for masks to output a binary mask.
+    optional float mask_prob_threshold = 8 [default = 0.5];
+  }
+
+  optional OccupancyNetMaskPrediction occupancy_net_mask_prediction = 11;
+  // EBD GOOGLE-INTERNAL
+
 }
 
 message CenterNetFeatureExtractor {

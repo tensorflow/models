@@ -2583,6 +2583,9 @@ class CenterNetMetaArch(model.DetectionModel):
       detections: a dictionary containing the following fields
         detection_boxes - A tensor of shape [batch, max_detections, 4]
           holding the predicted boxes.
+        detection_boxes_strided: A tensor of shape [batch_size, num_detections,
+          4] holding the predicted boxes in absolute coordinates of the
+          feature extractor's final layer output.
         detection_scores: A tensor of shape [batch, max_detections] holding
           the predicted score for each box.
         detection_classes: An integer tensor of shape [batch, max_detections]
@@ -2626,6 +2629,7 @@ class CenterNetMetaArch(model.DetectionModel):
         fields.DetectionResultFields.detection_scores: scores,
         fields.DetectionResultFields.detection_classes: classes,
         fields.DetectionResultFields.num_detections: num_detections,
+        'detection_boxes_strided': boxes_strided
     }
 
     if self._kp_params_dict:
