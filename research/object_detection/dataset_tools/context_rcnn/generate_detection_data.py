@@ -78,7 +78,7 @@ class GenerateDetectionDataFn(beam.DoFn):
     self._num_examples_processed = beam.metrics.Metrics.counter(
         'detection_data_generation', 'num_tf_examples_processed')
 
-  def start_bundle(self):
+  def setup(self):
     self._load_inference_model()
 
   def _load_inference_model(self):

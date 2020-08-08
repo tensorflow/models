@@ -218,6 +218,68 @@ message CenterNet {
     optional float heatmap_bias_init = 8 [default = -2.19];
   }
   optional DensePoseEstimation densepose_estimation_task = 9;
+
+  // Parameters which are related to tracking embedding estimation task.
+  // A Simple Baseline for Multi-Object Tracking [2]
+  // [2]: https://arxiv.org/abs/2004.01888
+  message TrackEstimation {
+    // Weight of the task loss. The total loss of the model will be the
+    // summation of task losses weighted by the weights.
+    optional float task_loss_weight = 1 [default = 1.0];
+
+    // The maximun track ID of the datset.
+    optional int32 num_track_ids = 2;
+
+    // The embedding size for re-identification (ReID) task in tracking.
+    optional int32 reid_embed_size = 3 [default = 128];
+
+    // The number of (fully-connected, batch-norm, relu) layers for track ID
+    // classification head. The output dimension of each intermediate FC layer
+    // will all be 'reid_embed_size'. The last FC layer will directly project to
+    // the track ID classification space of size 'num_track_ids' without
+    // batch-norm and relu layers.
+    optional int32 num_fc_layers = 4 [default = 1];
+
+    // Classification loss configuration for ReID loss.
+    optional ClassificationLoss classification_loss = 5;
+  }
+  optional TrackEstimation track_estimation_task = 10;
+
+  // BEGIN GOOGLE-INTERNAL
+  // Experimental Occupancy network head, use with caution.
+  message OccupancyNetMaskPrediction {
+    // The loss used for penalizing mask predictions.
+    optional ClassificationLoss classification_loss = 1;
+
+    // Number of points to sample within a box while training occupancy net.
+    optional int32 num_samples = 2 [default = 1000];
+
+    // The dimension of the occupancy embedding.
+    optional int32 dim = 3 [default = 256];
+
+    // Weight of occupancy embedding loss.
+    optional float task_loss_weight = 4 [default = 1.0];
+
+    // The stride in pixels at test time when computing the mask. THis is
+    // useful is computing the full mask is too expensive.
+    optional int32 mask_stride = 5 [default = 1];
+
+    // If set, concatenate the occupancy embedding features to (x, y)
+    // coordinates before feeding it to the occupancy network head.
+    optional bool concat_features = 6 [default = true];
+
+    // If set to a positive value, defines the length to which the embedding
+    // is clipped before concatenating to the (x, y) coordinates when
+    // concat_features=true.
+    optional int32 concat_clip = 7 [default = -1];
+
+    // The probability threshold to apply for masks to output a binary mask.
+    optional float mask_prob_threshold = 8 [default = 0.5];
+  }
+
+  optional OccupancyNetMaskPrediction occupancy_net_mask_prediction = 11;
+  // EBD GOOGLE-INTERNAL
+
 }
 
 message CenterNetFeatureExtractor {

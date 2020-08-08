@@ -59,11 +59,8 @@ class RetinanetModel(base_model.Model):
     self._transpose_input = params.train.transpose_input
     assert not self._transpose_input, 'Transpose input is not supported.'
     # Input layer.
-    input_shape = (
-        params.retinanet_parser.output_size +
-        [params.retinanet_parser.num_channels])
     self._input_layer = tf.keras.layers.Input(
-        shape=input_shape, name='',
+        shape=(None, None, params.retinanet_parser.num_channels), name='',
         dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32)
 
   def build_outputs(self, inputs, mode):

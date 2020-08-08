@@ -2015,6 +2015,106 @@ class CenterNetDensePoseTargetAssignerTest(test_case.TestCase):
     self.assertAllClose(expected_batch_weights, batch_weights)
 
 
+class CenterNetTrackTargetAssignerTest(test_case.TestCase):
+
+  def setUp(self):
+    super(CenterNetTrackTargetAssignerTest, self).setUp()
+    self._box_center = [0.0, 0.0, 1.0, 1.0]
+    self._box_center_small = [0.25, 0.25, 0.75, 0.75]
+    self._box_lower_left = [0.5, 0.0, 1.0, 0.5]
+    self._box_center_offset = [0.1, 0.05, 1.0, 1.0]
+    self._box_odd_coordinates = [0.1625, 0.2125, 0.5625, 0.9625]
+
+  def test_assign_track_targets(self):
+    """Test the assign_track_targets function."""
+    def graph_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_lower_left, self._box_center_small]),
+          tf.constant([self._box_center_small, self._box_odd_coordinates]),
+      ]
+      track_id_batch = [
+          tf.constant([0, 1]),
+          tf.constant([1, 0]),
+          tf.constant([0, 2]),
+      ]
+
+      assigner = targetassigner.CenterNetTrackTargetAssigner(
+          stride=4, num_track_ids=3)
+
+      (batch_indices, batch_weights,
+       track_targets) = assigner.assign_track_targets(
+           height=80,
+           width=80,
+           gt_track_ids_list=track_id_batch,
+           gt_boxes_list=box_batch)
+      return batch_indices, batch_weights, track_targets
+
+    indices, weights, track_ids = self.execute(graph_fn, [])
+
+    self.assertEqual(indices.shape, (3, 2, 3))
+    self.assertEqual(track_ids.shape, (3, 2, 3))
+    self.assertEqual(weights.shape, (3, 2))
+
+    np.testing.assert_array_equal(indices,
+                                  [[[0, 10, 10], [0, 15, 5]],
+                                   [[1, 15, 5], [1, 10, 10]],
+                                   [[2, 10, 10], [2, 7, 11]]])
+    np.testing.assert_array_equal(track_ids,
+                                  [[[1, 0, 0], [0, 1, 0]],
+                                   [[0, 1, 0], [1, 0, 0]],
+                                   [[1, 0, 0], [0, 0, 1]]])
+    np.testing.assert_array_equal(weights, [[1, 1], [1, 1], [1, 1]])
+
+  def test_assign_track_targets_weights(self):
+    """Test the assign_track_targets function with box weights."""
+    def graph_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_lower_left, self._box_center_small]),
+          tf.constant([self._box_center_small, self._box_odd_coordinates]),
+      ]
+      track_id_batch = [
+          tf.constant([0, 1]),
+          tf.constant([1, 0]),
+          tf.constant([0, 2]),
+      ]
+      weights_batch = [
+          tf.constant([0.0, 1.0]),
+          tf.constant([1.0, 1.0]),
+          tf.constant([0.0, 0.0])
+      ]
+
+      assigner = targetassigner.CenterNetTrackTargetAssigner(
+          stride=4, num_track_ids=3)
+
+      (batch_indices, batch_weights,
+       track_targets) = assigner.assign_track_targets(
+           height=80,
+           width=80,
+           gt_track_ids_list=track_id_batch,
+           gt_boxes_list=box_batch,
+           gt_weights_list=weights_batch)
+      return batch_indices, batch_weights, track_targets
+
+    indices, weights, track_ids = self.execute(graph_fn, [])
+
+    self.assertEqual(indices.shape, (3, 2, 3))
+    self.assertEqual(track_ids.shape, (3, 2, 3))
+    self.assertEqual(weights.shape, (3, 2))
+
+    np.testing.assert_array_equal(indices,
+                                  [[[0, 10, 10], [0, 15, 5]],
+                                   [[1, 15, 5], [1, 10, 10]],
+                                   [[2, 10, 10], [2, 7, 11]]])
+    np.testing.assert_array_equal(track_ids,
+                                  [[[1, 0, 0], [0, 1, 0]],
+                                   [[0, 1, 0], [1, 0, 0]],
+                                   [[1, 0, 0], [0, 0, 1]]])
+    np.testing.assert_array_equal(weights, [[0, 1], [1, 1], [0, 0]])
+    # TODO(xwwang): Add a test for the case when no objects are detected.
+
+
 class CornerOffsetTargetAssignerTest(test_case.TestCase):
 
   def test_filter_overlap_min_area_empty(self):

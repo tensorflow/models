@@ -1569,6 +1569,22 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
         padded_tensor_dict[fields.InputDataFields.groundtruth_dp_surface_coords]
         .shape.as_list(), [3, 200, 4])
 
+  def test_pad_input_data_to_static_shapes_for_trackid(self):
+    input_tensor_dict = {
+        fields.InputDataFields.groundtruth_track_ids:
+            tf.constant([0, 1], dtype=tf.int32),
+    }
+
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=1,
+        spatial_image_shape=[128, 128])
+
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_track_ids]
+        .shape.as_list(), [3])
+
   def test_context_features(self):
     context_memory_size = 8
     context_feature_length = 10

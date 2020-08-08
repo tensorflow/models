@@ -230,7 +230,7 @@ class ParamsDict(object):
     ['a.a1 == b.ccc.a1', 'a.a2 <= b.bb.bb2']
 
     What it enforces are:
-     - a.a1 = 1 == b.ccc.a1 = 2
+     - a.a1 = 1 == b.ccc.a1 = 1
      - a.a2 = 2 <= b.bb.bb2 = 20
 
     Raises:

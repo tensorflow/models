@@ -24,6 +24,7 @@ from object_detection.core import standard_fields as fields
 from object_detection.data_decoders import tf_example_decoder
 from object_detection.utils import config_util
 
+
 def _decode_image(encoded_image_string_tensor):
   image_tensor = tf.image.decode_image(encoded_image_string_tensor,
                                        channels=3)
@@ -36,7 +37,6 @@ def _decode_tf_example(tf_example_string_tensor):
       tf_example_string_tensor)
   image_tensor = tensor_dict[fields.InputDataFields.image]
   return image_tensor
-
 
 def _combine_side_inputs(side_input_shapes="",
                          side_input_types="",
@@ -99,7 +99,7 @@ class DetectionInferenceModule(tf.Module):
 
     image = tf.cast(image, tf.float32)
     image, shapes = self._model.preprocess(image)
-    prediction_dict = self._model.predict(image, shapes, **kwargs)
+    prediction_dict = self._model.predict(image, shapes)
     detections = self._model.postprocess(prediction_dict, shapes)
     classes_field = fields.DetectionResultFields.detection_classes
     detections[classes_field] = (
@@ -195,11 +195,7 @@ DETECTION_MODULE_MAP = {
 def export_inference_graph(input_type,
                            pipeline_config,
                            trained_checkpoint_dir,
-                           output_directory,
-                           use_side_inputs=False,
-                           side_input_shapes="",
-                           side_input_types="",
-                           side_input_names=""):
+                           output_directory):
   """Exports inference graph for the model specified in the pipeline config.
 
   This function creates `output_directory` if it does not already exist,
@@ -213,12 +209,6 @@ def export_inference_graph(input_type,
     pipeline_config: pipeline_pb2.TrainAndEvalPipelineConfig proto.
     trained_checkpoint_dir: Path to the trained checkpoint file.
     output_directory: Path to write outputs.
-    use_side_inputs: boolean that determines whether side inputs should be
-      included in the input signature.
-    side_input_shapes: forward-slash-separated list of comma-separated lists
-        describing input shapes.
-    side_input_types: comma-separated list of the types of the inputs.
-    side_input_names: comma-separated list of the names of the inputs.
   Raises:
     ValueError: if input_type is invalid.
   """
@@ -236,6 +226,7 @@ def export_inference_graph(input_type,
 
   if input_type not in DETECTION_MODULE_MAP:
     raise ValueError('Unrecognized `input_type`')
+
   if use_side_inputs and input_type != 'image_tensor':
     raise ValueError('Side inputs supported for image_tensor input type only.')
 
@@ -248,6 +239,7 @@ def export_inference_graph(input_type,
   detection_module = DETECTION_MODULE_MAP[input_type](detection_model,
                                                       use_side_inputs,
                                                       list(zipped_side_inputs))
+
   # Getting the concrete function traces the graph and forces variables to
   # be constructed --- only after this can we save the checkpoint and
   # saved model.

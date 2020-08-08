@@ -192,7 +192,7 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
       saved_model_path = os.path.join(output_directory, 'saved_model')
       detect_fn = tf.saved_model.load(saved_model_path)
       image = self.get_dummy_input(input_type)
-      detections = detect_fn(tf.constant(image))
+      detections = detect_fn(image)
 
       detection_fields = fields.DetectionResultFields
       self.assertAllClose(detections[detection_fields.detection_boxes],

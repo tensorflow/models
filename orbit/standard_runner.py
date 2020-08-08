@@ -23,20 +23,22 @@ import tensorflow as tf
 
 
 @dataclasses.dataclass(frozen=True)
-class TrainerOverrides:
-  """Advanced overrides for Orbit trainers.
+class StandardTrainerOptions:
+  """Advanced options for `orbit.StandardTrainer`.
 
   Attributes:
-    use_tf_while_loop: A boolean indicates whether to wrap the train step with
-      a `tf.while_loop`.
-    use_tf_function: A boolean indicates whether a `tf.function` will be used.
-      If False, training will run on pure eager mode.
-    use_tpu_summary_optimization: A boolean indicates whether to enable the
-      performance optimization for summaries in TPUs. In TPUs, writing
-      summaries with outside compilation inside train step is slow. If True,
-      it creates two `tf.function` with two XLA programs: one with summaries
-      and one without, and run the program with summaries (slow one) only if
-      necessary.
+    use_tf_while_loop: A boolean indicating whether to run the training loop
+      using a `tf.while_loop`. If `True`, `use_tf_function` must also be `True`.
+    use_tf_function: A boolean indicating whether to apply `tf.function` to the
+      training loop. This will only affect the body of the loop (involving
+      `train_step`); `train_loop_begin` and `train_loop_end` will always be run
+      in eager mode.
+    use_tpu_summary_optimization: A boolean indicating whether to enable a
+      performance optimization for summaries in TPUs. Writing summaries
+      conditionally with outside compilation on TPUs can be extremely slow. If
+      `True`, this optimization creates two `tf.function`s with two XLA programs
+      (one with summary calls, and one without). The program with summaries runs
+      only for one step when summaries should be recorded.
   """
   use_tf_while_loop: bool = True
   use_tf_function: bool = True
@@ -46,39 +48,29 @@ class TrainerOverrides:
 class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
   """Implements the standard functionality of AbstractTrainer APIs."""
 
-  def __init__(self,
-               train_dataset,
-               use_tf_while_loop=True,
-               use_tf_function=True,
-               use_tpu_summary_optimization=False):
+  def __init__(self, train_dataset, options: StandardTrainerOptions = None):
     """Construct a `StandardTrainer` object.
 
     Args:
       train_dataset: A tf.nest-compatible structure of tf.data.Dataset or
         DistributedDataset.
-      use_tf_while_loop: A boolean indicates whether to wrap the train step with
-        a `tf.while_loop`.
-      use_tf_function: A boolean indicates whether a `tf.function` will be used.
-        If False, training will run on pure eager mode.
-      use_tpu_summary_optimization: A boolean indicates whether to enable the
-        performance optimization for summaries in TPUs. In TPUs, writing
-        summaries with outside compilation inside train step is slow. If True,
-        it creates two `tf.function` with two XLA programs: one with summaries
-          and one without, and run the program with summaries (slow one) only if
-          necessary.
+      options: An `orbit.StandardTrainerOptions` instance.
     """
-    if use_tf_while_loop and not use_tf_function:
+    options = options or StandardTrainerOptions()
+    if options.use_tf_while_loop and not options.use_tf_function:
       raise ValueError("`use_tf_while_loop=True` and `use_tf_function=False` "
                        "is not supported")
-    if use_tpu_summary_optimization and not use_tf_while_loop:
+    if options.use_tpu_summary_optimization and not options.use_tf_while_loop:
       raise ValueError("`use_tpu_summary_optimization=True` and "
                        "`use_tf_while_loop=False` is not supported")
-    self._use_tf_while_loop = use_tf_while_loop
-    self._use_tf_function = use_tf_function
+
+    self._use_tf_while_loop = options.use_tf_while_loop
+    self._use_tf_function = options.use_tf_function
+    self._use_tpu_summary_optimization = options.use_tpu_summary_optimization
+
     self._train_dataset = train_dataset
     self._train_iter = None
     self._train_loop_fn = None
-    self._use_tpu_summary_optimization = use_tpu_summary_optimization
 
   def train(self,
             num_steps: Optional[tf.Tensor]) -> Optional[Dict[Text, tf.Tensor]]:
@@ -168,12 +160,14 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
 
 
 @dataclasses.dataclass(frozen=True)
-class EvaluatorOverrides:
-  """Advanced overrides for Orbit evaluators.
+class StandardEvaluatorOptions:
+  """Advanced options for the `orbit.StandardEvaluator`.
 
   Attributes:
-    use_tf_function: A boolean indicates whether a `tf.function` will be used.
-      If False, training will run on pure eager mode.
+    use_tf_function: A boolean indicating whether to apply `tf.function` to the
+      training loop. This will only affect the body of the loop (involving
+      `train_step`); `train_loop_begin` and `train_loop_end` will always be run
+      in eager mode.
   """
   use_tf_function: bool = True
 
@@ -181,16 +175,16 @@ class EvaluatorOverrides:
 class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
   """Implements the standard functionality of AbstractEvaluator APIs."""
 
-  def __init__(self, eval_dataset, use_tf_function=True):
+  def __init__(self, eval_dataset, options: StandardEvaluatorOptions = None):
     """Construct a `StandardEvaluator` object.
 
     Args:
       eval_dataset: A tf.nest-compatible structure of tf.data.Dataset or
         DistributedDataset.
-      use_tf_function: A boolean indicates whether a `tf.function` will be used.
-        If False, evaluation will run on pure eager mode.
+      options: An `orbit.StandardEvaluatorOptions` instance.
     """
-    self._eval_use_tf_function = use_tf_function
+    options = options or StandardEvaluatorOptions()
+    self._eval_use_tf_function = options.use_tf_function
     self._eval_dataset = eval_dataset
     self._eval_loop_fn = None
 

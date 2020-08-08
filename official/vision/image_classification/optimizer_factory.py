@@ -370,29 +370,26 @@ def build_learning_rate(params: base_configs.LearningRateConfig,
         decay_steps=decay_steps,
         decay_rate=decay_rate,
         staircase=params.staircase)
-  elif decay_type == 'piecewise_constant_with_warmup':
-    logging.info('Using Piecewise constant decay with warmup. '
-                 'Parameters: batch_size: %d, epoch_size: %d, '
-                 'warmup_epochs: %d, boundaries: %s, multipliers: %s',
-                 batch_size, params.examples_per_epoch,
-                 params.warmup_epochs, params.boundaries,
-                 params.multipliers)
-    lr = learning_rate.PiecewiseConstantDecayWithWarmup(
-        batch_size=batch_size,
-        epoch_size=params.examples_per_epoch,
-        warmup_epochs=params.warmup_epochs,
-        boundaries=params.boundaries,
-        multipliers=params.multipliers)
+  elif decay_type == 'stepwise':
+    steps_per_epoch = params.examples_per_epoch // batch_size
+    boundaries = [boundary * steps_per_epoch for boundary in params.boundaries]
+    multipliers = [batch_size * multiplier for multiplier in params.multipliers]
+    logging.info('Using stepwise learning rate. Parameters: '
+                 'boundaries: %s, values: %s',
+                 boundaries, multipliers)
+    lr = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
+        boundaries=boundaries,
+        values=multipliers)
   elif decay_type == 'cosine_with_warmup':
     lr = learning_rate.CosineDecayWithWarmup(
         batch_size=batch_size,
         total_steps=train_epochs * train_steps,
         warmup_steps=warmup_steps)
   if warmup_steps > 0:
-    if decay_type not in [
-        'piecewise_constant_with_warmup', 'cosine_with_warmup'
-    ]:
+    if decay_type not in ['cosine_with_warmup']:
       logging.info('Applying %d warmup steps to the learning rate',
                    warmup_steps)
-      lr = learning_rate.WarmupDecaySchedule(lr, warmup_steps)
+      lr = learning_rate.WarmupDecaySchedule(lr,
+                                             warmup_steps,
+                                             warmup_lr=base_lr)
   return lr

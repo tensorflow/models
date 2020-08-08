@@ -24,15 +24,17 @@ from official.nlp.data import pretrain_dataloader
 from official.nlp.tasks import electra_task
 
 
-class ELECTRAPretrainTaskTest(tf.test.TestCase):
+class ElectraPretrainTaskTest(tf.test.TestCase):
 
   def test_task(self):
-    config = electra_task.ELECTRAPretrainConfig(
-        model=electra.ELECTRAPretrainerConfig(
-            generator_encoder=encoders.TransformerEncoderConfig(
-                vocab_size=30522, num_layers=1),
-            discriminator_encoder=encoders.TransformerEncoderConfig(
-                vocab_size=30522, num_layers=1),
+    config = electra_task.ElectraPretrainConfig(
+        model=electra.ElectraPretrainerConfig(
+            generator_encoder=encoders.EncoderConfig(
+                bert=encoders.BertEncoderConfig(vocab_size=30522,
+                                                num_layers=1)),
+            discriminator_encoder=encoders.EncoderConfig(
+                bert=encoders.BertEncoderConfig(vocab_size=30522,
+                                                num_layers=1)),
             num_masked_tokens=20,
             sequence_length=128,
             cls_heads=[
@@ -44,7 +46,7 @@ class ELECTRAPretrainTaskTest(tf.test.TestCase):
             max_predictions_per_seq=20,
             seq_length=128,
             global_batch_size=1))
-    task = electra_task.ELECTRAPretrainTask(config)
+    task = electra_task.ElectraPretrainTask(config)
     model = task.build_model()
     metrics = task.build_metrics()
     dataset = task.build_inputs(config.train_data)
