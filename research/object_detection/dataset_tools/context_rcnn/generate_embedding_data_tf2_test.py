@@ -250,7 +250,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
     bottom_k_embedding_count = 0
     inference_fn = generate_embedding_data.GenerateEmbeddingDataFn(
         saved_model_path, top_k_embedding_count, bottom_k_embedding_count)
-    inference_fn.start_bundle()
+    inference_fn.setup()
     generated_example = self._create_tf_example()
     self.assertAllEqual(tf.train.Example.FromString(
         generated_example).features.feature['image/object/class/label']
@@ -268,7 +268,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
     bottom_k_embedding_count = 0
     inference_fn = generate_embedding_data.GenerateEmbeddingDataFn(
         saved_model_path, top_k_embedding_count, bottom_k_embedding_count)
-    inference_fn.start_bundle()
+    inference_fn.setup()
     generated_example = self._create_tf_example()
     self.assertAllEqual(
         tf.train.Example.FromString(generated_example).features
@@ -286,7 +286,7 @@ class GenerateEmbeddingData(tf.test.TestCase):
     bottom_k_embedding_count = 2
     inference_fn = generate_embedding_data.GenerateEmbeddingDataFn(
         saved_model_path, top_k_embedding_count, bottom_k_embedding_count)
-    inference_fn.start_bundle()
+    inference_fn.setup()
     generated_example = self._create_tf_example()
     self.assertAllEqual(
         tf.train.Example.FromString(generated_example).features

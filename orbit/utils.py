@@ -432,7 +432,7 @@ def train_function_with_summaries(*args, **kwargs):
   return decorator
 
 
-def get_value(x) -> np.ndarray:
+def get_value(x) -> np.number:
   """Returns the value of a variable/tensor.
 
   Args:

@@ -499,6 +499,9 @@ def pad_input_data_to_static_shapes(tensor_dict,
     padding_shapes[
         fields.InputDataFields.groundtruth_dp_surface_coords] = [
             max_num_boxes, max_dp_points, 4]
+  if fields.InputDataFields.groundtruth_track_ids in tensor_dict:
+    padding_shapes[
+        fields.InputDataFields.groundtruth_track_ids] = [max_num_boxes]
 
   # Prepare for ContextRCNN related fields.
   if fields.InputDataFields.context_features in tensor_dict:
@@ -602,7 +605,8 @@ def _get_labels_dict(input_dict):
       fields.InputDataFields.groundtruth_keypoint_weights,
       fields.InputDataFields.groundtruth_dp_num_points,
       fields.InputDataFields.groundtruth_dp_part_ids,
-      fields.InputDataFields.groundtruth_dp_surface_coords
+      fields.InputDataFields.groundtruth_dp_surface_coords,
+      fields.InputDataFields.groundtruth_track_ids
   ]
 
   for key in optional_label_keys:
@@ -762,6 +766,8 @@ def train_input(train_config, train_input_config,
         DensePose surface coordinates. The format is (y, x, v, u), where (y, x)
         are normalized image coordinates and (v, u) are normalized surface part
         coordinates.
+      labels[fields.InputDataFields.groundtruth_track_ids] is a
+        [batch_size, num_boxes] int32 tensor with the track ID for each object.
 
   Raises:
     TypeError: if the `train_config`, `train_input_config` or `model_config`
@@ -914,6 +920,8 @@ def eval_input(eval_config, eval_input_config, model_config,
         DensePose surface coordinates. The format is (y, x, v, u), where (y, x)
         are normalized image coordinates and (v, u) are normalized surface part
         coordinates.
+      labels[fields.InputDataFields.groundtruth_track_ids] is a
+        [batch_size, num_boxes] int32 tensor with the track ID for each object.
 
   Raises:
     TypeError: if the `eval_config`, `eval_input_config` or `model_config`

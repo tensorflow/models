@@ -107,9 +107,12 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
         .datasets_num_private_threads,
         dtype=self.dtype,
         drop_remainder=True)
-    orbit.StandardTrainer.__init__(self, train_dataset,
-                                   flags_obj.use_tf_while_loop,
-                                   flags_obj.use_tf_function)
+    orbit.StandardTrainer.__init__(
+        self,
+        train_dataset,
+        options=orbit.StandardTrainerOptions(
+            use_tf_while_loop=flags_obj.use_tf_while_loop,
+            use_tf_function=flags_obj.use_tf_function))
     if not flags_obj.skip_eval:
       eval_dataset = orbit.utils.make_distributed_dataset(
           self.strategy,
@@ -119,8 +122,11 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
           batch_size=self.batch_size,
           parse_record_fn=imagenet_preprocessing.parse_record,
           dtype=self.dtype)
-      orbit.StandardEvaluator.__init__(self, eval_dataset,
-                                       flags_obj.use_tf_function)
+      orbit.StandardEvaluator.__init__(
+          self,
+          eval_dataset,
+          options=orbit.StandardEvaluatorOptions(
+              use_tf_function=flags_obj.use_tf_function))
 
   def train_loop_begin(self):
     """See base class."""

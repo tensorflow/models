@@ -46,6 +46,7 @@ class InputDataFields(object):
       classes for which an image has been labeled.
     groundtruth_boxes: coordinates of the ground truth boxes in the image.
     groundtruth_classes: box-level class labels.
+    groundtruth_track_ids: box-level track ID labels.
     groundtruth_confidences: box-level class confidences. The shape should be
       the same as the shape of groundtruth_classes.
     groundtruth_label_types: box-level label types (e.g. explicit negative).
@@ -97,6 +98,7 @@ class InputDataFields(object):
   groundtruth_labeled_classes = 'groundtruth_labeled_classes'
   groundtruth_boxes = 'groundtruth_boxes'
   groundtruth_classes = 'groundtruth_classes'
+  groundtruth_track_ids = 'groundtruth_track_ids'
   groundtruth_confidences = 'groundtruth_confidences'
   groundtruth_label_types = 'groundtruth_label_types'
   groundtruth_is_crowd = 'groundtruth_is_crowd'
@@ -167,6 +169,7 @@ class DetectionResultFields(object):
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   detection_keypoint_scores = 'detection_keypoint_scores'
+  detection_embeddings = 'detection_embeddings'
   num_detections = 'num_detections'
   raw_detection_boxes = 'raw_detection_boxes'
   raw_detection_scores = 'raw_detection_scores'
@@ -208,6 +211,7 @@ class BoxListFields(object):
   densepose_surface_coords = 'densepose_surface_coords'
   is_crowd = 'is_crowd'
   group_of = 'group_of'
+  track_ids = 'track_ids'
 
 
 class PredictionFields(object):

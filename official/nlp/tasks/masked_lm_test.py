@@ -28,8 +28,10 @@ class MLMTaskTest(tf.test.TestCase):
   def test_task(self):
     config = masked_lm.MaskedLMConfig(
         init_checkpoint=self.get_temp_dir(),
-        model=bert.BertPretrainerConfig(
-            encoders.TransformerEncoderConfig(vocab_size=30522, num_layers=1),
+        model=bert.PretrainerConfig(
+            encoders.EncoderConfig(
+                bert=encoders.BertEncoderConfig(vocab_size=30522,
+                                                num_layers=1)),
             cls_heads=[
                 bert.ClsHeadConfig(
                     inner_dim=10, num_classes=2, name="next_sentence")
