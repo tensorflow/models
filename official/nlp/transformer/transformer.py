@@ -22,16 +22,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from official.modeling import tf_utils
-from official.modeling.activations import attention_initializer
-from official.nlp.modeling import layers
-from official.nlp.modeling.layers import position_embedding
-from official.nlp.modeling.layers import transformer
 from official.nlp.modeling.models import seq2seq_transformer
-from official.nlp.modeling.ops import beam_search
 from official.nlp.transformer import metrics
-from official.nlp.transformer import model_utils
-from official.nlp.transformer.utils.tokenizer import EOS_ID
 
 
 # Disable the not-callable lint error, since it claims many objects are not
