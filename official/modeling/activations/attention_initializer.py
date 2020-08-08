@@ -12,21 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Gaussian error linear unit."""
+"""Attention Layer Initializer."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import math
 
 import tensorflow as tf
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-def gelu(x):
-  """Gaussian Error Linear Unit.
+def attention_initializer(hidden_size):
+  """Weight Initializer of Attention Layer in Seq2Seq Transformer.
 
-  This is a smoother version of the RELU.
-  Original paper: https://arxiv.org/abs/1606.08415
   Args:
-    x: float Tensor to perform activation.
+    hidden_size: hidden size of input tensor
 
   Returns:
-    `x` with the GELU activation applied.
+    Initialized weights based on hidden size
   """
-  return tf.keras.activations.gelu(x, approximate=True)
+  limit = math.sqrt(6.0 / (hidden_size + hidden_size))
+  return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)
