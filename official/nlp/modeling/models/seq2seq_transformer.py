@@ -21,9 +21,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
+
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.modeling.activations import attention_initializer
 from official.nlp.modeling import layers
 from official.nlp.modeling.layers import position_embedding
 from official.nlp.modeling.layers import transformer
@@ -408,7 +409,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
               norm_first=self._norm_first,
               norm_epsilon=self._norm_epsilon,
               intermediate_dropout=self._intermediate_dropout,
-              attention_initializer=attention_initializer.attention_initializer(
+              attention_initializer=attention_initializer(
                   input_shape[2]),
               name=("layer_%d" % i)))
     self.output_normalization = tf.keras.layers.LayerNormalization(
@@ -522,7 +523,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
               norm_first=self._norm_first,
               norm_epsilon=self._norm_epsilon,
               intermediate_dropout=self._intermediate_dropout,
-              attention_initializer=attention_initializer.attention_initializer(
+              attention_initializer=attention_initializer(
                   input_shape[2]),
               name=("layer_%d" % i)))
     self.output_normalization = tf.keras.layers.LayerNormalization(
@@ -613,3 +614,7 @@ def embedding_linear(embedding_matrix, x):
     logits = tf.matmul(x, embedding_matrix, transpose_b=True)
 
     return tf.reshape(logits, [batch_size, length, vocab_size])
+
+def attention_initializer(hidden_size):
+  limit = math.sqrt(6.0 / (hidden_size + hidden_size))
+  return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)
