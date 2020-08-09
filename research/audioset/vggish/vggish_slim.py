@@ -36,7 +36,7 @@ import tf_slim as slim
 import vggish_params as params
 
 
-def define_vggish_slim(features=None, training=False):
+def define_vggish_slim(features_tensor=None, training=False):
   """Defines the VGGish TensorFlow model.
 
   All ops are created in the current default graph, under the scope 'vggish/'.
@@ -48,14 +48,14 @@ def define_vggish_slim(features=None, training=False):
   [num_frames, num_bands] represents a log-mel-scale spectrogram patch covering
   num_bands frequency bands and num_frames time frames (where each frame step is
   usually 10ms). This is produced by computing the stabilized
-  log(mel-spectrogram + params.LOG_OFFSET).  The output is a tensor  named
+  log(mel-spectrogram + params.LOG_OFFSET).  The output is a tensor named
   'vggish/embedding' which produces the activations of a 128-D embedding layer,
   which is usually the penultimate layer when used as part of a full model with
   a final classifier layer.
 
   Args:
-    features: If not None, the tensor containing the input features. If None,
-      a placeholder input is created.
+    features_tensor: If not None, the tensor containing the input features.
+      If None, a placeholder input is created.
     training: If true, all parameters are marked trainable.
 
   Returns:
@@ -79,12 +79,13 @@ def define_vggish_slim(features=None, training=False):
                       kernel_size=[2, 2], stride=2, padding='SAME'), \
        tf.variable_scope('vggish'):
     # Input: a batch of 2-D log-mel-spectrogram patches.
-    if features is None:
-      features = tf.placeholder(
+    if features_tensor is None:
+      features_tensor = tf.placeholder(
           tf.float32, shape=(None, params.NUM_FRAMES, params.NUM_BANDS),
           name='input_features')
     # Reshape to 4-D so that we can convolve a batch with conv2d().
-    net = tf.reshape(features, [-1, params.NUM_FRAMES, params.NUM_BANDS, 1])
+    net = tf.reshape(features_tensor,
+                     [-1, params.NUM_FRAMES, params.NUM_BANDS, 1])
 
     # The VGG stack of alternating convolutions and max-pools.
     net = slim.conv2d(net, 64, scope='conv1')
