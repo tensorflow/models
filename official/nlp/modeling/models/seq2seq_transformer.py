@@ -432,24 +432,24 @@ class TransformerEncoder(tf.keras.layers.Layer):
     return {
         "num_layers":
             self._num_layers,
-         "num_attention_heads":
-            self._num_attention_heads,
-         "intermediate_size":
-            self._intermediate_size,
-         "activation":
-            self._activation,
-         "dropout_rate":
-            self._dropout_rate,
-         "attention_dropout_rate":
-            self._attention_dropout_rate,
-         "use_bias":
-            self._use_bias,
-         "norm_first":
-            self._norm_first,
-         "norm_epsilon":
-            self._norm_epsilon,
-         "intermediate_dropout":
-            self._intermediate_dropout
+        "num_attention_heads":
+          self._num_attention_heads,
+        "intermediate_size":
+          self._intermediate_size,
+        "activation":
+          self._activation,
+        "dropout_rate":
+          self._dropout_rate,
+        "attention_dropout_rate":
+          self._attention_dropout_rate,
+        "use_bias":
+          self._use_bias,
+        "norm_first":
+          self._norm_first,
+        "norm_epsilon":
+          self._norm_epsilon,
+        "intermediate_dropout":
+          self._intermediate_dropout
     }
 
   def call(self,
@@ -547,24 +547,24 @@ class TransformerDecoder(tf.keras.layers.Layer):
     return {
         "num_layers":
             self._num_layers,
-         "num_attention_heads":
-            self._num_attention_heads,
-         "intermediate_size":
-            self._intermediate_size,
-         "activation":
-            self._activation,
-         "dropout_rate":
-            self._dropout_rate,
-         "attention_dropout_rate":
-            self._attention_dropout_rate,
-         "use_bias":
-            self._use_bias,
-         "norm_first":
-            self._norm_first,
-         "norm_epsilon":
-            self._norm_epsilon,
-         "intermediate_dropout":
-            self._intermediate_dropout
+        "num_attention_heads":
+          self._num_attention_heads,
+        "intermediate_size":
+          self._intermediate_size,
+        "activation":
+          self._activation,
+        "dropout_rate":
+          self._dropout_rate,
+        "attention_dropout_rate":
+          self._attention_dropout_rate,
+        "use_bias":
+          self._use_bias,
+        "norm_first":
+          self._norm_first,
+        "norm_epsilon":
+          self._norm_epsilon,
+        "intermediate_dropout":
+          self._intermediate_dropout
     }
 
   def call(self,
