@@ -41,13 +41,13 @@ def define_vggish_slim(features_tensor=None, training=False):
 
   All ops are created in the current default graph, under the scope 'vggish/'.
 
-  The input is either a tensor passed in via the optional 'features' argument or
-  a placeholder created below named 'vggish/input_features'. The input is
-  expected to have dtype float32 and shape [batch_size, num_frames, num_bands]
-  where batch_size is variable and num_frames and num_bands are constants, and
-  [num_frames, num_bands] represents a log-mel-scale spectrogram patch covering
-  num_bands frequency bands and num_frames time frames (where each frame step is
-  usually 10ms). This is produced by computing the stabilized
+  The input is either a tensor passed in via the optional 'features_tensor'
+  argument or a placeholder created below named 'vggish/input_features'. The
+  input is expected to have dtype float32 and shape [batch_size, num_frames,
+  num_bands] where batch_size is variable and num_frames and num_bands are
+  constants, and [num_frames, num_bands] represents a log-mel-scale spectrogram
+  patch covering num_bands frequency bands and num_frames time frames (where
+  each frame step is usually 10ms). This is produced by computing the stabilized
   log(mel-spectrogram + params.LOG_OFFSET).  The output is a tensor named
   'vggish/embedding' which produces the activations of a 128-D embedding layer,
   which is usually the penultimate layer when used as part of a full model with
