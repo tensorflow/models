@@ -18,12 +18,8 @@ YAMNet depends on the following Python packages:
 * [`pysoundfile`](https://pysoundfile.readthedocs.io/)
 
 These are all easily installable via, e.g., `pip install numpy` (as in the
-example command sequence below).
-
-Any reasonably recent version of these packages should work. TensorFlow should
-be at least version 1.8 to ensure Keras support is included. Note that while
-the code works fine with TensorFlow v1.x or v2.x, we explicitly enable v1.x
-behavior.
+example command sequence below). Any reasonably recent version of these
+packages should work.
 
 YAMNet also requires downloading the following data file:
 

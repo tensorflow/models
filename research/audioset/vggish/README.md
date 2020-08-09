@@ -16,17 +16,14 @@ VGGish depends on the following Python packages:
 
 * [`numpy`](http://www.numpy.org/)
 * [`resampy`](http://resampy.readthedocs.io/en/latest/)
-* [`tensorflow`](http://www.tensorflow.org/) (currently, only TF v1.x)
+* [`tensorflow`](http://www.tensorflow.org/)
 * [`tf_slim`](https://github.com/google-research/tf-slim)
 * [`six`](https://pythonhosted.org/six/)
 * [`soundfile`](https://pysoundfile.readthedocs.io/)
 
 These are all easily installable via, e.g., `pip install numpy` (as in the
-sample installation session below).
-
-Any reasonably recent version of these packages shold work. Note that we currently only support
-TensorFlow v1.x due to a [`tf_slim` limitation](https://github.com/google-research/tf-slim/pull/1).
-TensorFlow v1.15 (the latest version as of Jan 2020) has been tested to work.
+sample installation session below). Any reasonably recent version of these
+packages shold work.
 
 VGGish also requires downloading two data files:
 
@@ -60,7 +57,7 @@ Here's a sample installation and test session:
 $ sudo python -m pip install --upgrade pip wheel
 
 # Install all dependences.
-$ sudo pip install numpy resampy tensorflow==1.15 tf_slim six soundfile
+$ sudo pip install numpy resampy tensorflow tf_slim six soundfile
 
 # Clone TensorFlow models repo into a 'models' directory.
 $ git clone https://github.com/tensorflow/models.git
