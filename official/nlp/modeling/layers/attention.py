@@ -362,7 +362,8 @@ class MultiHeadAttention(tf.keras.layers.Layer):
     norm_axes = tuple(
         range(attn_scores_rank - len(self._attention_axes), attn_scores_rank))
     self._masked_softmax = masked_softmax.MaskedSoftmax(
-        mask_expansion_axes=[1], normalization_axes=norm_axes)
+        mask_expansion_axes=[-len(self._attention_axes) * 2 - 1],
+        normalization_axes=norm_axes)
     self._dropout_layer = tf.keras.layers.Dropout(rate=self._dropout)
 
   def compute_attention(self, query, key, value, attention_mask=None):

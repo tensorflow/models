@@ -42,8 +42,7 @@ from official.nlp.tasks import utils
 @dataclasses.dataclass
 class ModelConfig(base_config.Config):
   """A base span labeler configuration."""
-  encoder: encoders.TransformerEncoderConfig = (
-      encoders.TransformerEncoderConfig())
+  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
 
 
 @dataclasses.dataclass
@@ -94,13 +93,13 @@ class QuestionAnsweringTask(base_task.Task):
     if self._hub_module:
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
-      encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.model.encoder)
+      encoder_network = encoders.build_encoder(self.task_config.model.encoder)
+    encoder_cfg = self.task_config.model.encoder.get()
     # Currently, we only supports bert-style question answering finetuning.
     return models.BertSpanLabeler(
         network=encoder_network,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.model.encoder.initializer_range))
+            stddev=encoder_cfg.initializer_range))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     start_positions = labels['start_positions']

@@ -1782,6 +1782,89 @@ class CenterNetDensePoseTargetAssigner(object):
     return batch_indices, batch_part_ids, batch_surface_coords, batch_weights
 
 
+class CenterNetTrackTargetAssigner(object):
+  """Wrapper to compute targets for tracking task.
+
+  Reference paper: A Simple Baseline for Multi-Object Tracking [1]
+  [1]: https://arxiv.org/abs/2004.01888
+  """
+
+  def __init__(self, stride, num_track_ids):
+    self._stride = stride
+    self._num_track_ids = num_track_ids
+
+  def assign_track_targets(self,
+                           height,
+                           width,
+                           gt_track_ids_list,
+                           gt_boxes_list,
+                           gt_weights_list=None):
+    """Computes the track ID targets.
+
+    Args:
+      height: int, height of input to the model. This is used to determine the
+        height of the output.
+      width: int, width of the input to the model. This is used to determine the
+        width of the output.
+      gt_track_ids_list: A list of 1-D tensors with shape [num_boxes]
+        corresponding to the track ID of each groundtruth detection box.
+      gt_boxes_list: A list of float tensors with shape [num_boxes, 4]
+        representing the groundtruth detection bounding boxes for each sample in
+        the batch. The coordinates are expected in normalized coordinates.
+      gt_weights_list: A list of 1-D tensors with shape [num_boxes]
+        corresponding to the weight of each groundtruth detection box.
+
+    Returns:
+      batch_indices: an integer tensor of shape [batch_size, num_boxes, 3]
+        holding the indices inside the predicted tensor which should be
+        penalized. The first column indicates the index along the batch
+        dimension and the second and third columns indicate the index
+        along the y and x dimensions respectively.
+      batch_weights: a float tensor of shape [batch_size, num_boxes] indicating
+        the weight of each prediction.
+      track_id_targets: An int32 tensor of size [batch_size, num_boxes,
+        num_track_ids] containing the one-hot track ID vector of each
+        groundtruth detection box.
+    """
+    track_id_targets = tf.one_hot(
+        gt_track_ids_list, depth=self._num_track_ids, axis=-1)
+
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_boxes_list)
+
+    batch_indices = []
+    batch_weights = []
+
+    for i, (boxes, weights) in enumerate(zip(gt_boxes_list, gt_weights_list)):
+      boxes = box_list.BoxList(boxes)
+      boxes = box_list_ops.to_absolute_coordinates(boxes,
+                                                   height // self._stride,
+                                                   width // self._stride)
+      # Get the box center coordinates. Each returned tensors have the shape of
+      # [num_boxes]
+      (y_center, x_center, _, _) = boxes.get_center_coordinates_and_sizes()
+      num_boxes = tf.shape(x_center)
+
+      # Compute the indices of the box centers. Shape:
+      #   indices: [num_boxes, 2]
+      (_, indices) = ta_utils.compute_floor_offsets_with_indices(
+          y_source=y_center, x_source=x_center)
+
+      # Assign ones if weights are not provided.
+      if weights is None:
+        weights = tf.ones(num_boxes, dtype=tf.float32)
+
+      # Shape of [num_boxes, 1] integer tensor filled with current batch index.
+      batch_index = i * tf.ones_like(indices[:, 0:1], dtype=tf.int32)
+      batch_indices.append(tf.concat([batch_index, indices], axis=1))
+      batch_weights.append(weights)
+
+    batch_indices = tf.stack(batch_indices, axis=0)
+    batch_weights = tf.stack(batch_weights, axis=0)
+
+    return batch_indices, batch_weights, track_id_targets
+
+
 def filter_mask_overlap_min_area(masks):
   """If a pixel belongs to 2 instances, remove it from the larger instance."""
 

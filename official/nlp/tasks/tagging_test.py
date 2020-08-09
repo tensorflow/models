@@ -53,8 +53,8 @@ class TaggingTest(tf.test.TestCase):
 
   def setUp(self):
     super(TaggingTest, self).setUp()
-    self._encoder_config = encoders.TransformerEncoderConfig(
-        vocab_size=30522, num_layers=1)
+    self._encoder_config = encoders.EncoderConfig(
+        bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1))
     self._train_data_config = tagging_data_loader.TaggingDataConfig(
         input_path="dummy", seq_length=128, global_batch_size=1)
 
@@ -74,7 +74,7 @@ class TaggingTest(tf.test.TestCase):
 
   def test_task(self):
     # Saves a checkpoint.
-    encoder = encoders.instantiate_encoder_from_cfg(self._encoder_config)
+    encoder = encoders.build_encoder(self._encoder_config)
     ckpt = tf.train.Checkpoint(encoder=encoder)
     saved_path = ckpt.save(self.get_temp_dir())
 

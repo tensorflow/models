@@ -327,7 +327,8 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       proposal_boxes_normalized: A float32 Tensor with shape [batch_size,
         num_proposals, box_code_size] containing proposal boxes in normalized
         coordinates.
-      image_shape: a 1-D tensor of shape [4] representing the image shape.
+      image_shape: A 1D int32 tensors of size [4] containing the image shape.
+
       context_features: A float Tensor of shape [batch_size, context_size,
         num_context_features].
       valid_context_size: A int32 Tensor of shape [batch_size].
