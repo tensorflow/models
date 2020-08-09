@@ -345,7 +345,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       box_levels = ops.fpn_feature_levels(
           num_levels, num_levels - 2,
           tf.sqrt(
-            tf.cast(image_shape[1] * image_shape[2], tf.float32)) / 224.0,
+              tf.cast(image_shape[1] * image_shape[2], tf.float32)) / 224.0,
           proposal_boxes_normalized)
 
     box_features = self._crop_and_resize_fn(
