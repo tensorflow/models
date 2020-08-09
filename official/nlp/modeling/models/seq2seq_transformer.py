@@ -107,7 +107,6 @@ class Seq2SeqTransformer(tf.keras.Model):
         First item, inputs: int tensor with shape [batch_size, input_length].
         Second item (optional), targets: None or int tensor with shape
           [batch_size, target_length].
-      training: boolean, whether in training mode or not.
 
     Returns:
       If targets is defined, then return logits for each word in the target
@@ -362,13 +361,26 @@ class Seq2SeqTransformer(tf.keras.Model):
     return symbols_to_logits_fn
 
 class TransformerEncoder(tf.keras.layers.Layer):
-  """Transformer decoder stack.
-  Like the encoder stack, the decoder stack is made up of N identical layers.
-  Each layer is composed of the sublayers:
+  """Transformer encoder.
+  Transformer encoder is made up of N identical layers. Each layer is composed
+  of the sublayers:
     1. Self-attention layer
-    2. Multi-headed attention layer combining encoder outputs with results from
-       the previous self-attention layer.
-    3. Feedforward network (2 fully-connected layers)
+    2. Feedforward network (which is 2 fully-connected layers)
+
+  Arguments:
+    num_layers: Number of layers.
+    num_attention_heads: Number of attention heads.
+    intermediate_size: Size of the intermediate (Feedforward) layer.
+    activation: Activation for the intermediate layer.
+    dropout_rate: Dropout probability.
+    attention_dropout_rate: Dropout probability for attention layers.
+    use_bias: Whether to enable use_bias in attention layer. If set False,
+      use_bias in attention layer is disabled.
+    norm_first: Whether to normalize inputs to attention and intermediate dense
+      layers. If set False, output of attention and intermediate dense layers is
+      normalized.
+    norm_epsilon: Epsilon value to initialize normalization layers.
+    intermediate_dropout: Dropout probability for intermediate_dropout_layer.
   """
 
   def __init__(self,
@@ -443,28 +455,14 @@ class TransformerEncoder(tf.keras.layers.Layer):
   def call(self,
            encoder_inputs,
            attention_mask=None):
-    """Return the output of the decoder layer stacks.
+    """Return the output of the encoder.
     Args:
-      decoder_inputs: A tensor with shape
-        [batch_size, target_length, hidden_size].
-      encoder_outputs: A tensor with shape
-        [batch_size, input_length, hidden_size]
-      decoder_self_attention_bias: A tensor with shape
-        [1, 1, target_len, target_length], the bias for decoder self-attention
-        layer.
-      attention_bias: A tensor with shape [batch_size, 1, 1, input_length],
-        the bias for encoder-decoder attention layer.
-      training: A bool, whether in training mode or not.
-      cache: (Used for fast decoding) A nested dictionary storing previous
-        decoder self-attention values. The items are:
-          {layer_n: {"k": A tensor with shape [batch_size, i, key_channels],
-                     "v": A tensor with shape [batch_size, i, value_channels]},
-                       ...}
-      decode_loop_step: An integer, the step number of the decoding loop. Used
-        only for autoregressive inference on TPU.
+      encoder_inputs: tensor with shape [batch_size, input_length, hidden_size]
+      attention_mask: mask for the encoder self-attention layer. [batch_size,
+        input_length, input_length]
     Returns:
-      Output of decoder layer stack.
-      float32 tensor with shape [batch_size, target_length, hidden_size]
+      Output of encoder.
+      float32 tensor with shape [batch_size, input_length, hidden_size]
     """
     for layer_idx in range(self._num_layers):
       encoder_inputs = self.encoder_layers[layer_idx](
@@ -476,13 +474,28 @@ class TransformerEncoder(tf.keras.layers.Layer):
     return output_tensor
 
 class TransformerDecoder(tf.keras.layers.Layer):
-  """Transformer decoder stack.
-  Like the encoder stack, the decoder stack is made up of N identical layers.
+  """Transformer decoder.
+  Like the encoder, the decoder is made up of N identical layers.
   Each layer is composed of the sublayers:
     1. Self-attention layer
     2. Multi-headed attention layer combining encoder outputs with results from
        the previous self-attention layer.
     3. Feedforward network (2 fully-connected layers)
+
+  Arguments:
+    num_layers: Number of layers.
+    num_attention_heads: Number of attention heads.
+    intermediate_size: Size of the intermediate (Feedforward) layer.
+    activation: Activation for the intermediate layer.
+    dropout_rate: Dropout probability.
+    attention_dropout_rate: Dropout probability for attention layers.
+    use_bias: Whether to enable use_bias in attention layer. If set False,
+      use_bias in attention layer is disabled.
+    norm_first: Whether to normalize inputs to attention and intermediate dense
+      layers. If set False, output of attention and intermediate dense layers is
+      normalized.
+    norm_epsilon: Epsilon value to initialize normalization layers.
+    intermediate_dropout: Dropout probability for intermediate_dropout_layer.
   """
 
   def __init__(self,
@@ -563,16 +576,15 @@ class TransformerDecoder(tf.keras.layers.Layer):
            decode_loop_step=None):
     """Return the output of the decoder layer stacks.
     Args:
-      decoder_inputs: A tensor with shape
+      target: A tensor with shape
         [batch_size, target_length, hidden_size].
-      encoder_outputs: A tensor with shape
+      memory: A tensor with shape
         [batch_size, input_length, hidden_size]
-      decoder_self_attention_bias: A tensor with shape
-        [1, 1, target_len, target_length], the bias for decoder self-attention
-        layer.
-      attention_bias: A tensor with shape [batch_size, 1, 1, input_length],
-        the bias for encoder-decoder attention layer.
-      training: A bool, whether in training mode or not.
+      memory_mask: A tensor with shape
+        [batch_size, target_len, target_length], the mask for decoder
+        self-attention layer.
+      target_mask: A tensor with shape [batch_size, target_length, input_length]
+        which is the mask for encoder-decoder attention layer.
       cache: (Used for fast decoding) A nested dictionary storing previous
         decoder self-attention values. The items are:
           {layer_n: {"k": A tensor with shape [batch_size, i, key_channels],
@@ -581,7 +593,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
       decode_loop_step: An integer, the step number of the decoding loop. Used
         only for autoregressive inference on TPU.
     Returns:
-      Output of decoder layer stack.
+      Output of decoder.
       float32 tensor with shape [batch_size, target_length, hidden_size]
     """
 
@@ -616,5 +628,6 @@ def embedding_linear(embedding_matrix, x):
     return tf.reshape(logits, [batch_size, length, vocab_size])
 
 def attention_initializer(hidden_size):
+  """Initializer for attention layers in Seq2SeqTransformer"""
   limit = math.sqrt(6.0 / (hidden_size + hidden_size))
   return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)
