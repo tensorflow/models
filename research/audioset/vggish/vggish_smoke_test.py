@@ -33,7 +33,6 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 
 import vggish_input
 import vggish_params

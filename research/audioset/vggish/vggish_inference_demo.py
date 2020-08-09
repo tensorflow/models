@@ -50,7 +50,6 @@ import numpy as np
 import six
 import soundfile
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 
 import vggish_input
 import vggish_params

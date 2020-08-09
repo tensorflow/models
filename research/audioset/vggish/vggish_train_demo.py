@@ -49,7 +49,6 @@ from random import shuffle
 
 import numpy as np
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 import tf_slim as slim
 
 import vggish_input
@@ -129,7 +128,7 @@ def _get_examples_batch():
 def main(_):
   with tf.Graph().as_default(), tf.Session() as sess:
     # Define VGGish.
-    embeddings = vggish_slim.define_vggish_slim(FLAGS.train_vggish)
+    embeddings = vggish_slim.define_vggish_slim(training=FLAGS.train_vggish)
 
     # Define a shallow classification model and associated training ops on top
     # of VGGish.
