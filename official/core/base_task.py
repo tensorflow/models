@@ -75,7 +75,11 @@ class Task(tf.Module):
     if not ckpt_dir_or_file:
       return
 
-    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+    if hasattr(model, "checkpoint_items"):
+      checkpoint_items = model.checkpoint_items
+    else:
+      checkpoint_items = dict(model=model)
+    ckpt = tf.train.Checkpoint(**checkpoint_items)
     status = ckpt.read(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
     logging.info("Finished loading pretrained checkpoint from %s",
