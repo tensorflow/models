@@ -40,6 +40,7 @@ from object_detection.protos import losses_pb2
 from object_detection.protos import model_pb2
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import tf_version
 
 ## Feature Extractors for TF
@@ -49,6 +50,7 @@ from object_detection.utils import tf_version
 # pylint: disable=g-import-not-at-top
 if tf_version.is_tf2():
   from object_detection.models import center_net_hourglass_feature_extractor
+  from object_detection.models import center_net_mobilenet_v2_feature_extractor
   from object_detection.models import center_net_resnet_feature_extractor
   from object_detection.models import center_net_resnet_v1_fpn_feature_extractor
   from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
@@ -142,11 +144,18 @@ if tf_version.is_tf2():
   CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
       'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
       'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v1_18_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_18_fpn,
+      'resnet_v1_34_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_34_fpn,
       'resnet_v1_50_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
       'resnet_v1_101_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_101_fpn,
-      'hourglass_104': center_net_hourglass_feature_extractor.hourglass_104,
+      'hourglass_104':
+          center_net_hourglass_feature_extractor.hourglass_104,
+      'mobilenet_v2':
+          center_net_mobilenet_v2_feature_extractor.mobilenet_v2,
   }
 
   DETR_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -523,9 +532,31 @@ def _build_faster_rcnn_keras_feature_extractor(
         feature_type))
   feature_extractor_class = FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP[
       feature_type]
+
+  kwargs = {}
+
+  if feature_extractor_config.HasField('conv_hyperparams'):
+    kwargs.update({
+        'conv_hyperparams':
+            hyperparams_builder.KerasLayerHyperparams(
+                feature_extractor_config.conv_hyperparams),
+        'override_base_feature_extractor_hyperparams':
+            feature_extractor_config.override_base_feature_extractor_hyperparams
+    })
+
+  if feature_extractor_config.HasField('fpn'):
+    kwargs.update({
+        'fpn_min_level':
+            feature_extractor_config.fpn.min_level,
+        'fpn_max_level':
+            feature_extractor_config.fpn.max_level,
+        'additional_layer_depth':
+            feature_extractor_config.fpn.additional_layer_depth,
+    })
+
   return feature_extractor_class(
       is_training, first_stage_features_stride,
-      batch_norm_trainable)
+      batch_norm_trainable, **kwargs)
 
 
 def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
@@ -855,13 +886,11 @@ def _build_detr_model(detr_config, is_training, add_summaries):
       **common_kwargs)
 
 EXPERIMENTAL_META_ARCH_BUILDER_MAP = {
-    "detr": _build_detr_model
 }
 
 def _build_experimental_model(config, is_training, add_summaries=True):
-  return EXPERIMENTAL_META_ARCH_BUILDER_MAP['detr'](
-      is_training, add_summaries, config)
-
+  return EXPERIMENTAL_META_ARCH_BUILDER_MAP[config.name](
+      is_training, add_summaries)
 
 # The class ID in the groundtruth/model architecture is usually 0-based while
 # the ID in the label map is 1-based. The offset is used to convert between the
@@ -983,6 +1012,23 @@ def densepose_proto_to_params(densepose_config):
       upsample_to_input_res=densepose_config.upsample_to_input_res,
       heatmap_bias_init=densepose_config.heatmap_bias_init)
 
+def tracking_proto_to_params(tracking_config):
+  """Converts CenterNet.TrackEstimation proto to parameter namedtuple."""
+  loss = losses_pb2.Loss()
+  # Add dummy localization loss to avoid the loss_builder throwing error.
+  # TODO(yuhuic): update the loss builder to take the localization loss
+  # directly.
+  loss.localization_loss.weighted_l2.CopyFrom(
+      losses_pb2.WeightedL2LocalizationLoss())
+  loss.classification_loss.CopyFrom(tracking_config.classification_loss)
+  classification_loss, _, _, _, _, _, _ = losses_builder.build(loss)
+  return center_net_meta_arch.TrackParams(
+      num_track_ids=tracking_config.num_track_ids,
+      reid_embed_size=tracking_config.reid_embed_size,
+      classification_loss=classification_loss,
+      num_fc_layers=tracking_config.num_fc_layers,
+      task_loss_weight=tracking_config.task_loss_weight)
+
 
 def _build_center_net_model(center_net_config, is_training, add_summaries):
   """Build a CenterNet detection model.
@@ -1041,6 +1087,11 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
     densepose_params = densepose_proto_to_params(
         center_net_config.densepose_estimation_task)
 
+  track_params = None
+  if center_net_config.HasField('track_estimation_task'):
+    track_params = tracking_proto_to_params(
+        center_net_config.track_estimation_task)
+
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
@@ -1051,7 +1102,8 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       object_detection_params=object_detection_params,
       keypoint_params_dict=keypoint_params_dict,
       mask_params=mask_params,
-      densepose_params=densepose_params)
+      densepose_params=densepose_params,
+      track_params=track_params)
 
 
 def _build_center_net_feature_extractor(
