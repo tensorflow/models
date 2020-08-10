@@ -49,9 +49,9 @@ def define_vggish_slim(features_tensor=None, training=False):
   patch covering num_bands frequency bands and num_frames time frames (where
   each frame step is usually 10ms). This is produced by computing the stabilized
   log(mel-spectrogram + params.LOG_OFFSET).  The output is a tensor named
-  'vggish/embedding' which produces the activations of a 128-D embedding layer,
-  which is usually the penultimate layer when used as part of a full model with
-  a final classifier layer.
+  'vggish/embedding' which produces the pre-activation values of a 128-D
+  embedding layer, which is usually the penultimate layer when used as part of a
+  full model with a final classifier layer.
 
   Args:
     features_tensor: If not None, the tensor containing the input features.
@@ -101,7 +101,8 @@ def define_vggish_slim(features_tensor=None, training=False):
     net = slim.flatten(net)
     net = slim.repeat(net, 2, slim.fully_connected, 4096, scope='fc1')
     # The embedding layer.
-    net = slim.fully_connected(net, params.EMBEDDING_SIZE, scope='fc2')
+    net = slim.fully_connected(net, params.EMBEDDING_SIZE, scope='fc2',
+                               activation_fn=None)
     return tf.identity(net, name='embedding')
 
 
