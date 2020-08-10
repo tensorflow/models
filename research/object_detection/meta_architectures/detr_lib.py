@@ -19,8 +19,6 @@ Transformer model code source: https://github.com/tensorflow/tensor2tensor
 """
 import tensorflow as tf
 from object_detection.utils import shape_utils
-from official.nlp.modeling import layers
-from official.modeling import tf_utils
 
 import math
 
