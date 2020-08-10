@@ -53,7 +53,7 @@ rel_error = 0.1  # Up to 10%
 num_secs = 3
 freq = 1000
 sr = 44100
-t = np.linspace(0, num_secs, int(num_secs * sr))
+t = np.arange(0, num_secs, 1 / sr)
 x = np.sin(2 * np.pi * freq * t)
 
 # Produce a batch of log mel spectrogram examples.

@@ -82,7 +82,7 @@ def check_model(model_fn):
   num_secs = 3
   freq = 1000
   sr = 44100
-  t = np.linspace(0, num_secs, int(num_secs * sr))
+  t = np.arange(0, num_secs, 1 / sr)
   waveform = np.sin(2 * np.pi * freq * t)
 
   waveform = resampy.resample(waveform, sr, vggish_params.SAMPLE_RATE)
