@@ -151,6 +151,7 @@ class SelfAttention(Attention):
     return super(SelfAttention, self).call(
         query_input, query_input, value_input, training, cache, decode_loop_step)
 
+
 class FeedForwardNetwork(tf.keras.layers.Layer):
   """Fully connected feedforward network."""
 
