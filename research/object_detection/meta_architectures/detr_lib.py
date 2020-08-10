@@ -16,6 +16,8 @@
 
 Model paper: https://arxiv.org/abs/2005.12872
 Transformer model code source: https://github.com/tensorflow/tensor2tensor
+
+Layer normalization will come as a wrapper in a following PR.
 """
 import tensorflow as tf
 from object_detection.utils import shape_utils
@@ -198,7 +200,6 @@ class FeedForwardNetwork(tf.keras.layers.Layer):
     """
     output = self.filter_dense_layer(x)
     
-    #output = tf.keras.layers.Dropout(self.relu_dropout)(output, training=training)
     if training:
       output = tf.nn.dropout(output, rate=self.relu_dropout)
     output = self.output_dense_layer(output)
