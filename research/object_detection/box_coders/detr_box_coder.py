@@ -37,16 +37,10 @@ EPSILON = 1e-8
 
 
 class DETRBoxCoder(box_coder.BoxCoder):
-  """Faster RCNN box coder."""
+  """DETR box coder."""
 
   def __init__(self):
-    """Constructor for DETRBoxCoder.
-
-    Args:
-      scale_factors: List of 4 positive scalars to scale ty, tx, th and tw.
-        If set to None, does not perform scaling. For Faster RCNN,
-        the open-source implementation recommends using [10.0, 10.0, 5.0, 5.0].
-    """
+    """Constructor for DETRBoxCoder."""
     pass
 
   @property
@@ -58,10 +52,10 @@ class DETRBoxCoder(box_coder.BoxCoder):
 
     Args:
       boxes: BoxList holding N boxes to be encoded.
-      anchors: BoxList of anchors.
+      anchors: BoxList of anchors, ignored for DETR.
 
     Returns:
-      a tensor representing N anchor-encoded boxes of the format
+      a tensor representing N encoded boxes of the format
       [ty, tx, th, tw].
     """
     # Convert anchors to the center coordinate representation.
@@ -72,8 +66,8 @@ class DETRBoxCoder(box_coder.BoxCoder):
     """Decode relative codes to boxes.
 
     Args:
-      rel_codes: a tensor representing N anchor-encoded boxes.
-      anchors: BoxList of anchors.
+      rel_codes: a tensor representing N encoded boxes.
+      anchors: BoxList of anchors, ignored for DETR.
 
     Returns:
       boxes: BoxList holding N bounding boxes.
