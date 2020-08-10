@@ -687,8 +687,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_localization_loss_weight)
 
   crop_and_resize_fn = (
-      ops.matmul_crop_and_resize if frcnn_config.use_matmul_crop_and_resize
-      else ops.native_crop_and_resize)
+      spatial_ops.multilevel_matmul_crop_and_resize
+      if frcnn_config.use_matmul_crop_and_resize
+      else spatial_ops.multilevel_native_crop_and_resize)
   clip_anchors_to_image = (
       frcnn_config.clip_anchors_to_image)
 
@@ -888,9 +889,11 @@ def _build_detr_model(detr_config, is_training, add_summaries):
 EXPERIMENTAL_META_ARCH_BUILDER_MAP = {
 }
 
+
 def _build_experimental_model(config, is_training, add_summaries=True):
   return EXPERIMENTAL_META_ARCH_BUILDER_MAP[config.name](
       is_training, add_summaries)
+
 
 # The class ID in the groundtruth/model architecture is usually 0-based while
 # the ID in the label map is 1-based. The offset is used to convert between the
@@ -1011,6 +1014,7 @@ def densepose_proto_to_params(densepose_config):
       task_loss_weight=densepose_config.task_loss_weight,
       upsample_to_input_res=densepose_config.upsample_to_input_res,
       heatmap_bias_init=densepose_config.heatmap_bias_init)
+
 
 def tracking_proto_to_params(tracking_config):
   """Converts CenterNet.TrackEstimation proto to parameter namedtuple."""
