@@ -237,10 +237,12 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
       side_input_2 = np.ones((2, 2), dtype=np.uint8)
       if (use_default_serving):
         detections = detect_fn_sig(input_tensor=image,
-                                  side_inp_1=tf.constant(side_input_1),
-                                  side_inp_2=tf.constant(side_input_2))
+                                   side_inp_1=tf.constant(side_input_1),
+                                   side_inp_2=tf.constant(side_input_2))
       else:
-        detections = detect_fn(image, tf.constant(side_input_1), tf.constant(side_input_2))
+        detections = detect_fn(image,
+                               tf.constant(side_input_1),
+                               tf.constant(side_input_2))
 
       detection_fields = fields.DetectionResultFields
       self.assertAllClose(detections[detection_fields.detection_boxes],
