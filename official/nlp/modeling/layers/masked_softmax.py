@@ -22,6 +22,23 @@ from __future__ import print_function
 import tensorflow as tf
 
 
+def _large_compatible_negative(tensor_type):
+  """Large negative number as Tensor.
+
+  This function is necessary because the standard value for epsilon
+  in this module (-1e9) cannot be represented using tf.float16
+
+  Args:
+    tensor_type: a dtype to determine the type.
+
+  Returns:
+    a large negative number.
+  """
+  if tensor_type == tf.float16:
+    return tf.float16.min
+  return -1e9
+
+
 @tf.keras.utils.register_keras_serializable(package='Text')
 class MaskedSoftmax(tf.keras.layers.Layer):
   """Performs a softmax with optional masking on a tensor.
@@ -50,9 +67,9 @@ class MaskedSoftmax(tf.keras.layers.Layer):
 
       # Since attention_mask is 1.0 for positions we want to attend and 0.0 for
       # masked positions, this operation will create a tensor which is 0.0 for
-      # positions we want to attend and -10000.0 for masked positions.
-      adder = (1.0 - tf.cast(mask, scores.dtype)) * -10000.0
-
+      # positions we want to attend and -1.e9 for masked positions.
+      adder = (1.0 - tf.cast(mask, scores.dtype)) * _large_compatible_negative(
+          scores.dtype)
       # Since we are adding it to the raw scores before the softmax, this is
       # effectively the same as removing these entirely.
       scores += adder
