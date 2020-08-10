@@ -24,7 +24,7 @@ class DETRKerasFeatureExtractor(object):
 
   def __init__(self,
                is_training,
-               first_stage_features_stride,
+               features_stride,
                batch_norm_trainable=False,
                weight_decay=0.0):
     """Constructor.
@@ -32,14 +32,14 @@ class DETRKerasFeatureExtractor(object):
     Args:
       is_training: A boolean indicating whether the training version of the
         computation graph should be constructed.
-      first_stage_features_stride: Output stride of extracted RPN feature map.
+      features_stride: Output stride of first stage feature map.
       batch_norm_trainable: Whether to update batch norm parameters during
         training or not. When training with a relative large batch size
         (e.g. 8), it could be desirable to enable batch norm update.
       weight_decay: float weight decay for feature extractor (default: 0.0).
     """
     self._is_training = is_training
-    self._first_stage_features_stride = first_stage_features_stride
+    self.features_stride = features_stride
     self._train_batch_norm = (batch_norm_trainable and is_training)
     self._weight_decay = weight_decay
 

@@ -39,7 +39,7 @@ class DETRResnetKerasFeatureExtractor(
                is_training,
                resnet_v1_base_model,
                resnet_v1_base_model_name,
-               first_stage_features_stride=32,
+               features_stride=32,
                batch_norm_trainable=False,
                weight_decay=0.0):
     """Constructor.
@@ -49,17 +49,17 @@ class DETRResnetKerasFeatureExtractor(
       resnet_v1_base_model: base resnet v1 network to use. Only
         the resnet_v1.resnet_v1_{50} is supported currently.
       resnet_v1_base_model_name: model name under which to construct resnet v1.
-      first_stage_features_stride: See base class.
+      features_stride: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
 
     Raises:
-      ValueError: If `first_stage_features_stride` is not 32.
+      ValueError: If `features_stride` is not 32.
     """
-    if first_stage_features_stride != 32:
-      raise ValueError('`first_stage_features_stride` must be 32.')
+    if features_stride != 32:
+      raise ValueError('`features_stride` must be 32.')
     super(DETRResnetKerasFeatureExtractor, self).__init__(
-        is_training, first_stage_features_stride, batch_norm_trainable,
+        is_training, features_stride, batch_norm_trainable,
         weight_decay)
     self.classification_backbone = None
     self._variable_dict = {}
@@ -134,14 +134,14 @@ class DETRResnet50KerasFeatureExtractor(
 
   def __init__(self,
                is_training,
-               first_stage_features_stride=16,
+               features_stride=32,
                batch_norm_trainable=False,
                weight_decay=0.0):
     """Constructor.
 
     Args:
       is_training: See base class.
-      first_stage_features_stride: See base class.
+      features_stride: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
     """
@@ -149,25 +149,28 @@ class DETRResnet50KerasFeatureExtractor(
         is_training=is_training,
         resnet_v1_base_model=resnet_v1.resnet_v1_50,
         resnet_v1_base_model_name='resnet_v1_50',
-        first_stage_features_stride=first_stage_features_stride,
+        features_stride=features_stride,
         batch_norm_trainable=batch_norm_trainable,
         weight_decay=weight_decay)
 
 
 class DETRResnet101KerasFeatureExtractor(
     DETRResnetKerasFeatureExtractor):
-  """DETR with Resnet101 feature extractor implementation."""
+  """DETR with Resnet101 feature extractor implementation."
+  
+  Currently unsupported.
+  """
 
   def __init__(self,
                is_training,
-               first_stage_features_stride=16,
+               features_stride=32,
                batch_norm_trainable=False,
                weight_decay=0.0):
     """Constructor.
 
     Args:
       is_training: See base class.
-      first_stage_features_stride: See base class.
+      features_stride: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
     """
@@ -175,25 +178,28 @@ class DETRResnet101KerasFeatureExtractor(
         is_training=is_training,
         resnet_v1_base_model=resnet_v1.resnet_v1_101,
         resnet_v1_base_model_name='resnet_v1_101',
-        first_stage_features_stride=first_stage_features_stride,
+        features_stride=features_stride,
         batch_norm_trainable=batch_norm_trainable,
         weight_decay=weight_decay)
 
 
 class DETRResnet152KerasFeatureExtractor(
     DETRResnetKerasFeatureExtractor):
-  """DETR with Resnet152 feature extractor implementation."""
+  """DETR with Resnet152 feature extractor implementation.
+  
+  Currently unsupported.
+  """
 
   def __init__(self,
                is_training,
-               first_stage_features_stride=16,
+               features_stride=32,
                batch_norm_trainable=False,
                weight_decay=0.0):
     """Constructor.
 
     Args:
       is_training: See base class.
-      first_stage_features_stride: See base class.
+      features_stride: See base class.
       batch_norm_trainable: See base class.
       weight_decay: See base class.
     """
@@ -201,6 +207,6 @@ class DETRResnet152KerasFeatureExtractor(
         is_training=is_training,
         resnet_v1_base_model=resnet_v1.resnet_v1_152,
         resnet_v1_base_model_name='resnet_v1_152',
-        first_stage_features_stride=first_stage_features_stride,
+        first_stage_features_stride=features_stride,
         batch_norm_trainable=batch_norm_trainable,
         weight_decay=weight_decay)
