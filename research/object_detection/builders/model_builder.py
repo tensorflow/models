@@ -34,12 +34,12 @@ from object_detection.meta_architectures import context_rcnn_meta_arch
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
+from object_detection.meta_architectures import detr_meta_arch
 from object_detection.predictors.heads import mask_head
 from object_detection.protos import losses_pb2
 from object_detection.protos import model_pb2
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
-from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import tf_version
 
 ## Feature Extractors for TF
@@ -49,11 +49,11 @@ from object_detection.utils import tf_version
 # pylint: disable=g-import-not-at-top
 if tf_version.is_tf2():
   from object_detection.models import center_net_hourglass_feature_extractor
-  from object_detection.models import center_net_mobilenet_v2_feature_extractor
   from object_detection.models import center_net_resnet_feature_extractor
   from object_detection.models import center_net_resnet_v1_fpn_feature_extractor
   from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
   from object_detection.models import faster_rcnn_resnet_keras_feature_extractor as frcnn_resnet_keras
+  from object_detection.models import detr_resnet_keras_feature_extractor as detr_resnet_keras
   from object_detection.models import ssd_resnet_v1_fpn_keras_feature_extractor as ssd_resnet_v1_fpn_keras
   from object_detection.models import faster_rcnn_resnet_v1_fpn_keras_feature_extractor as frcnn_resnet_fpn_keras
   from object_detection.models.ssd_mobilenet_v1_fpn_keras_feature_extractor import SSDMobileNetV1FpnKerasFeatureExtractor
@@ -142,24 +142,23 @@ if tf_version.is_tf2():
   CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
       'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
       'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
-      'resnet_v1_18_fpn':
-          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_18_fpn,
-      'resnet_v1_34_fpn':
-          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_34_fpn,
       'resnet_v1_50_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
       'resnet_v1_101_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_101_fpn,
-      'hourglass_104':
-          center_net_hourglass_feature_extractor.hourglass_104,
-      'mobilenet_v2':
-          center_net_mobilenet_v2_feature_extractor.mobilenet_v2,
+      'hourglass_104': center_net_hourglass_feature_extractor.hourglass_104,
+  }
+
+  DETR_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
+      'detr_resnet50_keras':
+          detr_resnet_keras.DETRResnet50KerasFeatureExtractor
   }
 
   FEATURE_EXTRACTOR_MAPS = [
       CENTER_NET_EXTRACTOR_FUNCTION_MAP,
       FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP,
-      SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
+      SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP,
+      DETR_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
   ]
 
 if tf_version.is_tf1():
@@ -524,31 +523,9 @@ def _build_faster_rcnn_keras_feature_extractor(
         feature_type))
   feature_extractor_class = FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP[
       feature_type]
-
-  kwargs = {}
-
-  if feature_extractor_config.HasField('conv_hyperparams'):
-    kwargs.update({
-        'conv_hyperparams':
-            hyperparams_builder.KerasLayerHyperparams(
-                feature_extractor_config.conv_hyperparams),
-        'override_base_feature_extractor_hyperparams':
-            feature_extractor_config.override_base_feature_extractor_hyperparams
-    })
-
-  if feature_extractor_config.HasField('fpn'):
-    kwargs.update({
-        'fpn_min_level':
-            feature_extractor_config.fpn.min_level,
-        'fpn_max_level':
-            feature_extractor_config.fpn.max_level,
-        'additional_layer_depth':
-            feature_extractor_config.fpn.additional_layer_depth,
-    })
-
   return feature_extractor_class(
       is_training, first_stage_features_stride,
-      batch_norm_trainable, **kwargs)
+      batch_norm_trainable)
 
 
 def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
@@ -679,9 +656,8 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_localization_loss_weight)
 
   crop_and_resize_fn = (
-      spatial_ops.multilevel_matmul_crop_and_resize
-      if frcnn_config.use_matmul_crop_and_resize
-      else spatial_ops.multilevel_native_crop_and_resize)
+      ops.matmul_crop_and_resize if frcnn_config.use_matmul_crop_and_resize
+      else ops.native_crop_and_resize)
   clip_anchors_to_image = (
       frcnn_config.clip_anchors_to_image)
 
@@ -788,13 +764,103 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
             second_stage_mask_prediction_loss_weight),
         **common_kwargs)
 
+def _build_detr_keras_feature_extractor(
+    feature_extractor_config, is_training,
+    inplace_batchnorm_update=False):
+  """Builds a detr_meta_arch.DETRKerasFeatureExtractor from config.
+
+  Args:
+    feature_extractor_config: A DETRFeatureExtractor proto config from
+      detr.proto.
+    is_training: True if this feature extractor is being built for training.
+    inplace_batchnorm_update: Whether to update batch_norm inplace during
+      training. This is required for batch norm to work correctly on TPUs. When
+      this is false, user must add a control dependency on
+      tf.GraphKeys.UPDATE_OPS for train/loss op in order to update the batch
+      norm moving average parameters.
+
+  Returns:
+    detr_meta_arch.DETRKerasFeatureExtractor based on config.
+
+  Raises:
+    ValueError: On invalid feature extractor type.
+  """
+  if inplace_batchnorm_update:
+    raise ValueError('inplace batchnorm updates not supported.')
+  feature_type = feature_extractor_config.type
+  features_stride = (
+      feature_extractor_config.features_stride)
+  batch_norm_trainable = feature_extractor_config.batch_norm_trainable
+
+  if feature_type not in DETR_KERAS_FEATURE_EXTRACTOR_CLASS_MAP:
+    raise ValueError('Unknown DETR feature_extractor: {}'.format(
+        feature_type))
+  feature_extractor_class = DETR_KERAS_FEATURE_EXTRACTOR_CLASS_MAP[
+      feature_type]
+  return feature_extractor_class(
+      is_training, features_stride,
+      batch_norm_trainable)
+
+def _build_detr_model(detr_config, is_training, add_summaries):
+  num_classes = detr_config.num_classes
+  image_resizer_fn = image_resizer_builder.build(detr_config.image_resizer)
+  _check_feature_extractor_exists(detr_config.feature_extractor.type)
+
+  feature_extractor = _build_detr_keras_feature_extractor(
+      detr_config.feature_extractor, is_training,
+      inplace_batchnorm_update=detr_config.inplace_batchnorm_update)
+
+  detr_target_assigner = target_assigner.create_target_assigner(
+      'DETR',
+      'proposal',
+      use_matmul_gather=detr_config.use_matmul_gather_in_matcher)
+  
+  (_, score_conversion_fn) = post_processing_builder.build(
+      detr_config.post_processing)
+  
+  giou_loss_weight = detr_config.giou_localization_loss_weight
+  l1_loss_weight = detr_config.l1_localization_loss_weight
+  cls_loss_weight = detr_config.classification_loss_weight
+  num_queries = detr_config.num_queries
+  hidden_dimension = detr_config.hidden_dimension
+
+  common_kwargs = {
+      'is_training':
+          is_training,
+      'num_classes':
+          num_classes,
+      'image_resizer_fn':
+          image_resizer_fn,
+      'feature_extractor':
+          feature_extractor,
+      'giou_loss_weight':
+          giou_loss_weight,
+      'l1_loss_weight':
+          l1_loss_weight,
+      'cls_loss_weight':
+          cls_loss_weight,
+      'score_conversion_fn':
+          score_conversion_fn,
+      'target_assigner':
+          detr_target_assigner,
+      'num_queries':
+          num_queries,
+      'hidden_dimension':
+          hidden_dimension,
+      'add_summaries':
+          add_summaries,
+  }
+  
+  return detr_meta_arch.DETRMetaArch(
+      **common_kwargs)
+
 EXPERIMENTAL_META_ARCH_BUILDER_MAP = {
+    "detr": _build_detr_model
 }
 
-
 def _build_experimental_model(config, is_training, add_summaries=True):
-  return EXPERIMENTAL_META_ARCH_BUILDER_MAP[config.name](
-      is_training, add_summaries)
+  return EXPERIMENTAL_META_ARCH_BUILDER_MAP['detr'](
+      is_training, add_summaries, config)
 
 
 # The class ID in the groundtruth/model architecture is usually 0-based while
@@ -918,24 +984,6 @@ def densepose_proto_to_params(densepose_config):
       heatmap_bias_init=densepose_config.heatmap_bias_init)
 
 
-def tracking_proto_to_params(tracking_config):
-  """Converts CenterNet.TrackEstimation proto to parameter namedtuple."""
-  loss = losses_pb2.Loss()
-  # Add dummy localization loss to avoid the loss_builder throwing error.
-  # TODO(yuhuic): update the loss builder to take the localization loss
-  # directly.
-  loss.localization_loss.weighted_l2.CopyFrom(
-      losses_pb2.WeightedL2LocalizationLoss())
-  loss.classification_loss.CopyFrom(tracking_config.classification_loss)
-  classification_loss, _, _, _, _, _, _ = losses_builder.build(loss)
-  return center_net_meta_arch.TrackParams(
-      num_track_ids=tracking_config.num_track_ids,
-      reid_embed_size=tracking_config.reid_embed_size,
-      classification_loss=classification_loss,
-      num_fc_layers=tracking_config.num_fc_layers,
-      task_loss_weight=tracking_config.task_loss_weight)
-
-
 def _build_center_net_model(center_net_config, is_training, add_summaries):
   """Build a CenterNet detection model.
 
@@ -993,11 +1041,6 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
     densepose_params = densepose_proto_to_params(
         center_net_config.densepose_estimation_task)
 
-  track_params = None
-  if center_net_config.HasField('track_estimation_task'):
-    track_params = tracking_proto_to_params(
-        center_net_config.track_estimation_task)
-
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
@@ -1008,8 +1051,7 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       object_detection_params=object_detection_params,
       keypoint_params_dict=keypoint_params_dict,
       mask_params=mask_params,
-      densepose_params=densepose_params,
-      track_params=track_params)
+      densepose_params=densepose_params)
 
 
 def _build_center_net_feature_extractor(
@@ -1031,7 +1073,8 @@ META_ARCH_BUILDER_MAP = {
     'ssd': _build_ssd_model,
     'faster_rcnn': _build_faster_rcnn_model,
     'experimental_model': _build_experimental_model,
-    'center_net': _build_center_net_model
+    'center_net': _build_center_net_model,
+    'detr': _build_detr_model
 }
 
 

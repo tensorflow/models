@@ -39,6 +39,9 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
   def default_faster_rcnn_feature_extractor(self):
     return 'faster_rcnn_resnet101_keras'
 
+  def default_detr_feature_extractor(self):
+    return 'detr_resnet50_keras'
+
   def ssd_feature_extractors(self):
     return model_builder.SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
 
@@ -47,6 +50,9 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
 
   def faster_rcnn_feature_extractors(self):
     return model_builder.FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
+
+  def detr_feature_extractors(self):
+    return model_builder.DETR_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
 
   def get_fake_label_map_file_path(self):
     keypoint_spec_text = """
