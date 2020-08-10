@@ -126,7 +126,10 @@ changes we made:
   fully connected layer. This acts as a compact embedding layer.
 
 The model definition provided here defines layers up to and including the
-128-wide embedding layer.
+128-wide embedding layer. Note that the embedding layer does not include
+a final non-linear activation, so the embedding value is pre-activation.
+When training a model stacked on top of VGGish, you should send the
+embedding through a non-linearity of your choice before adding more layers.
 
 ### Input: Audio Features
 
@@ -147,14 +150,7 @@ VGGish was trained with audio features computed as follows:
   where each example covers 64 mel bands and 96 frames of 10 ms each.
 
 We provide our own NumPy implementation that produces features that are very
-similar to those produced by our internal production code. This results in
-embedding outputs that are closely match the embeddings that we have already
-released. Note that these embeddings will *not* be bit-for-bit identical to the
-released embeddings due to small differences between the feature computation
-code paths, and even between two different installations of VGGish with
-different underlying libraries and hardware. However, we expect that the
-embeddings will be equivalent in the context of a downstream classification
-task.
+similar to those produced by our internal production code.
 
 ### Output: Embeddings
 
