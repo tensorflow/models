@@ -28,7 +28,10 @@ import tensorflow as tf
 
 
 class Attention(tf.keras.layers.Layer):
-  """Multi-headed attention layer."""
+  """Multi-headed attention layer.
+  
+  TODO: switch to keras.layers.MultiHeadedAttention when available.
+  """
 
   def __init__(self, hidden_size, num_heads, attention_dropout):
     """Initialize Attention.
