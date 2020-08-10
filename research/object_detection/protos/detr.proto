@@ -31,7 +31,7 @@ message DETR {
   optional float classification_loss_weight = 6 [default = 1.0];
 
   // After peforming matching between anchors and targets, in order to pull out
-  // targets for training Faster R-CNN meta architecture we perform a gather
+  // targets for training DETR meta architecture we perform a gather
   // operation. This options specifies whether to use an alternate
   // implementation of tf.gather that is faster on TPUs.
   optional bool use_matmul_gather_in_matcher = 7 [default = false];
@@ -55,7 +55,7 @@ message DETR {
 }
 
 message DETRFeatureExtractor {
-  // Type of Faster R-CNN model (e.g., 'faster_rcnn_resnet101';
+  // Type of DETR model (e.g., 'detr_resnet50_keras';
   // See builders/model_builder.py for expected types).
   optional string type = 1;
 

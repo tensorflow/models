@@ -30,3 +30,7 @@ message DetectionModel {
     DETR detr = 5;
   }
 }
+
+message ExperimentalModel {
+  optional string name = 1;
+}
