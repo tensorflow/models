@@ -88,7 +88,7 @@ def main(_):
     num_secs = 5
     freq = 1000
     sr = 44100
-    t = np.linspace(0, num_secs, int(num_secs * sr))
+    t = np.arange(0, num_secs, 1 / sr)
     x = np.sin(2 * np.pi * freq * t)
     # Convert to signed 16-bit samples.
     samples = np.clip(x * 32768, -32768, 32767).astype(np.int16)

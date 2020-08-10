@@ -94,7 +94,7 @@ def _get_examples_batch():
   # Make a waveform for each class.
   num_seconds = 5
   sr = 44100  # Sampling rate.
-  t = np.linspace(0, num_seconds, int(num_seconds * sr))  # Time axis.
+  t = np.arange(0, num_seconds, 1 / sr)  # Time axis
   # Random sine wave.
   freq = np.random.uniform(100, 1000)
   sine = np.sin(2 * np.pi * freq * t)
