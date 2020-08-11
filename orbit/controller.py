@@ -134,13 +134,9 @@ class Controller:
     # TODO(momernick): We probably only want to do this on certain occasions?
     if self.checkpoint_manager is not None:
       checkpoint_interval = self.checkpoint_manager.checkpoint_interval
-      model_restored = self.restore_checkpoint()
-      if not model_restored and (checkpoint_interval and
-                                 self.trainer is not None):
-        # If the model is not restored from a checkpoint, and
-        # `checkpoint_interval` is enabled for training, save an initial
-        # checkpoint.
-        self.save_checkpoint()
+      restored_path = self.restore_checkpoint()
+      if restored_path:
+        logging.info("Restored from checkpoint: %s", restored_path)
 
   def train(self, steps: int, checkpoint_at_completion: bool = True):
     """Runs training.
