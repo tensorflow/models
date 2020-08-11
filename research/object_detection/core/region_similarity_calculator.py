@@ -35,8 +35,7 @@ from object_detection.core import standard_fields as fields
 class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
   """Abstract base class for region similarity calculator."""
 
-  def compare(self, boxlist1, boxlist2, scope=None,
-              groundtruth_labels=None, predicted_labels=None):
+  def compare(self, boxlist1, boxlist2, scope=None):
     """Computes matrix of pairwise similarity between BoxLists.
 
     This op (to be overridden) computes a measure of pairwise similarity between
@@ -49,10 +48,6 @@ class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
       scope: Op scope name. Defaults to 'Compare' if None.
-      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
-        containing groundtruth labels.
-      predicted_labels: a Tensor of shape [num_boxes, num_classes]
-        containing predicted labels.
 
     Returns:
       a (float32) tensor of shape [N, M] with pairwise similarity score.
@@ -72,17 +67,12 @@ class IouSimilarity(RegionSimilarityCalculator):
   This class computes pairwise similarity between two BoxLists based on IOU.
   """
 
-  def _compare(self, boxlist1, boxlist2,
-               groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2):
     """Compute pairwise IOU similarity between the two BoxLists.
 
     Args:
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
-      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
-        containing groundtruth labels.
-      predicted_labels: a Tensor of shape [num_boxes, num_classes]
-        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing pairwise iou scores.
@@ -95,25 +85,26 @@ class DETRSimilarity(RegionSimilarityCalculator):
   This class computes pairwise similarity between two BoxLists using a weighted
   combination of IOU, classification scores, and the L1 loss.
   """
+  def __init__(self, l1_weight=5, giou_weight=2):
+    self.l1_weight = l1_weight
+    self.giou_weight = giou_weight
 
-  def _compare(self, boxlist1, boxlist2,
-               groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2):
     """Compute pairwise IOU similarity between the two BoxLists.
 
     Args:
-      boxlist1: BoxList holding N boxes.
-      boxlist2: BoxList holding M boxes.
-      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
-        containing groundtruth labels.
-      predicted_labels: a Tensor of shape [num_boxes, num_classes]
-        containing predicted labels.
+      boxlist1: BoxList holding N groundtruth boxes.
+      boxlist2: BoxList holding M predicted boxes.
 
     Returns:
       A tensor with shape [N, M] representing pairwise iou scores.
     """
+    groundtruth_labels = boxlist1.get_field(fields.BoxListFields.classes)
+    predicted_labels = boxlist2.get_field(fields.BoxListFields.classes)
     classification_scores = tf.matmul(groundtruth_labels,
         tf.nn.softmax(predicted_labels), transpose_b=True)
-    return -5 * box_list_ops.l1(boxlist1, boxlist2) + 2 * box_list_ops.giou(
+    return -self.l1_weight * box_list_ops.l1(
+        boxlist1, boxlist2) + self.giou_weight * box_list_ops.giou(
         boxlist1, boxlist2) + classification_scores
 
 class NegSqDistSimilarity(RegionSimilarityCalculator):
@@ -123,17 +114,12 @@ class NegSqDistSimilarity(RegionSimilarityCalculator):
   negative squared distance metric.
   """
 
-  def _compare(self, boxlist1, boxlist2,
-               groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2):
     """Compute matrix of (negated) sq distances.
 
     Args:
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
-      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
-        containing groundtruth labels.
-      predicted_labels: a Tensor of shape [num_boxes, num_classes]
-        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing negated pairwise squared distance.
@@ -147,17 +133,12 @@ class IoaSimilarity(RegionSimilarityCalculator):
   pairwise intersections divided by the areas of second BoxLists.
   """
 
-  def _compare(self, boxlist1, boxlist2,
-               groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2):
     """Compute pairwise IOA similarity between the two BoxLists.
 
     Args:
       boxlist1: BoxList holding N boxes.
       boxlist2: BoxList holding M boxes.
-      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
-        containing groundtruth labels.
-      predicted_labels: a Tensor of shape [num_boxes, num_classes]
-        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing pairwise IOA scores.
@@ -184,17 +165,12 @@ class ThresholdedIouSimilarity(RegionSimilarityCalculator):
     super(ThresholdedIouSimilarity, self).__init__()
     self._iou_threshold = iou_threshold
 
-  def _compare(self, boxlist1, boxlist2,
-               groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2):
     """Compute pairwise IOU similarity between the two BoxLists and score.
 
     Args:
       boxlist1: BoxList holding N boxes. Must have a score field.
       boxlist2: BoxList holding M boxes.
-      groundtruth_labels: a Tensor of shape [num_boxes, num_classes]
-        containing groundtruth labels.
-      predicted_labels: a Tensor of shape [num_boxes, num_classes]
-        containing predicted labels.
 
     Returns:
       A tensor with shape [N, M] representing scores threholded by pairwise

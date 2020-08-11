@@ -51,6 +51,7 @@ from object_detection.core import matcher as mat
 from object_detection.core import region_similarity_calculator as sim_calc
 from object_detection.core import standard_fields as fields
 from object_detection.matchers import argmax_matcher
+from object_detection.matchers import hungarian_matcher
 from object_detection.utils import shape_utils
 from object_detection.utils import target_assigner_utils as ta_utils
 from object_detection.utils import tf_version
@@ -1917,51 +1918,44 @@ class DETRTargetAssigner(object):
   """Target assigner to compute classification and regression targets."""
 
   def __init__(self,
-               similarity_calc,
                matcher,
                negative_class_weight=1.0):
     """Construct Object Detection Target Assigner.
 
     Args:
-      similarity_calc: a RegionSimilarityCalculator
       matcher: an object_detection.core.Matcher used to match groundtruth to
-        anchors.
+        predicted boxes.
       box_coder_instance: an object_detection.core.BoxCoder used to encode
-        matching groundtruth boxes with respect to anchors.
+        matching groundtruth boxes with respect to predicted boxes.
       negative_class_weight: classification weight to be associated to negative
-        anchors (default: 1.0). The weight must be in [0., 1.].
+        boxes (default: 1.0). The weight must be in [0., 1.].
 
-    Raises:
-      ValueError: if similarity_calc is not a RegionSimilarityCalculator or
-        if matcher is not a Matcher or if box_coder is not a BoxCoder
     """
-    if not isinstance(similarity_calc, sim_calc.RegionSimilarityCalculator):
-      raise ValueError('similarity_calc must be a RegionSimilarityCalculator')
     if not isinstance(matcher, mat.Matcher):
       raise ValueError('matcher must be a Matcher')
-    self._similarity_calc = similarity_calc
-    self._matcher = matcher
+    self._similarity_calc = sim_calc.DETRSimilarity()
+    self._matcher = hungarian_matcher.HungarianBipartiteMatcher()
     self._negative_class_weight = negative_class_weight
 
   def assign(self,
-             anchors,
+             box_preds,
              groundtruth_boxes,
              groundtruth_labels=None,
              unmatched_class_label=None,
              groundtruth_weights=None,
              class_predictions=None):
-    """Assign classification and regression targets to each anchor.
+    """Assign classification and regression targets to each box_pred.
 
-    For a given set of anchors and groundtruth detections, match anchors
+    For a given set of box_preds and groundtruth detections, match box_preds
     to groundtruth_boxes and assign classification and regression targets to
-    each anchor as well as weights based on the resulting match (specifying,
-    e.g., which anchors should not contribute to training loss).
+    each box_pred as well as weights based on the resulting match (specifying,
+    e.g., which box_preds should not contribute to training loss).
 
-    Anchors that are not matched to anything are given a classification target
+    box_preds that are not matched to anything are given a classification target
     of self._unmatched_cls_target which can be specified via the constructor.
 
     Args:
-      anchors: a BoxList representing N anchors
+      box_preds: a BoxList representing N box_preds
       groundtruth_boxes: a BoxList representing M groundtruth boxes
       groundtruth_labels:  a tensor of shape [M, d_1, ... d_k]
         with labels for each of the ground_truth boxes. The subshape
@@ -1970,14 +1964,14 @@ class DETRTargetAssigner(object):
         ground_truth boxes get a positive label (of 1).
       unmatched_class_label: a float32 tensor with shape [d_1, d_2, ..., d_k]
         which is consistent with the classification target for each
-        anchor (and can be empty for scalar targets).  This shape must thus be
+        box_pred (and can be empty for scalar targets).  This shape must thus be
         compatible with the groundtruth labels that are passed to the "assign"
         function (which have shape [num_gt_boxes, d_1, d_2, ..., d_k]).
-        If set to None, unmatched_cls_target is set to be [0] for each anchor.
+        If set to None, unmatched_cls_target is set to be [0] for each box_pred.
       groundtruth_weights: a float tensor of shape [M] indicating the weight to
-        assign to all anchors match to a particular groundtruth box. The weights
+        assign to all box_preds match to a particular groundtruth box. The weights
         must be in [0., 1.]. If None, all weights are set to 1. Generally no
-        groundtruth boxes with zero weight match to any anchors as matchers are
+        groundtruth boxes with zero weight match to any box_preds as matchers are
         aware of groundtruth weights. Additionally, `cls_weights` and
         `reg_weights` are calculated using groundtruth weights as an added
         safety.
@@ -1985,27 +1979,27 @@ class DETRTargetAssigner(object):
         to be used by certain similarity calculators.
 
     Returns:
-      cls_targets: a float32 tensor with shape [num_anchors, d_1, d_2 ... d_k],
+      cls_targets: a float32 tensor with shape [num_box_preds, d_1, d_2 ... d_k],
         where the subshape [d_1, ..., d_k] is compatible with groundtruth_labels
         which has shape [num_gt_boxes, d_1, d_2, ... d_k].
-      cls_weights: a float32 tensor with shape [num_anchors, d_1, d_2 ... d_k],
+      cls_weights: a float32 tensor with shape [num_box_preds, d_1, d_2 ... d_k],
         representing weights for each element in cls_targets.
-      reg_targets: a float32 tensor with shape [num_anchors, box_code_dimension]
-      reg_weights: a float32 tensor with shape [num_anchors]
-      match: an int32 tensor of shape [num_anchors] containing result of anchor
-        groundtruth matching. Each position in the tensor indicates an anchor
+      reg_targets: a float32 tensor with shape [num_box_preds, box_code_dimension]
+      reg_weights: a float32 tensor with shape [num_box_preds]
+      match: an int32 tensor of shape [num_box_preds] containing result of box_pred
+        groundtruth matching. Each position in the tensor indicates an box_pred
         and holds the following meaning:
-        (1) if match[i] >= 0, anchor i is matched with groundtruth match[i].
-        (2) if match[i]=-1, anchor i is marked to be background .
-        (3) if match[i]=-2, anchor i is ignored since it is not background and
+        (1) if match[i] >= 0, box_pred i is matched with groundtruth match[i].
+        (2) if match[i]=-1, box_pred i is marked to be background .
+        (3) if match[i]=-2, box_pred i is ignored since it is not background and
             does not have sufficient overlap to call it a foreground.
 
     Raises:
-      ValueError: if anchors or groundtruth_boxes are not of type
+      ValueError: if box_preds or groundtruth_boxes are not of type
         box_list.BoxList
     """
-    if not isinstance(anchors, box_list.BoxList):
-      raise ValueError('anchors must be an BoxList')
+    if not isinstance(box_preds, box_list.BoxList):
+      raise ValueError('box_preds must be an BoxList')
     if not isinstance(groundtruth_boxes, box_list.BoxList):
       raise ValueError('groundtruth_boxes must be an BoxList')
 
@@ -2017,15 +2011,6 @@ class DETRTargetAssigner(object):
                                                   0))
       groundtruth_labels = tf.expand_dims(groundtruth_labels, -1)
 
-    unmatched_shape_assert = shape_utils.assert_shape_equal(
-        shape_utils.combined_static_and_dynamic_shape(groundtruth_labels)[1:],
-        shape_utils.combined_static_and_dynamic_shape(unmatched_class_label))
-    labels_and_box_shapes_assert = shape_utils.assert_shape_equal(
-        shape_utils.combined_static_and_dynamic_shape(
-            groundtruth_labels)[:1],
-        shape_utils.combined_static_and_dynamic_shape(
-            groundtruth_boxes.get())[:1])
-
     if groundtruth_weights is None:
       num_gt_boxes = groundtruth_boxes.num_boxes_static()
       if not num_gt_boxes:
@@ -2036,18 +2021,19 @@ class DETRTargetAssigner(object):
     scores = 1 - groundtruth_labels[:, 0]
     groundtruth_boxes.add_field(fields.BoxListFields.scores, scores)
 
+    groundtruth_boxes.add_field(fields.BoxListFields.classes, groundtruth_labels)
+    box_preds.add_field(fields.BoxListFields.classes, class_predictions)
+
     with tf.control_dependencies(
         [unmatched_shape_assert, labels_and_box_shapes_assert]):
       
       match_quality_matrix = self._similarity_calc.compare(
           groundtruth_boxes,
-          anchors,
-          groundtruth_labels=groundtruth_labels,
-          predicted_labels=class_predictions)
+          box_preds)
       match = self._matcher.match(match_quality_matrix,
                                   valid_rows=tf.greater(groundtruth_weights, 0))
 
-      reg_targets = self._create_regression_targets(anchors,
+      reg_targets = self._create_regression_targets(box_preds,
                                                     groundtruth_boxes,
                                                     match)
       cls_targets = match.gather_based_on_match(
@@ -2062,7 +2048,7 @@ class DETRTargetAssigner(object):
           ignored_value=0.,
           unmatched_value=self._negative_class_weight)
 
-      # convert cls_weights from per-anchor to per-class.
+      # convert cls_weights from per-box_pred to per-class.
       class_label_shape = tf.shape(cls_targets)[1:]
       weights_shape = tf.shape(cls_weights)
       weights_multiple = tf.concat(
@@ -2072,37 +2058,37 @@ class DETRTargetAssigner(object):
         cls_weights = tf.expand_dims(cls_weights, -1)
       cls_weights = tf.tile(cls_weights, weights_multiple)
 
-    num_anchors = anchors.num_boxes_static()
-    if num_anchors is not None:
-      reg_targets = self._reset_target_shape(reg_targets, num_anchors)
-      cls_targets = self._reset_target_shape(cls_targets, num_anchors)
-      reg_weights = self._reset_target_shape(reg_weights, num_anchors)
-      cls_weights = self._reset_target_shape(cls_weights, num_anchors)
+    num_box_preds = box_preds.num_boxes_static()
+    if num_box_preds is not None:
+      reg_targets = self._reset_target_shape(reg_targets, num_box_preds)
+      cls_targets = self._reset_target_shape(cls_targets, num_box_preds)
+      reg_weights = self._reset_target_shape(reg_weights, num_box_preds)
+      cls_weights = self._reset_target_shape(cls_weights, num_box_preds)
 
     return (cls_targets, cls_weights, reg_targets, reg_weights,
             match.match_results)
 
-  def _reset_target_shape(self, target, num_anchors):
+  def _reset_target_shape(self, target, num_box_preds):
     """Sets the static shape of the target.
 
     Args:
       target: the target tensor. Its first dimension will be overwritten.
-      num_anchors: the number of anchors, which is used to override the target's
+      num_box_preds: the number of box_preds, which is used to override the target's
         first dimension.
 
     Returns:
       A tensor with the shape info filled in.
     """
     target_shape = target.get_shape().as_list()
-    target_shape[0] = num_anchors
+    target_shape[0] = num_box_preds
     target.set_shape(target_shape)
     return target
 
-  def _create_regression_targets(self, anchors, groundtruth_boxes, match):
-    """Returns a regression target for each anchor.
+  def _create_regression_targets(self, box_preds, groundtruth_boxes, match):
+    """Returns a regression target for each box_pred.
 
     Args:
-      anchors: a BoxList representing N anchors
+      box_preds: a BoxList representing N box_preds
       groundtruth_boxes: a BoxList representing M groundtruth_boxes
       match: a matcher.Match object
 
@@ -2123,8 +2109,8 @@ class DETRTargetAssigner(object):
     # Zero out the unmatched and ignored regression targets.
     unmatched_ignored_reg_targets = tf.tile(
         tf.constant([4 * [0]], tf.float32), [match_results_shape[0], 1])
-    matched_anchors_mask = match.matched_column_indicator()
-    reg_targets = tf.where(matched_anchors_mask,
+    matched_box_preds_mask = match.matched_column_indicator()
+    reg_targets = tf.where(matched_box_preds_mask,
                            matched_reg_targets,
                            unmatched_ignored_reg_targets)
     return reg_targets

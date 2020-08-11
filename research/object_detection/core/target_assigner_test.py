@@ -2204,11 +2204,11 @@ class DETRTargetAssignerTest(testcase.TestCase):
       similarity_calc = region_similarity_calculator.DETRSimilarity()
       matcher = hungarian_matcher.HungarianBipartiteMatcher()
       box_coder = detr_box_coder.DETRBoxCoder()
-      target_assigner = targetassigner.TargetAssigner(
+      detr_target_assigner = target_assigner.DETRTargetAssigner(
           similarity_calc, matcher, box_coder)
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
-      result = target_assigner.assign(
+      result = detr_target_assigner.assign(
           anchors_boxlist, groundtruth_boxlist,
           unmatched_class_label=tf.constant(
               [1, 0], dtype=tf.float32),
