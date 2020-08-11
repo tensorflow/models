@@ -2988,8 +2988,14 @@ class CenterNetMetaArch(model.DetectionModel):
       A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
     """
 
-    sub_model = self._feature_extractor.get_sub_model(fine_tune_checkpoint_type)
-    return {'feature_extractor': sub_model}
+    if fine_tune_checkpoint_type == 'fine_tune':
+      feature_extractor_model = tf.train.Checkpoint(
+          _feature_extractor=self._feature_extractor)
+      return {'model': feature_extractor_model}
+    else:
+      sub_model = self._feature_extractor.get_sub_model(
+          fine_tune_checkpoint_type)
+      return {'feature_extractor': sub_model}
 
   def updates(self):
     raise RuntimeError('This model is intended to be used with model_lib_v2 '
