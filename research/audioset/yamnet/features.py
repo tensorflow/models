@@ -54,14 +54,13 @@ def waveform_to_log_mel_spectrogram(waveform, params):
     return log_mel_spectrogram
 
 
-def spectrogram_to_patches(spectrogram, params):
-  """Break up a spectrogram into a stack of fixed-size patches."""
+def log_mel_spectrogram_to_patches(spectrogram, params):
+  """Break up a log mel spectrogram into a stack of fixed-size patches."""
   with tf.name_scope('feature_patches'):
-    # Frame spectrogram (shape [<# STFT frames>, MEL_BANDS]) into patches 
-    # (the input examples).
-    # Only complete frames are emitted, so if there is less than 
-    # PATCH_WINDOW_SECONDS of waveform then nothing is emitted 
-    # (to avoid this, zero-pad before processing).
+    # Frame spectrogram (shape [<# STFT frames>, MEL_BANDS]) into patches (the
+    # input examples). Only complete frames are emitted, so if there is less
+    # than PATCH_WINDOW_SECONDS of waveform then nothing is emitted (to avoid
+    # this, zero-pad before processing).
     hop_length_samples = int(
       round(params.SAMPLE_RATE * params.STFT_HOP_SECONDS))
     spectrogram_sr = params.SAMPLE_RATE / hop_length_samples
@@ -77,3 +76,18 @@ def spectrogram_to_patches(spectrogram, params):
     # features has shape [<# patches>, <# STFT frames in an patch>, MEL_BANDS]
 
     return features
+
+
+def pad_waveform(waveform, params):
+  """Pads waveform with silence if needed to get at least one input patch."""
+  # In order to produce one patch of log mel spectrogram input to YAMNet, we
+  # need at least one patch window length of waveform plus enough extra samples
+  # to complete the final STFT analysis window.
+  min_waveform_seconds = (params.PATCH_WINDOW_SECONDS + params.STFT_WINDOW_SECONDS
+                          - params.STFT_HOP_SECONDS)
+  num_samples = tf.size(waveform)
+  min_num_samples = tf.cast(min_waveform_seconds * params.SAMPLE_RATE, tf.int32)
+  num_padding_samples = tf.maximum(0, min_num_samples - num_samples)
+  padded_waveform = tf.pad(waveform, [[0, num_padding_samples]],
+                           mode='CONSTANT', constant_values=0.0)
+  return padded_waveform
