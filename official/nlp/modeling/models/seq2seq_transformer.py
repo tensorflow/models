@@ -29,7 +29,6 @@ from official.nlp.modeling import layers
 from official.nlp.modeling.layers import position_embedding
 from official.nlp.modeling.layers import transformer
 from official.nlp.modeling.ops import beam_search
-from official.nlp.transformer import metrics
 from official.nlp.transformer import model_utils
 from official.nlp.transformer.utils.tokenizer import EOS_ID
 
