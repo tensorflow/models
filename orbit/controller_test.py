@@ -667,9 +667,9 @@ class ControllerTest(tf.test.TestCase, parameterized.TestCase):
     test_controller.train_and_evaluate(
         train_steps=10, eval_steps=2, eval_interval=5)
 
-    # Expect 3 checkpoints to be saved at step: 0, 5, 10.
+    # Expect 3 checkpoints to be saved at step: 5, 10.
     self.assertLen(
-        tf.io.gfile.glob(os.path.join(self.model_dir, "ckpt-*.data*")), 3)
+        tf.io.gfile.glob(os.path.join(self.model_dir, "ckpt-*.data*")), 2)
     # Expect evaluation is performed 2 times at step: 5, 10.
     self.assertLen(
         summaries_with_matching_keyword("eval_loss", self.model_dir), 2)
