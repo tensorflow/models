@@ -229,7 +229,7 @@ python model_export.py \
 
 Alternatively you can:
 1. define a placeholder for images (or use directly an numpy array)
-2. [create a graph ](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/eval.py#L60)
+2. [create a graph](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/eval.py#L60)
 ```
 endpoints = model.create_base(images_placeholder, labels_one_hot=None)
 ```
@@ -244,7 +244,7 @@ predictions = sess.run(endpoints.predicted_chars,
 Please note that tensor names may change overtime and old stored checkpoints can
 become unloadable. In many cases such backward incompatible changes can be
 fixed with a [string substitution][1] to update the checkpoint itself or using a
-custom var_list with [assign_from_checkpoint_fn][2]. For anything
+custom `var_list` with [`assign_from_checkpoint_fn`][2]. For anything
 other than a one time experiment please use the [TensorFlow Serving][serving].
 
 [1]: https://github.com/tensorflow/tensorflow/blob/aaf7adc/tensorflow/contrib/rnn/python/tools/checkpoint_convert.py
