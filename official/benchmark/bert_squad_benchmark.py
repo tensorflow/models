@@ -23,6 +23,7 @@ import os
 import time
 
 # pylint: disable=g-bad-import-order
+
 from absl import flags
 from absl import logging
 from absl.testing import flagsaver
@@ -75,7 +76,7 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
 
     Args:
       ds_type: String, the distribution strategy type to be used. Can be
-      'mirrored', 'multi_worker_mirrored', 'tpu' and 'off'.
+        'mirrored', 'multi_worker_mirrored', 'tpu' and 'off'.
 
     Returns:
       A `tf.distribute.DistibutionStrategy` object.
@@ -123,8 +124,8 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
 
     if input_meta_data.get('version_2_with_negative', False):
       logging.error('In memory evaluation result for SQuAD v2 is not accurate')
-    eval_metrics = run_squad.eval_squad(strategy=strategy,
-                                        input_meta_data=input_meta_data)
+    eval_metrics = run_squad.eval_squad(
+        strategy=strategy, input_meta_data=input_meta_data)
     # Use F1 score as reported evaluation metric.
     self.eval_metrics = eval_metrics['final_f1']
 
@@ -152,9 +153,7 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
     FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
-  def _run_and_report_benchmark(self,
-                                run_eagerly=False,
-                                ds_type='mirrored'):
+  def _run_and_report_benchmark(self, run_eagerly=False, ds_type='mirrored'):
     """Runs the benchmark and reports various metrics."""
     if FLAGS.train_batch_size <= 4 or run_eagerly:
       FLAGS.input_meta_data_path = SQUAD_MEDIUM_INPUT_META_DATA_PATH
@@ -367,9 +366,7 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
     FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
-  def _run_and_report_benchmark(self,
-                                run_eagerly=False,
-                                ds_type='mirrored'):
+  def _run_and_report_benchmark(self, run_eagerly=False, ds_type='mirrored'):
     """Runs the benchmark and reports various metrics."""
     start_time_sec = time.time()
     self._train_squad(run_eagerly=run_eagerly, ds_type=ds_type)
@@ -464,13 +461,10 @@ class BertSquadMultiWorkerAccuracy(BertSquadBenchmarkBase):
     FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
-  def _run_and_report_benchmark(self,
-                                use_ds=True,
-                                run_eagerly=False):
+  def _run_and_report_benchmark(self, use_ds=True, run_eagerly=False):
     """Runs the benchmark and reports various metrics."""
     start_time_sec = time.time()
-    self._train_squad(run_eagerly=run_eagerly,
-                      ds_type='multi_worker_mirrored')
+    self._train_squad(run_eagerly=run_eagerly, ds_type='multi_worker_mirrored')
     self._evaluate_squad(ds_type='multi_worker_mirrored')
     wall_time_sec = time.time() - start_time_sec
 
@@ -538,17 +532,14 @@ class BertSquadMultiWorkerBenchmark(BertSquadBenchmarkBase):
     FLAGS.steps_per_loop = 100
 
   @benchmark_wrappers.enable_runtime_flags
-  def _run_and_report_benchmark(self,
-                                use_ds=True,
-                                run_eagerly=False):
+  def _run_and_report_benchmark(self, use_ds=True, run_eagerly=False):
     """Runs the benchmark and reports various metrics."""
     if FLAGS.train_batch_size <= 4 * 8:
       FLAGS.input_meta_data_path = SQUAD_LONG_INPUT_META_DATA_PATH
     else:
       FLAGS.input_meta_data_path = SQUAD_FULL_INPUT_META_DATA_PATH
     start_time_sec = time.time()
-    self._train_squad(run_eagerly=run_eagerly,
-                      ds_type='multi_worker_mirrored')
+    self._train_squad(run_eagerly=run_eagerly, ds_type='multi_worker_mirrored')
     wall_time_sec = time.time() - start_time_sec
 
     summary = self._read_training_summary_from_file()

@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import os
 import time
+
 from absl import flags
 import tensorflow as tf  # pylint: disable=g-bad-import-order
 
@@ -30,7 +31,7 @@ MIN_TOP_1_ACCURACY = 0.929
 MAX_TOP_1_ACCURACY = 0.938
 
 FLAGS = flags.FLAGS
-CIFAR_DATA_DIR_NAME = 'cifar-10-batches-bin'
+os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME) = '/placer/prod/home/distbelief/cifar10-orig'
 
 
 class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
@@ -43,8 +44,8 @@ class Resnet56KerasAccuracy(keras_benchmark.KerasBenchmark):
       output_dir: directory where to output e.g. log files
       root_data_dir: directory under which to look for dataset
       **kwargs: arbitrary named arguments. This is needed to make the
-                constructor forward compatible in case PerfZero provides more
-                named arguments before updating the constructor.
+        constructor forward compatible in case PerfZero provides more named
+        arguments before updating the constructor.
     """
 
     self.data_dir = os.path.join(root_data_dir, CIFAR_DATA_DIR_NAME)

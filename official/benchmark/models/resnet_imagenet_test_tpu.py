@@ -30,19 +30,30 @@ class KerasImagenetTest(tf.test.TestCase, parameterized.TestCase):
 
   _extra_flags_dict = {
       "resnet": [
-          "-batch_size", "4",
-          "-train_steps", "1",
-          "-use_synthetic_data", "true"
-          "-model", "resnet50_v1.5",
-          "-optimizer", "resnet50_default",
+          "-batch_size",
+          "4",
+          "-train_steps",
+          "1",
+          "-use_synthetic_data",
+          "true"
+          "-model",
+          "resnet50_v1.5",
+          "-optimizer",
+          "resnet50_default",
       ],
       "resnet_polynomial_decay": [
-          "-batch_size", "4",
-          "-train_steps", "1",
-          "-use_synthetic_data", "true",
-          "-model", "resnet50_v1.5",
-          "-optimizer", "resnet50_default",
-          "-pruning_method", "polynomial_decay",
+          "-batch_size",
+          "4",
+          "-train_steps",
+          "1",
+          "-use_synthetic_data",
+          "true",
+          "-model",
+          "resnet50_v1.5",
+          "-optimizer",
+          "resnet50_default",
+          "-pruning_method",
+          "polynomial_decay",
       ],
   }
   _tempdir = None
@@ -71,34 +82,38 @@ class KerasImagenetTest(tf.test.TestCase, parameterized.TestCase):
     """Test Keras model with TPU distribution strategy."""
 
     extra_flags = [
-        "-distribution_strategy", "tpu",
-        "-data_format", "channels_last",
-        "-enable_checkpoint_and_export", "1",
+        "-distribution_strategy",
+        "tpu",
+        "-data_format",
+        "channels_last",
+        "-enable_checkpoint_and_export",
+        "1",
     ]
     extra_flags = extra_flags + self._extra_flags_dict[flags_key]
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   @parameterized.parameters(["resnet"])
   def test_end_to_end_tpu_bf16(self, flags_key):
     """Test Keras model with TPU and bfloat16 activation."""
 
     extra_flags = [
-        "-distribution_strategy", "tpu",
-        "-data_format", "channels_last",
-        "-dtype", "bf16",
+        "-distribution_strategy",
+        "tpu",
+        "-data_format",
+        "channels_last",
+        "-dtype",
+        "bf16",
     ]
     extra_flags = extra_flags + self._extra_flags_dict[flags_key]
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
 
 if __name__ == "__main__":

@@ -36,29 +36,43 @@ from official.vision.image_classification.resnet import imagenet_preprocessing
 class KerasImagenetTest(tf.test.TestCase):
   """Unit tests for Keras Models with ImageNet."""
   _default_flags_dict = [
-      "-batch_size", "4",
-      "-train_steps", "1",
-      "-use_synthetic_data", "true",
-      "-data_format", "channels_last",
+      "-batch_size",
+      "4",
+      "-train_steps",
+      "1",
+      "-use_synthetic_data",
+      "true",
+      "-data_format",
+      "channels_last",
   ]
   _extra_flags_dict = {
       "resnet": [
-          "-model", "resnet50_v1.5",
-          "-optimizer", "resnet50_default",
+          "-model",
+          "resnet50_v1.5",
+          "-optimizer",
+          "resnet50_default",
       ],
       "resnet_polynomial_decay": [
-          "-model", "resnet50_v1.5",
-          "-optimizer", "resnet50_default",
-          "-pruning_method", "polynomial_decay",
+          "-model",
+          "resnet50_v1.5",
+          "-optimizer",
+          "resnet50_default",
+          "-pruning_method",
+          "polynomial_decay",
       ],
       "mobilenet": [
-          "-model", "mobilenet",
-          "-optimizer", "mobilenet_default",
+          "-model",
+          "mobilenet",
+          "-optimizer",
+          "mobilenet_default",
       ],
       "mobilenet_polynomial_decay": [
-          "-model", "mobilenet",
-          "-optimizer", "mobilenet_default",
-          "-pruning_method", "polynomial_decay",
+          "-model",
+          "mobilenet",
+          "-optimizer",
+          "mobilenet_default",
+          "-pruning_method",
+          "polynomial_decay",
       ],
   }
   _tempdir = None
@@ -86,50 +100,53 @@ class KerasImagenetTest(tf.test.TestCase):
     """Test Keras model with 1 GPU, no distribution strategy."""
 
     extra_flags = [
-        "-distribution_strategy", "off",
+        "-distribution_strategy",
+        "off",
     ]
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_graph_no_dist_strat(self, flags_key):
     """Test Keras model in legacy graph mode with 1 GPU, no dist strat."""
     extra_flags = [
-        "-enable_eager", "false",
-        "-distribution_strategy", "off",
+        "-enable_eager",
+        "false",
+        "-distribution_strategy",
+        "off",
     ]
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_1_gpu(self, flags_key):
     """Test Keras model with 1 GPU."""
 
     if context.num_gpus() < 1:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(1, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "1",
-        "-distribution_strategy", "mirrored",
-        "-enable_checkpoint_and_export", "1",
+        "-num_gpus",
+        "1",
+        "-distribution_strategy",
+        "mirrored",
+        "-enable_checkpoint_and_export",
+        "1",
     ]
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_1_gpu_fp16(self, flags_key):
     """Test Keras model with 1 GPU and fp16."""
@@ -140,9 +157,12 @@ class KerasImagenetTest(tf.test.TestCase):
           .format(1, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "1",
-        "-dtype", "fp16",
-        "-distribution_strategy", "mirrored",
+        "-num_gpus",
+        "1",
+        "-dtype",
+        "fp16",
+        "-distribution_strategy",
+        "mirrored",
     ]
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
@@ -152,62 +172,67 @@ class KerasImagenetTest(tf.test.TestCase):
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_2_gpu(self, flags_key):
     """Test Keras model with 2 GPUs."""
 
     if context.num_gpus() < 2:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(2, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "2",
-        "-distribution_strategy", "mirrored",
+        "-num_gpus",
+        "2",
+        "-distribution_strategy",
+        "mirrored",
     ]
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_xla_2_gpu(self, flags_key):
     """Test Keras model with XLA and 2 GPUs."""
 
     if context.num_gpus() < 2:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(2, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "2",
-        "-enable_xla", "true",
-        "-distribution_strategy", "mirrored",
+        "-num_gpus",
+        "2",
+        "-enable_xla",
+        "true",
+        "-distribution_strategy",
+        "mirrored",
     ]
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_2_gpu_fp16(self, flags_key):
     """Test Keras model with 2 GPUs and fp16."""
 
     if context.num_gpus() < 2:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(2, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "2",
-        "-dtype", "fp16",
-        "-distribution_strategy", "mirrored",
+        "-num_gpus",
+        "2",
+        "-dtype",
+        "fp16",
+        "-distribution_strategy",
+        "mirrored",
     ]
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
@@ -217,21 +242,24 @@ class KerasImagenetTest(tf.test.TestCase):
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_xla_2_gpu_fp16(self, flags_key):
     """Test Keras model with XLA, 2 GPUs and fp16."""
     if context.num_gpus() < 2:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(2, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "2",
-        "-dtype", "fp16",
-        "-enable_xla", "true",
-        "-distribution_strategy", "mirrored",
+        "-num_gpus",
+        "2",
+        "-dtype",
+        "fp16",
+        "-enable_xla",
+        "true",
+        "-distribution_strategy",
+        "mirrored",
     ]
     extra_flags = extra_flags + self.get_extra_flags_dict(flags_key)
 
@@ -241,8 +269,7 @@ class KerasImagenetTest(tf.test.TestCase):
     integration.run_synthetic(
         main=resnet_imagenet_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
 
 if __name__ == "__main__":

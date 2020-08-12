@@ -459,7 +459,8 @@ class Resnet50CtlBenchmarkReal(Resnet50CtlBenchmarkBase):
   def __init__(self, output_dir=None, root_data_dir=None, **kwargs):
     def_flags = {}
     def_flags['skip_eval'] = True
-    def_flags['data_dir'] = os.path.join(root_data_dir, 'imagenet')
+    def_flags[
+        'data_dir'] = os.path.join(root_data_dir, 'imagenet')
     def_flags['train_steps'] = 110
     def_flags['steps_per_loop'] = 10
     def_flags['log_steps'] = 10

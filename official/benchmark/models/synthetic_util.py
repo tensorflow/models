@@ -42,8 +42,8 @@ class SyntheticDataset(object):
     for t in flat_tensor:
       rebatched_t = tf.split(t, num_or_size_splits=split_by, axis=0)[0]
       assert rebatched_t.shape.is_fully_defined(), rebatched_t.shape
-      v = tf.compat.v1.get_local_variable(self._random_name(),
-                                          initializer=rebatched_t)
+      v = tf.compat.v1.get_local_variable(
+          self._random_name(), initializer=rebatched_t)
       variable_data.append(v)
       initializers.append(v.initializer)
     input_data = tf.nest.pack_sequence_as(tensor, variable_data)
@@ -90,6 +90,7 @@ class SyntheticIterator(object):
 
 def _monkey_patch_dataset_method(strategy):
   """Monkey-patch `strategy`'s `make_dataset_iterator` method."""
+
   def make_dataset(self, dataset):
     logging.info('Using pure synthetic data.')
     with self.scope():

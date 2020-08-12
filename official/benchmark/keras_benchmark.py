@@ -61,12 +61,16 @@ class KerasBenchmark(PerfZeroBenchmark):
 
     metrics = []
     if 'accuracy_top_1' in stats:
-      metrics.append({'name': 'accuracy_top_1',
-                      'value': stats['accuracy_top_1'],
-                      'min_value': top_1_min,
-                      'max_value': top_1_max})
-      metrics.append({'name': 'top_1_train_accuracy',
-                      'value': stats['training_accuracy_top_1']})
+      metrics.append({
+          'name': 'accuracy_top_1',
+          'value': stats['accuracy_top_1'],
+          'min_value': top_1_min,
+          'max_value': top_1_max
+      })
+      metrics.append({
+          'name': 'top_1_train_accuracy',
+          'value': stats['training_accuracy_top_1']
+      })
 
     if (warmup and 'step_timestamp_log' in stats and
         len(stats['step_timestamp_log']) > warmup):
@@ -77,12 +81,13 @@ class KerasBenchmark(PerfZeroBenchmark):
       num_examples = (
           total_batch_size * log_steps * (len(time_log) - warmup - 1))
       examples_per_sec = num_examples / elapsed
-      metrics.append({'name': 'exp_per_second',
-                      'value': examples_per_sec})
+      metrics.append({'name': 'exp_per_second', 'value': examples_per_sec})
 
     if 'avg_exp_per_second' in stats:
-      metrics.append({'name': 'avg_exp_per_second',
-                      'value': stats['avg_exp_per_second']})
+      metrics.append({
+          'name': 'avg_exp_per_second',
+          'value': stats['avg_exp_per_second']
+      })
 
     if start_time_sec and 'step_timestamp_log' in stats:
       time_log = stats['step_timestamp_log']

@@ -23,6 +23,7 @@ import os
 import time
 
 # pylint: disable=g-bad-import-order
+
 from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf
@@ -160,9 +161,9 @@ class XLNetSquadAccuracy(XLNetBenchmarkBase):
 
   def __init__(self, output_dir=None, tpu=None, **kwargs):
     self.train_data_path = SQUAD_DATA_PATH
-    self.predict_file = os.path.join(SQUAD_DATA_PATH, "dev-v2.0.json")
-    self.test_data_path = os.path.join(SQUAD_DATA_PATH, "12048.eval.tf_record")
-    self.spiece_model_file = os.path.join(SQUAD_DATA_PATH, "spiece.cased.model")
+    self.predict_file = os.path.join(SQUAD_DATA_PATH, 'dev-v2.0.json')
+    self.test_data_path = os.path.join(SQUAD_DATA_PATH, '12048.eval.tf_record')
+    self.spiece_model_file = os.path.join(SQUAD_DATA_PATH, 'spiece.cased.model')
     self.pretrained_checkpoint_path = PRETRAINED_CHECKPOINT_PATH
 
     super(XLNetSquadAccuracy, self).__init__(output_dir=output_dir, tpu=tpu)

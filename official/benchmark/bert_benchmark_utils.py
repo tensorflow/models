@@ -21,6 +21,7 @@ from __future__ import print_function
 import time
 
 # pylint: disable=g-bad-import-order
+
 import numpy as np
 from absl import flags
 import tensorflow as tf

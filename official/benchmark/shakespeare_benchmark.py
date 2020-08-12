@@ -68,10 +68,12 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
     wall_time_sec = time.time() - start_time_sec
 
     if top_1_train_min:
-      metrics.append({'name': 'accuracy_top_1_train',
-                      'value': stats['history']['RecallAt1'][-1],
-                      'min_value': top_1_train_min,
-                      'max_value': top_1_train_max})
+      metrics.append({
+          'name': 'accuracy_top_1_train',
+          'value': stats['history']['RecallAt1'][-1],
+          'min_value': top_1_train_min,
+          'max_value': top_1_train_max
+      })
 
     # Look for the time history callback which was used during keras.fit
     for callback in stats['callbacks']:
@@ -79,8 +81,7 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
         epoch_timings = callback.epoch_runtime_log
         if len(epoch_timings) > 1:
           average_time = sum(epoch_timings[1:]) / len(epoch_timings[1:])
-          metrics.append({'name': 'avg_epoch_time',
-                          'value': average_time})
+          metrics.append({'name': 'avg_epoch_time', 'value': average_time})
 
       # First entry in timestamp_log is the start of step 1. The rest of the
       # entries are the end of each step recorded.
@@ -90,13 +91,14 @@ class ShakespeareBenchmarkBase(PerfZeroBenchmark):
           total_batch_size * log_steps * (len(time_log) - warmup - 1))
       if elapsed > 0:
         examples_per_sec = num_examples / elapsed
-        metrics.append({'name': 'exp_per_second',
-                        'value': examples_per_sec})
+        metrics.append({'name': 'exp_per_second', 'value': examples_per_sec})
 
     flags_str = flags_core.get_nondefault_flags_as_str()
-    self.report_benchmark(iters=-1, wall_time=wall_time_sec,
-                          metrics=metrics,
-                          extras={'flags': flags_str})
+    self.report_benchmark(
+        iters=-1,
+        wall_time=wall_time_sec,
+        metrics=metrics,
+        extras={'flags': flags_str})
 
 
 class ShakespeareAccuracy(ShakespeareBenchmarkBase):
@@ -114,8 +116,8 @@ class ShakespeareAccuracy(ShakespeareBenchmarkBase):
       output_dir: directory where to output e.g. log files
       root_data_dir: directory under which to look for dataset
       **kwargs: arbitrary named arguments. This is needed to make the
-                constructor forward compatible in case PerfZero provides more
-                named arguments before updating the constructor.
+        constructor forward compatible in case PerfZero provides more named
+        arguments before updating the constructor.
     """
     self.train_data = os.path.join(root_data_dir, SHAKESPEARE_TRAIN_DATA)
     super(ShakespeareAccuracy, self).__init__(
@@ -212,8 +214,8 @@ class ShakespeareKerasBenchmarkReal(ShakespeareBenchmarkBase):
       output_dir: directory where to output e.g. log files
       root_data_dir: directory under which to look for dataset
       **kwargs: arbitrary named arguments. This is needed to make the
-                constructor forward compatible in case PerfZero provides more
-                named arguments before updating the constructor.
+        constructor forward compatible in case PerfZero provides more named
+        arguments before updating the constructor.
     """
     self.train_data = os.path.join(root_data_dir, SHAKESPEARE_TRAIN_DATA)
 

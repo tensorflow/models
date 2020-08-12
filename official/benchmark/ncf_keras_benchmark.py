@@ -66,17 +66,20 @@ class NCFKerasBenchmarkBase(PerfZeroBenchmark):
     wall_time_sec = time.time() - start_time_sec
 
     metrics = []
-    metrics.append({'name': 'exp_per_second',
-                    'value': stats['avg_exp_per_second']})
+    metrics.append({
+        'name': 'exp_per_second',
+        'value': stats['avg_exp_per_second']
+    })
 
     if hr_at_10_min > 0:
-      metrics.append({'name': 'hr_at_10',
-                      'value': stats['eval_hit_rate'],
-                      'min_value': hr_at_10_min,
-                      'max_value': hr_at_10_max})
+      metrics.append({
+          'name': 'hr_at_10',
+          'value': stats['eval_hit_rate'],
+          'min_value': hr_at_10_min,
+          'max_value': hr_at_10_max
+      })
 
-      metrics.append({'name': 'train_loss',
-                      'value': stats['loss']})
+      metrics.append({'name': 'train_loss', 'value': stats['loss']})
 
     self.report_benchmark(iters=-1, wall_time=wall_time_sec, metrics=metrics)
 
@@ -108,9 +111,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     default_flags['data_dir'] = os.path.join(root_data_dir, NCF_DATA_DIR_NAME)
 
     super(NCFKerasAccuracy, self).__init__(
-        output_dir=output_dir,
-        default_flags=default_flags,
-        **kwargs)
+        output_dir=output_dir, default_flags=default_flags, **kwargs)
 
   def _run_and_report_benchmark_mlperf_like(self):
     """Run test and report results.
@@ -131,8 +132,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
       hr_at_10_max: Maximum acceptable hr@10 value.
     """
     super(NCFKerasAccuracy, self)._run_and_report_benchmark(
-        hr_at_10_min=hr_at_10_min,
-        hr_at_10_max=hr_at_10_max)
+        hr_at_10_min=hr_at_10_min, hr_at_10_max=hr_at_10_max)
 
   def _set_8_gpu_defaults(self):
     FLAGS.num_gpus = 8
@@ -210,6 +210,7 @@ class NCFKerasAccuracy(NCFKerasBenchmarkBase):
     FLAGS.num_gpus = 2
     FLAGS.eval_batch_size = 160000
     self._run_and_report_benchmark()
+
 
 #############################################
 # Tests below with mlperf in the test name are of two types:
@@ -449,10 +450,7 @@ class NCFKerasBenchmarkReal(NCFKerasBenchmarkBase):
 class NCFKerasSynth(NCFKerasBenchmarkBase):
   """Benchmark NCF model using synthetic data."""
 
-  def __init__(self,
-               output_dir=None,
-               default_flags=None,
-               **kwargs):
+  def __init__(self, output_dir=None, default_flags=None, **kwargs):
 
     default_flags = {}
     default_flags['dataset'] = 'ml-20m'
@@ -470,9 +468,7 @@ class NCFKerasSynth(NCFKerasBenchmarkBase):
     default_flags['use_synthetic_data'] = True
 
     super(NCFKerasSynth, self).__init__(
-        output_dir=output_dir,
-        default_flags=default_flags,
-        **kwargs)
+        output_dir=output_dir, default_flags=default_flags, **kwargs)
 
   def benchmark_1_gpu(self):
     self._setup()

@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 from absl import logging
 import tensorflow as tf
 
@@ -49,8 +50,8 @@ def parse_record(raw_record, is_training, dtype):
   This method converts the label to one hot to fit the loss function.
 
   Args:
-    raw_record: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
+    raw_record: scalar Tensor tf.string containing a serialized Example protocol
+      buffer.
     is_training: A boolean denoting whether the input is for training.
     dtype: Data type to use for input images.
 
@@ -83,8 +84,7 @@ def preprocess_image(image, is_training):
   """Preprocess a single image of layout [height, width, depth]."""
   if is_training:
     # Resize the image to add four extra pixels on each side.
-    image = tf.image.resize_with_crop_or_pad(
-        image, HEIGHT + 8, WIDTH + 8)
+    image = tf.image.resize_with_crop_or_pad(image, HEIGHT + 8, WIDTH + 8)
 
     # Randomly crop a [HEIGHT, WIDTH] section of the image.
     image = tf.image.random_crop(image, [HEIGHT, WIDTH, NUM_CHANNELS])
@@ -155,5 +155,4 @@ def input_fn(is_training,
       parse_record_fn=parse_record_fn,
       dtype=dtype,
       datasets_num_private_threads=datasets_num_private_threads,
-      drop_remainder=drop_remainder
-  )
+      drop_remainder=drop_remainder)

@@ -25,6 +25,7 @@ import os
 import time
 
 # pylint: disable=g-bad-import-order
+
 from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf

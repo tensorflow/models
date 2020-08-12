@@ -141,8 +141,8 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
     # writing summary to gcs may fail and summaries are not needed for this
     # accuracy benchmark test.
     FLAGS.train_summary_interval = -1
-    self._run_and_report_benchmark(summary_path=summary_path,
-                                   report_accuracy=True)
+    self._run_and_report_benchmark(
+        summary_path=summary_path, report_accuracy=True)
 
   @owner_utils.Owner('tf-model-garden')
   def benchmark_perf_2x2_tpu_bf16_seq128_10k_steps(self):
@@ -220,8 +220,8 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
     summary_path = os.path.join(FLAGS.model_dir,
                                 'summaries/training_summary.txt')
     # Disable accuracy check.
-    self._run_and_report_benchmark(summary_path=summary_path,
-                                   report_accuracy=False)
+    self._run_and_report_benchmark(
+        summary_path=summary_path, report_accuracy=False)
 
 
 if __name__ == '__main__':

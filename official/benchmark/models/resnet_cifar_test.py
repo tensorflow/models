@@ -33,9 +33,7 @@ class KerasCifarTest(googletest.TestCase):
   """Unit tests for Keras ResNet with Cifar."""
 
   _extra_flags = [
-      "-batch_size", "4",
-      "-train_steps", "1",
-      "-use_synthetic_data", "true"
+      "-batch_size", "4", "-train_steps", "1", "-use_synthetic_data", "true"
   ]
   _tempdir = None
 
@@ -61,119 +59,135 @@ class KerasCifarTest(googletest.TestCase):
     """Test Keras model with 1 GPU, no distribution strategy."""
 
     extra_flags = [
-        "-distribution_strategy", "off",
-        "-model_dir", "keras_cifar_no_dist_strat",
-        "-data_format", "channels_last",
+        "-distribution_strategy",
+        "off",
+        "-model_dir",
+        "keras_cifar_no_dist_strat",
+        "-data_format",
+        "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
         main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_graph_no_dist_strat(self):
     """Test Keras model in legacy graph mode with 1 GPU, no dist strat."""
     extra_flags = [
-        "-enable_eager", "false",
-        "-distribution_strategy", "off",
-        "-model_dir", "keras_cifar_graph_no_dist_strat",
-        "-data_format", "channels_last",
+        "-enable_eager",
+        "false",
+        "-distribution_strategy",
+        "off",
+        "-model_dir",
+        "keras_cifar_graph_no_dist_strat",
+        "-data_format",
+        "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
         main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_1_gpu(self):
     """Test Keras model with 1 GPU."""
 
     if context.num_gpus() < 1:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(1, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "1",
-        "-distribution_strategy", "mirrored",
-        "-model_dir", "keras_cifar_1_gpu",
-        "-data_format", "channels_last",
+        "-num_gpus",
+        "1",
+        "-distribution_strategy",
+        "mirrored",
+        "-model_dir",
+        "keras_cifar_1_gpu",
+        "-data_format",
+        "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
         main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_graph_1_gpu(self):
     """Test Keras model in legacy graph mode with 1 GPU."""
     if context.num_gpus() < 1:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(1, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(1, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "1",
+        "-num_gpus",
+        "1",
         "-noenable_eager",
-        "-distribution_strategy", "mirrored",
-        "-model_dir", "keras_cifar_graph_1_gpu",
-        "-data_format", "channels_last",
+        "-distribution_strategy",
+        "mirrored",
+        "-model_dir",
+        "keras_cifar_graph_1_gpu",
+        "-data_format",
+        "channels_last",
     ]
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
         main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_2_gpu(self):
     """Test Keras model with 2 GPUs."""
 
     if context.num_gpus() < 2:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(2, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "2",
-        "-distribution_strategy", "mirrored",
-        "-model_dir", "keras_cifar_2_gpu",
+        "-num_gpus",
+        "2",
+        "-distribution_strategy",
+        "mirrored",
+        "-model_dir",
+        "keras_cifar_2_gpu",
     ]
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
         main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
   def test_end_to_end_graph_2_gpu(self):
     """Test Keras model in legacy graph mode with 2 GPUs."""
     if context.num_gpus() < 2:
       self.skipTest(
-          "{} GPUs are not available for this test. {} GPUs are available".
-          format(2, context.num_gpus()))
+          "{} GPUs are not available for this test. {} GPUs are available"
+          .format(2, context.num_gpus()))
 
     extra_flags = [
-        "-num_gpus", "2",
-        "-enable_eager", "false",
-        "-distribution_strategy", "mirrored",
-        "-model_dir", "keras_cifar_graph_2_gpu",
+        "-num_gpus",
+        "2",
+        "-enable_eager",
+        "false",
+        "-distribution_strategy",
+        "mirrored",
+        "-model_dir",
+        "keras_cifar_graph_2_gpu",
     ]
     extra_flags = extra_flags + self._extra_flags
 
     integration.run_synthetic(
         main=resnet_cifar_main.run,
         tmp_root=self.get_temp_dir(),
-        extra_flags=extra_flags
-    )
+        extra_flags=extra_flags)
 
 
 if __name__ == "__main__":

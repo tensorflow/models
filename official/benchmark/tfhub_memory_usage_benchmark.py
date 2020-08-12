@@ -45,8 +45,8 @@ class TfHubMemoryUsageBenchmark(PerfZeroBenchmark):
         # https://tfhub.dev/google/nnlm-en-dim128/1 to valid python method name
         # like google_nnlm_en_dim128_1.
         hub_model_method_name = hub_model_handle.replace(
-            'https://tfhub.dev',
-            '').replace('/', '_').replace('-', '_').strip('_')
+            'https://tfhub.dev', '').replace('/', '_').replace('-',
+                                                               '_').strip('_')
         setattr(
             self, 'benchmark_' + hub_model_method_name,
             functools.partial(self.benchmark_memory_usage, hub_model_handle))

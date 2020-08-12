@@ -335,27 +335,21 @@ class RetinanetBenchmarkReal(DetectionBenchmarkReal):
   """Short benchmark performance tests for Retinanet model."""
 
   def __init__(self, **kwargs):
-    super(RetinanetBenchmarkReal, self).__init__(
-        model='retinanet',
-        **kwargs)
+    super(RetinanetBenchmarkReal, self).__init__(model='retinanet', **kwargs)
 
 
 class MaskRCNNBenchmarkReal(DetectionBenchmarkReal):
   """Short benchmark performance tests for Mask RCNN model."""
 
   def __init__(self, **kwargs):
-    super(MaskRCNNBenchmarkReal, self).__init__(
-        model='mask_rcnn',
-        **kwargs)
+    super(MaskRCNNBenchmarkReal, self).__init__(model='mask_rcnn', **kwargs)
 
 
 class ShapeMaskBenchmarkReal(DetectionBenchmarkReal):
   """Short benchmark performance tests for ShapeMask model."""
 
   def __init__(self, **kwargs):
-    super(ShapeMaskBenchmarkReal, self).__init__(
-        model='shapemask',
-        **kwargs)
+    super(ShapeMaskBenchmarkReal, self).__init__(model='shapemask', **kwargs)
 
 
 if __name__ == '__main__':
