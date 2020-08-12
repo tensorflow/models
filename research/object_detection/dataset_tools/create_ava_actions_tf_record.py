@@ -31,7 +31,7 @@ Running this code as a module generates the data set on disk. First, the
 required files are downloaded (_download_data) which enables constructing the
 label map. Then (in generate_examples), for each split in the data set, the
 metadata and image frames are generated from the annotations for each sequence
-example (_generate_metadata). The data set is written to disk as a set of
+example (_generate_examples). The data set is written to disk as a set of
 numbered TFRecord files.
 
 Generating the data on disk can take considerable time and disk space.
@@ -96,8 +96,8 @@ SPLITS = {
         "csv": '',
         "excluded-csv": ''
     }
-
 }
+
 NUM_CLASSES = 80
 
 def feature_list_feature(value):
@@ -188,7 +188,7 @@ class Ava(object):
       reader = csv.DictReader(annotations, fieldnames)
       frame_annotations = collections.defaultdict(list)
       ids = set()
-      # aggregate by video and timestamp:
+      # aggreggate by video and timestamp:
       for row in reader:
         ids.add(row["id"])
         key = (row["id"], int(float(row["timestamp_seconds"])))
@@ -197,8 +197,6 @@ class Ava(object):
       logging.info("Generating metadata...")
       media_num = 1
       for media_id in ids:
-        if media_num > 2:
-          continue
         logging.info("%d/%d, ignore warnings.\n" % (media_num, len(ids)))
         media_num += 1
 
@@ -261,7 +259,6 @@ class Ava(object):
             windowed_timestamp += 1
 
           if len(total_boxes) > 0:
-            print(total_boxes)
             yield seq_example_util.make_sequence_example("AVA", media_id, total_images,
                 int(height), int(width), 'jpeg', total_source_ids, None, total_is_annotated,
                 total_boxes, total_label_strings, use_strs_for_source_id=True)
