@@ -96,16 +96,14 @@ _YAMNET_LAYER_DEFS = [
 def yamnet(features):
   """Define the core YAMNet mode in Keras."""
   net = layers.Reshape(
-    (params.PATCH_FRAMES, params.PATCH_BANDS, 1),
-    input_shape=(params.PATCH_FRAMES, params.PATCH_BANDS))(features)
+      (params.PATCH_FRAMES, params.PATCH_BANDS, 1),
+      input_shape=(params.PATCH_FRAMES, params.PATCH_BANDS))(features)
   for (i, (layer_fun, kernel, stride, filters)) in enumerate(_YAMNET_LAYER_DEFS):
     net = layer_fun('layer{}'.format(i + 1), kernel, stride, filters)(net)
-  net = layers.GlobalAveragePooling2D()(net)
-  logits = layers.Dense(units=params.NUM_CLASSES, use_bias=True)(net)
-  predictions = layers.Activation(
-    name=params.EXAMPLE_PREDICTIONS_LAYER_NAME,
-    activation=params.CLASSIFIER_ACTIVATION)(logits)
-  return predictions
+  embeddings = layers.GlobalAveragePooling2D()(net)
+  logits = layers.Dense(units=params.NUM_CLASSES, use_bias=True)(embeddings)
+  predictions = layers.Activation(activation=params.CLASSIFIER_ACTIVATION)(logits)
+  return predictions, embeddings
 
 
 def yamnet_frames_model(feature_params):
@@ -116,19 +114,19 @@ def yamnet_frames_model(feature_params):
     calculation.
 
   Returns:
-    A model accepting (1, num_samples) waveform input and emitting a
-    (num_patches, num_classes) matrix of class scores per time frame as
-    well as a (num_spectrogram_frames, num_mel_bins) spectrogram feature
-    matrix.
+    A model accepting (num_samples,) waveform input and emitting:
+    - predictions: (num_patches, num_classes) matrix of class scores per time frame
+    - embeddings: (num_patches, embedding size) matrix of embeddings per time frame
+    - log_mel_spectrogram: (num_spectrogram_frames, num_mel_bins) spectrogram feature matrix
   """
-  waveform = layers.Input(batch_shape=(1, None))
-  # Store the intermediate spectrogram features to use in visualization.
-  spectrogram = features_lib.waveform_to_log_mel_spectrogram(
-    tf.squeeze(waveform, axis=0), feature_params)
-  patches = features_lib.spectrogram_to_patches(spectrogram, feature_params)
-  predictions = yamnet(patches)
-  frames_model = Model(name='yamnet_frames', 
-                       inputs=waveform, outputs=[predictions, spectrogram])
+  waveform = layers.Input(batch_shape=(None,), dtype=tf.float32)
+  waveform_padded = features_lib.pad_waveform(waveform, feature_params)
+  log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
+      waveform_padded, feature_params)
+  predictions, embeddings = yamnet(features)
+  frames_model = Model(
+      name='yamnet_frames', inputs=waveform,
+      outputs=[predictions, embeddings, log_mel_spectrogram])
   return frames_model
 
 
