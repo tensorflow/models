@@ -50,16 +50,13 @@ class StepwiseLrConfig(base_config.Config):
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to PiecewiseConstant.
-    boundaries: A list of ints of strictly increasing entries.
-    Defaults to None.
+    boundaries: A list of ints of strictly increasing entries. Defaults to None.
     values: A list of floats that specifies the values for the intervals defined
-            by `boundaries`. It should have one more element than `boundaries`.
-            The learning rate is computed as follows:
-              [0, boundaries[0]]                 -> values[0]
-              [boundaries[0], boundaries[1]]     -> values[1]
-              [boundaries[n-1], boundaries[n]]   -> values[n]
-              [boundaries[n], end]               -> values[n+1]
-            Defaults to None.
+      by `boundaries`. It should have one more element than `boundaries`.
+            The learning rate is computed as follows: [0, boundaries[0]] ->
+              values[0] [boundaries[0], boundaries[1]]     -> values[1]
+              [boundaries[n-1], boundaries[n]]   -> values[n] [boundaries[n],
+              end]               -> values[n+1] Defaults to None.
   """
   name: str = 'PiecewiseConstantDecay'
   boundaries: Optional[List[int]] = None
@@ -74,13 +71,12 @@ class ExponentialLrConfig(base_config.Config):
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to ExponentialDecay.
-    initial_learning_rate: A float. The initial learning rate. Defaults to
-                           None.
-    decay_steps: A positive integer that is used for decay computation.
-                 Defaults to None.
+    initial_learning_rate: A float. The initial learning rate. Defaults to None.
+    decay_steps: A positive integer that is used for decay computation. Defaults
+      to None.
     decay_rate: A float. Defaults to None.
     staircase: A boolean, if true, learning rate is decreased at discreate
-               intervals. Defaults to False.
+      intervals. Defaults to False.
   """
   name: str = 'ExponentialDecay'
   initial_learning_rate: Optional[float] = None
@@ -97,14 +93,13 @@ class PolynomialLrConfig(base_config.Config):
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to PolynomialDecay.
-    initial_learning_rate: A float. The initial learning rate. Defaults to
-                           None.
-    decay_steps: A positive integer that is used for decay computation.
-                 Defaults to None.
+    initial_learning_rate: A float. The initial learning rate. Defaults to None.
+    decay_steps: A positive integer that is used for decay computation. Defaults
+      to None.
     end_learning_rate: A float.  The minimal end learning rate.
     power: A float.  The power of the polynomial. Defaults to linear, 1.0.
     cycle: A boolean, whether or not it should cycle beyond decay_steps.
-           Defaults to False.
+      Defaults to False.
   """
   name: str = 'PolynomialDecay'
   initial_learning_rate: Optional[float] = None
@@ -123,12 +118,11 @@ class CosineLrConfig(base_config.Config):
 
   Attributes:
     name: The name of the learning rate schedule. Defaults to CosineDecay.
-    initial_learning_rate: A float. The initial learning rate. Defaults to
-                           None.
-    decay_steps: A positive integer that is used for decay computation.
-                 Defaults to None.
+    initial_learning_rate: A float. The initial learning rate. Defaults to None.
+    decay_steps: A positive integer that is used for decay computation. Defaults
+      to None.
     alpha: A float.  Minimum learning rate value as a fraction of
-                     initial_learning_rate.
+      initial_learning_rate.
   """
   name: str = 'CosineDecay'
   initial_learning_rate: Optional[float] = None
@@ -173,4 +167,3 @@ class PolynomialWarmupConfig(base_config.Config):
   name: str = 'polynomial'
   power: float = 1
   warmup_steps: Optional[int] = None
-

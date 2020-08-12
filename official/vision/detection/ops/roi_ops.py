@@ -56,8 +56,8 @@ def multilevel_propose_rois(rpn_boxes,
     rpn_scores: a dict with keys representing FPN levels and values representing
       logit tensors of shape [batch_size, feature_h, feature_w, num_anchors].
     anchor_boxes: a dict with keys representing FPN levels and values
-      representing anchor box tensors of shape
-      [batch_size, feature_h, feature_w, num_anchors * 4].
+      representing anchor box tensors of shape [batch_size, feature_h,
+      feature_w, num_anchors * 4].
     image_shape: a tensor of shape [batch_size, 2] where the last dimension are
       [height, width] of the scaled image.
     rpn_pre_nms_top_k: an integer of top scoring RPN proposals *per level* to
@@ -112,17 +112,14 @@ def multilevel_propose_rois(rpn_boxes,
           this_level_scores = tf.sigmoid(this_level_scores)
 
         if decode_boxes:
-          this_level_boxes = box_utils.decode_boxes(
-              this_level_boxes, this_level_anchors)
+          this_level_boxes = box_utils.decode_boxes(this_level_boxes,
+                                                    this_level_anchors)
         if clip_boxes:
-          this_level_boxes = box_utils.clip_boxes(
-              this_level_boxes, image_shape)
+          this_level_boxes = box_utils.clip_boxes(this_level_boxes, image_shape)
 
         if rpn_min_size_threshold > 0.0:
           this_level_boxes, this_level_scores = box_utils.filter_boxes(
-              this_level_boxes,
-              this_level_scores,
-              image_shape,
+              this_level_boxes, this_level_scores, image_shape,
               rpn_min_size_threshold)
 
         this_level_pre_nms_top_k = min(num_boxes, rpn_pre_nms_top_k)
@@ -142,8 +139,9 @@ def multilevel_propose_rois(rpn_boxes,
           else:
             if rpn_score_threshold > 0.0:
               this_level_boxes, this_level_scores = (
-                  box_utils.filter_boxes_by_scores(
-                      this_level_boxes, this_level_scores, rpn_score_threshold))
+                  box_utils.filter_boxes_by_scores(this_level_boxes,
+                                                   this_level_scores,
+                                                   rpn_score_threshold))
             this_level_boxes, this_level_scores = box_utils.top_k_boxes(
                 this_level_boxes, this_level_scores, k=this_level_pre_nms_top_k)
             this_level_roi_scores, this_level_rois = (
@@ -154,9 +152,7 @@ def multilevel_propose_rois(rpn_boxes,
                     iou_threshold=rpn_nms_threshold))
         else:
           this_level_rois, this_level_roi_scores = box_utils.top_k_boxes(
-              this_level_rois,
-              this_level_scores,
-              k=this_level_post_nms_top_k)
+              this_level_rois, this_level_scores, k=this_level_post_nms_top_k)
 
         rois.append(this_level_rois)
         roi_scores.append(this_level_roi_scores)
@@ -199,8 +195,8 @@ class ROIGenerator(object):
       scores: a dict with keys representing FPN levels and values representing
         logit tensors of shape [batch_size, feature_h, feature_w, num_anchors].
       anchor_boxes: a dict with keys representing FPN levels and values
-        representing anchor box tensors of shape
-        [batch_size, feature_h, feature_w, num_anchors * 4].
+        representing anchor box tensors of shape [batch_size, feature_h,
+        feature_w, num_anchors * 4].
       image_shape: a tensor of shape [batch_size, 2] where the last dimension
         are [height, width] of the scaled image.
       is_training: a bool indicating whether it is in training or inference
@@ -220,16 +216,16 @@ class ROIGenerator(object):
         scores,
         anchor_boxes,
         image_shape,
-        rpn_pre_nms_top_k=(self._rpn_pre_nms_top_k if is_training
-                           else self._test_rpn_pre_nms_top_k),
-        rpn_post_nms_top_k=(self._rpn_post_nms_top_k if is_training
-                            else self._test_rpn_post_nms_top_k),
-        rpn_nms_threshold=(self._rpn_nms_threshold if is_training
-                           else self._test_rpn_nms_threshold),
-        rpn_score_threshold=(self._rpn_score_threshold if is_training
-                             else self._test_rpn_score_threshold),
-        rpn_min_size_threshold=(self._rpn_min_size_threshold if is_training
-                                else self._test_rpn_min_size_threshold),
+        rpn_pre_nms_top_k=(self._rpn_pre_nms_top_k
+                           if is_training else self._test_rpn_pre_nms_top_k),
+        rpn_post_nms_top_k=(self._rpn_post_nms_top_k
+                            if is_training else self._test_rpn_post_nms_top_k),
+        rpn_nms_threshold=(self._rpn_nms_threshold
+                           if is_training else self._test_rpn_nms_threshold),
+        rpn_score_threshold=(self._rpn_score_threshold if is_training else
+                             self._test_rpn_score_threshold),
+        rpn_min_size_threshold=(self._rpn_min_size_threshold if is_training else
+                                self._test_rpn_min_size_threshold),
         decode_boxes=True,
         clip_boxes=True,
         use_batched_nms=self._use_batched_nms,

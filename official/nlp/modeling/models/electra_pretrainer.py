@@ -20,6 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
+
 import tensorflow as tf
 
 from official.modeling import tf_utils

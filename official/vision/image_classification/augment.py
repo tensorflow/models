@@ -24,6 +24,7 @@ from __future__ import division
 from __future__ import print_function
 
 import math
+
 import tensorflow as tf
 from typing import Any, Dict, List, Optional, Text, Tuple
 
@@ -120,10 +121,8 @@ def _convert_translation_to_transform(translations: tf.Tensor) -> tf.Tensor:
   )
 
 
-def _convert_angles_to_transform(
-    angles: tf.Tensor,
-    image_width: tf.Tensor,
-    image_height: tf.Tensor) -> tf.Tensor:
+def _convert_angles_to_transform(angles: tf.Tensor, image_width: tf.Tensor,
+                                 image_height: tf.Tensor) -> tf.Tensor:
   """Converts an angle or angles to a projective transform.
 
   Args:
@@ -173,9 +172,7 @@ def transform(image: tf.Tensor, transforms) -> tf.Tensor:
     transforms = transforms[None]
   image = to_4d(image)
   image = image_ops.transform(
-      images=image,
-      transforms=transforms,
-      interpolation='nearest')
+      images=image, transforms=transforms, interpolation='nearest')
   return from_4d(image, original_ndims)
 
 
@@ -216,9 +213,8 @@ def rotate(image: tf.Tensor, degrees: float) -> tf.Tensor:
 
   image_height = tf.cast(tf.shape(image)[1], tf.float32)
   image_width = tf.cast(tf.shape(image)[2], tf.float32)
-  transforms = _convert_angles_to_transform(angles=radians,
-                                            image_width=image_width,
-                                            image_height=image_height)
+  transforms = _convert_angles_to_transform(
+      angles=radians, image_width=image_width, image_height=image_height)
   # In practice, we should randomize the rotation degrees by flipping
   # it negatively half the time, but that's done on 'degrees' outside
   # of the function.
@@ -279,11 +275,10 @@ def cutout(image: tf.Tensor, pad_size: int, replace: int = 0) -> tf.Tensor:
 
   Args:
     image: An image Tensor of type uint8.
-    pad_size: Specifies how big the zero mask that will be generated is that
-      is applied to the image. The mask will be of size
-      (2*pad_size x 2*pad_size).
-    replace: What pixel value to fill in the image in the area that has
-      the cutout mask applied to it.
+    pad_size: Specifies how big the zero mask that will be generated is that is
+      applied to the image. The mask will be of size (2*pad_size x 2*pad_size).
+    replace: What pixel value to fill in the image in the area that has the
+      cutout mask applied to it.
 
   Returns:
     An image Tensor that is of type uint8.
@@ -293,30 +288,30 @@ def cutout(image: tf.Tensor, pad_size: int, replace: int = 0) -> tf.Tensor:
 
   # Sample the center location in the image where the zero mask will be applied.
   cutout_center_height = tf.random.uniform(
-      shape=[], minval=0, maxval=image_height,
-      dtype=tf.int32)
+      shape=[], minval=0, maxval=image_height, dtype=tf.int32)
 
   cutout_center_width = tf.random.uniform(
-      shape=[], minval=0, maxval=image_width,
-      dtype=tf.int32)
+      shape=[], minval=0, maxval=image_width, dtype=tf.int32)
 
   lower_pad = tf.maximum(0, cutout_center_height - pad_size)
   upper_pad = tf.maximum(0, image_height - cutout_center_height - pad_size)
   left_pad = tf.maximum(0, cutout_center_width - pad_size)
   right_pad = tf.maximum(0, image_width - cutout_center_width - pad_size)
 
-  cutout_shape = [image_height - (lower_pad + upper_pad),
-                  image_width - (left_pad + right_pad)]
+  cutout_shape = [
+      image_height - (lower_pad + upper_pad),
+      image_width - (left_pad + right_pad)
+  ]
   padding_dims = [[lower_pad, upper_pad], [left_pad, right_pad]]
   mask = tf.pad(
       tf.zeros(cutout_shape, dtype=image.dtype),
-      padding_dims, constant_values=1)
+      padding_dims,
+      constant_values=1)
   mask = tf.expand_dims(mask, -1)
   mask = tf.tile(mask, [1, 1, 3])
   image = tf.where(
       tf.equal(mask, 0),
-      tf.ones_like(image, dtype=image.dtype) * replace,
-      image)
+      tf.ones_like(image, dtype=image.dtype) * replace, image)
   return image
 
 
@@ -398,8 +393,8 @@ def shear_x(image: tf.Tensor, level: float, replace: int) -> tf.Tensor:
   # with a matrix form of:
   # [1  level
   #  0  1].
-  image = transform(image=wrap(image),
-                    transforms=[1., level, 0., 0., 1., 0., 0., 0.])
+  image = transform(
+      image=wrap(image), transforms=[1., level, 0., 0., 1., 0., 0., 0.])
   return unwrap(image, replace)
 
 
@@ -409,8 +404,8 @@ def shear_y(image: tf.Tensor, level: float, replace: int) -> tf.Tensor:
   # with a matrix form of:
   # [1  0
   #  level  1].
-  image = transform(image=wrap(image),
-                    transforms=[1., 0., 0., level, 1., 0., 0., 0.])
+  image = transform(
+      image=wrap(image), transforms=[1., 0., 0., level, 1., 0., 0., 0.])
   return unwrap(image, replace)
 
 
@@ -460,9 +455,9 @@ def sharpness(image: tf.Tensor, factor: float) -> tf.Tensor:
   # Make image 4D for conv operation.
   image = tf.expand_dims(image, 0)
   # SMOOTH PIL Kernel.
-  kernel = tf.constant(
-      [[1, 1, 1], [1, 5, 1], [1, 1, 1]], dtype=tf.float32,
-      shape=[3, 3, 1, 1]) / 13.
+  kernel = tf.constant([[1, 1, 1], [1, 5, 1], [1, 1, 1]],
+                       dtype=tf.float32,
+                       shape=[3, 3, 1, 1]) / 13.
   # Tile across channel dimension.
   kernel = tf.tile(kernel, [1, 1, 3, 1])
   strides = [1, 1, 1, 1]
@@ -484,6 +479,7 @@ def sharpness(image: tf.Tensor, factor: float) -> tf.Tensor:
 
 def equalize(image: tf.Tensor) -> tf.Tensor:
   """Implements Equalize function from PIL using TF ops."""
+
   def scale_channel(im, c):
     """Scale the data in the channel to implement equalize."""
     im = tf.cast(im[:, :, c], tf.int32)
@@ -507,9 +503,9 @@ def equalize(image: tf.Tensor) -> tf.Tensor:
 
     # If step is zero, return the original image.  Otherwise, build
     # lut from the full histogram and step and then index from it.
-    result = tf.cond(tf.equal(step, 0),
-                     lambda: im,
-                     lambda: tf.gather(build_lut(histo, step), im))
+    result = tf.cond(
+        tf.equal(step, 0), lambda: im,
+        lambda: tf.gather(build_lut(histo, step), im))
 
     return tf.cast(result, tf.uint8)
 
@@ -582,7 +578,7 @@ def _randomly_negate_tensor(tensor):
 
 
 def _rotate_level_to_arg(level: float):
-  level = (level/_MAX_LEVEL) * 30.
+  level = (level / _MAX_LEVEL) * 30.
   level = _randomly_negate_tensor(level)
   return (level,)
 
@@ -597,18 +593,18 @@ def _shrink_level_to_arg(level: float):
 
 
 def _enhance_level_to_arg(level: float):
-  return ((level/_MAX_LEVEL) * 1.8 + 0.1,)
+  return ((level / _MAX_LEVEL) * 1.8 + 0.1,)
 
 
 def _shear_level_to_arg(level: float):
-  level = (level/_MAX_LEVEL) * 0.3
+  level = (level / _MAX_LEVEL) * 0.3
   # Flip level to negative with 50% chance.
   level = _randomly_negate_tensor(level)
   return (level,)
 
 
 def _translate_level_to_arg(level: float, translate_const: float):
-  level = (level/_MAX_LEVEL) * float(translate_const)
+  level = (level / _MAX_LEVEL) * float(translate_const)
   # Flip level to negative with 50% chance.
   level = _randomly_negate_tensor(level)
   return (level,)
@@ -618,20 +614,15 @@ def _mult_to_arg(level: float, multiplier: float = 1.):
   return (int((level / _MAX_LEVEL) * multiplier),)
 
 
-def _apply_func_with_prob(func: Any,
-                          image: tf.Tensor,
-                          args: Any,
-                          prob: float):
+def _apply_func_with_prob(func: Any, image: tf.Tensor, args: Any, prob: float):
   """Apply `func` to image w/ `args` as input with probability `prob`."""
   assert isinstance(args, tuple)
 
   # Apply the function with probability `prob`.
   should_apply_op = tf.cast(
       tf.floor(tf.random.uniform([], dtype=tf.float32) + prob), tf.bool)
-  augmented_image = tf.cond(
-      should_apply_op,
-      lambda: func(image, *args),
-      lambda: image)
+  augmented_image = tf.cond(should_apply_op, lambda: func(image, *args),
+                            lambda: image)
   return augmented_image
 
 
@@ -709,11 +700,8 @@ def level_to_arg(cutout_const: float, translate_const: float):
   return args
 
 
-def _parse_policy_info(name: Text,
-                       prob: float,
-                       level: float,
-                       replace_value: List[int],
-                       cutout_const: float,
+def _parse_policy_info(name: Text, prob: float, level: float,
+                       replace_value: List[int], cutout_const: float,
                        translate_const: float) -> Tuple[Any, float, Any]:
   """Return the function that corresponds to `name` and update `level` param."""
   func = NAME_TO_FUNC[name]
@@ -969,8 +957,9 @@ class RandAugment(ImageAugment):
     min_prob, max_prob = 0.2, 0.8
 
     for _ in range(self.num_layers):
-      op_to_select = tf.random.uniform(
-          [], maxval=len(self.available_ops) + 1, dtype=tf.int32)
+      op_to_select = tf.random.uniform([],
+                                       maxval=len(self.available_ops) + 1,
+                                       dtype=tf.int32)
 
       branch_fns = []
       for (i, op_name) in enumerate(self.available_ops):
@@ -978,11 +967,8 @@ class RandAugment(ImageAugment):
                                  minval=min_prob,
                                  maxval=max_prob,
                                  dtype=tf.float32)
-        func, _, args = _parse_policy_info(op_name,
-                                           prob,
-                                           self.magnitude,
-                                           replace_value,
-                                           self.cutout_const,
+        func, _, args = _parse_policy_info(op_name, prob, self.magnitude,
+                                           replace_value, self.cutout_const,
                                            self.translate_const)
         branch_fns.append((
             i,
@@ -991,9 +977,10 @@ class RandAugment(ImageAugment):
                 image, *selected_args)))
         # pylint:enable=g-long-lambda
 
-      image = tf.switch_case(branch_index=op_to_select,
-                             branch_fns=branch_fns,
-                             default=lambda: tf.identity(image))
+      image = tf.switch_case(
+          branch_index=op_to_select,
+          branch_fns=branch_fns,
+          default=lambda: tf.identity(image))
 
     image = tf.cast(image, dtype=input_image_type)
     return image

@@ -55,14 +55,14 @@ class DataConfig(base_config.Config):
       exhaust all the examples in the dataset.
     tfds_data_dir: A str specifying the directory to read/write TFDS data.
     tfds_download: A bool to indicate whether to download data using TFDS.
-    tfds_as_supervised: A bool. When loading dataset from TFDS, if True,
-      the returned tf.data.Dataset will have a 2-tuple structure (input, label)
-      according to builder.info.supervised_keys; if False, the default,
-      the returned tf.data.Dataset will have a dictionary with all the features.
-    tfds_skip_decoding_feature: A str to indicate which features are skipped
-      for decoding when loading dataset from TFDS. Use comma to separate
-      multiple features. The main use case is to skip the image/video decoding
-      for better performance.
+    tfds_as_supervised: A bool. When loading dataset from TFDS, if True, the
+      returned tf.data.Dataset will have a 2-tuple structure (input, label)
+      according to builder.info.supervised_keys; if False, the default, the
+      returned tf.data.Dataset will have a dictionary with all the features.
+    tfds_skip_decoding_feature: A str to indicate which features are skipped for
+      decoding when loading dataset from TFDS. Use comma to separate multiple
+      features. The main use case is to skip the image/video decoding for better
+      performance.
   """
   input_path: str = ""
   tfds_name: str = ""
@@ -177,8 +177,8 @@ class TrainerConfig(base_config.Config):
     checkpoint_interval: number of steps between checkpoints.
     max_to_keep: max checkpoints to keep.
     continuous_eval_timeout: maximum number of seconds to wait between
-      checkpoints, if set to None, continuous eval will wait indefinitely.
-      This is only used continuous_train_and_eval and continuous_eval modes.
+      checkpoints, if set to None, continuous eval will wait indefinitely. This
+      is only used continuous_train_and_eval and continuous_eval modes.
     train_steps: number of train steps.
     validation_steps: number of eval steps. If `None`, the entire eval dataset
       is used.
@@ -217,4 +217,3 @@ class ExperimentConfig(base_config.Config):
   task: TaskConfig = TaskConfig()
   trainer: TrainerConfig = TrainerConfig()
   runtime: RuntimeConfig = RuntimeConfig()
-

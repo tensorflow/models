@@ -48,12 +48,18 @@ class Network(base_config.Config):
 class OneOfTest(tf.test.TestCase):
 
   def test_to_dict(self):
-    network_params = {'backbone': {'type': 'resnet',
-                                   'resnet': {'model_depth': 50}
-                                   },
-                      'output_layer': {'type': 'single',
-                                       'single': 1000}
-                      }
+    network_params = {
+        'backbone': {
+            'type': 'resnet',
+            'resnet': {
+                'model_depth': 50
+            }
+        },
+        'output_layer': {
+            'type': 'single',
+            'single': 1000
+        }
+    }
     network_config = Network(network_params)
     self.assertEqual(network_config.as_dict(), network_params)
 

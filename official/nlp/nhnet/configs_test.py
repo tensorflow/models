@@ -99,7 +99,6 @@ NHNET_CONFIG = {
     "pad_token_id": 0,
     "end_token_id": 102,
     "start_token_id": 101,
-
     "init_from_bert2bert": True,
 }
 

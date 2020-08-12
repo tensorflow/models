@@ -36,19 +36,19 @@ class GatedFeedforward(tf.keras.layers.Layer):
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
     dropout: Dropout probability for the output dropout.
-    use_gate: Whether to use gated linear units. If True, assuming `GELU` as
-      the activation and omitting bias, will apply
-      `GEGLU(x, W, V, W_2) = (GEGLU(xW) * xV)W2`; if False, will follow
-      "Attention Is All You Need" (https://arxiv.org/abs/1706.03762) paper
-      and apply `FFN(x, W, W_2) = GELU(xW_1)W_2.`
-    num_blocks: The number of feedforward blocks to stack. Each block contains
-      a (gated) linear layer and a fully connected layer followed by dropout,
+    use_gate: Whether to use gated linear units. If True, assuming `GELU` as the
+      activation and omitting bias, will apply `GEGLU(x, W, V, W_2) = (GEGLU(xW)
+      * xV)W2`; if False, will follow
+      "Attention Is All You Need" (https://arxiv.org/abs/1706.03762) paper and
+        apply `FFN(x, W, W_2) = GELU(xW_1)W_2.`
+    num_blocks: The number of feedforward blocks to stack. Each block contains a
+      (gated) linear layer and a fully connected layer followed by dropout,
       layer norm and residual.
     dropout_position: Where to apply the dropout, the value can be either
       `before_residual` or `after_residual`. If `before_residual`, will apply
-      `layer_output = layer_norm(dropout(layer_output) + layer_input)`;
-      if `after residual`, will apply
-      `layer_output = dropout(layer_norm(layer_output + layer_input))`.
+      `layer_output = layer_norm(dropout(layer_output) + layer_input)`; if
+      `after residual`, will apply `layer_output =
+      dropout(layer_norm(layer_output + layer_input))`.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -124,8 +124,9 @@ class GatedFeedforward(tf.keras.layers.Layer):
               bias_axes="d",
               name="intermediate_%d" % i,
               **common_kwargs))
-      self._intermediate_activation_layers.append(tf.keras.layers.Activation(
-          self._intermediate_activation, dtype=activation_policy))
+      self._intermediate_activation_layers.append(
+          tf.keras.layers.Activation(
+              self._intermediate_activation, dtype=activation_policy))
       if self._use_gate:
         self._gate_dense.append(
             tf.keras.layers.experimental.EinsumDense(
@@ -141,8 +142,7 @@ class GatedFeedforward(tf.keras.layers.Layer):
               bias_axes="d",
               name="output_%d" % i,
               **common_kwargs))
-      self._output_dropout.append(
-          tf.keras.layers.Dropout(rate=self._dropout))
+      self._output_dropout.append(tf.keras.layers.Dropout(rate=self._dropout))
       # Use float32 in layernorm for numeric stability.
       self._output_layer_norm.append(
           tf.keras.layers.LayerNormalization(

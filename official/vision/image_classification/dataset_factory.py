@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import os
 from typing import Any, List, Optional, Tuple, Mapping, Union
+
 from absl import logging
 from dataclasses import dataclass
 import tensorflow as tf
@@ -29,7 +30,6 @@ import tensorflow_datasets as tfds
 from official.modeling.hyperparams import base_config
 from official.vision.image_classification import augment
 from official.vision.image_classification import preprocessing
-
 
 AUGMENTERS = {
     'autoaugment': augment.AutoAugment,
@@ -42,8 +42,8 @@ class AugmentConfig(base_config.Config):
   """Configuration for image augmenters.
 
   Attributes:
-    name: The name of the image augmentation to use. Possible options are
-      None (default), 'autoaugment', or 'randaugment'.
+    name: The name of the image augmentation to use. Possible options are None
+      (default), 'autoaugment', or 'randaugment'.
     params: Any paramaters used to initialize the augmenter.
   """
   name: Optional[str] = None
@@ -68,17 +68,17 @@ class DatasetConfig(base_config.Config):
       'tfds' (load using TFDS), 'records' (load from TFRecords), or 'synthetic'
       (generate dummy synthetic data without reading from files).
     split: The split of the dataset. Usually 'train', 'validation', or 'test'.
-    image_size: The size of the image in the dataset. This assumes that
-      `width` == `height`. Set to 'infer' to infer the image size from TFDS
-      info. This requires `name` to be a registered dataset in TFDS.
-    num_classes: The number of classes given by the dataset. Set to 'infer'
-      to infer the image size from TFDS info. This requires `name` to be a
+    image_size: The size of the image in the dataset. This assumes that `width`
+      == `height`. Set to 'infer' to infer the image size from TFDS info. This
+      requires `name` to be a registered dataset in TFDS.
+    num_classes: The number of classes given by the dataset. Set to 'infer' to
+      infer the image size from TFDS info. This requires `name` to be a
       registered dataset in TFDS.
-    num_channels: The number of channels given by the dataset. Set to 'infer'
-      to infer the image size from TFDS info. This requires `name` to be a
+    num_channels: The number of channels given by the dataset. Set to 'infer' to
+      infer the image size from TFDS info. This requires `name` to be a
       registered dataset in TFDS.
-    num_examples: The number of examples given by the dataset. Set to 'infer'
-      to infer the image size from TFDS info. This requires `name` to be a
+    num_examples: The number of examples given by the dataset. Set to 'infer' to
+      infer the image size from TFDS info. This requires `name` to be a
       registered dataset in TFDS.
     batch_size: The base batch size for the dataset.
     use_per_replica_batch_size: Whether to scale the batch size based on
@@ -284,10 +284,10 @@ class DatasetBuilder:
     """
     if strategy:
       if strategy.num_replicas_in_sync != self.config.num_devices:
-        logging.warn('Passed a strategy with %d devices, but expected'
-                     '%d devices.',
-                     strategy.num_replicas_in_sync,
-                     self.config.num_devices)
+        logging.warn(
+            'Passed a strategy with %d devices, but expected'
+            '%d devices.', strategy.num_replicas_in_sync,
+            self.config.num_devices)
       dataset = strategy.experimental_distribute_datasets_from_function(
           self._build)
     else:
@@ -295,8 +295,9 @@ class DatasetBuilder:
 
     return dataset
 
-  def _build(self, input_context: tf.distribute.InputContext = None
-             ) -> tf.data.Dataset:
+  def _build(
+      self,
+      input_context: tf.distribute.InputContext = None) -> tf.data.Dataset:
     """Construct a dataset end-to-end and return it.
 
     Args:
@@ -328,8 +329,7 @@ class DatasetBuilder:
 
     logging.info('Using TFDS to load data.')
 
-    builder = tfds.builder(self.config.name,
-                           data_dir=self.config.data_dir)
+    builder = tfds.builder(self.config.name, data_dir=self.config.data_dir)
 
     if self.config.download:
       builder.download_and_prepare()
@@ -380,8 +380,8 @@ class DatasetBuilder:
 
     dataset = tf.data.Dataset.range(1)
     dataset = dataset.repeat()
-    dataset = dataset.map(generate_data,
-                          num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.map(
+        generate_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     return dataset
 
   def pipeline(self, dataset: tf.data.Dataset) -> tf.data.Dataset:
@@ -393,14 +393,14 @@ class DatasetBuilder:
     Returns:
       A TensorFlow dataset outputting batched images and labels.
     """
-    if (self.config.builder != 'tfds' and self.input_context
-        and self.input_context.num_input_pipelines > 1):
+    if (self.config.builder != 'tfds' and self.input_context and
+        self.input_context.num_input_pipelines > 1):
       dataset = dataset.shard(self.input_context.num_input_pipelines,
                               self.input_context.input_pipeline_id)
-      logging.info('Sharding the dataset: input_pipeline_id=%d '
-                   'num_input_pipelines=%d',
-                   self.input_context.num_input_pipelines,
-                   self.input_context.input_pipeline_id)
+      logging.info(
+          'Sharding the dataset: input_pipeline_id=%d '
+          'num_input_pipelines=%d', self.input_context.num_input_pipelines,
+          self.input_context.input_pipeline_id)
 
     if self.is_training and self.config.builder == 'records':
       # Shuffle the input files.
@@ -429,8 +429,8 @@ class DatasetBuilder:
       preprocess = self.parse_record
     else:
       preprocess = self.preprocess
-    dataset = dataset.map(preprocess,
-                          num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.map(
+        preprocess, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     if self.input_context and self.config.num_devices > 1:
       if not self.config.use_per_replica_batch_size:
@@ -444,11 +444,11 @@ class DatasetBuilder:
       # The batch size of the dataset will be multiplied by the number of
       # replicas automatically when strategy.distribute_datasets_from_function
       # is called, so we use local batch size here.
-      dataset = dataset.batch(self.local_batch_size,
-                              drop_remainder=self.is_training)
+      dataset = dataset.batch(
+          self.local_batch_size, drop_remainder=self.is_training)
     else:
-      dataset = dataset.batch(self.global_batch_size,
-                              drop_remainder=self.is_training)
+      dataset = dataset.batch(
+          self.global_batch_size, drop_remainder=self.is_training)
 
     # Prefetch overlaps in-feed with training
     dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
@@ -470,24 +470,15 @@ class DatasetBuilder:
   def parse_record(self, record: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
     """Parse an ImageNet record from a serialized string Tensor."""
     keys_to_features = {
-        'image/encoded':
-            tf.io.FixedLenFeature((), tf.string, ''),
-        'image/format':
-            tf.io.FixedLenFeature((), tf.string, 'jpeg'),
-        'image/class/label':
-            tf.io.FixedLenFeature([], tf.int64, -1),
-        'image/class/text':
-            tf.io.FixedLenFeature([], tf.string, ''),
-        'image/object/bbox/xmin':
-            tf.io.VarLenFeature(dtype=tf.float32),
-        'image/object/bbox/ymin':
-            tf.io.VarLenFeature(dtype=tf.float32),
-        'image/object/bbox/xmax':
-            tf.io.VarLenFeature(dtype=tf.float32),
-        'image/object/bbox/ymax':
-            tf.io.VarLenFeature(dtype=tf.float32),
-        'image/object/class/label':
-            tf.io.VarLenFeature(dtype=tf.int64),
+        'image/encoded': tf.io.FixedLenFeature((), tf.string, ''),
+        'image/format': tf.io.FixedLenFeature((), tf.string, 'jpeg'),
+        'image/class/label': tf.io.FixedLenFeature([], tf.int64, -1),
+        'image/class/text': tf.io.FixedLenFeature([], tf.string, ''),
+        'image/object/bbox/xmin': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/ymin': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/xmax': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/ymax': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/class/label': tf.io.VarLenFeature(dtype=tf.int64),
     }
 
     parsed = tf.io.parse_single_example(record, keys_to_features)
@@ -502,8 +493,8 @@ class DatasetBuilder:
 
     return image, label
 
-  def preprocess(self, image: tf.Tensor, label: tf.Tensor
-                ) -> Tuple[tf.Tensor, tf.Tensor]:
+  def preprocess(self, image: tf.Tensor,
+                 label: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
     """Apply image preprocessing and augmentation to the image and label."""
     if self.is_training:
       image = preprocessing.preprocess_for_train(

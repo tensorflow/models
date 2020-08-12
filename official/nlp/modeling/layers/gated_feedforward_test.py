@@ -123,5 +123,6 @@ class GatedFeedforwardTest(keras_parameterized.TestCase):
     # If the serialization was successful, the new config should match the old.
     self.assertAllEqual(test_layer.get_config(), new_layer.get_config())
 
+
 if __name__ == "__main__":
   tf.test.main()

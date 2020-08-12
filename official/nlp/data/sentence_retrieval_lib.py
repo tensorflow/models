@@ -25,8 +25,7 @@ class BuccProcessor(classifier_data_lib.DataProcessor):
   """Procssor for Xtreme BUCC data set."""
   supported_languages = ["de", "fr", "ru", "zh"]
 
-  def __init__(self,
-               process_text_fn=tokenization.convert_to_unicode):
+  def __init__(self, process_text_fn=tokenization.convert_to_unicode):
     super(BuccProcessor, self).__init__(process_text_fn)
     self.languages = BuccProcessor.supported_languages
 
@@ -66,8 +65,7 @@ class TatoebaProcessor(classifier_data_lib.DataProcessor):
       "nl", "pt", "ru", "sw", "ta", "te", "th", "tl", "tr", "ur", "vi", "zh"
   ]
 
-  def __init__(self,
-               process_text_fn=tokenization.convert_to_unicode):
+  def __init__(self, process_text_fn=tokenization.convert_to_unicode):
     super(TatoebaProcessor, self).__init__(process_text_fn)
     self.languages = TatoebaProcessor.supported_languages
 

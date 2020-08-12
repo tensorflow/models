@@ -52,15 +52,15 @@ class RetinanetModel(base_model.Model):
 
     # Predict function.
     self._generate_detections_fn = postprocess_ops.MultilevelDetectionGenerator(
-        params.architecture.min_level,
-        params.architecture.max_level,
+        params.architecture.min_level, params.architecture.max_level,
         params.postprocess)
 
     self._transpose_input = params.train.transpose_input
     assert not self._transpose_input, 'Transpose input is not supported.'
     # Input layer.
     self._input_layer = tf.keras.layers.Input(
-        shape=(None, None, params.retinanet_parser.num_channels), name='',
+        shape=(None, None, params.retinanet_parser.num_channels),
+        name='',
         dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32)
 
   def build_outputs(self, inputs, mode):
@@ -141,8 +141,8 @@ class RetinanetModel(base_model.Model):
         raise ValueError('"%s" is missing in outputs, requried %s found %s',
                          field, required_label_fields, labels.keys())
     boxes, scores, classes, valid_detections = self._generate_detections_fn(
-        outputs['box_outputs'], outputs['cls_outputs'],
-        labels['anchor_boxes'], labels['image_info'][:, 1:2, :])
+        outputs['box_outputs'], outputs['cls_outputs'], labels['anchor_boxes'],
+        labels['image_info'][:, 1:2, :])
     # Discards the old output tensors to save memory. The `cls_outputs` and
     # `box_outputs` are pretty big and could potentiall lead to memory issue.
     outputs = {

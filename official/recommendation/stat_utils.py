@@ -37,9 +37,7 @@ def permutation(args):
     args: A size two tuple that will unpacked into the size of the permutation
       and the random seed. This form is used because starmap is not universally
       available.
-
-  returns:
-    A NumPy array containing a random permutation.
+  returns: A NumPy array containing a random permutation.
   """
   x, seed = args
 
@@ -53,8 +51,11 @@ def permutation(args):
 def very_slightly_biased_randint(max_val_vector):
   sample_dtype = np.uint64
   out_dtype = max_val_vector.dtype
-  samples = np.random.randint(low=0, high=np.iinfo(sample_dtype).max,
-                              size=max_val_vector.shape, dtype=sample_dtype)
+  samples = np.random.randint(
+      low=0,
+      high=np.iinfo(sample_dtype).max,
+      size=max_val_vector.shape,
+      dtype=sample_dtype)
   return np.mod(samples, max_val_vector.astype(sample_dtype)).astype(out_dtype)
 
 
@@ -88,5 +89,5 @@ def mask_duplicates(x, axis=1):  # type: (np.ndarray, int) -> np.ndarray
 
   # Duplicate values will have a difference of zero. By definition the first
   # element is never a duplicate.
-  return np.where(diffs[np.arange(x.shape[0])[:, np.newaxis],
-                        inv_x_sort_ind], 0, 1)
+  return np.where(diffs[np.arange(x.shape[0])[:, np.newaxis], inv_x_sort_ind],
+                  0, 1)

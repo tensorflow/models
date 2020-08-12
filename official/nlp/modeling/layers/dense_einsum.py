@@ -59,9 +59,8 @@ class DenseEinsum(tf.keras.layers.Layer):
       `(batch_size, units)`.
   """
 
-  @deprecation.deprecated(
-      None, "DenseEinsum is deprecated. Please use "
-      "tf.keras.experimental.EinsumDense layer instead.")
+  @deprecation.deprecated(None, "DenseEinsum is deprecated. Please use "
+                          "tf.keras.experimental.EinsumDense layer instead.")
   def __init__(self,
                output_shape,
                num_summed_dimensions=1,

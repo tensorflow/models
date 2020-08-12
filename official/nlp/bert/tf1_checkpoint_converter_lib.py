@@ -164,7 +164,6 @@ def convert(checkpoint_from_path,
         new_shape = _get_new_shape(new_var_name, tensor.shape, num_heads)
       if new_shape:
         tf.logging.info("Veriable %s has a shape change from %s to %s",
-
                         var_name, tensor.shape, new_shape)
         tensor = np.reshape(tensor, new_shape)
 

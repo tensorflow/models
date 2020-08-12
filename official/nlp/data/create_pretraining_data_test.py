@@ -25,10 +25,7 @@ _VOCAB_WORDS = ["vocab_1", "vocab_2"]
 
 class CreatePretrainingDataTest(tf.test.TestCase):
 
-  def assertTokens(self,
-                   input_tokens,
-                   output_tokens,
-                   masked_positions,
+  def assertTokens(self, input_tokens, output_tokens, masked_positions,
                    masked_labels):
     # Ensure the masked positions are unique.
     self.assertCountEqual(masked_positions, set(masked_positions))
@@ -42,24 +39,18 @@ class CreatePretrainingDataTest(tf.test.TestCase):
     # Ensure each label is valid.
     for pos, label in zip(masked_positions, masked_labels):
       output_token = output_tokens[pos]
-      if (output_token == "[MASK]" or
-          output_token in _VOCAB_WORDS or
+      if (output_token == "[MASK]" or output_token in _VOCAB_WORDS or
           output_token == input_tokens[pos]):
         continue
       self.fail("invalid mask value: {}".format(output_token))
 
   def test_wordpieces_to_grams(self):
     tests = [
-        (["That", "cone"],
-         [(0, 1), (1, 2)]),
-        (["That", "cone", "##s"],
-         [(0, 1), (1, 3)]),
-        (["Swit", "##zer", "##land"],
-         [(0, 3)]),
-        (["[CLS]", "Up", "##dog"],
-         [(1, 3)]),
-        (["[CLS]", "Up", "##dog", "[SEP]", "Down"],
-         [(1, 3), (4, 5)]),
+        (["That", "cone"], [(0, 1), (1, 2)]),
+        (["That", "cone", "##s"], [(0, 1), (1, 3)]),
+        (["Swit", "##zer", "##land"], [(0, 3)]),
+        (["[CLS]", "Up", "##dog"], [(1, 3)]),
+        (["[CLS]", "Up", "##dog", "[SEP]", "Down"], [(1, 3), (4, 5)]),
     ]
     for inp, expected in tests:
       output = cpd._wordpieces_to_grams(inp)
@@ -93,8 +84,7 @@ class CreatePretrainingDataTest(tf.test.TestCase):
               max_ngram_size=None))
       self.assertEqual(len(masked_positions), 3)
       self.assertEqual(len(masked_labels), 3)
-      self.assertTokens(tokens, output_tokens,
-                        masked_positions, masked_labels)
+      self.assertTokens(tokens, output_tokens, masked_positions, masked_labels)
 
   def test_create_masked_lm_predictions_whole_word(self):
     tokens = ["[CLS]", "a", "##a", "b", "##b", "c", "##c", "[SEP]"]
@@ -113,8 +103,7 @@ class CreatePretrainingDataTest(tf.test.TestCase):
       # only take two.
       self.assertEqual(len(masked_positions), 2)
       self.assertEqual(len(masked_labels), 2)
-      self.assertTokens(tokens, output_tokens,
-                        masked_positions, masked_labels)
+      self.assertTokens(tokens, output_tokens, masked_positions, masked_labels)
       # ensure that we took an entire word.
       self.assertIn(masked_labels, [["a", "##a"], ["b", "##b"], ["c", "##c"]])
 
@@ -133,8 +122,7 @@ class CreatePretrainingDataTest(tf.test.TestCase):
               max_ngram_size=3))
       self.assertEqual(len(masked_positions), 76)
       self.assertEqual(len(masked_labels), 76)
-      self.assertTokens(tokens, output_tokens,
-                        masked_positions, masked_labels)
+      self.assertTokens(tokens, output_tokens, masked_positions, masked_labels)
 
 
 if __name__ == "__main__":

@@ -32,6 +32,7 @@ from __future__ import print_function
 
 import atexit
 import tempfile
+
 import numpy as np
 from absl import logging
 from pycocotools import cocoeval
@@ -197,22 +198,21 @@ class COCOEvaluator(object):
     """Update and aggregate detection results and groundtruth data.
 
     Args:
-      predictions: a dictionary of numpy arrays including the fields below.
-        See different parsers under `../dataloader` for more details.
+      predictions: a dictionary of numpy arrays including the fields below. See
+        different parsers under `../dataloader` for more details.
         Required fields:
           - source_id: a numpy array of int or string of shape [batch_size].
           - image_info [if `need_rescale_bboxes` is True]: a numpy array of
             float of shape [batch_size, 4, 2].
-          - num_detections: a numpy array of
-            int of shape [batch_size].
+          - num_detections: a numpy array of int of shape [batch_size].
           - detection_boxes: a numpy array of float of shape [batch_size, K, 4].
           - detection_classes: a numpy array of int of shape [batch_size, K].
           - detection_scores: a numpy array of float of shape [batch_size, K].
         Optional fields:
-          - detection_masks: a numpy array of float of shape
-              [batch_size, K, mask_height, mask_width].
-      groundtruths: a dictionary of numpy arrays including the fields below.
-        See also different parsers under `../dataloader` for more details.
+          - detection_masks: a numpy array of float of shape [batch_size, K,
+            mask_height, mask_width].
+      groundtruths: a dictionary of numpy arrays including the fields below. See
+        also different parsers under `../dataloader` for more details.
         Required fields:
           - source_id: a numpy array of int or string of shape [batch_size].
           - height: a numpy array of int of shape [batch_size].
@@ -222,12 +222,12 @@ class COCOEvaluator(object):
           - classes: a numpy array of int of shape [batch_size, K].
         Optional fields:
           - is_crowds: a numpy array of int of shape [batch_size, K]. If the
-              field is absent, it is assumed that this instance is not crowd.
-          - areas: a numy array of float of shape [batch_size, K]. If the
-              field is absent, the area is calculated using either boxes or
-              masks depending on which one is available.
-          - masks: a numpy array of float of shape
-              [batch_size, K, mask_height, mask_width],
+            field is absent, it is assumed that this instance is not crowd.
+          - areas: a numy array of float of shape [batch_size, K]. If the field
+            is absent, the area is calculated using either boxes or masks
+            depending on which one is available.
+          - masks: a numpy array of float of shape [batch_size, K, mask_height,
+            mask_width],
 
     Raises:
       ValueError: if the required prediction or groundtruth fields are not
@@ -318,8 +318,7 @@ class ShapeMaskCOCOEvaluator(COCOEvaluator):
         metrics = np.hstack((coco_metrics, mcoco_eval.stats))
       else:
         mask_coco_metrics = mcoco_eval.category_stats
-        val_catg_idx = np.isin(mcoco_eval.params.catIds,
-                               self._eval_categories)
+        val_catg_idx = np.isin(mcoco_eval.params.catIds, self._eval_categories)
         # Gather the valid evaluation of the eval categories.
         if np.any(val_catg_idx):
           mean_val_metrics = []

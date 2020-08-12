@@ -29,8 +29,10 @@ _NEG_INF_FP32 = -1e9
 _NEG_INF_FP16 = np.finfo(np.float16).min
 
 
-def get_position_encoding(
-    length, hidden_size, min_timescale=1.0, max_timescale=1.0e4):
+def get_position_encoding(length,
+                          hidden_size,
+                          min_timescale=1.0,
+                          max_timescale=1.0e4):
   """Return positional encoding.
 
   Calculates the position encoding as a mix of sine and cosine functions with
@@ -77,8 +79,8 @@ def get_decoder_self_attention_bias(length, dtype=tf.float32):
   """
   neg_inf = _NEG_INF_FP16 if dtype == tf.float16 else _NEG_INF_FP32
   with tf.name_scope("decoder_self_attention_bias"):
-    valid_locs = tf.linalg.band_part(tf.ones([length, length], dtype=dtype),
-                                     -1, 0)
+    valid_locs = tf.linalg.band_part(
+        tf.ones([length, length], dtype=dtype), -1, 0)
     valid_locs = tf.reshape(valid_locs, [1, 1, length, length])
     decoder_bias = neg_inf * (1.0 - valid_locs)
   return decoder_bias

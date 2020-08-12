@@ -18,14 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 import math
+
 import numpy as np
 import cv2
 
 
-def paste_instance_masks(masks,
-                         detected_boxes,
-                         image_height,
-                         image_width):
+def paste_instance_masks(masks, detected_boxes, image_height, image_width):
   """Paste instance masks to generate the image segmentation results.
 
   Args:
@@ -95,10 +93,8 @@ def paste_instance_masks(masks,
     y_0 = min(max(ref_box[1], 0), image_height)
     y_1 = min(max(ref_box[3] + 1, 0), image_height)
 
-    im_mask[y_0:y_1, x_0:x_1] = mask[
-        (y_0 - ref_box[1]):(y_1 - ref_box[1]),
-        (x_0 - ref_box[0]):(x_1 - ref_box[0])
-    ]
+    im_mask[y_0:y_1, x_0:x_1] = mask[(y_0 - ref_box[1]):(y_1 - ref_box[1]),
+                                     (x_0 - ref_box[0]):(x_1 - ref_box[0])]
     segms.append(im_mask)
 
   segms = np.array(segms)
@@ -106,10 +102,7 @@ def paste_instance_masks(masks,
   return segms
 
 
-def paste_instance_masks_v2(masks,
-                            detected_boxes,
-                            image_height,
-                            image_width):
+def paste_instance_masks_v2(masks, detected_boxes, image_height, image_width):
   """Paste instance masks to generate the image segmentation (v2).
 
   Args:
@@ -146,34 +139,22 @@ def paste_instance_masks_v2(masks,
     beta = box[3] / (1.0 * mask_height)
     # pylint: disable=invalid-name
     # Transformation from mask pixel indices to image coordinate.
-    M_mask_to_image = np.array(
-        [[alpha, 0, xmin],
-         [0, beta, ymin],
-         [0, 0, 1]],
-        dtype=np.float32)
+    M_mask_to_image = np.array([[alpha, 0, xmin], [0, beta, ymin], [0, 0, 1]],
+                               dtype=np.float32)
     # Transformation from image to cropped mask coordinate.
     M_image_to_crop = np.array(
-        [[1, 0, -xmin_int],
-         [0, 1, -ymin_int],
-         [0, 0, 1]],
-        dtype=np.float32)
+        [[1, 0, -xmin_int], [0, 1, -ymin_int], [0, 0, 1]], dtype=np.float32)
     M = np.dot(M_image_to_crop, M_mask_to_image)
     # Compensate the half pixel offset that OpenCV has in the
     # warpPerspective implementation: the top-left pixel is sampled
     # at (0,0), but we want it to be at (0.5, 0.5).
     M = np.dot(
         np.dot(
-            np.array([[1, 0, -0.5],
-                      [0, 1, -0.5],
-                      [0, 0, 1]], np.float32),
-            M),
-        np.array([[1, 0, 0.5],
-                  [0, 1, 0.5],
-                  [0, 0, 1]], np.float32))
+            np.array([[1, 0, -0.5], [0, 1, -0.5], [0, 0, 1]], np.float32), M),
+        np.array([[1, 0, 0.5], [0, 1, 0.5], [0, 0, 1]], np.float32))
     # pylint: enable=invalid-name
     cropped_mask = cv2.warpPerspective(
-        mask.astype(np.float32), M,
-        (xmax_int - xmin_int, ymax_int - ymin_int))
+        mask.astype(np.float32), M, (xmax_int - xmin_int, ymax_int - ymin_int))
     cropped_mask = np.array(cropped_mask > 0.5, dtype=np.uint8)
 
     img_mask = np.zeros((image_height, image_width))
@@ -181,12 +162,10 @@ def paste_instance_masks_v2(masks,
     x1 = max(min(xmax_int, image_width), 0)
     y0 = max(min(ymin_int, image_height), 0)
     y1 = max(min(ymax_int, image_height), 0)
-    img_mask[y0:y1, x0:x1] = cropped_mask[
-        (y0 - ymin_int):(y1 - ymin_int),
-        (x0 - xmin_int):(x1 - xmin_int)]
+    img_mask[y0:y1, x0:x1] = cropped_mask[(y0 - ymin_int):(y1 - ymin_int),
+                                          (x0 - xmin_int):(x1 - xmin_int)]
 
     segms.append(img_mask)
 
   segms = np.array(segms)
   return segms
-

@@ -20,6 +20,7 @@ from __future__ import print_function
 import collections
 import json
 import os
+
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -39,10 +40,10 @@ from official.utils.misc import keras_utils
 def define_common_squad_flags():
   """Defines common flags used by SQuAD tasks."""
   flags.DEFINE_enum(
-      'mode', 'train_and_eval',
-      ['train_and_eval', 'train_and_predict',
-       'train', 'eval', 'predict', 'export_only'],
-      'One of {"train_and_eval", "train_and_predict", '
+      'mode', 'train_and_eval', [
+          'train_and_eval', 'train_and_predict', 'train', 'eval', 'predict',
+          'export_only'
+      ], 'One of {"train_and_eval", "train_and_predict", '
       '"train", "eval", "predict", "export_only"}. '
       '`train_and_eval`: train & predict to json files & compute eval metrics. '
       '`train_and_predict`: train & predict to json files. '
@@ -60,12 +61,12 @@ def define_common_squad_flags():
   # Model training specific flags.
   flags.DEFINE_integer('train_batch_size', 32, 'Total batch size for training.')
   # Predict processing related.
-  flags.DEFINE_string('predict_file', None,
-                      'SQuAD prediction json file path. '
-                      '`predict` mode supports multiple files: one can use '
-                      'wildcard to specify multiple files and it can also be '
-                      'multiple file patterns separated by comma. Note that '
-                      '`eval` mode only supports a single predict file.')
+  flags.DEFINE_string(
+      'predict_file', None, 'SQuAD prediction json file path. '
+      '`predict` mode supports multiple files: one can use '
+      'wildcard to specify multiple files and it can also be '
+      'multiple file patterns separated by comma. Note that '
+      '`eval` mode only supports a single predict file.')
   flags.DEFINE_bool(
       'do_lower_case', True,
       'Whether to lower case the input text. Should be True for uncased '
@@ -97,10 +98,7 @@ def define_common_squad_flags():
 FLAGS = flags.FLAGS
 
 
-def squad_loss_fn(start_positions,
-                  end_positions,
-                  start_logits,
-                  end_logits):
+def squad_loss_fn(start_positions, end_positions, start_logits, end_logits):
   """Returns sparse categorical crossentropy for start/end logits."""
   start_loss = tf.keras.losses.sparse_categorical_crossentropy(
       start_positions, start_logits, from_logits=True)
@@ -118,11 +116,8 @@ def get_loss_fn():
     start_positions = labels['start_positions']
     end_positions = labels['end_positions']
     start_logits, end_logits = model_outputs
-    return squad_loss_fn(
-        start_positions,
-        end_positions,
-        start_logits,
-        end_logits)
+    return squad_loss_fn(start_positions, end_positions, start_logits,
+                         end_logits)
 
   return _loss_fn
 
@@ -182,11 +177,8 @@ def get_squad_model_to_predict(strategy, bert_config, checkpoint_path,
   return squad_model
 
 
-def predict_squad_customized(strategy,
-                             input_meta_data,
-                             predict_tfrecord_path,
-                             num_steps,
-                             squad_model):
+def predict_squad_customized(strategy, input_meta_data, predict_tfrecord_path,
+                             num_steps, squad_model):
   """Make predictions using a Bert-based squad model."""
   predict_dataset_fn = get_dataset_fn(
       predict_tfrecord_path,
@@ -259,8 +251,7 @@ def train_squad(strategy,
         hub_module_trainable=FLAGS.hub_module_trainable)
     optimizer = optimization.create_optimizer(FLAGS.learning_rate,
                                               steps_per_epoch * epochs,
-                                              warmup_steps,
-                                              FLAGS.end_lr,
+                                              warmup_steps, FLAGS.end_lr,
                                               FLAGS.optimizer_type)
 
     squad_model.optimizer = performance.configure_optimizer(
@@ -344,8 +335,9 @@ def prediction_output_squad(strategy, input_meta_data, tokenizer, squad_lib,
   logging.info('  Batch size = %d', FLAGS.predict_batch_size)
 
   num_steps = int(dataset_size / FLAGS.predict_batch_size)
-  all_results = predict_squad_customized(
-      strategy, input_meta_data, eval_writer.filename, num_steps, squad_model)
+  all_results = predict_squad_customized(strategy, input_meta_data,
+                                         eval_writer.filename, num_steps,
+                                         squad_model)
 
   all_predictions, all_nbest_json, scores_diff_json = (
       squad_lib.postprocess_output(
@@ -362,8 +354,12 @@ def prediction_output_squad(strategy, input_meta_data, tokenizer, squad_lib,
   return all_predictions, all_nbest_json, scores_diff_json
 
 
-def dump_to_files(all_predictions, all_nbest_json, scores_diff_json,
-                  squad_lib, version_2_with_negative, file_prefix=''):
+def dump_to_files(all_predictions,
+                  all_nbest_json,
+                  scores_diff_json,
+                  squad_lib,
+                  version_2_with_negative,
+                  file_prefix=''):
   """Save output to json files."""
   output_prediction_file = os.path.join(FLAGS.model_dir,
                                         '%spredictions.json' % file_prefix)
@@ -452,8 +448,7 @@ def eval_squad(strategy,
     dataset_json = json.load(reader)
     pred_dataset = dataset_json['data']
   if input_meta_data.get('version_2_with_negative', False):
-    eval_metrics = squad_evaluate_v2_0.evaluate(pred_dataset,
-                                                all_predictions,
+    eval_metrics = squad_evaluate_v2_0.evaluate(pred_dataset, all_predictions,
                                                 scores_diff_json)
   else:
     eval_metrics = squad_evaluate_v1_1.evaluate(pred_dataset, all_predictions)

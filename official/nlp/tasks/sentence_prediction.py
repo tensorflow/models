@@ -35,7 +35,6 @@ from official.nlp.data import data_loader_factory
 from official.nlp.modeling import models
 from official.nlp.tasks import utils
 
-
 METRIC_TYPES = frozenset(
     ['accuracy', 'matthews_corrcoef', 'pearson_spearman_corr'])
 
@@ -137,7 +136,8 @@ class SentencePredictionTask(base_task.Task):
       metrics = [tf.keras.metrics.MeanSquaredError()]
     else:
       metrics = [
-          tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy')]
+          tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy')
+      ]
     return metrics
 
   def process_metrics(self, metrics, labels, model_outputs):

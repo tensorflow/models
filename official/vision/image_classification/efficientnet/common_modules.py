@@ -79,7 +79,7 @@ def get_batch_norm(batch_norm_type: Text) -> tf.keras.layers.BatchNormalization:
 
   Args:
     batch_norm_type: The type of batch normalization layer implementation. `tpu`
-     will use `TpuBatchNormalization`.
+      will use `TpuBatchNormalization`.
 
   Returns:
     An instance of `tf.keras.layers.BatchNormalization`.
@@ -95,8 +95,10 @@ def count_params(model, trainable_only=True):
   if not trainable_only:
     return model.count_params()
   else:
-    return int(np.sum([tf.keras.backend.count_params(p)
-                       for p in model.trainable_weights]))
+    return int(
+        np.sum([
+            tf.keras.backend.count_params(p) for p in model.trainable_weights
+        ]))
 
 
 def load_weights(model: tf.keras.Model,
@@ -107,8 +109,8 @@ def load_weights(model: tf.keras.Model,
   Args:
     model: the model to load weights into
     model_weights_path: the path of the model weights
-    weights_format: the model weights format. One of 'saved_model', 'h5',
-       or 'checkpoint'.
+    weights_format: the model weights format. One of 'saved_model', 'h5', or
+      'checkpoint'.
   """
   if weights_format == 'saved_model':
     loaded_model = tf.keras.models.load_model(model_weights_path)

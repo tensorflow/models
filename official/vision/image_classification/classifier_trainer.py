@@ -41,7 +41,7 @@ from official.vision.image_classification.resnet import resnet_model
 
 def get_models() -> Mapping[str, tf.keras.Model]:
   """Returns the mapping from model type name to Keras model."""
-  return  {
+  return {
       'efficientnet': efficientnet_model.EfficientNet.from_name,
       'resnet': resnet_model.resnet50,
   }
@@ -55,7 +55,7 @@ def get_dtype_map() -> Mapping[str, tf.dtypes.DType]:
       'float16': tf.float16,
       'fp32': tf.float32,
       'bf16': tf.bfloat16,
-    }
+  }
 
 
 def _get_metrics(one_hot: bool) -> Mapping[Text, Any]:
@@ -63,22 +63,28 @@ def _get_metrics(one_hot: bool) -> Mapping[Text, Any]:
   if one_hot:
     return {
         # (name, metric_fn)
-        'acc': tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-        'accuracy': tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-        'top_1': tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-        'top_5': tf.keras.metrics.TopKCategoricalAccuracy(
-            k=5,
-            name='top_5_accuracy'),
+        'acc':
+            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+        'accuracy':
+            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+        'top_1':
+            tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+        'top_5':
+            tf.keras.metrics.TopKCategoricalAccuracy(
+                k=5, name='top_5_accuracy'),
     }
   else:
     return {
         # (name, metric_fn)
-        'acc': tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-        'accuracy': tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-        'top_1': tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-        'top_5': tf.keras.metrics.SparseTopKCategoricalAccuracy(
-            k=5,
-            name='top_5_accuracy'),
+        'acc':
+            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+        'accuracy':
+            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+        'top_1':
+            tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
+        'top_5':
+            tf.keras.metrics.SparseTopKCategoricalAccuracy(
+                k=5, name='top_5_accuracy'),
     }
 
 
@@ -94,8 +100,7 @@ def get_image_size_from_model(
 
 def _get_dataset_builders(params: base_configs.ExperimentConfig,
                           strategy: tf.distribute.Strategy,
-                          one_hot: bool
-                         ) -> Tuple[Any, Any]:
+                          one_hot: bool) -> Tuple[Any, Any]:
   """Create and return train and validation dataset builders."""
   if one_hot:
     logging.warning('label_smoothing > 0, so datasets will be one hot encoded.')
@@ -107,9 +112,7 @@ def _get_dataset_builders(params: base_configs.ExperimentConfig,
 
   image_size = get_image_size_from_model(params)
 
-  dataset_configs = [
-      params.train_dataset, params.validation_dataset
-  ]
+  dataset_configs = [params.train_dataset, params.validation_dataset]
   builders = []
 
   for config in dataset_configs:
@@ -171,8 +174,7 @@ def _get_params_from_flags(flags_obj: flags.FlagValues):
       },
   }
 
-  overriding_configs = (flags_obj.config_file,
-                        flags_obj.params_override,
+  overriding_configs = (flags_obj.config_file, flags_obj.params_override,
                         flags_overrides)
 
   pp = pprint.PrettyPrinter()
@@ -190,8 +192,7 @@ def _get_params_from_flags(flags_obj: flags.FlagValues):
   return params
 
 
-def resume_from_checkpoint(model: tf.keras.Model,
-                           model_dir: str,
+def resume_from_checkpoint(model: tf.keras.Model, model_dir: str,
                            train_steps: int) -> int:
   """Resumes from the latest checkpoint, if possible.
 
@@ -226,8 +227,7 @@ def resume_from_checkpoint(model: tf.keras.Model,
 def initialize(params: base_configs.ExperimentConfig,
                dataset_builder: dataset_factory.DatasetBuilder):
   """Initializes backend related initializations."""
-  keras_utils.set_session_config(
-      enable_xla=params.runtime.enable_xla)
+  keras_utils.set_session_config(enable_xla=params.runtime.enable_xla)
   performance.set_mixed_precision_policy(dataset_builder.dtype,
                                          get_loss_scale(params))
   if tf.config.list_physical_devices('GPU'):
@@ -244,7 +244,8 @@ def initialize(params: base_configs.ExperimentConfig,
           per_gpu_thread_count=params.runtime.per_gpu_thread_count,
           gpu_thread_mode=params.runtime.gpu_thread_mode,
           num_gpus=params.runtime.num_gpus,
-          datasets_num_private_threads=params.runtime.dataset_num_private_threads)  # pylint:disable=line-too-long
+          datasets_num_private_threads=params.runtime
+          .dataset_num_private_threads)  # pylint:disable=line-too-long
     if params.runtime.batchnorm_spatial_persistent:
       os.environ['TF_USE_CUDNN_BATCHNORM_SPATIAL_PERSISTENT'] = '1'
 
@@ -253,9 +254,7 @@ def define_classifier_flags():
   """Defines common flags for image classification."""
   hyperparams_flags.initialize_common_flags()
   flags.DEFINE_string(
-      'data_dir',
-      default=None,
-      help='The location of the input data.')
+      'data_dir', default=None, help='The location of the input data.')
   flags.DEFINE_string(
       'mode',
       default=None,
@@ -278,8 +277,7 @@ def define_classifier_flags():
       help='The interval of steps between logging of batch level stats.')
 
 
-def serialize_config(params: base_configs.ExperimentConfig,
-                     model_dir: str):
+def serialize_config(params: base_configs.ExperimentConfig, model_dir: str):
   """Serializes and saves the experiment config."""
   params_save_path = os.path.join(model_dir, 'params.yaml')
   logging.info('Saving experiment configuration to %s', params_save_path)
@@ -293,9 +291,8 @@ def train_and_eval(
   """Runs the train and eval path using compile/fit."""
   logging.info('Running train and eval.')
 
-  distribution_utils.configure_cluster(
-      params.runtime.worker_hosts,
-      params.runtime.task_index)
+  distribution_utils.configure_cluster(params.runtime.worker_hosts,
+                                       params.runtime.task_index)
 
   # Note: for TPUs, strategy and scope should be created before the dataset
   strategy = strategy_override or distribution_utils.get_distribution_strategy(
@@ -313,8 +310,9 @@ def train_and_eval(
   one_hot = label_smoothing and label_smoothing > 0
 
   builders = _get_dataset_builders(params, strategy, one_hot)
-  datasets = [builder.build(strategy)
-              if builder else None for builder in builders]
+  datasets = [
+      builder.build(strategy) if builder else None for builder in builders
+  ]
 
   # Unpack datasets and builders based on train/val/test splits
   train_builder, validation_builder = builders  # pylint: disable=unbalanced-tuple-unpacking
@@ -351,16 +349,16 @@ def train_and_eval(
           label_smoothing=params.model.loss.label_smoothing)
     else:
       loss_obj = tf.keras.losses.SparseCategoricalCrossentropy()
-    model.compile(optimizer=optimizer,
-                  loss=loss_obj,
-                  metrics=metrics,
-                  experimental_steps_per_execution=steps_per_loop)
+    model.compile(
+        optimizer=optimizer,
+        loss=loss_obj,
+        metrics=metrics,
+        experimental_steps_per_execution=steps_per_loop)
 
     initial_epoch = 0
     if params.train.resume_checkpoint:
-      initial_epoch = resume_from_checkpoint(model=model,
-                                             model_dir=params.model_dir,
-                                             train_steps=train_steps)
+      initial_epoch = resume_from_checkpoint(
+          model=model, model_dir=params.model_dir, train_steps=train_steps)
 
     callbacks = custom_callbacks.get_callbacks(
         model_checkpoint=params.train.callbacks.enable_checkpoint_and_export,
@@ -399,9 +397,7 @@ def train_and_eval(
         validation_dataset, steps=validation_steps, verbose=2)
 
   # TODO(dankondratyuk): eval and save final test accuracy
-  stats = common.build_stats(history,
-                             validation_output,
-                             callbacks)
+  stats = common.build_stats(history, validation_output, callbacks)
   return stats
 
 

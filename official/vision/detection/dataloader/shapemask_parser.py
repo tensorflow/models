@@ -21,7 +21,6 @@ Weicheng Kuo, Anelia Angelova, Jitendra Malik, Tsung-Yi Lin
 ShapeMask: Learning to Segment Novel Objects by Refining Shape Priors.
 arXiv:1904.03239.
 """
-
 import tensorflow as tf
 
 from official.vision.detection.dataloader import anchor

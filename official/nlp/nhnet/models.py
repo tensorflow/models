@@ -583,7 +583,6 @@ def create_model(model_type: Text,
   elif model_type == "nhnet":
     return create_nhnet_model(params, init_checkpoint=init_checkpoint)
   elif "transformer" in model_type:
-    return create_transformer_model(
-        params, init_checkpoint=init_checkpoint)
+    return create_transformer_model(params, init_checkpoint=init_checkpoint)
   else:
     raise KeyError("The model type is not defined: %s" % model_type)

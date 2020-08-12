@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Helper code to run complete models from within python.
-"""
+"""Helper code to run complete models from within python."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -31,7 +30,11 @@ from official.utils.flags import core as flags_core
 
 
 @flagsaver.flagsaver
-def run_synthetic(main, tmp_root, extra_flags=None, synth=True, train_epochs=1,
+def run_synthetic(main,
+                  tmp_root,
+                  extra_flags=None,
+                  synth=True,
+                  train_epochs=1,
                   epochs_between_evals=1):
   """Performs a minimal run of a model.
 

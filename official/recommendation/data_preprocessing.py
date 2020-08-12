@@ -25,6 +25,7 @@ import time
 import timeit
 
 # pylint: disable=wrong-import-order
+
 from absl import logging
 import numpy as np
 import pandas as pd
@@ -37,10 +38,9 @@ from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import movielens
 
-
-_EXPECTED_CACHE_KEYS = (
-    rconst.TRAIN_USER_KEY, rconst.TRAIN_ITEM_KEY, rconst.EVAL_USER_KEY,
-    rconst.EVAL_ITEM_KEY, rconst.USER_MAP, rconst.ITEM_MAP)
+_EXPECTED_CACHE_KEYS = (rconst.TRAIN_USER_KEY, rconst.TRAIN_ITEM_KEY,
+                        rconst.EVAL_USER_KEY, rconst.EVAL_ITEM_KEY,
+                        rconst.USER_MAP, rconst.ITEM_MAP)
 
 
 def read_dataframe(
@@ -178,17 +178,20 @@ def _filter_index_sort(raw_rating_path: Text,
     eval_df, train_df = grouped.tail(1), grouped.apply(lambda x: x.iloc[:-1])
 
     data = {
-        rconst.TRAIN_USER_KEY: train_df[movielens.USER_COLUMN]
-                               .values.astype(rconst.USER_DTYPE),
-        rconst.TRAIN_ITEM_KEY: train_df[movielens.ITEM_COLUMN]
-                               .values.astype(rconst.ITEM_DTYPE),
-        rconst.EVAL_USER_KEY: eval_df[movielens.USER_COLUMN]
-                              .values.astype(rconst.USER_DTYPE),
-        rconst.EVAL_ITEM_KEY: eval_df[movielens.ITEM_COLUMN]
-                              .values.astype(rconst.ITEM_DTYPE),
-        rconst.USER_MAP: user_map,
-        rconst.ITEM_MAP: item_map,
-        "create_time": time.time(),
+        rconst.TRAIN_USER_KEY:
+            train_df[movielens.USER_COLUMN].values.astype(rconst.USER_DTYPE),
+        rconst.TRAIN_ITEM_KEY:
+            train_df[movielens.ITEM_COLUMN].values.astype(rconst.ITEM_DTYPE),
+        rconst.EVAL_USER_KEY:
+            eval_df[movielens.USER_COLUMN].values.astype(rconst.USER_DTYPE),
+        rconst.EVAL_ITEM_KEY:
+            eval_df[movielens.ITEM_COLUMN].values.astype(rconst.ITEM_DTYPE),
+        rconst.USER_MAP:
+            user_map,
+        rconst.ITEM_MAP:
+            item_map,
+        "create_time":
+            time.time(),
     }
 
     logging.info("Writing raw data cache.")
@@ -217,8 +220,8 @@ def instantiate_pipeline(dataset,
       for the input pipeline.
     deterministic: Tell the data constructor to produce deterministically.
     epoch_dir: Directory in which to store the training epochs.
-    generate_data_offline: Boolean, whether current pipeline is done offline
-      or while training.
+    generate_data_offline: Boolean, whether current pipeline is done offline or
+      while training.
   """
   logging.info("Beginning data preprocessing.")
 
@@ -258,8 +261,8 @@ def instantiate_pipeline(dataset,
       create_data_offline=generate_data_offline)
 
   run_time = timeit.default_timer() - st
-  logging.info("Data preprocessing complete. Time: {:.1f} sec."
-               .format(run_time))
+  logging.info(
+      "Data preprocessing complete. Time: {:.1f} sec.".format(run_time))
 
   print(producer)
   return num_users, num_items, producer

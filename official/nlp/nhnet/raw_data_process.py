@@ -16,6 +16,7 @@
 """Processes crawled content from news URLs by generating tfrecords."""
 
 import os
+
 from absl import app
 from absl import flags
 from official.nlp.nhnet import raw_data_processor

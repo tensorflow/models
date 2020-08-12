@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import copy
 import json
+
 import six
 import tensorflow as tf
 
@@ -105,4 +106,3 @@ class BertConfig(object):
   def to_json_string(self):
     """Serializes this instance to a JSON string."""
     return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
-

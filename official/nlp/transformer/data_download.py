@@ -23,6 +23,7 @@ import random
 import tarfile
 
 # pylint: disable=g-bad-import-order
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -64,22 +65,18 @@ _TRAIN_DATA_SOURCES = [
 # Use pre-defined minimum count to generate subtoken vocabulary.
 _TRAIN_DATA_MIN_COUNT = 6
 
-_EVAL_DATA_SOURCES = [
-    {
-        "url": "http://data.statmt.org/wmt17/translation-task/dev.tgz",
-        "input": "newstest2013.en",
-        "target": "newstest2013.de",
-    }
-]
+_EVAL_DATA_SOURCES = [{
+    "url": "http://data.statmt.org/wmt17/translation-task/dev.tgz",
+    "input": "newstest2013.en",
+    "target": "newstest2013.de",
+}]
 
-_TEST_DATA_SOURCES = [
-    {
-        "url": ("https://storage.googleapis.com/tf-perf-public/"
-                "official_transformer/test_data/newstest2014.tgz"),
-        "input": "newstest2014.en",
-        "target": "newstest2014.de",
-    }
-]
+_TEST_DATA_SOURCES = [{
+    "url": ("https://storage.googleapis.com/tf-perf-public/"
+            "official_transformer/test_data/newstest2014.tgz"),
+    "input": "newstest2014.en",
+    "target": "newstest2014.de",
+}]
 
 # Vocabulary constants
 _TARGET_VOCAB_SIZE = 32768  # Number of subtokens in the vocabulary list.
@@ -114,7 +111,9 @@ def find_file(path, filename, max_depth=5):
 # Download and extraction functions
 ###############################################################################
 def get_raw_files(raw_dir, data_source):
-  """Return raw files from source. Downloads/extracts if needed.
+  """Return raw files from source.
+
+  Downloads/extracts if needed.
 
   Args:
     raw_dir: string directory to store raw files
@@ -134,8 +133,8 @@ def get_raw_files(raw_dir, data_source):
       "targets": [],
   }  # keys
   for d in data_source:
-    input_file, target_file = download_and_extract(
-        raw_dir, d["url"], d["input"], d["target"])
+    input_file, target_file = download_and_extract(raw_dir, d["url"],
+                                                   d["input"], d["target"])
     raw_files["inputs"].append(input_file)
     raw_files["targets"].append(target_file)
   return raw_files
@@ -167,7 +166,7 @@ def download_from_url(path, url):
   found_file = find_file(path, filename, max_depth=0)
   if found_file is None:
     filename = os.path.join(path, filename)
-    logging.info("Downloading from %s to %s." % (url, filename))
+    logging.info("Downloading from %s to %s.", url, filename)
     inprogress_filepath = six.ensure_str(filename) + ".incomplete"
     inprogress_filepath, _ = urllib.request.urlretrieve(
         url, inprogress_filepath, reporthook=download_report_hook)
@@ -176,7 +175,7 @@ def download_from_url(path, url):
     tf.gfile.Rename(inprogress_filepath, filename)
     return filename
   else:
-    logging.info("Already downloaded: %s (at %s)." % (url, found_file))
+    logging.info("Already downloaded: %s (at %s).", url, found_file)
     return found_file
 
 
@@ -199,14 +198,14 @@ def download_and_extract(path, url, input_filename, target_filename):
   input_file = find_file(path, input_filename)
   target_file = find_file(path, target_filename)
   if input_file and target_file:
-    logging.info("Already downloaded and extracted %s." % url)
+    logging.info("Already downloaded and extracted %s.", url)
     return input_file, target_file
 
   # Download archive file if it doesn't already exist.
   compressed_file = download_from_url(path, url)
 
   # Extract compressed files
-  logging.info("Extracting %s." % compressed_file)
+  logging.info("Extracting %s.", compressed_file)
   with tarfile.open(compressed_file, "r:gz") as corpus_tar:
     corpus_tar.extractall(path)
 
@@ -236,13 +235,13 @@ def compile_files(raw_dir, raw_files, tag):
     raw_files: Dict containing filenames of input and target data.
       {"inputs": list of files containing data in input language
        "targets": list of files containing corresponding data in target language
-      }
+         }
     tag: String to append to the compiled filename.
 
   Returns:
     Full path of compiled input and target files.
   """
-  logging.info("Compiling files with tag %s." % tag)
+  logging.info("Compiling files with tag %s.", tag)
   filename = "%s-%s" % (_PREFIX, tag)
   input_compiled_file = os.path.join(raw_dir,
                                      six.ensure_str(filename) + ".lang1")
@@ -255,7 +254,7 @@ def compile_files(raw_dir, raw_files, tag):
         input_file = raw_files["inputs"][i]
         target_file = raw_files["targets"][i]
 
-        logging.info("Reading files %s and %s." % (input_file, target_file))
+        logging.info("Reading files %s and %s.", input_file, target_file)
         write_file(input_writer, input_file)
         write_file(target_writer, target_file)
   return input_compiled_file, target_compiled_file
@@ -271,8 +270,7 @@ def write_file(writer, filename):
 ###############################################################################
 # Data preprocessing
 ###############################################################################
-def encode_and_save_files(
-    subtokenizer, data_dir, raw_files, tag, total_shards):
+def encode_and_save_files(subtokenizer, data_dir, raw_files, tag, total_shards):
   """Save data from files as encoded Examples in TFrecord format.
 
   Args:
@@ -287,14 +285,16 @@ def encode_and_save_files(
     List of all files produced.
   """
   # Create a file for each shard.
-  filepaths = [shard_filename(data_dir, tag, n + 1, total_shards)
-               for n in range(total_shards)]
+  filepaths = [
+      shard_filename(data_dir, tag, n + 1, total_shards)
+      for n in range(total_shards)
+  ]
 
   if all_exist(filepaths):
-    logging.info("Files with tag %s already exist." % tag)
+    logging.info("Files with tag %s already exist.", tag)
     return filepaths
 
-  logging.info("Saving files with tag %s." % tag)
+  logging.info("Saving files with tag %s.", tag)
   input_file = raw_files[0]
   target_file = raw_files[1]
 
@@ -302,13 +302,14 @@ def encode_and_save_files(
   tmp_filepaths = [six.ensure_str(fname) + ".incomplete" for fname in filepaths]
   writers = [tf.python_io.TFRecordWriter(fname) for fname in tmp_filepaths]
   counter, shard = 0, 0
-  for counter, (input_line, target_line) in enumerate(zip(
-      txt_line_iterator(input_file), txt_line_iterator(target_file))):
+  for counter, (input_line, target_line) in enumerate(
+      zip(txt_line_iterator(input_file), txt_line_iterator(target_file))):
     if counter > 0 and counter % 100000 == 0:
-      logging.info("\tSaving case %d." % counter)
-    example = dict_to_example(
-        {"inputs": subtokenizer.encode(input_line, add_eos=True),
-         "targets": subtokenizer.encode(target_line, add_eos=True)})
+      logging.info("\tSaving case %d.", counter)
+    example = dict_to_example({
+        "inputs": subtokenizer.encode(input_line, add_eos=True),
+        "targets": subtokenizer.encode(target_line, add_eos=True)
+    })
     writers[shard].write(example.SerializeToString())
     shard = (shard + 1) % total_shards
   for writer in writers:
@@ -329,7 +330,7 @@ def shard_filename(path, tag, shard_num, total_shards):
 
 def shuffle_records(fname):
   """Shuffle records in a single file."""
-  logging.info("Shuffling records in file %s" % fname)
+  logging.info("Shuffling records in file %s", fname)
 
   # Rename file prior to shuffling
   tmp_fname = six.ensure_str(fname) + ".unshuffled"
@@ -349,7 +350,7 @@ def shuffle_records(fname):
     for count, record in enumerate(records):
       w.write(record)
       if count > 0 and count % 100000 == 0:
-        logging.info("\tWriting record: %d" % count)
+        logging.info("\tWriting record: %d", count)
 
   tf.gfile.Remove(tmp_fname)
 
@@ -372,7 +373,7 @@ def all_exist(filepaths):
 
 def make_dir(path):
   if not tf.gfile.Exists(path):
-    logging.info("Creating directory %s" % path)
+    logging.info("Creating directory %s", path)
     tf.gfile.MakeDirs(path)
 
 
@@ -395,7 +396,10 @@ def main(unused_argv):
   train_files_flat = train_files["inputs"] + train_files["targets"]
   vocab_file = os.path.join(FLAGS.data_dir, VOCAB_FILE)
   subtokenizer = tokenizer.Subtokenizer.init_from_files(
-      vocab_file, train_files_flat, _TARGET_VOCAB_SIZE, _TARGET_THRESHOLD,
+      vocab_file,
+      train_files_flat,
+      _TARGET_VOCAB_SIZE,
+      _TARGET_THRESHOLD,
       min_count=None if FLAGS.search else _TRAIN_DATA_MIN_COUNT)
 
   logging.info("Step 4/5: Compiling training and evaluation data")
@@ -404,12 +408,11 @@ def main(unused_argv):
 
   # Tokenize and save data as Examples in the TFRecord format.
   logging.info("Step 5/5: Preprocessing and saving data")
-  train_tfrecord_files = encode_and_save_files(
-      subtokenizer, FLAGS.data_dir, compiled_train_files, _TRAIN_TAG,
-      _TRAIN_SHARDS)
-  encode_and_save_files(
-      subtokenizer, FLAGS.data_dir, compiled_eval_files, _EVAL_TAG,
-      _EVAL_SHARDS)
+  train_tfrecord_files = encode_and_save_files(subtokenizer, FLAGS.data_dir,
+                                               compiled_train_files, _TRAIN_TAG,
+                                               _TRAIN_SHARDS)
+  encode_and_save_files(subtokenizer, FLAGS.data_dir, compiled_eval_files,
+                        _EVAL_TAG, _EVAL_SHARDS)
 
   for fname in train_tfrecord_files:
     shuffle_records(fname)
@@ -418,15 +421,20 @@ def main(unused_argv):
 def define_data_download_flags():
   """Add flags specifying data download arguments."""
   flags.DEFINE_string(
-      name="data_dir", short_name="dd", default="/tmp/translate_ende",
+      name="data_dir",
+      short_name="dd",
+      default="/tmp/translate_ende",
       help=flags_core.help_wrap(
           "Directory for where the translate_ende_wmt32k dataset is saved."))
   flags.DEFINE_string(
-      name="raw_dir", short_name="rd", default="/tmp/translate_ende_raw",
+      name="raw_dir",
+      short_name="rd",
+      default="/tmp/translate_ende_raw",
       help=flags_core.help_wrap(
           "Path where the raw data will be downloaded and extracted."))
   flags.DEFINE_bool(
-      name="search", default=False,
+      name="search",
+      default=False,
       help=flags_core.help_wrap(
           "If set, use binary search to find the vocabulary set with size"
           "closest to the target size (%d)." % _TARGET_VOCAB_SIZE))

@@ -52,8 +52,7 @@ class MLMTaskTest(tf.test.TestCase):
     task.validation_step(next(iterator), model, metrics=metrics)
 
     # Saves a checkpoint.
-    ckpt = tf.train.Checkpoint(
-        model=model, **model.checkpoint_items)
+    ckpt = tf.train.Checkpoint(model=model, **model.checkpoint_items)
     ckpt.save(config.init_checkpoint)
     task.initialize(model)
 
