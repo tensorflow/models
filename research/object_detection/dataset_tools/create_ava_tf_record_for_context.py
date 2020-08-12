@@ -250,9 +250,12 @@ class Ava(object):
             else:
               logging.warning("Unknown label: %s", row["action_label"])
 
-          middle_frame_time += 1
+          middle_frame_time += 1/3
+          if abs(middle_frame_time - round(middle_frame_time) < 0.0001):
+            middle_frame_time = round(middle_frame_time)
+
           key = hashlib.sha256(bufstring).hexdigest()
-          date_captured_feature = ("2020-06-17 00:%02d:%02d" % ((middle_frame_time - 900) // 60, (middle_frame_time - 900) % 60))
+          date_captured_feature = ("2020-06-17 00:%02d:%02d" % ((middle_frame_time - 900)*3 // 60, (middle_frame_time - 900)*3 % 60))
           context_feature_dict = {
               'image/height':
                   dataset_util.int64_feature(int(height)),
