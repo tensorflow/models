@@ -438,12 +438,18 @@ class QqpProcessor(DataProcessor):
       if i == 0:
         continue
       guid = "%s-%s" % (set_type, line[0])
-      try:
-        text_a = line[3]
-        text_b = line[4]
-        label = line[5]
-      except IndexError:
-        continue
+      if set_type == "test":
+        text_a = line[1]
+        text_b = line[2]
+        label = "0"
+      else:
+        # There appear to be some garbage lines in the train dataset.
+        try:
+          text_a = line[3]
+          text_b = line[4]
+          label = line[5]
+        except IndexError:
+          continue
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
