@@ -116,19 +116,17 @@ def yamnet_frames_model(feature_params):
   Returns:
     A model accepting (num_samples,) waveform input and emitting:
     - predictions: (num_patches, num_classes) matrix of class scores per time frame
-    - log_mel_spectrogram: (num_spectrogram_frames, num_mel_bins) spectrogram feature matrix
     - embeddings: (num_patches, embedding size) matrix of embeddings per time frame
+    - log_mel_spectrogram: (num_spectrogram_frames, num_mel_bins) spectrogram feature matrix
   """
   waveform = layers.Input(batch_shape=(None,), dtype=tf.float32)
   waveform_padded = features_lib.pad_waveform(waveform, feature_params)
-  log_mel_spectrogram = features_lib.waveform_to_log_mel_spectrogram(
+  log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
       waveform_padded, feature_params)
-  patches = features_lib.log_mel_spectrogram_to_patches(
-      log_mel_spectrogram, feature_params)
-  predictions, embeddings = yamnet(patches)
+  predictions, embeddings = yamnet(features)
   frames_model = Model(
       name='yamnet_frames', inputs=waveform,
-      outputs=[predictions, log_mel_spectrogram, embeddings])
+      outputs=[predictions, embeddings, log_mel_spectrogram])
   return frames_model
 
 

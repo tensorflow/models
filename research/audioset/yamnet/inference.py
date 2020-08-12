@@ -48,7 +48,7 @@ def main(argv):
       waveform = resampy.resample(waveform, sr, params.SAMPLE_RATE)
 
     # Predict YAMNet classes.
-    scores, spectrogram, embeddings = yamnet(waveform)
+    scores, embeddings, spectrogram = yamnet(waveform)
     # Scores is a matrix of (time_frames, num_classes) classifier scores.
     # Average them along time to get an overall classifier output for the clip.
     prediction = np.mean(scores, axis=0)
