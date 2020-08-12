@@ -115,8 +115,8 @@ def normalize_boxes(boxes, image_shape):
   """Converts boxes to the normalized coordinates.
 
   Args:
-    boxes: a tensor whose last dimension is 4 representing the coordinates
-      of boxes in ymin, xmin, ymax, xmax order.
+    boxes: a tensor whose last dimension is 4 representing the coordinates of
+      boxes in ymin, xmin, ymax, xmax order.
     image_shape: a list of two integers, a two-element vector or a tensor such
       that all but the last dimensions are `broadcastable` to `boxes`. The last
       dimension is 2, which represents [height, width].
@@ -153,8 +153,8 @@ def denormalize_boxes(boxes, image_shape):
   """Converts boxes normalized by [height, width] to pixel coordinates.
 
   Args:
-    boxes: a tensor whose last dimension is 4 representing the coordinates
-      of boxes in ymin, xmin, ymax, xmax order.
+    boxes: a tensor whose last dimension is 4 representing the coordinates of
+      boxes in ymin, xmin, ymax, xmax order.
     image_shape: a list of two integers, a two-element vector or a tensor such
       that all but the last dimensions are `broadcastable` to `boxes`. The last
       dimension is 2, which represents [height, width].
@@ -187,8 +187,8 @@ def clip_boxes(boxes, image_shape):
   """Clips boxes to image boundaries.
 
   Args:
-    boxes: a tensor whose last dimension is 4 representing the coordinates
-      of boxes in ymin, xmin, ymax, xmax order.
+    boxes: a tensor whose last dimension is 4 representing the coordinates of
+      boxes in ymin, xmin, ymax, xmax order.
     image_shape: a list of two integers, a two-element vector or a tensor such
       that all but the last dimensions are `broadcastable` to `boxes`. The last
       dimension is 2, which represents [height, width].
@@ -255,8 +255,8 @@ def encode_boxes(boxes, anchors, weights=None):
   """Encode boxes to targets.
 
   Args:
-    boxes: a tensor whose last dimension is 4 representing the coordinates
-      of boxes in ymin, xmin, ymax, xmax order.
+    boxes: a tensor whose last dimension is 4 representing the coordinates of
+      boxes in ymin, xmin, ymax, xmax order.
     anchors: a tensor whose shape is the same as, or `broadcastable` to `boxes`,
       representing the coordinates of anchors in ymin, xmin, ymax, xmax order.
     weights: None or a list of four float numbers used to scale coordinates.
@@ -302,9 +302,8 @@ def encode_boxes(boxes, anchors, weights=None):
       encoded_dh *= weights[2]
       encoded_dw *= weights[3]
 
-    encoded_boxes = tf.concat(
-        [encoded_dy, encoded_dx, encoded_dh, encoded_dw],
-        axis=-1)
+    encoded_boxes = tf.concat([encoded_dy, encoded_dx, encoded_dh, encoded_dw],
+                              axis=-1)
     return encoded_boxes
 
 
@@ -359,10 +358,11 @@ def decode_boxes(encoded_boxes, anchors, weights=None):
     decoded_boxes_ymax = decoded_boxes_ymin + decoded_boxes_h - 1.0
     decoded_boxes_xmax = decoded_boxes_xmin + decoded_boxes_w - 1.0
 
-    decoded_boxes = tf.concat(
-        [decoded_boxes_ymin, decoded_boxes_xmin,
-         decoded_boxes_ymax, decoded_boxes_xmax],
-        axis=-1)
+    decoded_boxes = tf.concat([
+        decoded_boxes_ymin, decoded_boxes_xmin, decoded_boxes_ymax,
+        decoded_boxes_xmax
+    ],
+                              axis=-1)
     return decoded_boxes
 
 
@@ -546,6 +546,6 @@ def get_non_empty_box_indices(boxes):
   # Selects indices if box height or width is 0.
   height = boxes[:, 2] - boxes[:, 0]
   width = boxes[:, 3] - boxes[:, 1]
-  indices = tf.where(tf.logical_and(tf.greater(height, 0),
-                                    tf.greater(width, 0)))
+  indices = tf.where(
+      tf.logical_and(tf.greater(height, 0), tf.greater(width, 0)))
   return indices[:, 0]

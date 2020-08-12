@@ -103,9 +103,9 @@ def minimize_using_explicit_allreduce(tape,
       pre_allreduce_callbacks: A list of callback functions that takes gradients
         and model variables pairs as input, manipulate them, and returns a new
         gradients and model variables pairs. The callback functions will be
-        invoked in the list order and before gradients are allreduced.
-        With mixed precision training, the pre_allreduce_allbacks will be
-        applied on scaled_gradients. Default is no callbacks.
+        invoked in the list order and before gradients are allreduced. With
+        mixed precision training, the pre_allreduce_allbacks will be applied on
+        scaled_gradients. Default is no callbacks.
       post_allreduce_callbacks: A list of callback functions that takes
         gradients and model variables pairs as input, manipulate them, and
         returns a new gradients and model variables paris. The callback

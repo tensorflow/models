@@ -30,10 +30,8 @@ from official.vision.image_classification.efficientnet import efficientnet_model
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string("model_name", None,
-                    "EfficientNet model name.")
-flags.DEFINE_string("model_path", None,
-                    "File path to TF model checkpoint.")
+flags.DEFINE_string("model_name", None, "EfficientNet model name.")
+flags.DEFINE_string("model_path", None, "File path to TF model checkpoint.")
 flags.DEFINE_string("export_path", None,
                     "TF-Hub SavedModel destination path to export.")
 
@@ -64,6 +62,7 @@ def main(argv):
     raise app.UsageError("Too many command-line arguments.")
 
   export_tfhub(FLAGS.model_path, FLAGS.export_path, FLAGS.model_name)
+
 
 if __name__ == "__main__":
   app.run(main)

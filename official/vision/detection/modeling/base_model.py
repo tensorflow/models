@@ -21,6 +21,7 @@ from __future__ import print_function
 import abc
 import functools
 import re
+
 import tensorflow as tf
 from official.vision.detection.modeling import checkpoint_utils
 from official.vision.detection.modeling import learning_rates
@@ -42,8 +43,7 @@ def _make_filter_trainable_variables_fn(frozen_variable_prefix):
     # frozen_variable_prefix: a regex string specifing the prefix pattern of
     # the frozen variables' names.
     filtered_variables = [
-        v for v in variables
-        if not frozen_variable_prefix or
+        v for v in variables if not frozen_variable_prefix or
         not re.match(frozen_variable_prefix, v.name)
     ]
     return filtered_variables
@@ -115,8 +115,8 @@ class Model(object):
   def weight_decay_loss(self, trainable_variables):
     reg_variables = [
         v for v in trainable_variables
-        if self._regularization_var_regex is None
-        or re.match(self._regularization_var_regex, v.name)
+        if self._regularization_var_regex is None or
+        re.match(self._regularization_var_regex, v.name)
     ]
 
     return self._l2_weight_decay * tf.add_n(

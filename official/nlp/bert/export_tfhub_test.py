@@ -91,6 +91,7 @@ class ExportTfhubTest(tf.test.TestCase):
       outputs = np.concatenate(
           [hub_layer(inputs, training=training)[0] for _ in range(num_runs)])
       return np.mean(np.std(outputs, axis=0))
+
     self.assertLess(_dropout_mean_stddev(training=False), 1e-6)
     self.assertGreater(_dropout_mean_stddev(training=True), 1e-3)
 

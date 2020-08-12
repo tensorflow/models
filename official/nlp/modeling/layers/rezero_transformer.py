@@ -161,7 +161,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._rezero_a = self.add_weight(
         name="rezero_alpha",
         initializer=tf.keras.initializers.Zeros(),
-        trainable=True, dtype=tf.float32)
+        trainable=True,
+        dtype=tf.float32)
 
     super(ReZeroTransformer, self).build(input_shape)
 

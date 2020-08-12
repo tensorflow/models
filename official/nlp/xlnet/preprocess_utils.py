@@ -21,7 +21,6 @@ import unicodedata
 
 import six
 
-
 SPIECE_UNDERLINE = '▁'
 
 
@@ -95,8 +94,8 @@ def encode_pieces(sp_model, text, return_unicode=True, sample=False):
   new_pieces = []
   for piece in pieces:
     if len(piece) > 1 and piece[-1] == ',' and piece[-2].isdigit():
-      cur_pieces = sp_model.EncodeAsPieces(
-          piece[:-1].replace(SPIECE_UNDERLINE, ''))
+      cur_pieces = sp_model.EncodeAsPieces(piece[:-1].replace(
+          SPIECE_UNDERLINE, ''))
       if piece[0] != SPIECE_UNDERLINE and cur_pieces[0][0] == SPIECE_UNDERLINE:
         if len(cur_pieces[0]) == 1:
           cur_pieces = cur_pieces[1:]

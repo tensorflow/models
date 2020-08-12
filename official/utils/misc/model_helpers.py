@@ -58,9 +58,12 @@ def past_stop_threshold(stop_threshold, eval_metric):
   return False
 
 
-def generate_synthetic_data(
-    input_shape, input_value=0, input_dtype=None, label_shape=None,
-    label_value=0, label_dtype=None):
+def generate_synthetic_data(input_shape,
+                            input_value=0,
+                            input_dtype=None,
+                            label_shape=None,
+                            label_value=0,
+                            label_dtype=None):
   """Create a repeating dataset with constant values.
 
   Args:

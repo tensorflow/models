@@ -22,13 +22,13 @@ import collections
 import re
 import sys
 import unicodedata
+
 from absl import logging
 
 import numpy as np
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-
 
 # pylint: disable=g-complex-comprehension
 PAD = "<pad>"

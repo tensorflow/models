@@ -250,8 +250,7 @@ def predict(task: TaggingTask, params: cfg.DataConfig,
     cur_predict_ids = state['predict_ids']
     cur_sentence_ids = state['sentence_ids']
     for batch_predict_ids, batch_label_mask, batch_sentence_ids in zip(
-        outputs['predict_ids'], outputs['label_mask'],
-        outputs['sentence_ids']):
+        outputs['predict_ids'], outputs['label_mask'], outputs['sentence_ids']):
       for tmp_predict_ids, tmp_label_mask, tmp_sentence_id in zip(
           batch_predict_ids.numpy(), batch_label_mask.numpy(),
           batch_sentence_ids.numpy()):

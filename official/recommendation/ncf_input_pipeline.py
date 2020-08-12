@@ -21,6 +21,7 @@ from __future__ import print_function
 import functools
 
 # pylint: disable=g-bad-import-order
+
 import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
@@ -130,8 +131,8 @@ def create_ncf_input_data(params,
       from tf record files. Must be specified when params["train_input_dataset"]
       is specified.
     strategy: Distribution strategy used for distributed training. If specified,
-      used to assert that evaluation batch size is correctly a multiple of
-      total number of devices used.
+      used to assert that evaluation batch size is correctly a multiple of total
+      number of devices used.
 
   Returns:
     (training dataset, evaluation dataset, train steps per epoch,

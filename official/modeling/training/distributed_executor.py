@@ -133,15 +133,9 @@ class SummaryWriter(object):
 
 
 class DistributedExecutor(object):
-  """Interface to train and eval models with tf.distribute.Strategy.
-  """
+  """Interface to train and eval models with tf.distribute.Strategy."""
 
-  def __init__(self,
-               strategy,
-               params,
-               model_fn,
-               loss_fn,
-               is_multi_host=False):
+  def __init__(self, strategy, params, model_fn, loss_fn, is_multi_host=False):
     """Constructor.
 
     Args:
@@ -293,8 +287,7 @@ class DistributedExecutor(object):
         raise ValueError('steps should be an Tensor. Python object may cause '
                          'retracing.')
 
-      per_replica_losses = strategy.run(
-          replicated_step, args=(next(iterator),))
+      per_replica_losses = strategy.run(replicated_step, args=(next(iterator),))
       for _ in tf.range(num_steps - 1):
         per_replica_losses = strategy.run(
             replicated_step, args=(next(iterator),))
@@ -368,6 +361,7 @@ class DistributedExecutor(object):
         available checkpoints. If `False`, will do the evaluation once after the
         final step.
       save_config: bool. Whether to save params to model_dir.
+
     Returns:
       The training loss and eval metrics.
     """
@@ -477,16 +471,15 @@ class DistributedExecutor(object):
 
     # Step-0 operations
     if current_step == 0 and not latest_checkpoint_file:
-      _save_checkpoint(
-          checkpoint, model_dir, checkpoint_name.format(step=current_step))
+      _save_checkpoint(checkpoint, model_dir,
+                       checkpoint_name.format(step=current_step))
     if test_step:
       eval_iterator = self._get_input_iterator(eval_input_fn, strategy)
-      eval_metric_result = self._run_evaluation(
-          test_step, current_step, eval_metric, eval_iterator)
-      logging.info(
-          'Step: %s evalation metric = %s.', current_step, eval_metric_result)
-      test_summary_writer(
-          metrics=eval_metric_result, step=optimizer.iterations)
+      eval_metric_result = self._run_evaluation(test_step, current_step,
+                                                eval_metric, eval_iterator)
+      logging.info('Step: %s evalation metric = %s.', current_step,
+                   eval_metric_result)
+      test_summary_writer(metrics=eval_metric_result, step=optimizer.iterations)
       reset_states(eval_metric)
 
     logging.info('Training started')
@@ -519,8 +512,7 @@ class DistributedExecutor(object):
       else:
         train_metric_result.update({'learning_rate': optimizer.lr.numpy()})
       logging.info('Train Step: %d/%d  / loss = %s / training metric = %s',
-                   current_step, total_steps, train_loss,
-                   train_metric_result)
+                   current_step, total_steps, train_loss, train_metric_result)
 
       train_summary_writer(
           metrics=train_metric_result, step=optimizer.iterations)
@@ -561,8 +553,7 @@ class DistributedExecutor(object):
       eval_metric_result = self._run_evaluation(test_step, current_step,
                                                 eval_metric, eval_iterator)
       logging.info('Final evaluation metric = %s.', eval_metric_result)
-      test_summary_writer(
-          metrics=eval_metric_result, step=optimizer.iterations)
+      test_summary_writer(metrics=eval_metric_result, step=optimizer.iterations)
 
     self.train_summary_writer.close()
     self.eval_summary_writer.close()
@@ -696,9 +687,8 @@ class DistributedExecutor(object):
       reader = tf.compat.v1.train.NewCheckpointReader(checkpoint_path)
       current_step = reader.get_tensor(
           'optimizer/iter/.ATTRIBUTES/VARIABLE_VALUE')
-      logging.info(
-          'Checkpoint file %s found and restoring from '
-          'checkpoint', checkpoint_path)
+      logging.info('Checkpoint file %s found and restoring from '
+                   'checkpoint', checkpoint_path)
       status = checkpoint.restore(checkpoint_path)
       status.expect_partial().assert_existing_objects_matched()
 
@@ -755,8 +745,8 @@ class ExecutorBuilder(object):
   """
 
   def __init__(self, strategy_type=None, strategy_config=None):
-    _ = distribution_utils.configure_cluster(
-        strategy_config.worker_hosts, strategy_config.task_index)
+    _ = distribution_utils.configure_cluster(strategy_config.worker_hosts,
+                                             strategy_config.task_index)
     """Constructor.
 
     Args:

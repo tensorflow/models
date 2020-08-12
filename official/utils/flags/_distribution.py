@@ -38,7 +38,8 @@ def define_distribution(worker_hosts=True, task_index=True):
 
   if worker_hosts:
     flags.DEFINE_string(
-        name='worker_hosts', default=None,
+        name='worker_hosts',
+        default=None,
         help=help_wrap(
             'Comma-separated list of worker ip:port pairs for running '
             'multi-worker models with DistributionStrategy.  The user would '
@@ -47,7 +48,8 @@ def define_distribution(worker_hosts=True, task_index=True):
 
   if task_index:
     flags.DEFINE_integer(
-        name='task_index', default=-1,
+        name='task_index',
+        default=-1,
         help=help_wrap('If multi-worker training, the task_index of this '
                        'worker.'))
 

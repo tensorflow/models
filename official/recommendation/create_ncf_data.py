@@ -21,6 +21,7 @@ from __future__ import print_function
 import json
 
 # pylint: disable=g-bad-import-order
+# Import libraries
 from absl import app
 from absl import flags
 import tensorflow.compat.v2 as tf

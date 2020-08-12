@@ -38,15 +38,14 @@ def get_encoder_from_hub(hub_module: str) -> tf.keras.Model:
 
 
 def predict(predict_step_fn: Callable[[Any], Any],
-            aggregate_fn: Callable[[Any, Any], Any],
-            dataset: tf.data.Dataset):
+            aggregate_fn: Callable[[Any, Any], Any], dataset: tf.data.Dataset):
   """Runs prediction.
 
   Args:
     predict_step_fn: A callable such as `def predict_step(inputs)`, where
       `inputs` are input tensors.
     aggregate_fn: A callable such as `def aggregate_fn(state, value)`, where
-        `value` is the outputs from `predict_step_fn`.
+      `value` is the outputs from `predict_step_fn`.
     dataset: A `tf.data.Dataset` object.
 
   Returns:

@@ -28,22 +28,23 @@ import tensorflow as tf
 from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 
+
 # TODO(b/140112644): Refactor the code with Keras style, i.e. build and call.
 class Resnet(object):
   """Class to build ResNet family model."""
 
-  def __init__(self,
-               resnet_depth,
-               activation='relu',
-               norm_activation=nn_ops.norm_activation_builder(
-                   activation='relu'),
-               data_format='channels_last'):
+  def __init__(
+      self,
+      resnet_depth,
+      activation='relu',
+      norm_activation=nn_ops.norm_activation_builder(activation='relu'),
+      data_format='channels_last'):
     """ResNet initialization function.
 
     Args:
       resnet_depth: `int` depth of ResNet backbone model.
-      norm_activation: an operation that includes a normalization layer
-        followed by an optional activation layer.
+      norm_activation: an operation that includes a normalization layer followed
+        by an optional activation layer.
       data_format: `str` either "channels_first" for `[batch, channels, height,
         width]` or "channels_last for `[batch, height, width, channels]`.
     """
@@ -58,24 +59,45 @@ class Resnet(object):
     self._data_format = data_format
 
     model_params = {
-        10: {'block': self.residual_block, 'layers': [1, 1, 1, 1]},
-        18: {'block': self.residual_block, 'layers': [2, 2, 2, 2]},
-        34: {'block': self.residual_block, 'layers': [3, 4, 6, 3]},
-        50: {'block': self.bottleneck_block, 'layers': [3, 4, 6, 3]},
-        101: {'block': self.bottleneck_block, 'layers': [3, 4, 23, 3]},
-        152: {'block': self.bottleneck_block, 'layers': [3, 8, 36, 3]},
-        200: {'block': self.bottleneck_block, 'layers': [3, 24, 36, 3]}
+        10: {
+            'block': self.residual_block,
+            'layers': [1, 1, 1, 1]
+        },
+        18: {
+            'block': self.residual_block,
+            'layers': [2, 2, 2, 2]
+        },
+        34: {
+            'block': self.residual_block,
+            'layers': [3, 4, 6, 3]
+        },
+        50: {
+            'block': self.bottleneck_block,
+            'layers': [3, 4, 6, 3]
+        },
+        101: {
+            'block': self.bottleneck_block,
+            'layers': [3, 4, 23, 3]
+        },
+        152: {
+            'block': self.bottleneck_block,
+            'layers': [3, 8, 36, 3]
+        },
+        200: {
+            'block': self.bottleneck_block,
+            'layers': [3, 24, 36, 3]
+        }
     }
 
     if resnet_depth not in model_params:
       valid_resnet_depths = ', '.join(
           [str(depth) for depth in sorted(model_params.keys())])
       raise ValueError(
-          'The resnet_depth should be in [%s]. Not a valid resnet_depth:'%(
-              valid_resnet_depths), self._resnet_depth)
+          'The resnet_depth should be in [%s]. Not a valid resnet_depth:' %
+          (valid_resnet_depths), self._resnet_depth)
     params = model_params[resnet_depth]
-    self._resnet_fn = self.resnet_v1_generator(
-        params['block'], params['layers'])
+    self._resnet_fn = self.resnet_v1_generator(params['block'],
+                                               params['layers'])
 
   def __call__(self, inputs, is_training=None):
     """Returns the ResNet model for a given size and number of output classes.
@@ -98,10 +120,10 @@ class Resnet(object):
     """Pads the input along the spatial dimensions independently of input size.
 
     Args:
-      inputs: `Tensor` of size `[batch, channels, height, width]` or
-          `[batch, height, width, channels]` depending on `data_format`.
+      inputs: `Tensor` of size `[batch, channels, height, width]` or `[batch,
+        height, width, channels]` depending on `data_format`.
       kernel_size: `int` kernel size to be used for `conv2d` or max_pool2d`
-          operations. Should be a positive integer.
+        operations. Should be a positive integer.
 
     Returns:
       A padded `Tensor` of the same `data_format` with size either intact
@@ -160,14 +182,15 @@ class Resnet(object):
     Args:
       inputs: `Tensor` of size `[batch, channels, height, width]`.
       filters: `int` number of filters for the first two convolutions. Note that
-          the third and final convolution will use 4 times as many filters.
+        the third and final convolution will use 4 times as many filters.
       strides: `int` block stride. If greater than 1, this block will ultimately
-          downsample the input.
+        downsample the input.
       use_projection: `bool` for whether this block should use a projection
-          shortcut (versus the default identity shortcut). This is usually
-          `True` for the first block of a block group, which may change the
-          number of filters and the resolution.
+        shortcut (versus the default identity shortcut). This is usually `True`
+        for the first block of a block group, which may change the number of
+        filters and the resolution.
       is_training: `bool` if True, the model is in training mode.
+
     Returns:
       The output `Tensor` of the block.
     """
@@ -185,8 +208,9 @@ class Resnet(object):
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=filters, kernel_size=3, strides=1)
-    inputs = self._norm_activation(use_activation=False, init_zero=True)(
-        inputs, is_training=is_training)
+    inputs = self._norm_activation(
+        use_activation=False, init_zero=True)(
+            inputs, is_training=is_training)
 
     return self._activation_op(inputs + shortcut)
 
@@ -201,13 +225,13 @@ class Resnet(object):
     Args:
       inputs: `Tensor` of size `[batch, channels, height, width]`.
       filters: `int` number of filters for the first two convolutions. Note that
-          the third and final convolution will use 4 times as many filters.
+        the third and final convolution will use 4 times as many filters.
       strides: `int` block stride. If greater than 1, this block will ultimately
-          downsample the input.
+        downsample the input.
       use_projection: `bool` for whether this block should use a projection
-          shortcut (versus the default identity shortcut). This is usually
-          `True` for the first block of a block group, which may change the
-          number of filters and the resolution.
+        shortcut (versus the default identity shortcut). This is usually `True`
+        for the first block of a block group, which may change the number of
+        filters and the resolution.
       is_training: `bool` if True, the model is in training mode.
 
     Returns:
@@ -233,8 +257,9 @@ class Resnet(object):
 
     inputs = self.conv2d_fixed_padding(
         inputs=inputs, filters=4 * filters, kernel_size=1, strides=1)
-    inputs = self._norm_activation(use_activation=False, init_zero=True)(
-        inputs, is_training=is_training)
+    inputs = self._norm_activation(
+        use_activation=False, init_zero=True)(
+            inputs, is_training=is_training)
 
     return self._activation_op(inputs + shortcut)
 
@@ -248,7 +273,7 @@ class Resnet(object):
       block_fn: `function` for the block to use within the model
       blocks: `int` number of blocks contained in the layer.
       strides: `int` stride to use for the first convolution of the layer. If
-          greater than 1, this layer will downsample the input.
+        greater than 1, this layer will downsample the input.
       name: `str`name for the Tensor output of the block layer.
       is_training: `bool` if True, the model is in training mode.
 
@@ -256,8 +281,8 @@ class Resnet(object):
       The output `Tensor` of the block layer.
     """
     # Only the first block per block_group uses projection shortcut and strides.
-    inputs = block_fn(inputs, filters, strides, use_projection=True,
-                      is_training=is_training)
+    inputs = block_fn(
+        inputs, filters, strides, use_projection=True, is_training=is_training)
 
     for _ in range(1, blocks):
       inputs = block_fn(inputs, filters, 1, is_training=is_training)
@@ -269,7 +294,7 @@ class Resnet(object):
 
     Args:
       block_fn: `function` for the block to use within the model. Either
-          `residual_block` or `bottleneck_block`.
+        `residual_block` or `bottleneck_block`.
       layers: list of 4 `int`s denoting the number of blocks to include in each
         of the 4 block groups. Each group consists of blocks that take inputs of
         the same resolution.
@@ -293,17 +318,37 @@ class Resnet(object):
       inputs = tf.identity(inputs, 'initial_max_pool')
 
       c2 = self.block_group(
-          inputs=inputs, filters=64, block_fn=block_fn, blocks=layers[0],
-          strides=1, name='block_group1', is_training=is_training)
+          inputs=inputs,
+          filters=64,
+          block_fn=block_fn,
+          blocks=layers[0],
+          strides=1,
+          name='block_group1',
+          is_training=is_training)
       c3 = self.block_group(
-          inputs=c2, filters=128, block_fn=block_fn, blocks=layers[1],
-          strides=2, name='block_group2', is_training=is_training)
+          inputs=c2,
+          filters=128,
+          block_fn=block_fn,
+          blocks=layers[1],
+          strides=2,
+          name='block_group2',
+          is_training=is_training)
       c4 = self.block_group(
-          inputs=c3, filters=256, block_fn=block_fn, blocks=layers[2],
-          strides=2, name='block_group3', is_training=is_training)
+          inputs=c3,
+          filters=256,
+          block_fn=block_fn,
+          blocks=layers[2],
+          strides=2,
+          name='block_group3',
+          is_training=is_training)
       c5 = self.block_group(
-          inputs=c4, filters=512, block_fn=block_fn, blocks=layers[3],
-          strides=2, name='block_group4', is_training=is_training)
+          inputs=c4,
+          filters=512,
+          block_fn=block_fn,
+          blocks=layers[3],
+          strides=2,
+          name='block_group4',
+          is_training=is_training)
       return {2: c2, 3: c3, 4: c4, 5: c5}
 
     return model

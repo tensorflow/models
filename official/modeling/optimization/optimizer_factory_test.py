@@ -25,12 +25,7 @@ from official.modeling.optimization.configs import optimization_config
 
 class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.parameters(
-      ('sgd'),
-      ('rmsprop'),
-      ('adam'),
-      ('adamw'),
-      ('lamb'))
+  @parameterized.parameters(('sgd'), ('rmsprop'), ('adam'), ('adamw'), ('lamb'))
   def test_optimizers(self, optimizer_type):
     params = {
         'optimizer': {
@@ -56,20 +51,17 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
 
   def test_missing_types(self):
-    params = {
-        'optimizer': {
-            'type': 'sgd',
-            'sgd': {'momentum': 0.9}
-        }
-    }
+    params = {'optimizer': {'type': 'sgd', 'sgd': {'momentum': 0.9}}}
     with self.assertRaises(ValueError):
       optimizer_factory.OptimizerFactory(
           optimization_config.OptimizationConfig(params))
     params = {
         'learning_rate': {
             'type': 'stepwise',
-            'stepwise': {'boundaries': [10000, 20000],
-                         'values': [0.1, 0.01, 0.001]}
+            'stepwise': {
+                'boundaries': [10000, 20000],
+                'values': [0.1, 0.01, 0.001]
+            }
         }
     }
     with self.assertRaises(ValueError):
@@ -80,22 +72,20 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'momentum': 0.9}
+            'sgd': {
+                'momentum': 0.9
+            }
         },
         'learning_rate': {
             'type': 'stepwise',
-            'stepwise': {'boundaries': [10000, 20000],
-                         'values': [0.1, 0.01, 0.001]}
+            'stepwise': {
+                'boundaries': [10000, 20000],
+                'values': [0.1, 0.01, 0.001]
+            }
         }
     }
-    expected_lr_step_values = [
-        [0, 0.1],
-        [5000, 0.1],
-        [10000, 0.1],
-        [10001, 0.01],
-        [20000, 0.01],
-        [20001, 0.001]
-    ]
+    expected_lr_step_values = [[0, 0.1], [5000, 0.1], [10000, 0.1],
+                               [10001, 0.01], [20000, 0.01], [20001, 0.001]]
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
@@ -107,28 +97,28 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'momentum': 0.9}
+            'sgd': {
+                'momentum': 0.9
+            }
         },
         'learning_rate': {
             'type': 'stepwise',
-            'stepwise': {'boundaries': [10000, 20000],
-                         'values': [0.1, 0.01, 0.001]}
+            'stepwise': {
+                'boundaries': [10000, 20000],
+                'values': [0.1, 0.01, 0.001]
+            }
         },
         'warmup': {
             'type': 'linear',
-            'linear': {'warmup_steps': 500, 'warmup_learning_rate': 0.01}
+            'linear': {
+                'warmup_steps': 500,
+                'warmup_learning_rate': 0.01
+            }
         }
     }
-    expected_lr_step_values = [
-        [0, 0.01],
-        [250, 0.055],
-        [500, 0.1],
-        [5500, 0.1],
-        [10000, 0.1],
-        [10001, 0.01],
-        [20000, 0.01],
-        [20001, 0.001]
-    ]
+    expected_lr_step_values = [[0, 0.01], [250, 0.055], [500, 0.1], [5500, 0.1],
+                               [10000, 0.1], [10001, 0.01], [20000, 0.01],
+                               [20001, 0.001]]
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
@@ -140,7 +130,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'momentum': 0.9}
+            'sgd': {
+                'momentum': 0.9
+            }
         },
         'learning_rate': {
             'type': 'exponential',
@@ -170,7 +162,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'momentum': 0.9}
+            'sgd': {
+                'momentum': 0.9
+            }
         },
         'learning_rate': {
             'type': 'polynomial',
@@ -194,7 +188,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'momentum': 0.9}
+            'sgd': {
+                'momentum': 0.9
+            }
         },
         'learning_rate': {
             'type': 'cosine',
@@ -204,11 +200,8 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
             }
         }
     }
-    expected_lr_step_values = [[0, 0.1],
-                               [250, 0.08535534],
-                               [500, 0.04999999],
-                               [750, 0.01464466],
-                               [1000, 0]]
+    expected_lr_step_values = [[0, 0.1], [250, 0.08535534], [500, 0.04999999],
+                               [750, 0.01464466], [1000, 0]]
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
@@ -220,7 +213,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'momentum': 0.9}
+            'sgd': {
+                'momentum': 0.9
+            }
         },
         'learning_rate': {
             'type': 'constant',
@@ -250,34 +245,35 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     params = {
         'optimizer': {
             'type': 'sgd',
-            'sgd': {'momentum': 0.9}
+            'sgd': {
+                'momentum': 0.9
+            }
         },
         'learning_rate': {
             'type': 'stepwise',
-            'stepwise': {'boundaries': [10000, 20000],
-                         'values': [0.1, 0.01, 0.001]}
+            'stepwise': {
+                'boundaries': [10000, 20000],
+                'values': [0.1, 0.01, 0.001]
+            }
         },
         'warmup': {
             'type': 'polynomial',
-            'polynomial': {'warmup_steps': 500, 'power': 2.}
+            'polynomial': {
+                'warmup_steps': 500,
+                'power': 2.
+            }
         }
     }
-    expected_lr_step_values = [
-        [0, 0.0],
-        [250, 0.025],
-        [500, 0.1],
-        [5500, 0.1],
-        [10000, 0.1],
-        [10001, 0.01],
-        [20000, 0.01],
-        [20001, 0.001]
-    ]
+    expected_lr_step_values = [[0, 0.0], [250, 0.025], [500, 0.1], [5500, 0.1],
+                               [10000, 0.1], [10001, 0.01], [20000, 0.01],
+                               [20001, 0.001]]
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
 
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
+
 
 if __name__ == '__main__':
   tf.test.main()

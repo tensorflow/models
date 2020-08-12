@@ -38,15 +38,12 @@ class OneOfConfig(base_config.Config):
     if self.type is None:
       return {'type': None}
     elif self.__dict__['type'] not in self.__dict__:
-      raise ValueError(
-          'type: {!r} is not a valid key!'.format(self.__dict__['type']))
+      raise ValueError('type: {!r} is not a valid key!'.format(
+          self.__dict__['type']))
     else:
       chosen_type = self.type
       chosen_value = self.__dict__[chosen_type]
-      return {
-          'type': self.type,
-          chosen_type: self._export_config(chosen_value)
-      }
+      return {'type': self.type, chosen_type: self._export_config(chosen_value)}
 
   def get(self):
     """Returns selected config based on the value of type.
@@ -57,6 +54,5 @@ class OneOfConfig(base_config.Config):
     if chosen_type is None:
       return None
     if chosen_type not in self.__dict__:
-      raise ValueError(
-          'type: {!r} is not a valid key!'.format(self.type))
+      raise ValueError('type: {!r} is not a valid key!'.format(self.type))
     return self.__dict__[chosen_type]

@@ -105,14 +105,13 @@ def get_trivial_model(num_classes: int) -> tf.keras.Model:
   lr = 0.01
   optimizer = tf.keras.optimizers.SGD(learning_rate=lr)
   loss_obj = tf.keras.losses.SparseCategoricalCrossentropy()
-  model.compile(optimizer=optimizer,
-                loss=loss_obj,
-                run_eagerly=True)
+  model.compile(optimizer=optimizer, loss=loss_obj, run_eagerly=True)
   return model
 
 
 def get_trivial_data() -> tf.data.Dataset:
   """Gets trivial data in the ImageNet size."""
+
   def generate_data(_) -> tf.data.Dataset:
     image = tf.zeros(shape=(224, 224, 3), dtype=tf.float32)
     label = tf.zeros([1], dtype=tf.int32)
@@ -120,8 +119,8 @@ def get_trivial_data() -> tf.data.Dataset:
 
   dataset = tf.data.Dataset.range(1)
   dataset = dataset.repeat()
-  dataset = dataset.map(generate_data,
-                        num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  dataset = dataset.map(
+      generate_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
   dataset = dataset.prefetch(buffer_size=1).batch(1)
   return dataset
 
@@ -165,11 +164,10 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
         '--mode=train_and_eval',
     ]
 
-    run = functools.partial(classifier_trainer.run,
-                            strategy_override=distribution)
-    run_end_to_end(main=run,
-                   extra_flags=train_and_eval_flags,
-                   model_dir=model_dir)
+    run = functools.partial(
+        classifier_trainer.run, strategy_override=distribution)
+    run_end_to_end(
+        main=run, extra_flags=train_and_eval_flags, model_dir=model_dir)
 
   @combinations.generate(
       combinations.combine(
@@ -209,29 +207,26 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
         get_params_override(export_params)
     ]
 
-    run = functools.partial(classifier_trainer.run,
-                            strategy_override=distribution)
-    run_end_to_end(main=run,
-                   extra_flags=train_and_eval_flags,
-                   model_dir=model_dir)
-    run_end_to_end(main=run,
-                   extra_flags=export_flags,
-                   model_dir=model_dir)
+    run = functools.partial(
+        classifier_trainer.run, strategy_override=distribution)
+    run_end_to_end(
+        main=run, extra_flags=train_and_eval_flags, model_dir=model_dir)
+    run_end_to_end(main=run, extra_flags=export_flags, model_dir=model_dir)
     self.assertTrue(os.path.exists(export_path))
 
   @combinations.generate(
       combinations.combine(
-      distribution=[
-          strategy_combinations.tpu_strategy,
-      ],
-      model=[
-          'efficientnet',
-          'resnet',
-      ],
-      mode='eager',
-      dataset='imagenet',
-      dtype='bfloat16',
-  ))
+          distribution=[
+              strategy_combinations.tpu_strategy,
+          ],
+          model=[
+              'efficientnet',
+              'resnet',
+          ],
+          mode='eager',
+          dataset='imagenet',
+          dtype='bfloat16',
+      ))
   def test_tpu_train(self, distribution, model, dataset, dtype):
     """Test train_and_eval and export for Keras classifier models."""
     # Some parameters are not defined as flags (e.g. cannot run
@@ -248,11 +243,10 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
         '--mode=train_and_eval',
     ]
 
-    run = functools.partial(classifier_trainer.run,
-                            strategy_override=distribution)
-    run_end_to_end(main=run,
-                   extra_flags=train_and_eval_flags,
-                   model_dir=model_dir)
+    run = functools.partial(
+        classifier_trainer.run, strategy_override=distribution)
+    run_end_to_end(
+        main=run, extra_flags=train_and_eval_flags, model_dir=model_dir)
 
   @combinations.generate(distribution_strategy_combinations())
   def test_end_to_end_invalid_mode(self, distribution, model, dataset):
@@ -266,8 +260,8 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
         get_params_override(basic_params_override()),
     ]
 
-    run = functools.partial(classifier_trainer.run,
-                            strategy_override=distribution)
+    run = functools.partial(
+        classifier_trainer.run, strategy_override=distribution)
     with self.assertRaises(ValueError):
       run_end_to_end(main=run, extra_flags=extra_flags, model_dir=model_dir)
 
@@ -292,9 +286,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
         model=base_configs.ModelConfig(
             model_params={
                 'model_name': model_name,
-            },
-        )
-    )
+            },))
     size = classifier_trainer.get_image_size_from_model(config)
     self.assertEqual(size, expected)
 
@@ -306,16 +298,13 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
   )
   def test_get_loss_scale(self, loss_scale, dtype, expected):
     config = base_configs.ExperimentConfig(
-        runtime=base_configs.RuntimeConfig(
-            loss_scale=loss_scale),
+        runtime=base_configs.RuntimeConfig(loss_scale=loss_scale),
         train_dataset=dataset_factory.DatasetConfig(dtype=dtype))
     ls = classifier_trainer.get_loss_scale(config, fp16_default=128)
     self.assertEqual(ls, expected)
 
-  @parameterized.named_parameters(
-      ('float16', 'float16'),
-      ('bfloat16', 'bfloat16')
-  )
+  @parameterized.named_parameters(('float16', 'float16'),
+                                  ('bfloat16', 'bfloat16'))
   def test_initialize(self, dtype):
     config = base_configs.ExperimentConfig(
         runtime=base_configs.RuntimeConfig(
@@ -332,6 +321,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
 
     class EmptyClass:
       pass
+
     fake_ds_builder = EmptyClass()
     fake_ds_builder.dtype = dtype
     fake_ds_builder.config = EmptyClass()
@@ -366,9 +356,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
     clean_model = get_trivial_model(10)
     weights_before_load = copy.deepcopy(clean_model.get_weights())
     initial_epoch = classifier_trainer.resume_from_checkpoint(
-        model=clean_model,
-        model_dir=model_dir,
-        train_steps=train_steps)
+        model=clean_model, model_dir=model_dir, train_steps=train_steps)
     self.assertEqual(initial_epoch, 1)
     self.assertNotAllClose(weights_before_load, clean_model.get_weights())
 
@@ -382,6 +370,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
     saved_params_path = os.path.join(model_dir, 'params.yaml')
     self.assertTrue(os.path.exists(saved_params_path))
     tf.io.gfile.rmtree(model_dir)
+
 
 if __name__ == '__main__':
   tf.test.main()

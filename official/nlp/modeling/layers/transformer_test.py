@@ -233,8 +233,8 @@ class TransformerArgumentTest(keras_parameterized.TestCase):
         norm_first=True,
         norm_epsilon=1e-6,
         intermediate_dropout=0.1,
-        attention_initializer=tf.keras.initializers.RandomUniform(minval=0.,
-                                                                  maxval=1.))
+        attention_initializer=tf.keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
     # Forward path.
     dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
     dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
@@ -254,8 +254,8 @@ class TransformerArgumentTest(keras_parameterized.TestCase):
         norm_first=True,
         norm_epsilon=1e-6,
         intermediate_dropout=0.1,
-        attention_initializer=tf.keras.initializers.RandomUniform(minval=0.,
-                                                                  maxval=1.))
+        attention_initializer=tf.keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
     encoder_block_config = encoder_block.get_config()
     new_encoder_block = transformer.Transformer.from_config(
         encoder_block_config)
@@ -308,8 +308,8 @@ class TransformerDecoderLayerTest(keras_parameterized.TestCase):
         norm_first=True,
         norm_epsilon=1e-6,
         intermediate_dropout=0.1,
-        attention_initializer=tf.keras.initializers.RandomUniform(minval=0.,
-                                                                  maxval=1.))
+        attention_initializer=tf.keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
     # Forward path.
     dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
     dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
@@ -329,8 +329,8 @@ class TransformerDecoderLayerTest(keras_parameterized.TestCase):
         norm_first=True,
         norm_epsilon=1e-6,
         intermediate_dropout=0.1,
-        attention_initializer=tf.keras.initializers.RandomUniform(minval=0.,
-                                                                  maxval=1.))
+        attention_initializer=tf.keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
     decoder_block_config = decoder_block.get_config()
     new_decoder_block = transformer.TransformerDecoderLayer.from_config(
         decoder_block_config)

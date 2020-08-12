@@ -25,6 +25,7 @@ from official.utils.misc import distribution_utils
 
 class GetDistributionStrategyTest(tf.test.TestCase):
   """Tests for get_distribution_strategy."""
+
   def test_one_device_strategy_cpu(self):
     ds = distribution_utils.get_distribution_strategy(num_gpus=0)
     self.assertEquals(ds.num_replicas_in_sync, 1)
@@ -45,5 +46,5 @@ class GetDistributionStrategyTest(tf.test.TestCase):
       self.assertIn('GPU', device)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   tf.test.main()

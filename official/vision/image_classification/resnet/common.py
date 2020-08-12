@@ -30,7 +30,7 @@ from official.utils.misc import keras_utils
 FLAGS = flags.FLAGS
 BASE_LEARNING_RATE = 0.1  # This matches Jing's version.
 TRAIN_TOP_1 = 'training_accuracy_top_1'
-LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
+LR_SCHEDULE = [  # (multiplier, epoch to start) tuples
     (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
 ]
 
@@ -39,8 +39,14 @@ class PiecewiseConstantDecayWithWarmup(
     tf.keras.optimizers.schedules.LearningRateSchedule):
   """Piecewise constant decay with warmup schedule."""
 
-  def __init__(self, batch_size, epoch_size, warmup_epochs, boundaries,
-               multipliers, compute_lr_on_cpu=True, name=None):
+  def __init__(self,
+               batch_size,
+               epoch_size,
+               warmup_epochs,
+               boundaries,
+               multipliers,
+               compute_lr_on_cpu=True,
+               name=None):
     super(PiecewiseConstantDecayWithWarmup, self).__init__()
     if len(boundaries) != len(multipliers) - 1:
       raise ValueError('The length of boundaries must be 1 less than the '
@@ -77,14 +83,16 @@ class PiecewiseConstantDecayWithWarmup(
   def _get_learning_rate(self, step):
     """Compute learning rate at given step."""
     with tf.name_scope('PiecewiseConstantDecayWithWarmup'):
+
       def warmup_lr(step):
         return self.rescaled_lr * (
             tf.cast(step, tf.float32) / tf.cast(self.warmup_steps, tf.float32))
+
       def piecewise_lr(step):
-        return tf.compat.v1.train.piecewise_constant(
-            step, self.step_boundaries, self.lr_values)
-      return tf.cond(step < self.warmup_steps,
-                     lambda: warmup_lr(step),
+        return tf.compat.v1.train.piecewise_constant(step, self.step_boundaries,
+                                                     self.lr_values)
+
+      return tf.cond(step < self.warmup_steps, lambda: warmup_lr(step),
                      lambda: piecewise_lr(step))
 
   def get_config(self):
@@ -104,10 +112,9 @@ def get_optimizer(learning_rate=0.1):
   return gradient_descent_v2.SGD(learning_rate=learning_rate, momentum=0.9)
 
 
-def get_callbacks(
-    pruning_method=None,
-    enable_checkpoint_and_export=False,
-    model_dir=None):
+def get_callbacks(pruning_method=None,
+                  enable_checkpoint_and_export=False,
+                  model_dir=None):
   """Returns common callbacks."""
   time_callback = keras_utils.TimeHistory(
       FLAGS.batch_size,
@@ -117,23 +124,23 @@ def get_callbacks(
 
   if FLAGS.enable_tensorboard:
     tensorboard_callback = tf.keras.callbacks.TensorBoard(
-        log_dir=FLAGS.model_dir,
-        profile_batch=FLAGS.profile_steps)
+        log_dir=FLAGS.model_dir, profile_batch=FLAGS.profile_steps)
     callbacks.append(tensorboard_callback)
 
   is_pruning_enabled = pruning_method is not None
   if is_pruning_enabled:
     callbacks.append(tfmot.sparsity.keras.UpdatePruningStep())
     if model_dir is not None:
-      callbacks.append(tfmot.sparsity.keras.PruningSummaries(
-          log_dir=model_dir, profile_batch=0))
+      callbacks.append(
+          tfmot.sparsity.keras.PruningSummaries(
+              log_dir=model_dir, profile_batch=0))
 
   if enable_checkpoint_and_export:
     if model_dir is not None:
       ckpt_full_path = os.path.join(model_dir, 'model.ckpt-{epoch:04d}')
       callbacks.append(
-          tf.keras.callbacks.ModelCheckpoint(ckpt_full_path,
-                                             save_weights_only=True))
+          tf.keras.callbacks.ModelCheckpoint(
+              ckpt_full_path, save_weights_only=True))
   return callbacks
 
 
@@ -182,28 +189,32 @@ def build_stats(history, eval_output, callbacks):
   return stats
 
 
-def define_keras_flags(
-    dynamic_loss_scale=True,
-    model=False,
-    optimizer=False,
-    pretrained_filepath=False):
+def define_keras_flags(dynamic_loss_scale=True,
+                       model=False,
+                       optimizer=False,
+                       pretrained_filepath=False):
   """Define flags for Keras models."""
-  flags_core.define_base(clean=True, num_gpu=True, run_eagerly=True,
-                         train_epochs=True, epochs_between_evals=True,
-                         distribution_strategy=True)
-  flags_core.define_performance(num_parallel_calls=False,
-                                synthetic_data=True,
-                                dtype=True,
-                                all_reduce_alg=True,
-                                num_packs=True,
-                                tf_gpu_thread_mode=True,
-                                datasets_num_private_threads=True,
-                                dynamic_loss_scale=dynamic_loss_scale,
-                                loss_scale=True,
-                                fp16_implementation=True,
-                                tf_data_experimental_slack=True,
-                                enable_xla=True,
-                                training_dataset_cache=True)
+  flags_core.define_base(
+      clean=True,
+      num_gpu=True,
+      run_eagerly=True,
+      train_epochs=True,
+      epochs_between_evals=True,
+      distribution_strategy=True)
+  flags_core.define_performance(
+      num_parallel_calls=False,
+      synthetic_data=True,
+      dtype=True,
+      all_reduce_alg=True,
+      num_packs=True,
+      tf_gpu_thread_mode=True,
+      datasets_num_private_threads=True,
+      dynamic_loss_scale=dynamic_loss_scale,
+      loss_scale=True,
+      fp16_implementation=True,
+      tf_data_experimental_slack=True,
+      enable_xla=True,
+      training_dataset_cache=True)
   flags_core.define_image()
   flags_core.define_benchmark()
   flags_core.define_distribution()
@@ -214,23 +225,33 @@ def define_keras_flags(
   # TODO(b/135607288): Remove this flag once we understand the root cause of
   # slowdown when setting the learning phase in Keras backend.
   flags.DEFINE_boolean(
-      name='set_learning_phase_to_train', default=True,
+      name='set_learning_phase_to_train',
+      default=True,
       help='If skip eval, also set Keras learning phase to 1 (training).')
   flags.DEFINE_boolean(
-      name='explicit_gpu_placement', default=False,
+      name='explicit_gpu_placement',
+      default=False,
       help='If not using distribution strategy, explicitly set device scope '
       'for the Keras training loop.')
-  flags.DEFINE_boolean(name='use_trivial_model', default=False,
-                       help='Whether to use a trivial Keras model.')
-  flags.DEFINE_boolean(name='report_accuracy_metrics', default=True,
-                       help='Report metrics during training and evaluation.')
-  flags.DEFINE_boolean(name='use_tensor_lr', default=True,
-                       help='Use learning rate tensor instead of a callback.')
   flags.DEFINE_boolean(
-      name='enable_tensorboard', default=False,
+      name='use_trivial_model',
+      default=False,
+      help='Whether to use a trivial Keras model.')
+  flags.DEFINE_boolean(
+      name='report_accuracy_metrics',
+      default=True,
+      help='Report metrics during training and evaluation.')
+  flags.DEFINE_boolean(
+      name='use_tensor_lr',
+      default=True,
+      help='Use learning rate tensor instead of a callback.')
+  flags.DEFINE_boolean(
+      name='enable_tensorboard',
+      default=False,
       help='Whether to enable Tensorboard callback.')
   flags.DEFINE_string(
-      name='profile_steps', default=None,
+      name='profile_steps',
+      default=None,
       help='Save profiling data to model dir at given range of global steps. The '
       'value must be a comma separated pair of positive integers, specifying '
       'the first and last step to profile. For example, "--profile_steps=2,4" '
@@ -238,21 +259,24 @@ def define_keras_flags(
       'Note that profiler has a non-trivial performance overhead, and the '
       'output file can be gigantic if profiling many steps.')
   flags.DEFINE_integer(
-      name='train_steps', default=None,
+      name='train_steps',
+      default=None,
       help='The number of steps to run for training. If it is larger than '
       '# batches per epoch, then use # batches per epoch. This flag will be '
       'ignored if train_epochs is set to be larger than 1. ')
   flags.DEFINE_boolean(
-      name='batchnorm_spatial_persistent', default=True,
+      name='batchnorm_spatial_persistent',
+      default=True,
       help='Enable the spacial persistent mode for CuDNN batch norm kernel.')
   flags.DEFINE_boolean(
-      name='enable_get_next_as_optional', default=False,
+      name='enable_get_next_as_optional',
+      default=False,
       help='Enable get_next_as_optional behavior in DistributedIterator.')
   flags.DEFINE_boolean(
-      name='enable_checkpoint_and_export', default=False,
+      name='enable_checkpoint_and_export',
+      default=False,
       help='Whether to enable a checkpoint callback and export the savedmodel.')
-  flags.DEFINE_string(
-      name='tpu', default='', help='TPU address to connect to.')
+  flags.DEFINE_string(name='tpu', default='', help='TPU address to connect to.')
   flags.DEFINE_integer(
       name='steps_per_loop',
       default=None,
@@ -270,20 +294,20 @@ def define_keras_flags(
     flags.DEFINE_string('model', 'resnet50_v1.5',
                         'Name of model preset. (mobilenet, resnet50_v1.5)')
   if optimizer:
-    flags.DEFINE_string('optimizer', 'resnet50_default',
-                        'Name of optimizer preset. '
-                        '(mobilenet_default, resnet50_default)')
+    flags.DEFINE_string(
+        'optimizer', 'resnet50_default', 'Name of optimizer preset. '
+        '(mobilenet_default, resnet50_default)')
     # TODO(kimjaehong): Replace as general hyper-params not only for mobilenet.
-    flags.DEFINE_float('initial_learning_rate_per_sample', 0.00007,
-                       'Initial value of learning rate per sample for '
-                       'mobilenet_default.')
+    flags.DEFINE_float(
+        'initial_learning_rate_per_sample', 0.00007,
+        'Initial value of learning rate per sample for '
+        'mobilenet_default.')
     flags.DEFINE_float('lr_decay_factor', 0.94,
                        'Learning rate decay factor for mobilenet_default.')
     flags.DEFINE_float('num_epochs_per_decay', 2.5,
                        'Number of epochs per decay for mobilenet_default.')
   if pretrained_filepath:
-    flags.DEFINE_string('pretrained_filepath', '',
-                        'Pretrained file path.')
+    flags.DEFINE_string('pretrained_filepath', '', 'Pretrained file path.')
 
 
 def get_synth_data(height, width, num_channels, num_classes, dtype):
@@ -317,23 +341,24 @@ def get_synth_data(height, width, num_channels, num_classes, dtype):
 
 def define_pruning_flags():
   """Define flags for pruning methods."""
-  flags.DEFINE_string('pruning_method', None,
-                      'Pruning method.'
-                      'None (no pruning) or polynomial_decay.')
+  flags.DEFINE_string(
+      'pruning_method', None, 'Pruning method.'
+      'None (no pruning) or polynomial_decay.')
   flags.DEFINE_float('pruning_initial_sparsity', 0.0,
                      'Initial sparsity for pruning.')
   flags.DEFINE_float('pruning_final_sparsity', 0.5,
                      'Final sparsity for pruning.')
-  flags.DEFINE_integer('pruning_begin_step', 0,
-                       'Begin step for pruning.')
-  flags.DEFINE_integer('pruning_end_step', 100000,
-                       'End step for pruning.')
-  flags.DEFINE_integer('pruning_frequency', 100,
-                       'Frequency for pruning.')
+  flags.DEFINE_integer('pruning_begin_step', 0, 'Begin step for pruning.')
+  flags.DEFINE_integer('pruning_end_step', 100000, 'End step for pruning.')
+  flags.DEFINE_integer('pruning_frequency', 100, 'Frequency for pruning.')
 
 
-def get_synth_input_fn(height, width, num_channels, num_classes,
-                       dtype=tf.float32, drop_remainder=True):
+def get_synth_input_fn(height,
+                       width,
+                       num_channels,
+                       num_classes,
+                       dtype=tf.float32,
+                       drop_remainder=True):
   """Returns an input function that returns a dataset with random data.
 
   This input_fn returns a data set that iterates over a set of random data and
@@ -355,14 +380,16 @@ def get_synth_input_fn(height, width, num_channels, num_classes,
     An input_fn that can be used in place of a real one to return a dataset
     that can be used for iteration.
   """
+
   # pylint: disable=unused-argument
   def input_fn(is_training, data_dir, batch_size, *args, **kwargs):
     """Returns dataset filled with random data."""
-    inputs, labels = get_synth_data(height=height,
-                                    width=width,
-                                    num_channels=num_channels,
-                                    num_classes=num_classes,
-                                    dtype=dtype)
+    inputs, labels = get_synth_data(
+        height=height,
+        width=width,
+        num_channels=num_channels,
+        num_classes=num_classes,
+        dtype=dtype)
     # Cast to float32 for Keras model.
     labels = tf.cast(labels, dtype=tf.float32)
     data = tf.data.Dataset.from_tensors((inputs, labels)).repeat()

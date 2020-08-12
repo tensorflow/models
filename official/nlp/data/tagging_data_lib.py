@@ -267,12 +267,12 @@ def write_example_to_file(examples,
       logging.info("Writing example %d of %d to %s", ex_index, len(examples),
                    output_file)
 
-    tokenized_examples = _tokenize_example(example, max_seq_length,
-                                           tokenizer, text_preprocessing)
+    tokenized_examples = _tokenize_example(example, max_seq_length, tokenizer,
+                                           text_preprocessing)
     num_tokenized_examples += len(tokenized_examples)
     for per_tokenized_example in tokenized_examples:
-      tf_example = _convert_single_example(
-          per_tokenized_example, max_seq_length, tokenizer)
+      tf_example = _convert_single_example(per_tokenized_example,
+                                           max_seq_length, tokenizer)
       writer.write(tf_example.SerializeToString())
 
   writer.close()
@@ -307,17 +307,16 @@ def token_classification_meta_data(train_data_size,
   return meta_data
 
 
-def generate_tf_record_from_data_file(processor,
-                                      data_dir,
-                                      tokenizer,
-                                      max_seq_length,
-                                      train_data_output_path,
+def generate_tf_record_from_data_file(processor, data_dir, tokenizer,
+                                      max_seq_length, train_data_output_path,
                                       eval_data_output_path,
                                       test_data_output_path,
                                       text_preprocessing):
   """Generates tfrecord files from the raw data."""
-  common_kwargs = dict(tokenizer=tokenizer, max_seq_length=max_seq_length,
-                       text_preprocessing=text_preprocessing)
+  common_kwargs = dict(
+      tokenizer=tokenizer,
+      max_seq_length=max_seq_length,
+      text_preprocessing=text_preprocessing)
   train_examples = processor.get_train_examples(data_dir)
   train_data_size = write_example_to_file(
       train_examples, output_file=train_data_output_path, **common_kwargs)

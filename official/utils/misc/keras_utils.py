@@ -25,7 +25,6 @@ import time
 from absl import logging
 import tensorflow as tf
 
-
 from tensorflow.python.eager import monitoring
 
 global_batch_size_gauge = monitoring.IntGauge(
@@ -121,8 +120,8 @@ class TimeHistory(tf.keras.callbacks.Callback):
 
     # Record the timestamp of the first global step
     if not self.timestamp_log:
-      self.timestamp_log.append(BatchTimestamp(self.global_steps,
-                                               self.start_time))
+      self.timestamp_log.append(
+          BatchTimestamp(self.global_steps, self.start_time))
 
   def on_batch_end(self, batch, logs=None):
     """Records elapse time of the batch and calculates examples per second."""
@@ -175,12 +174,12 @@ def set_session_config(enable_xla=False):
   if enable_xla:
     tf.config.optimizer.set_jit(True)
 
+
 # TODO(hongkuny): remove set_config_v2 globally.
 set_config_v2 = set_session_config
 
 
-def set_gpu_thread_mode_and_count(gpu_thread_mode,
-                                  datasets_num_private_threads,
+def set_gpu_thread_mode_and_count(gpu_thread_mode, datasets_num_private_threads,
                                   num_gpus, per_gpu_thread_count):
   """Set GPU thread mode and count, and adjust dataset threads count."""
   cpu_count = multiprocessing.cpu_count()
@@ -190,10 +189,8 @@ def set_gpu_thread_mode_and_count(gpu_thread_mode,
   per_gpu_thread_count = per_gpu_thread_count or 2
   os.environ['TF_GPU_THREAD_MODE'] = gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  logging.info('TF_GPU_THREAD_COUNT: %s',
-               os.environ['TF_GPU_THREAD_COUNT'])
-  logging.info('TF_GPU_THREAD_MODE: %s',
-               os.environ['TF_GPU_THREAD_MODE'])
+  logging.info('TF_GPU_THREAD_COUNT: %s', os.environ['TF_GPU_THREAD_COUNT'])
+  logging.info('TF_GPU_THREAD_MODE: %s', os.environ['TF_GPU_THREAD_MODE'])
 
   # Limit data preprocessing threadpool to CPU cores minus number of total GPU
   # private threads and memory copy threads.
@@ -201,7 +198,6 @@ def set_gpu_thread_mode_and_count(gpu_thread_mode,
   num_runtime_threads = num_gpus
   if not datasets_num_private_threads:
     datasets_num_private_threads = min(
-        cpu_count - total_gpu_thread_count - num_runtime_threads,
-        num_gpus * 8)
+        cpu_count - total_gpu_thread_count - num_runtime_threads, num_gpus * 8)
     logging.info('Set datasets_num_private_threads to %s',
                  datasets_num_private_threads)

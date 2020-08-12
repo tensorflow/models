@@ -26,10 +26,7 @@ from official.nlp.bert import configs
 class AlbertConfig(configs.BertConfig):
   """Configuration for `ALBERT`."""
 
-  def __init__(self,
-               num_hidden_groups=1,
-               inner_group_num=1,
-               **kwargs):
+  def __init__(self, num_hidden_groups=1, inner_group_num=1, **kwargs):
     """Constructs AlbertConfig.
 
     Args:

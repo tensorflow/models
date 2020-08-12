@@ -41,8 +41,7 @@ class BertTokenClassifierTest(keras_parameterized.TestCase):
     # Create a BERT trainer with the created network.
     num_classes = 3
     bert_trainer_model = bert_token_classifier.BertTokenClassifier(
-        test_network,
-        num_classes=num_classes)
+        test_network, num_classes=num_classes)
 
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)

@@ -27,6 +27,7 @@ import copy
 import json
 import math
 import os
+
 from absl import logging
 import numpy as np
 import tensorflow as tf
@@ -246,6 +247,7 @@ def convert_examples_to_features(examples,
       f = np.zeros((max_n, max_m), dtype=np.float32)
 
     g = {}
+
     # pylint: disable=cell-var-from-loop
     def _lcs_match(max_dist, n=n, m=m):
       """Longest-common-substring algorithm."""
@@ -277,6 +279,7 @@ def convert_examples_to_features(examples,
               remove_space=False) == tok_cat_text[j] and f_prev + 1 > f[i, j]):
             g[(i, j)] = 2
             f[i, j] = f_prev + 1
+
     # pylint: enable=cell-var-from-loop
 
     max_dist = abs(n - m) + 5
@@ -580,15 +583,16 @@ def write_predictions(all_examples,
   logging.info("Writing nbest to: %s", (output_nbest_file))
 
   all_predictions, all_nbest_json, scores_diff_json = (
-      postprocess_output(all_examples=all_examples,
-                         all_features=all_features,
-                         all_results=all_results,
-                         n_best_size=n_best_size,
-                         max_answer_length=max_answer_length,
-                         do_lower_case=do_lower_case,
-                         version_2_with_negative=version_2_with_negative,
-                         null_score_diff_threshold=null_score_diff_threshold,
-                         verbose=verbose))
+      postprocess_output(
+          all_examples=all_examples,
+          all_features=all_features,
+          all_results=all_results,
+          n_best_size=n_best_size,
+          max_answer_length=max_answer_length,
+          do_lower_case=do_lower_case,
+          version_2_with_negative=version_2_with_negative,
+          null_score_diff_threshold=null_score_diff_threshold,
+          verbose=verbose))
 
   write_to_json_files(all_predictions, output_prediction_file)
   write_to_json_files(all_nbest_json, output_nbest_file)

@@ -44,6 +44,8 @@ def encoder_common_layers(transformer_block):
       transformer_block._intermediate_dense, transformer_block._output_dense,
       transformer_block._output_layer_norm
   ]
+
+
 # pylint: enable=protected-access
 
 
