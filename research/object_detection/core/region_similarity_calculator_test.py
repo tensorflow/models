@@ -103,7 +103,8 @@ class RegionSimilarityCalculatorTest(test_case.TestCase):
       boxes2 = box_list.BoxList(corners2)
       boxes1.add_field(fields.BoxListFields.classes, groundtruth_labels)
       boxes2.add_field(fields.BoxListFields.classes, predicted_labels)
-      detr_similarity_calculator = region_similarity_calculator.DETRSimilarity()
+      detr_similarity_calculator = \
+          region_similarity_calculator.DETRSimilarity()
       detr_similarity = detr_similarity_calculator.compare(
           boxes1, boxes2, None)
       return detr_similarity

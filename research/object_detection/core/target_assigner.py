@@ -437,9 +437,7 @@ def create_target_assigner(reference, stage=None,
     box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder()
 
   elif reference == 'DETR':
-    similarity_calc = sim_calc.DETRSimilarity()
-    matcher = hungarian_matcher.HungarianBipartiteMatcher()
-    return DETRTargetAssigner(similarity_calc, matcher)
+    return DETRTargetAssigner()
 
   else:
     raise ValueError('No valid combination of reference and stage.')
@@ -1917,9 +1915,7 @@ class CenterNetCornerOffsetTargetAssigner(object):
 class DETRTargetAssigner(object):
   """Target assigner to compute classification and regression targets."""
 
-  def __init__(self,
-               matcher,
-               negative_class_weight=1.0):
+  def __init__(self, negative_class_weight=1.0):
     """Construct Object Detection Target Assigner.
 
     Args:
@@ -1931,8 +1927,6 @@ class DETRTargetAssigner(object):
         boxes (default: 1.0). The weight must be in [0., 1.].
 
     """
-    if not isinstance(matcher, mat.Matcher):
-      raise ValueError('matcher must be a Matcher')
     self._similarity_calc = sim_calc.DETRSimilarity()
     self._matcher = hungarian_matcher.HungarianBipartiteMatcher()
     self._negative_class_weight = negative_class_weight
@@ -2024,39 +2018,36 @@ class DETRTargetAssigner(object):
     groundtruth_boxes.add_field(fields.BoxListFields.classes, groundtruth_labels)
     box_preds.add_field(fields.BoxListFields.classes, class_predictions)
 
-    with tf.control_dependencies(
-        [unmatched_shape_assert, labels_and_box_shapes_assert]):
-      
-      match_quality_matrix = self._similarity_calc.compare(
-          groundtruth_boxes,
-          box_preds)
-      match = self._matcher.match(match_quality_matrix,
-                                  valid_rows=tf.greater(groundtruth_weights, 0))
+    match_quality_matrix = self._similarity_calc.compare(
+        groundtruth_boxes,
+        box_preds)
+    match = self._matcher.match(match_quality_matrix,
+                                valid_rows=tf.greater(groundtruth_weights, 0))
 
-      reg_targets = self._create_regression_targets(box_preds,
-                                                    groundtruth_boxes,
-                                                    match)
-      cls_targets = match.gather_based_on_match(
-          groundtruth_labels,
-          unmatched_value=unmatched_class_label,
-          ignored_value=unmatched_class_label)
-      reg_weights = match.gather_based_on_match(groundtruth_weights,
-                                                ignored_value=0.,
-                                                unmatched_value=0.)
-      cls_weights = match.gather_based_on_match(
-          groundtruth_weights,
-          ignored_value=0.,
-          unmatched_value=self._negative_class_weight)
+    reg_targets = self._create_regression_targets(box_preds,
+                                                  groundtruth_boxes,
+                                                  match)
+    cls_targets = match.gather_based_on_match(
+        groundtruth_labels,
+        unmatched_value=unmatched_class_label,
+        ignored_value=unmatched_class_label)
+    reg_weights = match.gather_based_on_match(groundtruth_weights,
+                                              ignored_value=0.,
+                                              unmatched_value=0.)
+    cls_weights = match.gather_based_on_match(
+        groundtruth_weights,
+        ignored_value=0.,
+        unmatched_value=self._negative_class_weight)
 
-      # convert cls_weights from per-box_pred to per-class.
-      class_label_shape = tf.shape(cls_targets)[1:]
-      weights_shape = tf.shape(cls_weights)
-      weights_multiple = tf.concat(
-          [tf.ones_like(weights_shape), class_label_shape],
-          axis=0)
-      for _ in range(len(cls_targets.get_shape()[1:])):
-        cls_weights = tf.expand_dims(cls_weights, -1)
-      cls_weights = tf.tile(cls_weights, weights_multiple)
+    # convert cls_weights from per-box_pred to per-class.
+    class_label_shape = tf.shape(cls_targets)[1:]
+    weights_shape = tf.shape(cls_weights)
+    weights_multiple = tf.concat(
+        [tf.ones_like(weights_shape), class_label_shape],
+        axis=0)
+    for _ in range(len(cls_targets.get_shape()[1:])):
+      cls_weights = tf.expand_dims(cls_weights, -1)
+    cls_weights = tf.tile(cls_weights, weights_multiple)
 
     num_box_preds = box_preds.num_boxes_static()
     if num_box_preds is not None:

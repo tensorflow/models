@@ -53,7 +53,7 @@ class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
       a (float32) tensor of shape [N, M] with pairwise similarity score.
     """
     with tf.name_scope(scope, 'Compare', [boxlist1, boxlist2]) as scope:
-      return self._compare(boxlist1, boxlist2, groundtruth_labels, predicted_labels)
+      return self._compare(boxlist1, boxlist2)
 
   @abstractmethod
   def _compare(self, boxlist1, boxlist2,

@@ -19,7 +19,6 @@ import tensorflow.compat.v1 as tf
 
 from object_detection.box_coders import keypoint_box_coder
 from object_detection.box_coders import mean_stddev_box_coder
-from object_detection.box_coders import detr_box_coder
 from object_detection.core import box_list
 from object_detection.core import region_similarity_calculator
 from object_detection.core import standard_fields as fields
@@ -2192,20 +2191,11 @@ class CornerOffsetTargetAssignerTest(test_case.TestCase):
     self.assertAllClose(foreground, np.zeros((1, 5, 5)))
 
 
-if __name__ == '__main__':
-  tf.enable_v2_behavior()
-  tf.test.main()
-
-
-class DETRTargetAssignerTest(testcase.TestCase):
+class DETRTargetAssignerTest(test_case.TestCase):
   def test_assign_detr(self):
     def graph_fn(anchor_means, groundtruth_box_corners,
                  groundtruth_labels, predicted_labels):
-      similarity_calc = region_similarity_calculator.DETRSimilarity()
-      matcher = hungarian_matcher.HungarianBipartiteMatcher()
-      box_coder = detr_box_coder.DETRBoxCoder()
-      detr_target_assigner = target_assigner.DETRTargetAssigner(
-          similarity_calc, matcher, box_coder)
+      detr_target_assigner = targetassigner.DETRTargetAssigner()
       anchors_boxlist = box_list.BoxList(anchor_means)
       groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
       result = detr_target_assigner.assign(
@@ -2248,3 +2238,7 @@ class DETRTargetAssignerTest(testcase.TestCase):
     self.assertEqual(cls_weights_out.dtype, np.float32)
     self.assertEqual(reg_targets_out.dtype, np.float32)
     self.assertEqual(reg_weights_out.dtype, np.float32)
+
+if __name__ == '__main__':
+  tf.enable_v2_behavior()
+  tf.test.main()
