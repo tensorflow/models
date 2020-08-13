@@ -42,6 +42,11 @@ flags.DEFINE_string('list_images_path', '/tmp/list_images.txt',
                     'Path to list of images whose features will be extracted.')
 flags.DEFINE_integer('repeat_per_image', 10,
                      'Number of times to repeat extraction per image.')
+flags.DEFINE_boolean(
+    'binary_local_features', False,
+    'Whether to binarize local features after extraction, and take this extra '
+    'latency into account. This should only be used if use_local_features is '
+    'set in the input DelfConfig from `delf_config_path`.')
 
 # Pace to report extraction log.
 _STATUS_CHECK_ITERATIONS = 100
@@ -102,6 +107,12 @@ def main(argv):
 
     # Extract and save features.
     extracted_features = extractor_fn(im)
+
+    # Binarize local features, if desired (and if there are local features).
+    if (config.use_local_features and FLAGS.binary_local_features and
+        extracted_features['local_features']['attention'].size):
+      packed_descriptors = np.packbits(
+          extracted_features['local_features']['descriptors'] > 0, axis=1)
 
 
 if __name__ == '__main__':
