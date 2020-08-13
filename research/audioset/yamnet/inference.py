@@ -23,13 +23,14 @@ import resampy
 import soundfile as sf
 import tensorflow as tf
 
-import params
+import params as yamnet_params
 import yamnet as yamnet_model
 
 
 def main(argv):
   assert argv, 'Usage: inference.py <wav file> <wav file> ...'
 
+  params = yamnet_params.Params()
   yamnet = yamnet_model.yamnet_frames_model(params)
   yamnet.load_weights('yamnet.h5')
   yamnet_classes = yamnet_model.class_names('yamnet_class_map.csv')
@@ -44,8 +45,8 @@ def main(argv):
     # Convert to mono and the sample rate expected by YAMNet.
     if len(waveform.shape) > 1:
       waveform = np.mean(waveform, axis=1)
-    if sr != params.SAMPLE_RATE:
-      waveform = resampy.resample(waveform, sr, params.SAMPLE_RATE)
+    if sr != params.sample_rate:
+      waveform = resampy.resample(waveform, sr, params.sample_rate)
 
     # Predict YAMNet classes.
     scores, embeddings, spectrogram = yamnet(waveform)

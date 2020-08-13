@@ -5,8 +5,10 @@ containing an audio waveform (assumed to be mono 16 kHz samples in the [-1, +1]
 range) and returns a 2-d float32 batch of 128-d VGGish embeddings, one per
 0.96s example generated from the waveform.
 
+Requires pip-installing tensorflow_hub.
+
 Usage:
-  export_tfhub.py <path/to/VGGish/checkpoint> <path/to/tfhub/export>
+  vggish_export_tfhub.py <path/to/VGGish/checkpoint> <path/to/tfhub/export>
 """
 
 import sys
@@ -41,19 +43,19 @@ def vggish_definer(variables, checkpoint_path):
 
   def waveform_to_features(waveform):
     """Creates VGGish features using the YAMNet feature extractor."""
-    yamnet_params.SAMPLE_RATE = vggish_params.SAMPLE_RATE
-    yamnet_params.STFT_WINDOW_SECONDS = vggish_params.STFT_WINDOW_LENGTH_SECONDS
-    yamnet_params.STFT_HOP_SECONDS = vggish_params.STFT_HOP_LENGTH_SECONDS
-    yamnet_params.MEL_BANDS = vggish_params.NUM_MEL_BINS
-    yamnet_params.MEL_MIN_HZ = vggish_params.MEL_MIN_HZ
-    yamnet_params.MEL_MAX_HZ = vggish_params.MEL_MAX_HZ
-    yamnet_params.LOG_OFFSET = vggish_params.LOG_OFFSET
-    yamnet_params.PATCH_WINDOW_SECONDS = vggish_params.EXAMPLE_WINDOW_SECONDS
-    yamnet_params.PATCH_HOP_SECONDS = vggish_params.EXAMPLE_HOP_SECONDS
-    log_mel_spectrogram = yamnet_features.waveform_to_log_mel_spectrogram(
-        waveform, yamnet_params)
-    return yamnet_features.spectrogram_to_patches(
-        log_mel_spectrogram, yamnet_params)
+    params = yamnet_params.Params(
+        sample_rate=vggish_params.SAMPLE_RATE,
+        stft_window_seconds=vggish_params.STFT_WINDOW_LENGTH_SECONDS,
+        stft_hop_seconds=vggish_params.STFT_HOP_LENGTH_SECONDS,
+        mel_bands=vggish_params.NUM_MEL_BINS,
+        mel_min_hz=vggish_params.MEL_MIN_HZ,
+        mel_max_hz=vggish_params.MEL_MAX_HZ,
+        log_offset=vggish_params.LOG_OFFSET,
+        patch_window_seconds=vggish_params.EXAMPLE_WINDOW_SECONDS,
+        patch_hop_seconds=vggish_params.EXAMPLE_HOP_SECONDS)
+    log_mel_spectrogram, features = yamnet_features.waveform_to_log_mel_spectrogram_patches(
+        waveform, params)
+    return features
 
   def define_vggish(waveform):
     with tf.variable_creator_scope(var_tracker):
