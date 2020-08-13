@@ -41,7 +41,7 @@ class MultiChannelAttentionTest(tf.test.TestCase):
     num_heads = 2
     num_docs = 5
     attention_layer = multi_channel_attention.MultiChannelAttention(
-        num_heads, key_size=2)
+        num_heads, key_dim=2)
 
     from_data = 10 * np.random.random_sample((3, 4, 8))
     to_data = 10 * np.random.random_sample((3, num_docs, 2, 8))
