@@ -101,14 +101,15 @@ class CenterNetMobileNetV2FeatureExtractor(
     """The number of feature outputs returned by the feature extractor."""
     return 1
 
+  @property
+  def supported_sub_model_types(self):
+    return ['detection']
+
   def get_sub_model(self, sub_model_type):
     if sub_model_type == 'detection':
       return self._network
     else:
-      supported_types = ['detection']
-      raise ValueError(
-          ('Sub model {} is not defined for MobileNet.'.format(sub_model_type) +
-           'Supported types are {}.'.format(supported_types)))
+      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
 
 
 def mobilenet_v2(channel_means, channel_stds, bgr_ordering):

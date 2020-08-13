@@ -118,6 +118,12 @@ class CenterNetFeatureExtractor(tf.keras.Model):
     """Ther number of feature outputs returned by the feature extractor."""
     pass
 
+  @property
+  @abc.abstractmethod
+  def supported_sub_model_types(self):
+    """Valid sub model types supported by the get_sub_model function."""
+    pass
+
   @abc.abstractmethod
   def get_sub_model(self, sub_model_type):
     """Returns the underlying keras model for the given sub_model_type.
@@ -2974,22 +2980,47 @@ class CenterNetMetaArch(model.DetectionModel):
       fine_tune_checkpoint_type: whether to restore from a full detection
         checkpoint (with compatible variable names) or to restore from a
         classification checkpoint for initialization prior to training.
-        Valid values: `detection`, `classification`. Default 'detection'.
-        'detection': used when loading in the Hourglass model pre-trained on
-          other detection task.
-        'classification': used when loading in the ResNet model pre-trained on
-          image classification task. Note that only the image feature encoding
-          part is loaded but not those upsampling layers.
+        Valid values: `detection`, `classification`, `fine_tune`.
+        Default 'detection'.
+        'detection': used when loading models pre-trained on other detection
+          tasks. With this checkpoint type the weights of the feature extractor
+          are expected under the attribute 'feature_extractor'.
+        'classification': used when loading models pre-trained on an image
+          classification task. Note that only the encoder section of the network
+          is loaded and not the upsampling layers. With this checkpoint type,
+          the weights of only the encoder section are expected under the
+          attribute 'feature_extractor'.
         'fine_tune': used when loading the entire CenterNet feature extractor
           pre-trained on other tasks. The checkpoints saved during CenterNet
-          model training can be directly loaded using this mode.
+          model training can be directly loaded using this type. With this
+          checkpoint type, the weights of the feature extractor are expected
+          under the attribute 'model._feature_extractor'.
+        For more details, see the tensorflow section on Loading mechanics.
+        https://www.tensorflow.org/guide/checkpoint#loading_mechanics
 
     Returns:
       A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
     """
 
-    sub_model = self._feature_extractor.get_sub_model(fine_tune_checkpoint_type)
-    return {'feature_extractor': sub_model}
+    supported_types = self._feature_extractor.supported_sub_model_types
+    supported_types += ['fine_tune']
+
+    if fine_tune_checkpoint_type not in supported_types:
+      message = ('Checkpoint type "{}" not supported for {}. '
+                 'Supported types are {}')
+      raise ValueError(
+          message.format(fine_tune_checkpoint_type,
+                         self._feature_extractor.__class__.__name__,
+                         supported_types))
+
+    elif fine_tune_checkpoint_type == 'fine_tune':
+      feature_extractor_model = tf.train.Checkpoint(
+          _feature_extractor=self._feature_extractor)
+      return {'model': feature_extractor_model}
+
+    else:
+      return {'feature_extractor': self._feature_extractor.get_sub_model(
+          fine_tune_checkpoint_type)}
 
   def updates(self):
     raise RuntimeError('This model is intended to be used with model_lib_v2 '

@@ -1917,8 +1917,9 @@ class CenterNetMetaArchRestoreTest(test_case.TestCase):
     """Test that restoring unsupported checkpoint type raises an error."""
 
     model = build_center_net_meta_arch(build_resnet=True)
-    msg = ("Sub model detection is not defined for ResNet."
-           "Supported types are ['classification'].")
+    msg = ("Checkpoint type \"detection\" not supported for "
+           "CenterNetResnetFeatureExtractor. Supported types are "
+           "['classification', 'fine_tune']")
     with self.assertRaisesRegex(ValueError, re.escape(msg)):
       model.restore_from_objects('detection')
 
