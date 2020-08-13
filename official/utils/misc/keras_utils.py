@@ -30,6 +30,10 @@ from tensorflow.python.eager import monitoring
 global_batch_size_gauge = monitoring.IntGauge(
     '/tensorflow/training/global_batch_size', 'TF training global batch size')
 
+first_batch_start_time = monitoring.IntGauge(
+    '/tensorflow/training/first_batch_start',
+    'TF training start time (unix epoch time in us.')
+
 
 class BatchTimestamp(object):
   """A structure to store batch time stamp."""
@@ -117,6 +121,8 @@ class TimeHistory(tf.keras.callbacks.Callback):
   def on_batch_begin(self, batch, logs=None):
     if not self.start_time:
       self.start_time = time.time()
+      if not first_batch_start_time.get_cell().value():
+        first_batch_start_time.get_cell().set(int(self.start_time * 1000000))
 
     # Record the timestamp of the first global step
     if not self.timestamp_log:
