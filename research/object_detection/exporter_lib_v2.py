@@ -15,7 +15,9 @@
 # ==============================================================================
 
 """Functions to export object detection inference graph."""
+import ast
 import os
+
 import tensorflow.compat.v2 as tf
 from object_detection.builders import model_builder
 from object_detection.core import standard_fields as fields
@@ -37,22 +39,63 @@ def _decode_tf_example(tf_example_string_tensor):
   return image_tensor
 
 
+def _combine_side_inputs(side_input_shapes='',
+                         side_input_types='',
+                         side_input_names=''):
+  """Zips the side inputs together.
+
+  Args:
+    side_input_shapes: forward-slash-separated list of comma-separated lists
+      describing input shapes.
+    side_input_types: comma-separated list of the types of the inputs.
+    side_input_names: comma-separated list of the names of the inputs.
+
+  Returns:
+    a zipped list of side input tuples.
+  """
+  side_input_shapes = [
+      ast.literal_eval('[' + x + ']') for x in side_input_shapes.split('/')
+  ]
+  side_input_types = eval('[' + side_input_types + ']')  # pylint: disable=eval-used
+  side_input_names = side_input_names.split(',')
+  return zip(side_input_shapes, side_input_types, side_input_names)
+
+
 class DetectionInferenceModule(tf.Module):
   """Detection Inference Module."""
 
-  def __init__(self, detection_model):
+  def __init__(self, detection_model,
+               use_side_inputs=False,
+               zipped_side_inputs=None):
     """Initializes a module for detection.
 
     Args:
-      detection_model: The detection model to use for inference.
+      detection_model: the detection model to use for inference.
+      use_side_inputs: whether to use side inputs.
+      zipped_side_inputs: the zipped side inputs.
     """
     self._model = detection_model
 
-  def _run_inference_on_images(self, image):
+  def _get_side_input_signature(self, zipped_side_inputs):
+    sig = []
+    side_input_names = []
+    for info in zipped_side_inputs:
+      sig.append(tf.TensorSpec(shape=info[0],
+                               dtype=info[1],
+                               name=info[2]))
+      side_input_names.append(info[2])
+    return sig
+
+  def _get_side_names_from_zip(self, zipped_side_inputs):
+    return [side[2] for side in zipped_side_inputs]
+
+  def _run_inference_on_images(self, image, **kwargs):
     """Cast image to float and run inference.
 
     Args:
-      image: uint8 Tensor of shape [1, None, None, 3]
+      image: uint8 Tensor of shape [1, None, None, 3].
+      **kwargs: additional keyword arguments.
+
     Returns:
       Tensor dictionary holding detections.
     """
@@ -60,7 +103,7 @@ class DetectionInferenceModule(tf.Module):
 
     image = tf.cast(image, tf.float32)
     image, shapes = self._model.preprocess(image)
-    prediction_dict = self._model.predict(image, shapes)
+    prediction_dict = self._model.predict(image, shapes, **kwargs)
     detections = self._model.postprocess(prediction_dict, shapes)
     classes_field = fields.DetectionResultFields.detection_classes
     detections[classes_field] = (
@@ -75,11 +118,35 @@ class DetectionInferenceModule(tf.Module):
 class DetectionFromImageModule(DetectionInferenceModule):
   """Detection Inference Module for image inputs."""
 
-  @tf.function(
-      input_signature=[
-          tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8)])
-  def __call__(self, input_tensor):
-    return self._run_inference_on_images(input_tensor)
+  def __init__(self, detection_model,
+               use_side_inputs=False,
+               zipped_side_inputs=None):
+    """Initializes a module for detection.
+
+    Args:
+      detection_model: the detection model to use for inference.
+      use_side_inputs: whether to use side inputs.
+      zipped_side_inputs: the zipped side inputs.
+    """
+    if zipped_side_inputs is None:
+      zipped_side_inputs = []
+    sig = [tf.TensorSpec(shape=[1, None, None, 3],
+                         dtype=tf.uint8,
+                         name='input_tensor')]
+    if use_side_inputs:
+      sig.extend(self._get_side_input_signature(zipped_side_inputs))
+    self._side_input_names = self._get_side_names_from_zip(zipped_side_inputs)
+
+    def call_func(input_tensor, *side_inputs):
+      kwargs = dict(zip(self._side_input_names, side_inputs))
+      return self._run_inference_on_images(input_tensor, **kwargs)
+
+    self.__call__ = tf.function(call_func, input_signature=sig)
+
+    # TODO(kaushikshiv): Check if omitting the signature also works.
+    super(DetectionFromImageModule, self).__init__(detection_model,
+                                                   use_side_inputs,
+                                                   zipped_side_inputs)
 
 
 class DetectionFromFloatImageModule(DetectionInferenceModule):
@@ -133,7 +200,11 @@ DETECTION_MODULE_MAP = {
 def export_inference_graph(input_type,
                            pipeline_config,
                            trained_checkpoint_dir,
-                           output_directory):
+                           output_directory,
+                           use_side_inputs=False,
+                           side_input_shapes='',
+                           side_input_types='',
+                           side_input_names=''):
   """Exports inference graph for the model specified in the pipeline config.
 
   This function creates `output_directory` if it does not already exist,
@@ -147,6 +218,12 @@ def export_inference_graph(input_type,
     pipeline_config: pipeline_pb2.TrainAndEvalPipelineConfig proto.
     trained_checkpoint_dir: Path to the trained checkpoint file.
     output_directory: Path to write outputs.
+    use_side_inputs: boolean that determines whether side inputs should be
+      included in the input signature.
+    side_input_shapes: forward-slash-separated list of comma-separated lists
+        describing input shapes.
+    side_input_types: comma-separated list of the types of the inputs.
+    side_input_names: comma-separated list of the names of the inputs.
   Raises:
     ValueError: if input_type is invalid.
   """
@@ -164,7 +241,18 @@ def export_inference_graph(input_type,
 
   if input_type not in DETECTION_MODULE_MAP:
     raise ValueError('Unrecognized `input_type`')
-  detection_module = DETECTION_MODULE_MAP[input_type](detection_model)
+  if use_side_inputs and input_type != 'image_tensor':
+    raise ValueError('Side inputs supported for image_tensor input type only.')
+
+  zipped_side_inputs = []
+  if use_side_inputs:
+    zipped_side_inputs = _combine_side_inputs(side_input_shapes,
+                                              side_input_types,
+                                              side_input_names)
+
+  detection_module = DETECTION_MODULE_MAP[input_type](detection_model,
+                                                      use_side_inputs,
+                                                      list(zipped_side_inputs))
   # Getting the concrete function traces the graph and forces variables to
   # be constructed --- only after this can we save the checkpoint and
   # saved model.

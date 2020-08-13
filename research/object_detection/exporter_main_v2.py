@@ -50,6 +50,10 @@ python exporter_main_v2.py \
     --pipeline_config_path path/to/ssd_inception_v2.config \
     --trained_checkpoint_dir path/to/checkpoint \
     --output_directory path/to/exported_model_directory
+    --use_side_inputs True/False \
+    --side_input_shapes dim_0,dim_1,...dim_a/.../dim_0,dim_1,...,dim_z \
+    --side_input_names name_a,name_b,...,name_c \
+    --side_input_types type_1,type_2
 
 The expected output would be in the directory
 path/to/exported_model_directory (which is created if it does not exist)
@@ -80,6 +84,13 @@ python exporter_main_v2.py \
                 } \
               } \
             }"
+
+If side inputs are desired, the following arguments could be appended
+(the example below is for Context R-CNN).
+   --use_side_inputs True \
+   --side_input_shapes 1,2000,2057/1 \
+   --side_input_names context_features,valid_context_size \
+   --side_input_types tf.float32,tf.int32
 """
 from absl import app
 from absl import flags
@@ -106,6 +117,27 @@ flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
 flags.DEFINE_string('config_override', '',
                     'pipeline_pb2.TrainEvalPipelineConfig '
                     'text proto to override pipeline_config_path.')
+flags.DEFINE_boolean('use_side_inputs', False,
+                     'If True, uses side inputs as well as image inputs.')
+flags.DEFINE_string('side_input_shapes', '',
+                    'If use_side_inputs is True, this explicitly sets '
+                    'the shape of the side input tensors to a fixed size. The '
+                    'dimensions are to be provided as a comma-separated list '
+                    'of integers. A value of -1 can be used for unknown '
+                    'dimensions. A `/` denotes a break, starting the shape of '
+                    'the next side input tensor. This flag is required if '
+                    'using side inputs.')
+flags.DEFINE_string('side_input_types', '',
+                    'If use_side_inputs is True, this explicitly sets '
+                    'the type of the side input tensors. The '
+                    'dimensions are to be provided as a comma-separated list '
+                    'of types, each of `string`, `integer`, or `float`. '
+                    'This flag is required if using side inputs.')
+flags.DEFINE_string('side_input_names', '',
+                    'If use_side_inputs is True, this explicitly sets '
+                    'the names of the side input tensors required by the model '
+                    'assuming the names will be a comma-separated list of '
+                    'strings. This flag is required if using side inputs.')
 
 flags.mark_flag_as_required('pipeline_config_path')
 flags.mark_flag_as_required('trained_checkpoint_dir')
@@ -119,7 +151,8 @@ def main(_):
   text_format.Merge(FLAGS.config_override, pipeline_config)
   exporter_lib_v2.export_inference_graph(
       FLAGS.input_type, pipeline_config, FLAGS.trained_checkpoint_dir,
-      FLAGS.output_directory)
+      FLAGS.output_directory, FLAGS.use_side_inputs, FLAGS.side_input_shapes,
+      FLAGS.side_input_types, FLAGS.side_input_names)
 
 
 if __name__ == '__main__':
