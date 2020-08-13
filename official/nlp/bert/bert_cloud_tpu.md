@@ -4,17 +4,17 @@ This tutorial shows you how to train the Bidirectional Encoder Representations f
 
 ## Set up Cloud Storage and Compute Engine VM
 1. [Open a cloud shell window](https://console.cloud.google.com/?cloudshell=true&_ga=2.11844148.-1612541229.1552429951)
-2. Create a variable for the project's name:
+2. Create a variable for the project's id:
 ```
-export PROJECT_NAME=your-project_name
+export PROJECT_ID=your-project_id
 ```
 3. Configure `gcloud` command-line tool to use the project where you want to create Cloud TPU.
 ```
-gcloud config set project ${PROJECT_NAME}
+gcloud config set project ${PROJECT_ID}
 ```
 4. Create a Cloud Storage bucket using the following command:
 ```
-gsutil mb -p ${PROJECT_NAME} -c standard -l europe-west4 -b on gs://your-bucket-name
+gsutil mb -p ${PROJECT_ID} -c standard -l europe-west4 -b on gs://your-bucket-name
 ```
 This Cloud Storage bucket stores the data you use to train your model and the training results.
 5. Launch a Compute Engine VM and Cloud TPU using the ctpu up command.
