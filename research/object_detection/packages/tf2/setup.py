@@ -7,6 +7,7 @@ from setuptools import setup
 # tf-models-offical requirements. These packages request for incompatible
 # oauth2client package.
 REQUIRED_PACKAGES = [
+    'tensorflow-metadata<0.23.0',  # TODO(b/164107742)
     # Required for apache-beam with PY3
     'avro-python3==1.8.1',
     'apache-beam',
