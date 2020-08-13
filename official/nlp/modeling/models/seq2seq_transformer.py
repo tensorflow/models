@@ -53,22 +53,22 @@ def create_model(params, is_train):
   decoder_layer = TransformerDecoder(**encdec_kwargs)
 
   model_kwargs = dict(
-          vocab_size=params["vocab_size"],
-          hidden_size=params["hidden_size"],
-          dropout_rate=params["layer_postprocess_dropout"],
-          padded_decode=params["padded_decode"],
-          num_replicas=params["num_replicas"],
-          decode_batch_size=params["decode_batch_size"],
-          decode_max_length=params["decode_max_length"],
-          dtype=params["dtype"],
-          extra_decode_length=params["extra_decode_length"],
-          num_heads=params["num_heads"],
-          num_layers=params["num_hidden_layers"],
-          beam_size=params["beam_size"],
-          alpha=params["alpha"],
-          encoder_layer=encoder_layer,
-          decoder_layer=decoder_layer,
-          name="transformer_v2")
+      vocab_size=params["vocab_size"],
+      hidden_size=params["hidden_size"],
+      dropout_rate=params["layer_postprocess_dropout"],
+      padded_decode=params["padded_decode"],
+      num_replicas=params["num_replicas"],
+      decode_batch_size=params["decode_batch_size"],
+      decode_max_length=params["decode_max_length"],
+      dtype=params["dtype"],
+      extra_decode_length=params["extra_decode_length"],
+      num_heads=params["num_heads"],
+      num_layers=params["num_hidden_layers"],
+      beam_size=params["beam_size"],
+      alpha=params["alpha"],
+      encoder_layer=encoder_layer,
+      decoder_layer=decoder_layer,
+      name="transformer_v2")
 
   with tf.name_scope("model"):
     if is_train:
