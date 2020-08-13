@@ -28,7 +28,6 @@ class TransformerV2Test(tf.test.TestCase):
   def setUp(self):
     self.params = params = model_params.TINY_PARAMS
     params["batch_size"] = params["default_batch_size"] = 16
-    params["use_synthetic_data"] = True
     params["hidden_size"] = 12
     params["num_hidden_layers"] = 2
     params["filter_size"] = 14
@@ -39,11 +38,7 @@ class TransformerV2Test(tf.test.TestCase):
     params["dtype"] = tf.float32
 
   def test_create_model_train(self):
-    inputs = tf.keras.layers.Input((None,), dtype="int64", name="inputs")
-    targets = tf.keras.layers.Input((None,), dtype="int64", name="targets")
-    internal_model = seq2seq_transformer.Seq2SeqTransformer(self.params)
-    logits = internal_model([inputs, targets], training=True)
-    model = tf.keras.Model([inputs, targets], logits)
+    model = seq2seq_transformer.create_model(self.params, True)
     inputs, outputs = model.inputs, model.outputs
     self.assertEqual(len(inputs), 2)
     self.assertEqual(len(outputs), 1)
@@ -55,11 +50,7 @@ class TransformerV2Test(tf.test.TestCase):
     self.assertEqual(outputs[0].dtype, tf.float32)
 
   def test_create_model_not_train(self):
-    inputs = tf.keras.layers.Input((None,), dtype="int64", name="inputs")
-    internal_model = seq2seq_transformer.Seq2SeqTransformer(self.params)
-    ret = internal_model([inputs], training=False)
-    outputs, scores = ret["outputs"], ret["scores"]
-    model = tf.keras.Model(inputs, [outputs, scores])
+    model = seq2seq_transformer.create_model(self.params, False)
     inputs, outputs = model.inputs, model.outputs
     self.assertEqual(len(inputs), 1)
     self.assertEqual(len(outputs), 2)
@@ -69,6 +60,7 @@ class TransformerV2Test(tf.test.TestCase):
     self.assertEqual(outputs[0].dtype, tf.int32)
     self.assertEqual(outputs[1].shape.as_list(), [None])
     self.assertEqual(outputs[1].dtype, tf.float32)
+
 
 
 if __name__ == "__main__":
