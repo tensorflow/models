@@ -48,7 +48,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
       class, but `attention_cfg` is None, following kwargs will be used to
       instantiate the attention instance: {
         "num_heads": num_attention_heads,
-        "key_size": int(hidden_size // num_attention_heads),
+        "key_dim": int(hidden_size // num_attention_heads),
         "dropout": attention_dropout_rate,
         "name": "self_attention" }, where `hidden_size` is the input tensor's
           last dimension.
@@ -157,7 +157,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
 
     default_attention_cfg = {
         "num_heads": self._num_heads,
-        "key_size": self._attention_head_size,
+        "key_dim": self._attention_head_size,
         "dropout": self._attention_dropout_rate,
         "name": "self_attention"
     }

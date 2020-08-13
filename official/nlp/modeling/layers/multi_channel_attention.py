@@ -25,7 +25,6 @@ import math
 
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.nlp.modeling.layers import attention
 from official.nlp.modeling.layers import masked_softmax
 
 
@@ -107,7 +106,7 @@ class VotingAttention(tf.keras.layers.Layer):
     return tf.nn.softmax(doc_attention_probs + infadder)
 
 
-class MultiChannelAttention(attention.MultiHeadAttention):
+class MultiChannelAttention(tf.keras.layers.MultiHeadAttention):
   """Multi-channel Attention layer.
 
   Introduced in, [Generating Representative Headlines for News Stories
@@ -126,8 +125,8 @@ class MultiChannelAttention(attention.MultiHeadAttention):
       to certain positions.
   """
 
-  def build_attention(self, rank):
-    super(MultiChannelAttention, self).build_attention(rank)
+  def _build_attention(self, rank):
+    super(MultiChannelAttention, self)._build_attention(rank)
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
   def call(self,
@@ -161,7 +160,7 @@ class MultiChannelAttention(attention.MultiHeadAttention):
     # attention scores.
     attention_scores = tf.einsum("BATNH,BFNH->BANFT", key_tensor, query_tensor)
     attention_scores = tf.multiply(attention_scores,
-                                   1.0 / math.sqrt(float(self._key_size)))
+                                   1.0 / math.sqrt(float(self._key_dim)))
 
     # Normalize the attention scores to probabilities.
     # `attention_probs` = [B, A, N, F, T]
