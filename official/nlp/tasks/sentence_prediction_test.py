@@ -248,6 +248,9 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     predictions = sentence_prediction.predict(task, test_data_config, model)
     self.assertLen(predictions, num_examples)
+    for prediction in predictions:
+      self.assertEqual(prediction.dtype,
+                       tf.int64 if num_classes > 1 else tf.float32)
 
 
 if __name__ == "__main__":
