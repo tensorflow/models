@@ -31,6 +31,7 @@ from absl import logging
 import tensorflow as tf
 
 from official.modeling import performance
+from official.nlp.modeling.models import seq2seq_transformer
 from official.nlp.transformer import compute_bleu
 from official.nlp.transformer import data_pipeline
 from official.nlp.transformer import metrics
@@ -198,7 +199,7 @@ class TransformerTask(object):
 
     _ensure_dir(flags_obj.model_dir)
     with distribution_utils.get_strategy_scope(self.distribution_strategy):
-      model = transformer.create_model(params, is_train=True)
+      model = seq2seq_transformer.create_model(params, is_train=True)
       opt = self._create_optimizer()
 
       current_step = 0
@@ -378,7 +379,7 @@ class TransformerTask(object):
     # be used.
     with distribution_utils.get_strategy_scope(distribution_strategy):
       if not self.predict_model:
-        self.predict_model = transformer.create_model(self.params, False)
+        self.predict_model = seq2seq_transformer.create_model(self.params, False)
       self._load_weights_if_possible(
           self.predict_model,
           tf.train.latest_checkpoint(self.flags_obj.model_dir))
@@ -394,7 +395,7 @@ class TransformerTask(object):
     flags_obj = self.flags_obj
 
     with tf.name_scope("model"):
-      model = transformer.create_model(params, is_train=False)
+      model = seq2seq_transformer.create_model(params, is_train=False)
       self._load_weights_if_possible(
           model, tf.train.latest_checkpoint(self.flags_obj.model_dir))
       model.summary()
