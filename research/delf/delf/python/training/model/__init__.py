@@ -19,6 +19,7 @@ from __future__ import print_function
 
 # pylint: disable=unused-import
 from delf.python.training.model import delf_model
+from delf.python.training.model import delg_model
 from delf.python.training.model import export_model_utils
 from delf.python.training.model import resnet50
 # pylint: enable=unused-import

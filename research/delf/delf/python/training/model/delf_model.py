@@ -89,12 +89,20 @@ class Delf(tf.keras.Model):
   from conv_4 are used to compute an attention map of the same resolution.
   """
 
-  def __init__(self, block3_strides=True, name='DELF'):
+  def __init__(self, block3_strides=True, name='DELF', pooling='avg',
+               gem_power=3.0, embedding_layer=False, embedding_layer_dim=2048):
     """Initialization of DELF model.
 
     Args:
       block3_strides: bool, whether to add strides to the output of block3.
       name: str, name to identify model.
+      pooling: str, pooling mode for global feature extraction; possible values
+        are 'None', 'avg', 'max', 'gem.'
+      gem_power: float, GeM power for GeM pooling. Only used if
+        pooling == 'gem'.
+      embedding_layer: bool, whether to create an embedding layer (FC whitening
+        layer).
+      embedding_layer_dim: int, size of the embedding layer.
     """
     super(Delf, self).__init__(name=name)
 
@@ -103,31 +111,38 @@ class Delf(tf.keras.Model):
         'channels_last',
         name='backbone',
         include_top=False,
-        pooling='avg',
+        pooling=pooling,
         block3_strides=block3_strides,
-        average_pooling=False)
+        average_pooling=False,
+        gem_power=gem_power,
+        embedding_layer=embedding_layer,
+        embedding_layer_dim=embedding_layer_dim)
 
     # Attention model.
     self.attention = AttentionModel(name='attention')
 
-  # Define classifiers for training backbone and attention models.
-  def init_classifiers(self, num_classes):
+  def init_classifiers(self, num_classes, desc_classification=None):
+    """Define classifiers for training backbone and attention models."""
     self.num_classes = num_classes
-    self.desc_classification = layers.Dense(
-        num_classes, activation=None, kernel_regularizer=None, name='desc_fc')
-
+    if desc_classification is None:
+      self.desc_classification = layers.Dense(num_classes,
+                                              activation=None,
+                                              kernel_regularizer=None,
+                                              name='desc_fc')
+    else:
+      self.desc_classification = desc_classification
     self.attn_classification = layers.Dense(
         num_classes, activation=None, kernel_regularizer=None, name='att_fc')
 
-  # Weights to optimize for descriptor fine tuning.
   @property
   def desc_trainable_weights(self):
+    """Weights to optimize for descriptor fine tuning."""
     return (self.backbone.trainable_weights +
             self.desc_classification.trainable_weights)
 
-  # Weights to optimize for attention model training.
   @property
   def attn_trainable_weights(self):
+    """Weights to optimize for attention model training."""
     return (self.attention.trainable_weights +
             self.attn_classification.trainable_weights)
 

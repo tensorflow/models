@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,15 +45,19 @@ flags.DEFINE_boolean(
     'If True, performs re-ranking using local feature-based geometric '
     'verification.')
 flags.DEFINE_float(
-    'local_feature_distance_threshold', 1.0,
+    'local_descriptor_matching_threshold', 1.0,
     'Optional, only used if `use_geometric_verification` is True. '
-    'Distance threshold below which a pair of local descriptors is considered '
+    'Threshold below which a pair of local descriptors is considered '
     'a potential match, and will be fed into RANSAC.')
 flags.DEFINE_float(
     'ransac_residual_threshold', 20.0,
     'Optional, only used if `use_geometric_verification` is True. '
     'Residual error threshold for considering matches as inliers, used in '
     'RANSAC algorithm.')
+flags.DEFINE_boolean(
+    'use_ratio_test', False,
+    'Optional, only used if `use_geometric_verification` is True. '
+    'Whether to use ratio test for local feature matching.')
 flags.DEFINE_string(
     'output_dir', '/tmp/retrieval',
     'Directory where retrieval output will be written to. A file containing '
@@ -152,8 +157,10 @@ def main(argv):
           junk_ids=set(medium_ground_truth[i]['junk']),
           local_feature_extension=_DELG_LOCAL_EXTENSION,
           ransac_seed=0,
-          feature_distance_threshold=FLAGS.local_feature_distance_threshold,
-          ransac_residual_threshold=FLAGS.ransac_residual_threshold)
+          descriptor_matching_threshold=FLAGS
+          .local_descriptor_matching_threshold,
+          ransac_residual_threshold=FLAGS.ransac_residual_threshold,
+          use_ratio_test=FLAGS.use_ratio_test)
       hard_ranks_after_gv[i] = image_reranking.RerankByGeometricVerification(
           input_ranks=ranks_before_gv[i],
           initial_scores=similarities,
@@ -164,8 +171,10 @@ def main(argv):
           junk_ids=set(hard_ground_truth[i]['junk']),
           local_feature_extension=_DELG_LOCAL_EXTENSION,
           ransac_seed=0,
-          feature_distance_threshold=FLAGS.local_feature_distance_threshold,
-          ransac_residual_threshold=FLAGS.ransac_residual_threshold)
+          descriptor_matching_threshold=FLAGS
+          .local_descriptor_matching_threshold,
+          ransac_residual_threshold=FLAGS.ransac_residual_threshold,
+          use_ratio_test=FLAGS.use_ratio_test)
 
     elapsed = (time.time() - start)
     print('done! Retrieval for query %d took %f seconds' % (i, elapsed))
