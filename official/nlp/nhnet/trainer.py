@@ -88,7 +88,7 @@ def define_flags():
   # Enables MLIR-based TF/XLA bridge. This is part of a soft rollout and will
   # eventually be the Google-wide default.
   flags.DEFINE_bool("enable_mlir_bridge", True,
-                    "Use MLIR TF/XLA bridge (experimental) -- NHNet.")
+                    "Use MLIR TF/XLA bridge (experimental).")
 
 
 # pylint: disable=protected-access
