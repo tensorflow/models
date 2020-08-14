@@ -2179,11 +2179,6 @@ def random_pad_to_aspect_ratio(image,
                                        0.0, target_width-image_width, seed=seed)
     generator_func_pad_y = functools.partial(tf.random_uniform, [],
                                        0.0, target_height-image_height, seed=seed)
-
-    scale = _get_or_create_preprocess_rand_vars(
-        generator_func,
-        preprocessor_cache.PreprocessorCache.PAD_TO_ASPECT_RATIO,
-        preprocess_vars_cache)
     
     offset_x = _get_or_create_preprocess_rand_vars(
         generator_func_pad_x,
@@ -2210,16 +2205,24 @@ def random_pad_to_aspect_ratio(image,
     image_color_padded = (1.0 - image_ones_padded) * tf.random.uniform(tf.shape(image_ones_padded), minval=0, maxval=255, dtype=tf.dtypes.float32, seed=seed)
     new_image += image_color_padded
 
-    im_box = tf.stack([
-        -offset_y / image_height,
-        -offset_x / image_width,
-        (target_height - offset_y) / image_height,
-        (target_width - offset_x) / image_width
+    im_box_scale = tf.stack([
+        0,
+        0,
+        target_height / image_height,
+        target_width / image_width
+    ])
+    
+    im_box_translate = tf.stack([
+        -offset_y / target_height,
+        -offset_x / target_width,
+        (target_height - offset_y) / target_height,
+        (target_width - offset_x) / target_width
     ])
 
     boxlist = box_list.BoxList(boxes)
-    new_boxlist = box_list_ops.change_coordinate_frame(boxlist, im_box)
-    new_boxes = new_boxlist.get()
+    boxlist_scaled = box_list_ops.change_coordinate_frame(boxlist, im_box_scale)
+    boxlist_translated = box_list_ops.change_coordinate_frame(boxlist_scaled, im_box_translate)
+    new_boxes = boxlist_translated.get()
 
     result = [new_image, new_boxes]
 
@@ -2232,8 +2235,9 @@ def random_pad_to_aspect_ratio(image,
       result.append(new_masks)
 
     if keypoints is not None:
-      new_keypoints = keypoint_ops.change_coordinate_frame(keypoints, im_box)
-      result.append(new_keypoints)
+      keypoints_scaled = keypoint_ops.change_coordinate_frame(keypoints, im_box_scale)
+      keypoints_translated = keypoint_ops.change_coordinate_frame(keypoints_scaled, im_box_translate)
+      result.append(keypoints_translated)
 
     return tuple(result)
 
