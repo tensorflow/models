@@ -19,14 +19,12 @@ import functools
 from typing import Any, Callable, Optional
 
 from absl import logging
-import six
 import tensorflow as tf
 
 from official.modeling.hyperparams import config_definitions as cfg
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Task(tf.Module):
+class Task(tf.Module, metaclass=abc.ABCMeta):
   """A single-replica view of training procedure.
 
   Tasks provide artifacts for training/evalution procedures, including
