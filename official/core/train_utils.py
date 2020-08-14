@@ -40,11 +40,6 @@ def parse_configuration(flags_obj):
 
   # 1. Get the default config from the registered experiment.
   params = exp_factory.get_exp_config(flags_obj.experiment)
-  params.override({
-      'runtime': {
-          'tpu': flags_obj.tpu,
-      }
-  })
 
   # 2. Get the first level of override from `--config_file`.
   #    `--config_file` is typically used as a template that specifies the common
@@ -53,7 +48,14 @@ def parse_configuration(flags_obj):
     params = hyperparams.override_params_dict(
         params, config_file, is_strict=True)
 
-  # 3. Get the second level of override from `--params_override`.
+  # 3. Override the TPU address.
+  params.override({
+      'runtime': {
+          'tpu': flags_obj.tpu,
+      }
+  })
+
+  # 4. Get the second level of override from `--params_override`.
   #    `--params_override` is typically used as a further override over the
   #    template. For example, one may define a particular template for training
   #    ResNet50 on ImageNet in a config file and pass it via `--config_file`,
