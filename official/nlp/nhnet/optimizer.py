@@ -71,10 +71,8 @@ class LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 def create_optimizer(params: params_dict.ParamsDict):
   """Creates optimizer."""
-  lr_schedule = LearningRateSchedule(
-      params.learning_rate,
-      params.hidden_size,
-      params.learning_rate_warmup_steps)
+  lr_schedule = LearningRateSchedule(params.learning_rate, params.hidden_size,
+                                     params.learning_rate_warmup_steps)
   return tf.keras.optimizers.Adam(
       learning_rate=lr_schedule,
       beta_1=params.adam_beta1,

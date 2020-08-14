@@ -95,9 +95,9 @@ class TransformerWithReZeroLayerTest(keras_parameterized.TestCase):
 
     input_data = np.random.rand(2, input_length, width) + 2.0
     output_data = model.predict(input_data)
-    input_data_normed = (
-        input_data - np.mean(input_data, axis=-1, keepdims=True)) / (
-            np.std(input_data, axis=-1, keepdims=True))
+    input_data_normed = (input_data -
+                         np.mean(input_data, axis=-1, keepdims=True)) / (
+                             np.std(input_data, axis=-1, keepdims=True))
 
     self.assertAllClose(input_data_normed, output_data)
 

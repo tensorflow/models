@@ -25,8 +25,6 @@ import math
 
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.nlp.modeling.layers import attention
-from official.nlp.modeling.layers import dense_einsum
 from official.nlp.modeling.layers import masked_softmax
 
 
@@ -67,28 +65,26 @@ class VotingAttention(tf.keras.layers.Layer):
     self._bias_constraint = tf.keras.constraints.get(bias_constraint)
 
   def build(self, unused_input_shapes):
-    self._query_dense = dense_einsum.DenseEinsum(
-        output_shape=(self._num_heads, self._head_size),
+    common_kwargs = dict(
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
-        name="encdocatt_query")
-    self._key_dense = dense_einsum.DenseEinsum(
-        output_shape=(self._num_heads, self._head_size),
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        activity_regularizer=self._activity_regularizer,
-        kernel_constraint=self._kernel_constraint,
-        bias_constraint=self._bias_constraint,
-        dtype=self.dtype,
-        name="encdocatt_key")
+        bias_constraint=self._bias_constraint)
+    self._query_dense = tf.keras.layers.experimental.EinsumDense(
+        "BAE,ENH->BANH",
+        output_shape=(None, self._num_heads, self._head_size),
+        bias_axes="NH",
+        name="query",
+        **common_kwargs)
+    self._key_dense = tf.keras.layers.experimental.EinsumDense(
+        "BAE,ENH->BANH",
+        output_shape=(None, self._num_heads, self._head_size),
+        bias_axes="NH",
+        name="key",
+        **common_kwargs)
     super(VotingAttention, self).build(unused_input_shapes)
 
   def call(self, encoder_outputs, doc_attention_mask):
@@ -110,43 +106,61 @@ class VotingAttention(tf.keras.layers.Layer):
     return tf.nn.softmax(doc_attention_probs + infadder)
 
 
-class MultiChannelAttention(attention.MultiHeadAttention):
+class MultiChannelAttention(tf.keras.layers.MultiHeadAttention):
   """Multi-channel Attention layer.
 
-  Introduced in: https://arxiv.org/abs/2001.09386. Expects multiple
-  cross-attention target sequences.
+  Introduced in, [Generating Representative Headlines for News Stories
+  ](https://arxiv.org/abs/2001.09386). Expects multiple cross-attention
+  target sequences.
+
+  Call args:
+    query: Query `Tensor` of shape `[B, T, dim]`.
+    value: Value `Tensor` of shape `[B, A, S, dim]`, where A denotes the
+    context_attention_weights: Context weights of shape `[B, N, T, A]`, where N
+      is the number of attention heads. Combines multi-channel sources
+      context tensors according to the distribution among channels.
+    key: Optional key `Tensor` of shape `[B, A, S, dim]`. If not given, will use
+      `value` for both `key` and `value`, which is the most common case.
+    attention_mask: a boolean mask of shape `[B, T, S]`, that prevents attention
+      to certain positions.
   """
 
-  def _build_attention(self, qkv_rank):
-    super(MultiChannelAttention, self)._build_attention(qkv_rank)
+  def _build_attention(self, rank):
+    super(MultiChannelAttention, self)._build_attention(rank)
     self._masked_softmax = masked_softmax.MaskedSoftmax(mask_expansion_axes=[2])
 
-  def call(self, inputs, attention_mask=None):
-    from_tensor = inputs[0]
-    to_tensor = inputs[1]
-    doc_attention_probs = inputs[2]
+  def call(self,
+           query,
+           value,
+           key=None,
+           context_attention_weights=None,
+           attention_mask=None):
+    if not self._built_from_signature:
+      self._build_from_signature(query, value, key=key)
+    if key is None:
+      key = value
 
     # Scalar dimensions referenced here:
     #   B = batch size (number of stories)
     #   A = num_docs (number of docs)
-    #   F = `from_tensor` sequence length
-    #   T = `to_tensor` sequence length
+    #   F = target sequence length
+    #   T = source sequence length
     #   N = `num_attention_heads`
     #   H = `size_per_head`
     # `query_tensor` = [B, F, N ,H]
-    query_tensor = self._query_dense(from_tensor)
+    query_tensor = self._query_dense(query)
 
     # `key_tensor` = [B, A, T, N, H]
-    key_tensor = self._key_dense(to_tensor)
+    key_tensor = self._key_dense(key)
 
     # `value_tensor` = [B, A, T, N, H]
-    value_tensor = self._value_dense(to_tensor)
+    value_tensor = self._value_dense(value)
 
     # Take the dot product between "query" and "key" to get the raw
     # attention scores.
     attention_scores = tf.einsum("BATNH,BFNH->BANFT", key_tensor, query_tensor)
     attention_scores = tf.multiply(attention_scores,
-                                   1.0 / math.sqrt(float(self._key_size)))
+                                   1.0 / math.sqrt(float(self._key_dim)))
 
     # Normalize the attention scores to probabilities.
     # `attention_probs` = [B, A, N, F, T]
@@ -159,7 +173,7 @@ class MultiChannelAttention(attention.MultiHeadAttention):
     # `context_layer` = [B, F, N, H]
     context_layer = tf.einsum("BANFT,BATNH->BAFNH", attention_probs,
                               value_tensor)
-    attention_output = tf.einsum("BNFA,BAFNH->BFNH", doc_attention_probs,
+    attention_output = tf.einsum("BNFA,BAFNH->BFNH", context_attention_weights,
                                  context_layer)
     attention_output = self._output_dense(attention_output)
     return attention_output

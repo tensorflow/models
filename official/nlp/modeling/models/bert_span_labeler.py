@@ -12,12 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Trainer network for BERT-style models."""
+"""BERT Question Answering model."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import tensorflow as tf
 
@@ -32,8 +28,11 @@ class BertSpanLabeler(tf.keras.Model):
   encoder as described in "BERT: Pre-training of Deep Bidirectional Transformers
   for Language Understanding" (https://arxiv.org/abs/1810.04805).
 
-  The BertSpanLabeler allows a user to pass in a transformer stack, and
+  The BertSpanLabeler allows a user to pass in a transformer encoder, and
   instantiates a span labeling network based on a single dense layer.
+
+  *Note* that the model is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
 
   Arguments:
     network: A transformer network. This network should output a sequence output

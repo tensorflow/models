@@ -29,8 +29,7 @@ from official.modeling import activations
     None,
     "tf.keras.layers.Layer supports multiple positional args and kwargs as "
     "input tensors. pack/unpack inputs to override __call__ is no longer "
-    "needed."
-)
+    "needed.")
 def pack_inputs(inputs):
   """Pack a list of `inputs` tensors to a tuple.
 
@@ -55,8 +54,7 @@ def pack_inputs(inputs):
     None,
     "tf.keras.layers.Layer supports multiple positional args and kwargs as "
     "input tensors. pack/unpack inputs to override __call__ is no longer "
-    "needed."
-)
+    "needed.")
 def unpack_inputs(inputs):
   """unpack a tuple of `inputs` tensors to a tuple.
 
@@ -88,7 +86,6 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-# TODO(hongkuny): consider moving custom string-map lookup to keras api.
 def get_activation(identifier):
   """Maps a identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
 

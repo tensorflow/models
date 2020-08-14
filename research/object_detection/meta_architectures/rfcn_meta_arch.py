@@ -265,7 +265,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         [batch_size, num_valid_anchors, 2] containing class
         predictions (logits) for each of the anchors.  Note that this
         tensor *includes* background class predictions (at class index 0).
-      rpn_features: A 4-D float32 tensor with shape
+      rpn_features: A list of single 4-D float32 tensor with shape
         [batch_size, height, width, depth] representing image features from the
         RPN.
       anchors: 2-D float tensor of shape
@@ -313,6 +313,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                                 rpn_objectness_predictions_with_background,
                                 anchors, image_shape_2d, true_image_shapes)
 
+    rpn_features = rpn_features[0]
     box_classifier_features = (
         self._extract_box_classifier_features(rpn_features))
 

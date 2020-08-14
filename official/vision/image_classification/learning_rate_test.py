@@ -37,52 +37,13 @@ class LearningRateTests(tf.test.TestCase):
         decay_steps=decay_steps,
         decay_rate=decay_rate)
     lr = learning_rate.WarmupDecaySchedule(
-        lr_schedule=base_lr,
-        warmup_steps=warmup_steps)
+        lr_schedule=base_lr, warmup_steps=warmup_steps)
 
     for step in range(warmup_steps - 1):
       config = lr.get_config()
       self.assertEqual(config['warmup_steps'], warmup_steps)
-      self.assertAllClose(self.evaluate(lr(step)),
-                          step / warmup_steps * initial_lr)
-
-  def test_piecewise_constant_decay_with_warmup(self):
-    """Basic computational test for piecewise constant decay with warmup."""
-    boundaries = [1, 2, 3]
-    warmup_epochs = boundaries[0]
-    learning_rate_multipliers = [1.0, 0.1, 0.001]
-    expected_keys = [
-        'rescaled_lr', 'step_boundaries', 'lr_values', 'warmup_steps',
-    ]
-
-    expected_lrs = [0.0, 0.1, 0.1]
-
-    lr = learning_rate.PiecewiseConstantDecayWithWarmup(
-        batch_size=256,
-        epoch_size=256,
-        warmup_epochs=warmup_epochs,
-        boundaries=boundaries[1:],
-        multipliers=learning_rate_multipliers)
-
-    step = 0
-
-    config = lr.get_config()
-    self.assertAllInSet(list(config.keys()), expected_keys)
-
-    for boundary, expected_lr in zip(boundaries, expected_lrs):
-      for _ in range(step, boundary):
-        self.assertAllClose(self.evaluate(lr(step)), expected_lr)
-        step += 1
-
-  def test_piecewise_constant_decay_invalid_boundaries(self):
-    with self.assertRaisesRegex(ValueError,
-                                'The length of boundaries must be 1 less '):
-      learning_rate.PiecewiseConstantDecayWithWarmup(
-          batch_size=256,
-          epoch_size=256,
-          warmup_epochs=1,
-          boundaries=[1, 2],
-          multipliers=[1, 2])
+      self.assertAllClose(
+          self.evaluate(lr(step)), step / warmup_steps * initial_lr)
 
   def test_cosine_decay_with_warmup(self):
     """Basic computational test for cosine decay with warmup."""

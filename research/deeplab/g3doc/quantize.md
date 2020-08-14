@@ -42,7 +42,6 @@ python deeplab/train.py \
     --train_batch_size=8 \
     --base_learning_rate=3e-5 \
     --dataset="pascal_voc_seg" \
-    --initialize_last_layer \
     --quantize_delay_step=0 \
     --tf_initial_checkpoint=${PATH_TO_TRAINED_FLOAT_MODEL} \
     --train_logdir=${PATH_TO_TRAIN_DIR} \
@@ -65,18 +64,12 @@ python deeplab/export_model.py \
 Commandline below shows how to convert exported graphdef to TFlite model.
 
 ```
-tflite_convert \
-  --graph_def_file=${OUTPUT_DIR}/frozen_inference_graph.pb \
-  --output_file=${OUTPUT_DIR}/frozen_inference_graph.tflite \
-  --output_format=TFLITE \
-  --input_shape=1,513,513,3 \
-  --input_arrays="MobilenetV2/MobilenetV2/input" \
-  --inference_type=QUANTIZED_UINT8 \
-  --inference_input_type=QUANTIZED_UINT8 \
-  --std_dev_values=128 \
-  --mean_values=128 \
-  --change_concat_input_ranges=true \
-  --output_arrays="ArgMax"
+# From tensorflow/models/research/
+python deeplab/convert_to_tflite.py \
+  --quantized_graph_def_path=${OUTPUT_DIR}/frozen_inference_graph.pb \
+  --input_tensor_name=MobilenetV2/MobilenetV2/input:0 \
+  --output_tflite_path=${OUTPUT_DIR}/frozen_inference_graph.tflite \
+  --test_image_path=${PATH_TO_TEST_IMAGE}
 ```
 
 **[Important]** Note that converted model expects 513x513 RGB input and doesn't

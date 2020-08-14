@@ -52,7 +52,6 @@ MASKRCNN_CFG.override({
         'anchor_size': 8,
     },
     'rpn_head': {
-        'anchors_per_location': 3,
         'num_convs': 2,
         'num_filters': 256,
         'use_separable_conv': False,

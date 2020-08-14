@@ -14,18 +14,17 @@
 # ==============================================================================
 """Runs a ResNet model on the ImageNet dataset using custom training loops."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import math
+import os
+
+# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
+import orbit
 import tensorflow as tf
 
 from official.modeling import performance
-from official.staging.training import controller
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
@@ -87,15 +86,6 @@ def get_num_train_iterations(flags_obj):
   return train_steps, train_epochs, eval_steps
 
 
-def _steps_to_run(steps_in_current_epoch, steps_per_epoch, steps_per_loop):
-  """Calculates steps to run on device."""
-  if steps_per_loop <= 0:
-    raise ValueError('steps_per_loop should be positive integer.')
-  if steps_per_loop == 1:
-    return steps_per_loop
-  return min(steps_per_loop, steps_per_epoch - steps_in_current_epoch)
-
-
 def run(flags_obj):
   """Run ResNet ImageNet training and eval loop using custom training loops.
 
@@ -121,7 +111,6 @@ def run(flags_obj):
           datasets_num_private_threads=flags_obj.datasets_num_private_threads)
     common.set_cudnn_batchnorm_mode()
 
-  # TODO(anj-s): Set data_format without using Keras.
   data_format = flags_obj.data_format
   if data_format is None:
     data_format = ('channels_first' if tf.config.list_physical_devices('GPU')
@@ -137,7 +126,14 @@ def run(flags_obj):
 
   per_epoch_steps, train_epochs, eval_steps = get_num_train_iterations(
       flags_obj)
-  steps_per_loop = min(flags_obj.steps_per_loop, per_epoch_steps)
+  if flags_obj.steps_per_loop is None:
+    steps_per_loop = per_epoch_steps
+  elif flags_obj.steps_per_loop > per_epoch_steps:
+    steps_per_loop = per_epoch_steps
+    logging.warn('Setting steps_per_loop to %d to respect epoch boundary.',
+                 steps_per_loop)
+  else:
+    steps_per_loop = flags_obj.steps_per_loop
 
   logging.info(
       'Training %d epochs, each epoch has %d steps, '
@@ -154,8 +150,8 @@ def run(flags_obj):
 
   eval_interval = flags_obj.epochs_between_evals * per_epoch_steps
   checkpoint_interval = (
-      per_epoch_steps if flags_obj.enable_checkpoint_and_export else None)
-  summary_interval = per_epoch_steps if flags_obj.enable_tensorboard else None
+      steps_per_loop * 5 if flags_obj.enable_checkpoint_and_export else None)
+  summary_interval = steps_per_loop if flags_obj.enable_tensorboard else None
 
   checkpoint_manager = tf.train.CheckpointManager(
       runnable.checkpoint,
@@ -164,20 +160,25 @@ def run(flags_obj):
       step_counter=runnable.global_step,
       checkpoint_interval=checkpoint_interval)
 
-  resnet_controller = controller.Controller(
+  resnet_controller = orbit.Controller(
       strategy,
-      runnable.train,
-      runnable.evaluate if not flags_obj.skip_eval else None,
+      runnable,
+      runnable if not flags_obj.skip_eval else None,
       global_step=runnable.global_step,
       steps_per_loop=steps_per_loop,
-      train_steps=per_epoch_steps * train_epochs,
       checkpoint_manager=checkpoint_manager,
       summary_interval=summary_interval,
-      eval_steps=eval_steps,
-      eval_interval=eval_interval)
+      summary_dir=flags_obj.model_dir,
+      eval_summary_dir=os.path.join(flags_obj.model_dir, 'eval'))
 
   time_callback.on_train_begin()
-  resnet_controller.train(evaluate=not flags_obj.skip_eval)
+  if not flags_obj.skip_eval:
+    resnet_controller.train_and_evaluate(
+        train_steps=per_epoch_steps * train_epochs,
+        eval_steps=eval_steps,
+        eval_interval=eval_interval)
+  else:
+    resnet_controller.train(steps=per_epoch_steps * train_epochs)
   time_callback.on_train_end()
 
   stats = build_stats(runnable, time_callback)

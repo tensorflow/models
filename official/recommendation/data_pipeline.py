@@ -41,7 +41,6 @@ from official.recommendation import popen_helper
 from official.recommendation import stat_utils
 from tensorflow.python.tpu.datasets import StreamingFilesDataset
 
-
 SUMMARY_TEMPLATE = """General:
 {spacer}Num users: {num_users}
 {spacer}Num items: {num_items}
@@ -74,25 +73,27 @@ class DatasetManager(object):
                num_train_epochs=None):
     # type: (bool, bool, int, typing.Optional[str], bool, int) -> None
     """Constructs a `DatasetManager` instance.
+
     Args:
       is_training: Boolean of whether the data provided is training or
-        evaluation data. This determines whether to reuse the data
-        (if is_training=False) and the exact structure to use when storing and
+        evaluation data. This determines whether to reuse the data (if
+        is_training=False) and the exact structure to use when storing and
         yielding data.
       stream_files: Boolean indicating whether data should be serialized and
         written to file shards.
       batches_per_epoch: The number of batches in a single epoch.
       shard_root: The base directory to be used when stream_files=True.
       deterministic: Forgo non-deterministic speedups. (i.e. sloppy=True)
-      num_train_epochs: Number of epochs to generate. If None, then each
-        call to `get_dataset()` increments the number of epochs requested.
+      num_train_epochs: Number of epochs to generate. If None, then each call to
+        `get_dataset()` increments the number of epochs requested.
     """
     self._is_training = is_training
     self._deterministic = deterministic
     self._stream_files = stream_files
     self._writers = []
-    self._write_locks = [threading.RLock() for _ in
-                         range(rconst.NUM_FILE_SHARDS)] if stream_files else []
+    self._write_locks = [
+        threading.RLock() for _ in range(rconst.NUM_FILE_SHARDS)
+    ] if stream_files else []
     self._batches_per_epoch = batches_per_epoch
     self._epochs_completed = 0
     self._epochs_requested = num_train_epochs if num_train_epochs else 0
@@ -103,8 +104,9 @@ class DatasetManager(object):
 
   @property
   def current_data_root(self):
-    subdir = (rconst.TRAIN_FOLDER_TEMPLATE.format(self._epochs_completed)
-              if self._is_training else rconst.EVAL_FOLDER)
+    subdir = (
+        rconst.TRAIN_FOLDER_TEMPLATE.format(self._epochs_completed)
+        if self._is_training else rconst.EVAL_FOLDER)
     return os.path.join(self._shard_root, subdir)
 
   def buffer_reached(self):
@@ -123,8 +125,8 @@ class DatasetManager(object):
         k: create_int_feature(v.astype(np.int64)) for k, v in data.items()
     }
 
-    return tf.train.Example(
-        features=tf.train.Features(feature=feature_dict)).SerializeToString()
+    return tf.train.Example(features=tf.train.Features(
+        feature=feature_dict)).SerializeToString()
 
   @staticmethod
   def deserialize(serialized_data, batch_size=None, is_training=True):
@@ -134,8 +136,8 @@ class DatasetManager(object):
       serialized_data: A tensor containing serialized records.
       batch_size: The data arrives pre-batched, so batch size is needed to
         deserialize the data.
-      is_training: Boolean, whether data to deserialize to training data
-        or evaluation data.
+      is_training: Boolean, whether data to deserialize to training data or
+        evaluation data.
     """
 
     def _get_feature_map(batch_size, is_training=True):
@@ -171,13 +173,16 @@ class DatasetManager(object):
       valid_point_mask = tf.cast(features[rconst.VALID_POINT_MASK], tf.bool)
       fake_dup_mask = tf.zeros_like(users)
       return {
-          movielens.USER_COLUMN: users,
-          movielens.ITEM_COLUMN: items,
-          rconst.VALID_POINT_MASK: valid_point_mask,
+          movielens.USER_COLUMN:
+              users,
+          movielens.ITEM_COLUMN:
+              items,
+          rconst.VALID_POINT_MASK:
+              valid_point_mask,
           rconst.TRAIN_LABEL_KEY:
-              tf.reshape(tf.cast(features["labels"], tf.bool),
-                         (batch_size, 1)),
-          rconst.DUPLICATE_MASK: fake_dup_mask
+              tf.reshape(tf.cast(features["labels"], tf.bool), (batch_size, 1)),
+          rconst.DUPLICATE_MASK:
+              fake_dup_mask
       }
     else:
       labels = tf.cast(tf.zeros_like(users), tf.bool)
@@ -228,8 +233,10 @@ class DatasetManager(object):
     if self._stream_files:
       tf.io.gfile.makedirs(self.current_data_root)
       template = os.path.join(self.current_data_root, rconst.SHARD_TEMPLATE)
-      self._writers = [tf.io.TFRecordWriter(template.format(i))
-                       for i in range(rconst.NUM_FILE_SHARDS)]
+      self._writers = [
+          tf.io.TFRecordWriter(template.format(i))
+          for i in range(rconst.NUM_FILE_SHARDS)
+      ]
 
   def end_construction(self):
     if self._stream_files:
@@ -273,8 +280,8 @@ class DatasetManager(object):
 
     Args:
       batch_size: The per-replica batch size of the dataset.
-      epochs_between_evals: How many epochs worth of data to yield.
-        (Generator mode only.)
+      epochs_between_evals: How many epochs worth of data to yield. (Generator
+        mode only.)
     """
     self.increment_request_epoch()
     if self._stream_files:
@@ -285,11 +292,13 @@ class DatasetManager(object):
       if not self._is_training:
         self._result_queue.put(epoch_data_dir)  # Eval data is reused.
 
-      file_pattern = os.path.join(
-          epoch_data_dir, rconst.SHARD_TEMPLATE.format("*"))
+      file_pattern = os.path.join(epoch_data_dir,
+                                  rconst.SHARD_TEMPLATE.format("*"))
       dataset = StreamingFilesDataset(
-          files=file_pattern, worker_job=popen_helper.worker_job(),
-          num_parallel_reads=rconst.NUM_FILE_SHARDS, num_epochs=1,
+          files=file_pattern,
+          worker_job=popen_helper.worker_job(),
+          num_parallel_reads=rconst.NUM_FILE_SHARDS,
+          num_epochs=1,
           sloppy=not self._deterministic)
       map_fn = functools.partial(
           self.deserialize,
@@ -298,8 +307,10 @@ class DatasetManager(object):
       dataset = dataset.map(map_fn, num_parallel_calls=16)
 
     else:
-      types = {movielens.USER_COLUMN: rconst.USER_DTYPE,
-               movielens.ITEM_COLUMN: rconst.ITEM_DTYPE}
+      types = {
+          movielens.USER_COLUMN: rconst.USER_DTYPE,
+          movielens.ITEM_COLUMN: rconst.ITEM_DTYPE
+      }
       shapes = {
           movielens.USER_COLUMN: tf.TensorShape([batch_size, 1]),
           movielens.ITEM_COLUMN: tf.TensorShape([batch_size, 1])
@@ -319,8 +330,7 @@ class DatasetManager(object):
       data_generator = functools.partial(
           self.data_generator, epochs_between_evals=epochs_between_evals)
       dataset = tf.data.Dataset.from_generator(
-          generator=data_generator, output_types=types,
-          output_shapes=shapes)
+          generator=data_generator, output_types=types, output_shapes=shapes)
 
     return dataset.prefetch(16)
 
@@ -332,16 +342,17 @@ class DatasetManager(object):
 
       # Estimator passes batch_size during training and eval_batch_size during
       # eval.
-      param_batch_size = (params["batch_size"] if self._is_training else
-                          params.get("eval_batch_size") or params["batch_size"])
+      param_batch_size = (
+          params["batch_size"] if self._is_training else
+          params.get("eval_batch_size") or params["batch_size"])
       if batch_size != param_batch_size:
         raise ValueError("producer batch size ({}) differs from params batch "
                          "size ({})".format(batch_size, param_batch_size))
 
-      epochs_between_evals = (params.get("epochs_between_evals", 1)
-                              if self._is_training else 1)
-      return self.get_dataset(batch_size=batch_size,
-                              epochs_between_evals=epochs_between_evals)
+      epochs_between_evals = (
+          params.get("epochs_between_evals", 1) if self._is_training else 1)
+      return self.get_dataset(
+          batch_size=batch_size, epochs_between_evals=epochs_between_evals)
 
     return input_fn
 
@@ -405,15 +416,16 @@ class BaseDataConstructor(threading.Thread):
 
     (self._train_pos_count,) = self._train_pos_users.shape
     self._elements_in_epoch = (1 + num_train_negatives) * self._train_pos_count
-    self.train_batches_per_epoch = self._count_batches(
-        self._elements_in_epoch, train_batch_size, batches_per_train_step)
+    self.train_batches_per_epoch = self._count_batches(self._elements_in_epoch,
+                                                       train_batch_size,
+                                                       batches_per_train_step)
 
     # Evaluation
     if eval_batch_size % (1 + rconst.NUM_EVAL_NEGATIVES):
       raise ValueError("Eval batch size {} is not divisible by {}".format(
           eval_batch_size, 1 + rconst.NUM_EVAL_NEGATIVES))
-    self._eval_users_per_batch = int(
-        eval_batch_size // (1 + rconst.NUM_EVAL_NEGATIVES))
+    self._eval_users_per_batch = int(eval_batch_size //
+                                     (1 + rconst.NUM_EVAL_NEGATIVES))
     self._eval_elements_in_epoch = num_users * (1 + rconst.NUM_EVAL_NEGATIVES)
     self.eval_batches_per_epoch = self._count_batches(
         self._eval_elements_in_epoch, eval_batch_size, batches_per_eval_step)
@@ -450,12 +462,16 @@ class BaseDataConstructor(threading.Thread):
     multiplier = ("(x{} devices)".format(self._batches_per_train_step)
                   if self._batches_per_train_step > 1 else "")
     summary = SUMMARY_TEMPLATE.format(
-        spacer="  ", num_users=self._num_users, num_items=self._num_items,
+        spacer="  ",
+        num_users=self._num_users,
+        num_items=self._num_items,
         train_pos_ct=self._train_pos_count,
         train_batch_size=self.train_batch_size,
         train_batch_ct=self.train_batches_per_epoch,
-        eval_pos_ct=self._num_users, eval_batch_size=self.eval_batch_size,
-        eval_batch_ct=self.eval_batches_per_epoch, multiplier=multiplier)
+        eval_pos_ct=self._num_users,
+        eval_batch_size=self.eval_batch_size,
+        eval_batch_ct=self.eval_batches_per_epoch,
+        multiplier=multiplier)
     return super(BaseDataConstructor, self).__str__() + "\n" + summary
 
   @staticmethod
@@ -514,8 +530,9 @@ class BaseDataConstructor(threading.Thread):
       i: The index of the batch. This is used when stream_files=True to assign
         data to file shards.
     """
-    batch_indices = self._current_epoch_order[i * self.train_batch_size:
-                                              (i + 1) * self.train_batch_size]
+    batch_indices = self._current_epoch_order[i *
+                                              self.train_batch_size:(i + 1) *
+                                              self.train_batch_size]
     (mask_start_index,) = batch_indices.shape
 
     batch_ind_mod = np.mod(batch_indices, self._train_pos_count)
@@ -578,8 +595,9 @@ class BaseDataConstructor(threading.Thread):
     map_args = list(range(self.train_batches_per_epoch))
     self._current_epoch_order = next(self._shuffle_iterator)
 
-    get_pool = (popen_helper.get_fauxpool if self.deterministic else
-                popen_helper.get_threadpool)
+    get_pool = (
+        popen_helper.get_fauxpool
+        if self.deterministic else popen_helper.get_threadpool)
     with get_pool(6) as pool:
       pool.map(self._get_training_batch, map_args)
     self._train_dataset.end_construction()
@@ -602,8 +620,8 @@ class BaseDataConstructor(threading.Thread):
       users: An array of users in a batch. (should be identical along axis 1)
       positive_items: An array (batch_size x 1) of positive item indices.
       negative_items: An array of negative item indices.
-      users_per_batch: How many users should be in the batch. This is passed
-        as an argument so that ncf_test.py can use this method.
+      users_per_batch: How many users should be in the batch. This is passed as
+        an argument so that ncf_test.py can use this method.
 
     Returns:
       User, item, and duplicate_mask arrays.
@@ -635,11 +653,14 @@ class BaseDataConstructor(threading.Thread):
     """
     low_index = i * self._eval_users_per_batch
     high_index = (i + 1) * self._eval_users_per_batch
-    users = np.repeat(self._eval_pos_users[low_index:high_index, np.newaxis],
-                      1 + rconst.NUM_EVAL_NEGATIVES, axis=1)
+    users = np.repeat(
+        self._eval_pos_users[low_index:high_index, np.newaxis],
+        1 + rconst.NUM_EVAL_NEGATIVES,
+        axis=1)
     positive_items = self._eval_pos_items[low_index:high_index, np.newaxis]
-    negative_items = (self.lookup_negative_items(negative_users=users[:, :-1])
-                      .reshape(-1, rconst.NUM_EVAL_NEGATIVES))
+    negative_items = (
+        self.lookup_negative_items(negative_users=users[:, :-1]).reshape(
+            -1, rconst.NUM_EVAL_NEGATIVES))
 
     users, items, duplicate_mask = self._assemble_eval_batch(
         users, positive_items, negative_items, self._eval_users_per_batch)
@@ -664,8 +685,9 @@ class BaseDataConstructor(threading.Thread):
     self._eval_dataset.start_construction()
     map_args = [i for i in range(self.eval_batches_per_epoch)]
 
-    get_pool = (popen_helper.get_fauxpool if self.deterministic else
-                popen_helper.get_threadpool)
+    get_pool = (
+        popen_helper.get_fauxpool
+        if self.deterministic else popen_helper.get_threadpool)
     with get_pool(6) as pool:
       pool.map(self._get_eval_batch, map_args)
     self._eval_dataset.end_construction()
@@ -677,12 +699,12 @@ class BaseDataConstructor(threading.Thread):
     # It isn't feasible to provide a foolproof check, so this is designed to
     # catch most failures rather than provide an exhaustive guard.
     if self._fatal_exception is not None:
-      raise ValueError("Fatal exception in the data production loop: {}"
-                       .format(self._fatal_exception))
+      raise ValueError("Fatal exception in the data production loop: {}".format(
+          self._fatal_exception))
 
-    return (
-        self._train_dataset.make_input_fn(self.train_batch_size) if is_training
-        else self._eval_dataset.make_input_fn(self.eval_batch_size))
+    return (self._train_dataset.make_input_fn(self.train_batch_size)
+            if is_training else self._eval_dataset.make_input_fn(
+                self.eval_batch_size))
 
   def increment_request_epoch(self):
     self._train_dataset.increment_request_epoch()
@@ -714,8 +736,9 @@ class DummyConstructor(threading.Thread):
 
       # Estimator passes batch_size during training and eval_batch_size during
       # eval.
-      batch_size = (params["batch_size"] if is_training else
-                    params.get("eval_batch_size") or params["batch_size"])
+      batch_size = (
+          params["batch_size"] if is_training else
+          params.get("eval_batch_size") or params["batch_size"])
       num_users = params["num_users"]
       num_items = params["num_items"]
 
@@ -795,6 +818,7 @@ class MaterializedDataConstructor(BaseDataConstructor):
   a pre-compute which is quadratic in problem size will still fit in memory. A
   more scalable lookup method is in the works.
   """
+
   def __init__(self, *args, **kwargs):
     super(MaterializedDataConstructor, self).__init__(*args, **kwargs)
     self._negative_table = None
@@ -807,8 +831,8 @@ class MaterializedDataConstructor(BaseDataConstructor):
                                self._train_pos_users[:-1])[:, 0] + 1
     (upper_bound,) = self._train_pos_users.shape
     index_bounds = [0] + inner_bounds.tolist() + [upper_bound]
-    self._negative_table = np.zeros(shape=(self._num_users, self._num_items),
-                                    dtype=rconst.ITEM_DTYPE)
+    self._negative_table = np.zeros(
+        shape=(self._num_users, self._num_items), dtype=rconst.ITEM_DTYPE)
 
     # Set the table to the max value to make sure the embedding lookup will fail
     # if we go out of bounds, rather than just overloading item zero.
@@ -825,7 +849,7 @@ class MaterializedDataConstructor(BaseDataConstructor):
     # call does not parallelize well. Multiprocessing incurs too much
     # serialization overhead to be worthwhile.
     for i in range(self._num_users):
-      positives = self._train_pos_items[index_bounds[i]:index_bounds[i+1]]
+      positives = self._train_pos_items[index_bounds[i]:index_bounds[i + 1]]
       negatives = np.delete(full_set, positives)
       self._per_user_neg_count[i] = self._num_items - positives.shape[0]
       self._negative_table[i, :self._per_user_neg_count[i]] = negatives
@@ -848,6 +872,7 @@ class BisectionDataConstructor(BaseDataConstructor):
   it at which point the item id for the ith negative is a simply algebraic
   expression.
   """
+
   def __init__(self, *args, **kwargs):
     super(BisectionDataConstructor, self).__init__(*args, **kwargs)
     self.index_bounds = None
@@ -855,7 +880,7 @@ class BisectionDataConstructor(BaseDataConstructor):
     self._total_negatives = None
 
   def _index_segment(self, user):
-    lower, upper = self.index_bounds[user:user+2]
+    lower, upper = self.index_bounds[user:user + 2]
     items = self._sorted_train_pos_items[lower:upper]
 
     negatives_since_last_positive = np.concatenate(
@@ -877,11 +902,11 @@ class BisectionDataConstructor(BaseDataConstructor):
     self._sorted_train_pos_items = self._train_pos_items.copy()
 
     for i in range(self._num_users):
-      lower, upper = self.index_bounds[i:i+2]
+      lower, upper = self.index_bounds[i:i + 2]
       self._sorted_train_pos_items[lower:upper].sort()
 
-    self._total_negatives = np.concatenate([
-        self._index_segment(i) for i in range(self._num_users)])
+    self._total_negatives = np.concatenate(
+        [self._index_segment(i) for i in range(self._num_users)])
 
     logging.info("Negative total vector built. Time: {:.1f} seconds".format(
         timeit.default_timer() - start_time))
@@ -912,8 +937,7 @@ class BisectionDataConstructor(BaseDataConstructor):
     use_shortcut = neg_item_choice >= self._total_negatives[right_index]
     output[use_shortcut] = (
         self._sorted_train_pos_items[right_index] + 1 +
-        (neg_item_choice - self._total_negatives[right_index])
-    )[use_shortcut]
+        (neg_item_choice - self._total_negatives[right_index]))[use_shortcut]
 
     if np.all(use_shortcut):
       # The bisection code is ill-posed when there are no elements.
@@ -943,8 +967,7 @@ class BisectionDataConstructor(BaseDataConstructor):
 
     output[not_use_shortcut] = (
         self._sorted_train_pos_items[right_index] -
-        (self._total_negatives[right_index] - neg_item_choice)
-    )
+        (self._total_negatives[right_index] - neg_item_choice))
 
     assert np.all(output >= 0)
 

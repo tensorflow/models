@@ -27,7 +27,9 @@ import functools
 
 from object_detection.core import standard_fields as fields
 from object_detection.meta_architectures import context_rcnn_lib
+from object_detection.meta_architectures import context_rcnn_lib_tf2
 from object_detection.meta_architectures import faster_rcnn_meta_arch
+from object_detection.utils import tf_version
 
 
 class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
@@ -264,11 +266,17 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
             return_raw_detections_during_predict),
         output_final_box_features=output_final_box_features)
 
-    self._context_feature_extract_fn = functools.partial(
-        context_rcnn_lib.compute_box_context_attention,
-        bottleneck_dimension=attention_bottleneck_dimension,
-        attention_temperature=attention_temperature,
-        is_training=is_training)
+    if tf_version.is_tf1():
+      self._context_feature_extract_fn = functools.partial(
+          context_rcnn_lib.compute_box_context_attention,
+          bottleneck_dimension=attention_bottleneck_dimension,
+          attention_temperature=attention_temperature,
+          is_training=is_training)
+    else:
+      self._context_feature_extract_fn = context_rcnn_lib_tf2.AttentionBlock(
+          bottleneck_dimension=attention_bottleneck_dimension,
+          attention_temperature=attention_temperature,
+          is_training=is_training)
 
   @staticmethod
   def get_side_inputs(features):
@@ -302,6 +310,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
 
   def _compute_second_stage_input_feature_maps(self, features_to_crop,
                                                proposal_boxes_normalized,
+                                               image_shape,
                                                context_features,
                                                valid_context_size):
     """Crops to a set of proposals from the feature map for a batch of images.
@@ -316,6 +325,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       proposal_boxes_normalized: A float32 Tensor with shape [batch_size,
         num_proposals, box_code_size] containing proposal boxes in normalized
         coordinates.
+      image_shape: A 1D int32 tensors of size [4] containing the image shape.
       context_features: A float Tensor of shape [batch_size, context_size,
         num_context_features].
       valid_context_size: A int32 Tensor of shape [batch_size].
@@ -323,8 +333,9 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     Returns:
       A float32 Tensor with shape [K, new_height, new_width, depth].
     """
+    del image_shape
     box_features = self._crop_and_resize_fn(
-        features_to_crop, proposal_boxes_normalized,
+        features_to_crop, proposal_boxes_normalized, None,
         [self._initial_crop_size, self._initial_crop_size])
 
     attention_features = self._context_feature_extract_fn(

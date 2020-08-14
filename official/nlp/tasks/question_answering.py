@@ -17,12 +17,16 @@
 import collections
 import json
 import os
+
 from absl import logging
 import dataclasses
+import orbit
 import tensorflow as tf
 import tensorflow_hub as hub
 
 from official.core import base_task
+from official.core import task_factory
+from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.bert import squad_evaluate_v1_1
 from official.nlp.bert import squad_evaluate_v2_0
@@ -36,6 +40,12 @@ from official.nlp.tasks import utils
 
 
 @dataclasses.dataclass
+class ModelConfig(base_config.Config):
+  """A base span labeler configuration."""
+  encoder: encoders.EncoderConfig = encoders.EncoderConfig()
+
+
+@dataclasses.dataclass
 class QuestionAnsweringConfig(cfg.TaskConfig):
   """The model config."""
   # At most one of `init_checkpoint` and `hub_module_url` can be specified.
@@ -44,13 +54,12 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
   n_best_size: int = 20
   max_answer_length: int = 30
   null_score_diff_threshold: float = 0.0
-  model: encoders.TransformerEncoderConfig = (
-      encoders.TransformerEncoderConfig())
+  model: ModelConfig = ModelConfig()
   train_data: cfg.DataConfig = cfg.DataConfig()
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
-@base_task.register_task_cls(QuestionAnsweringConfig)
+@task_factory.register_task_cls(QuestionAnsweringConfig)
 class QuestionAnsweringTask(base_task.Task):
   """Task object for question answering."""
 
@@ -76,17 +85,21 @@ class QuestionAnsweringTask(base_task.Task):
       self._tf_record_input_path, self._eval_examples, self._eval_features = (
           self._preprocess_eval_data(params.validation_data))
 
+  def set_preprocessed_eval_input_path(self, eval_input_path):
+    """Sets the path to the preprocessed eval data."""
+    self._tf_record_input_path = eval_input_path
+
   def build_model(self):
     if self._hub_module:
       encoder_network = utils.get_encoder_from_hub(self._hub_module)
     else:
-      encoder_network = encoders.instantiate_encoder_from_cfg(
-          self.task_config.model)
-
+      encoder_network = encoders.build_encoder(self.task_config.model.encoder)
+    encoder_cfg = self.task_config.model.encoder.get()
+    # Currently, we only supports bert-style question answering finetuning.
     return models.BertSpanLabeler(
         network=encoder_network,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=self.task_config.model.initializer_range))
+            stddev=encoder_cfg.initializer_range))
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     start_positions = labels['start_positions']
@@ -98,9 +111,7 @@ class QuestionAnsweringTask(base_task.Task):
         tf.cast(start_logits, dtype=tf.float32),
         from_logits=True)
     end_loss = tf.keras.losses.sparse_categorical_crossentropy(
-        end_positions,
-        tf.cast(end_logits, dtype=tf.float32),
-        from_logits=True)
+        end_positions, tf.cast(end_logits, dtype=tf.float32), from_logits=True)
 
     loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
     return loss
@@ -129,8 +140,7 @@ class QuestionAnsweringTask(base_task.Task):
     kwargs = dict(
         examples=eval_examples,
         tokenizer=tokenization.FullTokenizer(
-            vocab_file=params.vocab_file,
-            do_lower_case=params.do_lower_case),
+            vocab_file=params.vocab_file, do_lower_case=params.do_lower_case),
         max_seq_length=params.seq_length,
         doc_stride=params.doc_stride,
         max_query_length=params.query_length,
@@ -179,8 +189,8 @@ class QuestionAnsweringTask(base_task.Task):
       input_path = self._tf_record_input_path
       dataloader_params = params.replace(input_path=input_path)
 
-    return data_loader_factory.get_data_loader(
-        dataloader_params).load(input_context)
+    return data_loader_factory.get_data_loader(dataloader_params).load(
+        input_context)
 
   def build_metrics(self, training=None):
     del training
@@ -196,16 +206,19 @@ class QuestionAnsweringTask(base_task.Task):
   def process_metrics(self, metrics, labels, model_outputs):
     metrics = dict([(metric.name, metric) for metric in metrics])
     start_logits, end_logits = model_outputs
-    metrics['start_position_accuracy'].update_state(
-        labels['start_positions'], start_logits)
-    metrics['end_position_accuracy'].update_state(
-        labels['end_positions'], end_logits)
+    metrics['start_position_accuracy'].update_state(labels['start_positions'],
+                                                    start_logits)
+    metrics['end_position_accuracy'].update_state(labels['end_positions'],
+                                                  end_logits)
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
     start_logits, end_logits = model_outputs
     compiled_metrics.update_state(
         y_true=labels,  # labels has keys 'start_positions' and 'end_positions'.
-        y_pred={'start_positions': start_logits, 'end_positions': end_logits})
+        y_pred={
+            'start_positions': start_logits,
+            'end_positions': end_logits
+        })
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     features, _ = inputs
@@ -229,20 +242,16 @@ class QuestionAnsweringTask(base_task.Task):
       state = []
 
     for unique_ids, start_logits, end_logits in zip(
-        step_outputs['unique_ids'],
-        step_outputs['start_logits'],
+        step_outputs['unique_ids'], step_outputs['start_logits'],
         step_outputs['end_logits']):
-      u_ids, s_logits, e_logits = (
-          unique_ids.numpy(), start_logits.numpy(), end_logits.numpy())
-      if u_ids.size == 1:
-        u_ids = [u_ids]
-        s_logits = [s_logits]
-        e_logits = [e_logits]
+      u_ids, s_logits, e_logits = (unique_ids.numpy(), start_logits.numpy(),
+                                   end_logits.numpy())
       for values in zip(u_ids, s_logits, e_logits):
-        state.append(self.raw_aggregated_result(
-            unique_id=values[0],
-            start_logits=values[1].tolist(),
-            end_logits=values[2].tolist()))
+        state.append(
+            self.raw_aggregated_result(
+                unique_id=values[0],
+                start_logits=values[1].tolist(),
+                end_logits=values[2].tolist()))
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs):
@@ -260,27 +269,72 @@ class QuestionAnsweringTask(base_task.Task):
                 self.task_config.null_score_diff_threshold),
             verbose=False))
 
-    with tf.io.gfile.GFile(
-        self.task_config.validation_data.input_path, 'r') as reader:
+    with tf.io.gfile.GFile(self.task_config.validation_data.input_path,
+                           'r') as reader:
       dataset_json = json.load(reader)
       pred_dataset = dataset_json['data']
     if self.task_config.validation_data.version_2_with_negative:
-      eval_metrics = squad_evaluate_v2_0.evaluate(
-          pred_dataset, all_predictions, scores_diff)
+      eval_metrics = squad_evaluate_v2_0.evaluate(pred_dataset, all_predictions,
+                                                  scores_diff)
+      # Filter out useless metrics, such as start_position_accuracy that
+      # we did not actually compute.
+      eval_metrics = {
+          'exact_match': eval_metrics['final_exact'],
+          'exact_match_threshold': eval_metrics['final_exact_thresh'],
+          'final_f1': eval_metrics['final_f1'] / 100.0,  # scale back to [0, 1].
+          'f1_threshold': eval_metrics['final_f1_thresh'],
+          'has_answer_exact_match': eval_metrics['HasAns_exact'],
+          'has_answer_f1': eval_metrics['HasAns_f1']
+      }
     else:
       eval_metrics = squad_evaluate_v1_1.evaluate(pred_dataset, all_predictions)
+      # Filter out useless metrics, such as start_position_accuracy that
+      # we did not actually compute.
+      eval_metrics = {
+          'exact_match': eval_metrics['exact_match'],
+          'final_f1': eval_metrics['final_f1']
+      }
     return eval_metrics
 
-  def initialize(self, model):
-    """Load a pretrained checkpoint (if exists) and then train from iter 0."""
-    ckpt_dir_or_file = self.task_config.init_checkpoint
-    if tf.io.gfile.isdir(ckpt_dir_or_file):
-      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
-    if not ckpt_dir_or_file:
-      return
 
-    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
-    status = ckpt.read(ckpt_dir_or_file)
-    status.expect_partial().assert_existing_objects_matched()
-    logging.info('Finished loading pretrained checkpoint from %s',
-                 ckpt_dir_or_file)
+def predict(task: QuestionAnsweringTask, params: cfg.DataConfig,
+            model: tf.keras.Model):
+  """Predicts on the input data.
+
+  Args:
+    task: A `QuestionAnsweringTask` object.
+    params: A `cfg.DataConfig` object.
+    model: A keras.Model.
+
+  Returns:
+    A tuple of `all_predictions`, `all_nbest` and `scores_diff`, which
+      are dict and can be written to json files including prediction json file,
+      nbest json file and null_odds json file.
+  """
+  tf_record_input_path, eval_examples, eval_features = (
+      task._preprocess_eval_data(params))  # pylint: disable=protected-access
+
+  # `tf_record_input_path` will overwrite `params.input_path`,
+  # when `task.buid_inputs()` is called.
+  task.set_preprocessed_eval_input_path(tf_record_input_path)
+
+  def predict_step(inputs):
+    """Replicated prediction calculation."""
+    return task.validation_step(inputs, model)
+
+  dataset = orbit.utils.make_distributed_dataset(tf.distribute.get_strategy(),
+                                                 task.build_inputs, params)
+  aggregated_outputs = utils.predict(predict_step, task.aggregate_logs, dataset)
+
+  all_predictions, all_nbest, scores_diff = (
+      task.squad_lib.postprocess_output(
+          eval_examples,
+          eval_features,
+          aggregated_outputs,
+          task.task_config.n_best_size,
+          task.task_config.max_answer_length,
+          task.task_config.validation_data.do_lower_case,
+          version_2_with_negative=(params.version_2_with_negative),
+          null_score_diff_threshold=task.task_config.null_score_diff_threshold,
+          verbose=False))
+  return all_predictions, all_nbest, scores_diff

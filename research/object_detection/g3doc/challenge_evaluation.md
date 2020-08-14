@@ -47,7 +47,7 @@ python object_detection/dataset_tools/oid_hierarchical_labels_expansion.py \
     --annotation_type=2
 ```
 
-1.  If you are not using Tensorflow, you can run evaluation directly using your
+1.  If you are not using TensorFlow, you can run evaluation directly using your
     algorithm's output and generated ground-truth files. {value=4}
 
 After step 3 you produced the ground-truth files suitable for running 'OID
@@ -73,7 +73,7 @@ For the Object Detection Track, the participants will be ranked on:
 
 -   "OpenImagesDetectionChallenge_Precision/mAP@0.5IOU"
 
-To use evaluation within Tensorflow training, use metric name
+To use evaluation within TensorFlow training, use metric name
 `oid_challenge_detection_metrics` in the evaluation config.
 
 ## Instance Segmentation Track
@@ -130,7 +130,7 @@ python object_detection/dataset_tools/oid_hierarchical_labels_expansion.py \
     --annotation_type=1
 ```
 
-1.  If you are not using Tensorflow, you can run evaluation directly using your
+1.  If you are not using TensorFlow, you can run evaluation directly using your
     algorithm's output and generated ground-truth files. {value=4}
 
 ```

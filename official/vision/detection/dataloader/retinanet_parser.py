@@ -79,9 +79,9 @@ class Parser(object):
         output_size should be divided by the largest feature stride 2^max_level.
       min_level: `int` number of minimum level of the output feature pyramid.
       max_level: `int` number of maximum level of the output feature pyramid.
-      num_scales: `int` number representing intermediate scales added
-        on each level. For instances, num_scales=2 adds one additional
-        intermediate anchor scales [2^0, 2^0.5] on each level.
+      num_scales: `int` number representing intermediate scales added on each
+        level. For instances, num_scales=2 adds one additional intermediate
+        anchor scales [2^0, 2^0.5] on each level.
       aspect_ratios: `list` of float numbers representing the aspect raito
         anchors added on each level. The number indicates the ratio of width to
         height. For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors
@@ -94,8 +94,8 @@ class Parser(object):
       unmatched_threshold: `float` number between 0 and 1 representing the
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
-      aug_rand_hflip: `bool`, if True, augment training with random
-        horizontal flip.
+      aug_rand_hflip: `bool`, if True, augment training with random horizontal
+        flip.
       aug_scale_min: `float`, the minimum scale applied to `output_size` for
         data augmentation during training.
       aug_scale_max: `float`, the maximum scale applied to `output_size` for
@@ -109,8 +109,8 @@ class Parser(object):
       max_num_instances: `int` number of maximum number of instances in an
         image. The groundtruth data will be padded to `max_num_instances`.
       use_bfloat16: `bool`, if True, cast output image to tf.bfloat16.
-      mode: a ModeKeys. Specifies if this is training, evaluation, prediction
-        or prediction with groundtruths in the outputs.
+      mode: a ModeKeys. Specifies if this is training, evaluation, prediction or
+        prediction with groundtruths in the outputs.
     """
     self._mode = mode
     self._max_num_instances = max_num_instances
@@ -232,8 +232,8 @@ class Parser(object):
     image, image_info = input_utils.resize_and_crop_image(
         image,
         self._output_size,
-        padded_size=input_utils.compute_padded_size(
-            self._output_size, 2 ** self._max_level),
+        padded_size=input_utils.compute_padded_size(self._output_size,
+                                                    2**self._max_level),
         aug_scale_min=self._aug_scale_min,
         aug_scale_max=self._aug_scale_max)
     image_height, image_width, _ = image.get_shape().as_list()
@@ -241,22 +241,21 @@ class Parser(object):
     # Resizes and crops boxes.
     image_scale = image_info[2, :]
     offset = image_info[3, :]
-    boxes = input_utils.resize_and_crop_boxes(
-        boxes, image_scale, image_info[1, :], offset)
+    boxes = input_utils.resize_and_crop_boxes(boxes, image_scale,
+                                              image_info[1, :], offset)
     # Filters out ground truth boxes that are all zeros.
     indices = box_utils.get_non_empty_box_indices(boxes)
     boxes = tf.gather(boxes, indices)
     classes = tf.gather(classes, indices)
 
     # Assigns anchors.
-    input_anchor = anchor.Anchor(
-        self._min_level, self._max_level, self._num_scales,
-        self._aspect_ratios, self._anchor_size, (image_height, image_width))
-    anchor_labeler = anchor.AnchorLabeler(
-        input_anchor, self._match_threshold, self._unmatched_threshold)
+    input_anchor = anchor.Anchor(self._min_level, self._max_level,
+                                 self._num_scales, self._aspect_ratios,
+                                 self._anchor_size, (image_height, image_width))
+    anchor_labeler = anchor.AnchorLabeler(input_anchor, self._match_threshold,
+                                          self._unmatched_threshold)
     (cls_targets, box_targets, num_positives) = anchor_labeler.label_anchors(
-        boxes,
-        tf.cast(tf.expand_dims(classes, axis=1), tf.float32))
+        boxes, tf.cast(tf.expand_dims(classes, axis=1), tf.float32))
 
     # If bfloat16 is used, casts input image to tf.bfloat16.
     if self._use_bfloat16:
@@ -292,8 +291,8 @@ class Parser(object):
     image, image_info = input_utils.resize_and_crop_image(
         image,
         self._output_size,
-        padded_size=input_utils.compute_padded_size(
-            self._output_size, 2 ** self._max_level),
+        padded_size=input_utils.compute_padded_size(self._output_size,
+                                                    2**self._max_level),
         aug_scale_min=1.0,
         aug_scale_max=1.0)
     image_height, image_width, _ = image.get_shape().as_list()
@@ -301,22 +300,21 @@ class Parser(object):
     # Resizes and crops boxes.
     image_scale = image_info[2, :]
     offset = image_info[3, :]
-    boxes = input_utils.resize_and_crop_boxes(
-        boxes, image_scale, image_info[1, :], offset)
+    boxes = input_utils.resize_and_crop_boxes(boxes, image_scale,
+                                              image_info[1, :], offset)
     # Filters out ground truth boxes that are all zeros.
     indices = box_utils.get_non_empty_box_indices(boxes)
     boxes = tf.gather(boxes, indices)
     classes = tf.gather(classes, indices)
 
     # Assigns anchors.
-    input_anchor = anchor.Anchor(
-        self._min_level, self._max_level, self._num_scales,
-        self._aspect_ratios, self._anchor_size, (image_height, image_width))
-    anchor_labeler = anchor.AnchorLabeler(
-        input_anchor, self._match_threshold, self._unmatched_threshold)
+    input_anchor = anchor.Anchor(self._min_level, self._max_level,
+                                 self._num_scales, self._aspect_ratios,
+                                 self._anchor_size, (image_height, image_width))
+    anchor_labeler = anchor.AnchorLabeler(input_anchor, self._match_threshold,
+                                          self._unmatched_threshold)
     (cls_targets, box_targets, num_positives) = anchor_labeler.label_anchors(
-        boxes,
-        tf.cast(tf.expand_dims(classes, axis=1), tf.float32))
+        boxes, tf.cast(tf.expand_dims(classes, axis=1), tf.float32))
 
     # If bfloat16 is used, casts input image to tf.bfloat16.
     if self._use_bfloat16:
@@ -324,18 +322,24 @@ class Parser(object):
 
     # Sets up groundtruth data for evaluation.
     groundtruths = {
-        'source_id': data['source_id'],
-        'num_groundtrtuhs': tf.shape(data['groundtruth_classes']),
-        'image_info': image_info,
-        'boxes': box_utils.denormalize_boxes(
-            data['groundtruth_boxes'], image_shape),
-        'classes': data['groundtruth_classes'],
-        'areas': data['groundtruth_area'],
-        'is_crowds': tf.cast(data['groundtruth_is_crowd'], tf.int32),
+        'source_id':
+            data['source_id'],
+        'num_groundtrtuhs':
+            tf.shape(data['groundtruth_classes']),
+        'image_info':
+            image_info,
+        'boxes':
+            box_utils.denormalize_boxes(data['groundtruth_boxes'], image_shape),
+        'classes':
+            data['groundtruth_classes'],
+        'areas':
+            data['groundtruth_area'],
+        'is_crowds':
+            tf.cast(data['groundtruth_is_crowd'], tf.int32),
     }
     groundtruths['source_id'] = process_source_id(groundtruths['source_id'])
-    groundtruths = pad_groundtruths_to_fixed_size(
-        groundtruths, self._max_num_instances)
+    groundtruths = pad_groundtruths_to_fixed_size(groundtruths,
+                                                  self._max_num_instances)
 
     # Packs labels for model_fn outputs.
     labels = {
@@ -361,8 +365,8 @@ class Parser(object):
     image, image_info = input_utils.resize_and_crop_image(
         image,
         self._output_size,
-        padded_size=input_utils.compute_padded_size(
-            self._output_size, 2 ** self._max_level),
+        padded_size=input_utils.compute_padded_size(self._output_size,
+                                                    2**self._max_level),
         aug_scale_min=1.0,
         aug_scale_max=1.0)
     image_height, image_width, _ = image.get_shape().as_list()
@@ -372,9 +376,9 @@ class Parser(object):
       image = tf.cast(image, dtype=tf.bfloat16)
 
     # Compute Anchor boxes.
-    input_anchor = anchor.Anchor(
-        self._min_level, self._max_level, self._num_scales,
-        self._aspect_ratios, self._anchor_size, (image_height, image_width))
+    input_anchor = anchor.Anchor(self._min_level, self._max_level,
+                                 self._num_scales, self._aspect_ratios,
+                                 self._anchor_size, (image_height, image_width))
 
     labels = {
         'anchor_boxes': input_anchor.multilevel_boxes,
@@ -384,8 +388,8 @@ class Parser(object):
     # in labels.
     if self._mode == ModeKeys.PREDICT_WITH_GT:
       # Converts boxes from normalized coordinates to pixel coordinates.
-      boxes = box_utils.denormalize_boxes(
-          data['groundtruth_boxes'], image_shape)
+      boxes = box_utils.denormalize_boxes(data['groundtruth_boxes'],
+                                          image_shape)
       groundtruths = {
           'source_id': data['source_id'],
           'num_detections': tf.shape(data['groundtruth_classes']),
@@ -395,8 +399,8 @@ class Parser(object):
           'is_crowds': tf.cast(data['groundtruth_is_crowd'], tf.int32),
       }
       groundtruths['source_id'] = process_source_id(groundtruths['source_id'])
-      groundtruths = pad_groundtruths_to_fixed_size(
-          groundtruths, self._max_num_instances)
+      groundtruths = pad_groundtruths_to_fixed_size(groundtruths,
+                                                    self._max_num_instances)
       labels['groundtruths'] = groundtruths
 
       # Computes training objective for evaluation loss.
@@ -404,18 +408,17 @@ class Parser(object):
 
       image_scale = image_info[2, :]
       offset = image_info[3, :]
-      boxes = input_utils.resize_and_crop_boxes(
-          boxes, image_scale, image_info[1, :], offset)
+      boxes = input_utils.resize_and_crop_boxes(boxes, image_scale,
+                                                image_info[1, :], offset)
       # Filters out ground truth boxes that are all zeros.
       indices = box_utils.get_non_empty_box_indices(boxes)
       boxes = tf.gather(boxes, indices)
 
       # Assigns anchors.
-      anchor_labeler = anchor.AnchorLabeler(
-          input_anchor, self._match_threshold, self._unmatched_threshold)
+      anchor_labeler = anchor.AnchorLabeler(input_anchor, self._match_threshold,
+                                            self._unmatched_threshold)
       (cls_targets, box_targets, num_positives) = anchor_labeler.label_anchors(
-          boxes,
-          tf.cast(tf.expand_dims(classes, axis=1), tf.float32))
+          boxes, tf.cast(tf.expand_dims(classes, axis=1), tf.float32))
       labels['cls_targets'] = cls_targets
       labels['box_targets'] = box_targets
       labels['num_positives'] = num_positives

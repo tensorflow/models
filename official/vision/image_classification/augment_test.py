@@ -49,24 +49,15 @@ class TransformsTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_transform(self, dtype):
     image = tf.constant([[1, 2], [3, 4]], dtype=dtype)
-    self.assertAllEqual(augment.transform(image, transforms=[1]*8),
-                        [[4, 4], [4, 4]])
+    self.assertAllEqual(
+        augment.transform(image, transforms=[1] * 8), [[4, 4], [4, 4]])
 
   def test_translate(self, dtype):
     image = tf.constant(
-        [[1, 0, 1, 0],
-         [0, 1, 0, 1],
-         [1, 0, 1, 0],
-         [0, 1, 0, 1]],
-        dtype=dtype)
+        [[1, 0, 1, 0], [0, 1, 0, 1], [1, 0, 1, 0], [0, 1, 0, 1]], dtype=dtype)
     translations = [-1, -1]
-    translated = augment.translate(image=image,
-                                   translations=translations)
-    expected = [
-        [1, 0, 1, 1],
-        [0, 1, 0, 0],
-        [1, 0, 1, 1],
-        [1, 0, 1, 1]]
+    translated = augment.translate(image=image, translations=translations)
+    expected = [[1, 0, 1, 1], [0, 1, 0, 0], [1, 0, 1, 1], [1, 0, 1, 1]]
     self.assertAllEqual(translated, expected)
 
   def test_translate_shapes(self, dtype):
@@ -85,9 +76,7 @@ class TransformsTest(parameterized.TestCase, tf.test.TestCase):
     image = tf.reshape(tf.cast(tf.range(9), dtype), (3, 3))
     rotation = 90.
     transformed = augment.rotate(image=image, degrees=rotation)
-    expected = [[2, 5, 8],
-                [1, 4, 7],
-                [0, 3, 6]]
+    expected = [[2, 5, 8], [1, 4, 7], [0, 3, 6]]
     self.assertAllEqual(transformed, expected)
 
   def test_rotate_shapes(self, dtype):
@@ -129,15 +118,13 @@ class AutoaugmentTest(tf.test.TestCase):
     image = tf.ones((224, 224, 3), dtype=tf.uint8)
 
     for op_name in augment.NAME_TO_FUNC:
-      func, _, args = augment._parse_policy_info(op_name,
-                                                 prob,
-                                                 magnitude,
-                                                 replace_value,
-                                                 cutout_const,
+      func, _, args = augment._parse_policy_info(op_name, prob, magnitude,
+                                                 replace_value, cutout_const,
                                                  translate_const)
       image = func(image, *args)
 
     self.assertEqual((224, 224, 3), image.shape)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -14,13 +14,13 @@
 # limitations under the License.
 # ==============================================================================
 """Common configuration settings."""
+
 from typing import Optional, Union
 
 import dataclasses
 
 from official.modeling.hyperparams import base_config
 from official.modeling.optimization.configs import optimization_config
-from official.utils import registry
 
 OptimizationConfig = optimization_config.OptimizationConfig
 
@@ -55,14 +55,14 @@ class DataConfig(base_config.Config):
       exhaust all the examples in the dataset.
     tfds_data_dir: A str specifying the directory to read/write TFDS data.
     tfds_download: A bool to indicate whether to download data using TFDS.
-    tfds_as_supervised: A bool. When loading dataset from TFDS, if True,
-      the returned tf.data.Dataset will have a 2-tuple structure (input, label)
-      according to builder.info.supervised_keys; if False, the default,
-      the returned tf.data.Dataset will have a dictionary with all the features.
-    tfds_skip_decoding_feature: A str to indicate which features are skipped
-      for decoding when loading dataset from TFDS. Use comma to separate
-      multiple features. The main use case is to skip the image/video decoding
-      for better performance.
+    tfds_as_supervised: A bool. When loading dataset from TFDS, if True, the
+      returned tf.data.Dataset will have a 2-tuple structure (input, label)
+      according to builder.info.supervised_keys; if False, the default, the
+      returned tf.data.Dataset will have a dictionary with all the features.
+    tfds_skip_decoding_feature: A str to indicate which features are skipped for
+      decoding when loading dataset from TFDS. Use comma to separate multiple
+      features. The main use case is to skip the image/video decoding for better
+      performance.
   """
   input_path: str = ""
   tfds_name: str = ""
@@ -111,6 +111,8 @@ class RuntimeConfig(base_config.Config):
     run_eagerly: Whether or not to run the experiment eagerly.
     batchnorm_spatial_persistent: Whether or not to enable the spatial
       persistent mode for CuDNN batch norm kernel for improved GPU performance.
+    allow_tpu_summary: Whether to allow summary happen inside the XLA program
+      runs on TPU through automatic outside compilation.
   """
   distribution_strategy: str = "mirrored"
   enable_xla: bool = False
@@ -123,8 +125,8 @@ class RuntimeConfig(base_config.Config):
   task_index: int = -1
   all_reduce_alg: Optional[str] = None
   num_packs: int = 1
-  loss_scale: Optional[Union[str, float]] = None
   mixed_precision_dtype: Optional[str] = None
+  loss_scale: Optional[Union[str, float]] = None
   run_eagerly: bool = False
   batchnorm_spatial_persistent: bool = False
 
@@ -172,27 +174,38 @@ class TrainerConfig(base_config.Config):
     eval_tf_function: whether or not to use tf_function for eval.
     steps_per_loop: number of steps per loop.
     summary_interval: number of steps between each summary.
-    checkpoint_intervals: number of steps between checkpoints.
+    checkpoint_interval: number of steps between checkpoints.
     max_to_keep: max checkpoints to keep.
     continuous_eval_timeout: maximum number of seconds to wait between
-      checkpoints, if set to None, continuous eval will wait indefinetely.
+      checkpoints, if set to None, continuous eval will wait indefinitely. This
+      is only used continuous_train_and_eval and continuous_eval modes.
+    train_steps: number of train steps.
+    validation_steps: number of eval steps. If `None`, the entire eval dataset
+      is used.
+    validation_interval: number of training steps to run between evaluations.
   """
   optimizer_config: OptimizationConfig = OptimizationConfig()
-  train_steps: int = 0
-  validation_steps: Optional[int] = None
-  validation_interval: int = 100
-  steps_per_loop: int = 1000
-  summary_interval: int = 1000
-  checkpoint_interval: int = 1000
-  max_to_keep: int = 5
-  continuous_eval_timeout: Optional[int] = None
+  # Orbit settings.
   train_tf_while_loop: bool = True
   train_tf_function: bool = True
   eval_tf_function: bool = True
+  allow_tpu_summary: bool = False
+  # Trainer intervals.
+  steps_per_loop: int = 1000
+  summary_interval: int = 1000
+  checkpoint_interval: int = 1000
+  # Checkpoint manager.
+  max_to_keep: int = 5
+  continuous_eval_timeout: Optional[int] = None
+  # Train/Eval routines.
+  train_steps: int = 0
+  validation_steps: Optional[int] = None
+  validation_interval: int = 1000
 
 
 @dataclasses.dataclass
 class TaskConfig(base_config.Config):
+  init_checkpoint: str = ""
   model: base_config.Config = None
   train_data: DataConfig = DataConfig()
   validation_data: DataConfig = DataConfig()
@@ -204,17 +217,3 @@ class ExperimentConfig(base_config.Config):
   task: TaskConfig = TaskConfig()
   trainer: TrainerConfig = TrainerConfig()
   runtime: RuntimeConfig = RuntimeConfig()
-
-
-_REGISTERED_CONFIGS = {}
-
-
-def register_config_factory(name):
-  """Register ExperimentConfig factory method."""
-  return registry.register(_REGISTERED_CONFIGS, name)
-
-
-def get_exp_config_creater(exp_name: str):
-  """Looks up ExperimentConfig factory methods."""
-  exp_creater = registry.lookup(_REGISTERED_CONFIGS, exp_name)
-  return exp_creater

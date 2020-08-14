@@ -42,6 +42,9 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
   def ssd_feature_extractors(self):
     return model_builder.SSD_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
 
+  def get_override_base_feature_extractor_hyperparams(self, extractor_type):
+    return extractor_type in {}
+
   def faster_rcnn_feature_extractors(self):
     return model_builder.FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP
 
@@ -161,6 +164,28 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     return text_format.Merge(proto_txt,
                              center_net_pb2.CenterNet.MaskEstimation())
 
+  def get_fake_densepose_proto(self):
+    proto_txt = """
+      task_loss_weight: 0.5
+      class_id: 0
+      loss {
+        classification_loss {
+          weighted_softmax {}
+        }
+        localization_loss {
+          l1_localization_loss {
+          }
+        }
+      }
+      num_parts: 24
+      part_loss_weight: 1.0
+      coordinate_loss_weight: 2.0
+      upsample_to_input_res: true
+      heatmap_bias_init: -2.0
+    """
+    return text_format.Merge(proto_txt,
+                             center_net_pb2.CenterNet.DensePoseEstimation())
+
   def test_create_center_net_model(self):
     """Test building a CenterNet model from proto txt."""
     proto_txt = """
@@ -192,6 +217,8 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
         self.get_fake_label_map_file_path())
     config.center_net.mask_estimation_task.CopyFrom(
         self.get_fake_mask_proto())
+    config.center_net.densepose_estimation_task.CopyFrom(
+        self.get_fake_densepose_proto())
 
     # Build the model from the configuration.
     model = model_builder.build(config, is_training=True)
@@ -247,6 +274,21 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     self.assertAlmostEqual(model._mask_params.score_threshold, 0.7)
     self.assertAlmostEqual(
         model._mask_params.heatmap_bias_init, -2.0, places=4)
+
+    # Check DensePose related parameters.
+    self.assertEqual(model._densepose_params.class_id, 0)
+    self.assertIsInstance(model._densepose_params.classification_loss,
+                          losses.WeightedSoftmaxClassificationLoss)
+    self.assertIsInstance(model._densepose_params.localization_loss,
+                          losses.L1LocalizationLoss)
+    self.assertAlmostEqual(model._densepose_params.part_loss_weight, 1.0)
+    self.assertAlmostEqual(model._densepose_params.coordinate_loss_weight, 2.0)
+    self.assertEqual(model._densepose_params.num_parts, 24)
+    self.assertAlmostEqual(model._densepose_params.task_loss_weight, 0.5)
+    self.assertTrue(model._densepose_params.upsample_to_input_res)
+    self.assertEqual(model._densepose_params.upsample_method, 'bilinear')
+    self.assertAlmostEqual(
+        model._densepose_params.heatmap_bias_init, -2.0, places=4)
 
     # Check feature extractor parameters.
     self.assertIsInstance(

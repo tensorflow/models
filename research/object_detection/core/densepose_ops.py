@@ -42,9 +42,6 @@ PART_NAMES = [
     b'left_face',
 ]
 
-_SRC_PATH = ('google3/third_party/tensorflow_models/object_detection/'
-             'dataset_tools/densepose')
-
 
 def scale(dp_surface_coords, y_scale, x_scale, scope=None):
   """Scales DensePose coordinates in y and x dimensions.
@@ -266,10 +263,14 @@ class DensePoseHorizontalFlip(object):
   def __init__(self):
     """Constructor."""
 
-    uv_symmetry_transforms_path = os.path.join(
-        tf.resource_loader.get_data_files_path(), '..', 'dataset_tools',
-        'densepose', 'UV_symmetry_transforms.mat')
-    data = scipy.io.loadmat(uv_symmetry_transforms_path)
+    path = os.path.dirname(os.path.abspath(__file__))
+    uv_symmetry_transforms_path = tf.resource_loader.get_path_to_datafile(
+        os.path.join(path, '..', 'dataset_tools', 'densepose',
+                     'UV_symmetry_transforms.mat'))
+    tf.logging.info('Loading DensePose symmetry transforms file from {}'.format(
+        uv_symmetry_transforms_path))
+    with tf.io.gfile.GFile(uv_symmetry_transforms_path, 'rb') as f:
+      data = scipy.io.loadmat(f)
 
     # Create lookup maps which indicate how a VU coordinate changes after a
     # horizontal flip.

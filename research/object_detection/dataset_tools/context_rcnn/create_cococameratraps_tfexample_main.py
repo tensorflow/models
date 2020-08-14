@@ -37,13 +37,16 @@ import argparse
 import hashlib
 import io
 import json
-import logging
 import os
-import apache_beam as beam
 import numpy as np
 import PIL.Image
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from object_detection.utils import dataset_util
+
+try:
+  import apache_beam as beam  # pylint:disable=g-import-not-at-top
+except ModuleNotFoundError:
+  pass
 
 
 class ParseImage(beam.DoFn):
@@ -106,16 +109,9 @@ class ParseImage(beam.DoFn):
         encoded_jpg = fid.read()
       encoded_jpg_io = io.BytesIO(encoded_jpg)
       image = PIL.Image.open(encoded_jpg_io)
-      # Ensure the image can be read by tf
-      with tf.Graph().as_default():
-        image = tf.image.decode_jpeg(encoded_jpg, channels=3)
-        init_op = tf.initialize_all_tables()
-        with tf.Session() as sess:
-          sess.run(init_op)
-          sess.run(image)
-    except Exception as e:  # pylint: disable=broad-except
+      image = tf.io.decode_jpeg(encoded_jpg, channels=3)
+    except Exception:  # pylint: disable=broad-except
       # The image file is missing or corrupt
-      tf.logging.error(str(e))
       return []
 
     key = hashlib.sha256(encoded_jpg).hexdigest()
@@ -252,8 +248,6 @@ def create_pipeline(pipeline,
     num_images_per_shard: The number of images to store in each shard
     keep_bboxes: Whether to keep any bounding boxes that exist in the json file
   """
-
-  logging.info('Reading data from COCO-CameraTraps Dataset.')
 
   data = load_json_data(input_annotations_file)
 

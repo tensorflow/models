@@ -1424,14 +1424,16 @@ class CocoMaskEvaluationTest(tf.test.TestCase):
         image_id='image3',
         detections_dict={
             standard_fields.DetectionResultFields.detection_boxes:
-            np.array([[25., 25., 50., 50.]]),
+                np.array([[25., 25., 50., 50.]]),
             standard_fields.DetectionResultFields.detection_scores:
-            np.array([.8]),
+                np.array([.8]),
             standard_fields.DetectionResultFields.detection_classes:
-            np.array([1]),
+                np.array([1]),
             standard_fields.DetectionResultFields.detection_masks:
-            np.pad(np.ones([1, 25, 25], dtype=np.uint8),
-                   ((0, 0), (10, 10), (10, 10)), mode='constant')
+                # The value of 5 is equivalent to 1, since masks will be
+                # thresholded and binarized before evaluation.
+                np.pad(5 * np.ones([1, 25, 25], dtype=np.uint8),
+                       ((0, 0), (10, 10), (10, 10)), mode='constant')
         })
     metrics = coco_evaluator.evaluate()
     self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP'], 1.0)

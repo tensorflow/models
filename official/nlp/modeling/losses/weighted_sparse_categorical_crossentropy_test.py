@@ -204,5 +204,6 @@ class ClassificationLossTest(keras_parameterized.TestCase):
     expected_loss_data = 6.4222
     self.assertAllClose(expected_loss_data, loss_data, rtol=1e-3)
 
+
 if __name__ == "__main__":
   tf.test.main()

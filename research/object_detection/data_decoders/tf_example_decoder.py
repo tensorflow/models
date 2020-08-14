@@ -124,40 +124,6 @@ class _ClassTensorHandler(slim_example_decoder.Tensor):
                       self._display_name_to_id_table.lookup(unmapped_tensor))
 
 
-class _BackupHandler(slim_example_decoder.ItemHandler):
-  """An ItemHandler that tries two ItemHandlers in order."""
-
-  def __init__(self, handler, backup):
-    """Initializes the BackupHandler handler.
-
-    If the first Handler's tensors_to_item returns a Tensor with no elements,
-    the second Handler is used.
-
-    Args:
-      handler: The primary ItemHandler.
-      backup: The backup ItemHandler.
-
-    Raises:
-      ValueError: if either is not an ItemHandler.
-    """
-    if not isinstance(handler, slim_example_decoder.ItemHandler):
-      raise ValueError('Primary handler is of type %s instead of ItemHandler' %
-                       type(handler))
-    if not isinstance(backup, slim_example_decoder.ItemHandler):
-      raise ValueError(
-          'Backup handler is of type %s instead of ItemHandler' % type(backup))
-    self._handler = handler
-    self._backup = backup
-    super(_BackupHandler, self).__init__(handler.keys + backup.keys)
-
-  def tensors_to_item(self, keys_to_tensors):
-    item = self._handler.tensors_to_item(keys_to_tensors)
-    return tf.cond(
-        pred=tf.equal(tf.reduce_prod(tf.shape(item)), 0),
-        true_fn=lambda: self._backup.tensors_to_item(keys_to_tensors),
-        false_fn=lambda: item)
-
-
 class TfExampleDecoder(data_decoder.DataDecoder):
   """Tensorflow Example proto decoder."""
 
@@ -172,7 +138,8 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                load_multiclass_scores=False,
                load_context_features=False,
                expand_hierarchy_labels=False,
-               load_dense_pose=False):
+               load_dense_pose=False,
+               load_track_id=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -204,6 +171,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         classes, the labels are extended to ancestor. For negative classes,
         the labels are expanded to descendants.
       load_dense_pose: Whether to load DensePose annotations.
+      load_track_id: Whether to load tracking annotations.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
@@ -401,16 +369,22 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                    'image/object/densepose/u', 'image/object/densepose/v',
                    'image/object/densepose/num'],
                   self._dense_pose_surface_coordinates))
+    if load_track_id:
+      self.keys_to_features['image/object/track/label'] = (
+          tf.VarLenFeature(tf.int64))
+      self.items_to_handlers[
+          fields.InputDataFields.groundtruth_track_ids] = (
+              slim_example_decoder.Tensor('image/object/track/label'))
 
     if label_map_proto_file:
       # If the label_map_proto is provided, try to use it in conjunction with
       # the class text, and fall back to a materialized ID.
-      label_handler = _BackupHandler(
+      label_handler = slim_example_decoder.BackupHandler(
           _ClassTensorHandler(
               'image/object/class/text', label_map_proto_file,
               default_value=''),
           slim_example_decoder.Tensor('image/object/class/label'))
-      image_label_handler = _BackupHandler(
+      image_label_handler = slim_example_decoder.BackupHandler(
           _ClassTensorHandler(
               fields.TfExampleFields.image_class_text,
               label_map_proto_file,
@@ -584,6 +558,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
           dtype=tf.int32)
       tensor_dict[fields.InputDataFields.groundtruth_dp_part_ids] = tf.cast(
           tensor_dict[fields.InputDataFields.groundtruth_dp_part_ids],
+          dtype=tf.int32)
+
+    if fields.InputDataFields.groundtruth_track_ids in tensor_dict:
+      tensor_dict[fields.InputDataFields.groundtruth_track_ids] = tf.cast(
+          tensor_dict[fields.InputDataFields.groundtruth_track_ids],
           dtype=tf.int32)
 
     return tensor_dict

@@ -2,7 +2,7 @@
 
 [TOC]
 
-The Tensorflow Object Detection API supports TPU training for some models. To
+The TensorFlow Object Detection API supports TPU training for some models. To
 make models TPU compatible you need to make a few tweaks to the model config as
 mentioned below. We also provide several sample configs that you can use as a
 template.
@@ -11,7 +11,7 @@ template.
 
 ### Static shaped tensors
 
-TPU training currently requires all tensors in the Tensorflow Graph to have
+TPU training currently requires all tensors in the TensorFlow Graph to have
 static shapes. However, most of the sample configs in Object Detection API have
 a few different tensors that are dynamically shaped. Fortunately, we provide
 simple alternatives in the model configuration that modifies these tensors to
@@ -62,7 +62,7 @@ have static shape:
 ### TPU friendly ops
 
 Although TPU supports a vast number of tensorflow ops, a few used in the
-Tensorflow Object Detection API are unsupported. We list such ops below and
+TensorFlow Object Detection API are unsupported. We list such ops below and
 recommend compatible substitutes.
 
 *   **Anchor sampling** - Typically we use hard example mining in standard SSD

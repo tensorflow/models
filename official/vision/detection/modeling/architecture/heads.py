@@ -22,7 +22,8 @@ import functools
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.keras import backend
+
+from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 from official.vision.detection.ops import spatial_transform_ops
 
@@ -30,17 +31,17 @@ from official.vision.detection.ops import spatial_transform_ops
 class RpnHead(tf.keras.layers.Layer):
   """Region Proposal Network head."""
 
-  def __init__(self,
-               min_level,
-               max_level,
-               anchors_per_location,
-               num_convs=2,
-               num_filters=256,
-               use_separable_conv=False,
-               activation='relu',
-               use_batch_norm=True,
-               norm_activation=nn_ops.norm_activation_builder(
-                   activation='relu')):
+  def __init__(
+      self,
+      min_level,
+      max_level,
+      anchors_per_location,
+      num_convs=2,
+      num_filters=256,
+      use_separable_conv=False,
+      activation='relu',
+      use_batch_norm=True,
+      norm_activation=nn_ops.norm_activation_builder(activation='relu')):
     """Initialize params to build Region Proposal Network head.
 
     Args:
@@ -56,8 +57,8 @@ class RpnHead(tf.keras.layers.Layer):
         is used.
       activation: activation function. Support 'relu' and 'swish'.
       use_batch_norm: 'bool', indicating whether batchnorm layers are added.
-      norm_activation: an operation that includes a normalization layer
-        followed by an optional activation layer.
+      norm_activation: an operation that includes a normalization layer followed
+        by an optional activation layer.
     """
     self._min_level = min_level
     self._max_level = max_level
@@ -127,7 +128,7 @@ class RpnHead(tf.keras.layers.Layer):
     scores_outputs = {}
     box_outputs = {}
 
-    with backend.get_graph().as_default(), tf.name_scope('rpn_head'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('rpn_head'):
       for level in range(self._min_level, self._max_level + 1):
         scores_output, box_output = self._shared_rpn_heads(
             features[level], self._anchors_per_location, level, is_training)
@@ -139,17 +140,17 @@ class RpnHead(tf.keras.layers.Layer):
 class FastrcnnHead(tf.keras.layers.Layer):
   """Fast R-CNN box head."""
 
-  def __init__(self,
-               num_classes,
-               num_convs=0,
-               num_filters=256,
-               use_separable_conv=False,
-               num_fcs=2,
-               fc_dims=1024,
-               activation='relu',
-               use_batch_norm=True,
-               norm_activation=nn_ops.norm_activation_builder(
-                   activation='relu')):
+  def __init__(
+      self,
+      num_classes,
+      num_convs=0,
+      num_filters=256,
+      use_separable_conv=False,
+      num_fcs=2,
+      fc_dims=1024,
+      activation='relu',
+      use_batch_norm=True,
+      norm_activation=nn_ops.norm_activation_builder(activation='relu')):
     """Initialize params to build Fast R-CNN box head.
 
     Args:
@@ -166,8 +167,8 @@ class FastrcnnHead(tf.keras.layers.Layer):
         layers.
       activation: activation function. Support 'relu' and 'swish'.
       use_batch_norm: 'bool', indicating whether batchnorm layers are added.
-      norm_activation: an operation that includes a normalization layer
-        followed by an optional activation layer.
+      norm_activation: an operation that includes a normalization layer followed
+        by an optional activation layer.
     """
     self._num_classes = num_classes
 
@@ -206,7 +207,8 @@ class FastrcnnHead(tf.keras.layers.Layer):
               strides=(1, 1),
               padding='same',
               dilation_rate=(1, 1),
-              activation=(None if self._use_batch_norm else self._activation_op),
+              activation=(None
+                          if self._use_batch_norm else self._activation_op),
               name='conv_{}'.format(i)))
       if self._use_batch_norm:
         self._conv_bn_ops.append(self._norm_activation())
@@ -217,7 +219,8 @@ class FastrcnnHead(tf.keras.layers.Layer):
       self._fc_ops.append(
           tf.keras.layers.Dense(
               units=self._fc_dims,
-              activation=(None if self._use_batch_norm else self._activation_op),
+              activation=(None
+                          if self._use_batch_norm else self._activation_op),
               name='fc{}'.format(i)))
       if self._use_batch_norm:
         self._fc_bn_ops.append(self._norm_activation(fused=False))
@@ -237,8 +240,8 @@ class FastrcnnHead(tf.keras.layers.Layer):
     """Box and class branches for the Mask-RCNN model.
 
     Args:
-      roi_features: A ROI feature tensor of shape
-        [batch_size, num_rois, height_l, width_l, num_filters].
+      roi_features: A ROI feature tensor of shape [batch_size, num_rois,
+        height_l, width_l, num_filters].
       is_training: `boolean`, if True if model is in training mode.
 
     Returns:
@@ -249,7 +252,8 @@ class FastrcnnHead(tf.keras.layers.Layer):
         predictions.
     """
 
-    with backend.get_graph().as_default(), tf.name_scope('fast_rcnn_head'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope(
+        'fast_rcnn_head'):
       # reshape inputs beofre FC.
       _, num_rois, height, width, filters = roi_features.get_shape().as_list()
 
@@ -275,16 +279,16 @@ class FastrcnnHead(tf.keras.layers.Layer):
 class MaskrcnnHead(tf.keras.layers.Layer):
   """Mask R-CNN head."""
 
-  def __init__(self,
-               num_classes,
-               mask_target_size,
-               num_convs=4,
-               num_filters=256,
-               use_separable_conv=False,
-               activation='relu',
-               use_batch_norm=True,
-               norm_activation=nn_ops.norm_activation_builder(
-                   activation='relu')):
+  def __init__(
+      self,
+      num_classes,
+      mask_target_size,
+      num_convs=4,
+      num_filters=256,
+      use_separable_conv=False,
+      activation='relu',
+      use_batch_norm=True,
+      norm_activation=nn_ops.norm_activation_builder(activation='relu')):
     """Initialize params to build Fast R-CNN head.
 
     Args:
@@ -298,8 +302,8 @@ class MaskrcnnHead(tf.keras.layers.Layer):
         is used.
       activation: activation function. Support 'relu' and 'swish'.
       use_batch_norm: 'bool', indicating whether batchnorm layers are added.
-      norm_activation: an operation that includes a normalization layer
-        followed by an optional activation layer.
+      norm_activation: an operation that includes a normalization layer followed
+        by an optional activation layer.
     """
     self._num_classes = num_classes
     self._mask_target_size = mask_target_size
@@ -334,7 +338,8 @@ class MaskrcnnHead(tf.keras.layers.Layer):
               strides=(1, 1),
               padding='same',
               dilation_rate=(1, 1),
-              activation=(None if self._use_batch_norm else self._activation_op),
+              activation=(None
+                          if self._use_batch_norm else self._activation_op),
               name='mask-conv-l%d' % i))
     self._mask_conv_transpose = tf.keras.layers.Conv2DTranspose(
         self._num_filters,
@@ -351,10 +356,10 @@ class MaskrcnnHead(tf.keras.layers.Layer):
     """Mask branch for the Mask-RCNN model.
 
     Args:
-      roi_features: A ROI feature tensor of shape
-        [batch_size, num_rois, height_l, width_l, num_filters].
-      class_indices: a Tensor of shape [batch_size, num_rois], indicating
-        which class the ROI is.
+      roi_features: A ROI feature tensor of shape [batch_size, num_rois,
+        height_l, width_l, num_filters].
+      class_indices: a Tensor of shape [batch_size, num_rois], indicating which
+        class the ROI is.
       is_training: `boolean`, if True if model is in training mode.
 
     Returns:
@@ -368,7 +373,7 @@ class MaskrcnnHead(tf.keras.layers.Layer):
         boxes is not 4.
     """
 
-    with backend.get_graph().as_default():
+    with keras_utils.maybe_enter_backend_graph():
       with tf.name_scope('mask_head'):
         _, num_rois, height, width, filters = roi_features.get_shape().as_list()
         net = tf.reshape(roi_features, [-1, height, width, filters])
@@ -413,16 +418,16 @@ class MaskrcnnHead(tf.keras.layers.Layer):
 class RetinanetHead(object):
   """RetinaNet head."""
 
-  def __init__(self,
-               min_level,
-               max_level,
-               num_classes,
-               anchors_per_location,
-               num_convs=4,
-               num_filters=256,
-               use_separable_conv=False,
-               norm_activation=nn_ops.norm_activation_builder(
-                   activation='relu')):
+  def __init__(
+      self,
+      min_level,
+      max_level,
+      num_classes,
+      anchors_per_location,
+      num_convs=4,
+      num_filters=256,
+      use_separable_conv=False,
+      norm_activation=nn_ops.norm_activation_builder(activation='relu')):
     """Initialize params to build RetinaNet head.
 
     Args:
@@ -435,8 +440,8 @@ class RetinanetHead(object):
       num_filters: `int` number of filters used in the head architecture.
       use_separable_conv: `bool` to indicate whether to use separable
         convoluation.
-      norm_activation: an operation that includes a normalization layer
-        followed by an optional activation layer.
+      norm_activation: an operation that includes a normalization layer followed
+        by an optional activation layer.
     """
     self._min_level = min_level
     self._max_level = max_level
@@ -552,7 +557,8 @@ class RetinanetHead(object):
     """Returns outputs of RetinaNet head."""
     class_outputs = {}
     box_outputs = {}
-    with backend.get_graph().as_default(), tf.name_scope('retinanet_head'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope(
+        'retinanet_head'):
       for level in range(self._min_level, self._max_level + 1):
         features = fpn_features[level]
 
@@ -597,12 +603,8 @@ class RetinanetHead(object):
 class ShapemaskPriorHead(object):
   """ShapeMask Prior head."""
 
-  def __init__(self,
-               num_classes,
-               num_downsample_channels,
-               mask_crop_size,
-               use_category_for_mask,
-               shape_prior_path):
+  def __init__(self, num_classes, num_downsample_channels, mask_crop_size,
+               use_category_for_mask, shape_prior_path):
     """Initialize params to build RetinaNet head.
 
     Args:
@@ -629,12 +631,12 @@ class ShapemaskPriorHead(object):
 
     Args:
       fpn_features: a dictionary of FPN features.
-      boxes: a float tensor of shape [batch_size, num_instances, 4]
-        representing the tight gt boxes from dataloader/detection.
+      boxes: a float tensor of shape [batch_size, num_instances, 4] representing
+        the tight gt boxes from dataloader/detection.
       outer_boxes: a float tensor of shape [batch_size, num_instances, 4]
         representing the loose gt boxes from dataloader/detection.
-      classes: a int Tensor of shape [batch_size, num_instances]
-        of instance classes.
+      classes: a int Tensor of shape [batch_size, num_instances] of instance
+        classes.
       is_training: training mode or not.
 
     Returns:
@@ -644,7 +646,7 @@ class ShapemaskPriorHead(object):
       detection_priors: A float Tensor of shape [batch_size * num_instances,
         mask_size, mask_size, 1].
     """
-    with backend.get_graph().as_default(), tf.name_scope('prior_mask'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('prior_mask'):
       batch_size, num_instances, _ = boxes.get_shape().as_list()
       outer_boxes = tf.cast(outer_boxes, tf.float32)
       boxes = tf.cast(boxes, tf.float32)
@@ -655,8 +657,9 @@ class ShapemaskPriorHead(object):
       shape_priors = self._get_priors()
 
       # Get uniform priors for each outer box.
-      uniform_priors = tf.ones([batch_size, num_instances, self._mask_crop_size,
-                                self._mask_crop_size])
+      uniform_priors = tf.ones([
+          batch_size, num_instances, self._mask_crop_size, self._mask_crop_size
+      ])
       uniform_priors = spatial_transform_ops.crop_mask_in_target_box(
           uniform_priors, boxes, outer_boxes, self._mask_crop_size)
 
@@ -665,8 +668,9 @@ class ShapemaskPriorHead(object):
           tf.cast(instance_features, tf.float32), uniform_priors, classes)
 
       instance_priors = tf.gather(shape_priors, classes)
-      instance_priors *= tf.expand_dims(tf.expand_dims(
-          tf.cast(prior_distribution, tf.float32), axis=-1), axis=-1)
+      instance_priors *= tf.expand_dims(
+          tf.expand_dims(tf.cast(prior_distribution, tf.float32), axis=-1),
+          axis=-1)
       instance_priors = tf.reduce_sum(instance_priors, axis=2)
       detection_priors = spatial_transform_ops.crop_mask_in_target_box(
           instance_priors, boxes, outer_boxes, self._mask_crop_size)
@@ -685,8 +689,10 @@ class ShapemaskPriorHead(object):
       # If prior path does not exist, do not use priors, i.e., pirors equal to
       # uniform empty 32x32 patch.
       self._num_clusters = 1
-      priors = tf.zeros([self._mask_num_classes, self._num_clusters,
-                         self._mask_crop_size, self._mask_crop_size])
+      priors = tf.zeros([
+          self._mask_num_classes, self._num_clusters, self._mask_crop_size,
+          self._mask_crop_size
+      ])
     return priors
 
   def _classify_shape_priors(self, features, uniform_priors, classes):
@@ -696,12 +702,12 @@ class ShapemaskPriorHead(object):
     category.
 
     Args:
-      features: A float Tensor of shape [batch_size, num_instances,
-        mask_size, mask_size, num_channels].
+      features: A float Tensor of shape [batch_size, num_instances, mask_size,
+        mask_size, num_channels].
       uniform_priors: A float Tensor of shape [batch_size, num_instances,
         mask_size, mask_size] representing the uniform detection priors.
-      classes: A int Tensor of shape [batch_size, num_instances]
-        of detection class ids.
+      classes: A int Tensor of shape [batch_size, num_instances] of detection
+        class ids.
 
     Returns:
       prior_distribution: A float Tensor of shape
@@ -716,10 +722,11 @@ class ShapemaskPriorHead(object):
     features = tf.reduce_mean(features, axis=(2, 3))
     logits = tf.keras.layers.Dense(
         self._mask_num_classes * self._num_clusters,
-        kernel_initializer=tf.random_normal_initializer(stddev=0.01))(features)
-    logits = tf.reshape(logits,
-                        [batch_size, num_instances,
-                         self._mask_num_classes, self._num_clusters])
+        kernel_initializer=tf.random_normal_initializer(stddev=0.01))(
+            features)
+    logits = tf.reshape(
+        logits,
+        [batch_size, num_instances, self._mask_num_classes, self._num_clusters])
     if self._use_category_for_mask:
       logits = tf.gather(logits, tf.expand_dims(classes, axis=-1), batch_dims=2)
       logits = tf.squeeze(logits, axis=2)
@@ -749,8 +756,8 @@ class ShapemaskCoarsemaskHead(object):
       use_category_for_mask: use class information in mask branch.
       num_convs: `int` number of stacked convolution before the last prediction
         layer.
-      norm_activation: an operation that includes a normalization layer
-        followed by an optional activation layer.
+      norm_activation: an operation that includes a normalization layer followed
+        by an optional activation layer.
     """
     self._mask_num_classes = num_classes if use_category_for_mask else 1
     self._use_category_for_mask = use_category_for_mask
@@ -766,13 +773,15 @@ class ShapemaskCoarsemaskHead(object):
     self._class_norm_activation = []
 
     for i in range(self._num_convs):
-      self._class_conv.append(tf.keras.layers.Conv2D(
-          self._num_downsample_channels,
-          kernel_size=(3, 3),
-          bias_initializer=tf.zeros_initializer(),
-          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
-          padding='same',
-          name='coarse-mask-class-%d' % i))
+      self._class_conv.append(
+          tf.keras.layers.Conv2D(
+              self._num_downsample_channels,
+              kernel_size=(3, 3),
+              bias_initializer=tf.zeros_initializer(),
+              kernel_initializer=tf.keras.initializers.RandomNormal(
+                  stddev=0.01),
+              padding='same',
+              name='coarse-mask-class-%d' % i))
 
       self._class_norm_activation.append(
           norm_activation(name='coarse-mask-class-%d-bn' % i))
@@ -797,17 +806,17 @@ class ShapemaskCoarsemaskHead(object):
         mask_crop_size, mask_crop_size, num_downsample_channels]. This is the
         instance feature crop.
       detection_priors: a float Tensor of shape [batch_size, num_instances,
-        mask_crop_size, mask_crop_size, 1]. This is the detection prior for
-        the instance.
-      classes: a int Tensor of shape [batch_size, num_instances]
-        of instance classes.
+        mask_crop_size, mask_crop_size, 1]. This is the detection prior for the
+        instance.
+      classes: a int Tensor of shape [batch_size, num_instances] of instance
+        classes.
       is_training: a bool indicating whether in training mode.
 
     Returns:
       mask_outputs: instance mask prediction as a float Tensor of shape
         [batch_size, num_instances, mask_size, mask_size].
     """
-    with backend.get_graph().as_default(), tf.name_scope('coarse_mask'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('coarse_mask'):
       # Transform detection priors to have the same dimension as features.
       detection_priors = tf.expand_dims(detection_priors, axis=-1)
       detection_priors = self._coarse_mask_fc(detection_priors)
@@ -817,8 +826,8 @@ class ShapemaskCoarsemaskHead(object):
       # Gather the logits with right input class.
       if self._use_category_for_mask:
         mask_logits = tf.transpose(mask_logits, [0, 1, 4, 2, 3])
-        mask_logits = tf.gather(mask_logits, tf.expand_dims(classes, -1),
-                                batch_dims=2)
+        mask_logits = tf.gather(
+            mask_logits, tf.expand_dims(classes, -1), batch_dims=2)
         mask_logits = tf.squeeze(mask_logits, axis=2)
       else:
         mask_logits = mask_logits[..., 0]
@@ -838,16 +847,17 @@ class ShapemaskCoarsemaskHead(object):
     """
     (batch_size, num_instances, height, width,
      num_channels) = features.get_shape().as_list()
-    features = tf.reshape(features, [batch_size * num_instances, height, width,
-                                     num_channels])
+    features = tf.reshape(
+        features, [batch_size * num_instances, height, width, num_channels])
     for i in range(self._num_convs):
       features = self._class_conv[i](features)
-      features = self._class_norm_activation[i](features,
-                                                is_training=is_training)
+      features = self._class_norm_activation[i](
+          features, is_training=is_training)
 
     mask_logits = self._class_predict(features)
-    mask_logits = tf.reshape(mask_logits, [batch_size, num_instances, height,
-                                           width, self._mask_num_classes])
+    mask_logits = tf.reshape(
+        mask_logits,
+        [batch_size, num_instances, height, width, self._mask_num_classes])
     return mask_logits
 
 
@@ -904,8 +914,8 @@ class ShapemaskFinemaskHead(object):
               activation=None,
               padding='same',
               name='fine-mask-class-%d' % i))
-      self._fine_class_bn.append(norm_activation(
-          name='fine-mask-class-%d-bn' % i))
+      self._fine_class_bn.append(
+          norm_activation(name='fine-mask-class-%d-bn' % i))
 
     self._class_predict_conv = tf.keras.layers.Conv2D(
         self._mask_num_classes,
@@ -923,14 +933,13 @@ class ShapemaskFinemaskHead(object):
     https://arxiv.org/pdf/1904.03239.pdf
 
     Args:
-      features: a float Tensor of shape
-        [batch_size, num_instances, mask_crop_size, mask_crop_size,
-        num_downsample_channels]. This is the instance feature crop.
-      mask_logits: a float Tensor of shape
-        [batch_size, num_instances, mask_crop_size, mask_crop_size] indicating
-        predicted mask logits.
-      classes: a int Tensor of shape [batch_size, num_instances]
-        of instance classes.
+      features: a float Tensor of shape [batch_size, num_instances,
+        mask_crop_size, mask_crop_size, num_downsample_channels]. This is the
+        instance feature crop.
+      mask_logits: a float Tensor of shape [batch_size, num_instances,
+        mask_crop_size, mask_crop_size] indicating predicted mask logits.
+      classes: a int Tensor of shape [batch_size, num_instances] of instance
+        classes.
       is_training: a bool indicating whether in training mode.
 
     Returns:
@@ -939,7 +948,7 @@ class ShapemaskFinemaskHead(object):
     """
     # Extract the foreground mean features
     # with tf.variable_scope('fine_mask', reuse=tf.AUTO_REUSE):
-    with backend.get_graph().as_default(), tf.name_scope('fine_mask'):
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('fine_mask'):
       mask_probs = tf.nn.sigmoid(mask_logits)
       # Compute instance embedding for hard average.
       binary_mask = tf.cast(tf.greater(mask_probs, 0.5), features.dtype)
@@ -957,8 +966,8 @@ class ShapemaskFinemaskHead(object):
       mask_logits = self.decoder_net(features, is_training)
       if self._use_category_for_mask:
         mask_logits = tf.transpose(mask_logits, [0, 1, 4, 2, 3])
-        mask_logits = tf.gather(mask_logits,
-                                tf.expand_dims(classes, -1), batch_dims=2)
+        mask_logits = tf.gather(
+            mask_logits, tf.expand_dims(classes, -1), batch_dims=2)
         mask_logits = tf.squeeze(mask_logits, axis=2)
       else:
         mask_logits = mask_logits[..., 0]
@@ -979,8 +988,8 @@ class ShapemaskFinemaskHead(object):
     """
     (batch_size, num_instances, height, width,
      num_channels) = features.get_shape().as_list()
-    features = tf.reshape(features, [batch_size * num_instances, height, width,
-                                     num_channels])
+    features = tf.reshape(
+        features, [batch_size * num_instances, height, width, num_channels])
     for i in range(self._num_convs):
       features = self._fine_class_conv[i](features)
       features = self._fine_class_bn[i](features, is_training=is_training)
@@ -991,9 +1000,8 @@ class ShapemaskFinemaskHead(object):
     # Predict per-class instance masks.
     mask_logits = self._class_predict_conv(features)
 
-    mask_logits = tf.reshape(mask_logits,
-                             [batch_size, num_instances,
-                              height * self.up_sample_factor,
-                              width * self.up_sample_factor,
-                              self._mask_num_classes])
+    mask_logits = tf.reshape(mask_logits, [
+        batch_size, num_instances, height * self.up_sample_factor,
+        width * self.up_sample_factor, self._mask_num_classes
+    ])
     return mask_logits

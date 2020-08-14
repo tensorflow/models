@@ -88,7 +88,12 @@ class Attention(tf.keras.layers.Layer):
         "attention_dropout": self.attention_dropout,
     }
 
-  def call(self, query_input, source_input, bias, training, cache=None,
+  def call(self,
+           query_input,
+           source_input,
+           bias,
+           training,
+           cache=None,
            decode_loop_step=None):
     """Apply attention mechanism to query_input and source_input.
 
@@ -102,9 +107,9 @@ class Attention(tf.keras.layers.Layer):
       cache: (Used during prediction) A dictionary with tensors containing
         results of previous attentions. The dictionary must have the items:
             {"k": tensor with shape [batch_size, i, heads, dim_per_head],
-             "v": tensor with shape [batch_size, i, heads, dim_per_head]}
-        where i is the current decoded length for non-padded decode, or max
-        sequence length for padded decode.
+             "v": tensor with shape [batch_size, i, heads, dim_per_head]} where
+               i is the current decoded length for non-padded decode, or max
+               sequence length for padded decode.
       decode_loop_step: An integer, step number of the decoding loop. Used only
         for autoregressive inference on TPU.
 
@@ -142,7 +147,7 @@ class Attention(tf.keras.layers.Layer):
     # Scale query to prevent the dot product between query and key from growing
     # too large.
     depth = (self.hidden_size // self.num_heads)
-    query *= depth ** -0.5
+    query *= depth**-0.5
 
     # Calculate dot product attention
     logits = tf.einsum("BTNH,BFNH->BNFT", key, query)
@@ -164,7 +169,11 @@ class Attention(tf.keras.layers.Layer):
 class SelfAttention(Attention):
   """Multiheaded self-attention layer."""
 
-  def call(self, query_input, bias, training, cache=None,
+  def call(self,
+           query_input,
+           bias,
+           training,
+           cache=None,
            decode_loop_step=None):
-    return super(SelfAttention, self).call(
-        query_input, query_input, bias, training, cache, decode_loop_step)
+    return super(SelfAttention, self).call(query_input, query_input, bias,
+                                           training, cache, decode_loop_step)

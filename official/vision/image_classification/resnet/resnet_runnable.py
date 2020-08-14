@@ -14,33 +14,21 @@
 # ==============================================================================
 """Runs a ResNet model on the ImageNet dataset using custom training loops."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+import orbit
 import tensorflow as tf
 
 from official.modeling import performance
 from official.staging.training import grad_utils
-from official.staging.training import standard_runnable
-from official.staging.training import utils
 from official.utils.flags import core as flags_core
 from official.vision.image_classification.resnet import common
 from official.vision.image_classification.resnet import imagenet_preprocessing
 from official.vision.image_classification.resnet import resnet_model
 
 
-class ResnetRunnable(standard_runnable.StandardTrainable,
-                     standard_runnable.StandardEvaluable):
+class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
   """Implements the training and evaluation APIs for Resnet model."""
 
   def __init__(self, flags_obj, time_callback, epoch_steps):
-    standard_runnable.StandardTrainable.__init__(self,
-                                                 flags_obj.use_tf_while_loop,
-                                                 flags_obj.use_tf_function)
-    standard_runnable.StandardEvaluable.__init__(self,
-                                                 flags_obj.use_tf_function)
-
     self.strategy = tf.distribute.get_strategy()
     self.flags_obj = flags_obj
     self.dtype = flags_core.get_tf_dtype(flags_obj)
@@ -107,11 +95,8 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
 
     # Handling epochs.
     self.epoch_steps = epoch_steps
-    self.epoch_helper = utils.EpochHelper(epoch_steps, self.global_step)
-
-  def build_train_dataset(self):
-    """See base class."""
-    return utils.make_distributed_dataset(
+    self.epoch_helper = orbit.utils.EpochHelper(epoch_steps, self.global_step)
+    train_dataset = orbit.utils.make_distributed_dataset(
         self.strategy,
         self.input_fn,
         is_training=True,
@@ -122,17 +107,26 @@ class ResnetRunnable(standard_runnable.StandardTrainable,
         .datasets_num_private_threads,
         dtype=self.dtype,
         drop_remainder=True)
-
-  def build_eval_dataset(self):
-    """See base class."""
-    return utils.make_distributed_dataset(
-        self.strategy,
-        self.input_fn,
-        is_training=False,
-        data_dir=self.flags_obj.data_dir,
-        batch_size=self.batch_size,
-        parse_record_fn=imagenet_preprocessing.parse_record,
-        dtype=self.dtype)
+    orbit.StandardTrainer.__init__(
+        self,
+        train_dataset,
+        options=orbit.StandardTrainerOptions(
+            use_tf_while_loop=flags_obj.use_tf_while_loop,
+            use_tf_function=flags_obj.use_tf_function))
+    if not flags_obj.skip_eval:
+      eval_dataset = orbit.utils.make_distributed_dataset(
+          self.strategy,
+          self.input_fn,
+          is_training=False,
+          data_dir=self.flags_obj.data_dir,
+          batch_size=self.batch_size,
+          parse_record_fn=imagenet_preprocessing.parse_record,
+          dtype=self.dtype)
+      orbit.StandardEvaluator.__init__(
+          self,
+          eval_dataset,
+          options=orbit.StandardEvaluatorOptions(
+              use_tf_function=flags_obj.use_tf_function))
 
   def train_loop_begin(self):
     """See base class."""

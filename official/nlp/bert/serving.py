@@ -22,11 +22,11 @@ import tensorflow as tf
 from official.nlp.bert import bert_models
 from official.nlp.bert import configs
 
-flags.DEFINE_integer("sequence_length", None,
-                     "Sequence length to parse the tf.Example. If "
-                     "sequence_length > 0, add a signature for serialized "
-                     "tf.Example and define the parsing specification by the "
-                     "sequence_length.")
+flags.DEFINE_integer(
+    "sequence_length", None, "Sequence length to parse the tf.Example. If "
+    "sequence_length > 0, add a signature for serialized "
+    "tf.Example and define the parsing specification by the "
+    "sequence_length.")
 flags.DEFINE_string("bert_config_file", None,
                     "Bert configuration file to define core bert layers.")
 flags.DEFINE_string("model_checkpoint_path", None,

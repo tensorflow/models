@@ -20,6 +20,7 @@ import json
 import multiprocessing
 import os
 import urllib.parse
+
 import tensorflow as tf
 
 from official.nlp.bert import tokenization
@@ -47,10 +48,10 @@ class RawDataProcessor(object):
       max_num_articles: Maximum number of articles in a story.
       include_article_title_in_passage: Whether to include article title in
         article passage.
-      include_text_snippet_in_example: Whether to include text snippet
-        (headline and article content) in generated tensorflow Examples, for
-        debug usage. If include_article_title_in_passage=True, title and body
-        will be separated by [SEP].
+      include_text_snippet_in_example: Whether to include text snippet (headline
+        and article content) in generated tensorflow Examples, for debug usage.
+        If include_article_title_in_passage=True, title and body will be
+        separated by [SEP].
     """
     self.articles = dict()
     self.tokenizer = tokenization.FullTokenizer(
@@ -156,6 +157,7 @@ class RawDataProcessor(object):
 
   def _get_single_story_features(self, story_headline, articles):
     """Converts a list of articles to a tensorflow Example."""
+
     def get_text_snippet(article):
       if article.text_b:
         return " [SEP] ".join([article.text_a, article.text_b])

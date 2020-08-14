@@ -40,6 +40,8 @@ class AlbertTransformerEncoder(tf.keras.Model):
   The default values for this object are taken from the ALBERT-Base
   implementation described in the paper.
 
+  *Note* that the network is constructed by Keras Functional API.
+
   Arguments:
     vocab_size: The size of the token vocabulary.
     embedding_width: The width of the word embeddings. If the embedding width is
@@ -51,9 +53,6 @@ class AlbertTransformerEncoder(tf.keras.Model):
     num_layers: The number of transformer layers.
     num_attention_heads: The number of attention heads for each transformer. The
       hidden size must be divisible by the number of attention heads.
-    sequence_length: The sequence length that this encoder expects. If None, the
-      sequence length is dynamic; if an integer, the encoder will require
-      sequences padded to this length.
     max_sequence_length: The maximum sequence length that this encoder can
       consume. If None, max_sequence_length uses the value from sequence length.
       This determines the variable shape for positional embeddings.
@@ -72,8 +71,7 @@ class AlbertTransformerEncoder(tf.keras.Model):
                hidden_size=768,
                num_layers=12,
                num_attention_heads=12,
-               sequence_length=512,
-               max_sequence_length=None,
+               max_sequence_length=512,
                type_vocab_size=16,
                intermediate_size=3072,
                activation=activations.gelu,
@@ -84,8 +82,6 @@ class AlbertTransformerEncoder(tf.keras.Model):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
 
-    if not max_sequence_length:
-      max_sequence_length = sequence_length
     self._self_setattr_tracking = False
     self._config_dict = {
         'vocab_size': vocab_size,
@@ -93,7 +89,6 @@ class AlbertTransformerEncoder(tf.keras.Model):
         'hidden_size': hidden_size,
         'num_layers': num_layers,
         'num_attention_heads': num_attention_heads,
-        'sequence_length': sequence_length,
         'max_sequence_length': max_sequence_length,
         'type_vocab_size': type_vocab_size,
         'intermediate_size': intermediate_size,
@@ -104,11 +99,11 @@ class AlbertTransformerEncoder(tf.keras.Model):
     }
 
     word_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_word_ids')
+        shape=(None,), dtype=tf.int32, name='input_word_ids')
     mask = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_mask')
+        shape=(None,), dtype=tf.int32, name='input_mask')
     type_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_type_ids')
+        shape=(None,), dtype=tf.int32, name='input_type_ids')
 
     if embedding_width is None:
       embedding_width = hidden_size

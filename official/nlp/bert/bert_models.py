@@ -104,14 +104,14 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
 
 @gin.configurable
 def get_transformer_encoder(bert_config,
-                            sequence_length,
+                            sequence_length=None,
                             transformer_encoder_cls=None,
                             output_range=None):
   """Gets a 'TransformerEncoder' object.
 
   Args:
     bert_config: A 'modeling.BertConfig' or 'modeling.AlbertConfig' object.
-    sequence_length: Maximum sequence length of the training data.
+    sequence_length: [Deprecated].
     transformer_encoder_cls: A EncoderScaffold class. If it is None, uses the
       default BERT encoder implementation.
     output_range: the sequence output range, [0, output_range). Default setting
@@ -120,13 +120,13 @@ def get_transformer_encoder(bert_config,
   Returns:
     A networks.TransformerEncoder object.
   """
+  del sequence_length
   if transformer_encoder_cls is not None:
     # TODO(hongkuny): evaluate if it is better to put cfg definition in gin.
     embedding_cfg = dict(
         vocab_size=bert_config.vocab_size,
         type_vocab_size=bert_config.type_vocab_size,
         hidden_size=bert_config.hidden_size,
-        seq_length=sequence_length,
         max_seq_length=bert_config.max_position_embeddings,
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=bert_config.initializer_range),
@@ -161,7 +161,6 @@ def get_transformer_encoder(bert_config,
       activation=tf_utils.get_activation(bert_config.hidden_act),
       dropout_rate=bert_config.hidden_dropout_prob,
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-      sequence_length=sequence_length,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       embedding_width=bert_config.embedding_size,

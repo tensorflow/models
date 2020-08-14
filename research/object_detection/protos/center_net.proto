@@ -183,6 +183,69 @@ message CenterNet {
     optional float heatmap_bias_init = 3 [default = -2.19];
   }
   optional MaskEstimation mask_estimation_task = 8;
+
+  // Parameters which are related to DensePose estimation task.
+  // http://densepose.org/
+  message DensePoseEstimation {
+    // Weight of the task loss. The total loss of the model will be their
+    // summation of task losses weighted by the weights.
+    optional float task_loss_weight = 1 [default = 1.0];
+
+    // Class ID (0-indexed) that corresponds to the object in the label map that
+    // contains DensePose data.
+    optional int32 class_id = 2;
+
+    // Loss configuration for DensePose heatmap and regression losses. Note
+    // that the localization loss is used for surface coordinate losses and
+    // classification loss is used for part classification losses.
+    optional Loss loss = 3;
+
+    // The number of body parts.
+    optional int32 num_parts = 4 [default = 24];
+
+    // Loss weights for the two DensePose heads.
+    optional float part_loss_weight = 5 [default = 1.0];
+    optional float coordinate_loss_weight = 6 [default = 1.0];
+
+    // Whether to upsample the prediction feature maps back to the original
+    // input dimension prior to applying loss. This has the benefit of
+    // maintaining finer groundtruth location information.
+    optional bool upsample_to_input_res = 7 [default = true];
+
+    // The initial bias value of the convlution kernel of the class heatmap
+    // prediction head. -2.19 corresponds to predicting foreground with
+    // a probability of 0.1.
+    optional float heatmap_bias_init = 8 [default = -2.19];
+  }
+  optional DensePoseEstimation densepose_estimation_task = 9;
+
+  // Parameters which are related to tracking embedding estimation task.
+  // A Simple Baseline for Multi-Object Tracking [2]
+  // [2]: https://arxiv.org/abs/2004.01888
+  message TrackEstimation {
+    // Weight of the task loss. The total loss of the model will be the
+    // summation of task losses weighted by the weights.
+    optional float task_loss_weight = 1 [default = 1.0];
+
+    // The maximun track ID of the datset.
+    optional int32 num_track_ids = 2;
+
+    // The embedding size for re-identification (ReID) task in tracking.
+    optional int32 reid_embed_size = 3 [default = 128];
+
+    // The number of (fully-connected, batch-norm, relu) layers for track ID
+    // classification head. The output dimension of each intermediate FC layer
+    // will all be 'reid_embed_size'. The last FC layer will directly project to
+    // the track ID classification space of size 'num_track_ids' without
+    // batch-norm and relu layers.
+    optional int32 num_fc_layers = 4 [default = 1];
+
+    // Classification loss configuration for ReID loss.
+    optional ClassificationLoss classification_loss = 5;
+  }
+  optional TrackEstimation track_estimation_task = 10;
+
+
 }
 
 message CenterNetFeatureExtractor {

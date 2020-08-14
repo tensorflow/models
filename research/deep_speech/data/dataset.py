@@ -71,8 +71,8 @@ class DatasetConfig(object):
     """
 
     self.audio_config = audio_config
-    assert tf.gfile.Exists(data_path)
-    assert tf.gfile.Exists(vocab_file_path)
+    assert tf.io.gfile.exists(data_path)
+    assert tf.io.gfile.exists(vocab_file_path)
     self.data_path = data_path
     self.vocab_file_path = vocab_file_path
     self.sortagrad = sortagrad
@@ -125,8 +125,8 @@ def _preprocess_data(file_path):
     A list of tuples (wav_filename, wav_filesize, transcript) sorted by
     file_size.
   """
-  tf.logging.info("Loading data set {}".format(file_path))
-  with tf.gfile.Open(file_path, "r") as f:
+  tf.compat.v1.logging.info("Loading data set {}".format(file_path))
+  with tf.io.gfile.GFile(file_path, "r") as f:
     lines = f.read().splitlines()
   # Skip the csv header in lines[0].
   lines = lines[1:]

@@ -39,10 +39,10 @@ class ValidatedAttentionLayer(attention.MultiHeadAttention):
     super(ValidatedAttentionLayer, self).__init__(**kwargs)
     self.list = call_list
 
-  def call(self, inputs, attention_mask=None):
+  def call(self, query, value, attention_mask=None):
     self.list.append(True)
     return super(ValidatedAttentionLayer, self).call(
-        inputs, attention_mask=attention_mask)
+        query, value, attention_mask=attention_mask)
 
   def get_config(self):
     config = super(ValidatedAttentionLayer, self).get_config()
@@ -98,7 +98,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -126,7 +126,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     feedforward_call_list = []
@@ -164,7 +164,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -193,7 +193,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -217,7 +217,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -252,7 +252,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     feedforward_call_list = []
@@ -303,7 +303,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -345,7 +345,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -386,7 +386,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
     }
     test_layer = transformer_scaffold.TransformerScaffold(
@@ -414,7 +414,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
         'name': 'test_layer',
     }
@@ -474,7 +474,7 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     call_list = []
     attention_layer_cfg = {
         'num_heads': 10,
-        'key_size': 8,
+        'key_dim': 8,
         'call_list': call_list,
         'name': 'test_layer',
     }

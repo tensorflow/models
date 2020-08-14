@@ -512,6 +512,38 @@ class MatMulCropAndResizeTest(test_case.TestCase):
     crop_output = self.execute(graph_fn, [image, boxes])
     self.assertAllClose(crop_output, expected_output)
 
+  def testMultilevelMatMulCropAndResize(self):
+
+    def graph_fn(image1, image2, boxes, box_levels):
+      return spatial_ops.multilevel_matmul_crop_and_resize([image1, image2],
+                                                           boxes,
+                                                           box_levels,
+                                                           crop_size=[2, 2])
+
+    image = [np.array([[[[1, 0], [2, 0], [3, 0]],
+                        [[4, 0], [5, 0], [6, 0]],
+                        [[7, 0], [8, 0], [9, 0]]],
+                       [[[1, 0], [2, 0], [3, 0]],
+                        [[4, 0], [5, 0], [6, 0]],
+                        [[7, 0], [8, 0], [9, 0]]]], dtype=np.float32),
+             np.array([[[[1, 0], [2, 1], [3, 2]],
+                        [[4, 3], [5, 4], [6, 5]],
+                        [[7, 6], [8, 7], [9, 8]]],
+                       [[[1, 0], [2, 1], [3, 2]],
+                        [[4, 3], [5, 4], [6, 5]],
+                        [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32)]
+    boxes = np.array([[[1, 1, 0, 0],
+                       [.5, .5, 0, 0]],
+                      [[0, 0, 1, 1],
+                       [0, 0, .5, .5]]], dtype=np.float32)
+    box_levels = np.array([[0, 1], [1, 1]], dtype=np.int32)
+    expected_output = [[[[[9, 0], [7, 0]], [[3, 0], [1, 0]]],
+                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]],
+                       [[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                        [[[1, 0], [2, 1]], [[4, 3], [5, 4]]]]]
+    crop_output = self.execute(graph_fn, image + [boxes, box_levels])
+    self.assertAllClose(crop_output, expected_output)
+
 
 class NativeCropAndResizeTest(test_case.TestCase):
 
@@ -535,6 +567,35 @@ class NativeCropAndResizeTest(test_case.TestCase):
                        [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
                         [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
     crop_output = self.execute_cpu(graph_fn, [image, boxes])
+    self.assertAllClose(crop_output, expected_output)
+
+  def testMultilevelBatchCropAndResize3x3To2x2_2Channels(self):
+
+    def graph_fn(image1, image2, boxes, box_levels):
+      return spatial_ops.multilevel_native_crop_and_resize([image1, image2],
+                                                           boxes,
+                                                           box_levels,
+                                                           crop_size=[2, 2])
+    image = [np.array([[[[1, 0], [2, 1], [3, 2]],
+                        [[4, 3], [5, 4], [6, 5]],
+                        [[7, 6], [8, 7], [9, 8]]],
+                       [[[1, 0], [2, 1], [3, 2]],
+                        [[4, 3], [5, 4], [6, 5]],
+                        [[7, 6], [8, 7], [9, 8]]]], dtype=np.float32),
+             np.array([[[[1, 0], [2, 1]],
+                        [[4, 3], [5, 4]]],
+                       [[[1, 0], [2, 1]],
+                        [[4, 3], [5, 4]]]], dtype=np.float32)]
+    boxes = np.array([[[0, 0, 1, 1],
+                       [0, 0, .5, .5]],
+                      [[1, 1, 0, 0],
+                       [.5, .5, 0, 0]]], dtype=np.float32)
+    box_levels = np.array([[0, 1], [0, 0]], dtype=np.float32)
+    expected_output = [[[[[1, 0], [3, 2]], [[7, 6], [9, 8]]],
+                        [[[1, 0], [1.5, 0.5]], [[2.5, 1.5], [3, 2]]]],
+                       [[[[9, 8], [7, 6]], [[3, 2], [1, 0]]],
+                        [[[5, 4], [4, 3]], [[2, 1], [1, 0]]]]]
+    crop_output = self.execute_cpu(graph_fn, image + [boxes, box_levels])
     self.assertAllClose(crop_output, expected_output)
 
 

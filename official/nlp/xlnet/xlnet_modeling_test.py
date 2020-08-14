@@ -48,5 +48,6 @@ class PositionalEmbeddingLayerTest(tf.test.TestCase):
     logging.info(pos_emb)
     self.assertAllClose(pos_emb, target)
 
+
 if __name__ == "__main__":
   tf.test.main()

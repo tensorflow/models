@@ -18,20 +18,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from typing import Any, Mapping
-
 import dataclasses
 
 from official.modeling.hyperparams import base_config
 from official.vision.image_classification.configs import base_configs
-
-
-_RESNET_LR_SCHEDULE = [    # (multiplier, epoch to start) tuples
-    (1.0, 5), (0.1, 30), (0.01, 60), (0.001, 80)
-]
-_RESNET_LR_BOUNDARIES = list(p[1] for p in _RESNET_LR_SCHEDULE[1:])
-_RESNET_LR_MULTIPLIERS = list(p[0] for p in _RESNET_LR_SCHEDULE)
-_RESNET_LR_WARMUP_EPOCHS = _RESNET_LR_SCHEDULE[0][1]
 
 
 @dataclasses.dataclass
@@ -56,8 +46,10 @@ class ResNetModelConfig(base_configs.ModelConfig):
       moving_average_decay=None)
   learning_rate: base_configs.LearningRateConfig = (
       base_configs.LearningRateConfig(
-          name='piecewise_constant_with_warmup',
+          name='stepwise',
+          initial_lr=0.1,
           examples_per_epoch=1281167,
-          warmup_epochs=_RESNET_LR_WARMUP_EPOCHS,
-          boundaries=_RESNET_LR_BOUNDARIES,
-          multipliers=_RESNET_LR_MULTIPLIERS))
+          boundaries=[30, 60, 80],
+          warmup_epochs=5,
+          scale_by_batch_size=1. / 256.,
+          multipliers=[0.1 / 256, 0.01 / 256, 0.001 / 256, 0.0001 / 256]))

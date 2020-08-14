@@ -8,6 +8,7 @@ import "object_detection/protos/hyperparams.proto";
 import "object_detection/protos/image_resizer.proto";
 import "object_detection/protos/losses.proto";
 import "object_detection/protos/post_processing.proto";
+import "object_detection/protos/fpn.proto";
 
 // Configuration for Faster R-CNN models.
 // See meta_architectures/faster_rcnn_meta_arch.py and models/model_builder.py
@@ -212,4 +213,21 @@ message FasterRcnnFeatureExtractor {
   // When training with a relative large batch size (e.g. 8), it could be
   // desirable to enable batch norm update.
   optional bool batch_norm_trainable = 3 [default = false];
+
+  // Hyperparameters that affect the layers of feature extractor added on top
+  // of the base feature extractor.
+  optional Hyperparams conv_hyperparams = 4;
+
+  // if the value is set to true, the base feature extractor's hyperparams will
+  // be overridden with the `conv_hyperparams`.
+  optional bool override_base_feature_extractor_hyperparams = 5
+      [default = false];
+
+  // The nearest multiple to zero-pad the input height and width dimensions to.
+  // For example, if pad_to_multiple = 2, input dimensions are zero-padded
+  // until the resulting dimensions are even.
+  optional int32 pad_to_multiple = 6 [default = 32];
+
+  // Feature Pyramid Networks config.
+  optional FeaturePyramidNetworks fpn = 7;
 }

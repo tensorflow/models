@@ -16,6 +16,7 @@
 """A function to build a DetectionModel from configuration."""
 
 import functools
+import sys
 from object_detection.builders import anchor_generator_builder
 from object_detection.builders import box_coder_builder
 from object_detection.builders import box_predictor_builder
@@ -38,6 +39,7 @@ from object_detection.protos import losses_pb2
 from object_detection.protos import model_pb2
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import tf_version
 
 ## Feature Extractors for TF
@@ -47,6 +49,7 @@ from object_detection.utils import tf_version
 # pylint: disable=g-import-not-at-top
 if tf_version.is_tf2():
   from object_detection.models import center_net_hourglass_feature_extractor
+  from object_detection.models import center_net_mobilenet_v2_feature_extractor
   from object_detection.models import center_net_resnet_feature_extractor
   from object_detection.models import center_net_resnet_v1_fpn_feature_extractor
   from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
@@ -58,6 +61,8 @@ if tf_version.is_tf2():
   from object_detection.models.ssd_mobilenet_v2_fpn_keras_feature_extractor import SSDMobileNetV2FpnKerasFeatureExtractor
   from object_detection.models.ssd_mobilenet_v2_keras_feature_extractor import SSDMobileNetV2KerasFeatureExtractor
   from object_detection.predictors import rfcn_keras_box_predictor
+  if sys.version_info[0] >= 3:
+    from object_detection.models import ssd_efficientnet_bifpn_feature_extractor as ssd_efficientnet_bifpn
 
 if tf_version.is_tf1():
   from object_detection.models import faster_rcnn_inception_resnet_v2_feature_extractor as frcnn_inc_res
@@ -99,6 +104,22 @@ if tf_version.is_tf2():
           ssd_resnet_v1_fpn_keras.SSDResNet101V1FpnKerasFeatureExtractor,
       'ssd_resnet152_v1_fpn_keras':
           ssd_resnet_v1_fpn_keras.SSDResNet152V1FpnKerasFeatureExtractor,
+      'ssd_efficientnet-b0_bifpn_keras':
+          ssd_efficientnet_bifpn.SSDEfficientNetB0BiFPNKerasFeatureExtractor,
+      'ssd_efficientnet-b1_bifpn_keras':
+          ssd_efficientnet_bifpn.SSDEfficientNetB1BiFPNKerasFeatureExtractor,
+      'ssd_efficientnet-b2_bifpn_keras':
+          ssd_efficientnet_bifpn.SSDEfficientNetB2BiFPNKerasFeatureExtractor,
+      'ssd_efficientnet-b3_bifpn_keras':
+          ssd_efficientnet_bifpn.SSDEfficientNetB3BiFPNKerasFeatureExtractor,
+      'ssd_efficientnet-b4_bifpn_keras':
+          ssd_efficientnet_bifpn.SSDEfficientNetB4BiFPNKerasFeatureExtractor,
+      'ssd_efficientnet-b5_bifpn_keras':
+          ssd_efficientnet_bifpn.SSDEfficientNetB5BiFPNKerasFeatureExtractor,
+      'ssd_efficientnet-b6_bifpn_keras':
+          ssd_efficientnet_bifpn.SSDEfficientNetB6BiFPNKerasFeatureExtractor,
+      'ssd_efficientnet-b7_bifpn_keras':
+          ssd_efficientnet_bifpn.SSDEfficientNetB7BiFPNKerasFeatureExtractor,
   }
 
   FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP = {
@@ -121,11 +142,18 @@ if tf_version.is_tf2():
   CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
       'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
       'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v1_18_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_18_fpn,
+      'resnet_v1_34_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_34_fpn,
       'resnet_v1_50_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
       'resnet_v1_101_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_101_fpn,
-      'hourglass_104': center_net_hourglass_feature_extractor.hourglass_104,
+      'hourglass_104':
+          center_net_hourglass_feature_extractor.hourglass_104,
+      'mobilenet_v2':
+          center_net_mobilenet_v2_feature_extractor.mobilenet_v2,
   }
 
   FEATURE_EXTRACTOR_MAPS = [
@@ -310,6 +338,14 @@ def _build_ssd_feature_extractor(feature_extractor_config,
             feature_extractor_config.fpn.additional_layer_depth,
     })
 
+  if feature_extractor_config.HasField('bifpn'):
+    kwargs.update({
+        'bifpn_min_level': feature_extractor_config.bifpn.min_level,
+        'bifpn_max_level': feature_extractor_config.bifpn.max_level,
+        'bifpn_num_iterations': feature_extractor_config.bifpn.num_iterations,
+        'bifpn_num_filters': feature_extractor_config.bifpn.num_filters,
+        'bifpn_combine_method': feature_extractor_config.bifpn.combine_method,
+    })
 
   return feature_extractor_class(**kwargs)
 
@@ -488,9 +524,31 @@ def _build_faster_rcnn_keras_feature_extractor(
         feature_type))
   feature_extractor_class = FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP[
       feature_type]
+
+  kwargs = {}
+
+  if feature_extractor_config.HasField('conv_hyperparams'):
+    kwargs.update({
+        'conv_hyperparams':
+            hyperparams_builder.KerasLayerHyperparams(
+                feature_extractor_config.conv_hyperparams),
+        'override_base_feature_extractor_hyperparams':
+            feature_extractor_config.override_base_feature_extractor_hyperparams
+    })
+
+  if feature_extractor_config.HasField('fpn'):
+    kwargs.update({
+        'fpn_min_level':
+            feature_extractor_config.fpn.min_level,
+        'fpn_max_level':
+            feature_extractor_config.fpn.max_level,
+        'additional_layer_depth':
+            feature_extractor_config.fpn.additional_layer_depth,
+    })
+
   return feature_extractor_class(
       is_training, first_stage_features_stride,
-      batch_norm_trainable)
+      batch_norm_trainable, **kwargs)
 
 
 def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
@@ -621,8 +679,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_localization_loss_weight)
 
   crop_and_resize_fn = (
-      ops.matmul_crop_and_resize if frcnn_config.use_matmul_crop_and_resize
-      else ops.native_crop_and_resize)
+      spatial_ops.multilevel_matmul_crop_and_resize
+      if frcnn_config.use_matmul_crop_and_resize
+      else spatial_ops.multilevel_native_crop_and_resize)
   clip_anchors_to_image = (
       frcnn_config.clip_anchors_to_image)
 
@@ -843,6 +902,40 @@ def mask_proto_to_params(mask_config):
       heatmap_bias_init=mask_config.heatmap_bias_init)
 
 
+def densepose_proto_to_params(densepose_config):
+  """Converts CenterNet.DensePoseEstimation proto to parameter namedtuple."""
+  classification_loss, localization_loss, _, _, _, _, _ = (
+      losses_builder.build(densepose_config.loss))
+  return center_net_meta_arch.DensePoseParams(
+      class_id=densepose_config.class_id,
+      classification_loss=classification_loss,
+      localization_loss=localization_loss,
+      part_loss_weight=densepose_config.part_loss_weight,
+      coordinate_loss_weight=densepose_config.coordinate_loss_weight,
+      num_parts=densepose_config.num_parts,
+      task_loss_weight=densepose_config.task_loss_weight,
+      upsample_to_input_res=densepose_config.upsample_to_input_res,
+      heatmap_bias_init=densepose_config.heatmap_bias_init)
+
+
+def tracking_proto_to_params(tracking_config):
+  """Converts CenterNet.TrackEstimation proto to parameter namedtuple."""
+  loss = losses_pb2.Loss()
+  # Add dummy localization loss to avoid the loss_builder throwing error.
+  # TODO(yuhuic): update the loss builder to take the localization loss
+  # directly.
+  loss.localization_loss.weighted_l2.CopyFrom(
+      losses_pb2.WeightedL2LocalizationLoss())
+  loss.classification_loss.CopyFrom(tracking_config.classification_loss)
+  classification_loss, _, _, _, _, _, _ = losses_builder.build(loss)
+  return center_net_meta_arch.TrackParams(
+      num_track_ids=tracking_config.num_track_ids,
+      reid_embed_size=tracking_config.reid_embed_size,
+      classification_loss=classification_loss,
+      num_fc_layers=tracking_config.num_fc_layers,
+      task_loss_weight=tracking_config.task_loss_weight)
+
+
 def _build_center_net_model(center_net_config, is_training, add_summaries):
   """Build a CenterNet detection model.
 
@@ -895,6 +988,16 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
   if center_net_config.HasField('mask_estimation_task'):
     mask_params = mask_proto_to_params(center_net_config.mask_estimation_task)
 
+  densepose_params = None
+  if center_net_config.HasField('densepose_estimation_task'):
+    densepose_params = densepose_proto_to_params(
+        center_net_config.densepose_estimation_task)
+
+  track_params = None
+  if center_net_config.HasField('track_estimation_task'):
+    track_params = tracking_proto_to_params(
+        center_net_config.track_estimation_task)
+
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
@@ -904,7 +1007,9 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       object_center_params=object_center_params,
       object_detection_params=object_detection_params,
       keypoint_params_dict=keypoint_params_dict,
-      mask_params=mask_params)
+      mask_params=mask_params,
+      densepose_params=densepose_params,
+      track_params=track_params)
 
 
 def _build_center_net_feature_extractor(

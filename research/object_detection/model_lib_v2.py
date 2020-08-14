@@ -23,11 +23,11 @@ import os
 import time
 
 import tensorflow.compat.v1 as tf
+import tensorflow.compat.v2 as tf2
 
 from object_detection import eval_util
 from object_detection import inputs
 from object_detection import model_lib
-from object_detection.builders import model_builder
 from object_detection.builders import optimizer_builder
 from object_detection.core import standard_fields as fields
 from object_detection.protos import train_pb2
@@ -93,10 +93,18 @@ def _compute_losses_and_predictions_dicts(
           instance masks for objects.
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           float32 tensor containing keypoints for each box.
+        labels[fields.InputDataFields.groundtruth_dp_num_points] is an int32
+          tensor with the number of sampled DensePose points per object.
+        labels[fields.InputDataFields.groundtruth_dp_part_ids] is an int32
+          tensor with the DensePose part ids (0-indexed) per object.
+        labels[fields.InputDataFields.groundtruth_dp_surface_coords] is a
+          float32 tensor with the DensePose surface coordinates.
         labels[fields.InputDataFields.groundtruth_group_of] is a tf.bool tensor
           containing group_of annotations.
         labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
           k-hot tensor of classes.
+        labels[fields.InputDataFields.groundtruth_track_ids] is a int32
+          tensor of track IDs.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
 
@@ -111,7 +119,8 @@ def _compute_losses_and_predictions_dicts(
 
   prediction_dict = model.predict(
       preprocessed_images,
-      features[fields.InputDataFields.true_image_shape])
+      features[fields.InputDataFields.true_image_shape],
+      **model.get_side_inputs(features))
   prediction_dict = ops.bfloat16_to_float32_nested(prediction_dict)
 
   losses_dict = model.loss(
@@ -195,8 +204,21 @@ def eager_train_step(detection_model,
         labels[fields.InputDataFields.groundtruth_keypoints] is a
           [batch_size, num_boxes, num_keypoints, 2] float32 tensor containing
           keypoints for each box.
+        labels[fields.InputDataFields.groundtruth_dp_num_points] is a
+          [batch_size, num_boxes] int32 tensor with the number of DensePose
+          sampled points per instance.
+        labels[fields.InputDataFields.groundtruth_dp_part_ids] is a
+          [batch_size, num_boxes, max_sampled_points] int32 tensor with the
+          part ids (0-indexed) for each instance.
+        labels[fields.InputDataFields.groundtruth_dp_surface_coords] is a
+          [batch_size, num_boxes, max_sampled_points, 4] float32 tensor with the
+          surface coordinates for each point. Each surface coordinate is of the
+          form (y, x, v, u) where (y, x) are normalized image locations and
+          (v, u) are part-relative normalized surface coordinates.
         labels[fields.InputDataFields.groundtruth_labeled_classes] is a float32
           k-hot tensor of classes.
+        labels[fields.InputDataFields.groundtruth_track_ids] is a int32
+          tensor of track IDs.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
     learning_rate: The learning rate tensor for the current training step.
@@ -336,11 +358,18 @@ def load_fine_tune_checkpoint(
         labels)
 
   strategy = tf.compat.v2.distribute.get_strategy()
-  strategy.experimental_run_v2(
-      _dummy_computation_fn, args=(
-          features,
-          labels,
-      ))
+  if hasattr(tf.distribute.Strategy, 'run'):
+    strategy.run(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
+  else:
+    strategy.experimental_run_v2(
+        _dummy_computation_fn, args=(
+            features,
+            labels,
+        ))
 
   restore_from_objects_dict = model.restore_from_objects(
       fine_tune_checkpoint_type=checkpoint_type)
@@ -391,6 +420,7 @@ def train_loop(
     save_final_config=False,
     checkpoint_every_n=1000,
     checkpoint_max_to_keep=7,
+    record_summaries=True,
     **kwargs):
   """Trains a model using eager + functions.
 
@@ -420,6 +450,7 @@ def train_loop(
       Checkpoint every n training steps.
     checkpoint_max_to_keep:
       int, the number of most recent checkpoints to keep in the model directory.
+    record_summaries: Boolean, whether or not to record summaries.
     **kwargs: Additional keyword arguments for configuration override.
   """
   ## Parse the configs
@@ -471,7 +502,7 @@ def train_loop(
   # Build the model, optimizer, and training input
   strategy = tf.compat.v2.distribute.get_strategy()
   with strategy.scope():
-    detection_model = model_builder.build(
+    detection_model = MODEL_BUILD_UTIL_MAP['detection_model_fn_base'](
         model_config=model_config, is_training=True)
 
     def train_dataset_fn(input_context):
@@ -506,8 +537,11 @@ def train_loop(
   # is the chief.
   summary_writer_filepath = get_filepath(strategy,
                                          os.path.join(model_dir, 'train'))
-  summary_writer = tf.compat.v2.summary.create_file_writer(
-      summary_writer_filepath)
+  if record_summaries:
+    summary_writer = tf.compat.v2.summary.create_file_writer(
+        summary_writer_filepath)
+  else:
+    summary_writer = tf2.summary.create_noop_writer()
 
   if use_tpu:
     num_steps_per_iteration = 100
@@ -562,8 +596,12 @@ def train_loop(
 
         def _sample_and_train(strategy, train_step_fn, data_iterator):
           features, labels = data_iterator.next()
-          per_replica_losses = strategy.experimental_run_v2(
-              train_step_fn, args=(features, labels))
+          if hasattr(tf.distribute.Strategy, 'run'):
+            per_replica_losses = strategy.run(
+                train_step_fn, args=(features, labels))
+          else:
+            per_replica_losses = strategy.experimental_run_v2(
+                train_step_fn, args=(features, labels))
           # TODO(anjalisridhar): explore if it is safe to remove the
           ## num_replicas scaling of the loss and switch this to a ReduceOp.Mean
           return strategy.reduce(tf.distribute.ReduceOp.SUM,
@@ -575,7 +613,9 @@ def train_loop(
 
           if num_steps_per_iteration > 1:
             for _ in tf.range(num_steps_per_iteration - 1):
-              _sample_and_train(strategy, train_step_fn, data_iterator)
+              # Following suggestion on yaqs/5402607292645376
+              with tf.name_scope(''):
+                _sample_and_train(strategy, train_step_fn, data_iterator)
 
           return _sample_and_train(strategy, train_step_fn, data_iterator)
 
@@ -767,7 +807,16 @@ def eager_eval_loop(
           name='eval_side_by_side_' + str(i),
           step=global_step,
           data=sbys_images,
-          max_outputs=1)
+          max_outputs=eval_config.num_visualizations)
+      if eval_util.has_densepose(eval_dict):
+        dp_image_list = vutils.draw_densepose_visualizations(
+            eval_dict)
+        dp_images = tf.concat(dp_image_list, axis=0)
+        tf.compat.v2.summary.image(
+            name='densepose_detections_' + str(i),
+            step=global_step,
+            data=dp_images,
+            max_outputs=eval_config.num_visualizations)
 
     if evaluators is None:
       if class_agnostic:
@@ -817,6 +866,7 @@ def eval_continuously(
     checkpoint_dir=None,
     wait_interval=180,
     timeout=3600,
+    eval_index=None,
     **kwargs):
   """Run continuous evaluation of a detection model eagerly.
 
@@ -846,6 +896,8 @@ def eval_continuously(
       new checkpoint.
     timeout: The maximum number of seconds to wait for a checkpoint. Execution
       will terminate if no new checkpoints are found after these many seconds.
+    eval_index: int, optional If give, only evaluate the dataset at the given
+      index.
 
     **kwargs: Additional keyword arguments for configuration override.
   """
@@ -886,7 +938,7 @@ def eval_continuously(
   if kwargs['use_bfloat16']:
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
-  detection_model = model_builder.build(
+  detection_model = MODEL_BUILD_UTIL_MAP['detection_model_fn_base'](
       model_config=model_config, is_training=True)
 
   # Create the inputs.
@@ -898,6 +950,11 @@ def eval_continuously(
         model_config=model_config,
         model=detection_model)
     eval_inputs.append((eval_input_config.name, next_eval_input))
+
+  if eval_index is not None:
+    eval_inputs = [eval_inputs[eval_index]]
+    tf.logging.info('eval_index selected - {}'.format(
+        eval_inputs))
 
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)

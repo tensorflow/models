@@ -54,10 +54,19 @@ flags.DEFINE_integer('eval_timeout', 3600, 'Number of seconds to wait for an'
                      'evaluation checkpoint before exiting.')
 
 flags.DEFINE_bool('use_tpu', False, 'Whether the job is executing on a TPU.')
+flags.DEFINE_string(
+    'tpu_name',
+    default=None,
+    help='Name of the Cloud TPU for Cluster Resolvers.')
 flags.DEFINE_integer(
     'num_workers', 1, 'When num_workers > 1, training uses '
     'MultiWorkerMirroredStrategy. When num_workers = 1 it uses '
     'MirroredStrategy.')
+flags.DEFINE_integer(
+    'checkpoint_every_n', 1000, 'Integer defining how often we checkpoint.')
+flags.DEFINE_boolean('record_summaries', True,
+                     ('Whether or not to record summaries during'
+                      ' training.'))
 
 FLAGS = flags.FLAGS
 
@@ -79,7 +88,10 @@ def main(unused_argv):
         wait_interval=300, timeout=FLAGS.eval_timeout)
   else:
     if FLAGS.use_tpu:
-      resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
+      # TPU is automatically inferred if tpu_name is None and
+      # we are running under cloud ai-platform.
+      resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
+          FLAGS.tpu_name)
       tf.config.experimental_connect_to_cluster(resolver)
       tf.tpu.experimental.initialize_tpu_system(resolver)
       strategy = tf.distribute.experimental.TPUStrategy(resolver)
@@ -93,7 +105,9 @@ def main(unused_argv):
           pipeline_config_path=FLAGS.pipeline_config_path,
           model_dir=FLAGS.model_dir,
           train_steps=FLAGS.num_train_steps,
-          use_tpu=FLAGS.use_tpu)
+          use_tpu=FLAGS.use_tpu,
+          checkpoint_every_n=FLAGS.checkpoint_every_n,
+          record_summaries=FLAGS.record_summaries)
 
 if __name__ == '__main__':
   tf.compat.v1.app.run()

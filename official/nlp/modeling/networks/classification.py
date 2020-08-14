@@ -29,13 +29,16 @@ class Classification(tf.keras.Model):
   This network implements a simple classifier head based on a dense layer. If
   num_classes is one, it can be considered as a regression problem.
 
+  *Note* that the network is constructed by
+  [Keras Functional API](https://keras.io/guides/functional_api/).
+
   Arguments:
     input_width: The innermost dimension of the input tensor to this network.
     num_classes: The number of classes that this network should classify to. If
       equal to 1, a regression problem is assumed.
     activation: The activation, if any, for the dense layer in this network.
-    initializer: The intializer for the dense layer in this network. Defaults to
-      a Glorot uniform initializer.
+    initializer: The initializer for the dense layer in this network. Defaults
+      to a Glorot uniform initializer.
     output: The output style for this network. Can be either 'logits' or
       'predictions'.
   """
@@ -68,8 +71,9 @@ class Classification(tf.keras.Model):
     if policy.name == 'mixed_bfloat16':
       # b/158514794: bf16 is not stable with post-softmax cross-entropy.
       policy = tf.float32
-    predictions = tf.keras.layers.Activation(tf.nn.log_softmax,
-                                             dtype=policy)(self.logits)
+    predictions = tf.keras.layers.Activation(
+        tf.nn.log_softmax, dtype=policy)(
+            self.logits)
 
     if output == 'logits':
       output_tensors = self.logits

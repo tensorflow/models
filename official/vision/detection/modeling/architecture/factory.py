@@ -77,11 +77,13 @@ def multilevel_features_generator(params):
 def retinanet_head_generator(params):
   """Generator function for RetinaNet head architecture."""
   head_params = params.retinanet_head
+  anchors_per_location = params.anchor.num_scales * len(
+      params.anchor.aspect_ratios)
   return heads.RetinanetHead(
       params.architecture.min_level,
       params.architecture.max_level,
       params.architecture.num_classes,
-      head_params.anchors_per_location,
+      anchors_per_location,
       head_params.num_convs,
       head_params.num_filters,
       head_params.use_separable_conv,
@@ -91,10 +93,12 @@ def retinanet_head_generator(params):
 def rpn_head_generator(params):
   """Generator function for RPN head architecture."""
   head_params = params.rpn_head
+  anchors_per_location = params.anchor.num_scales * len(
+      params.anchor.aspect_ratios)
   return heads.RpnHead(
       params.architecture.min_level,
       params.architecture.max_level,
-      head_params.anchors_per_location,
+      anchors_per_location,
       head_params.num_convs,
       head_params.num_filters,
       head_params.use_separable_conv,

@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-
 _EPSILON = 1e-8
 
 
@@ -30,6 +29,7 @@ def nearest_upsampling(data, scale):
   Args:
     data: A tensor with a shape of [batch, height_in, width_in, channels].
     scale: An integer multiple to scale resolution of input data.
+
   Returns:
     data_up: A tensor with a shape of
       [batch, height_in*scale, width_in*scale, channels]. Same dtype as input
@@ -382,8 +382,7 @@ def multilevel_crop_and_resize(features, boxes, output_size=7):
     areas_sqrt = tf.sqrt(box_height * box_width)
     levels = tf.cast(
         tf.math.floordiv(
-            tf.math.log(tf.divide(areas_sqrt, 224.0)), tf.math.log(2.0)) +
-        4.0,
+            tf.math.log(tf.divide(areas_sqrt, 224.0)), tf.math.log(2.0)) + 4.0,
         dtype=tf.int32)
     # Maps levels between [min_level, max_level].
     levels = tf.minimum(max_level, tf.maximum(levels, min_level))
@@ -395,9 +394,12 @@ def multilevel_crop_and_resize(features, boxes, output_size=7):
     boxes /= tf.expand_dims(scale_to_level, axis=2)
     box_width /= scale_to_level
     box_height /= scale_to_level
-    boxes = tf.concat([boxes[:, :, 0:2],
-                       tf.expand_dims(box_height, -1),
-                       tf.expand_dims(box_width, -1)], axis=-1)
+    boxes = tf.concat([
+        boxes[:, :, 0:2],
+        tf.expand_dims(box_height, -1),
+        tf.expand_dims(box_width, -1)
+    ],
+                      axis=-1)
 
     # Maps levels to [0, max_level-min_level].
     levels -= min_level
@@ -464,12 +466,12 @@ def single_level_feature_crop(features, level_boxes, detection_prior_levels,
 
 
   Args:
-    features: a float tensor of shape [batch_size, num_levels,
-      max_feature_size, max_feature_size, num_downsample_channels].
-    level_boxes: a float Tensor of the level boxes to crop from.
-        [batch_size, num_instances, 4].
+    features: a float tensor of shape [batch_size, num_levels, max_feature_size,
+      max_feature_size, num_downsample_channels].
+    level_boxes: a float Tensor of the level boxes to crop from. [batch_size,
+      num_instances, 4].
     detection_prior_levels: an int Tensor of instance assigned level of shape
-        [batch_size, num_instances].
+      [batch_size, num_instances].
     min_mask_level: minimum FPN level to crop mask feature from.
     mask_crop_size: an int of mask crop size.
 
@@ -478,8 +480,8 @@ def single_level_feature_crop(features, level_boxes, detection_prior_levels,
         mask_crop_size, mask_crop_size, num_downsample_channels]. This is the
         instance feature crop.
   """
-  (batch_size, num_levels, max_feature_size,
-   _, num_downsample_channels) = features.get_shape().as_list()
+  (batch_size, num_levels, max_feature_size, _,
+   num_downsample_channels) = features.get_shape().as_list()
   _, num_of_instances, _ = level_boxes.get_shape().as_list()
   level_boxes = tf.cast(level_boxes, tf.int32)
   assert num_of_instances == detection_prior_levels.get_shape().as_list()[1]
@@ -503,32 +505,25 @@ def single_level_feature_crop(features, level_boxes, detection_prior_levels,
   indices = tf.reshape(
       tf.tile(
           tf.reshape(
-              tf.range(batch_size) * batch_dim_size,
-              [batch_size, 1, 1, 1]),
-          [1, num_of_instances,
-           mask_crop_size, mask_crop_size]) +
-      tf.tile(
-          tf.reshape(levels * level_dim_size,
-                     [batch_size, num_of_instances, 1, 1]),
-          [1, 1, mask_crop_size, mask_crop_size]) +
-      tf.tile(
-          tf.reshape(y_indices * height_dim_size,
-                     [batch_size, num_of_instances,
-                      mask_crop_size, 1]),
-          [1, 1, 1, mask_crop_size]) +
+              tf.range(batch_size) * batch_dim_size, [batch_size, 1, 1, 1]),
+          [1, num_of_instances, mask_crop_size, mask_crop_size]) + tf.tile(
+              tf.reshape(levels * level_dim_size,
+                         [batch_size, num_of_instances, 1, 1]),
+              [1, 1, mask_crop_size, mask_crop_size]) + tf.tile(
+                  tf.reshape(y_indices * height_dim_size,
+                             [batch_size, num_of_instances, mask_crop_size, 1]),
+                  [1, 1, 1, mask_crop_size]) +
       tf.tile(
           tf.reshape(x_indices,
-                     [batch_size, num_of_instances,
-                      1, mask_crop_size]),
+                     [batch_size, num_of_instances, 1, mask_crop_size]),
           [1, 1, mask_crop_size, 1]), [-1])
 
-  features_r2 = tf.reshape(features,
-                           [-1, num_downsample_channels])
+  features_r2 = tf.reshape(features, [-1, num_downsample_channels])
   crop_features = tf.reshape(
-      tf.gather(features_r2, indices),
-      [batch_size * num_of_instances,
-       mask_crop_size, mask_crop_size,
-       num_downsample_channels])
+      tf.gather(features_r2, indices), [
+          batch_size * num_of_instances, mask_crop_size, mask_crop_size,
+          num_downsample_channels
+      ])
 
   return crop_features
 
@@ -546,9 +541,9 @@ def crop_mask_in_target_box(masks,
     boxes: a float tensor representing box cooridnates that tightly enclose
       masks with a shape of [batch_size, num_masks, 4] in un-normalized
       coordinates. A box is represented by [ymin, xmin, ymax, xmax].
-    target_boxes: a float tensor representing target box cooridnates for
-      masks with a shape of [batch_size, num_masks, 4] in un-normalized
-      coordinates. A box is represented by [ymin, xmin, ymax, xmax].
+    target_boxes: a float tensor representing target box cooridnates for masks
+      with a shape of [batch_size, num_masks, 4] in un-normalized coordinates. A
+      box is represented by [ymin, xmin, ymax, xmax].
     output_size: A scalar to indicate the output crop size. It currently only
       supports to output a square shape outputs.
     sample_offset: a float number in [0, 1] indicates the subpixel sample offset
@@ -561,10 +556,10 @@ def crop_mask_in_target_box(masks,
   """
   with tf.name_scope('crop_mask_in_target_box'):
     batch_size, num_masks, height, width = masks.get_shape().as_list()
-    masks = tf.reshape(masks, [batch_size*num_masks, height, width, 1])
+    masks = tf.reshape(masks, [batch_size * num_masks, height, width, 1])
     # Pad zeros on the boundary of masks.
     masks = tf.image.pad_to_bounding_box(masks, 2, 2, height + 4, width + 4)
-    masks = tf.reshape(masks, [batch_size, num_masks, height+4, width+4, 1])
+    masks = tf.reshape(masks, [batch_size, num_masks, height + 4, width + 4, 1])
 
     # Projects target box locations and sizes to corresponding cropped
     # mask coordinates.
@@ -572,10 +567,10 @@ def crop_mask_in_target_box(masks,
         value=boxes, num_or_size_splits=4, axis=2)
     bb_y_min, bb_x_min, bb_y_max, bb_x_max = tf.split(
         value=target_boxes, num_or_size_splits=4, axis=2)
-    y_transform = (bb_y_min - gt_y_min) * height / (
-        gt_y_max - gt_y_min + _EPSILON) + 2
-    x_transform = (bb_x_min - gt_x_min) * height / (
-        gt_x_max - gt_x_min + _EPSILON) + 2
+    y_transform = (bb_y_min - gt_y_min) * height / (gt_y_max - gt_y_min +
+                                                    _EPSILON) + 2
+    x_transform = (bb_x_min - gt_x_min) * height / (gt_x_max - gt_x_min +
+                                                    _EPSILON) + 2
     h_transform = (bb_y_max - bb_y_min) * width / (
         gt_y_max - gt_y_min + _EPSILON)
     w_transform = (bb_x_max - bb_x_min) * width / (
@@ -592,8 +587,8 @@ def crop_mask_in_target_box(masks,
     # Reshape tensors to have the right shape for selective_crop_and_resize.
     trasnformed_boxes = tf.concat(
         [y_transform, x_transform, h_transform, w_transform], -1)
-    levels = tf.tile(tf.reshape(tf.range(num_masks), [1, num_masks]),
-                     [batch_size, 1])
+    levels = tf.tile(
+        tf.reshape(tf.range(num_masks), [1, num_masks]), [batch_size, 1])
 
     cropped_masks = selective_crop_and_resize(
         masks,

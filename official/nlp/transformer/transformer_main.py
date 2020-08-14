@@ -24,6 +24,7 @@ from __future__ import print_function
 import os
 import tempfile
 
+# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
@@ -248,7 +249,6 @@ class TransformerTask(object):
       callbacks = [cb for cb in callbacks
                    if isinstance(cb, keras_utils.TimeHistory)]
 
-    # TODO(b/139418525): Refactor the custom training loop logic.
     @tf.function
     def train_steps(iterator, steps):
       """Training steps function for TPU runs.
@@ -422,8 +422,6 @@ class TransformerTask(object):
     """Loads model weights when it is provided."""
     if init_weight_path:
       logging.info("Load weights: {}".format(init_weight_path))
-      # TODO(b/139414977): Having the same variable restoring method for both
-      # TPU and GPU.
       if self.use_tpu:
         checkpoint = tf.train.Checkpoint(
             model=model, optimizer=self._create_optimizer())

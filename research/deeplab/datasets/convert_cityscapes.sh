@@ -42,6 +42,8 @@ WORK_DIR="."
 # Root path for Cityscapes dataset.
 CITYSCAPES_ROOT="${WORK_DIR}/cityscapes"
 
+export PYTHONPATH="${CITYSCAPES_ROOT}:${PYTHONPATH}"
+
 # Create training labels.
 python "${CITYSCAPES_ROOT}/cityscapesscripts/preparation/createTrainIdLabelImgs.py"
 

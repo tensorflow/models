@@ -4,7 +4,7 @@ package object_detection.protos;
 
 // Message for defining a preprocessing operation on input data.
 // See: //third_party/tensorflow_models/object_detection/core/preprocessor.py
-// Next ID: 38
+// Next ID: 39
 message PreprocessingStep {
   oneof preprocessing_step {
     NormalizeImage normalize_image = 1;
@@ -44,6 +44,7 @@ message PreprocessingStep {
     RandomDownscaleToTargetPixels random_downscale_to_target_pixels = 35;
     RandomPatchGaussian random_patch_gaussian = 36;
     RandomSquareCropByScale random_square_crop_by_scale = 37;
+    RandomScaleCropAndPadToSquare random_scale_crop_and_pad_to_square = 38;
   }
 }
 
@@ -571,4 +572,21 @@ message RandomSquareCropByScale {
   // The number of discrete scale values to randomly sample between
   // [min_scale, max_scale]
   optional int32 num_scales = 4 [default=8];
+}
+
+// Randomly scale, crop, and then pad an image to the desired square output
+// dimensions. Specifically, this method first samples a random_scale factor
+// from a uniform distribution between scale_min and scale_max, and then resizes
+// the image such that it's maximum dimension is (output_size * random_scale).
+// Secondly, a square output_size crop is extracted from the resized image, and
+// finally the cropped region is padded to the desired square output_size.
+// The augmentation is borrowed from [1]
+// [1]: https://arxiv.org/abs/1911.09070
+message RandomScaleCropAndPadToSquare {
+  // The (square) output image size
+  optional int32 output_size = 1 [default = 512];
+
+  // The minimum and maximum values from which to sample the random scale.
+  optional float scale_min = 2 [default=0.1];
+  optional float scale_max = 3 [default=2.0];
 }

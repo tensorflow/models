@@ -93,9 +93,9 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   Args:
     distribution_strategy: a string specifying which distribution strategy to
       use. Accepted values are "off", "one_device", "mirrored",
-      "parameter_server", "multi_worker_mirrored", and "tpu" -- case insensitive.
-      "off" means not to use Distribution Strategy; "tpu" means to use
-      TPUStrategy using `tpu_address`.
+      "parameter_server", "multi_worker_mirrored", and "tpu" -- case
+      insensitive. "off" means not to use Distribution Strategy; "tpu" means to
+      use TPUStrategy using `tpu_address`.
     num_gpus: Number of GPUs to run this model.
     all_reduce_alg: Optional. Specifies which algorithm to use when performing
       all-reduce. For `MirroredStrategy`, valid values are "nccl" and
@@ -104,8 +104,9 @@ def get_distribution_strategy(distribution_strategy="mirrored",
       device topology.
     num_packs: Optional.  Sets the `num_packs` in `tf.distribute.NcclAllReduce`
       or `tf.distribute.HierarchicalCopyAllReduce` for `MirroredStrategy`.
-    tpu_address: Optional. String that represents TPU to connect to. Must not
-      be None if `distribution_strategy` is set to `tpu`.
+    tpu_address: Optional. String that represents TPU to connect to. Must not be
+      None if `distribution_strategy` is set to `tpu`.
+
   Returns:
     tf.distribute.DistibutionStrategy object.
   Raises:
@@ -119,9 +120,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   distribution_strategy = distribution_strategy.lower()
   if distribution_strategy == "off":
     if num_gpus > 1:
-      raise ValueError(
-          "When {} GPUs are specified, distribution_strategy "
-          "flag cannot be set to `off`.".format(num_gpus))
+      raise ValueError("When {} GPUs are specified, distribution_strategy "
+                       "flag cannot be set to `off`.".format(num_gpus))
     return None
 
   if distribution_strategy == "tpu":
@@ -153,8 +153,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   if distribution_strategy == "parameter_server":
     return tf.distribute.experimental.ParameterServerStrategy()
 
-  raise ValueError(
-      "Unrecognized Distribution Strategy: %r" % distribution_strategy)
+  raise ValueError("Unrecognized Distribution Strategy: %r" %
+                   distribution_strategy)
 
 
 def configure_cluster(worker_hosts=None, task_index=-1):
@@ -168,8 +168,9 @@ def configure_cluster(worker_hosts=None, task_index=-1):
   """
   tf_config = json.loads(os.environ.get("TF_CONFIG", "{}"))
   if tf_config:
-    num_workers = (len(tf_config["cluster"].get("chief", [])) +
-                   len(tf_config["cluster"].get("worker", [])))
+    num_workers = (
+        len(tf_config["cluster"].get("chief", [])) +
+        len(tf_config["cluster"].get("worker", [])))
   elif worker_hosts:
     workers = worker_hosts.split(",")
     num_workers = len(workers)
@@ -180,7 +181,10 @@ def configure_cluster(worker_hosts=None, task_index=-1):
         "cluster": {
             "worker": workers
         },
-        "task": {"type": "worker", "index": task_index}
+        "task": {
+            "type": "worker",
+            "index": task_index
+        }
     })
   else:
     num_workers = 1

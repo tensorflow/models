@@ -14,21 +14,60 @@
 # ==============================================================================
 """ALBERT classification finetuning runner in tf2.x."""
 
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 import json
-
+import os
+# Import libraries
 from absl import app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 
 from official.nlp.albert import configs as albert_configs
+from official.nlp.bert import bert_models
 from official.nlp.bert import run_classifier as run_classifier_bert
 from official.utils.misc import distribution_utils
 
+
 FLAGS = flags.FLAGS
+
+
+def predict(strategy, albert_config, input_meta_data, predict_input_fn):
+  """Function outputs both the ground truth predictions as .tsv files."""
+  with strategy.scope():
+    classifier_model = bert_models.classifier_model(
+        albert_config, input_meta_data['num_labels'])[0]
+    checkpoint = tf.train.Checkpoint(model=classifier_model)
+    latest_checkpoint_file = (
+        FLAGS.predict_checkpoint_path or
+        tf.train.latest_checkpoint(FLAGS.model_dir))
+    assert latest_checkpoint_file
+    logging.info('Checkpoint file %s found and restoring from '
+                 'checkpoint', latest_checkpoint_file)
+    checkpoint.restore(
+        latest_checkpoint_file).assert_existing_objects_matched()
+    preds, ground_truth = run_classifier_bert.get_predictions_and_labels(
+        strategy, classifier_model, predict_input_fn, return_probs=True)
+    output_predict_file = os.path.join(FLAGS.model_dir, 'test_results.tsv')
+    with tf.io.gfile.GFile(output_predict_file, 'w') as writer:
+      logging.info('***** Predict results *****')
+      for probabilities in preds:
+        output_line = '\t'.join(
+            str(class_probability)
+            for class_probability in probabilities) + '\n'
+        writer.write(output_line)
+    ground_truth_labels_file = os.path.join(FLAGS.model_dir,
+                                            'output_labels.tsv')
+    with tf.io.gfile.GFile(ground_truth_labels_file, 'w') as writer:
+      logging.info('***** Ground truth results *****')
+      for label in ground_truth:
+        output_line = '\t'.join(str(label)) + '\n'
+        writer.write(output_line)
+  return
 
 
 def main(_):
@@ -56,9 +95,14 @@ def main(_):
 
   albert_config = albert_configs.AlbertConfig.from_json_file(
       FLAGS.bert_config_file)
-  run_classifier_bert.run_bert(strategy, input_meta_data, albert_config,
-                               train_input_fn, eval_input_fn)
-
+  if FLAGS.mode == 'train_and_eval':
+    run_classifier_bert.run_bert(strategy, input_meta_data, albert_config,
+                                 train_input_fn, eval_input_fn)
+  elif FLAGS.mode == 'predict':
+    predict(strategy, albert_config, input_meta_data, eval_input_fn)
+  else:
+    raise ValueError('Unsupported mode is specified: %s' % FLAGS.mode)
+  return
 
 if __name__ == '__main__':
   flags.mark_flag_as_required('bert_config_file')

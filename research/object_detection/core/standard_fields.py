@@ -46,6 +46,7 @@ class InputDataFields(object):
       classes for which an image has been labeled.
     groundtruth_boxes: coordinates of the ground truth boxes in the image.
     groundtruth_classes: box-level class labels.
+    groundtruth_track_ids: box-level track ID labels.
     groundtruth_confidences: box-level class confidences. The shape should be
       the same as the shape of groundtruth_classes.
     groundtruth_label_types: box-level label types (e.g. explicit negative).
@@ -97,6 +98,7 @@ class InputDataFields(object):
   groundtruth_labeled_classes = 'groundtruth_labeled_classes'
   groundtruth_boxes = 'groundtruth_boxes'
   groundtruth_classes = 'groundtruth_classes'
+  groundtruth_track_ids = 'groundtruth_track_ids'
   groundtruth_confidences = 'groundtruth_confidences'
   groundtruth_label_types = 'groundtruth_label_types'
   groundtruth_is_crowd = 'groundtruth_is_crowd'
@@ -141,6 +143,8 @@ class DetectionResultFields(object):
       for detection boxes in the image including background class.
     detection_classes: detection-level class labels.
     detection_masks: contains a segmentation mask for each detection box.
+    detection_surface_coords: contains DensePose surface coordinates for each
+      box.
     detection_boundaries: contains an object boundary for each detection box.
     detection_keypoints: contains detection keypoints for each detection box.
     detection_keypoint_scores: contains detection keypoint scores.
@@ -161,9 +165,11 @@ class DetectionResultFields(object):
   detection_features = 'detection_features'
   detection_classes = 'detection_classes'
   detection_masks = 'detection_masks'
+  detection_surface_coords = 'detection_surface_coords'
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   detection_keypoint_scores = 'detection_keypoint_scores'
+  detection_embeddings = 'detection_embeddings'
   num_detections = 'num_detections'
   raw_detection_boxes = 'raw_detection_boxes'
   raw_detection_scores = 'raw_detection_scores'
@@ -182,7 +188,11 @@ class BoxListFields(object):
     masks: masks per bounding box.
     boundaries: boundaries per bounding box.
     keypoints: keypoints per bounding box.
+    keypoint_visibilities: keypoint visibilities per bounding box.
     keypoint_heatmaps: keypoint heatmaps per bounding box.
+    densepose_num_points: number of DensePose points per bounding box.
+    densepose_part_ids: DensePose part ids per bounding box.
+    densepose_surface_coords: DensePose surface coordinates per bounding box.
     is_crowd: is_crowd annotation per bounding box.
   """
   boxes = 'boxes'
@@ -196,8 +206,12 @@ class BoxListFields(object):
   keypoints = 'keypoints'
   keypoint_visibilities = 'keypoint_visibilities'
   keypoint_heatmaps = 'keypoint_heatmaps'
+  densepose_num_points = 'densepose_num_points'
+  densepose_part_ids = 'densepose_part_ids'
+  densepose_surface_coords = 'densepose_surface_coords'
   is_crowd = 'is_crowd'
   group_of = 'group_of'
+  track_ids = 'track_ids'
 
 
 class PredictionFields(object):

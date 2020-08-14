@@ -417,4 +417,12 @@ def build(preprocessor_step_config):
         'num_scales': config.num_scales
     }
 
+  if step_type == 'random_scale_crop_and_pad_to_square':
+    config = preprocessor_step_config.random_scale_crop_and_pad_to_square
+    return preprocessor.random_scale_crop_and_pad_to_square, {
+        'scale_min': config.scale_min,
+        'scale_max': config.scale_max,
+        'output_size': config.output_size,
+    }
+
   raise ValueError('Unknown preprocessing step.')

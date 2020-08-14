@@ -15,11 +15,13 @@
 # ==============================================================================
 """Loads dataset for the question answering (e.g, SQuAD) task."""
 from typing import Mapping, Optional
+
 import dataclasses
 import tensorflow as tf
 
 from official.core import input_reader
 from official.modeling.hyperparams import config_definitions as cfg
+from official.nlp.data import data_loader
 from official.nlp.data import data_loader_factory
 
 
@@ -42,7 +44,7 @@ class QADataConfig(cfg.DataConfig):
 
 
 @data_loader_factory.register_data_loader_cls(QADataConfig)
-class QuestionAnsweringDataLoader:
+class QuestionAnsweringDataLoader(data_loader.DataLoader):
   """A class to load dataset for sentence prediction (classification) task."""
 
   def __init__(self, params):

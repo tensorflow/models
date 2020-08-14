@@ -3,11 +3,6 @@
 Layers are the fundamental building blocks for NLP models. They can be used to
 assemble new layers, networks, or models.
 
-*   [DenseEinsum](dense_einsum.py) implements a feedforward network using
-    tf.einsum. This layer contains the einsum op, the associated weight, and the
-    logic required to generate the einsum expression for the given
-    initialization parameters.
-
 *   [MultiHeadAttention](attention.py) implements an optionally masked attention
     between query, key, value tensors as described in
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762). If

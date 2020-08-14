@@ -2,7 +2,7 @@
 
 [TOC]
 
-To use your own dataset in Tensorflow Object Detection API, you must convert it
+To use your own dataset in TensorFlow Object Detection API, you must convert it
 into the [TFRecord file format](https://www.tensorflow.org/api_guides/python/python_io#tfrecords_format_details).
 This document outlines how to write a script to generate the TFRecord file.
 

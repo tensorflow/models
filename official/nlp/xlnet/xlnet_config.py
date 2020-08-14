@@ -38,12 +38,13 @@ def create_run_config(is_training, is_finetune, flags):
       clamp_len=flags.clamp_len)
 
   if not is_finetune:
-    kwargs.update(dict(
-        mem_len=flags.mem_len,
-        reuse_len=flags.reuse_len,
-        bi_data=flags.bi_data,
-        clamp_len=flags.clamp_len,
-        same_length=flags.same_length))
+    kwargs.update(
+        dict(
+            mem_len=flags.mem_len,
+            reuse_len=flags.reuse_len,
+            bi_data=flags.bi_data,
+            clamp_len=flags.clamp_len,
+            same_length=flags.same_length))
 
   return RunConfig(**kwargs)
 
@@ -80,8 +81,10 @@ class XLNetConfig(object):
 
     assert FLAGS is not None or json_path is not None or args_dict is not None
 
-    self.keys = ['n_layer', 'd_model', 'n_head', 'd_head', 'd_inner',
-                 'ff_activation', 'untie_r', 'n_token']
+    self.keys = [
+        'n_layer', 'd_model', 'n_head', 'd_head', 'd_inner', 'ff_activation',
+        'untie_r', 'n_token'
+    ]
 
     if FLAGS is not None:
       self.init_from_flags(FLAGS)
@@ -152,17 +155,17 @@ class RunConfig(object):
       init_method: str, the initialization scheme, either "normal" or "uniform".
       init_range: float, initialize the parameters with a uniform distribution
         in [-init_range, init_range]. Only effective when init="uniform".
-      init_std: float, initialize the parameters with a normal distribution
-        with mean 0 and stddev init_std. Only effective when init="normal".
+      init_std: float, initialize the parameters with a normal distribution with
+        mean 0 and stddev init_std. Only effective when init="normal".
       mem_len: int, the number of tokens to cache.
-      reuse_len: int, the number of tokens in the currect batch to be cached
-        and reused in the future.
-      bi_data: bool, whether to use bidirectional input pipeline.
-        Usually set to True during pretraining and False during finetuning.
-      clamp_len: int, clamp all relative distances larger than clamp_len.
-        -1 means no clamping.
-      same_length: bool, whether to use the same attention length
-                   for each token.
+      reuse_len: int, the number of tokens in the currect batch to be cached and
+        reused in the future.
+      bi_data: bool, whether to use bidirectional input pipeline. Usually set to
+        True during pretraining and False during finetuning.
+      clamp_len: int, clamp all relative distances larger than clamp_len. -1
+        means no clamping.
+      same_length: bool, whether to use the same attention length for each
+        token.
       use_cls_mask: bool, whether to introduce cls mask.
     """
 

@@ -20,14 +20,12 @@ import string
 import gin
 import tensorflow as tf
 
-from official.nlp.modeling.layers import attention
-
 _CHR_IDX = string.ascii_lowercase
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
-class TalkingHeadsAttention(attention.MultiHeadAttention):
+class TalkingHeadsAttention(tf.keras.layers.MultiHeadAttention):
   """Implements Talking-Heads Attention.
 
   This is an implementation of Talking-Heads Attention based on the paper
@@ -39,8 +37,8 @@ class TalkingHeadsAttention(attention.MultiHeadAttention):
 
   Arguments:
     num_heads: Number of attention heads.
-    key_size: Size of each attention head for query and key.
-    value_size:  Size of each attention head for value.
+    key_dim: Size of each attention head for query and key.
+    value_dim:  Size of each attention head for value.
     dropout: Dropout probability.
     use_bias: Boolean, whether the dense layers use bias vectors/matrices.
     output_shape: The expected shape of an output tensor, besides the batch and
@@ -114,9 +112,9 @@ class TalkingHeadsAttention(attention.MultiHeadAttention):
     on attention scores before and after softmax.
 
     Args:
-      query_tensor: Projected query `Tensor` of shape `[B, T, N, key_size]`.
-      key_tensor: Projected key `Tensor` of shape `[B, T, N, key_size]`.
-      value_tensor: Projected value `Tensor` of shape `[B, T, N, value_size]`.
+      query_tensor: Projected query `Tensor` of shape `[B, T, N, key_dim]`.
+      key_tensor: Projected key `Tensor` of shape `[B, T, N, key_dim]`.
+      value_tensor: Projected value `Tensor` of shape `[B, T, N, value_dim]`.
       attention_mask: a boolean mask of shape `[B, T, S]`, that prevents
         attention to certain positions.
 
@@ -129,7 +127,7 @@ class TalkingHeadsAttention(attention.MultiHeadAttention):
     attention_scores = tf.einsum(self._dot_product_equation, key_tensor,
                                  query_tensor)
     attention_scores = tf.multiply(attention_scores,
-                                   1.0 / math.sqrt(float(self._key_size)))
+                                   1.0 / math.sqrt(float(self._key_dim)))
 
     # Apply linear projection before softmax
     attention_scores = tf.einsum(self._talking_heads_equation, attention_scores,

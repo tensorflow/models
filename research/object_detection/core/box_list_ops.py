@@ -304,6 +304,50 @@ def iou(boxlist1, boxlist2, scope=None):
         tf.zeros_like(intersections), tf.truediv(intersections, unions))
 
 
+def l1(boxlist1, boxlist2, scope=None):
+  """Computes l1 loss (pairwise) between two boxlists.
+
+  Args:
+    boxlist1: BoxList holding N boxes
+    boxlist2: BoxList holding M boxes
+    scope: name scope.
+
+  Returns:
+    a tensor with shape [N, M] representing the pairwise L1 loss.
+  """
+  with tf.name_scope(scope, 'PairwiseL1'):
+    ycenter1, xcenter1, h1, w1 = boxlist1.get_center_coordinates_and_sizes()
+    ycenter2, xcenter2, h2, w2 = boxlist2.get_center_coordinates_and_sizes()
+    ycenters = tf.abs(tf.expand_dims(ycenter2, axis=0) - tf.expand_dims(
+        tf.transpose(ycenter1), axis=1))
+    xcenters = tf.abs(tf.expand_dims(xcenter2, axis=0) - tf.expand_dims(
+        tf.transpose(xcenter1), axis=1))
+    heights = tf.abs(tf.expand_dims(h2, axis=0) - tf.expand_dims(
+        tf.transpose(h1), axis=1))
+    widths = tf.abs(tf.expand_dims(w2, axis=0) - tf.expand_dims(
+        tf.transpose(w1), axis=1))
+    return ycenters + xcenters + heights + widths
+
+
+def giou(boxlist1, boxlist2, scope=None):
+  """Computes pairwise generalized IOU between two boxlists.
+
+  Args:
+    boxlist1: BoxList holding N boxes
+    boxlist2: BoxList holding M boxes
+    scope: name scope.
+
+  Returns:
+    a tensor with shape [N, M] representing the pairwise GIoU loss.
+  """
+  with tf.name_scope(scope, 'PairwiseGIoU'):
+    n = boxlist1.num_boxes()
+    m = boxlist2.num_boxes()
+    boxes1 = tf.repeat(boxlist1.get(), repeats=m, axis=0)
+    boxes2 = tf.tile(boxlist2.get(), multiples=[n, 1])
+    return tf.reshape(ops.giou(boxes1, boxes2), [n, m])
+
+
 def matched_iou(boxlist1, boxlist2, scope=None):
   """Compute intersection-over-union between corresponding boxes in boxlists.
 

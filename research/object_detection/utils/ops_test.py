@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
+from absl.testing import parameterized
 import numpy as np
 import six
 from six.moves import range
@@ -1190,36 +1192,59 @@ class OpsTestBatchPositionSensitiveCropRegions(test_case.TestCase):
 
 # The following tests are only executed on CPU because the output
 # shape is not constant.
-class ReframeBoxMasksToImageMasksTest(test_case.TestCase):
+class ReframeBoxMasksToImageMasksTest(test_case.TestCase,
+                                      parameterized.TestCase):
 
-  def testZeroImageOnEmptyMask(self):
+  @parameterized.parameters(
+      {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
+       'resize_method': 'bilinear'},
+      {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
+       'resize_method': 'nearest'},
+      {'mask_dtype': tf.uint8, 'mask_dtype_np': np.uint8,
+       'resize_method': 'bilinear'},
+      {'mask_dtype': tf.uint8, 'mask_dtype_np': np.uint8,
+       'resize_method': 'nearest'},
+  )
+  def testZeroImageOnEmptyMask(self, mask_dtype, mask_dtype_np, resize_method):
     np_expected_image_masks = np.array([[[0, 0, 0, 0],
                                          [0, 0, 0, 0],
                                          [0, 0, 0, 0],
-                                         [0, 0, 0, 0]]], dtype=np.float32)
+                                         [0, 0, 0, 0]]])
     def graph_fn():
       box_masks = tf.constant([[[0, 0],
-                                [0, 0]]], dtype=tf.float32)
+                                [0, 0]]], dtype=mask_dtype)
       boxes = tf.constant([[0.0, 0.0, 1.0, 1.0]], dtype=tf.float32)
-      image_masks = ops.reframe_box_masks_to_image_masks(box_masks, boxes,
-                                                         image_height=4,
-                                                         image_width=4)
+      image_masks = ops.reframe_box_masks_to_image_masks(
+          box_masks, boxes, image_height=4, image_width=4,
+          resize_method=resize_method)
       return image_masks
 
     np_image_masks = self.execute_cpu(graph_fn, [])
+    self.assertEqual(np_image_masks.dtype, mask_dtype_np)
     self.assertAllClose(np_image_masks, np_expected_image_masks)
 
-  def testZeroBoxMasks(self):
+  @parameterized.parameters(
+      {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
+       'resize_method': 'bilinear'},
+      {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
+       'resize_method': 'nearest'},
+      {'mask_dtype': tf.uint8, 'mask_dtype_np': np.uint8,
+       'resize_method': 'bilinear'},
+      {'mask_dtype': tf.uint8, 'mask_dtype_np': np.uint8,
+       'resize_method': 'nearest'},
+  )
+  def testZeroBoxMasks(self, mask_dtype, mask_dtype_np, resize_method):
 
     def graph_fn():
-      box_masks = tf.zeros([0, 3, 3], dtype=tf.float32)
+      box_masks = tf.zeros([0, 3, 3], dtype=mask_dtype)
       boxes = tf.zeros([0, 4], dtype=tf.float32)
-      image_masks = ops.reframe_box_masks_to_image_masks(box_masks, boxes,
-                                                         image_height=4,
-                                                         image_width=4)
+      image_masks = ops.reframe_box_masks_to_image_masks(
+          box_masks, boxes, image_height=4, image_width=4,
+          resize_method=resize_method)
       return image_masks
 
     np_image_masks = self.execute_cpu(graph_fn, [])
+    self.assertEqual(np_image_masks.dtype, mask_dtype_np)
     self.assertAllEqual(np_image_masks.shape, np.array([0, 4, 4]))
 
   def testBoxWithZeroArea(self):
@@ -1235,40 +1260,70 @@ class ReframeBoxMasksToImageMasksTest(test_case.TestCase):
     np_image_masks = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(np_image_masks.shape, np.array([1, 4, 4]))
 
-  def testMaskIsCenteredInImageWhenBoxIsCentered(self):
+  @parameterized.parameters(
+      {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
+       'resize_method': 'bilinear'},
+      {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
+       'resize_method': 'nearest'},
+      {'mask_dtype': tf.uint8, 'mask_dtype_np': np.uint8,
+       'resize_method': 'bilinear'},
+      {'mask_dtype': tf.uint8, 'mask_dtype_np': np.uint8,
+       'resize_method': 'nearest'},
+  )
+  def testMaskIsCenteredInImageWhenBoxIsCentered(self, mask_dtype,
+                                                 mask_dtype_np, resize_method):
 
     def graph_fn():
-      box_masks = tf.constant([[[1, 1],
-                                [1, 1]]], dtype=tf.float32)
+      box_masks = tf.constant([[[4, 4],
+                                [4, 4]]], dtype=mask_dtype)
       boxes = tf.constant([[0.25, 0.25, 0.75, 0.75]], dtype=tf.float32)
-      image_masks = ops.reframe_box_masks_to_image_masks(box_masks, boxes,
-                                                         image_height=4,
-                                                         image_width=4)
+      image_masks = ops.reframe_box_masks_to_image_masks(
+          box_masks, boxes, image_height=4, image_width=4,
+          resize_method=resize_method)
       return image_masks
 
     np_expected_image_masks = np.array([[[0, 0, 0, 0],
-                                         [0, 1, 1, 0],
-                                         [0, 1, 1, 0],
-                                         [0, 0, 0, 0]]], dtype=np.float32)
+                                         [0, 4, 4, 0],
+                                         [0, 4, 4, 0],
+                                         [0, 0, 0, 0]]], dtype=mask_dtype_np)
     np_image_masks = self.execute_cpu(graph_fn, [])
+    self.assertEqual(np_image_masks.dtype, mask_dtype_np)
     self.assertAllClose(np_image_masks, np_expected_image_masks)
 
-  def testMaskOffCenterRemainsOffCenterInImage(self):
+  @parameterized.parameters(
+      {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
+       'resize_method': 'bilinear'},
+      {'mask_dtype': tf.float32, 'mask_dtype_np': np.float32,
+       'resize_method': 'nearest'},
+      {'mask_dtype': tf.uint8, 'mask_dtype_np': np.uint8,
+       'resize_method': 'bilinear'},
+      {'mask_dtype': tf.uint8, 'mask_dtype_np': np.uint8,
+       'resize_method': 'nearest'},
+  )
+  def testMaskOffCenterRemainsOffCenterInImage(self, mask_dtype,
+                                               mask_dtype_np, resize_method):
 
     def graph_fn():
       box_masks = tf.constant([[[1, 0],
-                                [0, 1]]], dtype=tf.float32)
+                                [0, 1]]], dtype=mask_dtype)
       boxes = tf.constant([[0.25, 0.5, 0.75, 1.0]], dtype=tf.float32)
-      image_masks = ops.reframe_box_masks_to_image_masks(box_masks, boxes,
-                                                         image_height=4,
-                                                         image_width=4)
+      image_masks = ops.reframe_box_masks_to_image_masks(
+          box_masks, boxes, image_height=4, image_width=4,
+          resize_method=resize_method)
       return image_masks
 
-    np_expected_image_masks = np.array([[[0, 0, 0, 0],
-                                         [0, 0, 0.6111111, 0.16666669],
-                                         [0, 0, 0.3888889, 0.83333337],
-                                         [0, 0, 0, 0]]], dtype=np.float32)
+    if mask_dtype == tf.float32 and resize_method == 'bilinear':
+      np_expected_image_masks = np.array([[[0, 0, 0, 0],
+                                           [0, 0, 0.6111111, 0.16666669],
+                                           [0, 0, 0.3888889, 0.83333337],
+                                           [0, 0, 0, 0]]], dtype=np.float32)
+    else:
+      np_expected_image_masks = np.array([[[0, 0, 0, 0],
+                                           [0, 0, 1, 0],
+                                           [0, 0, 0, 1],
+                                           [0, 0, 0, 0]]], dtype=mask_dtype_np)
     np_image_masks = self.execute_cpu(graph_fn, [])
+    self.assertEqual(np_image_masks.dtype, mask_dtype_np)
     self.assertAllClose(np_image_masks, np_expected_image_masks)
 
 
@@ -1578,6 +1633,120 @@ class TestGatherWithPaddingValues(test_case.TestCase):
 
 
 
+
+
+
+class TestGIoU(test_case.TestCase):
+
+  def test_giou_with_no_overlap(self):
+    expected_giou_tensor = [
+        0, -1/3, -3/4, 0, -98/100
+    ]
+
+    def graph_fn():
+      boxes1 = tf.constant([[3, 4, 5, 6], [3, 3, 5, 5],
+                            [0, 0, 0, 0], [3, 3, 5, 5],
+                            [9, 9, 10, 10]],
+                           dtype=tf.float32)
+      boxes2 = tf.constant([[3, 2, 5, 4], [3, 7, 5, 9],
+                            [5, 5, 10, 10], [3, 5, 5, 7],
+                            [0, 0, 1, 1]], dtype=tf.float32)
+
+      giou = ops.giou(boxes1, boxes2)
+      self.assertEqual(giou.dtype, tf.float32)
+
+      return giou
+
+    giou = self.execute(graph_fn, [])
+    self.assertAllClose(expected_giou_tensor, giou)
+
+  def test_giou_with_overlaps(self):
+    expected_giou_tensor = [
+        1/25, 1/4, 1/3, 1/7 - 2/9
+    ]
+
+    def graph_fn():
+      boxes1 = tf.constant([[2, 1, 7, 6], [2, 2, 4, 4],
+                            [2, 2, 4, 4], [2, 2, 4, 4]],
+                           dtype=tf.float32)
+      boxes2 = tf.constant([[4, 3, 5, 4], [3, 3, 4, 4],
+                            [2, 3, 4, 5], [3, 3, 5, 5]], dtype=tf.float32)
+
+      giou = ops.giou(boxes1, boxes2)
+      self.assertEqual(giou.dtype, tf.float32)
+
+      return giou
+
+    giou = self.execute(graph_fn, [])
+    self.assertAllClose(expected_giou_tensor, giou)
+
+  def test_giou_with_perfect_overlap(self):
+    expected_giou_tensor = [1]
+
+    def graph_fn():
+      boxes1 = tf.constant([[3, 3, 5, 5]], dtype=tf.float32)
+      boxes2 = tf.constant([[3, 3, 5, 5]], dtype=tf.float32)
+
+      giou = ops.giou(boxes1, boxes2)
+      self.assertEqual(giou.dtype, tf.float32)
+
+      return giou
+
+    giou = self.execute(graph_fn, [])
+    self.assertAllClose(expected_giou_tensor, giou)
+
+  def test_giou_with_zero_area_boxes(self):
+    expected_giou_tensor = [0]
+
+    def graph_fn():
+      boxes1 = tf.constant([[1, 1, 1, 1]], dtype=tf.float32)
+      boxes2 = tf.constant([[1, 1, 1, 1]], dtype=tf.float32)
+
+      giou = ops.giou(boxes1, boxes2)
+      self.assertEqual(giou.dtype, tf.float32)
+
+      return giou
+
+    giou = self.execute(graph_fn, [])
+    self.assertAllClose(expected_giou_tensor, giou)
+
+  def test_giou_different_with_l1_same(self):
+    expected_giou_tensor = [
+        2/3, 3/5
+    ]
+
+    def graph_fn():
+      boxes1 = tf.constant([[3, 3, 5, 5], [3, 3, 5, 5]], dtype=tf.float32)
+      boxes2 = tf.constant([[3, 2.5, 5, 5.5], [3, 2.5, 5, 4.5]],
+                           dtype=tf.float32)
+
+      giou = ops.giou(boxes1, boxes2)
+      self.assertEqual(giou.dtype, tf.float32)
+
+      return giou
+
+    giou = self.execute(graph_fn, [])
+    self.assertAllClose(expected_giou_tensor, giou)
+
+
+class TestCoordinateConversion(test_case.TestCase):
+
+  def test_coord_conv(self):
+    expected_box_tensor = [
+        [0.5, 0.5, 5.5, 5.5], [2, 1, 4, 7], [0, 0, 0, 0]
+    ]
+
+    def graph_fn():
+      boxes = tf.constant([[3, 3, 5, 5], [3, 4, 2, 6], [0, 0, 0, 0]],
+                          dtype=tf.float32)
+
+      converted = ops.center_to_corner_coordinate(boxes)
+      self.assertEqual(converted.dtype, tf.float32)
+
+      return converted
+
+    converted = self.execute(graph_fn, [])
+    self.assertAllClose(expected_box_tensor, converted)
 
 
 if __name__ == '__main__':

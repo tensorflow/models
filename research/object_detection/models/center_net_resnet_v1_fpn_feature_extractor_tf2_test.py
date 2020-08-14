@@ -31,6 +31,8 @@ class CenterNetResnetV1FpnFeatureExtractorTest(test_case.TestCase,
   @parameterized.parameters(
       {'resnet_type': 'resnet_v1_50'},
       {'resnet_type': 'resnet_v1_101'},
+      {'resnet_type': 'resnet_v1_18'},
+      {'resnet_type': 'resnet_v1_34'},
   )
   def test_correct_output_size(self, resnet_type):
     """Verify that shape of features returned by the backbone is correct."""

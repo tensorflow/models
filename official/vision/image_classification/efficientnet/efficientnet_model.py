@@ -64,11 +64,11 @@ class ModelConfig(base_config.Config):
       # (input_filters, output_filters, kernel_size, num_repeat,
       #  expand_ratio, strides, se_ratio)
       # pylint: disable=bad-whitespace
-      BlockConfig.from_args(32,  16,  3, 1, 1, (1, 1), 0.25),
-      BlockConfig.from_args(16,  24,  3, 2, 6, (2, 2), 0.25),
-      BlockConfig.from_args(24,  40,  5, 2, 6, (2, 2), 0.25),
-      BlockConfig.from_args(40,  80,  3, 3, 6, (2, 2), 0.25),
-      BlockConfig.from_args(80,  112, 5, 3, 6, (1, 1), 0.25),
+      BlockConfig.from_args(32, 16, 3, 1, 1, (1, 1), 0.25),
+      BlockConfig.from_args(16, 24, 3, 2, 6, (2, 2), 0.25),
+      BlockConfig.from_args(24, 40, 5, 2, 6, (2, 2), 0.25),
+      BlockConfig.from_args(40, 80, 3, 3, 6, (2, 2), 0.25),
+      BlockConfig.from_args(80, 112, 5, 3, 6, (1, 1), 0.25),
       BlockConfig.from_args(112, 192, 5, 4, 6, (2, 2), 0.25),
       BlockConfig.from_args(192, 320, 3, 1, 6, (1, 1), 0.25),
       # pylint: enable=bad-whitespace
@@ -128,8 +128,7 @@ DENSE_KERNEL_INITIALIZER = {
 }
 
 
-def round_filters(filters: int,
-                  config: ModelConfig) -> int:
+def round_filters(filters: int, config: ModelConfig) -> int:
   """Round number of filters based on width coefficient."""
   width_coefficient = config.width_coefficient
   min_depth = config.min_depth
@@ -189,21 +188,24 @@ def conv2d_block(inputs: tf.Tensor,
     init_kwargs.update({'depthwise_initializer': CONV_KERNEL_INITIALIZER})
   else:
     conv2d = tf.keras.layers.Conv2D
-    init_kwargs.update({'filters': conv_filters,
-                        'kernel_initializer': CONV_KERNEL_INITIALIZER})
+    init_kwargs.update({
+        'filters': conv_filters,
+        'kernel_initializer': CONV_KERNEL_INITIALIZER
+    })
 
   x = conv2d(**init_kwargs)(inputs)
 
   if use_batch_norm:
     bn_axis = 1 if data_format == 'channels_first' else -1
-    x = batch_norm(axis=bn_axis,
-                   momentum=bn_momentum,
-                   epsilon=bn_epsilon,
-                   name=name + '_bn')(x)
+    x = batch_norm(
+        axis=bn_axis,
+        momentum=bn_momentum,
+        epsilon=bn_epsilon,
+        name=name + '_bn')(
+            x)
 
   if activation is not None:
-    x = tf.keras.layers.Activation(activation,
-                                   name=name + '_activation')(x)
+    x = tf.keras.layers.Activation(activation, name=name + '_activation')(x)
   return x
 
 
@@ -235,42 +237,43 @@ def mb_conv_block(inputs: tf.Tensor,
 
   if block.fused_conv:
     # If we use fused mbconv, skip expansion and use regular conv.
-    x = conv2d_block(x,
-                     filters,
-                     config,
-                     kernel_size=block.kernel_size,
-                     strides=block.strides,
-                     activation=activation,
-                     name=prefix + 'fused')
+    x = conv2d_block(
+        x,
+        filters,
+        config,
+        kernel_size=block.kernel_size,
+        strides=block.strides,
+        activation=activation,
+        name=prefix + 'fused')
   else:
     if block.expand_ratio != 1:
       # Expansion phase
       kernel_size = (1, 1) if use_depthwise else (3, 3)
-      x = conv2d_block(x,
-                       filters,
-                       config,
-                       kernel_size=kernel_size,
-                       activation=activation,
-                       name=prefix + 'expand')
+      x = conv2d_block(
+          x,
+          filters,
+          config,
+          kernel_size=kernel_size,
+          activation=activation,
+          name=prefix + 'expand')
 
     # Depthwise Convolution
     if use_depthwise:
-      x = conv2d_block(x,
-                       conv_filters=None,
-                       config=config,
-                       kernel_size=block.kernel_size,
-                       strides=block.strides,
-                       activation=activation,
-                       depthwise=True,
-                       name=prefix + 'depthwise')
+      x = conv2d_block(
+          x,
+          conv_filters=None,
+          config=config,
+          kernel_size=block.kernel_size,
+          strides=block.strides,
+          activation=activation,
+          depthwise=True,
+          name=prefix + 'depthwise')
 
   # Squeeze and Excitation phase
   if use_se:
     assert block.se_ratio is not None
     assert 0 < block.se_ratio <= 1
-    num_reduced_filters = max(1, int(
-        block.input_filters * block.se_ratio
-    ))
+    num_reduced_filters = max(1, int(block.input_filters * block.se_ratio))
 
     if data_format == 'channels_first':
       se_shape = (filters, 1, 1)
@@ -280,53 +283,51 @@ def mb_conv_block(inputs: tf.Tensor,
     se = tf.keras.layers.GlobalAveragePooling2D(name=prefix + 'se_squeeze')(x)
     se = tf.keras.layers.Reshape(se_shape, name=prefix + 'se_reshape')(se)
 
-    se = conv2d_block(se,
-                      num_reduced_filters,
-                      config,
-                      use_bias=True,
-                      use_batch_norm=False,
-                      activation=activation,
-                      name=prefix + 'se_reduce')
-    se = conv2d_block(se,
-                      filters,
-                      config,
-                      use_bias=True,
-                      use_batch_norm=False,
-                      activation='sigmoid',
-                      name=prefix + 'se_expand')
+    se = conv2d_block(
+        se,
+        num_reduced_filters,
+        config,
+        use_bias=True,
+        use_batch_norm=False,
+        activation=activation,
+        name=prefix + 'se_reduce')
+    se = conv2d_block(
+        se,
+        filters,
+        config,
+        use_bias=True,
+        use_batch_norm=False,
+        activation='sigmoid',
+        name=prefix + 'se_expand')
     x = tf.keras.layers.multiply([x, se], name=prefix + 'se_excite')
 
   # Output phase
-  x = conv2d_block(x,
-                   block.output_filters,
-                   config,
-                   activation=None,
-                   name=prefix + 'project')
+  x = conv2d_block(
+      x, block.output_filters, config, activation=None, name=prefix + 'project')
 
   # Add identity so that quantization-aware training can insert quantization
   # ops correctly.
-  x = tf.keras.layers.Activation(tf_utils.get_activation('identity'),
-                                 name=prefix + 'id')(x)
+  x = tf.keras.layers.Activation(
+      tf_utils.get_activation('identity'), name=prefix + 'id')(
+          x)
 
-  if (block.id_skip
-      and all(s == 1 for s in block.strides)
-      and block.input_filters == block.output_filters):
+  if (block.id_skip and all(s == 1 for s in block.strides) and
+      block.input_filters == block.output_filters):
     if drop_connect_rate and drop_connect_rate > 0:
       # Apply dropconnect
       # The only difference between dropout and dropconnect in TF is scaling by
       # drop_connect_rate during training. See:
       # https://github.com/keras-team/keras/pull/9898#issuecomment-380577612
-      x = tf.keras.layers.Dropout(drop_connect_rate,
-                                  noise_shape=(None, 1, 1, 1),
-                                  name=prefix + 'drop')(x)
+      x = tf.keras.layers.Dropout(
+          drop_connect_rate, noise_shape=(None, 1, 1, 1), name=prefix + 'drop')(
+              x)
 
     x = tf.keras.layers.add([x, inputs], name=prefix + 'add')
 
   return x
 
 
-def efficientnet(image_input: tf.keras.layers.Input,
-                 config: ModelConfig):
+def efficientnet(image_input: tf.keras.layers.Input, config: ModelConfig):
   """Creates an EfficientNet graph given the model parameters.
 
   This function is wrapped by the `EfficientNet` class to make a tf.keras.Model.
@@ -357,19 +358,18 @@ def efficientnet(image_input: tf.keras.layers.Input,
     # Happens on GPU/TPU if available.
     x = tf.keras.layers.Permute((3, 1, 2))(x)
   if rescale_input:
-    x = preprocessing.normalize_images(x,
-                                       num_channels=input_channels,
-                                       dtype=dtype,
-                                       data_format=data_format)
+    x = preprocessing.normalize_images(
+        x, num_channels=input_channels, dtype=dtype, data_format=data_format)
 
   # Build stem
-  x = conv2d_block(x,
-                   round_filters(stem_base_filters, config),
-                   config,
-                   kernel_size=[3, 3],
-                   strides=[2, 2],
-                   activation=activation,
-                   name='stem')
+  x = conv2d_block(
+      x,
+      round_filters(stem_base_filters, config),
+      config,
+      kernel_size=[3, 3],
+      strides=[2, 2],
+      activation=activation,
+      name='stem')
 
   # Build blocks
   num_blocks_total = sum(
@@ -391,10 +391,7 @@ def efficientnet(image_input: tf.keras.layers.Input,
     x = mb_conv_block(x, block, config, block_prefix)
     block_num += 1
     if block.num_repeat > 1:
-      block = block.replace(
-          input_filters=block.output_filters,
-          strides=[1, 1]
-      )
+      block = block.replace(input_filters=block.output_filters, strides=[1, 1])
 
       for block_idx in range(block.num_repeat - 1):
         drop_rate = drop_connect_rate * float(block_num) / num_blocks_total
@@ -404,11 +401,12 @@ def efficientnet(image_input: tf.keras.layers.Input,
         block_num += 1
 
   # Build top
-  x = conv2d_block(x,
-                   round_filters(top_base_filters, config),
-                   config,
-                   activation=activation,
-                   name='top')
+  x = conv2d_block(
+      x,
+      round_filters(top_base_filters, config),
+      config,
+      activation=activation,
+      name='top')
 
   # Build classifier
   x = tf.keras.layers.GlobalAveragePooling2D(name='top_pool')(x)
@@ -419,7 +417,8 @@ def efficientnet(image_input: tf.keras.layers.Input,
       kernel_initializer=DENSE_KERNEL_INITIALIZER,
       kernel_regularizer=tf.keras.regularizers.l2(weight_decay),
       bias_regularizer=tf.keras.regularizers.l2(weight_decay),
-      name='logits')(x)
+      name='logits')(
+          x)
   x = tf.keras.layers.Activation('softmax', name='probs')(x)
 
   return x
@@ -439,8 +438,7 @@ class EfficientNet(tf.keras.Model):
 
     Args:
       config: (optional) the main model parameters to create the model
-      overrides: (optional) a dict containing keys that can override
-                 config
+      overrides: (optional) a dict containing keys that can override config
     """
     overrides = overrides or {}
     config = config or ModelConfig()
@@ -457,9 +455,7 @@ class EfficientNet(tf.keras.Model):
     # Cast to float32 in case we have a different model dtype
     output = tf.cast(output, tf.float32)
 
-    logging.info('Building model %s with params %s',
-                 model_name,
-                 self.config)
+    logging.info('Building model %s with params %s', model_name, self.config)
 
     super(EfficientNet, self).__init__(
         inputs=image_input, outputs=output, name=model_name)
@@ -477,8 +473,8 @@ class EfficientNet(tf.keras.Model):
     Args:
       model_name: the predefined model name
       model_weights_path: the path to the weights (h5 file or saved model dir)
-      weights_format: the model weights format. One of 'saved_model', 'h5',
-       or 'checkpoint'.
+      weights_format: the model weights format. One of 'saved_model', 'h5', or
+        'checkpoint'.
       overrides: (optional) a dict containing keys that can override config
 
     Returns:
@@ -498,8 +494,7 @@ class EfficientNet(tf.keras.Model):
     model = cls(config=config, overrides=overrides)
 
     if model_weights_path:
-      common_modules.load_weights(model,
-                                  model_weights_path,
-                                  weights_format=weights_format)
+      common_modules.load_weights(
+          model, model_weights_path, weights_format=weights_format)
 
     return model

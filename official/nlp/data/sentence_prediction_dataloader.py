@@ -15,12 +15,16 @@
 # ==============================================================================
 """Loads dataset for the sentence prediction (classification) task."""
 from typing import Mapping, Optional
+
 import dataclasses
 import tensorflow as tf
 
 from official.core import input_reader
 from official.modeling.hyperparams import config_definitions as cfg
+from official.nlp.data import data_loader
 from official.nlp.data import data_loader_factory
+
+LABEL_TYPES_MAP = {'int': tf.int64, 'float': tf.float32}
 
 
 @dataclasses.dataclass
@@ -30,10 +34,11 @@ class SentencePredictionDataConfig(cfg.DataConfig):
   global_batch_size: int = 32
   is_training: bool = True
   seq_length: int = 128
+  label_type: str = 'int'
 
 
 @data_loader_factory.register_data_loader_cls(SentencePredictionDataConfig)
-class SentencePredictionDataLoader:
+class SentencePredictionDataLoader(data_loader.DataLoader):
   """A class to load dataset for sentence prediction (classification) task."""
 
   def __init__(self, params):
@@ -42,11 +47,12 @@ class SentencePredictionDataLoader:
 
   def _decode(self, record: tf.Tensor):
     """Decodes a serialized tf.Example."""
+    label_type = LABEL_TYPES_MAP[self._params.label_type]
     name_to_features = {
         'input_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'input_mask': tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'segment_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'label_ids': tf.io.FixedLenFeature([], tf.int64),
+        'label_ids': tf.io.FixedLenFeature([], label_type),
     }
     example = tf.io.parse_single_example(record, name_to_features)
 
