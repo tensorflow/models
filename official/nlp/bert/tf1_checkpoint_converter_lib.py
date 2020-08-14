@@ -111,11 +111,14 @@ def _get_new_shape(name, shape, num_heads):
   return None
 
 
-def create_v2_checkpoint(model, src_checkpoint, output_path):
+def create_v2_checkpoint(model,
+                         src_checkpoint,
+                         output_path,
+                         checkpoint_model_name="model"):
   """Converts a name-based matched TF V1 checkpoint to TF V2 checkpoint."""
   # Uses streaming-restore in eager model to read V1 name-based checkpoints.
   model.load_weights(src_checkpoint).assert_existing_objects_matched()
-  checkpoint = tf.train.Checkpoint(model=model)
+  checkpoint = tf.train.Checkpoint(**{checkpoint_model_name: model})
   checkpoint.save(output_path)
 
 
