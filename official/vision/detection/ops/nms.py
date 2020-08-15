@@ -18,10 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.utils import box_utils
-
 
 NMS_TILE_SIZE = 512
 
@@ -106,9 +105,7 @@ def _suppression_loop_body(boxes, iou_threshold, output_size, idx):
   return boxes, iou_threshold, output_size, idx + 1
 
 
-def sorted_non_max_suppression_padded(scores,
-                                      boxes,
-                                      max_output_size,
+def sorted_non_max_suppression_padded(scores, boxes, max_output_size,
                                       iou_threshold):
   """A wrapper that handles non-maximum suppression.
 
@@ -177,19 +174,18 @@ def sorted_non_max_suppression_padded(scores,
         idx < num_boxes // NMS_TILE_SIZE)
 
   selected_boxes, _, output_size, _ = tf.while_loop(
-      _loop_cond, _suppression_loop_body, [
-          boxes, iou_threshold,
-          tf.zeros([batch_size], tf.int32),
-          tf.constant(0)
-      ])
+      _loop_cond, _suppression_loop_body,
+      [boxes, iou_threshold,
+       tf.zeros([batch_size], tf.int32),
+       tf.constant(0)])
   idx = num_boxes - tf.cast(
       tf.nn.top_k(
           tf.cast(tf.reduce_any(selected_boxes > 0, [2]), tf.int32) *
           tf.expand_dims(tf.range(num_boxes, 0, -1), 0), max_output_size)[0],
       tf.int32)
   idx = tf.minimum(idx, num_boxes - 1)
-  idx = tf.reshape(
-      idx + tf.reshape(tf.range(batch_size) * num_boxes, [-1, 1]), [-1])
+  idx = tf.reshape(idx + tf.reshape(tf.range(batch_size) * num_boxes, [-1, 1]),
+                   [-1])
   boxes = tf.reshape(
       tf.gather(tf.reshape(boxes, [-1, 4]), idx),
       [batch_size, max_output_size, 4])

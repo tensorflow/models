@@ -19,11 +19,11 @@ A decoder to decode string tensors containing serialized
 tensorflow.SequenceExample protos.
 """
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 from object_detection.core import data_decoder
 from object_detection.core import standard_fields as fields
 
-tfexample_decoder = contrib_slim.tfexample_decoder
+tfexample_decoder = slim.tfexample_decoder
 
 
 class BoundingBoxSequence(tfexample_decoder.ItemHandler):

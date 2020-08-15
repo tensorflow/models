@@ -96,9 +96,3 @@ ENV/
 
 # For mac
 .DS_Store
-
-# Training data for word embedding tutorial
-tutorials/embedding/text8
-tutorials/embedding/questions-words.txt
-
-samples/outreach/blogs/segmentation_blogpost/carvana-image-masking-challenge/

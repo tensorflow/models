@@ -52,9 +52,10 @@ from pycocotools import coco
 from pycocotools import cocoeval
 from pycocotools import mask
 
+import six
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import json_utils
 
@@ -157,7 +158,7 @@ class COCOEvalWrapper(cocoeval.COCOeval):
   """
 
   def __init__(self, groundtruth=None, detections=None, agnostic_mode=False,
-               iou_type='bbox'):
+               iou_type='bbox', oks_sigmas=None):
     """COCOEvalWrapper constructor.
 
     Note that for the area-based metrics to be meaningful, detection and
@@ -170,12 +171,16 @@ class COCOEvalWrapper(cocoeval.COCOeval):
         detections
       agnostic_mode: boolean (default: False).  If True, evaluation ignores
         class labels, treating all detections as proposals.
-      iou_type: IOU type to use for evaluation. Supports `bbox` or `segm`.
+      iou_type: IOU type to use for evaluation. Supports `bbox', `segm`,
+        `keypoints`.
+      oks_sigmas: Float numpy array holding the OKS variances for keypoints.
     """
-    cocoeval.COCOeval.__init__(self, groundtruth, detections,
-                               iouType=iou_type)
+    cocoeval.COCOeval.__init__(self, groundtruth, detections, iouType=iou_type)
+    if oks_sigmas is not None:
+      self.params.kpt_oks_sigmas = oks_sigmas
     if agnostic_mode:
       self.params.useCats = 0
+    self._iou_type = iou_type
 
   def GetCategory(self, category_id):
     """Fetches dictionary holding category information given category id.
@@ -198,7 +203,7 @@ class COCOEvalWrapper(cocoeval.COCOeval):
   def ComputeMetrics(self,
                      include_metrics_per_category=False,
                      all_metrics_per_category=False):
-    """Computes detection metrics.
+    """Computes detection/keypoint metrics.
 
     Args:
       include_metrics_per_category: If True, will include metrics per category.
@@ -214,7 +219,7 @@ class COCOEvalWrapper(cocoeval.COCOeval):
         'Precision/mAP@.50IOU': mean average precision at 50% IOU
         'Precision/mAP@.75IOU': mean average precision at 75% IOU
         'Precision/mAP (small)': mean average precision for small objects
-                        (area < 32^2 pixels)
+                        (area < 32^2 pixels). NOTE: not present for 'keypoints'
         'Precision/mAP (medium)': mean average precision for medium sized
                         objects (32^2 pixels < area < 96^2 pixels)
         'Precision/mAP (large)': mean average precision for large objects
@@ -223,7 +228,7 @@ class COCOEvalWrapper(cocoeval.COCOeval):
         'Recall/AR@10': average recall with 10 detections
         'Recall/AR@100': average recall with 100 detections
         'Recall/AR@100 (small)': average recall for small objects with 100
-          detections
+          detections. NOTE: not present for 'keypoints'
         'Recall/AR@100 (medium)': average recall for medium objects with 100
           detections
         'Recall/AR@100 (large)': average recall for large objects with 100
@@ -243,20 +248,44 @@ class COCOEvalWrapper(cocoeval.COCOeval):
     self.accumulate()
     self.summarize()
 
-    summary_metrics = OrderedDict([
-        ('Precision/mAP', self.stats[0]),
-        ('Precision/mAP@.50IOU', self.stats[1]),
-        ('Precision/mAP@.75IOU', self.stats[2]),
-        ('Precision/mAP (small)', self.stats[3]),
-        ('Precision/mAP (medium)', self.stats[4]),
-        ('Precision/mAP (large)', self.stats[5]),
-        ('Recall/AR@1', self.stats[6]),
-        ('Recall/AR@10', self.stats[7]),
-        ('Recall/AR@100', self.stats[8]),
-        ('Recall/AR@100 (small)', self.stats[9]),
-        ('Recall/AR@100 (medium)', self.stats[10]),
-        ('Recall/AR@100 (large)', self.stats[11])
-    ])
+    summary_metrics = {}
+    if self._iou_type in ['bbox', 'segm']:
+      summary_metrics = OrderedDict([('Precision/mAP', self.stats[0]),
+                                     ('Precision/mAP@.50IOU', self.stats[1]),
+                                     ('Precision/mAP@.75IOU', self.stats[2]),
+                                     ('Precision/mAP (small)', self.stats[3]),
+                                     ('Precision/mAP (medium)', self.stats[4]),
+                                     ('Precision/mAP (large)', self.stats[5]),
+                                     ('Recall/AR@1', self.stats[6]),
+                                     ('Recall/AR@10', self.stats[7]),
+                                     ('Recall/AR@100', self.stats[8]),
+                                     ('Recall/AR@100 (small)', self.stats[9]),
+                                     ('Recall/AR@100 (medium)', self.stats[10]),
+                                     ('Recall/AR@100 (large)', self.stats[11])])
+    elif self._iou_type == 'keypoints':
+      category_id = self.GetCategoryIdList()[0]
+      category_name = self.GetCategory(category_id)['name']
+      summary_metrics = OrderedDict([])
+      summary_metrics['Precision/mAP ByCategory/{}'.format(
+          category_name)] = self.stats[0]
+      summary_metrics['Precision/mAP@.50IOU ByCategory/{}'.format(
+          category_name)] = self.stats[1]
+      summary_metrics['Precision/mAP@.75IOU ByCategory/{}'.format(
+          category_name)] = self.stats[2]
+      summary_metrics['Precision/mAP (medium) ByCategory/{}'.format(
+          category_name)] = self.stats[3]
+      summary_metrics['Precision/mAP (large) ByCategory/{}'.format(
+          category_name)] = self.stats[4]
+      summary_metrics['Recall/AR@1 ByCategory/{}'.format(
+          category_name)] = self.stats[5]
+      summary_metrics['Recall/AR@10 ByCategory/{}'.format(
+          category_name)] = self.stats[6]
+      summary_metrics['Recall/AR@100 ByCategory/{}'.format(
+          category_name)] = self.stats[7]
+      summary_metrics['Recall/AR@100 (medium) ByCategory/{}'.format(
+          category_name)] = self.stats[8]
+      summary_metrics['Recall/AR@100 (large) ByCategory/{}'.format(
+          category_name)] = self.stats[9]
     if not include_metrics_per_category:
       return summary_metrics, {}
     if not hasattr(self, 'category_stats'):
@@ -325,7 +354,9 @@ def _RleCompress(masks):
   Returns:
     A pycocotools Run-length encoding of the mask.
   """
-  return mask.encode(np.asfortranarray(masks))
+  rle = mask.encode(np.asfortranarray(masks))
+  rle['counts'] = six.ensure_str(rle['counts'])
+  return rle
 
 
 def ExportSingleImageGroundtruthToCoco(image_id,
@@ -333,8 +364,11 @@ def ExportSingleImageGroundtruthToCoco(image_id,
                                        category_id_set,
                                        groundtruth_boxes,
                                        groundtruth_classes,
+                                       groundtruth_keypoints=None,
+                                       groundtruth_keypoint_visibilities=None,
                                        groundtruth_masks=None,
-                                       groundtruth_is_crowd=None):
+                                       groundtruth_is_crowd=None,
+                                       groundtruth_area=None):
   """Export groundtruth of a single image to COCO format.
 
   This function converts groundtruth detection annotations represented as numpy
@@ -356,10 +390,19 @@ def ExportSingleImageGroundtruthToCoco(image_id,
       category_id_set are dropped.
     groundtruth_boxes: numpy array (float32) with shape [num_gt_boxes, 4]
     groundtruth_classes: numpy array (int) with shape [num_gt_boxes]
+    groundtruth_keypoints: optional float numpy array of keypoints
+      with shape [num_gt_boxes, num_keypoints, 2].
+    groundtruth_keypoint_visibilities: optional integer numpy array of keypoint
+      visibilities with shape [num_gt_boxes, num_keypoints]. Integer is treated
+      as an enum with 0=not labels, 1=labeled but not visible and 2=labeled and
+      visible.
     groundtruth_masks: optional uint8 numpy array of shape [num_detections,
       image_height, image_width] containing detection_masks.
     groundtruth_is_crowd: optional numpy array (int) with shape [num_gt_boxes]
       indicating whether groundtruth boxes are crowd.
+    groundtruth_area: numpy array (float32) with shape [num_gt_boxes]. If
+      provided, then the area values (in the original absolute coordinates) will
+      be populated instead of calculated from bounding box coordinates.
 
   Returns:
     a list of groundtruth annotations for a single image in the COCO format.
@@ -390,10 +433,20 @@ def ExportSingleImageGroundtruthToCoco(image_id,
   has_is_crowd = groundtruth_is_crowd is not None
   if has_is_crowd and len(groundtruth_is_crowd.shape) != 1:
     raise ValueError('groundtruth_is_crowd is expected to be of rank 1.')
+  has_keypoints = groundtruth_keypoints is not None
+  has_keypoint_visibilities = groundtruth_keypoint_visibilities is not None
+  if has_keypoints and not has_keypoint_visibilities:
+    groundtruth_keypoint_visibilities = np.full(
+        (num_boxes, groundtruth_keypoints.shape[1]), 2)
   groundtruth_list = []
   for i in range(num_boxes):
     if groundtruth_classes[i] in category_id_set:
       iscrowd = groundtruth_is_crowd[i] if has_is_crowd else 0
+      if groundtruth_area is not None and groundtruth_area[i] > 0:
+        area = float(groundtruth_area[i])
+      else:
+        area = float((groundtruth_boxes[i, 2] - groundtruth_boxes[i, 0]) *
+                     (groundtruth_boxes[i, 3] - groundtruth_boxes[i, 1]))
       export_dict = {
           'id':
               next_annotation_id + i,
@@ -403,14 +456,27 @@ def ExportSingleImageGroundtruthToCoco(image_id,
               int(groundtruth_classes[i]),
           'bbox':
               list(_ConvertBoxToCOCOFormat(groundtruth_boxes[i, :])),
-          'area':
-              float((groundtruth_boxes[i, 2] - groundtruth_boxes[i, 0]) *
-                    (groundtruth_boxes[i, 3] - groundtruth_boxes[i, 1])),
+          'area': area,
           'iscrowd':
               iscrowd
       }
       if groundtruth_masks is not None:
         export_dict['segmentation'] = _RleCompress(groundtruth_masks[i])
+      if has_keypoints:
+        keypoints = groundtruth_keypoints[i]
+        visibilities = np.reshape(groundtruth_keypoint_visibilities[i], [-1])
+        coco_keypoints = []
+        num_valid_keypoints = 0
+        for keypoint, visibility in zip(keypoints, visibilities):
+          # Convert from [y, x] to [x, y] as mandated by COCO.
+          coco_keypoints.append(float(keypoint[1]))
+          coco_keypoints.append(float(keypoint[0]))
+          coco_keypoints.append(int(visibility))
+          if int(visibility) > 0:
+            num_valid_keypoints = num_valid_keypoints + 1
+        export_dict['keypoints'] = coco_keypoints
+        export_dict['num_keypoints'] = num_valid_keypoints
+
       groundtruth_list.append(export_dict)
   return groundtruth_list
 
@@ -494,7 +560,9 @@ def ExportSingleImageDetectionBoxesToCoco(image_id,
                                           category_id_set,
                                           detection_boxes,
                                           detection_scores,
-                                          detection_classes):
+                                          detection_classes,
+                                          detection_keypoints=None,
+                                          detection_keypoint_visibilities=None):
   """Export detections of a single image to COCO format.
 
   This function converts detections represented as numpy arrays to dictionaries
@@ -514,6 +582,12 @@ def ExportSingleImageDetectionBoxesToCoco(image_id,
       scored for the detection boxes.
     detection_classes: integer numpy array of shape [num_detections] containing
       the classes for detection boxes.
+    detection_keypoints: optional float numpy array of keypoints
+      with shape [num_detections, num_keypoints, 2].
+    detection_keypoint_visibilities: optional integer numpy array of keypoint
+      visibilities with shape [num_detections, num_keypoints]. Integer is
+      treated as an enum with 0=not labels, 1=labeled but not visible and
+      2=labeled and visible.
 
   Returns:
     a list of detection annotations for a single image in the COCO format.
@@ -546,12 +620,33 @@ def ExportSingleImageDetectionBoxesToCoco(image_id,
   detections_list = []
   for i in range(num_boxes):
     if detection_classes[i] in category_id_set:
-      detections_list.append({
-          'image_id': image_id,
-          'category_id': int(detection_classes[i]),
-          'bbox': list(_ConvertBoxToCOCOFormat(detection_boxes[i, :])),
-          'score': float(detection_scores[i])
-      })
+      export_dict = {
+          'image_id':
+              image_id,
+          'category_id':
+              int(detection_classes[i]),
+          'bbox':
+              list(_ConvertBoxToCOCOFormat(detection_boxes[i, :])),
+          'score':
+              float(detection_scores[i]),
+      }
+      if detection_keypoints is not None:
+        keypoints = detection_keypoints[i]
+        num_keypoints = keypoints.shape[0]
+        if detection_keypoint_visibilities is None:
+          detection_keypoint_visibilities = np.full((num_boxes, num_keypoints),
+                                                    2)
+        visibilities = np.reshape(detection_keypoint_visibilities[i], [-1])
+        coco_keypoints = []
+        for keypoint, visibility in zip(keypoints, visibilities):
+          # Convert from [y, x] to [x, y] as mandated by COCO.
+          coco_keypoints.append(float(keypoint[1]))
+          coco_keypoints.append(float(keypoint[0]))
+          coco_keypoints.append(int(visibility))
+        export_dict['keypoints'] = coco_keypoints
+        export_dict['num_keypoints'] = num_keypoints
+      detections_list.append(export_dict)
+
   return detections_list
 
 

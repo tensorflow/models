@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import os
 
+# Import libraries
 from absl import app
 from absl import flags
 
@@ -54,7 +55,7 @@ ALBERT_NAME_REPLACEMENTS = (
     ("embedding_hidden_mapping_in", "embedding_projection"),
     ("group_0/inner_group_0/", ""),
     ("attention_1/self", "self_attention"),
-    ("attention_1/output/dense", "self_attention_output"),
+    ("attention_1/output/dense", "self_attention/attention_output"),
     ("LayerNorm/", "self_attention_layer_norm/"),
     ("ffn_1/intermediate/dense", "intermediate"),
     ("ffn_1/intermediate/output/dense", "output"),
@@ -86,7 +87,7 @@ def _create_albert_model(cfg):
       activation=activations.gelu,
       dropout_rate=cfg.hidden_dropout_prob,
       attention_dropout_rate=cfg.attention_probs_dropout_prob,
-      sequence_length=cfg.max_position_embeddings,
+      max_sequence_length=cfg.max_position_embeddings,
       type_vocab_size=cfg.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=cfg.initializer_range))

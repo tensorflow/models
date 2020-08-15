@@ -32,6 +32,9 @@ message Hyperparams {
 
     // Use tf.nn.relu6
     RELU_6 = 2;
+
+    // Use tf.nn.swish
+    SWISH = 3;
   }
   optional Activation activation = 4 [default = RELU];
 
@@ -49,6 +52,12 @@ message Hyperparams {
   // Whether depthwise convolutions should be regularized. If this parameter is
   // NOT set then the conv hyperparams will default to the parent scope.
   optional bool regularize_depthwise = 6 [default = false];
+
+  // By default, use_bias is set to False if batch_norm is not None and
+  // batch_norm.center is True. When force_use_bias is set to True, this
+  // behavior will be overridden, and use_bias will be set to True, regardless
+  // of batch norm parameters. Note, this only applies to KerasLayerHyperparams.
+  optional bool force_use_bias = 8 [default = false];
 }
 
 // Proto with one-of field for regularizers.

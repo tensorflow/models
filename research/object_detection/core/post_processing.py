@@ -22,7 +22,7 @@ import collections
 import numpy as np
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
@@ -382,6 +382,15 @@ def _clip_window_prune_boxes(sorted_boxes, clip_window, pad_to_max_output_size,
   return sorted_boxes, num_valid_nms_boxes_cumulative
 
 
+class NullContextmanager(object):
+
+  def __enter__(self):
+    pass
+
+  def __exit__(self, type_arg, value_arg, traceback_arg):
+    return False
+
+
 def multiclass_non_max_suppression(boxes,
                                    scores,
                                    score_thresh,
@@ -396,6 +405,8 @@ def multiclass_non_max_suppression(boxes,
                                    use_partitioned_nms=False,
                                    additional_fields=None,
                                    soft_nms_sigma=0.0,
+                                   use_hard_nms=False,
+                                   use_cpu_nms=False,
                                    scope=None):
   """Multi-class version of non maximum suppression.
 
@@ -450,6 +461,8 @@ def multiclass_non_max_suppression(boxes,
       `soft_nms_sigma=0.0` (which is default), we fall back to standard (hard)
       NMS.  Soft NMS is currently only supported when pad_to_max_output_size is
       False.
+    use_hard_nms: Enforce the usage of hard NMS.
+    use_cpu_nms: Enforce NMS to run on CPU.
     scope: name scope.
 
   Returns:
@@ -472,7 +485,8 @@ def multiclass_non_max_suppression(boxes,
     raise ValueError('Soft NMS (soft_nms_sigma != 0.0) is currently not '
                      'supported when pad_to_max_output_size is True.')
 
-  with tf.name_scope(scope, 'MultiClassNonMaxSuppression'):
+  with tf.name_scope(scope, 'MultiClassNonMaxSuppression'), tf.device(
+      'cpu:0') if use_cpu_nms else NullContextmanager():
     num_scores = tf.shape(scores)[0]
     num_classes = shape_utils.get_dim_as_int(scores.get_shape()[1])
 
@@ -536,7 +550,7 @@ def multiclass_non_max_suppression(boxes,
         max_selection_size = tf.minimum(max_size_per_class,
                                         boxlist_and_class_scores.num_boxes())
         if (hasattr(tf.image, 'non_max_suppression_with_scores') and
-            tf.compat.forward_compatible(2019, 6, 6)):
+            tf.compat.forward_compatible(2019, 6, 6) and not use_hard_nms):
           (selected_indices, selected_scores
           ) = tf.image.non_max_suppression_with_scores(
               boxlist_and_class_scores.get(),
@@ -852,7 +866,9 @@ def batch_multiclass_non_max_suppression(boxes,
                                          use_class_agnostic_nms=False,
                                          max_classes_per_detection=1,
                                          use_dynamic_map_fn=False,
-                                         use_combined_nms=False):
+                                         use_combined_nms=False,
+                                         use_hard_nms=False,
+                                         use_cpu_nms=False):
   """Multi-class version of non maximum suppression that operates on a batch.
 
   This op is similar to `multiclass_non_max_suppression` but operates on a batch
@@ -923,6 +939,8 @@ def batch_multiclass_non_max_suppression(boxes,
       calling this function.
       Masks and additional fields are not supported.
       See argument checks in the code below for unsupported arguments.
+    use_hard_nms: Enforce the usage of hard NMS.
+    use_cpu_nms: Enforce NMS to run on CPU.
 
   Returns:
     'nmsed_boxes': A [batch_size, max_detections, 4] float32 tensor
@@ -962,18 +980,16 @@ def batch_multiclass_non_max_suppression(boxes,
     if use_class_agnostic_nms:
       raise ValueError('class-agnostic NMS is not supported by combined_nms.')
     if clip_window is not None:
-      tf.compat.v1.logging.warning(
+      tf.logging.warning(
           'clip_window is not supported by combined_nms unless it is'
           ' [0. 0. 1. 1.] for each image.')
     if additional_fields is not None:
-      tf.compat.v1.logging.warning(
-          'additional_fields is not supported by combined_nms.')
+      tf.logging.warning('additional_fields is not supported by combined_nms.')
     if parallel_iterations != 32:
-      tf.compat.v1.logging.warning(
-          'Number of batch items to be processed in parallel is'
-          ' not configurable by combined_nms.')
+      tf.logging.warning('Number of batch items to be processed in parallel is'
+                         ' not configurable by combined_nms.')
     if max_classes_per_detection > 1:
-      tf.compat.v1.logging.warning(
+      tf.logging.warning(
           'max_classes_per_detection is not configurable by combined_nms.')
 
     with tf.name_scope(scope, 'CombinedNonMaxSuppression'):
@@ -1009,11 +1025,11 @@ def batch_multiclass_non_max_suppression(boxes,
   # in _single_image_nms_fn(). The dictionary is thus a sorted version of
   # additional_fields.
   if additional_fields is None:
-    ordered_additional_fields = {}
+    ordered_additional_fields = collections.OrderedDict()
   else:
     ordered_additional_fields = collections.OrderedDict(
         sorted(additional_fields.items(), key=lambda item: item[0]))
-  del additional_fields
+
   with tf.name_scope(scope, 'BatchMultiClassNonMaxSuppression'):
     boxes_shape = boxes.shape
     batch_size = shape_utils.get_dim_as_int(boxes_shape[0])
@@ -1159,7 +1175,9 @@ def batch_multiclass_non_max_suppression(boxes,
             pad_to_max_output_size=use_static_shapes,
             use_partitioned_nms=use_partitioned_nms,
             additional_fields=per_image_additional_fields,
-            soft_nms_sigma=soft_nms_sigma)
+            soft_nms_sigma=soft_nms_sigma,
+            use_hard_nms=use_hard_nms,
+            use_cpu_nms=use_cpu_nms)
 
       if not use_static_shapes:
         nmsed_boxlist = box_list_ops.pad_or_clip_box_list(

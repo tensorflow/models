@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Region Similarity Calculators for BoxLists.
 
 Region Similarity Calculators compare a pairwise measure of similarity
@@ -21,7 +20,7 @@ between the boxes in two BoxLists.
 from abc import ABCMeta
 from abc import abstractmethod
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def area(boxlist, scope=None):

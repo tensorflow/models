@@ -20,6 +20,8 @@ described in:
 T.-Y. Lin, P. Goyal, R. Girshick, K. He, P. Dollar
 """
 
+import tensorflow.compat.v1 as tf
+
 from object_detection.anchor_generators import grid_anchor_generator
 from object_detection.core import anchor_generator
 from object_detection.core import box_list_ops
@@ -85,8 +87,10 @@ class MultiscaleGridAnchorGenerator(anchor_generator.AnchorGenerator):
   def _generate(self, feature_map_shape_list, im_height=1, im_width=1):
     """Generates a collection of bounding boxes to be used as anchors.
 
-    Currently we require the input image shape to be statically defined.  That
-    is, im_height and im_width should be integers rather than tensors.
+    For training, we require the input image shape to be statically defined.
+    That is, im_height and im_width should be integers rather than tensors.
+    For inference, im_height and im_width can be either integers (for fixed
+    image size), or tensors (for arbitrary image size).
 
     Args:
       feature_map_shape_list: list of pairs of convnet layer resolutions in the
@@ -124,6 +128,9 @@ class MultiscaleGridAnchorGenerator(anchor_generator.AnchorGenerator):
           anchor_offset[0] = stride / 2.0
         if im_width % 2.0**level == 0 or im_width == 1:
           anchor_offset[1] = stride / 2.0
+      if tf.is_tensor(im_height) and tf.is_tensor(im_width):
+        anchor_offset[0] = stride / 2.0
+        anchor_offset[1] = stride / 2.0
       ag = grid_anchor_generator.GridAnchorGenerator(
           scales,
           aspect_ratios,

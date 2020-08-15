@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,36 +16,43 @@
 
 """Tests for calibration_builder."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import numpy as np
 from scipy import interpolate
-import tensorflow as tf
+from six.moves import zip
+import tensorflow.compat.v1 as tf
 from object_detection.builders import calibration_builder
 from object_detection.protos import calibration_pb2
+from object_detection.utils import test_case
 
 
-class CalibrationBuilderTest(tf.test.TestCase):
+class CalibrationBuilderTest(test_case.TestCase):
 
   def test_tf_linear_interp1d_map(self):
     """Tests TF linear interpolation mapping to a single number."""
-    with self.test_session() as sess:
+    def graph_fn():
       tf_x = tf.constant([0., 0.5, 1.])
       tf_y = tf.constant([0.5, 0.5, 0.5])
       new_x = tf.constant([0., 0.25, 0.5, 0.75, 1.])
       tf_map_outputs = calibration_builder._tf_linear_interp1d(
           new_x, tf_x, tf_y)
-      tf_map_outputs_np = sess.run([tf_map_outputs])
-    self.assertAllClose(tf_map_outputs_np, [[0.5, 0.5, 0.5, 0.5, 0.5]])
+      return tf_map_outputs
+    tf_map_outputs_np = self.execute(graph_fn, [])
+    self.assertAllClose(tf_map_outputs_np, [0.5, 0.5, 0.5, 0.5, 0.5])
 
   def test_tf_linear_interp1d_interpolate(self):
     """Tests TF 1d linear interpolation not mapping to a single number."""
-    with self.test_session() as sess:
+    def graph_fn():
       tf_x = tf.constant([0., 0.5, 1.])
       tf_y = tf.constant([0.6, 0.7, 1.0])
       new_x = tf.constant([0., 0.25, 0.5, 0.75, 1.])
       tf_interpolate_outputs = calibration_builder._tf_linear_interp1d(
           new_x, tf_x, tf_y)
-      tf_interpolate_outputs_np = sess.run([tf_interpolate_outputs])
-    self.assertAllClose(tf_interpolate_outputs_np, [[0.6, 0.65, 0.7, 0.85, 1.]])
+      return tf_interpolate_outputs
+    tf_interpolate_outputs_np = self.execute(graph_fn, [])
+    self.assertAllClose(tf_interpolate_outputs_np, [0.6, 0.65, 0.7, 0.85, 1.])
 
   @staticmethod
   def _get_scipy_interp1d(new_x, x, y):
@@ -54,12 +62,13 @@ class CalibrationBuilderTest(tf.test.TestCase):
 
   def _get_tf_interp1d(self, new_x, x, y):
     """Helper performing 1d linear interpolation using Tensorflow."""
-    with self.test_session() as sess:
+    def graph_fn():
       tf_interp_outputs = calibration_builder._tf_linear_interp1d(
           tf.convert_to_tensor(new_x, dtype=tf.float32),
           tf.convert_to_tensor(x, dtype=tf.float32),
           tf.convert_to_tensor(y, dtype=tf.float32))
-      np_tf_interp_outputs = sess.run(tf_interp_outputs)
+      return tf_interp_outputs
+    np_tf_interp_outputs = self.execute(graph_fn, [])
     return np_tf_interp_outputs
 
   def test_tf_linear_interp1d_against_scipy_map(self):
@@ -123,8 +132,7 @@ class CalibrationBuilderTest(tf.test.TestCase):
     self._add_function_approximation_to_calibration_proto(
         calibration_config, class_agnostic_x, class_agnostic_y, class_id=None)
 
-    od_graph = tf.Graph()
-    with self.test_session(graph=od_graph) as sess:
+    def graph_fn():
       calibration_fn = calibration_builder.build(calibration_config)
       # batch_size = 2, num_classes = 2, num_anchors = 2.
       class_predictions_with_background = tf.constant(
@@ -135,7 +143,8 @@ class CalibrationBuilderTest(tf.test.TestCase):
 
       # Everything should map to 0.5 if classes are ignored.
       calibrated_scores = calibration_fn(class_predictions_with_background)
-      calibrated_scores_np = sess.run(calibrated_scores)
+      return calibrated_scores
+    calibrated_scores_np = self.execute(graph_fn, [])
     self.assertAllClose(calibrated_scores_np, [[[0.05, 0.1, 0.15],
                                                 [0.2, 0.25, 0.0]],
                                                [[0.35, 0.45, 0.55],
@@ -156,8 +165,7 @@ class CalibrationBuilderTest(tf.test.TestCase):
     self._add_function_approximation_to_calibration_proto(
         calibration_config, class_1_x, class_1_y, class_id=1)
 
-    od_graph = tf.Graph()
-    with self.test_session(graph=od_graph) as sess:
+    def graph_fn():
       calibration_fn = calibration_builder.build(calibration_config)
       # batch_size = 2, num_classes = 2, num_anchors = 2.
       class_predictions_with_background = tf.constant(
@@ -165,7 +173,8 @@ class CalibrationBuilderTest(tf.test.TestCase):
            [[0.6, 0.4], [0.08, 0.92]]],
           dtype=tf.float32)
       calibrated_scores = calibration_fn(class_predictions_with_background)
-      calibrated_scores_np = sess.run(calibrated_scores)
+      return calibrated_scores
+    calibrated_scores_np = self.execute(graph_fn, [])
     self.assertAllClose(calibrated_scores_np, [[[0.5, 0.6], [0.5, 0.3]],
                                                [[0.5, 0.7], [0.5, 0.96]]])
 
@@ -174,8 +183,7 @@ class CalibrationBuilderTest(tf.test.TestCase):
     calibration_config = calibration_pb2.CalibrationConfig()
     calibration_config.temperature_scaling_calibration.scaler = 2.0
 
-    od_graph = tf.Graph()
-    with self.test_session(graph=od_graph) as sess:
+    def graph_fn():
       calibration_fn = calibration_builder.build(calibration_config)
       # batch_size = 2, num_classes = 2, num_anchors = 2.
       class_predictions_with_background = tf.constant(
@@ -183,7 +191,8 @@ class CalibrationBuilderTest(tf.test.TestCase):
            [[0.6, 0.7, 0.8], [0.9, 1.0, 1.0]]],
           dtype=tf.float32)
       calibrated_scores = calibration_fn(class_predictions_with_background)
-      calibrated_scores_np = sess.run(calibrated_scores)
+      return calibrated_scores
+    calibrated_scores_np = self.execute(graph_fn, [])
     self.assertAllClose(calibrated_scores_np,
                         [[[0.05, 0.1, 0.15], [0.2, 0.25, 0.0]],
                          [[0.3, 0.35, 0.4], [0.45, 0.5, 0.5]]])
@@ -207,8 +216,7 @@ class CalibrationBuilderTest(tf.test.TestCase):
     calibration_config = calibration_pb2.CalibrationConfig()
     self._add_function_approximation_to_calibration_proto(
         calibration_config, class_0_x, class_0_y, class_id=0)
-    od_graph = tf.Graph()
-    with self.test_session(graph=od_graph) as sess:
+    def graph_fn():
       calibration_fn = calibration_builder.build(calibration_config)
       # batch_size = 2, num_classes = 2, num_anchors = 2.
       class_predictions_with_background = tf.constant(
@@ -216,7 +224,8 @@ class CalibrationBuilderTest(tf.test.TestCase):
            [[0.6, 0.4], [0.08, 0.92]]],
           dtype=tf.float32)
       calibrated_scores = calibration_fn(class_predictions_with_background)
-      calibrated_scores_np = sess.run(calibrated_scores)
+      return calibrated_scores
+    calibrated_scores_np = self.execute(graph_fn, [])
     self.assertAllClose(calibrated_scores_np, [[[0.5, 0.2], [0.5, 0.1]],
                                                [[0.5, 0.4], [0.5, 0.92]]])
 

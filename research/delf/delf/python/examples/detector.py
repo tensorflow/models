@@ -21,30 +21,22 @@ from __future__ import print_function
 import tensorflow as tf
 
 
-def MakeDetector(sess, model_dir, import_scope=None):
+def MakeDetector(model_dir):
   """Creates a function to detect objects in an image.
 
   Args:
-    sess: TensorFlow session to use.
     model_dir: Directory where SavedModel is located.
-    import_scope: Optional scope to use for model.
 
   Returns:
     Function that receives an image and returns detection results.
   """
-  tf.saved_model.loader.load(
-      sess, [tf.saved_model.tag_constants.SERVING],
-      model_dir,
-      import_scope=import_scope)
-  import_scope_prefix = import_scope + '/' if import_scope is not None else ''
-  input_images = sess.graph.get_tensor_by_name('%sinput_images:0' %
-                                               import_scope_prefix)
-  boxes = sess.graph.get_tensor_by_name('%sdetection_boxes:0' %
-                                        import_scope_prefix)
-  scores = sess.graph.get_tensor_by_name('%sdetection_scores:0' %
-                                         import_scope_prefix)
-  class_indices = sess.graph.get_tensor_by_name('%sdetection_classes:0' %
-                                                import_scope_prefix)
+  model = tf.saved_model.load(model_dir)
+
+  # Input and output tensors.
+  feeds = ['input_images:0']
+  fetches = ['detection_boxes:0', 'detection_scores:0', 'detection_classes:0']
+
+  model = model.prune(feeds=feeds, fetches=fetches)
 
   def DetectorFn(images):
     """Receives an image and returns detected boxes.
@@ -56,7 +48,8 @@ def MakeDetector(sess, model_dir, import_scope=None):
     Returns:
       Tuple (boxes, scores, class_indices).
     """
-    return sess.run([boxes, scores, class_indices],
-                    feed_dict={input_images: images})
+    boxes, scores, class_indices = model(tf.convert_to_tensor(images))
+
+    return boxes.numpy(), scores.numpy(), class_indices.numpy()
 
   return DetectorFn

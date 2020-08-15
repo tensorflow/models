@@ -1,5 +1,7 @@
 ## Detect-to-Retrieve instructions
 
+[![Paper](http://img.shields.io/badge/paper-arXiv.1812.01584-B3181B.svg)](https://arxiv.org/abs/1812.01584)
+
 These instructions can be used to reproduce the results from the
 [Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584) for the Revisited
 Oxford/Paris datasets.
@@ -85,7 +87,7 @@ Query feature extraction can be run as follows:
 
 ```bash
 # From models/research/delf/delf/python/detect_to_retrieve
-python extract_query_features.py \
+python3 extract_query_features.py \
   --delf_config_path delf_gld_config.pbtxt \
   --dataset_file_path ~/detect_to_retrieve/data/gnd_roxford5k.mat \
   --images_dir ~/detect_to_retrieve/data/oxford5k_images \
@@ -98,7 +100,7 @@ Index feature extraction / box detection can be run as follows:
 
 ```bash
 # From models/research/delf/delf/python/detect_to_retrieve
-python extract_index_boxes_and_features.py \
+python3 extract_index_boxes_and_features.py \
   --delf_config_path delf_gld_config.pbtxt \
   --detector_model_dir parameters/d2r_frcnn_20190411 \
   --detector_thresh 0.1 \
@@ -123,7 +125,7 @@ Run query feature aggregation as follows:
 
 ```bash
 # From models/research/delf/delf/python/detect_to_retrieve
-python extract_aggregation.py \
+python3 extract_aggregation.py \
   --use_query_images True \
   --aggregation_config_path query_aggregation_config.pbtxt \
   --dataset_file_path ~/detect_to_retrieve/data/gnd_roxford5k.mat \
@@ -137,7 +139,7 @@ Run index feature aggregation as follows:
 
 ```bash
 # From models/research/delf/delf/python/detect_to_retrieve
-python extract_aggregation.py \
+python3 extract_aggregation.py \
   --aggregation_config_path index_aggregation_config.pbtxt \
   --dataset_file_path ~/detect_to_retrieve/data/gnd_roxford5k.mat \
   --features_dir ~/detect_to_retrieve/data/oxford5k_features/index_0.1 \
@@ -154,7 +156,7 @@ To run retrieval on `roxford5k`, the following command can be used:
 
 ```bash
 # From models/research/delf/delf/python/detect_to_retrieve
-python perform_retrieval.py \
+python3 perform_retrieval.py \
   --index_aggregation_config_path index_aggregation_config.pbtxt \
   --query_aggregation_config_path query_aggregation_config.pbtxt \
   --dataset_file_path ~/detect_to_retrieve/data/gnd_roxford5k.mat \
@@ -191,7 +193,7 @@ example command:
 
 ```bash
 # From models/research/delf/delf/python/detect_to_retrieve
-python perform_retrieval.py \
+python3 perform_retrieval.py \
   --index_aggregation_config_path index_aggregation_config.pbtxt \
   --query_aggregation_config_path query_aggregation_config.pbtxt \
   --dataset_file_path ~/detect_to_retrieve/data/gnd_roxford5k.mat \
@@ -213,7 +215,7 @@ K-means are not registered for GPU usage in Tensorflow.
 
 ```bash
 # From models/research/delf/delf/python/detect_to_retrieve
-python cluster_delf_features.py \
+python3 cluster_delf_features.py \
   --dataset_file_path ~/detect_to_retrieve/data/gnd_rparis6k.mat \
   --features_dir ~/detect_to_retrieve/data/paris6k_features/index_0.1 \
   --num_clusters 1024 \

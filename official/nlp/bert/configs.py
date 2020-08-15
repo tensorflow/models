@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import copy
 import json
+
 import six
 import tensorflow as tf
 
@@ -39,6 +40,7 @@ class BertConfig(object):
                max_position_embeddings=512,
                type_vocab_size=16,
                initializer_range=0.02,
+               embedding_size=None,
                backward_compatible=True):
     """Constructs BertConfig.
 
@@ -63,6 +65,7 @@ class BertConfig(object):
         `BertModel`.
       initializer_range: The stdev of the truncated_normal_initializer for
         initializing all weight matrices.
+      embedding_size: (Optional) width of the factorized word embeddings.
       backward_compatible: Boolean, whether the variables shape are compatible
         with checkpoints converted from TF 1.x BERT.
     """
@@ -77,6 +80,7 @@ class BertConfig(object):
     self.max_position_embeddings = max_position_embeddings
     self.type_vocab_size = type_vocab_size
     self.initializer_range = initializer_range
+    self.embedding_size = embedding_size
     self.backward_compatible = backward_compatible
 
   @classmethod
@@ -102,4 +106,3 @@ class BertConfig(object):
   def to_json_string(self):
     """Serializes this instance to a JSON string."""
     return json.dumps(self.to_dict(), indent=2, sort_keys=True) + "\n"
-

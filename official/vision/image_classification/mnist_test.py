@@ -25,7 +25,6 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.utils.misc import keras_utils
 from official.utils.testing import integration
 from official.vision.image_classification import mnist_main
 
@@ -57,11 +56,10 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(eager_strategy_combinations())
   def test_end_to_end(self, distribution):
     """Test Keras MNIST model with `strategy`."""
-    config = keras_utils.get_config_proto_v1()
-    tf.compat.v1.enable_eager_execution(config=config)
 
     extra_flags = [
-        "-train_epochs", "1",
+        "-train_epochs",
+        "1",
         # Let TFDS find the metadata folder automatically
         "--data_dir="
     ]
@@ -75,9 +73,10 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
         tf.data.Dataset.from_tensor_slices(dummy_data),
     )
 
-    run = functools.partial(mnist_main.run,
-                            datasets_override=datasets,
-                            strategy_override=distribution)
+    run = functools.partial(
+        mnist_main.run,
+        datasets_override=datasets,
+        strategy_override=distribution)
 
     integration.run_synthetic(
         main=run,

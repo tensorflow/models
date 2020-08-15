@@ -21,7 +21,7 @@ from __future__ import print_function
 import numpy as np
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import anchor_generator
 from object_detection.core import box_coder
@@ -29,6 +29,7 @@ from object_detection.core import box_list
 from object_detection.core import box_predictor
 from object_detection.core import matcher
 from object_detection.utils import shape_utils
+from object_detection.utils import tf_version
 
 # Default size (both width and height) used for testing mask predictions.
 DEFAULT_MASK_SIZE = 5
@@ -233,3 +234,56 @@ def first_rows_close_as_set(a, b, k=None, rtol=1e-6, atol=1e-6):
       np.allclose(entry_a, entry_b, rtol, atol)
       for (entry_a, entry_b) in zip(a_sorted, b_sorted)
   ])
+
+
+class GraphContextOrNone(object):
+  """A new Graph context for TF1.X and None for TF2.X.
+
+  This is useful to write model tests that work with both TF1.X and TF2.X.
+
+  Example test using this pattern:
+
+  class ModelTest(test_case.TestCase):
+    def test_model(self):
+      with test_utils.GraphContextOrNone() as g:
+        model = Model()
+      def compute_fn():
+        out = model.predict()
+        return out['detection_boxes']
+      boxes = self.execute(compute_fn, [], graph=g)
+      self.assertAllClose(boxes, expected_boxes)
+  """
+
+  def __init__(self):
+    if tf_version.is_tf2():
+      self.graph = None
+    else:
+      self.graph = tf.Graph().as_default()
+
+  def __enter__(self):
+    if tf_version.is_tf2():
+      return None
+    else:
+      return self.graph.__enter__()
+
+  def __exit__(self, ttype, value, traceback):
+    if tf_version.is_tf2():
+      return False
+    else:
+      return self.graph.__exit__(ttype, value, traceback)
+
+
+def image_with_dynamic_shape(height, width, channels):
+  """Returns a single image with dynamic shape."""
+  h = tf.random.uniform([], minval=height, maxval=height+1, dtype=tf.int32)
+  w = tf.random.uniform([], minval=width, maxval=width+1, dtype=tf.int32)
+  image = tf.random.uniform([h, w, channels])
+  return image
+
+
+def keypoints_with_dynamic_shape(num_instances, num_keypoints, num_coordinates):
+  """Returns keypoints with dynamic shape."""
+  n = tf.random.uniform([], minval=num_instances, maxval=num_instances+1,
+                        dtype=tf.int32)
+  keypoints = tf.random.uniform([n, num_keypoints, num_coordinates])
+  return keypoints

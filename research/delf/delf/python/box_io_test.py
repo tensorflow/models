@@ -20,10 +20,13 @@ from __future__ import print_function
 
 import os
 
+from absl import flags
 import numpy as np
 import tensorflow as tf
 
 from delf import box_io
+
+FLAGS = flags.FLAGS
 
 
 class BoxesIoTest(tf.test.TestCase):
@@ -57,8 +60,7 @@ class BoxesIoTest(tf.test.TestCase):
   def testWriteAndReadToFile(self):
     boxes, scores, class_indices = self._create_data()
 
-    tmpdir = tf.test.get_temp_dir()
-    filename = os.path.join(tmpdir, 'test.boxes')
+    filename = os.path.join(FLAGS.test_tmpdir, 'test.boxes')
     box_io.WriteToFile(filename, boxes, scores, class_indices)
     data_read = box_io.ReadFromFile(filename)
 
@@ -67,8 +69,7 @@ class BoxesIoTest(tf.test.TestCase):
     self.assertAllEqual(class_indices, data_read[2])
 
   def testWriteAndReadToFileEmptyFile(self):
-    tmpdir = tf.test.get_temp_dir()
-    filename = os.path.join(tmpdir, 'test.box')
+    filename = os.path.join(FLAGS.test_tmpdir, 'test.box')
     box_io.WriteToFile(filename, np.array([]), np.array([]), np.array([]))
     data_read = box_io.ReadFromFile(filename)
 

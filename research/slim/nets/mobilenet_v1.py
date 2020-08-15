@@ -108,11 +108,8 @@ from __future__ import print_function
 from collections import namedtuple
 import functools
 
-import tensorflow as tf
-from tensorflow.contrib import layers as contrib_layers
-from tensorflow.contrib import slim as contrib_slim
-
-slim = contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 # Conv and DepthSepConv namedtuple define layers of the MobileNet architecture
 # Conv defines 3x3 convolution layers
@@ -233,7 +230,7 @@ def mobilenet_v1_base(inputs,
   padding = 'SAME'
   if use_explicit_padding:
     padding = 'VALID'
-  with tf.compat.v1.variable_scope(scope, 'MobilenetV1', [inputs]):
+  with tf.variable_scope(scope, 'MobilenetV1', [inputs]):
     with slim.arg_scope([slim.conv2d, slim.separable_conv2d], padding=padding):
       # The current_stride variable keeps track of the output stride of the
       # activations, i.e., the running product of convolution strides up to the
@@ -311,7 +308,7 @@ def mobilenet_v1(inputs,
                  min_depth=8,
                  depth_multiplier=1.0,
                  conv_defs=None,
-                 prediction_fn=contrib_layers.softmax,
+                 prediction_fn=slim.softmax,
                  spatial_squeeze=True,
                  reuse=None,
                  scope='MobilenetV1',
@@ -359,7 +356,7 @@ def mobilenet_v1(inputs,
     raise ValueError('Invalid input tensor rank, expected 4, was: %d' %
                      len(input_shape))
 
-  with tf.compat.v1.variable_scope(
+  with tf.variable_scope(
       scope, 'MobilenetV1', [inputs], reuse=reuse) as scope:
     with slim.arg_scope([slim.batch_norm, slim.dropout],
                         is_training=is_training):
@@ -367,7 +364,7 @@ def mobilenet_v1(inputs,
                                           min_depth=min_depth,
                                           depth_multiplier=depth_multiplier,
                                           conv_defs=conv_defs)
-      with tf.compat.v1.variable_scope('Logits'):
+      with tf.variable_scope('Logits'):
         if global_pool:
           # Global average pooling.
           net = tf.reduce_mean(
@@ -435,7 +432,7 @@ def mobilenet_v1_arg_scope(
     regularize_depthwise=False,
     batch_norm_decay=0.9997,
     batch_norm_epsilon=0.001,
-    batch_norm_updates_collections=tf.compat.v1.GraphKeys.UPDATE_OPS,
+    batch_norm_updates_collections=tf.GraphKeys.UPDATE_OPS,
     normalizer_fn=slim.batch_norm):
   """Defines the default MobilenetV1 arg scope.
 
@@ -466,8 +463,8 @@ def mobilenet_v1_arg_scope(
     batch_norm_params['is_training'] = is_training
 
   # Set weight_decay for weights in Conv and DepthSepConv layers.
-  weights_init = tf.compat.v1.truncated_normal_initializer(stddev=stddev)
-  regularizer = contrib_layers.l2_regularizer(weight_decay)
+  weights_init = tf.truncated_normal_initializer(stddev=stddev)
+  regularizer = slim.l2_regularizer(weight_decay)
   if regularize_depthwise:
     depthwise_regularizer = regularizer
   else:

@@ -19,8 +19,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import numpy as np
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 from object_detection.protos import string_int_label_map_pb2
@@ -36,6 +37,22 @@ class LabelMapUtilTest(tf.test.TestCase):
       item.id = i
       item.name = 'label_' + str(i)
       item.display_name = str(i)
+    return label_map_proto
+
+  def _generate_label_map_with_hierarchy(self, num_classes, ancestors_dict,
+                                         descendants_dict):
+    label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
+    for i in range(1, num_classes + 1):
+      item = label_map_proto.item.add()
+      item.id = i
+      item.name = 'label_' + str(i)
+      item.display_name = str(i)
+      if i in ancestors_dict:
+        for anc_i in ancestors_dict[i]:
+          item.ancestor_ids.append(anc_i)
+      if i in descendants_dict:
+        for desc_i in descendants_dict[i]:
+          item.descendant_ids.append(desc_i)
     return label_map_proto
 
   def test_get_label_map_dict(self):
@@ -226,6 +243,59 @@ class LabelMapUtilTest(tf.test.TestCase):
     }]
     self.assertListEqual(expected_categories_list, categories)
 
+  def test_convert_label_map_with_keypoints_to_categories(self):
+    label_map_str = """
+      item {
+        id: 1
+        name: 'person'
+        keypoints: {
+          id: 1
+          label: 'nose'
+        }
+        keypoints: {
+          id: 2
+          label: 'ear'
+        }
+      }
+    """
+    label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
+    text_format.Merge(label_map_str, label_map_proto)
+    categories = label_map_util.convert_label_map_to_categories(
+        label_map_proto, max_num_classes=1)
+    self.assertEqual('person', categories[0]['name'])
+    self.assertEqual(1, categories[0]['id'])
+    self.assertEqual(1, categories[0]['keypoints']['nose'])
+    self.assertEqual(2, categories[0]['keypoints']['ear'])
+
+  def test_disallow_duplicate_keypoint_ids(self):
+    label_map_str = """
+      item {
+        id: 1
+        name: 'person'
+        keypoints: {
+          id: 1
+          label: 'right_elbow'
+        }
+        keypoints: {
+          id: 1
+          label: 'left_elbow'
+        }
+      }
+      item {
+        id: 2
+        name: 'face'
+        keypoints: {
+          id: 3
+          label: 'ear'
+        }
+      }
+    """
+    label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
+    text_format.Merge(label_map_str, label_map_proto)
+    with self.assertRaises(ValueError):
+      label_map_util.convert_label_map_to_categories(
+          label_map_proto, max_num_classes=2)
+
   def test_convert_label_map_to_categories_with_few_classes(self):
     label_map_proto = self._generate_label_map(num_classes=4)
     cat_no_offset = label_map_util.convert_label_map_to_categories(
@@ -350,6 +420,37 @@ class LabelMapUtilTest(tf.test.TestCase):
             'id': 2
         }
     }, label_map_util.create_category_index_from_labelmap(label_map_path))
+
+  def test_get_label_map_hierarchy_lut(self):
+    num_classes = 5
+    ancestors = {2: [1, 3], 5: [1]}
+    descendants = {1: [2], 5: [1, 2]}
+    label_map = self._generate_label_map_with_hierarchy(num_classes, ancestors,
+                                                        descendants)
+    gt_hierarchy_dict_lut = {
+        'ancestors':
+            np.array([
+                [1, 0, 0, 0, 0],
+                [1, 1, 1, 0, 0],
+                [0, 0, 1, 0, 0],
+                [0, 0, 0, 1, 0],
+                [1, 0, 0, 0, 1],
+            ]),
+        'descendants':
+            np.array([
+                [1, 1, 0, 0, 0],
+                [0, 1, 0, 0, 0],
+                [0, 0, 1, 0, 0],
+                [0, 0, 0, 1, 0],
+                [1, 1, 0, 0, 1],
+            ]),
+    }
+    ancestors_lut, descendants_lut = (
+        label_map_util.get_label_map_hierarchy_lut(label_map, True))
+    np.testing.assert_array_equal(gt_hierarchy_dict_lut['ancestors'],
+                                  ancestors_lut)
+    np.testing.assert_array_equal(gt_hierarchy_dict_lut['descendants'],
+                                  descendants_lut)
 
 
 if __name__ == '__main__':

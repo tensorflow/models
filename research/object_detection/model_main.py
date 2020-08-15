@@ -20,9 +20,8 @@ from __future__ import print_function
 
 from absl import flags
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
-from object_detection import model_hparams
 from object_detection import model_lib
 
 flags.DEFINE_string(
@@ -42,16 +41,17 @@ flags.DEFINE_integer('sample_1_of_n_eval_on_train_examples', 5, 'Will sample '
                      'where n is provided. This is only used if '
                      '`eval_training_data` is True.')
 flags.DEFINE_string(
-    'hparams_overrides', None, 'Hyperparameter overrides, '
-    'represented as a string containing comma-separated '
-    'hparam_name=value pairs.')
-flags.DEFINE_string(
     'checkpoint_dir', None, 'Path to directory holding a checkpoint.  If '
     '`checkpoint_dir` is provided, this binary operates in eval-only mode, '
     'writing resulting metrics to `model_dir`.')
 flags.DEFINE_boolean(
     'run_once', False, 'If running in eval-only mode, whether to run just '
     'one round of eval vs running continuously (default).'
+)
+flags.DEFINE_integer(
+    'max_eval_retries', 0, 'If running continuous eval, the maximum number of '
+    'retries upon encountering tf.errors.InvalidArgumentError. If negative, '
+    'will always retry the evaluation.'
 )
 FLAGS = flags.FLAGS
 
@@ -63,7 +63,6 @@ def main(unused_argv):
 
   train_and_eval_dict = model_lib.create_estimator_and_inputs(
       run_config=config,
-      hparams=model_hparams.create_hparams(FLAGS.hparams_overrides),
       pipeline_config_path=FLAGS.pipeline_config_path,
       train_steps=FLAGS.num_train_steps,
       sample_1_of_n_eval_examples=FLAGS.sample_1_of_n_eval_examples,
@@ -91,7 +90,7 @@ def main(unused_argv):
                              FLAGS.checkpoint_dir))
     else:
       model_lib.continuous_eval(estimator, FLAGS.checkpoint_dir, input_fn,
-                                train_steps, name)
+                                train_steps, name, FLAGS.max_eval_retries)
   else:
     train_spec, eval_specs = model_lib.create_train_and_eval_specs(
         train_input_fn,

@@ -40,22 +40,19 @@ class ModelUtilsTest(tf.test.TestCase):
     bias_shape = tf.shape(bias)
     flattened_bias = tf.reshape(bias, [3, 5])
 
-    self.assertAllEqual([[0, NEG_INF, NEG_INF, NEG_INF, 0],
-                         [0, 0, NEG_INF, NEG_INF, NEG_INF],
-                         [NEG_INF, 0, 0, NEG_INF, 0]],
-                        flattened_bias)
+    self.assertAllEqual(
+        [[0, NEG_INF, NEG_INF, NEG_INF, 0], [0, 0, NEG_INF, NEG_INF, NEG_INF],
+         [NEG_INF, 0, 0, NEG_INF, 0]], flattened_bias)
     self.assertAllEqual([3, 1, 1, 5], bias_shape)
 
   def test_get_decoder_self_attention_bias(self):
     length = 5
     bias = model_utils.get_decoder_self_attention_bias(length)
 
-    self.assertAllEqual([[[[0, NEG_INF, NEG_INF, NEG_INF, NEG_INF],
-                           [0, 0, NEG_INF, NEG_INF, NEG_INF],
-                           [0, 0, 0, NEG_INF, NEG_INF],
-                           [0, 0, 0, 0, NEG_INF],
-                           [0, 0, 0, 0, 0]]]],
-                        bias)
+    self.assertAllEqual(
+        [[[[0, NEG_INF, NEG_INF, NEG_INF, NEG_INF],
+           [0, 0, NEG_INF, NEG_INF, NEG_INF], [0, 0, 0, NEG_INF, NEG_INF],
+           [0, 0, 0, 0, NEG_INF], [0, 0, 0, 0, 0]]]], bias)
 
 
 if __name__ == "__main__":

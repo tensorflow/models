@@ -21,8 +21,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from official.modeling import tf_utils
-
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 class OnDeviceEmbedding(tf.keras.layers.Layer):
@@ -38,8 +36,11 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
       "glorot_uniform".
     use_one_hot: Whether to use tf.one_hot over tf.gather for the embedding
       lookup. Defaults to False (that is, using tf.gather). Setting this option
-      to True may improve performance, especially on small vocabulary sizes,
-      but will generally require more memory.
+      to True may improve performance, especially on small vocabulary sizes, but
+      will generally require more memory.
+    use_scale: Whether to scale the output embeddings. Defaults to False (that
+      is, not to scale). Setting this option to True will let values in output
+      embeddings multiplied by self._embedding_width ** 0.5.
   """
 
   def __init__(self,
@@ -47,17 +48,15 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
                embedding_width,
                initializer="glorot_uniform",
                use_one_hot=False,
+               use_scale=False,
                **kwargs):
-    # We need to have a default dtype of float32, since the inputs (which Keras
-    # usually uses to infer the dtype) will always be int32.
-    if "dtype" not in kwargs:
-      kwargs["dtype"] = "float32"
 
     super(OnDeviceEmbedding, self).__init__(**kwargs)
     self._vocab_size = vocab_size
     self._embedding_width = embedding_width
     self._initializer = initializer
     self._use_one_hot = use_one_hot
+    self._use_scale = use_scale
 
   def get_config(self):
     config = {
@@ -65,6 +64,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
         "embedding_width": self._embedding_width,
         "initializer": self._initializer,
         "use_one_hot": self._use_one_hot,
+        "use_scale": self._use_scale,
     }
     base_config = super(OnDeviceEmbedding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -73,20 +73,24 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
     self.embeddings = self.add_weight(
         "embeddings",
         shape=[self._vocab_size, self._embedding_width],
-        initializer=self._initializer)
+        initializer=self._initializer,
+        dtype=tf.float32)
 
     super(OnDeviceEmbedding, self).build(input_shape)
 
   def call(self, inputs):
-    input_shape = tf_utils.get_shape_list(inputs, expected_rank=2)
-    input_shape.append(self._embedding_width)
     flat_inputs = tf.reshape(inputs, [-1])
     if self._use_one_hot:
       one_hot_data = tf.one_hot(
-          flat_inputs, depth=self._vocab_size, dtype=self._dtype)
+          flat_inputs, depth=self._vocab_size, dtype=self.embeddings.dtype)
       embeddings = tf.matmul(one_hot_data, self.embeddings)
     else:
       embeddings = tf.gather(self.embeddings, flat_inputs)
-    embeddings = tf.reshape(embeddings, input_shape)
-
+    embeddings = tf.reshape(
+        embeddings,
+        # Work around b/142213824: prefer concat to shape over a Python list.
+        tf.concat([tf.shape(inputs), [self._embedding_width]], axis=0))
+    embeddings.set_shape(inputs.shape.as_list() + [self._embedding_width])
+    if self._use_scale:
+      embeddings *= self._embedding_width**0.5
     return embeddings

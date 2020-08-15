@@ -3,8 +3,6 @@
 # Reaches ~76.1% within 350 epochs.
 # Note: This configuration uses a scaled per-replica batch size based on the number of devices.
 runtime:
-  model_dir: null
-  mode: 'train_and_eval'
   distribution_strategy: 'tpu'
 train_dataset:
   name: 'imagenet2012'
@@ -35,6 +33,7 @@ model:
       num_classes: 1000
       batch_norm: 'tpu'
       dtype: 'bfloat16'
+      activation: 'swish'
   optimizer:
     name: 'rmsprop'
     momentum: 0.9
@@ -48,5 +47,6 @@ model:
 train:
   resume_checkpoint: True
   epochs: 500
+  set_epoch_loop: True
 evaluation:
   epochs_between_evals: 1

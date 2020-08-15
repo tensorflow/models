@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -57,7 +58,10 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
     super(EncoderScaffoldLayerClassTest, self).tearDown()
     tf.keras.mixed_precision.experimental.set_policy("float32")
 
-  def test_network_creation(self):
+  @parameterized.named_parameters(
+      dict(testcase_name="only_final_output", return_all_layer_outputs=False),
+      dict(testcase_name="all_layer_outputs", return_all_layer_outputs=True))
+  def test_network_creation(self, return_all_layer_outputs):
     hidden_size = 32
     sequence_length = 21
     num_hidden_instances = 3
@@ -96,12 +100,23 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
             stddev=0.02),
         hidden_cls=ValidatedTransformerLayer,
         hidden_cfg=hidden_cfg,
-        embedding_cfg=embedding_cfg)
+        embedding_cfg=embedding_cfg,
+        return_all_layer_outputs=return_all_layer_outputs)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    data, pooled = test_network([word_ids, mask, type_ids])
+    output_data, pooled = test_network([word_ids, mask, type_ids])
+
+    if return_all_layer_outputs:
+      self.assertIsInstance(output_data, list)
+      self.assertLen(output_data, num_hidden_instances)
+      data = output_data[-1]
+    else:
+      data = output_data
+    self.assertIsInstance(test_network.hidden_layers, list)
+    self.assertLen(test_network.hidden_layers, num_hidden_instances)
+    self.assertIsInstance(test_network.pooler_layer, tf.keras.layers.Dense)
 
     expected_data_shape = [None, sequence_length, hidden_size]
     expected_pooled_shape = [None, hidden_size]
@@ -196,8 +211,6 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
     }
-    print(hidden_cfg)
-    print(embedding_cfg)
     # Create a small EncoderScaffold for testing.
     test_network = encoder_scaffold.EncoderScaffold(
         num_hidden_instances=3,
@@ -310,6 +323,28 @@ class EncoderScaffoldLayerClassTest(keras_parameterized.TestCase):
     self.assertAllEqual(network.get_config(), new_network.get_config())
 
 
+class Embeddings(tf.keras.Model):
+
+  def __init__(self, vocab_size, hidden_size):
+    super().__init__()
+    self.inputs = [
+        tf.keras.layers.Input(
+            shape=(None,), dtype=tf.int32, name="input_word_ids"),
+        tf.keras.layers.Input(shape=(None,), dtype=tf.int32, name="input_mask")
+    ]
+    self.attention_mask = layers.SelfAttentionMask()
+    self.embedding_layer = layers.OnDeviceEmbedding(
+        vocab_size=vocab_size,
+        embedding_width=hidden_size,
+        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
+        name="word_embeddings")
+
+  def call(self, inputs):
+    word_ids, mask = inputs
+    word_embeddings = self.embedding_layer(word_ids)
+    return word_embeddings, self.attention_mask([word_embeddings, mask])
+
+
 @keras_parameterized.run_all_keras_modes
 class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
 
@@ -321,18 +356,7 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
     # Build an embedding network to swap in for the default network. This one
     # will have 2 inputs (mask and word_ids) instead of 3, and won't use
     # positional embeddings.
-
-    word_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name="input_word_ids")
-    mask = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name="input_mask")
-    embedding_layer = layers.OnDeviceEmbedding(
-        vocab_size=vocab_size,
-        embedding_width=hidden_size,
-        initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
-        name="word_embeddings")
-    word_embeddings = embedding_layer(word_ids)
-    network = tf.keras.Model([word_ids, mask], [word_embeddings, mask])
+    network = Embeddings(vocab_size, hidden_size)
 
     hidden_cfg = {
         "num_attention_heads":
@@ -356,8 +380,7 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
         hidden_cfg=hidden_cfg,
-        embedding_cls=network,
-        embedding_data=embedding_layer.embeddings)
+        embedding_cls=network)
 
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -374,11 +397,6 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
         vocab_size, size=(batch_size, sequence_length))
     mask_data = np.random.randint(2, size=(batch_size, sequence_length))
     _ = model.predict([word_id_data, mask_data])
-
-    # Test that we can get the embedding data that we passed to the object. This
-    # is necessary to support standard language model training.
-    self.assertIs(embedding_layer.embeddings,
-                  test_network.get_embedding_table())
 
   def test_serialize_deserialize(self):
     hidden_size = 32
@@ -399,7 +417,9 @@ class EncoderScaffoldEmbeddingNetworkTest(keras_parameterized.TestCase):
         initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
         name="word_embeddings")
     word_embeddings = embedding_layer(word_ids)
-    network = tf.keras.Model([word_ids, mask], [word_embeddings, mask])
+    attention_mask = layers.SelfAttentionMask()([word_embeddings, mask])
+    network = tf.keras.Model([word_ids, mask],
+                             [word_embeddings, attention_mask])
 
     hidden_cfg = {
         "num_attention_heads":

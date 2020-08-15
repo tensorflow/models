@@ -17,15 +17,8 @@
 from absl import flags
 import tensorflow as tf
 
+from official.utils import hyperparams_flags
 from official.utils.flags import core as flags_core
-
-
-def define_gin_flags():
-  """Define common gin configurable flags."""
-  flags.DEFINE_multi_string('gin_file', None,
-                            'List of paths to the config files.')
-  flags.DEFINE_multi_string(
-      'gin_param', None, 'Newline separated list of Gin parameter bindings.')
 
 
 def define_common_bert_flags():
@@ -39,7 +32,6 @@ def define_common_bert_flags():
       stop_threshold=False,
       batch_size=False,
       num_gpu=True,
-      hooks=False,
       export_dir=False,
       distribution_strategy=True,
       run_eagerly=True)
@@ -57,10 +49,11 @@ def define_common_bert_flags():
   flags.DEFINE_integer('num_train_epochs', 3,
                        'Total number of training epochs to perform.')
   flags.DEFINE_integer(
-      'steps_per_loop', 1,
+      'steps_per_loop', None,
       'Number of steps per graph-mode loop. Only training step '
       'happens inside the loop. Callbacks will not be called '
-      'inside.')
+      'inside. If not set the value will be configured depending on the '
+      'devices available.')
   flags.DEFINE_float('learning_rate', 5e-5,
                      'The initial learning rate for Adam.')
   flags.DEFINE_float('end_lr', 0.0,
@@ -80,6 +73,10 @@ def define_common_bert_flags():
       'If specified, init_checkpoint flag should not be used.')
   flags.DEFINE_bool('hub_module_trainable', True,
                     'True to make keras layers in the hub module trainable.')
+  flags.DEFINE_string(
+      'sub_model_export_name', None,
+      'If set, `sub_model` checkpoints are exported into '
+      'FLAGS.model_dir/FLAGS.sub_model_export_name.')
 
   flags_core.define_log_steps()
 
@@ -100,6 +97,9 @@ def define_common_bert_flags():
       enable_xla=True,
       fp16_implementation=True,
   )
+
+  # Adds gin configuration flags.
+  hyperparams_flags.define_gin_flags()
 
 
 def dtype():

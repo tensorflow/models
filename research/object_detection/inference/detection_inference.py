@@ -15,7 +15,7 @@
 """Utility functions for detection inference."""
 from __future__ import division
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields
 

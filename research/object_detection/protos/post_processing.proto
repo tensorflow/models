@@ -27,10 +27,10 @@ message BatchNonMaxSuppression {
   // Class-agnostic NMS function implements a class-agnostic version
   // of Non Maximal Suppression where if max_classes_per_detection=k,
   // 1) we keep the top-k scores for each detection and
-  // 2) during NMS, each detection only uses the highest class score for sorting.
-  // 3) Compared to regular NMS, the worst runtime of this version is O(N^2)
-  // instead of O(KN^2) where N is the number of detections and K the number of
-  // classes.
+  // 2) during NMS, each detection only uses the highest class score for
+  // sorting. 3) Compared to regular NMS, the worst runtime of this version is
+  // O(N^2) instead of O(KN^2) where N is the number of detections and K the
+  // number of classes.
   optional bool use_class_agnostic_nms = 7 [default = false];
 
   // Number of classes retained per detection in class agnostic NMS.
@@ -45,6 +45,24 @@ message BatchNonMaxSuppression {
 
   // Whether to use tf.image.combined_non_max_suppression.
   optional bool use_combined_nms = 11 [default = false];
+
+  // Whether to change coordinate frame of the boxlist to be relative to
+  // window's frame.
+  optional bool change_coordinate_frame = 12 [default = true];
+
+  // Use hard NMS. Note that even if this field is set false, the behavior of
+  // NMS will be equivalent to hard NMS; This field when set to true forces the
+  // tf.image.non_max_suppression function to be called instead
+  // of tf.image.non_max_suppression_with_scores and can be used to
+  // export models for older versions of TF.
+  optional bool use_hard_nms = 13 [default = false];
+
+  // Use cpu NMS. NMSV3/NMSV4 by default runs on GPU, which may cause OOM issue
+  // if the model is large and/or batch size is large during training.
+  // Setting this flag to false moves the nms op to CPU when OOM happens.
+  // The flag is not needed if use_hard_nms = false, as soft NMS currently
+  // runs on CPU by default.
+  optional bool use_cpu_nms = 14 [default = false];
 }
 
 // Configuration proto for post-processing predicted boxes and

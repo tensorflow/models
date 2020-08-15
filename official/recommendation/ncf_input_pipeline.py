@@ -21,45 +21,44 @@ from __future__ import print_function
 import functools
 
 # pylint: disable=g-bad-import-order
+
 import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
 from official.recommendation import constants as rconst
-from official.recommendation import movielens
 from official.recommendation import data_pipeline
-
-NUM_SHARDS = 16
+from official.recommendation import movielens
 
 
 def create_dataset_from_tf_record_files(input_file_pattern,
                                         pre_batch_size,
                                         batch_size,
-                                        is_training=True):
+                                        is_training=True,
+                                        rebatch=False):
   """Creates dataset from (tf)records files for training/evaluation."""
+  if pre_batch_size != batch_size:
+    raise ValueError("Pre-batch ({}) size is not equal to batch "
+                     "size ({})".format(pre_batch_size, batch_size))
 
   files = tf.data.Dataset.list_files(input_file_pattern, shuffle=is_training)
 
-  def make_dataset(files_dataset, shard_index):
-    """Returns dataset for sharded tf record files."""
-    if pre_batch_size != batch_size:
-      raise ValueError("Pre-batch ({}) size is not equal to batch "
-                       "size ({})".format(pre_batch_size, batch_size))
-    files_dataset = files_dataset.shard(NUM_SHARDS, shard_index)
-    dataset = files_dataset.interleave(tf.data.TFRecordDataset)
-    decode_fn = functools.partial(
-        data_pipeline.DatasetManager.deserialize,
-        batch_size=pre_batch_size,
-        is_training=is_training)
-    dataset = dataset.map(
-        decode_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    return dataset
-
-  dataset = tf.data.Dataset.range(NUM_SHARDS)
-  map_fn = functools.partial(make_dataset, files)
-  dataset = dataset.interleave(
-      map_fn,
-      cycle_length=NUM_SHARDS,
+  dataset = files.interleave(
+      tf.data.TFRecordDataset,
+      cycle_length=16,
       num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  decode_fn = functools.partial(
+      data_pipeline.DatasetManager.deserialize,
+      batch_size=pre_batch_size,
+      is_training=is_training)
+  dataset = dataset.map(
+      decode_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+  if rebatch:
+    # A workaround for TPU Pod evaluation dataset.
+    # TODO (b/162341937) remove once it's fixed.
+    dataset = dataset.unbatch()
+    dataset = dataset.batch(pre_batch_size)
+
   dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
   return dataset
 
@@ -132,8 +131,8 @@ def create_ncf_input_data(params,
       from tf record files. Must be specified when params["train_input_dataset"]
       is specified.
     strategy: Distribution strategy used for distributed training. If specified,
-      used to assert that evaluation batch size is correctly a multiple of
-      total number of devices used.
+      used to assert that evaluation batch size is correctly a multiple of total
+      number of devices used.
 
   Returns:
     (training dataset, evaluation dataset, train steps per epoch,
@@ -160,12 +159,18 @@ def create_ncf_input_data(params,
         params["train_dataset_path"],
         input_meta_data["train_prebatch_size"],
         params["batch_size"],
-        is_training=True)
+        is_training=True,
+        rebatch=False)
+
+    # Re-batch evaluation dataset for TPU Pods.
+    # TODO (b/162341937) remove once it's fixed.
+    eval_rebatch = (params["use_tpu"] and strategy.num_replicas_in_sync > 8)
     eval_dataset = create_dataset_from_tf_record_files(
         params["eval_dataset_path"],
         input_meta_data["eval_prebatch_size"],
         params["eval_batch_size"],
-        is_training=False)
+        is_training=False,
+        rebatch=eval_rebatch)
 
     num_train_steps = int(input_meta_data["num_train_steps"])
     num_eval_steps = int(input_meta_data["num_eval_steps"])

@@ -17,6 +17,27 @@ message StringIntLabelMapItem {
 
   // Human readable string label.
   optional string display_name = 3;
+
+  // Name of class specific keypoints for each class object and their respective
+  // keypoint IDs.
+  message KeypointMap {
+    // Id for the keypoint. Id must be unique within a given class, however, it
+    // could be shared across classes. For example "nose" keypoint can occur
+    // in both "face" and "person" classes. Hence they can be mapped to the same
+    // id.
+    //
+    // Note: It is advised to assign ids in range [1, num_unique_keypoints] to
+    // encode keypoint targets efficiently.
+    optional int32 id = 1;
+    // Label for the keypoint.
+    optional string label = 2;
+  }
+  repeated KeypointMap keypoints = 4;
+
+  // Label ids for the elements that are connected in the hierarchy with the
+  // current element. Value should correspond to another label id element.
+  repeated int32 ancestor_ids = 5;
+  repeated int32 descendant_ids = 6;
 };
 
 message StringIntLabelMap {

@@ -29,8 +29,8 @@ from official.nlp.modeling.layers import transformer
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
 # guarantees forward compatibility of this code for the V2 switchover.
 @keras_parameterized.run_all_keras_modes
-@parameterized.parameters(transformer.Transformer,
-                          transformer.CompiledTransformer)
+@parameterized.named_parameters(('base', transformer.Transformer),
+                                ('xla', transformer.CompiledTransformer))
 class TransformerLayerTest(keras_parameterized.TestCase):
 
   def tearDown(self):
@@ -127,6 +127,35 @@ class TransformerLayerTest(keras_parameterized.TestCase):
         2, size=(batch_size, sequence_length, sequence_length))
     _ = model.predict([input_data, mask_data])
 
+  def test_layer_output_range(self, _):
+    # XLA has an obvious numeric issue in this test case.
+    test_layer = transformer.Transformer(
+        num_attention_heads=10,
+        intermediate_size=2048,
+        intermediate_activation='relu')
+    sequence_length = 21
+    width = 80
+
+    batch_size = 6
+    input_data = 10 * np.random.random_sample(
+        (batch_size, sequence_length, width))
+    mask_data = np.random.randint(
+        2, size=(batch_size, sequence_length, sequence_length))
+    output_tensor = test_layer([input_data, mask_data])
+
+    # The layer only attends to the first token and outputs the first token
+    # embeeding.
+    new_layer = transformer.Transformer(
+        num_attention_heads=10,
+        intermediate_size=2048,
+        intermediate_activation='relu',
+        output_range=1)
+    _ = new_layer([input_data, mask_data])
+    new_layer.set_weights(test_layer.get_weights())
+    new_output_tensor = new_layer([input_data, mask_data])
+    self.assertAllClose(
+        new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
+
   def test_layer_invocation_with_float16_dtype(self, transformer_cls):
     tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
     test_layer = transformer_cls(
@@ -186,6 +215,126 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     output_data = model.predict(input_data)
 
     self.assertAllEqual([1, input_length, width], output_data.shape)
+
+
+@keras_parameterized.run_all_keras_modes
+class TransformerArgumentTest(keras_parameterized.TestCase):
+
+  def test_use_bias_norm_first(self):
+    num_attention_heads = 2
+    hidden_size = 16
+    encoder_block = transformer.Transformer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6,
+        intermediate_dropout=0.1,
+        attention_initializer=tf.keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
+    # Forward path.
+    dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
+    inputs = [dummy_tensor, dummy_mask]
+    output = encoder_block(inputs)
+    self.assertEqual(output.shape, (2, 4, hidden_size))
+
+  def test_get_config(self):
+    num_attention_heads = 2
+    encoder_block = transformer.Transformer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6,
+        intermediate_dropout=0.1,
+        attention_initializer=tf.keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
+    encoder_block_config = encoder_block.get_config()
+    new_encoder_block = transformer.Transformer.from_config(
+        encoder_block_config)
+    self.assertEqual(encoder_block_config, new_encoder_block.get_config())
+
+
+def _create_cache(batch_size, init_decode_length, num_heads, head_size):
+  return {
+      'key':
+          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
+                   dtype=tf.float32),
+      'value':
+          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
+                   dtype=tf.float32)
+  }
+
+
+@keras_parameterized.run_all_keras_modes
+class TransformerDecoderLayerTest(keras_parameterized.TestCase):
+
+  def test_decoder_block_with_cache(self):
+    num_attention_heads = 2
+    hidden_size = 16
+    decoder_block = transformer.TransformerDecoderLayer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1)
+    # Forward path.
+    dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
+    inputs = [dummy_tensor, dummy_tensor, dummy_mask, dummy_mask]
+    cache = _create_cache(2, 0, num_attention_heads,
+                          hidden_size // num_attention_heads)
+    output, cache = decoder_block(inputs, cache)
+    self.assertEqual(output.shape, (2, 4, hidden_size))
+    self.assertEqual(cache['value'].shape, (2, 4, 2, 8))
+
+  def test_use_bias_norm_first(self):
+    num_attention_heads = 2
+    hidden_size = 16
+    decoder_block = transformer.TransformerDecoderLayer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6,
+        intermediate_dropout=0.1,
+        attention_initializer=tf.keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
+    # Forward path.
+    dummy_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 4], dtype=tf.float32)
+    inputs = [dummy_tensor, dummy_tensor, dummy_mask, dummy_mask]
+    output, _ = decoder_block(inputs)
+    self.assertEqual(output.shape, (2, 4, hidden_size))
+
+  def test_get_config(self):
+    num_attention_heads = 2
+    decoder_block = transformer.TransformerDecoderLayer(
+        num_attention_heads=num_attention_heads,
+        intermediate_size=32,
+        intermediate_activation='relu',
+        dropout_rate=0.1,
+        attention_dropout_rate=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6,
+        intermediate_dropout=0.1,
+        attention_initializer=tf.keras.initializers.RandomUniform(
+            minval=0., maxval=1.))
+    decoder_block_config = decoder_block.get_config()
+    new_decoder_block = transformer.TransformerDecoderLayer.from_config(
+        decoder_block_config)
+    self.assertEqual(decoder_block_config, new_decoder_block.get_config())
 
 
 if __name__ == '__main__':

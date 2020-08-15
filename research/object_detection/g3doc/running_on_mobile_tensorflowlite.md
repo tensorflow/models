@@ -1,5 +1,7 @@
 # Running on mobile with TensorFlow Lite
 
+[![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
+
 In this section, we will show you how to use [TensorFlow
 Lite](https://www.tensorflow.org/mobile/tflite/) to get a smaller model and
 allow you take advantage of ops that have been optimized for mobile devices.
@@ -56,7 +58,7 @@ via the following command. For a quantized model, run this from the tensorflow/
 directory:
 
 ```shell
-bazel run --config=opt tensorflow/lite/toco:toco -- \
+bazel run -c opt tensorflow/lite/toco:toco -- \
 --input_file=$OUTPUT_DIR/tflite_graph.pb \
 --output_file=$OUTPUT_DIR/detect.tflite \
 --input_shapes=1,300,300,3 \
@@ -75,14 +77,14 @@ are named 'TFLite_Detection_PostProcess', 'TFLite_Detection_PostProcess:1',
 'TFLite_Detection_PostProcess:2', and 'TFLite_Detection_PostProcess:3' and
 represent four arrays: detection_boxes, detection_classes, detection_scores, and
 num_detections. The documentation for other flags used in this command is
-[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/g3doc/convert/cmdline_reference.md).
+[here](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/lite/g3doc/convert/cmdline.md).
 If things ran successfully, you should now see a third file in the /tmp/tflite
 directory called detect.tflite. This file contains the graph and all model
 parameters and can be run via the TensorFlow Lite interpreter on the Android
 device. For a floating point model, run this from the tensorflow/ directory:
 
 ```shell
-bazel run --config=opt tensorflow/lite/toco:toco -- \
+bazel run -c opt tensorflow/lite/toco:toco -- \
 --input_file=$OUTPUT_DIR/tflite_graph.pb \
 --output_file=$OUTPUT_DIR/detect.tflite \
 --input_shapes=1,300,300,3 \
@@ -131,7 +133,7 @@ the
 $TF_EXAMPLES/lite/examples/object_detection/android/app/src/main/java/org/tensorflow/demo/DetectorActivity.java
 file in a text editor and find the definition of TF_OD_API_LABELS_FILE. Update
 this path to point to your new label map file:
-"file:///android_asset/labels_list.txt". Note that if your model is quantized,
+"labels_list.txt". Note that if your model is quantized,
 the flag TF_OD_API_IS_QUANTIZED is set to true, and if your model is floating
 point, the flag TF_OD_API_IS_QUANTIZED is set to false. This new section of
 DetectorActivity.java should now look as follows for a quantized model:
@@ -139,7 +141,7 @@ DetectorActivity.java should now look as follows for a quantized model:
 ```shell
   private static final boolean TF_OD_API_IS_QUANTIZED = true;
   private static final String TF_OD_API_MODEL_FILE = "detect.tflite";
-  private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labels_list.txt";
+  private static final String TF_OD_API_LABELS_FILE = "labels_list.txt";
 ```
 
 Once you’ve copied the TensorFlow Lite model and edited the gradle build script

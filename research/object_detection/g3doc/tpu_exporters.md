@@ -1,5 +1,7 @@
 # Object Detection TPU Inference Exporter
 
+[![TensorFlow 1.15](https://img.shields.io/badge/TensorFlow-1.15-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
+
 This package contains SavedModel Exporter for TPU Inference of object detection
 models.
 

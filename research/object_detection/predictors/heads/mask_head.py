@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,14 +20,17 @@ Contains Mask prediction head classes for different meta architectures.
 All the mask prediction heads have a predict function that receives the
 `features` as the first argument and returns `mask_predictions`.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import math
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+from six.moves import range
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.predictors.heads import head
 from object_detection.utils import ops
-
-slim = contrib_slim
 
 
 class MaskRCNNMaskHead(head.Head):
@@ -155,8 +159,8 @@ class MaskRCNNMaskHead(head.Head):
       if self._convolve_then_upsample:
         # Replace Transposed Convolution with a Nearest Neighbor upsampling step
         # followed by 3x3 convolution.
-        height_scale = self._mask_height / features.shape[1].value
-        width_scale = self._mask_width / features.shape[2].value
+        height_scale = self._mask_height // features.shape[1].value
+        width_scale = self._mask_width // features.shape[2].value
         features = ops.nearest_neighbor_upsampling(
             features, height_scale=height_scale, width_scale=width_scale)
         features = slim.conv2d(

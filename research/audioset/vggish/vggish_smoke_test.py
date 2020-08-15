@@ -33,7 +33,6 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 
 import vggish_input
 import vggish_params
@@ -54,7 +53,7 @@ rel_error = 0.1  # Up to 10%
 num_secs = 3
 freq = 1000
 sr = 44100
-t = np.linspace(0, num_secs, int(num_secs * sr))
+t = np.arange(0, num_secs, 1 / sr)
 x = np.sin(2 * np.pi * freq * t)
 
 # Produce a batch of log mel spectrogram examples.
@@ -77,8 +76,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
   [embedding_batch] = sess.run([embedding_tensor],
                                feed_dict={features_tensor: input_batch})
   print('VGGish embedding: ', embedding_batch[0])
-  expected_embedding_mean = 0.131
-  expected_embedding_std = 0.238
+  expected_embedding_mean = -0.0333
+  expected_embedding_std = 0.380
   np.testing.assert_allclose(
       [np.mean(embedding_batch), np.std(embedding_batch)],
       [expected_embedding_mean, expected_embedding_std],
@@ -88,8 +87,8 @@ with tf.Graph().as_default(), tf.Session() as sess:
 pproc = vggish_postprocess.Postprocessor(pca_params_path)
 postprocessed_batch = pproc.postprocess(embedding_batch)
 print('Postprocessed VGGish embedding: ', postprocessed_batch[0])
-expected_postprocessed_mean = 123.0
-expected_postprocessed_std = 75.0
+expected_postprocessed_mean = 122.0
+expected_postprocessed_std = 93.5
 np.testing.assert_allclose(
     [np.mean(postprocessed_batch), np.std(postprocessed_batch)],
     [expected_postprocessed_mean, expected_postprocessed_std],

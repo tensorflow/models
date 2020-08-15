@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,9 +16,15 @@
 
 """Tests for anchor_generator_builder."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import math
 
-import tensorflow as tf
+from six.moves import range
+from six.moves import zip
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 from object_detection.anchor_generators import flexible_grid_anchor_generator

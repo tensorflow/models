@@ -18,14 +18,17 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+import unittest
 from absl.testing import parameterized
 import numpy as np
 import six
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection import eval_util
 from object_detection.core import standard_fields
 from object_detection.utils import object_detection_evaluation
+from object_detection.utils import tf_version
 
 
 class OpenImagesV2EvaluationTest(tf.test.TestCase):
@@ -970,6 +973,8 @@ class ObjectDetectionEvaluationTest(tf.test.TestCase):
     self.assertAlmostEqual(copy_mean_corloc, mean_corloc)
 
 
+@unittest.skipIf(tf_version.is_tf2(), 'Eval Metrics ops are supported in TF1.X '
+                 'only.')
 class ObjectDetectionEvaluatorTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):

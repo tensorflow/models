@@ -69,6 +69,7 @@ message LocalizationLoss {
     WeightedL2LocalizationLoss weighted_l2 = 1;
     WeightedSmoothL1LocalizationLoss weighted_smooth_l1 = 2;
     WeightedIOULocalizationLoss weighted_iou = 3;
+    L1LocalizationLoss l1_localization_loss = 4;
   }
 }
 
@@ -96,6 +97,10 @@ message WeightedSmoothL1LocalizationLoss {
 message WeightedIOULocalizationLoss {
 }
 
+// L1 Localization Loss.
+message L1LocalizationLoss {
+}
+
 // Configuration for class prediction loss function.
 message ClassificationLoss {
   oneof classification_loss {
@@ -104,6 +109,7 @@ message ClassificationLoss {
     WeightedSoftmaxClassificationAgainstLogitsLoss weighted_logits_softmax = 5;
     BootstrappedSigmoidClassificationLoss bootstrapped_sigmoid = 3;
     SigmoidFocalClassificationLoss weighted_sigmoid_focal = 4;
+    PenaltyReducedLogisticFocalLoss penalty_reduced_logistic_focal_loss = 6;
   }
 }
 
@@ -160,6 +166,17 @@ message BootstrappedSigmoidClassificationLoss {
   // DEPRECATED, do not use.
   // Output loss per anchor.
   optional bool anchorwise_output = 3 [default=false];
+}
+
+// Pixelwise logistic focal loss with pixels near the target having a reduced
+// penalty.
+message PenaltyReducedLogisticFocalLoss {
+
+  // Focussing parameter of the focal loss.
+  optional float alpha = 1;
+
+  // Penalty reduction factor.
+  optional float beta = 2;
 }
 
 // Configuration for hard example miner.

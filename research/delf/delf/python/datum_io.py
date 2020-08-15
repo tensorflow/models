@@ -179,7 +179,7 @@ def ReadFromFile(file_path):
   Returns:
     data: NumPy array.
   """
-  with tf.gfile.GFile(file_path, 'rb') as f:
+  with tf.io.gfile.GFile(file_path, 'rb') as f:
     return ParseFromString(f.read())
 
 
@@ -192,7 +192,7 @@ def ReadPairFromFile(file_path):
   Returns:
     Two NumPy arrays.
   """
-  with tf.gfile.GFile(file_path, 'rb') as f:
+  with tf.io.gfile.GFile(file_path, 'rb') as f:
     return ParsePairFromString(f.read())
 
 
@@ -204,7 +204,7 @@ def WriteToFile(data, file_path):
     file_path: Path to file that will be written.
   """
   serialized_data = SerializeToString(data)
-  with tf.gfile.GFile(file_path, 'w') as f:
+  with tf.io.gfile.GFile(file_path, 'w') as f:
     f.write(serialized_data)
 
 
@@ -217,5 +217,5 @@ def WritePairToFile(arr_1, arr_2, file_path):
     file_path: Path to file that will be written.
   """
   serialized_data = SerializePairToString(arr_1, arr_2)
-  with tf.gfile.GFile(file_path, 'w') as f:
+  with tf.io.gfile.GFile(file_path, 'w') as f:
     f.write(serialized_data)

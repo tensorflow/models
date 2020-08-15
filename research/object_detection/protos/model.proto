@@ -2,6 +2,7 @@ syntax = "proto2";
 
 package object_detection.protos;
 
+import "object_detection/protos/center_net.proto";
 import "object_detection/protos/faster_rcnn.proto";
 import "object_detection/protos/ssd.proto";
 
@@ -13,9 +14,11 @@ message DetectionModel {
 
     // This can be used to define experimental models. To define your own
     // experimental meta architecture, populate a key in the
-    // model_builder.EXPERIMENTAL_META_ARCHITECURE_BUILDER_MAP dict and set its
+    // model_builder.EXPERIMENTAL_META_ARCH_BUILDER_MAP dict and set its
     // value to a function that builds your model.
     ExperimentalModel experimental_model = 3;
+
+    CenterNet center_net = 4;
   }
 }
 

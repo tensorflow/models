@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,13 +24,17 @@ Object detection feature extractors usually are built by stacking two components
 Feature map generators build on the base feature extractors and produce a list
 of final feature maps.
 """
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import collections
 import functools
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+from six.moves import range
+from six.moves import zip
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from object_detection.utils import ops
 from object_detection.utils import shape_utils
-slim = contrib_slim
 
 # Activation bound used for TPU v1. Activations will be clipped to
 # [-ACTIVATION_BOUND, ACTIVATION_BOUND] when training with
@@ -221,8 +226,8 @@ class KerasMultiResolutionFeatureMaps(tf.keras.Model):
       else:
         if insert_1x1_conv:
           layer_name = '{}_1_Conv2d_{}_1x1_{}'.format(
-              base_from_layer, index, depth_fn(layer_depth / 2))
-          net.append(tf.keras.layers.Conv2D(depth_fn(layer_depth / 2),
+              base_from_layer, index, depth_fn(layer_depth // 2))
+          net.append(tf.keras.layers.Conv2D(depth_fn(layer_depth // 2),
                                             [1, 1],
                                             padding='SAME',
                                             strides=1,
@@ -431,10 +436,10 @@ def multi_resolution_feature_maps(feature_map_layout, depth_multiplier,
       intermediate_layer = pre_layer
       if insert_1x1_conv:
         layer_name = '{}_1_Conv2d_{}_1x1_{}'.format(
-            base_from_layer, index, depth_fn(layer_depth / 2))
+            base_from_layer, index, depth_fn(layer_depth // 2))
         intermediate_layer = slim.conv2d(
             pre_layer,
-            depth_fn(layer_depth / 2), [1, 1],
+            depth_fn(layer_depth // 2), [1, 1],
             padding='SAME',
             stride=1,
             scope=layer_name)
@@ -547,7 +552,7 @@ class KerasFpnTopDownFeatureMaps(tf.keras.Model):
       self.top_layers.append(tf.keras.layers.Lambda(
           clip_by_value, name='clip_by_value'))
 
-    for level in reversed(range(num_levels - 1)):
+    for level in reversed(list(range(num_levels - 1))):
       # to generate residual from image features
       residual_net = []
       # to preprocess top_down (the image feature map from last layer)
@@ -636,7 +641,7 @@ class KerasFpnTopDownFeatureMaps(tf.keras.Model):
       output_feature_map_keys.append('top_down_%s' % image_features[-1][0])
 
       num_levels = len(image_features)
-      for index, level in enumerate(reversed(range(num_levels - 1))):
+      for index, level in enumerate(reversed(list(range(num_levels - 1)))):
         residual = image_features[level][1]
         top_down = output_feature_maps_list[-1]
         for layer in self.residual_blocks[index]:
@@ -703,7 +708,7 @@ def fpn_top_down_feature_maps(image_features,
       output_feature_map_keys.append(
           'top_down_%s' % image_features[-1][0])
 
-      for level in reversed(range(num_levels - 1)):
+      for level in reversed(list(range(num_levels - 1))):
         if use_native_resize_op:
           with tf.name_scope('nearest_neighbor_upsampling'):
             top_down_shape = shape_utils.combined_static_and_dynamic_shape(
@@ -731,10 +736,11 @@ def fpn_top_down_feature_maps(image_features,
           conv_op = functools.partial(slim.separable_conv2d, depth_multiplier=1)
         else:
           conv_op = slim.conv2d
+        pre_output = top_down
         if use_explicit_padding:
-          top_down = ops.fixed_padding(top_down, kernel_size)
+          pre_output = ops.fixed_padding(pre_output, kernel_size)
         output_feature_maps_list.append(conv_op(
-            top_down,
+            pre_output,
             depth, [kernel_size, kernel_size],
             scope='smoothing_%d' % (level + 1)))
         output_feature_map_keys.append('top_down_%s' % image_features[level][0])
@@ -778,7 +784,7 @@ def pooling_pyramid_feature_maps(base_feature_map_depth, num_layers,
   """
   if len(image_features) != 1:
     raise ValueError('image_features should be a dictionary of length 1.')
-  image_features = image_features[image_features.keys()[0]]
+  image_features = image_features[list(image_features.keys())[0]]
 
   feature_map_keys = []
   feature_maps = []

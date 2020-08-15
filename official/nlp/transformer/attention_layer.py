@@ -18,6 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
+
 import tensorflow as tf
 from official.nlp.modeling import layers
 
@@ -47,25 +49,34 @@ class Attention(tf.keras.layers.Layer):
     """Builds the layer."""
     # Layers for linearly projecting the queries, keys, and values.
     size_per_head = self.hidden_size // self.num_heads
+
+    def _glorot_initializer(fan_in, fan_out):
+      limit = math.sqrt(6.0 / (fan_in + fan_out))
+      return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)
+
+    attention_initializer = _glorot_initializer(input_shape.as_list()[-1],
+                                                self.hidden_size)
     self.query_dense_layer = layers.DenseEinsum(
         output_shape=(self.num_heads, size_per_head),
-        kernel_initializer="glorot_uniform",
+        kernel_initializer=attention_initializer,
         use_bias=False,
         name="query")
     self.key_dense_layer = layers.DenseEinsum(
         output_shape=(self.num_heads, size_per_head),
-        kernel_initializer="glorot_uniform",
+        kernel_initializer=attention_initializer,
         use_bias=False,
         name="key")
     self.value_dense_layer = layers.DenseEinsum(
         output_shape=(self.num_heads, size_per_head),
-        kernel_initializer="glorot_uniform",
+        kernel_initializer=attention_initializer,
         use_bias=False,
         name="value")
+
+    output_initializer = _glorot_initializer(self.hidden_size, self.hidden_size)
     self.output_dense_layer = layers.DenseEinsum(
         output_shape=self.hidden_size,
         num_summed_dimensions=2,
-        kernel_initializer="glorot_uniform",
+        kernel_initializer=output_initializer,
         use_bias=False,
         name="output_transform")
     super(Attention, self).build(input_shape)
@@ -77,7 +88,12 @@ class Attention(tf.keras.layers.Layer):
         "attention_dropout": self.attention_dropout,
     }
 
-  def call(self, query_input, source_input, bias, training, cache=None,
+  def call(self,
+           query_input,
+           source_input,
+           bias,
+           training,
+           cache=None,
            decode_loop_step=None):
     """Apply attention mechanism to query_input and source_input.
 
@@ -91,9 +107,9 @@ class Attention(tf.keras.layers.Layer):
       cache: (Used during prediction) A dictionary with tensors containing
         results of previous attentions. The dictionary must have the items:
             {"k": tensor with shape [batch_size, i, heads, dim_per_head],
-             "v": tensor with shape [batch_size, i, heads, dim_per_head]}
-        where i is the current decoded length for non-padded decode, or max
-        sequence length for padded decode.
+             "v": tensor with shape [batch_size, i, heads, dim_per_head]} where
+               i is the current decoded length for non-padded decode, or max
+               sequence length for padded decode.
       decode_loop_step: An integer, step number of the decoding loop. Used only
         for autoregressive inference on TPU.
 
@@ -131,7 +147,7 @@ class Attention(tf.keras.layers.Layer):
     # Scale query to prevent the dot product between query and key from growing
     # too large.
     depth = (self.hidden_size // self.num_heads)
-    query *= depth ** -0.5
+    query *= depth**-0.5
 
     # Calculate dot product attention
     logits = tf.einsum("BTNH,BFNH->BNFT", key, query)
@@ -153,7 +169,11 @@ class Attention(tf.keras.layers.Layer):
 class SelfAttention(Attention):
   """Multiheaded self-attention layer."""
 
-  def call(self, query_input, bias, training, cache=None,
+  def call(self,
+           query_input,
+           bias,
+           training,
+           cache=None,
            decode_loop_step=None):
-    return super(SelfAttention, self).call(
-        query_input, query_input, bias, training, cache, decode_loop_step)
+    return super(SelfAttention, self).call(query_input, query_input, bias,
+                                           training, cache, decode_loop_step)

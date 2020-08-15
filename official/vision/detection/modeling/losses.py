@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Losses used for Mask-RCNN."""
+"""Losses used for detection models."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def focal_loss(logits, targets, alpha, gamma, normalizer):
@@ -371,8 +371,8 @@ class MaskrcnnLoss(object):
 class RetinanetClassLoss(object):
   """RetinaNet class loss."""
 
-  def __init__(self, params):
-    self._num_classes = params.num_classes
+  def __init__(self, params, num_classes):
+    self._num_classes = num_classes
     self._focal_loss_alpha = params.focal_loss_alpha
     self._focal_loss_gamma = params.focal_loss_gamma
 
@@ -411,8 +411,10 @@ class RetinanetClassLoss(object):
     bs, height, width, _, _ = cls_targets_one_hot.get_shape().as_list()
     cls_targets_one_hot = tf.reshape(cls_targets_one_hot,
                                      [bs, height, width, -1])
-    loss = focal_loss(cls_outputs, cls_targets_one_hot,
-                      self._focal_loss_alpha, self._focal_loss_gamma,
+    loss = focal_loss(tf.cast(cls_outputs, dtype=tf.float32),
+                      tf.cast(cls_targets_one_hot, dtype=tf.float32),
+                      self._focal_loss_alpha,
+                      self._focal_loss_gamma,
                       num_positives)
 
     ignore_loss = tf.where(
@@ -447,7 +449,7 @@ class RetinanetBoxLoss(object):
       num_positives: number of positive examples in the minibatch.
 
     Returns:
-      an integar tensor representing total box regression loss.
+      an integer tensor representing total box regression loss.
     """
     # Sums all positives in a batch for normalization and avoids zero
     # num_positives_sum, which would lead to inf loss during training
@@ -455,7 +457,6 @@ class RetinanetBoxLoss(object):
 
     box_losses = []
     for level in box_outputs.keys():
-      # Onehot encoding for classification labels.
       box_targets_l = labels[level]
       box_losses.append(
           self.box_loss(box_outputs[level], box_targets_l, num_positives_sum))
@@ -479,12 +480,62 @@ class RetinanetBoxLoss(object):
 class ShapemaskMseLoss(object):
   """ShapeMask mask Mean Squared Error loss function wrapper."""
 
-  def __init__(self):
-    raise NotImplementedError('Not Implemented.')
+  def __call__(self, probs, labels, valid_mask):
+    """Compute instance segmentation loss.
+
+    Args:
+      probs: A Tensor of shape [batch_size * num_points, height, width,
+        num_classes]. The logits are not necessarily between 0 and 1.
+      labels: A float32/float16 Tensor of shape [batch_size, num_instances,
+          mask_size, mask_size], where mask_size =
+          mask_crop_size * gt_upsample_scale for fine mask, or mask_crop_size
+          for coarse masks and shape priors.
+      valid_mask: a binary mask indicating valid training masks.
+
+    Returns:
+      loss: an float tensor representing total mask classification loss.
+    """
+    with tf.name_scope('shapemask_prior_loss'):
+      batch_size, num_instances = valid_mask.get_shape().as_list()[:2]
+      diff = (tf.cast(labels, dtype=tf.float32) -
+              tf.cast(probs, dtype=tf.float32))
+      diff *= tf.cast(
+          tf.reshape(valid_mask, [batch_size, num_instances, 1, 1]),
+          tf.float32)
+      # Adding 0.001 in the denominator to avoid division by zero.
+      loss = tf.nn.l2_loss(diff) / (tf.reduce_sum(labels) + 0.001)
+    return loss
 
 
 class ShapemaskLoss(object):
   """ShapeMask mask loss function wrapper."""
 
   def __init__(self):
-    raise NotImplementedError('Not Implemented.')
+    self._binary_crossentropy = tf.keras.losses.BinaryCrossentropy(
+        reduction=tf.keras.losses.Reduction.SUM, from_logits=True)
+
+  def __call__(self, logits, labels, valid_mask):
+    """ShapeMask mask cross entropy loss function wrapper.
+
+    Args:
+      logits: A Tensor of shape [batch_size * num_instances, height, width,
+        num_classes]. The logits are not necessarily between 0 and 1.
+      labels: A float16/float32 Tensor of shape [batch_size, num_instances,
+        mask_size, mask_size], where mask_size =
+        mask_crop_size * gt_upsample_scale for fine mask, or mask_crop_size
+        for coarse masks and shape priors.
+      valid_mask: a binary mask of shape [batch_size, num_instances]
+        indicating valid training masks.
+    Returns:
+      loss: an float tensor representing total mask classification loss.
+    """
+    with tf.name_scope('shapemask_loss'):
+      batch_size, num_instances = valid_mask.get_shape().as_list()[:2]
+      labels = tf.cast(labels, tf.float32)
+      logits = tf.cast(logits, tf.float32)
+      loss = self._binary_crossentropy(labels, logits)
+      loss *= tf.cast(tf.reshape(
+          valid_mask, [batch_size, num_instances, 1, 1]), loss.dtype)
+      # Adding 0.001 in the denominator to avoid division by zero.
+      loss = tf.reduce_sum(loss) / (tf.reduce_sum(labels) + 0.001)
+    return loss

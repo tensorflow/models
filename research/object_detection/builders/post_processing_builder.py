@@ -16,7 +16,7 @@
 """Builder function for post processing operations."""
 import functools
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from object_detection.builders import calibration_builder
 from object_detection.core import post_processing
 from object_detection.protos import post_processing_pb2
@@ -102,7 +102,9 @@ def _build_non_max_suppressor(nms_config):
       soft_nms_sigma=nms_config.soft_nms_sigma,
       use_partitioned_nms=nms_config.use_partitioned_nms,
       use_combined_nms=nms_config.use_combined_nms,
-      change_coordinate_frame=True)
+      change_coordinate_frame=nms_config.change_coordinate_frame,
+      use_hard_nms=nms_config.use_hard_nms,
+      use_cpu_nms=nms_config.use_cpu_nms)
 
   return non_max_suppressor_fn
 
@@ -110,7 +112,7 @@ def _build_non_max_suppressor(nms_config):
 def _score_converter_fn_with_logit_scale(tf_score_converter_fn, logit_scale):
   """Create a function to scale logits then apply a Tensorflow function."""
   def score_converter_fn(logits):
-    scaled_logits = tf.divide(logits, logit_scale, name='scale_logits')
+    scaled_logits = tf.multiply(logits, 1.0 / logit_scale, name='scale_logits')
     return tf_score_converter_fn(scaled_logits, name='convert_scores')
   score_converter_fn.__name__ = '%s_with_logit_scale' % (
       tf_score_converter_fn.__name__)

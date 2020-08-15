@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from six.moves import xrange  # pylint: disable=redefined-builtin
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from nets import dcgan
 
@@ -27,19 +27,19 @@ from nets import dcgan
 class DCGANTest(tf.test.TestCase):
 
   def test_generator_run(self):
-    tf.compat.v1.set_random_seed(1234)
+    tf.set_random_seed(1234)
     noise = tf.random.normal([100, 64])
     image, _ = dcgan.generator(noise)
     with self.test_session() as sess:
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       image.eval()
 
   def test_generator_graph(self):
-    tf.compat.v1.set_random_seed(1234)
+    tf.set_random_seed(1234)
     # Check graph construction for a number of image size/depths and batch
     # sizes.
     for i, batch_size in zip(xrange(3, 7), xrange(3, 8)):
-      tf.compat.v1.reset_default_graph()
+      tf.reset_default_graph()
       final_size = 2 ** i
       noise = tf.random.normal([batch_size, 64])
       image, end_points = dcgan.generator(
@@ -74,14 +74,14 @@ class DCGANTest(tf.test.TestCase):
     image = tf.random.uniform([5, 32, 32, 3], -1, 1)
     output, _ = dcgan.discriminator(image)
     with self.test_session() as sess:
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output.eval()
 
   def test_discriminator_graph(self):
     # Check graph construction for a number of image size/depths and batch
     # sizes.
     for i, batch_size in zip(xrange(1, 6), xrange(3, 8)):
-      tf.compat.v1.reset_default_graph()
+      tf.reset_default_graph()
       img_w = 2 ** i
       image = tf.random.uniform([batch_size, img_w, img_w, 3], -1, 1)
       output, end_points = dcgan.discriminator(
@@ -103,7 +103,7 @@ class DCGANTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       dcgan.discriminator(wrong_dim_img)
 
-    spatially_undefined_shape = tf.compat.v1.placeholder(
+    spatially_undefined_shape = tf.placeholder(
         tf.float32, [5, 32, None, 3])
     with self.assertRaises(ValueError):
       dcgan.discriminator(spatially_undefined_shape)

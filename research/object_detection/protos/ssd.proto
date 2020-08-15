@@ -11,6 +11,7 @@ import "object_detection/protos/losses.proto";
 import "object_detection/protos/matcher.proto";
 import "object_detection/protos/post_processing.proto";
 import "object_detection/protos/region_similarity_calculator.proto";
+import "object_detection/protos/fpn.proto";
 
 // Configuration for Single Shot Detection (SSD) models.
 // Next id: 27
@@ -145,6 +146,7 @@ message Ssd {
   optional MaskHead mask_head_config = 25;
 }
 
+// Next id: 20.
 message SsdFeatureExtractor {
   reserved 6;
 
@@ -184,8 +186,13 @@ message SsdFeatureExtractor {
   // feature maps added by SSD.
   optional bool use_depthwise = 8 [default = false];
 
-  // Feature Pyramid Networks config.
-  optional FeaturePyramidNetworks fpn = 10;
+  oneof feature_pyramid_oneof {
+    // Feature Pyramid Networks config.
+    FeaturePyramidNetworks fpn = 10;
+
+    // Bidirectional Feature Pyramid Networks config.
+    BidirectionalFeaturePyramidNetworks bifpn = 19;
+  }
 
   // If true, replace preprocess function of feature extractor with a
   // placeholder. This should only be used if all the image preprocessing steps
@@ -194,33 +201,6 @@ message SsdFeatureExtractor {
 
   // The number of SSD layers.
   optional int32 num_layers = 12 [default = 6];
-
-}
-
-// Configuration for Feature Pyramid Networks.
-message FeaturePyramidNetworks {
-  // We recommend to use multi_resolution_feature_map_generator with FPN, and
-  // the levels there must match the levels defined below for better
-  // performance.
-  // Correspondence from FPN levels to Resnet/Mobilenet V1 feature maps:
-  // FPN Level        Resnet Feature Map      Mobilenet-V1 Feature Map
-  //     2               Block 1                Conv2d_3_pointwise
-  //     3               Block 2                Conv2d_5_pointwise
-  //     4               Block 3                Conv2d_11_pointwise
-  //     5               Block 4                Conv2d_13_pointwise
-  //     6               Bottomup_5             bottom_up_Conv2d_14
-  //     7               Bottomup_6             bottom_up_Conv2d_15
-  //     8               Bottomup_7             bottom_up_Conv2d_16
-  //     9               Bottomup_8             bottom_up_Conv2d_17
-
-  // minimum level in feature pyramid
-  optional int32 min_level = 1 [default = 3];
-
-  // maximum level in feature pyramid
-  optional int32 max_level = 2 [default = 7];
-
-  // channel depth for additional coarse feature layers.
-  optional int32 additional_layer_depth = 3 [default = 256];
 
 }
 

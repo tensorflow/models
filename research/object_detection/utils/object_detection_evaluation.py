@@ -40,7 +40,7 @@ import numpy as np
 import six
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields
 from object_detection.utils import label_map_util
@@ -815,8 +815,11 @@ class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
         metric_prefix=metrics_prefix)
 
     self._evaluatable_labels = {}
-    self._expected_keys.add(
-        standard_fields.InputDataFields.groundtruth_image_classes)
+    # Only one of the two has to be provided, but both options are given
+    # for compatibility with previous codebase.
+    self._expected_keys.update([
+        standard_fields.InputDataFields.groundtruth_image_classes,
+        standard_fields.InputDataFields.groundtruth_labeled_classes])
 
   def add_single_ground_truth_image_info(self, image_id, groundtruth_dict):
     """Adds groundtruth for a single image to be used for evaluation.
@@ -841,14 +844,18 @@ class OpenImagesChallengeEvaluator(OpenImagesDetectionEvaluator):
     """
     super(OpenImagesChallengeEvaluator,
           self).add_single_ground_truth_image_info(image_id, groundtruth_dict)
+    input_fields = standard_fields.InputDataFields
     groundtruth_classes = (
-        groundtruth_dict[standard_fields.InputDataFields.groundtruth_classes] -
+        groundtruth_dict[input_fields.groundtruth_classes] -
         self._label_id_offset)
+    image_classes = np.array([], dtype=int)
+    if input_fields.groundtruth_image_classes in groundtruth_dict:
+      image_classes = groundtruth_dict[input_fields.groundtruth_image_classes]
+    elif input_fields.groundtruth_labeled_classes in groundtruth_dict:
+      image_classes = groundtruth_dict[input_fields.groundtruth_labeled_classes]
+    image_classes -= self._label_id_offset
     self._evaluatable_labels[image_id] = np.unique(
-        np.concatenate(((groundtruth_dict.get(
-            standard_fields.InputDataFields.groundtruth_image_classes,
-            np.array([], dtype=int)) - self._label_id_offset),
-                        groundtruth_classes)))
+        np.concatenate((image_classes, groundtruth_classes)))
 
   def add_single_detected_image_info(self, image_id, detections_dict):
     """Adds detections for a single image to be used for evaluation.

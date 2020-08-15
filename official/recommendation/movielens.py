@@ -27,18 +27,18 @@ import tempfile
 import zipfile
 
 # pylint: disable=g-bad-import-order
+# Import libraries
 import numpy as np
 import pandas as pd
 import six
 from six.moves import urllib  # pylint: disable=redefined-builtin
-from absl import app as absl_app
+from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.utils.flags import core as flags_core
-
 
 
 ML_1M = "ml-1m"
@@ -84,6 +84,8 @@ NUM_RATINGS = {
     ML_1M: 1000209,
     ML_20M: 20000263
 }
+
+DATASET_TO_NUM_USERS_AND_ITEMS = {ML_1M: (6040, 3706), ML_20M: (138493, 26744)}
 
 
 def _download_and_clean(dataset, data_dir):
@@ -285,17 +287,24 @@ def integerize_genres(dataframe):
   return dataframe
 
 
+def define_flags():
+  """Add flags specifying data usage arguments."""
+  flags.DEFINE_enum(
+      name="dataset",
+      default=None,
+      enum_values=DATASETS,
+      case_sensitive=False,
+      help=flags_core.help_wrap("Dataset to be trained and evaluated."))
+
+
 def define_data_download_flags():
-  """Add flags specifying data download arguments."""
+  """Add flags specifying data download and usage arguments."""
   flags.DEFINE_string(
       name="data_dir", default="/tmp/movielens-data/",
       help=flags_core.help_wrap(
           "Directory to download and extract data."))
 
-  flags.DEFINE_enum(
-      name="dataset", default=None,
-      enum_values=DATASETS, case_sensitive=False,
-      help=flags_core.help_wrap("Dataset to be trained and evaluated."))
+  define_flags()
 
 
 def main(_):
@@ -306,4 +315,4 @@ def main(_):
 if __name__ == "__main__":
   define_data_download_flags()
   FLAGS = flags.FLAGS
-  absl_app.run(main)
+  app.run(main)

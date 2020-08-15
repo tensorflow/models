@@ -27,7 +27,7 @@ These modules are separated from the main model since the same
 few box predictor architectures are shared across many models.
 """
 from abc import abstractmethod
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 BOX_ENCODINGS = 'box_encodings'
 CLASS_PREDICTIONS_WITH_BACKGROUND = 'class_predictions_with_background'
@@ -134,7 +134,7 @@ class BoxPredictor(object):
     pass
 
 
-class KerasBoxPredictor(tf.keras.Model):
+class KerasBoxPredictor(tf.keras.layers.Layer):
   """Keras-based BoxPredictor."""
 
   def __init__(self, is_training, num_classes, freeze_batchnorm,

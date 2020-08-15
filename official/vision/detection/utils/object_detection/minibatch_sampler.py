@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Base minibatch sampler module.
 
 The job of the minibatch_sampler is to subsample a minibatch based on some
@@ -33,7 +32,7 @@ This is originally implemented in TensorFlow Object Detection API.
 from abc import ABCMeta
 from abc import abstractmethod
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.utils.object_detection import ops
 
@@ -53,8 +52,8 @@ class MinibatchSampler(object):
     Args:
       indicator: boolean tensor of shape [N] whose True entries can be sampled.
       batch_size: desired batch size.
-      **params: additional keyword arguments for specific implementations of
-          the MinibatchSampler.
+      **params: additional keyword arguments for specific implementations of the
+        MinibatchSampler.
 
     Returns:
       sample_indicator: boolean tensor of shape [N] whose True entries have been
@@ -72,8 +71,8 @@ class MinibatchSampler(object):
     is returned.
 
     Args:
-      indicator: a 1-dimensional boolean tensor indicating which elements
-        are allowed to be sampled and which are not.
+      indicator: a 1-dimensional boolean tensor indicating which elements are
+        allowed to be sampled and which are not.
       num_samples: int32 scalar tensor
 
     Returns:

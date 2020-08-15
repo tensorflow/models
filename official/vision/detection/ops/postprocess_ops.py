@@ -19,7 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
-import tensorflow.compat.v2 as tf
+
+import tensorflow as tf
 
 from official.vision.detection.ops import nms
 from official.vision.detection.utils import box_utils
@@ -202,15 +203,14 @@ def _generate_detections_per_image(boxes,
         scores_i, k=tf.minimum(tf.shape(input=scores_i)[-1], pre_nms_num_boxes))
     boxes_i = tf.gather(boxes_i, indices)
 
-    (nmsed_indices_i,
-     nmsed_num_valid_i) = tf.image.non_max_suppression_padded(
-         tf.cast(boxes_i, tf.float32),
-         tf.cast(scores_i, tf.float32),
-         max_total_size,
-         iou_threshold=nms_iou_threshold,
-         score_threshold=score_threshold,
-         pad_to_max_output_size=True,
-         name='nms_detections_' + str(i))
+    (nmsed_indices_i, nmsed_num_valid_i) = tf.image.non_max_suppression_padded(
+        tf.cast(boxes_i, tf.float32),
+        tf.cast(scores_i, tf.float32),
+        max_total_size,
+        iou_threshold=nms_iou_threshold,
+        score_threshold=score_threshold,
+        pad_to_max_output_size=True,
+        name='nms_detections_' + str(i))
     nmsed_boxes_i = tf.gather(boxes_i, nmsed_indices_i)
     nmsed_scores_i = tf.gather(scores_i, nmsed_indices_i)
     # Sets scores of invalid boxes to -1.
@@ -235,11 +235,8 @@ def _generate_detections_per_image(boxes,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-def _generate_detections_batched(boxes,
-                                 scores,
-                                 max_total_size,
-                                 nms_iou_threshold,
-                                 score_threshold):
+def _generate_detections_batched(boxes, scores, max_total_size,
+                                 nms_iou_threshold, score_threshold):
   """Generates detected boxes with scores and classes for one-stage detector.
 
   The function takes output of multi-level ConvNets and anchor boxes and
@@ -247,19 +244,20 @@ def _generate_detections_batched(boxes,
   supported on TPU currently.
 
   Args:
-    boxes: a tensor with shape [batch_size, N, num_classes, 4] or
-      [batch_size, N, 1, 4], which box predictions on all feature levels. The N
-      is the number of total anchors on all levels.
-    scores: a tensor with shape [batch_size, N, num_classes], which
-      stacks class probability on all feature levels. The N is the number of
-      total anchors on all levels. The num_classes is the number of classes
-      predicted by the model. Note that the class_outputs here is the raw score.
+    boxes: a tensor with shape [batch_size, N, num_classes, 4] or [batch_size,
+      N, 1, 4], which box predictions on all feature levels. The N is the number
+      of total anchors on all levels.
+    scores: a tensor with shape [batch_size, N, num_classes], which stacks class
+      probability on all feature levels. The N is the number of total anchors on
+      all levels. The num_classes is the number of classes predicted by the
+      model. Note that the class_outputs here is the raw score.
     max_total_size: a scalar representing maximum number of boxes retained over
       all classes.
     nms_iou_threshold: a float representing the threshold for deciding whether
       boxes overlap too much with respect to IOU.
     score_threshold: a float representing the threshold for deciding when to
       remove boxes based on score.
+
   Returns:
     nms_boxes: `float` Tensor of shape [batch_size, max_total_size, 4]
       representing top detected boxes in [y1, x1, y2, x2].
@@ -285,19 +283,21 @@ def _generate_detections_batched(boxes,
          max_total_size=max_total_size,
          iou_threshold=nms_iou_threshold,
          score_threshold=score_threshold,
-         pad_per_class=False,)
+         pad_per_class=False,
+     )
     # De-normalizes box cooridinates.
     nmsed_boxes *= normalizer
+  nmsed_classes = tf.cast(nmsed_classes, tf.int32)
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
 class MultilevelDetectionGenerator(object):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
-  def __init__(self, params):
+  def __init__(self, min_level, max_level, params):
+    self._min_level = min_level
+    self._max_level = max_level
     self._generate_detections = generate_detections_factory(params)
-    self._min_level = params.min_level
-    self._max_level = params.max_level
 
   def __call__(self, box_outputs, class_outputs, anchor_boxes, image_shape):
     # Collects outputs from all levels into a list.
@@ -381,16 +381,13 @@ class GenericDetectionGenerator(object):
     box_outputs = tf.reshape(
         box_outputs,
         tf.stack([batch_size, num_locations, num_classes, 4], axis=-1))
-    box_outputs = tf.slice(
-        box_outputs, [0, 0, 1, 0], [-1, -1, -1, -1])
+    box_outputs = tf.slice(box_outputs, [0, 0, 1, 0], [-1, -1, -1, -1])
     anchor_boxes = tf.tile(
         tf.expand_dims(anchor_boxes, axis=2), [1, 1, num_classes - 1, 1])
-    box_outputs = tf.reshape(
-        box_outputs,
-        tf.stack([batch_size, num_detections, 4], axis=-1))
+    box_outputs = tf.reshape(box_outputs,
+                             tf.stack([batch_size, num_detections, 4], axis=-1))
     anchor_boxes = tf.reshape(
-        anchor_boxes,
-        tf.stack([batch_size, num_detections, 4], axis=-1))
+        anchor_boxes, tf.stack([batch_size, num_detections, 4], axis=-1))
 
     # Box decoding.
     decoded_boxes = box_utils.decode_boxes(

@@ -42,6 +42,10 @@ flags.DEFINE_string(
     "BertModel, with no task heads.)")
 flags.DEFINE_string("converted_checkpoint_path", None,
                     "Name for the created object-based V2 checkpoint.")
+flags.DEFINE_string("checkpoint_model_name", "model",
+                    "The name of the model when saving the checkpoint, i.e., "
+                    "the checkpoint will be saved using: "
+                    "tf.train.Checkpoint(FLAGS.checkpoint_model_name=model).")
 
 
 def _create_bert_model(cfg):
@@ -49,6 +53,7 @@ def _create_bert_model(cfg):
 
   Args:
     cfg: A `BertConfig` to create the core model.
+
   Returns:
     A TransformerEncoder netowork.
   """
@@ -61,17 +66,20 @@ def _create_bert_model(cfg):
       activation=activations.gelu,
       dropout_rate=cfg.hidden_dropout_prob,
       attention_dropout_rate=cfg.attention_probs_dropout_prob,
-      sequence_length=cfg.max_position_embeddings,
+      max_sequence_length=cfg.max_position_embeddings,
       type_vocab_size=cfg.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=cfg.initializer_range))
+          stddev=cfg.initializer_range),
+      embedding_width=cfg.embedding_size)
 
   return bert_encoder
 
 
-def convert_checkpoint(bert_config, output_path, v1_checkpoint):
+def convert_checkpoint(bert_config, output_path, v1_checkpoint,
+                       checkpoint_model_name="model"):
   """Converts a V1 checkpoint into an OO V2 checkpoint."""
   output_dir, _ = os.path.split(output_path)
+  tf.io.gfile.makedirs(output_dir)
 
   # Create a temporary V1 name-converted checkpoint in the output directory.
   temporary_checkpoint_dir = os.path.join(output_dir, "temp_v1")
@@ -87,7 +95,8 @@ def convert_checkpoint(bert_config, output_path, v1_checkpoint):
   # Create a V2 checkpoint from the temporary checkpoint.
   model = _create_bert_model(bert_config)
   tf1_checkpoint_converter_lib.create_v2_checkpoint(model, temporary_checkpoint,
-                                                    output_path)
+                                                    output_path,
+                                                    checkpoint_model_name)
 
   # Clean up the temporary checkpoint, if it exists.
   try:
@@ -100,8 +109,10 @@ def convert_checkpoint(bert_config, output_path, v1_checkpoint):
 def main(_):
   output_path = FLAGS.converted_checkpoint_path
   v1_checkpoint = FLAGS.checkpoint_to_convert
+  checkpoint_model_name = FLAGS.checkpoint_model_name
   bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
-  convert_checkpoint(bert_config, output_path, v1_checkpoint)
+  convert_checkpoint(bert_config, output_path, v1_checkpoint,
+                     checkpoint_model_name)
 
 
 if __name__ == "__main__":

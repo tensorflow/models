@@ -19,9 +19,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-
+import unittest
 from six.moves import range
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 
@@ -32,6 +32,15 @@ from object_detection.protos import model_pb2
 from object_detection.protos import pipeline_pb2
 from object_detection.protos import train_pb2
 from object_detection.utils import config_util
+from object_detection.utils import tf_version
+
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import training as contrib_training
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
 
 
 def _write_config(config, config_path):
@@ -209,7 +218,7 @@ class ConfigUtilTest(tf.test.TestCase):
     original_learning_rate = 0.7
     learning_rate_scaling = 0.1
     warmup_learning_rate = 0.07
-    hparams = tf.contrib.training.HParams(learning_rate=0.15)
+    hparams = contrib_training.HParams(learning_rate=0.15)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     # Constant learning rate.
@@ -274,18 +283,22 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertAlmostEqual(hparams.learning_rate * warmup_scale_factor,
                            cosine_lr.warmup_learning_rate)
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testRMSPropWithNewLearingRate(self):
     """Tests new learning rates for RMSProp Optimizer."""
     self._assertOptimizerWithNewLearningRate("rms_prop_optimizer")
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testMomentumOptimizerWithNewLearningRate(self):
     """Tests new learning rates for Momentum Optimizer."""
     self._assertOptimizerWithNewLearningRate("momentum_optimizer")
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testAdamOptimizerWithNewLearningRate(self):
     """Tests new learning rates for Adam Optimizer."""
     self._assertOptimizerWithNewLearningRate("adam_optimizer")
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testGenericConfigOverride(self):
     """Tests generic config overrides for all top-level configs."""
     # Set one parameter for each of the top-level pipeline configs:
@@ -302,7 +315,7 @@ class ConfigUtilTest(tf.test.TestCase):
 
     # Override each of the parameters:
     configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
-    hparams = tf.contrib.training.HParams(
+    hparams = contrib_training.HParams(
         **{
             "model.ssd.num_classes": 2,
             "train_config.batch_size": 2,
@@ -321,10 +334,11 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertEqual(2,
                      configs["graph_rewriter_config"].quantization.weight_bits)
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testNewBatchSize(self):
     """Tests that batch size is updated appropriately."""
     original_batch_size = 2
-    hparams = tf.contrib.training.HParams(batch_size=16)
+    hparams = contrib_training.HParams(batch_size=16)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
@@ -336,10 +350,11 @@ class ConfigUtilTest(tf.test.TestCase):
     new_batch_size = configs["train_config"].batch_size
     self.assertEqual(16, new_batch_size)
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testNewBatchSizeWithClipping(self):
     """Tests that batch size is clipped to 1 from below."""
     original_batch_size = 2
-    hparams = tf.contrib.training.HParams(batch_size=0.5)
+    hparams = contrib_training.HParams(batch_size=0.5)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
@@ -351,38 +366,42 @@ class ConfigUtilTest(tf.test.TestCase):
     new_batch_size = configs["train_config"].batch_size
     self.assertEqual(1, new_batch_size)  # Clipped to 1.0.
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testOverwriteBatchSizeWithKeyValue(self):
     """Tests that batch size is overwritten based on key/value."""
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
     pipeline_config.train_config.batch_size = 2
     configs = self._create_and_load_test_configs(pipeline_config)
-    hparams = tf.contrib.training.HParams(**{"train_config.batch_size": 10})
+    hparams = contrib_training.HParams(**{"train_config.batch_size": 10})
     configs = config_util.merge_external_params_with_configs(configs, hparams)
     new_batch_size = configs["train_config"].batch_size
     self.assertEqual(10, new_batch_size)
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testKeyValueOverrideBadKey(self):
     """Tests that overwriting with a bad key causes an exception."""
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
     configs = self._create_and_load_test_configs(pipeline_config)
-    hparams = tf.contrib.training.HParams(**{"train_config.no_such_field": 10})
+    hparams = contrib_training.HParams(**{"train_config.no_such_field": 10})
     with self.assertRaises(ValueError):
       config_util.merge_external_params_with_configs(configs, hparams)
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testOverwriteBatchSizeWithBadValueType(self):
     """Tests that overwriting with a bad valuye type causes an exception."""
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
     pipeline_config.train_config.batch_size = 2
     configs = self._create_and_load_test_configs(pipeline_config)
     # Type should be an integer, but we're passing a string "10".
-    hparams = tf.contrib.training.HParams(**{"train_config.batch_size": "10"})
+    hparams = contrib_training.HParams(**{"train_config.batch_size": "10"})
     with self.assertRaises(TypeError):
       config_util.merge_external_params_with_configs(configs, hparams)
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testNewMomentumOptimizerValue(self):
     """Tests that new momentum value is updated appropriately."""
     original_momentum_value = 0.4
-    hparams = tf.contrib.training.HParams(momentum_optimizer_value=1.1)
+    hparams = contrib_training.HParams(momentum_optimizer_value=1.1)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
@@ -396,12 +415,13 @@ class ConfigUtilTest(tf.test.TestCase):
     new_momentum_value = optimizer_config.momentum_optimizer_value
     self.assertAlmostEqual(1.0, new_momentum_value)  # Clipped to 1.0.
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testNewClassificationLocalizationWeightRatio(self):
     """Tests that the loss weight ratio is updated appropriately."""
     original_localization_weight = 0.1
     original_classification_weight = 0.2
     new_weight_ratio = 5.0
-    hparams = tf.contrib.training.HParams(
+    hparams = contrib_training.HParams(
         classification_localization_weight_ratio=new_weight_ratio)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
@@ -418,13 +438,14 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertAlmostEqual(1.0, loss.localization_weight)
     self.assertAlmostEqual(new_weight_ratio, loss.classification_weight)
 
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testNewFocalLossParameters(self):
     """Tests that the loss weight ratio is updated appropriately."""
     original_alpha = 1.0
     original_gamma = 1.0
     new_alpha = 0.3
     new_gamma = 2.0
-    hparams = tf.contrib.training.HParams(
+    hparams = contrib_training.HParams(
         focal_loss_alpha=new_alpha, focal_loss_gamma=new_gamma)
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
 
@@ -622,6 +643,20 @@ class ConfigUtilTest(tf.test.TestCase):
     image_resizer_config.conditional_shape_resizer.size_threshold = 100
     image_shape = config_util.get_spatial_image_size(image_resizer_config)
     self.assertAllEqual(image_shape, [-1, -1])
+
+  def testGetMaxNumContextFeaturesFromModelConfig(self):
+    model_config = model_pb2.DetectionModel()
+    model_config.faster_rcnn.context_config.max_num_context_features = 10
+    max_num_context_features = config_util.get_max_num_context_features(
+        model_config)
+    self.assertAllEqual(max_num_context_features, 10)
+
+  def testGetContextFeatureLengthFromModelConfig(self):
+    model_config = model_pb2.DetectionModel()
+    model_config.faster_rcnn.context_config.context_feature_length = 100
+    context_feature_length = config_util.get_context_feature_length(
+        model_config)
+    self.assertAllEqual(context_feature_length, 100)
 
   def testEvalShuffle(self):
     """Tests that `eval_shuffle` keyword arguments are applied correctly."""
@@ -894,6 +929,22 @@ class ConfigUtilTest(tf.test.TestCase):
         "eval_config"].retain_original_image_additional_channels
     self.assertEqual(desired_retain_original_image_additional_channels,
                      retain_original_image_additional_channels)
+
+  def testUpdateNumClasses(self):
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.model.faster_rcnn.num_classes = 10
+
+    _write_config(pipeline_config, pipeline_config_path)
+
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+
+    self.assertEqual(config_util.get_number_of_classes(configs["model"]), 10)
+
+    config_util.merge_external_params_with_configs(
+        configs, kwargs_dict={"num_classes": 2})
+
+    self.assertEqual(config_util.get_number_of_classes(configs["model"]), 2)
 
   def testRemoveUnecessaryEma(self):
     input_dict = {

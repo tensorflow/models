@@ -22,6 +22,7 @@ import json
 import os
 import time
 
+# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
@@ -94,8 +95,6 @@ def export_squad(model_export_path, input_meta_data):
 
 
 def main(_):
-  # Users should always run this script under TF 2.x
-
   with tf.io.gfile.GFile(FLAGS.input_meta_data_path, 'rb') as reader:
     input_meta_data = json.loads(reader.read().decode('utf-8'))
 

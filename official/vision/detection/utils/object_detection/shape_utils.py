@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Utils used to manipulate tensor shapes."""
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def assert_shape_equal(shape_a, shape_b):
@@ -42,7 +41,8 @@ def assert_shape_equal(shape_a, shape_b):
       all(isinstance(dim, int) for dim in shape_b)):
     if shape_a != shape_b:
       raise ValueError('Unequal shapes {}, {}'.format(shape_a, shape_b))
-    else: return tf.no_op()
+    else:
+      return tf.no_op()
   else:
     return tf.assert_equal(shape_a, shape_b)
 
@@ -87,9 +87,7 @@ def pad_or_clip_nd(tensor, output_shape):
       if shape is not None else -1 for i, shape in enumerate(output_shape)
   ]
   clipped_tensor = tf.slice(
-      tensor,
-      begin=tf.zeros(len(clip_size), dtype=tf.int32),
-      size=clip_size)
+      tensor, begin=tf.zeros(len(clip_size), dtype=tf.int32), size=clip_size)
 
   # Pad tensor if the shape of clipped tensor is smaller than the expected
   # shape.
@@ -99,10 +97,7 @@ def pad_or_clip_nd(tensor, output_shape):
       for i, shape in enumerate(output_shape)
   ]
   paddings = tf.stack(
-      [
-          tf.zeros(len(trailing_paddings), dtype=tf.int32),
-          trailing_paddings
-      ],
+      [tf.zeros(len(trailing_paddings), dtype=tf.int32), trailing_paddings],
       axis=1)
   padded_tensor = tf.pad(tensor=clipped_tensor, paddings=paddings)
   output_static_shape = [

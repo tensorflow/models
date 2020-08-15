@@ -16,7 +16,7 @@
 """LSTDInterleavedFeatureExtractor which interleaves multiple MobileNet V2."""
 
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim
+import tf_slim as slim
 
 from tensorflow.python.framework import ops as tf_ops
 from lstm_object_detection.lstm import lstm_cells
@@ -134,9 +134,10 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
     scope_name = self._base_network_scope + '_2'
     with tf.variable_scope(scope_name, reuse=self._reuse_weights) as base_scope:
       if self._low_res:
-        size_small = preprocessed_inputs.get_shape().as_list()[1] / 2
+        height_small = preprocessed_inputs.get_shape().as_list()[1] // 2
+        width_small = preprocessed_inputs.get_shape().as_list()[2] // 2
         inputs_small = tf.image.resize_images(preprocessed_inputs,
-                                              [size_small, size_small])
+                                              [height_small, width_small])
         # Create end point handle for tflite deployment.
         with tf.name_scope(None):
           inputs_small = tf.identity(
@@ -152,7 +153,8 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
           scope=base_scope)
       return net, end_points
 
-  def create_lstm_cell(self, batch_size, output_size, state_saver, state_name):
+  def create_lstm_cell(self, batch_size, output_size, state_saver, state_name,
+                       dtype=tf.float32):
     """Create the LSTM cell, and initialize state if necessary.
 
     Args:
@@ -160,6 +162,8 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
       output_size: output size of the lstm cell, [width, height].
       state_saver: a state saver object with methods `state` and `save_state`.
       state_name: string, the name to use with the state_saver.
+      dtype: dtype to initialize lstm state.
+
     Returns:
       lstm_cell: the lstm cell unit.
       init_state: initial state representations.
@@ -180,7 +184,7 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
         visualize_gates=False)
 
     if state_saver is None:
-      init_state = lstm_cell.init_state('lstm_state', batch_size, tf.float32)
+      init_state = lstm_cell.init_state('lstm_state', batch_size, dtype)
       step = None
     else:
       step = state_saver.state(state_name + '_step')
@@ -222,7 +226,7 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
         33, preprocessed_inputs)
     preprocessed_inputs = ops.pad_to_multiple(
         preprocessed_inputs, self._pad_to_multiple)
-    batch_size = preprocessed_inputs.shape[0].value / unroll_length
+    batch_size = preprocessed_inputs.shape[0].value // unroll_length
     batch_axis = 0
     nets = []
 
@@ -250,7 +254,8 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
       with tf.variable_scope('LSTM', reuse=self._reuse_weights):
         output_size = (large_base_feature_shape[1], large_base_feature_shape[2])
         lstm_cell, init_state, step = self.create_lstm_cell(
-            batch_size, output_size, state_saver, state_name)
+            batch_size, output_size, state_saver, state_name,
+            dtype=preprocessed_inputs.dtype)
 
         nets_seq = [
             tf.split(net, unroll_length, axis=batch_axis) for net in nets
@@ -269,15 +274,16 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
             scope=None)
         self._states_out = states_out
 
-      batcher_ops = None
+      image_features = {}
       if state_saver is not None:
         self._step = state_saver.state(state_name + '_step')
         batcher_ops = [
             state_saver.save_state(state_name + '_c', states_out[-1][0]),
             state_saver.save_state(state_name + '_h', states_out[-1][1]),
             state_saver.save_state(state_name + '_step', self._step + 1)]
-      image_features = {}
-      with tf_ops.control_dependencies(batcher_ops):
+        with tf_ops.control_dependencies(batcher_ops):
+          image_features['layer_19'] = tf.concat(net_seq, 0)
+      else:
         image_features['layer_19'] = tf.concat(net_seq, 0)
 
       # SSD layers.
@@ -289,4 +295,4 @@ class LSTMSSDInterleavedMobilenetV2FeatureExtractor(
             insert_1x1_conv=True,
             image_features=image_features,
             pool_residual=True)
-    return feature_maps.values()
+    return list(feature_maps.values())

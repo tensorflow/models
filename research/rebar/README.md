@@ -16,6 +16,13 @@ REBAR applied to multilayer sigmoid belief networks is implemented in rebar.py a
 The code is not optimized and some computation is repeated for ease of
 implementation. We hope that this code will be a useful starting point for future research in this area.
 
+## Errata
+11/27/2019
+
+The _generator_network function has separate paths for the unconditional and conditional generative models. In the conditional generative models code path, the generative model does not have multiple stochastic layers even when n_layers is > 1. My intention was to have multiple stochastic layers in the conditional generative model, however, due to a bug this is not how it was implemented. As the code is currently, with the conditional generative model and n_layers > 1, the recognition network has multiple stochastic layers, but the generative model has a single stochastic layer. 
+
+Hai-Tao Yu (yuhaitao@slis.tsukuba.ac.jp) discovered this issue.
+
 ## Quick Start:
 
 Requirements:

@@ -21,16 +21,13 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import layers as contrib_layers
-from tensorflow.contrib import slim as contrib_slim
-from tensorflow.contrib import training as contrib_training
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
+from tensorflow.contrib import training as contrib_training
 from nets.nasnet import nasnet_utils
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+arg_scope = slim.arg_scope
 
 
 # Notes for training NASNet Cifar Model
@@ -142,9 +139,8 @@ def nasnet_cifar_arg_scope(weight_decay=5e-4,
       'scale': True,
       'fused': True,
   }
-  weights_regularizer = contrib_layers.l2_regularizer(weight_decay)
-  weights_initializer = contrib_layers.variance_scaling_initializer(
-      mode='FAN_OUT')
+  weights_regularizer = slim.l2_regularizer(weight_decay)
+  weights_initializer = slim.variance_scaling_initializer(mode='FAN_OUT')
   with arg_scope([slim.fully_connected, slim.conv2d, slim.separable_conv2d],
                  weights_regularizer=weights_regularizer,
                  weights_initializer=weights_initializer):
@@ -178,9 +174,8 @@ def nasnet_mobile_arg_scope(weight_decay=4e-5,
       'scale': True,
       'fused': True,
   }
-  weights_regularizer = contrib_layers.l2_regularizer(weight_decay)
-  weights_initializer = contrib_layers.variance_scaling_initializer(
-      mode='FAN_OUT')
+  weights_regularizer = slim.l2_regularizer(weight_decay)
+  weights_initializer = slim.variance_scaling_initializer(mode='FAN_OUT')
   with arg_scope([slim.fully_connected, slim.conv2d, slim.separable_conv2d],
                  weights_regularizer=weights_regularizer,
                  weights_initializer=weights_initializer):
@@ -214,9 +209,8 @@ def nasnet_large_arg_scope(weight_decay=5e-5,
       'scale': True,
       'fused': True,
   }
-  weights_regularizer = contrib_layers.l2_regularizer(weight_decay)
-  weights_initializer = contrib_layers.variance_scaling_initializer(
-      mode='FAN_OUT')
+  weights_regularizer = slim.l2_regularizer(weight_decay)
+  weights_initializer = slim.variance_scaling_initializer(mode='FAN_OUT')
   with arg_scope([slim.fully_connected, slim.conv2d, slim.separable_conv2d],
                  weights_regularizer=weights_regularizer,
                  weights_initializer=weights_initializer):
@@ -231,9 +225,9 @@ def nasnet_large_arg_scope(weight_decay=5e-5,
 def _build_aux_head(net, end_points, num_classes, hparams, scope):
   """Auxiliary head used for all models across all datasets."""
   activation_fn = tf.nn.relu6 if hparams.use_bounded_activation else tf.nn.relu
-  with tf.compat.v1.variable_scope(scope):
+  with tf.variable_scope(scope):
     aux_logits = tf.identity(net)
-    with tf.compat.v1.variable_scope('aux_logits'):
+    with tf.variable_scope('aux_logits'):
       aux_logits = slim.avg_pool2d(
           aux_logits, [5, 5], stride=3, padding='VALID')
       aux_logits = slim.conv2d(aux_logits, 128, [1, 1], scope='proj')
@@ -248,7 +242,7 @@ def _build_aux_head(net, end_points, num_classes, hparams, scope):
       aux_logits = slim.conv2d(aux_logits, 768, shape, padding='VALID')
       aux_logits = slim.batch_norm(aux_logits, scope='aux_bn1')
       aux_logits = activation_fn(aux_logits)
-      aux_logits = contrib_layers.flatten(aux_logits)
+      aux_logits = slim.flatten(aux_logits)
       aux_logits = slim.fully_connected(aux_logits, num_classes)
       end_points['AuxLogits'] = aux_logits
 
@@ -302,7 +296,7 @@ def build_nasnet_cifar(images, num_classes,
   _update_hparams(hparams, is_training)
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 
@@ -355,7 +349,7 @@ def build_nasnet_mobile(images, num_classes,
   _update_hparams(hparams, is_training)
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 
@@ -411,7 +405,7 @@ def build_nasnet_large(images, num_classes,
   _update_hparams(hparams, is_training)
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 
@@ -537,7 +531,7 @@ def _build_nasnet_base(images,
     cell_outputs.append(net)
 
   # Final softmax layer
-  with tf.compat.v1.variable_scope('final_layer'):
+  with tf.variable_scope('final_layer'):
     net = activation_fn(net)
     net = nasnet_utils.global_avg_pool(net)
     if add_and_check_endpoint('global_pool', net) or not num_classes:

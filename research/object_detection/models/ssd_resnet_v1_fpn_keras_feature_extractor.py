@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +16,13 @@
 
 """SSD Keras-based ResnetV1 FPN Feature Extractor."""
 
-import tensorflow as tf
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+from six.moves import range
+from six.moves import zip
+import tensorflow.compat.v1 as tf
 
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import feature_map_generators
@@ -121,7 +128,7 @@ class SSDResNetV1FpnKerasFeatureExtractor(
     self._resnet_v1_base_model = resnet_v1_base_model
     self._resnet_v1_base_model_name = resnet_v1_base_model_name
     self._resnet_block_names = ['block1', 'block2', 'block3', 'block4']
-    self._resnet_v1 = None
+    self.classification_backbone = None
     self._fpn_features_generator = None
     self._coarse_feature_layers = []
 
@@ -139,7 +146,7 @@ class SSDResNetV1FpnKerasFeatureExtractor(
     output_layers = _RESNET_MODEL_OUTPUT_LAYERS[self._resnet_v1_base_model_name]
     outputs = [full_resnet_v1_model.get_layer(output_layer_name).output
                for output_layer_name in output_layers]
-    self._resnet_v1 = tf.keras.Model(
+    self.classification_backbone = tf.keras.Model(
         inputs=full_resnet_v1_model.inputs,
         outputs=outputs)
     # pylint:disable=g-long-lambda
@@ -214,13 +221,14 @@ class SSDResNetV1FpnKerasFeatureExtractor(
     preprocessed_inputs = shape_utils.check_min_image_dim(
         129, preprocessed_inputs)
 
-    image_features = self._resnet_v1(
+    image_features = self.classification_backbone(
         ops.pad_to_multiple(preprocessed_inputs, self._pad_to_multiple))
 
     feature_block_list = []
     for level in range(self._fpn_min_level, self._base_fpn_max_level + 1):
       feature_block_list.append('block{}'.format(level - 1))
-    feature_block_map = dict(zip(self._resnet_block_names, image_features))
+    feature_block_map = dict(
+        list(zip(self._resnet_block_names, image_features)))
     fpn_input_image_features = [
         (feature_block, feature_block_map[feature_block])
         for feature_block in feature_block_list]

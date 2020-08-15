@@ -35,7 +35,7 @@ to box coordinates):
   anchor-encoded keypoint coordinates.
 """
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import box_coder
 from object_detection.core import box_list

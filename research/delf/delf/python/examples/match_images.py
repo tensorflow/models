@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2017 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,14 +28,16 @@ from __future__ import print_function
 import argparse
 import sys
 
-import matplotlib.image as mpimg
+import matplotlib
+# Needed before pyplot import for matplotlib to work properly.
+matplotlib.use('Agg')
+import matplotlib.image as mpimg  # pylint: disable=g-import-not-at-top
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import spatial
 from skimage import feature
 from skimage import measure
 from skimage import transform
-import tensorflow as tf
 
 from tensorflow.python.platform import app
 from delf import feature_io
@@ -45,17 +48,15 @@ _DISTANCE_THRESHOLD = 0.8
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
-
   # Read features.
   locations_1, _, descriptors_1, _, _ = feature_io.ReadFromFile(
       cmd_args.features_1_path)
   num_features_1 = locations_1.shape[0]
-  tf.logging.info("Loaded image 1's %d features" % num_features_1)
+  print(f"Loaded image 1's {num_features_1} features")
   locations_2, _, descriptors_2, _, _ = feature_io.ReadFromFile(
       cmd_args.features_2_path)
   num_features_2 = locations_2.shape[0]
-  tf.logging.info("Loaded image 2's %d features" % num_features_2)
+  print(f"Loaded image 2's {num_features_2} features")
 
   # Find nearest-neighbor matches using a KD tree.
   d1_tree = spatial.cKDTree(descriptors_1)
@@ -81,7 +82,7 @@ def main(unused_argv):
                               residual_threshold=20,
                               max_trials=1000)
 
-  tf.logging.info('Found %d inliers' % sum(inliers))
+  print(f'Found {sum(inliers)} inliers')
 
   # Visualize correspondences, and save to file.
   _, ax = plt.subplots()

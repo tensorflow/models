@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,17 +16,22 @@
 
 """Base test class SSDFeatureExtractors."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 from abc import abstractmethod
 
 import numpy as np
 from six.moves import zip
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from google.protobuf import text_format
-from tensorflow.contrib import slim as contrib_slim
+
 from object_detection.builders import hyperparams_builder
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import test_case
+from object_detection.utils import test_utils
 
 
 class SsdFeatureExtractorTestBase(test_case.TestCase):
@@ -54,7 +60,7 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
     return hyperparams_builder.KerasLayerHyperparams(conv_hyperparams)
 
   def conv_hyperparams_fn(self):
-    with contrib_slim.arg_scope([]) as sc:
+    with slim.arg_scope([]) as sc:
       return sc
 
   @abstractmethod
@@ -84,14 +90,13 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
     """
     pass
 
-  def _extract_features(self,
-                        image_tensor,
-                        depth_multiplier,
-                        pad_to_multiple,
-                        use_explicit_padding=False,
-                        use_depthwise=False,
-                        num_layers=6,
-                        use_keras=False):
+  def _create_features(self,
+                       depth_multiplier,
+                       pad_to_multiple,
+                       use_explicit_padding=False,
+                       use_depthwise=False,
+                       num_layers=6,
+                       use_keras=False):
     kwargs = {}
     if use_explicit_padding:
       kwargs.update({'use_explicit_padding': use_explicit_padding})
@@ -105,6 +110,12 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
         depth_multiplier,
         pad_to_multiple,
         **kwargs)
+    return feature_extractor
+
+  def _extract_features(self,
+                        image_tensor,
+                        feature_extractor,
+                        use_keras=False):
     if use_keras:
       feature_maps = feature_extractor(image_tensor)
     else:
@@ -122,10 +133,8 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
                                                    num_layers=6,
                                                    use_keras=False,
                                                    use_depthwise=False):
-
-    def graph_fn(image_tensor):
-      return self._extract_features(
-          image_tensor,
+    with test_utils.GraphContextOrNone() as g:
+      feature_extractor = self._create_features(
           depth_multiplier,
           pad_to_multiple,
           use_explicit_padding=use_explicit_padding,
@@ -133,9 +142,15 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
           use_keras=use_keras,
           use_depthwise=use_depthwise)
 
+    def graph_fn(image_tensor):
+      return self._extract_features(
+          image_tensor,
+          feature_extractor,
+          use_keras=use_keras)
+
     image_tensor = np.random.rand(batch_size, image_height, image_width,
                                   3).astype(np.float32)
-    feature_maps = self.execute(graph_fn, [image_tensor])
+    feature_maps = self.execute(graph_fn, [image_tensor], graph=g)
     for feature_map, expected_shape in zip(
         feature_maps, expected_feature_map_shapes):
       self.assertAllEqual(feature_map.shape, expected_shape)
@@ -153,11 +168,8 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
       use_keras=False,
       use_depthwise=False):
 
-    def graph_fn(image_height, image_width):
-      image_tensor = tf.random_uniform([batch_size, image_height, image_width,
-                                        3], dtype=tf.float32)
-      return self._extract_features(
-          image_tensor,
+    with test_utils.GraphContextOrNone() as g:
+      feature_extractor = self._create_features(
           depth_multiplier,
           pad_to_multiple,
           use_explicit_padding=use_explicit_padding,
@@ -165,10 +177,18 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
           use_keras=use_keras,
           use_depthwise=use_depthwise)
 
+    def graph_fn(image_height, image_width):
+      image_tensor = tf.random_uniform([batch_size, image_height, image_width,
+                                        3], dtype=tf.float32)
+      return self._extract_features(
+          image_tensor,
+          feature_extractor,
+          use_keras=use_keras)
+
     feature_maps = self.execute_cpu(graph_fn, [
         np.array(image_height, dtype=np.int32),
         np.array(image_width, dtype=np.int32)
-    ])
+    ], graph=g)
     for feature_map, expected_shape in zip(
         feature_maps, expected_feature_map_shapes):
       self.assertAllEqual(feature_map.shape, expected_shape)
@@ -181,19 +201,33 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
       pad_to_multiple,
       use_keras=False,
       use_depthwise=False):
-    preprocessed_inputs = tf.placeholder(tf.float32, (4, None, None, 3))
-    feature_maps = self._extract_features(
-        preprocessed_inputs,
-        depth_multiplier,
-        pad_to_multiple,
-        use_keras=use_keras,
-        use_depthwise=use_depthwise)
-    test_preprocessed_image = np.random.rand(4, image_height, image_width, 3)
-    with self.test_session() as sess:
-      sess.run(tf.global_variables_initializer())
+
+    with test_utils.GraphContextOrNone() as g:
+      batch = 4
+      width = tf.random.uniform([], minval=image_width, maxval=image_width+1,
+                                dtype=tf.int32)
+      height = tf.random.uniform([], minval=image_height, maxval=image_height+1,
+                                 dtype=tf.int32)
+      shape = tf.stack([batch, height, width, 3])
+      preprocessed_inputs = tf.random.uniform(shape)
+      feature_extractor = self._create_features(
+          depth_multiplier,
+          pad_to_multiple,
+          use_keras=use_keras,
+          use_depthwise=use_depthwise)
+
+    def graph_fn():
+      feature_maps = self._extract_features(
+          preprocessed_inputs,
+          feature_extractor,
+          use_keras=use_keras)
+      return feature_maps
+    if self.is_tf2():
+      with self.assertRaises(ValueError):
+        self.execute_cpu(graph_fn, [], graph=g)
+    else:
       with self.assertRaises(tf.errors.InvalidArgumentError):
-        sess.run(feature_maps,
-                 feed_dict={preprocessed_inputs: test_preprocessed_image})
+        self.execute_cpu(graph_fn, [], graph=g)
 
   def check_feature_extractor_variables_under_scope(self,
                                                     depth_multiplier,
@@ -216,11 +250,14 @@ class SsdFeatureExtractorTestBase(test_case.TestCase):
                                       use_depthwise=False):
     g = tf.Graph()
     with g.as_default():
-      preprocessed_inputs = tf.placeholder(tf.float32, (4, None, None, 3))
-      self._extract_features(
-          preprocessed_inputs,
+      feature_extractor = self._create_features(
           depth_multiplier,
           pad_to_multiple,
           use_keras=use_keras,
           use_depthwise=use_depthwise)
+      preprocessed_inputs = tf.placeholder(tf.float32, (4, None, None, 3))
+      self._extract_features(
+          preprocessed_inputs,
+          feature_extractor,
+          use_keras=use_keras)
       return g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)

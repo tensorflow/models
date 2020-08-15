@@ -38,7 +38,7 @@ for an example.
 See notes in the documentation of Faster R-CNN meta-architecture as they all
 apply here.
 """
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import box_predictor
 from object_detection.meta_architectures import faster_rcnn_meta_arch
@@ -83,7 +83,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                use_static_shapes=False,
                resize_masks=False,
                freeze_batchnorm=False,
-               return_raw_detections_during_predict=False):
+               return_raw_detections_during_predict=False,
+               output_final_box_features=False):
     """RFCNMetaArch Constructor.
 
     Args:
@@ -192,6 +193,9 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
       return_raw_detections_during_predict: Whether to return raw detection
         boxes in the predict() method. These are decoded boxes that have not
         been through postprocessing (i.e. NMS). Default False.
+      output_final_box_features: Whether to output final box features. If true,
+        it crops the feauture map based on the final box prediction and returns
+        in the dict as detection_features.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals`
@@ -240,7 +244,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         resize_masks,
         freeze_batchnorm=freeze_batchnorm,
         return_raw_detections_during_predict=(
-            return_raw_detections_during_predict))
+            return_raw_detections_during_predict),
+        output_final_box_features=output_final_box_features)
 
     self._rfcn_box_predictor = second_stage_rfcn_box_predictor
 
@@ -260,7 +265,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         [batch_size, num_valid_anchors, 2] containing class
         predictions (logits) for each of the anchors.  Note that this
         tensor *includes* background class predictions (at class index 0).
-      rpn_features: A 4-D float32 tensor with shape
+      rpn_features: A list of single 4-D float32 tensor with shape
         [batch_size, height, width, depth] representing image features from the
         RPN.
       anchors: 2-D float tensor of shape
@@ -308,6 +313,7 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                                 rpn_objectness_predictions_with_background,
                                 anchors, image_shape_2d, true_image_shapes)
 
+    rpn_features = rpn_features[0]
     box_classifier_features = (
         self._extract_box_classifier_features(rpn_features))
 

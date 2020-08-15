@@ -16,8 +16,8 @@
 """Functions to export object detection inference graph."""
 import os
 import tempfile
-import tensorflow as tf
-from tensorflow.contrib.quantize.python import graph_matcher
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from tensorflow.core.protobuf import saver_pb2
 from tensorflow.python.tools import freeze_graph  # pylint: disable=g-direct-tensorflow-import
 from object_detection.builders import graph_rewriter_builder
@@ -27,9 +27,64 @@ from object_detection.data_decoders import tf_example_decoder
 from object_detection.utils import config_util
 from object_detection.utils import shape_utils
 
-slim = tf.contrib.slim
+# pylint: disable=g-import-not-at-top
+try:
+  from tensorflow.contrib import tfprof as contrib_tfprof
+  from tensorflow.contrib.quantize.python import graph_matcher
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
 
 freeze_graph_with_def_protos = freeze_graph.freeze_graph_with_def_protos
+
+
+def parse_side_inputs(side_input_shapes_string, side_input_names_string,
+                      side_input_types_string):
+  """Parses side input flags.
+
+  Args:
+    side_input_shapes_string: The shape of the side input tensors, provided as a
+      comma-separated list of integers. A value of -1 is used for unknown
+      dimensions. A `/` denotes a break, starting the shape of the next side
+      input tensor.
+    side_input_names_string: The names of the side input tensors, provided as a
+      comma-separated list of strings.
+    side_input_types_string: The type of the side input tensors, provided as a
+      comma-separated list of types, each of `string`, `integer`, or `float`.
+
+  Returns:
+    side_input_shapes: A list of shapes.
+    side_input_names: A list of strings.
+    side_input_types: A list of tensorflow dtypes.
+
+  """
+  if side_input_shapes_string:
+    side_input_shapes = []
+    for side_input_shape_list in side_input_shapes_string.split('/'):
+      side_input_shape = [
+          int(dim) if dim != '-1' else None
+          for dim in side_input_shape_list.split(',')
+      ]
+      side_input_shapes.append(side_input_shape)
+  else:
+    raise ValueError('When using side_inputs, side_input_shapes must be '
+                     'specified in the input flags.')
+  if side_input_names_string:
+    side_input_names = list(side_input_names_string.split(','))
+  else:
+    raise ValueError('When using side_inputs, side_input_names must be '
+                     'specified in the input flags.')
+  if side_input_types_string:
+    typelookup = {'float': tf.float32, 'int': tf.int32, 'string': tf.string}
+    side_input_types = [
+        typelookup[side_input_type]
+        for side_input_type in side_input_types_string.split(',')
+    ]
+  else:
+    raise ValueError('When using side_inputs, side_input_types must be '
+                     'specified in the input flags.')
+  return side_input_shapes, side_input_names, side_input_types
 
 
 def rewrite_nn_resize_op(is_quantized=False):
@@ -41,7 +96,7 @@ def rewrite_nn_resize_op(is_quantized=False):
     is_quantized: True if the default graph is quantized.
   """
   def remove_nn():
-    """Remove nearest neighbor upsampling structure and replace with TF op."""
+    """Remove nearest neighbor upsampling structures and replace with TF op."""
     input_pattern = graph_matcher.OpTypePattern(
         'FakeQuantWithMinMaxVars' if is_quantized else '*')
     stack_1_pattern = graph_matcher.OpTypePattern(
@@ -50,27 +105,37 @@ def rewrite_nn_resize_op(is_quantized=False):
         'Pack', inputs=[stack_1_pattern, stack_1_pattern], ordered_inputs=False)
     reshape_pattern = graph_matcher.OpTypePattern(
         'Reshape', inputs=[stack_2_pattern, 'Const'], ordered_inputs=False)
-    consumer_pattern = graph_matcher.OpTypePattern(
+    consumer_pattern1 = graph_matcher.OpTypePattern(
         'Add|AddV2|Max|Mul', inputs=[reshape_pattern, '*'],
         ordered_inputs=False)
+    consumer_pattern2 = graph_matcher.OpTypePattern(
+        'StridedSlice', inputs=[reshape_pattern, '*', '*', '*'],
+        ordered_inputs=False)
 
-    match_counter = 0
-    matcher = graph_matcher.GraphMatcher(consumer_pattern)
-    for match in matcher.match_graph(tf.get_default_graph()):
-      match_counter += 1
-      projection_op = match.get_op(input_pattern)
-      reshape_op = match.get_op(reshape_pattern)
-      consumer_op = match.get_op(consumer_pattern)
-      nn_resize = tf.image.resize_nearest_neighbor(
-          projection_op.outputs[0],
-          reshape_op.outputs[0].shape.dims[1:3],
-          align_corners=False,
-          name=os.path.split(reshape_op.name)[0] + '/resize_nearest_neighbor')
+    def replace_matches(consumer_pattern):
+      """Search for nearest neighbor pattern and replace with TF op."""
+      match_counter = 0
+      matcher = graph_matcher.GraphMatcher(consumer_pattern)
+      for match in matcher.match_graph(tf.get_default_graph()):
+        match_counter += 1
+        projection_op = match.get_op(input_pattern)
+        reshape_op = match.get_op(reshape_pattern)
+        consumer_op = match.get_op(consumer_pattern)
+        nn_resize = tf.image.resize_nearest_neighbor(
+            projection_op.outputs[0],
+            reshape_op.outputs[0].shape.dims[1:3],
+            align_corners=False,
+            name=os.path.split(reshape_op.name)[0] + '/resize_nearest_neighbor')
 
-      for index, op_input in enumerate(consumer_op.inputs):
-        if op_input == reshape_op.outputs[0]:
-          consumer_op._update_input(index, nn_resize)  # pylint: disable=protected-access
-          break
+        for index, op_input in enumerate(consumer_op.inputs):
+          if op_input == reshape_op.outputs[0]:
+            consumer_op._update_input(index, nn_resize)  # pylint: disable=protected-access
+            break
+
+      return match_counter
+
+    match_counter = replace_matches(consumer_pattern1)
+    match_counter += replace_matches(consumer_pattern2)
 
     tf.logging.info('Found and fixed {} matches'.format(match_counter))
     return match_counter
@@ -121,6 +186,14 @@ def _image_tensor_input_placeholder(input_shape=None):
   input_tensor = tf.placeholder(
       dtype=tf.uint8, shape=input_shape, name='image_tensor')
   return input_tensor, input_tensor
+
+
+def _side_input_tensor_placeholder(side_input_shape, side_input_name,
+                                   side_input_type):
+  """Returns side input placeholder and side input tensor."""
+  side_input_tensor = tf.placeholder(
+      dtype=side_input_type, shape=side_input_shape, name=side_input_name)
+  return side_input_tensor, side_input_tensor
 
 
 def _tf_example_input_placeholder(input_shape=None):
@@ -183,7 +256,7 @@ input_placeholder_fn_map = {
     'image_tensor': _image_tensor_input_placeholder,
     'encoded_image_string_tensor':
     _encoded_image_string_tensor_input_placeholder,
-    'tf_example': _tf_example_input_placeholder,
+    'tf_example': _tf_example_input_placeholder
 }
 
 
@@ -295,7 +368,7 @@ def write_saved_model(saved_model_path,
   Args:
     saved_model_path: Path to write SavedModel.
     frozen_graph_def: tf.GraphDef holding frozen graph.
-    inputs: The input placeholder tensor.
+    inputs: A tensor dictionary containing the inputs to a DetectionModel.
     outputs: A tensor dictionary containing the outputs of a DetectionModel.
   """
   with tf.Graph().as_default():
@@ -305,8 +378,13 @@ def write_saved_model(saved_model_path,
 
       builder = tf.saved_model.builder.SavedModelBuilder(saved_model_path)
 
-      tensor_info_inputs = {
-          'inputs': tf.saved_model.utils.build_tensor_info(inputs)}
+      tensor_info_inputs = {}
+      if isinstance(inputs, dict):
+        for k, v in inputs.items():
+          tensor_info_inputs[k] = tf.saved_model.utils.build_tensor_info(v)
+      else:
+        tensor_info_inputs['inputs'] = tf.saved_model.utils.build_tensor_info(
+            inputs)
       tensor_info_outputs = {}
       for k, v in outputs.items():
         tensor_info_outputs[k] = tf.saved_model.utils.build_tensor_info(v)
@@ -347,11 +425,11 @@ def write_graph_and_checkpoint(inference_graph_def,
 
 
 def _get_outputs_from_inputs(input_tensors, detection_model,
-                             output_collection_name):
+                             output_collection_name, **side_inputs):
   inputs = tf.cast(input_tensors, dtype=tf.float32)
   preprocessed_inputs, true_image_shapes = detection_model.preprocess(inputs)
   output_tensors = detection_model.predict(
-      preprocessed_inputs, true_image_shapes)
+      preprocessed_inputs, true_image_shapes, **side_inputs)
   postprocessed_tensors = detection_model.postprocess(
       output_tensors, true_image_shapes)
   return add_output_tensor_nodes(postprocessed_tensors,
@@ -359,32 +437,45 @@ def _get_outputs_from_inputs(input_tensors, detection_model,
 
 
 def build_detection_graph(input_type, detection_model, input_shape,
-                          output_collection_name, graph_hook_fn):
+                          output_collection_name, graph_hook_fn,
+                          use_side_inputs=False, side_input_shapes=None,
+                          side_input_names=None, side_input_types=None):
   """Build the detection graph."""
   if input_type not in input_placeholder_fn_map:
     raise ValueError('Unknown input type: {}'.format(input_type))
   placeholder_args = {}
+  side_inputs = {}
   if input_shape is not None:
     if (input_type != 'image_tensor' and
         input_type != 'encoded_image_string_tensor' and
-        input_type != 'tf_example'):
+        input_type != 'tf_example' and
+        input_type != 'tf_sequence_example'):
       raise ValueError('Can only specify input shape for `image_tensor`, '
-                       '`encoded_image_string_tensor`, or `tf_example` '
-                       'inputs.')
+                       '`encoded_image_string_tensor`, `tf_example`, '
+                       ' or `tf_sequence_example` inputs.')
     placeholder_args['input_shape'] = input_shape
   placeholder_tensor, input_tensors = input_placeholder_fn_map[input_type](
       **placeholder_args)
+  placeholder_tensors = {'inputs': placeholder_tensor}
+  if use_side_inputs:
+    for idx, side_input_name in enumerate(side_input_names):
+      side_input_placeholder, side_input = _side_input_tensor_placeholder(
+          side_input_shapes[idx], side_input_name, side_input_types[idx])
+      print(side_input)
+      side_inputs[side_input_name] = side_input
+      placeholder_tensors[side_input_name] = side_input_placeholder
   outputs = _get_outputs_from_inputs(
       input_tensors=input_tensors,
       detection_model=detection_model,
-      output_collection_name=output_collection_name)
+      output_collection_name=output_collection_name,
+      **side_inputs)
 
   # Add global step to the graph.
   slim.get_or_create_global_step()
 
   if graph_hook_fn: graph_hook_fn()
 
-  return outputs, placeholder_tensor
+  return outputs, placeholder_tensors
 
 
 def _export_inference_graph(input_type,
@@ -397,7 +488,11 @@ def _export_inference_graph(input_type,
                             output_collection_name='inference_op',
                             graph_hook_fn=None,
                             write_inference_graph=False,
-                            temp_checkpoint_prefix=''):
+                            temp_checkpoint_prefix='',
+                            use_side_inputs=False,
+                            side_input_shapes=None,
+                            side_input_names=None,
+                            side_input_types=None):
   """Export helper."""
   tf.gfile.MakeDirs(output_directory)
   frozen_graph_path = os.path.join(output_directory,
@@ -405,12 +500,16 @@ def _export_inference_graph(input_type,
   saved_model_path = os.path.join(output_directory, 'saved_model')
   model_path = os.path.join(output_directory, 'model.ckpt')
 
-  outputs, placeholder_tensor = build_detection_graph(
+  outputs, placeholder_tensor_dict = build_detection_graph(
       input_type=input_type,
       detection_model=detection_model,
       input_shape=input_shape,
       output_collection_name=output_collection_name,
-      graph_hook_fn=graph_hook_fn)
+      graph_hook_fn=graph_hook_fn,
+      use_side_inputs=use_side_inputs,
+      side_input_shapes=side_input_shapes,
+      side_input_names=side_input_names,
+      side_input_types=side_input_types)
 
   profile_inference_graph(tf.get_default_graph())
   saver_kwargs = {}
@@ -447,7 +546,8 @@ def _export_inference_graph(input_type,
       f.write(str(inference_graph_def))
 
   if additional_output_tensor_names is not None:
-    output_node_names = ','.join(outputs.keys()+additional_output_tensor_names)
+    output_node_names = ','.join(list(outputs.keys())+(
+        additional_output_tensor_names))
   else:
     output_node_names = ','.join(outputs.keys())
 
@@ -463,7 +563,7 @@ def _export_inference_graph(input_type,
       initializer_nodes='')
 
   write_saved_model(saved_model_path, frozen_graph_def,
-                    placeholder_tensor, outputs)
+                    placeholder_tensor_dict, outputs)
 
 
 def export_inference_graph(input_type,
@@ -473,7 +573,11 @@ def export_inference_graph(input_type,
                            input_shape=None,
                            output_collection_name='inference_op',
                            additional_output_tensor_names=None,
-                           write_inference_graph=False):
+                           write_inference_graph=False,
+                           use_side_inputs=False,
+                           side_input_shapes=None,
+                           side_input_names=None,
+                           side_input_types=None):
   """Exports inference graph for the model specified in the pipeline config.
 
   Args:
@@ -489,6 +593,13 @@ def export_inference_graph(input_type,
     additional_output_tensor_names: list of additional output
       tensors to include in the frozen graph.
     write_inference_graph: If true, writes inference graph to disk.
+    use_side_inputs: If True, the model requires side_inputs.
+    side_input_shapes: List of shapes of the side input tensors,
+      required if use_side_inputs is True.
+    side_input_names: List of names of the side input tensors,
+      required if use_side_inputs is True.
+    side_input_types: List of types of the side input tensors,
+      required if use_side_inputs is True.
   """
   detection_model = model_builder.build(pipeline_config.model,
                                         is_training=False)
@@ -507,7 +618,11 @@ def export_inference_graph(input_type,
       input_shape,
       output_collection_name,
       graph_hook_fn=graph_rewriter_fn,
-      write_inference_graph=write_inference_graph)
+      write_inference_graph=write_inference_graph,
+      use_side_inputs=use_side_inputs,
+      side_input_shapes=side_input_shapes,
+      side_input_names=side_input_names,
+      side_input_types=side_input_types)
   pipeline_config.eval_config.use_moving_averages = False
   config_util.save_pipeline_config(pipeline_config, output_directory)
 
@@ -524,8 +639,8 @@ def profile_inference_graph(graph):
     graph: the inference graph.
   """
   tfprof_vars_option = (
-      tf.contrib.tfprof.model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
-  tfprof_flops_option = tf.contrib.tfprof.model_analyzer.FLOAT_OPS_OPTIONS
+      contrib_tfprof.model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
+  tfprof_flops_option = contrib_tfprof.model_analyzer.FLOAT_OPS_OPTIONS
 
   # Batchnorm is usually folded during inference.
   tfprof_vars_option['trim_name_regexes'] = ['.*BatchNorm.*']
@@ -534,10 +649,8 @@ def profile_inference_graph(graph):
       '.*BatchNorm.*', '.*Initializer.*', '.*Regularizer.*', '.*BiasAdd.*'
   ]
 
-  tf.contrib.tfprof.model_analyzer.print_model_analysis(
-      graph,
-      tfprof_options=tfprof_vars_option)
+  contrib_tfprof.model_analyzer.print_model_analysis(
+      graph, tfprof_options=tfprof_vars_option)
 
-  tf.contrib.tfprof.model_analyzer.print_model_analysis(
-      graph,
-      tfprof_options=tfprof_flops_option)
+  contrib_tfprof.model_analyzer.print_model_analysis(
+      graph, tfprof_options=tfprof_flops_option)

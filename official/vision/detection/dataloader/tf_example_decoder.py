@@ -18,7 +18,7 @@
 A decoder to decode string tensors containing serialized tensorflow.Example
 protos for object detection.
 """
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 class TfExampleDecoder(object):

@@ -37,6 +37,7 @@ set -e
 
 CURRENT_DIR=$(pwd)
 WORK_DIR="./pascal_voc_seg"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 mkdir -p "${WORK_DIR}"
 cd "${WORK_DIR}"
 
@@ -69,7 +70,7 @@ SEG_FOLDER="${PASCAL_ROOT}/SegmentationClass"
 SEMANTIC_SEG_FOLDER="${PASCAL_ROOT}/SegmentationClassRaw"
 
 echo "Removing the color map in ground truth annotations..."
-python ./remove_gt_colormap.py \
+python3 "${SCRIPT_DIR}/remove_gt_colormap.py" \
   --original_gt_folder="${SEG_FOLDER}" \
   --output_dir="${SEMANTIC_SEG_FOLDER}"
 
@@ -82,7 +83,7 @@ IMAGE_FOLDER="${PASCAL_ROOT}/JPEGImages"
 LIST_FOLDER="${PASCAL_ROOT}/ImageSets/Segmentation"
 
 echo "Converting PASCAL VOC 2012 dataset..."
-python ./build_voc2012_data.py \
+python3 "${SCRIPT_DIR}/build_voc2012_data.py" \
   --image_folder="${IMAGE_FOLDER}" \
   --semantic_segmentation_folder="${SEMANTIC_SEG_FOLDER}" \
   --list_folder="${LIST_FOLDER}" \

@@ -1,0 +1,240 @@
+item {
+  id: 1
+  name: 'human'
+}
+
+item {
+  id: 2
+  name: 'gazelleGrants'
+}
+
+item {
+  id: 3
+  name: 'reedbuck'
+}
+
+item {
+  id: 4
+  name: 'dikDik'
+}
+
+item {
+  id: 5
+  name: 'zebra'
+}
+
+item {
+  id: 6
+  name: 'porcupine'
+}
+
+item {
+  id: 7
+  name: 'gazelleThomsons'
+}
+
+item {
+  id: 8
+  name: 'hyenaSpotted'
+}
+
+item {
+  id: 9
+  name: 'warthog'
+}
+
+item {
+  id: 10
+  name: 'impala'
+}
+
+item {
+  id: 11
+  name: 'elephant'
+}
+
+item {
+  id: 12
+  name: 'giraffe'
+}
+
+item {
+  id: 13
+  name: 'mongoose'
+}
+
+item {
+  id: 14
+  name: 'buffalo'
+}
+
+item {
+  id: 15
+  name: 'hartebeest'
+}
+
+item {
+  id: 16
+  name: 'guineaFowl'
+}
+
+item {
+  id: 17
+  name: 'wildebeest'
+}
+
+item {
+  id: 18
+  name: 'leopard'
+}
+
+item {
+  id: 19
+  name: 'ostrich'
+}
+
+item {
+  id: 20
+  name: 'lionFemale'
+}
+
+item {
+  id: 21
+  name: 'koriBustard'
+}
+
+item {
+  id: 22
+  name: 'otherBird'
+}
+
+item {
+  id: 23
+  name: 'batEaredFox'
+}
+
+item {
+  id: 24
+  name: 'bushbuck'
+}
+
+item {
+  id: 25
+  name: 'jackal'
+}
+
+item {
+  id: 26
+  name: 'cheetah'
+}
+
+item {
+  id: 27
+  name: 'eland'
+}
+
+item {
+  id: 28
+  name: 'aardwolf'
+}
+
+item {
+  id: 29
+  name: 'hippopotamus'
+}
+
+item {
+  id: 30
+  name: 'hyenaStriped'
+}
+
+item {
+  id: 31
+  name: 'aardvark'
+}
+
+item {
+  id: 32
+  name: 'hare'
+}
+
+item {
+  id: 33
+  name: 'baboon'
+}
+
+item {
+  id: 34
+  name: 'vervetMonkey'
+}
+
+item {
+  id: 35
+  name: 'waterbuck'
+}
+
+item {
+  id: 36
+  name: 'secretaryBird'
+}
+
+item {
+  id: 37
+  name: 'serval'
+}
+
+item {
+  id: 38
+  name: 'lionMale'
+}
+
+item {
+  id: 39
+  name: 'topi'
+}
+
+item {
+  id: 40
+  name: 'honeyBadger'
+}
+
+item {
+  id: 41
+  name: 'rodents'
+}
+
+item {
+  id: 42
+  name: 'wildcat'
+}
+
+item {
+  id: 43
+  name: 'civet'
+}
+
+item {
+  id: 44
+  name: 'genet'
+}
+
+item {
+  id: 45
+  name: 'caracal'
+}
+
+item {
+  id: 46
+  name: 'rhinoceros'
+}
+
+item {
+  id: 47
+  name: 'reptiles'
+}
+
+item {
+  id: 48
+  name: 'zorilla'
+}
+

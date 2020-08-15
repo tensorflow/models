@@ -23,7 +23,7 @@ import functools
 
 import numpy as np
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from lstm_object_detection.lstm import lstm_cells
 from lstm_object_detection.meta_architectures import lstm_ssd_meta_arch
@@ -38,8 +38,6 @@ from object_detection.models import feature_map_generators
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
 
-
-slim = contrib_slim
 
 MAX_TOTAL_NUM_BOXES = 5
 NUM_CLASSES = 1
@@ -84,7 +82,7 @@ class FakeLSTMFeatureExtractor(
         min_depth=self._min_depth,
         insert_1x1_conv=True,
         image_features=image_features)
-    return feature_maps.values()
+    return list(feature_maps.values())
 
 
 class FakeLSTMInterleavedFeatureExtractor(
@@ -143,7 +141,7 @@ class FakeLSTMInterleavedFeatureExtractor(
         min_depth=self._min_depth,
         insert_1x1_conv=True,
         image_features=image_features)
-    return feature_maps.values()
+    return list(feature_maps.values())
 
 
 class MockAnchorGenerator2x2(anchor_generator.AnchorGenerator):

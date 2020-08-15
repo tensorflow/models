@@ -14,7 +14,7 @@
 # ==============================================================================
 """Data parser and processing for Mask R-CNN."""
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.dataloader import anchor
 from official.vision.detection.dataloader import mode_keys as ModeKeys
@@ -185,12 +185,12 @@ class Parser(object):
     is_crowds = data['groundtruth_is_crowd']
     # Skips annotations with `is_crowd` = True.
     if self._skip_crowd_during_training and self._is_training:
-      num_groundtrtuhs = tf.shape(classes)[0]
-      with tf.control_dependencies([num_groundtrtuhs, is_crowds]):
+      num_groundtruths = tf.shape(classes)[0]
+      with tf.control_dependencies([num_groundtruths, is_crowds]):
         indices = tf.cond(
             tf.greater(tf.size(is_crowds), 0),
             lambda: tf.where(tf.logical_not(is_crowds))[:, 0],
-            lambda: tf.cast(tf.range(num_groundtrtuhs), tf.int64))
+            lambda: tf.cast(tf.range(num_groundtruths), tf.int64))
       classes = tf.gather(classes, indices)
       boxes = tf.gather(boxes, indices)
       if self._include_mask:

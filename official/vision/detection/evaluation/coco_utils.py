@@ -27,7 +27,7 @@ from PIL import Image
 from pycocotools import coco
 from pycocotools import mask as mask_api
 import six
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.dataloader import tf_example_decoder
 from official.vision.detection.utils import box_utils
@@ -237,7 +237,7 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
               (boxes[j, k, 3] - boxes[j, k, 1]) *
               (boxes[j, k, 2] - boxes[j, k, 0]))
         if 'masks' in groundtruths:
-          mask = Image.open(six.StringIO(groundtruths['masks'][i][j, k]))
+          mask = Image.open(six.BytesIO(groundtruths['masks'][i][j, k]))
           width, height = mask.size
           np_mask = (
               np.array(mask.getdata()).reshape(height, width).astype(np.uint8))

@@ -21,16 +21,18 @@ from __future__ import print_function
 import functools
 
 import numpy as np
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 from official.modeling.hyperparams import params_dict
 
 
-class StepLearningRateWithLinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
+class StepLearningRateWithLinearWarmup(
+    tf.keras.optimizers.schedules.LearningRateSchedule):
   """Class to generate learning rate tensor."""
 
-  def __init__(self, params):
+  def __init__(self, total_steps, params):
     """Creates the step learning rate tensor with linear warmup."""
     super(StepLearningRateWithLinearWarmup, self).__init__()
+    self._total_steps = total_steps
     assert isinstance(params, (dict, params_dict.ParamsDict))
     if isinstance(params, dict):
       params = params_dict.ParamsDict(params)
@@ -56,12 +58,14 @@ class StepLearningRateWithLinearWarmup(tf.keras.optimizers.schedules.LearningRat
     return {'_params': self._params.as_dict()}
 
 
-class CosineLearningRateWithLinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
+class CosineLearningRateWithLinearWarmup(
+    tf.keras.optimizers.schedules.LearningRateSchedule):
   """Class to generate learning rate tensor."""
 
-  def __init__(self, params):
+  def __init__(self, total_steps, params):
     """Creates the consine learning rate tensor with linear warmup."""
     super(CosineLearningRateWithLinearWarmup, self).__init__()
+    self._total_steps = total_steps
     assert isinstance(params, (dict, params_dict.ParamsDict))
     if isinstance(params, dict):
       params = params_dict.ParamsDict(params)
@@ -72,7 +76,7 @@ class CosineLearningRateWithLinearWarmup(tf.keras.optimizers.schedules.LearningR
     warmup_lr = self._params.warmup_learning_rate
     warmup_steps = self._params.warmup_steps
     init_lr = self._params.init_learning_rate
-    total_steps = self._params.total_steps
+    total_steps = self._total_steps
     linear_warmup = (
         warmup_lr + global_step / warmup_steps * (init_lr - warmup_lr))
     cosine_learning_rate = (
@@ -86,11 +90,11 @@ class CosineLearningRateWithLinearWarmup(tf.keras.optimizers.schedules.LearningR
     return {'_params': self._params.as_dict()}
 
 
-def learning_rate_generator(params):
+def learning_rate_generator(total_steps, params):
   """The learning rate function generator."""
   if params.type == 'step':
-    return StepLearningRateWithLinearWarmup(params)
+    return StepLearningRateWithLinearWarmup(total_steps, params)
   elif params.type == 'cosine':
-    return CosineLearningRateWithLinearWarmup(params)
+    return CosineLearningRateWithLinearWarmup(total_steps, params)
   else:
     raise ValueError('Unsupported learning rate type: {}.'.format(params.type))

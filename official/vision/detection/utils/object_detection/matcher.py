@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Matcher interface and Match class.
 
 This module defines the Matcher interface and the Match object. The job of the
@@ -34,7 +33,7 @@ to query the results.
 from abc import ABCMeta
 from abc import abstractmethod
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 class Match(object):
@@ -49,9 +48,9 @@ class Match(object):
 
     Args:
       match_results: Integer tensor of shape [N] with (1) match_results[i]>=0,
-        meaning that column i is matched with row match_results[i].
-        (2) match_results[i]=-1, meaning that column i is not matched.
-        (3) match_results[i]=-2, meaning that column i is ignored.
+        meaning that column i is matched with row match_results[i]. (2)
+        match_results[i]=-1, meaning that column i is not matched. (3)
+        match_results[i]=-2, meaning that column i is ignored.
 
     Raises:
       ValueError: if match_results does not have rank 1 or is not an
@@ -168,8 +167,7 @@ class Match(object):
   def _reshape_and_cast(self, t):
     return tf.cast(tf.reshape(t, [-1]), tf.int32)
 
-  def gather_based_on_match(self, input_tensor, unmatched_value,
-                            ignored_value):
+  def gather_based_on_match(self, input_tensor, unmatched_value, ignored_value):
     """Gathers elements from `input_tensor` based on match results.
 
     For columns that are matched to a row, gathered_tensor[col] is set to
@@ -190,16 +188,15 @@ class Match(object):
         The shape of the gathered tensor is [match_results.shape[0]] +
         input_tensor.shape[1:].
     """
-    input_tensor = tf.concat([tf.stack([ignored_value, unmatched_value]),
-                              input_tensor], axis=0)
+    input_tensor = tf.concat(
+        [tf.stack([ignored_value, unmatched_value]), input_tensor], axis=0)
     gather_indices = tf.maximum(self.match_results + 2, 0)
     gathered_tensor = tf.gather(input_tensor, gather_indices)
     return gathered_tensor
 
 
 class Matcher(object):
-  """Abstract base class for matcher.
-  """
+  """Abstract base class for matcher."""
   __metaclass__ = ABCMeta
 
   def match(self, similarity_matrix, scope=None, **params):
@@ -212,8 +209,8 @@ class Matcher(object):
       similarity_matrix: Float tensor of shape [N, M] with pairwise similarity
         where higher value means more similar.
       scope: Op scope name. Defaults to 'Match' if None.
-      **params: Additional keyword arguments for specific implementations of
-        the Matcher.
+      **params: Additional keyword arguments for specific implementations of the
+        Matcher.
 
     Returns:
       A Match object with the results of matching.
@@ -230,8 +227,8 @@ class Matcher(object):
     Args:
       similarity_matrix: Float tensor of shape [N, M] with pairwise similarity
         where higher value means more similar.
-      **params: Additional keyword arguments for specific implementations of
-        the Matcher.
+      **params: Additional keyword arguments for specific implementations of the
+        Matcher.
 
     Returns:
       match_results: Integer tensor of shape [M]: match_results[i]>=0 means

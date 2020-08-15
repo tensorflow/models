@@ -17,13 +17,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.saved_model import loader
 from tensorflow.python.saved_model import signature_constants
 from tensorflow.python.saved_model import tag_constants
+from tensorflow.python.tpu import tpu
 # pylint: enable=g-direct-tensorflow-import
 from object_detection.protos import pipeline_pb2
 from object_detection.tpu_exporters import faster_rcnn
@@ -160,7 +161,7 @@ def run_inference(inputs,
     saver = tf.train.Saver()
     init_op = tf.global_variables_initializer()
 
-    sess.run(tf.contrib.tpu.initialize_system())
+    sess.run(tpu.initialize_system())
 
     sess.run(init_op)
     if ckpt_path is not None:
@@ -170,7 +171,7 @@ def run_inference(inputs,
       tensor_dict_out = sess.run(
           result_tensor_dict, feed_dict={placeholder_tensor: [inputs]})
 
-    sess.run(tf.contrib.tpu.shutdown_system())
+    sess.run(tpu.shutdown_system())
 
     return tensor_dict_out
 
@@ -194,7 +195,7 @@ def run_inference_from_saved_model(inputs,
     meta_graph = loader.load(sess, [tag_constants.SERVING, tag_constants.TPU],
                              saved_model_dir)
 
-    sess.run(tf.contrib.tpu.initialize_system())
+    sess.run(tpu.initialize_system())
 
     key_prediction = signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
@@ -210,6 +211,6 @@ def run_inference_from_saved_model(inputs,
       tensor_dict_out = sess.run(
           tensor_name_output, feed_dict={tensor_name_input: [inputs]})
 
-    sess.run(tf.contrib.tpu.shutdown_system())
+    sess.run(tpu.shutdown_system())
 
     return tensor_dict_out

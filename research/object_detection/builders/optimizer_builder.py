@@ -15,10 +15,14 @@
 
 """Functions to build DetectionModel training optimizers."""
 
-import tensorflow as tf
-
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import learning_schedules
+
+try:
+  from tensorflow.contrib import opt as tf_opt  # pylint: disable=g-import-not-at-top
+except:  # pylint: disable=bare-except
+  pass
 
 
 def build_optimizers_tf_v1(optimizer_config, global_step=None):
@@ -64,14 +68,14 @@ def build_optimizers_tf_v1(optimizer_config, global_step=None):
     learning_rate = _create_learning_rate(config.learning_rate,
                                           global_step=global_step)
     summary_vars.append(learning_rate)
-    optimizer = tf.train.AdamOptimizer(learning_rate)
+    optimizer = tf.train.AdamOptimizer(learning_rate, epsilon=config.epsilon)
 
 
   if optimizer is None:
     raise ValueError('Optimizer %s not supported.' % optimizer_type)
 
   if optimizer_config.use_moving_average:
-    optimizer = tf.contrib.opt.MovingAverageOptimizer(
+    optimizer = tf_opt.MovingAverageOptimizer(
         optimizer, average_decay=optimizer_config.moving_average_decay)
 
   return optimizer, summary_vars
@@ -120,7 +124,7 @@ def build_optimizers_tf_v2(optimizer_config, global_step=None):
     learning_rate = _create_learning_rate(config.learning_rate,
                                           global_step=global_step)
     summary_vars.append(learning_rate)
-    optimizer = tf.keras.optimizers.Adam(learning_rate)
+    optimizer = tf.keras.optimizers.Adam(learning_rate, epsilon=config.epsilon)
 
   if optimizer is None:
     raise ValueError('Optimizer %s not supported.' % optimizer_type)

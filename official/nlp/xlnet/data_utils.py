@@ -22,11 +22,11 @@ from __future__ import print_function
 import collections
 import json
 import os
+
 from absl import logging
 
 import numpy as np
 import tensorflow as tf
-
 
 special_symbols = {
     "<unk>": 0,
@@ -51,10 +51,10 @@ SEG_ID_Q = 1
 SEG_ID_CLS = 2
 SEG_ID_PAD = 3
 
-
 OnlineMaskingConfig = collections.namedtuple("OnlineMaskingConfig", [
     "sample_strategy", "max_num_tokens", "min_num_tokens", "max_num_words",
-    "min_num_words"])
+    "min_num_words"
+])
 
 
 def file_based_input_fn_builder(input_file, name_to_features, batch_size,
@@ -93,26 +93,18 @@ def file_based_input_fn_builder(input_file, name_to_features, batch_size,
       # file level shuffle
       d = d.shuffle(len(input_file)).repeat()
 
-      d = d.apply(
-          tf.data.experimental.parallel_interleave(
-              tf.data.TFRecordDataset,
-              sloppy=is_training,
-              cycle_length=cycle_length))
+      d = d.interleave(
+          tf.data.TFRecordDataset,
+          sloppy=is_training,
+          cycle_length=cycle_length)
 
       if is_training:
         # sample level shuffle
         d = d.shuffle(buffer_size=2048)
-
-    # TODO(b/138223458): Hard-code drop_remainder=True to get around the bug
-    # that under TPU strategy, setting drop_remainder=False in
-    # tf.data.Dataset.batch() while data_size can be divided by global
-    # batch_size will trigger dynamic_dimension related TPU compilation error.
-    d = d.apply(
-        tf.data.experimental.map_and_batch(
-            lambda record: _decode_record(record, name_to_features),
-            batch_size=batch_size,
-            num_parallel_batches=num_threads,
-            drop_remainder=True))
+    d = d.map(
+        lambda record: _decode_record(record, name_to_features),
+        num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    d = d.batch(batch_size, drop_remainder=is_training)
 
     # When `input_file` is a path to a single file or a list
     # containing a single path, disable auto sharding so that
@@ -261,20 +253,14 @@ def get_squad_input_data(batch_size, seq_len, q_len, strategy, is_training,
 def _idx_pair_to_mask(beg_indices, end_indices, inputs, tgt_len, num_predict):
   """Turn beg and end indices into actual mask."""
   non_func_mask = tf.logical_and(
-      tf.not_equal(inputs, SEP_ID),
-      tf.not_equal(inputs, CLS_ID))
-  all_indices = tf.where(
-      non_func_mask,
-      tf.range(tgt_len, dtype=tf.int64),
-      tf.constant(-1, shape=[tgt_len], dtype=tf.int64))
+      tf.not_equal(inputs, SEP_ID), tf.not_equal(inputs, CLS_ID))
+  all_indices = tf.where(non_func_mask, tf.range(tgt_len, dtype=tf.int64),
+                         tf.constant(-1, shape=[tgt_len], dtype=tf.int64))
   candidate_matrix = tf.cast(
-      tf.logical_and(
-          all_indices[None, :] >= beg_indices[:, None],
-          all_indices[None, :] < end_indices[:, None]),
-      tf.float32)
+      tf.logical_and(all_indices[None, :] >= beg_indices[:, None],
+                     all_indices[None, :] < end_indices[:, None]), tf.float32)
   cumsum_matrix = tf.reshape(
-      tf.cumsum(tf.reshape(candidate_matrix, [-1])),
-      [-1, tgt_len])
+      tf.cumsum(tf.reshape(candidate_matrix, [-1])), [-1, tgt_len])
   masked_matrix = tf.cast(cumsum_matrix <= num_predict, tf.float32)
   target_mask = tf.reduce_sum(candidate_matrix * masked_matrix, axis=0)
   is_masked = tf.cast(target_mask, tf.bool)
@@ -282,8 +268,8 @@ def _idx_pair_to_mask(beg_indices, end_indices, inputs, tgt_len, num_predict):
   return is_masked, target_mask
 
 
-def _word_span_mask(inputs, tgt_len, num_predict, min_num_words,
-                    max_num_words, boundary):
+def _word_span_mask(inputs, tgt_len, num_predict, min_num_words, max_num_words,
+                    boundary):
   """Sample whole word spans as prediction targets."""
   # Note: 1.2 is the token-to-word ratio
   mask_alpha = tgt_len / num_predict / 1.2
@@ -291,7 +277,7 @@ def _word_span_mask(inputs, tgt_len, num_predict, min_num_words,
 
   # Sample span lengths from a zipf distribution
   span_len_seq = np.arange(min_num_words, max_num_words + 1)
-  probs = np.array([1.0 /  (i + 1) for i in span_len_seq])
+  probs = np.array([1.0 / (i + 1) for i in span_len_seq])
   probs /= np.sum(probs)
   logits = tf.constant(np.log(probs), dtype=tf.float32)
 
@@ -310,8 +296,8 @@ def _word_span_mask(inputs, tgt_len, num_predict, min_num_words,
   left_ctx_len = round_to_int(left_ctx_len)
   right_offset = round_to_int(span_lens_float * mask_alpha) - left_ctx_len
 
-  beg_indices = (tf.cumsum(left_ctx_len) +
-                 tf.cumsum(right_offset, exclusive=True))
+  beg_indices = (
+      tf.cumsum(left_ctx_len) + tf.cumsum(right_offset, exclusive=True))
   end_indices = beg_indices + span_lens
 
   # Remove out of range indices
@@ -341,7 +327,7 @@ def _token_span_mask(inputs, tgt_len, num_predict, min_num_tokens,
 
   # Sample span lengths from a zipf distribution
   span_len_seq = np.arange(min_num_tokens, max_num_tokens + 1)
-  probs = np.array([1.0 /  (i + 1) for i in span_len_seq])
+  probs = np.array([1.0 / (i + 1) for i in span_len_seq])
 
   probs /= np.sum(probs)
   logits = tf.constant(np.log(probs), dtype=tf.float32)
@@ -361,8 +347,8 @@ def _token_span_mask(inputs, tgt_len, num_predict, min_num_tokens,
   right_offset = round_to_int(span_lens_float * mask_alpha) - left_ctx_len
 
   # Get the actual begin and end indices
-  beg_indices = (tf.cumsum(left_ctx_len) +
-                 tf.cumsum(right_offset, exclusive=True))
+  beg_indices = (
+      tf.cumsum(left_ctx_len) + tf.cumsum(right_offset, exclusive=True))
   end_indices = beg_indices + span_lens
 
   # Remove out of range indices
@@ -395,8 +381,7 @@ def _single_token_mask(inputs, tgt_len, num_predict):
   """Sample individual tokens as prediction targets."""
   all_indices = tf.range(tgt_len, dtype=tf.int64)
   non_func_mask = tf.logical_and(
-      tf.not_equal(inputs, SEP_ID),
-      tf.not_equal(inputs, CLS_ID))
+      tf.not_equal(inputs, SEP_ID), tf.not_equal(inputs, CLS_ID))
   non_func_indices = tf.boolean_mask(all_indices, non_func_mask)
 
   masked_pos = tf.random.shuffle(non_func_indices)
@@ -412,7 +397,10 @@ def _single_token_mask(inputs, tgt_len, num_predict):
   return is_masked, target_mask
 
 
-def _online_sample_masks(inputs, tgt_len, num_predict, online_masking_config,
+def _online_sample_masks(inputs,
+                         tgt_len,
+                         num_predict,
+                         online_masking_config,
                          boundary=None):
   """Sample target positions to predict."""
   logging.info("Online sample with strategy: `%s`.",
@@ -430,8 +418,7 @@ def _online_sample_masks(inputs, tgt_len, num_predict, online_masking_config,
     assert boundary is not None, "word span sampling requires `boundary`"
     return _word_span_mask(inputs, tgt_len, num_predict,
                            online_masking_config.min_num_words,
-                           online_masking_config.max_num_words,
-                           boundary)
+                           online_masking_config.max_num_words, boundary)
   else:
     raise NotImplementedError
 
@@ -537,10 +524,11 @@ def create_pretrain_dataset(file_names,
       example["target"] = tf.reshape(target, [num_predict])
 
       ##### target mask
-      target_mask = tf.concat(
-          [tf.ones([actual_num_predict], dtype=tf.float32),
-           tf.zeros([pad_len], dtype=tf.float32)],
-          axis=0)
+      target_mask = tf.concat([
+          tf.ones([actual_num_predict], dtype=tf.float32),
+          tf.zeros([pad_len], dtype=tf.float32)
+      ],
+                              axis=0)
       example["target_mask"] = tf.reshape(target_mask, [num_predict])
     else:
       example["target"] = tf.reshape(target, [seq_len])
@@ -570,7 +558,11 @@ def create_pretrain_dataset(file_names,
   return dataset
 
 
-def format_filename(prefix, suffix, bsz_per_host, seq_len, reuse_len=None,
+def format_filename(prefix,
+                    suffix,
+                    bsz_per_host,
+                    seq_len,
+                    reuse_len=None,
                     uncased=False):
   """Generates input file name pattern."""
   if reuse_len is not None and reuse_len > 0:
@@ -585,8 +577,8 @@ def format_filename(prefix, suffix, bsz_per_host, seq_len, reuse_len=None,
   else:
     case_str = "uncased."
 
-  file_name = "{}.seq-{}.{}{}{}{}".format(
-      prefix, seq_len, reuse_str, bsz_str, case_str, suffix)
+  file_name = "{}.seq-{}.{}{}{}{}".format(prefix, seq_len, reuse_str, bsz_str,
+                                          case_str, suffix)
 
   return file_name
 
@@ -730,18 +722,12 @@ def parse_files_to_dataset(parser,
     # even more randomness to the training pipeline.
     dataset = dataset.apply(
         tf.data.experimental.parallel_interleave(
-            tf.data.TFRecordDataset,
-            sloppy=True,
-            cycle_length=cycle_length))
+            tf.data.TFRecordDataset, sloppy=True, cycle_length=cycle_length))
     buffer_size = 2048
     logging.info("Perform sample-level shuffle with size %d", buffer_size)
     dataset = dataset.shuffle(buffer_size=buffer_size)
 
-  # (zihang): since we are doing online preprocessing, the parsed result of
-  # the same input at each time will be different. Thus, cache processed data
-  # is not helpful. It will use a lot of memory and lead to contrainer OOM.
-  # So, change to cache non-parsed raw data instead.
-  dataset = dataset.cache().map(parser).repeat()
+  dataset = dataset.cache().repeat().map(parser)
   dataset = dataset.batch(bsz_per_core, drop_remainder=True)
   dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
 
@@ -790,9 +776,8 @@ def _local_perm(inputs, is_masked, perm_size, seq_len, leak_ratio):
   index = tf.reshape(tf.transpose(index), [-1])
 
   # non-functional tokens
-  non_func_tokens = tf.logical_not(tf.logical_or(
-      tf.equal(inputs, SEP_ID),
-      tf.equal(inputs, CLS_ID)))
+  non_func_tokens = tf.logical_not(
+      tf.logical_or(tf.equal(inputs, SEP_ID), tf.equal(inputs, CLS_ID)))
   masked_tokens = tf.logical_and(is_masked, non_func_tokens)
   non_masked_or_func_tokens = tf.logical_not(masked_tokens)
 

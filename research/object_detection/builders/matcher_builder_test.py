@@ -15,16 +15,20 @@
 
 """Tests for matcher_builder."""
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
 from object_detection.builders import matcher_builder
 from object_detection.matchers import argmax_matcher
-from object_detection.matchers import bipartite_matcher
 from object_detection.protos import matcher_pb2
+from object_detection.utils import test_case
+from object_detection.utils import tf_version
+
+if tf_version.is_tf1():
+  from object_detection.matchers import bipartite_matcher  # pylint: disable=g-import-not-at-top
 
 
-class MatcherBuilderTest(tf.test.TestCase):
+class MatcherBuilderTest(test_case.TestCase):
 
   def test_build_arg_max_matcher_with_defaults(self):
     matcher_text_proto = """
@@ -34,7 +38,7 @@ class MatcherBuilderTest(tf.test.TestCase):
     matcher_proto = matcher_pb2.Matcher()
     text_format.Merge(matcher_text_proto, matcher_proto)
     matcher_object = matcher_builder.build(matcher_proto)
-    self.assertTrue(isinstance(matcher_object, argmax_matcher.ArgMaxMatcher))
+    self.assertIsInstance(matcher_object, argmax_matcher.ArgMaxMatcher)
     self.assertAlmostEqual(matcher_object._matched_threshold, 0.5)
     self.assertAlmostEqual(matcher_object._unmatched_threshold, 0.5)
     self.assertTrue(matcher_object._negatives_lower_than_unmatched)
@@ -49,7 +53,7 @@ class MatcherBuilderTest(tf.test.TestCase):
     matcher_proto = matcher_pb2.Matcher()
     text_format.Merge(matcher_text_proto, matcher_proto)
     matcher_object = matcher_builder.build(matcher_proto)
-    self.assertTrue(isinstance(matcher_object, argmax_matcher.ArgMaxMatcher))
+    self.assertIsInstance(matcher_object, argmax_matcher.ArgMaxMatcher)
     self.assertEqual(matcher_object._matched_threshold, None)
     self.assertEqual(matcher_object._unmatched_threshold, None)
     self.assertTrue(matcher_object._negatives_lower_than_unmatched)
@@ -68,7 +72,7 @@ class MatcherBuilderTest(tf.test.TestCase):
     matcher_proto = matcher_pb2.Matcher()
     text_format.Merge(matcher_text_proto, matcher_proto)
     matcher_object = matcher_builder.build(matcher_proto)
-    self.assertTrue(isinstance(matcher_object, argmax_matcher.ArgMaxMatcher))
+    self.assertIsInstance(matcher_object, argmax_matcher.ArgMaxMatcher)
     self.assertAlmostEqual(matcher_object._matched_threshold, 0.7)
     self.assertAlmostEqual(matcher_object._unmatched_threshold, 0.3)
     self.assertFalse(matcher_object._negatives_lower_than_unmatched)
@@ -76,6 +80,8 @@ class MatcherBuilderTest(tf.test.TestCase):
     self.assertTrue(matcher_object._use_matmul_gather)
 
   def test_build_bipartite_matcher(self):
+    if tf_version.is_tf2():
+      self.skipTest('BipartiteMatcher unsupported in TF 2.X. Skipping.')
     matcher_text_proto = """
       bipartite_matcher {
       }
@@ -83,8 +89,8 @@ class MatcherBuilderTest(tf.test.TestCase):
     matcher_proto = matcher_pb2.Matcher()
     text_format.Merge(matcher_text_proto, matcher_proto)
     matcher_object = matcher_builder.build(matcher_proto)
-    self.assertTrue(
-        isinstance(matcher_object, bipartite_matcher.GreedyBipartiteMatcher))
+    self.assertIsInstance(matcher_object,
+                          bipartite_matcher.GreedyBipartiteMatcher)
 
   def test_raise_error_on_empty_matcher(self):
     matcher_text_proto = """

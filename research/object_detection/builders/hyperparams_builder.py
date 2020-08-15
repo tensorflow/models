@@ -14,13 +14,14 @@
 # ==============================================================================
 
 """Builder function to construct tf-slim arg_scope for convolution, fc ops."""
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.core import freezable_batch_norm
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import context_manager
 
-slim = tf.contrib.slim
+# pylint: enable=g-import-not-at-top
 
 
 class KerasLayerHyperparams(object):
@@ -63,6 +64,7 @@ class KerasLayerHyperparams(object):
       self._batch_norm_params = _build_keras_batch_norm_params(
           hyperparams_config.batch_norm)
 
+    self._force_use_bias = hyperparams_config.force_use_bias
     self._activation_fn = _build_activation_fn(hyperparams_config.activation)
     # TODO(kaftan): Unclear if these kwargs apply to separable & depthwise conv
     # (Those might use depthwise_* instead of kernel_*)
@@ -78,6 +80,13 @@ class KerasLayerHyperparams(object):
 
   def use_batch_norm(self):
     return self._batch_norm_params is not None
+
+  def force_use_bias(self):
+    return self._force_use_bias
+
+  def use_bias(self):
+    return (self._force_use_bias or not
+            (self.use_batch_norm() and self.batch_norm_params()['center']))
 
   def batch_norm_params(self, **overrides):
     """Returns a dict containing batchnorm layer construction hyperparameters.
@@ -167,10 +176,7 @@ class KerasLayerHyperparams(object):
     new_params['activation'] = None
     if include_activation:
       new_params['activation'] = self._activation_fn
-    if self.use_batch_norm() and self.batch_norm_params()['center']:
-      new_params['use_bias'] = False
-    else:
-      new_params['use_bias'] = True
+    new_params['use_bias'] = self.use_bias()
     new_params.update(**overrides)
     return new_params
 
@@ -209,6 +215,10 @@ def build(hyperparams_config, is_training):
     raise ValueError('hyperparams_config not of type '
                      'hyperparams_pb.Hyperparams.')
 
+  if hyperparams_config.force_use_bias:
+    raise ValueError('Hyperparams force_use_bias only supported by '
+                     'KerasLayerHyperparams.')
+
   normalizer_fn = None
   batch_norm_params = None
   if hyperparams_config.HasField('batch_norm'):
@@ -216,7 +226,7 @@ def build(hyperparams_config, is_training):
     batch_norm_params = _build_batch_norm_params(
         hyperparams_config.batch_norm, is_training)
   if hyperparams_config.HasField('group_norm'):
-    normalizer_fn = tf.contrib.layers.group_norm
+    normalizer_fn = slim.group_norm
   affected_ops = [slim.conv2d, slim.separable_conv2d, slim.conv2d_transpose]
   if hyperparams_config.HasField('op') and (
       hyperparams_config.op == hyperparams_pb2.Hyperparams.FC):
@@ -256,6 +266,8 @@ def _build_activation_fn(activation_fn):
     return tf.nn.relu
   if activation_fn == hyperparams_pb2.Hyperparams.RELU_6:
     return tf.nn.relu6
+  if activation_fn == hyperparams_pb2.Hyperparams.SWISH:
+    return tf.nn.swish
   raise ValueError('Unknown activation function: {}'.format(activation_fn))
 
 
@@ -301,6 +313,8 @@ def _build_keras_regularizer(regularizer):
     # weight by a factor of 2
     return tf.keras.regularizers.l2(
         float(regularizer.l2_regularizer.weight * 0.5))
+  if regularizer_oneof is None:
+    return None
   raise ValueError('Unknown regularizer function: {}'.format(regularizer_oneof))
 
 
@@ -369,6 +383,8 @@ def _build_initializer(initializer, build_for_keras=False):
           factor=initializer.variance_scaling_initializer.factor,
           mode=mode,
           uniform=initializer.variance_scaling_initializer.uniform)
+  if initializer_oneof is None:
+    return None
   raise ValueError('Unknown initializer function: {}'.format(
       initializer_oneof))
 

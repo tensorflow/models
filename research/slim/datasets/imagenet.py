@@ -34,12 +34,10 @@ from __future__ import print_function
 
 import os
 from six.moves import urllib
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from datasets import dataset_utils
-
-slim = contrib_slim
 
 # TODO(nsilberman): Add tfrecord file type once the script is updated.
 _FILE_PATTERN = '%s-*'

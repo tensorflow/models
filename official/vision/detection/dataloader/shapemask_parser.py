@@ -21,8 +21,7 @@ Weicheng Kuo, Anelia Angelova, Jitendra Malik, Tsung-Yi Lin
 ShapeMask: Learning to Segment Novel Objects by Refining Shape Priors.
 arXiv:1904.03239.
 """
-
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.vision.detection.dataloader import anchor
 from official.vision.detection.dataloader import mode_keys as ModeKeys
@@ -33,8 +32,39 @@ from official.vision.detection.utils import dataloader_utils
 from official.vision.detection.utils import input_utils
 
 
+def pad_to_size(input_tensor, size):
+  """Pads data with zeros to a given length at the first dimension if needed.
+
+  Args:
+    input_tensor: `Tensor` with any dimension.
+    size: `int` number for the first dimension of output Tensor.
+
+  Returns:
+    `Tensor` with the first dimension padded to `size` if the first diemsion
+    is less than `size`, otherwise no padding.
+  """
+  input_shape = tf.shape(input_tensor)
+  padding_shape = []
+
+  # Computes the padding length on the first dimension.
+  padding_length = tf.maximum(0, size - tf.shape(input_tensor)[0])
+  assert_length = tf.Assert(
+      tf.greater_equal(padding_length, 0), [padding_length])
+  with tf.control_dependencies([assert_length]):
+    padding_shape.append(padding_length)
+
+  # Copies shapes of the rest of input shape dimensions.
+  for i in range(1, len(input_shape)):
+    padding_shape.append(tf.shape(input=input_tensor)[i])
+
+  # Pads input tensor to the fixed first dimension.
+  paddings = tf.cast(tf.zeros(padding_shape), input_tensor.dtype)
+  padded_tensor = tf.concat([input_tensor, paddings], axis=0)
+  return padded_tensor
+
+
 class Parser(object):
-  """Parser to parse an image and its annotations into a dictionary of tensors."""
+  """ShapeMask Parser to parse an image and its annotations into a dictionary of tensors."""
 
   def __init__(self,
                output_size,
@@ -167,8 +197,17 @@ class Parser(object):
       value: a string tensor holding a serialized tf.Example proto.
 
     Returns:
-      image: image tensor that is preproessed to have normalized value and
-        dimension [output_size[0], output_size[1], 3]
+      inputs:
+        image: image tensor that is preproessed to have normalized value and
+          dimension [output_size[0], output_size[1], 3]
+        mask_boxes: sampled boxes that tightly enclose the training masks. The
+          box is represented in [y1, x1, y2, x2] format. The tensor is sampled
+          to the fixed dimension [self._num_sampled_masks, 4].
+        mask_outer_boxes: loose box that enclose sampled tight box. The
+          box is represented in [y1, x1, y2, x2] format. The tensor is sampled
+          to the fixed dimension [self._num_sampled_masks, 4].
+        mask_classes: the class ids of sampled training masks. The tensor has
+          shape [self._num_sampled_masks].
       labels:
         cls_targets: ordered dictionary with keys
           [min_level, min_level+1, ..., max_level]. The values are tensor with
@@ -185,16 +224,8 @@ class Parser(object):
           shape [height_l, width_l, 4] representing anchor boxes at each level.
         image_scale: 2D float `Tensor` representing scale factors that apply
           to [height, width] of input image.
-        mask_boxes: sampled boxes that tightly enclose the training masks. The
-          box is represented in [y1, x1, y2, x2] format. The tensor is sampled
-          to the fixed dimension [self._num_sampled_masks, 4].
-        mask_outer_boxes: loose box that enclose sampled tight box. The
-          box is represented in [y1, x1, y2, x2] format. The tensor is sampled
-          to the fixed dimension [self._num_sampled_masks, 4].
         mask_targets: training binary mask targets. The tensor has shape
           [self._num_sampled_masks, self._mask_crop_size, self._mask_crop_size].
-        mask_classes: the class ids of sampled training masks. The tensor has
-          shape [self._num_sampled_masks].
         mask_is_valid: the binary tensor to indicate if the sampled masks are
           valide. The sampled masks are invalid when no mask annotations are
           included in the image. The tensor has shape [1].
@@ -290,10 +321,9 @@ class Parser(object):
     mask_shape = tf.shape(masks)[1:3]
 
     # Pad sampled boxes/masks/classes to a constant batch size.
-    padded_boxes = input_utils.pad_to_fixed_size(boxes, self._num_sampled_masks)
-    padded_classes = input_utils.pad_to_fixed_size(
-        classes, self._num_sampled_masks)
-    padded_masks = input_utils.pad_to_fixed_size(masks, self._num_sampled_masks)
+    padded_boxes = pad_to_size(boxes, self._num_sampled_masks)
+    padded_classes = pad_to_size(classes, self._num_sampled_masks)
+    padded_masks = pad_to_size(masks, self._num_sampled_masks)
 
     # Randomly sample groundtruth masks for mask branch training. For the image
     # without groundtruth masks, it will sample the dummy padded tensors.
@@ -381,14 +411,19 @@ class Parser(object):
         'num_positives': num_positives,
         'image_info': image_info,
         # For ShapeMask.
-        'mask_boxes': sampled_boxes,
-        'mask_outer_boxes': mask_outer_boxes,
         'mask_targets': mask_targets,
         'fine_mask_targets': fine_mask_targets,
-        'mask_classes': sampled_classes,
         'mask_is_valid': mask_is_valid,
     }
-    return image, labels
+
+    inputs = {
+        'image': image,
+        'image_info': image_info,
+        'mask_boxes': sampled_boxes,
+        'mask_outer_boxes': mask_outer_boxes,
+        'mask_classes': sampled_classes,
+    }
+    return inputs, labels
 
   def _parse_predict_data(self, data):
     """Parse data for ShapeMask training."""
@@ -450,6 +485,8 @@ class Parser(object):
       # Converts boxes from normalized coordinates to pixel coordinates.
       groundtruths = {
           'source_id': data['source_id'],
+          'height': data['height'],
+          'width': data['width'],
           'num_detections': tf.shape(data['groundtruth_classes']),
           'boxes': box_utils.denormalize_boxes(
               data['groundtruth_boxes'], image_shape),
@@ -475,4 +512,10 @@ class Parser(object):
           'num_positives': num_positives,
           'groundtruths': groundtruths,
       })
-    return image, labels
+
+    inputs = {
+        'image': image,
+        'image_info': image_info,
+    }
+
+    return inputs, labels

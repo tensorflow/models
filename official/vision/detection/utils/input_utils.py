@@ -15,7 +15,8 @@
 """Utility functions for input processing."""
 
 import math
-import tensorflow.compat.v2 as tf
+
+import tensorflow as tf
 
 from official.vision.detection.utils import box_utils
 from official.vision.detection.utils.object_detection import preprocessor
@@ -36,7 +37,7 @@ def pad_to_fixed_size(input_tensor, size, constant_values=0):
   padding_shape = []
 
   # Computes the padding length on the first dimension.
-  padding_length = size - tf.shape(input=input_tensor)[0]
+  padding_length = tf.maximum(0, size - tf.shape(input_tensor)[0])
   assert_length = tf.Assert(
       tf.greater_equal(padding_length, 0), [padding_length])
   with tf.control_dependencies([assert_length]):
@@ -91,12 +92,12 @@ def compute_padded_size(desired_size, stride):
       [height, width] of the padded output image size.
   """
   if isinstance(desired_size, list) or isinstance(desired_size, tuple):
-    padded_size = [int(math.ceil(d * 1.0 / stride) * stride)
-                   for d in desired_size]
+    padded_size = [
+        int(math.ceil(d * 1.0 / stride) * stride) for d in desired_size
+    ]
   else:
     padded_size = tf.cast(
-        tf.math.ceil(
-            tf.cast(desired_size, dtype=tf.float32) / stride) * stride,
+        tf.math.ceil(tf.cast(desired_size, dtype=tf.float32) / stride) * stride,
         tf.int32)
   return padded_size
 
@@ -158,8 +159,8 @@ def resize_and_crop_image(image,
     else:
       scaled_size = desired_size
 
-    scale = tf.minimum(
-        scaled_size[0] / image_size[0], scaled_size[1] / image_size[1])
+    scale = tf.minimum(scaled_size[0] / image_size[0],
+                       scaled_size[1] / image_size[1])
     scaled_size = tf.round(image_size * scale)
 
     # Computes 2D image_scale.
@@ -169,9 +170,8 @@ def resize_and_crop_image(image,
     # desired_size.
     if random_jittering:
       max_offset = scaled_size - desired_size
-      max_offset = tf.where(tf.less(max_offset, 0),
-                            tf.zeros_like(max_offset),
-                            max_offset)
+      max_offset = tf.where(
+          tf.less(max_offset, 0), tf.zeros_like(max_offset), max_offset)
       offset = max_offset * tf.random.uniform([
           2,
       ], 0, 1, seed=seed)
@@ -191,9 +191,9 @@ def resize_and_crop_image(image,
 
     image_info = tf.stack([
         image_size,
-        tf.cast(desired_size, dtype=tf.float32),
-        image_scale,
-        tf.cast(offset, tf.float32)])
+        tf.cast(desired_size, dtype=tf.float32), image_scale,
+        tf.cast(offset, tf.float32)
+    ])
     return output_image, image_info
 
 
@@ -288,25 +288,21 @@ def resize_and_crop_image_v2(image,
         image, tf.cast(scaled_size, tf.int32), method=method)
 
     if random_jittering:
-      scaled_image = scaled_image[
-          offset[0]:offset[0] + desired_size[0],
-          offset[1]:offset[1] + desired_size[1], :]
+      scaled_image = scaled_image[offset[0]:offset[0] + desired_size[0],
+                                  offset[1]:offset[1] + desired_size[1], :]
 
-    output_image = tf.image.pad_to_bounding_box(
-        scaled_image, 0, 0, padded_size[0], padded_size[1])
+    output_image = tf.image.pad_to_bounding_box(scaled_image, 0, 0,
+                                                padded_size[0], padded_size[1])
 
     image_info = tf.stack([
         image_size,
-        tf.cast(desired_size, dtype=tf.float32),
-        image_scale,
-        tf.cast(offset, tf.float32)])
+        tf.cast(desired_size, dtype=tf.float32), image_scale,
+        tf.cast(offset, tf.float32)
+    ])
     return output_image, image_info
 
 
-def resize_and_crop_boxes(boxes,
-                          image_scale,
-                          output_size,
-                          offset):
+def resize_and_crop_boxes(boxes, image_scale, output_size, offset):
   """Resizes boxes to output size with scale and offset.
 
   Args:
@@ -329,10 +325,7 @@ def resize_and_crop_boxes(boxes,
   return boxes
 
 
-def resize_and_crop_masks(masks,
-                          image_scale,
-                          output_size,
-                          offset):
+def resize_and_crop_masks(masks, image_scale, output_size, offset):
   """Resizes boxes to output size with scale and offset.
 
   Args:

@@ -21,13 +21,12 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras.engine import network  # pylint: disable=g-direct-tensorflow-import
 from official.modeling import activations
 from official.nlp.modeling import layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class AlbertTransformerEncoder(network.Network):
+class AlbertTransformerEncoder(tf.keras.Model):
   """ALBERT (https://arxiv.org/abs/1810.04805) text encoder network.
 
   This network implements the encoder described in the paper "ALBERT: A Lite
@@ -41,20 +40,19 @@ class AlbertTransformerEncoder(network.Network):
   The default values for this object are taken from the ALBERT-Base
   implementation described in the paper.
 
+  *Note* that the network is constructed by Keras Functional API.
+
   Arguments:
     vocab_size: The size of the token vocabulary.
-    embedding_width: The width of the word embeddings. If the embedding width
-      is not equal to hidden size, embedding parameters will be factorized into
-      two matrices in the shape of ['vocab_size', 'embedding_width'] and
+    embedding_width: The width of the word embeddings. If the embedding width is
+      not equal to hidden size, embedding parameters will be factorized into two
+      matrices in the shape of ['vocab_size', 'embedding_width'] and
       ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
       smaller than 'hidden_size').
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.
     num_attention_heads: The number of attention heads for each transformer. The
       hidden size must be divisible by the number of attention heads.
-    sequence_length: The sequence length that this encoder expects. If None, the
-      sequence length is dynamic; if an integer, the encoder will require
-      sequences padded to this length.
     max_sequence_length: The maximum sequence length that this encoder can
       consume. If None, max_sequence_length uses the value from sequence length.
       This determines the variable shape for positional embeddings.
@@ -73,8 +71,7 @@ class AlbertTransformerEncoder(network.Network):
                hidden_size=768,
                num_layers=12,
                num_attention_heads=12,
-               sequence_length=512,
-               max_sequence_length=None,
+               max_sequence_length=512,
                type_vocab_size=16,
                intermediate_size=3072,
                activation=activations.gelu,
@@ -85,8 +82,6 @@ class AlbertTransformerEncoder(network.Network):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
 
-    if not max_sequence_length:
-      max_sequence_length = sequence_length
     self._self_setattr_tracking = False
     self._config_dict = {
         'vocab_size': vocab_size,
@@ -94,7 +89,6 @@ class AlbertTransformerEncoder(network.Network):
         'hidden_size': hidden_size,
         'num_layers': num_layers,
         'num_attention_heads': num_attention_heads,
-        'sequence_length': sequence_length,
         'max_sequence_length': max_sequence_length,
         'type_vocab_size': type_vocab_size,
         'intermediate_size': intermediate_size,
@@ -105,12 +99,14 @@ class AlbertTransformerEncoder(network.Network):
     }
 
     word_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_word_ids')
+        shape=(None,), dtype=tf.int32, name='input_word_ids')
     mask = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_mask')
+        shape=(None,), dtype=tf.int32, name='input_mask')
     type_ids = tf.keras.layers.Input(
-        shape=(sequence_length,), dtype=tf.int32, name='input_type_ids')
+        shape=(None,), dtype=tf.int32, name='input_type_ids')
 
+    if embedding_width is None:
+      embedding_width = hidden_size
     self._embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
@@ -122,7 +118,8 @@ class AlbertTransformerEncoder(network.Network):
     self._position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length)
+        max_sequence_length=max_sequence_length,
+        name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
 
     type_embeddings = (
@@ -141,13 +138,14 @@ class AlbertTransformerEncoder(network.Network):
             axis=-1,
             epsilon=1e-12,
             dtype=tf.float32)(embeddings))
-    embeddings = (
-        tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
+    embeddings = (tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     if embedding_width != hidden_size:
-      embeddings = layers.DenseEinsum(
+      embeddings = tf.keras.layers.experimental.EinsumDense(
+          '...x,xy->...y',
           output_shape=hidden_size,
+          bias_axes='y',
           kernel_initializer=initializer,
           name='embedding_projection')(
               embeddings)
@@ -176,9 +174,7 @@ class AlbertTransformerEncoder(network.Network):
             first_token_tensor)
 
     super(AlbertTransformerEncoder, self).__init__(
-        inputs=[word_ids, mask, type_ids],
-        outputs=[data, cls_output],
-        **kwargs)
+        inputs=[word_ids, mask, type_ids], outputs=[data, cls_output], **kwargs)
 
   def get_embedding_table(self):
     return self._embedding_layer.embeddings

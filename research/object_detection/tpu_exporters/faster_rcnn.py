@@ -18,7 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 # pylint: disable=protected-access
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 # pylint: disable=g-import-not-at-top
 # Checking TF version, because this module relies on TPUPartitionedCall
@@ -31,6 +31,8 @@ if int(major) < 1 or (int(major == 1) and int(minor) < 14):
 
 from tensorflow.python.framework import function
 from tensorflow.python.tpu import functional as tpu_functional
+from tensorflow.python.tpu import tpu
+from tensorflow.python.tpu.bfloat16 import bfloat16_scope
 from tensorflow.python.tpu.ops import tpu_ops
 from object_detection import exporter
 from object_detection.builders import model_builder
@@ -169,12 +171,12 @@ def build_graph(pipeline_config,
   @function.Defun(capture_resource_var_by_value=False)
   def tpu_subgraph_predict():
     if use_bfloat16:
-      with tf.contrib.tpu.bfloat16_scope():
-        return tf.contrib.tpu.rewrite(tpu_subgraph_predict_fn,
-                                      [preprocessed_inputs, true_image_shapes])
+      with bfloat16_scope():
+        return tpu.rewrite(tpu_subgraph_predict_fn,
+                           [preprocessed_inputs, true_image_shapes])
     else:
-      return tf.contrib.tpu.rewrite(tpu_subgraph_predict_fn,
-                                    [preprocessed_inputs, true_image_shapes])
+      return tpu.rewrite(tpu_subgraph_predict_fn,
+                         [preprocessed_inputs, true_image_shapes])
 
   (rpn_box_encodings, rpn_objectness_predictions_with_background, anchors,
    refined_box_encodings, class_predictions_with_background, num_proposals,

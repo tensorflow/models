@@ -5,8 +5,16 @@ package object_detection.protos;
 import "object_detection/protos/optimizer.proto";
 import "object_detection/protos/preprocessor.proto";
 
+
+enum CheckpointVersion {
+  UNKNOWN  = 0;
+  V1 = 1;
+  V2 = 2;
+}
+
+
 // Message for configuring DetectionModel training jobs (train.py).
-// Next id: 28
+// Next id: 30
 message TrainConfig {
   // Effective batch size to use for training.
   // For TPU (or sync SGD jobs), the batch size per core (or GPU) is going to be
@@ -37,6 +45,11 @@ message TrainConfig {
   // Typically used to load feature extractor variables from trained models.
   optional string fine_tune_checkpoint_type = 22 [default=""];
 
+  // Either "v1" or "v2". If v1, restores the checkpoint using the tensorflow
+  // v1 style of restoring checkpoints. If v2, uses the eager mode checkpoint
+  // restoration API.
+  optional CheckpointVersion fine_tune_checkpoint_version = 28 [default=V1];
+
   // [Deprecated]: use fine_tune_checkpoint_type instead.
   // Specifies if the finetune checkpoint is from an object detection model.
   // If from an object detection model, the model being trained should have
@@ -46,7 +59,8 @@ message TrainConfig {
 
   // Whether to load all checkpoint vars that match model variable names and
   // sizes. This option is only available if `from_detection_checkpoint` is
-  // True.
+  // True.  This option is *not* supported for TF2 --- setting it to true
+  // will raise an error.
   optional bool load_all_detection_checkpoint_vars = 19 [default = false];
 
   // Number of steps to train the DetectionModel for. If 0, will train the model
@@ -119,4 +133,6 @@ message TrainConfig {
 
   // Whether to summarize gradients.
   optional bool summarize_gradients = 27 [default=false];
+
 }
+

@@ -20,16 +20,25 @@ from __future__ import print_function
 
 import functools
 import os
+import unittest
+from absl import logging
 from absl.testing import parameterized
-
 import numpy as np
-import tensorflow as tf
+import six
+import tensorflow.compat.v1 as tf
 
 from object_detection import inputs
 from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
 from object_detection.utils import config_util
 from object_detection.utils import test_case
+from object_detection.utils import test_utils
+from object_detection.utils import tf_version
+
+if six.PY2:
+  import mock  # pylint: disable=g-import-not-at-top
+else:
+  from unittest import mock  # pylint: disable=g-import-not-at-top, g-importing-member
 
 FLAGS = tf.flags.FLAGS
 
@@ -52,6 +61,26 @@ def _get_configs_for_model(model_name):
       configs, kwargs_dict=override_dict)
 
 
+def _get_configs_for_model_sequence_example(model_name, frame_index=-1):
+  """Returns configurations for model."""
+  fname = os.path.join(tf.resource_loader.get_data_files_path(),
+                       'test_data/' + model_name + '.config')
+  label_map_path = os.path.join(tf.resource_loader.get_data_files_path(),
+                                'data/snapshot_serengeti_label_map.pbtxt')
+  data_path = os.path.join(
+      tf.resource_loader.get_data_files_path(),
+      'test_data/snapshot_serengeti_sequence_examples.record')
+  configs = config_util.get_configs_from_pipeline_file(fname)
+  override_dict = {
+      'train_input_path': data_path,
+      'eval_input_path': data_path,
+      'label_map_path': label_map_path,
+      'frame_index': frame_index
+  }
+  return config_util.merge_external_params_with_configs(
+      configs, kwargs_dict=override_dict)
+
+
 def _make_initializable_iterator(dataset):
   """Creates an iterator, and initializes tables.
 
@@ -61,12 +90,13 @@ def _make_initializable_iterator(dataset):
   Returns:
     A `tf.data.Iterator`.
   """
-  iterator = dataset.make_initializable_iterator()
+  iterator = tf.data.make_initializable_iterator(dataset)
   tf.add_to_collection(tf.GraphKeys.TABLE_INITIALIZERS, iterator.initializer)
   return iterator
 
 
-class InputsTest(test_case.TestCase, parameterized.TestCase):
+@unittest.skipIf(tf_version.is_tf2(), 'Skipping TF1.X only tests under TF2.X.')
+class InputFnTest(test_case.TestCase, parameterized.TestCase):
 
   def test_faster_rcnn_resnet50_train_input(self):
     """Tests the training input function for FasterRcnnResnet50."""
@@ -204,6 +234,125 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
     self.assertEqual(
         tf.int32, labels[fields.InputDataFields.groundtruth_difficult].dtype)
 
+  def test_context_rcnn_resnet50_train_input_with_sequence_example(
+      self, train_batch_size=8):
+    """Tests the training input function for FasterRcnnResnet50."""
+    configs = _get_configs_for_model_sequence_example(
+        'context_rcnn_camera_trap')
+    model_config = configs['model']
+    train_config = configs['train_config']
+    train_config.batch_size = train_batch_size
+    train_input_fn = inputs.create_train_input_fn(
+        train_config, configs['train_input_config'], model_config)
+    features, labels = _make_initializable_iterator(train_input_fn()).get_next()
+
+    self.assertAllEqual([train_batch_size, 640, 640, 3],
+                        features[fields.InputDataFields.image].shape.as_list())
+    self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
+    self.assertAllEqual([train_batch_size],
+                        features[inputs.HASH_KEY].shape.as_list())
+    self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, 4],
+        labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_boxes].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_classes].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_weights].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_confidences].shape.as_list())
+    self.assertEqual(
+        tf.float32,
+        labels[fields.InputDataFields.groundtruth_confidences].dtype)
+
+  def test_context_rcnn_resnet50_eval_input_with_sequence_example(
+      self, eval_batch_size=8):
+    """Tests the eval input function for FasterRcnnResnet50."""
+    configs = _get_configs_for_model_sequence_example(
+        'context_rcnn_camera_trap')
+    model_config = configs['model']
+    eval_config = configs['eval_config']
+    eval_config.batch_size = eval_batch_size
+    eval_input_fn = inputs.create_eval_input_fn(
+        eval_config, configs['eval_input_configs'][0], model_config)
+    features, labels = _make_initializable_iterator(eval_input_fn()).get_next()
+    self.assertAllEqual([eval_batch_size, 640, 640, 3],
+                        features[fields.InputDataFields.image].shape.as_list())
+    self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 640, 640, 3],
+        features[fields.InputDataFields.original_image].shape.as_list())
+    self.assertEqual(tf.uint8,
+                     features[fields.InputDataFields.original_image].dtype)
+    self.assertAllEqual([eval_batch_size],
+                        features[inputs.HASH_KEY].shape.as_list())
+    self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100, 4],
+        labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_boxes].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_classes].dtype)
+    self.assertAllEqual(
+        [eval_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(
+        tf.float32,
+        labels[fields.InputDataFields.groundtruth_weights].dtype)
+
+  def test_context_rcnn_resnet50_train_input_with_sequence_example_frame_index(
+      self, train_batch_size=8):
+    """Tests the training input function for FasterRcnnResnet50."""
+    configs = _get_configs_for_model_sequence_example(
+        'context_rcnn_camera_trap', frame_index=2)
+    model_config = configs['model']
+    train_config = configs['train_config']
+    train_config.batch_size = train_batch_size
+    train_input_fn = inputs.create_train_input_fn(
+        train_config, configs['train_input_config'], model_config)
+    features, labels = _make_initializable_iterator(train_input_fn()).get_next()
+
+    self.assertAllEqual([train_batch_size, 640, 640, 3],
+                        features[fields.InputDataFields.image].shape.as_list())
+    self.assertEqual(tf.float32, features[fields.InputDataFields.image].dtype)
+    self.assertAllEqual([train_batch_size],
+                        features[inputs.HASH_KEY].shape.as_list())
+    self.assertEqual(tf.int32, features[inputs.HASH_KEY].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, 4],
+        labels[fields.InputDataFields.groundtruth_boxes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_boxes].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_classes].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_classes].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100],
+        labels[fields.InputDataFields.groundtruth_weights].shape.as_list())
+    self.assertEqual(tf.float32,
+                     labels[fields.InputDataFields.groundtruth_weights].dtype)
+    self.assertAllEqual(
+        [train_batch_size, 100, model_config.faster_rcnn.num_classes],
+        labels[fields.InputDataFields.groundtruth_confidences].shape.as_list())
+    self.assertEqual(
+        tf.float32,
+        labels[fields.InputDataFields.groundtruth_confidences].dtype)
+
   def test_ssd_inceptionV2_train_input(self):
     """Tests the training input function for SSDInceptionV2."""
     configs = _get_configs_for_model('ssd_inception_v2_pets')
@@ -303,7 +452,7 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
 
   def test_ssd_inceptionV2_eval_input_with_additional_channels(
       self, eval_batch_size=1):
-    """Tests the eval input function for SSDInceptionV2 with additional channels.
+    """Tests the eval input function for SSDInceptionV2 with additional channel.
 
     Args:
       eval_batch_size: Batch size for eval set.
@@ -484,16 +633,18 @@ class InputsTest(test_case.TestCase, parameterized.TestCase):
 
     empty_string = ''
     feed_dict = {string_placeholder: empty_string}
-
-    tf.set_random_seed(0)
-
     with self.test_session() as sess:
       out_string = sess.run(replaced_string, feed_dict=feed_dict)
 
-    # Test whether out_string is a string which represents an integer.
-    int(out_string)  # throws an error if out_string is not castable to int.
+    is_integer = True
+    try:
+      # Test whether out_string is a string which represents an integer, the
+      # casting below will throw an error if out_string is not castable to int.
+      int(out_string)
+    except ValueError:
+      is_integer = False
 
-    self.assertEqual(out_string, b'2798129067578209328')
+    self.assertTrue(is_integer)
 
   def test_force_no_resize(self):
     """Tests the functionality of force_no_reisze option."""
@@ -537,24 +688,20 @@ class DataAugmentationFnTest(test_case.TestCase):
     data_augmentation_fn = functools.partial(
         inputs.augment_input_data,
         data_augmentation_options=data_augmentation_options)
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[.5, .5, 1., 1.]], np.float32))
-    }
-    augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
-    with self.test_session() as sess:
-      augmented_tensor_dict_out = sess.run(augmented_tensor_dict)
-
-    self.assertAllEqual(
-        augmented_tensor_dict_out[fields.InputDataFields.image].shape,
-        [20, 20, 3]
-    )
-    self.assertAllClose(
-        augmented_tensor_dict_out[fields.InputDataFields.groundtruth_boxes],
-        [[10, 10, 20, 20]]
-    )
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1., 1.]], np.float32))
+      }
+      augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
+      return (augmented_tensor_dict[fields.InputDataFields.image],
+              augmented_tensor_dict[fields.InputDataFields.
+                                    groundtruth_boxes])
+    image, groundtruth_boxes = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(image.shape, [20, 20, 3])
+    self.assertAllClose(groundtruth_boxes, [[10, 10, 20, 20]])
 
   def test_apply_image_and_box_augmentation_with_scores(self):
     data_augmentation_options = [
@@ -568,37 +715,28 @@ class DataAugmentationFnTest(test_case.TestCase):
     data_augmentation_fn = functools.partial(
         inputs.augment_input_data,
         data_augmentation_options=data_augmentation_options)
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[.5, .5, 1., 1.]], np.float32)),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([1.0], np.float32)),
-        fields.InputDataFields.groundtruth_weights:
-            tf.constant(np.array([0.8], np.float32)),
-    }
-    augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
-    with self.test_session() as sess:
-      augmented_tensor_dict_out = sess.run(augmented_tensor_dict)
-
-    self.assertAllEqual(
-        augmented_tensor_dict_out[fields.InputDataFields.image].shape,
-        [20, 20, 3]
-    )
-    self.assertAllClose(
-        augmented_tensor_dict_out[fields.InputDataFields.groundtruth_boxes],
-        [[10, 10, 20, 20]]
-    )
-    self.assertAllClose(
-        augmented_tensor_dict_out[fields.InputDataFields.groundtruth_classes],
-        [1.0]
-    )
-    self.assertAllClose(
-        augmented_tensor_dict_out[
-            fields.InputDataFields.groundtruth_weights],
-        [0.8]
-    )
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1., 1.]], np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1.0], np.float32)),
+          fields.InputDataFields.groundtruth_weights:
+              tf.constant(np.array([0.8], np.float32)),
+      }
+      augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
+      return (augmented_tensor_dict[fields.InputDataFields.image],
+              augmented_tensor_dict[fields.InputDataFields.groundtruth_boxes],
+              augmented_tensor_dict[fields.InputDataFields.groundtruth_classes],
+              augmented_tensor_dict[fields.InputDataFields.groundtruth_weights])
+    (image, groundtruth_boxes,
+     groundtruth_classes, groundtruth_weights) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(image.shape, [20, 20, 3])
+    self.assertAllClose(groundtruth_boxes, [[10, 10, 20, 20]])
+    self.assertAllClose(groundtruth_classes.shape, [1.0])
+    self.assertAllClose(groundtruth_weights, [0.8])
 
   def test_include_masks_in_data_augmentation(self):
     data_augmentation_options = [
@@ -611,21 +749,20 @@ class DataAugmentationFnTest(test_case.TestCase):
     data_augmentation_fn = functools.partial(
         inputs.augment_input_data,
         data_augmentation_options=data_augmentation_options)
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_instance_masks:
-            tf.constant(np.zeros([2, 10, 10], np.uint8))
-    }
-    augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
-    with self.test_session() as sess:
-      augmented_tensor_dict_out = sess.run(augmented_tensor_dict)
-
-    self.assertAllEqual(
-        augmented_tensor_dict_out[fields.InputDataFields.image].shape,
-        [20, 20, 3])
-    self.assertAllEqual(augmented_tensor_dict_out[
-        fields.InputDataFields.groundtruth_instance_masks].shape, [2, 20, 20])
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_instance_masks:
+              tf.constant(np.zeros([2, 10, 10], np.uint8))
+      }
+      augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
+      return (augmented_tensor_dict[fields.InputDataFields.image],
+              augmented_tensor_dict[fields.InputDataFields.
+                                    groundtruth_instance_masks])
+    image, masks = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(image.shape, [20, 20, 3])
+    self.assertAllEqual(masks.shape, [2, 20, 20])
 
   def test_include_keypoints_in_data_augmentation(self):
     data_augmentation_options = [
@@ -639,30 +776,24 @@ class DataAugmentationFnTest(test_case.TestCase):
     data_augmentation_fn = functools.partial(
         inputs.augment_input_data,
         data_augmentation_options=data_augmentation_options)
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[.5, .5, 1., 1.]], np.float32)),
-        fields.InputDataFields.groundtruth_keypoints:
-            tf.constant(np.array([[[0.5, 1.0], [0.5, 0.5]]], np.float32))
-    }
-    augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
-    with self.test_session() as sess:
-      augmented_tensor_dict_out = sess.run(augmented_tensor_dict)
-
-    self.assertAllEqual(
-        augmented_tensor_dict_out[fields.InputDataFields.image].shape,
-        [20, 20, 3]
-    )
-    self.assertAllClose(
-        augmented_tensor_dict_out[fields.InputDataFields.groundtruth_boxes],
-        [[10, 10, 20, 20]]
-    )
-    self.assertAllClose(
-        augmented_tensor_dict_out[fields.InputDataFields.groundtruth_keypoints],
-        [[[10, 20], [10, 10]]]
-    )
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(10, 10, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1., 1.]], np.float32)),
+          fields.InputDataFields.groundtruth_keypoints:
+              tf.constant(np.array([[[0.5, 1.0], [0.5, 0.5]]], np.float32))
+      }
+      augmented_tensor_dict = data_augmentation_fn(tensor_dict=tensor_dict)
+      return (augmented_tensor_dict[fields.InputDataFields.image],
+              augmented_tensor_dict[fields.InputDataFields.groundtruth_boxes],
+              augmented_tensor_dict[fields.InputDataFields.
+                                    groundtruth_keypoints])
+    image, boxes, keypoints = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(image.shape, [20, 20, 3])
+    self.assertAllClose(boxes, [[10, 10, 20, 20]])
+    self.assertAllClose(keypoints, [[[10, 20], [10, 10]]])
 
 
 def _fake_model_preprocessor_fn(image):
@@ -681,404 +812,572 @@ def _fake_resize50_preprocess_fn(image):
   return tf.expand_dims(image, 0), tf.expand_dims(shape, axis=0)
 
 
-class DataTransformationFnTest(test_case.TestCase):
+class DataTransformationFnTest(test_case.TestCase, parameterized.TestCase):
 
   def test_combine_additional_channels_if_present(self):
     image = np.random.rand(4, 4, 3).astype(np.float32)
     additional_channels = np.random.rand(4, 4, 2).astype(np.float32)
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(image),
-        fields.InputDataFields.image_additional_channels:
-            tf.constant(additional_channels),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([1, 1], np.int32))
-    }
+    def graph_fn(image, additional_channels):
+      tensor_dict = {
+          fields.InputDataFields.image: image,
+          fields.InputDataFields.image_additional_channels: additional_channels,
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant([1, 1], tf.int32)
+      }
 
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=1)
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
-    self.assertAllEqual(transformed_inputs[fields.InputDataFields.image].dtype,
-                        tf.float32)
-    self.assertAllEqual(transformed_inputs[fields.InputDataFields.image].shape,
-                        [4, 4, 5])
-    self.assertAllClose(transformed_inputs[fields.InputDataFields.image],
-                        np.concatenate((image, additional_channels), axis=2))
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=1)
+      out_tensors = input_transformation_fn(tensor_dict=tensor_dict)
+      return out_tensors[fields.InputDataFields.image]
+    out_image = self.execute_cpu(graph_fn, [image, additional_channels])
+    self.assertAllEqual(out_image.dtype, tf.float32)
+    self.assertAllEqual(out_image.shape, [4, 4, 5])
+    self.assertAllClose(out_image, np.concatenate((image, additional_channels),
+                                                  axis=2))
 
   def test_use_multiclass_scores_when_present(self):
-    image = np.random.rand(4, 4, 3).astype(np.float32)
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(image),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]], np.float32)),
-        fields.InputDataFields.multiclass_scores:
-            tf.constant(np.array([0.2, 0.3, 0.5, 0.1, 0.6, 0.3], np.float32)),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([1, 2], np.int32))
-    }
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image: tf.constant(np.random.rand(4, 4, 3).
+                                                    astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]],
+                                   np.float32)),
+          fields.InputDataFields.multiclass_scores:
+              tf.constant(np.array([0.2, 0.3, 0.5, 0.1, 0.6, 0.3], np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32))
+      }
 
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=3, use_multiclass_scores=True)
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
-
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=3, use_multiclass_scores=True)
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      return transformed_inputs[fields.InputDataFields.groundtruth_classes]
+    groundtruth_classes = self.execute_cpu(graph_fn, [])
     self.assertAllClose(
         np.array([[0.2, 0.3, 0.5], [0.1, 0.6, 0.3]], np.float32),
-        transformed_inputs[fields.InputDataFields.groundtruth_classes])
+        groundtruth_classes)
 
+  @unittest.skipIf(tf_version.is_tf2(), ('Skipping due to different behaviour '
+                                         'in TF 2.X'))
   def test_use_multiclass_scores_when_not_present(self):
-    image = np.random.rand(4, 4, 3).astype(np.float32)
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(image),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]], np.float32)),
-        fields.InputDataFields.multiclass_scores:
-            tf.placeholder(tf.float32),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([1, 2], np.int32))
-    }
+    def graph_fn():
+      zero_num_elements = tf.random.uniform([], minval=0, maxval=1,
+                                            dtype=tf.int32)
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]],
+                                   np.float32)),
+          fields.InputDataFields.multiclass_scores: tf.zeros(zero_num_elements),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32))
+      }
 
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=3, use_multiclass_scores=True)
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict),
-          feed_dict={
-              tensor_dict[fields.InputDataFields.multiclass_scores]:
-                  np.array([], dtype=np.float32)
-          })
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=3, use_multiclass_scores=True)
 
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      return transformed_inputs[fields.InputDataFields.groundtruth_classes]
+    groundtruth_classes = self.execute_cpu(graph_fn, [])
     self.assertAllClose(
         np.array([[0, 1, 0], [0, 0, 1]], np.float32),
-        transformed_inputs[fields.InputDataFields.groundtruth_classes])
+        groundtruth_classes)
+
+  @parameterized.parameters(
+      {'labeled_classes': [1, 2]},
+      {'labeled_classes': []},
+      {'labeled_classes': [1, -1, 2]}  # -1 denotes an unrecognized class
+  )
+  def test_use_labeled_classes(self, labeled_classes):
+
+    def compute_fn(image, groundtruth_boxes, groundtruth_classes,
+                   groundtruth_labeled_classes):
+      tensor_dict = {
+          fields.InputDataFields.image:
+              image,
+          fields.InputDataFields.groundtruth_boxes:
+              groundtruth_boxes,
+          fields.InputDataFields.groundtruth_classes:
+              groundtruth_classes,
+          fields.InputDataFields.groundtruth_labeled_classes:
+              groundtruth_labeled_classes
+      }
+
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=3)
+      return input_transformation_fn(tensor_dict=tensor_dict)
+
+    image = np.random.rand(4, 4, 3).astype(np.float32)
+    groundtruth_boxes = np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]], np.float32)
+    groundtruth_classes = np.array([1, 2], np.int32)
+    groundtruth_labeled_classes = np.array(labeled_classes, np.int32)
+
+    transformed_inputs = self.execute_cpu(compute_fn, [
+        image, groundtruth_boxes, groundtruth_classes,
+        groundtruth_labeled_classes
+    ])
+
+    if labeled_classes == [1, 2] or labeled_classes == [1, -1, 2]:
+      transformed_labeled_classes = [1, 1, 0]
+    elif not labeled_classes:
+      transformed_labeled_classes = [1, 1, 1]
+    else:
+      logging.exception('Unexpected labeled_classes %r', labeled_classes)
+
+    self.assertAllEqual(
+        np.array(transformed_labeled_classes, np.float32),
+        transformed_inputs[fields.InputDataFields.groundtruth_labeled_classes])
 
   def test_returns_correct_class_label_encodings(self):
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[0, 0, 1, 1], [.5, .5, 1, 1]], np.float32)),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([3, 1], np.int32))
-    }
-    num_classes = 3
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=num_classes)
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
-
-    self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_classes],
-        [[0, 0, 1], [1, 0, 0]])
-    self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_confidences],
-        [[0, 0, 1], [1, 0, 0]])
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[0, 0, 1, 1], [.5, .5, 1, 1]], np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([3, 1], np.int32))
+      }
+      num_classes = 3
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes)
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.groundtruth_classes],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_confidences])
+    (groundtruth_classes, groundtruth_confidences) = self.execute_cpu(graph_fn,
+                                                                      [])
+    self.assertAllClose(groundtruth_classes, [[0, 0, 1], [1, 0, 0]])
+    self.assertAllClose(groundtruth_confidences, [[0, 0, 1], [1, 0, 0]])
 
   def test_returns_correct_labels_with_unrecognized_class(self):
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(
-                np.array([[0, 0, 1, 1], [.2, .2, 4, 4], [.5, .5, 1, 1]],
-                         np.float32)),
-        fields.InputDataFields.groundtruth_area:
-            tf.constant(np.array([.5, .4, .3])),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([3, -1, 1], np.int32)),
-        fields.InputDataFields.groundtruth_keypoints:
-            tf.constant(
-                np.array([[[.1, .1]], [[.2, .2]], [[.5, .5]]],
-                         np.float32)),
-        fields.InputDataFields.groundtruth_keypoint_visibilities:
-            tf.constant([True, False, True]),
-        fields.InputDataFields.groundtruth_instance_masks:
-            tf.constant(np.random.rand(3, 4, 4).astype(np.float32)),
-        fields.InputDataFields.groundtruth_is_crowd:
-            tf.constant([False, True, False]),
-        fields.InputDataFields.groundtruth_difficult:
-            tf.constant(np.array([0, 0, 1], np.int32))
-    }
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(
+                  np.array([[0, 0, 1, 1], [.2, .2, 4, 4], [.5, .5, 1, 1]],
+                           np.float32)),
+          fields.InputDataFields.groundtruth_area:
+              tf.constant(np.array([.5, .4, .3])),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([3, -1, 1], np.int32)),
+          fields.InputDataFields.groundtruth_keypoints:
+              tf.constant(
+                  np.array([[[.1, .1]], [[.2, .2]], [[.5, .5]]],
+                           np.float32)),
+          fields.InputDataFields.groundtruth_keypoint_visibilities:
+              tf.constant([[True, True], [False, False], [True, True]]),
+          fields.InputDataFields.groundtruth_instance_masks:
+              tf.constant(np.random.rand(3, 4, 4).astype(np.float32)),
+          fields.InputDataFields.groundtruth_is_crowd:
+              tf.constant([False, True, False]),
+          fields.InputDataFields.groundtruth_difficult:
+              tf.constant(np.array([0, 0, 1], np.int32))
+      }
 
-    num_classes = 3
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=num_classes)
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
+      num_classes = 3
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes)
+      transformed_inputs = input_transformation_fn(tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.groundtruth_classes],
+              transformed_inputs[fields.InputDataFields.num_groundtruth_boxes],
+              transformed_inputs[fields.InputDataFields.groundtruth_area],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_confidences],
+              transformed_inputs[fields.InputDataFields.groundtruth_boxes],
+              transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_keypoint_visibilities],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_instance_masks],
+              transformed_inputs[fields.InputDataFields.groundtruth_is_crowd],
+              transformed_inputs[fields.InputDataFields.groundtruth_difficult])
+    (groundtruth_classes, num_groundtruth_boxes, groundtruth_area,
+     groundtruth_confidences, groundtruth_boxes, groundtruth_keypoints,
+     groundtruth_keypoint_visibilities, groundtruth_instance_masks,
+     groundtruth_is_crowd, groundtruth_difficult) = self.execute_cpu(graph_fn,
+                                                                     [])
 
-    self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_classes],
-        [[0, 0, 1], [1, 0, 0]])
-    self.assertAllEqual(
-        transformed_inputs[fields.InputDataFields.num_groundtruth_boxes], 2)
-    self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_area], [.5, .3])
-    self.assertAllEqual(
-        transformed_inputs[fields.InputDataFields.groundtruth_confidences],
-        [[0, 0, 1], [1, 0, 0]])
-    self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_boxes],
-        [[0, 0, 1, 1], [.5, .5, 1, 1]])
-    self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
-        [[[.1, .1]], [[.5, .5]]])
-    self.assertAllEqual(
-        transformed_inputs[
-            fields.InputDataFields.groundtruth_keypoint_visibilities],
-        [True, True])
-    self.assertAllEqual(
-        transformed_inputs[
-            fields.InputDataFields.groundtruth_instance_masks].shape, [2, 4, 4])
-    self.assertAllEqual(
-        transformed_inputs[fields.InputDataFields.groundtruth_is_crowd],
-        [False, False])
-    self.assertAllEqual(
-        transformed_inputs[fields.InputDataFields.groundtruth_difficult],
-        [0, 1])
+    self.assertAllClose(groundtruth_classes, [[0, 0, 1], [1, 0, 0]])
+    self.assertAllEqual(num_groundtruth_boxes, 2)
+    self.assertAllClose(groundtruth_area, [.5, .3])
+    self.assertAllEqual(groundtruth_confidences, [[0, 0, 1], [1, 0, 0]])
+    self.assertAllClose(groundtruth_boxes, [[0, 0, 1, 1], [.5, .5, 1, 1]])
+    self.assertAllClose(groundtruth_keypoints, [[[.1, .1]], [[.5, .5]]])
+    self.assertAllEqual(groundtruth_keypoint_visibilities,
+                        [[True, True], [True, True]])
+    self.assertAllEqual(groundtruth_instance_masks.shape, [2, 4, 4])
+    self.assertAllEqual(groundtruth_is_crowd, [False, False])
+    self.assertAllEqual(groundtruth_difficult, [0, 1])
 
   def test_returns_correct_merged_boxes(self):
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]], np.float32)),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([3, 1], np.int32))
-    }
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.5, .5, 1, 1]],
+                                   np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([3, 1], np.int32))
+      }
 
-    num_classes = 3
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=num_classes,
-        merge_multiple_boxes=True)
-
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
+      num_classes = 3
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes,
+          merge_multiple_boxes=True)
+      transformed_inputs = input_transformation_fn(tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.groundtruth_boxes],
+              transformed_inputs[fields.InputDataFields.groundtruth_classes],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_confidences],
+              transformed_inputs[fields.InputDataFields.num_groundtruth_boxes])
+    (groundtruth_boxes, groundtruth_classes, groundtruth_confidences,
+     num_groundtruth_boxes) = self.execute_cpu(graph_fn, [])
     self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_boxes],
+        groundtruth_boxes,
         [[.5, .5, 1., 1.]])
     self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_classes],
+        groundtruth_classes,
         [[1, 0, 1]])
     self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_confidences],
+        groundtruth_confidences,
         [[1, 0, 1]])
     self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.num_groundtruth_boxes],
+        num_groundtruth_boxes,
         1)
 
   def test_returns_correct_groundtruth_confidences_when_input_present(self):
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[0, 0, 1, 1], [.5, .5, 1, 1]], np.float32)),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([3, 1], np.int32)),
-        fields.InputDataFields.groundtruth_confidences:
-            tf.constant(np.array([1.0, -1.0], np.float32))
-    }
-    num_classes = 3
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=num_classes)
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
-
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[0, 0, 1, 1], [.5, .5, 1, 1]], np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([3, 1], np.int32)),
+          fields.InputDataFields.groundtruth_confidences:
+              tf.constant(np.array([1.0, -1.0], np.float32))
+      }
+      num_classes = 3
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes)
+      transformed_inputs = input_transformation_fn(tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.groundtruth_classes],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_confidences])
+    groundtruth_classes, groundtruth_confidences = self.execute_cpu(graph_fn,
+                                                                    [])
     self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_classes],
+        groundtruth_classes,
         [[0, 0, 1], [1, 0, 0]])
     self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_confidences],
+        groundtruth_confidences,
         [[0, 0, 1], [-1, 0, 0]])
 
   def test_returns_resized_masks(self):
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_instance_masks:
-            tf.constant(np.random.rand(2, 4, 4).astype(np.float32)),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([3, 1], np.int32)),
-        fields.InputDataFields.original_image_spatial_shape:
-            tf.constant(np.array([4, 4], np.int32))
-    }
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(4, 4, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_instance_masks:
+              tf.constant(np.random.rand(2, 4, 4).astype(np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([3, 1], np.int32)),
+          fields.InputDataFields.original_image_spatial_shape:
+              tf.constant(np.array([4, 4], np.int32))
+      }
 
-    def fake_image_resizer_fn(image, masks=None):
-      resized_image = tf.image.resize_images(image, [8, 8])
-      results = [resized_image]
-      if masks is not None:
-        resized_masks = tf.transpose(
-            tf.image.resize_images(tf.transpose(masks, [1, 2, 0]), [8, 8]),
-            [2, 0, 1])
-        results.append(resized_masks)
-      results.append(tf.shape(resized_image))
-      return results
+      def fake_image_resizer_fn(image, masks=None):
+        resized_image = tf.image.resize_images(image, [8, 8])
+        results = [resized_image]
+        if masks is not None:
+          resized_masks = tf.transpose(
+              tf.image.resize_images(tf.transpose(masks, [1, 2, 0]), [8, 8]),
+              [2, 0, 1])
+          results.append(resized_masks)
+        results.append(tf.shape(resized_image))
+        return results
 
-    num_classes = 3
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=fake_image_resizer_fn,
-        num_classes=num_classes,
-        retain_original_image=True)
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
-    self.assertAllEqual(transformed_inputs[
-        fields.InputDataFields.original_image].dtype, tf.uint8)
-    self.assertAllEqual(transformed_inputs[
-        fields.InputDataFields.original_image_spatial_shape], [4, 4])
-    self.assertAllEqual(transformed_inputs[
-        fields.InputDataFields.original_image].shape, [8, 8, 3])
-    self.assertAllEqual(transformed_inputs[
-        fields.InputDataFields.groundtruth_instance_masks].shape, [2, 8, 8])
+      num_classes = 3
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=fake_image_resizer_fn,
+          num_classes=num_classes,
+          retain_original_image=True)
+      transformed_inputs = input_transformation_fn(tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.original_image],
+              transformed_inputs[fields.InputDataFields.
+                                 original_image_spatial_shape],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_instance_masks])
+    (original_image, original_image_shape,
+     groundtruth_instance_masks) = self.execute_cpu(graph_fn, [])
+    self.assertEqual(original_image.dtype, np.uint8)
+    self.assertAllEqual(original_image_shape, [4, 4])
+    self.assertAllEqual(original_image.shape, [8, 8, 3])
+    self.assertAllEqual(groundtruth_instance_masks.shape, [2, 8, 8])
 
   def test_applies_model_preprocess_fn_to_image_tensor(self):
     np_image = np.random.randint(256, size=(4, 4, 3))
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np_image),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([3, 1], np.int32))
-    }
+    def graph_fn(image):
+      tensor_dict = {
+          fields.InputDataFields.image: image,
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([3, 1], np.int32))
+      }
 
-    def fake_model_preprocessor_fn(image):
-      return (image / 255., tf.expand_dims(tf.shape(image)[1:], axis=0))
+      def fake_model_preprocessor_fn(image):
+        return (image / 255., tf.expand_dims(tf.shape(image)[1:], axis=0))
 
-    num_classes = 3
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=num_classes)
-
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
-    self.assertAllClose(transformed_inputs[fields.InputDataFields.image],
-                        np_image / 255.)
-    self.assertAllClose(transformed_inputs[fields.InputDataFields.
-                                           true_image_shape],
-                        [4, 4, 3])
+      num_classes = 3
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes)
+      transformed_inputs = input_transformation_fn(tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.image],
+              transformed_inputs[fields.InputDataFields.true_image_shape])
+    image, true_image_shape = self.execute_cpu(graph_fn, [np_image])
+    self.assertAllClose(image, np_image / 255.)
+    self.assertAllClose(true_image_shape, [4, 4, 3])
 
   def test_applies_data_augmentation_fn_to_tensor_dict(self):
     np_image = np.random.randint(256, size=(4, 4, 3))
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np_image),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([3, 1], np.int32))
-    }
+    def graph_fn(image):
+      tensor_dict = {
+          fields.InputDataFields.image: image,
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([3, 1], np.int32))
+      }
 
-    def add_one_data_augmentation_fn(tensor_dict):
-      return {key: value + 1 for key, value in tensor_dict.items()}
+      def add_one_data_augmentation_fn(tensor_dict):
+        return {key: value + 1 for key, value in tensor_dict.items()}
 
-    num_classes = 4
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=num_classes,
-        data_augmentation_fn=add_one_data_augmentation_fn)
-    with self.test_session() as sess:
-      augmented_tensor_dict = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
-
-    self.assertAllEqual(augmented_tensor_dict[fields.InputDataFields.image],
-                        np_image + 1)
+      num_classes = 4
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes,
+          data_augmentation_fn=add_one_data_augmentation_fn)
+      transformed_inputs = input_transformation_fn(tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.image],
+              transformed_inputs[fields.InputDataFields.groundtruth_classes])
+    image, groundtruth_classes = self.execute_cpu(graph_fn, [np_image])
+    self.assertAllEqual(image, np_image + 1)
     self.assertAllEqual(
-        augmented_tensor_dict[fields.InputDataFields.groundtruth_classes],
+        groundtruth_classes,
         [[0, 0, 0, 1], [0, 1, 0, 0]])
 
   def test_applies_data_augmentation_fn_before_model_preprocess_fn(self):
     np_image = np.random.randint(256, size=(4, 4, 3))
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np_image),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([3, 1], np.int32))
-    }
+    def graph_fn(image):
+      tensor_dict = {
+          fields.InputDataFields.image: image,
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([3, 1], np.int32))
+      }
 
-    def mul_two_model_preprocessor_fn(image):
-      return (image * 2, tf.expand_dims(tf.shape(image)[1:], axis=0))
+      def mul_two_model_preprocessor_fn(image):
+        return (image * 2, tf.expand_dims(tf.shape(image)[1:], axis=0))
 
-    def add_five_to_image_data_augmentation_fn(tensor_dict):
-      tensor_dict[fields.InputDataFields.image] += 5
-      return tensor_dict
+      def add_five_to_image_data_augmentation_fn(tensor_dict):
+        tensor_dict[fields.InputDataFields.image] += 5
+        return tensor_dict
 
-    num_classes = 4
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=mul_two_model_preprocessor_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=num_classes,
-        data_augmentation_fn=add_five_to_image_data_augmentation_fn)
-    with self.test_session() as sess:
-      augmented_tensor_dict = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
-
-    self.assertAllEqual(augmented_tensor_dict[fields.InputDataFields.image],
-                        (np_image + 5) * 2)
+      num_classes = 4
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=mul_two_model_preprocessor_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes,
+          data_augmentation_fn=add_five_to_image_data_augmentation_fn)
+      transformed_inputs = input_transformation_fn(tensor_dict)
+      return transformed_inputs[fields.InputDataFields.image]
+    image = self.execute_cpu(graph_fn, [np_image])
+    self.assertAllEqual(image, (np_image + 5) * 2)
 
   def test_resize_with_padding(self):
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                   np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32)),
+          fields.InputDataFields.groundtruth_keypoints:
+              tf.constant([[[0.1, 0.2]], [[0.3, 0.4]]]),
+      }
 
-    tensor_dict = {
-        fields.InputDataFields.image:
-            tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
-        fields.InputDataFields.groundtruth_boxes:
-            tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
-                                 np.float32)),
-        fields.InputDataFields.groundtruth_classes:
-            tf.constant(np.array([1, 2], np.int32)),
-        fields.InputDataFields.groundtruth_keypoints:
-            tf.constant([[0.1, 0.2], [0.3, 0.4]]),
-    }
-
-    num_classes = 3
-    input_transformation_fn = functools.partial(
-        inputs.transform_input_data,
-        model_preprocess_fn=_fake_resize50_preprocess_fn,
-        image_resizer_fn=_fake_image_resizer_fn,
-        num_classes=num_classes,)
-
-    with self.test_session() as sess:
-      transformed_inputs = sess.run(
-          input_transformation_fn(tensor_dict=tensor_dict))
+      num_classes = 3
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_resize50_preprocess_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes,)
+      transformed_inputs = input_transformation_fn(tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.groundtruth_boxes],
+              transformed_inputs[fields.InputDataFields.groundtruth_keypoints])
+    groundtruth_boxes, groundtruth_keypoints = self.execute_cpu(graph_fn, [])
     self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_boxes],
+        groundtruth_boxes,
         [[.5, .25, 1., .5], [.0, .0, .5, .25]])
     self.assertAllClose(
-        transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
-        [[[.1, .1], [.3, .2]]])
+        groundtruth_keypoints,
+        [[[.1, .1]], [[.3, .2]]])
+
+  def test_groundtruth_keypoint_weights(self):
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                   np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32)),
+          fields.InputDataFields.groundtruth_keypoints:
+              tf.constant([[[0.1, 0.2], [0.3, 0.4]],
+                           [[0.5, 0.6], [0.7, 0.8]]]),
+          fields.InputDataFields.groundtruth_keypoint_visibilities:
+              tf.constant([[True, False], [True, True]]),
+      }
+
+      num_classes = 3
+      keypoint_type_weight = [1.0, 2.0]
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_resize50_preprocess_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes,
+          keypoint_type_weight=keypoint_type_weight)
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_keypoint_weights])
+
+    groundtruth_keypoints, groundtruth_keypoint_weights = self.execute_cpu(
+        graph_fn, [])
+    self.assertAllClose(
+        groundtruth_keypoints,
+        [[[0.1, 0.1], [0.3, 0.2]],
+         [[0.5, 0.3], [0.7, 0.4]]])
+    self.assertAllClose(
+        groundtruth_keypoint_weights,
+        [[1.0, 0.0], [1.0, 2.0]])
+
+  def test_groundtruth_keypoint_weights_default(self):
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                   np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32)),
+          fields.InputDataFields.groundtruth_keypoints:
+              tf.constant([[[0.1, 0.2], [0.3, 0.4]],
+                           [[0.5, 0.6], [0.7, 0.8]]]),
+      }
+
+      num_classes = 3
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_resize50_preprocess_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes)
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      return (transformed_inputs[fields.InputDataFields.groundtruth_keypoints],
+              transformed_inputs[fields.InputDataFields.
+                                 groundtruth_keypoint_weights])
+    groundtruth_keypoints, groundtruth_keypoint_weights = self.execute_cpu(
+        graph_fn, [])
+    self.assertAllClose(
+        groundtruth_keypoints,
+        [[[0.1, 0.1], [0.3, 0.2]],
+         [[0.5, 0.3], [0.7, 0.4]]])
+    self.assertAllClose(
+        groundtruth_keypoint_weights,
+        [[1.0, 1.0], [1.0, 1.0]])
+
+  def test_groundtruth_dense_pose(self):
+    def graph_fn():
+      tensor_dict = {
+          fields.InputDataFields.image:
+              tf.constant(np.random.rand(100, 50, 3).astype(np.float32)),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant(np.array([[.5, .5, 1, 1], [.0, .0, .5, .5]],
+                                   np.float32)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant(np.array([1, 2], np.int32)),
+          fields.InputDataFields.groundtruth_dp_num_points:
+              tf.constant([0, 2], dtype=tf.int32),
+          fields.InputDataFields.groundtruth_dp_part_ids:
+              tf.constant([[0, 0], [4, 23]], dtype=tf.int32),
+          fields.InputDataFields.groundtruth_dp_surface_coords:
+              tf.constant([[[0., 0., 0., 0.,], [0., 0., 0., 0.,]],
+                           [[0.1, 0.2, 0.3, 0.4,], [0.6, 0.8, 0.6, 0.7,]]],
+                          dtype=tf.float32),
+      }
+
+      num_classes = 1
+      input_transformation_fn = functools.partial(
+          inputs.transform_input_data,
+          model_preprocess_fn=_fake_resize50_preprocess_fn,
+          image_resizer_fn=_fake_image_resizer_fn,
+          num_classes=num_classes)
+      transformed_inputs = input_transformation_fn(tensor_dict=tensor_dict)
+      transformed_dp_num_points = transformed_inputs[
+          fields.InputDataFields.groundtruth_dp_num_points]
+      transformed_dp_part_ids = transformed_inputs[
+          fields.InputDataFields.groundtruth_dp_part_ids]
+      transformed_dp_surface_coords = transformed_inputs[
+          fields.InputDataFields.groundtruth_dp_surface_coords]
+      return (transformed_dp_num_points, transformed_dp_part_ids,
+              transformed_dp_surface_coords)
+
+    dp_num_points, dp_part_ids, dp_surface_coords = self.execute_cpu(
+        graph_fn, [])
+    self.assertAllEqual(dp_num_points, [0, 2])
+    self.assertAllEqual(dp_part_ids, [[0, 0], [4, 23]])
+    self.assertAllClose(
+        dp_surface_coords,
+        [[[0., 0., 0., 0.,], [0., 0., 0., 0.,]],
+         [[0.1, 0.1, 0.3, 0.4,], [0.6, 0.4, 0.6, 0.7,]]])
 
 
 class PadInputDataToStaticShapesFnTest(test_case.TestCase):
@@ -1086,15 +1385,15 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
   def test_pad_images_boxes_and_classes(self):
     input_tensor_dict = {
         fields.InputDataFields.image:
-            tf.placeholder(tf.float32, [None, None, 3]),
+            tf.random.uniform([3, 3, 3]),
         fields.InputDataFields.groundtruth_boxes:
-            tf.placeholder(tf.float32, [None, 4]),
+            tf.random.uniform([2, 4]),
         fields.InputDataFields.groundtruth_classes:
-            tf.placeholder(tf.int32, [None, 3]),
+            tf.random.uniform([2, 3], minval=0, maxval=2, dtype=tf.int32),
         fields.InputDataFields.true_image_shape:
-            tf.placeholder(tf.int32, [3]),
+            tf.constant([3, 3, 3]),
         fields.InputDataFields.original_image_spatial_shape:
-            tf.placeholder(tf.int32, [2])
+            tf.constant([3, 3])
     }
     padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
         tensor_dict=input_tensor_dict,
@@ -1119,69 +1418,35 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
         .shape.as_list(), [3, 3])
 
   def test_clip_boxes_and_classes(self):
-    input_tensor_dict = {
-        fields.InputDataFields.groundtruth_boxes:
-            tf.placeholder(tf.float32, [None, 4]),
-        fields.InputDataFields.groundtruth_classes:
-            tf.placeholder(tf.int32, [None, 3]),
-        fields.InputDataFields.num_groundtruth_boxes:
-            tf.placeholder(tf.int32, [])
-    }
-    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
-        tensor_dict=input_tensor_dict,
-        max_num_boxes=3,
-        num_classes=3,
-        spatial_image_shape=[5, 6])
-
-    self.assertAllEqual(
-        padded_tensor_dict[fields.InputDataFields.groundtruth_boxes]
-        .shape.as_list(), [3, 4])
-    self.assertAllEqual(
-        padded_tensor_dict[fields.InputDataFields.groundtruth_classes]
-        .shape.as_list(), [3, 3])
-
-    with self.test_session() as sess:
-      out_tensor_dict = sess.run(
-          padded_tensor_dict,
-          feed_dict={
-              input_tensor_dict[fields.InputDataFields.groundtruth_boxes]:
-                  np.random.rand(5, 4),
-              input_tensor_dict[fields.InputDataFields.groundtruth_classes]:
-                  np.random.rand(2, 3),
-              input_tensor_dict[fields.InputDataFields.num_groundtruth_boxes]:
-                  5,
-          })
-
-    self.assertAllEqual(
-        out_tensor_dict[fields.InputDataFields.groundtruth_boxes].shape, [3, 4])
-    self.assertAllEqual(
-        out_tensor_dict[fields.InputDataFields.groundtruth_classes].shape,
-        [3, 3])
-    self.assertEqual(
-        out_tensor_dict[fields.InputDataFields.num_groundtruth_boxes],
-        3)
-
-  def test_do_not_pad_dynamic_images(self):
-    input_tensor_dict = {
-        fields.InputDataFields.image:
-            tf.placeholder(tf.float32, [None, None, 3]),
-    }
-    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
-        tensor_dict=input_tensor_dict,
-        max_num_boxes=3,
-        num_classes=3,
-        spatial_image_shape=[None, None])
-
-    self.assertAllEqual(
-        padded_tensor_dict[fields.InputDataFields.image].shape.as_list(),
-        [None, None, 3])
+    def graph_fn():
+      input_tensor_dict = {
+          fields.InputDataFields.groundtruth_boxes:
+              tf.random.uniform([5, 4]),
+          fields.InputDataFields.groundtruth_classes:
+              tf.random.uniform([2, 3], maxval=10, dtype=tf.int32),
+          fields.InputDataFields.num_groundtruth_boxes:
+              tf.constant(5)
+      }
+      padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+          tensor_dict=input_tensor_dict,
+          max_num_boxes=3,
+          num_classes=3,
+          spatial_image_shape=[5, 6])
+      return (padded_tensor_dict[fields.InputDataFields.groundtruth_boxes],
+              padded_tensor_dict[fields.InputDataFields.groundtruth_classes],
+              padded_tensor_dict[fields.InputDataFields.num_groundtruth_boxes])
+    (groundtruth_boxes, groundtruth_classes,
+     num_groundtruth_boxes) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(groundtruth_boxes.shape, [3, 4])
+    self.assertAllEqual(groundtruth_classes.shape, [3, 3])
+    self.assertEqual(num_groundtruth_boxes, 3)
 
   def test_images_and_additional_channels(self):
     input_tensor_dict = {
         fields.InputDataFields.image:
-            tf.placeholder(tf.float32, [None, None, 5]),
+            test_utils.image_with_dynamic_shape(4, 3, 5),
         fields.InputDataFields.image_additional_channels:
-            tf.placeholder(tf.float32, [None, None, 2]),
+            test_utils.image_with_dynamic_shape(4, 3, 2),
     }
     padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
         tensor_dict=input_tensor_dict,
@@ -1201,11 +1466,11 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
   def test_images_and_additional_channels_errors(self):
     input_tensor_dict = {
         fields.InputDataFields.image:
-            tf.placeholder(tf.float32, [None, None, 3]),
+            test_utils.image_with_dynamic_shape(10, 10, 3),
         fields.InputDataFields.image_additional_channels:
-            tf.placeholder(tf.float32, [None, None, 2]),
+            test_utils.image_with_dynamic_shape(10, 10, 2),
         fields.InputDataFields.original_image:
-            tf.placeholder(tf.float32, [None, None, 3]),
+            test_utils.image_with_dynamic_shape(10, 10, 3),
     }
     with self.assertRaises(ValueError):
       _ = inputs.pad_input_data_to_static_shapes(
@@ -1217,7 +1482,7 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
   def test_gray_images(self):
     input_tensor_dict = {
         fields.InputDataFields.image:
-            tf.placeholder(tf.float32, [None, None, 1]),
+            test_utils.image_with_dynamic_shape(4, 4, 1),
     }
     padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
         tensor_dict=input_tensor_dict,
@@ -1232,9 +1497,9 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
   def test_gray_images_and_additional_channels(self):
     input_tensor_dict = {
         fields.InputDataFields.image:
-            tf.placeholder(tf.float32, [None, None, 3]),
+            test_utils.image_with_dynamic_shape(4, 4, 3),
         fields.InputDataFields.image_additional_channels:
-            tf.placeholder(tf.float32, [None, None, 2]),
+            test_utils.image_with_dynamic_shape(4, 4, 2),
     }
     # pad_input_data_to_static_shape assumes that image is already concatenated
     # with additional channels.
@@ -1252,11 +1517,14 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
         .shape.as_list(), [5, 6, 2])
 
   def test_keypoints(self):
+    keypoints = test_utils.keypoints_with_dynamic_shape(10, 16, 4)
+    visibilities = tf.cast(tf.random.uniform(tf.shape(keypoints)[:-1], minval=0,
+                                             maxval=2, dtype=tf.int32), tf.bool)
     input_tensor_dict = {
         fields.InputDataFields.groundtruth_keypoints:
-            tf.placeholder(tf.float32, [None, 16, 4]),
+            test_utils.keypoints_with_dynamic_shape(10, 16, 4),
         fields.InputDataFields.groundtruth_keypoint_visibilities:
-            tf.placeholder(tf.bool, [None, 16]),
+            visibilities
     }
     padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
         tensor_dict=input_tensor_dict,
@@ -1271,6 +1539,126 @@ class PadInputDataToStaticShapesFnTest(test_case.TestCase):
         padded_tensor_dict[
             fields.InputDataFields.groundtruth_keypoint_visibilities]
         .shape.as_list(), [3, 16])
+
+  def test_dense_pose(self):
+    input_tensor_dict = {
+        fields.InputDataFields.groundtruth_dp_num_points:
+            tf.constant([0, 2], dtype=tf.int32),
+        fields.InputDataFields.groundtruth_dp_part_ids:
+            tf.constant([[0, 0], [4, 23]], dtype=tf.int32),
+        fields.InputDataFields.groundtruth_dp_surface_coords:
+            tf.constant([[[0., 0., 0., 0.,], [0., 0., 0., 0.,]],
+                         [[0.1, 0.2, 0.3, 0.4,], [0.6, 0.8, 0.6, 0.7,]]],
+                        dtype=tf.float32),
+    }
+
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=1,
+        spatial_image_shape=[128, 128],
+        max_dp_points=200)
+
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_dp_num_points]
+        .shape.as_list(), [3])
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_dp_part_ids]
+        .shape.as_list(), [3, 200])
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_dp_surface_coords]
+        .shape.as_list(), [3, 200, 4])
+
+  def test_pad_input_data_to_static_shapes_for_trackid(self):
+    input_tensor_dict = {
+        fields.InputDataFields.groundtruth_track_ids:
+            tf.constant([0, 1], dtype=tf.int32),
+    }
+
+    padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+        tensor_dict=input_tensor_dict,
+        max_num_boxes=3,
+        num_classes=1,
+        spatial_image_shape=[128, 128])
+
+    self.assertAllEqual(
+        padded_tensor_dict[fields.InputDataFields.groundtruth_track_ids]
+        .shape.as_list(), [3])
+
+  def test_context_features(self):
+    context_memory_size = 8
+    context_feature_length = 10
+    max_num_context_features = 20
+    def graph_fn():
+      input_tensor_dict = {
+          fields.InputDataFields.context_features:
+              tf.ones([context_memory_size, context_feature_length]),
+          fields.InputDataFields.context_feature_length:
+              tf.constant(context_feature_length)
+      }
+      padded_tensor_dict = inputs.pad_input_data_to_static_shapes(
+          tensor_dict=input_tensor_dict,
+          max_num_boxes=3,
+          num_classes=3,
+          spatial_image_shape=[5, 6],
+          max_num_context_features=max_num_context_features,
+          context_feature_length=context_feature_length)
+
+      self.assertAllEqual(
+          padded_tensor_dict[
+              fields.InputDataFields.context_features].shape.as_list(),
+          [max_num_context_features, context_feature_length])
+      return padded_tensor_dict[fields.InputDataFields.valid_context_size]
+
+    valid_context_size = self.execute_cpu(graph_fn, [])
+    self.assertEqual(valid_context_size, context_memory_size)
+
+
+class NegativeSizeTest(test_case.TestCase):
+  """Test for inputs and related funcitons."""
+
+  def test_negative_size_error(self):
+    """Test that error is raised for negative size boxes."""
+
+    def graph_fn():
+      tensors = {
+          fields.InputDataFields.image: tf.zeros((128, 128, 3)),
+          fields.InputDataFields.groundtruth_classes:
+              tf.constant([1, 1], tf.int32),
+          fields.InputDataFields.groundtruth_boxes:
+              tf.constant([[0.5, 0.5, 0.4, 0.5]], tf.float32)
+      }
+      tensors = inputs.transform_input_data(
+          tensors, _fake_model_preprocessor_fn, _fake_image_resizer_fn,
+          num_classes=10)
+      return tensors[fields.InputDataFields.groundtruth_boxes]
+    with self.assertRaises(tf.errors.InvalidArgumentError):
+      self.execute_cpu(graph_fn, [])
+
+  def test_negative_size_no_assert(self):
+    """Test that negative size boxes are filtered out without assert.
+
+    This test simulates the behaviour when we run on TPU and Assert ops are
+    not supported.
+    """
+
+    tensors = {
+        fields.InputDataFields.image: tf.zeros((128, 128, 3)),
+        fields.InputDataFields.groundtruth_classes:
+            tf.constant([1, 1], tf.int32),
+        fields.InputDataFields.groundtruth_boxes:
+            tf.constant([[0.5, 0.5, 0.4, 0.5], [0.5, 0.5, 0.6, 0.6]],
+                        tf.float32)
+    }
+
+    with mock.patch.object(tf, 'Assert') as tf_assert:
+      tf_assert.return_value = tf.no_op()
+      tensors = inputs.transform_input_data(
+          tensors, _fake_model_preprocessor_fn, _fake_image_resizer_fn,
+          num_classes=10)
+
+      self.assertAllClose(tensors[fields.InputDataFields.groundtruth_boxes],
+                          [[0.5, 0.5, 0.6, 0.6]])
 
 
 if __name__ == '__main__':

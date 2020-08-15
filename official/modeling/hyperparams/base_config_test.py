@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,6 +104,22 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
     self.assertLen(config.g, 1)
     self.assertEqual(config.g[0].a, 4)
     self.assertEqual(config.g[0].b, 'new text 3')
+
+  def test_replace(self):
+    config = DumpConfig2()
+    new_config = config.replace(e={'a': 2})
+    self.assertEqual(new_config.e.a, 2)
+    self.assertIsInstance(new_config.e, DumpConfig1)
+
+    config = DumpConfig2(e=DumpConfig2())
+    new_config = config.replace(e={'c': 4})
+    self.assertEqual(new_config.e.c, 4)
+    self.assertIsInstance(new_config.e, DumpConfig2)
+
+    config = DumpConfig3()
+    new_config = config.replace(g=[{'a': 4, 'b': 'new text 3'}])
+    self.assertIsInstance(new_config.g[0], DumpConfig1)
+    self.assertEqual(new_config.g[0].a, 4)
 
   @parameterized.parameters(
       ('_locked', "The key '_locked' is internally reserved."),
@@ -293,6 +308,11 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
             }
         ]),
         "['s', 1, 1.0, True, None, {}, [], (), {8: 9, (2,): (3, [4], {6: 7})}]")
+
+  def test_with_restrictions(self):
+    restrictions = ['e.a<c']
+    config = DumpConfig2(restrictions=restrictions)
+    config.validate()
 
 
 if __name__ == '__main__':

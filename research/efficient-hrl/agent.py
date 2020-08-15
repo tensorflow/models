@@ -149,7 +149,7 @@ class UvfAgentCore(object):
 
     error = tf.square(actions - pred_actions)
     spec_range = (self._action_spec.maximum - self._action_spec.minimum) / 2
-    normalized_error = error / tf.constant(spec_range) ** 2
+    normalized_error = tf.cast(error, tf.float64) / tf.constant(spec_range) ** 2
     return -normalized_error
 
   @gin.configurable('uvf_add_noise_fn')

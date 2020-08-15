@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+# Import libraries
 from absl import logging
 import numpy as np
 import tensorflow as tf
@@ -181,7 +182,7 @@ def translate_file(model,
       raise ValueError("File output is a directory, will not save outputs to "
                        "file.")
     logging.info("Writing to file %s", output_file)
-    with tf.compat.v1.gfile.Open(output_file, "w") as f:
+    with tf.io.gfile.GFile(output_file, "w") as f:
       for i in sorted_keys:
         f.write("%s\n" % translations[i])
 

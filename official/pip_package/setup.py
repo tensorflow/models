@@ -20,7 +20,7 @@ import sys
 from setuptools import find_packages
 from setuptools import setup
 
-version = '2.2.0'
+version = '2.3.0'
 
 project_name = 'tf-models-official'
 
@@ -45,6 +45,9 @@ def _get_requirements():
       os.path.join(os.path.dirname(__file__), '../requirements.txt'), 'r') as f:
     for line in f:
       package_name = line.strip()
+      # Skip empty line or comments starting with "#".
+      if not package_name or package_name[0] == '#':
+        continue
       if package_name.startswith('-e '):
         dependency_links_tmp.append(package_name[3:].strip())
       else:
@@ -57,7 +60,7 @@ if project_name == 'tf-models-nightly':
   version += '.dev' + datetime.datetime.now().strftime('%Y%m%d')
   install_requires.append('tf-nightly')
 else:
-  install_requires.append('tensorflow>=2.1.0')
+  install_requires.append('tensorflow>=2.3.0')
 
 print('install_requires: ', install_requires)
 print('dependency_links: ', dependency_links)

@@ -23,6 +23,7 @@ import hashlib
 import os
 
 import mock
+
 import numpy as np
 import scipy.stats
 import tensorflow as tf
@@ -31,8 +32,6 @@ from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
 from official.recommendation import movielens
 from official.recommendation import popen_helper
-from official.utils.misc import keras_utils
-
 
 DATASET = "ml-test"
 NUM_USERS = 1000
@@ -41,7 +40,6 @@ NUM_PTS = 50000
 BATCH_SIZE = 2048
 EVAL_BATCH_SIZE = 4000
 NUM_NEG = 4
-
 
 END_TO_END_TRAIN_MD5 = "b218738e915e825d03939c5e305a2698"
 END_TO_END_EVAL_MD5 = "d753d0f3186831466d6e218163a9501e"
@@ -59,8 +57,7 @@ def mock_download(*args, **kwargs):
 class BaseTest(tf.test.TestCase):
 
   def setUp(self):
-    if keras_utils.is_v2_0:
-      tf.compat.v1.disable_eager_execution()
+    tf.compat.v1.disable_eager_execution()
     self.temp_data_dir = self.get_temp_dir()
     ratings_folder = os.path.join(self.temp_data_dir, DATASET)
     tf.io.gfile.makedirs(ratings_folder)
@@ -95,8 +92,7 @@ class BaseTest(tf.test.TestCase):
 
     movielens.download = mock_download
     movielens.NUM_RATINGS[DATASET] = NUM_PTS
-    data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS,
-                                                                  NUM_ITEMS)
+    movielens.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS, NUM_ITEMS)
 
   def make_params(self, train_epochs=1):
     return {
@@ -139,8 +135,11 @@ class BaseTest(tf.test.TestCase):
   def _test_end_to_end(self, constructor_type):
     params = self.make_params(train_epochs=1)
     _, _, producer = data_preprocessing.instantiate_pipeline(
-        dataset=DATASET, data_dir=self.temp_data_dir, params=params,
-        constructor_type=constructor_type, deterministic=True)
+        dataset=DATASET,
+        data_dir=self.temp_data_dir,
+        params=params,
+        constructor_type=constructor_type,
+        deterministic=True)
 
     producer.start()
     producer.join()
@@ -261,8 +260,11 @@ class BaseTest(tf.test.TestCase):
     train_epochs = 5
     params = self.make_params(train_epochs=train_epochs)
     _, _, producer = data_preprocessing.instantiate_pipeline(
-        dataset=DATASET, data_dir=self.temp_data_dir, params=params,
-        constructor_type=constructor_type, deterministic=True)
+        dataset=DATASET,
+        data_dir=self.temp_data_dir,
+        params=params,
+        constructor_type=constructor_type,
+        deterministic=True)
 
     producer.start()
 
@@ -301,8 +303,8 @@ class BaseTest(tf.test.TestCase):
     self.assertRegexpMatches(md5.hexdigest(), FRESH_RANDOMNESS_MD5)
 
     # The positive examples should appear exactly once each epoch
-    self.assertAllEqual(list(positive_counts.values()),
-                        [train_epochs for _ in positive_counts])
+    self.assertAllEqual(
+        list(positive_counts.values()), [train_epochs for _ in positive_counts])
 
     # The threshold for the negatives is heuristic, but in general repeats are
     # expected, but should not appear too frequently.
@@ -320,8 +322,8 @@ class BaseTest(tf.test.TestCase):
     # The frequency of occurance of a given negative pair should follow an
     # approximately binomial distribution in the limit that the cardinality of
     # the negative pair set >> number of samples per epoch.
-    approx_pdf = scipy.stats.binom.pmf(k=np.arange(train_epochs+1),
-                                       n=train_epochs, p=e_sample)
+    approx_pdf = scipy.stats.binom.pmf(
+        k=np.arange(train_epochs + 1), n=train_epochs, p=e_sample)
 
     # Tally the actual observed counts.
     count_distribution = [0 for _ in range(train_epochs + 1)]

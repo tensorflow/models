@@ -38,8 +38,8 @@ class AccuracyTest(tf.test.TestCase):
       A session object that should be used as a context manager.
     """
     with self.cached_session() as sess:
-      sess.run(tf.global_variables_initializer())
-      sess.run(tf.local_variables_initializer())
+      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.compat.v1.local_variables_initializer())
       yield sess
 
   def _fake_labels(self):
@@ -55,7 +55,7 @@ class AccuracyTest(tf.test.TestCase):
     return incorrect
 
   def test_sequence_accuracy_identical_samples(self):
-    labels_tf = tf.convert_to_tensor(self._fake_labels())
+    labels_tf = tf.convert_to_tensor(value=self._fake_labels())
 
     accuracy_tf = metrics.sequence_accuracy(labels_tf, labels_tf,
                                             self.rej_char)
@@ -66,9 +66,9 @@ class AccuracyTest(tf.test.TestCase):
 
   def test_sequence_accuracy_one_char_difference(self):
     ground_truth_np = self._fake_labels()
-    ground_truth_tf = tf.convert_to_tensor(ground_truth_np)
+    ground_truth_tf = tf.convert_to_tensor(value=ground_truth_np)
     prediction_tf = tf.convert_to_tensor(
-        self._incorrect_copy(ground_truth_np, bad_indexes=((0, 0))))
+        value=self._incorrect_copy(ground_truth_np, bad_indexes=((0, 0))))
 
     accuracy_tf = metrics.sequence_accuracy(prediction_tf, ground_truth_tf,
                                             self.rej_char)
@@ -80,9 +80,9 @@ class AccuracyTest(tf.test.TestCase):
 
   def test_char_accuracy_one_char_difference_with_padding(self):
     ground_truth_np = self._fake_labels()
-    ground_truth_tf = tf.convert_to_tensor(ground_truth_np)
+    ground_truth_tf = tf.convert_to_tensor(value=ground_truth_np)
     prediction_tf = tf.convert_to_tensor(
-        self._incorrect_copy(ground_truth_np, bad_indexes=((0, 0))))
+        value=self._incorrect_copy(ground_truth_np, bad_indexes=((0, 0))))
 
     accuracy_tf = metrics.char_accuracy(prediction_tf, ground_truth_tf,
                                         self.rej_char)

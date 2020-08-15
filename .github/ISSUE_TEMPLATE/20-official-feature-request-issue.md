@@ -1,22 +1,26 @@
 ---
-name: Feature request for Official Models
-about: Use this template for raising a feature request for projects under the “official” folder
+name: "[Official Model] Feature request"
+about: Use this template for raising a feature request for the “official” directory
 labels: type:feature,models:official
 
 ---
-<!--
-Please make sure that this is a feature request.
 
-As per our GitHub Policy (https://github.com/tensorflow/models/blob/master/ISSUES.md), we only address code bugs, documentation issues, and feature requests on GitHub.
+# Prerequisites
 
-Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflow-model-garden) for help and support.
--->
+Please answer the following question for yourself before submitting an issue.
 
-**Please provide the entire URL of the model you are using?**
-<!-- (e.g., https://github.com/tensorflow/models/tree/master/official/nlp/bert) -->
+- [ ] I checked to make sure that this feature has not been requested already.
 
-**Describe the feature you request and the current behavior/state.**
+## 1. The entire URL of the file you are using
 
-**Are you willing to contribute it (Yes/No)?**
+https://github.com/tensorflow/models/tree/master/official/...
 
-**Any other info.**
+## 2. Describe the feature you request
+
+A clear and concise description of what you want to happen.
+
+## 3. Additional context
+
+Add any other context about the feature request here.
+
+## 4. Are you willing to contribute it? (Yes or No)

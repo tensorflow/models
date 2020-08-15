@@ -22,14 +22,14 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from official.nlp.modeling.layers import position_embedding
+from official.nlp.modeling.ops import beam_search
 from official.nlp.transformer import attention_layer
-from official.nlp.transformer import beam_search
 from official.nlp.transformer import embedding_layer
 from official.nlp.transformer import ffn_layer
 from official.nlp.transformer import metrics
 from official.nlp.transformer import model_utils
 from official.nlp.transformer.utils.tokenizer import EOS_ID
-
 
 # Disable the not-callable lint error, since it claims many objects are not
 # callable when they actually are.
@@ -48,12 +48,12 @@ def create_model(params, is_train):
       label_smoothing = params["label_smoothing"]
       if params["enable_metrics_in_training"]:
         logits = metrics.MetricLayer(vocab_size)([logits, targets])
-      logits = tf.keras.layers.Lambda(lambda x: x, name="logits",
-                                      dtype=tf.float32)(logits)
+      logits = tf.keras.layers.Lambda(
+          lambda x: x, name="logits", dtype=tf.float32)(
+              logits)
       model = tf.keras.Model([inputs, targets], logits)
-      # TODO(reedwm): Can we do this loss in float16 instead of float32?
-      loss = metrics.transformer_loss(
-          logits, targets, label_smoothing, vocab_size)
+      loss = metrics.transformer_loss(logits, targets, label_smoothing,
+                                      vocab_size)
       model.add_loss(loss)
       return model
 
@@ -89,6 +89,8 @@ class Transformer(tf.keras.Model):
         params["vocab_size"], params["hidden_size"])
     self.encoder_stack = EncoderStack(params)
     self.decoder_stack = DecoderStack(params)
+    self.position_embedding = position_embedding.RelativePositionEmbedding(
+        hidden_size=self.params["hidden_size"])
 
   def get_config(self):
     return {
@@ -128,9 +130,7 @@ class Transformer(tf.keras.Model):
               "Padded decoding on CPU/GPUs is not supported.")
         decode_batch_size = int(self.params["decode_batch_size"] /
                                 self.params["num_replicas"])
-        inputs.set_shape([
-            decode_batch_size, self.params["decode_max_length"]
-        ])
+        inputs.set_shape([decode_batch_size, self.params["decode_max_length"]])
 
     # Variance scaling is used here because it seems to work in many problems.
     # Other reasonable initializers may also work just as well.
@@ -170,9 +170,7 @@ class Transformer(tf.keras.Model):
       attention_bias = tf.cast(attention_bias, self.params["dtype"])
 
       with tf.name_scope("add_pos_encoding"):
-        length = tf.shape(embedded_inputs)[1]
-        pos_encoding = model_utils.get_position_encoding(
-            length, self.params["hidden_size"])
+        pos_encoding = self.position_embedding(inputs=embedded_inputs)
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         encoder_inputs = embedded_inputs + pos_encoding
 
@@ -209,8 +207,7 @@ class Transformer(tf.keras.Model):
                                 [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
       with tf.name_scope("add_pos_encoding"):
         length = tf.shape(decoder_inputs)[1]
-        pos_encoding = model_utils.get_position_encoding(
-            length, self.params["hidden_size"])
+        pos_encoding = self.position_embedding(decoder_inputs)
         pos_encoding = tf.cast(pos_encoding, self.params["dtype"])
         decoder_inputs += pos_encoding
       if training:
@@ -232,14 +229,12 @@ class Transformer(tf.keras.Model):
 
   def _get_symbols_to_logits_fn(self, max_decode_length, training):
     """Returns a decoding function that calculates logits of the next tokens."""
-
-    timing_signal = model_utils.get_position_encoding(
-        max_decode_length + 1, self.params["hidden_size"])
+    timing_signal = self.position_embedding(
+        inputs=None, length=max_decode_length + 1)
     timing_signal = tf.cast(timing_signal, self.params["dtype"])
     decoder_self_attention_bias = model_utils.get_decoder_self_attention_bias(
         max_decode_length, dtype=self.params["dtype"])
 
-    # TODO(b/139770046): Refactor code with better naming of i.
     def symbols_to_logits_fn(ids, i, cache):
       """Generate logits for next potential IDs.
 
@@ -317,15 +312,13 @@ class Transformer(tf.keras.Model):
     cache = {
         "layer_%d" % layer: {
             "k":
-                tf.zeros([
-                    batch_size, init_decode_length, num_heads, dim_per_head
-                ],
-                         dtype=self.params["dtype"]),
+                tf.zeros(
+                    [batch_size, init_decode_length, num_heads, dim_per_head],
+                    dtype=self.params["dtype"]),
             "v":
-                tf.zeros([
-                    batch_size, init_decode_length, num_heads, dim_per_head
-                ],
-                         dtype=self.params["dtype"])
+                tf.zeros(
+                    [batch_size, init_decode_length, num_heads, dim_per_head],
+                    dtype=self.params["dtype"])
         } for layer in range(self.params["num_hidden_layers"])
     }
     # pylint: enable=g-complex-comprehension
@@ -515,15 +508,14 @@ class DecoderStack(tf.keras.layers.Layer):
     """Return the output of the decoder layer stacks.
 
     Args:
-      decoder_inputs: A tensor with shape
-        [batch_size, target_length, hidden_size].
-      encoder_outputs: A tensor with shape
-        [batch_size, input_length, hidden_size]
-      decoder_self_attention_bias: A tensor with shape
-        [1, 1, target_len, target_length], the bias for decoder self-attention
-        layer.
-      attention_bias: A tensor with shape [batch_size, 1, 1, input_length],
-        the bias for encoder-decoder attention layer.
+      decoder_inputs: A tensor with shape [batch_size, target_length,
+        hidden_size].
+      encoder_outputs: A tensor with shape [batch_size, input_length,
+        hidden_size]
+      decoder_self_attention_bias: A tensor with shape [1, 1, target_len,
+        target_length], the bias for decoder self-attention layer.
+      attention_bias: A tensor with shape [batch_size, 1, 1, input_length], the
+        bias for encoder-decoder attention layer.
       training: A bool, whether in training mode or not.
       cache: (Used for fast decoding) A nested dictionary storing previous
         decoder self-attention values. The items are:

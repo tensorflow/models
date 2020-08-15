@@ -22,6 +22,7 @@ from official.vision.detection.dataloader import maskrcnn_parser
 from official.vision.detection.dataloader import retinanet_parser
 from official.vision.detection.dataloader import shapemask_parser
 
+
 def parser_generator(params, mode):
   """Generator function for various dataset parser."""
   if params.architecture.parser == 'retinanet_parser':
@@ -29,8 +30,8 @@ def parser_generator(params, mode):
     parser_params = params.retinanet_parser
     parser_fn = retinanet_parser.Parser(
         output_size=parser_params.output_size,
-        min_level=anchor_params.min_level,
-        max_level=anchor_params.max_level,
+        min_level=params.architecture.min_level,
+        max_level=params.architecture.max_level,
         num_scales=anchor_params.num_scales,
         aspect_ratios=anchor_params.aspect_ratios,
         anchor_size=anchor_params.anchor_size,
@@ -43,15 +44,15 @@ def parser_generator(params, mode):
         autoaugment_policy_name=parser_params.autoaugment_policy_name,
         skip_crowd_during_training=parser_params.skip_crowd_during_training,
         max_num_instances=parser_params.max_num_instances,
-        use_bfloat16=parser_params.use_bfloat16,
+        use_bfloat16=params.architecture.use_bfloat16,
         mode=mode)
   elif params.architecture.parser == 'maskrcnn_parser':
     anchor_params = params.anchor
     parser_params = params.maskrcnn_parser
     parser_fn = maskrcnn_parser.Parser(
         output_size=parser_params.output_size,
-        min_level=anchor_params.min_level,
-        max_level=anchor_params.max_level,
+        min_level=params.architecture.min_level,
+        max_level=params.architecture.max_level,
         num_scales=anchor_params.num_scales,
         aspect_ratios=anchor_params.aspect_ratios,
         anchor_size=anchor_params.anchor_size,
@@ -64,17 +65,17 @@ def parser_generator(params, mode):
         aug_scale_max=parser_params.aug_scale_max,
         skip_crowd_during_training=parser_params.skip_crowd_during_training,
         max_num_instances=parser_params.max_num_instances,
-        include_mask=parser_params.include_mask,
+        include_mask=params.architecture.include_mask,
         mask_crop_size=parser_params.mask_crop_size,
-        use_bfloat16=parser_params.use_bfloat16,
+        use_bfloat16=params.architecture.use_bfloat16,
         mode=mode)
   elif params.architecture.parser == 'shapemask_parser':
     anchor_params = params.anchor
     parser_params = params.shapemask_parser
     parser_fn = shapemask_parser.Parser(
         output_size=parser_params.output_size,
-        min_level=anchor_params.min_level,
-        max_level=anchor_params.max_level,
+        min_level=params.architecture.min_level,
+        max_level=params.architecture.max_level,
         num_scales=anchor_params.num_scales,
         aspect_ratios=anchor_params.aspect_ratios,
         anchor_size=anchor_params.anchor_size,
@@ -93,7 +94,7 @@ def parser_generator(params, mode):
         aug_scale_max=parser_params.aug_scale_max,
         skip_crowd_during_training=parser_params.skip_crowd_during_training,
         max_num_instances=parser_params.max_num_instances,
-        use_bfloat16=parser_params.use_bfloat16,
+        use_bfloat16=params.architecture.use_bfloat16,
         mask_train_class=parser_params.mask_train_class,
         mode=mode)
   else:

@@ -39,7 +39,7 @@ we pass it to the functions. At the end of the preprocess we expand the image
 back to rank 4.
 """
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 import numpy as np
 
@@ -50,10 +50,9 @@ def _flip_boxes_left_right(boxes):
   """Left-right flip the boxes.
 
   Args:
-    boxes: rank 2 float32 tensor containing the bounding boxes -> [N, 4].
-           Boxes are in normalized form meaning their coordinates vary
-           between [0, 1].
-           Each row is in the form of [ymin, xmin, ymax, xmax].
+    boxes: rank 2 float32 tensor containing the bounding boxes -> [N, 4]. Boxes
+      are in normalized form meaning their coordinates vary between [0, 1]. Each
+      row is in the form of [ymin, xmin, ymax, xmax].
 
   Returns:
     Flipped boxes.
@@ -69,8 +68,8 @@ def _flip_masks_left_right(masks):
   """Left-right flip masks.
 
   Args:
-    masks: rank 3 float32 tensor with shape
-      [num_instances, height, width] representing instance masks.
+    masks: rank 3 float32 tensor with shape [num_instances, height, width]
+      representing instance masks.
 
   Returns:
     flipped masks: rank 3 float32 tensor with shape
@@ -79,7 +78,9 @@ def _flip_masks_left_right(masks):
   return masks[:, :, ::-1]
 
 
-def keypoint_flip_horizontal(keypoints, flip_point, flip_permutation,
+def keypoint_flip_horizontal(keypoints,
+                             flip_point,
+                             flip_permutation,
                              scope=None):
   """Flips the keypoints horizontally around the flip_point.
 
@@ -91,9 +92,9 @@ def keypoint_flip_horizontal(keypoints, flip_point, flip_permutation,
     flip_point:  (float) scalar tensor representing the x coordinate to flip the
       keypoints around.
     flip_permutation: rank 1 int32 tensor containing the keypoint flip
-      permutation. This specifies the mapping from original keypoint indices
-      to the flipped keypoint indices. This is used primarily for keypoints
-      that are not reflection invariant. E.g. Suppose there are 3 keypoints
+      permutation. This specifies the mapping from original keypoint indices to
+      the flipped keypoint indices. This is used primarily for keypoints that
+      are not reflection invariant. E.g. Suppose there are 3 keypoints
       representing ['head', 'right_eye', 'left_eye'], then a logical choice for
       flip_permutation might be [0, 2, 1] since we want to swap the 'left_eye'
       and 'right_eye' after a horizontal flip.
@@ -190,19 +191,16 @@ def random_horizontal_flip(image,
 
   Args:
     image: rank 3 float32 tensor with shape [height, width, channels].
-    boxes: (optional) rank 2 float32 tensor with shape [N, 4]
-           containing the bounding boxes.
-           Boxes are in normalized form meaning their coordinates vary
-           between [0, 1].
-           Each row is in the form of [ymin, xmin, ymax, xmax].
-    masks: (optional) rank 3 float32 tensor with shape
-           [num_instances, height, width] containing instance masks. The masks
-           are of the same height, width as the input `image`.
-    keypoints: (optional) rank 3 float32 tensor with shape
-               [num_instances, num_keypoints, 2]. The keypoints are in y-x
-               normalized coordinates.
+    boxes: (optional) rank 2 float32 tensor with shape [N, 4] containing the
+      bounding boxes. Boxes are in normalized form meaning their coordinates
+      vary between [0, 1]. Each row is in the form of [ymin, xmin, ymax, xmax].
+    masks: (optional) rank 3 float32 tensor with shape [num_instances, height,
+      width] containing instance masks. The masks are of the same height, width
+      as the input `image`.
+    keypoints: (optional) rank 3 float32 tensor with shape [num_instances,
+      num_keypoints, 2]. The keypoints are in y-x normalized coordinates.
     keypoint_flip_permutation: rank 1 int32 tensor containing the keypoint flip
-                               permutation.
+      permutation.
     seed: random seed
 
   Returns:
@@ -369,20 +367,19 @@ def resize_to_range(image,
 
   Args:
     image: A 3D tensor of shape [height, width, channels]
-    masks: (optional) rank 3 float32 tensor with shape
-           [num_instances, height, width] containing instance masks.
+    masks: (optional) rank 3 float32 tensor with shape [num_instances, height,
+      width] containing instance masks.
     min_dimension: (optional) (scalar) desired size of the smaller image
-                   dimension.
-    max_dimension: (optional) (scalar) maximum allowed size
-                   of the larger image dimension.
+      dimension.
+    max_dimension: (optional) (scalar) maximum allowed size of the larger image
+      dimension.
     method: (optional) interpolation method used in resizing. Defaults to
-            BILINEAR.
-    align_corners: bool. If true, exactly align all 4 corners of the input
-                   and output. Defaults to False.
-    pad_to_max_dimension: Whether to resize the image and pad it with zeros
-      so the resulting image is of the spatial size
-      [max_dimension, max_dimension]. If masks are included they are padded
-      similarly.
+      BILINEAR.
+    align_corners: bool. If true, exactly align all 4 corners of the input and
+      output. Defaults to False.
+    pad_to_max_dimension: Whether to resize the image and pad it with zeros so
+      the resulting image is of the spatial size [max_dimension, max_dimension].
+      If masks are included they are padded similarly.
 
   Returns:
     Note that the position of the resized_image_shape changes based on whether
@@ -410,8 +407,8 @@ def resize_to_range(image,
     new_image = tf.image.resize(image, new_size[:-1], method=method)
 
     if pad_to_max_dimension:
-      new_image = tf.image.pad_to_bounding_box(
-          new_image, 0, 0, max_dimension, max_dimension)
+      new_image = tf.image.pad_to_bounding_box(new_image, 0, 0, max_dimension,
+                                               max_dimension)
 
     result = [new_image]
     if masks is not None:
@@ -422,8 +419,8 @@ def resize_to_range(image,
           method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
       new_masks = tf.squeeze(new_masks, 3)
       if pad_to_max_dimension:
-        new_masks = tf.image.pad_to_bounding_box(
-            new_masks, 0, 0, max_dimension, max_dimension)
+        new_masks = tf.image.pad_to_bounding_box(new_masks, 0, 0, max_dimension,
+                                                 max_dimension)
       result.append(new_masks)
 
     result.append(new_size)
@@ -500,11 +497,10 @@ def scale_boxes_to_pixel_coordinates(image, boxes, keypoints=None):
   Args:
     image: A 3D float32 tensor of shape [height, width, channels].
     boxes: A 2D float32 tensor of shape [num_boxes, 4] containing the bounding
-      boxes in normalized coordinates. Each row is of the form
-      [ymin, xmin, ymax, xmax].
-    keypoints: (optional) rank 3 float32 tensor with shape
-      [num_instances, num_keypoints, 2]. The keypoints are in y-x normalized
-      coordinates.
+      boxes in normalized coordinates. Each row is of the form [ymin, xmin,
+      ymax, xmax].
+    keypoints: (optional) rank 3 float32 tensor with shape [num_instances,
+      num_keypoints, 2]. The keypoints are in y-x normalized coordinates.
 
   Returns:
     image: unchanged input image.

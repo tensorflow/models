@@ -22,16 +22,14 @@ from __future__ import division
 from __future__ import print_function
 
 import copy
-import tensorflow as tf
-from tensorflow.contrib import framework as contrib_framework
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 from tensorflow.contrib import training as contrib_training
 
 from nets.nasnet import nasnet
 from nets.nasnet import nasnet_utils
 
-arg_scope = contrib_framework.arg_scope
-slim = contrib_slim
+arg_scope = slim.arg_scope
 
 
 def large_imagenet_config():
@@ -147,7 +145,7 @@ def _build_pnasnet_base(images,
       # pylint: enable=protected-access
 
   # Final softmax layer
-  with tf.compat.v1.variable_scope('final_layer'):
+  with tf.variable_scope('final_layer'):
     net = activation_fn(net)
     net = nasnet_utils.global_avg_pool(net)
     if add_and_check_endpoint('global_pool', net) or not num_classes:
@@ -176,7 +174,7 @@ def build_pnasnet_large(images,
   # pylint: enable=protected-access
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 
@@ -225,7 +223,7 @@ def build_pnasnet_mobile(images,
   # pylint: enable=protected-access
 
   if tf.test.is_gpu_available() and hparams.data_format == 'NHWC':
-    tf.compat.v1.logging.info(
+    tf.logging.info(
         'A GPU is available on the machine, consider using NCHW '
         'data format for increased speed on GPU.')
 

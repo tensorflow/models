@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
@@ -30,10 +31,10 @@ from official.nlp.modeling.networks import classification
 @keras_parameterized.run_all_keras_modes
 class ClassificationTest(keras_parameterized.TestCase):
 
-  def test_network_creation(self):
+  @parameterized.parameters(1, 10)
+  def test_network_creation(self, num_classes):
     """Validate that the Keras object can be created."""
     input_width = 512
-    num_classes = 10
     test_object = classification.Classification(
         input_width=input_width, num_classes=num_classes)
     # Create a 2-dimensional input (the first dimension is implicit).
@@ -44,10 +45,10 @@ class ClassificationTest(keras_parameterized.TestCase):
     expected_output_shape = [None, num_classes]
     self.assertEqual(expected_output_shape, output.shape.as_list())
 
-  def test_network_invocation(self):
+  @parameterized.parameters(1, 10)
+  def test_network_invocation(self, num_classes):
     """Validate that the Keras object can be invoked."""
     input_width = 512
-    num_classes = 10
     test_object = classification.Classification(
         input_width=input_width, num_classes=num_classes, output='predictions')
     # Create a 2-dimensional input (the first dimension is implicit).
@@ -90,10 +91,11 @@ class ClassificationTest(keras_parameterized.TestCase):
     calculated_softmax = softmax_model.predict(logits)
     self.assertAllClose(outputs, calculated_softmax)
 
-  def test_network_invocation_with_internal_and_external_logits(self):
+  @parameterized.parameters(1, 10)
+  def test_network_invocation_with_internal_and_external_logits(
+      self, num_classes):
     """Validate that the logit outputs are correct."""
     input_width = 512
-    num_classes = 10
     test_object = classification.Classification(
         input_width=input_width, num_classes=num_classes, output='logits')
 

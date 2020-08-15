@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import os
 
+# Import libraries
 from absl import app
 from absl import flags
 
@@ -59,7 +60,6 @@ def main(argv):
   if len(argv) > 1:
     raise app.UsageError("Too many command-line arguments.")
 
-  tf.enable_v2_behavior()
   export_tfhub(FLAGS.model_path, FLAGS.export_path)
 
 

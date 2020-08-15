@@ -4,6 +4,7 @@ package object_detection.protos;
 
 // Message for defining a preprocessing operation on input data.
 // See: //third_party/tensorflow_models/object_detection/core/preprocessor.py
+// Next ID: 39
 message PreprocessingStep {
   oneof preprocessing_step {
     NormalizeImage normalize_image = 1;
@@ -42,6 +43,8 @@ message PreprocessingStep {
     RandomJpegQuality random_jpeg_quality = 34;
     RandomDownscaleToTargetPixels random_downscale_to_target_pixels = 35;
     RandomPatchGaussian random_patch_gaussian = 36;
+    RandomSquareCropByScale random_square_crop_by_scale = 37;
+    RandomScaleCropAndPadToSquare random_scale_crop_and_pad_to_square = 38;
   }
 }
 
@@ -55,7 +58,8 @@ message NormalizeImage {
   optional float target_maxval = 4 [default=1];
 }
 
-// Randomly horizontally flips the image and detections 50% of the time.
+// Randomly horizontally flips the image and detections with the specified
+// probability, default to 50% of the time.
 message RandomHorizontalFlip {
   // Specifies a mapping from the original keypoint indices to horizontally
   // flipped indices. This is used in the event that keypoints are specified,
@@ -69,10 +73,15 @@ message RandomHorizontalFlip {
   // keypoint_flip_permutation: 3
   // keypoint_flip_permutation: 5
   // keypoint_flip_permutation: 4
+  // If nothing is specified the order of keypoint will be mantained.
   repeated int32 keypoint_flip_permutation = 1;
+
+  // The probability of running this augmentation for each image.
+  optional float probability = 2 [default=0.5];
 }
 
-// Randomly vertically flips the image and detections 50% of the time.
+// Randomly vertically flips the image and detections with the specified
+// probability, default to 50% of the time.
 message RandomVerticalFlip {
   // Specifies a mapping from the original keypoint indices to vertically
   // flipped indices. This is used in the event that keypoints are specified,
@@ -87,11 +96,23 @@ message RandomVerticalFlip {
   // keypoint_flip_permutation: 5
   // keypoint_flip_permutation: 4
   repeated int32 keypoint_flip_permutation = 1;
+
+  // The probability of running this augmentation for each image.
+  optional float probability = 2 [default=0.5];
 }
 
 // Randomly rotates the image and detections by 90 degrees counter-clockwise
-// 50% of the time.
-message RandomRotation90 {}
+// with the specified probability, default to 50% of the time.
+message RandomRotation90 {
+  // Specifies a mapping from the original keypoint indices to 90 degree counter
+  // clockwise indices. This is used in the event that keypoints are specified,
+  // in which case when the image is rotated the keypoints might need to be
+  // permuted.
+  repeated int32 keypoint_rot_permutation = 1;
+
+  // The probability of running this augmentation for each image.
+  optional float probability = 2 [default=0.5];
+}
 
 // Randomly scales the values of all pixels in the image by some constant value
 // between [minval, maxval], then clip the value to a range between [0, 1.0].
@@ -455,7 +476,6 @@ message SSDRandomCropPadFixedAspectRatio {
 // Converts class logits to softmax optionally scaling the values by temperature
 // first.
 message ConvertClassLogitsToSoftmax {
-
   // Scale to use on logits before applying softmax.
   optional float temperature = 1 [default=1.0];
 }
@@ -470,11 +490,9 @@ message RandomSelfConcatImage {
 
 // Apply an Autoaugment policy to the image and bounding boxes.
 message AutoAugmentImage {
-
   // What AutoAugment policy to apply to the Image
   optional string policy_name = 1 [default="v0"];
 }
-
 
 // Randomly drops ground truth boxes for a label with some probability.
 message DropLabelProbabilistically {
@@ -484,7 +502,6 @@ message DropLabelProbabilistically {
   // Probability of dropping the label.
   optional float drop_probability = 2 [default = 1.0];
 }
-
 
 //Remap a set of labels to a new label.
 message RemapLabels {
@@ -532,4 +549,44 @@ message RandomPatchGaussian {
   // be chosen to be in the range [min_gaussian_stddev, max_gaussian_stddev).
   optional float min_gaussian_stddev = 4 [default = 0.0];
   optional float max_gaussian_stddev = 5 [default = 1.0];
+}
+
+// Extract a square sized crop from an image whose side length is sampled by
+// randomly scaling the maximum spatial dimension of the image. If part of the
+// crop falls outside the image, it is filled with zeros.
+// The augmentation is borrowed from [1]
+// [1]: https://arxiv.org/abs/1904.07850
+message RandomSquareCropByScale {
+
+  // The maximum size of the border. The border defines distance in pixels to
+  // the image boundaries that will not be considered as a center of a crop.
+  // To make sure that the border does not go over the center of the image,
+  // we chose the border value by computing the minimum k, such that
+  // (max_border / (2**k)) < image_dimension/2
+  optional int32 max_border = 1 [default = 128];
+
+  // The minimum and maximum values of scale.
+  optional float scale_min = 2 [default=0.6];
+  optional float scale_max = 3 [default=1.3];
+
+  // The number of discrete scale values to randomly sample between
+  // [min_scale, max_scale]
+  optional int32 num_scales = 4 [default=8];
+}
+
+// Randomly scale, crop, and then pad an image to the desired square output
+// dimensions. Specifically, this method first samples a random_scale factor
+// from a uniform distribution between scale_min and scale_max, and then resizes
+// the image such that it's maximum dimension is (output_size * random_scale).
+// Secondly, a square output_size crop is extracted from the resized image, and
+// finally the cropped region is padded to the desired square output_size.
+// The augmentation is borrowed from [1]
+// [1]: https://arxiv.org/abs/1911.09070
+message RandomScaleCropAndPadToSquare {
+  // The (square) output image size
+  optional int32 output_size = 1 [default = 512];
+
+  // The minimum and maximum values from which to sample the random scale.
+  optional float scale_min = 2 [default=0.1];
+  optional float scale_max = 3 [default=2.0];
 }

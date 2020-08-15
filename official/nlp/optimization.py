@@ -13,7 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Functions and classes related to optimization (weight updates)."""
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -21,6 +20,7 @@ from __future__ import print_function
 import re
 
 from absl import logging
+import gin
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
 
@@ -67,6 +67,7 @@ class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
     }
 
 
+@gin.configurable
 def create_optimizer(init_lr,
                      num_train_steps,
                      num_warmup_steps,
@@ -92,7 +93,7 @@ def create_optimizer(init_lr,
         beta_1=0.9,
         beta_2=0.999,
         epsilon=1e-6,
-        exclude_from_weight_decay=['layer_norm', 'bias'])
+        exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'])
   elif optimizer_type == 'lamb':
     logging.info('using Lamb optimizer')
     optimizer = tfa_optimizers.LAMB(
@@ -101,7 +102,7 @@ def create_optimizer(init_lr,
         beta_1=0.9,
         beta_2=0.999,
         epsilon=1e-6,
-        exclude_from_weight_decay=['layer_norm', 'bias'])
+        exclude_from_weight_decay=['LayerNorm', 'layer_norm', 'bias'])
   else:
     raise ValueError('Unsupported optimizer type: ', optimizer_type)
 
@@ -129,13 +130,16 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                weight_decay_rate=0.0,
                include_in_weight_decay=None,
                exclude_from_weight_decay=None,
+               gradient_clip_norm=1.0,
                name='AdamWeightDecay',
                **kwargs):
     super(AdamWeightDecay, self).__init__(learning_rate, beta_1, beta_2,
                                           epsilon, amsgrad, name, **kwargs)
     self.weight_decay_rate = weight_decay_rate
+    self.gradient_clip_norm = gradient_clip_norm
     self._include_in_weight_decay = include_in_weight_decay
     self._exclude_from_weight_decay = exclude_from_weight_decay
+    logging.info('gradient_clip_norm=%f', gradient_clip_norm)
 
   @classmethod
   def from_config(cls, config):
@@ -164,7 +168,7 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
                       name=None,
                       experimental_aggregate_gradients=True):
     grads, tvars = list(zip(*grads_and_vars))
-    if experimental_aggregate_gradients:
+    if experimental_aggregate_gradients and self.gradient_clip_norm > 0.0:
       # when experimental_aggregate_gradients = False, apply_gradients() no
       # longer implicitly allreduce gradients, users manually allreduce gradient
       # and passed the allreduced grads_and_vars. For now, the

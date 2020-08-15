@@ -15,7 +15,7 @@
 """Tests for google3.image.understanding.object_detection.utils.json_utils."""
 import os
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import json_utils
 
@@ -32,9 +32,9 @@ class JsonUtilsTest(tf.test.TestCase):
   def testDumpPassExtraParams(self):
     output_path = os.path.join(tf.test.get_temp_dir(), 'test.json')
     with tf.gfile.GFile(output_path, 'w') as f:
-      json_utils.Dump([1.0], f, float_digits=2, indent=3)
+      json_utils.Dump([1.12345], f, float_digits=2, indent=3)
     with tf.gfile.GFile(output_path, 'r') as f:
-      self.assertEqual(f.read(), '[\n   1.00\n]')
+      self.assertEqual(f.read(), '[\n   1.12\n]')
 
   def testDumpZeroPrecision(self):
     output_path = os.path.join(tf.test.get_temp_dir(), 'test.json')
@@ -51,8 +51,8 @@ class JsonUtilsTest(tf.test.TestCase):
       self.assertEqual(f.read(), '1.012345')
 
   def testDumpsReasonablePrecision(self):
-    s = json_utils.Dumps(1.0, float_digits=2)
-    self.assertEqual(s, '1.00')
+    s = json_utils.Dumps(1.12545, float_digits=2)
+    self.assertEqual(s, '1.13')
 
   def testDumpsPassExtraParams(self):
     s = json_utils.Dumps([1.0], float_digits=2, indent=3)

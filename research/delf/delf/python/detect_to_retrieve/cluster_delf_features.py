@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +53,7 @@ _DELF_DIM = 128
 _STATUS_CHECK_ITERATIONS = 100
 
 
-class _IteratorInitHook(tf.train.SessionRunHook):
+class _IteratorInitHook(tf.estimator.SessionRunHook):
   """Hook to initialize data iterator after session is created."""
 
   def __init__(self):
@@ -70,14 +71,14 @@ def main(argv):
     raise RuntimeError('Too many command-line arguments.')
 
   # Process output directory.
-  if tf.gfile.Exists(cmd_args.output_cluster_dir):
+  if tf.io.gfile.exists(cmd_args.output_cluster_dir):
     raise RuntimeError(
         'output_cluster_dir = %s already exists. This may indicate that a '
         'previous run already wrote checkpoints in this directory, which would '
         'lead to incorrect training. Please re-run this script by specifying an'
         ' inexisting directory.' % cmd_args.output_cluster_dir)
   else:
-    tf.gfile.MakeDirs(cmd_args.output_cluster_dir)
+    tf.io.gfile.makedirs(cmd_args.output_cluster_dir)
 
   # Read list of index images from dataset file.
   print('Reading list of index images from dataset file...')
@@ -126,12 +127,12 @@ def main(argv):
       Returns:
         Tensor with the data for training.
       """
-      features_placeholder = tf.placeholder(tf.float32,
-                                            features_for_clustering.shape)
+      features_placeholder = tf.compat.v1.placeholder(
+          tf.float32, features_for_clustering.shape)
       delf_dataset = tf.data.Dataset.from_tensor_slices((features_placeholder))
       delf_dataset = delf_dataset.shuffle(1000).batch(
           features_for_clustering.shape[0])
-      iterator = delf_dataset.make_initializable_iterator()
+      iterator = tf.compat.v1.data.make_initializable_iterator(delf_dataset)
 
       def _initializer_fn(sess):
         """Initialize dataset iterator, feed in the data."""
@@ -146,7 +147,7 @@ def main(argv):
 
   input_fn, init_hook = _get_input_fn()
 
-  kmeans = tf.estimator.experimental.KMeans(
+  kmeans = tf.compat.v1.estimator.experimental.KMeans(
       num_clusters=cmd_args.num_clusters,
       model_dir=cmd_args.output_cluster_dir,
       use_mini_batch=False,

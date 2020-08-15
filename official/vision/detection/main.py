@@ -19,42 +19,41 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
+import functools
+import pprint
+
+# pylint: disable=g-bad-import-order
+# Import libraries
+import tensorflow as tf
+
 from absl import app
 from absl import flags
 from absl import logging
-import functools
-import os
-import pprint
-import tensorflow.compat.v2 as tf
+# pylint: enable=g-bad-import-order
 
 from official.modeling.hyperparams import params_dict
 from official.modeling.training import distributed_executor as executor
 from official.utils import hyperparams_flags
+from official.utils.flags import core as flags_core
+from official.utils.misc import distribution_utils
+from official.utils.misc import keras_utils
 from official.vision.detection.configs import factory as config_factory
 from official.vision.detection.dataloader import input_reader
 from official.vision.detection.dataloader import mode_keys as ModeKeys
 from official.vision.detection.executor.detection_executor import DetectionDistributedExecutor
 from official.vision.detection.modeling import factory as model_factory
-from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
-from official.utils.misc import keras_utils
 
 hyperparams_flags.initialize_common_flags()
 flags_core.define_log_steps()
 
-flags.DEFINE_bool(
-    'enable_xla',
-    default=False,
-    help='Enable XLA for GPU')
+flags.DEFINE_bool('enable_xla', default=False, help='Enable XLA for GPU')
 
 flags.DEFINE_string(
-    'mode',
-    default='train',
-    help='Mode to run: `train`, `eval` or `train_and_eval`.')
+    'mode', default='train', help='Mode to run: `train` or `eval`.')
 
 flags.DEFINE_string(
     'model', default='retinanet',
-    help='Model to run: `retinanet` or `mask_rcnn`.')
+    help='Model to run: `retinanet`, `mask_rcnn` or `shapemask`.')
 
 flags.DEFINE_string('training_file_pattern', None,
                     'Location of the train data.')
@@ -69,11 +68,13 @@ FLAGS = flags.FLAGS
 
 
 def run_executor(params,
+                 mode,
+                 checkpoint_path=None,
                  train_input_fn=None,
                  eval_input_fn=None,
                  callbacks=None,
-                 strategy=None):
-  """Runs Retinanet model on distribution strategy defined by the user."""
+                 prebuilt_strategy=None):
+  """Runs the object detection model on distribution strategy defined by the user."""
 
   if params.architecture.use_bfloat16:
     policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
@@ -82,7 +83,9 @@ def run_executor(params,
 
   model_builder = model_factory.model_generator(params)
 
-  if strategy is None:
+  if prebuilt_strategy is not None:
+    strategy = prebuilt_strategy
+  else:
     strategy_config = params.strategy_config
     distribution_utils.configure_cluster(strategy_config.worker_hosts,
                                          strategy_config.task_index)
@@ -96,7 +99,7 @@ def run_executor(params,
   num_workers = int(strategy.num_replicas_in_sync + 7) // 8
   is_multi_host = (int(num_workers) >= 2)
 
-  if FLAGS.mode == 'train':
+  if mode == 'train':
 
     def _model_fn(params):
       return model_builder.build_model(params, mode=ModeKeys.TRAIN)
@@ -128,8 +131,7 @@ def run_executor(params,
         init_checkpoint=model_builder.make_restore_checkpoint_fn(),
         custom_callbacks=callbacks,
         save_config=True)
-
-  elif FLAGS.mode == 'eval' or FLAGS.mode == 'eval_once':
+  elif mode == 'eval' or mode == 'eval_once':
 
     def _model_fn(params):
       return model_builder.build_model(params, mode=ModeKeys.PREDICT_WITH_GT)
@@ -152,7 +154,7 @@ def run_executor(params,
         trainable_variables_filter=model_builder
         .make_filter_trainable_variables_fn())
 
-    if FLAGS.mode == 'eval':
+    if mode == 'eval':
       results = dist_executor.evaluate_from_model_dir(
           model_dir=params.model_dir,
           eval_input_fn=eval_input_fn,
@@ -162,9 +164,8 @@ def run_executor(params,
           total_steps=params.train.total_steps)
     else:
       # Run evaluation once for a single checkpoint.
-      if not FLAGS.checkpoint_path:
-        raise ValueError('FLAGS.checkpoint_path cannot be empty.')
-      checkpoint_path = FLAGS.checkpoint_path
+      if not checkpoint_path:
+        raise ValueError('checkpoint_path cannot be empty.')
       if tf.io.gfile.isdir(checkpoint_path):
         checkpoint_path = tf.train.latest_checkpoint(checkpoint_path)
       summary_writer = executor.SummaryWriter(params.model_dir, 'eval')
@@ -177,7 +178,7 @@ def run_executor(params,
       logging.info('Final eval metric %s: %f', k, v)
     return results
   else:
-    raise ValueError('Mode not found: %s.' % FLAGS.mode)
+    raise ValueError('Mode not found: %s.' % mode)
 
 
 def run(callbacks=None):
@@ -197,11 +198,25 @@ def run(callbacks=None):
           'strategy_config': executor.strategy_flags_dict(),
       },
       is_strict=False)
+
+  # Make sure use_tpu and strategy_type are in sync.
+  params.use_tpu = (params.strategy_type == 'tpu')
+
+  if not params.use_tpu:
+    params.override({
+        'architecture': {
+            'use_bfloat16': False,
+        },
+        'norm_activation': {
+            'use_sync_bn': False,
+        },
+    }, is_strict=True)
+
   params.validate()
   params.lock()
   pp = pprint.PrettyPrinter()
   params_str = pp.pformat(params.as_dict())
-  logging.info('Model Parameters: {}'.format(params_str))
+  logging.info('Model Parameters: %s', params_str)
 
   train_input_fn = None
   eval_input_fn = None
@@ -239,6 +254,8 @@ def run(callbacks=None):
 
   return run_executor(
       params,
+      FLAGS.mode,
+      checkpoint_path=FLAGS.checkpoint_path,
       train_input_fn=train_input_fn,
       eval_input_fn=eval_input_fn,
       callbacks=callbacks)

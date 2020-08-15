@@ -15,7 +15,8 @@
 """Tests for oid_tfrecord_creation.py."""
 
 import pandas as pd
-import tensorflow as tf
+import six
+import tensorflow.compat.v1 as tf
 
 from object_detection.dataset_tools import oid_tfrecord_creation
 
@@ -46,8 +47,7 @@ class TfExampleFromAnnotationsDataFrameTests(tf.test.TestCase):
 
     tf_example = oid_tfrecord_creation.tf_example_from_annotations_data_frame(
         df[df.ImageID == 'i1'], label_map, 'encoded_image_test')
-    self.assertProtoEquals(
-        """
+    self.assertProtoEquals(six.ensure_str("""
         features {
           feature {
             key: "image/encoded"
@@ -94,7 +94,7 @@ class TfExampleFromAnnotationsDataFrameTests(tf.test.TestCase):
           feature {
             key: "image/class/text"
             value { bytes_list { value: ["c"] } } } }
-    """, tf_example)
+    """), tf_example)
 
   def test_no_attributes(self):
     label_map, df = create_test_data()
@@ -107,7 +107,7 @@ class TfExampleFromAnnotationsDataFrameTests(tf.test.TestCase):
 
     tf_example = oid_tfrecord_creation.tf_example_from_annotations_data_frame(
         df[df.ImageID == 'i2'], label_map, 'encoded_image_test')
-    self.assertProtoEquals("""
+    self.assertProtoEquals(six.ensure_str("""
         features {
           feature {
             key: "image/encoded"
@@ -136,7 +136,7 @@ class TfExampleFromAnnotationsDataFrameTests(tf.test.TestCase):
           feature {
             key: "image/source_id"
            value { bytes_list { value: "i2" } } } }
-    """, tf_example)
+    """), tf_example)
 
   def test_label_filtering(self):
     label_map, df = create_test_data()
@@ -146,7 +146,7 @@ class TfExampleFromAnnotationsDataFrameTests(tf.test.TestCase):
     tf_example = oid_tfrecord_creation.tf_example_from_annotations_data_frame(
         df[df.ImageID == 'i1'], label_map, 'encoded_image_test')
     self.assertProtoEquals(
-        """
+        six.ensure_str("""
         features {
           feature {
             key: "image/encoded"
@@ -193,7 +193,7 @@ class TfExampleFromAnnotationsDataFrameTests(tf.test.TestCase):
           feature {
             key: "image/class/text"
             value { bytes_list { } } } }
-    """, tf_example)
+    """), tf_example)
 
 
 if __name__ == '__main__':

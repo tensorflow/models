@@ -23,7 +23,8 @@ Detection configuration framework, they should define their own builder function
 that wraps the build function.
 """
 import tensorflow.compat.v1 as tf
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
+
 from tensorflow.contrib.training.python.training import sequence_queueing_state_saver as sqss
 from lstm_object_detection.inputs import tf_sequence_example_decoder
 from lstm_object_detection.protos import input_reader_google_pb2
@@ -33,7 +34,7 @@ from object_detection.core import standard_fields as fields
 from object_detection.protos import input_reader_pb2
 from object_detection.utils import ops as util_ops
 
-parallel_reader = contrib_slim.parallel_reader
+parallel_reader = slim.parallel_reader
 # TODO(yinxiao): Make the following variable into configurable proto.
 # Padding size for the labeled objects in each frame. Here we assume each
 # frame has a total number of objects less than _PADDING_SIZE.

@@ -1,3 +1,4 @@
+# Lint as: python2, python3
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +24,18 @@ Detection configuration framework, they should define their own builder function
 that wraps the build function.
 """
 
-import tensorflow as tf
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from object_detection.data_decoders import tf_example_decoder
+from object_detection.data_decoders import tf_sequence_example_decoder
 from object_detection.protos import input_reader_pb2
 
-parallel_reader = tf.contrib.slim.parallel_reader
+parallel_reader = slim.parallel_reader
 
 
 def build(input_reader_config):
@@ -67,10 +74,18 @@ def build(input_reader_config):
     label_map_proto_file = None
     if input_reader_config.HasField('label_map_path'):
       label_map_proto_file = input_reader_config.label_map_path
-    decoder = tf_example_decoder.TfExampleDecoder(
-        load_instance_masks=input_reader_config.load_instance_masks,
-        instance_mask_type=input_reader_config.mask_type,
-        label_map_proto_file=label_map_proto_file)
-    return decoder.decode(string_tensor)
-
+    input_type = input_reader_config.input_type
+    if input_type == input_reader_pb2.InputType.Value('TF_EXAMPLE'):
+      decoder = tf_example_decoder.TfExampleDecoder(
+          load_instance_masks=input_reader_config.load_instance_masks,
+          instance_mask_type=input_reader_config.mask_type,
+          label_map_proto_file=label_map_proto_file,
+          load_context_features=input_reader_config.load_context_features)
+      return decoder.decode(string_tensor)
+    elif input_type == input_reader_pb2.InputType.Value('TF_SEQUENCE_EXAMPLE'):
+      decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder(
+          label_map_proto_file=label_map_proto_file,
+          load_context_features=input_reader_config.load_context_features)
+      return decoder.decode(string_tensor)
+    raise ValueError('Unsupported input_type.')
   raise ValueError('Unsupported input_reader_config.')

@@ -23,6 +23,8 @@ import collections
 import copy
 import json
 import math
+import os
+
 import six
 
 from absl import logging
@@ -34,7 +36,18 @@ from official.nlp.bert import tokenization
 class SquadExample(object):
   """A single training/test example for simple sequence classification.
 
-     For examples without an answer, the start and end position are -1.
+  For examples without an answer, the start and end position are -1.
+
+  Attributes:
+    qas_id: ID of the question-answer pair.
+    question_text: Original text for the question.
+    doc_tokens: The list of tokens in the context obtained by splitting on
+      whitespace only.
+    orig_answer_text: Original text for the answer.
+    start_position: Starting index of the answer in `doc_tokens`.
+    end_position: Ending index of the answer in `doc_tokens`.
+    is_impossible: Whether the question is impossible to answer given the
+      context. Only used in SQuAD 2.0.
   """
 
   def __init__(self,
@@ -108,6 +121,7 @@ class FeatureWriter(object):
     self.filename = filename
     self.is_training = is_training
     self.num_features = 0
+    tf.io.gfile.makedirs(os.path.dirname(filename))
     self._writer = tf.io.TFRecordWriter(filename)
 
   def process_feature(self, feature):
@@ -196,8 +210,8 @@ def read_squad_examples(input_file, is_training, version_2_with_negative):
             #
             # Note that this means for training mode, every example is NOT
             # guaranteed to be preserved.
-            actual_text = " ".join(
-                doc_tokens[start_position:(end_position + 1)])
+            actual_text = " ".join(doc_tokens[start_position:(end_position +
+                                                              1)])
             cleaned_answer_text = " ".join(
                 tokenization.whitespace_tokenize(orig_answer_text))
             if actual_text.find(cleaned_answer_text) == -1:
@@ -507,15 +521,16 @@ def write_predictions(all_examples,
   logging.info("Writing nbest to: %s", (output_nbest_file))
 
   all_predictions, all_nbest_json, scores_diff_json = (
-      postprocess_output(all_examples=all_examples,
-                         all_features=all_features,
-                         all_results=all_results,
-                         n_best_size=n_best_size,
-                         max_answer_length=max_answer_length,
-                         do_lower_case=do_lower_case,
-                         version_2_with_negative=version_2_with_negative,
-                         null_score_diff_threshold=null_score_diff_threshold,
-                         verbose=verbose))
+      postprocess_output(
+          all_examples=all_examples,
+          all_features=all_features,
+          all_results=all_results,
+          n_best_size=n_best_size,
+          max_answer_length=max_answer_length,
+          do_lower_case=do_lower_case,
+          version_2_with_negative=version_2_with_negative,
+          null_score_diff_threshold=null_score_diff_threshold,
+          verbose=verbose))
 
   write_to_json_files(all_predictions, output_prediction_file)
   write_to_json_files(all_nbest_json, output_nbest_file)
@@ -693,13 +708,18 @@ def postprocess_output(all_examples,
     else:
       # pytype: disable=attribute-error
       # predict "" iff the null score - the score of best non-null > threshold
-      score_diff = score_null - best_non_null_entry.start_logit - (
-          best_non_null_entry.end_logit)
-      scores_diff_json[example.qas_id] = score_diff
-      if score_diff > null_score_diff_threshold:
-        all_predictions[example.qas_id] = ""
+      if best_non_null_entry is not None:
+        score_diff = score_null - best_non_null_entry.start_logit - (
+            best_non_null_entry.end_logit)
+        scores_diff_json[example.qas_id] = score_diff
+        if score_diff > null_score_diff_threshold:
+          all_predictions[example.qas_id] = ""
+        else:
+          all_predictions[example.qas_id] = best_non_null_entry.text
       else:
-        all_predictions[example.qas_id] = best_non_null_entry.text
+        logging.warning("best_non_null_entry is None")
+        scores_diff_json[example.qas_id] = score_null
+        all_predictions[example.qas_id] = ""
       # pytype: enable=attribute-error
 
     all_nbest_json[example.qas_id] = nbest_json

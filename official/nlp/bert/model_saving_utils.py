@@ -38,13 +38,13 @@ def export_bert_model(model_export_path: typing.Text,
       checkpoint_dir: Path from which model weights will be loaded, if
         specified.
       restore_model_using_load_weights: Whether to use checkpoint.restore() API
-        for custom checkpoint or to use model.load_weights() API.
-        There are 2 different ways to save checkpoints. One is using
-        tf.train.Checkpoint and another is using Keras model.save_weights().
-        Custom training loop implementation uses tf.train.Checkpoint API
-        and Keras ModelCheckpoint callback internally uses model.save_weights()
-        API. Since these two API's cannot be used toghether, model loading logic
-        must be take into account how model checkpoint was saved.
+        for custom checkpoint or to use model.load_weights() API. There are 2
+        different ways to save checkpoints. One is using tf.train.Checkpoint and
+        another is using Keras model.save_weights(). Custom training loop
+        implementation uses tf.train.Checkpoint API and Keras ModelCheckpoint
+        callback internally uses model.save_weights() API. Since these two API's
+        cannot be used toghether, model loading logic must be take into account
+        how model checkpoint was saved.
 
   Raises:
     ValueError when either model_export_path or model is not specified.
@@ -55,14 +55,10 @@ def export_bert_model(model_export_path: typing.Text,
     raise ValueError('model must be a tf.keras.Model object.')
 
   if checkpoint_dir:
-    # Keras compile/fit() was used to save checkpoint using
-    # model.save_weights().
     if restore_model_using_load_weights:
       model_weight_path = os.path.join(checkpoint_dir, 'checkpoint')
       assert tf.io.gfile.exists(model_weight_path)
       model.load_weights(model_weight_path)
-
-    # tf.train.Checkpoint API was used via custom training loop logic.
     else:
       checkpoint = tf.train.Checkpoint(model=model)
 
@@ -75,27 +71,3 @@ def export_bert_model(model_export_path: typing.Text,
           latest_checkpoint_file).assert_existing_objects_matched()
 
   model.save(model_export_path, include_optimizer=False, save_format='tf')
-
-
-class BertModelCheckpoint(tf.keras.callbacks.Callback):
-  """Keras callback that saves model at the end of every epoch."""
-
-  def __init__(self, checkpoint_dir, checkpoint):
-    """Initializes BertModelCheckpoint.
-
-    Arguments:
-      checkpoint_dir: Directory of the to be saved checkpoint file.
-      checkpoint: tf.train.Checkpoint object.
-    """
-    super(BertModelCheckpoint, self).__init__()
-    self.checkpoint_file_name = os.path.join(
-        checkpoint_dir, 'bert_training_checkpoint_step_{global_step}.ckpt')
-    assert isinstance(checkpoint, tf.train.Checkpoint)
-    self.checkpoint = checkpoint
-
-  def on_epoch_end(self, epoch, logs=None):
-    global_step = tf.keras.backend.get_value(self.model.optimizer.iterations)
-    formatted_file_name = self.checkpoint_file_name.format(
-        global_step=global_step)
-    saved_path = self.checkpoint.save(formatted_file_name)
-    logging.info('Saving model TF checkpoint to : %s', saved_path)

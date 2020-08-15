@@ -20,7 +20,7 @@ where the last dimension holds rank 2 tensors of the form [y, x] representing
 the coordinates of the keypoint.
 """
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def scale(keypoints, y_scale, x_scale, scope=None):
@@ -125,6 +125,24 @@ def change_coordinate_frame(keypoints, window, scope=None):
     return new_keypoints
 
 
+def keypoints_to_enclosing_bounding_boxes(keypoints):
+  """Creates enclosing bounding boxes from keypoints.
+
+  Args:
+    keypoints: a [num_instances, num_keypoints, 2] float32 tensor with keypoints
+      in [y, x] format.
+
+  Returns:
+    A [num_instances, 4] float32 tensor that tightly covers all the keypoints
+    for each instance.
+  """
+  ymin = tf.math.reduce_min(keypoints[:, :, 0], axis=1)
+  xmin = tf.math.reduce_min(keypoints[:, :, 1], axis=1)
+  ymax = tf.math.reduce_max(keypoints[:, :, 0], axis=1)
+  xmax = tf.math.reduce_max(keypoints[:, :, 1], axis=1)
+  return tf.stack([ymin, xmin, ymax, xmax], axis=1)
+
+
 def to_normalized_coordinates(keypoints, height, width,
                               check_range=True, scope=None):
   """Converts absolute keypoint coordinates to normalized coordinates in [0, 1].
@@ -199,7 +217,7 @@ def to_absolute_coordinates(keypoints, height, width,
     return scale(keypoints, height, width)
 
 
-def flip_horizontal(keypoints, flip_point, flip_permutation, scope=None):
+def flip_horizontal(keypoints, flip_point, flip_permutation=None, scope=None):
   """Flips the keypoints horizontally around the flip_point.
 
   This operation flips the x coordinate for each keypoint around the flip_point
@@ -209,13 +227,14 @@ def flip_horizontal(keypoints, flip_point, flip_permutation, scope=None):
     keypoints: a tensor of shape [num_instances, num_keypoints, 2]
     flip_point:  (float) scalar tensor representing the x coordinate to flip the
       keypoints around.
-    flip_permutation: rank 1 int32 tensor containing the keypoint flip
-      permutation. This specifies the mapping from original keypoint indices
-      to the flipped keypoint indices. This is used primarily for keypoints
-      that are not reflection invariant. E.g. Suppose there are 3 keypoints
-      representing ['head', 'right_eye', 'left_eye'], then a logical choice for
-      flip_permutation might be [0, 2, 1] since we want to swap the 'left_eye'
-      and 'right_eye' after a horizontal flip.
+    flip_permutation: integer list or rank 1 int32 tensor containing the
+      keypoint flip permutation. This specifies the mapping from original
+      keypoint indices to the flipped keypoint indices. This is used primarily
+      for keypoints that are not reflection invariant. E.g. Suppose there are 3
+      keypoints representing ['head', 'right_eye', 'left_eye'], then a logical
+      choice for flip_permutation might be [0, 2, 1] since we want to swap the
+      'left_eye' and 'right_eye' after a horizontal flip.
+      Default to None or empty list to keep the original order after flip.
     scope: name scope.
 
   Returns:
@@ -223,7 +242,8 @@ def flip_horizontal(keypoints, flip_point, flip_permutation, scope=None):
   """
   with tf.name_scope(scope, 'FlipHorizontal'):
     keypoints = tf.transpose(keypoints, [1, 0, 2])
-    keypoints = tf.gather(keypoints, flip_permutation)
+    if flip_permutation:
+      keypoints = tf.gather(keypoints, flip_permutation)
     v, u = tf.split(value=keypoints, num_or_size_splits=2, axis=2)
     u = flip_point * 2.0 - u
     new_keypoints = tf.concat([v, u], 2)
@@ -231,7 +251,7 @@ def flip_horizontal(keypoints, flip_point, flip_permutation, scope=None):
     return new_keypoints
 
 
-def flip_vertical(keypoints, flip_point, flip_permutation, scope=None):
+def flip_vertical(keypoints, flip_point, flip_permutation=None, scope=None):
   """Flips the keypoints vertically around the flip_point.
 
   This operation flips the y coordinate for each keypoint around the flip_point
@@ -241,13 +261,14 @@ def flip_vertical(keypoints, flip_point, flip_permutation, scope=None):
     keypoints: a tensor of shape [num_instances, num_keypoints, 2]
     flip_point:  (float) scalar tensor representing the y coordinate to flip the
       keypoints around.
-    flip_permutation: rank 1 int32 tensor containing the keypoint flip
-      permutation. This specifies the mapping from original keypoint indices
-      to the flipped keypoint indices. This is used primarily for keypoints
-      that are not reflection invariant. E.g. Suppose there are 3 keypoints
-      representing ['head', 'right_eye', 'left_eye'], then a logical choice for
-      flip_permutation might be [0, 2, 1] since we want to swap the 'left_eye'
-      and 'right_eye' after a horizontal flip.
+    flip_permutation: integer list or rank 1 int32 tensor containing the
+      keypoint flip permutation. This specifies the mapping from original
+      keypoint indices to the flipped keypoint indices. This is used primarily
+      for keypoints that are not reflection invariant. E.g. Suppose there are 3
+      keypoints representing ['head', 'right_eye', 'left_eye'], then a logical
+      choice for flip_permutation might be [0, 2, 1] since we want to swap the
+      'left_eye' and 'right_eye' after a horizontal flip.
+      Default to None or empty list to keep the original order after flip.
     scope: name scope.
 
   Returns:
@@ -255,7 +276,8 @@ def flip_vertical(keypoints, flip_point, flip_permutation, scope=None):
   """
   with tf.name_scope(scope, 'FlipVertical'):
     keypoints = tf.transpose(keypoints, [1, 0, 2])
-    keypoints = tf.gather(keypoints, flip_permutation)
+    if flip_permutation:
+      keypoints = tf.gather(keypoints, flip_permutation)
     v, u = tf.split(value=keypoints, num_or_size_splits=2, axis=2)
     v = flip_point * 2.0 - v
     new_keypoints = tf.concat([v, u], 2)
@@ -263,20 +285,92 @@ def flip_vertical(keypoints, flip_point, flip_permutation, scope=None):
     return new_keypoints
 
 
-def rot90(keypoints, scope=None):
+def rot90(keypoints, rotation_permutation=None, scope=None):
   """Rotates the keypoints counter-clockwise by 90 degrees.
 
   Args:
     keypoints: a tensor of shape [num_instances, num_keypoints, 2]
+    rotation_permutation:  integer list or rank 1 int32 tensor containing the
+      keypoint flip permutation. This specifies the mapping from original
+      keypoint indices to the rotated keypoint indices. This is used primarily
+      for keypoints that are not rotation invariant.
+      Default to None or empty list to keep the original order after rotation.
     scope: name scope.
-
   Returns:
     new_keypoints: a tensor of shape [num_instances, num_keypoints, 2]
   """
   with tf.name_scope(scope, 'Rot90'):
     keypoints = tf.transpose(keypoints, [1, 0, 2])
+    if rotation_permutation:
+      keypoints = tf.gather(keypoints, rotation_permutation)
     v, u = tf.split(value=keypoints[:, :, ::-1], num_or_size_splits=2, axis=2)
     v = 1.0 - v
     new_keypoints = tf.concat([v, u], 2)
     new_keypoints = tf.transpose(new_keypoints, [1, 0, 2])
     return new_keypoints
+
+
+def keypoint_weights_from_visibilities(keypoint_visibilities,
+                                       per_keypoint_weights=None):
+  """Returns a keypoint weights tensor.
+
+  During training, it is often beneficial to consider only those keypoints that
+  are labeled. This function returns a weights tensor that combines default
+  per-keypoint weights, as well as the visibilities of individual keypoints.
+
+  The returned tensor satisfies:
+  keypoint_weights[i, k] = per_keypoint_weights[k] * keypoint_visibilities[i, k]
+  where per_keypoint_weights[k] is set to 1 if not provided.
+
+  Args:
+    keypoint_visibilities: A [num_instances, num_keypoints] boolean tensor
+      indicating whether a keypoint is labeled (and perhaps even visible).
+    per_keypoint_weights: A list or 1-d tensor of length `num_keypoints` with
+      per-keypoint weights. If None, will use 1 for each visible keypoint
+      weight.
+
+  Returns:
+    A [num_instances, num_keypoints] float32 tensor with keypoint weights. Those
+    keypoints deemed visible will have the provided per-keypoint weight, and
+    all others will be set to zero.
+  """
+  if per_keypoint_weights is None:
+    num_keypoints = keypoint_visibilities.shape.as_list()[1]
+    per_keypoint_weight_mult = tf.ones((1, num_keypoints,), dtype=tf.float32)
+  else:
+    per_keypoint_weight_mult = tf.expand_dims(per_keypoint_weights, axis=0)
+  return per_keypoint_weight_mult * tf.cast(keypoint_visibilities, tf.float32)
+
+
+def set_keypoint_visibilities(keypoints, initial_keypoint_visibilities=None):
+  """Sets keypoint visibilities based on valid/invalid keypoints.
+
+  Some keypoint operations set invisible keypoints (e.g. cropped keypoints) to
+  NaN, without affecting any keypoint "visibility" variables. This function is
+  used to update (or create) keypoint visibilities to agree with visible /
+  invisible keypoint coordinates.
+
+  Args:
+    keypoints: a float32 tensor of shape [num_instances, num_keypoints, 2].
+    initial_keypoint_visibilities: a boolean tensor of shape
+      [num_instances, num_keypoints]. If provided, will maintain the visibility
+      designation of a keypoint, so long as the corresponding coordinates are
+      not NaN. If not provided, will create keypoint visibilities directly from
+      the values in `keypoints` (i.e. NaN coordinates map to False, otherwise
+      they map to True).
+
+  Returns:
+    keypoint_visibilities: a bool tensor of shape [num_instances, num_keypoints]
+    indicating whether a keypoint is visible or not.
+  """
+  if initial_keypoint_visibilities is not None:
+    keypoint_visibilities = tf.cast(initial_keypoint_visibilities, tf.bool)
+  else:
+    keypoint_visibilities = tf.ones_like(keypoints[:, :, 0], dtype=tf.bool)
+
+  keypoints_with_nan = tf.math.reduce_any(tf.math.is_nan(keypoints), axis=2)
+  keypoint_visibilities = tf.where(
+      keypoints_with_nan,
+      tf.zeros_like(keypoint_visibilities, dtype=tf.bool),
+      keypoint_visibilities)
+  return keypoint_visibilities

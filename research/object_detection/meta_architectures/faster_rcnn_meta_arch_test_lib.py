@@ -18,11 +18,12 @@ import functools
 from absl.testing import parameterized
 
 import numpy as np
-import tensorflow as tf
+import six
+import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
-from tensorflow.contrib import slim as contrib_slim
 from object_detection.anchor_generators import grid_anchor_generator
+from object_detection.anchor_generators import multiscale_grid_anchor_generator
 from object_detection.builders import box_predictor_builder
 from object_detection.builders import hyperparams_builder
 from object_detection.builders import post_processing_builder
@@ -34,11 +35,19 @@ from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.protos import box_predictor_pb2
 from object_detection.protos import hyperparams_pb2
 from object_detection.protos import post_processing_pb2
-from object_detection.utils import ops
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import test_case
 from object_detection.utils import test_utils
+from object_detection.utils import tf_version
 
-slim = contrib_slim
+# pylint: disable=g-import-not-at-top
+try:
+  import tf_slim as slim
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
+
 BOX_CODE_SIZE = 4
 
 
@@ -64,8 +73,38 @@ class FakeFasterRCNNFeatureExtractor(
 
   def _extract_box_classifier_features(self, proposal_feature_maps, scope):
     with tf.variable_scope('mock_model'):
-      return 0 * slim.conv2d(proposal_feature_maps,
-                             num_outputs=3, kernel_size=1, scope='layer2')
+      return 0 * slim.conv2d(
+          proposal_feature_maps, num_outputs=3, kernel_size=1, scope='layer2')
+
+
+class FakeFasterRCNNMultiLevelFeatureExtractor(
+    faster_rcnn_meta_arch.FasterRCNNFeatureExtractor):
+  """Fake feature extractor to use in tests."""
+
+  def __init__(self):
+    super(FakeFasterRCNNMultiLevelFeatureExtractor, self).__init__(
+        is_training=False,
+        first_stage_features_stride=32,
+        reuse_weights=None,
+        weight_decay=0.0)
+
+  def preprocess(self, resized_inputs):
+    return tf.identity(resized_inputs)
+
+  def _extract_proposal_features(self, preprocessed_inputs, scope):
+    with tf.variable_scope('mock_model'):
+      proposal_features_1 = 0 * slim.conv2d(
+          preprocessed_inputs, num_outputs=3, kernel_size=3, scope='layer1',
+          padding='VALID')
+      proposal_features_2 = 0 * slim.conv2d(
+          proposal_features_1, num_outputs=3, kernel_size=3, scope='layer2',
+          padding='VALID')
+      return [proposal_features_1, proposal_features_2], {}
+
+  def _extract_box_classifier_features(self, proposal_feature_maps, scope):
+    with tf.variable_scope('mock_model'):
+      return 0 * slim.conv2d(
+          proposal_feature_maps, num_outputs=3, kernel_size=1, scope='layer3')
 
 
 class FakeFasterRCNNKerasFeatureExtractor(
@@ -102,6 +141,42 @@ class FakeFasterRCNNKerasFeatureExtractor(
   def get_box_classifier_feature_extractor_model(self, name):
     return tf.keras.Sequential([tf.keras.layers.Conv2D(
         3, kernel_size=1, padding='SAME', name=name + '_layer2')])
+
+
+class FakeFasterRCNNKerasMultilevelFeatureExtractor(
+    faster_rcnn_meta_arch.FasterRCNNKerasFeatureExtractor):
+  """Fake feature extractor to use in tests."""
+
+  def __init__(self):
+    super(FakeFasterRCNNKerasMultilevelFeatureExtractor, self).__init__(
+        is_training=False,
+        first_stage_features_stride=32,
+        weight_decay=0.0)
+
+  def preprocess(self, resized_inputs):
+    return tf.identity(resized_inputs)
+
+  def get_proposal_feature_extractor_model(self, name):
+
+    class ProposalFeatureExtractor(tf.keras.Model):
+      """Dummy proposal feature extraction."""
+
+      def __init__(self, name):
+        super(ProposalFeatureExtractor, self).__init__(name=name)
+        self.conv = None
+
+      def build(self, input_shape):
+        self.conv = tf.keras.layers.Conv2D(
+            3, kernel_size=3, name='layer1')
+        self.conv_1 = tf.keras.layers.Conv2D(
+            3, kernel_size=3, name='layer1')
+
+      def call(self, inputs):
+        output_1 = self.conv(inputs)
+        output_2 = self.conv_1(output_1)
+        return [output_1, output_2]
+
+    return ProposalFeatureExtractor(name=name)
 
 
 class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
@@ -212,7 +287,6 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                    is_training,
                    number_of_stages,
                    second_stage_batch_size,
-                   use_keras=False,
                    first_stage_max_proposals=8,
                    num_classes=2,
                    hard_mining=False,
@@ -226,8 +300,10 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                    use_static_shapes=False,
                    calibration_mapping_value=None,
                    share_box_across_classes=False,
-                   return_raw_detections_during_predict=False):
-
+                   return_raw_detections_during_predict=False,
+                   output_final_box_features=False,
+                   multi_level=False):
+    use_keras = tf_version.is_tf2()
     def image_resizer_fn(image, masks=None):
       """Fake image resizer function."""
       resized_inputs = []
@@ -252,22 +328,41 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
 
     # anchors in this test are designed so that a subset of anchors are inside
     # the image and a subset of anchors are outside.
-    first_stage_anchor_scales = (0.001, 0.005, 0.1)
-    first_stage_anchor_aspect_ratios = (0.5, 1.0, 2.0)
-    first_stage_anchor_strides = (1, 1)
-    first_stage_anchor_generator = grid_anchor_generator.GridAnchorGenerator(
-        first_stage_anchor_scales,
-        first_stage_anchor_aspect_ratios,
-        anchor_stride=first_stage_anchor_strides)
+    first_stage_anchor_generator = None
+    if multi_level:
+      min_level = 0
+      max_level = 1
+      anchor_scale = 0.1
+      aspect_ratios = [1.0, 2.0, 0.5]
+      scales_per_octave = 2
+      normalize_coordinates = False
+      (first_stage_anchor_generator
+      ) = multiscale_grid_anchor_generator.MultiscaleGridAnchorGenerator(
+          min_level, max_level, anchor_scale, aspect_ratios, scales_per_octave,
+          normalize_coordinates)
+    else:
+      first_stage_anchor_scales = (0.001, 0.005, 0.1)
+      first_stage_anchor_aspect_ratios = (0.5, 1.0, 2.0)
+      first_stage_anchor_strides = (1, 1)
+      first_stage_anchor_generator = grid_anchor_generator.GridAnchorGenerator(
+          first_stage_anchor_scales,
+          first_stage_anchor_aspect_ratios,
+          anchor_stride=first_stage_anchor_strides)
     first_stage_target_assigner = target_assigner.create_target_assigner(
         'FasterRCNN',
         'proposal',
         use_matmul_gather=use_matmul_gather_in_matcher)
 
     if use_keras:
-      fake_feature_extractor = FakeFasterRCNNKerasFeatureExtractor()
+      if multi_level:
+        fake_feature_extractor = FakeFasterRCNNKerasMultilevelFeatureExtractor()
+      else:
+        fake_feature_extractor = FakeFasterRCNNKerasFeatureExtractor()
     else:
-      fake_feature_extractor = FakeFasterRCNNFeatureExtractor()
+      if multi_level:
+        fake_feature_extractor = FakeFasterRCNNMultiLevelFeatureExtractor()
+      else:
+        fake_feature_extractor = FakeFasterRCNNFeatureExtractor()
 
     first_stage_box_predictor_hyperparams_text_proto = """
       op: CONV
@@ -369,50 +464,74 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           max_negatives_per_positive=None)
 
     crop_and_resize_fn = (
-        ops.matmul_crop_and_resize
-        if use_matmul_crop_and_resize else ops.native_crop_and_resize)
+        spatial_ops.multilevel_matmul_crop_and_resize
+        if use_matmul_crop_and_resize
+        else spatial_ops.multilevel_native_crop_and_resize)
     common_kwargs = {
-        'is_training': is_training,
-        'num_classes': num_classes,
-        'image_resizer_fn': image_resizer_fn,
-        'feature_extractor': fake_feature_extractor,
-        'number_of_stages': number_of_stages,
-        'first_stage_anchor_generator': first_stage_anchor_generator,
-        'first_stage_target_assigner': first_stage_target_assigner,
-        'first_stage_atrous_rate': first_stage_atrous_rate,
+        'is_training':
+            is_training,
+        'num_classes':
+            num_classes,
+        'image_resizer_fn':
+            image_resizer_fn,
+        'feature_extractor':
+            fake_feature_extractor,
+        'number_of_stages':
+            number_of_stages,
+        'first_stage_anchor_generator':
+            first_stage_anchor_generator,
+        'first_stage_target_assigner':
+            first_stage_target_assigner,
+        'first_stage_atrous_rate':
+            first_stage_atrous_rate,
         'first_stage_box_predictor_arg_scope_fn':
-        first_stage_box_predictor_arg_scope_fn,
+            first_stage_box_predictor_arg_scope_fn,
         'first_stage_box_predictor_kernel_size':
-        first_stage_box_predictor_kernel_size,
-        'first_stage_box_predictor_depth': first_stage_box_predictor_depth,
-        'first_stage_minibatch_size': first_stage_minibatch_size,
-        'first_stage_sampler': first_stage_sampler,
+            first_stage_box_predictor_kernel_size,
+        'first_stage_box_predictor_depth':
+            first_stage_box_predictor_depth,
+        'first_stage_minibatch_size':
+            first_stage_minibatch_size,
+        'first_stage_sampler':
+            first_stage_sampler,
         'first_stage_non_max_suppression_fn':
-        first_stage_non_max_suppression_fn,
-        'first_stage_max_proposals': first_stage_max_proposals,
+            first_stage_non_max_suppression_fn,
+        'first_stage_max_proposals':
+            first_stage_max_proposals,
         'first_stage_localization_loss_weight':
-        first_stage_localization_loss_weight,
+            first_stage_localization_loss_weight,
         'first_stage_objectness_loss_weight':
-        first_stage_objectness_loss_weight,
-        'second_stage_target_assigner': second_stage_target_assigner,
-        'second_stage_batch_size': second_stage_batch_size,
-        'second_stage_sampler': second_stage_sampler,
+            first_stage_objectness_loss_weight,
+        'second_stage_target_assigner':
+            second_stage_target_assigner,
+        'second_stage_batch_size':
+            second_stage_batch_size,
+        'second_stage_sampler':
+            second_stage_sampler,
         'second_stage_non_max_suppression_fn':
-        second_stage_non_max_suppression_fn,
-        'second_stage_score_conversion_fn': second_stage_score_conversion_fn,
+            second_stage_non_max_suppression_fn,
+        'second_stage_score_conversion_fn':
+            second_stage_score_conversion_fn,
         'second_stage_localization_loss_weight':
-        second_stage_localization_loss_weight,
+            second_stage_localization_loss_weight,
         'second_stage_classification_loss_weight':
-        second_stage_classification_loss_weight,
+            second_stage_classification_loss_weight,
         'second_stage_classification_loss':
-        second_stage_classification_loss,
-        'hard_example_miner': hard_example_miner,
-        'crop_and_resize_fn': crop_and_resize_fn,
-        'clip_anchors_to_image': clip_anchors_to_image,
-        'use_static_shapes': use_static_shapes,
-        'resize_masks': True,
+            second_stage_classification_loss,
+        'hard_example_miner':
+            hard_example_miner,
+        'crop_and_resize_fn':
+            crop_and_resize_fn,
+        'clip_anchors_to_image':
+            clip_anchors_to_image,
+        'use_static_shapes':
+            use_static_shapes,
+        'resize_masks':
+            True,
         'return_raw_detections_during_predict':
-            return_raw_detections_during_predict
+            return_raw_detections_during_predict,
+        'output_final_box_features':
+            output_final_box_features
     }
 
     return self._get_model(
@@ -425,31 +544,30 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
             share_box_across_classes=share_box_across_classes), **common_kwargs)
 
   @parameterized.parameters(
-      {'use_static_shapes': False, 'use_keras': True},
-      {'use_static_shapes': False, 'use_keras': False},
-      {'use_static_shapes': True, 'use_keras': True},
-      {'use_static_shapes': True, 'use_keras': False},
+      {'use_static_shapes': False},
+      {'use_static_shapes': True},
   )
   def test_predict_gives_correct_shapes_in_inference_mode_first_stage_only(
-      self, use_static_shapes=False, use_keras=False):
+      self, use_static_shapes=False):
     batch_size = 2
     height = 10
     width = 12
     input_image_shape = (batch_size, height, width, 3)
 
-    def graph_fn(images):
-      """Function to construct tf graph for the test."""
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
           is_training=False,
-          use_keras=use_keras,
           number_of_stages=1,
           second_stage_batch_size=2,
           clip_anchors_to_image=use_static_shapes,
           use_static_shapes=use_static_shapes)
+    def graph_fn(images):
+      """Function to construct tf graph for the test."""
+
       preprocessed_inputs, true_image_shapes = model.preprocess(images)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
-      return (prediction_dict['rpn_box_predictor_features'],
-              prediction_dict['rpn_features_to_crop'],
+      return (prediction_dict['rpn_box_predictor_features'][0],
+              prediction_dict['rpn_features_to_crop'][0],
               prediction_dict['image_shape'],
               prediction_dict['rpn_box_encodings'],
               prediction_dict['rpn_objectness_predictions_with_background'],
@@ -472,9 +590,9 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     }
 
     if use_static_shapes:
-      results = self.execute(graph_fn, [images])
+      results = self.execute(graph_fn, [images], graph=g)
     else:
-      results = self.execute_cpu(graph_fn, [images])
+      results = self.execute_cpu(graph_fn, [images], graph=g)
 
     self.assertAllEqual(results[0].shape,
                         expected_output_shapes['rpn_box_predictor_features'])
@@ -499,106 +617,166 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     self.assertTrue(np.all(np.less_equal(anchors[:, 3], width)))
 
   @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
+      {'use_static_shapes': False},
+      {'use_static_shapes': True},
   )
-  def test_regularization_losses(
-      self, use_keras=False):
-    test_graph = tf.Graph()
-    with test_graph.as_default():
+  def test_predict_shape_in_inference_mode_first_stage_only_multi_level(
+      self, use_static_shapes):
+    batch_size = 2
+    height = 50
+    width = 52
+    input_image_shape = (batch_size, height, width, 3)
+
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
-          is_training=True, use_keras=use_keras,
-          number_of_stages=1, second_stage_batch_size=2,)
+          is_training=False,
+          number_of_stages=1,
+          second_stage_batch_size=2,
+          clip_anchors_to_image=use_static_shapes,
+          use_static_shapes=use_static_shapes,
+          multi_level=True)
+    def graph_fn(images):
+      """Function to construct tf graph for the test."""
+
+      preprocessed_inputs, true_image_shapes = model.preprocess(images)
+      prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
+      return (prediction_dict['rpn_box_predictor_features'][0],
+              prediction_dict['rpn_box_predictor_features'][1],
+              prediction_dict['rpn_features_to_crop'][0],
+              prediction_dict['rpn_features_to_crop'][1],
+              prediction_dict['image_shape'],
+              prediction_dict['rpn_box_encodings'],
+              prediction_dict['rpn_objectness_predictions_with_background'],
+              prediction_dict['anchors'])
+
+    images = np.zeros(input_image_shape, dtype=np.float32)
+
+    # In inference mode, anchors are clipped to the image window, but not
+    # pruned.  Since MockFasterRCNN.extract_proposal_features returns a
+    # tensor with the same shape as its input, the expected number of anchors
+    # is height * width * the number of anchors per location (i.e. 3x3).
+    expected_num_anchors = ((height-2) * (width-2) + (height-4) * (width-4)) * 6
+    expected_output_shapes = {
+        'rpn_box_predictor_features_0': (batch_size, height-2, width-2, 512),
+        'rpn_box_predictor_features_1': (batch_size, height-4, width-4, 512),
+        'rpn_features_to_crop_0': (batch_size, height-2, width-2, 3),
+        'rpn_features_to_crop_1': (batch_size, height-4, width-4, 3),
+        'rpn_box_encodings': (batch_size, expected_num_anchors, 4),
+        'rpn_objectness_predictions_with_background':
+        (batch_size, expected_num_anchors, 2),
+    }
+
+    if use_static_shapes:
+      expected_output_shapes['anchors'] = (expected_num_anchors, 4)
+    else:
+      expected_output_shapes['anchors'] = (18300, 4)
+
+    if use_static_shapes:
+      results = self.execute(graph_fn, [images], graph=g)
+    else:
+      results = self.execute_cpu(graph_fn, [images], graph=g)
+
+    self.assertAllEqual(results[0].shape,
+                        expected_output_shapes['rpn_box_predictor_features_0'])
+    self.assertAllEqual(results[1].shape,
+                        expected_output_shapes['rpn_box_predictor_features_1'])
+    self.assertAllEqual(results[2].shape,
+                        expected_output_shapes['rpn_features_to_crop_0'])
+    self.assertAllEqual(results[3].shape,
+                        expected_output_shapes['rpn_features_to_crop_1'])
+    self.assertAllEqual(results[4],
+                        input_image_shape)
+    self.assertAllEqual(results[5].shape,
+                        expected_output_shapes['rpn_box_encodings'])
+    self.assertAllEqual(
+        results[6].shape,
+        expected_output_shapes['rpn_objectness_predictions_with_background'])
+    self.assertAllEqual(results[7].shape,
+                        expected_output_shapes['anchors'])
+
+    # Check that anchors are clipped to window.
+    anchors = results[5]
+    self.assertTrue(np.all(np.greater_equal(anchors, 0)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 0], height)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 1], width)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 2], height)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 3], width)))
+
+  def test_regularization_losses(self):
+    with test_utils.GraphContextOrNone() as g:
+      model = self._build_model(
+          is_training=True, number_of_stages=1, second_stage_batch_size=2)
+    def graph_fn():
       batch_size = 2
       height = 10
       width = 12
       input_image_shape = (batch_size, height, width, 3)
-      _, true_image_shapes = model.preprocess(tf.zeros(input_image_shape))
-      preprocessed_inputs = tf.placeholder(
-          dtype=tf.float32, shape=(batch_size, None, None, 3))
-      model.predict(preprocessed_inputs, true_image_shapes)
+      image, true_image_shapes = model.preprocess(tf.zeros(input_image_shape))
+      model.predict(image, true_image_shapes)
 
       reg_losses = tf.math.add_n(model.regularization_losses())
+      return reg_losses
+    reg_losses = self.execute(graph_fn, [], graph=g)
+    self.assertGreaterEqual(reg_losses, 0)
 
-      init_op = tf.global_variables_initializer()
-      with self.test_session(graph=test_graph) as sess:
-        sess.run(init_op)
-        self.assertGreaterEqual(sess.run(reg_losses), 0)
+  def test_predict_gives_valid_anchors_in_training_mode_first_stage_only(self):
+    expected_output_keys = set([
+        'rpn_box_predictor_features', 'rpn_features_to_crop', 'image_shape',
+        'rpn_box_encodings', 'rpn_objectness_predictions_with_background',
+        'anchors', 'feature_maps'])
 
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_predict_gives_valid_anchors_in_training_mode_first_stage_only(
-      self, use_keras=False):
-    test_graph = tf.Graph()
-    with test_graph.as_default():
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
-          is_training=True, use_keras=use_keras,
-          number_of_stages=1, second_stage_batch_size=2,)
-      batch_size = 2
-      height = 10
-      width = 12
-      input_image_shape = (batch_size, height, width, 3)
-      _, true_image_shapes = model.preprocess(tf.zeros(input_image_shape))
-      preprocessed_inputs = tf.placeholder(
-          dtype=tf.float32, shape=(batch_size, None, None, 3))
-      prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
+          is_training=True, number_of_stages=1, second_stage_batch_size=2,)
 
-      expected_output_keys = set([
-          'rpn_box_predictor_features', 'rpn_features_to_crop', 'image_shape',
-          'rpn_box_encodings', 'rpn_objectness_predictions_with_background',
-          'anchors', 'feature_maps'])
-      # At training time, anchors that exceed image bounds are pruned.  Thus
-      # the `expected_num_anchors` in the above inference mode test is now
-      # a strict upper bound on the number of anchors.
-      num_anchors_strict_upper_bound = height * width * 3 * 3
+    batch_size = 2
+    height = 10
+    width = 12
+    input_image_shape = (batch_size, height, width, 3)
+    def graph_fn():
+      image, true_image_shapes = model.preprocess(tf.zeros(input_image_shape))
+      prediction_dict = model.predict(image, true_image_shapes)
+      self.assertEqual(set(prediction_dict.keys()), expected_output_keys)
+      return (prediction_dict['image_shape'], prediction_dict['anchors'],
+              prediction_dict['rpn_box_encodings'],
+              prediction_dict['rpn_objectness_predictions_with_background'])
 
-      init_op = tf.global_variables_initializer()
-      with self.test_session(graph=test_graph) as sess:
-        sess.run(init_op)
-        prediction_out = sess.run(prediction_dict,
-                                  feed_dict={
-                                      preprocessed_inputs:
-                                      np.zeros(input_image_shape)
-                                  })
+    (image_shape, anchors, rpn_box_encodings,
+     rpn_objectness_predictions_with_background) = self.execute(graph_fn, [],
+                                                                graph=g)
+    # At training time, anchors that exceed image bounds are pruned.  Thus
+    # the `expected_num_anchors` in the above inference mode test is now
+    # a strict upper bound on the number of anchors.
+    num_anchors_strict_upper_bound = height * width * 3 * 3
+    self.assertAllEqual(image_shape, input_image_shape)
+    self.assertTrue(len(anchors.shape) == 2 and anchors.shape[1] == 4)
+    num_anchors_out = anchors.shape[0]
+    self.assertLess(num_anchors_out, num_anchors_strict_upper_bound)
 
-        self.assertEqual(set(prediction_out.keys()), expected_output_keys)
-        self.assertAllEqual(prediction_out['image_shape'], input_image_shape)
+    self.assertTrue(np.all(np.greater_equal(anchors, 0)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 0], height)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 1], width)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 2], height)))
+    self.assertTrue(np.all(np.less_equal(anchors[:, 3], width)))
 
-        # Check that anchors have less than the upper bound and
-        # are clipped to window.
-        anchors = prediction_out['anchors']
-        self.assertTrue(len(anchors.shape) == 2 and anchors.shape[1] == 4)
-        num_anchors_out = anchors.shape[0]
-        self.assertLess(num_anchors_out, num_anchors_strict_upper_bound)
-
-        self.assertTrue(np.all(np.greater_equal(anchors, 0)))
-        self.assertTrue(np.all(np.less_equal(anchors[:, 0], height)))
-        self.assertTrue(np.all(np.less_equal(anchors[:, 1], width)))
-        self.assertTrue(np.all(np.less_equal(anchors[:, 2], height)))
-        self.assertTrue(np.all(np.less_equal(anchors[:, 3], width)))
-
-        self.assertAllEqual(prediction_out['rpn_box_encodings'].shape,
-                            (batch_size, num_anchors_out, 4))
-        self.assertAllEqual(
-            prediction_out['rpn_objectness_predictions_with_background'].shape,
-            (batch_size, num_anchors_out, 2))
+    self.assertAllEqual(rpn_box_encodings.shape,
+                        (batch_size, num_anchors_out, 4))
+    self.assertAllEqual(
+        rpn_objectness_predictions_with_background.shape,
+        (batch_size, num_anchors_out, 2))
 
   @parameterized.parameters(
-      {'use_static_shapes': False, 'use_keras': True},
-      {'use_static_shapes': False, 'use_keras': False},
-      {'use_static_shapes': True, 'use_keras': True},
-      {'use_static_shapes': True, 'use_keras': False},
+      {'use_static_shapes': False},
+      {'use_static_shapes': True},
   )
   def test_predict_correct_shapes_in_inference_mode_two_stages(
-      self, use_static_shapes=False, use_keras=False):
+      self, use_static_shapes):
 
     def compare_results(results, expected_output_shapes):
       """Checks if the shape of the predictions are as expected."""
-      self.assertAllEqual(results[0].shape,
+      self.assertAllEqual(results[0][0].shape,
                           expected_output_shapes['rpn_box_predictor_features'])
-      self.assertAllEqual(results[1].shape,
+      self.assertAllEqual(results[1][0].shape,
                           expected_output_shapes['rpn_features_to_crop'])
       self.assertAllEqual(results[2].shape,
                           expected_output_shapes['image_shape'])
@@ -630,22 +808,32 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     initial_crop_size = 3
     maxpool_stride = 1
 
-    input_shapes = [(batch_size, image_size, image_size, 3),
-                    (None, image_size, image_size, 3),
-                    (batch_size, None, None, 3),
-                    (None, None, None, 3)]
-
-    def graph_fn_tpu(images):
-      """Function to construct tf graph for the test."""
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
           is_training=False,
-          use_keras=use_keras,
           number_of_stages=2,
           second_stage_batch_size=2,
           predict_masks=False,
           use_matmul_crop_and_resize=use_static_shapes,
           clip_anchors_to_image=use_static_shapes,
           use_static_shapes=use_static_shapes)
+    def graph_fn():
+      """A function with TF compute."""
+      if use_static_shapes:
+        images = tf.random_uniform((batch_size, image_size, image_size, 3))
+      else:
+        images = tf.random_uniform((tf.random_uniform([],
+                                                      minval=batch_size,
+                                                      maxval=batch_size + 1,
+                                                      dtype=tf.int32),
+                                    tf.random_uniform([],
+                                                      minval=image_size,
+                                                      maxval=image_size + 1,
+                                                      dtype=tf.int32),
+                                    tf.random_uniform([],
+                                                      minval=image_size,
+                                                      maxval=image_size + 1,
+                                                      dtype=tf.int32), 3))
       preprocessed_inputs, true_image_shapes = model.preprocess(images)
       prediction_dict = model.predict(preprocessed_inputs, true_image_shapes)
       return (prediction_dict['rpn_box_predictor_features'],
@@ -661,7 +849,6 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
               prediction_dict['proposal_boxes_normalized'],
               prediction_dict['box_classifier_features'],
               prediction_dict['final_anchors'])
-
     expected_num_anchors = image_size * image_size * 3 * 3
     expected_shapes = {
         'rpn_box_predictor_features':
@@ -689,58 +876,27 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     }
 
     if use_static_shapes:
-      input_shape = (batch_size, image_size, image_size, 3)
-      images = np.zeros(input_shape, dtype=np.float32)
-      results = self.execute(graph_fn_tpu, [images])
-      compare_results(results, expected_shapes)
+      results = self.execute(graph_fn, [], graph=g)
     else:
-      for input_shape in input_shapes:
-        test_graph = tf.Graph()
-        with test_graph.as_default():
-          model = self._build_model(
-              is_training=False,
-              use_keras=use_keras,
-              number_of_stages=2,
-              second_stage_batch_size=2,
-              predict_masks=False)
-          preprocessed_inputs = tf.placeholder(tf.float32, shape=input_shape)
-          _, true_image_shapes = model.preprocess(preprocessed_inputs)
-          result_tensor_dict = model.predict(
-              preprocessed_inputs, true_image_shapes)
-          init_op = tf.global_variables_initializer()
-        with self.test_session(graph=test_graph) as sess:
-          sess.run(init_op)
-          tensor_dict_out = sess.run(result_tensor_dict, feed_dict={
-              preprocessed_inputs:
-              np.zeros((batch_size, image_size, image_size, 3))})
-        self.assertEqual(set(tensor_dict_out.keys()),
-                         set(expected_shapes.keys()))
-        for key in expected_shapes:
-          if isinstance(tensor_dict_out[key], list):
-            continue
-          self.assertAllEqual(tensor_dict_out[key].shape, expected_shapes[key])
+      results = self.execute_cpu(graph_fn, [], graph=g)
+    compare_results(results, expected_shapes)
 
   @parameterized.parameters(
-      {'use_static_shapes': False, 'use_keras': True},
-      {'use_static_shapes': False, 'use_keras': False},
-      {'use_static_shapes': True, 'use_keras': True},
-      {'use_static_shapes': True, 'use_keras': False},
+      {'use_static_shapes': False},
+      {'use_static_shapes': True},
   )
   def test_predict_gives_correct_shapes_in_train_mode_both_stages(
       self,
-      use_static_shapes=False,
-      use_keras=False):
+      use_static_shapes=False):
     batch_size = 2
     image_size = 10
     max_num_proposals = 7
     initial_crop_size = 3
     maxpool_stride = 1
 
-    def graph_fn(images, gt_boxes, gt_classes, gt_weights):
-      """Function to construct tf graph for the test."""
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
           is_training=True,
-          use_keras=use_keras,
           number_of_stages=2,
           second_stage_batch_size=7,
           predict_masks=False,
@@ -748,13 +904,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           clip_anchors_to_image=use_static_shapes,
           use_static_shapes=use_static_shapes)
 
+    def graph_fn(images, gt_boxes, gt_classes, gt_weights):
+      """Function to construct tf graph for the test."""
       preprocessed_inputs, true_image_shapes = model.preprocess(images)
       model.provide_groundtruth(
           groundtruth_boxes_list=tf.unstack(gt_boxes),
           groundtruth_classes_list=tf.unstack(gt_classes),
           groundtruth_weights_list=tf.unstack(gt_weights))
       result_tensor_dict = model.predict(preprocessed_inputs, true_image_shapes)
-      updates = model.updates()
       return (result_tensor_dict['refined_box_encodings'],
               result_tensor_dict['class_predictions_with_background'],
               result_tensor_dict['proposal_boxes'],
@@ -762,9 +919,8 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
               result_tensor_dict['anchors'],
               result_tensor_dict['rpn_box_encodings'],
               result_tensor_dict['rpn_objectness_predictions_with_background'],
-              result_tensor_dict['rpn_features_to_crop'],
-              result_tensor_dict['rpn_box_predictor_features'],
-              updates,
+              result_tensor_dict['rpn_features_to_crop'][0],
+              result_tensor_dict['rpn_box_predictor_features'][0],
               result_tensor_dict['final_anchors'],
              )
 
@@ -784,10 +940,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     ])
     if use_static_shapes:
       results = self.execute(graph_fn,
-                             [images, gt_boxes, gt_classes, gt_weights])
+                             [images, gt_boxes, gt_classes, gt_weights],
+                             graph=g)
     else:
       results = self.execute_cpu(graph_fn,
-                                 [images, gt_boxes, gt_classes, gt_weights])
+                                 [images, gt_boxes, gt_classes, gt_weights],
+                                 graph=g)
 
     expected_shapes = {
         'rpn_box_predictor_features': (2, image_size, image_size, 512),
@@ -823,42 +981,24 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                         expected_shapes['rpn_features_to_crop'])
     self.assertAllEqual(results[8].shape,
                         expected_shapes['rpn_box_predictor_features'])
-    self.assertAllEqual(results[10].shape,
+    self.assertAllEqual(results[9].shape,
                         expected_shapes['final_anchors'])
 
   @parameterized.parameters(
-      {'use_static_shapes': False, 'pad_to_max_dimension': None,
-       'use_keras': True},
-      {'use_static_shapes': True, 'pad_to_max_dimension': None,
-       'use_keras': True},
-      {'use_static_shapes': False, 'pad_to_max_dimension': 56,
-       'use_keras': True},
-      {'use_static_shapes': True, 'pad_to_max_dimension': 56,
-       'use_keras': True},
-      {'use_static_shapes': False, 'pad_to_max_dimension': None,
-       'use_keras': False},
-      {'use_static_shapes': True, 'pad_to_max_dimension': None,
-       'use_keras': False},
-      {'use_static_shapes': False, 'pad_to_max_dimension': 56,
-       'use_keras': False},
-      {'use_static_shapes': True, 'pad_to_max_dimension': 56,
-       'use_keras': False}
+      {'use_static_shapes': False, 'pad_to_max_dimension': None},
+      {'use_static_shapes': True, 'pad_to_max_dimension': None},
+      {'use_static_shapes': False, 'pad_to_max_dimension': 56,},
+      {'use_static_shapes': True, 'pad_to_max_dimension': 56},
   )
   def test_postprocess_first_stage_only_inference_mode(
       self, use_static_shapes=False,
-      pad_to_max_dimension=None,
-      use_keras=False):
+      pad_to_max_dimension=None):
     batch_size = 2
     first_stage_max_proposals = 4 if use_static_shapes else 8
 
-    def graph_fn(images,
-                 rpn_box_encodings,
-                 rpn_objectness_predictions_with_background,
-                 rpn_features_to_crop,
-                 anchors):
-      """Function to construct tf graph for the test."""
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
-          is_training=False, use_keras=use_keras,
+          is_training=False,
           number_of_stages=1, second_stage_batch_size=6,
           use_matmul_crop_and_resize=use_static_shapes,
           clip_anchors_to_image=use_static_shapes,
@@ -866,12 +1006,20 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           use_matmul_gather_in_matcher=use_static_shapes,
           first_stage_max_proposals=first_stage_max_proposals,
           pad_to_max_dimension=pad_to_max_dimension)
-      _, true_image_shapes = model.preprocess(images)
+
+    def graph_fn(images,
+                 rpn_box_encodings,
+                 rpn_objectness_predictions_with_background,
+                 rpn_features_to_crop,
+                 anchors):
+      """Function to construct tf graph for the test."""
+      preprocessed_images, true_image_shapes = model.preprocess(images)
       proposals = model.postprocess({
           'rpn_box_encodings': rpn_box_encodings,
           'rpn_objectness_predictions_with_background':
           rpn_objectness_predictions_with_background,
           'rpn_features_to_crop': rpn_features_to_crop,
+          'image_shape': tf.shape(preprocessed_images),
           'anchors': anchors}, true_image_shapes)
       return (proposals['num_detections'], proposals['detection_boxes'],
               proposals['detection_scores'], proposals['raw_detection_boxes'],
@@ -903,12 +1051,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       results = self.execute(graph_fn,
                              [images, rpn_box_encodings,
                               rpn_objectness_predictions_with_background,
-                              rpn_features_to_crop, anchors])
+                              rpn_features_to_crop, anchors], graph=g)
     else:
       results = self.execute_cpu(graph_fn,
                                  [images, rpn_box_encodings,
                                   rpn_objectness_predictions_with_background,
-                                  rpn_features_to_crop, anchors])
+                                  rpn_features_to_crop, anchors], graph=g)
 
     expected_proposal_boxes = [
         [[0, 0, .5, .5], [.5, .5, 1, 1], [0, .5, .5, 1], [.5, 0, 1.0, .5]]
@@ -925,6 +1073,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     expected_raw_scores = [[[0., 1.], [1., 0.], [1., 0.], [0., 1.]],
                            [[1., 0.], [0., 1.], [0., 1.], [1., 0.]]]
 
+    if pad_to_max_dimension is not None:
+      expected_raw_proposal_boxes = (np.array(expected_raw_proposal_boxes) *
+                                     32 / pad_to_max_dimension)
+      expected_proposal_boxes = (np.array(expected_proposal_boxes) *
+                                 32 / pad_to_max_dimension)
+
     self.assertAllClose(results[0], expected_num_proposals)
     for indx, num_proposals in enumerate(expected_num_proposals):
       self.assertAllClose(results[1][indx][0:num_proposals],
@@ -935,54 +1089,67 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(results[4], expected_raw_scores)
 
   def _test_postprocess_first_stage_only_train_mode(self,
-                                                    use_keras=False,
                                                     pad_to_max_dimension=None):
-    model = self._build_model(
-        is_training=True, use_keras=use_keras,
-        number_of_stages=1, second_stage_batch_size=2,
-        pad_to_max_dimension=pad_to_max_dimension)
+
+    with test_utils.GraphContextOrNone() as g:
+      model = self._build_model(
+          is_training=True,
+          number_of_stages=1, second_stage_batch_size=2,
+          pad_to_max_dimension=pad_to_max_dimension)
     batch_size = 2
-    anchors = tf.constant(
-        [[0, 0, 16, 16],
-         [0, 16, 16, 32],
-         [16, 0, 32, 16],
-         [16, 16, 32, 32]], dtype=tf.float32)
-    rpn_box_encodings = tf.zeros(
-        [batch_size, anchors.get_shape().as_list()[0],
-         BOX_CODE_SIZE], dtype=tf.float32)
-    # use different numbers for the objectness category to break ties in
-    # order of boxes returned by NMS
-    rpn_objectness_predictions_with_background = tf.constant([
-        [[-10, 13],
-         [-10, 12],
-         [-10, 11],
-         [-10, 10]],
-        [[-10, 13],
-         [-10, 12],
-         [-10, 11],
-         [-10, 10]]], dtype=tf.float32)
-    rpn_features_to_crop = tf.ones((batch_size, 8, 8, 10), dtype=tf.float32)
-    image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
-    groundtruth_boxes_list = [
-        tf.constant([[0, 0, .5, .5], [.5, .5, 1, 1]], dtype=tf.float32),
-        tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32)]
-    groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
-                                tf.constant([[1, 0], [1, 0]], dtype=tf.float32)]
-    groundtruth_weights_list = [
-        tf.constant([1, 1], dtype=tf.float32),
-        tf.constant([1, 1], dtype=tf.float32)
-    ]
-    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(
-        groundtruth_boxes_list,
-        groundtruth_classes_list,
-        groundtruth_weights_list=groundtruth_weights_list)
-    proposals = model.postprocess({
-        'rpn_box_encodings': rpn_box_encodings,
-        'rpn_objectness_predictions_with_background':
-        rpn_objectness_predictions_with_background,
-        'rpn_features_to_crop': rpn_features_to_crop,
-        'anchors': anchors}, true_image_shapes)
+
+    def graph_fn():
+      """A function with TF compute."""
+      anchors = tf.constant(
+          [[0, 0, 16, 16],
+           [0, 16, 16, 32],
+           [16, 0, 32, 16],
+           [16, 16, 32, 32]], dtype=tf.float32)
+      rpn_box_encodings = tf.zeros(
+          [batch_size, anchors.get_shape().as_list()[0],
+           BOX_CODE_SIZE], dtype=tf.float32)
+      # use different numbers for the objectness category to break ties in
+      # order of boxes returned by NMS
+      rpn_objectness_predictions_with_background = tf.constant([
+          [[-10, 13],
+           [-10, 12],
+           [-10, 11],
+           [-10, 10]],
+          [[-10, 13],
+           [-10, 12],
+           [-10, 11],
+           [-10, 10]]], dtype=tf.float32)
+      rpn_features_to_crop = tf.ones((batch_size, 8, 8, 10), dtype=tf.float32)
+      image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
+      groundtruth_boxes_list = [
+          tf.constant([[0, 0, .5, .5], [.5, .5, 1, 1]], dtype=tf.float32),
+          tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32)]
+      groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]],
+                                              dtype=tf.float32),
+                                  tf.constant([[1, 0], [1, 0]],
+                                              dtype=tf.float32)]
+      groundtruth_weights_list = [
+          tf.constant([1, 1], dtype=tf.float32),
+          tf.constant([1, 1], dtype=tf.float32)
+      ]
+      _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+      model.provide_groundtruth(
+          groundtruth_boxes_list,
+          groundtruth_classes_list,
+          groundtruth_weights_list=groundtruth_weights_list)
+      proposals = model.postprocess({
+          'rpn_box_encodings': rpn_box_encodings,
+          'rpn_objectness_predictions_with_background':
+          rpn_objectness_predictions_with_background,
+          'rpn_features_to_crop': rpn_features_to_crop,
+          'anchors': anchors,
+          'image_shape': image_shape}, true_image_shapes)
+      return (proposals['detection_boxes'], proposals['detection_scores'],
+              proposals['num_detections'],
+              proposals['detection_multiclass_scores'],
+              proposals['raw_detection_boxes'],
+              proposals['raw_detection_scores'])
+
     expected_proposal_boxes = [
         [[0, 0, .5, .5], [.5, .5, 1, 1]], [[0, .5, .5, 1], [.5, 0, 1, .5]]]
     expected_proposal_scores = [[1, 1],
@@ -995,94 +1162,57 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
                                     [0.5, 0., 1., 0.5], [0.5, 0.5, 1., 1.]]]
     expected_raw_scores = [[[0., 1.], [0., 1.], [0., 1.], [0., 1.]],
                            [[0., 1.], [0., 1.], [0., 1.], [0., 1.]]]
-    expected_output_keys = set([
-        'detection_boxes', 'detection_scores', 'detection_multiclass_scores',
-        'num_detections', 'raw_detection_boxes', 'raw_detection_scores'
-    ])
-    self.assertEqual(set(proposals.keys()), expected_output_keys)
 
-    with self.test_session() as sess:
-      proposals_out = sess.run(proposals)
-      for image_idx in range(batch_size):
-        num_detections = int(proposals_out['num_detections'][image_idx])
-        boxes = proposals_out['detection_boxes'][
-            image_idx][:num_detections, :].tolist()
-        scores = proposals_out['detection_scores'][
-            image_idx][:num_detections].tolist()
-        multiclass_scores = proposals_out['detection_multiclass_scores'][
-            image_idx][:num_detections, :].tolist()
-        expected_boxes = expected_proposal_boxes[image_idx]
-        expected_scores = expected_proposal_scores[image_idx]
-        expected_multiclass_scores = expected_proposal_multiclass_scores[
-            image_idx]
-        self.assertTrue(
-            test_utils.first_rows_close_as_set(boxes, expected_boxes))
-        self.assertTrue(
-            test_utils.first_rows_close_as_set(scores, expected_scores))
-        self.assertTrue(
-            test_utils.first_rows_close_as_set(multiclass_scores,
-                                               expected_multiclass_scores))
+    (proposal_boxes, proposal_scores, batch_num_detections,
+     batch_multiclass_scores, raw_detection_boxes,
+     raw_detection_scores) = self.execute_cpu(graph_fn, [], graph=g)
+    for image_idx in range(batch_size):
+      num_detections = int(batch_num_detections[image_idx])
+      boxes = proposal_boxes[image_idx][:num_detections, :].tolist()
+      scores = proposal_scores[image_idx][:num_detections].tolist()
+      multiclass_scores = batch_multiclass_scores[
+          image_idx][:num_detections, :].tolist()
+      expected_boxes = expected_proposal_boxes[image_idx]
+      expected_scores = expected_proposal_scores[image_idx]
+      expected_multiclass_scores = expected_proposal_multiclass_scores[
+          image_idx]
+      self.assertTrue(
+          test_utils.first_rows_close_as_set(boxes, expected_boxes))
+      self.assertTrue(
+          test_utils.first_rows_close_as_set(scores, expected_scores))
+      self.assertTrue(
+          test_utils.first_rows_close_as_set(multiclass_scores,
+                                             expected_multiclass_scores))
 
-    self.assertAllClose(proposals_out['raw_detection_boxes'],
-                        expected_raw_proposal_boxes)
-    self.assertAllClose(proposals_out['raw_detection_scores'],
-                        expected_raw_scores)
-
-  @parameterized.named_parameters({
-      'testcase_name': 'keras',
-      'use_keras': True
-  }, {
-      'testcase_name': 'slim',
-      'use_keras': False
-  })
-  def test_postprocess_first_stage_only_train_mode(self, use_keras=False):
-    self._test_postprocess_first_stage_only_train_mode(use_keras=use_keras)
+    self.assertAllClose(raw_detection_boxes, expected_raw_proposal_boxes)
+    self.assertAllClose(raw_detection_scores, expected_raw_scores)
 
   @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
+      {'pad_to_max_dimension': 56},
+      {'pad_to_max_dimension': None}
   )
   def test_postprocess_first_stage_only_train_mode_padded_image(
-      self, use_keras=False):
-    self._test_postprocess_first_stage_only_train_mode(pad_to_max_dimension=56,
-                                                       use_keras=use_keras)
+      self, pad_to_max_dimension):
+    self._test_postprocess_first_stage_only_train_mode(pad_to_max_dimension)
 
   @parameterized.parameters(
-      {'use_static_shapes': False, 'pad_to_max_dimension': None,
-       'use_keras': True},
-      {'use_static_shapes': True, 'pad_to_max_dimension': None,
-       'use_keras': True},
-      {'use_static_shapes': False, 'pad_to_max_dimension': 56,
-       'use_keras': True},
-      {'use_static_shapes': True, 'pad_to_max_dimension': 56,
-       'use_keras': True},
-      {'use_static_shapes': False, 'pad_to_max_dimension': None,
-       'use_keras': False},
-      {'use_static_shapes': True, 'pad_to_max_dimension': None,
-       'use_keras': False},
-      {'use_static_shapes': False, 'pad_to_max_dimension': 56,
-       'use_keras': False},
-      {'use_static_shapes': True, 'pad_to_max_dimension': 56,
-       'use_keras': False}
+      {'use_static_shapes': False, 'pad_to_max_dimension': None},
+      {'use_static_shapes': True, 'pad_to_max_dimension': None},
+      {'use_static_shapes': False, 'pad_to_max_dimension': 56},
+      {'use_static_shapes': True, 'pad_to_max_dimension': 56},
   )
   def test_postprocess_second_stage_only_inference_mode(
       self, use_static_shapes=False,
-      pad_to_max_dimension=None,
-      use_keras=False):
+      pad_to_max_dimension=None):
     batch_size = 2
     num_classes = 2
     image_shape = np.array((2, 36, 48, 3), dtype=np.int32)
     first_stage_max_proposals = 8
     total_num_padded_proposals = batch_size * first_stage_max_proposals
 
-    def graph_fn(images,
-                 refined_box_encodings,
-                 class_predictions_with_background,
-                 num_proposals,
-                 proposal_boxes):
-      """Function to construct tf graph for the test."""
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
-          is_training=False, use_keras=use_keras,
+          is_training=False,
           number_of_stages=2,
           second_stage_batch_size=6,
           use_matmul_crop_and_resize=use_static_shapes,
@@ -1090,6 +1220,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           use_static_shapes=use_static_shapes,
           use_matmul_gather_in_matcher=use_static_shapes,
           pad_to_max_dimension=pad_to_max_dimension)
+    def graph_fn(images,
+                 refined_box_encodings,
+                 class_predictions_with_background,
+                 num_proposals,
+                 proposal_boxes):
+      """Function to construct tf graph for the test."""
       _, true_image_shapes = model.preprocess(images)
       detections = model.postprocess({
           'refined_box_encodings': refined_box_encodings,
@@ -1125,12 +1261,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       results = self.execute(graph_fn,
                              [images, refined_box_encodings,
                               class_predictions_with_background,
-                              num_proposals, proposal_boxes])
+                              num_proposals, proposal_boxes], graph=g)
     else:
       results = self.execute_cpu(graph_fn,
                                  [images, refined_box_encodings,
                                   class_predictions_with_background,
-                                  num_proposals, proposal_boxes])
+                                  num_proposals, proposal_boxes], graph=g)
     # Note that max_total_detections=5 in the NMS config.
     expected_num_detections = [5, 4]
     expected_detection_classes = [[0, 0, 0, 1, 1], [0, 0, 1, 1, 0]]
@@ -1178,424 +1314,426 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     if not use_static_shapes:
       self.assertAllEqual(results[1].shape, [2, 5, 4])
 
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_preprocess_preserves_input_shapes(self, use_keras=False):
-    image_shapes = [(3, None, None, 3),
-                    (None, 10, 10, 3),
-                    (None, None, None, 3)]
-    for image_shape in image_shapes:
+  def test_preprocess_preserves_dynamic_input_shapes(self):
+    width = tf.random.uniform([], minval=5, maxval=10, dtype=tf.int32)
+    batch = tf.random.uniform([], minval=2, maxval=3, dtype=tf.int32)
+    shape = tf.stack([batch, 5, width, 3])
+    image = tf.random.uniform(shape)
+    model = self._build_model(
+        is_training=False, number_of_stages=2, second_stage_batch_size=6)
+    preprocessed_inputs, _ = model.preprocess(image)
+    self.assertTrue(
+        preprocessed_inputs.shape.is_compatible_with([None, 5, None, 3]))
+
+  def test_preprocess_preserves_static_input_shapes(self):
+    shape = tf.stack([2, 5, 5, 3])
+    image = tf.random.uniform(shape)
+    model = self._build_model(
+        is_training=False, number_of_stages=2, second_stage_batch_size=6)
+    preprocessed_inputs, _ = model.preprocess(image)
+    self.assertTrue(
+        preprocessed_inputs.shape.is_compatible_with([2, 5, 5, 3]))
+
+  # TODO(rathodv): Split test into two - with and without masks.
+  def test_loss_first_stage_only_mode(self):
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
-          is_training=False, use_keras=use_keras,
-          number_of_stages=2, second_stage_batch_size=6)
-      image_placeholder = tf.placeholder(tf.float32, shape=image_shape)
-      preprocessed_inputs, _ = model.preprocess(image_placeholder)
-      self.assertAllEqual(preprocessed_inputs.shape.as_list(), image_shape)
-
-  # TODO(rathodv): Split test into two - with and without masks.
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_loss_first_stage_only_mode(self, use_keras=False):
-    model = self._build_model(
-        is_training=True, use_keras=use_keras,
-        number_of_stages=1, second_stage_batch_size=6)
+          is_training=True,
+          number_of_stages=1, second_stage_batch_size=6)
     batch_size = 2
-    anchors = tf.constant(
-        [[0, 0, 16, 16],
-         [0, 16, 16, 32],
-         [16, 0, 32, 16],
-         [16, 16, 32, 32]], dtype=tf.float32)
+    def graph_fn():
+      """A function with TF compute."""
+      anchors = tf.constant(
+          [[0, 0, 16, 16],
+           [0, 16, 16, 32],
+           [16, 0, 32, 16],
+           [16, 16, 32, 32]], dtype=tf.float32)
 
-    rpn_box_encodings = tf.zeros(
-        [batch_size,
-         anchors.get_shape().as_list()[0],
-         BOX_CODE_SIZE], dtype=tf.float32)
-    # use different numbers for the objectness category to break ties in
-    # order of boxes returned by NMS
-    rpn_objectness_predictions_with_background = tf.constant([
-        [[-10, 13],
-         [10, -10],
-         [10, -11],
-         [-10, 12]],
-        [[10, -10],
-         [-10, 13],
-         [-10, 12],
-         [10, -11]]], dtype=tf.float32)
-    image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
+      rpn_box_encodings = tf.zeros(
+          [batch_size,
+           anchors.get_shape().as_list()[0],
+           BOX_CODE_SIZE], dtype=tf.float32)
+      # use different numbers for the objectness category to break ties in
+      # order of boxes returned by NMS
+      rpn_objectness_predictions_with_background = tf.constant([
+          [[-10, 13],
+           [10, -10],
+           [10, -11],
+           [-10, 12]],
+          [[10, -10],
+           [-10, 13],
+           [-10, 12],
+           [10, -11]]], dtype=tf.float32)
+      image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
 
-    groundtruth_boxes_list = [
-        tf.constant([[0, 0, .5, .5], [.5, .5, 1, 1]], dtype=tf.float32),
-        tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32)]
-    groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
-                                tf.constant([[1, 0], [1, 0]], dtype=tf.float32)]
+      groundtruth_boxes_list = [
+          tf.constant([[0, 0, .5, .5], [.5, .5, 1, 1]], dtype=tf.float32),
+          tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32)]
+      groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]],
+                                              dtype=tf.float32),
+                                  tf.constant([[1, 0], [1, 0]],
+                                              dtype=tf.float32)]
 
-    prediction_dict = {
-        'rpn_box_encodings': rpn_box_encodings,
-        'rpn_objectness_predictions_with_background':
-        rpn_objectness_predictions_with_background,
-        'image_shape': image_shape,
-        'anchors': anchors
-    }
-    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(groundtruth_boxes_list,
-                              groundtruth_classes_list)
-    loss_dict = model.loss(prediction_dict, true_image_shapes)
-    with self.test_session() as sess:
-      loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
+      prediction_dict = {
+          'rpn_box_encodings': rpn_box_encodings,
+          'rpn_objectness_predictions_with_background':
+          rpn_objectness_predictions_with_background,
+          'image_shape': image_shape,
+          'anchors': anchors
+      }
+      _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list)
+      loss_dict = model.loss(prediction_dict, true_image_shapes)
       self.assertNotIn('Loss/BoxClassifierLoss/localization_loss',
-                       loss_dict_out)
+                       loss_dict)
       self.assertNotIn('Loss/BoxClassifierLoss/classification_loss',
-                       loss_dict_out)
+                       loss_dict)
+      return (loss_dict['Loss/RPNLoss/localization_loss'],
+              loss_dict['Loss/RPNLoss/objectness_loss'])
+    loc_loss, obj_loss = self.execute_cpu(graph_fn, [], graph=g)
+    self.assertAllClose(loc_loss, 0)
+    self.assertAllClose(obj_loss, 0)
 
   # TODO(rathodv): Split test into two - with and without masks.
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_loss_full(self, use_keras=False):
-    model = self._build_model(
-        is_training=True, use_keras=use_keras,
-        number_of_stages=2, second_stage_batch_size=6)
+  def test_loss_full(self):
+    with test_utils.GraphContextOrNone() as g:
+      model = self._build_model(
+          is_training=True,
+          number_of_stages=2, second_stage_batch_size=6)
     batch_size = 3
-    anchors = tf.constant(
-        [[0, 0, 16, 16],
-         [0, 16, 16, 32],
-         [16, 0, 32, 16],
-         [16, 16, 32, 32]], dtype=tf.float32)
-    rpn_box_encodings = tf.zeros(
-        [batch_size,
-         anchors.get_shape().as_list()[0],
-         BOX_CODE_SIZE], dtype=tf.float32)
-    # use different numbers for the objectness category to break ties in
-    # order of boxes returned by NMS
-    rpn_objectness_predictions_with_background = tf.constant(
-        [[[-10, 13], [10, -10], [10, -11], [-10, 12]], [[10, -10], [-10, 13], [
-            -10, 12
-        ], [10, -11]], [[10, -10], [-10, 13], [-10, 12], [10, -11]]],
-        dtype=tf.float32)
-    image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
+    def graph_fn():
+      """A function with TF compute."""
+      anchors = tf.constant(
+          [[0, 0, 16, 16],
+           [0, 16, 16, 32],
+           [16, 0, 32, 16],
+           [16, 16, 32, 32]], dtype=tf.float32)
+      rpn_box_encodings = tf.zeros(
+          [batch_size,
+           anchors.get_shape().as_list()[0],
+           BOX_CODE_SIZE], dtype=tf.float32)
+      # use different numbers for the objectness category to break ties in
+      # order of boxes returned by NMS
+      rpn_objectness_predictions_with_background = tf.constant(
+          [[[-10, 13], [10, -10], [10, -11], [-10, 12]],
+           [[10, -10], [-10, 13], [-10, 12], [10, -11]],
+           [[10, -10], [-10, 13], [-10, 12], [10, -11]]],
+          dtype=tf.float32)
+      image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
 
-    num_proposals = tf.constant([6, 6, 6], dtype=tf.int32)
-    proposal_boxes = tf.constant(
-        3 * [[[0, 0, 16, 16], [0, 16, 16, 32], [16, 0, 32, 16],
-              [16, 16, 32, 32], [0, 0, 16, 16], [0, 16, 16, 32]]],
-        dtype=tf.float32)
-    refined_box_encodings = tf.zeros(
-        (batch_size * model.max_num_proposals,
-         model.num_classes,
-         BOX_CODE_SIZE), dtype=tf.float32)
-    class_predictions_with_background = tf.constant(
-        [
-            [-10, 10, -10],  # first image
-            [10, -10, -10],
-            [10, -10, -10],
-            [-10, -10, 10],
-            [-10, 10, -10],
-            [10, -10, -10],
-            [10, -10, -10],  # second image
-            [-10, 10, -10],
-            [-10, 10, -10],
-            [10, -10, -10],
-            [10, -10, -10],
-            [-10, 10, -10],
-            [10, -10, -10],  # third image
-            [-10, 10, -10],
-            [-10, 10, -10],
-            [10, -10, -10],
-            [10, -10, -10],
-            [-10, 10, -10]
-        ],
-        dtype=tf.float32)
+      num_proposals = tf.constant([6, 6, 6], dtype=tf.int32)
+      proposal_boxes = tf.constant(
+          3 * [[[0, 0, 16, 16], [0, 16, 16, 32], [16, 0, 32, 16],
+                [16, 16, 32, 32], [0, 0, 16, 16], [0, 16, 16, 32]]],
+          dtype=tf.float32)
+      refined_box_encodings = tf.zeros(
+          (batch_size * model.max_num_proposals,
+           model.num_classes,
+           BOX_CODE_SIZE), dtype=tf.float32)
+      class_predictions_with_background = tf.constant(
+          [
+              [-10, 10, -10],  # first image
+              [10, -10, -10],
+              [10, -10, -10],
+              [-10, -10, 10],
+              [-10, 10, -10],
+              [10, -10, -10],
+              [10, -10, -10],  # second image
+              [-10, 10, -10],
+              [-10, 10, -10],
+              [10, -10, -10],
+              [10, -10, -10],
+              [-10, 10, -10],
+              [10, -10, -10],  # third image
+              [-10, 10, -10],
+              [-10, 10, -10],
+              [10, -10, -10],
+              [10, -10, -10],
+              [-10, 10, -10]
+          ],
+          dtype=tf.float32)
 
-    mask_predictions_logits = 20 * tf.ones((batch_size *
-                                            model.max_num_proposals,
-                                            model.num_classes,
-                                            14, 14),
-                                           dtype=tf.float32)
+      mask_predictions_logits = 20 * tf.ones((batch_size *
+                                              model.max_num_proposals,
+                                              model.num_classes,
+                                              14, 14),
+                                             dtype=tf.float32)
 
-    groundtruth_boxes_list = [
-        tf.constant([[0, 0, .5, .5], [.5, .5, 1, 1]], dtype=tf.float32),
-        tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32),
-        tf.constant([[0, .5, .5, 1], [.5, 0, 1, 1]], dtype=tf.float32)
-    ]
-    groundtruth_classes_list = [
-        tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
-        tf.constant([[1, 0], [1, 0]], dtype=tf.float32),
-        tf.constant([[1, 0], [0, 1]], dtype=tf.float32)
-    ]
+      groundtruth_boxes_list = [
+          tf.constant([[0, 0, .5, .5], [.5, .5, 1, 1]], dtype=tf.float32),
+          tf.constant([[0, .5, .5, 1], [.5, 0, 1, .5]], dtype=tf.float32),
+          tf.constant([[0, .5, .5, 1], [.5, 0, 1, 1]], dtype=tf.float32)
+      ]
+      groundtruth_classes_list = [
+          tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
+          tf.constant([[1, 0], [1, 0]], dtype=tf.float32),
+          tf.constant([[1, 0], [0, 1]], dtype=tf.float32)
+      ]
 
-    # Set all elements of groundtruth mask to 1.0. In this case all proposal
-    # crops of the groundtruth masks should return a mask that covers the entire
-    # proposal. Thus, if mask_predictions_logits element values are all greater
-    # than 20, the loss should be zero.
-    groundtruth_masks_list = [
-        tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32),
-        tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32),
-        tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32)
-    ]
-    groundtruth_weights_list = [
-        tf.constant([1, 1], dtype=tf.float32),
-        tf.constant([1, 1], dtype=tf.float32),
-        tf.constant([1, 0], dtype=tf.float32)
-    ]
-    prediction_dict = {
-        'rpn_box_encodings': rpn_box_encodings,
-        'rpn_objectness_predictions_with_background':
-        rpn_objectness_predictions_with_background,
-        'image_shape': image_shape,
-        'anchors': anchors,
-        'refined_box_encodings': refined_box_encodings,
-        'class_predictions_with_background': class_predictions_with_background,
-        'proposal_boxes': proposal_boxes,
-        'num_proposals': num_proposals,
-        'mask_predictions': mask_predictions_logits
-    }
-    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(
-        groundtruth_boxes_list,
-        groundtruth_classes_list,
-        groundtruth_masks_list,
-        groundtruth_weights_list=groundtruth_weights_list)
-    loss_dict = model.loss(prediction_dict, true_image_shapes)
+      # Set all elements of groundtruth mask to 1.0. In this case all proposal
+      # crops of the groundtruth masks should return a mask that covers the
+      # entire proposal. Thus, if mask_predictions_logits element values are all
+      # greater than 20, the loss should be zero.
+      groundtruth_masks_list = [
+          tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32),
+          tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32),
+          tf.convert_to_tensor(np.ones((2, 32, 32)), dtype=tf.float32)
+      ]
+      groundtruth_weights_list = [
+          tf.constant([1, 1], dtype=tf.float32),
+          tf.constant([1, 1], dtype=tf.float32),
+          tf.constant([1, 0], dtype=tf.float32)
+      ]
+      prediction_dict = {
+          'rpn_box_encodings': rpn_box_encodings,
+          'rpn_objectness_predictions_with_background':
+          rpn_objectness_predictions_with_background,
+          'image_shape': image_shape,
+          'anchors': anchors,
+          'refined_box_encodings': refined_box_encodings,
+          'class_predictions_with_background':
+              class_predictions_with_background,
+          'proposal_boxes': proposal_boxes,
+          'num_proposals': num_proposals,
+          'mask_predictions': mask_predictions_logits
+      }
+      _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+      model.provide_groundtruth(
+          groundtruth_boxes_list,
+          groundtruth_classes_list,
+          groundtruth_masks_list,
+          groundtruth_weights_list=groundtruth_weights_list)
+      loss_dict = model.loss(prediction_dict, true_image_shapes)
+      return (loss_dict['Loss/RPNLoss/localization_loss'],
+              loss_dict['Loss/RPNLoss/objectness_loss'],
+              loss_dict['Loss/BoxClassifierLoss/localization_loss'],
+              loss_dict['Loss/BoxClassifierLoss/classification_loss'],
+              loss_dict['Loss/BoxClassifierLoss/mask_loss'])
+    (rpn_loc_loss, rpn_obj_loss, box_loc_loss, box_cls_loss,
+     box_mask_loss) = self.execute_cpu(graph_fn, [], graph=g)
+    self.assertAllClose(rpn_loc_loss, 0)
+    self.assertAllClose(rpn_obj_loss, 0)
+    self.assertAllClose(box_loc_loss, 0)
+    self.assertAllClose(box_cls_loss, 0)
+    self.assertAllClose(box_mask_loss, 0)
 
-    with self.test_session() as sess:
-      loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/localization_loss'], 0)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
-
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_loss_full_zero_padded_proposals(self, use_keras=False):
-    model = self._build_model(
-        is_training=True, use_keras=use_keras,
-        number_of_stages=2, second_stage_batch_size=6)
+  def test_loss_full_zero_padded_proposals(self):
+    with test_utils.GraphContextOrNone() as g:
+      model = self._build_model(
+          is_training=True, number_of_stages=2, second_stage_batch_size=6)
     batch_size = 1
-    anchors = tf.constant(
-        [[0, 0, 16, 16],
-         [0, 16, 16, 32],
-         [16, 0, 32, 16],
-         [16, 16, 32, 32]], dtype=tf.float32)
-    rpn_box_encodings = tf.zeros(
-        [batch_size,
-         anchors.get_shape().as_list()[0],
-         BOX_CODE_SIZE], dtype=tf.float32)
-    # use different numbers for the objectness category to break ties in
-    # order of boxes returned by NMS
-    rpn_objectness_predictions_with_background = tf.constant([
-        [[-10, 13],
-         [10, -10],
-         [10, -11],
-         [10, -12]],], dtype=tf.float32)
-    image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
+    def graph_fn():
+      """A function with TF compute."""
+      anchors = tf.constant(
+          [[0, 0, 16, 16],
+           [0, 16, 16, 32],
+           [16, 0, 32, 16],
+           [16, 16, 32, 32]], dtype=tf.float32)
+      rpn_box_encodings = tf.zeros(
+          [batch_size,
+           anchors.get_shape().as_list()[0],
+           BOX_CODE_SIZE], dtype=tf.float32)
+      # use different numbers for the objectness category to break ties in
+      # order of boxes returned by NMS
+      rpn_objectness_predictions_with_background = tf.constant([
+          [[-10, 13],
+           [10, -10],
+           [10, -11],
+           [10, -12]],], dtype=tf.float32)
+      image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
 
-    # box_classifier_batch_size is 6, but here we assume that the number of
-    # actual proposals (not counting zero paddings) is fewer (3).
-    num_proposals = tf.constant([3], dtype=tf.int32)
-    proposal_boxes = tf.constant(
-        [[[0, 0, 16, 16],
-          [0, 16, 16, 32],
-          [16, 0, 32, 16],
-          [0, 0, 0, 0],  # begin paddings
-          [0, 0, 0, 0],
-          [0, 0, 0, 0]]], dtype=tf.float32)
+      # box_classifier_batch_size is 6, but here we assume that the number of
+      # actual proposals (not counting zero paddings) is fewer (3).
+      num_proposals = tf.constant([3], dtype=tf.int32)
+      proposal_boxes = tf.constant(
+          [[[0, 0, 16, 16],
+            [0, 16, 16, 32],
+            [16, 0, 32, 16],
+            [0, 0, 0, 0],  # begin paddings
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]]], dtype=tf.float32)
 
-    refined_box_encodings = tf.zeros(
-        (batch_size * model.max_num_proposals,
-         model.num_classes,
-         BOX_CODE_SIZE), dtype=tf.float32)
-    class_predictions_with_background = tf.constant(
-        [[-10, 10, -10],
-         [10, -10, -10],
-         [10, -10, -10],
-         [0, 0, 0],  # begin paddings
-         [0, 0, 0],
-         [0, 0, 0]], dtype=tf.float32)
+      refined_box_encodings = tf.zeros(
+          (batch_size * model.max_num_proposals,
+           model.num_classes,
+           BOX_CODE_SIZE), dtype=tf.float32)
+      class_predictions_with_background = tf.constant(
+          [[-10, 10, -10],
+           [10, -10, -10],
+           [10, -10, -10],
+           [0, 0, 0],  # begin paddings
+           [0, 0, 0],
+           [0, 0, 0]], dtype=tf.float32)
 
-    mask_predictions_logits = 20 * tf.ones((batch_size *
-                                            model.max_num_proposals,
-                                            model.num_classes,
-                                            14, 14),
-                                           dtype=tf.float32)
+      mask_predictions_logits = 20 * tf.ones((batch_size *
+                                              model.max_num_proposals,
+                                              model.num_classes,
+                                              14, 14),
+                                             dtype=tf.float32)
 
-    groundtruth_boxes_list = [
-        tf.constant([[0, 0, .5, .5]], dtype=tf.float32)]
-    groundtruth_classes_list = [tf.constant([[1, 0]], dtype=tf.float32)]
+      groundtruth_boxes_list = [
+          tf.constant([[0, 0, .5, .5]], dtype=tf.float32)]
+      groundtruth_classes_list = [tf.constant([[1, 0]], dtype=tf.float32)]
 
-    # Set all elements of groundtruth mask to 1.0. In this case all proposal
-    # crops of the groundtruth masks should return a mask that covers the entire
-    # proposal. Thus, if mask_predictions_logits element values are all greater
-    # than 20, the loss should be zero.
-    groundtruth_masks_list = [tf.convert_to_tensor(np.ones((1, 32, 32)),
-                                                   dtype=tf.float32)]
+      # Set all elements of groundtruth mask to 1.0. In this case all proposal
+      # crops of the groundtruth masks should return a mask that covers the
+      # entire proposal. Thus, if mask_predictions_logits element values are all
+      # greater than 20, the loss should be zero.
+      groundtruth_masks_list = [tf.convert_to_tensor(np.ones((1, 32, 32)),
+                                                     dtype=tf.float32)]
 
-    prediction_dict = {
-        'rpn_box_encodings': rpn_box_encodings,
-        'rpn_objectness_predictions_with_background':
-        rpn_objectness_predictions_with_background,
-        'image_shape': image_shape,
-        'anchors': anchors,
-        'refined_box_encodings': refined_box_encodings,
-        'class_predictions_with_background': class_predictions_with_background,
-        'proposal_boxes': proposal_boxes,
-        'num_proposals': num_proposals,
-        'mask_predictions': mask_predictions_logits
-    }
-    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(groundtruth_boxes_list,
-                              groundtruth_classes_list,
-                              groundtruth_masks_list)
-    loss_dict = model.loss(prediction_dict, true_image_shapes)
+      prediction_dict = {
+          'rpn_box_encodings': rpn_box_encodings,
+          'rpn_objectness_predictions_with_background':
+          rpn_objectness_predictions_with_background,
+          'image_shape': image_shape,
+          'anchors': anchors,
+          'refined_box_encodings': refined_box_encodings,
+          'class_predictions_with_background':
+              class_predictions_with_background,
+          'proposal_boxes': proposal_boxes,
+          'num_proposals': num_proposals,
+          'mask_predictions': mask_predictions_logits
+      }
+      _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list,
+                                groundtruth_masks_list)
+      loss_dict = model.loss(prediction_dict, true_image_shapes)
+      return (loss_dict['Loss/RPNLoss/localization_loss'],
+              loss_dict['Loss/RPNLoss/objectness_loss'],
+              loss_dict['Loss/BoxClassifierLoss/localization_loss'],
+              loss_dict['Loss/BoxClassifierLoss/classification_loss'],
+              loss_dict['Loss/BoxClassifierLoss/mask_loss'])
+    (rpn_loc_loss, rpn_obj_loss, box_loc_loss, box_cls_loss,
+     box_mask_loss) = self.execute_cpu(graph_fn, [], graph=g)
+    self.assertAllClose(rpn_loc_loss, 0)
+    self.assertAllClose(rpn_obj_loss, 0)
+    self.assertAllClose(box_loc_loss, 0)
+    self.assertAllClose(box_cls_loss, 0)
+    self.assertAllClose(box_mask_loss, 0)
 
-    with self.test_session() as sess:
-      loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/localization_loss'], 0)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
-
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_loss_full_multiple_label_groundtruth(self, use_keras=False):
-    model = self._build_model(
-        is_training=True, use_keras=use_keras,
-        number_of_stages=2, second_stage_batch_size=6,
-        softmax_second_stage_classification_loss=False)
+  def test_loss_full_multiple_label_groundtruth(self):
+    with test_utils.GraphContextOrNone() as g:
+      model = self._build_model(
+          is_training=True,
+          number_of_stages=2, second_stage_batch_size=6,
+          softmax_second_stage_classification_loss=False)
     batch_size = 1
-    anchors = tf.constant(
-        [[0, 0, 16, 16],
-         [0, 16, 16, 32],
-         [16, 0, 32, 16],
-         [16, 16, 32, 32]], dtype=tf.float32)
-    rpn_box_encodings = tf.zeros(
-        [batch_size,
-         anchors.get_shape().as_list()[0],
-         BOX_CODE_SIZE], dtype=tf.float32)
-    # use different numbers for the objectness category to break ties in
-    # order of boxes returned by NMS
-    rpn_objectness_predictions_with_background = tf.constant([
-        [[-10, 13],
-         [10, -10],
-         [10, -11],
-         [10, -12]],], dtype=tf.float32)
-    image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
+    def graph_fn():
+      """A function with TF compute."""
+      anchors = tf.constant(
+          [[0, 0, 16, 16],
+           [0, 16, 16, 32],
+           [16, 0, 32, 16],
+           [16, 16, 32, 32]], dtype=tf.float32)
+      rpn_box_encodings = tf.zeros(
+          [batch_size,
+           anchors.get_shape().as_list()[0],
+           BOX_CODE_SIZE], dtype=tf.float32)
+      # use different numbers for the objectness category to break ties in
+      # order of boxes returned by NMS
+      rpn_objectness_predictions_with_background = tf.constant([
+          [[-10, 13],
+           [10, -10],
+           [10, -11],
+           [10, -12]],], dtype=tf.float32)
+      image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
 
-    # box_classifier_batch_size is 6, but here we assume that the number of
-    # actual proposals (not counting zero paddings) is fewer (3).
-    num_proposals = tf.constant([3], dtype=tf.int32)
-    proposal_boxes = tf.constant(
-        [[[0, 0, 16, 16],
-          [0, 16, 16, 32],
-          [16, 0, 32, 16],
-          [0, 0, 0, 0],  # begin paddings
-          [0, 0, 0, 0],
-          [0, 0, 0, 0]]], dtype=tf.float32)
+      # box_classifier_batch_size is 6, but here we assume that the number of
+      # actual proposals (not counting zero paddings) is fewer (3).
+      num_proposals = tf.constant([3], dtype=tf.int32)
+      proposal_boxes = tf.constant(
+          [[[0, 0, 16, 16],
+            [0, 16, 16, 32],
+            [16, 0, 32, 16],
+            [0, 0, 0, 0],  # begin paddings
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]]], dtype=tf.float32)
 
-    # second_stage_localization_loss should only be computed for predictions
-    # that match groundtruth. For multiple label groundtruth boxes, the loss
-    # should only be computed once for the label with the smaller index.
-    refined_box_encodings = tf.constant(
-        [[[0, 0, 0, 0], [1, 1, -1, -1]],
-         [[1, 1, -1, -1], [1, 1, 1, 1]],
-         [[1, 1, -1, -1], [1, 1, 1, 1]],
-         [[1, 1, -1, -1], [1, 1, 1, 1]],
-         [[1, 1, -1, -1], [1, 1, 1, 1]],
-         [[1, 1, -1, -1], [1, 1, 1, 1]]], dtype=tf.float32)
-    class_predictions_with_background = tf.constant(
-        [[-100, 100, 100],
-         [100, -100, -100],
-         [100, -100, -100],
-         [0, 0, 0],  # begin paddings
-         [0, 0, 0],
-         [0, 0, 0]], dtype=tf.float32)
+      # second_stage_localization_loss should only be computed for predictions
+      # that match groundtruth. For multiple label groundtruth boxes, the loss
+      # should only be computed once for the label with the smaller index.
+      refined_box_encodings = tf.constant(
+          [[[0, 0, 0, 0], [1, 1, -1, -1]],
+           [[1, 1, -1, -1], [1, 1, 1, 1]],
+           [[1, 1, -1, -1], [1, 1, 1, 1]],
+           [[1, 1, -1, -1], [1, 1, 1, 1]],
+           [[1, 1, -1, -1], [1, 1, 1, 1]],
+           [[1, 1, -1, -1], [1, 1, 1, 1]]], dtype=tf.float32)
+      class_predictions_with_background = tf.constant(
+          [[-100, 100, 100],
+           [100, -100, -100],
+           [100, -100, -100],
+           [0, 0, 0],  # begin paddings
+           [0, 0, 0],
+           [0, 0, 0]], dtype=tf.float32)
 
-    mask_predictions_logits = 20 * tf.ones((batch_size *
-                                            model.max_num_proposals,
-                                            model.num_classes,
-                                            14, 14),
-                                           dtype=tf.float32)
+      mask_predictions_logits = 20 * tf.ones((batch_size *
+                                              model.max_num_proposals,
+                                              model.num_classes,
+                                              14, 14),
+                                             dtype=tf.float32)
 
-    groundtruth_boxes_list = [
-        tf.constant([[0, 0, .5, .5]], dtype=tf.float32)]
-    # Box contains two ground truth labels.
-    groundtruth_classes_list = [tf.constant([[1, 1]], dtype=tf.float32)]
+      groundtruth_boxes_list = [
+          tf.constant([[0, 0, .5, .5]], dtype=tf.float32)]
+      # Box contains two ground truth labels.
+      groundtruth_classes_list = [tf.constant([[1, 1]], dtype=tf.float32)]
 
-    # Set all elements of groundtruth mask to 1.0. In this case all proposal
-    # crops of the groundtruth masks should return a mask that covers the entire
-    # proposal. Thus, if mask_predictions_logits element values are all greater
-    # than 20, the loss should be zero.
-    groundtruth_masks_list = [tf.convert_to_tensor(np.ones((1, 32, 32)),
-                                                   dtype=tf.float32)]
+      # Set all elements of groundtruth mask to 1.0. In this case all proposal
+      # crops of the groundtruth masks should return a mask that covers the
+      # entire proposal. Thus, if mask_predictions_logits element values are all
+      # greater than 20, the loss should be zero.
+      groundtruth_masks_list = [tf.convert_to_tensor(np.ones((1, 32, 32)),
+                                                     dtype=tf.float32)]
 
-    prediction_dict = {
-        'rpn_box_encodings': rpn_box_encodings,
-        'rpn_objectness_predictions_with_background':
-        rpn_objectness_predictions_with_background,
-        'image_shape': image_shape,
-        'anchors': anchors,
-        'refined_box_encodings': refined_box_encodings,
-        'class_predictions_with_background': class_predictions_with_background,
-        'proposal_boxes': proposal_boxes,
-        'num_proposals': num_proposals,
-        'mask_predictions': mask_predictions_logits
-    }
-    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(groundtruth_boxes_list,
-                              groundtruth_classes_list,
-                              groundtruth_masks_list)
-    loss_dict = model.loss(prediction_dict, true_image_shapes)
-
-    with self.test_session() as sess:
-      loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out['Loss/RPNLoss/localization_loss'], 0)
-      self.assertAllClose(loss_dict_out['Loss/RPNLoss/objectness_loss'], 0)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/localization_loss'], 0)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/classification_loss'], 0)
-      self.assertAllClose(loss_dict_out['Loss/BoxClassifierLoss/mask_loss'], 0)
+      prediction_dict = {
+          'rpn_box_encodings': rpn_box_encodings,
+          'rpn_objectness_predictions_with_background':
+          rpn_objectness_predictions_with_background,
+          'image_shape': image_shape,
+          'anchors': anchors,
+          'refined_box_encodings': refined_box_encodings,
+          'class_predictions_with_background':
+              class_predictions_with_background,
+          'proposal_boxes': proposal_boxes,
+          'num_proposals': num_proposals,
+          'mask_predictions': mask_predictions_logits
+      }
+      _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list,
+                                groundtruth_masks_list)
+      loss_dict = model.loss(prediction_dict, true_image_shapes)
+      return (loss_dict['Loss/RPNLoss/localization_loss'],
+              loss_dict['Loss/RPNLoss/objectness_loss'],
+              loss_dict['Loss/BoxClassifierLoss/localization_loss'],
+              loss_dict['Loss/BoxClassifierLoss/classification_loss'],
+              loss_dict['Loss/BoxClassifierLoss/mask_loss'])
+    (rpn_loc_loss, rpn_obj_loss, box_loc_loss, box_cls_loss,
+     box_mask_loss) = self.execute_cpu(graph_fn, [], graph=g)
+    self.assertAllClose(rpn_loc_loss, 0)
+    self.assertAllClose(rpn_obj_loss, 0)
+    self.assertAllClose(box_loc_loss, 0)
+    self.assertAllClose(box_cls_loss, 0)
+    self.assertAllClose(box_mask_loss, 0)
 
   @parameterized.parameters(
-      {'use_static_shapes': False, 'shared_boxes': False, 'use_keras': True},
-      {'use_static_shapes': False, 'shared_boxes': True, 'use_keras': True},
-      {'use_static_shapes': True, 'shared_boxes': False, 'use_keras': True},
-      {'use_static_shapes': True, 'shared_boxes': True, 'use_keras': True},
-      {'use_static_shapes': False, 'shared_boxes': False, 'use_keras': False},
-      {'use_static_shapes': False, 'shared_boxes': True, 'use_keras': False},
-      {'use_static_shapes': True, 'shared_boxes': False, 'use_keras': False},
-      {'use_static_shapes': True, 'shared_boxes': True, 'use_keras': False},
+      {'use_static_shapes': False, 'shared_boxes': False},
+      {'use_static_shapes': False, 'shared_boxes': True},
+      {'use_static_shapes': True, 'shared_boxes': False},
+      {'use_static_shapes': True, 'shared_boxes': True},
   )
   def test_loss_full_zero_padded_proposals_nonzero_loss_with_two_images(
-      self, use_static_shapes=False, shared_boxes=False, use_keras=False):
+      self, use_static_shapes=False, shared_boxes=False):
     batch_size = 2
     first_stage_max_proposals = 8
     second_stage_batch_size = 6
     num_classes = 2
-    def graph_fn(anchors, rpn_box_encodings,
-                 rpn_objectness_predictions_with_background, images,
-                 num_proposals, proposal_boxes, refined_box_encodings,
-                 class_predictions_with_background, groundtruth_boxes,
-                 groundtruth_classes):
-      """Function to construct tf graph for the test."""
+    with test_utils.GraphContextOrNone() as g:
       model = self._build_model(
-          is_training=True, use_keras=use_keras,
+          is_training=True,
           number_of_stages=2,
           second_stage_batch_size=second_stage_batch_size,
           first_stage_max_proposals=first_stage_max_proposals,
@@ -1604,6 +1742,12 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           clip_anchors_to_image=use_static_shapes,
           use_static_shapes=use_static_shapes)
 
+    def graph_fn(anchors, rpn_box_encodings,
+                 rpn_objectness_predictions_with_background, images,
+                 num_proposals, proposal_boxes, refined_box_encodings,
+                 class_predictions_with_background, groundtruth_boxes,
+                 groundtruth_classes):
+      """Function to construct tf graph for the test."""
       prediction_dict = {
           'rpn_box_encodings': rpn_box_encodings,
           'rpn_objectness_predictions_with_background':
@@ -1702,7 +1846,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
         images, num_proposals, proposal_boxes, refined_box_encodings,
         class_predictions_with_background, groundtruth_boxes,
         groundtruth_classes
-    ])
+    ], graph=g)
 
     exp_loc_loss = (-5 * np.log(.8) - 0.5) / 3.0
 
@@ -1711,223 +1855,215 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(results[2], exp_loc_loss, rtol=1e-4, atol=1e-4)
     self.assertAllClose(results[3], 0.0)
 
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_loss_with_hard_mining(self, use_keras=False):
-    model = self._build_model(is_training=True,
-                              use_keras=use_keras,
-                              number_of_stages=2,
-                              second_stage_batch_size=None,
-                              first_stage_max_proposals=6,
-                              hard_mining=True)
+  def test_loss_with_hard_mining(self):
+    with test_utils.GraphContextOrNone() as g:
+      model = self._build_model(is_training=True,
+                                number_of_stages=2,
+                                second_stage_batch_size=None,
+                                first_stage_max_proposals=6,
+                                hard_mining=True)
     batch_size = 1
-    anchors = tf.constant(
-        [[0, 0, 16, 16],
-         [0, 16, 16, 32],
-         [16, 0, 32, 16],
-         [16, 16, 32, 32]], dtype=tf.float32)
-    rpn_box_encodings = tf.zeros(
-        [batch_size,
-         anchors.get_shape().as_list()[0],
-         BOX_CODE_SIZE], dtype=tf.float32)
-    # use different numbers for the objectness category to break ties in
-    # order of boxes returned by NMS
-    rpn_objectness_predictions_with_background = tf.constant(
-        [[[-10, 13],
-          [-10, 12],
-          [10, -11],
-          [10, -12]]], dtype=tf.float32)
-    image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
+    def graph_fn():
+      """A function with TF compute."""
+      anchors = tf.constant(
+          [[0, 0, 16, 16],
+           [0, 16, 16, 32],
+           [16, 0, 32, 16],
+           [16, 16, 32, 32]], dtype=tf.float32)
+      rpn_box_encodings = tf.zeros(
+          [batch_size,
+           anchors.get_shape().as_list()[0],
+           BOX_CODE_SIZE], dtype=tf.float32)
+      # use different numbers for the objectness category to break ties in
+      # order of boxes returned by NMS
+      rpn_objectness_predictions_with_background = tf.constant(
+          [[[-10, 13],
+            [-10, 12],
+            [10, -11],
+            [10, -12]]], dtype=tf.float32)
+      image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
 
-    # box_classifier_batch_size is 6, but here we assume that the number of
-    # actual proposals (not counting zero paddings) is fewer (3).
-    num_proposals = tf.constant([3], dtype=tf.int32)
-    proposal_boxes = tf.constant(
-        [[[0, 0, 16, 16],
-          [0, 16, 16, 32],
-          [16, 0, 32, 16],
-          [0, 0, 0, 0],  # begin paddings
-          [0, 0, 0, 0],
-          [0, 0, 0, 0]]], dtype=tf.float32)
+      # box_classifier_batch_size is 6, but here we assume that the number of
+      # actual proposals (not counting zero paddings) is fewer (3).
+      num_proposals = tf.constant([3], dtype=tf.int32)
+      proposal_boxes = tf.constant(
+          [[[0, 0, 16, 16],
+            [0, 16, 16, 32],
+            [16, 0, 32, 16],
+            [0, 0, 0, 0],  # begin paddings
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]]], dtype=tf.float32)
 
-    refined_box_encodings = tf.zeros(
-        (batch_size * model.max_num_proposals,
-         model.num_classes,
-         BOX_CODE_SIZE), dtype=tf.float32)
-    class_predictions_with_background = tf.constant(
-        [[-10, 10, -10],  # first image
-         [-10, -10, 10],
-         [10, -10, -10],
-         [0, 0, 0],  # begin paddings
-         [0, 0, 0],
-         [0, 0, 0]], dtype=tf.float32)
+      refined_box_encodings = tf.zeros(
+          (batch_size * model.max_num_proposals,
+           model.num_classes,
+           BOX_CODE_SIZE), dtype=tf.float32)
+      class_predictions_with_background = tf.constant(
+          [[-10, 10, -10],  # first image
+           [-10, -10, 10],
+           [10, -10, -10],
+           [0, 0, 0],  # begin paddings
+           [0, 0, 0],
+           [0, 0, 0]], dtype=tf.float32)
 
-    # The first groundtruth box is 4/5 of the anchor size in both directions
-    # experiencing a loss of:
-    # 2 * SmoothL1(5 * log(4/5)) / num_proposals
-    #   = 2 * (abs(5 * log(1/2)) - .5) / 3
-    # The second groundtruth box is 46/50 of the anchor size in both directions
-    # experiencing a loss of:
-    # 2 * SmoothL1(5 * log(42/50)) / num_proposals
-    #   = 2 * (.5(5 * log(.92))^2 - .5) / 3.
-    # Since the first groundtruth box experiences greater loss, and we have
-    # set num_hard_examples=1 in the HardMiner, the final localization loss
-    # corresponds to that of the first groundtruth box.
-    groundtruth_boxes_list = [
-        tf.constant([[0.05, 0.05, 0.45, 0.45],
-                     [0.02, 0.52, 0.48, 0.98],], dtype=tf.float32)]
-    groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]], dtype=tf.float32)]
+      # The first groundtruth box is 4/5 of the anchor size in both directions
+      # experiencing a loss of:
+      # 2 * SmoothL1(5 * log(4/5)) / num_proposals
+      #   = 2 * (abs(5 * log(1/2)) - .5) / 3
+      # The second groundtruth box is 46/50 of the anchor size in both
+      # directions experiencing a loss of:
+      # 2 * SmoothL1(5 * log(42/50)) / num_proposals
+      #   = 2 * (.5(5 * log(.92))^2 - .5) / 3.
+      # Since the first groundtruth box experiences greater loss, and we have
+      # set num_hard_examples=1 in the HardMiner, the final localization loss
+      # corresponds to that of the first groundtruth box.
+      groundtruth_boxes_list = [
+          tf.constant([[0.05, 0.05, 0.45, 0.45],
+                       [0.02, 0.52, 0.48, 0.98],], dtype=tf.float32)]
+      groundtruth_classes_list = [tf.constant([[1, 0], [0, 1]],
+                                              dtype=tf.float32)]
+
+      prediction_dict = {
+          'rpn_box_encodings': rpn_box_encodings,
+          'rpn_objectness_predictions_with_background':
+          rpn_objectness_predictions_with_background,
+          'image_shape': image_shape,
+          'anchors': anchors,
+          'refined_box_encodings': refined_box_encodings,
+          'class_predictions_with_background':
+              class_predictions_with_background,
+          'proposal_boxes': proposal_boxes,
+          'num_proposals': num_proposals
+      }
+      _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list)
+      loss_dict = model.loss(prediction_dict, true_image_shapes)
+      return (loss_dict['Loss/BoxClassifierLoss/localization_loss'],
+              loss_dict['Loss/BoxClassifierLoss/classification_loss'])
+    loc_loss, cls_loss = self.execute_cpu(graph_fn, [], graph=g)
     exp_loc_loss = 2 * (-5 * np.log(.8) - 0.5) / 3.0
+    self.assertAllClose(loc_loss, exp_loc_loss)
+    self.assertAllClose(cls_loss, 0)
 
-    prediction_dict = {
-        'rpn_box_encodings': rpn_box_encodings,
-        'rpn_objectness_predictions_with_background':
-        rpn_objectness_predictions_with_background,
-        'image_shape': image_shape,
-        'anchors': anchors,
-        'refined_box_encodings': refined_box_encodings,
-        'class_predictions_with_background': class_predictions_with_background,
-        'proposal_boxes': proposal_boxes,
-        'num_proposals': num_proposals
-    }
-    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(groundtruth_boxes_list,
-                              groundtruth_classes_list)
-    loss_dict = model.loss(prediction_dict, true_image_shapes)
-
-    with self.test_session() as sess:
-      loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/localization_loss'], exp_loc_loss)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/classification_loss'], 0)
-
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_loss_with_hard_mining_and_losses_mask(self, use_keras=False):
-    model = self._build_model(is_training=True,
-                              use_keras=use_keras,
-                              number_of_stages=2,
-                              second_stage_batch_size=None,
-                              first_stage_max_proposals=6,
-                              hard_mining=True)
+  def test_loss_with_hard_mining_and_losses_mask(self):
+    with test_utils.GraphContextOrNone() as g:
+      model = self._build_model(is_training=True,
+                                number_of_stages=2,
+                                second_stage_batch_size=None,
+                                first_stage_max_proposals=6,
+                                hard_mining=True)
     batch_size = 2
     number_of_proposals = 3
-    anchors = tf.constant(
-        [[0, 0, 16, 16],
-         [0, 16, 16, 32],
-         [16, 0, 32, 16],
-         [16, 16, 32, 32]], dtype=tf.float32)
-    rpn_box_encodings = tf.zeros(
-        [batch_size,
-         anchors.get_shape().as_list()[0],
-         BOX_CODE_SIZE], dtype=tf.float32)
-    # use different numbers for the objectness category to break ties in
-    # order of boxes returned by NMS
-    rpn_objectness_predictions_with_background = tf.constant(
-        [[[-10, 13],
-          [-10, 12],
-          [10, -11],
-          [10, -12]],
-         [[-10, 13],
-          [-10, 12],
-          [10, -11],
-          [10, -12]]], dtype=tf.float32)
-    image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
+    def graph_fn():
+      """A function with TF compute."""
+      anchors = tf.constant(
+          [[0, 0, 16, 16],
+           [0, 16, 16, 32],
+           [16, 0, 32, 16],
+           [16, 16, 32, 32]], dtype=tf.float32)
+      rpn_box_encodings = tf.zeros(
+          [batch_size,
+           anchors.get_shape().as_list()[0],
+           BOX_CODE_SIZE], dtype=tf.float32)
+      # use different numbers for the objectness category to break ties in
+      # order of boxes returned by NMS
+      rpn_objectness_predictions_with_background = tf.constant(
+          [[[-10, 13],
+            [-10, 12],
+            [10, -11],
+            [10, -12]],
+           [[-10, 13],
+            [-10, 12],
+            [10, -11],
+            [10, -12]]], dtype=tf.float32)
+      image_shape = tf.constant([batch_size, 32, 32, 3], dtype=tf.int32)
 
-    # box_classifier_batch_size is 6, but here we assume that the number of
-    # actual proposals (not counting zero paddings) is fewer (3).
-    num_proposals = tf.constant([number_of_proposals, number_of_proposals],
-                                dtype=tf.int32)
-    proposal_boxes = tf.constant(
-        [[[0, 0, 16, 16],  # first image
-          [0, 16, 16, 32],
-          [16, 0, 32, 16],
-          [0, 0, 0, 0],  # begin paddings
-          [0, 0, 0, 0],
-          [0, 0, 0, 0]],
-         [[0, 0, 16, 16],  # second image
-          [0, 16, 16, 32],
-          [16, 0, 32, 16],
-          [0, 0, 0, 0],  # begin paddings
-          [0, 0, 0, 0],
-          [0, 0, 0, 0]]], dtype=tf.float32)
+      # box_classifier_batch_size is 6, but here we assume that the number of
+      # actual proposals (not counting zero paddings) is fewer (3).
+      num_proposals = tf.constant([number_of_proposals, number_of_proposals],
+                                  dtype=tf.int32)
+      proposal_boxes = tf.constant(
+          [[[0, 0, 16, 16],  # first image
+            [0, 16, 16, 32],
+            [16, 0, 32, 16],
+            [0, 0, 0, 0],  # begin paddings
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]],
+           [[0, 0, 16, 16],  # second image
+            [0, 16, 16, 32],
+            [16, 0, 32, 16],
+            [0, 0, 0, 0],  # begin paddings
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]]], dtype=tf.float32)
 
-    refined_box_encodings = tf.zeros(
-        (batch_size * model.max_num_proposals,
-         model.num_classes,
-         BOX_CODE_SIZE), dtype=tf.float32)
-    class_predictions_with_background = tf.constant(
-        [[-10, 10, -10],  # first image
-         [-10, -10, 10],
-         [10, -10, -10],
-         [0, 0, 0],  # begin paddings
-         [0, 0, 0],
-         [0, 0, 0],
-         [-10, 10, -10],  # second image
-         [-10, -10, 10],
-         [10, -10, -10],
-         [0, 0, 0],  # begin paddings
-         [0, 0, 0],
-         [0, 0, 0]], dtype=tf.float32)
+      refined_box_encodings = tf.zeros(
+          (batch_size * model.max_num_proposals,
+           model.num_classes,
+           BOX_CODE_SIZE), dtype=tf.float32)
+      class_predictions_with_background = tf.constant(
+          [[-10, 10, -10],  # first image
+           [-10, -10, 10],
+           [10, -10, -10],
+           [0, 0, 0],  # begin paddings
+           [0, 0, 0],
+           [0, 0, 0],
+           [-10, 10, -10],  # second image
+           [-10, -10, 10],
+           [10, -10, -10],
+           [0, 0, 0],  # begin paddings
+           [0, 0, 0],
+           [0, 0, 0]], dtype=tf.float32)
 
-    # The first groundtruth box is 4/5 of the anchor size in both directions
-    # experiencing a loss of:
-    # 2 * SmoothL1(5 * log(4/5)) / (num_proposals * batch_size)
-    #   = 2 * (abs(5 * log(1/2)) - .5) / 3
-    # The second groundtruth box is 46/50 of the anchor size in both directions
-    # experiencing a loss of:
-    # 2 * SmoothL1(5 * log(42/50)) / (num_proposals * batch_size)
-    #   = 2 * (.5(5 * log(.92))^2 - .5) / 3.
-    # Since the first groundtruth box experiences greater loss, and we have
-    # set num_hard_examples=1 in the HardMiner, the final localization loss
-    # corresponds to that of the first groundtruth box.
-    groundtruth_boxes_list = [
-        tf.constant([[0.05, 0.05, 0.45, 0.45],
-                     [0.02, 0.52, 0.48, 0.98]], dtype=tf.float32),
-        tf.constant([[0.05, 0.05, 0.45, 0.45],
-                     [0.02, 0.52, 0.48, 0.98]], dtype=tf.float32)]
-    groundtruth_classes_list = [
-        tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
-        tf.constant([[1, 0], [0, 1]], dtype=tf.float32)]
-    is_annotated_list = [tf.constant(True, dtype=tf.bool),
-                         tf.constant(False, dtype=tf.bool)]
+      # The first groundtruth box is 4/5 of the anchor size in both directions
+      # experiencing a loss of:
+      # 2 * SmoothL1(5 * log(4/5)) / (num_proposals * batch_size)
+      #   = 2 * (abs(5 * log(1/2)) - .5) / 3
+      # The second groundtruth box is 46/50 of the anchor size in both
+      # directions experiencing a loss of:
+      # 2 * SmoothL1(5 * log(42/50)) / (num_proposals * batch_size)
+      #   = 2 * (.5(5 * log(.92))^2 - .5) / 3.
+      # Since the first groundtruth box experiences greater loss, and we have
+      # set num_hard_examples=1 in the HardMiner, the final localization loss
+      # corresponds to that of the first groundtruth box.
+      groundtruth_boxes_list = [
+          tf.constant([[0.05, 0.05, 0.45, 0.45],
+                       [0.02, 0.52, 0.48, 0.98]], dtype=tf.float32),
+          tf.constant([[0.05, 0.05, 0.45, 0.45],
+                       [0.02, 0.52, 0.48, 0.98]], dtype=tf.float32)]
+      groundtruth_classes_list = [
+          tf.constant([[1, 0], [0, 1]], dtype=tf.float32),
+          tf.constant([[1, 0], [0, 1]], dtype=tf.float32)]
+      is_annotated_list = [tf.constant(True, dtype=tf.bool),
+                           tf.constant(False, dtype=tf.bool)]
+
+      prediction_dict = {
+          'rpn_box_encodings': rpn_box_encodings,
+          'rpn_objectness_predictions_with_background':
+          rpn_objectness_predictions_with_background,
+          'image_shape': image_shape,
+          'anchors': anchors,
+          'refined_box_encodings': refined_box_encodings,
+          'class_predictions_with_background':
+              class_predictions_with_background,
+          'proposal_boxes': proposal_boxes,
+          'num_proposals': num_proposals
+      }
+      _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
+      model.provide_groundtruth(groundtruth_boxes_list,
+                                groundtruth_classes_list,
+                                is_annotated_list=is_annotated_list)
+      loss_dict = model.loss(prediction_dict, true_image_shapes)
+      return (loss_dict['Loss/BoxClassifierLoss/localization_loss'],
+              loss_dict['Loss/BoxClassifierLoss/classification_loss'])
     exp_loc_loss = (2 * (-5 * np.log(.8) - 0.5) /
                     (number_of_proposals * batch_size))
+    loc_loss, cls_loss = self.execute_cpu(graph_fn, [], graph=g)
+    self.assertAllClose(loc_loss, exp_loc_loss)
+    self.assertAllClose(cls_loss, 0)
 
-    prediction_dict = {
-        'rpn_box_encodings': rpn_box_encodings,
-        'rpn_objectness_predictions_with_background':
-        rpn_objectness_predictions_with_background,
-        'image_shape': image_shape,
-        'anchors': anchors,
-        'refined_box_encodings': refined_box_encodings,
-        'class_predictions_with_background': class_predictions_with_background,
-        'proposal_boxes': proposal_boxes,
-        'num_proposals': num_proposals
-    }
-    _, true_image_shapes = model.preprocess(tf.zeros(image_shape))
-    model.provide_groundtruth(groundtruth_boxes_list,
-                              groundtruth_classes_list,
-                              is_annotated_list=is_annotated_list)
-    loss_dict = model.loss(prediction_dict, true_image_shapes)
-
-    with self.test_session() as sess:
-      loss_dict_out = sess.run(loss_dict)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/localization_loss'], exp_loc_loss)
-      self.assertAllClose(loss_dict_out[
-          'Loss/BoxClassifierLoss/classification_loss'], 0)
-
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_restore_map_for_classification_ckpt(self, use_keras=False):
+  def test_restore_map_for_classification_ckpt(self):
+    if tf_version.is_tf2(): self.skipTest('Skipping TF1 only test.')
     # Define mock tensorflow classification graph and save variables.
     test_graph_classification = tf.Graph()
     with test_graph_classification.as_default():
@@ -1948,7 +2084,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     test_graph_detection = tf.Graph()
     with test_graph_detection.as_default():
       model = self._build_model(
-          is_training=False, use_keras=use_keras,
+          is_training=False,
           number_of_stages=2, second_stage_batch_size=6)
 
       inputs_shape = (2, 20, 20, 3)
@@ -1966,16 +2102,14 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
           self.assertNotIn(model.first_stage_feature_extractor_scope, var)
           self.assertNotIn(model.second_stage_feature_extractor_scope, var)
 
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_restore_map_for_detection_ckpt(self, use_keras=False):
+  def test_restore_map_for_detection_ckpt(self):
+    if tf_version.is_tf2(): self.skipTest('Skipping TF1 only test.')
+    # Define mock tensorflow classification graph and save variables.
     # Define first detection graph and save variables.
     test_graph_detection1 = tf.Graph()
     with test_graph_detection1.as_default():
       model = self._build_model(
-          is_training=False, use_keras=use_keras,
+          is_training=False,
           number_of_stages=2, second_stage_batch_size=6)
       inputs_shape = (2, 20, 20, 3)
       inputs = tf.cast(tf.random_uniform(
@@ -1994,7 +2128,7 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
     # Define second detection graph and restore variables.
     test_graph_detection2 = tf.Graph()
     with test_graph_detection2.as_default():
-      model2 = self._build_model(is_training=False, use_keras=use_keras,
+      model2 = self._build_model(is_training=False,
                                  number_of_stages=2,
                                  second_stage_batch_size=6, num_classes=42)
 
@@ -2012,21 +2146,19 @@ class FasterRCNNMetaArchTestBase(test_case.TestCase, parameterized.TestCase):
       with self.test_session(graph=test_graph_detection2) as sess:
         saver.restore(sess, saved_model_path)
         uninitialized_vars_list = sess.run(tf.report_uninitialized_variables())
-        self.assertIn('another_variable', uninitialized_vars_list)
+        self.assertIn(six.b('another_variable'), uninitialized_vars_list)
         for var in uninitialized_vars_list:
-          self.assertNotIn(model2.first_stage_feature_extractor_scope, var)
-          self.assertNotIn(model2.second_stage_feature_extractor_scope, var)
+          self.assertNotIn(
+              six.b(model2.first_stage_feature_extractor_scope), var)
+          self.assertNotIn(
+              six.b(model2.second_stage_feature_extractor_scope), var)
 
-  @parameterized.parameters(
-      {'use_keras': True},
-      {'use_keras': False}
-  )
-  def test_load_all_det_checkpoint_vars(self, use_keras=False):
+  def test_load_all_det_checkpoint_vars(self):
+    if tf_version.is_tf2(): self.skipTest('Skipping TF1 only test.')
     test_graph_detection = tf.Graph()
     with test_graph_detection.as_default():
       model = self._build_model(
           is_training=False,
-          use_keras=use_keras,
           number_of_stages=2,
           second_stage_batch_size=6,
           num_classes=42)

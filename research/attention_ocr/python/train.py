@@ -96,16 +96,16 @@ def get_training_hparams():
 def create_optimizer(hparams):
   """Creates optimized based on the specified flags."""
   if hparams.optimizer == 'momentum':
-    optimizer = tf.train.MomentumOptimizer(
+    optimizer = tf.compat.v1.train.MomentumOptimizer(
         hparams.learning_rate, momentum=hparams.momentum)
   elif hparams.optimizer == 'adam':
-    optimizer = tf.train.AdamOptimizer(hparams.learning_rate)
+    optimizer = tf.compat.v1.train.AdamOptimizer(hparams.learning_rate)
   elif hparams.optimizer == 'adadelta':
-    optimizer = tf.train.AdadeltaOptimizer(hparams.learning_rate)
+    optimizer = tf.compat.v1.train.AdadeltaOptimizer(hparams.learning_rate)
   elif hparams.optimizer == 'adagrad':
-    optimizer = tf.train.AdagradOptimizer(hparams.learning_rate)
+    optimizer = tf.compat.v1.train.AdagradOptimizer(hparams.learning_rate)
   elif hparams.optimizer == 'rmsprop':
-    optimizer = tf.train.RMSPropOptimizer(
+    optimizer = tf.compat.v1.train.RMSPropOptimizer(
         hparams.learning_rate, momentum=hparams.momentum)
   return optimizer
 
@@ -154,14 +154,14 @@ def train(loss, init_fn, hparams):
 
 
 def prepare_training_dir():
-  if not tf.gfile.Exists(FLAGS.train_log_dir):
+  if not tf.io.gfile.exists(FLAGS.train_log_dir):
     logging.info('Create a new training directory %s', FLAGS.train_log_dir)
-    tf.gfile.MakeDirs(FLAGS.train_log_dir)
+    tf.io.gfile.makedirs(FLAGS.train_log_dir)
   else:
     if FLAGS.reset_train_dir:
       logging.info('Reset the training directory %s', FLAGS.train_log_dir)
-      tf.gfile.DeleteRecursively(FLAGS.train_log_dir)
-      tf.gfile.MakeDirs(FLAGS.train_log_dir)
+      tf.io.gfile.rmtree(FLAGS.train_log_dir)
+      tf.io.gfile.makedirs(FLAGS.train_log_dir)
     else:
       logging.info('Use already existing training directory %s',
                    FLAGS.train_log_dir)
@@ -169,7 +169,7 @@ def prepare_training_dir():
 
 def calculate_graph_metrics():
   param_stats = model_analyzer.print_model_analysis(
-      tf.get_default_graph(),
+      tf.compat.v1.get_default_graph(),
       tfprof_options=model_analyzer.TRAINABLE_VARS_PARAMS_STAT_OPTIONS)
   return param_stats.total_parameters
 
@@ -186,7 +186,7 @@ def main(_):
   # If ps_tasks is zero, the local device is used. When using multiple
   # (non-local) replicas, the ReplicaDeviceSetter distributes the variables
   # across the different devices.
-  device_setter = tf.train.replica_device_setter(
+  device_setter = tf.compat.v1.train.replica_device_setter(
       FLAGS.ps_tasks, merge_devices=True)
   with tf.device(device_setter):
     data = data_provider.get_data(

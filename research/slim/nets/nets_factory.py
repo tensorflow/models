@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import functools
-from tensorflow.contrib import slim as contrib_slim
+import tf_slim as slim
 
 from nets import alexnet
 from nets import cifarnet
@@ -36,8 +36,6 @@ from nets.mobilenet import mobilenet_v3
 from nets.nasnet import nasnet
 from nets.nasnet import pnasnet
 
-
-slim = contrib_slim
 
 networks_map = {
     'alexnet_v2': alexnet.alexnet_v2,

@@ -18,10 +18,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+
+from absl import flags
 import numpy as np
 import tensorflow as tf
 
 from delf.python.detect_to_retrieve import dataset
+
+FLAGS = flags.FLAGS
 
 
 class DatasetTest(tf.test.TestCase):
@@ -191,6 +196,92 @@ class DatasetTest(tf.test.TestCase):
     self.assertAllClose(average_precisions, expected_average_precisions)
     self.assertAllClose(precisions, expected_precisions)
     self.assertAllClose(recalls, expected_recalls)
+
+  def testSaveMetricsFileWorks(self):
+    # Define inputs.
+    mean_average_precision = {'hard': 0.7, 'medium': 0.9}
+    mean_precisions = {
+        'hard': np.array([1.0, 0.8]),
+        'medium': np.array([1.0, 1.0])
+    }
+    mean_recalls = {
+        'hard': np.array([0.5, 0.8]),
+        'medium': np.array([0.5, 1.0])
+    }
+    pr_ranks = [1, 5]
+    output_path = os.path.join(FLAGS.test_tmpdir, 'metrics.txt')
+
+    # Run tested function.
+    dataset.SaveMetricsFile(mean_average_precision, mean_precisions,
+                            mean_recalls, pr_ranks, output_path)
+
+    # Define expected results.
+    expected_metrics = ('hard\n'
+                        '  mAP=70.0\n'
+                        '  mP@k[1 5] [100.  80.]\n'
+                        '  mR@k[1 5] [50. 80.]\n'
+                        'medium\n'
+                        '  mAP=90.0\n'
+                        '  mP@k[1 5] [100. 100.]\n'
+                        '  mR@k[1 5] [ 50. 100.]\n')
+
+    # Parse actual results, and compare to expected.
+    with tf.io.gfile.GFile(output_path) as f:
+      metrics = f.read()
+
+    self.assertEqual(metrics, expected_metrics)
+
+  def testSaveAndReadMetricsWorks(self):
+    # Define inputs.
+    mean_average_precision = {'hard': 0.7, 'medium': 0.9}
+    mean_precisions = {
+        'hard': np.array([1.0, 0.8]),
+        'medium': np.array([1.0, 1.0])
+    }
+    mean_recalls = {
+        'hard': np.array([0.5, 0.8]),
+        'medium': np.array([0.5, 1.0])
+    }
+    pr_ranks = [1, 5]
+    output_path = os.path.join(FLAGS.test_tmpdir, 'metrics.txt')
+
+    # Run tested functions.
+    dataset.SaveMetricsFile(mean_average_precision, mean_precisions,
+                            mean_recalls, pr_ranks, output_path)
+    (read_mean_average_precision, read_pr_ranks, read_mean_precisions,
+     read_mean_recalls) = dataset.ReadMetricsFile(output_path)
+
+    # Compares actual and expected metrics.
+    self.assertEqual(read_mean_average_precision, mean_average_precision)
+    self.assertEqual(read_pr_ranks, pr_ranks)
+    self.assertEqual(read_mean_precisions.keys(), mean_precisions.keys())
+    self.assertAllEqual(read_mean_precisions['hard'], mean_precisions['hard'])
+    self.assertAllEqual(read_mean_precisions['medium'],
+                        mean_precisions['medium'])
+    self.assertEqual(read_mean_recalls.keys(), mean_recalls.keys())
+    self.assertAllEqual(read_mean_recalls['hard'], mean_recalls['hard'])
+    self.assertAllEqual(read_mean_recalls['medium'], mean_recalls['medium'])
+
+  def testReadMetricsWithRepeatedProtocolFails(self):
+    # Define inputs.
+    input_path = os.path.join(FLAGS.test_tmpdir, 'metrics.txt')
+    with tf.io.gfile.GFile(input_path, 'w') as f:
+      f.write('hard\n'
+              '  mAP=70.0\n'
+              '  mP@k[1 5] [ 100.   80.]\n'
+              '  mR@k[1 5] [ 50.  80.]\n'
+              'medium\n'
+              '  mAP=90.0\n'
+              '  mP@k[1 5] [ 100.  100.]\n'
+              '  mR@k[1 5] [  50.  100.]\n'
+              'medium\n'
+              '  mAP=90.0\n'
+              '  mP@k[1 5] [ 100.  100.]\n'
+              '  mR@k[1 5] [  50.  100.]\n')
+
+    # Run tested functions.
+    with self.assertRaisesRegex(ValueError, 'Malformed input'):
+      dataset.ReadMetricsFile(input_path)
 
 
 if __name__ == '__main__':

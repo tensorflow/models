@@ -12,7 +12,341 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Mobilenet V3 conv defs and helper functions."""
+"""Mobilenet V3 conv defs and helper functions.
+
+# pylint: disable=line-too-long
+
+Model definitions and layer breakdowns:
+==================
+==== V3 LARGE ====
+==================
+    Conv2D MobilenetV3/Conv/Conv2D                                                              351.2 k      1x224x224x3            432.0           5.42 M     1x112x112x16
+     Relu6 MobilenetV3/Conv/hard_swish/Relu6                                                          ?                -                ?                ?     1x112x112x16
+ DepthConv MobilenetV3/expanded_conv/depthwise/depthwise                                        401.4 k                -            144.0           1.81 M     1x112x112x16
+      Relu MobilenetV3/expanded_conv/depthwise/Relu                                                   ?                -                ?                ?     1x112x112x16
+    Conv2D MobilenetV3/expanded_conv/project/Conv2D                                             401.4 k     1x112x112x16            256.0           3.21 M     1x112x112x16
+    Conv2D MobilenetV3/expanded_conv_1/expand/Conv2D                                             1.00 M     1x112x112x16           1.02 k           12.8 M     1x112x112x64
+      Relu MobilenetV3/expanded_conv_1/expand/Relu                                                    ?                -                ?                ?     1x112x112x64
+ DepthConv MobilenetV3/expanded_conv_1/depthwise/depthwise                                       1.00 M                -            576.0           1.81 M       1x56x56x64
+      Relu MobilenetV3/expanded_conv_1/depthwise/Relu                                                 ?                -                ?                ?       1x56x56x64
+    Conv2D MobilenetV3/expanded_conv_1/project/Conv2D                                           276.0 k       1x56x56x64           1.54 k           4.82 M       1x56x56x24
+    Conv2D MobilenetV3/expanded_conv_2/expand/Conv2D                                            301.1 k       1x56x56x24           1.73 k           5.42 M       1x56x56x72
+      Relu MobilenetV3/expanded_conv_2/expand/Relu                                                    ?                -                ?                ?       1x56x56x72
+ DepthConv MobilenetV3/expanded_conv_2/depthwise/depthwise                                      451.6 k                -            648.0           2.03 M       1x56x56x72
+      Relu MobilenetV3/expanded_conv_2/depthwise/Relu                                                 ?                -                ?                ?       1x56x56x72
+    Conv2D MobilenetV3/expanded_conv_2/project/Conv2D                                           301.1 k       1x56x56x72           1.73 k           5.42 M       1x56x56x24
+    Conv2D MobilenetV3/expanded_conv_3/expand/Conv2D                                            301.1 k       1x56x56x24           1.73 k           5.42 M       1x56x56x72
+      Relu MobilenetV3/expanded_conv_3/expand/Relu                                                    ?                -                ?                ?       1x56x56x72
+ DepthConv MobilenetV3/expanded_conv_3/depthwise/depthwise                                      282.2 k                -           1.80 k           1.41 M       1x28x28x72
+      Relu MobilenetV3/expanded_conv_3/depthwise/Relu                                                 ?                -                ?                ?       1x28x28x72
+    Conv2D MobilenetV3/expanded_conv_3/squeeze_excite/Conv/Conv2D                                  96.0         1x1x1x72           1.73 k           1.73 k         1x1x1x24
+      Relu MobilenetV3/expanded_conv_3/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x24
+    Conv2D MobilenetV3/expanded_conv_3/squeeze_excite/Conv_1/Conv2D                                96.0         1x1x1x24           1.73 k           1.73 k         1x1x1x72
+     Relu6 MobilenetV3/expanded_conv_3/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?         1x1x1x72
+    Conv2D MobilenetV3/expanded_conv_3/project/Conv2D                                            87.8 k       1x28x28x72           2.88 k           2.26 M       1x28x28x40
+    Conv2D MobilenetV3/expanded_conv_4/expand/Conv2D                                            125.4 k       1x28x28x40           4.80 k           3.76 M      1x28x28x120
+      Relu MobilenetV3/expanded_conv_4/expand/Relu                                                    ?                -                ?                ?      1x28x28x120
+ DepthConv MobilenetV3/expanded_conv_4/depthwise/depthwise                                      188.2 k                -           3.00 k           2.35 M      1x28x28x120
+      Relu MobilenetV3/expanded_conv_4/depthwise/Relu                                                 ?                -                ?                ?      1x28x28x120
+    Conv2D MobilenetV3/expanded_conv_4/squeeze_excite/Conv/Conv2D                                 152.0        1x1x1x120           3.84 k           3.84 k         1x1x1x32
+      Relu MobilenetV3/expanded_conv_4/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x32
+    Conv2D MobilenetV3/expanded_conv_4/squeeze_excite/Conv_1/Conv2D                               152.0         1x1x1x32           3.84 k           3.84 k        1x1x1x120
+     Relu6 MobilenetV3/expanded_conv_4/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?        1x1x1x120
+    Conv2D MobilenetV3/expanded_conv_4/project/Conv2D                                           125.4 k      1x28x28x120           4.80 k           3.76 M       1x28x28x40
+    Conv2D MobilenetV3/expanded_conv_5/expand/Conv2D                                            125.4 k       1x28x28x40           4.80 k           3.76 M      1x28x28x120
+      Relu MobilenetV3/expanded_conv_5/expand/Relu                                                    ?                -                ?                ?      1x28x28x120
+ DepthConv MobilenetV3/expanded_conv_5/depthwise/depthwise                                      188.2 k                -           3.00 k           2.35 M      1x28x28x120
+      Relu MobilenetV3/expanded_conv_5/depthwise/Relu                                                 ?                -                ?                ?      1x28x28x120
+    Conv2D MobilenetV3/expanded_conv_5/squeeze_excite/Conv/Conv2D                                 152.0        1x1x1x120           3.84 k           3.84 k         1x1x1x32
+      Relu MobilenetV3/expanded_conv_5/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x32
+    Conv2D MobilenetV3/expanded_conv_5/squeeze_excite/Conv_1/Conv2D                               152.0         1x1x1x32           3.84 k           3.84 k        1x1x1x120
+     Relu6 MobilenetV3/expanded_conv_5/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?        1x1x1x120
+    Conv2D MobilenetV3/expanded_conv_5/project/Conv2D                                           125.4 k      1x28x28x120           4.80 k           3.76 M       1x28x28x40
+    Conv2D MobilenetV3/expanded_conv_6/expand/Conv2D                                            219.5 k       1x28x28x40           9.60 k           7.53 M      1x28x28x240
+     Relu6 MobilenetV3/expanded_conv_6/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x28x28x240
+ DepthConv MobilenetV3/expanded_conv_6/depthwise/depthwise                                      235.2 k                -           2.16 k          423.4 k      1x14x14x240
+     Relu6 MobilenetV3/expanded_conv_6/depthwise/hard_swish/Relu6                                     ?                -                ?                ?      1x14x14x240
+    Conv2D MobilenetV3/expanded_conv_6/project/Conv2D                                            62.7 k      1x14x14x240           19.2 k           3.76 M       1x14x14x80
+    Conv2D MobilenetV3/expanded_conv_7/expand/Conv2D                                             54.9 k       1x14x14x80           16.0 k           3.14 M      1x14x14x200
+     Relu6 MobilenetV3/expanded_conv_7/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x14x14x200
+ DepthConv MobilenetV3/expanded_conv_7/depthwise/depthwise                                       78.4 k                -           1.80 k          352.8 k      1x14x14x200
+     Relu6 MobilenetV3/expanded_conv_7/depthwise/hard_swish/Relu6                                     ?                -                ?                ?      1x14x14x200
+    Conv2D MobilenetV3/expanded_conv_7/project/Conv2D                                            54.9 k      1x14x14x200           16.0 k           3.14 M       1x14x14x80
+    Conv2D MobilenetV3/expanded_conv_8/expand/Conv2D                                             51.7 k       1x14x14x80           14.7 k           2.89 M      1x14x14x184
+     Relu6 MobilenetV3/expanded_conv_8/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x14x14x184
+ DepthConv MobilenetV3/expanded_conv_8/depthwise/depthwise                                       72.1 k                -           1.66 k          324.6 k      1x14x14x184
+     Relu6 MobilenetV3/expanded_conv_8/depthwise/hard_swish/Relu6                                     ?                -                ?                ?      1x14x14x184
+    Conv2D MobilenetV3/expanded_conv_8/project/Conv2D                                            51.7 k      1x14x14x184           14.7 k           2.89 M       1x14x14x80
+    Conv2D MobilenetV3/expanded_conv_9/expand/Conv2D                                             51.7 k       1x14x14x80           14.7 k           2.89 M      1x14x14x184
+     Relu6 MobilenetV3/expanded_conv_9/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x14x14x184
+ DepthConv MobilenetV3/expanded_conv_9/depthwise/depthwise                                       72.1 k                -           1.66 k          324.6 k      1x14x14x184
+     Relu6 MobilenetV3/expanded_conv_9/depthwise/hard_swish/Relu6                                     ?                -                ?                ?      1x14x14x184
+    Conv2D MobilenetV3/expanded_conv_9/project/Conv2D                                            51.7 k      1x14x14x184           14.7 k           2.89 M       1x14x14x80
+    Conv2D MobilenetV3/expanded_conv_10/expand/Conv2D                                           109.8 k       1x14x14x80           38.4 k           7.53 M      1x14x14x480
+     Relu6 MobilenetV3/expanded_conv_10/expand/hard_swish/Relu6                                       ?                -                ?                ?      1x14x14x480
+ DepthConv MobilenetV3/expanded_conv_10/depthwise/depthwise                                     188.2 k                -           4.32 k          846.7 k      1x14x14x480
+     Relu6 MobilenetV3/expanded_conv_10/depthwise/hard_swish/Relu6                                    ?                -                ?                ?      1x14x14x480
+    Conv2D MobilenetV3/expanded_conv_10/squeeze_excite/Conv/Conv2D                                600.0        1x1x1x480           57.6 k           57.6 k        1x1x1x120
+      Relu MobilenetV3/expanded_conv_10/squeeze_excite/Conv/Relu                                      ?                -                ?                ?        1x1x1x120
+    Conv2D MobilenetV3/expanded_conv_10/squeeze_excite/Conv_1/Conv2D                              600.0        1x1x1x120           57.6 k           57.6 k        1x1x1x480
+     Relu6 MobilenetV3/expanded_conv_10/squeeze_excite/Conv_1/Relu6                                   ?                -                ?                ?        1x1x1x480
+    Conv2D MobilenetV3/expanded_conv_10/project/Conv2D                                          116.0 k      1x14x14x480           53.8 k           10.5 M      1x14x14x112
+    Conv2D MobilenetV3/expanded_conv_11/expand/Conv2D                                           153.7 k      1x14x14x112           75.3 k           14.8 M      1x14x14x672
+     Relu6 MobilenetV3/expanded_conv_11/expand/hard_swish/Relu6                                       ?                -                ?                ?      1x14x14x672
+ DepthConv MobilenetV3/expanded_conv_11/depthwise/depthwise                                     263.4 k                -           6.05 k           1.19 M      1x14x14x672
+     Relu6 MobilenetV3/expanded_conv_11/depthwise/hard_swish/Relu6                                    ?                -                ?                ?      1x14x14x672
+    Conv2D MobilenetV3/expanded_conv_11/squeeze_excite/Conv/Conv2D                                840.0        1x1x1x672          112.9 k          112.9 k        1x1x1x168
+      Relu MobilenetV3/expanded_conv_11/squeeze_excite/Conv/Relu                                      ?                -                ?                ?        1x1x1x168
+    Conv2D MobilenetV3/expanded_conv_11/squeeze_excite/Conv_1/Conv2D                              840.0        1x1x1x168          112.9 k          112.9 k        1x1x1x672
+     Relu6 MobilenetV3/expanded_conv_11/squeeze_excite/Conv_1/Relu6                                   ?                -                ?                ?        1x1x1x672
+    Conv2D MobilenetV3/expanded_conv_11/project/Conv2D                                          153.7 k      1x14x14x672           75.3 k           14.8 M      1x14x14x112
+    Conv2D MobilenetV3/expanded_conv_12/expand/Conv2D                                           153.7 k      1x14x14x112           75.3 k           14.8 M      1x14x14x672
+     Relu6 MobilenetV3/expanded_conv_12/expand/hard_swish/Relu6                                       ?                -                ?                ?      1x14x14x672
+ DepthConv MobilenetV3/expanded_conv_12/depthwise/depthwise                                     164.6 k                -           16.8 k          823.2 k        1x7x7x672
+     Relu6 MobilenetV3/expanded_conv_12/depthwise/hard_swish/Relu6                                    ?                -                ?                ?        1x7x7x672
+    Conv2D MobilenetV3/expanded_conv_12/squeeze_excite/Conv/Conv2D                                840.0        1x1x1x672          112.9 k          112.9 k        1x1x1x168
+      Relu MobilenetV3/expanded_conv_12/squeeze_excite/Conv/Relu                                      ?                -                ?                ?        1x1x1x168
+    Conv2D MobilenetV3/expanded_conv_12/squeeze_excite/Conv_1/Conv2D                              840.0        1x1x1x168          112.9 k          112.9 k        1x1x1x672
+     Relu6 MobilenetV3/expanded_conv_12/squeeze_excite/Conv_1/Relu6                                   ?                -                ?                ?        1x1x1x672
+    Conv2D MobilenetV3/expanded_conv_12/project/Conv2D                                           40.8 k        1x7x7x672          107.5 k           5.27 M        1x7x7x160
+    Conv2D MobilenetV3/expanded_conv_13/expand/Conv2D                                            54.9 k        1x7x7x160          153.6 k           7.53 M        1x7x7x960
+     Relu6 MobilenetV3/expanded_conv_13/expand/hard_swish/Relu6                                       ?                -                ?                ?        1x7x7x960
+ DepthConv MobilenetV3/expanded_conv_13/depthwise/depthwise                                      94.1 k                -           24.0 k           1.18 M        1x7x7x960
+     Relu6 MobilenetV3/expanded_conv_13/depthwise/hard_swish/Relu6                                    ?                -                ?                ?        1x7x7x960
+    Conv2D MobilenetV3/expanded_conv_13/squeeze_excite/Conv/Conv2D                               1.20 k        1x1x1x960          230.4 k          230.4 k        1x1x1x240
+      Relu MobilenetV3/expanded_conv_13/squeeze_excite/Conv/Relu                                      ?                -                ?                ?        1x1x1x240
+    Conv2D MobilenetV3/expanded_conv_13/squeeze_excite/Conv_1/Conv2D                             1.20 k        1x1x1x240          230.4 k          230.4 k        1x1x1x960
+     Relu6 MobilenetV3/expanded_conv_13/squeeze_excite/Conv_1/Relu6                                   ?                -                ?                ?        1x1x1x960
+    Conv2D MobilenetV3/expanded_conv_13/project/Conv2D                                           54.9 k        1x7x7x960          153.6 k           7.53 M        1x7x7x160
+    Conv2D MobilenetV3/expanded_conv_14/expand/Conv2D                                            54.9 k        1x7x7x160          153.6 k           7.53 M        1x7x7x960
+     Relu6 MobilenetV3/expanded_conv_14/expand/hard_swish/Relu6                                       ?                -                ?                ?        1x7x7x960
+ DepthConv MobilenetV3/expanded_conv_14/depthwise/depthwise                                      94.1 k                -           24.0 k           1.18 M        1x7x7x960
+     Relu6 MobilenetV3/expanded_conv_14/depthwise/hard_swish/Relu6                                    ?                -                ?                ?        1x7x7x960
+    Conv2D MobilenetV3/expanded_conv_14/squeeze_excite/Conv/Conv2D                               1.20 k        1x1x1x960          230.4 k          230.4 k        1x1x1x240
+      Relu MobilenetV3/expanded_conv_14/squeeze_excite/Conv/Relu                                      ?                -                ?                ?        1x1x1x240
+    Conv2D MobilenetV3/expanded_conv_14/squeeze_excite/Conv_1/Conv2D                             1.20 k        1x1x1x240          230.4 k          230.4 k        1x1x1x960
+     Relu6 MobilenetV3/expanded_conv_14/squeeze_excite/Conv_1/Relu6                                   ?                -                ?                ?        1x1x1x960
+    Conv2D MobilenetV3/expanded_conv_14/project/Conv2D                                           54.9 k        1x7x7x960          153.6 k           7.53 M        1x7x7x160
+    Conv2D MobilenetV3/Conv_1/Conv2D                                                             54.9 k        1x7x7x160          153.6 k           7.53 M        1x7x7x960
+     Relu6 MobilenetV3/Conv_1/hard_swish/Relu6                                                        ?                -                ?                ?        1x7x7x960
+   AvgPool MobilenetV3/AvgPool2D/AvgPool                                                              ?        1x7x7x960                ?           47.0 k        1x1x1x960
+    Conv2D MobilenetV3/Conv_2/Conv2D                                                             2.24 k        1x1x1x960           1.23 M           1.23 M       1x1x1x1280
+     Relu6 MobilenetV3/Conv_2/hard_swish/Relu6                                                        ?                -                ?                ?       1x1x1x1280
+    Conv2D MobilenetV3/Logits/Conv2d_1c_1x1/Conv2D                                               2.28 k       1x1x1x1280           1.28 M           1.28 M       1x1x1x1001
+-----
+
+
+==================
+==== V3 SMALL ====
+==================
+      op name                                                                                  ActMem        ConvInput   ConvParameters            Madds     OutputTensor
+    Conv2D MobilenetV3/Conv/Conv2D                                                              351.2 k      1x224x224x3            432.0           5.42 M     1x112x112x16
+     Relu6 MobilenetV3/Conv/hard_swish/Relu6                                                          ?                -                ?                ?     1x112x112x16
+ DepthConv MobilenetV3/expanded_conv/depthwise/depthwise                                        250.9 k                -            144.0          451.6 k       1x56x56x16
+      Relu MobilenetV3/expanded_conv/depthwise/Relu                                                   ?                -                ?                ?       1x56x56x16
+    Conv2D MobilenetV3/expanded_conv/squeeze_excite/Conv/Conv2D                                    24.0         1x1x1x16            128.0            128.0          1x1x1x8
+      Relu MobilenetV3/expanded_conv/squeeze_excite/Conv/Relu                                         ?                -                ?                ?          1x1x1x8
+    Conv2D MobilenetV3/expanded_conv/squeeze_excite/Conv_1/Conv2D                                  24.0          1x1x1x8            128.0            128.0         1x1x1x16
+     Relu6 MobilenetV3/expanded_conv/squeeze_excite/Conv_1/Relu6                                      ?                -                ?                ?         1x1x1x16
+    Conv2D MobilenetV3/expanded_conv/project/Conv2D                                             100.4 k       1x56x56x16            256.0          802.8 k       1x56x56x16
+    Conv2D MobilenetV3/expanded_conv_1/expand/Conv2D                                            276.0 k       1x56x56x16           1.15 k           3.61 M       1x56x56x72
+      Relu MobilenetV3/expanded_conv_1/expand/Relu                                                    ?                -                ?                ?       1x56x56x72
+ DepthConv MobilenetV3/expanded_conv_1/depthwise/depthwise                                      282.2 k                -            648.0          508.0 k       1x28x28x72
+      Relu MobilenetV3/expanded_conv_1/depthwise/Relu                                                 ?                -                ?                ?       1x28x28x72
+    Conv2D MobilenetV3/expanded_conv_1/project/Conv2D                                            75.3 k       1x28x28x72           1.73 k           1.35 M       1x28x28x24
+    Conv2D MobilenetV3/expanded_conv_2/expand/Conv2D                                             87.8 k       1x28x28x24           2.11 k           1.66 M       1x28x28x88
+      Relu MobilenetV3/expanded_conv_2/expand/Relu                                                    ?                -                ?                ?       1x28x28x88
+ DepthConv MobilenetV3/expanded_conv_2/depthwise/depthwise                                      138.0 k                -            792.0          620.9 k       1x28x28x88
+      Relu MobilenetV3/expanded_conv_2/depthwise/Relu                                                 ?                -                ?                ?       1x28x28x88
+    Conv2D MobilenetV3/expanded_conv_2/project/Conv2D                                            87.8 k       1x28x28x88           2.11 k           1.66 M       1x28x28x24
+    Conv2D MobilenetV3/expanded_conv_3/expand/Conv2D                                             94.1 k       1x28x28x24           2.30 k           1.81 M       1x28x28x96
+     Relu6 MobilenetV3/expanded_conv_3/expand/hard_swish/Relu6                                        ?                -                ?                ?       1x28x28x96
+ DepthConv MobilenetV3/expanded_conv_3/depthwise/depthwise                                       94.1 k                -           2.40 k          470.4 k       1x14x14x96
+     Relu6 MobilenetV3/expanded_conv_3/depthwise/hard_swish/Relu6                                     ?                -                ?                ?       1x14x14x96
+    Conv2D MobilenetV3/expanded_conv_3/squeeze_excite/Conv/Conv2D                                 120.0         1x1x1x96           2.30 k           2.30 k         1x1x1x24
+      Relu MobilenetV3/expanded_conv_3/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x24
+    Conv2D MobilenetV3/expanded_conv_3/squeeze_excite/Conv_1/Conv2D                               120.0         1x1x1x24           2.30 k           2.30 k         1x1x1x96
+     Relu6 MobilenetV3/expanded_conv_3/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?         1x1x1x96
+    Conv2D MobilenetV3/expanded_conv_3/project/Conv2D                                            26.7 k       1x14x14x96           3.84 k          752.6 k       1x14x14x40
+    Conv2D MobilenetV3/expanded_conv_4/expand/Conv2D                                             54.9 k       1x14x14x40           9.60 k           1.88 M      1x14x14x240
+     Relu6 MobilenetV3/expanded_conv_4/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x14x14x240
+ DepthConv MobilenetV3/expanded_conv_4/depthwise/depthwise                                       94.1 k                -           6.00 k           1.18 M      1x14x14x240
+     Relu6 MobilenetV3/expanded_conv_4/depthwise/hard_swish/Relu6                                     ?                -                ?                ?      1x14x14x240
+    Conv2D MobilenetV3/expanded_conv_4/squeeze_excite/Conv/Conv2D                                 304.0        1x1x1x240           15.4 k           15.4 k         1x1x1x64
+      Relu MobilenetV3/expanded_conv_4/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x64
+    Conv2D MobilenetV3/expanded_conv_4/squeeze_excite/Conv_1/Conv2D                               304.0         1x1x1x64           15.4 k           15.4 k        1x1x1x240
+     Relu6 MobilenetV3/expanded_conv_4/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?        1x1x1x240
+    Conv2D MobilenetV3/expanded_conv_4/project/Conv2D                                            54.9 k      1x14x14x240           9.60 k           1.88 M       1x14x14x40
+    Conv2D MobilenetV3/expanded_conv_5/expand/Conv2D                                             54.9 k       1x14x14x40           9.60 k           1.88 M      1x14x14x240
+     Relu6 MobilenetV3/expanded_conv_5/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x14x14x240
+ DepthConv MobilenetV3/expanded_conv_5/depthwise/depthwise                                       94.1 k                -           6.00 k           1.18 M      1x14x14x240
+     Relu6 MobilenetV3/expanded_conv_5/depthwise/hard_swish/Relu6                                     ?                -                ?                ?      1x14x14x240
+    Conv2D MobilenetV3/expanded_conv_5/squeeze_excite/Conv/Conv2D                                 304.0        1x1x1x240           15.4 k           15.4 k         1x1x1x64
+      Relu MobilenetV3/expanded_conv_5/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x64
+    Conv2D MobilenetV3/expanded_conv_5/squeeze_excite/Conv_1/Conv2D                               304.0         1x1x1x64           15.4 k           15.4 k        1x1x1x240
+     Relu6 MobilenetV3/expanded_conv_5/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?        1x1x1x240
+    Conv2D MobilenetV3/expanded_conv_5/project/Conv2D                                            54.9 k      1x14x14x240           9.60 k           1.88 M       1x14x14x40
+    Conv2D MobilenetV3/expanded_conv_6/expand/Conv2D                                             31.4 k       1x14x14x40           4.80 k          940.8 k      1x14x14x120
+     Relu6 MobilenetV3/expanded_conv_6/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x14x14x120
+ DepthConv MobilenetV3/expanded_conv_6/depthwise/depthwise                                       47.0 k                -           3.00 k          588.0 k      1x14x14x120
+     Relu6 MobilenetV3/expanded_conv_6/depthwise/hard_swish/Relu6                                     ?                -                ?                ?      1x14x14x120
+    Conv2D MobilenetV3/expanded_conv_6/squeeze_excite/Conv/Conv2D                                 152.0        1x1x1x120           3.84 k           3.84 k         1x1x1x32
+      Relu MobilenetV3/expanded_conv_6/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x32
+    Conv2D MobilenetV3/expanded_conv_6/squeeze_excite/Conv_1/Conv2D                               152.0         1x1x1x32           3.84 k           3.84 k        1x1x1x120
+     Relu6 MobilenetV3/expanded_conv_6/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?        1x1x1x120
+    Conv2D MobilenetV3/expanded_conv_6/project/Conv2D                                            32.9 k      1x14x14x120           5.76 k           1.13 M       1x14x14x48
+    Conv2D MobilenetV3/expanded_conv_7/expand/Conv2D                                             37.6 k       1x14x14x48           6.91 k           1.35 M      1x14x14x144
+     Relu6 MobilenetV3/expanded_conv_7/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x14x14x144
+ DepthConv MobilenetV3/expanded_conv_7/depthwise/depthwise                                       56.4 k                -           3.60 k          705.6 k      1x14x14x144
+     Relu6 MobilenetV3/expanded_conv_7/depthwise/hard_swish/Relu6                                     ?                -                ?                ?      1x14x14x144
+    Conv2D MobilenetV3/expanded_conv_7/squeeze_excite/Conv/Conv2D                                 184.0        1x1x1x144           5.76 k           5.76 k         1x1x1x40
+      Relu MobilenetV3/expanded_conv_7/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x40
+    Conv2D MobilenetV3/expanded_conv_7/squeeze_excite/Conv_1/Conv2D                               184.0         1x1x1x40           5.76 k           5.76 k        1x1x1x144
+     Relu6 MobilenetV3/expanded_conv_7/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?        1x1x1x144
+    Conv2D MobilenetV3/expanded_conv_7/project/Conv2D                                            37.6 k      1x14x14x144           6.91 k           1.35 M       1x14x14x48
+    Conv2D MobilenetV3/expanded_conv_8/expand/Conv2D                                             65.9 k       1x14x14x48           13.8 k           2.71 M      1x14x14x288
+     Relu6 MobilenetV3/expanded_conv_8/expand/hard_swish/Relu6                                        ?                -                ?                ?      1x14x14x288
+ DepthConv MobilenetV3/expanded_conv_8/depthwise/depthwise                                       70.6 k                -           7.20 k          352.8 k        1x7x7x288
+     Relu6 MobilenetV3/expanded_conv_8/depthwise/hard_swish/Relu6                                     ?                -                ?                ?        1x7x7x288
+    Conv2D MobilenetV3/expanded_conv_8/squeeze_excite/Conv/Conv2D                                 360.0        1x1x1x288           20.7 k           20.7 k         1x1x1x72
+      Relu MobilenetV3/expanded_conv_8/squeeze_excite/Conv/Relu                                       ?                -                ?                ?         1x1x1x72
+    Conv2D MobilenetV3/expanded_conv_8/squeeze_excite/Conv_1/Conv2D                               360.0         1x1x1x72           20.7 k           20.7 k        1x1x1x288
+     Relu6 MobilenetV3/expanded_conv_8/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?        1x1x1x288
+    Conv2D MobilenetV3/expanded_conv_8/project/Conv2D                                            18.8 k        1x7x7x288           27.6 k           1.35 M         1x7x7x96
+    Conv2D MobilenetV3/expanded_conv_9/expand/Conv2D                                             32.9 k         1x7x7x96           55.3 k           2.71 M        1x7x7x576
+     Relu6 MobilenetV3/expanded_conv_9/expand/hard_swish/Relu6                                        ?                -                ?                ?        1x7x7x576
+ DepthConv MobilenetV3/expanded_conv_9/depthwise/depthwise                                       56.4 k                -           14.4 k          705.6 k        1x7x7x576
+     Relu6 MobilenetV3/expanded_conv_9/depthwise/hard_swish/Relu6                                     ?                -                ?                ?        1x7x7x576
+    Conv2D MobilenetV3/expanded_conv_9/squeeze_excite/Conv/Conv2D                                 720.0        1x1x1x576           82.9 k           82.9 k        1x1x1x144
+      Relu MobilenetV3/expanded_conv_9/squeeze_excite/Conv/Relu                                       ?                -                ?                ?        1x1x1x144
+    Conv2D MobilenetV3/expanded_conv_9/squeeze_excite/Conv_1/Conv2D                               720.0        1x1x1x144           82.9 k           82.9 k        1x1x1x576
+     Relu6 MobilenetV3/expanded_conv_9/squeeze_excite/Conv_1/Relu6                                    ?                -                ?                ?        1x1x1x576
+    Conv2D MobilenetV3/expanded_conv_9/project/Conv2D                                            32.9 k        1x7x7x576           55.3 k           2.71 M         1x7x7x96
+    Conv2D MobilenetV3/expanded_conv_10/expand/Conv2D                                            32.9 k         1x7x7x96           55.3 k           2.71 M        1x7x7x576
+     Relu6 MobilenetV3/expanded_conv_10/expand/hard_swish/Relu6                                       ?                -                ?                ?        1x7x7x576
+ DepthConv MobilenetV3/expanded_conv_10/depthwise/depthwise                                      56.4 k                -           14.4 k          705.6 k        1x7x7x576
+     Relu6 MobilenetV3/expanded_conv_10/depthwise/hard_swish/Relu6                                    ?                -                ?                ?        1x7x7x576
+    Conv2D MobilenetV3/expanded_conv_10/squeeze_excite/Conv/Conv2D                                720.0        1x1x1x576           82.9 k           82.9 k        1x1x1x144
+      Relu MobilenetV3/expanded_conv_10/squeeze_excite/Conv/Relu                                      ?                -                ?                ?        1x1x1x144
+    Conv2D MobilenetV3/expanded_conv_10/squeeze_excite/Conv_1/Conv2D                              720.0        1x1x1x144           82.9 k           82.9 k        1x1x1x576
+     Relu6 MobilenetV3/expanded_conv_10/squeeze_excite/Conv_1/Relu6                                   ?                -                ?                ?        1x1x1x576
+    Conv2D MobilenetV3/expanded_conv_10/project/Conv2D                                           32.9 k        1x7x7x576           55.3 k           2.71 M         1x7x7x96
+    Conv2D MobilenetV3/Conv_1/Conv2D                                                             32.9 k         1x7x7x96           55.3 k           2.71 M        1x7x7x576
+     Relu6 MobilenetV3/Conv_1/hard_swish/Relu6                                                        ?                -                ?                ?        1x7x7x576
+   AvgPool MobilenetV3/AvgPool2D/AvgPool                                                              ?        1x7x7x576                ?           28.2 k        1x1x1x576
+    Conv2D MobilenetV3/Conv_2/Conv2D                                                             1.60 k        1x1x1x576          589.8 k          589.8 k       1x1x1x1024
+     Relu6 MobilenetV3/Conv_2/hard_swish/Relu6                                                        ?                -                ?                ?       1x1x1x1024
+    Conv2D MobilenetV3/Logits/Conv2d_1c_1x1/Conv2D                                               2.02 k       1x1x1x1024           1.03 M           1.03 M       1x1x1x1001
+-----
+     Total Total                                                                                 2.96 M                -           2.53 M           56.5 M                -
+
+
+====================
+==== V3 EDGETPU ====
+====================
+        op name                                                                                  ActMem        ConvInput   ConvParameters            Madds     OutputTensor
+    Conv2D MobilenetEdgeTPU/Conv/Conv2D                                                         551.9 k      1x224x224x3            864.0           10.8 M     1x112x112x32
+      Relu MobilenetEdgeTPU/Conv/Relu                                                                 ?                -                ?                ?     1x112x112x32
+    Conv2D MobilenetEdgeTPU/expanded_conv/project/Conv2D                                        602.1 k     1x112x112x32            512.0           6.42 M     1x112x112x16
+    Conv2D MobilenetEdgeTPU/expanded_conv_1/expand/Conv2D                                       602.1 k     1x112x112x16           18.4 k           57.8 M      1x56x56x128
+      Relu MobilenetEdgeTPU/expanded_conv_1/expand/Relu                                               ?                -                ?                ?      1x56x56x128
+    Conv2D MobilenetEdgeTPU/expanded_conv_1/project/Conv2D                                      501.8 k      1x56x56x128           4.10 k           12.8 M       1x56x56x32
+    Conv2D MobilenetEdgeTPU/expanded_conv_2/expand/Conv2D                                       501.8 k       1x56x56x32           36.9 k          115.6 M      1x56x56x128
+      Relu MobilenetEdgeTPU/expanded_conv_2/expand/Relu                                               ?                -                ?                ?      1x56x56x128
+    Conv2D MobilenetEdgeTPU/expanded_conv_2/project/Conv2D                                      501.8 k      1x56x56x128           4.10 k           12.8 M       1x56x56x32
+    Conv2D MobilenetEdgeTPU/expanded_conv_3/expand/Conv2D                                       501.8 k       1x56x56x32           36.9 k          115.6 M      1x56x56x128
+      Relu MobilenetEdgeTPU/expanded_conv_3/expand/Relu                                               ?                -                ?                ?      1x56x56x128
+    Conv2D MobilenetEdgeTPU/expanded_conv_3/project/Conv2D                                      501.8 k      1x56x56x128           4.10 k           12.8 M       1x56x56x32
+    Conv2D MobilenetEdgeTPU/expanded_conv_4/expand/Conv2D                                       501.8 k       1x56x56x32           36.9 k          115.6 M      1x56x56x128
+      Relu MobilenetEdgeTPU/expanded_conv_4/expand/Relu                                               ?                -                ?                ?      1x56x56x128
+    Conv2D MobilenetEdgeTPU/expanded_conv_4/project/Conv2D                                      501.8 k      1x56x56x128           4.10 k           12.8 M       1x56x56x32
+    Conv2D MobilenetEdgeTPU/expanded_conv_5/expand/Conv2D                                       301.1 k       1x56x56x32           73.7 k           57.8 M      1x28x28x256
+      Relu MobilenetEdgeTPU/expanded_conv_5/expand/Relu                                               ?                -                ?                ?      1x28x28x256
+    Conv2D MobilenetEdgeTPU/expanded_conv_5/project/Conv2D                                      238.3 k      1x28x28x256           12.3 k           9.63 M       1x28x28x48
+    Conv2D MobilenetEdgeTPU/expanded_conv_6/expand/Conv2D                                       188.2 k       1x28x28x48           82.9 k           65.0 M      1x28x28x192
+      Relu MobilenetEdgeTPU/expanded_conv_6/expand/Relu                                               ?                -                ?                ?      1x28x28x192
+    Conv2D MobilenetEdgeTPU/expanded_conv_6/project/Conv2D                                      188.2 k      1x28x28x192           9.22 k           7.23 M       1x28x28x48
+    Conv2D MobilenetEdgeTPU/expanded_conv_7/expand/Conv2D                                       188.2 k       1x28x28x48           82.9 k           65.0 M      1x28x28x192
+      Relu MobilenetEdgeTPU/expanded_conv_7/expand/Relu                                               ?                -                ?                ?      1x28x28x192
+    Conv2D MobilenetEdgeTPU/expanded_conv_7/project/Conv2D                                      188.2 k      1x28x28x192           9.22 k           7.23 M       1x28x28x48
+    Conv2D MobilenetEdgeTPU/expanded_conv_8/expand/Conv2D                                       188.2 k       1x28x28x48           82.9 k           65.0 M      1x28x28x192
+      Relu MobilenetEdgeTPU/expanded_conv_8/expand/Relu                                               ?                -                ?                ?      1x28x28x192
+    Conv2D MobilenetEdgeTPU/expanded_conv_8/project/Conv2D                                      188.2 k      1x28x28x192           9.22 k           7.23 M       1x28x28x48
+    Conv2D MobilenetEdgeTPU/expanded_conv_9/expand/Conv2D                                       338.7 k       1x28x28x48           18.4 k           14.5 M      1x28x28x384
+      Relu MobilenetEdgeTPU/expanded_conv_9/expand/Relu                                               ?                -                ?                ?      1x28x28x384
+ DepthConv MobilenetEdgeTPU/expanded_conv_9/depthwise/depthwise                                 376.3 k                -           3.46 k          677.4 k      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_9/depthwise/Relu                                            ?                -                ?                ?      1x14x14x384
+    Conv2D MobilenetEdgeTPU/expanded_conv_9/project/Conv2D                                       94.1 k      1x14x14x384           36.9 k           7.23 M       1x14x14x96
+    Conv2D MobilenetEdgeTPU/expanded_conv_10/expand/Conv2D                                       94.1 k       1x14x14x96           36.9 k           7.23 M      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_10/expand/Relu                                              ?                -                ?                ?      1x14x14x384
+ DepthConv MobilenetEdgeTPU/expanded_conv_10/depthwise/depthwise                                150.5 k                -           3.46 k          677.4 k      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_10/depthwise/Relu                                           ?                -                ?                ?      1x14x14x384
+    Conv2D MobilenetEdgeTPU/expanded_conv_10/project/Conv2D                                      94.1 k      1x14x14x384           36.9 k           7.23 M       1x14x14x96
+    Conv2D MobilenetEdgeTPU/expanded_conv_11/expand/Conv2D                                       94.1 k       1x14x14x96           36.9 k           7.23 M      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_11/expand/Relu                                              ?                -                ?                ?      1x14x14x384
+ DepthConv MobilenetEdgeTPU/expanded_conv_11/depthwise/depthwise                                150.5 k                -           3.46 k          677.4 k      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_11/depthwise/Relu                                           ?                -                ?                ?      1x14x14x384
+    Conv2D MobilenetEdgeTPU/expanded_conv_11/project/Conv2D                                      94.1 k      1x14x14x384           36.9 k           7.23 M       1x14x14x96
+    Conv2D MobilenetEdgeTPU/expanded_conv_12/expand/Conv2D                                       94.1 k       1x14x14x96           36.9 k           7.23 M      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_12/expand/Relu                                              ?                -                ?                ?      1x14x14x384
+ DepthConv MobilenetEdgeTPU/expanded_conv_12/depthwise/depthwise                                150.5 k                -           3.46 k          677.4 k      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_12/depthwise/Relu                                           ?                -                ?                ?      1x14x14x384
+    Conv2D MobilenetEdgeTPU/expanded_conv_12/project/Conv2D                                      94.1 k      1x14x14x384           36.9 k           7.23 M       1x14x14x96
+    Conv2D MobilenetEdgeTPU/expanded_conv_13/expand/Conv2D                                      169.3 k       1x14x14x96           73.7 k           14.5 M      1x14x14x768
+      Relu MobilenetEdgeTPU/expanded_conv_13/expand/Relu                                              ?                -                ?                ?      1x14x14x768
+ DepthConv MobilenetEdgeTPU/expanded_conv_13/depthwise/depthwise                                301.1 k                -           6.91 k           1.35 M      1x14x14x768
+      Relu MobilenetEdgeTPU/expanded_conv_13/depthwise/Relu                                           ?                -                ?                ?      1x14x14x768
+    Conv2D MobilenetEdgeTPU/expanded_conv_13/project/Conv2D                                     169.3 k      1x14x14x768           73.7 k           14.5 M       1x14x14x96
+    Conv2D MobilenetEdgeTPU/expanded_conv_14/expand/Conv2D                                       94.1 k       1x14x14x96           36.9 k           7.23 M      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_14/expand/Relu                                              ?                -                ?                ?      1x14x14x384
+ DepthConv MobilenetEdgeTPU/expanded_conv_14/depthwise/depthwise                                150.5 k                -           3.46 k          677.4 k      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_14/depthwise/Relu                                           ?                -                ?                ?      1x14x14x384
+    Conv2D MobilenetEdgeTPU/expanded_conv_14/project/Conv2D                                      94.1 k      1x14x14x384           36.9 k           7.23 M       1x14x14x96
+    Conv2D MobilenetEdgeTPU/expanded_conv_15/expand/Conv2D                                       94.1 k       1x14x14x96           36.9 k           7.23 M      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_15/expand/Relu                                              ?                -                ?                ?      1x14x14x384
+ DepthConv MobilenetEdgeTPU/expanded_conv_15/depthwise/depthwise                                150.5 k                -           3.46 k          677.4 k      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_15/depthwise/Relu                                           ?                -                ?                ?      1x14x14x384
+    Conv2D MobilenetEdgeTPU/expanded_conv_15/project/Conv2D                                      94.1 k      1x14x14x384           36.9 k           7.23 M       1x14x14x96
+    Conv2D MobilenetEdgeTPU/expanded_conv_16/expand/Conv2D                                       94.1 k       1x14x14x96           36.9 k           7.23 M      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_16/expand/Relu                                              ?                -                ?                ?      1x14x14x384
+ DepthConv MobilenetEdgeTPU/expanded_conv_16/depthwise/depthwise                                150.5 k                -           3.46 k          677.4 k      1x14x14x384
+      Relu MobilenetEdgeTPU/expanded_conv_16/depthwise/Relu                                           ?                -                ?                ?      1x14x14x384
+    Conv2D MobilenetEdgeTPU/expanded_conv_16/project/Conv2D                                      94.1 k      1x14x14x384           36.9 k           7.23 M       1x14x14x96
+    Conv2D MobilenetEdgeTPU/expanded_conv_17/expand/Conv2D                                      169.3 k       1x14x14x96           73.7 k           14.5 M      1x14x14x768
+      Relu MobilenetEdgeTPU/expanded_conv_17/expand/Relu                                              ?                -                ?                ?      1x14x14x768
+ DepthConv MobilenetEdgeTPU/expanded_conv_17/depthwise/depthwise                                188.2 k                -           19.2 k          940.8 k        1x7x7x768
+      Relu MobilenetEdgeTPU/expanded_conv_17/depthwise/Relu                                           ?                -                ?                ?        1x7x7x768
+    Conv2D MobilenetEdgeTPU/expanded_conv_17/project/Conv2D                                      45.5 k        1x7x7x768          122.9 k           6.02 M        1x7x7x160
+    Conv2D MobilenetEdgeTPU/expanded_conv_18/expand/Conv2D                                       39.2 k        1x7x7x160          102.4 k           5.02 M        1x7x7x640
+      Relu MobilenetEdgeTPU/expanded_conv_18/expand/Relu                                              ?                -                ?                ?        1x7x7x640
+ DepthConv MobilenetEdgeTPU/expanded_conv_18/depthwise/depthwise                                 62.7 k                -           16.0 k          784.0 k        1x7x7x640
+      Relu MobilenetEdgeTPU/expanded_conv_18/depthwise/Relu                                           ?                -                ?                ?        1x7x7x640
+    Conv2D MobilenetEdgeTPU/expanded_conv_18/project/Conv2D                                      39.2 k        1x7x7x640          102.4 k           5.02 M        1x7x7x160
+    Conv2D MobilenetEdgeTPU/expanded_conv_19/expand/Conv2D                                       39.2 k        1x7x7x160          102.4 k           5.02 M        1x7x7x640
+      Relu MobilenetEdgeTPU/expanded_conv_19/expand/Relu                                              ?                -                ?                ?        1x7x7x640
+ DepthConv MobilenetEdgeTPU/expanded_conv_19/depthwise/depthwise                                 62.7 k                -           16.0 k          784.0 k        1x7x7x640
+      Relu MobilenetEdgeTPU/expanded_conv_19/depthwise/Relu                                           ?                -                ?                ?        1x7x7x640
+    Conv2D MobilenetEdgeTPU/expanded_conv_19/project/Conv2D                                      39.2 k        1x7x7x640          102.4 k           5.02 M        1x7x7x160
+    Conv2D MobilenetEdgeTPU/expanded_conv_20/expand/Conv2D                                       39.2 k        1x7x7x160          102.4 k           5.02 M        1x7x7x640
+      Relu MobilenetEdgeTPU/expanded_conv_20/expand/Relu                                              ?                -                ?                ?        1x7x7x640
+ DepthConv MobilenetEdgeTPU/expanded_conv_20/depthwise/depthwise                                 62.7 k                -           16.0 k          784.0 k        1x7x7x640
+      Relu MobilenetEdgeTPU/expanded_conv_20/depthwise/Relu                                           ?                -                ?                ?        1x7x7x640
+    Conv2D MobilenetEdgeTPU/expanded_conv_20/project/Conv2D                                      39.2 k        1x7x7x640          102.4 k           5.02 M        1x7x7x160
+    Conv2D MobilenetEdgeTPU/expanded_conv_21/expand/Conv2D                                       70.6 k        1x7x7x160          204.8 k           10.0 M       1x7x7x1280
+      Relu MobilenetEdgeTPU/expanded_conv_21/expand/Relu                                              ?                -                ?                ?       1x7x7x1280
+ DepthConv MobilenetEdgeTPU/expanded_conv_21/depthwise/depthwise                                125.4 k                -           11.5 k          564.5 k       1x7x7x1280
+      Relu MobilenetEdgeTPU/expanded_conv_21/depthwise/Relu                                           ?                -                ?                ?       1x7x7x1280
+    Conv2D MobilenetEdgeTPU/expanded_conv_21/project/Conv2D                                      72.1 k       1x7x7x1280          245.8 k           12.0 M        1x7x7x192
+    Conv2D MobilenetEdgeTPU/Conv_1/Conv2D                                                        72.1 k        1x7x7x192          245.8 k           12.0 M       1x7x7x1280
+      Relu MobilenetEdgeTPU/Conv_1/Relu                                                               ?                -                ?                ?       1x7x7x1280
+   AvgPool MobilenetEdgeTPU/Logits/AvgPool2D                                                          ?       1x7x7x1280                ?           62.7 k       1x1x1x1280
+    Conv2D MobilenetEdgeTPU/Logits/Conv2d_1c_1x1/Conv2D                                          2.28 k       1x1x1x1280           1.28 M           1.28 M       1x1x1x1001
+-----
+     Total Total                                                                                 11.6 M                -           4.05 M          990.7 M                -
+
+
+# pylint: enable=line-too-long
+"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,13 +356,12 @@ import copy
 import functools
 import numpy as np
 
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
+import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
 from nets.mobilenet import conv_blocks as ops
 from nets.mobilenet import mobilenet as lib
 
-slim = contrib_slim
 op = lib.op
 expand_input = ops.expand_input_by_factor
 
@@ -45,7 +378,7 @@ _se4 = lambda expansion_tensor, input_tensor: squeeze_excite(expansion_tensor)
 
 
 def hard_swish(x):
-  with tf.compat.v1.name_scope('hard_swish'):
+  with tf.name_scope('hard_swish'):
     return x * tf.nn.relu6(x + np.float32(3)) * np.float32(1. / 6.)
 
 
@@ -126,6 +459,16 @@ DEFAULTS = {
     },
 }
 
+DEFAULTS_GROUP_NORM = {
+    (ops.expanded_conv,): dict(normalizer_fn=slim.group_norm, residual=True),
+    (slim.conv2d, slim.fully_connected, slim.separable_conv2d): {
+        'normalizer_fn': slim.group_norm,
+        'activation_fn': tf.nn.relu,
+    },
+    (slim.group_norm,): {
+        'groups': 8
+    },
+}
 # Compatible checkpoint: http://mldash/5511169891790690458#scalars
 V3_LARGE = dict(
     defaults=dict(DEFAULTS),
@@ -276,13 +619,14 @@ def mobilenet(input_tensor,
               scope='MobilenetV3',
               conv_defs=None,
               finegrain_classification_mode=False,
+              use_groupnorm=False,
               **kwargs):
   """Creates mobilenet V3 network.
 
   Inference mode is created by default. To create training use training_scope
   below.
 
-  with tf.contrib.slim.arg_scope(mobilenet_v3.training_scope()):
+  with slim.arg_scope(mobilenet_v3.training_scope()):
      logits, endpoints = mobilenet_v3.mobilenet(input_tensor)
 
   Args:
@@ -298,6 +642,8 @@ def mobilenet(input_tensor,
     https://arxiv.org/abs/1801.04381
     it improves performance for ImageNet-type of problems.
       *Note* ignored if final_endpoint makes the builder exit earlier.
+    use_groupnorm: When set to True, use group_norm as normalizer_fn.
+
     **kwargs: passed directly to mobilenet.mobilenet:
       prediction_fn- what prediction function to use.
       reuse-: whether to reuse variables (if reuse set to true, scope
@@ -313,6 +659,16 @@ def mobilenet(input_tensor,
   if 'multiplier' in kwargs:
     raise ValueError('mobilenetv2 doesn\'t support generic '
                      'multiplier parameter use "depth_multiplier" instead.')
+
+  if use_groupnorm:
+    conv_defs = copy.deepcopy(conv_defs)
+    conv_defs['defaults'] = dict(DEFAULTS_GROUP_NORM)
+    conv_defs['defaults'].update({
+        (slim.group_norm,): {
+            'groups': kwargs.pop('groups', 8)
+        }
+    })
+
   if finegrain_classification_mode:
     conv_defs = copy.deepcopy(conv_defs)
     conv_defs['spec'][-1] = conv_defs['spec'][-1]._replace(

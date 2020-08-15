@@ -18,7 +18,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
+import six
+import tensorflow.compat.v1 as tf
 
 from nets import s3dg
 
@@ -55,7 +56,7 @@ class S3DGTest(tf.test.TestCase):
                           'Mixed_3c', 'MaxPool_4a_3x3', 'Mixed_4b', 'Mixed_4c',
                           'Mixed_4d', 'Mixed_4e', 'Mixed_4f', 'MaxPool_5a_2x2',
                           'Mixed_5b', 'Mixed_5c']
-    self.assertItemsEqual(end_points.keys(), expected_endpoints)
+    self.assertItemsEqual(list(end_points.keys()), expected_endpoints)
 
   def testBuildOnlyUptoFinalEndpointNoGating(self):
     batch_size = 5
@@ -101,8 +102,9 @@ class S3DGTest(tf.test.TestCase):
                         'Mixed_5b': [5, 8, 7, 7, 832],
                         'Mixed_5c': [5, 8, 7, 7, 1024]}
 
-    self.assertItemsEqual(endpoints_shapes.keys(), end_points.keys())
-    for endpoint_name, expected_shape in endpoints_shapes.iteritems():
+    self.assertItemsEqual(
+        list(endpoints_shapes.keys()), list(end_points.keys()))
+    for endpoint_name, expected_shape in six.iteritems(endpoints_shapes):
       self.assertTrue(endpoint_name in end_points)
       self.assertListEqual(end_points[endpoint_name].get_shape().as_list(),
                            expected_shape)
@@ -141,7 +143,7 @@ class S3DGTest(tf.test.TestCase):
     predictions = tf.argmax(input=logits, axis=1)
 
     with self.test_session() as sess:
-      sess.run(tf.compat.v1.global_variables_initializer())
+      sess.run(tf.global_variables_initializer())
       output = sess.run(predictions)
       self.assertEquals(output.shape, (batch_size,))
 

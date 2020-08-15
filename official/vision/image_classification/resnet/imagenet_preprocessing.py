@@ -36,6 +36,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
 from absl import logging
 import tensorflow as tf
 
@@ -78,17 +79,17 @@ def process_record_dataset(dataset,
     is_training: A boolean denoting whether the input is for training.
     batch_size: The number of samples per batch.
     shuffle_buffer: The buffer size to use when shuffling records. A larger
-      value results in better randomness, but smaller values reduce startup
-      time and use less memory.
+      value results in better randomness, but smaller values reduce startup time
+      and use less memory.
     parse_record_fn: A function that takes a raw record and returns the
       corresponding (image, label) pair.
     dtype: Data type to use for images/features.
-    datasets_num_private_threads: Number of threads for a private
-      threadpool created for all datasets computation.
+    datasets_num_private_threads: Number of threads for a private threadpool
+      created for all datasets computation.
     drop_remainder: A boolean indicates whether to drop the remainder of the
       batches. If True, the batch dimension will be static.
-    tf_data_experimental_slack: Whether to enable tf.data's
-      `experimental_slack` option.
+    tf_data_experimental_slack: Whether to enable tf.data's `experimental_slack`
+      option.
 
   Returns:
     Dataset of (image, label) pairs ready for iteration.
@@ -99,8 +100,8 @@ def process_record_dataset(dataset,
     options.experimental_threading.private_threadpool_size = (
         datasets_num_private_threads)
     dataset = dataset.with_options(options)
-    logging.info(
-        'datasets_num_private_threads: %s', datasets_num_private_threads)
+    logging.info('datasets_num_private_threads: %s',
+                 datasets_num_private_threads)
 
   if is_training:
     # Shuffles records before repeating to respect epoch boundaries.
@@ -134,11 +135,13 @@ def get_filenames(is_training, data_dir):
   if is_training:
     return [
         os.path.join(data_dir, 'train-%05d-of-01024' % i)
-        for i in range(_NUM_TRAIN_FILES)]
+        for i in range(_NUM_TRAIN_FILES)
+    ]
   else:
     return [
         os.path.join(data_dir, 'validation-%05d-of-00128' % i)
-        for i in range(128)]
+        for i in range(128)
+    ]
 
 
 def parse_example_proto(example_serialized):
@@ -165,8 +168,8 @@ def parse_example_proto(example_serialized):
     image/encoded: <JPEG encoded string>
 
   Args:
-    example_serialized: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
+    example_serialized: scalar Tensor tf.string containing a serialized Example
+      protocol buffer.
 
   Returns:
     image_buffer: Tensor tf.string containing the contents of a JPEG file.
@@ -177,22 +180,24 @@ def parse_example_proto(example_serialized):
   """
   # Dense features in Example proto.
   feature_map = {
-      'image/encoded': tf.io.FixedLenFeature([], dtype=tf.string,
-                                             default_value=''),
-      'image/class/label': tf.io.FixedLenFeature([], dtype=tf.int64,
-                                                 default_value=-1),
-      'image/class/text': tf.io.FixedLenFeature([], dtype=tf.string,
-                                                default_value=''),
+      'image/encoded':
+          tf.io.FixedLenFeature([], dtype=tf.string, default_value=''),
+      'image/class/label':
+          tf.io.FixedLenFeature([], dtype=tf.int64, default_value=-1),
+      'image/class/text':
+          tf.io.FixedLenFeature([], dtype=tf.string, default_value=''),
   }
   sparse_float32 = tf.io.VarLenFeature(dtype=tf.float32)
   # Sparse features in Example proto.
-  feature_map.update(
-      {k: sparse_float32 for k in [
+  feature_map.update({
+      k: sparse_float32 for k in [
           'image/object/bbox/xmin', 'image/object/bbox/ymin',
-          'image/object/bbox/xmax', 'image/object/bbox/ymax']})
+          'image/object/bbox/xmax', 'image/object/bbox/ymax'
+      ]
+  })
 
-  features = tf.io.parse_single_example(serialized=example_serialized,
-                                        features=feature_map)
+  features = tf.io.parse_single_example(
+      serialized=example_serialized, features=feature_map)
   label = tf.cast(features['image/class/label'], dtype=tf.int32)
 
   xmin = tf.expand_dims(features['image/object/bbox/xmin'].values, 0)
@@ -218,8 +223,8 @@ def parse_record(raw_record, is_training, dtype):
   through preprocessing steps (cropping, flipping, and so on).
 
   Args:
-    raw_record: scalar Tensor tf.string containing a serialized
-      Example protocol buffer.
+    raw_record: scalar Tensor tf.string containing a serialized Example protocol
+      buffer.
     is_training: A boolean denoting whether the input is for training.
     dtype: data type to use for images/features.
 
@@ -240,8 +245,9 @@ def parse_record(raw_record, is_training, dtype):
 
   # Subtract one so that labels are in [0, 1000), and cast to float32 for
   # Keras model.
-  label = tf.cast(tf.cast(tf.reshape(label, shape=[1]), dtype=tf.int32) - 1,
-                  dtype=tf.float32)
+  label = tf.cast(
+      tf.cast(tf.reshape(label, shape=[1]), dtype=tf.int32) - 1,
+      dtype=tf.float32)
   return image, label
 
 
@@ -262,12 +268,14 @@ def get_parse_record_fn(use_keras_image_data_format=False):
   Returns:
     Function to use for parsing the records.
   """
+
   def parse_record_fn(raw_record, is_training, dtype):
     image, label = parse_record(raw_record, is_training, dtype)
     if use_keras_image_data_format:
       if tf.keras.backend.image_data_format() == 'channels_first':
         image = tf.transpose(image, perm=[2, 0, 1])
     return image, label
+
   return parse_record_fn
 
 
@@ -295,11 +303,11 @@ def input_fn(is_training,
       `tf.distribute.Strategy`.
     drop_remainder: A boolean indicates whether to drop the remainder of the
       batches. If True, the batch dimension will be static.
-    tf_data_experimental_slack: Whether to enable tf.data's
-      `experimental_slack` option.
+    tf_data_experimental_slack: Whether to enable tf.data's `experimental_slack`
+      option.
     training_dataset_cache: Whether to cache the training dataset on workers.
-       Typically used to improve training performance when training data is in
-       remote storage and can fit into worker memory.
+      Typically used to improve training performance when training data is in
+      remote storage and can fit into worker memory.
     filenames: Optional field for providing the file names of the TFRecords.
 
   Returns:
@@ -357,8 +365,8 @@ def _decode_crop_and_flip(image_buffer, bbox, num_channels):
   Args:
     image_buffer: scalar string Tensor representing the raw JPEG image buffer.
     bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
-      where each coordinate is [0, 1) and the coordinates are arranged as
-      [ymin, xmin, ymax, xmax].
+      where each coordinate is [0, 1) and the coordinates are arranged as [ymin,
+      xmin, ymax, xmax].
     num_channels: Integer depth of the image buffer for decoding.
 
   Returns:
@@ -414,8 +422,8 @@ def _central_crop(image, crop_height, crop_width):
   crop_top = amount_to_be_cropped_h // 2
   amount_to_be_cropped_w = (width - crop_width)
   crop_left = amount_to_be_cropped_w // 2
-  return tf.slice(
-      image, [crop_top, crop_left, 0], [crop_height, crop_width, -1])
+  return tf.slice(image, [crop_top, crop_left, 0],
+                  [crop_height, crop_width, -1])
 
 
 def _mean_image_subtraction(image, means, num_channels):
@@ -463,8 +471,8 @@ def _smallest_size_at_least(height, width, resize_min):
   Args:
     height: an int32 scalar tensor indicating the current height.
     width: an int32 scalar tensor indicating the current width.
-    resize_min: A python integer or scalar `Tensor` indicating the size of
-      the smallest side after resize.
+    resize_min: A python integer or scalar `Tensor` indicating the size of the
+      smallest side after resize.
 
   Returns:
     new_height: an int32 scalar tensor indicating the new height.
@@ -490,8 +498,8 @@ def _aspect_preserving_resize(image, resize_min):
 
   Args:
     image: A 3-D image `Tensor`.
-    resize_min: A python integer or scalar `Tensor` indicating the size of
-      the smallest side after resize.
+    resize_min: A python integer or scalar `Tensor` indicating the size of the
+      smallest side after resize.
 
   Returns:
     resized_image: A 3-D tensor containing the resized image.
@@ -520,12 +528,17 @@ def _resize_image(image, height, width):
       dimensions have the shape [height, width].
   """
   return tf.compat.v1.image.resize(
-      image, [height, width], method=tf.image.ResizeMethod.BILINEAR,
+      image, [height, width],
+      method=tf.image.ResizeMethod.BILINEAR,
       align_corners=False)
 
 
-def preprocess_image(image_buffer, bbox, output_height, output_width,
-                     num_channels, is_training=False):
+def preprocess_image(image_buffer,
+                     bbox,
+                     output_height,
+                     output_width,
+                     num_channels,
+                     is_training=False):
   """Preprocesses the given image.
 
   Preprocessing includes decoding, cropping, and resizing for both training
@@ -535,8 +548,8 @@ def preprocess_image(image_buffer, bbox, output_height, output_width,
   Args:
     image_buffer: scalar string Tensor representing the raw JPEG image buffer.
     bbox: 3-D float Tensor of bounding boxes arranged [1, num_boxes, coords]
-      where each coordinate is [0, 1) and the coordinates are arranged as
-      [ymin, xmin, ymax, xmax].
+      where each coordinate is [0, 1) and the coordinates are arranged as [ymin,
+      xmin, ymax, xmax].
     output_height: The height of the image after preprocessing.
     output_width: The width of the image after preprocessing.
     num_channels: Integer depth of the image buffer for decoding.

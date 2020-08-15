@@ -59,6 +59,14 @@ class ComputeBleuTest(tf.test.TestCase):
     tokenized = compute_bleu.bleu_tokenize(s)
     self.assertEqual(["Test0", ",", "1", "two", ",", "3"], tokenized)
 
+  def test_bleu_list(self):
+    ref = ["test 1 two 3", "more tests!"]
+    hyp = ["test 1 two 3", "More tests!"]
+    uncased_score = compute_bleu.bleu_on_list(ref, hyp, False)
+    cased_score = compute_bleu.bleu_on_list(ref, hyp, True)
+    self.assertEqual(uncased_score, 100)
+    self.assertLess(cased_score, 100)
+
 
 if __name__ == "__main__":
   tf.test.main()

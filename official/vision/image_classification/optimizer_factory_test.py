@@ -19,20 +19,24 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
-import tensorflow as tf
-
 from absl.testing import parameterized
+
+import tensorflow as tf
 from official.vision.image_classification import optimizer_factory
 from official.vision.image_classification.configs import base_configs
 
 
 class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
+  def build_toy_model(self) -> tf.keras.Model:
+    """Creates a toy `tf.Keras.Model`."""
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Dense(1, input_shape=(1,)))
+    return model
+
   @parameterized.named_parameters(
-      ('sgd', 'sgd', 0., False),
-      ('momentum', 'momentum', 0., False),
-      ('rmsprop', 'rmsprop', 0., False),
-      ('adam', 'adam', 0., False),
+      ('sgd', 'sgd', 0., False), ('momentum', 'momentum', 0., False),
+      ('rmsprop', 'rmsprop', 0., False), ('adam', 'adam', 0., False),
       ('adamw', 'adamw', 0., False),
       ('momentum_lookahead', 'momentum', 0., True),
       ('sgd_ema', 'sgd', 0.999, False),
@@ -40,6 +44,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
       ('rmsprop_ema', 'rmsprop', 0.999, False))
   def test_optimizer(self, optimizer_name, moving_average_decay, lookahead):
     """Smoke test to be sure no syntax errors."""
+    model = self.build_toy_model()
     params = {
         'learning_rate': 0.001,
         'rho': 0.09,
@@ -51,7 +56,8 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     optimizer = optimizer_factory.build_optimizer(
         optimizer_name=optimizer_name,
         base_learning_rate=params['learning_rate'],
-        params=params)
+        params=params,
+        model=model)
     self.assertTrue(issubclass(type(optimizer), tf.keras.optimizers.Optimizer))
 
   def test_unknown_optimizer(self):
@@ -76,16 +82,13 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     train_steps = 1
 
     lr = optimizer_factory.build_learning_rate(
-        params=params,
-        batch_size=batch_size,
-        train_steps=train_steps)
+        params=params, batch_size=batch_size, train_steps=train_steps)
     self.assertTrue(
         issubclass(
             type(lr), tf.keras.optimizers.schedules.LearningRateSchedule))
 
-  @parameterized.named_parameters(
-      ('exponential', 'exponential'),
-      ('piecewise_constant_with_warmup', 'piecewise_constant_with_warmup'))
+  @parameterized.named_parameters(('exponential', 'exponential'),
+                                  ('cosine_with_warmup', 'cosine_with_warmup'))
   def test_learning_rate_with_decay_and_warmup(self, lr_decay_type):
     """Basic smoke test for syntax."""
     params = base_configs.LearningRateConfig(
@@ -99,11 +102,13 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
         boundaries=[0],
         multipliers=[0, 1])
     batch_size = 1
+    train_epochs = 1
     train_steps = 1
 
     lr = optimizer_factory.build_learning_rate(
         params=params,
         batch_size=batch_size,
+        train_epochs=train_epochs,
         train_steps=train_steps)
     self.assertTrue(
         issubclass(

@@ -13,12 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 """BottleneckConvLSTMCell implementation."""
+import functools
 
 import tensorflow.compat.v1 as tf
+import tf_slim as slim
 
-from tensorflow.contrib import layers as contrib_layers
 from tensorflow.contrib import rnn as contrib_rnn
-from tensorflow.contrib import slim
 from tensorflow.contrib.framework.python.ops import variables as contrib_variables
 import lstm_object_detection.lstm.utils as lstm_utils
 
@@ -121,7 +121,7 @@ class BottleneckConvLSTMCell(contrib_rnn.RNNCell):
       if self._pre_bottleneck:
         bottleneck = inputs
       else:
-        bottleneck = contrib_layers.separable_conv2d(
+        bottleneck = slim.separable_conv2d(
             tf.concat([inputs, h], 3),
             self._num_units,
             self._filter_size,
@@ -133,7 +133,7 @@ class BottleneckConvLSTMCell(contrib_rnn.RNNCell):
         if self._viz_gates:
           slim.summaries.add_histogram_summary(bottleneck, 'bottleneck')
 
-      concat = contrib_layers.separable_conv2d(
+      concat = slim.separable_conv2d(
           bottleneck,
           4 * self._num_units,
           self._filter_size,
@@ -243,7 +243,7 @@ class BottleneckConvLSTMCell(contrib_rnn.RNNCell):
       state = tf.reshape(state, [batch_size, height, width, -1])
     with tf.variable_scope('conv_lstm_cell', reuse=tf.AUTO_REUSE):
       scope_name = 'bottleneck_%d' % input_index
-      inputs = contrib_layers.separable_conv2d(
+      inputs = slim.separable_conv2d(
           tf.concat([inputs, state], 3),
           self.output_size[-1],
           self._filter_size,
@@ -287,7 +287,8 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
                output_bottleneck=False,
                pre_bottleneck=False,
                is_quantized=False,
-               visualize_gates=False):
+               visualize_gates=False,
+               conv_op_overrides=None):
     """Initialize the basic LSTM cell.
 
     Args:
@@ -313,6 +314,10 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
         quantization friendly concat and separable_conv2d ops.
       visualize_gates: if True, add histogram summaries of all gates and outputs
         to tensorboard
+      conv_op_overrides: A list of convolutional operations that override the
+        'bottleneck' and 'convolution' layers before lstm gates. If None, the
+        original implementation of seperable_conv will be used. The length of
+        the list should be two.
 
     Raises:
       ValueError: when both clip_state and scale_state are enabled.
@@ -338,6 +343,10 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
     self._is_quantized = is_quantized
     for dim in self._output_size:
       self._param_count *= dim
+    self._conv_op_overrides = conv_op_overrides
+    if self._conv_op_overrides and len(self._conv_op_overrides) != 2:
+      raise ValueError('Bottleneck and Convolutional layer should be overriden'
+                       'together')
 
   @property
   def state_size(self):
@@ -407,23 +416,26 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
         if self._pre_bottleneck:
           bottleneck = inputs_list[k]
         else:
+          if self._conv_op_overrides:
+            bottleneck_fn = self._conv_op_overrides[0]
+          else:
+            bottleneck_fn = functools.partial(
+                lstm_utils.quantizable_separable_conv2d,
+                kernel_size=self._filter_size,
+                activation_fn=self._activation)
           if self._use_batch_norm:
-            b_x = lstm_utils.quantizable_separable_conv2d(
-                inputs,
-                self._num_units // self._groups,
-                self._filter_size,
+            b_x = bottleneck_fn(
+                inputs=inputs,
+                num_outputs=self._num_units // self._groups,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
-                activation_fn=None,
                 normalizer_fn=None,
                 scope='bottleneck_%d_x' % k)
-            b_h = lstm_utils.quantizable_separable_conv2d(
-                h_list[k],
-                self._num_units // self._groups,
-                self._filter_size,
+            b_h = bottleneck_fn(
+                inputs=h_list[k],
+                num_outputs=self._num_units // self._groups,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
-                activation_fn=None,
                 normalizer_fn=None,
                 scope='bottleneck_%d_h' % k)
             b_x = slim.batch_norm(
@@ -447,24 +459,26 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
                 is_training=False,
                 is_quantized=self._is_quantized,
                 scope='bottleneck_%d/quantized_concat' % k)
-
-            bottleneck = lstm_utils.quantizable_separable_conv2d(
-                bottleneck_concat,
-                self._num_units // self._groups,
-                self._filter_size,
+            bottleneck = bottleneck_fn(
+                inputs=bottleneck_concat,
+                num_outputs=self._num_units // self._groups,
                 is_quantized=self._is_quantized,
                 depth_multiplier=1,
-                activation_fn=self._activation,
                 normalizer_fn=None,
                 scope='bottleneck_%d' % k)
 
-        concat = lstm_utils.quantizable_separable_conv2d(
-            bottleneck,
-            4 * self._num_units // self._groups,
-            self._filter_size,
+        if self._conv_op_overrides:
+          conv_fn = self._conv_op_overrides[1]
+        else:
+          conv_fn = functools.partial(
+              lstm_utils.quantizable_separable_conv2d,
+              kernel_size=self._filter_size,
+              activation_fn=None)
+        concat = conv_fn(
+            inputs=bottleneck,
+            num_outputs=4 * self._num_units // self._groups,
             is_quantized=self._is_quantized,
             depth_multiplier=1,
-            activation_fn=None,
             normalizer_fn=None,
             scope='concat_conv_%d' % k)
 
@@ -492,14 +506,6 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
             is_quantized=self._is_quantized,
             scope='forget_gate_%d/add_quant' % k)
         f_act = tf.sigmoid(f_add)
-        # The quantization range is fixed for the sigmoid to ensure that zero
-        # is exactly representable.
-        f_act = lstm_utils.fixed_quantize_op(
-            f_act,
-            fixed_min=0.0,
-            fixed_max=1.0,
-            is_quantized=self._is_quantized,
-            scope='forget_gate_%d/act_quant' % k)
 
         a = c_list[k] * f_act
         a = lstm_utils.quantize_op(
@@ -509,14 +515,6 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
             scope='forget_gate_%d/mul_quant' % k)
 
         i_act = tf.sigmoid(i)
-        # The quantization range is fixed for the sigmoid to ensure that zero
-        # is exactly representable.
-        i_act = lstm_utils.fixed_quantize_op(
-            i_act,
-            fixed_min=0.0,
-            fixed_max=1.0,
-            is_quantized=self._is_quantized,
-            scope='input_gate_%d/act_quant' % k)
 
         j_act = self._activation(j)
         # The quantization range is fixed for the relu6 to ensure that zero
@@ -569,14 +567,6 @@ class GroupedConvLSTMCell(contrib_rnn.RNNCell):
             scope='new_c_%d/act_quant' % k)
 
         o_act = tf.sigmoid(o)
-        # The quantization range is fixed for the sigmoid to ensure that zero
-        # is exactly representable.
-        o_act = lstm_utils.fixed_quantize_op(
-            o_act,
-            fixed_min=0.0,
-            fixed_max=1.0,
-            is_quantized=self._is_quantized,
-            scope='output_%d/act_quant' % k)
 
         new_h = new_c_act * o_act
         # The quantization range is fixed since it is input to a concat.

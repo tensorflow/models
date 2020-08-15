@@ -19,7 +19,7 @@ Contains Box prediction head classes for different meta architectures.
 All the box prediction heads have a _predict function that receives the
 `features` as the first argument and returns `box_encodings`.
 """
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.predictors.heads import head
 

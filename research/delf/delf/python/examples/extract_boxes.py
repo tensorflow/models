@@ -34,6 +34,7 @@ import tensorflow as tf
 
 from tensorflow.python.platform import app
 from delf import box_io
+from delf import utils
 from delf import detector
 
 cmd_args = None
@@ -58,7 +59,7 @@ def _ReadImageList(list_path):
   Returns:
     image_paths: List of image paths.
   """
-  with tf.gfile.GFile(list_path, 'r') as f:
+  with tf.io.gfile.GFile(list_path, 'r') as f:
     image_paths = f.readlines()
   image_paths = [entry.rstrip() for entry in image_paths]
   return image_paths
@@ -130,82 +131,60 @@ def main(argv):
   if len(argv) > 1:
     raise RuntimeError('Too many command-line arguments.')
 
-  tf.logging.set_verbosity(tf.logging.INFO)
-
   # Read list of images.
-  tf.logging.info('Reading list of images...')
+  print('Reading list of images...')
   image_paths = _ReadImageList(cmd_args.list_images_path)
   num_images = len(image_paths)
-  tf.logging.info('done! Found %d images', num_images)
+  print(f'done! Found {num_images} images')
 
   # Create output directories if necessary.
-  if not tf.gfile.Exists(cmd_args.output_dir):
-    tf.gfile.MakeDirs(cmd_args.output_dir)
-  if cmd_args.output_viz_dir and not tf.gfile.Exists(cmd_args.output_viz_dir):
-    tf.gfile.MakeDirs(cmd_args.output_viz_dir)
+  if not tf.io.gfile.exists(cmd_args.output_dir):
+    tf.io.gfile.makedirs(cmd_args.output_dir)
+  if cmd_args.output_viz_dir and not tf.io.gfile.exists(
+      cmd_args.output_viz_dir):
+    tf.io.gfile.makedirs(cmd_args.output_viz_dir)
 
-  # Tell TensorFlow that the model will be built into the default Graph.
-  with tf.Graph().as_default():
-    # Reading list of images.
-    filename_queue = tf.train.string_input_producer(image_paths, shuffle=False)
-    reader = tf.WholeFileReader()
-    _, value = reader.read(filename_queue)
-    image_tf = tf.image.decode_jpeg(value, channels=3)
-    image_tf = tf.expand_dims(image_tf, 0)
+  detector_fn = detector.MakeDetector(cmd_args.detector_path)
 
-    with tf.Session() as sess:
-      init_op = tf.global_variables_initializer()
-      sess.run(init_op)
+  start = time.time()
+  for i, image_path in enumerate(image_paths):
+    # Report progress once in a while.
+    if i == 0:
+      print('Starting to detect objects in images...')
+    elif i % _STATUS_CHECK_ITERATIONS == 0:
+      elapsed = (time.time() - start)
+      print(
+          f'Processing image {i} out of {num_images}, last '
+          f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds'
+          )
+      start = time.time()
 
-      detector_fn = detector.MakeDetector(sess, cmd_args.detector_path)
+    # If descriptor already exists, skip its computation.
+    base_boxes_filename, _ = os.path.splitext(os.path.basename(image_path))
+    out_boxes_filename = base_boxes_filename + _BOX_EXT
+    out_boxes_fullpath = os.path.join(cmd_args.output_dir,
+                                      out_boxes_filename)
+    if tf.io.gfile.exists(out_boxes_fullpath):
+      print(f'Skipping {image_path}')
+      continue
 
-      # Start input enqueue threads.
-      coord = tf.train.Coordinator()
-      threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-      start = time.clock()
-      for i, image_path in enumerate(image_paths):
-        # Write to log-info once in a while.
-        if i == 0:
-          tf.logging.info('Starting to detect objects in images...')
-        elif i % _STATUS_CHECK_ITERATIONS == 0:
-          elapsed = (time.clock() - start)
-          tf.logging.info(
-              'Processing image %d out of %d, last %d '
-              'images took %f seconds', i, num_images, _STATUS_CHECK_ITERATIONS,
-              elapsed)
-          start = time.clock()
+    im = np.expand_dims(np.array(utils.RgbLoader(image_paths[i])), 0)
 
-        # # Get next image.
-        im = sess.run(image_tf)
+    # Extract and save boxes.
+    (boxes_out, scores_out, class_indices_out) = detector_fn(im)
+    (selected_boxes, selected_scores,
+     selected_class_indices) = _FilterBoxesByScore(boxes_out[0],
+                                                   scores_out[0],
+                                                   class_indices_out[0],
+                                                   cmd_args.detector_thresh)
 
-        # If descriptor already exists, skip its computation.
-        base_boxes_filename, _ = os.path.splitext(os.path.basename(image_path))
-        out_boxes_filename = base_boxes_filename + _BOX_EXT
-        out_boxes_fullpath = os.path.join(cmd_args.output_dir,
-                                          out_boxes_filename)
-        if tf.gfile.Exists(out_boxes_fullpath):
-          tf.logging.info('Skipping %s', image_path)
-          continue
-
-        # Extract and save boxes.
-        (boxes_out, scores_out, class_indices_out) = detector_fn(im)
-        (selected_boxes, selected_scores,
-         selected_class_indices) = _FilterBoxesByScore(boxes_out[0],
-                                                       scores_out[0],
-                                                       class_indices_out[0],
-                                                       cmd_args.detector_thresh)
-
-        box_io.WriteToFile(out_boxes_fullpath, selected_boxes, selected_scores,
-                           selected_class_indices)
-        if cmd_args.output_viz_dir:
-          out_viz_filename = base_boxes_filename + _VIZ_SUFFIX
-          out_viz_fullpath = os.path.join(cmd_args.output_viz_dir,
-                                          out_viz_filename)
-          _PlotBoxesAndSaveImage(im[0], selected_boxes, out_viz_fullpath)
-
-      # Finalize enqueue threads.
-      coord.request_stop()
-      coord.join(threads)
+    box_io.WriteToFile(out_boxes_fullpath, selected_boxes, selected_scores,
+                       selected_class_indices)
+    if cmd_args.output_viz_dir:
+      out_viz_filename = base_boxes_filename + _VIZ_SUFFIX
+      out_viz_fullpath = os.path.join(cmd_args.output_viz_dir,
+                                      out_viz_filename)
+      _PlotBoxesAndSaveImage(im[0], selected_boxes, out_viz_fullpath)
 
 
 if __name__ == '__main__':

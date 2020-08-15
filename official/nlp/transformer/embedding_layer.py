@@ -43,6 +43,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
       self.shared_weights = self.add_weight(
           "weights",
           shape=[self.vocab_size, self.hidden_size],
+          dtype=tf.float32,
           initializer=tf.random_normal_initializer(
               mean=0., stddev=self.hidden_size**-0.5))
     super(EmbeddingSharedWeights, self).build(input_shape)
@@ -59,6 +60,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
     Args:
       inputs: An int64 tensor with shape [batch_size, length]
       mode: string, a valid value is one of "embedding" and "linear".
+
     Returns:
       outputs: (1) If mode == "embedding", output embedding tensor, float32 with
         shape [batch_size, length, embedding_size]; (2) mode == "linear", output
@@ -81,7 +83,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
       mask = tf.cast(tf.not_equal(inputs, 0), embeddings.dtype)
       embeddings *= tf.expand_dims(mask, -1)
       # Scale embedding by the sqrt of the hidden size
-      embeddings *= self.hidden_size ** 0.5
+      embeddings *= self.hidden_size**0.5
 
       return embeddings
 
@@ -90,6 +92,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
 
     Args:
       inputs: A float32 tensor with shape [batch_size, length, hidden_size]
+
     Returns:
       float32 tensor with shape [batch_size, length, vocab_size].
     """

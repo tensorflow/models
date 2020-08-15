@@ -16,9 +16,9 @@ Self-supervised Learning of Language Representations]
 (https://arxiv.org/abs/1909.11942). Compared with [BERT](https://arxiv.org/abs/1810.04805), ALBERT refactorizes embedding parameters
 into two smaller matrices and shares parameters across layers.
 
-* [`MaskedLM`](masked_lm.py) implements a masked language model for BERT pretraining. It assumes that the network being passed has a `get_embedding_table()` method.
-
-* [`Classification`](classification.py) contains a single hidden layer, and is intended for use as a classification head.
+* [`Classification`](classification.py) contains a single hidden layer, and is
+intended for use as a classification or regression (if number of classes is set
+to 1) head.
 
 * [`SpanLabeling`](span_labeling.py) implements a single-span labeler (that is, a prediction head that can predict one start and end index per batch item) based on a single dense hidden layer. It can be used in the SQuAD task.
 

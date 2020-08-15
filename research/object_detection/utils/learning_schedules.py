@@ -20,7 +20,7 @@ from __future__ import print_function
 import numpy as np
 from six.moves import range
 from six.moves import zip
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 def exponential_decay_with_burnin(global_step,

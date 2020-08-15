@@ -1,24 +1,45 @@
-## Attention-based Extraction of Structured Information from Street View Imagery
+# Attention-based Extraction of Structured Information from Street View Imagery
+
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/attention-based-extraction-of-structured/optical-character-recognition-on-fsns-test)](https://paperswithcode.com/sota/optical-character-recognition-on-fsns-test?p=attention-based-extraction-of-structured)
+[![Paper](http://img.shields.io/badge/paper-arXiv.1704.03549-B3181B.svg)](https://arxiv.org/abs/1704.03549)
+[![TensorFlow 1.15](https://img.shields.io/badge/tensorflow-1.15-brightgreen)](https://github.com/tensorflow/tensorflow/releases/tag/v1.15.0)
 
 *A TensorFlow model for real-world image text extraction problems.*
 
 This folder contains the code needed to train a new Attention OCR model on the
-[FSNS dataset][FSNS] dataset to transcribe street names in France. You can
-also use it to train it on your own data.
+[FSNS dataset][FSNS] to transcribe street names in France. You can also train the code on your own data.
 
 More details can be found in our paper:
 
 ["Attention-based Extraction of Structured Information from Street View
 Imagery"](https://arxiv.org/abs/1704.03549)
 
+## Description
+
+* Paper presents a model based on ConvNets, RNN's and a novel attention mechanism.
+Achieves **84.2%** on FSNS beating the previous benchmark (**72.46%**). Also studies
+the speed/accuracy tradeoff that results from using CNN feature extractors of
+different depths.
+
 ## Contacts
 
-Authors:
-Zbigniew Wojna <zbigniewwojna@gmail.com>,
-Alexander Gorban <gorban@google.com>
+Authors
 
-Pull requests:
-[alexgorban](https://github.com/alexgorban)
+* Zbigniew Wojna (zbigniewwojna@gmail.com)
+* Alexander Gorban (gorban@google.com)
+
+Maintainer
+
+* Xavier Gibert ([@xavigibert](https://github.com/xavigibert))
+
+## Table of Contents
+
+* [Requirements](https://github.com/tensorflow/models/blob/master/research/attention_ocr/README.md#requirements)
+* [Dataset](https://github.com/tensorflow/models/blob/master/research/attention_ocr/README.md#dataset)
+* [How to use this code](https://github.com/tensorflow/models/blob/master/research/attention_ocr/README.md#how-to-use-this-code)
+* [Using your own image data](https://github.com/tensorflow/models/blob/master/research/attention_ocr/README.md#using-your-own-image-data)
+* [How to use a pre-trained model](https://github.com/tensorflow/models/blob/master/research/attention_ocr/README.md#how-to-use-a-pre-trained-model)
+* [Disclaimer](https://github.com/tensorflow/models/blob/master/research/attention_ocr/README.md#disclaimer)
 
 ## Requirements
 
@@ -44,6 +65,42 @@ cd ..
 
 [TF]: https://www.tensorflow.org/install/
 [FSNS]: https://github.com/tensorflow/models/tree/master/research/street
+
+## Dataset
+
+The French Street Name Signs (FSNS) dataset is split into subsets, 
+each of which is composed of multiple files. Note that these datasets 
+are very large. The approximate sizes are:
+
+* Train: 512 files of 300MB each.
+* Validation: 64 files of 40MB each.
+* Test: 64 files of 50MB each.
+* The datasets download includes a directory `testdata` that contains 
+some small datasets that are big enough to test that models can 
+actually learn something.
+* Total: around 158GB
+
+The download paths are in the following list:
+
+```
+https://download.tensorflow.org/data/fsns-20160927/charset_size=134.txt
+https://download.tensorflow.org/data/fsns-20160927/test/test-00000-of-00064
+...
+https://download.tensorflow.org/data/fsns-20160927/test/test-00063-of-00064
+https://download.tensorflow.org/data/fsns-20160927/testdata/arial-32-00000-of-00001
+https://download.tensorflow.org/data/fsns-20160927/testdata/fsns-00000-of-00001
+https://download.tensorflow.org/data/fsns-20160927/testdata/mnist-sample-00000-of-00001
+https://download.tensorflow.org/data/fsns-20160927/testdata/numbers-16-00000-of-00001
+https://download.tensorflow.org/data/fsns-20160927/train/train-00000-of-00512
+...
+https://download.tensorflow.org/data/fsns-20160927/train/train-00511-of-00512
+https://download.tensorflow.org/data/fsns-20160927/validation/validation-00000-of-00064
+...
+https://download.tensorflow.org/data/fsns-20160927/validation/validation-00063-of-00064
+```
+
+All URLs are stored in the [research/street](https://github.com/tensorflow/models/tree/master/research/street) 
+repository in the text file `python/fsns_urls.txt`.
 
 ## How to use this code
 
@@ -76,7 +133,7 @@ tar xf attention_ocr_2017_08_09.tar.gz
 python train.py --checkpoint=model.ckpt-399731
 ```
 
-## How to use your own image data to train the model
+## Using your own image data
 
 You need to define a new dataset. There are two options:
 
@@ -162,6 +219,14 @@ implement one in Python or C++.
 
 The recommended way is to use the [Serving infrastructure][serving].
 
+To export to SavedModel format:
+
+```
+python model_export.py \
+  --checkpoint=model.ckpt-399731 \
+  --export_dir=/tmp/attention_ocr_export
+```
+
 Alternatively you can:
 1. define a placeholder for images (or use directly an numpy array)
 2. [create a graph ](https://github.com/tensorflow/models/blob/master/research/attention_ocr/python/eval.py#L60)
@@ -184,7 +249,7 @@ other than a one time experiment please use the [TensorFlow Serving][serving].
 
 [1]: https://github.com/tensorflow/tensorflow/blob/aaf7adc/tensorflow/contrib/rnn/python/tools/checkpoint_convert.py
 [2]: https://www.tensorflow.org/api_docs/python/tf/contrib/framework/assign_from_checkpoint_fn
-[serving]: https://tensorflow.github.io/serving/serving_basic
+[serving]: https://www.tensorflow.org/tfx/serving/serving_basic
 
 ## Disclaimer
 

@@ -1,18 +1,20 @@
 ---
-name: Documentation Issue for Official Models
-about: Use this template for reporting a documentation issue for projects under the “official” folder
+name: "[Official Model] Documentation Issue"
+about: Use this template for reporting a documentation issue for the “official” directory
 labels: type:docs,models:official
 
 ---
-<!--
-Please make sure that this is a documentation issue. 
 
-As per our GitHub Policy (https://github.com/tensorflow/models/blob/master/ISSUES.md), we only address code bugs, documentation issues, and feature requests on GitHub.
+# Prerequisites
 
-Please go to Stack Overflow (http://stackoverflow.com/questions/tagged/tensorflow-model-garden) for help and support.
--->
+Please answer the following question for yourself before submitting an issue.
 
-**Documentation URL(s) with the issue:**
-<!-- Please provide a link to the documentation entry, for example: https://github.com/tensorflow/models/tree/master/official/README.md -->
+- [ ] I checked to make sure that this issue has not been filed already.
 
-**Description of the issue (what needs to be changed):**
+## 1. The entire URL of the documentation with the issue
+
+https://github.com/tensorflow/models/tree/master/official/...
+
+## 2. Describe the issue
+
+A clear and concise description of what needs to be changed.

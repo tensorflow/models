@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
@@ -30,19 +31,18 @@ from official.nlp.modeling.models import bert_classifier
 @keras_parameterized.run_all_keras_modes
 class BertClassifierTest(keras_parameterized.TestCase):
 
-  def test_bert_trainer(self):
+  @parameterized.parameters(1, 3)
+  def test_bert_trainer(self, num_classes):
     """Validate that the Keras object can be created."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
     sequence_length = 512
     test_network = networks.TransformerEncoder(
-        vocab_size=vocab_size, num_layers=2, sequence_length=sequence_length)
+        vocab_size=vocab_size, num_layers=2)
 
     # Create a BERT trainer with the created network.
-    num_classes = 3
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network,
-        num_classes=num_classes)
+        test_network, num_classes=num_classes)
 
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -56,16 +56,16 @@ class BertClassifierTest(keras_parameterized.TestCase):
     expected_classification_shape = [None, num_classes]
     self.assertAllEqual(expected_classification_shape, cls_outs.shape.as_list())
 
-  def test_bert_trainer_tensor_call(self):
+  @parameterized.parameters(1, 2)
+  def test_bert_trainer_tensor_call(self, num_classes):
     """Validate that the Keras object can be invoked."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
-    test_network = networks.TransformerEncoder(
-        vocab_size=100, num_layers=2, sequence_length=2)
+    test_network = networks.TransformerEncoder(vocab_size=100, num_layers=2)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network, num_classes=2)
+        test_network, num_classes=num_classes)
 
     # Create a set of 2-dimensional data tensors to feed into the model.
     word_ids = tf.constant([[1, 1], [2, 2]], dtype=tf.int32)
@@ -81,13 +81,12 @@ class BertClassifierTest(keras_parameterized.TestCase):
     """Validate that the BERT trainer can be serialized and deserialized."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
-    test_network = networks.TransformerEncoder(
-        vocab_size=100, num_layers=2, sequence_length=5)
+    test_network = networks.TransformerEncoder(vocab_size=100, num_layers=2)
 
     # Create a BERT trainer with the created network. (Note that all the args
     # are different, so we can catch any serialization mismatches.)
     bert_trainer_model = bert_classifier.BertClassifier(
-        test_network, num_classes=4, initializer='zeros', output='predictions')
+        test_network, num_classes=4, initializer='zeros')
 
     # Create another BERT trainer via serialization and deserialization.
     config = bert_trainer_model.get_config()

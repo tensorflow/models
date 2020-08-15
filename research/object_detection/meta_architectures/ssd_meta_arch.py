@@ -18,10 +18,8 @@ General tensorflow implementation of convolutional Multibox/SSD detection
 models.
 """
 import abc
-import tensorflow as tf
-from tensorflow.contrib import slim as contrib_slim
-from tensorflow.contrib import tpu as contrib_tpu
-
+import tensorflow.compat.v1 as tf
+from tensorflow.python.util.deprecation import deprecated_args
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.core import matcher
@@ -33,7 +31,14 @@ from object_detection.utils import shape_utils
 from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils
 
-slim = contrib_slim
+
+# pylint: disable=g-import-not-at-top
+try:
+  import tf_slim as slim
+except ImportError:
+  # TF 2.0 doesn't ship with contrib.
+  pass
+# pylint: enable=g-import-not-at-top
 
 
 class SSDFeatureExtractor(object):
@@ -245,39 +250,13 @@ class SSDKerasFeatureExtractor(tf.keras.Model):
   def call(self, inputs, **kwargs):
     return self._extract_features(inputs)
 
-  def restore_from_classification_checkpoint_fn(self, feature_extractor_scope):
-    """Returns a map of variables to load from a foreign checkpoint.
-
-    Args:
-      feature_extractor_scope: A scope name for the feature extractor.
-
-    Returns:
-      A dict mapping variable names (to load from a checkpoint) to variables in
-      the model graph.
-    """
-    variables_to_restore = {}
-    if tf.executing_eagerly():
-      for variable in self.variables:
-        # variable.name includes ":0" at the end, but the names in the
-        # checkpoint do not have the suffix ":0". So, we strip it here.
-        var_name = variable.name[:-2]
-        if var_name.startswith(feature_extractor_scope + '/'):
-          var_name = var_name.replace(feature_extractor_scope + '/', '')
-        variables_to_restore[var_name] = variable
-    else:
-      # b/137854499: use global_variables.
-      for variable in variables_helper.get_global_variables_safely():
-        var_name = variable.op.name
-        if var_name.startswith(feature_extractor_scope + '/'):
-          var_name = var_name.replace(feature_extractor_scope + '/', '')
-          variables_to_restore[var_name] = variable
-
-    return variables_to_restore
-
 
 class SSDMetaArch(model.DetectionModel):
   """SSD Meta-architecture definition."""
 
+  @deprecated_args(None,
+                   'NMS is always placed on TPU; do not use nms_on_host '
+                   'as it has no effect.', 'nms_on_host')
   def __init__(self,
                is_training,
                anchor_generator,
@@ -457,7 +436,10 @@ class SSDMetaArch(model.DetectionModel):
 
     self._return_raw_detections_during_predict = (
         return_raw_detections_during_predict)
-    self._nms_on_host = nms_on_host
+
+  @property
+  def feature_extractor(self):
+    return self._feature_extractor
 
   @property
   def anchors(self):
@@ -497,12 +479,9 @@ class SSDMetaArch(model.DetectionModel):
       ValueError: if inputs tensor does not have type tf.float32
     """
     with tf.name_scope('Preprocessor'):
-      (resized_inputs,
-       true_image_shapes) = shape_utils.resize_images_and_return_shapes(
-           inputs, self._image_resizer_fn)
-
-      return (self._feature_extractor.preprocess(resized_inputs),
-              true_image_shapes)
+      normalized_inputs = self._feature_extractor.preprocess(inputs)
+      return shape_utils.resize_images_and_return_shapes(
+          normalized_inputs, self._image_resizer_fn)
 
   def _compute_clip_window(self, preprocessed_images, true_image_shapes):
     """Computes clip window to use during post_processing.
@@ -780,36 +759,16 @@ class SSDMetaArch(model.DetectionModel):
             detection_keypoints, 'raw_keypoint_locations')
         additional_fields[fields.BoxListFields.keypoints] = detection_keypoints
 
-      with tf.init_scope():
-        if tf.executing_eagerly():
-          # soft device placement in eager mode will automatically handle
-          # outside compilation.
-          def _non_max_suppression_wrapper(kwargs):
-            return self._non_max_suppression_fn(**kwargs)
-        else:
-          def _non_max_suppression_wrapper(kwargs):
-            if self._nms_on_host:
-              # Note: NMS is not memory efficient on TPU. This force the NMS
-              # to run outside of TPU.
-              return contrib_tpu.outside_compilation(
-                  lambda x: self._non_max_suppression_fn(**x), kwargs)
-            else:
-              return self._non_max_suppression_fn(**kwargs)
-
       (nmsed_boxes, nmsed_scores, nmsed_classes, nmsed_masks,
        nmsed_additional_fields,
-       num_detections) = _non_max_suppression_wrapper({
-           'boxes':
+       num_detections) = self._non_max_suppression_fn(
            detection_boxes,
-           'scores':
            detection_scores,
-           'clip_window':
-           self._compute_clip_window(preprocessed_images, true_image_shapes),
-           'additional_fields':
-           additional_fields,
-           'masks':
-           prediction_dict.get('mask_predictions')
-       })
+           clip_window=self._compute_clip_window(
+               preprocessed_images, true_image_shapes),
+           additional_fields=additional_fields,
+           masks=prediction_dict.get('mask_predictions'))
+
       detection_dict = {
           fields.DetectionResultFields.detection_boxes:
               nmsed_boxes,
@@ -817,9 +776,6 @@ class SSDMetaArch(model.DetectionModel):
               nmsed_scores,
           fields.DetectionResultFields.detection_classes:
               nmsed_classes,
-          fields.DetectionResultFields.detection_multiclass_scores:
-              nmsed_additional_fields.get(
-                  'multiclass_scores') if nmsed_additional_fields else None,
           fields.DetectionResultFields.num_detections:
               tf.cast(num_detections, dtype=tf.float32),
           fields.DetectionResultFields.raw_detection_boxes:
@@ -827,6 +783,12 @@ class SSDMetaArch(model.DetectionModel):
           fields.DetectionResultFields.raw_detection_scores:
               detection_scores_with_background
       }
+      if (nmsed_additional_fields is not None and
+          fields.InputDataFields.multiclass_scores in nmsed_additional_fields):
+        detection_dict[
+            fields.DetectionResultFields.detection_multiclass_scores] = (
+                nmsed_additional_fields[
+                    fields.InputDataFields.multiclass_scores])
       if (nmsed_additional_fields is not None and
           'anchor_indices' in nmsed_additional_fields):
         detection_dict.update({
@@ -907,6 +869,8 @@ class SSDMetaArch(model.DetectionModel):
       if self.groundtruth_has_field(fields.InputDataFields.is_annotated):
         losses_mask = tf.stack(self.groundtruth_lists(
             fields.InputDataFields.is_annotated))
+
+
       location_losses = self._localization_loss(
           prediction_dict['box_encodings'],
           batch_reg_targets,
@@ -1068,10 +1032,14 @@ class SSDMetaArch(model.DetectionModel):
       batch_reg_targets: a tensor with shape [batch_size, num_anchors,
         box_code_dimension]
       batch_reg_weights: a tensor with shape [batch_size, num_anchors],
-      match_list: a list of matcher.Match objects encoding the match between
-        anchors and groundtruth boxes for each image of the batch,
-        with rows of the Match objects corresponding to groundtruth boxes
-        and columns corresponding to anchors.
+      match: an int32 tensor of shape [batch_size, num_anchors], containing
+        result of anchor groundtruth matching. Each position in the tensor
+        indicates an anchor and holds the following meaning:
+        (1) if match[x, i] >= 0, anchor i is matched with groundtruth
+            match[x, i].
+        (2) if match[x, i]=-1, anchor i is marked to be background .
+        (3) if match[x, i]=-2, anchor i is ignored since it is not background
+            and does not have sufficient overlap to call it a foreground.
     """
     groundtruth_boxlists = [
         box_list.BoxList(boxes) for boxes in groundtruth_boxes_list
@@ -1295,8 +1263,8 @@ class SSDMetaArch(model.DetectionModel):
         classification checkpoint for initialization prior to training.
         Valid values: `detection`, `classification`. Default 'detection'.
       load_all_detection_checkpoint_vars: whether to load all variables (when
-         `fine_tune_checkpoint_type='detection'`). If False, only variables
-         within the appropriate scopes are included. Default False.
+         `fine_tune_checkpoint_type` is `detection`). If False, only variables
+         within the feature extractor scope are included. Default False.
 
     Returns:
       A dict mapping variable names (to load from a checkpoint) to variables in
@@ -1311,32 +1279,52 @@ class SSDMetaArch(model.DetectionModel):
 
     elif fine_tune_checkpoint_type == 'detection':
       variables_to_restore = {}
-      if tf.executing_eagerly():
+      for variable in variables_helper.get_global_variables_safely():
+        var_name = variable.op.name
         if load_all_detection_checkpoint_vars:
-          # Grab all detection vars by name
-          for variable in self.variables:
-            # variable.name includes ":0" at the end, but the names in the
-            # checkpoint do not have the suffix ":0". So, we strip it here.
-            var_name = variable.name[:-2]
-            variables_to_restore[var_name] = variable
+          variables_to_restore[var_name] = variable
         else:
-          # Grab just the feature extractor vars by name
-          for variable in self._feature_extractor.variables:
-            # variable.name includes ":0" at the end, but the names in the
-            # checkpoint do not have the suffix ":0". So, we strip it here.
-            var_name = variable.name[:-2]
+          if var_name.startswith(self._extract_features_scope):
             variables_to_restore[var_name] = variable
-      else:
-        for variable in variables_helper.get_global_variables_safely():
-          var_name = variable.op.name
-          if load_all_detection_checkpoint_vars:
-            variables_to_restore[var_name] = variable
-          else:
-            if var_name.startswith(self._extract_features_scope):
-              variables_to_restore[var_name] = variable
-
       return variables_to_restore
 
+    else:
+      raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
+          fine_tune_checkpoint_type))
+
+  def restore_from_objects(self, fine_tune_checkpoint_type='detection'):
+    """Returns a map of Trackable objects to load from a foreign checkpoint.
+
+    Returns a dictionary of Tensorflow 2 Trackable objects (e.g. tf.Module
+    or Checkpoint). This enables the model to initialize based on weights from
+    another task. For example, the feature extractor variables from a
+    classification model can be used to bootstrap training of an object
+    detector. When loading from an object detection model, the checkpoint model
+    should have the same parameters as this detection model with exception of
+    the num_classes parameter.
+
+    Note that this function is intended to be used to restore Keras-based
+    models when running Tensorflow 2, whereas restore_map (above) is intended
+    to be used to restore Slim-based models when running Tensorflow 1.x.
+
+    Args:
+      fine_tune_checkpoint_type: whether to restore from a full detection
+        checkpoint (with compatible variable names) or to restore from a
+        classification checkpoint for initialization prior to training.
+        Valid values: `detection`, `classification`. Default 'detection'.
+
+    Returns:
+      A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
+    """
+    if fine_tune_checkpoint_type == 'classification':
+      return {
+          'feature_extractor':
+              self._feature_extractor.classification_backbone
+      }
+    elif fine_tune_checkpoint_type == 'detection':
+      fake_model = tf.train.Checkpoint(
+          _feature_extractor=self._feature_extractor)
+      return {'model': fake_model}
     else:
       raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
           fine_tune_checkpoint_type))
