@@ -36,12 +36,12 @@ class TalkingHeadsAttentionTest(keras_parameterized.TestCase):
       ("key_value_same_proj", None, None, [40, 80]),
       ("key_value_different_proj", 32, 60, [40, 60]),
   )
-  def test_non_masked_attention(self, value_size, output_shape, output_dims):
+  def test_non_masked_attention(self, value_dim, output_shape, output_dims):
     """Test that the attention layer can be created without a mask tensor."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
         num_heads=12,
-        key_size=64,
-        value_size=value_size,
+        key_dim=64,
+        value_dim=value_dim,
         output_shape=output_shape)
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
@@ -52,7 +52,7 @@ class TalkingHeadsAttentionTest(keras_parameterized.TestCase):
   def test_non_masked_self_attention(self):
     """Test with one input (self-attenntion) and no mask tensor."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
-        num_heads=12, key_size=64)
+        num_heads=12, key_dim=64)
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
     output = test_layer(query=query, value=query)
@@ -61,10 +61,11 @@ class TalkingHeadsAttentionTest(keras_parameterized.TestCase):
   def test_attention_scores(self):
     """Test attention outputs with coefficients."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
-        num_heads=12, key_size=64, return_attention_scores=True)
+        num_heads=12, key_dim=64)
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
-    output, coef = test_layer(query=query, value=query)
+    output, coef = test_layer(query=query, value=query,
+                              return_attention_scores=True)
     self.assertEqual(output.shape.as_list(), [None, 40, 80])
     self.assertEqual(coef.shape.as_list(), [None, 12, 40, 40])
 
@@ -72,7 +73,7 @@ class TalkingHeadsAttentionTest(keras_parameterized.TestCase):
   def test_masked_attention(self, use_bias):
     """Test with a mask tensor."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
-        num_heads=12, key_size=2, use_bias=use_bias)
+        num_heads=12, key_dim=2, use_bias=use_bias)
     # Create a 3-dimensional input (the first dimension is implicit).
     batch_size = 3
     query = tf.keras.Input(shape=(4, 8))
@@ -124,7 +125,7 @@ class TalkingHeadsAttentionTest(keras_parameterized.TestCase):
     """Test with a specified initializer."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
         num_heads=12,
-        key_size=64,
+        key_dim=64,
         kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
     # Create a 3-dimensional input (the first dimension is implicit).
     query = tf.keras.Input(shape=(40, 80))
@@ -138,7 +139,7 @@ class TalkingHeadsAttentionTest(keras_parameterized.TestCase):
   def test_high_dim_attention(self, q_dims, v_dims, mask_dims, attention_axes):
     """Test with a mask tensor."""
     test_layer = talking_heads_attention.TalkingHeadsAttention(
-        num_heads=12, key_size=2, attention_axes=attention_axes)
+        num_heads=12, key_dim=2, attention_axes=attention_axes)
     batch_size, hidden_size = 3, 8
     # Generate data for the input (non-mask) tensors.
     query_shape = [batch_size] + q_dims + [hidden_size]

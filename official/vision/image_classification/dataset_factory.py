@@ -143,6 +143,9 @@ class ImageNetConfig(DatasetConfig):
   # Note: for large datasets like ImageNet, using records is faster than tfds
   builder: str = 'records'
   image_size: int = 224
+  num_channels: int = 3
+  num_examples: int = 1281167
+  num_classes: int = 1000
   batch_size: int = 128
 
 
@@ -267,8 +270,14 @@ class DatasetBuilder:
   @property
   def info(self) -> tfds.core.DatasetInfo:
     """The TFDS dataset info, if available."""
-    if self.builder_info is None:
-      self.builder_info = tfds.builder(self.config.name).info
+    try:
+      if self.builder_info is None:
+        self.builder_info = tfds.builder(self.config.name).info
+    except ConnectionError as e:
+      logging.error('Failed to use TFDS to load info. Please set dataset info '
+                    '(image_size, num_channels, num_examples, num_classes) in '
+                    'the dataset config.')
+      raise e
     return self.builder_info
 
   def build(self, strategy: tf.distribute.Strategy = None) -> tf.data.Dataset:

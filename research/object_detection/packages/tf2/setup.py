@@ -8,7 +8,7 @@ from setuptools import setup
 # oauth2client package.
 REQUIRED_PACKAGES = [
     # Required for apache-beam with PY3
-    'avro-python3==1.8.1',
+    'avro-python3',
     'apache-beam',
     'pillow',
     'lxml',
@@ -20,8 +20,7 @@ REQUIRED_PACKAGES = [
     'pycocotools',
     'scipy',
     'pandas',
-    # Required to avoid Numpy 1.19.1 conflict with TF 2.3
-    'tf-models-official==2.2.2'
+    'tf-models-official'
 ]
 
 setup(

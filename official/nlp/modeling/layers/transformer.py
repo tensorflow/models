@@ -135,9 +135,9 @@ class Transformer(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._attention_layer = attention.MultiHeadAttention(
+    self._attention_layer = tf.keras.layers.MultiHeadAttention(
         num_heads=self._num_heads,
-        key_size=self._attention_head_size,
+        key_dim=self._attention_head_size,
         dropout=self._attention_dropout_rate,
         use_bias=self._use_bias,
         kernel_initializer=self._attention_initializer,
@@ -386,7 +386,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
     # Self attention.
     self.self_attention = attention.CachedAttention(
         num_heads=self.num_attention_heads,
-        key_size=self.attention_head_size,
+        key_dim=self.attention_head_size,
         dropout=self.attention_dropout_rate,
         use_bias=self._use_bias,
         kernel_initializer=self._attention_initializer,
@@ -409,7 +409,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
     # Encoder-decoder attention.
     self.encdec_attention = self._cross_attention_cls(
         num_heads=self.num_attention_heads,
-        key_size=self.attention_head_size,
+        key_dim=self.attention_head_size,
         dropout=self.attention_dropout_rate,
         output_shape=hidden_size,
         use_bias=self._use_bias,
