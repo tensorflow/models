@@ -2026,13 +2026,6 @@ class DETRTargetAssigner(object):
         representing weights for each element in cls_targets.
       reg_targets: a float32 tensor with shape [num_box_preds, box_code_dimension]
       reg_weights: a float32 tensor with shape [num_box_preds]
-      match: an int32 tensor of shape [num_box_preds] containing result of box_pred
-        groundtruth matching. Each position in the tensor indicates an box_pred
-        and holds the following meaning:
-        (1) if match[i] >= 0, box_pred i is matched with groundtruth match[i].
-        (2) if match[i]=-1, box_pred i is marked to be background .
-        (3) if match[i]=-2, box_pred i is ignored since it is not background and
-            does not have sufficient overlap to call it a foreground.
 
     """
     unmatched_class_label = tf.constant([1] + [0] * groundtruth_labels.shape[1], tf.float32)
