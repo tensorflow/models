@@ -34,6 +34,7 @@ import tensorflow_probability as tfp
 # Placeholder for internal import. Do not remove this line.
 from delf.python.training.datasets import googlelandmarks as gld
 from delf.python.training.model import delf_model
+from delf.python.training.model import delg_model
 
 FLAGS = flags.FLAGS
 
@@ -57,6 +58,15 @@ flags.DEFINE_boolean('use_augmentation', True,
 flags.DEFINE_string(
     'imagenet_checkpoint', None,
     'ImageNet checkpoint for ResNet backbone. If None, no checkpoint is used.')
+flags.DEFINE_boolean('delg_global_features', False,
+                     'Whether to train a DELG model.')
+flags.DEFINE_float('delg_gem_power', 3.0, 'Power for Generalized Mean pooling.')
+flags.DEFINE_integer('delg_embedding_layer_dim', 2048,
+                     'Size of the FC whitening layer (embedding layer).')
+flags.DEFINE_float('delg_scale_factor_init', 45.25,
+                   ('Initial value of the scaling factor of the cosine logits.'
+                    'The default value is sqrt(2048).'))
+flags.DEFINE_float('delg_arcface_margin', 0.1, 'ArcFace margin.')
 
 
 def _record_accuracy(metric, logits, labels):
@@ -90,7 +100,15 @@ def _attention_summaries(scores, global_step):
 
 def create_model(num_classes):
   """Define DELF model, and initialize classifiers."""
-  model = delf_model.Delf(block3_strides=FLAGS.block3_strides, name='DELF')
+  if FLAGS.delg_global_features:
+    model = delg_model.Delg(block3_strides=FLAGS.block3_strides,
+                            name='DELG',
+                            gem_power=FLAGS.delg_gem_power,
+                            embedding_layer_dim=FLAGS.delg_embedding_layer_dim,
+                            scale_factor_init=FLAGS.delg_scale_factor_init,
+                            arcface_margin=FLAGS.delg_arcface_margin)
+  else:
+    model = delf_model.Delf(block3_strides=FLAGS.block3_strides, name='DELF')
   model.init_classifiers(num_classes)
   return model
 
@@ -263,8 +281,13 @@ def main(argv):
         for k, v in activations_zero_fractions.items():
           tf.summary.scalar(k, v, step=global_step)
 
-        # Apply descriptor classifier.
-        logits = model.desc_classification(prelogits)
+        # Apply descriptor classifier and report scale factor.
+        if FLAGS.delg_global_features:
+          logits = model.desc_classification(prelogits, labels)
+          tf.summary.scalar('desc/scale_factor', model.scale_factor,
+                            step=global_step)
+        else:
+          logits = model.desc_classification(prelogits)
 
         desc_loss = compute_loss(labels, logits)
 
@@ -308,7 +331,10 @@ def main(argv):
       blocks = {}
       prelogits = model.backbone(
           images, intermediates_dict=blocks, training=False)
-      logits = model.desc_classification(prelogits, training=False)
+      if FLAGS.delg_global_features:
+        logits = model.desc_classification(prelogits, labels, training=False)
+      else:
+        logits = model.desc_classification(prelogits, training=False)
       softmax_probabilities = tf.keras.layers.Softmax()(logits)
 
       validation_loss = loss_object(labels, logits)

@@ -19,6 +19,7 @@ The base trainer implements the Orbit `StandardTrainable` and
 `StandardEvaluable` interfaces. Trainers inside this project should be
 interchangable and independent on model architectures and tasks.
 """
+
 import gin
 import orbit
 import tensorflow as tf
@@ -27,7 +28,6 @@ from official.core import base_task
 from official.modeling import optimization
 from official.modeling import performance
 from official.modeling.hyperparams import config_definitions
-
 
 ExperimentConfig = config_definitions.ExperimentConfig
 
@@ -52,8 +52,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
         default to True.
       evaluate: bool, whether or not this trainer will be used for evaluation.
         default to True.
-      model: tf.keras.Model instance. If provided, it will be used instead
-        of building model using task.build_model(). Default to None.
+      model: tf.keras.Model instance. If provided, it will be used instead of
+        building model using task.build_model(). Default to None.
       optimizer: tf.keras.optimizers.Optimizer instance. If provided, it will
         used instead of the optimizer from config. Default to None.
     """
@@ -90,8 +90,10 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     else:
       checkpoint_items = {}
     self._checkpoint = tf.train.Checkpoint(
-        global_step=self.global_step, model=self.model,
-        optimizer=self.optimizer, **checkpoint_items)
+        global_step=self.global_step,
+        model=self.model,
+        optimizer=self.optimizer,
+        **checkpoint_items)
 
     self._train_loss = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
     self._validation_loss = tf.keras.metrics.Mean(

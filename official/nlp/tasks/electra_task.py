@@ -14,6 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """ELECTRA pretraining task (Joint Masked LM and Replaced Token Detection)."""
+
 import dataclasses
 import tensorflow as tf
 

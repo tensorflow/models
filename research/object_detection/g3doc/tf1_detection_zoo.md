@@ -67,8 +67,7 @@ Some remarks on frozen inference graphs:
     metrics.
 *   Our frozen inference graphs are generated using the
     [v1.12.0](https://github.com/tensorflow/tensorflow/tree/v1.12.0) release
-    version of TensorFlow and we do not guarantee that these will work with
-    other versions; this being said, each frozen inference graph can be
+    version of TensorFlow; this being said, each frozen inference graph can be
     regenerated using your current version of TensorFlow by re-running the
     [exporter](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/exporting_models.md),
     pointing it at the model directory as well as the corresponding config file

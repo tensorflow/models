@@ -118,9 +118,7 @@ class MaskrcnnModel(base_model.Model):
       box_targets = tf.where(
           tf.tile(
               tf.expand_dims(tf.equal(matched_gt_classes, 0), axis=-1),
-              [1, 1, 4]),
-          tf.zeros_like(box_targets),
-          box_targets)
+              [1, 1, 4]), tf.zeros_like(box_targets), box_targets)
       model_outputs.update({
           'class_targets': matched_gt_classes,
           'box_targets': box_targets,
@@ -183,9 +181,7 @@ class MaskrcnnModel(base_model.Model):
                                     mask_outputs),
       })
     else:
-      model_outputs.update({
-          'detection_masks': tf.nn.sigmoid(mask_outputs)
-      })
+      model_outputs.update({'detection_masks': tf.nn.sigmoid(mask_outputs)})
 
     return model_outputs
 
@@ -312,8 +308,8 @@ class MaskrcnnModel(base_model.Model):
     required_output_fields = ['class_outputs', 'box_outputs']
     for field in required_output_fields:
       if field not in outputs:
-        raise ValueError('"%s" is missing in outputs, requried %s found %s'
-                         %(field, required_output_fields, outputs.keys()))
+        raise ValueError('"%s" is missing in outputs, requried %s found %s' %
+                         (field, required_output_fields, outputs.keys()))
     predictions = {
         'image_info': labels['image_info'],
         'num_detections': outputs['num_detections'],

@@ -66,9 +66,9 @@ class TransformerEncoder(tf.keras.Model):
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yeilds the full
       output.
-    embedding_width: The width of the word embeddings. If the embedding width
-      is not equal to hidden size, embedding parameters will be factorized into
-      two matrices in the shape of ['vocab_size', 'embedding_width'] and
+    embedding_width: The width of the word embeddings. If the embedding width is
+      not equal to hidden size, embedding parameters will be factorized into two
+      matrices in the shape of ['vocab_size', 'embedding_width'] and
       ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
       smaller than 'hidden_size').
     embedding_layer: The word embedding layer. `None` means we will create a new
@@ -159,8 +159,7 @@ class TransformerEncoder(tf.keras.Model):
             axis=-1,
             epsilon=1e-12,
             dtype=tf.float32)(embeddings))
-    embeddings = (
-        tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
+    embeddings = (tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
 
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.

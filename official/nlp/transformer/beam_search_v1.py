@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Beam search to find the translated sequence with the highest probability.
-"""
+"""Beam search to find the translated sequence with the highest probability."""
 
 import tensorflow.compat.v1 as tf
 from official.nlp.modeling.ops import beam_search
@@ -41,23 +40,27 @@ class SequenceBeamSearch(beam_search.SequenceBeamSearch):
     return finished_seq, finished_scores
 
 
-def sequence_beam_search(
-    symbols_to_logits_fn, initial_ids, initial_cache, vocab_size, beam_size,
-    alpha, max_decode_length, eos_id, padded_decode=False):
+def sequence_beam_search(symbols_to_logits_fn,
+                         initial_ids,
+                         initial_cache,
+                         vocab_size,
+                         beam_size,
+                         alpha,
+                         max_decode_length,
+                         eos_id,
+                         padded_decode=False):
   """Search for sequence of subtoken ids with the largest probability.
 
   Args:
     symbols_to_logits_fn: A function that takes in ids, index, and cache as
-      arguments. The passed in arguments will have shape:
-        ids -> A tensor with shape [batch_size * beam_size, index].
-        index -> A scalar.
-        cache -> A nested dictionary of tensors [batch_size * beam_size, ...].
-      The function must return a tuple of logits and new cache:
-        logits -> A tensor with shape [batch * beam_size, vocab_size].
-        new cache -> A nested dictionary with the same shape/structure as the
-          inputted cache.
-    initial_ids: An int32 tensor with shape [batch_size]. Starting ids for
-      each batch item.
+      arguments. The passed in arguments will have shape: ids -> A tensor with
+        shape [batch_size * beam_size, index]. index -> A scalar. cache -> A
+        nested dictionary of tensors [batch_size * beam_size, ...].
+      The function must return a tuple of logits and new cache: logits -> A
+        tensor with shape [batch * beam_size, vocab_size]. new cache -> A nested
+        dictionary with the same shape/structure as the inputted cache.
+    initial_ids: An int32 tensor with shape [batch_size]. Starting ids for each
+      batch item.
     initial_cache: A dictionary, containing starting decoder variables
       information.
     vocab_size: An integer, the size of the vocabulary, used for topk
@@ -67,8 +70,8 @@ def sequence_beam_search(
     max_decode_length: An integer, the maximum length to decoded a sequence.
     eos_id: An integer, ID of eos token, used to determine when a sequence has
       finished.
-    padded_decode: A bool, indicating if max_sequence_length padding is used
-      for beam search.
+    padded_decode: A bool, indicating if max_sequence_length padding is used for
+      beam search.
 
   Returns:
     Top decoded sequences [batch_size, beam_size, max_decode_length]

@@ -50,12 +50,11 @@ class OptimizerConfigTest(tf.test.TestCase):
             'type': 'linear'
         }
     })
-    self.assertEqual(opt_config.optimizer.get(),
-                     opt_cfg.SGDConfig())
+    self.assertEqual(opt_config.optimizer.get(), opt_cfg.SGDConfig())
     self.assertEqual(opt_config.learning_rate.get(),
                      lr_cfg.PolynomialLrConfig())
-    self.assertEqual(opt_config.warmup.get(),
-                     lr_cfg.LinearWarmupConfig())
+    self.assertEqual(opt_config.warmup.get(), lr_cfg.LinearWarmupConfig())
+
 
 if __name__ == '__main__':
   tf.test.main()

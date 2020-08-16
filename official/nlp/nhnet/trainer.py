@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import os
 
+# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
@@ -84,6 +85,10 @@ def define_flags():
       default=None,
       help=("a YAML/JSON string or a YAML file which specifies additional "
             "overrides over the default parameters"))
+  # Enables MLIR-based TF/XLA bridge. This is part of a soft rollout and will
+  # eventually be the Google-wide default.
+  flags.DEFINE_bool("enable_mlir_bridge", True,
+                    "Use MLIR TF/XLA bridge (experimental).")
 
 
 # pylint: disable=protected-access
@@ -177,6 +182,9 @@ def train(params, strategy, dataset=None):
 
 def run():
   """Runs NHNet using Keras APIs."""
+  if FLAGS.enable_mlir_bridge:
+    tf.config.experimental.enable_mlir_bridge()
+
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy, tpu_address=FLAGS.tpu)
   if strategy:

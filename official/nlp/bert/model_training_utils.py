@@ -164,8 +164,8 @@ def run_customized_training_loop(
       custom_callbacks: A list of Keras Callbacks objects to run during
         training. More specifically, `on_train_begin(), on_train_end(),
         on_batch_begin()`, `on_batch_end()`, `on_epoch_begin()`,
-        `on_epoch_end()` methods are invoked during training.
-        Note that some metrics may be missing from `logs`.
+        `on_epoch_end()` methods are invoked during training. Note that some
+        metrics may be missing from `logs`.
       run_eagerly: Whether to run model training in pure eager execution. This
         should be disable for TPUStrategy.
       sub_model_export_name: If not None, will export `sub_model` returned by
@@ -458,8 +458,7 @@ def run_customized_training_loop(
     callback_list.on_train_begin()
     while current_step < total_training_steps and not model.stop_training:
       if current_step % steps_per_epoch == 0:
-        callback_list.on_epoch_begin(
-            int(current_step / steps_per_epoch) + 1)
+        callback_list.on_epoch_begin(int(current_step / steps_per_epoch) + 1)
 
       # Training loss/metric are taking average over steps inside micro
       # training loop. We reset the their values before each round.

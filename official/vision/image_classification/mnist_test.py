@@ -58,7 +58,8 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
     """Test Keras MNIST model with `strategy`."""
 
     extra_flags = [
-        "-train_epochs", "1",
+        "-train_epochs",
+        "1",
         # Let TFDS find the metadata folder automatically
         "--data_dir="
     ]
@@ -72,9 +73,10 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
         tf.data.Dataset.from_tensor_slices(dummy_data),
     )
 
-    run = functools.partial(mnist_main.run,
-                            datasets_override=datasets,
-                            strategy_override=distribution)
+    run = functools.partial(
+        mnist_main.run,
+        datasets_override=datasets,
+        strategy_override=distribution)
 
     integration.run_synthetic(
         main=run,

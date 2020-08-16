@@ -19,14 +19,12 @@ import functools
 from typing import Any, Callable, Optional
 
 from absl import logging
-import six
 import tensorflow as tf
 
 from official.modeling.hyperparams import config_definitions as cfg
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Task(tf.Module):
+class Task(tf.Module, metaclass=abc.ABCMeta):
   """A single-replica view of training procedure.
 
   Tasks provide artifacts for training/evalution procedures, including
@@ -75,7 +73,11 @@ class Task(tf.Module):
     if not ckpt_dir_or_file:
       return
 
-    ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+    if hasattr(model, "checkpoint_items"):
+      checkpoint_items = model.checkpoint_items
+    else:
+      checkpoint_items = dict(model=model)
+    ckpt = tf.train.Checkpoint(**checkpoint_items)
     status = ckpt.read(ckpt_dir_or_file)
     status.expect_partial().assert_existing_objects_matched()
     logging.info("Finished loading pretrained checkpoint from %s",
@@ -167,26 +169,30 @@ class Task(tf.Module):
     return []
 
   def process_metrics(self, metrics, labels, model_outputs):
-    """Process and update metrics. Called when using custom training loop API.
+    """Process and update metrics.
+
+    Called when using custom training loop API.
 
     Args:
-      metrics: a nested structure of metrics objects.
-        The return of function self.build_metrics.
+      metrics: a nested structure of metrics objects. The return of function
+        self.build_metrics.
       labels: a tensor or a nested structure of tensors.
-      model_outputs: a tensor or a nested structure of tensors.
-        For example, output of the keras model built by self.build_model.
+      model_outputs: a tensor or a nested structure of tensors. For example,
+        output of the keras model built by self.build_model.
     """
     for metric in metrics:
       metric.update_state(labels, model_outputs)
 
   def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
-    """Process and update compiled_metrics. call when using compile/fit API.
+    """Process and update compiled_metrics.
+
+    call when using compile/fit API.
 
     Args:
       compiled_metrics: the compiled metrics (model.compiled_metrics).
       labels: a tensor or a nested structure of tensors.
-      model_outputs: a tensor or a nested structure of tensors.
-        For example, output of the keras model built by self.build_model.
+      model_outputs: a tensor or a nested structure of tensors. For example,
+        output of the keras model built by self.build_model.
     """
     compiled_metrics.update_state(labels, model_outputs)
 
@@ -293,4 +299,3 @@ class Task(tf.Module):
   def reduce_aggregated_logs(self, aggregated_logs):
     """Optional reduce of aggregated logs over validation steps."""
     return {}
-

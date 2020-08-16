@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Bounding Box List operations.
 
 Example box operations that are supported:
@@ -152,8 +151,8 @@ def prune_outside_window(boxlist, window, scope=None):
 
   Args:
     boxlist: a BoxList holding M_in boxes.
-    window: a float tensor of shape [4] representing [ymin, xmin, ymax, xmax]
-      of the window
+    window: a float tensor of shape [4] representing [ymin, xmin, ymax, xmax] of
+      the window
     scope: name scope.
 
   Returns:
@@ -166,8 +165,10 @@ def prune_outside_window(boxlist, window, scope=None):
         value=boxlist.get(), num_or_size_splits=4, axis=1)
     win_y_min, win_x_min, win_y_max, win_x_max = tf.unstack(window)
     coordinate_violations = tf.concat([
-        tf.less(y_min, win_y_min), tf.less(x_min, win_x_min),
-        tf.greater(y_max, win_y_max), tf.greater(x_max, win_x_max)
+        tf.less(y_min, win_y_min),
+        tf.less(x_min, win_x_min),
+        tf.greater(y_max, win_y_max),
+        tf.greater(x_max, win_x_max)
     ], 1)
     valid_indices = tf.reshape(
         tf.where(tf.logical_not(tf.reduce_any(coordinate_violations, 1))), [-1])
@@ -183,8 +184,8 @@ def prune_completely_outside_window(boxlist, window, scope=None):
 
   Args:
     boxlist: a BoxList holding M_in boxes.
-    window: a float tensor of shape [4] representing [ymin, xmin, ymax, xmax]
-      of the window
+    window: a float tensor of shape [4] representing [ymin, xmin, ymax, xmax] of
+      the window
     scope: name scope.
 
   Returns:
@@ -198,8 +199,10 @@ def prune_completely_outside_window(boxlist, window, scope=None):
         value=boxlist.get(), num_or_size_splits=4, axis=1)
     win_y_min, win_x_min, win_y_max, win_x_max = tf.unstack(window)
     coordinate_violations = tf.concat([
-        tf.greater_equal(y_min, win_y_max), tf.greater_equal(x_min, win_x_max),
-        tf.less_equal(y_max, win_y_min), tf.less_equal(x_max, win_x_min)
+        tf.greater_equal(y_min, win_y_max),
+        tf.greater_equal(x_min, win_x_max),
+        tf.less_equal(y_max, win_y_min),
+        tf.less_equal(x_max, win_x_min)
     ], 1)
     valid_indices = tf.reshape(
         tf.where(tf.logical_not(tf.reduce_any(coordinate_violations, 1))), [-1])
@@ -274,8 +277,8 @@ def iou(boxlist1, boxlist2, scope=None):
     unions = (
         tf.expand_dims(areas1, 1) + tf.expand_dims(areas2, 0) - intersections)
     return tf.where(
-        tf.equal(intersections, 0.0),
-        tf.zeros_like(intersections), tf.truediv(intersections, unions))
+        tf.equal(intersections, 0.0), tf.zeros_like(intersections),
+        tf.truediv(intersections, unions))
 
 
 def matched_iou(boxlist1, boxlist2, scope=None):
@@ -295,8 +298,8 @@ def matched_iou(boxlist1, boxlist2, scope=None):
     areas2 = area(boxlist2)
     unions = areas1 + areas2 - intersections
     return tf.where(
-        tf.equal(intersections, 0.0),
-        tf.zeros_like(intersections), tf.truediv(intersections, unions))
+        tf.equal(intersections, 0.0), tf.zeros_like(intersections),
+        tf.truediv(intersections, unions))
 
 
 def ioa(boxlist1, boxlist2, scope=None):
@@ -320,8 +323,10 @@ def ioa(boxlist1, boxlist2, scope=None):
     return tf.truediv(intersections, areas)
 
 
-def prune_non_overlapping_boxes(
-    boxlist1, boxlist2, min_overlap=0.0, scope=None):
+def prune_non_overlapping_boxes(boxlist1,
+                                boxlist2,
+                                min_overlap=0.0,
+                                scope=None):
   """Prunes the boxes in boxlist1 that overlap less than thresh with boxlist2.
 
   For each box in boxlist1, we want its IOA to be more than minoverlap with
@@ -331,7 +336,7 @@ def prune_non_overlapping_boxes(
     boxlist1: BoxList holding N boxes.
     boxlist2: BoxList holding M boxes.
     min_overlap: Minimum required overlap between boxes, to count them as
-                overlapping.
+      overlapping.
     scope: name scope.
 
   Returns:
@@ -361,8 +366,8 @@ def prune_small_boxes(boxlist, min_side, scope=None):
   """
   with tf.name_scope(scope, 'PruneSmallBoxes'):
     height, width = height_width(boxlist)
-    is_valid = tf.logical_and(tf.greater_equal(width, min_side),
-                              tf.greater_equal(height, min_side))
+    is_valid = tf.logical_and(
+        tf.greater_equal(width, min_side), tf.greater_equal(height, min_side))
     return gather(boxlist, tf.reshape(tf.where(is_valid), [-1]))
 
 
@@ -389,9 +394,10 @@ def change_coordinate_frame(boxlist, window, scope=None):
   with tf.name_scope(scope, 'ChangeCoordinateFrame'):
     win_height = window[2] - window[0]
     win_width = window[3] - window[1]
-    boxlist_new = scale(box_list.BoxList(
-        boxlist.get() - [window[0], window[1], window[0], window[1]]),
-                        1.0 / win_height, 1.0 / win_width)
+    boxlist_new = scale(
+        box_list.BoxList(boxlist.get() -
+                         [window[0], window[1], window[0], window[1]]),
+        1.0 / win_height, 1.0 / win_width)
     boxlist_new = _copy_extra_fields(boxlist_new, boxlist)
     return boxlist_new
 
@@ -420,13 +426,17 @@ def sq_dist(boxlist1, boxlist2, scope=None):
   with tf.name_scope(scope, 'SqDist'):
     sqnorm1 = tf.reduce_sum(tf.square(boxlist1.get()), 1, keep_dims=True)
     sqnorm2 = tf.reduce_sum(tf.square(boxlist2.get()), 1, keep_dims=True)
-    innerprod = tf.matmul(boxlist1.get(), boxlist2.get(),
-                          transpose_a=False, transpose_b=True)
+    innerprod = tf.matmul(
+        boxlist1.get(), boxlist2.get(), transpose_a=False, transpose_b=True)
     return sqnorm1 + tf.transpose(sqnorm2) - 2.0 * innerprod
 
 
-def boolean_mask(boxlist, indicator, fields=None, scope=None,
-                 use_static_shapes=False, indicator_sum=None):
+def boolean_mask(boxlist,
+                 indicator,
+                 fields=None,
+                 scope=None,
+                 use_static_shapes=False,
+                 indicator_sum=None):
   """Select boxes from BoxList according to indicator and return new BoxList.
 
   `boolean_mask` returns the subset of boxes that are marked as "True" by the
@@ -463,8 +473,7 @@ def boolean_mask(boxlist, indicator, fields=None, scope=None,
         raise ValueError('`indicator_sum` must be a of type int')
       selected_positions = tf.cast(indicator, dtype=tf.float32)
       indexed_positions = tf.cast(
-          tf.multiply(
-              tf.cumsum(selected_positions), selected_positions),
+          tf.multiply(tf.cumsum(selected_positions), selected_positions),
           dtype=tf.int32)
       one_hot_selector = tf.one_hot(
           indexed_positions - 1, indicator_sum, dtype=tf.float32)
@@ -541,9 +550,8 @@ def concatenate(boxlists, fields=None, scope=None):
 
   Args:
     boxlists: list of BoxList objects
-    fields: optional list of fields to also concatenate.  By default, all
-      fields from the first BoxList in the list are included in the
-      concatenation.
+    fields: optional list of fields to also concatenate.  By default, all fields
+      from the first BoxList in the list are included in the concatenation.
     scope: name scope.
 
   Returns:
@@ -637,8 +645,8 @@ def visualize_boxes_in_image(image, boxlist, normalized=False, scope=None):
   Args:
     image: an image tensor with shape [height, width, 3]
     boxlist: a BoxList
-    normalized: (boolean) specify whether corners are to be interpreted
-      as absolute coordinates in image space or normalized with respect to the
+    normalized: (boolean) specify whether corners are to be interpreted as
+      absolute coordinates in image space or normalized with respect to the
       image size.
     scope: name scope.
 
@@ -648,8 +656,7 @@ def visualize_boxes_in_image(image, boxlist, normalized=False, scope=None):
   with tf.name_scope(scope, 'VisualizeBoxesInImage'):
     if not normalized:
       height, width, _ = tf.unstack(tf.shape(image))
-      boxlist = scale(boxlist,
-                      1.0 / tf.cast(height, tf.float32),
+      boxlist = scale(boxlist, 1.0 / tf.cast(height, tf.float32),
                       1.0 / tf.cast(width, tf.float32))
     corners = tf.expand_dims(boxlist.get(), 0)
     image = tf.expand_dims(image, 0)
@@ -714,9 +721,8 @@ def filter_greater_than(boxlist, thresh, scope=None):
     if len(scores.shape.as_list()) == 2 and scores.shape.as_list()[1] != 1:
       raise ValueError('Scores should have rank 1 or have shape '
                        'consistent with [None, 1]')
-    high_score_indices = tf.cast(tf.reshape(
-        tf.where(tf.greater(scores, thresh)),
-        [-1]), tf.int32)
+    high_score_indices = tf.cast(
+        tf.reshape(tf.where(tf.greater(scores, thresh)), [-1]), tf.int32)
     return gather(boxlist, high_score_indices)
 
 
@@ -748,8 +754,10 @@ def non_max_suppression(boxlist, thresh, max_output_size, scope=None):
     if not boxlist.has_field('scores'):
       raise ValueError('input boxlist must have \'scores\' field')
     selected_indices = tf.image.non_max_suppression(
-        boxlist.get(), boxlist.get_field('scores'),
-        max_output_size, iou_threshold=thresh)
+        boxlist.get(),
+        boxlist.get_field('scores'),
+        max_output_size,
+        iou_threshold=thresh)
     return gather(boxlist, selected_indices)
 
 
@@ -768,8 +776,11 @@ def _copy_extra_fields(boxlist_to_copy_to, boxlist_to_copy_from):
   return boxlist_to_copy_to
 
 
-def to_normalized_coordinates(boxlist, height, width,
-                              check_range=True, scope=None):
+def to_normalized_coordinates(boxlist,
+                              height,
+                              width,
+                              check_range=True,
+                              scope=None):
   """Converts absolute box coordinates to normalized coordinates in [0, 1].
 
   Usually one uses the dynamic shape of the image or conv-layer tensor:
@@ -797,8 +808,9 @@ def to_normalized_coordinates(boxlist, height, width,
 
     if check_range:
       max_val = tf.reduce_max(boxlist.get())
-      max_assert = tf.Assert(tf.greater(max_val, 1.01),
-                             ['max value is lower than 1.01: ', max_val])
+      max_assert = tf.Assert(
+          tf.greater(max_val, 1.01),
+          ['max value is lower than 1.01: ', max_val])
       with tf.control_dependencies([max_assert]):
         width = tf.identity(width)
 
@@ -822,8 +834,8 @@ def to_absolute_coordinates(boxlist,
     height: Maximum value for height of absolute box coordinates.
     width: Maximum value for width of absolute box coordinates.
     check_range: If True, checks if the coordinates are normalized or not.
-    maximum_normalized_coordinate: Maximum coordinate value to be considered
-      as normalized, default to 1.1.
+    maximum_normalized_coordinate: Maximum coordinate value to be considered as
+      normalized, default to 1.1.
     scope: name scope.
 
   Returns:
@@ -838,9 +850,10 @@ def to_absolute_coordinates(boxlist,
     if check_range:
       box_maximum = tf.reduce_max(boxlist.get())
       max_assert = tf.Assert(
-          tf.greater_equal(maximum_normalized_coordinate, box_maximum),
-          ['maximum box coordinate value is larger '
-           'than %f: ' % maximum_normalized_coordinate, box_maximum])
+          tf.greater_equal(maximum_normalized_coordinate, box_maximum), [
+              'maximum box coordinate value is larger '
+              'than %f: ' % maximum_normalized_coordinate, box_maximum
+          ])
       with tf.control_dependencies([max_assert]):
         width = tf.identity(width)
 
@@ -924,13 +937,15 @@ def refine_boxes(pool_boxes,
   if not pool_boxes.has_field('scores'):
     raise ValueError('pool_boxes must have a \'scores\' field')
 
-  nms_boxes = non_max_suppression(
-      pool_boxes, nms_iou_thresh, nms_max_detections)
+  nms_boxes = non_max_suppression(pool_boxes, nms_iou_thresh,
+                                  nms_max_detections)
   return box_voting(nms_boxes, pool_boxes, voting_iou_thresh)
 
 
 def box_voting(selected_boxes, pool_boxes, iou_thresh=0.5):
-  """Performs box voting as described in S. Gidaris and N. Komodakis, ICCV 2015.
+  """Performs box voting as described in S. Gidaris and N.
+
+  Komodakis, ICCV 2015.
 
   Performs box voting as described in 'Object detection via a multi-region &
   semantic segmentation-aware CNN model', Gidaris and Komodakis, ICCV 2015. For
@@ -972,9 +987,10 @@ def box_voting(selected_boxes, pool_boxes, iou_thresh=0.5):
   # match to any boxes in pool_boxes. For such boxes without any matches, we
   # should return the original boxes without voting.
   match_assert = tf.Assert(
-      tf.reduce_all(tf.greater(num_matches, 0)),
-      ['Each box in selected_boxes must match with at least one box '
-       'in pool_boxes.'])
+      tf.reduce_all(tf.greater(num_matches, 0)), [
+          'Each box in selected_boxes must match with at least one box '
+          'in pool_boxes.'
+      ])
 
   scores = tf.expand_dims(pool_boxes.get_field('scores'), 1)
   scores_assert = tf.Assert(
@@ -993,9 +1009,7 @@ def box_voting(selected_boxes, pool_boxes, iou_thresh=0.5):
   return averaged_boxes
 
 
-def get_minimal_coverage_box(boxlist,
-                             default_box=None,
-                             scope=None):
+def get_minimal_coverage_box(boxlist, default_box=None, scope=None):
   """Creates a single bounding box which covers all boxes in the boxlist.
 
   Args:
@@ -1045,9 +1059,9 @@ def sample_boxes_by_jittering(boxlist,
     boxlist: A boxlist containing N boxes in normalized coordinates.
     num_boxes_to_sample: A positive integer containing the number of boxes to
       sample.
-    stddev: Standard deviation. This is used to draw random offsets for the
-      box corners from a normal distribution. The offset is multiplied by the
-      box size so will be larger in terms of pixels for larger boxes.
+    stddev: Standard deviation. This is used to draw random offsets for the box
+      corners from a normal distribution. The offset is multiplied by the box
+      size so will be larger in terms of pixels for larger boxes.
     scope: Name scope.
 
   Returns:
@@ -1056,11 +1070,10 @@ def sample_boxes_by_jittering(boxlist,
   """
   with tf.name_scope(scope, 'SampleBoxesByJittering'):
     num_boxes = boxlist.num_boxes()
-    box_indices = tf.random_uniform(
-        [num_boxes_to_sample],
-        minval=0,
-        maxval=num_boxes,
-        dtype=tf.int32)
+    box_indices = tf.random_uniform([num_boxes_to_sample],
+                                    minval=0,
+                                    maxval=num_boxes,
+                                    dtype=tf.int32)
     sampled_boxes = tf.gather(boxlist.get(), box_indices)
     sampled_boxes_height = sampled_boxes[:, 2] - sampled_boxes[:, 0]
     sampled_boxes_width = sampled_boxes[:, 3] - sampled_boxes[:, 1]

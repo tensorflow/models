@@ -37,8 +37,8 @@ class DataLoader(metaclass=abc.ABCMeta):
     Args:
       input_context: This is a context class that is passed to the user's input
         function and contains information about the compute replicas and input
-        pipelines. This object is used for multi-host inputs and passed by
-        the distribution strategy.
+        pipelines. This object is used for multi-host inputs and passed by the
+        distribution strategy.
 
     Returns:
       A per-host tf.data dataset. Note that, we usually create the distributed

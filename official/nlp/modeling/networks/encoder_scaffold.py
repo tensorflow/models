@@ -54,14 +54,13 @@ class EncoderScaffold(tf.keras.Model):
 
   Arguments:
     pooled_output_dim: The dimension of pooled output.
-    pooler_layer_initializer: The initializer for the classification
-      layer.
+    pooler_layer_initializer: The initializer for the classification layer.
     embedding_cls: The class or instance to use to embed the input data. This
-      class or instance defines the inputs to this encoder and outputs
-      (1) embeddings tensor with shape [batch_size, seq_length, hidden_size] and
-      (2) attention masking with tensor [batch_size, seq_length, seq_length].
-      If embedding_cls is not set, a default embedding network
-      (from the original BERT paper) will be created.
+      class or instance defines the inputs to this encoder and outputs (1)
+      embeddings tensor with shape [batch_size, seq_length, hidden_size] and (2)
+      attention masking with tensor [batch_size, seq_length, seq_length]. If
+      embedding_cls is not set, a default embedding network (from the original
+      BERT paper) will be created.
     embedding_cfg: A dict of kwargs to pass to the embedding_cls, if it needs to
       be instantiated. If embedding_cls is not set, a config dict must be
       passed to 'embedding_cfg' with the following values:
@@ -94,19 +93,18 @@ class EncoderScaffold(tf.keras.Model):
       all encoder transformer layers.
   """
 
-  def __init__(
-      self,
-      pooled_output_dim,
-      pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
-          stddev=0.02),
-      embedding_cls=None,
-      embedding_cfg=None,
-      embedding_data=None,
-      num_hidden_instances=1,
-      hidden_cls=layers.Transformer,
-      hidden_cfg=None,
-      return_all_layer_outputs=False,
-      **kwargs):
+  def __init__(self,
+               pooled_output_dim,
+               pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+                   stddev=0.02),
+               embedding_cls=None,
+               embedding_cfg=None,
+               embedding_data=None,
+               num_hidden_instances=1,
+               hidden_cls=layers.Transformer,
+               hidden_cfg=None,
+               return_all_layer_outputs=False,
+               **kwargs):
     self._self_setattr_tracking = False
     self._hidden_cls = hidden_cls
     self._hidden_cfg = hidden_cfg
@@ -131,17 +129,11 @@ class EncoderScaffold(tf.keras.Model):
       self._embedding_network = None
       seq_length = embedding_cfg.get('seq_length', None)
       word_ids = tf.keras.layers.Input(
-          shape=(seq_length,),
-          dtype=tf.int32,
-          name='input_word_ids')
+          shape=(seq_length,), dtype=tf.int32, name='input_word_ids')
       mask = tf.keras.layers.Input(
-          shape=(seq_length,),
-          dtype=tf.int32,
-          name='input_mask')
+          shape=(seq_length,), dtype=tf.int32, name='input_mask')
       type_ids = tf.keras.layers.Input(
-          shape=(seq_length,),
-          dtype=tf.int32,
-          name='input_type_ids')
+          shape=(seq_length,), dtype=tf.int32, name='input_type_ids')
       inputs = [word_ids, mask, type_ids]
 
       self._embedding_layer = layers.OnDeviceEmbedding(
@@ -215,20 +207,13 @@ class EncoderScaffold(tf.keras.Model):
 
   def get_config(self):
     config_dict = {
-        'num_hidden_instances':
-            self._num_hidden_instances,
-        'pooled_output_dim':
-            self._pooled_output_dim,
-        'pooler_layer_initializer':
-            self._pooler_layer_initializer,
-        'embedding_cls':
-            self._embedding_network,
-        'embedding_cfg':
-            self._embedding_cfg,
-        'hidden_cfg':
-            self._hidden_cfg,
-        'return_all_layer_outputs':
-            self._return_all_layer_outputs,
+        'num_hidden_instances': self._num_hidden_instances,
+        'pooled_output_dim': self._pooled_output_dim,
+        'pooler_layer_initializer': self._pooler_layer_initializer,
+        'embedding_cls': self._embedding_network,
+        'embedding_cfg': self._embedding_cfg,
+        'hidden_cfg': self._hidden_cfg,
+        'return_all_layer_outputs': self._return_all_layer_outputs,
     }
     if inspect.isclass(self._hidden_cls):
       config_dict['hidden_cls_string'] = tf.keras.utils.get_registered_name(

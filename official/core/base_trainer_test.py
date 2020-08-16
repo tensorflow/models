@@ -15,6 +15,7 @@
 # ==============================================================================
 """Tests for tensorflow_models.core.trainers.trainer."""
 # pylint: disable=g-direct-tensorflow-import
+
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -42,13 +43,14 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
     super().setUp()
     self._config = cfg.ExperimentConfig(
         trainer=cfg.TrainerConfig(
-            optimizer_config=cfg.OptimizationConfig(
-                {'optimizer': {
+            optimizer_config=cfg.OptimizationConfig({
+                'optimizer': {
                     'type': 'sgd'
                 },
-                 'learning_rate': {
-                     'type': 'constant'
-                 }})))
+                'learning_rate': {
+                    'type': 'constant'
+                }
+            })))
 
   def create_test_trainer(self):
     task = mock_task.MockTask()
@@ -81,13 +83,14 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
         runtime=cfg.RuntimeConfig(
             mixed_precision_dtype=mixed_precision_dtype, loss_scale=loss_scale),
         trainer=cfg.TrainerConfig(
-            optimizer_config=cfg.OptimizationConfig(
-                {'optimizer': {
+            optimizer_config=cfg.OptimizationConfig({
+                'optimizer': {
                     'type': 'sgd'
                 },
-                 'learning_rate': {
-                     'type': 'constant'
-                 }})))
+                'learning_rate': {
+                    'type': 'constant'
+                }
+            })))
     task = mock_task.MockTask()
     trainer = trainer_lib.Trainer(config, task)
     if mixed_precision_dtype != 'float16':

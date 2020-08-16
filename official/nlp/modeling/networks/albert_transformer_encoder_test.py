@@ -37,9 +37,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
 
   @parameterized.named_parameters(
       dict(testcase_name="default", expected_dtype=tf.float32),
-      dict(
-          testcase_name="with_float16_dtype",
-          expected_dtype=tf.float16),
+      dict(testcase_name="with_float16_dtype", expected_dtype=tf.float16),
   )
   def test_network_creation(self, expected_dtype):
     hidden_size = 32
@@ -94,8 +92,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types)
-    self.assertTrue(
-        test_network._position_embedding_layer._use_dynamic_slicing)
+    self.assertTrue(test_network._position_embedding_layer._use_dynamic_slicing)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)

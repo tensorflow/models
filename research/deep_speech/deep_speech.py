@@ -61,25 +61,10 @@ def compute_length_after_conv(max_time_steps, ctc_time_steps, input_length):
   Returns:
     the ctc_input_length after convolution layer.
   """
-  ctc_input_length = tf.to_float(tf.multiply(
-      input_length, ctc_time_steps))
-  return tf.to_int32(tf.floordiv(
-      ctc_input_length, tf.to_float(max_time_steps)))
-
-
-def ctc_loss(label_length, ctc_input_length, labels, logits):
-  """Computes the ctc loss for the current batch of predictions."""
-  label_length = tf.to_int32(tf.squeeze(label_length))
-  ctc_input_length = tf.to_int32(tf.squeeze(ctc_input_length))
-  sparse_labels = tf.to_int32(
-      tf.keras.backend.ctc_label_dense_to_sparse(labels, label_length))
-  y_pred = tf.log(tf.transpose(
-      logits, perm=[1, 0, 2]) + tf.keras.backend.epsilon())
-
-  return tf.expand_dims(
-      tf.nn.ctc_loss(labels=sparse_labels, inputs=y_pred,
-                     sequence_length=ctc_input_length),
-      axis=1)
+  ctc_input_length = tf.cast(tf.multiply(
+      input_length, ctc_time_steps), dtype=tf.float32)
+  return tf.cast(tf.math.floordiv(
+      ctc_input_length, tf.cast(max_time_steps, dtype=tf.float32)), dtype=tf.int32)
 
 
 def evaluate_model(estimator, speech_labels, entries, input_fn_eval):
@@ -123,11 +108,11 @@ def evaluate_model(estimator, speech_labels, entries, input_fn_eval):
   total_cer /= num_of_examples
   total_wer /= num_of_examples
 
-  global_step = estimator.get_variable_value(tf.GraphKeys.GLOBAL_STEP)
+  global_step = estimator.get_variable_value(tf.compat.v1.GraphKeys.GLOBAL_STEP)
   eval_results = {
       _WER_KEY: total_wer,
       _CER_KEY: total_cer,
-      tf.GraphKeys.GLOBAL_STEP: global_step,
+      tf.compat.v1.GraphKeys.GLOBAL_STEP: global_step,
   }
 
   return eval_results
@@ -163,7 +148,7 @@ def model_fn(features, labels, mode, params):
     logits = model(features, training=False)
     predictions = {
         "classes": tf.argmax(logits, axis=2),
-        "probabilities": tf.nn.softmax(logits),
+        "probabilities": logits,
         "logits": logits
     }
     return tf.estimator.EstimatorSpec(
@@ -172,17 +157,16 @@ def model_fn(features, labels, mode, params):
 
   # In training mode.
   logits = model(features, training=True)
-  probs = tf.nn.softmax(logits)
   ctc_input_length = compute_length_after_conv(
-      tf.shape(features)[1], tf.shape(probs)[1], input_length)
+      tf.shape(features)[1], tf.shape(logits)[1], input_length)
   # Compute CTC loss
-  loss = tf.reduce_mean(ctc_loss(
-      label_length, ctc_input_length, labels, probs))
+  loss = tf.reduce_mean(tf.keras.backend.ctc_batch_cost(
+      labels, logits, ctc_input_length, label_length))
 
-  optimizer = tf.train.AdamOptimizer(learning_rate=flags_obj.learning_rate)
-  global_step = tf.train.get_or_create_global_step()
+  optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate=flags_obj.learning_rate)
+  global_step = tf.compat.v1.train.get_or_create_global_step()
   minimize_op = optimizer.minimize(loss, global_step=global_step)
-  update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+  update_ops = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.UPDATE_OPS)
   # Create the train_op that groups both minimize_ops and update_ops
   train_op = tf.group(minimize_op, update_ops)
 
@@ -239,9 +223,9 @@ def per_device_batch_size(batch_size, num_gpus):
 
 def run_deep_speech(_):
   """Run deep speech training and eval loop."""
-  tf.set_random_seed(flags_obj.seed)
+  tf.compat.v1.set_random_seed(flags_obj.seed)
   # Data preprocessing
-  tf.logging.info("Data preprocessing...")
+  tf.compat.v1.logging.info("Data preprocessing...")
   train_speech_dataset = generate_dataset(flags_obj.train_data_dir)
   eval_speech_dataset = generate_dataset(flags_obj.eval_data_dir)
 
@@ -287,7 +271,7 @@ def run_deep_speech(_):
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)
   for cycle_index in range(total_training_cycle):
-    tf.logging.info("Starting a training cycle: %d/%d",
+    tf.compat.v1.logging.info("Starting a training cycle: %d/%d",
                     cycle_index + 1, total_training_cycle)
 
     # Perform batch_wise dataset shuffling
@@ -298,7 +282,7 @@ def run_deep_speech(_):
     estimator.train(input_fn=input_fn_train)
 
     # Evaluation
-    tf.logging.info("Starting to evaluate...")
+    tf.compat.v1.logging.info("Starting to evaluate...")
 
     eval_results = evaluate_model(
         estimator, eval_speech_dataset.speech_labels,
@@ -306,7 +290,7 @@ def run_deep_speech(_):
 
     # Log the WER and CER results.
     benchmark_logger.log_evaluation_result(eval_results)
-    tf.logging.info(
+    tf.compat.v1.logging.info(
         "Iteration {}: WER = {:.2f}, CER = {:.2f}".format(
             cycle_index + 1, eval_results[_WER_KEY], eval_results[_CER_KEY]))
 
@@ -425,7 +409,7 @@ def main(_):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   define_deep_speech_flags()
   flags_obj = flags.FLAGS
   absl_app.run(main)

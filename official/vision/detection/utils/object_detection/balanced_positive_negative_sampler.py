@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Class to subsample minibatches by balancing positives and negatives.
 
 Subsamples minibatches based on a pre-specified positive fraction in range
@@ -92,10 +91,10 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
 
     Args:
       input_tensor: An int32 tensor of shape [N] to be sliced.
-      num_start_samples: Number of examples to be sliced from the beginning
-        of the input tensor.
-      num_end_samples: Number of examples to be sliced from the end of the
-        input tensor.
+      num_start_samples: Number of examples to be sliced from the beginning of
+        the input tensor.
+      num_end_samples: Number of examples to be sliced from the end of the input
+        tensor.
       total_num_samples: Sum of is num_start_samples and num_end_samples. This
         should be a scalar.
 
@@ -110,13 +109,16 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
         tf.range(input_length), input_length - num_end_samples)
     selected_positions = tf.logical_or(start_positions, end_positions)
     selected_positions = tf.cast(selected_positions, tf.float32)
-    indexed_positions = tf.multiply(tf.cumsum(selected_positions),
-                                    selected_positions)
-    one_hot_selector = tf.one_hot(tf.cast(indexed_positions, tf.int32) - 1,
-                                  total_num_samples,
-                                  dtype=tf.float32)
-    return tf.cast(tf.tensordot(tf.cast(input_tensor, tf.float32),
-                                one_hot_selector, axes=[0, 0]), tf.int32)
+    indexed_positions = tf.multiply(
+        tf.cumsum(selected_positions), selected_positions)
+    one_hot_selector = tf.one_hot(
+        tf.cast(indexed_positions, tf.int32) - 1,
+        total_num_samples,
+        dtype=tf.float32)
+    return tf.cast(
+        tf.tensordot(
+            tf.cast(input_tensor, tf.float32), one_hot_selector, axes=[0, 0]),
+        tf.int32)
 
   def _static_subsample(self, indicator, batch_size, labels):
     """Returns subsampled minibatch.
@@ -182,13 +184,12 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
     sorted_signed_indicator_idx = tf.nn.top_k(
         signed_indicator_idx, input_length, sorted=True).values
 
-    [num_positive_samples,
-     num_negative_samples] = self._get_num_pos_neg_samples(
-         sorted_signed_indicator_idx, batch_size)
+    [num_positive_samples, num_negative_samples
+    ] = self._get_num_pos_neg_samples(sorted_signed_indicator_idx, batch_size)
 
     sampled_idx = self._get_values_from_start_and_end(
-        sorted_signed_indicator_idx, num_positive_samples,
-        num_negative_samples, batch_size)
+        sorted_signed_indicator_idx, num_positive_samples, num_negative_samples,
+        batch_size)
 
     # Shift the indices to start from 0 and remove any samples that are set as
     # False.
@@ -203,11 +204,13 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
         tf.bool)
 
     # project back the order based on stored permutations
-    reprojections = tf.one_hot(permutation, depth=input_length,
-                               dtype=tf.float32)
-    return tf.cast(tf.tensordot(
-        tf.cast(sampled_idx_indicator, tf.float32),
-        reprojections, axes=[0, 0]), tf.bool)
+    reprojections = tf.one_hot(
+        permutation, depth=input_length, dtype=tf.float32)
+    return tf.cast(
+        tf.tensordot(
+            tf.cast(sampled_idx_indicator, tf.float32),
+            reprojections,
+            axes=[0, 0]), tf.bool)
 
   def subsample(self, indicator, batch_size, labels, scope=None):
     """Returns subsampled minibatch.
@@ -218,7 +221,7 @@ class BalancedPositiveNegativeSampler(minibatch_sampler.MinibatchSampler):
         randomly selects negative samples so that the positive sample fraction
         matches self._positive_fraction. It cannot be None is is_static is True.
       labels: boolean tensor of shape [N] denoting positive(=True) and negative
-          (=False) examples.
+        (=False) examples.
       scope: name scope.
 
     Returns:

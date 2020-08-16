@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Faster RCNN box coder.
 
 Faster RCNN box coder follows the coding schema described below:
@@ -43,9 +42,9 @@ class FasterRcnnBoxCoder(box_coder.BoxCoder):
     """Constructor for FasterRcnnBoxCoder.
 
     Args:
-      scale_factors: List of 4 positive scalars to scale ty, tx, th and tw.
-        If set to None, does not perform scaling. For Faster RCNN,
-        the open-source implementation recommends using [10.0, 10.0, 5.0, 5.0].
+      scale_factors: List of 4 positive scalars to scale ty, tx, th and tw. If
+        set to None, does not perform scaling. For Faster RCNN, the open-source
+        implementation recommends using [10.0, 10.0, 5.0, 5.0].
     """
     if scale_factors:
       assert len(scale_factors) == 4

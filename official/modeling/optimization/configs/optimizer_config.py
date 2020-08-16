@@ -72,7 +72,7 @@ class AdamConfig(base_config.Config):
     beta_2: decay rate for 2st order moments.
     epsilon: epsilon value used for numerical stability in Adam optimizer.
     amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
-    the paper "On the Convergence of Adam and beyond".
+      the paper "On the Convergence of Adam and beyond".
   """
   name: str = "Adam"
   beta_1: float = 0.9
@@ -91,12 +91,12 @@ class AdamWeightDecayConfig(base_config.Config):
     beta_2: decay rate for 2st order moments.
     epsilon: epsilon value used for numerical stability in the optimizer.
     amsgrad: boolean. Whether to apply AMSGrad variant of this algorithm from
-    the paper "On the Convergence of Adam and beyond".
+      the paper "On the Convergence of Adam and beyond".
     weight_decay_rate: float. Weight decay rate. Default to 0.
     include_in_weight_decay: list[str], or None. List of weight names to include
-                             in weight decay.
+      in weight decay.
     include_in_weight_decay: list[str], or None. List of weight names to not
-                             include in weight decay.
+      include in weight decay.
   """
   name: str = "AdamWeightDecay"
   beta_1: float = 0.9
@@ -123,12 +123,11 @@ class LAMBConfig(base_config.Config):
     epsilon: epsilon value used for numerical stability in LAMB optimizer.
     weight_decay_rate: float. Weight decay rate. Default to 0.
     exclude_from_weight_decay: List of regex patterns of variables excluded from
-                               weight decay. Variables whose name contain a
-                               substring matching the pattern will be excluded.
+      weight decay. Variables whose name contain a substring matching the
+      pattern will be excluded.
     exclude_from_layer_adaptation: List of regex patterns of variables excluded
-                                   from layer adaptation. Variables whose name
-                                   contain a substring matching the pattern will
-                                   be excluded.
+      from layer adaptation. Variables whose name contain a substring matching
+      the pattern will be excluded.
   """
   name: str = "LAMB"
   beta_1: float = 0.9

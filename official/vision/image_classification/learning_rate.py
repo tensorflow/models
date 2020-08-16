@@ -29,11 +29,10 @@ BASE_LEARNING_RATE = 0.1
 class WarmupDecaySchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
   """A wrapper for LearningRateSchedule that includes warmup steps."""
 
-  def __init__(
-      self,
-      lr_schedule: tf.keras.optimizers.schedules.LearningRateSchedule,
-      warmup_steps: int,
-      warmup_lr: Optional[float] = None):
+  def __init__(self,
+               lr_schedule: tf.keras.optimizers.schedules.LearningRateSchedule,
+               warmup_steps: int,
+               warmup_lr: Optional[float] = None):
     """Add warmup decay to a learning rate schedule.
 
     Args:
@@ -42,7 +41,6 @@ class WarmupDecaySchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
       warmup_lr: an optional field for the final warmup learning rate. This
         should be provided if the base `lr_schedule` does not contain this
         field.
-
     """
     super(WarmupDecaySchedule, self).__init__()
     self._lr_schedule = lr_schedule
@@ -63,8 +61,7 @@ class WarmupDecaySchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
       global_step_recomp = tf.cast(step, dtype)
       warmup_steps = tf.cast(self._warmup_steps, dtype)
       warmup_lr = initial_learning_rate * global_step_recomp / warmup_steps
-      lr = tf.cond(global_step_recomp < warmup_steps,
-                   lambda: warmup_lr,
+      lr = tf.cond(global_step_recomp < warmup_steps, lambda: warmup_lr,
                    lambda: lr)
     return lr
 

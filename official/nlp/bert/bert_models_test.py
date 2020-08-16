@@ -51,7 +51,9 @@ class BertModelsTest(tf.test.TestCase):
     self.assertIsInstance(encoder, networks.TransformerEncoder)
 
     # model has one scalar output: loss value.
-    self.assertEqual(model.output.shape.as_list(), [None,])
+    self.assertEqual(model.output.shape.as_list(), [
+        None,
+    ])
 
     # Expect two output from encoder: sequence and classification output.
     self.assertIsInstance(encoder.output, list)

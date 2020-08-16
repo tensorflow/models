@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors All Rights Reserved.
+# Copyright 2020 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for DELF feature extractor."""
+"""Tests for helper utilities."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,10 +23,10 @@ import numpy as np
 import tensorflow as tf
 
 from delf import delf_config_pb2
-from delf import extractor
+from delf import utils
 
 
-class ExtractorTest(tf.test.TestCase, parameterized.TestCase):
+class UtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('Max-1Min-1', -1, -1, 1.0, False, [4, 2, 3], [1.0, 1.0]),
@@ -70,8 +70,8 @@ class ExtractorTest(tf.test.TestCase, parameterized.TestCase):
         min_image_size=min_image_size,
         use_square_images=square_output)
 
-    resized_image, scale_factors = extractor.ResizeImage(
-        image, config, resize_factor)
+    resized_image, scale_factors = utils.ResizeImage(image, config,
+                                                     resize_factor)
     self.assertAllEqual(resized_image.shape, expected_shape)
     self.assertAllClose(scale_factors, expected_scale_factors)
 
@@ -93,8 +93,8 @@ class ExtractorTest(tf.test.TestCase, parameterized.TestCase):
         min_image_size=min_image_size,
         use_square_images=square_output)
 
-    resized_image, scale_factors = extractor.ResizeImage(
-        image, config, resize_factor)
+    resized_image, scale_factors = utils.ResizeImage(image, config,
+                                                     resize_factor)
     self.assertAllEqual(resized_image.shape, expected_shape)
     self.assertAllClose(scale_factors, expected_scale_factors)
 

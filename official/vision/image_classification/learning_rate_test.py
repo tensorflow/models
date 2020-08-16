@@ -37,14 +37,13 @@ class LearningRateTests(tf.test.TestCase):
         decay_steps=decay_steps,
         decay_rate=decay_rate)
     lr = learning_rate.WarmupDecaySchedule(
-        lr_schedule=base_lr,
-        warmup_steps=warmup_steps)
+        lr_schedule=base_lr, warmup_steps=warmup_steps)
 
     for step in range(warmup_steps - 1):
       config = lr.get_config()
       self.assertEqual(config['warmup_steps'], warmup_steps)
-      self.assertAllClose(self.evaluate(lr(step)),
-                          step / warmup_steps * initial_lr)
+      self.assertAllClose(
+          self.evaluate(lr(step)), step / warmup_steps * initial_lr)
 
   def test_cosine_decay_with_warmup(self):
     """Basic computational test for cosine decay with warmup."""

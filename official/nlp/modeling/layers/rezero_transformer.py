@@ -22,8 +22,6 @@ from __future__ import print_function
 import gin
 import tensorflow as tf
 
-from official.nlp.modeling.layers import attention
-
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 @gin.configurable
@@ -116,9 +114,9 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._attention_layer = attention.MultiHeadAttention(
+    self._attention_layer = tf.keras.layers.MultiHeadAttention(
         num_heads=self._num_heads,
-        key_size=self._attention_head_size,
+        key_dim=self._attention_head_size,
         dropout=self._attention_dropout_rate,
         name="self_attention",
         **common_kwargs)
@@ -161,7 +159,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._rezero_a = self.add_weight(
         name="rezero_alpha",
         initializer=tf.keras.initializers.Zeros(),
-        trainable=True, dtype=tf.float32)
+        trainable=True,
+        dtype=tf.float32)
 
     super(ReZeroTransformer, self).build(input_shape)
 

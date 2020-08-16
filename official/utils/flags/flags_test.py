@@ -22,12 +22,20 @@ from official.utils.flags import core as flags_core  # pylint: disable=g-bad-imp
 
 
 def define_flags():
-  flags_core.define_base(clean=True, num_gpu=False, stop_threshold=True,
-                         hooks=True, train_epochs=True,
-                         epochs_between_evals=True)
+  flags_core.define_base(
+      clean=True,
+      num_gpu=False,
+      stop_threshold=True,
+      hooks=True,
+      train_epochs=True,
+      epochs_between_evals=True)
   flags_core.define_performance(
-      num_parallel_calls=True, inter_op=True,  intra_op=True,
-      dynamic_loss_scale=True, loss_scale=True, synthetic_data=True,
+      num_parallel_calls=True,
+      inter_op=True,
+      intra_op=True,
+      dynamic_loss_scale=True,
+      loss_scale=True,
+      synthetic_data=True,
       dtype=True)
   flags_core.define_image()
   flags_core.define_benchmark()
@@ -41,8 +49,7 @@ class BaseTester(unittest.TestCase):
     define_flags()
 
   def test_default_setting(self):
-    """Test to ensure fields exist and defaults can be set.
-    """
+    """Test to ensure fields exist and defaults can be set."""
 
     defaults = dict(
         data_dir="dfgasf",
@@ -54,8 +61,7 @@ class BaseTester(unittest.TestCase):
         num_parallel_calls=18,
         inter_op_parallelism_threads=5,
         intra_op_parallelism_threads=10,
-        data_format="channels_first"
-    )
+        data_format="channels_first")
 
     flags_core.set_defaults(**defaults)
     flags_core.parse_flags()
@@ -77,8 +83,7 @@ class BaseTester(unittest.TestCase):
       assert flags.FLAGS.get_flag_value(name=key, default=None) == value
 
   def test_booleans(self):
-    """Test to ensure boolean flags trigger as expected.
-    """
+    """Test to ensure boolean flags trigger as expected."""
 
     flags_core.parse_flags([__file__, "--use_synthetic_data"])
 
@@ -87,35 +92,33 @@ class BaseTester(unittest.TestCase):
   def test_parse_dtype_info(self):
     flags_core.parse_flags([__file__, "--dtype", "fp16"])
     self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf.float16)
-    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
-                                               default_for_fp16=2), 2)
+    self.assertEqual(
+        flags_core.get_loss_scale(flags.FLAGS, default_for_fp16=2), 2)
 
-    flags_core.parse_flags(
-        [__file__, "--dtype", "fp16", "--loss_scale", "5"])
-    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
-                                               default_for_fp16=2), 5)
+    flags_core.parse_flags([__file__, "--dtype", "fp16", "--loss_scale", "5"])
+    self.assertEqual(
+        flags_core.get_loss_scale(flags.FLAGS, default_for_fp16=2), 5)
 
     flags_core.parse_flags(
         [__file__, "--dtype", "fp16", "--loss_scale", "dynamic"])
-    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
-                                               default_for_fp16=2), "dynamic")
+    self.assertEqual(
+        flags_core.get_loss_scale(flags.FLAGS, default_for_fp16=2), "dynamic")
 
     flags_core.parse_flags([__file__, "--dtype", "fp32"])
     self.assertEqual(flags_core.get_tf_dtype(flags.FLAGS), tf.float32)
-    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
-                                               default_for_fp16=2), 1)
+    self.assertEqual(
+        flags_core.get_loss_scale(flags.FLAGS, default_for_fp16=2), 1)
 
     flags_core.parse_flags([__file__, "--dtype", "fp32", "--loss_scale", "5"])
-    self.assertEqual(flags_core.get_loss_scale(flags.FLAGS,
-                                               default_for_fp16=2), 5)
-
+    self.assertEqual(
+        flags_core.get_loss_scale(flags.FLAGS, default_for_fp16=2), 5)
 
     with self.assertRaises(SystemExit):
       flags_core.parse_flags([__file__, "--dtype", "int8"])
 
     with self.assertRaises(SystemExit):
-      flags_core.parse_flags([__file__, "--dtype", "fp16",
-                              "--loss_scale", "abc"])
+      flags_core.parse_flags(
+          [__file__, "--dtype", "fp16", "--loss_scale", "abc"])
 
   def test_get_nondefault_flags_as_str(self):
     defaults = dict(
@@ -123,8 +126,7 @@ class BaseTester(unittest.TestCase):
         data_dir="abc",
         hooks=["LoggingTensorHook"],
         stop_threshold=1.5,
-        use_synthetic_data=False
-    )
+        use_synthetic_data=False)
     flags_core.set_defaults(**defaults)
     flags_core.parse_flags()
 

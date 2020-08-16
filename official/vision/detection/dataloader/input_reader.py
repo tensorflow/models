@@ -91,7 +91,8 @@ class InputFn(object):
       dataset = dataset.repeat()
 
     dataset = dataset.interleave(
-        map_func=self._dataset_fn, cycle_length=32,
+        map_func=self._dataset_fn,
+        cycle_length=32,
         num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
     if self._is_training:

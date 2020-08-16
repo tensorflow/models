@@ -27,13 +27,13 @@ import tensorflow_hub as hub
 
 from official.core import base_task
 from official.core import task_factory
+from official.modeling import tf_utils
 from official.modeling.hyperparams import base_config
 from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
 from official.nlp.data import data_loader_factory
 from official.nlp.modeling import models
 from official.nlp.tasks import utils
-
 
 METRIC_TYPES = frozenset(
     ['accuracy', 'matthews_corrcoef', 'pearson_spearman_corr'])
@@ -103,7 +103,7 @@ class SentencePredictionTask(base_task.Task):
 
     if aux_losses:
       loss += tf.add_n(aux_losses)
-    return tf.reduce_mean(loss)
+    return tf_utils.safe_mean(loss)
 
   def build_inputs(self, params, input_context=None):
     """Returns tf.data.Dataset for sentence_prediction task."""
@@ -136,7 +136,8 @@ class SentencePredictionTask(base_task.Task):
       metrics = [tf.keras.metrics.MeanSquaredError()]
     else:
       metrics = [
-          tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy')]
+          tf.keras.metrics.SparseCategoricalAccuracy(name='cls_accuracy')
+      ]
     return metrics
 
   def process_metrics(self, metrics, labels, model_outputs):

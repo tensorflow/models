@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,11 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Base configurations to standardize experiments."""
-
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import copy
 import functools
@@ -142,10 +136,11 @@ class Config(params_dict.ParamsDict):
     return subconfig_type
 
   def __post_init__(self, default_params, restrictions, *args, **kwargs):
-    super().__init__(default_params=default_params,
-                     restrictions=restrictions,
-                     *args,
-                     **kwargs)
+    super().__init__(
+        default_params=default_params,
+        restrictions=restrictions,
+        *args,
+        **kwargs)
 
   def _set(self, k, v):
     """Overrides same method in ParamsDict.
@@ -220,9 +215,12 @@ class Config(params_dict.ParamsDict):
     }
 
   def replace(self, **kwargs):
-    """Like `override`, but returns a copy with the current config unchanged."""
-    params = self.__class__(self)
-    params.override(kwargs, is_strict=True)
+    """Overrides/returns a unlocked copy with the current config unchanged."""
+    # pylint: disable=protected-access
+    params = copy.deepcopy(self)
+    params._locked = False
+    params._override(kwargs, is_strict=True)
+    # pylint: enable=protected-access
     return params
 
   @classmethod

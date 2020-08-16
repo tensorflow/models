@@ -52,7 +52,4 @@ class ResNetModelConfig(base_configs.ModelConfig):
           boundaries=[30, 60, 80],
           warmup_epochs=5,
           scale_by_batch_size=1. / 256.,
-          multipliers=[0.1 / 256,
-                       0.01 / 256,
-                       0.001 / 256,
-                       0.0001 / 256]))
+          multipliers=[0.1 / 256, 0.01 / 256, 0.001 / 256, 0.0001 / 256]))

@@ -171,22 +171,20 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
       inputs: An tensor whose second dimension will be used as `length`. If
         `None`, the other `length` argument must be specified.
       length: An optional integer specifying the number of positions. If both
-        `inputs` and `length` are spcified, `length` must be equal to the
-        second dimension of `inputs`.
+        `inputs` and `length` are spcified, `length` must be equal to the second
+        dimension of `inputs`.
 
     Returns:
       A tensor in shape of [length, hidden_size].
     """
     if inputs is None and length is None:
-      raise ValueError(
-          "If inputs is None, `length` must be set in "
-          "RelativePositionEmbedding().")
+      raise ValueError("If inputs is None, `length` must be set in "
+                       "RelativePositionEmbedding().")
     if inputs is not None:
       input_shape = tf_utils.get_shape_list(inputs)
       if length is not None and length != input_shape[1]:
         raise ValueError(
-            "If inputs is not None, `length` must equal to input_shape[1]."
-        )
+            "If inputs is not None, `length` must equal to input_shape[1].")
       length = input_shape[1]
     position = tf.cast(tf.range(length), tf.float32)
     num_timescales = self._hidden_size // 2
@@ -197,8 +195,8 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
     inv_timescales = min_timescale * tf.exp(
         tf.cast(tf.range(num_timescales), tf.float32) *
         -log_timescale_increment)
-    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales,
-                                                               0)
-    position_embeddings = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)],
-                                    axis=1)
+    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(
+        inv_timescales, 0)
+    position_embeddings = tf.concat(
+        [tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
     return position_embeddings

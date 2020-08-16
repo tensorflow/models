@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Common functionalities used by both Keras and Estimator implementations.
-"""
+"""Common functionalities used by both Keras and Estimator implementations."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,6 +22,7 @@ import json
 import os
 
 # pylint: disable=g-bad-import-order
+
 import numpy as np
 from absl import flags
 from absl import logging
@@ -56,7 +56,9 @@ def get_inputs(params):
     num_eval_steps = rconst.SYNTHETIC_BATCHES_PER_EPOCH
   else:
     num_users, num_items, producer = data_preprocessing.instantiate_pipeline(
-        dataset=FLAGS.dataset, data_dir=FLAGS.data_dir, params=params,
+        dataset=FLAGS.dataset,
+        data_dir=FLAGS.data_dir,
+        params=params,
         constructor_type=FLAGS.constructor_type,
         deterministic=FLAGS.seed is not None)
     num_train_steps = producer.train_batches_per_epoch
@@ -108,16 +110,17 @@ def get_v1_distribution_strategy(params):
   """Returns the distribution strategy to use."""
   if params["use_tpu"]:
     # Some of the networking libraries are quite chatty.
-    for name in ["googleapiclient.discovery", "googleapiclient.discovery_cache",
-                 "oauth2client.transport"]:
+    for name in [
+        "googleapiclient.discovery", "googleapiclient.discovery_cache",
+        "oauth2client.transport"
+    ]:
       logging.getLogger(name).setLevel(logging.ERROR)
 
     tpu_cluster_resolver = tf.distribute.cluster_resolver.TPUClusterResolver(
         tpu=params["tpu"],
         zone=params["tpu_zone"],
         project=params["tpu_gcp_project"],
-        coordinator_name="coordinator"
-    )
+        coordinator_name="coordinator")
 
     logging.info("Issuing reset command to TPU to ensure a clean state.")
     tf.Session.reset(tpu_cluster_resolver.get_master())
@@ -126,10 +129,12 @@ def get_v1_distribution_strategy(params):
     # by reading the `TF_CONFIG` environment variable, and the coordinator
     # is used by StreamingFilesDataset.
     tf_config_env = {
-        "session_master": tpu_cluster_resolver.get_master(),
-        "eval_session_master": tpu_cluster_resolver.get_master(),
-        "coordinator": tpu_cluster_resolver.cluster_spec()
-                       .as_dict()["coordinator"]
+        "session_master":
+            tpu_cluster_resolver.get_master(),
+        "eval_session_master":
+            tpu_cluster_resolver.get_master(),
+        "coordinator":
+            tpu_cluster_resolver.cluster_spec().as_dict()["coordinator"]
     }
     os.environ["TF_CONFIG"] = json.dumps(tf_config_env)
 
@@ -146,10 +151,16 @@ def get_v1_distribution_strategy(params):
 def define_ncf_flags():
   """Add flags for running ncf_main."""
   # Add common flags
-  flags_core.define_base(model_dir=True, clean=True, train_epochs=True,
-                         epochs_between_evals=True, export_dir=False,
-                         run_eagerly=True, stop_threshold=True, num_gpu=True,
-                         distribution_strategy=True)
+  flags_core.define_base(
+      model_dir=True,
+      clean=True,
+      train_epochs=True,
+      epochs_between_evals=True,
+      export_dir=False,
+      run_eagerly=True,
+      stop_threshold=True,
+      num_gpu=True,
+      distribution_strategy=True)
   flags_core.define_performance(
       synthetic_data=True,
       dtype=True,
@@ -171,69 +182,82 @@ def define_ncf_flags():
       dataset=movielens.ML_1M,
       train_epochs=2,
       batch_size=99000,
-      tpu=None
-  )
+      tpu=None)
 
   # Add ncf-specific flags
   flags.DEFINE_boolean(
-      name="download_if_missing", default=True, help=flags_core.help_wrap(
+      name="download_if_missing",
+      default=True,
+      help=flags_core.help_wrap(
           "Download data to data_dir if it is not already present."))
 
   flags.DEFINE_integer(
-      name="eval_batch_size", default=None, help=flags_core.help_wrap(
+      name="eval_batch_size",
+      default=None,
+      help=flags_core.help_wrap(
           "The batch size used for evaluation. This should generally be larger"
           "than the training batch size as the lack of back propagation during"
           "evaluation can allow for larger batch sizes to fit in memory. If not"
           "specified, the training batch size (--batch_size) will be used."))
 
   flags.DEFINE_integer(
-      name="num_factors", default=8,
+      name="num_factors",
+      default=8,
       help=flags_core.help_wrap("The Embedding size of MF model."))
 
   # Set the default as a list of strings to be consistent with input arguments
   flags.DEFINE_list(
-      name="layers", default=["64", "32", "16", "8"],
+      name="layers",
+      default=["64", "32", "16", "8"],
       help=flags_core.help_wrap(
           "The sizes of hidden layers for MLP. Example "
           "to specify different sizes of MLP layers: --layers=32,16,8,4"))
 
   flags.DEFINE_float(
-      name="mf_regularization", default=0.,
+      name="mf_regularization",
+      default=0.,
       help=flags_core.help_wrap(
           "The regularization factor for MF embeddings. The factor is used by "
           "regularizer which allows to apply penalties on layer parameters or "
           "layer activity during optimization."))
 
   flags.DEFINE_list(
-      name="mlp_regularization", default=["0.", "0.", "0.", "0."],
+      name="mlp_regularization",
+      default=["0.", "0.", "0.", "0."],
       help=flags_core.help_wrap(
           "The regularization factor for each MLP layer. See mf_regularization "
           "help for more info about regularization factor."))
 
   flags.DEFINE_integer(
-      name="num_neg", default=4,
+      name="num_neg",
+      default=4,
       help=flags_core.help_wrap(
           "The Number of negative instances to pair with a positive instance."))
 
   flags.DEFINE_float(
-      name="learning_rate", default=0.001,
+      name="learning_rate",
+      default=0.001,
       help=flags_core.help_wrap("The learning rate."))
 
   flags.DEFINE_float(
-      name="beta1", default=0.9,
+      name="beta1",
+      default=0.9,
       help=flags_core.help_wrap("beta1 hyperparameter for the Adam optimizer."))
 
   flags.DEFINE_float(
-      name="beta2", default=0.999,
+      name="beta2",
+      default=0.999,
       help=flags_core.help_wrap("beta2 hyperparameter for the Adam optimizer."))
 
   flags.DEFINE_float(
-      name="epsilon", default=1e-8,
+      name="epsilon",
+      default=1e-8,
       help=flags_core.help_wrap("epsilon hyperparameter for the Adam "
                                 "optimizer."))
 
   flags.DEFINE_float(
-      name="hr_threshold", default=1.0,
+      name="hr_threshold",
+      default=1.0,
       help=flags_core.help_wrap(
           "If passed, training will stop when the evaluation metric HR is "
           "greater than or equal to hr_threshold. For dataset ml-1m, the "
@@ -242,8 +266,10 @@ def define_ncf_flags():
           "achieved by MLPerf implementation."))
 
   flags.DEFINE_enum(
-      name="constructor_type", default="bisection",
-      enum_values=["bisection", "materialized"], case_sensitive=False,
+      name="constructor_type",
+      default="bisection",
+      enum_values=["bisection", "materialized"],
+      case_sensitive=False,
       help=flags_core.help_wrap(
           "Strategy to use for generating false negatives. materialized has a"
           "precompute that scales badly, but a faster per-epoch construction"
@@ -265,7 +291,8 @@ def define_ncf_flags():
       help=flags_core.help_wrap("Path to input meta data file."))
 
   flags.DEFINE_bool(
-      name="ml_perf", default=False,
+      name="ml_perf",
+      default=False,
       help=flags_core.help_wrap(
           "If set, changes the behavior of the model slightly to match the "
           "MLPerf reference implementations here: \n"
@@ -280,23 +307,26 @@ def define_ncf_flags():
           "not stable."))
 
   flags.DEFINE_bool(
-      name="output_ml_perf_compliance_logging", default=False,
+      name="output_ml_perf_compliance_logging",
+      default=False,
       help=flags_core.help_wrap(
           "If set, output the MLPerf compliance logging. This is only useful "
           "if one is running the model for MLPerf. See "
           "https://github.com/mlperf/policies/blob/master/training_rules.adoc"
           "#submission-compliance-logs for details. This uses sudo and so may "
           "ask for your password, as root access is needed to clear the system "
-          "caches, which is required for MLPerf compliance."
-      )
-  )
+          "caches, which is required for MLPerf compliance."))
 
   flags.DEFINE_integer(
-      name="seed", default=None, help=flags_core.help_wrap(
+      name="seed",
+      default=None,
+      help=flags_core.help_wrap(
           "This value will be used to seed both NumPy and TensorFlow."))
 
-  @flags.validator("eval_batch_size", "eval_batch_size must be at least {}"
-                   .format(rconst.NUM_EVAL_NEGATIVES + 1))
+  @flags.validator(
+      "eval_batch_size",
+      "eval_batch_size must be at least {}".format(rconst.NUM_EVAL_NEGATIVES +
+                                                   1))
   def eval_size_check(eval_batch_size):
     return (eval_batch_size is None or
             int(eval_batch_size) > rconst.NUM_EVAL_NEGATIVES)

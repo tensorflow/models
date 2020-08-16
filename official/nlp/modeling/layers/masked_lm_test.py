@@ -49,8 +49,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
 
     # Create a maskedLM from the transformer stack.
     test_layer = masked_lm.MaskedLM(
-        embedding_table=xformer_stack.get_embedding_table(),
-        output=output)
+        embedding_table=xformer_stack.get_embedding_table(), output=output)
     return test_layer
 
   def test_layer_creation(self):
@@ -59,8 +58,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
     hidden_size = 64
     num_predictions = 21
     test_layer = self.create_layer(
-        vocab_size=vocab_size,
-        hidden_size=hidden_size)
+        vocab_size=vocab_size, hidden_size=hidden_size)
 
     # Make sure that the output tensor of the masked LM is the right shape.
     lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
@@ -127,8 +125,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
     hidden_size = 64
     num_predictions = 21
     test_layer = self.create_layer(
-        vocab_size=vocab_size,
-        hidden_size=hidden_size)
+        vocab_size=vocab_size, hidden_size=hidden_size)
 
     # Create a model from the masked LM layer.
     lm_input_tensor = tf.keras.Input(shape=(sequence_length, hidden_size))
@@ -147,8 +144,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
 
   def test_unknown_output_type_fails(self):
     with self.assertRaisesRegex(ValueError, 'Unknown `output` value "bad".*'):
-      _ = self.create_layer(
-          vocab_size=8, hidden_size=8, output='bad')
+      _ = self.create_layer(vocab_size=8, hidden_size=8, output='bad')
 
 
 if __name__ == '__main__':

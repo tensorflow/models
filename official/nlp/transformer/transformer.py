@@ -31,7 +31,6 @@ from official.nlp.transformer import metrics
 from official.nlp.transformer import model_utils
 from official.nlp.transformer.utils.tokenizer import EOS_ID
 
-
 # Disable the not-callable lint error, since it claims many objects are not
 # callable when they actually are.
 # pylint: disable=not-callable
@@ -49,11 +48,12 @@ def create_model(params, is_train):
       label_smoothing = params["label_smoothing"]
       if params["enable_metrics_in_training"]:
         logits = metrics.MetricLayer(vocab_size)([logits, targets])
-      logits = tf.keras.layers.Lambda(lambda x: x, name="logits",
-                                      dtype=tf.float32)(logits)
+      logits = tf.keras.layers.Lambda(
+          lambda x: x, name="logits", dtype=tf.float32)(
+              logits)
       model = tf.keras.Model([inputs, targets], logits)
-      loss = metrics.transformer_loss(
-          logits, targets, label_smoothing, vocab_size)
+      loss = metrics.transformer_loss(logits, targets, label_smoothing,
+                                      vocab_size)
       model.add_loss(loss)
       return model
 
@@ -130,9 +130,7 @@ class Transformer(tf.keras.Model):
               "Padded decoding on CPU/GPUs is not supported.")
         decode_batch_size = int(self.params["decode_batch_size"] /
                                 self.params["num_replicas"])
-        inputs.set_shape([
-            decode_batch_size, self.params["decode_max_length"]
-        ])
+        inputs.set_shape([decode_batch_size, self.params["decode_max_length"]])
 
     # Variance scaling is used here because it seems to work in many problems.
     # Other reasonable initializers may also work just as well.
@@ -314,15 +312,13 @@ class Transformer(tf.keras.Model):
     cache = {
         "layer_%d" % layer: {
             "k":
-                tf.zeros([
-                    batch_size, init_decode_length, num_heads, dim_per_head
-                ],
-                         dtype=self.params["dtype"]),
+                tf.zeros(
+                    [batch_size, init_decode_length, num_heads, dim_per_head],
+                    dtype=self.params["dtype"]),
             "v":
-                tf.zeros([
-                    batch_size, init_decode_length, num_heads, dim_per_head
-                ],
-                         dtype=self.params["dtype"])
+                tf.zeros(
+                    [batch_size, init_decode_length, num_heads, dim_per_head],
+                    dtype=self.params["dtype"])
         } for layer in range(self.params["num_hidden_layers"])
     }
     # pylint: enable=g-complex-comprehension
@@ -512,15 +508,14 @@ class DecoderStack(tf.keras.layers.Layer):
     """Return the output of the decoder layer stacks.
 
     Args:
-      decoder_inputs: A tensor with shape
-        [batch_size, target_length, hidden_size].
-      encoder_outputs: A tensor with shape
-        [batch_size, input_length, hidden_size]
-      decoder_self_attention_bias: A tensor with shape
-        [1, 1, target_len, target_length], the bias for decoder self-attention
-        layer.
-      attention_bias: A tensor with shape [batch_size, 1, 1, input_length],
-        the bias for encoder-decoder attention layer.
+      decoder_inputs: A tensor with shape [batch_size, target_length,
+        hidden_size].
+      encoder_outputs: A tensor with shape [batch_size, input_length,
+        hidden_size]
+      decoder_self_attention_bias: A tensor with shape [1, 1, target_len,
+        target_length], the bias for decoder self-attention layer.
+      attention_bias: A tensor with shape [batch_size, 1, 1, input_length], the
+        bias for encoder-decoder attention layer.
       training: A bool, whether in training mode or not.
       cache: (Used for fast decoding) A nested dictionary storing previous
         decoder self-attention values. The items are:

@@ -133,8 +133,7 @@ class TransformerEncoderTest(keras_parameterized.TestCase):
         num_layers=3,
         type_vocab_size=num_types,
         output_range=output_range)
-    self.assertTrue(
-        test_network._position_embedding_layer._use_dynamic_slicing)
+    self.assertTrue(test_network._position_embedding_layer._use_dynamic_slicing)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)

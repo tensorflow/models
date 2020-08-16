@@ -131,8 +131,9 @@ class OptimizerFactory(object):
     rate built using self.build_lr() is passed as an argument to this method.
 
     Args:
-      lr: A floating point value, or
-          a tf.keras.optimizers.schedules.LearningRateSchedule instance.
+      lr: A floating point value, or a
+        tf.keras.optimizers.schedules.LearningRateSchedule instance.
+
     Returns:
       tf.keras.optimizers.Optimizer instance.
     """
@@ -142,4 +143,3 @@ class OptimizerFactory(object):
 
     optimizer = OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)
     return optimizer
-

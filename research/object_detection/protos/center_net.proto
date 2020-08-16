@@ -244,6 +244,8 @@ message CenterNet {
     optional ClassificationLoss classification_loss = 5;
   }
   optional TrackEstimation track_estimation_task = 10;
+
+
 }
 
 message CenterNetFeatureExtractor {

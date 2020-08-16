@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-
 """Bounding Box List definition.
 
 BoxList represents a list of bounding boxes as tensorflow
@@ -126,8 +125,8 @@ class BoxList(object):
     it returns the box coordinates.
 
     Args:
-      field: this optional string parameter can be used to specify
-        a related field to be accessed.
+      field: this optional string parameter can be used to specify a related
+        field to be accessed.
 
     Returns:
       a tensor representing the box collection or an associated field.
@@ -192,8 +191,8 @@ class BoxList(object):
     """Retrieves specified fields as a dictionary of tensors.
 
     Args:
-      fields: (optional) list of fields to return in the dictionary.
-        If None (default), all fields are returned.
+      fields: (optional) list of fields to return in the dictionary. If None
+        (default), all fields are returned.
 
     Returns:
       tensor_dict: A dictionary of tensors specified by fields.
