@@ -456,47 +456,17 @@ class Ava(object):
       SPLITS[split]["excluded-csv"] = excluded_csv_path
       paths[split] = (csv_path, excluded_csv_path)
 
-    #label_map = self.get_label_map(os.path.join(self.path_to_data_download, "ava_action_list_v2.2.pbtxt"))
-    #
-    label_map = self.get_label_map("object_detection/data/mscoco_label_map.pbtxt")
+    label_map = self.get_label_map(os.path.join(
+        self.path_to_data_download,
+        "ava_action_list_v2.2_for_activitynet_2019.pbtxt"))
     return paths, label_map
 
   def get_label_map(self, path):
     """Parses a label map into {integer:string} format."""
-    label_map = {}
-    label_map = label_map_util.load_labelmap(path)
-    print(label_map)
-    label_map_dict = {}
-    for item in label_map.item:
-        label_map_dict[item.name] = item.label_id
-    with open(path, "rb") as f:
-      #label_map_util.load_labelmap()
-      #label_map_str = f.read()
-      #print(str(label_map_str))
-      #label_map = string_int_label_map_pb2.StringIntLabelMap()
-      #label_map.ParseFromString(label_map_str)
-      pass
-      """
-      current_id = -1
-      current_label = ""
-      for line in f:
-        if "item {" in line:
-          current_id = -1
-          current_label = ""
-        if "name:" in line:
-          first_quote = line.find('"') + 1
-          second_quote = line.find('"', first_quote)
-          assert second_quote > -1
-          current_label = line[first_quote:second_quote]
-        if "id:" in line:
-          current_id = int(line.split()[1])
-        if "}" in line:
-          label_map[current_id] = bytes(current_label, "utf8")"""
-    print('label map dict')
+    label_map_dict = label_map_util.get_label_map_dict(path)
+    label_map_dict = {v: bytes(k, "utf8") for k, v in label_map_dict.items()}
     logging.info(label_map_dict)
-    assert len(label_map) == NUM_CLASSES
-    return label_map
-
+    return label_map_dict
 
 @contextlib.contextmanager
 def _close_on_exit(writers):
