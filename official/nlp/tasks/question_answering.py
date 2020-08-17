@@ -139,17 +139,23 @@ class QuestionAnsweringTask(base_task.Task):
 
     kwargs = dict(
         examples=eval_examples,
-        tokenizer=tokenization.FullTokenizer(
-            vocab_file=params.vocab_file, do_lower_case=params.do_lower_case),
         max_seq_length=params.seq_length,
         doc_stride=params.doc_stride,
         max_query_length=params.query_length,
         is_training=False,
         output_fn=_append_feature,
         batch_size=params.global_batch_size)
+
     if params.tokenization == 'SentencePiece':
       # squad_lib_sp requires one more argument 'do_lower_case'.
       kwargs['do_lower_case'] = params.do_lower_case
+      kwargs['tokenizer'] = tokenization.FullSentencePieceTokenizer(
+          sp_model_file=params.vocab_file)
+    elif params.tokenization == 'WordPiece':
+      kwargs['tokenizer'] = tokenization.FullTokenizer(
+          vocab_file=params.vocab_file, do_lower_case=params.do_lower_case)
+    else:
+      raise ValueError('Unexpected tokenization: %s' % params.tokenization)
 
     eval_dataset_size = self.squad_lib.convert_examples_to_features(**kwargs)
     eval_writer.close()
