@@ -130,6 +130,8 @@ def yamnet_frames_model(params):
 
 def class_names(class_map_csv):
   """Read the class name definition file and return a list of strings."""
+  if tf.is_tensor(class_map_csv):
+    class_map_csv = class_map_csv.numpy()
   with open(class_map_csv) as csv_file:
     reader = csv.reader(csv_file)
     next(reader)   # Skip header

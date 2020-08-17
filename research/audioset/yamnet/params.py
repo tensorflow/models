@@ -23,12 +23,12 @@ from dataclasses import dataclass
 # clip and possibly better performance at a larger computational cost.
 @dataclass(frozen=True)  # Instances of this class are immutable.
 class Params:
-  sample_rate: int = 16000
+  sample_rate: float = 16000.0
   stft_window_seconds: float = 0.025
   stft_hop_seconds: float = 0.010
   mel_bands: int = 64
-  mel_min_hz: int = 125
-  mel_max_hz: int = 7500
+  mel_min_hz: float = 125.0
+  mel_max_hz: float = 7500.0
   log_offset: float = 0.001
   patch_window_seconds: float = 0.96
   patch_hop_seconds: float = 0.48

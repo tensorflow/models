@@ -11,7 +11,8 @@ and return as output:
 - a 2-d float32 Tensor of shape [num_spectrogram_frames, num_mel_bins]
   containing the log mel spectrogram of the entire waveform.
 The SavedModels will also contain (as an asset) a class map CSV file that maps
-class indices to AudioSet class names and Freebase MIDs.
+class indices to AudioSet class names and Freebase MIDs. The path to the class
+map is available as the 'class_map_path()' method of the restored model.
 
 Requires pip-installing tensorflow_hub and tensorflowjs.
 
@@ -50,13 +51,17 @@ class YAMNet(tf.Module):
     self._yamnet.load_weights(weights_path)
     self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
 
+  @tf.function
+  def class_map_path(self):
+    return self._class_map_asset.asset_path
+
   @tf.function(input_signature=(tf.TensorSpec(shape=[None], dtype=tf.float32),))
   def __call__(self, waveform):
     return self._yamnet(waveform)
 
 
-def check_model(model_fn, params):
-  yamnet_classes = yamnet.class_names('yamnet_class_map.csv')
+def check_model(model_fn, class_map_path, params):
+  yamnet_classes = yamnet.class_names(class_map_path)
 
   """Applies yamnet_test's sanity checks to an instance of YAMNet."""
   def clip_test(waveform, expected_class_name, top_n=10):
@@ -96,7 +101,7 @@ def make_tf2_export(weights_path, export_dir):
   log('Building and checking TF2 Module ...')
   params = yamnet_params.Params()
   yamnet = YAMNet(weights_path, params)
-  check_model(yamnet, params)
+  check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
 
   # Make TF2 SavedModel export.
@@ -107,7 +112,7 @@ def make_tf2_export(weights_path, export_dir):
   # Check export with TF-Hub in TF2.
   log('Checking TF2 SavedModel export in TF2 ...')
   model = tfhub.load(export_dir)
-  check_model(model, params)
+  check_model(model, model.class_map_path(), params)
   log('Done')
 
   # Check export with TF-Hub in TF1.
@@ -117,7 +122,7 @@ def make_tf2_export(weights_path, export_dir):
     sess.run(tf.compat.v1.global_variables_initializer())
     def run_model(waveform):
       return sess.run(model(waveform))
-    check_model(run_model, params)
+    check_model(run_model, model.class_map_path().eval(), params)
   log('Done')
 
 
@@ -131,7 +136,7 @@ def make_tflite_export(weights_path, export_dir):
   log('Building and checking TF-Lite Module ...')
   params = yamnet_params.Params(tflite_compatible=True)
   yamnet = YAMNet(weights_path, params)
-  check_model(yamnet, params)
+  check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
 
   # Make TF-Lite SavedModel export.
@@ -144,7 +149,7 @@ def make_tflite_export(weights_path, export_dir):
   # Check that the export can be loaded and works.
   log('Checking TF-Lite SavedModel export in TF2 ...')
   model = tf.saved_model.load(saved_model_dir)
-  check_model(model, params)
+  check_model(model, model.class_map_path(), params)
   log('Done')
 
   # Make a TF-Lite model from the SavedModel.
@@ -171,7 +176,7 @@ def make_tflite_export(weights_path, export_dir):
     return (interpreter.get_tensor(scores_output_index),
             interpreter.get_tensor(embeddings_output_index),
             interpreter.get_tensor(spectrogram_output_index))
-  check_model(run_model, params)
+  check_model(run_model, 'yamnet_class_map.csv', params)
   log('Done')
 
   return saved_model_dir
