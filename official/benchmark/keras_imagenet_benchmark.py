@@ -905,7 +905,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu')
-    FLAGS.batch_size = 128 * 8
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_amp(self):
@@ -918,7 +918,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.fp16_implementation = 'graph_rewrite'
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_amp')
-    FLAGS.batch_size = 256 * 8
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_tweaked(self):
@@ -929,7 +929,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_tweaked')
-    FLAGS.batch_size = 128 * 8
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
     FLAGS.datasets_num_private_threads = 14
     self._run_and_report_benchmark()
 
@@ -942,7 +942,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu')
-    FLAGS.batch_size = 128 * 8
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_amp(self):
@@ -956,7 +956,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_amp')
-    FLAGS.batch_size = 256 * 8
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_tweaked(self):
@@ -982,7 +982,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16')
-    FLAGS.batch_size = 256 * 8
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_8_gpu_fp16_tweaked(self):
@@ -994,7 +994,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_eager = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp16_tweaked')
-    FLAGS.batch_size = 256 * 8
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.datasets_num_private_threads = 40
     self._run_and_report_benchmark()
@@ -1009,7 +1009,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_8_gpu_fp16_dynamic_tweaked')
-    FLAGS.batch_size = 256 * 8
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.datasets_num_private_threads = 40
@@ -1025,7 +1025,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16')
-    FLAGS.batch_size = 256 * 8
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
   def benchmark_xla_8_gpu_fp16_tweaked(self):
@@ -1038,7 +1038,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.enable_xla = True
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16_tweaked')
-    FLAGS.batch_size = 256 * 8
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.datasets_num_private_threads = 48
     self._run_and_report_benchmark()
@@ -1074,7 +1074,7 @@ class Resnet50KerasBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.distribution_strategy = 'mirrored'
     FLAGS.model_dir = self._get_model_dir(
         'benchmark_xla_8_gpu_fp16_dynamic_tweaked')
-    FLAGS.batch_size = 256 * 8
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
     FLAGS.loss_scale = 'dynamic'
     FLAGS.tf_gpu_thread_mode = 'gpu_private'
     FLAGS.datasets_num_private_threads = 48

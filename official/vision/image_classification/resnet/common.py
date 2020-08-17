@@ -250,14 +250,14 @@ def define_keras_flags(dynamic_loss_scale=True,
       default=False,
       help='Whether to enable Tensorboard callback.')
   flags.DEFINE_string(
-      name='profile_steps',
-      default=None,
-      help='Save profiling data to model dir at given range of global steps. The '
-      'value must be a comma separated pair of positive integers, specifying '
-      'the first and last step to profile. For example, "--profile_steps=2,4" '
-      'triggers the profiler to process 3 steps, starting from the 2nd step. '
-      'Note that profiler has a non-trivial performance overhead, and the '
-      'output file can be gigantic if profiling many steps.')
+      name='profile_steps', default=None,
+      help='Save profiling data to model dir at given range of global steps.'
+      'The value must be a comma separated pair of positive integers,'
+      'specifying the first and last step to profile. For example,'
+      '"--profile_steps=2,4" triggers the profiler to process 3 steps,'
+      'starting from the 2nd step. Note that profiler has a non-trivial'
+      'performance overhead, and the output file can be gigantic if'
+      'profiling many steps.')
   flags.DEFINE_integer(
       name='train_steps',
       default=None,
