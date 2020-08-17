@@ -23,7 +23,7 @@ from absl import logging
 import orbit
 import tensorflow as tf
 
-from official.common import train_utils
+from official.core import train_utils
 from official.core import base_task
 from official.modeling.hyperparams import config_definitions
 
