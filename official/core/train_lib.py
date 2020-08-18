@@ -16,7 +16,7 @@
 """TFM common training driver library."""
 
 import os
-from typing import Any, Mapping
+from typing import Any, Mapping, Tuple
 
 # Import libraries
 from absl import logging
@@ -34,7 +34,8 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
                    params: config_definitions.ExperimentConfig,
                    model_dir: str,
                    run_post_eval: bool = False,
-                   save_summary: bool = True) -> Mapping[str, Any]:
+                   save_summary: bool = True) \
+-> Tuple[tf.keras.Model, Mapping[str, Any]]:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -49,8 +50,10 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
     save_summary: Whether to save train and validation summary.
 
   Returns:
-    eval logs: returns eval metrics logs when run_post_eval is set to True,
-      othewise, returns {}.
+    A 2-tuple of (model, eval_logs).
+      model: `tf.keras.Model` instance.
+      eval_logs: returns eval metrics logs when run_post_eval is set to True,
+        otherwise, returns {}.
   """
 
   with distribution_strategy.scope():
@@ -106,7 +109,7 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
 
   if run_post_eval:
     with distribution_strategy.scope():
-      return trainer.evaluate(
+      return trainer.model, trainer.evaluate(
           tf.convert_to_tensor(params.trainer.validation_steps))
   else:
-    return {}
+    return trainer.model, {}

@@ -83,7 +83,7 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
       with distribution_strategy.scope():
         task = task_factory.get_task(params.task, logging_dir=model_dir)
 
-      logs = train_lib.run_experiment(
+      _, logs = train_lib.run_experiment(
           distribution_strategy=distribution_strategy,
           task=task,
           mode=flag_mode,
