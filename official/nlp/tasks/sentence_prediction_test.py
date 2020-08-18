@@ -87,11 +87,30 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
 
-  def test_task(self):
+  @parameterized.named_parameters(
+      ("init_cls_pooler", True),
+      ("init_encoder", False),
+  )
+  def test_task(self, init_cls_pooler):
+    # Saves a checkpoint.
+    pretrain_cfg = bert.PretrainerConfig(
+        encoder=encoders.EncoderConfig(
+            bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1)),
+        cls_heads=[
+            bert.ClsHeadConfig(
+                inner_dim=768, num_classes=2, name="next_sentence")
+        ])
+    pretrain_model = masked_lm.MaskedLMTask(None).build_model(pretrain_cfg)
+    ckpt = tf.train.Checkpoint(
+        model=pretrain_model, **pretrain_model.checkpoint_items)
+    init_path = ckpt.save(self.get_temp_dir())
+
+    # Creates the task.
     config = sentence_prediction.SentencePredictionConfig(
-        init_checkpoint=self.get_temp_dir(),
-        model=self.get_model_config(2),
-        train_data=self._train_data_config)
+        init_checkpoint=init_path,
+        model=self.get_model_config(num_classes=2),
+        train_data=self._train_data_config,
+        init_cls_pooler=init_cls_pooler)
     task = sentence_prediction.SentencePredictionTask(config)
     model = task.build_model()
     metrics = task.build_metrics()
@@ -99,22 +118,9 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
 
     iterator = iter(dataset)
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
+    task.initialize(model)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
-
-    # Saves a checkpoint.
-    pretrain_cfg = bert.PretrainerConfig(
-        encoder=encoders.EncoderConfig(
-            bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1)),
-        cls_heads=[
-            bert.ClsHeadConfig(
-                inner_dim=10, num_classes=3, name="next_sentence")
-        ])
-    pretrain_model = masked_lm.MaskedLMTask(None).build_model(pretrain_cfg)
-    ckpt = tf.train.Checkpoint(
-        model=pretrain_model, **pretrain_model.checkpoint_items)
-    ckpt.save(config.init_checkpoint)
-    task.initialize(model)
 
   @parameterized.named_parameters(
       {
