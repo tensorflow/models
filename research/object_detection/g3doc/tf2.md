@@ -51,9 +51,11 @@ python object_detection/builders/model_builder_tf2_test.py
 
 *   Training -
     [Fine-tune a pre-trained detector in eager mode on custom data](../colab_tutorials/eager_few_shot_od_training_tf2_colab.ipynb)
-
+    [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tensorflow/models/blob/master/research/object_detection/colab_tutorials/eager_few_shot_od_training_tf2_colab.ipynb)
+    
 *   Inference -
     [Run inference with models from the zoo](../colab_tutorials/inference_tf2_colab.ipynb)
+    [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/tensorflow/models/blob/master/research/object_detection/colab_tutorials/inference_tf2_colab.ipynb)
 
 <!-- mdlint on -->
 
