@@ -20,3 +20,6 @@ index and an end token index), suitable for SQuAD-style tasks.
 * [`BertPretrainer`](bert_pretrainer.py) implements a masked LM and a
 classification head using the Masked LM and Classification networks,
 respectively.
+
+* [`DualEncoder`](dual_encoder.py) implements a dual encoder model, suitbale for
+retrieval tasks.
