@@ -164,6 +164,22 @@ the batch size to `256`:
 --batch_size=256
 ```
 
+It is also possible to train the model with an improved global features head as
+introduced in the [DELG paper](https://arxiv.org/abs/2001.05027). To do this,
+specify the additional parameter `--delg_global_features` when launching the 
+training, like in the following example:
+
+```
+python3 train.py \
+  --train_file_pattern=gldv2_dataset/tfrecord/train* \
+  --validation_file_pattern=gldv2_dataset/tfrecord/validation* \
+  --imagenet_checkpoint=resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5 \
+  --dataset_version=gld_v2_clean \
+  --logdir=gldv2_training/ \
+  --delg_global_features
+```
+
+
 ## Exporting the Trained Model
 
 Assuming the training output, the TensorFlow checkpoint, is in the
