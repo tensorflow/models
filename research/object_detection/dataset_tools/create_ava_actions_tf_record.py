@@ -38,7 +38,9 @@ Generating the data on disk can take considerable time and disk space.
 (Image compression quality is the primary determiner of disk usage.
 
 If using the Tensorflow Object Detection API, set the input_type field 
-in the input_reader to TF_SEQUENCE_EXAMPLE. 
+in the input_reader to TF_SEQUENCE_EXAMPLE. If using this script to generate
+data for Context R-CNN scripts, the --examples_for_context flag should be
+set to true, so that properly-formatted tf.example objects are written to disk.
 
 This data is structured for per-clip action classification where images is
 the sequence of images and labels are a one-hot encoded value. See
@@ -103,8 +105,10 @@ SPLITS = {
 
 NUM_CLASSES = 80
 
+
 def feature_list_feature(value):
   return tf.train.FeatureList(feature=value)
+
 
 class Ava(object):
   """Generates and loads the AVA Actions 2.2 data set."""
@@ -116,11 +120,11 @@ class Ava(object):
     self.path_to_output_dir = path_to_output_dir
 
   def generate_and_write_records(self,
-                        splits_to_process="train,val,test",
-                        video_path_format_string=None,
-                        seconds_per_sequence=10,
-                        hop_between_sequences=10,
-                        examples_for_context=False):
+                                 splits_to_process="train,val,test",
+                                 video_path_format_string=None,
+                                 seconds_per_sequence=10,
+                                 hop_between_sequences=10,
+                                 examples_for_context=False):
     """Downloads data and generates sharded TFRecords.
 
     Downloads the data files, generates metadata, and processes the metadata
@@ -164,9 +168,10 @@ class Ava(object):
     logging.info("Data extraction complete.")
 
   def _generate_sequence_examples(self, annotation_file, excluded_file, label_map,
-                         seconds_per_sequence, hop_between_sequences,
-                         video_path_format_string):
+                                  seconds_per_sequence, hop_between_sequences,
+                                  video_path_format_string):
     """For each row in the annotation CSV, generates the corresponding examples.
+
     When iterating through frames for a single sequence example, skips over 
     excluded frames. When moving to the next sequence example, also skips over 
     excluded frames as if they don't exist. Generates equal-length sequence
@@ -384,7 +389,9 @@ class Ava(object):
             middle_frame_time = round(middle_frame_time)
 
           key = hashlib.sha256(bufstring).hexdigest()
-          date_captured_feature = ("2020-06-17 00:%02d:%02d" % ((middle_frame_time - 900)*3 // 60, (middle_frame_time - 900)*3 % 60))
+          date_captured_feature = (
+              "2020-06-17 00:%02d:%02d" % ((middle_frame_time - 900)*3 // 60,
+              (middle_frame_time - 900)*3 % 60))
           context_feature_dict = {
               'image/height':
                   dataset_util.int64_feature(int(height)),
@@ -464,9 +471,10 @@ class Ava(object):
   def get_label_map(self, path):
     """Parses a label map into {integer:string} format."""
     label_map_dict = label_map_util.get_label_map_dict(path)
-    label_map_dict = {v: bytes(k, "utf8") for k, v in label_map_dict.items()}
+    label_map_dict = {v: bytes(k, 'utf8') for k, v in label_map_dict.items()}
     logging.info(label_map_dict)
     return label_map_dict
+
 
 @contextlib.contextmanager
 def _close_on_exit(writers):
@@ -506,13 +514,16 @@ if __name__ == "__main__":
                       "{split}, corresponding to columns of the data csvs.")
   flags.DEFINE_integer("seconds_per_sequence",
                        10,
-                       "The number of seconds per example in each example.")
+                       "The number of seconds per example in each example. Always"
+                       "1 when examples_for_context is True.")
   flags.DEFINE_integer("hop_between_sequences",
                        10,
                        "The hop between sequences. If less than "
-                       "seconds_per_sequence, will overlap.")
+                       "seconds_per_sequence, will overlap. Always 1 when "
+                       "examples_for_context is True.")
   flags.DEFINE_boolean("examples_for_context",
                         False,
                         "Whether to generate examples instead of sequence examples. "
-                        "If true, will generate tf.Example objects for use in Context R-CNN.")
+                        "If true, will generate tf.Example objects "
+                        "for use in Context R-CNN.")
   app.run(main)

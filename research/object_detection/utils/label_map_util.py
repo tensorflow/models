@@ -152,7 +152,7 @@ def load_labelmap(path):
   Returns:
     a StringIntLabelMapProto
   """
-  with tf.io.gfile.GFile(path, 'rb') as fid:
+  with tf.io.gfile.GFile(path, 'r') as fid:
     label_map_string = fid.read()
     label_map = string_int_label_map_pb2.StringIntLabelMap()
     try:
