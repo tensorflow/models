@@ -152,13 +152,13 @@ class EncoderScaffold(tf.keras.Model):
           name='position_embedding')
       position_embeddings = self._position_embedding_layer(word_embeddings)
 
-      type_embeddings = (
-          layers.OnDeviceEmbedding(
-              vocab_size=embedding_cfg['type_vocab_size'],
-              embedding_width=embedding_cfg['hidden_size'],
-              initializer=embedding_cfg['initializer'],
-              use_one_hot=True,
-              name='type_embeddings')(type_ids))
+      self._type_embedding_layer = layers.OnDeviceEmbedding(
+          vocab_size=embedding_cfg['type_vocab_size'],
+          embedding_width=embedding_cfg['hidden_size'],
+          initializer=embedding_cfg['initializer'],
+          use_one_hot=True,
+          name='type_embeddings')
+      type_embeddings = self._type_embedding_layer(type_ids)
 
       embeddings = tf.keras.layers.Add()(
           [word_embeddings, position_embeddings, type_embeddings])
