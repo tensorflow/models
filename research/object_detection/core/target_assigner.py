@@ -1903,7 +1903,7 @@ class CenterNetCornerOffsetTargetAssigner(object):
 class DETRTargetAssigner(object):
   """Target assigner to compute classification and regression targets."""
 
-  def __init__(self, negative_class_weight=1.0):
+  def __init__(self):
     """Construct Object Detection Target Assigner.
 
     Args:
@@ -1911,13 +1911,10 @@ class DETRTargetAssigner(object):
         predicted boxes.
       box_coder_instance: an object_detection.core.BoxCoder used to encode
         matching groundtruth boxes with respect to predicted boxes.
-      negative_class_weight: classification weight to be associated to negative
-        boxes (default: 1.0). The weight must be in [0., 1.].
 
     """
     self._similarity_calc = sim_calc.DETRSimilarity()
     self._matcher = hungarian_matcher.HungarianBipartiteMatcher()
-    self._negative_class_weight = negative_class_weight
 
   def batch_assign(self,
                    pred_boxes_batch,
@@ -2055,7 +2052,7 @@ class DETRTargetAssigner(object):
     cls_weights = match.gather_based_on_match(
         groundtruth_weights,
         ignored_value=0.,
-        unmatched_value=self._negative_class_weight)
+        unmatched_value=1)
 
     # convert cls_weights from per-box_pred to per-class.
     class_label_shape = tf.shape(cls_targets)[1:]

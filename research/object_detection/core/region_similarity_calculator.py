@@ -56,8 +56,7 @@ class RegionSimilarityCalculator(six.with_metaclass(ABCMeta, object)):
       return self._compare(boxlist1, boxlist2)
 
   @abstractmethod
-  def _compare(self, boxlist1, boxlist2,
-               groundtruth_labels=None, predicted_labels=None):
+  def _compare(self, boxlist1, boxlist2):
     pass
 
 
@@ -107,6 +106,7 @@ class DETRSimilarity(RegionSimilarityCalculator):
         boxlist1, boxlist2) + self.giou_weight * box_list_ops.giou(
         boxlist1, boxlist2) + classification_scores
 
+
 class NegSqDistSimilarity(RegionSimilarityCalculator):
   """Class to compute similarity based on the squared distance metric.
 
@@ -125,6 +125,7 @@ class NegSqDistSimilarity(RegionSimilarityCalculator):
       A tensor with shape [N, M] representing negated pairwise squared distance.
     """
     return -1 * box_list_ops.sq_dist(boxlist1, boxlist2)
+
 
 class IoaSimilarity(RegionSimilarityCalculator):
   """Class to compute similarity based on Intersection over Area (IOA) metric.
