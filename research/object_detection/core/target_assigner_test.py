@@ -2280,5 +2280,4 @@ class DETRTargetAssignerTest(test_case.TestCase):
     self.assertEqual(reg_weights_out.dtype, np.float32)
 
 if __name__ == '__main__':
-  tf.enable_v2_behavior()
   tf.test.main()
