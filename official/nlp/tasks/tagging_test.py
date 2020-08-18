@@ -23,7 +23,7 @@ import tensorflow as tf
 from official.nlp.bert import configs
 from official.nlp.bert import export_tfhub
 from official.nlp.configs import encoders
-from official.nlp.data import tagging_data_loader
+from official.nlp.data import tagging_dataloader
 from official.nlp.tasks import tagging
 
 
@@ -56,7 +56,7 @@ class TaggingTest(tf.test.TestCase):
     super(TaggingTest, self).setUp()
     self._encoder_config = encoders.EncoderConfig(
         bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1))
-    self._train_data_config = tagging_data_loader.TaggingDataConfig(
+    self._train_data_config = tagging_dataloader.TaggingDataConfig(
         input_path="dummy", seq_length=128, global_batch_size=1)
 
   def _run_task(self, config):
@@ -181,7 +181,7 @@ class TaggingTest(tf.test.TestCase):
         seq_length=seq_length,
         num_labels=len(task_config.class_names),
         num_examples=num_examples)
-    test_data_config = tagging_data_loader.TaggingDataConfig(
+    test_data_config = tagging_dataloader.TaggingDataConfig(
         input_path=test_data_path,
         seq_length=seq_length,
         is_training=False,

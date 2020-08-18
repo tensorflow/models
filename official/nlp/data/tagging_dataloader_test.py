@@ -19,7 +19,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from official.nlp.data import tagging_data_loader
+from official.nlp.data import tagging_dataloader
 
 
 def _create_fake_dataset(output_path, seq_length):
@@ -51,12 +51,12 @@ class TaggingDataLoaderTest(tf.test.TestCase):
     batch_size = 10
     train_data_path = os.path.join(self.get_temp_dir(), 'train.tf_record')
     _create_fake_dataset(train_data_path, seq_length)
-    data_config = tagging_data_loader.TaggingDataConfig(
+    data_config = tagging_dataloader.TaggingDataConfig(
         input_path=train_data_path,
         seq_length=seq_length,
         global_batch_size=batch_size)
 
-    dataset = tagging_data_loader.TaggingDataLoader(data_config).load()
+    dataset = tagging_dataloader.TaggingDataLoader(data_config).load()
     features, labels = next(iter(dataset))
     self.assertCountEqual(['input_word_ids', 'input_mask', 'input_type_ids'],
                           features.keys())
