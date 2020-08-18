@@ -435,9 +435,6 @@ def create_target_assigner(reference, stage=None,
                                            use_matmul_gather=use_matmul_gather)
     box_coder_instance = faster_rcnn_box_coder.FasterRcnnBoxCoder()
 
-  elif reference == 'DETR':
-    return DETRTargetAssigner()
-
   else:
     raise ValueError('No valid combination of reference and stage.')
 
