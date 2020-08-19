@@ -71,13 +71,15 @@ class CenterNetResnetV1FpnFeatureExtractor(CenterNetFeatureExtractor):
         channel_means=channel_means, channel_stds=channel_stds,
         bgr_ordering=bgr_ordering)
     if resnet_type == 'resnet_v1_50':
-      self._base_model = tf.keras.applications.ResNet50(weights=None)
+      self._base_model = tf.keras.applications.ResNet50(weights=None,
+                                                        include_top=False)
     elif resnet_type == 'resnet_v1_101':
-      self._base_model = tf.keras.applications.ResNet101(weights=None)
+      self._base_model = tf.keras.applications.ResNet101(weights=None,
+                                                         include_top=False)
     elif resnet_type == 'resnet_v1_18':
-      self._base_model = resnet_v1.resnet_v1_18(weights=None)
+      self._base_model = resnet_v1.resnet_v1_18(weights=None, include_top=False)
     elif resnet_type == 'resnet_v1_34':
-      self._base_model = resnet_v1.resnet_v1_34(weights=None)
+      self._base_model = resnet_v1.resnet_v1_34(weights=None, include_top=False)
     else:
       raise ValueError('Unknown Resnet Model {}'.format(resnet_type))
     output_layers = _RESNET_MODEL_OUTPUT_LAYERS[resnet_type]
