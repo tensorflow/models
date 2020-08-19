@@ -14,11 +14,6 @@
 # ==============================================================================
 """Keras layer that creates a self-attention mask."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import tensorflow as tf
 from official.modeling import tf_utils
 

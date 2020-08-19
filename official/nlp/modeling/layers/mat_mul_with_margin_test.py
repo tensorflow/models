@@ -14,11 +14,6 @@
 # ==============================================================================
 """Tests for mat_mul_with_margin layer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-# Import libraries
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import

@@ -14,10 +14,6 @@
 # ==============================================================================
 """Keras-based rezero-transformer block layer (Transformer with ReZero)."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import gin
 import tensorflow as tf
@@ -86,7 +82,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
   def build(self, input_shape):
     input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
     input_tensor_shape = tf.TensorShape(input_tensor)
-    if len(input_tensor_shape) != 3:
+    if len(input_tensor_shape.as_list()) != 3:
       raise ValueError("TransformerLayer expects a three-dimensional input of "
                        "shape [batch, sequence, width].")
     batch_size, sequence_length, hidden_size = input_tensor_shape
