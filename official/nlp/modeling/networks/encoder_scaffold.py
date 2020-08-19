@@ -22,6 +22,7 @@ from __future__ import print_function
 
 import inspect
 
+from absl import logging
 import gin
 import tensorflow as tf
 
@@ -204,6 +205,8 @@ class EncoderScaffold(tf.keras.Model):
 
     super(EncoderScaffold, self).__init__(
         inputs=inputs, outputs=outputs, **kwargs)
+
+    logging.info('EncoderScaffold configs: %s', self.get_config())
 
   def get_config(self):
     config_dict = {
