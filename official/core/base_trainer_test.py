@@ -16,12 +16,14 @@
 """Tests for tensorflow_models.core.trainers.trainer."""
 # pylint: disable=g-direct-tensorflow-import
 
+import os
 from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 from official.core import base_trainer as trainer_lib
+from official.core import train_lib
 from official.modeling.hyperparams import config_definitions as cfg
 from official.utils.testing import mock_task
 
@@ -104,6 +106,30 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
 
     metrics = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
     self.assertIn('training_loss', metrics)
+
+  @combinations.generate(all_strategy_combinations())
+  def test_export_best_ckpt(self, distribution):
+    config = cfg.ExperimentConfig(
+        trainer=cfg.TrainerConfig(
+            best_checkpoint_export_subdir='best_ckpt',
+            best_checkpoint_eval_metric='acc',
+            optimizer_config=cfg.OptimizationConfig({
+                'optimizer': {
+                    'type': 'sgd'
+                },
+                'learning_rate': {
+                    'type': 'constant'
+                }
+            })))
+    model_dir = self.get_temp_dir()
+    task = mock_task.MockTask(config.task, logging_dir=model_dir)
+    ckpt_exporter = train_lib.maybe_create_best_ckpt_exporter(config, model_dir)
+    trainer = trainer_lib.Trainer(
+        config, task, checkpoint_exporter=ckpt_exporter)
+    trainer.train(tf.convert_to_tensor(1, dtype=tf.int32))
+    trainer.evaluate(tf.convert_to_tensor(1, dtype=tf.int32))
+    self.assertTrue(tf.io.gfile.exists(
+        os.path.join(model_dir, 'best_ckpt', 'info.json')))
 
 
 if __name__ == '__main__':
