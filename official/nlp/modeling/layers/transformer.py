@@ -256,16 +256,14 @@ class Transformer(tf.keras.layers.Layer):
     intermediate_output = self._intermediate_dropout_layer(intermediate_output)
     layer_output = self._output_dense(intermediate_output)
     layer_output = self._output_dropout(layer_output)
-    # During mixed precision training, attention_output is from layer norm and
-    # is always fp32 for now. Cast layer_output to fp32 for the subsequent
-    # add.
-    layer_output = tf.cast(layer_output, tf.float32)
-    if self._norm_first:
-      layer_output = source_attention_output + layer_output
-    else:
-      layer_output = self._output_layer_norm(layer_output + attention_output)
 
-    return layer_output
+    if self._norm_first:
+      return source_attention_output + layer_output
+
+    # During mixed precision training, layer norm output is always fp32 for now.
+    # Casts fp32 for the subsequent add.
+    layer_output = tf.cast(layer_output, tf.float32)
+    return self._output_layer_norm(layer_output + attention_output)
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
