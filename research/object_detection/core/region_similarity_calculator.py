@@ -100,11 +100,13 @@ class DETRSimilarity(RegionSimilarityCalculator):
     """
     groundtruth_labels = boxlist1.get_field(fields.BoxListFields.classes)
     predicted_labels = boxlist2.get_field(fields.BoxListFields.classes)
+    # Currently supporting only softmax
     classification_scores = tf.matmul(groundtruth_labels,
-        tf.nn.softmax(predicted_labels), transpose_b=True)
+                                      predicted_labels,
+                                      transpose_b=True)
     return -self.l1_weight * box_list_ops.l1(
         boxlist1, boxlist2) + self.giou_weight * box_list_ops.giou(
-        boxlist1, boxlist2) + classification_scores
+            boxlist1, boxlist2) + classification_scores
 
 
 class NegSqDistSimilarity(RegionSimilarityCalculator):

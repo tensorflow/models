@@ -1917,21 +1917,21 @@ class DETRTargetAssigner(object):
     self._matcher = hungarian_matcher.HungarianBipartiteMatcher()
 
   def batch_assign(self,
-                   pred_boxes_batch,
+                   pred_box_batch,
                    gt_box_batch,
-                   class_predictions,
+                   pred_class_batch,
                    gt_class_targets_batch,
                    gt_weights_batch=None):
-                  
+
     """Batched assignment of classification and regression targets.
 
     Args:
-      pred_boxes_batch: list of BoxList objects with length batch_size
-        representing predicted box sets.
-      gt_box_batch: a list of BoxList objects with length batch_size
-        representing groundtruth boxes for each image in the batch
-      class_predictions: A list of tensors with length batch_size, where each
-        each tensor has shape [max_num_boxes, num_classes] to be used
+      pred_box_batch: a tensor of shape [batch_size, num_queries, 4]
+        representing predicted bounding boxes.
+      gt_box_batch: a tensor of shape [batch_size, num_queries, 4]
+        representing groundtruth bounding boxes.
+      pred_class_batch: A list of tensors with length batch_size, where each
+        each tensor has shape [num_queries, num_classes] to be used
         by certain similarity calculators.
       gt_class_targets_batch: a list of tensors with length batch_size, where
         each tensor has shape [num_gt_boxes_i, num_classes] and
@@ -1949,19 +1949,27 @@ class DETRTargetAssigner(object):
         box_code_dimension]
       batch_reg_weights: a tensor with shape [batch_size, num_pred_boxes].
     """
+    pred_box_batch = [
+        box_list.BoxList(pred_box)
+        for pred_box in tf.unstack(pred_box_batch)]
+    gt_box_batch = [
+        box_list.BoxList(gt_box)
+        for gt_box in tf.unstack(gt_box_batch)]
+
     cls_targets_list = []
     cls_weights_list = []
     reg_targets_list = []
     reg_weights_list = []
     if gt_weights_batch is None:
       gt_weights_batch = [None] * len(gt_class_targets_batch)
-    class_predictions = tf.unstack(class_predictions)
-    for pred_boxes, gt_boxes, class_preds, gt_class_targets, gt_weights in zip(
-        pred_boxes_batch, gt_box_batch, class_predictions,
-        gt_class_targets_batch, gt_weights_batch):
+    pred_class_batch = tf.unstack(pred_class_batch)
+    for (pred_boxes, gt_boxes, pred_class_batch,
+         gt_class_targets, gt_weights) in zip(
+            pred_box_batch, gt_box_batch, pred_class_batch,
+            gt_class_targets_batch, gt_weights_batch):
       (cls_targets, cls_weights,
-      reg_targets, reg_weights) = self.assign(
-          pred_boxes, gt_boxes, class_preds, gt_class_targets, gt_weights)
+       reg_targets, reg_weights) = self.assign(
+          pred_boxes, gt_boxes, pred_class_batch, gt_class_targets, gt_weights)
       cls_targets_list.append(cls_targets)
       cls_weights_list.append(cls_weights)
       reg_targets_list.append(reg_targets)
@@ -1976,7 +1984,7 @@ class DETRTargetAssigner(object):
   def assign(self,
              box_preds,
              groundtruth_boxes,
-             class_predictions,
+             pred_class_batch,
              groundtruth_labels,
              groundtruth_weights=None):
     """Assign classification and regression targets to each box_pred.
@@ -1992,7 +2000,7 @@ class DETRTargetAssigner(object):
     Args:
       box_preds: a BoxList representing N box_preds
       groundtruth_boxes: a BoxList representing M groundtruth boxes
-      class_predictions: A tensor with shape [max_num_boxes, num_classes]
+      pred_class_batch: A tensor with shape [max_num_boxes, num_classes]
         to be used by certain similarity calculators.
       groundtruth_labels:  a tensor of shape [M, num_classes]
         with labels for each of the ground_truth boxes. The subshape
@@ -2000,12 +2008,12 @@ class DETRTargetAssigner(object):
         to None, groundtruth_labels assumes a binary problem where all
         ground_truth boxes get a positive label (of 1).
       groundtruth_weights: a float tensor of shape [M] indicating the weight to
-        assign to all box_preds match to a particular groundtruth box. The weights
-        must be in [0., 1.]. If None, all weights are set to 1. Generally no
-        groundtruth boxes with zero weight match to any box_preds as matchers are
-        aware of groundtruth weights. Additionally, `cls_weights` and
-        `reg_weights` are calculated using groundtruth weights as an added
-        safety.
+        assign to all box_preds match to a particular groundtruth box. The
+        weights must be in [0., 1.]. If None, all weights are set to 1.
+        Generally no groundtruth boxes with zero weight match to any box_preds
+        as matchers are aware of groundtruth weights. Additionally,
+        `cls_weights` and `reg_weights` are calculated using groundtruth
+        weights as an added safety.
 
     Returns:
       cls_targets: a float32 tensor with shape [num_box_preds, num_classes],
@@ -2013,11 +2021,13 @@ class DETRTargetAssigner(object):
         which has shape [num_gt_boxes, num_classes].
       cls_weights: a float32 tensor with shape [num_box_preds, num_classes],
         representing weights for each element in cls_targets.
-      reg_targets: a float32 tensor with shape [num_box_preds, box_code_dimension]
+      reg_targets: a float32 tensor with shape [num_box_preds,
+        box_code_dimension]
       reg_weights: a float32 tensor with shape [num_box_preds]
 
     """
-    unmatched_class_label = tf.constant([1] + [0] * (groundtruth_labels.shape[1] - 1), tf.float32)
+    unmatched_class_label = tf.constant(
+        [1] + [0] * (groundtruth_labels.shape[1] - 1), tf.float32)
 
     if groundtruth_weights is None:
       num_gt_boxes = groundtruth_boxes.num_boxes_static()
@@ -2025,8 +2035,9 @@ class DETRTargetAssigner(object):
         num_gt_boxes = groundtruth_boxes.num_boxes()
       groundtruth_weights = tf.ones([num_gt_boxes], dtype=tf.float32)
 
-    groundtruth_boxes.add_field(fields.BoxListFields.classes, groundtruth_labels)
-    box_preds.add_field(fields.BoxListFields.classes, class_predictions)
+    groundtruth_boxes.add_field(fields.BoxListFields.classes,
+                                groundtruth_labels)
+    box_preds.add_field(fields.BoxListFields.classes, pred_class_batch)
 
     match_quality_matrix = self._similarity_calc.compare(
         groundtruth_boxes,
