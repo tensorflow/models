@@ -282,7 +282,8 @@ def validate_tf_v2_checkpoint_restore_map(checkpoint_restore_map):
   """Ensure that given dict is a valid TF v2 style restore map.
 
   Args:
-    checkpoint_restore_map: A dict mapping strings to tf.keras.Model objects.
+    checkpoint_restore_map: A nested dict mapping strings to
+      tf.keras.Model objects.
 
   Raises:
     ValueError: If they keys in checkpoint_restore_map are not strings or if
@@ -294,8 +295,12 @@ def validate_tf_v2_checkpoint_restore_map(checkpoint_restore_map):
     if not (isinstance(key, str) and
             (isinstance(value, tf.Module)
              or isinstance(value, tf.train.Checkpoint))):
-      raise TypeError(RESTORE_MAP_ERROR_TEMPLATE.format(
-          key.__class__.__name__, value.__class__.__name__))
+      if isinstance(key, str) and isinstance(value, dict):
+        validate_tf_v2_checkpoint_restore_map(value)
+      else:
+        raise TypeError(
+            RESTORE_MAP_ERROR_TEMPLATE.format(key.__class__.__name__,
+                                              value.__class__.__name__))
 
 
 def is_object_based_checkpoint(checkpoint_path):
