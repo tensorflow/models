@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from official.core import input_reader
 from official.modeling.hyperparams import config_definitions as cfg
+from official.nlp.data import data_loader
 from official.nlp.data import data_loader_factory
 
 
@@ -33,7 +34,7 @@ class TaggingDataConfig(cfg.DataConfig):
 
 
 @data_loader_factory.register_data_loader_cls(TaggingDataConfig)
-class TaggingDataLoader:
+class TaggingDataLoader(data_loader.DataLoader):
   """A class to load dataset for tagging (e.g., NER and POS) task."""
 
   def __init__(self, params: TaggingDataConfig):
