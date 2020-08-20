@@ -16,36 +16,40 @@
 
 Model paper: https://arxiv.org/abs/2005.12872
 Transformer model code source: https://github.com/tensorflow/tensor2tensor
-
-Layer normalization will come as a wrapper in a following PR.
 """
-import tensorflow as tf
-from object_detection.utils import shape_utils
-
 import math
 
 import tensorflow as tf
+
+from object_detection.utils import shape_utils
 
 
 class Transformer(tf.keras.Model):
   """Transformer model with Keras.
 
-  Implemented as described in the paper: End-to-End Object Detection with Transformers
+  Implemented as described in the paper: End-to-End Object Detection
+  with Transformers: https://arxiv.org/abs/2005.12872
 
-  The Transformer model consists of an encoder and decoder. The input is an int
-  sequence (or a batch of sequences). The encoder produces a continuous
-  representation, and the decoder uses the encoder output to generate
-  probabilities for the output sequence.
+  The Transformer model consists of an encoder and decoder. The input is
+  a 3-D tensor of shape [batch_size, input_length, hidden_dimension].
+  The encoder produces a continuous representation, and the decoder uses
+  the encoder output to generate probabilities for the output sequence.
   """
 
   def __init__(self, hidden_size=256, num_heads=8, attention_dropout=0,
                layer_postprocess_dropout=0.1, relu_dropout=0, filter_size=256,
-               num_hidden_layers=6, dtype=tf.float32, name="ODTransformer"):
+               num_hidden_layers=6, name="ODTransformer"):
     """Initialize layers to build Transformer model.
 
     Args:
-      params: hyperparameter object defining layer sizes, dropout values, etc.
-      name: name of the model.
+      hidden_size: a number representing the length of the hidden dimension
+      num_heads: the number of heads to use for multi-headed attention
+      attention_dropout: dropout rate to apply in attention
+      layer_postprocess_dropout: dropout rate to apply in postprocessing
+      relu_dropout: dropout rate for the feed-forward networks
+      filter_size: size of the middle layer in the feed-forward networks
+      num_hidden_layers: number of encoder/decoder layers
+      name: the name to give the transformer
     """
     super(Transformer, self).__init__(name=name)
     self._hidden_size = hidden_size
@@ -55,7 +59,6 @@ class Transformer(tf.keras.Model):
     self._relu_dropout = relu_dropout
     self._filter_size = filter_size
     self._num_hidden_layers = num_hidden_layers
-    self._dtype = tf.float32
     self._encoder_stack = EncoderStack(self._hidden_size,
                                        self._num_heads,
                                        self._attention_dropout,
@@ -82,131 +85,43 @@ class Transformer(tf.keras.Model):
         "_relu_dropout": self._relu_dropout,
         "_filter_size": self._filter_size,
         "_num_hidden_layers": self._num_hidden_layers,
-        "_dtype": self._dtype,
     }
 
   def call(self, inputs, training):
     """Calculate target logits or inferred target sequences.
 
     Args:
-      inputs: input tensor list of size 1 or 2.
-        First item, inputs: int tensor with shape [batch_size, input_length].
-        Second item, queries: None or int tensor with shape
+      inputs: input tensor list of size 2.
+        First item, inputs: float32 tensor with shape [batch_size,
+            input_length, hidden_dimension].
+        Second item, queries: float32 tensor with shape
           [batch_size, num_queries, hidden_dimension].
       training: boolean, whether in training mode or not.
 
     Returns:
       A tensor of length [batch_size, num_queries, hidden_dimension]
-
-    Raises:
-      NotImplementedError: If try to use padded decode method on CPU/GPUs.
     """
-    #training = True
-    inputs, targets = inputs[0], inputs[1]
+    inputs, queries = inputs[0], inputs[1]
 
-    # Variance scaling is used here because it seems to work in many problems.
-    # Other reasonable initializers may also work just as well.
     with tf.name_scope("add_pos_encoding"):
-      pos_encoding = self._position_embedding(inputs=encoder_inputs)
-      pos_encoding = tf.cast(pos_encoding, self._dtype)
+      pos_encoding = self._position_embedding(inputs=inputs)
 
     with tf.name_scope("Transformer"):
-      encoder_outputs = self.encode(inputs, training, pos_encoding)
-      logits = self.decode(targets, encoder_outputs, training, pos_encoding)
-      return logits
-
-  def encode(self, encoder_inputs, training, encoding):
-    """Generate continuous representation for inputs.
-
-    Args:
-      inputs: int tensor with shape [batch_size, input_length].
-      training: boolean, whether in training mode or not.
-
-    Returns:
-      float tensor with shape [batch_size, input_length, hidden_size]
-    """
-    with tf.name_scope("encode"):
-      if training:
-        encoder_inputs = tf.nn.dropout(
-            encoder_inputs, rate=self._layer_postprocess_dropout)
-
-      return self._encoder_stack(
-          encoder_inputs, training, encoding)
-
-  def decode(self, targets, encoder_outputs, training, encoding=None):
-    """Generate logits for each value in the target sequence.
-
-    Args:
-      targets: target values for the output sequence. int tensor with shape
-        [batch_size, target_length]
-      encoder_outputs: continuous representation of input sequence. float tensor
-        with shape [batch_size, input_length, hidden_size]
-      training: boolean, whether in training mode or not.
-
-    Returns:
-      float32 tensor with shape [batch_size, target_length, vocab_size]
-    """
-    with tf.name_scope("decode"):
-      decoder_inputs = tf.cast(targets, self._dtype)
-      if training:
-        decoder_inputs = tf.nn.dropout(
-            decoder_inputs, rate=self._layer_postprocess_dropout)
-
-      # Run values
-      outputs = self._decoder_stack(
-          decoder_inputs,
-          encoder_outputs,
-          training=training,
-          encoding=encoding,
-          queries=decoder_inputs)
-      return outputs
+      encoder_outputs = self._encoder_stack(
+          inputs, training, pos_encoding)
+      decoder_outputs = self._decoder_stack(
+          queries, encoder_outputs, training, pos_encoding)
+      return decoder_outputs
 
 class PrePostProcessingWrapper(tf.keras.layers.Layer):
-  """Wrapper class that applies layer pre-processing and post-processing."""
+  """Wrapper class that applies layer pre-processing and post-processing.
+
+  Note: this is the version described in the paper. However, a version
+  with layer normalization before rather than after the layer may work better.
+  """
 
   def __init__(self, layer, layer_postprocess_dropout):
     super(PrePostProcessingWrapper, self).__init__()
-    self.layer = layer
-    self.postprocess_dropout = layer_postprocess_dropout
-
-  def build(self, input_shape):
-    # Create normalization layer
-    self.layer_norm = tf.keras.layers.LayerNormalization(
-        epsilon=1e-6, dtype="float32")
-    self.layer_pre_norm = tf.keras.layers.LayerNormalization(
-        epsilon=1e-6, dtype="float32")
-    super(PrePostProcessingWrapper, self).build(input_shape)
-
-  def get_config(self):
-    return {
-        "params": self.params,
-    }
-
-  def call(self, add, x, *args, **kwargs):
-    """Calls wrapped layer with same parameters."""
-    # Preprocessing: apply layer normalization
-    training = kwargs["training"]
-
-    y = self.layer_pre_norm(x)
-    newargs = [y]
-    if len(args) == 1:
-      newargs.append(self.layer_pre_norm(args[0]))
-    else:
-      newargs.extend(args)
-    
-    # Get layer output
-    y = self.layer(*newargs, **kwargs)
-
-    # Postprocessing: apply dropout and residual connection
-    if training:
-      y = tf.nn.dropout(y, rate=self.postprocess_dropout)
-    return add + y
-
-class PrePostProcessingWrapperOld(tf.keras.layers.Layer):
-  """Wrapper class that applies layer pre-processing and post-processing."""
-
-  def __init__(self, layer, layer_postprocess_dropout):
-    super(PrePostProcessingWrapperOld, self).__init__()
     self.layer = layer
     self._postprocess_dropout = layer_postprocess_dropout
 
@@ -214,25 +129,23 @@ class PrePostProcessingWrapperOld(tf.keras.layers.Layer):
     # Create normalization layer
     self.layer_norm = tf.keras.layers.LayerNormalization(
         epsilon=1e-6, dtype="float32")
-    super(PrePostProcessingWrapperOld, self).build(input_shape)
+    super(PrePostProcessingWrapper, self).build(input_shape)
 
   def get_config(self):
     return {
         "_postprocess_dropout": self._postprocess_dropout,
     }
 
-  def call(self, x, *args, **kwargs):
+  def call(self, to_add, *args, **kwargs):
     """Calls wrapped layer with same parameters."""
-    # Preprocessing: apply layer normalization
+
     training = kwargs["training"]
 
     y = self.layer(*args, **kwargs)
 
-    # Postprocessing: apply dropout and residual connection
-    #y = tf.keras.layers.Dropout(self._postprocess_dropout)(y, training=training)
     if training:
       y = tf.nn.dropout(y, rate=self._postprocess_dropout)
-    return self.layer_norm(x + y)
+    return self.layer_norm(to_add + y)
 
 class EncoderStack(tf.keras.layers.Layer):
   """Transformer encoder stack.
@@ -244,8 +157,20 @@ class EncoderStack(tf.keras.layers.Layer):
   """
 
   def __init__(self, hidden_size=256, num_heads=8, attention_dropout=0.0,
-               layer_postprocess_dropout=0.0, relu_dropout=0.0, filter_size=256,
-               num_hidden_layers=6, dtype=tf.float32):
+               layer_postprocess_dropout=0.1, relu_dropout=0.0,
+               filter_size=256, num_hidden_layers=6):
+    """ Initiallize the encoder stack.
+
+    Args:
+      hidden_size: a number representing the length of the hidden dimension
+      num_heads: the number of heads to use for multi-headed attention
+      attention_dropout: dropout rate to apply in attention
+      layer_postprocess_dropout: dropout rate to apply in postprocessing
+      relu_dropout: dropout rate for the feed-forward networks
+      filter_size: size of the middle layer in the feed-forward networks
+      num_hidden_layers: number of encoder/decoder layers
+      name: the name to give the transformer
+    """
     super(EncoderStack, self).__init__()
     self._hidden_size = hidden_size
     self._num_heads = num_heads
@@ -267,8 +192,10 @@ class EncoderStack(tf.keras.layers.Layer):
           self._hidden_size, self._filter_size, self._relu_dropout)
 
       self.layers.append([
-          PrePostProcessingWrapperOld(self_attention_layer, self._layer_postprocess_dropout),
-          PrePostProcessingWrapperOld(feed_forward_network, self._layer_postprocess_dropout)
+          PrePostProcessingWrapper(self_attention_layer,
+                                   self._layer_postprocess_dropout),
+          PrePostProcessingWrapper(feed_forward_network,
+                                   self._layer_postprocess_dropout)
       ])
 
     # Create final layer normalization layer.
@@ -284,39 +211,33 @@ class EncoderStack(tf.keras.layers.Layer):
         "_layer_postprocess_dropout": self._layer_postprocess_dropout,
         "_relu_dropout": self._relu_dropout,
         "_filter_size": self._filter_size,
-        "_num_hidden_layers": self._num_hidden_layers,
-        "_dtype": self._dtype,
+        "_num_hidden_layers": self._num_hidden_layers
     }
 
-  def call(self, encoder_inputs, training, encoding=None):
+  def call(self, encoder_inputs, training, encoding):
     """Return the output of the encoder layer stacks.
 
     Args:
       encoder_inputs: tensor with shape [batch_size, input_length, hidden_size]
-      inputs_padding: tensor with shape [batch_size, input_length], inputs with
-        zero paddings.
       training: boolean, whether in training mode or not.
+      encoding: spatial encoding to add at every layer.
 
     Returns:
       Output of encoder layer stack.
       float32 tensor with shape [batch_size, input_length, hidden_size]
     """
-    print(self.layers)
-    for n, layer in enumerate(self.layers):
+    for _, layer in enumerate(self.layers):
       # Run inputs through the sublayers.
       self_attention_layer = layer[0]
       feed_forward_network = layer[1]
 
-      with tf.name_scope("layer_%d" % n):
-        with tf.name_scope("self_attention"):
-          encoder_inputs = self_attention_layer(
-              encoder_inputs,
-              encoder_inputs + encoding,
-              encoder_inputs,
-              training=training)
-        with tf.name_scope("ffn"):
-          encoder_inputs = feed_forward_network(
-              encoder_inputs, encoder_inputs, training=training)
+      encoder_inputs = self_attention_layer(
+          encoder_inputs,
+          encoder_inputs + encoding,
+          encoder_inputs,
+          training=training)
+      encoder_inputs = feed_forward_network(
+          encoder_inputs, encoder_inputs, training=training)
 
     return self.output_normalization(encoder_inputs)
 
@@ -332,9 +253,21 @@ class DecoderStack(tf.keras.layers.Layer):
     3. Feedforward network (2 fully-connected layers)
   """
 
-  def __init__(self, hidden_size=256, num_heads=8, attention_dropout=0.1,
-               layer_postprocess_dropout=0.1, relu_dropout=0.1, filter_size=256,
-               num_hidden_layers=6, dtype=tf.float32):
+  def __init__(self, hidden_size=256, num_heads=8, attention_dropout=0.0,
+               layer_postprocess_dropout=0.1, relu_dropout=0.0,
+               filter_size=256, num_hidden_layers=6):
+    """ Initiallize the decoder stack.
+
+    Args:
+      hidden_size: a number representing the length of the hidden dimension
+      num_heads: the number of heads to use for multi-headed attention
+      attention_dropout: dropout rate to apply in attention
+      layer_postprocess_dropout: dropout rate to apply in postprocessing
+      relu_dropout: dropout rate for the feed-forward networks
+      filter_size: size of the middle layer in the feed-forward networks
+      num_hidden_layers: number of encoder/decoder layers
+      name: the name to give the transformer
+    """
     super(DecoderStack, self).__init__()
     self._hidden_size = hidden_size
     self._num_heads = num_heads
@@ -358,12 +291,16 @@ class DecoderStack(tf.keras.layers.Layer):
           self._hidden_size, self._filter_size, self._relu_dropout)
 
       self.layers.append([
-          PrePostProcessingWrapperOld(self_attention_layer, self._layer_postprocess_dropout),
-          PrePostProcessingWrapperOld(enc_dec_attention_layer, self._layer_postprocess_dropout),
-          PrePostProcessingWrapperOld(feed_forward_network, self._layer_postprocess_dropout)
+          PrePostProcessingWrapper(self_attention_layer,
+                                   self._layer_postprocess_dropout),
+          PrePostProcessingWrapper(enc_dec_attention_layer,
+                                   self._layer_postprocess_dropout),
+          PrePostProcessingWrapper(feed_forward_network,
+                                   self._layer_postprocess_dropout)
       ])
+
     self.output_normalization = tf.keras.layers.LayerNormalization(
-        epsilon=1e-6, dtype="float32")
+        epsilon=1e-6)
     super(DecoderStack, self).build(input_shape)
 
   def get_config(self):
@@ -375,17 +312,13 @@ class DecoderStack(tf.keras.layers.Layer):
         "_relu_dropout": self._relu_dropout,
         "_filter_size": self._filter_size,
         "_num_hidden_layers": self._num_hidden_layers,
-        "_dtype": self._dtype,
     }
 
   def call(self,
            decoder_inputs,
            encoder_outputs,
            training,
-           cache=None,
-           decode_loop_step=None,
-           encoding=None,
-           queries=None):
+           encoding):
     """Return the output of the decoder layer stacks.
 
     Args:
@@ -394,45 +327,33 @@ class DecoderStack(tf.keras.layers.Layer):
       encoder_outputs: A tensor with shape
         [batch_size, input_length, hidden_size]
       training: A bool, whether in training mode or not.
-      cache: (Used for fast decoding) A nested dictionary storing previous
-        decoder self-attention values. The items are:
-          {layer_n: {"k": A tensor with shape [batch_size, i, key_channels],
-                     "v": A tensor with shape [batch_size, i, value_channels]},
-                       ...}
-      decode_loop_step: An integer, the step number of the decoding loop. Used
-        only for autoregressive inference on TPU.
+      encoding: The spatial encoding to add at each layer.
 
     Returns:
       Output of decoder layer stack.
       float32 tensor with shape [batch_size, target_length, hidden_size]
     """
-    for n, layer in enumerate(self.layers):
+    queries = decoder_inputs
+    for _, layer in enumerate(self.layers):
       self_attention_layer = layer[0]
       enc_dec_attention_layer = layer[1]
       feed_forward_network = layer[2]
 
-      # Run inputs through the sublayers.
-      layer_name = "layer_%d" % n
-      layer_cache = cache[layer_name] if cache is not None else None
-      with tf.name_scope(layer_name):
-        with tf.name_scope("self_attention"):
-          decoder_inputs = self_attention_layer(
-              decoder_inputs,
-              decoder_inputs + queries,
-              decoder_inputs,
-              training=training,
-              cache=layer_cache,
-              decode_loop_step=decode_loop_step)
-        with tf.name_scope("encdec_attention"):
-          decoder_inputs = enc_dec_attention_layer(
-              decoder_inputs,
-              decoder_inputs + queries,
-              encoder_outputs + encoding,
-              encoder_outputs,
-              training=training)
-        with tf.name_scope("ffn"):
-          decoder_inputs = feed_forward_network(
-              decoder_inputs, decoder_inputs, training=training)
+      decoder_inputs = self_attention_layer(
+          decoder_inputs,
+          decoder_inputs + queries,
+          decoder_inputs,
+          training=training)
+
+      decoder_inputs = enc_dec_attention_layer(
+          decoder_inputs,
+          decoder_inputs + queries,
+          encoder_outputs + encoding,
+          encoder_outputs,
+          training=training)
+
+      decoder_inputs = feed_forward_network(
+          decoder_inputs, decoder_inputs, training=training)
 
     return self.output_normalization(decoder_inputs)
 
@@ -441,14 +362,20 @@ class TwoDimensionalPositionEmbedding(tf.keras.layers.Layer):
   """Creates a positional embedding.
 
   This layer calculates the position encoding as a mix of sine and cosine
-  functions with geometrically increasing wavelengths. Defined and formulized in
-   "Attention is All You Need", section 3.5.
+  functions with geometrically increasing wavelengths. Defined and formulized
+  in "Attention is All You Need", section 3.5.
   (https://arxiv.org/abs/1706.03762).
+
+  Extended to 2D in the paper "Image Transformer".
+  https://arxiv.org/abs/1802.05751
 
   Arguments:
     hidden_size: Size of the hidden layer.
     min_timescale: Minimum scale that will be applied at each position
     max_timescale: Maximum scale that will be applied at each position.
+
+  Raises:
+    ValueError: if hidden_size is not a multiple of 2.
   """
 
   def __init__(self,
@@ -456,15 +383,9 @@ class TwoDimensionalPositionEmbedding(tf.keras.layers.Layer):
                min_timescale=1.0,
                max_timescale=1.0e4,
                **kwargs):
-    # We need to have a default dtype of float32, since the inputs (which Keras
-    # usually uses to infer the dtype) will always be int32.
-    # We compute the positional encoding in float32 even if the model uses
-    # float16, as many of the ops used, like log and exp, are numerically
-    # unstable in float16.
-    if "dtype" not in kwargs:
-      kwargs["dtype"] = "float32"
-
     super(TwoDimensionalPositionEmbedding, self).__init__(**kwargs)
+    if hidden_size % 4 != 0:
+      raise ValueError("Hidden size must be divisible by 4.")
     self._hidden_size = hidden_size / 2
     self._min_timescale = min_timescale
     self._max_timescale = max_timescale
@@ -473,17 +394,13 @@ class TwoDimensionalPositionEmbedding(tf.keras.layers.Layer):
     config = {
         "hidden_size": self._hidden_size,
         "min_timescale": self._min_timescale,
-        "max_timescale": self._max_timescale,
-        "length": self._length,
+        "max_timescale": self._max_timescale
     }
     base_config = super(TwoDimensionalPositionEmbedding, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def _get_1d_encoding(self, length):
-    print(length)
-    print(self._hidden_size)
-    print(self._min_timescale)
-    print(self._max_timescale)
+    """Returns a 1-D positional encoding."""
     position = tf.cast(tf.range(length), tf.float32)
     num_timescales = self._hidden_size // 2
     min_timescale, max_timescale = self._min_timescale, self._max_timescale
@@ -493,31 +410,25 @@ class TwoDimensionalPositionEmbedding(tf.keras.layers.Layer):
     inv_timescales = min_timescale * tf.exp(
         tf.cast(tf.range(num_timescales), tf.float32) *
         -log_timescale_increment)
-    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales,
-                                                                0)
+    scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(
+        inv_timescales, 0)
     position_embeddings = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)],
                                     axis=1)
     return position_embeddings
 
-
-  def call(self, inputs, length=None):
+  def call(self, inputs):
     """Implements call() for the layer.
 
     Args:
-      inputs: An tensor whose second dimension will be used as `length`. If
-        `None`, the other `length` argument must be specified.
-      length: An optional integer specifying the number of positions. If both
-        `inputs` and `length` are spcified, `length` must be equal to the
-        second dimension of `inputs`.
+      inputs: An tensor, the square root of whose second dimension
+      will be used as the length of each 1-D embedding.
 
     Returns:
       A tensor in shape of [length, hidden_size].
     """
     input_shape = shape_utils.combined_static_and_dynamic_shape(inputs)
-    print(input_shape)
     per_axis_size = int(math.sqrt(input_shape[1]))
     one_d_encoding = self._get_1d_encoding(per_axis_size)
-    print(one_d_encoding)
     encoding_x = tf.repeat(one_d_encoding, repeats=per_axis_size, axis=0)
     encoding_y = tf.tile(one_d_encoding, multiples=[per_axis_size, 1])
     return tf.concat([encoding_x, encoding_y], axis=1)
@@ -525,7 +436,7 @@ class TwoDimensionalPositionEmbedding(tf.keras.layers.Layer):
 
 class Attention(tf.keras.layers.Layer):
   """Multi-headed attention layer.
-  
+
   TODO: switch to keras.layers.MultiHeadedAttention when available.
   """
 
@@ -574,7 +485,8 @@ class Attention(tf.keras.layers.Layer):
         kernel_initializer=attention_initializer,
         name="value")
 
-    output_initializer = _glorot_initializer(self.hidden_size, self.hidden_size)
+    output_initializer = _glorot_initializer(self.hidden_size,
+                                             self.hidden_size)
     self.output_dense_layer = tf.keras.layers.experimental.EinsumDense(
         equation="abcd,cde->abe",
         output_shape=(None, self.hidden_size),
@@ -589,8 +501,7 @@ class Attention(tf.keras.layers.Layer):
         "attention_dropout": self.attention_dropout,
     }
 
-  def call(self, query_input, key_input, value_input, training, cache=None,
-           decode_loop_step=None):
+  def call(self, query_input, key_input, value_input, training):
     """Apply attention mechanism to query_input and source_input.
 
     Args:
@@ -600,14 +511,6 @@ class Attention(tf.keras.layers.Layer):
       bias: A tensor with shape [batch_size, 1, length_query, length_source],
         the attention bias that will be added to the result of the dot product.
       training: A bool, whether in training mode or not.
-      cache: (Used during prediction) A dictionary with tensors containing
-        results of previous attentions. The dictionary must have the items:
-            {"k": tensor with shape [batch_size, i, heads, dim_per_head],
-             "v": tensor with shape [batch_size, i, heads, dim_per_head]}
-        where i is the current decoded length for non-padded decode, or max
-        sequence length for padded decode.
-      decode_loop_step: An integer, step number of the decoding loop. Used only
-        for autoregressive inference on TPU.
 
     Returns:
       Attention layer output with shape [batch_size, length_query, hidden_size]
@@ -635,8 +538,8 @@ class Attention(tf.keras.layers.Layer):
       weights = tf.nn.dropout(weights, rate=self.attention_dropout)
     attention_output = tf.einsum("BNFT,BTNH->BFNH", weights, value)
 
-    # Run the outputs through another linear projection layer. Recombining heads
-    # is automatically done --> [batch_size, length, hidden_size]
+    # Run the outputs through another linear projection layer. Recombining
+    # heads is automatically done --> [batch_size, length, hidden_size]
     attention_output = self.output_dense_layer(attention_output)
     return attention_output
 
@@ -644,10 +547,9 @@ class Attention(tf.keras.layers.Layer):
 class SelfAttention(Attention):
   """Multiheaded self-attention layer."""
 
-  def call(self, query_input, value_input, training, cache=None,
-           decode_loop_step=None):
+  def call(self, query_input, value_input, training):
     return super(SelfAttention, self).call(
-        query_input, query_input, value_input, training, cache, decode_loop_step)
+        query_input, query_input, value_input, training)
 
 
 class FeedForwardNetwork(tf.keras.layers.Layer):
@@ -695,7 +597,7 @@ class FeedForwardNetwork(tf.keras.layers.Layer):
       tensor with shape [batch_size, length, hidden_size]
     """
     output = self.filter_dense_layer(x)
-    
+
     if training:
       output = tf.nn.dropout(output, rate=self.relu_dropout)
     output = self.output_dense_layer(output)
