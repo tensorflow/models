@@ -958,8 +958,6 @@ def eval_continuously(
 
   if eval_index is not None:
     eval_inputs = [eval_inputs[eval_index]]
-    tf.logging.info('eval_index selected - {}'.format(
-        eval_inputs))
 
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)
