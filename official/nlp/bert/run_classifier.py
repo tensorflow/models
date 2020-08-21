@@ -53,6 +53,9 @@ flags.DEFINE_string(
     'input_meta_data_path', None,
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
+flags.DEFINE_integer('train_data_size', None, 'Number of training samples '
+                     'to use. If None, uses the full train data. '
+                     '(default: None).')
 flags.DEFINE_string('predict_checkpoint_path', None,
                     'Path to the checkpoint for predictions.')
 flags.DEFINE_integer(
@@ -92,7 +95,8 @@ def get_dataset_fn(input_file_pattern,
                    global_batch_size,
                    is_training,
                    label_type=tf.int64,
-                   include_sample_weights=False):
+                   include_sample_weights=False,
+                   num_samples=None):
   """Gets a closure to create a dataset."""
 
   def _dataset_fn(ctx=None):
@@ -106,7 +110,8 @@ def get_dataset_fn(input_file_pattern,
         is_training=is_training,
         input_pipeline_context=ctx,
         label_type=label_type,
-        include_sample_weights=include_sample_weights)
+        include_sample_weights=include_sample_weights,
+        num_samples=num_samples)
     return dataset
 
   return _dataset_fn
@@ -374,6 +379,9 @@ def run_bert(strategy,
   epochs = FLAGS.num_train_epochs * FLAGS.num_eval_per_epoch
   train_data_size = (
       input_meta_data['train_data_size'] // FLAGS.num_eval_per_epoch)
+  if FLAGS.train_data_size:
+    train_data_size = min(train_data_size, FLAGS.train_data_size)
+    logging.info('Updated train_data_size: %s', train_data_size)
   steps_per_epoch = int(train_data_size / FLAGS.train_batch_size)
   warmup_steps = int(epochs * train_data_size * 0.1 / FLAGS.train_batch_size)
   eval_steps = int(
@@ -489,7 +497,8 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
       FLAGS.train_batch_size,
       is_training=True,
       label_type=label_type,
-      include_sample_weights=include_sample_weights)
+      include_sample_weights=include_sample_weights,
+      num_samples=FLAGS.train_data_size)
   run_bert(
       strategy,
       input_meta_data,
