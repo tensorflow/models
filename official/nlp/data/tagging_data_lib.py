@@ -33,9 +33,14 @@ _UNK_TOKEN = "[UNK]"
 class InputExample(object):
   """A single training/test example for token classification."""
 
-  def __init__(self, sentence_id, words=None, label_ids=None):
+  def __init__(self,
+               sentence_id,
+               sub_sentence_id=0,
+               words=None,
+               label_ids=None):
     """Constructs an InputExample."""
     self.sentence_id = sentence_id
+    self.sub_sentence_id = sub_sentence_id
     self.words = words if words else []
     self.label_ids = label_ids if label_ids else []
 
@@ -146,7 +151,7 @@ def _tokenize_example(example, max_length, tokenizer, text_preprocessing=None):
   # Needs additional [CLS] and [SEP] tokens.
   max_length = max_length - 2
   new_examples = []
-  new_example = InputExample(sentence_id=example.sentence_id)
+  new_example = InputExample(sentence_id=example.sentence_id, sub_sentence_id=0)
   for i, word in enumerate(example.words):
     if any([x < 0 for x in example.label_ids]):
       raise ValueError("Unexpected negative label_id: %s" % example.label_ids)
@@ -160,7 +165,10 @@ def _tokenize_example(example, max_length, tokenizer, text_preprocessing=None):
     if len(subwords) + len(new_example.words) > max_length:
       # Start a new example.
       new_examples.append(new_example)
-      new_example = InputExample(sentence_id=example.sentence_id)
+      last_sub_sentence_id = new_example.sub_sentence_id
+      new_example = InputExample(
+          sentence_id=example.sentence_id,
+          sub_sentence_id=last_sub_sentence_id + 1)
 
     for j, subword in enumerate(subwords):
       # Use the real label for the first subword, and pad label for
@@ -203,6 +211,7 @@ def _convert_single_example(example, max_seq_length, tokenizer):
   features["segment_ids"] = create_int_feature(segment_ids)
   features["label_ids"] = create_int_feature(label_ids)
   features["sentence_id"] = create_int_feature([example.sentence_id])
+  features["sub_sentence_id"] = create_int_feature([example.sub_sentence_id])
 
   tf_example = tf.train.Example(features=tf.train.Features(feature=features))
   return tf_example

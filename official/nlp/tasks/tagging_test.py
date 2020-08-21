@@ -44,6 +44,7 @@ def _create_fake_dataset(output_path, seq_length, num_labels, num_examples):
     features["label_ids"] = create_int_feature(
         np.random.random_integers(-1, num_labels - 1, size=(seq_length)))
     features["sentence_id"] = create_int_feature([i])
+    features["sub_sentence_id"] = create_int_feature([0])
 
     tf_example = tf.train.Example(features=tf.train.Features(feature=features))
     writer.write(tf_example.SerializeToString())
@@ -189,9 +190,9 @@ class TaggingTest(tf.test.TestCase):
         drop_remainder=False,
         include_sentence_id=True)
 
-    predict_ids, sentence_ids = tagging.predict(task, test_data_config, model)
-    self.assertLen(predict_ids, num_examples)
-    self.assertLen(sentence_ids, num_examples)
+    results = tagging.predict(task, test_data_config, model)
+    self.assertLen(results, num_examples)
+    self.assertLen(results[0], 3)
 
 
 if __name__ == "__main__":
