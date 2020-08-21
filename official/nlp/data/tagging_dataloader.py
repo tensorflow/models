@@ -52,6 +52,7 @@ class TaggingDataLoader(data_loader.DataLoader):
     }
     if self._include_sentence_id:
       name_to_features['sentence_id'] = tf.io.FixedLenFeature([], tf.int64)
+      name_to_features['sub_sentence_id'] = tf.io.FixedLenFeature([], tf.int64)
 
     example = tf.io.parse_single_example(record, name_to_features)
 
@@ -74,6 +75,8 @@ class TaggingDataLoader(data_loader.DataLoader):
     }
     if self._include_sentence_id:
       x['sentence_id'] = record['sentence_id']
+      x['sub_sentence_id'] = record['sub_sentence_id']
+
     y = record['label_ids']
     return (x, y)
 
