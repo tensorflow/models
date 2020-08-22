@@ -28,7 +28,6 @@ from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
-from official.nlp.projects.mobilebert import modeling
 
 
 @dataclasses.dataclass
@@ -113,7 +112,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
 
 ENCODER_CLS = {
     "bert": networks.TransformerEncoder,
-    "mobilebert": modeling.MobileBERTEncoder,
+    "mobilebert": networks.MobileBERTEncoder,
 }
 
 

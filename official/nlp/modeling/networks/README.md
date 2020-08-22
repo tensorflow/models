@@ -12,9 +12,13 @@ transformer layers and pooling layer.
 
 * [`AlbertTransformerEncoder`](albert_transformer_encoder.py) implements a
 Transformer-encoder described in the paper ["ALBERT: A Lite BERT for
-Self-supervised Learning of Language Representations]
+Self-supervised Learning of Language Representations"]
 (https://arxiv.org/abs/1909.11942). Compared with [BERT](https://arxiv.org/abs/1810.04805), ALBERT refactorizes embedding parameters
 into two smaller matrices and shares parameters across layers.
+
+* [`MobileBERTEncoder`](mobile_bert_encoder.py) implements the
+MobileBERT network described in the paper ["MobileBERT: a Compact Task-Agnostic
+BERT for Resource-Limited Devices"](https://arxiv.org/abs/2004.02984).
 
 * [`Classification`](classification.py) contains a single hidden layer, and is
 intended for use as a classification or regression (if number of classes is set
