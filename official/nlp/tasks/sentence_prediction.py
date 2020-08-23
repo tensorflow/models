@@ -215,9 +215,8 @@ class SentencePredictionTask(base_task.Task):
     pretrain2finetune_mapping = {
         'encoder': model.checkpoint_items['encoder'],
     }
-    # TODO(b/160251903): Investigate why no pooler dense improves finetuning
-    # accuracies.
     if self.task_config.init_cls_pooler:
+      # This option is valid when use_encoder_pooler is false.
       pretrain2finetune_mapping[
           'next_sentence.pooler_dense'] = model.checkpoint_items[
               'sentence_prediction.pooler_dense']

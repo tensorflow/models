@@ -183,6 +183,17 @@ class TrainerConfig(base_config.Config):
     validation_steps: number of eval steps. If `None`, the entire eval dataset
       is used.
     validation_interval: number of training steps to run between evaluations.
+    best_checkpoint_export_subdir: if set, the trainer will keep track of the
+      best evaluation metric, and export the corresponding best checkpoint under
+      `model_dir/best_checkpoint_export_subdir`. Note that this only works if
+      mode contains eval (such as `train_and_eval`, `continuous_eval`, and
+      `continuous_train_and_eval`).
+    best_checkpoint_eval_metric: for exporting the best checkpoint, which
+      evaluation metric the trainer should monitor. This can be any evaluation
+      metric appears on tensorboard.
+    best_checkpoint_metric_comp: for exporting the best checkpoint, how the
+      trainer should compare the evaluation metrics. This can be either `higher`
+      (higher the better) or `lower` (lower the better).
   """
   optimizer_config: OptimizationConfig = OptimizationConfig()
   # Orbit settings.
@@ -201,6 +212,10 @@ class TrainerConfig(base_config.Config):
   train_steps: int = 0
   validation_steps: Optional[int] = None
   validation_interval: int = 1000
+  # Best checkpoint export.
+  best_checkpoint_export_subdir: str = ""
+  best_checkpoint_eval_metric: str = ""
+  best_checkpoint_metric_comp: str = "higher"
 
 
 @dataclasses.dataclass

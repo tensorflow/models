@@ -97,7 +97,11 @@ class BertClassifier(tf.keras.Model):
 
   @property
   def checkpoint_items(self):
-    return dict(encoder=self._network)
+    items = dict(encoder=self._network)
+    if hasattr(self.classifier, 'checkpoint_items'):
+      for key, item in self.classifier.checkpoint_items.items():
+        items['.'.join([self.classifier.name, key])] = item
+    return items
 
   def get_config(self):
     return self._config

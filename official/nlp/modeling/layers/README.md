@@ -11,6 +11,12 @@ assemble new layers, networks, or models.
 *   [CachedAttention](attention.py) implements an attention layer with cache
     used for auto-agressive decoding.
 
+*   [MatMulWithMargin](mat_mul_with_margin.py) implements a matrix
+    multiplication with margin layer used for training retrieval / ranking
+    tasks, as described in ["Improving Multilingual Sentence Embedding using
+    Bi-directional Dual Encoder with Additive Margin
+    Softmax"](https://www.ijcai.org/Proceedings/2019/0746.pdf).
+
 *   [MultiChannelAttention](multi_channel_attention.py) implements an variant of
     multi-head attention which can be used to merge multiple streams for
     cross-attentions.
@@ -24,8 +30,8 @@ assemble new layers, networks, or models.
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
 
 *   [TransformerDecoderLayer](transformer.py) TransformerDecoderLayer is made up
-    of self multi-head attention, cross multi-head attention and
-    feedforward network.
+    of self multi-head attention, cross multi-head attention and feedforward
+    network.
 
 *   [ReZeroTransformer](rezero_transformer.py) implements Transformer with
     ReZero described in
