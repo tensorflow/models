@@ -117,7 +117,7 @@ performance by ~4% mAP compared to ICCV'17 DELF model.
 Presented in the [DELG paper](https://arxiv.org/abs/2001.05027).
 
 **RN101-ArcFace pre-trained on the Google-Landmarks dataset v2 (train-clean)**
-([link](https://storage.googleapis.com/delf/rn101_af_gldv2clean_20200521.tar.gz)).
+([link](https://storage.googleapis.com/delf/rn101_af_gldv2clean_20200814.tar.gz)).
 Presented in the [GLDv2 paper](https://arxiv.org/abs/2004.01804).
 
 **DELF pre-trained on Landmarks-Clean/Landmarks-Full dataset**

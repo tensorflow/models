@@ -52,8 +52,8 @@ wget http://cmp.felk.cvut.cz/revisitop/data/datasets/rparis6k/gnd_rparis6k.mat
 mkdir parameters && cd parameters
 
 # RN101-ArcFace model trained on GLDv2-clean.
-wget https://storage.googleapis.com/delf/rn101_af_gldv2clean_20200521.tar.gz
-tar -xvzf rn101_af_gldv2clean_20200521.tar.gz
+wget https://storage.googleapis.com/delf/rn101_af_gldv2clean_20200814.tar.gz
+tar -xvzf rn101_af_gldv2clean_20200814.tar.gz
 ```
 
 ### Feature extraction
