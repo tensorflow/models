@@ -119,6 +119,7 @@ class Transformer(tf.keras.Model):
     Raises:
       NotImplementedError: If try to use padded decode method on CPU/GPUs.
     """
+    inputs = inputs if isinstance(inputs, list) else [inputs]
     if len(inputs) == 2:
       inputs, targets = inputs[0], inputs[1]
     else:
