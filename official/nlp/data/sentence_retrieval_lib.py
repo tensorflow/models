@@ -49,11 +49,11 @@ class BuccProcessor(classifier_data_lib.DataProcessor):
     examples = []
     for (i, line) in enumerate(lines):
       guid = "%s-%s" % (set_type, i)
-      int_iden = int(line[0].split("-")[1])
+      example_id = int(line[0].split("-")[1])
       text_a = self.process_text_fn(line[1])
       examples.append(
           classifier_data_lib.InputExample(
-              guid=guid, text_a=text_a, int_iden=int_iden))
+              guid=guid, text_a=text_a, example_id=example_id))
     return examples
 
 
@@ -86,7 +86,7 @@ class TatoebaProcessor(classifier_data_lib.DataProcessor):
       text_a = self.process_text_fn(line[0])
       examples.append(
           classifier_data_lib.InputExample(
-              guid=guid, text_a=text_a, int_iden=i))
+              guid=guid, text_a=text_a, example_id=i))
     return examples
 
 
