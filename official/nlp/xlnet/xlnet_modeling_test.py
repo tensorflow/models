@@ -42,7 +42,7 @@ class PositionalEmbeddingLayerTest(tf.test.TestCase):
                        [[0., 0., 1., 1.]]])
     d_model = 4
     pos_seq = tf.range(1, -1, -1.0)  # [1., 0.]
-    pos_emb_layer = xlnet_modeling.PositionalEmbedding(d_model)
+    pos_emb_layer = xlnet_modeling.RelativePositionEncoding(d_model)
     pos_emb = pos_emb_layer(pos_seq, batch_size=None).numpy().astype(float)
 
     logging.info(pos_emb)

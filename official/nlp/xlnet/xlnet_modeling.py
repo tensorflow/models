@@ -84,27 +84,49 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-class PositionalEmbedding(tf.keras.layers.Layer):
-  """Generates relative positional embeddings used in Transformer-XL and XLNet."""
+@tf.keras.utils.register_keras_serializable(package='Text')
+class RelativePositionEncoding(tf.keras.layers.Layer):
+  """Creates a relative positional encoding.
 
-  def __init__(self, dim, **kwargs):
-    super(PositionalEmbedding, self).__init__(**kwargs)
-    self.dim = dim
+  This layer creates a relative positional encoding as described in
+  "Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context"
+  (https://arxiv.org/abs/1901.02860).
 
-  def build(self, unused_input_shapes):
-    """Constructs inversed frequency vector for positional embedding layer."""
-    self.inv_freq = 1.0 / (10000.0**(tf.range(0, self.dim, 2.0) / self.dim))
-    super(PositionalEmbedding, self).build(unused_input_shapes)
+  Rather than an absolute position embedding as in Transformer, this
+  formulation represents position as the relative distance between tokens using
+  sinusoidal positional embeddings.
 
-  def call(self, pos_seq, batch_size):
-    """Implements call() for the layer."""
-    sinusoid_inp = tf.einsum('i,d->id', pos_seq, self.inv_freq)
-    pos_emb = tf.concat([tf.sin(sinusoid_inp), tf.cos(sinusoid_inp)], -1)
+  Note: This layer is currently experimental.
+
+  Attributes:
+    hidden_size: The dimensionality of the input embeddings.
+  """
+
+  def __init__(self, hidden_size, **kwargs):
+    super(RelativePositionEncoding, self).__init__(**kwargs)
+    self._hidden_size = hidden_size
+    self._inv_freq = 1.0 / (10000.0**(
+        tf.range(0, self._hidden_size, 2.0) / self._hidden_size))
+
+  def call(self, pos_seq, batch_size=None):
+    """Implements call() for the layer.
+
+    Arguments:
+      pos_seq: A 1-D `Tensor`
+      batch_size: The optionally provided batch size that tiles the relative
+        positional encoding.
+
+    Returns:
+      The relative positional encoding of shape:
+        [len(pos_seq), batch_size, hidden_size] if batch_size is provided, else
+        [len(pos_seq), 1, hidden_size].
+    """
+    sinusoid_input = tf.einsum('i,d->id', pos_seq, self._inv_freq)
+    pos_emb = tf.concat([tf.sin(sinusoid_input), tf.cos(sinusoid_input)], -1)
     pos_emb = pos_emb[:, None, :]
 
     if batch_size is not None:
       pos_emb = tf.tile(pos_emb, [1, batch_size, 1])
-
     return pos_emb
 
 
@@ -475,8 +497,8 @@ class TransformerXLModel(tf.keras.layers.Layer):
         'mask_emb/mask_emb', shape=[1, 1, self.d_model], dtype=self.tf_float)
 
     self.emb_dropout = tf.keras.layers.Dropout(rate=self.dropout)
-    self.fwd_position_embedding = PositionalEmbedding(self.d_model)
-    self.bwd_position_embedding = PositionalEmbedding(self.d_model)
+    self.fwd_position_embedding = RelativePositionEncoding(self.d_model)
+    self.bwd_position_embedding = RelativePositionEncoding(self.d_model)
 
     self.rel_multihead_layers = []
     self.h_positionwise_ffn_layers = []
