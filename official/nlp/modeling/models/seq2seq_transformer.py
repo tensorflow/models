@@ -207,12 +207,12 @@ class Seq2SeqTransformer(tf.keras.Model):
     Raises:
       NotImplementedError: If try to use padded decode method on CPU/GPUs.
     """
+    inputs = inputs if isinstance(inputs, list) else [inputs]
     if len(inputs) == 2:
       sources, targets = inputs[0], inputs[1]
     else:
       # Decoding path.
       sources, targets = inputs[0], None
-
     attention_bias = model_utils.get_padding_bias(sources)
     attention_bias = tf.cast(attention_bias, self._dtype)
     # Prepare inputs to the layer stack by adding positional encodings and
@@ -245,17 +245,15 @@ class Seq2SeqTransformer(tf.keras.Model):
       encoder_decoder_attention_bias = attention_bias
       encoder_outputs = tf.cast(encoder_outputs, self._dtype)
       if self._padded_decode:
-        batch_size = encoder_outputs.shape.as_list()[0]
         max_decode_length = self._decode_max_length
       else:
-        batch_size = tf.shape(encoder_outputs)[0]
         max_decode_length = self._decode_max_length or (
             tf.shape(encoder_outputs)[1] + self._extra_decode_length)
       encoder_decoder_attention_bias = tf.cast(encoder_decoder_attention_bias,
                                                self._dtype)
-
       symbols_to_logits_fn = self._get_symbols_to_logits_fn(max_decode_length)
 
+      batch_size = tf.shape(encoder_outputs)[0]
       # Create initial set of IDs that will be passed to symbols_to_logits_fn.
       initial_ids = tf.zeros([batch_size], dtype=tf.int32)
 

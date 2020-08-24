@@ -129,6 +129,31 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
       logging.info("local_outputs=%s", local_outputs)
       self.assertEqual(local_outputs[0].shape, (4, 8, 100))
 
+  @parameterized.parameters(True, False)
+  def test_create_savedmodel(self, padded_decode):
+    decode_max_length = 10
+    model = self._build_model(padded_decode, decode_max_length)
+
+    class SaveModule(tf.Module):
+
+      def __init__(self, model):
+        super(SaveModule, self).__init__()
+        self.model = model
+
+      @tf.function
+      def serve(self, inputs):
+        return self.model.call([inputs])
+
+    save_module = SaveModule(model)
+    if padded_decode:
+      tensor_shape = (4, 10)
+    else:
+      tensor_shape = (None, None)
+    signatures = dict(
+        serving_default=save_module.serve.get_concrete_function(
+            tf.TensorSpec(shape=tensor_shape, dtype=tf.int32, name="inputs")))
+    tf.saved_model.save(save_module, self.get_temp_dir(), signatures=signatures)
+
 
 if __name__ == "__main__":
   tf.test.main()
