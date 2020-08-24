@@ -40,13 +40,14 @@ def _create_fake_dataset(output_path, seq_length, num_classes, num_examples):
   def create_float_feature(values):
     return tf.train.Feature(float_list=tf.train.FloatList(value=list(values)))
 
-  for _ in range(num_examples):
+  for i in range(num_examples):
     features = {}
     input_ids = np.random.randint(100, size=(seq_length))
     features["input_ids"] = create_int_feature(input_ids)
     features["input_mask"] = create_int_feature(np.ones_like(input_ids))
     features["segment_ids"] = create_int_feature(np.ones_like(input_ids))
     features["segment_ids"] = create_int_feature(np.ones_like(input_ids))
+    features["example_id"] = create_int_feature([i])
 
     if num_classes == 1:
       features["label_ids"] = create_float_feature([np.random.random()])
@@ -250,7 +251,8 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
             is_training=False,
             label_type="int" if num_classes > 1 else "float",
             global_batch_size=16,
-            drop_remainder=False))
+            drop_remainder=False,
+            include_example_id=True))
 
     predictions = sentence_prediction.predict(task, test_data_config, model)
     self.assertLen(predictions, num_examples)

@@ -262,7 +262,7 @@ def create_retrieval_dataset(file_path,
       'input_ids': tf.io.FixedLenFeature([seq_length], tf.int64),
       'input_mask': tf.io.FixedLenFeature([seq_length], tf.int64),
       'segment_ids': tf.io.FixedLenFeature([seq_length], tf.int64),
-      'int_iden': tf.io.FixedLenFeature([1], tf.int64),
+      'example_id': tf.io.FixedLenFeature([1], tf.int64),
   }
   dataset = single_file_dataset(file_path, name_to_features)
 
@@ -278,7 +278,7 @@ def create_retrieval_dataset(file_path,
         'input_mask': record['input_mask'],
         'input_type_ids': record['segment_ids']
     }
-    y = record['int_iden']
+    y = record['example_id']
     return (x, y)
 
   dataset = dataset.map(
