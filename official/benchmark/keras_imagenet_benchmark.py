@@ -48,6 +48,7 @@ FLAGS = flags.FLAGS
 
 
 def _get_classifier_parameters(
+    model_variant: Optional[str] = None,
     num_gpus: int = 0,
     builder: str = 'records',
     skip_eval: bool = False,
@@ -65,7 +66,7 @@ def _get_classifier_parameters(
     report_metrics: bool = True,
     batchnorm_spatial_persistent: bool = False) -> MutableMapping[str, Any]:
   """Gets classifier trainer's ResNet parameters."""
-  return {
+  params = {
       'runtime': {
           'num_gpus': num_gpus,
           'distribution_strategy': distribution_strategy,
@@ -110,6 +111,11 @@ def _get_classifier_parameters(
           'skip_eval': skip_eval,
       },
   }
+  if model_variant is not None:
+    params['model']['model_params'] = {
+        'model_name': model_variant,
+    }
+  return params
 
 
 class Resnet50KerasAccuracy(keras_benchmark.KerasBenchmark):
@@ -323,6 +329,7 @@ class KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
   def _run_and_report_benchmark(
       self,
       experiment_name: str,
+      model_variant: Optional[str] = None,
       skip_steps: Optional[int] = None,
       top_1_min: float = MIN_TOP_1_ACCURACY,
       top_1_max: float = MAX_TOP_1_ACCURACY,
@@ -344,6 +351,7 @@ class KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
     FLAGS.data_dir = self.data_dir
     FLAGS.model_dir = self._get_model_dir(experiment_name)
     parameters = _get_classifier_parameters(
+        model_variant=model_variant,
         builder=self.dataset_builder,
         skip_eval=True,
         num_gpus=num_gpus,
@@ -1146,6 +1154,16 @@ class EfficientNetKerasBenchmarkReal(KerasClassifierBenchmarkBase):
         model='efficientnet', output_dir=output_dir, default_flags=def_flags,
         tpu=tpu, dataset_builder='records', train_epochs=1, train_steps=110,
         data_dir=data_dir)
+
+  def benchmark_2x2_tpu_b7_bf16(self):
+    self._setup()
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_b7_2x2_tpu_bf16',
+        model_variant='efficientnet-b7',
+        dtype='bfloat16',
+        num_tpus=8,
+        distribution_strategy='tpu',
+        per_replica_batch_size=128)
 
 
 class Resnet50KerasBenchmarkRemoteData(Resnet50KerasBenchmarkBase):
