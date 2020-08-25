@@ -559,6 +559,30 @@ def _resize_detection_masks(args):
   return tf.cast(detection_masks_reframed, tf.uint8)
 
 
+def resize_detection_masks(detection_boxes, detection_masks,
+                           original_image_spatial_shapes):
+  """Resizes per-box detection masks to be relative to the entire image.
+
+  Note that this function only works when the spatial size of all images in
+  the batch is the same. If not, this function should be used with batch_size=1.
+
+  Args:
+    detection_boxes: A [batch_size, num_instances, 4] float tensor containing
+      bounding boxes.
+    detection_masks: A [batch_suze, num_instances, height, width] float tensor
+      containing binary instance masks per box.
+    original_image_spatial_shapes: a [batch_size, 3] shaped int tensor
+      holding the spatial dimensions of each image in the batch.
+  Returns:
+    masks: Masks resized to the spatial extents given by
+      (original_image_spatial_shapes[0, 0], original_image_spatial_shapes[0, 1])
+  """
+  return shape_utils.static_or_dynamic_map_fn(
+      _resize_detection_masks,
+      elems=[detection_boxes, detection_masks, original_image_spatial_shapes],
+      dtype=tf.uint8)
+
+
 def _resize_groundtruth_masks(args):
   """Resizes groundgtruth masks to the original image size."""
   mask, true_image_shape, original_image_shape = args
@@ -869,12 +893,9 @@ def result_dict_for_batched_example(images,
 
   if detection_fields.detection_masks in detections:
     detection_masks = detections[detection_fields.detection_masks]
-    output_dict[detection_fields.detection_masks] = (
-        shape_utils.static_or_dynamic_map_fn(
-            _resize_detection_masks,
-            elems=[detection_boxes, detection_masks,
-                   original_image_spatial_shapes],
-            dtype=tf.uint8))
+    output_dict[detection_fields.detection_masks] = resize_detection_masks(
+        detection_boxes, detection_masks, original_image_spatial_shapes)
+
     if detection_fields.detection_surface_coords in detections:
       detection_surface_coords = detections[
           detection_fields.detection_surface_coords]
