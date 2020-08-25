@@ -153,12 +153,10 @@ class TransformerEncoder(tf.keras.Model):
     embeddings = tf.keras.layers.Add()(
         [word_embeddings, position_embeddings, type_embeddings])
 
-    embeddings = (
-        tf.keras.layers.LayerNormalization(
-            name='embeddings/layer_norm',
-            axis=-1,
-            epsilon=1e-12,
-            dtype=tf.float32)(embeddings))
+    self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
+        name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
+
+    embeddings = self._embedding_norm_layer(embeddings)
     embeddings = (tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
 
     # We project the 'embedding' output to 'hidden_size' if it is not already
