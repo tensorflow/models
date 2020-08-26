@@ -1,6 +1,6 @@
 # Tensorflow ops for sequence string projection.
 
-load("//sequence_projection/tf_ops:build_def.bzl", "gen_op_wrapper_py")
+load("//tf_ops:build_def.bzl", "gen_op_wrapper_py")
 
 licenses(["notice"])
 

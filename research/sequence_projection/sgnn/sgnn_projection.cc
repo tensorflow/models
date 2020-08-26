@@ -120,7 +120,6 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
       }
       output_values[output_idx] =
           static_cast<float>(result) / (attributes.buckets / 2) / len;
-      std::cout <<output_values[output_idx] << " ";
       output_idx++;
     }
   }

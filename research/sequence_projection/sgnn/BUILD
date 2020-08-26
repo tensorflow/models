@@ -54,7 +54,7 @@ py_library(
     deps = [
         # package tensorflow
         "@org_tflite_support//tensorflow_lite_support/custom_ops/python:tflite_text_api",
-        # Expect tensorflow text installed",
+        # Expect tensorflow text installed
     ],
 )
 
@@ -66,7 +66,7 @@ py_test(
     deps = [
         ":sgnn",
         # package tensorflow
-        # Expect tensorflow text installed",
+        # Expect tensorflow text installed
     ],
 )
 
@@ -90,12 +90,12 @@ py_binary(
     main = "run_tflite.py",
     python_version = "PY3",
     deps = [
-        # Expect numpy installed,
-        # package TFLite flex delegate,
-        # TFLite interpreter,
+        # Expect numpy installed
+        # package TFLite flex delegate
+        # package TFLite interpreter
         "@org_tflite_support//tensorflow_lite_support/custom_ops/kernel:ngrams_op_resolver",
         "@org_tflite_support//tensorflow_lite_support/custom_ops/kernel:whitespace_tokenizer_op_resolver",
-        # Expect tensorflow text installed",
+        # Expect tensorflow text installed
     ],
 )
 
