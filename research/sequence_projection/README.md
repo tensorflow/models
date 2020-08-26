@@ -35,16 +35,15 @@ models computes them on the fly.
 Train a PRADO model on civil comments dataset
 
 ```shell
-bazel run -c opt //sequence_projection/prado:runner -- \
---config_path=$(pwd)/third_party/tensorflow_models/sequence_projection/prado/civil_comments_prado.txt \
+bazel run -c opt prado:runner -- \
+--config_path=$(pwd)/prado/civil_comments_prado.txt \
 --runner_mode=train --logtostderr --output_dir=/tmp/prado
 ```
 
 Train a SGNN model to detect languages:
 
 ```shell
-bazel run -c opt //sequence_projection/sgnn:train -- \
---logtostderr --output_dir=/tmp/sgnn
+bazel run -c opt sgnn:train -- --logtostderr --output_dir=/tmp/sgnn
 ```
 
 ## Evaluation
@@ -52,15 +51,14 @@ bazel run -c opt //sequence_projection/sgnn:train -- \
 Evaluate PRADO model:
 
 ```shell
-bazel run -c opt //sequence_projection/prado:runner -- \
---config_path=$(pwd)/third_party/tensorflow_models/sequence_projection/prado/civil_comments_prado.txt \
+bazel run -c opt prado:runner -- \
+--config_path=$(pwd)/prado/civil_comments_prado.txt \
 --runner_mode=eval --output_dir= --logtostderr
 ```
 
 Evaluate SGNN model:
 ```shell
-bazel run -c opt //sequence_projection/sgnn:run_tflite -- \
---model=/tmp/sgnn/model.tflite "Hello world"
+bazel run -c opt sgnn:run_tflite -- --model=/tmp/sgnn/model.tflite "Hello world"
 ```
 
 
