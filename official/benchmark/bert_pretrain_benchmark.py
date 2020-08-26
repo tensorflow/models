@@ -339,5 +339,129 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
         ds_type=FLAGS.distribution_strategy)
 
 
+class BertPretrainMultiWorkerBenchmark(BertPretrainAccuracyBenchmark):
+  """Resnet50 distributed benchmark tests with multiple workers."""
+
+  def __init__(self, output_dir=None, default_flags=None):
+    super(BertPretrainMultiWorkerBenchmark, self).__init__(
+        output_dir=output_dir, default_flags=default_flags)
+
+  def _specify_gpu_mwms_flags(self):
+    FLAGS.distribution_strategy = 'multi_worker_mirrored'
+    FLAGS.all_reduce_alg = 'nccl'
+    FLAGS.dtype = 'fp16'
+    FLAGS.loss_scale = 'dynamic'
+    FLAGS.num_gpus = 8
+
+  @owner_utils.Owner('tf-dist-strat')
+  def benchmark_accuracy_mwms_1x8_gpu_fp16_seq128_15k_steps(self):
+    """Test bert pretraining with 8 GPU for 15k steps."""
+    # This is used for accuracy test.
+    self._setup()
+    self._specify_common_flags()
+    self._specify_gpu_mwms_flags()
+    FLAGS.train_batch_size = 96
+    FLAGS.num_steps_per_epoch = 5000
+    FLAGS.num_train_epochs = 3
+    FLAGS.steps_per_loop = 5000
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_accuracy_mwms_1x8_gpu_fp16_seq128_15k_steps')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
+    # Set train_summary_interval to -1 to disable training summary, because
+    # writing summary to gcs may fail and summaries are not needed for this
+    # accuracy benchmark test.
+    FLAGS.train_summary_interval = -1
+    self._run_and_report_benchmark(
+        summary_path=summary_path,
+        report_accuracy=True,
+        ds_type=FLAGS.distribution_strategy)
+
+  @owner_utils.Owner('tf-dist-strat')
+  def benchmark_accuracy_mwms_2x8_gpu_fp16_seq128_15k_steps(self):
+    """Test bert pretraining with 2x8 GPU for 15k steps."""
+    # This is used for accuracy test.
+    self._setup()
+    self._specify_common_flags()
+    self._specify_gpu_mwms_flags()
+    # ues the same global batch size as accuracy_mwms_1x8 benchmark.
+    FLAGS.train_batch_size = 96
+    FLAGS.num_steps_per_epoch = 5000
+    FLAGS.num_train_epochs = 3
+    FLAGS.steps_per_loop = 5000
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_accuracy_mwms_2x8_gpu_fp16_seq128_15k_steps')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
+    # Set train_summary_interval to -1 to disable training summary, because
+    # writing summary to gcs may fail and summaries are not needed for this
+    # accuracy benchmark test.
+    FLAGS.train_summary_interval = -1
+    self._run_and_report_benchmark(
+        summary_path=summary_path,
+        report_accuracy=True,
+        ds_type=FLAGS.distribution_strategy)
+
+  @owner_utils.Owner('tf-dist-strat')
+  def benchmark_perf_mwms_1x8_gpu_fp16_seq128_200_steps(self):
+    """Test bert pretraining with 1x8 GPU for 200 steps."""
+    self._setup()
+    self._specify_common_flags()
+    self._specify_gpu_common_flags()
+    FLAGS.num_steps_per_epoch = 200
+    FLAGS.num_train_epochs = 1
+    FLAGS.train_batch_size = 96 * 1
+    FLAGS.steps_per_loop = 100
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_perf_mwms_1x8_gpu_fp16_seq128_200_steps')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
+    # Disable accuracy check.
+    self._run_and_report_benchmark(
+        summary_path=summary_path,
+        report_accuracy=False,
+        ds_type=FLAGS.distribution_strategy)
+
+  @owner_utils.Owner('tf-dist-strat')
+  def benchmark_perf_mwms_2x8_gpu_fp16_seq128_200_steps(self):
+    """Test bert pretraining with 2x8 GPU for 200 steps."""
+    self._setup()
+    self._specify_common_flags()
+    self._specify_gpu_common_flags()
+    FLAGS.num_steps_per_epoch = 200
+    FLAGS.num_train_epochs = 1
+    FLAGS.train_batch_size = 96 * 2
+    FLAGS.steps_per_loop = 100
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_perf_mwms_2x8_gpu_fp16_seq128_200_steps')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
+    # Disable accuracy check.
+    self._run_and_report_benchmark(
+        summary_path=summary_path,
+        report_accuracy=False,
+        ds_type=FLAGS.distribution_strategy)
+
+  @owner_utils.Owner('tf-dist-strat')
+  def benchmark_perf_mwms_8x8_gpu_fp16_seq128_200_steps(self):
+    """Test bert pretraining with 8x8 GPU for 200 steps."""
+    self._setup()
+    self._specify_common_flags()
+    self._specify_gpu_common_flags()
+    FLAGS.num_steps_per_epoch = 200
+    FLAGS.num_train_epochs = 1
+    FLAGS.train_batch_size = 96*8
+    FLAGS.steps_per_loop = 100
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_perf_mwms_8x8_gpu_fp16_seq128_200_steps')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
+    # Disable accuracy check.
+    self._run_and_report_benchmark(
+        summary_path=summary_path,
+        report_accuracy=False,
+        ds_type=FLAGS.distribution_strategy)
+
+
 if __name__ == '__main__':
   tf.test.main()
