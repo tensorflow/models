@@ -200,6 +200,8 @@ def make_sequence_example(dataset_name,
     detection_scores: (Optional) A list (with num_frames_elements) of
       [num_boxes_i] numpy float32 arrays holding predicted object scores for
       each frame.
+    use_strs_for_source_id: (Optional) Whether to write the source IDs as strings
+      rather than byte lists of characters.
 
   Returns:
     A tf.train.SequenceExample.
