@@ -11,12 +11,12 @@ cc_library(
     srcs = ["sgnn_projection.cc"],
     hdrs = ["sgnn_projection.h"],
     deps = [
-        "@com_github_google_flatbuffers//:flatbuffers",
-        # package farmhash:farmhash_lib
-        "//third_party/tensorflow/lite:context",
-        "//third_party/tensorflow/lite:string_util",
-        "//third_party/tensorflow/lite/kernels:kernel_util",
-        "//third_party/tensorflow/lite/kernels/internal:tensor",
+        "@org_tensorflow//tensorflow/lite:context",
+        "@org_tensorflow//tensorflow/lite:string_util",
+        "@org_tensorflow//tensorflow/lite/kernels:kernel_util",
+        "@org_tensorflow//tensorflow/lite/kernels/internal:tensor",
+        "@farmhash_archive//:farmhash",
+        "@flatbuffers",
     ],
 )
 
@@ -27,7 +27,7 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":sgnn_projection",
-        "//third_party/tensorflow/lite:framework",
+        "@org_tensorflow//tensorflow/lite:framework",
     ],
     alwayslink = 1,
 )
@@ -37,11 +37,11 @@ cc_test(
     srcs = ["sgnn_projection_test.cc"],
     deps = [
         ":sgnn_projection",
-        "//testing/base/public:gunit_main",
-        "@com_github_google_flatbuffers//:flatbuffers",
-        "//third_party/tensorflow/lite:string_util",
-        "//third_party/tensorflow/lite/kernels:test_util",
-        "//third_party/tensorflow/lite/schema:schema_fbs",
+        "@org_tensorflow//tensorflow/lite:string_util",
+        "@org_tensorflow//tensorflow/lite/kernels:test_util",
+        "@org_tensorflow//tensorflow/lite/schema:schema_fbs",
+        "@com_google_googletest//:gtest_main",
+        "@flatbuffers",
     ],
 )
 
@@ -90,9 +90,9 @@ py_binary(
     main = "run_tflite.py",
     python_version = "PY3",
     deps = [
-        # Expect numpy installed",
-        "//third_party/tensorflow/lite/delegates/flex:delegate",
-        "//third_party/tensorflow/lite/python:interpreter",
+        # Expect numpy installed,
+        # package TFLite flex delegate,
+        # TFLite interpreter,
         "@org_tflite_support//tensorflow_lite_support/custom_ops/kernel:ngrams_op_resolver",
         "@org_tflite_support//tensorflow_lite_support/custom_ops/kernel:whitespace_tokenizer_op_resolver",
         # Expect tensorflow text installed",

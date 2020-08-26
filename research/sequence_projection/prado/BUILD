@@ -2,7 +2,7 @@ licenses(["notice"])
 
 package(
     default_visibility = [
-        "//sequence_projection:__subpackages__",
+        "//:__subpackages__",
     ],
 )
 
@@ -18,7 +18,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":common_layer",
-        "//sequence_projection/tf_ops:sequence_string_projection_op_py",
+        "//tf_ops:sequence_string_projection_op_py",
     ],
 )
 

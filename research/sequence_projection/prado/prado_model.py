@@ -21,8 +21,8 @@ from typing import Mapping, Dict, Any
 from absl import logging
 import tensorflow.compat.v1 as tf
 
-from sequence_projection.prado import common_layer
-from sequence_projection.tf_ops import sequence_string_projection_op as ssp
+from prado import common_layer # import sequence_projection module
+from tf_ops import sequence_string_projection_op as ssp # import sequence_projection module
 
 _NGRAM_INFO = [
     {

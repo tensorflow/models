@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include "sequence_projection/tf_ops/projection_normalizer_util.h"
+#include "tf_ops/projection_normalizer_util.h"  // sequence_projection
 
 #include <algorithm>
 #include <cstddef>
@@ -20,7 +20,7 @@ limitations under the License.
 #include <sstream>
 #include <utility>
 
-#include "sequence_projection/tf_ops/projection_util.h"
+#include "tf_ops/projection_util.h"  // sequence_projection
 
 // Returns true if the given text contains a number.
 bool IsDigit(const std::string& text) {

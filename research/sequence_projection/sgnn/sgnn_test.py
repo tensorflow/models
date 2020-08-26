@@ -18,7 +18,7 @@
 
 import tensorflow as tf
 from tensorflow.python.framework import test_util  # pylint: disable=g-direct-tensorflow-import
-from sequence_projection.sgnn import sgnn
+import sgnn # import sequence_projection module
 
 
 @test_util.run_all_in_graph_and_eager_modes

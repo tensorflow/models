@@ -24,9 +24,9 @@ import tensorflow.compat.v1 as tf
 
 from tensorflow.core.framework import types_pb2 as tf_types
 from tensorflow.python.tools import optimize_for_inference_lib  # pylint: disable=g-direct-tensorflow-import
-from sequence_projection.prado import input_fn_reader
-from sequence_projection.prado import metric_functions
-from sequence_projection.prado import prado_model as model
+from prado import input_fn_reader # import sequence_projection module
+from prado import metric_functions # import sequence_projection module
+from prado import prado_model as model # import sequence_projection module
 
 tf.disable_v2_behavior()
 

@@ -17,9 +17,9 @@ limitations under the License.
 #include "tensorflow/core/framework/shape_inference.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
-#include "sequence_projection/tf_ops/projection_normalizer_util.h"
-#include "sequence_projection/tf_ops/projection_util.h"
-#include "sequence_projection/tf_ops/text_distorter.h"
+#include "tf_ops/projection_normalizer_util.h"  // sequence_projection
+#include "tf_ops/projection_util.h"  // sequence_projection
+#include "tf_ops/text_distorter.h"  // sequence_projection
 
 using ::tensorflow::int32;
 using ::tensorflow::int64;

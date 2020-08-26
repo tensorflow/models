@@ -5,9 +5,11 @@ build --define=grpc_no_ares=true
 build:short_logs --output_filter=DONT_MATCH_ANYTHING
 
 # Force python3
-build --action_env=PYTHON_BIN_PATH=python3
-build --repo_env=PYTHON_BIN_PATH=python3
-build --python_path=python3
+build --action_env=PYTHON_BIN_PATH=/usr/bin/python3
+build --repo_env=PYTHON_BIN_PATH=/usr/bin/python3
+build --python_path=/usr/bin/python3
+
+common --experimental_repo_remote_exec
 
 build:manylinux2010 --crosstool_top=//third_party/toolchains/preconfig/ubuntu16.04/gcc7_manylinux2010:toolchain
 

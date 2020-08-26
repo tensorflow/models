@@ -27,7 +27,7 @@ import numpy as np
 import tensorflow.compat.v2 as tf
 import tensorflow_datasets as tfds
 
-from sequence_projection.sgnn import sgnn
+import sgnn # import sequence_projection module
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string('output_dir', '/tmp/langid',

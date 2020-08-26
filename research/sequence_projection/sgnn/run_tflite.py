@@ -45,6 +45,7 @@ def main(argv):
                          input_array)
   interpreter.invoke()
   output = interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
+  print(interpreter.get_output_details())
   for x in range(output.shape[0]):
     for y in range(output.shape[1]):
       print('{:>3s}: {:.4f}'.format(LANGIDS[y], output[x][y]))

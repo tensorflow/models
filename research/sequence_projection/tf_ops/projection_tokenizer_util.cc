@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#include "sequence_projection/tf_ops/projection_tokenizer_util.h"
+#include "tf_ops/projection_tokenizer_util.h"  // sequence_projection
 
 #include <cstddef>
 #include <iostream>
@@ -20,7 +20,7 @@ limitations under the License.
 #include <sstream>
 #include <utility>
 
-#include "sequence_projection/tf_ops/projection_util.h"
+#include "tf_ops/projection_util.h"  // sequence_projection
 
 
 namespace {

@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "sequence_projection/sgnn/sgnn_projection.h"
+#include "sgnn/sgnn_projection.h"  // sequence_projection
 
 #include <cstdlib>
 #include <iostream>
 
-#include "include/flatbuffers/flexbuffers.h"  // flatbuffer
-#include "third_party/py/farmhash/farmhash.h"
+#include "flatbuffers/flexbuffers.h"  // flatbuffer
+#include "farmhash.h"
 #include "tensorflow/lite/context.h"
 #include "tensorflow/lite/kernels/internal/tensor_ctypes.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
@@ -120,6 +120,7 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
       }
       output_values[output_idx] =
           static_cast<float>(result) / (attributes.buckets / 2) / len;
+      std::cout <<output_values[output_idx] << " ";
       output_idx++;
     }
   }

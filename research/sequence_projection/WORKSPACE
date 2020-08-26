@@ -1,6 +1,7 @@
 workspace(name = "tensorflow_models_sequence_projection")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@//third_party/py:python_configure.bzl", "python_configure")
 
 
 http_archive(
@@ -15,17 +16,19 @@ http_archive(
 
 http_archive(
     name = "org_tensorflow",
-    sha256 = "2595a5c401521f20a2734c4e5d54120996f8391f00bb62a57267d930bce95350",
-    strip_prefix = "tensorflow-2.3.0",
+    sha256 = "fc6d7c57cd9427e695a38ad00fb6ecc3f623bac792dd44ad73a3f85b338b68be",
+    strip_prefix = "tensorflow-8a4ffe2e1ae722cff5306778df0cfca8b7f503fe",
     urls = [
-        "https://github.com/tensorflow/tensorflow/archive/v2.3.0.tar.gz",
+        "https://github.com/tensorflow/tensorflow/archive/8a4ffe2e1ae722cff5306778df0cfca8b7f503fe.tar.gz",
     ],
 )
+
+
 http_archive(
     name = "org_tflite_support",
-    strip_prefix = "tflite-support-01df8abf574ad91062f523801a34cfd78ec6f65b",
-    sha256 = "ff47a932d3e025a7369d400ba38de2045931c16cb5112bce48a003e08550d5fc",
-    urls = ["https://github.com/tensorflow/tflite-support/archive/01df8abf574ad91062f523801a34cfd78ec6f65b.zip"],
+    strip_prefix = "tflite-support-9bc45390fc99e627348578ad1f3365f0d555db9a",
+    sha256 = "06df23dbe89f18eb198643c34bc8aa6a0db3e921242e4042452f1fc0a76f4085",
+    urls = ["https://github.com/tensorflow/tflite-support/archive/9bc45390fc99e627348578ad1f3365f0d555db9a.zip"],
 )
 
 http_archive(
@@ -109,6 +112,7 @@ http_archive(
     ],
 )
 
+
 #-----------------------------------------------------------------------------
 # proto
 #-----------------------------------------------------------------------------
@@ -123,17 +127,40 @@ http_archive(
     sha256 = "1e622ce4b84b88b6d2cdf1db38d1a634fe2392d74f0b7b74ff98f3a51838ee53",
 )
 
-#load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
-#tf_workspace(tf_repo_name = "org_tensorflow")
+load("//third_party/flatbuffers:workspace.bzl", flatbuffers = "repo")
+flatbuffers()
 
-http_archive(
-    name = "com_github_google_flatbuffers",  # tag/1.11.0
-    sha256 = "4e506107bf2a3b2ad73fa12133e93ce07f8704233f7f2fb24ce179d77082bab3",
-    strip_prefix = "flatbuffers-9e7e8cbe9f675123dd41b7c62868acad39188cae",
-    urls = [
-        "https://github.com/google/flatbuffers/archive/9e7e8cbe9f675123dd41b7c62868acad39188cae.tar.gz",
-    ],
+load("@org_tensorflow//tensorflow:workspace.bzl", "tf_workspace")
+tf_workspace(tf_repo_name = "org_tensorflow")
+
+
+# TF submodule compilation doesn't take care of grpc deps. Do it manually here.
+load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
+grpc_deps()
+
+load(
+    "@build_bazel_rules_apple//apple:repositories.bzl",
+    "apple_rules_dependencies",
 )
+apple_rules_dependencies()
+
+load(
+    "@build_bazel_apple_support//lib:repositories.bzl",
+    "apple_support_dependencies",
+)
+apple_support_dependencies()
+
+load("@upb//bazel:repository_defs.bzl", "bazel_version_repository")
+bazel_version_repository(name = "bazel_version")
+
+
+# Set up Android.
+load("//third_party/android:android_configure.bzl", "android_configure")
+android_configure(name="local_config_android")
+load("@local_config_android//:android.bzl", "android_workspace")
+android_workspace()
+
+python_configure(name = "local_config_python")
 
 new_git_repository(
   name = "icu4c",
@@ -143,4 +170,16 @@ new_git_repository(
   patch_cmds = [
     "find . -type f -exec sed -i 's/#\s*include \"unicode/#include \"icu4c\/source\/common\/unicode/g' {} \;",
   ],
+)
+
+
+http_archive(
+    name = "farmhash_archive",
+    build_file = "//third_party:farmhash.BUILD",
+    sha256 = "6560547c63e4af82b0f202cb710ceabb3f21347a4b996db565a411da5b17aba0",  # SHARED_FARMHASH_SHA
+    strip_prefix = "farmhash-816a4ae622e964763ca0862d9dbd19324a1eaf45",
+    urls = [
+        "https://storage.googleapis.com/mirror.tensorflow.org/github.com/google/farmhash/archive/816a4ae622e964763ca0862d9dbd19324a1eaf45.tar.gz",
+        "https://github.com/google/farmhash/archive/816a4ae622e964763ca0862d9dbd19324a1eaf45.tar.gz",
+    ],
 )

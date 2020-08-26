@@ -198,7 +198,7 @@ cc_library(
     ),
     includes = ["tensorflow_includes"],
     deps = [
-        "@eigen_archive//:includes",
+        "@eigen_archive//:eigen",
         "@protobuf_archive//:includes",
         "@zlib_includes//:includes",
         "@snappy_includes//:includes",
@@ -265,8 +265,6 @@ cc_library(
 
 def cc_tf_configure():
     """Autoconf pre-installed tensorflow repo."""
-    make_eigen_repo = repository_rule(implementation = _eigen_archive_repo_impl)
-    make_eigen_repo(name = "eigen_archive")
     make_nsync_repo = repository_rule(
         implementation = _nsync_includes_repo_impl,
     )

@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "sequence_projection/sgnn/sgnn_projection_op_resolver.h"
+#include "sgnn/sgnn_projection_op_resolver.h"  // sequence_projection
 
 #include "tensorflow/lite/mutable_op_resolver.h"
-#include "sequence_projection/sgnn/sgnn_projection.h"
+#include "sgnn/sgnn_projection.h"  // sequence_projection
 
 namespace tflite {
 namespace ops {
