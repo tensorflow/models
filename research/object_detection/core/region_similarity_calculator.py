@@ -104,9 +104,10 @@ class DETRSimilarity(RegionSimilarityCalculator):
     classification_scores = tf.matmul(groundtruth_labels,
                                       predicted_labels,
                                       transpose_b=True)
-    return -self.l1_weight * box_list_ops.l1(
-        boxlist1, boxlist2) + self.giou_weight * box_list_ops.giou(
-            boxlist1, boxlist2) + classification_scores
+    loss = self.l1_weight * box_list_ops.l1(
+        boxlist1, boxlist2) + self.giou_weight * (1 - box_list_ops.giou(
+            boxlist1, boxlist2)) - classification_scores
+    return -loss
 
 
 class NegSqDistSimilarity(RegionSimilarityCalculator):
