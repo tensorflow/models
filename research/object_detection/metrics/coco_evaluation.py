@@ -34,7 +34,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
   def __init__(self,
                categories,
                include_metrics_per_category=False,
-               all_metrics_per_category=False):
+               all_metrics_per_category=False,
+               skip_predictions_for_unlabeled_class=False):
     """Constructor.
 
     Args:
@@ -46,6 +47,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         each category in per_category_ap. Be careful with setting it to true if
         you have more than handful of categories, because it will pollute
         your mldash.
+      skip_predictions_for_unlabeled_class: Skip predictions that do not match
+        with the labeled classes for the image.
     """
     super(CocoDetectionEvaluator, self).__init__(categories)
     # _image_ids is a dictionary that maps unique image ids to Booleans which
@@ -58,6 +61,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     self._metrics = None
     self._include_metrics_per_category = include_metrics_per_category
     self._all_metrics_per_category = all_metrics_per_category
+    self._skip_predictions_for_unlabeled_class = skip_predictions_for_unlabeled_class
+    self._groundtruth_labeled_classes = {}
 
   def clear(self):
     """Clears the state to prepare for a fresh evaluation."""
@@ -92,6 +97,10 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
           numpy array of keypoint visibilities with shape [num_gt_boxes,
           num_keypoints]. Integer is treated as an enum with 0=not labeled,
           1=labeled but not visible and 2=labeled and visible.
+        InputDataFields.groundtruth_labeled_classes (optional): a dictionary of
+          image_id to groundtruth_labeled_class, where groundtruth_labeled_class
+          is a 1-indexed integer numpy array indicating which classes have been
+          annotated over the image.
     """
     if image_id in self._image_ids:
       tf.logging.warning('Ignoring ground truth with image id %s since it was '
@@ -134,6 +143,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
 
     self._annotation_id += groundtruth_dict[standard_fields.InputDataFields.
                                             groundtruth_boxes].shape[0]
+    self._groundtruth_labeled_classes[image_id] = groundtruth_dict.get(
+        standard_fields.InputDataFields.groundtruth_labeled_classes)
     # Boolean to indicate whether a detection has been added for this image.
     self._image_ids[image_id] = False
 
@@ -173,17 +184,41 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         standard_fields.DetectionResultFields.detection_keypoints)
     if detection_keypoints is not None and not detection_keypoints.shape[0]:
       detection_keypoints = None
-    self._detection_boxes_list.extend(
-        coco_tools.ExportSingleImageDetectionBoxesToCoco(
-            image_id=image_id,
-            category_id_set=self._category_id_set,
-            detection_boxes=detections_dict[
-                standard_fields.DetectionResultFields.detection_boxes],
-            detection_scores=detections_dict[
-                standard_fields.DetectionResultFields.detection_scores],
-            detection_classes=detections_dict[
-                standard_fields.DetectionResultFields.detection_classes],
-            detection_keypoints=detection_keypoints))
+
+    if self._skip_predictions_for_unlabeled_class:
+      det_classes = detections_dict[
+          standard_fields.DetectionResultFields.detection_classes]
+      num_det_boxes = det_classes.shape[0]
+      keep_box_ids = []
+      for box_id in range(num_det_boxes):
+        if det_classes[box_id] in self._groundtruth_labeled_classes[image_id]:
+          keep_box_ids.append(box_id)
+      self._detection_boxes_list.extend(
+          coco_tools.ExportSingleImageDetectionBoxesToCoco(
+              image_id=image_id,
+              category_id_set=self._category_id_set,
+              detection_boxes=detections_dict[
+                  standard_fields.DetectionResultFields.detection_boxes]
+              [keep_box_ids],
+              detection_scores=detections_dict[
+                  standard_fields.DetectionResultFields.detection_scores]
+              [keep_box_ids],
+              detection_classes=detections_dict[
+                  standard_fields.DetectionResultFields.detection_classes]
+              [keep_box_ids],
+              detection_keypoints=detection_keypoints))
+    else:
+      self._detection_boxes_list.extend(
+          coco_tools.ExportSingleImageDetectionBoxesToCoco(
+              image_id=image_id,
+              category_id_set=self._category_id_set,
+              detection_boxes=detections_dict[
+                  standard_fields.DetectionResultFields.detection_boxes],
+              detection_scores=detections_dict[
+                  standard_fields.DetectionResultFields.detection_scores],
+              detection_classes=detections_dict[
+                  standard_fields.DetectionResultFields.detection_classes],
+              detection_keypoints=detection_keypoints))
     self._image_ids[image_id] = True
 
   def dump_detections_to_json_file(self, json_output_path):
@@ -271,24 +306,20 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       None when executing eagerly, or an update_op that can be used to update
       the eval metrics in `tf.estimator.EstimatorSpec`.
     """
-    def update_op(
-        image_id_batched,
-        groundtruth_boxes_batched,
-        groundtruth_classes_batched,
-        groundtruth_is_crowd_batched,
-        num_gt_boxes_per_image,
-        detection_boxes_batched,
-        detection_scores_batched,
-        detection_classes_batched,
-        num_det_boxes_per_image,
-        is_annotated_batched):
-      """Update operation for adding batch of images to Coco evaluator."""
 
-      for (image_id, gt_box, gt_class, gt_is_crowd, num_gt_box, det_box,
-           det_score, det_class, num_det_box, is_annotated) in zip(
+    def update_op(image_id_batched, groundtruth_boxes_batched,
+                  groundtruth_classes_batched, groundtruth_is_crowd_batched,
+                  groundtruth_labeled_classes_batched, num_gt_boxes_per_image,
+                  detection_boxes_batched, detection_scores_batched,
+                  detection_classes_batched, num_det_boxes_per_image,
+                  is_annotated_batched):
+      """Update operation for adding batch of images to Coco evaluator."""
+      for (image_id, gt_box, gt_class, gt_is_crowd, gt_labeled_classes,
+           num_gt_box, det_box, det_score, det_class,
+           num_det_box, is_annotated) in zip(
                image_id_batched, groundtruth_boxes_batched,
                groundtruth_classes_batched, groundtruth_is_crowd_batched,
-               num_gt_boxes_per_image,
+               groundtruth_labeled_classes_batched, num_gt_boxes_per_image,
                detection_boxes_batched, detection_scores_batched,
                detection_classes_batched, num_det_boxes_per_image,
                is_annotated_batched):
@@ -297,7 +328,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
               image_id, {
                   'groundtruth_boxes': gt_box[:num_gt_box],
                   'groundtruth_classes': gt_class[:num_gt_box],
-                  'groundtruth_is_crowd': gt_is_crowd[:num_gt_box]
+                  'groundtruth_is_crowd': gt_is_crowd[:num_gt_box],
+                  'groundtruth_labeled_classes': gt_labeled_classes
               })
           self.add_single_detected_image_info(
               image_id,
@@ -313,6 +345,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     groundtruth_classes = eval_dict[input_data_fields.groundtruth_classes]
     groundtruth_is_crowd = eval_dict.get(
         input_data_fields.groundtruth_is_crowd, None)
+    groundtruth_labeled_classes = eval_dict.get(
+        input_data_fields.groundtruth_labeled_classes, None)
     detection_boxes = eval_dict[detection_fields.detection_boxes]
     detection_scores = eval_dict[detection_fields.detection_scores]
     detection_classes = eval_dict[detection_fields.detection_classes]
@@ -323,12 +357,21 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
 
     if groundtruth_is_crowd is None:
       groundtruth_is_crowd = tf.zeros_like(groundtruth_classes, dtype=tf.bool)
+
+    # If groundtruth_labeled_classes is not provided, make it equal to the
+    # detection_classes. This assumes that all predictions will be kept to
+    # compute eval metrics.
+    if groundtruth_labeled_classes is None:
+      groundtruth_labeled_classes = detection_classes
+
     if not image_id.shape.as_list():
       # Apply a batch dimension to all tensors.
       image_id = tf.expand_dims(image_id, 0)
       groundtruth_boxes = tf.expand_dims(groundtruth_boxes, 0)
       groundtruth_classes = tf.expand_dims(groundtruth_classes, 0)
       groundtruth_is_crowd = tf.expand_dims(groundtruth_is_crowd, 0)
+      groundtruth_labeled_classes = tf.expand_dims(groundtruth_labeled_classes,
+                                                   0)
       detection_boxes = tf.expand_dims(detection_boxes, 0)
       detection_scores = tf.expand_dims(detection_scores, 0)
       detection_classes = tf.expand_dims(detection_classes, 0)
@@ -359,16 +402,12 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       if is_annotated is None:
         is_annotated = tf.ones_like(image_id, dtype=tf.bool)
 
-    return tf.py_func(update_op, [image_id,
-                                  groundtruth_boxes,
-                                  groundtruth_classes,
-                                  groundtruth_is_crowd,
-                                  num_gt_boxes_per_image,
-                                  detection_boxes,
-                                  detection_scores,
-                                  detection_classes,
-                                  num_det_boxes_per_image,
-                                  is_annotated], [])
+    return tf.py_func(update_op, [
+        image_id, groundtruth_boxes, groundtruth_classes, groundtruth_is_crowd,
+        groundtruth_labeled_classes, num_gt_boxes_per_image, detection_boxes,
+        detection_scores, detection_classes, num_det_boxes_per_image,
+        is_annotated
+    ], [])
 
   def get_estimator_eval_metric_ops(self, eval_dict):
     """Returns a dictionary of eval metric ops.
