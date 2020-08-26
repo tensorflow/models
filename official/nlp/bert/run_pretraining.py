@@ -184,9 +184,14 @@ def main(_):
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'
+  # Configures cluster spec for multi-worker distribution strategy.
+  if FLAGS.num_gpus > 0:
+    _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
+                                             FLAGS.task_index)
   strategy = distribution_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
+      all_reduce_alg=FLAGS.all_reduce_alg,
       tpu_address=FLAGS.tpu)
   if strategy:
     print('***** Number of cores used : ', strategy.num_replicas_in_sync)
