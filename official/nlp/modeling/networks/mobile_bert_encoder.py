@@ -480,7 +480,7 @@ class MobileBERTEncoder(tf.keras.Model):
     input_mask = tf.keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_mask')
     type_ids = tf.keras.layers.Input(
-        shape=(None,), dtype=tf.int32, name='input_token_type_ids')
+        shape=(None,), dtype=tf.int32, name='input_type_ids')
     self.inputs = [input_ids, input_mask, type_ids]
     attention_mask = layers.SelfAttentionMask()([input_ids, input_mask])
 
