@@ -14,10 +14,6 @@
 # ==============================================================================
 """Keras-based positional embedding layer."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import math
 
@@ -200,3 +196,4 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
     position_embeddings = tf.concat(
         [tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
     return position_embeddings
+

@@ -53,6 +53,9 @@ flags.DEFINE_string(
     'input_meta_data_path', None,
     'Path to file that contains meta data about input '
     'to be used for training and evaluation.')
+flags.DEFINE_integer('train_data_size', None, 'Number of training samples '
+                     'to use. If None, uses the full train data. '
+                     '(default: None).')
 flags.DEFINE_string('predict_checkpoint_path', None,
                     'Path to the checkpoint for predictions.')
 flags.DEFINE_integer(
@@ -92,7 +95,8 @@ def get_dataset_fn(input_file_pattern,
                    global_batch_size,
                    is_training,
                    label_type=tf.int64,
-                   include_sample_weights=False):
+                   include_sample_weights=False,
+                   num_samples=None):
   """Gets a closure to create a dataset."""
 
   def _dataset_fn(ctx=None):
@@ -106,7 +110,8 @@ def get_dataset_fn(input_file_pattern,
         is_training=is_training,
         input_pipeline_context=ctx,
         label_type=label_type,
-        include_sample_weights=include_sample_weights)
+        include_sample_weights=include_sample_weights,
+        num_samples=num_samples)
     return dataset
 
   return _dataset_fn
@@ -263,6 +268,7 @@ def run_keras_compile_fit(model_dir,
 def get_predictions_and_labels(strategy,
                                trained_model,
                                eval_input_fn,
+                               is_regression=False,
                                return_probs=False):
   """Obtains predictions of trained model on evaluation data.
 
@@ -273,6 +279,7 @@ def get_predictions_and_labels(strategy,
     strategy: Distribution strategy.
     trained_model: Trained model with preloaded weights.
     eval_input_fn: Input function for evaluation data.
+    is_regression: Whether it is a regression task.
     return_probs: Whether to return probabilities of classes.
 
   Returns:
@@ -288,8 +295,11 @@ def get_predictions_and_labels(strategy,
       """Replicated predictions."""
       inputs, labels = inputs
       logits = trained_model(inputs, training=False)
-      probabilities = tf.nn.softmax(logits)
-      return probabilities, labels
+      if not is_regression:
+        probabilities = tf.nn.softmax(logits)
+        return probabilities, labels
+      else:
+        return logits, labels
 
     outputs, labels = strategy.run(_test_step_fn, args=(next(iterator),))
     # outputs: current batch logits as a tuple of shard logits
@@ -369,6 +379,9 @@ def run_bert(strategy,
   epochs = FLAGS.num_train_epochs * FLAGS.num_eval_per_epoch
   train_data_size = (
       input_meta_data['train_data_size'] // FLAGS.num_eval_per_epoch)
+  if FLAGS.train_data_size:
+    train_data_size = min(train_data_size, FLAGS.train_data_size)
+    logging.info('Updated train_data_size: %s', train_data_size)
   steps_per_epoch = int(train_data_size / FLAGS.train_batch_size)
   warmup_steps = int(epochs * train_data_size * 0.1 / FLAGS.train_batch_size)
   eval_steps = int(
@@ -447,9 +460,10 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
       include_sample_weights=include_sample_weights)
 
   if FLAGS.mode == 'predict':
+    num_labels = input_meta_data.get('num_labels', 1)
     with strategy.scope():
       classifier_model = bert_models.classifier_model(
-          bert_config, input_meta_data['num_labels'])[0]
+          bert_config, num_labels)[0]
       checkpoint = tf.train.Checkpoint(model=classifier_model)
       latest_checkpoint_file = (
           FLAGS.predict_checkpoint_path or
@@ -460,7 +474,11 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
       checkpoint.restore(
           latest_checkpoint_file).assert_existing_objects_matched()
       preds, _ = get_predictions_and_labels(
-          strategy, classifier_model, eval_input_fn, return_probs=True)
+          strategy,
+          classifier_model,
+          eval_input_fn,
+          is_regression=(num_labels == 1),
+          return_probs=True)
     output_predict_file = os.path.join(FLAGS.model_dir, 'test_results.tsv')
     with tf.io.gfile.GFile(output_predict_file, 'w') as writer:
       logging.info('***** Predict results *****')
@@ -479,7 +497,8 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
       FLAGS.train_batch_size,
       is_training=True,
       label_type=label_type,
-      include_sample_weights=include_sample_weights)
+      include_sample_weights=include_sample_weights,
+      num_samples=FLAGS.train_data_size)
   run_bert(
       strategy,
       input_meta_data,

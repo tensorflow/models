@@ -21,6 +21,7 @@ import tensorflow as tf
 
 from official.core import input_reader
 from official.modeling.hyperparams import config_definitions as cfg
+from official.nlp.data import data_loader
 from official.nlp.data import data_loader_factory
 
 
@@ -33,7 +34,7 @@ class TaggingDataConfig(cfg.DataConfig):
 
 
 @data_loader_factory.register_data_loader_cls(TaggingDataConfig)
-class TaggingDataLoader:
+class TaggingDataLoader(data_loader.DataLoader):
   """A class to load dataset for tagging (e.g., NER and POS) task."""
 
   def __init__(self, params: TaggingDataConfig):
@@ -51,6 +52,7 @@ class TaggingDataLoader:
     }
     if self._include_sentence_id:
       name_to_features['sentence_id'] = tf.io.FixedLenFeature([], tf.int64)
+      name_to_features['sub_sentence_id'] = tf.io.FixedLenFeature([], tf.int64)
 
     example = tf.io.parse_single_example(record, name_to_features)
 
@@ -73,6 +75,8 @@ class TaggingDataLoader:
     }
     if self._include_sentence_id:
       x['sentence_id'] = record['sentence_id']
+      x['sub_sentence_id'] = record['sub_sentence_id']
+
     y = record['label_ids']
     return (x, y)
 

@@ -16,5 +16,6 @@
 from official.nlp.modeling.networks.albert_transformer_encoder import AlbertTransformerEncoder
 from official.nlp.modeling.networks.classification import Classification
 from official.nlp.modeling.networks.encoder_scaffold import EncoderScaffold
+from official.nlp.modeling.networks.mobile_bert_encoder import MobileBERTEncoder
 from official.nlp.modeling.networks.span_labeling import SpanLabeling
 from official.nlp.modeling.networks.transformer_encoder import TransformerEncoder

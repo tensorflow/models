@@ -14,10 +14,6 @@
 # ==============================================================================
 """Keras-based transformer block layer."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import gin
 import tensorflow as tf
@@ -108,7 +104,7 @@ class Transformer(tf.keras.layers.Layer):
   def build(self, input_shape):
     input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
     input_tensor_shape = tf.TensorShape(input_tensor)
-    if len(input_tensor_shape) != 3:
+    if len(input_tensor_shape.as_list()) != 3:
       raise ValueError("TransformerLayer expects a three-dimensional input of "
                        "shape [batch, sequence, width].")
     batch_size, sequence_length, hidden_size = input_tensor_shape
@@ -260,16 +256,14 @@ class Transformer(tf.keras.layers.Layer):
     intermediate_output = self._intermediate_dropout_layer(intermediate_output)
     layer_output = self._output_dense(intermediate_output)
     layer_output = self._output_dropout(layer_output)
-    # During mixed precision training, attention_output is from layer norm and
-    # is always fp32 for now. Cast layer_output to fp32 for the subsequent
-    # add.
-    layer_output = tf.cast(layer_output, tf.float32)
-    if self._norm_first:
-      layer_output = source_attention_output + layer_output
-    else:
-      layer_output = self._output_layer_norm(layer_output + attention_output)
 
-    return layer_output
+    if self._norm_first:
+      return source_attention_output + layer_output
+
+    # During mixed precision training, layer norm output is always fp32 for now.
+    # Casts fp32 for the subsequent add.
+    layer_output = tf.cast(layer_output, tf.float32)
+    return self._output_layer_norm(layer_output + attention_output)
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -367,7 +361,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
 
   def build(self, input_shape):
     target_tensor_shape = tf.TensorShape(input_shape[0])
-    if len(target_tensor_shape) != 3:
+    if len(target_tensor_shape.as_list()) != 3:
       raise ValueError("TransformerLayer expects a three-dimensional input of "
                        "shape [batch, sequence, width].")
     hidden_size = target_tensor_shape[2]

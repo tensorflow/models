@@ -239,6 +239,8 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
         eval_config)
     self.assertTrue(evaluator_options['coco_detection_metrics']
                     ['include_metrics_per_category'])
+    self.assertFalse(evaluator_options['coco_detection_metrics']
+                     ['skip_predictions_for_unlabeled_class'])
     self.assertTrue(
         evaluator_options['coco_mask_metrics']['include_metrics_per_category'])
     self.assertAlmostEqual(
@@ -253,6 +255,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     eval_config.metrics_set.extend(
         ['coco_detection_metrics', 'precision_at_recall_detection_metrics'])
     eval_config.include_metrics_per_category = True
+    eval_config.skip_predictions_for_unlabeled_class = True
     eval_config.recall_lower_bound = 0.2
     eval_config.recall_upper_bound = 0.6
     categories = self._get_categories_list()
@@ -263,6 +266,7 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
                                          evaluator_options)
 
     self.assertTrue(evaluator[0]._include_metrics_per_category)
+    self.assertTrue(evaluator[0]._skip_predictions_for_unlabeled_class)
     self.assertAlmostEqual(evaluator[1]._recall_lower_bound,
                            eval_config.recall_lower_bound)
     self.assertAlmostEqual(evaluator[1]._recall_upper_bound,

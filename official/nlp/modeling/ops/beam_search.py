@@ -457,7 +457,8 @@ class SequenceBeamSearch(tf.Module):
           _StateKeys.ALIVE_LOG_PROBS:
               tf.TensorShape([batch_size, self.beam_size]),
           _StateKeys.ALIVE_CACHE:
-              tf.nest.map_structure(_get_shape, alive_cache),
+              tf.nest.map_structure(lambda state: state.get_shape(),
+                                    alive_cache),
           _StateKeys.FINISHED_SEQ:
               tf.TensorShape(
                   [batch_size, self.beam_size, self.max_decode_length + 1]),
@@ -627,11 +628,6 @@ def _get_shape_keep_last_dim(tensor):
   if isinstance(shape_list[-1], tf.Tensor):
     shape_list[-1] = None
   return tf.TensorShape(shape_list)
-
-
-def _get_shape(tensor):
-  """Return the shape of the input tensor."""
-  return tf.TensorShape(_shape_list(tensor))
 
 
 def _flatten_beam_dim(tensor):

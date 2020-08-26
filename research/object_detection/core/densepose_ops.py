@@ -26,6 +26,7 @@ points for an instance in the example.
 """
 import os
 
+import numpy as np
 import scipy.io
 import tensorflow.compat.v1 as tf
 
@@ -278,8 +279,10 @@ class DensePoseHorizontalFlip(object):
     for key in ('U_transforms', 'V_transforms'):
       uv_symmetry_map_per_part = []
       for i in range(data[key].shape[1]):
-        # The following tensor has shape [256, 256].
-        map_per_part = tf.constant(data[key][0, i], dtype=tf.float32)
+        # The following tensor has shape [256, 256]. The raw data is stored as
+        # uint8 values, so convert to float and scale to the range [0., 1.]
+        data_normalized = data[key][0, i].astype(np.float32) / 255.
+        map_per_part = tf.constant(data_normalized, dtype=tf.float32)
         uv_symmetry_map_per_part.append(map_per_part)
       uv_symmetry_map[key] = tf.reshape(
           tf.stack(uv_symmetry_map_per_part, axis=0), [-1])

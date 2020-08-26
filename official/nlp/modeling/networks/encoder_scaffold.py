@@ -22,6 +22,7 @@ from __future__ import print_function
 
 import inspect
 
+from absl import logging
 import gin
 import tensorflow as tf
 
@@ -152,22 +153,24 @@ class EncoderScaffold(tf.keras.Model):
           name='position_embedding')
       position_embeddings = self._position_embedding_layer(word_embeddings)
 
-      type_embeddings = (
-          layers.OnDeviceEmbedding(
-              vocab_size=embedding_cfg['type_vocab_size'],
-              embedding_width=embedding_cfg['hidden_size'],
-              initializer=embedding_cfg['initializer'],
-              use_one_hot=True,
-              name='type_embeddings')(type_ids))
+      self._type_embedding_layer = layers.OnDeviceEmbedding(
+          vocab_size=embedding_cfg['type_vocab_size'],
+          embedding_width=embedding_cfg['hidden_size'],
+          initializer=embedding_cfg['initializer'],
+          use_one_hot=True,
+          name='type_embeddings')
+      type_embeddings = self._type_embedding_layer(type_ids)
 
       embeddings = tf.keras.layers.Add()(
           [word_embeddings, position_embeddings, type_embeddings])
-      embeddings = (
-          tf.keras.layers.LayerNormalization(
-              name='embeddings/layer_norm',
-              axis=-1,
-              epsilon=1e-12,
-              dtype=tf.float32)(embeddings))
+
+      self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
+          name='embeddings/layer_norm',
+          axis=-1,
+          epsilon=1e-12,
+          dtype=tf.float32)
+      embeddings = self._embedding_norm_layer(embeddings)
+
       embeddings = (
           tf.keras.layers.Dropout(
               rate=embedding_cfg['dropout_rate'])(embeddings))
@@ -204,6 +207,8 @@ class EncoderScaffold(tf.keras.Model):
 
     super(EncoderScaffold, self).__init__(
         inputs=inputs, outputs=outputs, **kwargs)
+
+    logging.info('EncoderScaffold configs: %s', self.get_config())
 
   def get_config(self):
     config_dict = {
