@@ -36,7 +36,8 @@ LR_CLS = {
     'stepwise': tf.keras.optimizers.schedules.PiecewiseConstantDecay,
     'polynomial': tf.keras.optimizers.schedules.PolynomialDecay,
     'exponential': tf.keras.optimizers.schedules.ExponentialDecay,
-    'cosine': tf.keras.experimental.CosineDecay
+    'cosine': tf.keras.experimental.CosineDecay,
+    'power': lr_schedule.DirectPowerDecay,
 }
 
 WARMUP_CLS = {

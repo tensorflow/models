@@ -60,6 +60,7 @@ class LrConfig(oneof.OneOfConfig):
     exponential: exponential learning rate config.
     polynomial: polynomial learning rate config.
     cosine: cosine learning rate config.
+    power: step^power learning rate config.
   """
   type: Optional[str] = None
   constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
@@ -67,6 +68,7 @@ class LrConfig(oneof.OneOfConfig):
   exponential: lr_cfg.ExponentialLrConfig = lr_cfg.ExponentialLrConfig()
   polynomial: lr_cfg.PolynomialLrConfig = lr_cfg.PolynomialLrConfig()
   cosine: lr_cfg.CosineLrConfig = lr_cfg.CosineLrConfig()
+  power: lr_cfg.DirectPowerLrConfig = lr_cfg.DirectPowerLrConfig()
 
 
 @dataclasses.dataclass
