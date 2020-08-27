@@ -91,9 +91,12 @@ class OptimizationConfig(base_config.Config):
 
   Attributes:
     optimizer: optimizer oneof config.
+    ema: optional exponential moving average optimizer config, if specified,
+      ema optimizer will be used.
     learning_rate: learning rate oneof config.
     warmup: warmup oneof config.
   """
   optimizer: OptimizerConfig = OptimizerConfig()
+  ema: Optional[opt_cfg.EMAConfig] = None
   learning_rate: LrConfig = LrConfig()
   warmup: WarmupConfig = WarmupConfig()
