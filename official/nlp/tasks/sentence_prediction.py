@@ -175,7 +175,6 @@ class SentencePredictionTask(base_task.Task):
       return None
     if state is None:
       state = {'sentence_prediction': [], 'labels': []}
-    # TODO(b/160712818): Add support for concatenating partial batches.
     state['sentence_prediction'].append(
         np.concatenate([v.numpy() for v in step_outputs['sentence_prediction']],
                        axis=0))
