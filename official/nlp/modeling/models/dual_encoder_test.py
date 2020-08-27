@@ -38,8 +38,10 @@ class DualEncoderTest(keras_parameterized.TestCase):
     # Build a transformer network to use within the dual encoder model.
     vocab_size = 100
     sequence_length = 512
-    test_network = networks.TransformerEncoder(
-        vocab_size=vocab_size, num_layers=2, hidden_size=hidden_size,
+    test_network = networks.BertEncoder(
+        vocab_size=vocab_size,
+        num_layers=2,
+        hidden_size=hidden_size,
         sequence_length=sequence_length)
 
     # Create a dual encoder model with the created network.
@@ -75,7 +77,7 @@ class DualEncoderTest(keras_parameterized.TestCase):
     # Build a transformer network to use within the dual encoder model. (Here,
     # we use # a short sequence_length for convenience.)
     sequence_length = 2
-    test_network = networks.TransformerEncoder(
+    test_network = networks.BertEncoder(
         vocab_size=100, num_layers=2, sequence_length=sequence_length)
 
     # Create a dual encoder model with the created network.
@@ -101,7 +103,7 @@ class DualEncoderTest(keras_parameterized.TestCase):
     # Build a transformer network to use within the dual encoder model. (Here,
     # we use a short sequence_length for convenience.)
     sequence_length = 32
-    test_network = networks.TransformerEncoder(
+    test_network = networks.BertEncoder(
         vocab_size=100, num_layers=2, sequence_length=sequence_length)
 
     # Create a dual encoder model with the created network. (Note that all the
