@@ -45,6 +45,7 @@ class BertEncoderConfig(hyperparams.Config):
   type_vocab_size: int = 2
   initializer_range: float = 0.02
   embedding_size: Optional[int] = None
+  return_all_encoder_outputs: bool = False
 
 
 @dataclasses.dataclass
@@ -186,7 +187,8 @@ def build_encoder(config: EncoderConfig,
         num_hidden_instances=encoder_cfg.num_layers,
         pooled_output_dim=encoder_cfg.hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=encoder_cfg.initializer_range))
+            stddev=encoder_cfg.initializer_range),
+        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs)
     return encoder_cls(**kwargs)
 
   if encoder_type == "mobilebert":
@@ -242,4 +244,5 @@ def build_encoder(config: EncoderConfig,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
       embedding_width=encoder_cfg.embedding_size,
-      embedding_layer=embedding_layer)
+      embedding_layer=embedding_layer,
+      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs)
