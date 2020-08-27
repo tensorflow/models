@@ -136,3 +136,19 @@ class LAMBConfig(base_config.Config):
   weight_decay_rate: float = 0.0
   exclude_from_weight_decay: Optional[List[str]] = None
   exclude_from_layer_adaptation: Optional[List[str]] = None
+
+
+@dataclasses.dataclass
+class EMAConfig(base_config.Config):
+  """Exponential moving average optimizer config.
+
+  Attributes:
+    name: 'str', name of the optimizer.
+    average_decay: 'float', average decay value.
+    start_step: 'int', start step to apply moving average.
+    dynamic_decay: 'bool', whether to apply dynamic decay or not.
+  """
+  name: str = "ExponentialMovingAverage"
+  average_decay: float = 0.99
+  start_step: int = 0
+  dynamic_decay: bool = True
