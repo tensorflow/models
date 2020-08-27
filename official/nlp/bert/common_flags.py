@@ -77,6 +77,11 @@ def define_common_bert_flags():
       'sub_model_export_name', None,
       'If set, `sub_model` checkpoints are exported into '
       'FLAGS.model_dir/FLAGS.sub_model_export_name.')
+  flags.DEFINE_bool('explicit_allreduce', False,
+                    'True to use explicit allreduce instead of the implicit '
+                    'allreduce in optimizer.apply_gradients(). If fp16 mixed '
+                    'precision training is used, this also enables allreduce '
+                    'gradients in fp16.')
 
   flags_core.define_log_steps()
 
@@ -116,3 +121,10 @@ def use_graph_rewrite():
 
 def get_loss_scale():
   return flags_core.get_loss_scale(flags.FLAGS, default_for_fp16='dynamic')
+
+
+def clip_by_global_norm_callback(grads_and_vars):
+  grads, variables = zip(*grads_and_vars)
+  (clipped_grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+  return zip(clipped_grads, variables)
+
