@@ -48,11 +48,22 @@ class DataConfig(base_config.Config):
       interleaving files.
     block_length: The number of consecutive elements to produce from each input
       element before cycling to another input element when interleaving files.
+    deterministic: A boolean controlling whether determinism should be enforced.
     sharding: Whether sharding is used in the input pipeline.
     examples_consume: An `integer` specifying the number of examples it will
       produce. If positive, it only takes this number of examples and raises
       tf.error.OutOfRangeError after that. Default is -1, meaning it will
       exhaust all the examples in the dataset.
+    enable_tf_data_service: A boolean indicating whether to enable tf.data
+      service for the input pipeline.
+    tf_data_service_address: The URI of a tf.data service to offload
+      preprocessing onto during training. The URI should be in the format
+      "protocol://address", e.g. "grpc://tf-data-service:5050". It can be
+      overridden by `FLAGS.tf_data_service` flag in the binary.
+    tf_data_service_job_name: The name of the tf.data service job. This
+      argument makes it possible for multiple datasets to share the same job.
+      The default behavior is that the dataset creates anonymous, exclusively
+      owned jobs.
     tfds_data_dir: A str specifying the directory to read/write TFDS data.
     tfds_download: A bool to indicate whether to download data using TFDS.
     tfds_as_supervised: A bool. When loading dataset from TFDS, if True, the
@@ -74,8 +85,12 @@ class DataConfig(base_config.Config):
   cache: bool = False
   cycle_length: int = 8
   block_length: int = 1
+  deterministic: Optional[bool] = None
   sharding: bool = True
   examples_consume: int = -1
+  enable_tf_data_service: bool = False
+  tf_data_service_address: Optional[str] = None
+  tf_data_service_job_name: Optional[str] = None
   tfds_data_dir: str = ""
   tfds_download: bool = False
   tfds_as_supervised: bool = False
