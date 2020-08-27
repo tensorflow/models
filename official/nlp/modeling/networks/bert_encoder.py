@@ -14,10 +14,6 @@
 # ==============================================================================
 """Transformer-based text encoder network."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import tensorflow as tf
 
@@ -26,7 +22,7 @@ from official.nlp.modeling import layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class TransformerEncoder(tf.keras.Model):
+class BertEncoder(tf.keras.Model):
   """Bi-directional Transformer-based encoder network.
 
   This network implements a bi-directional Transformer-based encoder as
@@ -207,7 +203,7 @@ class TransformerEncoder(tf.keras.Model):
     else:
       outputs = [encoder_outputs[-1], cls_output]
 
-    super(TransformerEncoder, self).__init__(
+    super(BertEncoder, self).__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
   def get_embedding_table(self):

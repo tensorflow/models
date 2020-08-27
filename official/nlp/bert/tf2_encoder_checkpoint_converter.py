@@ -57,7 +57,7 @@ def _create_bert_model(cfg):
   Returns:
     A TransformerEncoder netowork.
   """
-  bert_encoder = networks.TransformerEncoder(
+  bert_encoder = networks.BertEncoder(
       vocab_size=cfg.vocab_size,
       hidden_size=cfg.hidden_size,
       num_layers=cfg.num_hidden_layers,

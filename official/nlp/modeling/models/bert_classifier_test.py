@@ -37,8 +37,7 @@ class BertClassifierTest(keras_parameterized.TestCase):
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
     sequence_length = 512
-    test_network = networks.TransformerEncoder(
-        vocab_size=vocab_size, num_layers=2)
+    test_network = networks.BertEncoder(vocab_size=vocab_size, num_layers=2)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_classifier.BertClassifier(
@@ -61,7 +60,7 @@ class BertClassifierTest(keras_parameterized.TestCase):
     """Validate that the Keras object can be invoked."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
-    test_network = networks.TransformerEncoder(vocab_size=100, num_layers=2)
+    test_network = networks.BertEncoder(vocab_size=100, num_layers=2)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_classifier.BertClassifier(
@@ -81,7 +80,8 @@ class BertClassifierTest(keras_parameterized.TestCase):
     """Validate that the BERT trainer can be serialized and deserialized."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
-    test_network = networks.TransformerEncoder(vocab_size=100, num_layers=2)
+    test_network = networks.BertEncoder(
+        vocab_size=100, num_layers=2, sequence_length=5)
 
     # Create a BERT trainer with the created network. (Note that all the args
     # are different, so we can catch any serialization mismatches.)
