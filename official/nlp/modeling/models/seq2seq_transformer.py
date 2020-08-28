@@ -20,7 +20,7 @@ import math
 
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.nlp.keras_nlp.layers import transformer_encoder_block
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 from official.nlp.modeling.ops import beam_search
 from official.nlp.transformer import metrics
@@ -472,7 +472,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
     self.encoder_layers = []
     for i in range(self.num_layers):
       self.encoder_layers.append(
-          transformer_encoder_block.TransformerEncoderBlock(
+          keras_nlp.TransformerEncoderBlock(
               num_attention_heads=self.num_attention_heads,
               inner_dim=self._intermediate_size,
               inner_activation=self._activation,
