@@ -159,7 +159,8 @@ class SentencePredictionTask(base_task.Task):
     if self.metric_type == 'matthews_corrcoef':
       logs.update({
           'sentence_prediction':
-              tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=0),
+              # Ensure one prediction along batch dimension.
+              tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=1),
           'labels':
               labels,
       })

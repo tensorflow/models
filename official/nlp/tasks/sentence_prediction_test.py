@@ -86,7 +86,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     iterator = iter(dataset)
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
-    task.validation_step(next(iterator), model, metrics=metrics)
+    return task.validation_step(next(iterator), model, metrics=metrics)
 
   @parameterized.named_parameters(
       ("init_cls_pooler", True),
@@ -181,6 +181,34 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     aggregated = task.aggregate_logs(step_outputs=outputs)
     aggregated = task.aggregate_logs(state=aggregated, step_outputs=outputs)
     self.assertIn(metric_type, task.reduce_aggregated_logs(aggregated))
+
+  def test_np_metrics_cola_partial_batch(self):
+    train_data_path = os.path.join(self.get_temp_dir(), "train.tf_record")
+    num_examples = 5
+    global_batch_size = 8
+    seq_length = 16
+    _create_fake_dataset(
+        train_data_path,
+        seq_length=seq_length,
+        num_classes=2,
+        num_examples=num_examples)
+
+    train_data_config = (
+        sentence_prediction_dataloader.SentencePredictionDataConfig(
+            input_path=train_data_path,
+            seq_length=seq_length,
+            is_training=True,
+            label_type="int",
+            global_batch_size=global_batch_size,
+            drop_remainder=False,
+            include_example_id=True))
+
+    config = sentence_prediction.SentencePredictionConfig(
+        metric_type="matthews_corrcoef",
+        model=self.get_model_config(2),
+        train_data=train_data_config)
+    outputs = self._run_task(config)
+    self.assertEqual(outputs["sentence_prediction"].shape.as_list(), [8, 1])
 
   def test_task_with_fit(self):
     config = sentence_prediction.SentencePredictionConfig(
