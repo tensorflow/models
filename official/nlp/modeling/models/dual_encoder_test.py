@@ -64,12 +64,16 @@ class DualEncoderTest(keras_parameterized.TestCase):
 
       left_encoded, _ = outputs
     elif output == 'predictions':
-      left_encoded = dual_encoder_model([
+      left_encoded, left_sequence_output = dual_encoder_model([
           left_word_ids, left_mask, left_type_ids])
 
       # Validate that the outputs are of the expected shape.
       expected_encoding_shape = [None, 768]
       self.assertAllEqual(expected_encoding_shape, left_encoded.shape.as_list())
+
+      expected_sequence_shape = [None, sequence_length, 768]
+      self.assertAllEqual(expected_sequence_shape,
+                          left_sequence_output.shape.as_list())
 
   @parameterized.parameters((192, 'logits'), (768, 'predictions'))
   def test_dual_encoder_tensor_call(self, hidden_size, output):
