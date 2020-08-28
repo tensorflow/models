@@ -246,16 +246,5 @@ class TransformerArgumentTest(keras_parameterized.TestCase):
     self.assertEqual(encoder_block_config, new_encoder_block.get_config())
 
 
-def _create_cache(batch_size, init_decode_length, num_heads, head_size):
-  return {
-      'key':
-          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
-                   dtype=tf.float32),
-      'value':
-          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
-                   dtype=tf.float32)
-  }
-
-
 if __name__ == '__main__':
   tf.test.main()
