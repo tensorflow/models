@@ -364,9 +364,9 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
 class BertPretrainMultiWorkerBenchmark(BertPretrainAccuracyBenchmark):
   """Bert pretrain distributed benchmark tests with multiple workers."""
 
-  def __init__(self, output_dir=None, default_flags=None):
+  def __init__(self, output_dir=None, tpu=None, **kwargs):
     super(BertPretrainMultiWorkerBenchmark, self).__init__(
-        output_dir=output_dir, default_flags=default_flags)
+        output_dir=output_dir, tpu=tpu, **kwargs)
 
   def _specify_gpu_mwms_flags(self):
     FLAGS.distribution_strategy = 'multi_worker_mirrored'

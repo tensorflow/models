@@ -56,8 +56,9 @@ FLAGS = flags.FLAGS
 class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
   """Base class to hold methods common to test classes in the module."""
 
-  def __init__(self, output_dir=None, tpu=None):
-    super(BertSquadBenchmarkBase, self).__init__(output_dir=output_dir, tpu=tpu)
+  def __init__(self, output_dir=None, tpu=None, **kwargs):
+    super(BertSquadBenchmarkBase, self).__init__(
+        output_dir=output_dir, tpu=tpu, **kwargs)
 
   def _read_training_summary_from_file(self):
     """Reads the training summary from a file."""
@@ -140,7 +141,8 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
   """
 
   def __init__(self, output_dir=TMP_DIR, tpu=None, **kwargs):
-    super(BertSquadBenchmarkReal, self).__init__(output_dir=output_dir, tpu=tpu)
+    super(BertSquadBenchmarkReal, self).__init__(
+        output_dir=output_dir, tpu=tpu, **kwargs)
 
   def _setup(self):
     """Sets up the benchmark and SQuAD flags."""
@@ -351,7 +353,8 @@ class BertSquadAccuracy(BertSquadBenchmarkBase):
   """
 
   def __init__(self, output_dir=None, tpu=None, **kwargs):
-    super(BertSquadAccuracy, self).__init__(output_dir=output_dir, tpu=tpu)
+    super(BertSquadAccuracy, self).__init__(
+        output_dir=output_dir, tpu=tpu, **kwargs)
 
   def _setup(self):
     """Sets up the benchmark and SQuAD flags."""
@@ -446,7 +449,7 @@ class BertSquadMultiWorkerAccuracy(BertSquadBenchmarkBase):
 
   def __init__(self, output_dir=None, tpu=None, **kwargs):
     super(BertSquadMultiWorkerAccuracy, self).__init__(
-        output_dir=output_dir, tpu=tpu)
+        output_dir=output_dir, tpu=tpu, **kwargs)
 
   def _setup(self):
     """Sets up the benchmark and SQuAD flags."""
@@ -518,7 +521,7 @@ class BertSquadMultiWorkerBenchmark(BertSquadBenchmarkBase):
 
   def __init__(self, output_dir=TMP_DIR, tpu=None, **kwargs):
     super(BertSquadMultiWorkerBenchmark, self).__init__(
-        output_dir=output_dir, tpu=tpu)
+        output_dir=output_dir, tpu=tpu, **kwargs)
 
   def _setup(self):
     """Sets up the benchmark and SQuAD flags."""
