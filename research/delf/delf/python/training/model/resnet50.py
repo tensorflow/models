@@ -473,12 +473,10 @@ def gem_pooling(feature_map, axis, power, threshold=1e-6):
     threshold: Optional float, threshold to use for activations.
 
   Returns:
-    pooled_feature_map: Tensor of shape [batch, 1, 1, channels] for the
-      "channels_last" format or [batch, channels, 1, 1] for the
-      "channels_first" format.
+    pooled_feature_map: Tensor of shape [batch, channels].
   """
   return tf.pow(
       tf.reduce_mean(tf.pow(tf.maximum(feature_map, threshold), power),
                      axis=axis,
-                     keepdims=True),
+                     keepdims=False),
       1.0 / power)
