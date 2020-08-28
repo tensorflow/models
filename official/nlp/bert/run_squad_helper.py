@@ -278,7 +278,9 @@ def train_squad(strategy,
       run_eagerly=run_eagerly,
       custom_callbacks=custom_callbacks,
       explicit_allreduce=FLAGS.explicit_allreduce,
-      pre_allreduce_callbacks=[common_flags.clip_by_global_norm_callback])
+      pre_allreduce_callbacks=[
+          model_training_utils.clip_by_global_norm_callback
+      ])
 
 
 def prediction_output_squad(strategy, input_meta_data, tokenizer, squad_lib,

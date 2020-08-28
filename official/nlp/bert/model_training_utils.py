@@ -75,6 +75,13 @@ def _float_metric_value(metric):
   return metric.result().numpy().astype(float)
 
 
+def clip_by_global_norm_callback(grads_and_vars):
+  """Performs gradient clipping."""
+  grads, variables = zip(*grads_and_vars)
+  (clipped_grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+  return zip(clipped_grads, variables)
+
+
 def steps_to_run(current_step, steps_per_epoch, steps_per_loop):
   """Calculates steps to run on device."""
   if steps_per_loop <= 0:
