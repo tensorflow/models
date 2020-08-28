@@ -193,7 +193,8 @@ class TrainerConfig(base_config.Config):
     max_to_keep: max checkpoints to keep.
     continuous_eval_timeout: maximum number of seconds to wait between
       checkpoints, if set to None, continuous eval will wait indefinitely. This
-      is only used continuous_train_and_eval and continuous_eval modes.
+      is only used continuous_train_and_eval and continuous_eval modes. Default
+      value is 24 hrs.
     train_steps: number of train steps.
     validation_steps: number of eval steps. If `None`, the entire eval dataset
       is used.
@@ -222,7 +223,7 @@ class TrainerConfig(base_config.Config):
   checkpoint_interval: int = 1000
   # Checkpoint manager.
   max_to_keep: int = 5
-  continuous_eval_timeout: Optional[int] = None
+  continuous_eval_timeout: int = 24 * 60 * 60
   # Train/Eval routines.
   train_steps: int = 0
   validation_steps: Optional[int] = None
