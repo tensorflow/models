@@ -22,6 +22,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from official.modeling import activations
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -152,12 +153,12 @@ class AlbertTransformerEncoder(tf.keras.Model):
 
     data = embeddings
     attention_mask = layers.SelfAttentionMask()([data, mask])
-    shared_layer = layers.Transformer(
+    shared_layer = keras_nlp.TransformerEncoderBlock(
         num_attention_heads=num_attention_heads,
-        intermediate_size=intermediate_size,
-        intermediate_activation=activation,
-        dropout_rate=dropout_rate,
-        attention_dropout_rate=attention_dropout_rate,
+        inner_dim=intermediate_size,
+        inner_activation=activation,
+        output_dropout=dropout_rate,
+        attention_dropout=attention_dropout_rate,
         kernel_initializer=initializer,
         name='transformer')
     for _ in range(num_layers):
