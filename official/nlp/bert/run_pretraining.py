@@ -189,7 +189,9 @@ def run_bert_pretrain(strategy, custom_callbacks=None):
       FLAGS.train_summary_interval,
       custom_callbacks=custom_callbacks,
       explicit_allreduce=FLAGS.explicit_allreduce,
-      pre_allreduce_callbacks=[common_flags.clip_by_global_norm_callback])
+      pre_allreduce_callbacks=[
+          model_training_utils.clip_by_global_norm_callback
+      ])
 
 
 def main(_):

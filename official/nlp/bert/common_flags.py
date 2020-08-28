@@ -121,10 +121,3 @@ def use_graph_rewrite():
 
 def get_loss_scale():
   return flags_core.get_loss_scale(flags.FLAGS, default_for_fp16='dynamic')
-
-
-def clip_by_global_norm_callback(grads_and_vars):
-  grads, variables = zip(*grads_and_vars)
-  (clipped_grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
-  return zip(clipped_grads, variables)
-
