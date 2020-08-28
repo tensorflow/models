@@ -67,15 +67,24 @@ class DualEncoder(tf.keras.Model):
 
     self.network = network
 
-    left_word_ids = tf.keras.layers.Input(
-        shape=(max_seq_length,), dtype=tf.int32, name='left_word_ids')
-    left_mask = tf.keras.layers.Input(
-        shape=(max_seq_length,), dtype=tf.int32, name='left_mask')
-    left_type_ids = tf.keras.layers.Input(
-        shape=(max_seq_length,), dtype=tf.int32, name='left_type_ids')
+    if output == 'logits':
+      left_word_ids = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='left_word_ids')
+      left_mask = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='left_mask')
+      left_type_ids = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='left_type_ids')
+    else:
+      # Keep the consistant with legacy BERT hub module input names.
+      left_word_ids = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='input_word_ids')
+      left_mask = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='input_mask')
+      left_type_ids = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='input_type_ids')
 
     left_inputs = [left_word_ids, left_mask, left_type_ids]
-    _, left_encoded = network(left_inputs)
+    left_sequence_output, left_encoded = network(left_inputs)
 
     if normalize:
       left_encoded = tf.keras.layers.Lambda(
@@ -108,12 +117,18 @@ class DualEncoder(tf.keras.Model):
 
     elif output == 'predictions':
       inputs = [left_word_ids, left_mask, left_type_ids]
-      outputs = left_encoded
+
+      # To keep consistent with legacy BERT hub modules, the outputs are
+      # "pooled_output" and "sequence_output".
+      outputs = [left_encoded, left_sequence_output]
     else:
       raise ValueError('output type %s is not supported' % output)
 
     super(DualEncoder, self).__init__(
         inputs=inputs, outputs=outputs, **kwargs)
+
+    # Set _self_setattr_tracking to True so it can be exported with assets.
+    self._self_setattr_tracking = True
 
   def get_config(self):
     return self._config
