@@ -109,7 +109,8 @@ def run_customized_training(strategy,
                             custom_callbacks=None,
                             explicit_allreduce=False,
                             pre_allreduce_callbacks=None,
-                            post_allreduce_callbacks=None):
+                            post_allreduce_callbacks=None,
+                            allreduce_bytes_per_pack=0):
   """Run BERT pretrain model training using low-level API."""
 
   train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
@@ -146,6 +147,7 @@ def run_customized_training(strategy,
       explicit_allreduce=explicit_allreduce,
       pre_allreduce_callbacks=pre_allreduce_callbacks,
       post_allreduce_callbacks=post_allreduce_callbacks,
+      allreduce_bytes_per_pack=allreduce_bytes_per_pack,
       train_summary_interval=train_summary_interval,
       custom_callbacks=custom_callbacks)
 
@@ -165,10 +167,12 @@ def run_bert_pretrain(strategy, custom_callbacks=None):
 
   performance.set_mixed_precision_policy(common_flags.dtype())
 
-  # If explicit_allreduce = True, apply_gradients() no longer implicitly
-  # allreduce gradients, users manually allreduce gradient and pass the
-  # allreduced grads_and_vars to apply_gradients(). clip_by_global_norm is kept
-  # before allreduce, to be consistent with original TF1 model.
+  # Only when explicit_allreduce = True, post_allreduce_callbacks and
+  # allreduce_bytes_per_pack will take effect. optimizer.apply_gradients() no
+  # longer implicitly allreduce gradients, users manually allreduce gradient and
+  # pass the allreduced grads_and_vars to apply_gradients().
+  # With explicit_allreduce = True, clip_by_global_norm is moved to after
+  # allreduce.
   return run_customized_training(
       strategy,
       bert_config,
@@ -191,7 +195,8 @@ def run_bert_pretrain(strategy, custom_callbacks=None):
       explicit_allreduce=FLAGS.explicit_allreduce,
       pre_allreduce_callbacks=[
           model_training_utils.clip_by_global_norm_callback
-      ])
+      ],
+      allreduce_bytes_per_pack=FLAGS.allreduce_bytes_per_pack)
 
 
 def main(_):
