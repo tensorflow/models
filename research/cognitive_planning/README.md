@@ -70,10 +70,10 @@ released code of SUNCG environment such as
 
 If you wish to navigate the environment, to see how the AVD looks like you can use the following command:
 ```shell
-python viz_active_vision_dataset_main -- \
+python viz_active_vision_dataset_main.py \
   --mode=human \
   --gin_config=envs/configs/active_vision_config.gin \
-  --gin_params='ActiveVisionDatasetEnv.dataset_root=$AVD_DIR'
+  --gin_params="ActiveVisionDatasetEnv.dataset_root='$AVD_DIR'"
 ```
 
 ## 3. Training
@@ -100,7 +100,7 @@ python train_supervised_active_vision.py \
   --max_eval_episode_length=100 \
   --test_iters=194 \
   --gin_config=envs/configs/active_vision_config.gin \
-  --gin_params='ActiveVisionDatasetEnv.dataset_root=$AVD_DIR' \
+  --gin_params="ActiveVisionDatasetEnv.dataset_root='$AVD_DIR'" \
   --logtostderr
 ```
 
@@ -123,18 +123,18 @@ python train_supervised_active_vision.py \
   --max_eval_episode_length=100 \
   --test_iters=194 \
   --gin_config=envs/configs/active_vision_config.gin \
-  --gin_params='ActiveVisionDatasetEnv.dataset_root=$AVD_DIR' \
+  --gin_params="ActiveVisionDatasetEnv.dataset_root='$AVD_DIR'" \
   --logtostderr
 ```
 At any point, you can run the following command to compute statistics such as success rate over all the evaluations so far. It also generates gif images for unrolling of the best policy.
 ```shell
 # Visualize and Compute Stats
 python viz_active_vision_dataset_main.py \
-   --mode=eval \ 
+   --mode=eval \
    --eval_folder=$CHECKPOINT_DIR/evals/ \
    --output_folder=$OUTPUT_GIFS_FOLDER \
    --gin_config=envs/configs/active_vision_config.gin \
-   --gin_params='ActiveVisionDatasetEnv.dataset_root=$AVD_DIR'
+   --gin_params="ActiveVisionDatasetEnv.dataset_root='$AVD_DIR'"
 ```
 ## Contact
 
