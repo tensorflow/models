@@ -25,9 +25,9 @@ enum InstanceMaskType {
 
 // Input type format: whether inputs are TfExamples or TfSequenceExamples.
 enum InputType {
-  INPUT_DEFAULT = 0;          // Default implementation, currently TF_EXAMPLE
-  TF_EXAMPLE = 1;  // TfExample input
-  TF_SEQUENCE_EXAMPLE = 2;        // TfSequenceExample Input
+  INPUT_DEFAULT = 0;        // Default implementation, currently TF_EXAMPLE
+  TF_EXAMPLE = 1;           // TfExample input
+  TF_SEQUENCE_EXAMPLE = 2;  // TfSequenceExample Input
 }
 
 // Next id: 34
@@ -72,7 +72,7 @@ message InputReader {
   // to a small constant and increment linearly until the improvements become
   // marginal or you exceed your cpu memory budget. Setting this to -1,
   // automatically tunes this value for you.
-  optional int32 num_prefetch_batches = 20 [default = 2];
+  optional int32 num_prefetch_batches = 20 [default = -1];
 
   // Maximum number of records to keep in reader queue.
   optional uint32 queue_capacity = 3 [default = 2000, deprecated = true];
