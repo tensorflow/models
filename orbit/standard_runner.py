@@ -193,7 +193,7 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
     """See base class."""
     outputs = self.eval_begin()  # pylint: disable=assignment-from-no-return
 
-    eval_iter = tf.nest.map_structure(iter, self._eval_dataset)
+    eval_iter = tf.nest.map_structure(iter, self.eval_dataset)
     if self._eval_loop_fn is None:
       eval_fn = self.eval_step
       if self._eval_use_tf_function:
