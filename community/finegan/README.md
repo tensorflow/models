@@ -48,7 +48,7 @@ pip install -r requirements.txt
  
 | Model name | Download | FID | Inception Score |  
 |------------|----------|----------------|----------------|  
-| Model name | [Checkpoint (300 epochs)](https://drive.google.com/drive/folders/1sE52YsxEftFgLrzlpgucQKMw2LCd4IZd?usp=sharing)| 35.76 [11.25] | 14.7 [52.53]|  
+| Model name | [Checkpoint (300 epochs)](https://drive.google.com/drive/folders/1sE52YsxEftFgLrzlpgucQKMw2LCd4IZd?usp=sharing), [Notebook](https://github.com/Vishal-V/tf-models/blob/master/finegan/notebooks/efficient%20trials.ipynb)| 35.76 [11.25] | 14.7 [52.53]|  
   
 
 ## Dataset
