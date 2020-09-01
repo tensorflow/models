@@ -13,4 +13,5 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-NLP layers package definition."""
+from official.nlp.keras_nlp.layers.position_embedding import PositionEmbedding
 from official.nlp.keras_nlp.layers.transformer_encoder_block import TransformerEncoderBlock
