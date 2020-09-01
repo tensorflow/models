@@ -134,7 +134,6 @@ class BertEncoderTest(keras_parameterized.TestCase):
         num_layers=3,
         type_vocab_size=num_types,
         output_range=output_range)
-    self.assertTrue(test_network._position_embedding_layer._use_dynamic_slicing)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -163,7 +162,6 @@ class BertEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types)
-    self.assertTrue(test_network._position_embedding_layer._use_dynamic_slicing)
     model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
     outputs = model.predict([word_id_data, mask_data, type_id_data])
     self.assertEqual(outputs[0].shape[1], out_seq_len)

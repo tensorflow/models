@@ -18,6 +18,7 @@
 import tensorflow as tf
 
 from official.modeling import activations
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -132,10 +133,9 @@ class BertEncoder(tf.keras.Model):
     word_embeddings = self._embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
-    self._position_embedding_layer = layers.PositionEmbedding(
+    self._position_embedding_layer = keras_nlp.PositionEmbedding(
         initializer=initializer,
-        use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length,
+        max_length=max_sequence_length,
         name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
     self._type_embedding_layer = layers.OnDeviceEmbedding(
