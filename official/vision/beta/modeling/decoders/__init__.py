@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""All necessary imports for registration."""
+"""Decoders package definition."""
 
-# pylint: disable=unused-import
-from official.nlp import tasks as nlp_task
-from official.utils.testing import mock_task
-from official.vision import beta
+from official.vision.beta.modeling.decoders.fpn import FPN

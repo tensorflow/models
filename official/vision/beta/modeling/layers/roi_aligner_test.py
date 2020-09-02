@@ -12,9 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""All necessary imports for registration."""
+"""Tests for roi_aligner.py."""
 
-# pylint: disable=unused-import
-from official.nlp import tasks as nlp_task
-from official.utils.testing import mock_task
-from official.vision import beta
+# Import libraries
+import tensorflow as tf
+
+from official.vision.beta.modeling.layers import roi_aligner
+
+
+class MultilevelROIAlignerTest(tf.test.TestCase):
+
+  def test_serialize_deserialize(self):
+    kwargs = dict(
+        crop_size=7,
+        sample_offset=0.5,
+    )
+    aligner = roi_aligner.MultilevelROIAligner(**kwargs)
+
+    expected_config = dict(kwargs)
+    self.assertEqual(aligner.get_config(), expected_config)
+
+    new_aligner = roi_aligner.MultilevelROIAligner.from_config(
+        aligner.get_config())
+
+    self.assertAllEqual(aligner.get_config(), new_aligner.get_config())
+
+
+if __name__ == '__main__':
+  tf.test.main()
