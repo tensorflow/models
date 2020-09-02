@@ -22,7 +22,6 @@ import collections
 import logging
 import tensorflow as tf
 from tensorflow.contrib import slim
-from tensorflow import app
 from tensorflow.python.platform import flags
 from tensorflow.contrib.tfprof import model_analyzer
 
@@ -206,4 +205,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-  app.run()
+  tf.compat.v1.app.run()

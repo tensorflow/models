@@ -20,7 +20,6 @@ python eval.py
 """
 import tensorflow as tf
 from tensorflow.contrib import slim
-from tensorflow import app
 from tensorflow.python.platform import flags
 
 import data_provider
@@ -75,4 +74,4 @@ def main(_):
 
 
 if __name__ == '__main__':
-  app.run()
+  tf.compat.v1.app.run()
