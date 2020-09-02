@@ -83,7 +83,7 @@ class DataConfig(base_config.Config):
   drop_remainder: bool = True
   shuffle_buffer_size: int = 100
   cache: bool = False
-  cycle_length: int = 8
+  cycle_length: Optional[int] = None
   block_length: int = 1
   deterministic: Optional[bool] = None
   sharding: bool = True
