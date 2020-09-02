@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""All necessary imports for registration."""
-
+"""NLP package definition."""
+# Lint as: python3
 # pylint: disable=unused-import
-from official.nlp import tasks as nlp_task
-from official.utils.testing import mock_task
-from official.vision import beta
+from official.vision.beta import configs
+from official.vision.beta import tasks

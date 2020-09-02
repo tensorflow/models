@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,9 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""All necessary imports for registration."""
+"""Common configurations."""
 
-# pylint: disable=unused-import
-from official.nlp import tasks as nlp_task
-from official.utils.testing import mock_task
-from official.vision import beta
+# Import libraries
+import dataclasses
+
+from official.modeling import hyperparams
+
+
+@dataclasses.dataclass
+class NormActivation(hyperparams.Config):
+  activation: str = 'relu'
+  use_sync_bn: bool = False
+  norm_momentum: float = 0.99
+  norm_epsilon: float = 0.001
