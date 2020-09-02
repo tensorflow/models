@@ -208,7 +208,7 @@ model.
 python3 model/export_global_model.py \
   --ckpt_path=gldv2_training/delf_weights \
   --export_path=gldv2_model_global \
-  --delg_global_features \
+  --delg_global_features
 ```
 
 ### DELG local+global feature model
