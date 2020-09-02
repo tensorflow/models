@@ -16,6 +16,7 @@
 import gin
 import tensorflow as tf
 
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -111,9 +112,8 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
         use_one_hot=True,
         initializer=initializer,
         name='type_embedding')
-    self.pos_embedding = layers.PositionEmbedding(
-        use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length,
+    self.pos_embedding = keras_nlp.PositionEmbedding(
+        max_length=max_sequence_length,
         initializer=initializer,
         name='position_embedding')
     self.word_embedding_proj = tf.keras.layers.experimental.EinsumDense(
@@ -480,7 +480,7 @@ class MobileBERTEncoder(tf.keras.Model):
     input_mask = tf.keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_mask')
     type_ids = tf.keras.layers.Input(
-        shape=(None,), dtype=tf.int32, name='input_token_type_ids')
+        shape=(None,), dtype=tf.int32, name='input_type_ids')
     self.inputs = [input_ids, input_mask, type_ids]
     attention_mask = layers.SelfAttentionMask()([input_ids, input_mask])
 

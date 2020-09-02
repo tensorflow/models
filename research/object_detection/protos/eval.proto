@@ -3,7 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 // Message for configuring DetectionModel evaluation jobs (eval.py).
-// Next id - 33
+// Next id - 35
 message EvalConfig {
   optional uint32 batch_size = 25 [default = 1];
   // Number of visualization images to generate.
@@ -82,6 +82,11 @@ message EvalConfig {
   // If True, additionally include per-category metrics.
   optional bool include_metrics_per_category = 24 [default = false];
 
+  // Optional super-category definitions: keys are super-category names;
+  // values are comma-separated categories (assumed to correspond to category
+  // names (`display_name`) in the label map.
+  map<string, string> super_categories = 34;
+
   // Recall range within which precision should be computed.
   optional float recall_lower_bound = 26 [default = 0.0];
   optional float recall_upper_bound = 27 [default = 1.0];
@@ -103,6 +108,13 @@ message EvalConfig {
   // visualization. An example would be human pose estimation where certain
   // joints can be connected.
   repeated KeypointEdge keypoint_edge = 32;
+
+  // The "groundtruth_labeled_classes" field indicates which classes have been
+  // labeled on the images. If skip_predictions_for_unlabeled_class is set,
+  // detector predictions that do not match to the groundtruth_labeled_classes
+  // will be ignored. This is useful for evaluating on test data that are not
+  // exhaustively labeled.
+  optional bool skip_predictions_for_unlabeled_class = 33 [default = false];
 }
 
 // A message to configure parameterized evaluation metric.

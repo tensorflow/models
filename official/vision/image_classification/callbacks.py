@@ -25,8 +25,8 @@ from typing import Any, List, MutableMapping, Text
 from absl import logging
 import tensorflow as tf
 
+from official.modeling import optimization
 from official.utils.misc import keras_utils
-from official.vision.image_classification import optimizer_factory
 
 
 def get_callbacks(model_checkpoint: bool = True,
@@ -165,7 +165,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
 
 
 class MovingAverageCallback(tf.keras.callbacks.Callback):
-  """A Callback to be used with a `MovingAverage` optimizer.
+  """A Callback to be used with a `ExponentialMovingAverage` optimizer.
 
   Applies moving average weights to the model during validation time to test
   and predict on the averaged weights rather than the current model weights.
@@ -184,7 +184,8 @@ class MovingAverageCallback(tf.keras.callbacks.Callback):
 
   def set_model(self, model: tf.keras.Model):
     super(MovingAverageCallback, self).set_model(model)
-    assert isinstance(self.model.optimizer, optimizer_factory.MovingAverage)
+    assert isinstance(self.model.optimizer,
+                      optimization.ExponentialMovingAverage)
     self.model.optimizer.shadow_copy(self.model)
 
   def on_test_begin(self, logs: MutableMapping[Text, Any] = None):
@@ -225,13 +226,14 @@ class AverageModelCheckpoint(tf.keras.callbacks.ModelCheckpoint):
                      save_weights_only, mode, save_freq, **kwargs)
 
   def set_model(self, model):
-    if not isinstance(model.optimizer, optimizer_factory.MovingAverage):
+    if not isinstance(model.optimizer, optimization.ExponentialMovingAverage):
       raise TypeError('AverageModelCheckpoint is only used when training'
                       'with MovingAverage')
     return super().set_model(model)
 
   def _save_model(self, epoch, logs):
-    assert isinstance(self.model.optimizer, optimizer_factory.MovingAverage)
+    assert isinstance(self.model.optimizer,
+                      optimization.ExponentialMovingAverage)
 
     if self.update_weights:
       self.model.optimizer.assign_average_vars(self.model.variables)

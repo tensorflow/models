@@ -27,6 +27,7 @@ from official.nlp.transformer import transformer
 class TransformerV2Test(tf.test.TestCase):
 
   def setUp(self):
+    super().setUp()
     self.params = params = model_params.TINY_PARAMS
     params["batch_size"] = params["default_batch_size"] = 16
     params["use_synthetic_data"] = True
@@ -62,6 +63,39 @@ class TransformerV2Test(tf.test.TestCase):
     self.assertEqual(outputs[0].dtype, tf.int32)
     self.assertEqual(outputs[1].shape.as_list(), [None])
     self.assertEqual(outputs[1].dtype, tf.float32)
+
+  def test_export(self):
+    model = transformer.Transformer(self.params, name="transformer_v2")
+    export_dir = self.get_temp_dir()
+    batch_size = 5
+    max_length = 6
+
+    class SaveModule(tf.Module):
+
+      def __init__(self, model):
+        super(SaveModule, self).__init__()
+        self.model = model
+
+      @tf.function
+      def serve(self, x):
+        return self.model.call([x], training=False)
+
+    save_module = SaveModule(model)
+    tensor_shape = (None, None)
+    sample_input = tf.zeros((batch_size, max_length), dtype=tf.int64)
+    _ = save_module.serve(sample_input)
+    signatures = dict(
+        serving_default=save_module.serve.get_concrete_function(
+            tf.TensorSpec(shape=tensor_shape, dtype=tf.int64, name="x")))
+    tf.saved_model.save(save_module, export_dir, signatures=signatures)
+    imported = tf.saved_model.load(export_dir)
+    serving_fn = imported.signatures["serving_default"]
+    all_outputs = serving_fn(sample_input)
+    output = all_outputs["outputs"]
+    output_shapes = output.shape.as_list()
+    self.assertEqual(output_shapes[0], batch_size)
+    self.assertEqual(output_shapes[1],
+                     max_length + model.params["extra_decode_length"])
 
 
 if __name__ == "__main__":

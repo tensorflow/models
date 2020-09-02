@@ -153,3 +153,38 @@ class PolynomialWarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
         "name": self._name
     })
     return config
+
+
+class DirectPowerDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+  """Learning rate schedule follows lr * (step)^power."""
+
+  def __init__(self,
+               initial_learning_rate: float,
+               power: float = 1.0,
+               name: str = "DirectPowerDecay"):
+    """Initialize configuration of the learning rate schedule.
+
+    Args:
+      initial_learning_rate: A float, the initial learning rate.
+      power: A float, the number of steps required for linear warmup.
+      name: Optional, name of warmup schedule.
+    """
+    super(DirectPowerDecay, self).__init__()
+    self._initial_learning_rate = initial_learning_rate
+    self._power = power
+    self._name = name
+
+  def __call__(self, step):
+    with tf.name_scope(self._name or "DirectPowerDecay"):
+      step = tf.cast(step, tf.float32)
+      learning_rate = self._initial_learning_rate
+      learning_rate *= tf.math.pow(step, self._power)
+      return learning_rate
+
+  def get_config(self):
+    """Get the configuration of the learning rate schedule."""
+    return {
+        "initial_learning_rate": self._initial_learning_rate,
+        "power": self._power,
+        "name": self._name,
+    }

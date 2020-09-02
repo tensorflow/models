@@ -45,6 +45,7 @@ class BertEncoderConfig(hyperparams.Config):
   type_vocab_size: int = 2
   initializer_range: float = 0.02
   embedding_size: Optional[int] = None
+  return_all_encoder_outputs: bool = False
 
 
 @dataclasses.dataclass
@@ -103,16 +104,35 @@ class MobileBertEncoderConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class AlbertEncoderConfig(hyperparams.Config):
+  """ALBERT encoder configuration."""
+  vocab_size: int = 30000
+  embedding_width: int = 128
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3072
+  dropout_rate: float = 0.0
+  attention_dropout_rate: float = 0.0
+  max_position_embeddings: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02
+
+
+@dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
   type: Optional[str] = "bert"
+  albert: AlbertEncoderConfig = AlbertEncoderConfig()
   bert: BertEncoderConfig = BertEncoderConfig()
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
 
 
 ENCODER_CLS = {
-    "bert": networks.TransformerEncoder,
+    "bert": networks.BertEncoder,
     "mobilebert": networks.MobileBERTEncoder,
+    "albert": networks.AlbertTransformerEncoder,
 }
 
 
@@ -167,7 +187,8 @@ def build_encoder(config: EncoderConfig,
         num_hidden_instances=encoder_cfg.num_layers,
         pooled_output_dim=encoder_cfg.hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=encoder_cfg.initializer_range))
+            stddev=encoder_cfg.initializer_range),
+        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs)
     return encoder_cls(**kwargs)
 
   if encoder_type == "mobilebert":
@@ -191,6 +212,22 @@ def build_encoder(config: EncoderConfig,
         return_all_layers=encoder_cfg.return_all_layers,
         return_attention_score=encoder_cfg.return_attention_score)
 
+  if encoder_type == "albert":
+    return encoder_cls(
+        vocab_size=encoder_cfg.vocab_size,
+        embedding_width=encoder_cfg.embedding_width,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        max_sequence_length=encoder_cfg.max_position_embeddings,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        intermediate_size=encoder_cfg.intermediate_size,
+        activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range))
+
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.
   return encoder_cls(
@@ -207,4 +244,5 @@ def build_encoder(config: EncoderConfig,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
       embedding_width=encoder_cfg.embedding_size,
-      embedding_layer=embedding_layer)
+      embedding_layer=embedding_layer,
+      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs)

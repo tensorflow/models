@@ -1,0 +1,48 @@
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float16'
+  loss_scale: 'dynamic'
+task:
+  model:
+    num_classes: 1001
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'resnet'
+      resnet:
+        model_id: 50
+  losses:
+    l2_weight_decay: 0.0001
+    one_hot: True
+    label_smoothing: 0.1
+  train_data:
+    input_path: 'imagenet-2012-tfrecord/train*'
+    is_training: True
+    global_batch_size: 2048
+    dtype: 'float16'
+  validation_data:
+    input_path: 'imagenet-2012-tfrecord/valid*'
+    is_training: False
+    global_batch_size: 2048
+    dtype: 'float16'
+    drop_remainder: False
+trainer:
+  train_steps: 56160
+  validation_steps: 25
+  validation_interval: 625
+  steps_per_loop: 625
+  summary_interval: 625
+  checkpoint_interval: 625
+  optimizer_config:
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        boundaries: [18750, 37500, 50000]
+        values: [0.8, 0.08, 0.008, 0.0008]
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 3125

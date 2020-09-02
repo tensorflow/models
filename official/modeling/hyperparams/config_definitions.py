@@ -48,11 +48,22 @@ class DataConfig(base_config.Config):
       interleaving files.
     block_length: The number of consecutive elements to produce from each input
       element before cycling to another input element when interleaving files.
+    deterministic: A boolean controlling whether determinism should be enforced.
     sharding: Whether sharding is used in the input pipeline.
     examples_consume: An `integer` specifying the number of examples it will
       produce. If positive, it only takes this number of examples and raises
       tf.error.OutOfRangeError after that. Default is -1, meaning it will
       exhaust all the examples in the dataset.
+    enable_tf_data_service: A boolean indicating whether to enable tf.data
+      service for the input pipeline.
+    tf_data_service_address: The URI of a tf.data service to offload
+      preprocessing onto during training. The URI should be in the format
+      "protocol://address", e.g. "grpc://tf-data-service:5050". It can be
+      overridden by `FLAGS.tf_data_service` flag in the binary.
+    tf_data_service_job_name: The name of the tf.data service job. This
+      argument makes it possible for multiple datasets to share the same job.
+      The default behavior is that the dataset creates anonymous, exclusively
+      owned jobs.
     tfds_data_dir: A str specifying the directory to read/write TFDS data.
     tfds_download: A bool to indicate whether to download data using TFDS.
     tfds_as_supervised: A bool. When loading dataset from TFDS, if True, the
@@ -72,10 +83,14 @@ class DataConfig(base_config.Config):
   drop_remainder: bool = True
   shuffle_buffer_size: int = 100
   cache: bool = False
-  cycle_length: int = 8
+  cycle_length: Optional[int] = None
   block_length: int = 1
+  deterministic: Optional[bool] = None
   sharding: bool = True
   examples_consume: int = -1
+  enable_tf_data_service: bool = False
+  tf_data_service_address: Optional[str] = None
+  tf_data_service_job_name: Optional[str] = None
   tfds_data_dir: str = ""
   tfds_download: bool = False
   tfds_as_supervised: bool = False
@@ -178,7 +193,8 @@ class TrainerConfig(base_config.Config):
     max_to_keep: max checkpoints to keep.
     continuous_eval_timeout: maximum number of seconds to wait between
       checkpoints, if set to None, continuous eval will wait indefinitely. This
-      is only used continuous_train_and_eval and continuous_eval modes.
+      is only used continuous_train_and_eval and continuous_eval modes. Default
+      value is 24 hrs.
     train_steps: number of train steps.
     validation_steps: number of eval steps. If `None`, the entire eval dataset
       is used.
@@ -207,7 +223,7 @@ class TrainerConfig(base_config.Config):
   checkpoint_interval: int = 1000
   # Checkpoint manager.
   max_to_keep: int = 5
-  continuous_eval_timeout: Optional[int] = None
+  continuous_eval_timeout: int = 24 * 60 * 60
   # Train/Eval routines.
   train_steps: int = 0
   validation_steps: Optional[int] = None

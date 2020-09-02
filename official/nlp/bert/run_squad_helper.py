@@ -260,15 +260,12 @@ def train_squad(strategy,
         use_graph_rewrite=common_flags.use_graph_rewrite())
     return squad_model, core_model
 
-  # If explicit_allreduce = True, apply_gradients() no longer implicitly
-  # allreduce gradients, users manually allreduce gradient and pass the
-  # allreduced grads_and_vars to apply_gradients(). clip_by_global_norm will be
-  # applied to allreduced gradients.
-  def clip_by_global_norm_callback(grads_and_vars):
-    grads, variables = zip(*grads_and_vars)
-    (clipped_grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
-    return zip(clipped_grads, variables)
-
+  # Only when explicit_allreduce = True, post_allreduce_callbacks and
+  # allreduce_bytes_per_pack will take effect. optimizer.apply_gradients() no
+  # longer implicitly allreduce gradients, users manually allreduce gradient and
+  # pass the allreduced grads_and_vars to apply_gradients().
+  # With explicit_allreduce = True, clip_by_global_norm is moved to after
+  # allreduce.
   model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_squad_model,
@@ -282,8 +279,11 @@ def train_squad(strategy,
       sub_model_export_name=sub_model_export_name,
       run_eagerly=run_eagerly,
       custom_callbacks=custom_callbacks,
-      explicit_allreduce=False,
-      post_allreduce_callbacks=[clip_by_global_norm_callback])
+      explicit_allreduce=FLAGS.explicit_allreduce,
+      pre_allreduce_callbacks=[
+          model_training_utils.clip_by_global_norm_callback
+      ],
+      allreduce_bytes_per_pack=FLAGS.allreduce_bytes_per_pack)
 
 
 def prediction_output_squad(strategy, input_meta_data, tokenizer, squad_lib,

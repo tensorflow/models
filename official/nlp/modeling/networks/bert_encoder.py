@@ -14,19 +14,16 @@
 # ==============================================================================
 """Transformer-based text encoder network."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import tensorflow as tf
 
 from official.modeling import activations
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class TransformerEncoder(tf.keras.Model):
+class BertEncoder(tf.keras.Model):
   """Bi-directional Transformer-based encoder network.
 
   This network implements a bi-directional Transformer-based encoder as
@@ -136,10 +133,9 @@ class TransformerEncoder(tf.keras.Model):
     word_embeddings = self._embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
-    self._position_embedding_layer = layers.PositionEmbedding(
+    self._position_embedding_layer = keras_nlp.PositionEmbedding(
         initializer=initializer,
-        use_dynamic_slicing=True,
-        max_sequence_length=max_sequence_length,
+        max_length=max_sequence_length,
         name='position_embedding')
     position_embeddings = self._position_embedding_layer(word_embeddings)
     self._type_embedding_layer = layers.OnDeviceEmbedding(
@@ -153,12 +149,10 @@ class TransformerEncoder(tf.keras.Model):
     embeddings = tf.keras.layers.Add()(
         [word_embeddings, position_embeddings, type_embeddings])
 
-    embeddings = (
-        tf.keras.layers.LayerNormalization(
-            name='embeddings/layer_norm',
-            axis=-1,
-            epsilon=1e-12,
-            dtype=tf.float32)(embeddings))
+    self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
+        name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
+
+    embeddings = self._embedding_norm_layer(embeddings)
     embeddings = (tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
 
     # We project the 'embedding' output to 'hidden_size' if it is not already
@@ -209,7 +203,7 @@ class TransformerEncoder(tf.keras.Model):
     else:
       outputs = [encoder_outputs[-1], cls_output]
 
-    super(TransformerEncoder, self).__init__(
+    super(BertEncoder, self).__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
   def get_embedding_table(self):

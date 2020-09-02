@@ -118,7 +118,7 @@ def get_transformer_encoder(bert_config,
       is to return the entire sequence output.
 
   Returns:
-    A networks.TransformerEncoder object.
+    A encoder object.
   """
   del sequence_length
   if transformer_encoder_cls is not None:
@@ -171,7 +171,7 @@ def get_transformer_encoder(bert_config,
   else:
     assert isinstance(bert_config, configs.BertConfig)
     kwargs['output_range'] = output_range
-    return networks.TransformerEncoder(**kwargs)
+    return networks.BertEncoder(**kwargs)
 
 
 def pretrain_model(bert_config,

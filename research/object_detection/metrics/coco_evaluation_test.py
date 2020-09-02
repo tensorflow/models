@@ -330,6 +330,107 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
     self.assertFalse(coco_evaluator._detection_boxes_list)
     self.assertFalse(coco_evaluator._image_ids)
 
+  # Test skipping unmatched detector predictions with
+  # groundtruth_labeled_classes.
+  def testGetMAPWithSkipUnmatchedPredictions(self):
+    coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
+        _get_categories_list(), skip_predictions_for_unlabeled_class=True)
+    image_id = tf.placeholder(tf.string, shape=())
+    groundtruth_boxes = tf.placeholder(tf.float32, shape=(None, 4))
+    groundtruth_classes = tf.placeholder(tf.float32, shape=(None))
+    groundtruth_labeled_classes = tf.placeholder(tf.float32, shape=(None))
+    detection_boxes = tf.placeholder(tf.float32, shape=(None, 4))
+    detection_scores = tf.placeholder(tf.float32, shape=(None))
+    detection_classes = tf.placeholder(tf.float32, shape=(None))
+
+    input_data_fields = standard_fields.InputDataFields
+    detection_fields = standard_fields.DetectionResultFields
+    eval_dict = {
+        input_data_fields.key:
+            image_id,
+        input_data_fields.groundtruth_boxes:
+            groundtruth_boxes,
+        input_data_fields.groundtruth_classes:
+            groundtruth_classes,
+        input_data_fields.groundtruth_labeled_classes:
+            groundtruth_labeled_classes,
+        detection_fields.detection_boxes:
+            detection_boxes,
+        detection_fields.detection_scores:
+            detection_scores,
+        detection_fields.detection_classes:
+            detection_classes
+    }
+
+    eval_metric_ops = coco_evaluator.get_estimator_eval_metric_ops(eval_dict)
+
+    _, update_op = eval_metric_ops['DetectionBoxes_Precision/mAP']
+
+    with self.test_session() as sess:
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id:
+                  'image1',
+              groundtruth_boxes:
+                  np.array([[100., 100., 200., 200.]]),
+              groundtruth_classes:
+                  np.array([1]),
+              # Only class 1 is exhaustively labeled for image1.
+              groundtruth_labeled_classes:
+                  np.array([1]),
+              detection_boxes:
+                  np.array([[100., 100., 200., 200.], [100., 100., 200.,
+                                                       200.]]),
+              detection_scores:
+                  np.array([.8, .95]),
+              detection_classes:
+                  np.array([1, 2])
+          })
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id: 'image2',
+              groundtruth_boxes: np.array([[50., 50., 100., 100.]]),
+              groundtruth_classes: np.array([3]),
+              groundtruth_labeled_classes: np.array([3]),
+              detection_boxes: np.array([[50., 50., 100., 100.]]),
+              detection_scores: np.array([.7]),
+              detection_classes: np.array([3])
+          })
+      sess.run(
+          update_op,
+          feed_dict={
+              image_id: 'image3',
+              groundtruth_boxes: np.array([[25., 25., 50., 50.]]),
+              groundtruth_classes: np.array([2]),
+              groundtruth_labeled_classes: np.array([2]),
+              detection_boxes: np.array([[25., 25., 50., 50.]]),
+              detection_scores: np.array([.9]),
+              detection_classes: np.array([2])
+          })
+    metrics = {}
+    for key, (value_op, _) in eval_metric_ops.items():
+      metrics[key] = value_op
+    metrics = sess.run(metrics)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP@.50IOU'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP@.75IOU'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP (large)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP (medium)'],
+                           1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Precision/mAP (small)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@1'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@10'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100 (large)'], 1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100 (medium)'],
+                           1.0)
+    self.assertAlmostEqual(metrics['DetectionBoxes_Recall/AR@100 (small)'], 1.0)
+    self.assertFalse(coco_evaluator._groundtruth_list)
+    self.assertFalse(coco_evaluator._detection_boxes_list)
+    self.assertFalse(coco_evaluator._image_ids)
+
   def testGetOneMAPWithMatchingGroundtruthAndDetectionsIsAnnotated(self):
     coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
         _get_categories_list())

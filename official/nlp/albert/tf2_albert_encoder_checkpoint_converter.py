@@ -43,6 +43,10 @@ flags.DEFINE_string(
     "BertModel, with no task heads.)")
 flags.DEFINE_string("converted_checkpoint_path", None,
                     "Name for the created object-based V2 checkpoint.")
+flags.DEFINE_string("checkpoint_model_name", "encoder",
+                    "The name of the model when saving the checkpoint, i.e., "
+                    "the checkpoint will be saved using: "
+                    "tf.train.Checkpoint(FLAGS.checkpoint_model_name=model).")
 
 
 ALBERT_NAME_REPLACEMENTS = (
@@ -94,7 +98,8 @@ def _create_albert_model(cfg):
   return albert_encoder
 
 
-def convert_checkpoint(bert_config, output_path, v1_checkpoint):
+def convert_checkpoint(bert_config, output_path, v1_checkpoint,
+                       checkpoint_model_name):
   """Converts a V1 checkpoint into an OO V2 checkpoint."""
   output_dir, _ = os.path.split(output_path)
 
@@ -112,7 +117,8 @@ def convert_checkpoint(bert_config, output_path, v1_checkpoint):
   # Create a V2 checkpoint from the temporary checkpoint.
   model = _create_albert_model(bert_config)
   tf1_checkpoint_converter_lib.create_v2_checkpoint(model, temporary_checkpoint,
-                                                    output_path)
+                                                    output_path,
+                                                    checkpoint_model_name)
 
   # Clean up the temporary checkpoint, if it exists.
   try:
@@ -125,8 +131,10 @@ def convert_checkpoint(bert_config, output_path, v1_checkpoint):
 def main(_):
   output_path = FLAGS.converted_checkpoint_path
   v1_checkpoint = FLAGS.checkpoint_to_convert
+  checkpoint_model_name = FLAGS.checkpoint_model_name
   albert_config = configs.AlbertConfig.from_json_file(FLAGS.albert_config_file)
-  convert_checkpoint(albert_config, output_path, v1_checkpoint)
+  convert_checkpoint(albert_config, output_path, v1_checkpoint,
+                     checkpoint_model_name)
 
 
 if __name__ == "__main__":

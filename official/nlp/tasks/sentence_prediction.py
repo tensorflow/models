@@ -159,7 +159,8 @@ class SentencePredictionTask(base_task.Task):
     if self.metric_type == 'matthews_corrcoef':
       logs.update({
           'sentence_prediction':
-              tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=0),
+              # Ensure one prediction along batch dimension.
+              tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=1),
           'labels':
               labels,
       })
@@ -175,7 +176,6 @@ class SentencePredictionTask(base_task.Task):
       return None
     if state is None:
       state = {'sentence_prediction': [], 'labels': []}
-    # TODO(b/160712818): Add support for concatenating partial batches.
     state['sentence_prediction'].append(
         np.concatenate([v.numpy() for v in step_outputs['sentence_prediction']],
                        axis=0))
@@ -246,22 +246,29 @@ def predict(task: SentencePredictionTask, params: cfg.DataConfig,
   def predict_step(inputs):
     """Replicated prediction calculation."""
     x, _ = inputs
+    example_id = x.pop('example_id')
     outputs = task.inference_step(x, model)
     if is_regression:
-      return outputs
+      return dict(example_id=example_id, predictions=outputs)
     else:
-      return tf.argmax(outputs, axis=-1)
+      return dict(
+          example_id=example_id, predictions=tf.argmax(outputs, axis=-1))
 
   def aggregate_fn(state, outputs):
     """Concatenates model's outputs."""
     if state is None:
-      state = {'predictions': []}
+      state = []
 
-    for per_replica_batch_predictions in outputs:
-      state['predictions'].extend(per_replica_batch_predictions)
+    for per_replica_example_id, per_replica_batch_predictions in zip(
+        outputs['example_id'], outputs['predictions']):
+      state.extend(zip(per_replica_example_id, per_replica_batch_predictions))
     return state
 
   dataset = orbit.utils.make_distributed_dataset(tf.distribute.get_strategy(),
                                                  task.build_inputs, params)
   outputs = utils.predict(predict_step, aggregate_fn, dataset)
-  return outputs['predictions']
+
+  # When running on TPU POD, the order of output cannot be maintained,
+  # so we need to sort by example_id.
+  outputs = sorted(outputs, key=lambda x: x[0])
+  return [x[1] for x in outputs]
