@@ -20,12 +20,12 @@ import tensorflow as tf
 from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
+from official.vision import keras_cv
 from official.vision.beta.configs import retinanet as exp_cfg
 from official.vision.beta.dataloaders import retinanet_input
 from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
-from official.vision.beta.losses import retinanet_losses
 from official.vision.beta.modeling import factory
 
 
@@ -131,12 +131,11 @@ class RetinaNetTask(base_task.Task):
   def build_losses(self, outputs, labels, aux_losses=None):
     """Build RetinaNet losses."""
     params = self.task_config
-    cls_loss_fn = retinanet_losses.FocalLoss(
+    cls_loss_fn = keras_cv.FocalLoss(
         alpha=params.losses.focal_loss_alpha,
         gamma=params.losses.focal_loss_gamma,
-        num_classes=params.model.num_classes,
         reduction=tf.keras.losses.Reduction.SUM)
-    box_loss_fn = retinanet_losses.RetinanetBoxLoss(
+    box_loss_fn = tf.keras.losses.Huber(
         params.losses.huber_loss_delta, reduction=tf.keras.losses.Reduction.SUM)
 
     # Sums all positives in a batch for normalization and avoids zero
@@ -146,14 +145,20 @@ class RetinaNetTask(base_task.Task):
     num_positives = tf.reduce_sum(box_sample_weight) + 1.0
     cls_sample_weight = cls_sample_weight / num_positives
     box_sample_weight = box_sample_weight / num_positives
+    y_true_cls = keras_cv.multi_level_flatten(
+        labels['cls_targets'], last_dim=None)
+    y_true_cls = tf.one_hot(y_true_cls, params.model.num_classes)
+    y_pred_cls = keras_cv.multi_level_flatten(
+        outputs['cls_outputs'], last_dim=params.model.num_classes)
+    y_true_box = keras_cv.multi_level_flatten(
+        labels['box_targets'], last_dim=4)
+    y_pred_box = keras_cv.multi_level_flatten(
+        outputs['box_outputs'], last_dim=4)
+
     cls_loss = cls_loss_fn(
-        y_true=labels['cls_targets'],
-        y_pred=outputs['cls_outputs'],
-        sample_weight=cls_sample_weight)
+        y_true=y_true_cls, y_pred=y_pred_cls, sample_weight=cls_sample_weight)
     box_loss = box_loss_fn(
-        y_true=labels['box_targets'],
-        y_pred=outputs['box_outputs'],
-        sample_weight=box_sample_weight)
+        y_true=y_true_box, y_pred=y_pred_box, sample_weight=box_sample_weight)
 
     model_loss = cls_loss + params.losses.box_loss_weight * box_loss
 
