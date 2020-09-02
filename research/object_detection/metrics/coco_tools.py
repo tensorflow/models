@@ -202,7 +202,8 @@ class COCOEvalWrapper(cocoeval.COCOeval):
 
   def ComputeMetrics(self,
                      include_metrics_per_category=False,
-                     all_metrics_per_category=False):
+                     all_metrics_per_category=False,
+                     super_categories=None):
     """Computes detection/keypoint metrics.
 
     Args:
@@ -211,6 +212,11 @@ class COCOEvalWrapper(cocoeval.COCOeval):
         each category in per_category_ap. Be careful with setting it to true if
         you have more than handful of categories, because it will pollute
         your mldash.
+      super_categories: None or a python dict mapping super-category names
+        (strings) to lists of categories (corresponding to category names
+        in the label_map).  Metrics are aggregated along these super-categories
+        and added to the `per_category_ap` and are associated with the name
+          `PerformanceBySuperCategory/<super-category-name>`.
 
     Returns:
       1. summary_metrics: a dictionary holding:
@@ -240,6 +246,9 @@ class COCOEvalWrapper(cocoeval.COCOeval):
         output regardless of all_metrics_per_category.
         If evaluating class-agnostic mode, per_category_ap is an empty
         dictionary.
+        If super_categories are provided, then this will additionally include
+        metrics aggregated along the super_categories with keys of the form:
+        `PerformanceBySuperCategory/<super-category-name>`
 
     Raises:
       ValueError: If category_stats does not exist.
@@ -291,6 +300,7 @@ class COCOEvalWrapper(cocoeval.COCOeval):
     if not hasattr(self, 'category_stats'):
       raise ValueError('Category stats do not exist')
     per_category_ap = OrderedDict([])
+    super_category_ap = OrderedDict([])
     if self.GetAgnosticMode():
       return summary_metrics, per_category_ap
     for category_index, category_id in enumerate(self.GetCategoryIdList()):
@@ -298,6 +308,14 @@ class COCOEvalWrapper(cocoeval.COCOeval):
       # Kept for backward compatilbility
       per_category_ap['PerformanceByCategory/mAP/{}'.format(
           category)] = self.category_stats[0][category_index]
+      if super_categories:
+        for key in super_categories:
+          if category in super_categories[key]:
+            metric_name = 'PerformanceBySuperCategory/{}'.format(key)
+            if metric_name not in super_category_ap:
+              super_category_ap[metric_name] = 0
+            super_category_ap[metric_name] += self.category_stats[0][
+                category_index]
       if all_metrics_per_category:
         per_category_ap['Precision mAP ByCategory/{}'.format(
             category)] = self.category_stats[0][category_index]
@@ -323,7 +341,11 @@ class COCOEvalWrapper(cocoeval.COCOeval):
             category)] = self.category_stats[10][category_index]
         per_category_ap['Recall AR@100 (large) ByCategory/{}'.format(
             category)] = self.category_stats[11][category_index]
-
+    if super_categories:
+      for key in super_categories:
+        metric_name = 'PerformanceBySuperCategory/{}'.format(key)
+        super_category_ap[metric_name] /= len(super_categories[key])
+      per_category_ap.update(super_category_ap)
     return summary_metrics, per_category_ap
 
 

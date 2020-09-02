@@ -1130,6 +1130,13 @@ def evaluator_options_from_eval_config(eval_config):
             'skip_predictions_for_unlabeled_class':
                 (eval_config.skip_predictions_for_unlabeled_class)
         })
+      for super_category in eval_config.super_categories:
+        if 'super_categories' not in evaluator_options[eval_metric_fn_key]:
+          evaluator_options[eval_metric_fn_key]['super_categories'] = {}
+        key = super_category
+        value = eval_config.super_categories[key].split(',')
+        evaluator_options[eval_metric_fn_key]['super_categories'][key] = value
+
     elif eval_metric_fn_key == 'precision_at_recall_detection_metrics':
       evaluator_options[eval_metric_fn_key] = {
           'recall_lower_bound': (eval_config.recall_lower_bound),
