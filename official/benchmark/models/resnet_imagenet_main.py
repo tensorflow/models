@@ -26,7 +26,6 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 
-import tensorflow_model_optimization as tfmot
 from official.modeling import performance
 from official.utils.flags import core as flags_core
 from official.utils.misc import distribution_utils
@@ -36,6 +35,34 @@ from official.vision.image_classification import test_utils
 from official.vision.image_classification.resnet import common
 from official.vision.image_classification.resnet import imagenet_preprocessing
 from official.vision.image_classification.resnet import resnet_model
+
+
+def cluster_last_three_conv2d_layers(model):
+  import tensorflow_model_optimization as tfmot
+  last_three_conv2d_layers =  [
+      layer for layer in model.layers
+      if isinstance(layer, tf.keras.layers.Conv2D)
+    ][-3:]
+
+  cluster_weights = tfmot.clustering.keras.cluster_weights
+  CentroidInitialization = tfmot.clustering.keras.CentroidInitialization
+
+  def cluster_fn(layer):
+    if layer not in last_three_conv2d_layers:
+      return layer
+
+    if layer == last_three_conv2d_layers[0] or \
+      layer == last_three_conv2d_layers[1]:
+      clustered = cluster_weights(layer, number_of_clusters=256, \
+          cluster_centroids_init=CentroidInitialization.LINEAR)
+      print("Clustered {} with 256 clusters".format(layer.name))
+    else:
+      clustered = cluster_weights(layer, number_of_clusters=32, \
+          cluster_centroids_init=CentroidInitialization.LINEAR)
+      print("Clustered {} with 32 clusters".format(layer.name))
+    return clustered
+
+  return tf.keras.models.clone_model(model, clone_function=cluster_fn)
 
 
 def run(flags_obj):
@@ -53,7 +80,6 @@ def run(flags_obj):
   """
   keras_utils.set_session_config(
       enable_xla=flags_obj.enable_xla)
-
   # Execute flag override logic for better model performance
   if flags_obj.tf_gpu_thread_mode:
     keras_utils.set_gpu_thread_mode_and_count(
@@ -117,7 +143,8 @@ def run(flags_obj):
   # This use_keras_image_data_format flags indicates whether image preprocessor
   # output format should be same as the keras backend image data format or just
   # channel-last format.
-  use_keras_image_data_format = (flags_obj.model == 'mobilenet')
+  use_keras_image_data_format = \
+    (flags_obj.model == 'mobilenet' or 'mobilenet_pretrained')
   train_input_dataset = input_fn(
       is_training=True,
       data_dir=flags_obj.data_dir,
@@ -155,9 +182,11 @@ def run(flags_obj):
   with strategy_scope:
     if flags_obj.optimizer == 'resnet50_default':
       optimizer = common.get_optimizer(lr_schedule)
-    elif flags_obj.optimizer == 'mobilenet_default':
+    elif flags_obj.optimizer == 'mobilenet_default' or 'mobilenet_fine_tune':
       initial_learning_rate = \
           flags_obj.initial_learning_rate_per_sample * flags_obj.batch_size
+      if flags_obj.optimizer == 'mobilenet_fine_tune':
+        initial_learning_rate = 1e-5
       optimizer = tf.keras.optimizers.SGD(
           learning_rate=tf.keras.optimizers.schedules.ExponentialDecay(
               initial_learning_rate,
@@ -165,6 +194,7 @@ def run(flags_obj):
               decay_rate=flags_obj.lr_decay_factor,
               staircase=True),
           momentum=0.9)
+
     if flags_obj.fp16_implementation == 'graph_rewrite':
       # Note: when flags_obj.fp16_implementation == "graph_rewrite", dtype as
       # determined by flags_core.get_tf_dtype(flags_obj) would be 'float32'
@@ -180,17 +210,25 @@ def run(flags_obj):
     elif flags_obj.model == 'resnet50_v1.5':
       model = resnet_model.resnet50(
           num_classes=imagenet_preprocessing.NUM_CLASSES)
-    elif flags_obj.model == 'mobilenet':
+    elif flags_obj.model == 'mobilenet' or 'mobilenet_pretrained':
       # TODO(kimjaehong): Remove layers attribute when minimum TF version
       # support 2.0 layers by default.
+      if flags_obj.model == 'mobilenet_pretrained':
+        classes_labels = 1000
+        initial_weights = 'imagenet'
+      else:
+        classes_labels = imagenet_preprocessing.NUM_CLASSES
+        initial_weights = None
       model = tf.keras.applications.mobilenet.MobileNet(
-          weights=None,
-          classes=imagenet_preprocessing.NUM_CLASSES,
+          weights=initial_weights,
+          classes=classes_labels,
           layers=tf.keras.layers)
+
     if flags_obj.pretrained_filepath:
       model.load_weights(flags_obj.pretrained_filepath)
 
     if flags_obj.pruning_method == 'polynomial_decay':
+      import tensorflow_model_optimization as tfmot
       if dtype != tf.float32:
         raise NotImplementedError(
             'Pruning is currently only supported on dtype=tf.float32.')
@@ -205,8 +243,18 @@ def run(flags_obj):
       }
       model = tfmot.sparsity.keras.prune_low_magnitude(model, **pruning_params)
     elif flags_obj.pruning_method:
+      raise NotImplementedError('Only polynomial_decay is currently supported.')
+
+    if flags_obj.clustering_method == 'selective_clustering':
+      import tensorflow_model_optimization as tfmot
+      if dtype != tf.float32 or \
+        flags_obj.fp16_implementation == 'graph_rewrite':
+        raise NotImplementedError(
+            'Clustering is currently only supported on dtype=tf.float32.')
+      model = cluster_last_three_conv2d_layers(model)
+    elif flags_obj.clustering_method:
       raise NotImplementedError(
-          'Only polynomial_decay is currently supported.')
+          'Only selective_clustering is implemented.')
 
     model.compile(
         loss='sparse_categorical_crossentropy',
@@ -222,7 +270,7 @@ def run(flags_obj):
       enable_checkpoint_and_export=flags_obj.enable_checkpoint_and_export,
       model_dir=flags_obj.model_dir)
 
-  # if mutliple epochs, ignore the train_steps flag.
+  # If mutliple epochs, ignore the train_steps flag.
   if train_epochs <= 1 and flags_obj.train_steps:
     steps_per_epoch = min(flags_obj.train_steps, steps_per_epoch)
     train_epochs = 1
@@ -244,7 +292,7 @@ def run(flags_obj):
 
   if not strategy and flags_obj.explicit_gpu_placement:
     # TODO(b/135607227): Add device scope automatically in Keras training loop
-    # when not using distribition strategy.
+    # when not using distribution strategy.
     no_dist_strat_device = tf.device('/device:GPU:0')
     no_dist_strat_device.__enter__()
 
@@ -265,6 +313,10 @@ def run(flags_obj):
 
   if flags_obj.pruning_method:
     model = tfmot.sparsity.keras.strip_pruning(model)
+
+  if flags_obj.clustering_method:
+    model = tfmot.clustering.keras.strip_clustering(model)
+
   if flags_obj.enable_checkpoint_and_export:
     if dtype == tf.bfloat16:
       logging.warning('Keras model.save does not support bfloat16 dtype.')
@@ -286,6 +338,7 @@ def define_imagenet_keras_flags():
       optimizer=True,
       pretrained_filepath=True)
   common.define_pruning_flags()
+  common.define_clustering_flags()
   flags_core.set_defaults()
   flags.adopt_module_key_flags(common)
 
