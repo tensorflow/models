@@ -1,0 +1,32 @@
+name: cv-tfodapi
+channels:
+  - conda-forge
+  - nodefaults
+  - s3://mv-coreip-dev-conda-repo/channels/mio-forge
+  - nvidia
+dependencies:
+  # Dev dependencies
+  - awscli =1.18.72
+  - pre-commit =2.4.0
+  - black =19.10b0
+  - git-lfs =2.11.0
+  - shellcheck =0.7.1
+  - pytest =5.4.3
+  - pytest-subtests =0.3.1
+  - pytest-xdist =1.32.0
+  # Dependencies
+  - boto3 =1.13.22
+  - Cython =0.29.19
+  - jupyter =1.0.0
+  - lxml =4.3.4
+  - matplotlib =3.0.3
+  - mlflow =1.8.0
+  - numpy =1.16.5
+  - opencv =3.4.7
+  - pillow =5.4.1
+  - python =3.6.10
+  - pydantic =1.6.1
+  - stringcase =1.2.0
+  - tensorflow =1.15.0.gpu
+  - nvidia::cudnn =7.6.0=cuda9.2_0
+  - nvidia::cudatoolkit =9.2.0
