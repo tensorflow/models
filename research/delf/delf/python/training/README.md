@@ -1,7 +1,7 @@
-# DELF Training Instructions
+# DELF/DELG Training Instructions
 
-This README documents the end-to-end process for training a landmark detection
-and retrieval model using the DELF library on the
+This README documents the end-to-end process for training a local and/or global
+image feature model on the
 [Google Landmarks Dataset v2](https://github.com/cvdfoundation/google-landmark)
 (GLDv2). This can be achieved following these steps:
 
@@ -166,7 +166,7 @@ the batch size to `256`:
 
 It is also possible to train the model with an improved global features head as
 introduced in the [DELG paper](https://arxiv.org/abs/2001.05027). To do this,
-specify the additional parameter `--delg_global_features` when launching the 
+specify the additional parameter `--delg_global_features` when launching the
 training, like in the following example:
 
 ```
@@ -179,13 +179,18 @@ python3 train.py \
   --delg_global_features
 ```
 
+*NOTE*: We are currently working on adding the autoencoder described in the DELG
+paper to this codebase. Currently, it is not yet implemented here. Stay tuned!
 
 ## Exporting the Trained Model
 
 Assuming the training output, the TensorFlow checkpoint, is in the
 `gldv2_training` directory, running the following commands exports the model.
 
-### DELF local feature model
+### DELF local feature-only model
+
+This should be used when you are only interested in having a local feature
+model.
 
 ```
 python3 model/export_model.py \
@@ -194,11 +199,34 @@ python3 model/export_model.py \
   --block3_strides
 ```
 
+### DELG global feature-only model
+
+This should be used when you are only interested in having a global feature
+model.
+
+```
+python3 model/export_global_model.py \
+  --ckpt_path=gldv2_training/delf_weights \
+  --export_path=gldv2_model_global \
+  --delg_global_features
+```
+
+### DELG local+global feature model
+
+Work in progress. Stay tuned, this will come soon.
+
 ### Kaggle-compatible global feature model
 
 To export a global feature model in the format required by the
 [2020 Landmark Retrieval challenge](https://www.kaggle.com/c/landmark-retrieval-2020),
 you can use the following command:
+
+*NOTE*: this command is helpful to use the model directly in the above-mentioned
+Kaggle competition; however, this is a different format than the one required in
+this DELF/DELG codebase (ie, if you export the model this way, the commands
+found in the [DELG instructions](../delg/DELG_INSTRUCTIONS.md) would not work).
+To export the model in a manner compatible to this codebase, use a similar
+command as the "DELG global feature-only model" above.
 
 ```
 python3 model/export_global_model.py \

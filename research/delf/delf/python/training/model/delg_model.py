@@ -107,7 +107,7 @@ def cosine_classifier_logits(prelogits,
   """Compute cosine classifier logits using ArFace margin.
 
   Args:
-    prelogits: float tensor of shape [batch_size, 1, 1, embedding_layer_dim].
+    prelogits: float tensor of shape [batch_size, embedding_layer_dim].
     labels: int tensor of shape [batch_size].
     num_classes: int, number of classes.
     cosine_weights: float tensor of shape [embedding_layer_dim, num_classes].
@@ -118,11 +118,8 @@ def cosine_classifier_logits(prelogits,
   Returns:
     logits: Float tensor [batch_size, num_classes].
   """
-  # Reshape from [batch_size, 1, 1, depth] to [batch_size, depth].
-  squeezed_prelogits = tf.squeeze(prelogits, [1, 2])
-
   # L2-normalize prelogits, then obtain cosine similarity.
-  normalized_prelogits = tf.math.l2_normalize(squeezed_prelogits, axis=1)
+  normalized_prelogits = tf.math.l2_normalize(prelogits, axis=1)
   normalized_weights = tf.math.l2_normalize(cosine_weights, axis=0)
   cosine_sim = tf.matmul(normalized_prelogits, normalized_weights)
 
