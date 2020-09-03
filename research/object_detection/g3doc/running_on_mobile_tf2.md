@@ -50,7 +50,7 @@ To use the script:
 # From the tensorflow/models/research/ directory
 python object_detection/export_tflite_graph_tf2.py \
     --pipeline_config_path path/to/ssd_model/pipeline.config \
-    --trained_checkpoint_prefix path/to/ssd_model/checkpoint \
+    --trained_checkpoint_dir path/to/ssd_model/checkpoint \
     --output_directory path/to/exported_model_directory
 ```
 
