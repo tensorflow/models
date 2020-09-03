@@ -1,61 +1,32 @@
-name: CV Object Detection
+name: cv-tfodapi
 
 conda_env: conda.yml
 
 entry_points:
-  main:
+  train_tf1:
     parameters:
-      pipeline: path
-      # MLflow doesn't support bools or flags. Python will handle parsing.
-      restore_box_predictors: {type: string, default: "False"}
-      resume_global_step: {type: string, default: "False"}
-      train_dir: path
-      eval_dir: path
-      force_fewer_eval_examples: {type: string, default: "False"}
-      max_gpu_memfrac: {type: float, default: 1.0}
-      train_cuda_visible_devices: {type: string, default: "UNSET"}
-      eval_cuda_visible_devices: {type: string, default: "UNSET"}
-    command: >
-      pip install -e ../cv-object-detection/ &&
-      python ../main.py train_and_evaluate
-      {pipeline}
-      --restore-box-predictors {restore_box_predictors}
-      --resume-global-step {resume_global_step}
-      --train-dir {train_dir}
-      --eval-dir {eval_dir}
-      --force-fewer-eval-examples {force_fewer_eval_examples}
-      --max-gpu-memfrac {max_gpu_memfrac}
-      --train-cuda-visible-devices {train_cuda_visible_devices}
-      --eval-cuda-visible-devices {eval_cuda_visible_devices}
+      model_dir: path
+      pipeline_config_path: path
+      num_train_steps: {type: int, default: None}
+      eval_training_data: {type: string, default: "False"}
+      sample_1_of_n_eval_examples: {type: int, default: 1}
+      sample_1_of_n_eval_on_train_examples: {type: int, default: 5}
+      checkpoint_dir: {type: path, default: None}
+      run_once: {type: string, default: "False"}
+      max_eval_retries: {type: int, default: 0}
 
-  train:
-    parameters:
-      pipeline: path
-      restore_box_predictors: {type: string, default: "False"}
-      resume_global_step: {type: string, default: "False"}
-      train_dir: path
-    command: >
-      pip install -e ../cv-object-detection/ &&
-      python ../main.py train
-      {pipeline}
-      --restore-box-predictors {restore_box_predictors}
-      --resume-global-step {resume_global_step}
-      --train-dir {train_dir}
 
-  evaluate:
-    parameters:
-      pipeline: path
-      checkpoint_dir: path
-      eval_dir: path
-      force_fewer_eval_examples: {type: string, default: "False"}
-      max_gpu_memfrac: {type: float, default: 1.0}
     command: >
-      pip install -e ../cv-object-detection/ &&
-      python ../main.py evaluate
-      {pipeline} {checkpoint_dir}
-      --eval-dir {eval_dir}
-      --force-fewer-eval-examples {force_fewer_eval_examples}
-      --max-gpu-memfrac {max_gpu_memfrac}
+      pip install -e ./ &&
+      python model_main.py
+      --model_dir {model_dir}
+      --pipeline_config_path {pipeline_config_path}
+      --num_train_steps {num_train_steps}
+      --eval_training_data {eval_training_data}
+      --sample_1_of_n_eval_examples {sample_1_of_n_eval_examples}
+      --sample_1_of_n_eval_on_train_examples {sample_1_of_n_eval_on_train_examples}
+      --checkpoint_dir {checkpoint_dir}
+      --run_once {run_once}
+      --max_eval_retries {max_eval_retries}
 
-  test:
-    command: pytest ../ --ignore=../cv-object-detection
+

@@ -17,7 +17,6 @@ dependencies:
   # Dependencies
   - boto3 =1.13.22
   - Cython =0.29.19
-  - jupyter =1.0.0
   - lxml =4.3.4
   - matplotlib =3.0.3
   - mlflow =1.8.0
