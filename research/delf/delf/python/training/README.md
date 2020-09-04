@@ -219,7 +219,7 @@ global features.
 ```
 python3 model/export_local_and_global_model.py \
   --ckpt_path=gldv2_training/delf_weights \
-  --export_path=gldv2_model_global \
+  --export_path=gldv2_model_local_and_global \
   --delg_global_features \
   --block3_strides
 ```
