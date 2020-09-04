@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""NLP package definition."""
+"""Vision package definition."""
 # Lint as: python3
 # pylint: disable=unused-import
 from official.vision.beta import configs

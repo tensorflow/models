@@ -1,5 +1,12 @@
 # Release Notes
 
+### September 3rd, 2020
+
+TF2 OD API models can now be converted to TensorFlow Lite! Only SSD models
+currently supported. See <a href='running_on_mobile_tf2.md'>documentation</a>.
+
+**Thanks to contributors**: Sachin Joglekar
+
 ### July 10th, 2020
 
 We are happy to announce that the TF OD API officially supports TF2! Our release

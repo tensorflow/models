@@ -80,7 +80,7 @@ class ParserTest(parameterized.TestCase, tf.test.TestCase):
   def test_parser(self, output_size, dtype, is_training):
 
     params = cfg.DataConfig(
-        input_path='/readahead/200M/placer/prod/home/distbelief/imagenet-tensorflow/imagenet-2012-tfrecord/train*',
+        input_path='imagenet-2012-tfrecord/train*',
         global_batch_size=2,
         is_training=True,
         examples_consume=4)

@@ -43,9 +43,9 @@ class RetinaNetTaskTest(parameterized.TestCase, tf.test.TestCase):
     config.task.model.input_size = [384, 384, 3]
     config.train_steps = 2
     config.task.train_data.shuffle_buffer_size = 10
-    config.task.train_data.input_path = "/readahead/200M/placer/prod/home/snaggletooth/test/data/coco/train-00000-of-00256.tfrecord"
+    config.task.train_data.input_path = "coco/train-00000-of-00256.tfrecord"
     config.task.validation_data.global_batch_size = 2
-    config.task.validation_data.input_path = "/readahead/200M/placer/prod/home/snaggletooth/test/data/coco/val-00000-of-00032.tfrecord"
+    config.task.validation_data.input_path = "coco/val-00000-of-00032.tfrecord"
 
     task = maskrcnn.MaskRCNNTask(config.task)
     model = task.build_model()

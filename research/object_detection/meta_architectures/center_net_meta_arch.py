@@ -311,6 +311,7 @@ def prediction_tensors_to_boxes(detection_scores, y_indices, x_indices,
 
   height_width = tf.gather(height_width_flat, peak_spatial_indices,
                            batch_dims=1)
+  height_width = tf.maximum(height_width, 0)
   offsets = tf.gather(offsets_flat, peak_spatial_indices, batch_dims=1)
 
   heights, widths = tf.unstack(height_width, axis=2)
