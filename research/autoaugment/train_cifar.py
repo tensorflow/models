@@ -45,36 +45,6 @@ tf.flags.DEFINE_integer('use_cpu', 1, '1 if use CPU, else GPU.')
 
 FLAGS = tf.flags.FLAGS
 
-arg_scope = tf.contrib.framework.arg_scope
-
-
-def setup_arg_scopes(is_training):
-  """Sets up the argscopes that will be used when building an image model.
-
-  Args:
-    is_training: Is the model training or not.
-
-  Returns:
-    Arg scopes to be put around the model being constructed.
-  """
-
-  batch_norm_decay = 0.9
-  batch_norm_epsilon = 1e-5
-  batch_norm_params = {
-      # Decay for the moving averages.
-      'decay': batch_norm_decay,
-      # epsilon to prevent 0s in variance.
-      'epsilon': batch_norm_epsilon,
-      'scale': True,
-      # collection containing the moving mean and moving variance.
-      'is_training': is_training,
-  }
-
-  scopes = []
-
-  scopes.append(arg_scope([ops.batch_norm], **batch_norm_params))
-  return scopes
-
 
 def build_model(inputs, num_classes, is_training, hparams):
   """Constructs the vision model being trained/evaled.
@@ -88,17 +58,15 @@ def build_model(inputs, num_classes, is_training, hparams):
   Returns:
     The logits of the image model.
   """
-  scopes = setup_arg_scopes(is_training)
-  with contextlib.nested(*scopes):
-    if hparams.model_name == 'pyramid_net':
-      logits = build_shake_drop_model(
-          inputs, num_classes, is_training)
-    elif hparams.model_name == 'wrn':
-      logits = build_wrn_model(
-          inputs, num_classes, hparams.wrn_size)
-    elif hparams.model_name == 'shake_shake':
-      logits = build_shake_shake_model(
-          inputs, num_classes, hparams, is_training)
+  if hparams.model_name == 'pyramid_net':
+    logits = build_shake_drop_model(
+        inputs, num_classes, is_training)
+  elif hparams.model_name == 'wrn':
+    logits = build_wrn_model(
+        inputs, num_classes, hparams.wrn_size)
+  elif hparams.model_name == 'shake_shake':
+    logits = build_shake_shake_model(
+        inputs, num_classes, hparams, is_training)
   return logits
 
 
@@ -371,7 +339,7 @@ class CifarModelTrainer(object):
           starting_epoch, valid_accuracy))
       training_accuracy = None
 
-      for curr_epoch in xrange(starting_epoch, hparams.num_epochs):
+      for curr_epoch in range(starting_epoch, hparams.num_epochs):
 
         # Run one training epoch
         training_accuracy = self._run_training_loop(m, curr_epoch)
