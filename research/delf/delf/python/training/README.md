@@ -193,7 +193,7 @@ This should be used when you are only interested in having a local feature
 model.
 
 ```
-python3 model/export_model.py \
+python3 model/export_local_model.py \
   --ckpt_path=gldv2_training/delf_weights \
   --export_path=gldv2_model_local \
   --block3_strides
@@ -213,7 +213,16 @@ python3 model/export_global_model.py \
 
 ### DELG local+global feature model
 
-Work in progress. Stay tuned, this will come soon.
+This should be used when you are interested in jointly extracting local and
+global features.
+
+```
+python3 model/export_local_and_global_model.py \
+  --ckpt_path=gldv2_training/delf_weights \
+  --export_path=gldv2_model_local_and_global \
+  --delg_global_features \
+  --block3_strides
+```
 
 ### Kaggle-compatible global feature model
 
@@ -237,7 +246,9 @@ python3 model/export_global_model.py \
   --normalize_global_descriptor
 ```
 
-## Testing the Trained Model
+## Testing the trained model
+
+### Testing the trained local feature model
 
 After the trained model has been exported, it can be used to extract DELF
 features from 2 images of the same landmark and to perform a matching test
@@ -310,3 +321,13 @@ python3 ../examples/match_images.py \
 The generated image `matched_images.png` should look similar to this one:
 
 ![MatchedImagesDemo](./matched_images_demo.png)
+
+### Testing the trained global (or global+local) feature model
+
+Please follow the [DELG instructions](../delg/DELG_INSTRUCTIONS.md). The only
+modification should be to pass a different `delf_config_path` when doing feature
+extraction, which should point to the newly-trained model. As described in the
+[DelfConfig](../../protos/delf_config.proto), you should set the
+`use_local_features` and `use_global_features` in the right way, depending on
+which feature modalities you are using. Note also that you should set
+`is_tf2_exported` to `true`.

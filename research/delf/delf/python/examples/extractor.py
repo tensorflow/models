@@ -44,12 +44,9 @@ def MakeExtractor(config):
     ValueError: if config is invalid.
   """
   # Assert the configuration.
-  # TODO(andrearaujo): Handle this case.
-  if config.use_global_features and config.use_local_features and hasattr(
-      config, 'is_tf2_exported') and config.is_tf2_exported:
-    raise ValueError(
-        'Joint local+global extraction is currently incompatible with '
-        'is_tf2_exported')
+  if not config.use_local_features and not config.use_global_features:
+    raise ValueError('Invalid config: at least one of '
+                     '{use_local_features, use_global_features} must be True')
 
   # Load model.
   model = tf.saved_model.load(config.model_path)
@@ -180,9 +177,22 @@ def MakeExtractor(config):
     extracted_features = {}
     output = None
 
-    if config.use_local_features:
-      if hasattr(config, 'is_tf2_exported') and config.is_tf2_exported:
-        predict = model.signatures['serving_default']
+    if hasattr(config, 'is_tf2_exported') and config.is_tf2_exported:
+      predict = model.signatures['serving_default']
+      if config.use_local_features and config.use_global_features:
+        if config.use_global_features:
+          output_dict = predict(
+              input_image=image_tensor,
+              input_scales=image_scales_tensor,
+              input_max_feature_num=max_feature_num_tensor,
+              input_abs_thres=score_threshold_tensor,
+              input_global_scales_ind=global_scales_ind_tensor)
+          output = [
+              output_dict['boxes'], output_dict['features'],
+              output_dict['scales'], output_dict['scores'],
+              output_dict['global_descriptors']
+          ]
+      elif config.use_local_features:
         output_dict = predict(
             input_image=image_tensor,
             input_scales=image_scales_tensor,
@@ -193,21 +203,19 @@ def MakeExtractor(config):
             output_dict['scales'], output_dict['scores']
         ]
       else:
-        if config.use_global_features:
-          output = model(image_tensor, image_scales_tensor,
-                         score_threshold_tensor, max_feature_num_tensor,
-                         global_scales_ind_tensor)
-        else:
-          output = model(image_tensor, image_scales_tensor,
-                         score_threshold_tensor, max_feature_num_tensor)
-    else:
-      if hasattr(config, 'is_tf2_exported') and config.is_tf2_exported:
-        predict = model.signatures['serving_default']
         output_dict = predict(
             input_image=image_tensor,
             input_scales=image_scales_tensor,
             input_global_scales_ind=global_scales_ind_tensor)
         output = [output_dict['global_descriptors']]
+    else:
+      if config.use_local_features and config.use_global_features:
+        output = model(image_tensor, image_scales_tensor,
+                       score_threshold_tensor, max_feature_num_tensor,
+                       global_scales_ind_tensor)
+      elif config.use_local_features:
+        output = model(image_tensor, image_scales_tensor,
+                       score_threshold_tensor, max_feature_num_tensor)
       else:
         output = model(image_tensor, image_scales_tensor,
                        global_scales_ind_tensor)

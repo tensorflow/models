@@ -15,7 +15,7 @@
 # ==============================================================================
 """Export global feature tensorflow inference model.
 
-This model includes image pyramids for multi-scale processing.
+The exported model may leverage image pyramids for multi-scale processing.
 """
 
 from __future__ import absolute_import
@@ -52,7 +52,7 @@ flags.DEFINE_enum(
 flags.DEFINE_boolean('normalize_global_descriptor', False,
                      'If True, L2-normalizes global descriptor.')
 flags.DEFINE_boolean('delg_global_features', False,
-                     'Whether the model is a DELG model.')
+                     'Whether the model uses a DELG-like global feature head.')
 flags.DEFINE_float(
     'delg_gem_power', 3.0,
     'Power for Generalized Mean pooling. Used only if --delg_global_features'
@@ -83,9 +83,10 @@ class _ExtractModule(tf.Module):
         the exported model. If not None, the specified 1D tensor of floats will
         be hard-coded as the desired input scales, in conjunction with
         ExtractFeaturesFixedScales.
-      delg_global_features: Whether the model is a DELG model.
-      delg_gem_power: Power for Generalized Mean pooling in the DELG model.
-        Used only if 'delg_global_features' is True.
+      delg_global_features: Whether the model uses a DELG-like global feature
+        head.
+      delg_gem_power: Power for Generalized Mean pooling in the DELG model. Used
+        only if 'delg_global_features' is True.
       delg_embedding_layer_dim: Size of the FC whitening layer (embedding
         layer). Used only if 'delg_global_features' is True.
     """
@@ -160,10 +161,8 @@ def main(argv):
         name='input_scales')
   module = _ExtractModule(FLAGS.multi_scale_pool_type,
                           FLAGS.normalize_global_descriptor,
-                          input_scales_tensor,
-                          FLAGS.delg_global_features,
-                          FLAGS.delg_gem_power,
-                          FLAGS.delg_embedding_layer_dim)
+                          input_scales_tensor, FLAGS.delg_global_features,
+                          FLAGS.delg_gem_power, FLAGS.delg_embedding_layer_dim)
 
   # Load the weights.
   checkpoint_path = FLAGS.ckpt_path
