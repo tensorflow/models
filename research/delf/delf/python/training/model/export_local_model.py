@@ -15,8 +15,9 @@
 # ==============================================================================
 """Export DELF tensorflow inference model.
 
-This model includes feature extraction, receptive field calculation and
-key-point selection and outputs the selected feature descriptors.
+The exported model may use an image pyramid for multi-scale processing, with
+local feature extraction including receptive field calculation and keypoint
+selection.
 """
 
 from __future__ import absolute_import
@@ -55,8 +56,7 @@ class _ExtractModule(tf.Module):
     self._stride_factor = 2.0 if block3_strides else 1.0
     self._iou = iou
     # Setup the DELF model for extraction.
-    self._model = delf_model.Delf(
-        block3_strides=block3_strides, name='DELF')
+    self._model = delf_model.Delf(block3_strides=block3_strides, name='DELF')
 
   def LoadWeights(self, checkpoint_path):
     self._model.load_weights(checkpoint_path)
