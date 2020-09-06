@@ -415,7 +415,7 @@ class TransformerTask(object):
       ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
       callbacks.append(
           tf.keras.callbacks.ModelCheckpoint(
-              ckpt_full_path, save_weights_only=True))
+              ckpt_full_path, save_weights_only=params["save_weights_only"]))
     return callbacks
 
   def _load_weights_if_possible(self, model, init_weight_path=None):
