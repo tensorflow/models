@@ -14,4 +14,5 @@
 # ==============================================================================
 """Keras-NLP layers package definition."""
 from official.nlp.keras_nlp.layers.position_embedding import PositionEmbedding
+from official.nlp.keras_nlp.layers.self_attention_mask import SelfAttentionMask
 from official.nlp.keras_nlp.layers.transformer_encoder_block import TransformerEncoderBlock
