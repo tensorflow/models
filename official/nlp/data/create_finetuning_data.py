@@ -51,7 +51,7 @@ flags.DEFINE_string(
     "for the task.")
 
 flags.DEFINE_enum("classification_task_name", "MNLI",
-                  ["COLA", "MNLI", "MRPC", "PAWS-X", "QNLI", "QQP", "RTE",
+                  ["AX", "COLA", "MNLI", "MRPC", "PAWS-X", "QNLI", "QQP", "RTE",
                    "SST-2", "STS-B", "WNLI", "XNLI", "XTREME-XNLI",
                    "XTREME-PAWS-X"],
                   "The name of the task to train BERT classifier. The "
@@ -182,6 +182,8 @@ def generate_classifier_dataset():
         max_seq_length=FLAGS.max_seq_length)
   else:
     processors = {
+        "ax":
+            classifier_data_lib.AxProcessor,
         "cola":
             classifier_data_lib.ColaProcessor,
         "mnli":
