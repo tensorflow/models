@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from official.utils import registry
+from official.core import registry
 
 
 class RegistryTest(tf.test.TestCase):

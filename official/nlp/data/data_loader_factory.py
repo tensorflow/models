@@ -15,7 +15,7 @@
 # ==============================================================================
 """A global factory to access NLP registered data loaders."""
 
-from official.utils import registry
+from official.core import registry
 
 _REGISTERED_DATA_LOADER_CLS = {}
 
