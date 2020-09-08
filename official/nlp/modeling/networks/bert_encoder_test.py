@@ -151,7 +151,8 @@ class BertEncoderTest(keras_parameterized.TestCase):
     mask_data = np.random.randint(2, size=(batch_size, sequence_length))
     type_id_data = np.random.randint(
         num_types, size=(batch_size, sequence_length))
-    _ = model.predict([word_id_data, mask_data, type_id_data])
+    outputs = model.predict([word_id_data, mask_data, type_id_data])
+    self.assertEqual(outputs[0].shape[1], out_seq_len)
 
     # Creates a BertEncoder with max_sequence_length != sequence_length
     max_sequence_length = 128
@@ -162,9 +163,10 @@ class BertEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types)
+    data, pooled = test_network([word_ids, mask, type_ids])
     model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
     outputs = model.predict([word_id_data, mask_data, type_id_data])
-    self.assertEqual(outputs[0].shape[1], out_seq_len)
+    self.assertEqual(outputs[0].shape[1], sequence_length)
 
     # Creates a BertEncoder with embedding_width != hidden_size
     test_network = bert_encoder.BertEncoder(
@@ -175,6 +177,7 @@ class BertEncoderTest(keras_parameterized.TestCase):
         num_layers=3,
         type_vocab_size=num_types,
         embedding_width=16)
+    data, pooled = test_network([word_ids, mask, type_ids])
     model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
     outputs = model.predict([word_id_data, mask_data, type_id_data])
     self.assertEqual(outputs[0].shape[-1], hidden_size)
