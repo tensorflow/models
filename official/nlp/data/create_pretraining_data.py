@@ -60,6 +60,10 @@ flags.DEFINE_bool(
     "gzip_compress", False,
     "Whether to use `GZIP` compress option to get compressed TFRecord files.")
 
+flags.DEFINE_bool(
+    "use_v2_feature_names", False,
+    "Whether to use the feature names consistent with the models.")
+
 flags.DEFINE_integer("max_seq_length", 128, "Maximum sequence length.")
 
 flags.DEFINE_integer("max_predictions_per_seq", 20,
@@ -147,9 +151,14 @@ def write_instance_to_example_files(instances, tokenizer, max_seq_length,
     next_sentence_label = 1 if instance.is_random_next else 0
 
     features = collections.OrderedDict()
-    features["input_ids"] = create_int_feature(input_ids)
+    if FLAGS.use_v2_feature_names:
+      features["input_word_ids"] = create_int_feature(input_ids)
+      features["input_type_ids"] = create_int_feature(segment_ids)
+    else:
+      features["input_ids"] = create_int_feature(input_ids)
+      features["segment_ids"] = create_int_feature(segment_ids)
+
     features["input_mask"] = create_int_feature(input_mask)
-    features["segment_ids"] = create_int_feature(segment_ids)
     features["masked_lm_positions"] = create_int_feature(masked_lm_positions)
     features["masked_lm_ids"] = create_int_feature(masked_lm_ids)
     features["masked_lm_weights"] = create_float_feature(masked_lm_weights)
