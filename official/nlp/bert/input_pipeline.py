@@ -285,5 +285,22 @@ def create_retrieval_dataset(file_path,
       _select_data_from_record,
       num_parallel_calls=tf.data.experimental.AUTOTUNE)
   dataset = dataset.batch(batch_size, drop_remainder=False)
+
+  def _pad_to_batch(x, y):
+    cur_size = tf.shape(y)[0]
+    pad_size = batch_size - cur_size
+
+    pad_ids = tf.zeros(shape=[pad_size, seq_length], dtype=tf.int32)
+    for key in ('input_word_ids', 'input_mask', 'input_type_ids'):
+      x[key] = tf.concat([x[key], pad_ids], axis=0)
+
+    pad_labels = -tf.ones(shape=[pad_size, 1], dtype=tf.int32)
+    y = tf.concat([y, pad_labels], axis=0)
+    return x, y
+
+  dataset = dataset.map(
+      _pad_to_batch,
+      num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
   dataset = dataset.prefetch(tf.data.experimental.AUTOTUNE)
   return dataset
