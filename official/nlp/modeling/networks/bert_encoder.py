@@ -168,7 +168,7 @@ class BertEncoder(tf.keras.Model):
 
     self._transformer_layers = []
     data = embeddings
-    attention_mask = layers.SelfAttentionMask()([data, mask])
+    attention_mask = keras_nlp.SelfAttentionMask()(data, mask)
     encoder_outputs = []
     for i in range(num_layers):
       if i == num_layers - 1 and output_range is not None:
