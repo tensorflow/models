@@ -63,7 +63,8 @@ convert the `SavedModel` to TFLite. You can also leverage
 [Post-training Quantization](https://www.tensorflow.org/lite/performance/post_training_quantization)
 to
 [optimize performance](https://www.tensorflow.org/lite/performance/model_optimization)
-and obtain a smaller model.
+and obtain a smaller model. Note that you need to use `from_saved_model` for
+TFLite conversion with the Python API.
 
 ## Running our model on Android
 
