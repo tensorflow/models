@@ -18,7 +18,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from official.nlp.modeling.layers import on_device_embedding
+from official.nlp.keras_nlp.layers import on_device_embedding
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
