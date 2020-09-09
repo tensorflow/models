@@ -18,9 +18,10 @@
 import json
 import os
 import pprint
-from typing import Any
+from typing import Any, List
 
 from absl import logging
+import dataclasses
 import orbit
 import tensorflow as tf
 
@@ -45,6 +46,16 @@ def create_trainer(
       params, task, train=train, evaluate=evaluate,
       checkpoint_exporter=checkpoint_exporter)
   return trainer
+
+
+@dataclasses.dataclass
+class ParseConfigOptions:
+  """Use this dataclass instead of FLAGS to customize parse_configuration()."""
+  experiment: str
+  config_file: List[str]
+  tpu: str = ''
+  tf_data_service: str = ''
+  params_override: str = ''
 
 
 def parse_configuration(flags_obj):
