@@ -93,6 +93,7 @@ class EncoderScaffold(tf.keras.Model):
         "kernel_initializer": The initializer for the transformer layers.
     return_all_layer_outputs: Whether to output sequence embedding outputs of
       all encoder transformer layers.
+    dict_outputs: Whether to use a dictionary as the model outputs.
   """
 
   def __init__(self,
@@ -106,6 +107,7 @@ class EncoderScaffold(tf.keras.Model):
                hidden_cls=layers.Transformer,
                hidden_cfg=None,
                return_all_layer_outputs=False,
+               dict_outputs=False,
                **kwargs):
     self._self_setattr_tracking = False
     self._hidden_cls = hidden_cls
@@ -117,6 +119,7 @@ class EncoderScaffold(tf.keras.Model):
     self._embedding_cfg = embedding_cfg
     self._embedding_data = embedding_data
     self._return_all_layer_outputs = return_all_layer_outputs
+    self._dict_outputs = dict_outputs
     self._kwargs = kwargs
 
     if embedding_cls:
@@ -200,7 +203,13 @@ class EncoderScaffold(tf.keras.Model):
         name='cls_transform')
     cls_output = self._pooler_layer(first_token_tensor)
 
-    if return_all_layer_outputs:
+    if dict_outputs:
+      outputs = dict(
+          sequence_output=layer_output_data[-1],
+          pooled_output=cls_output,
+          encoder_outputs=layer_output_data,
+      )
+    elif return_all_layer_outputs:
       outputs = [layer_output_data, cls_output]
     else:
       outputs = [layer_output_data[-1], cls_output]
@@ -219,6 +228,7 @@ class EncoderScaffold(tf.keras.Model):
         'embedding_cfg': self._embedding_cfg,
         'hidden_cfg': self._hidden_cfg,
         'return_all_layer_outputs': self._return_all_layer_outputs,
+        'dict_outputs': self._dict_outputs,
     }
     if inspect.isclass(self._hidden_cls):
       config_dict['hidden_cls_string'] = tf.keras.utils.get_registered_name(
