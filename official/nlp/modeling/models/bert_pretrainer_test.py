@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for BERT trainer network."""
+"""Tests for BERT pretrainer model."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
@@ -111,7 +108,8 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     self.assertAllEqual(bert_trainer_model.get_config(),
                         new_bert_trainer_model.get_config())
 
-  def test_bert_pretrainerv2(self):
+  @parameterized.parameters(True, False)
+  def test_bert_pretrainerv2(self, dict_outputs):
     """Validate that the Keras object can be created."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
@@ -119,7 +117,8 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     test_network = networks.BertEncoder(
         vocab_size=vocab_size,
         num_layers=2,
-        max_sequence_length=sequence_length)
+        max_sequence_length=sequence_length,
+        dict_outputs=dict_outputs)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_pretrainer.BertPretrainerV2(

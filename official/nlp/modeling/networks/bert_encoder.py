@@ -71,6 +71,7 @@ class BertEncoder(tf.keras.Model):
       embedding layer. Otherwise, we will reuse the given embedding layer. This
       parameter is originally added for ELECTRA model which needs to tie the
       generator embeddings with the discriminator embeddings.
+    dict_outputs: Whether to use a dictionary as the model outputs.
   """
 
   def __init__(self,
@@ -90,6 +91,7 @@ class BertEncoder(tf.keras.Model):
                output_range=None,
                embedding_width=None,
                embedding_layer=None,
+               dict_outputs=False,
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
@@ -110,6 +112,7 @@ class BertEncoder(tf.keras.Model):
         'return_all_encoder_outputs': return_all_encoder_outputs,
         'output_range': output_range,
         'embedding_width': embedding_width,
+        'dict_outputs': dict_outputs,
     }
 
     word_ids = tf.keras.layers.Input(
@@ -197,11 +200,16 @@ class BertEncoder(tf.keras.Model):
         name='pooler_transform')
     cls_output = self._pooler_layer(first_token_tensor)
 
-    if return_all_encoder_outputs:
+    if dict_outputs:
+      outputs = dict(
+          sequence_output=encoder_outputs[-1],
+          pooled_output=cls_output,
+          encoder_outputs=encoder_outputs,
+      )
+    elif return_all_encoder_outputs:
       outputs = [encoder_outputs, cls_output]
     else:
       outputs = [encoder_outputs[-1], cls_output]
-
     super(BertEncoder, self).__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
