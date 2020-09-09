@@ -2290,6 +2290,126 @@ class CornerOffsetTargetAssignerTest(test_case.TestCase):
     self.assertAllClose(foreground, np.zeros((1, 5, 5)))
 
 
+class CenterNetTemporalOffsetTargetAssigner(test_case.TestCase):
+
+  def setUp(self):
+    super(CenterNetTemporalOffsetTargetAssigner, self).setUp()
+    self._box_center = [0.0, 0.0, 1.0, 1.0]
+    self._box_center_small = [0.25, 0.25, 0.75, 0.75]
+    self._box_lower_left = [0.5, 0.0, 1.0, 0.5]
+    self._box_center_offset = [0.1, 0.05, 1.0, 1.0]
+    self._box_odd_coordinates = [0.1625, 0.2125, 0.5625, 0.9625]
+    self._offset_center = [0.5, 0.4]
+    self._offset_center_small = [0.1, 0.1]
+    self._offset_lower_left = [-0.1, 0.1]
+    self._offset_center_offset = [0.4, 0.3]
+    self._offset_odd_coord = [0.125, -0.125]
+
+  def test_assign_empty_groundtruths(self):
+    """Tests the assign_offset_targets function with empty inputs."""
+    def graph_fn():
+      box_batch = [
+          tf.zeros((0, 4), dtype=tf.float32),
+      ]
+
+      offset_batch = [
+          tf.zeros((0, 2), dtype=tf.float32),
+      ]
+
+      match_flag_batch = [
+          tf.zeros((0), dtype=tf.float32),
+      ]
+
+      assigner = targetassigner.CenterNetTemporalOffsetTargetAssigner(4)
+      indices, temporal_offset, weights = assigner.assign_temporal_offset_targets(
+          80, 80, box_batch, offset_batch, match_flag_batch)
+      return indices, temporal_offset, weights
+    indices, temporal_offset, weights = self.execute(graph_fn, [])
+    self.assertEqual(indices.shape, (0, 3))
+    self.assertEqual(temporal_offset.shape, (0, 2))
+    self.assertEqual(weights.shape, (0,))
+
+  def test_assign_offset_targets(self):
+    """Tests the assign_offset_targets function."""
+    def graph_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_center_offset]),
+          tf.constant([self._box_center_small, self._box_odd_coordinates]),
+      ]
+
+      offset_batch = [
+          tf.constant([self._offset_center, self._offset_lower_left]),
+          tf.constant([self._offset_center_offset]),
+          tf.constant([self._offset_center_small, self._offset_odd_coord]),
+      ]
+
+      match_flag_batch = [
+          tf.constant([1.0, 1.0]),
+          tf.constant([1.0]),
+          tf.constant([1.0, 1.0]),
+      ]
+
+      assigner = targetassigner.CenterNetTemporalOffsetTargetAssigner(4)
+      indices, temporal_offset, weights = assigner.assign_temporal_offset_targets(
+          80, 80, box_batch, offset_batch, match_flag_batch)
+      return indices, temporal_offset, weights
+    indices, temporal_offset, weights = self.execute(graph_fn, [])
+    self.assertEqual(indices.shape, (5, 3))
+    self.assertEqual(temporal_offset.shape, (5, 2))
+    self.assertEqual(weights.shape, (5,))
+    np.testing.assert_array_equal(
+        indices,
+        [[0, 10, 10], [0, 15, 5], [1, 11, 10], [2, 10, 10], [2, 7, 11]])
+    np.testing.assert_array_almost_equal(
+        temporal_offset,
+        [[0.5, 0.4], [-0.1, 0.1], [0.4, 0.3], [0.1, 0.1], [0.125, -0.125]])
+    np.testing.assert_array_equal(weights, 1)
+
+  def test_assign_offset_targets_with_match_flags(self):
+    """Tests the assign_offset_targets function with match flags."""
+    def graph_fn():
+      box_batch = [
+          tf.constant([self._box_center, self._box_lower_left]),
+          tf.constant([self._box_center_offset]),
+          tf.constant([self._box_center_small, self._box_odd_coordinates]),
+      ]
+
+      offset_batch = [
+          tf.constant([self._offset_center, self._offset_lower_left]),
+          tf.constant([self._offset_center_offset]),
+          tf.constant([self._offset_center_small, self._offset_odd_coord]),
+      ]
+
+      match_flag_batch = [
+          tf.constant([0.0, 1.0]),
+          tf.constant([1.0]),
+          tf.constant([1.0, 1.0]),
+      ]
+
+      cn_assigner = targetassigner.CenterNetTemporalOffsetTargetAssigner(4)
+      weights_batch = [
+          tf.constant([1.0, 0.0]),
+          tf.constant([1.0]),
+          tf.constant([1.0, 1.0])
+      ]
+      indices, temporal_offset, weights = cn_assigner.assign_temporal_offset_targets(
+          80, 80, box_batch, offset_batch, match_flag_batch, weights_batch)
+      return indices, temporal_offset, weights
+    indices, temporal_offset, weights = self.execute(graph_fn, [])
+    self.assertEqual(indices.shape, (5, 3))
+    self.assertEqual(temporal_offset.shape, (5, 2))
+    self.assertEqual(weights.shape, (5,))
+
+    np.testing.assert_array_equal(
+        indices,
+        [[0, 10, 10], [0, 15, 5], [1, 11, 10], [2, 10, 10], [2, 7, 11]])
+    np.testing.assert_array_almost_equal(
+        temporal_offset,
+        [[0.5, 0.4], [-0.1, 0.1], [0.4, 0.3], [0.1, 0.1], [0.125, -0.125]])
+    np.testing.assert_array_equal(weights, [0, 0, 1, 1, 1])
+
+
 if __name__ == '__main__':
   tf.enable_v2_behavior()
   tf.test.main()
