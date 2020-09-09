@@ -175,12 +175,12 @@ class BertEncoder(tf.keras.Model):
         transformer_output_range = output_range
       else:
         transformer_output_range = None
-      layer = layers.Transformer(
+      layer = keras_nlp.layers.TransformerEncoderBlock(
           num_attention_heads=num_attention_heads,
-          intermediate_size=intermediate_size,
-          intermediate_activation=activation,
-          dropout_rate=dropout_rate,
-          attention_dropout_rate=attention_dropout_rate,
+          inner_dim=intermediate_size,
+          inner_activation=activation,
+          output_dropout=dropout_rate,
+          attention_dropout=attention_dropout_rate,
           output_range=transformer_output_range,
           kernel_initializer=initializer,
           name='transformer/layer_%d' % i)
