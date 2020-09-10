@@ -179,7 +179,8 @@ python3 train.py \
 
 In order to improve the convergence of the training, the following
 hyperparameter values have been tested and validated on the following
-infrastructures:
+infrastructures, the remaining `train.py` flags keeping their **default 
+values**:
 * 8 Tesla P100 GPUs: `--batch_size=256`, `--initial_lr=0.01`
 * 4 Tesla P100 GPUs: `--batch_size=128`, `--initial_lr=0.005`
 
