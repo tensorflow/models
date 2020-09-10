@@ -145,8 +145,7 @@ def run(flags_obj):
   # output format should be same as the keras backend image data format or just
   # channel-last format.
   use_keras_image_data_format = \
-    (flags_obj.model == 'mobilenet' or
-     flags_obj.model == 'mobilenet_pretrained')
+    (flags_obj.model == 'mobilenet' or flags_obj.model == 'mobilenet_pretrained')
 
   train_input_dataset = input_fn(
       is_training=True,
