@@ -406,8 +406,6 @@ class MobileBERTEncoder(tf.keras.Model):
                num_feedforward_networks=4,
                normalization_type='no_norm',
                classifier_activation=False,
-               return_all_layers=False,
-               return_attention_score=False,
                **kwargs):
     """Class initialization.
 
@@ -438,8 +436,6 @@ class MobileBERTEncoder(tf.keras.Model):
         MobileBERT paper. 'layer_norm' is used for the teacher model.
       classifier_activation: If using the tanh activation for the final
         representation of the [CLS] token in fine-tuning.
-      return_all_layers: If return all layer outputs.
-      return_attention_score: If return attention scores for each layer.
       **kwargs: Other keyworded and arguments.
     """
     self._self_setattr_tracking = False
@@ -513,12 +509,11 @@ class MobileBERTEncoder(tf.keras.Model):
     else:
       self._pooler_layer = None
 
-    if return_all_layers:
-      outputs = [all_layer_outputs, first_token]
-    else:
-      outputs = [prev_output, first_token]
-    if return_attention_score:
-      outputs.append(all_attention_scores)
+    outputs = dict(
+        sequence_output=prev_output,
+        pooled_output=first_token,
+        encoder_outputs=all_layer_outputs,
+        attention_scores=all_attention_scores)
 
     super(MobileBERTEncoder, self).__init__(
         inputs=self.inputs, outputs=outputs, **kwargs)
