@@ -40,11 +40,11 @@ class CenterNetResnetV1FpnFeatureExtractorTest(test_case.TestCase,
     model = center_net_resnet_v1_fpn_feature_extractor.\
                 CenterNetResnetV1FpnFeatureExtractor(resnet_type)
     def graph_fn():
-      img = np.zeros((8, 224, 224, 3), dtype=np.float32)
+      img = np.zeros((8, 512, 512, 3), dtype=np.float32)
       processed_img = model.preprocess(img)
       return model(processed_img)
 
-    self.assertEqual(self.execute(graph_fn, []).shape, (8, 56, 56, 64))
+    self.assertEqual(self.execute(graph_fn, []).shape, (8, 128, 128, 64))
 
 
 if __name__ == '__main__':

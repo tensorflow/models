@@ -38,6 +38,8 @@ class QADataConfig(cfg.DataConfig):
   input_preprocessed_data_path: str = ''
   doc_stride: int = 128
   query_length: int = 64
+  # The path to the vocab file of word piece tokenizer or the
+  # model of the sentence piece tokenizer.
   vocab_file: str = ''
   tokenization: str = 'WordPiece'  # WordPiece or SentencePiece
   do_lower_case: bool = True

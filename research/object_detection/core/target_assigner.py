@@ -1980,3 +1980,105 @@ class CenterNetCornerOffsetTargetAssigner(object):
 
     return (tf.stack(corner_targets, axis=0),
             tf.stack(foreground_targets, axis=0))
+
+
+class CenterNetTemporalOffsetTargetAssigner(object):
+  """Wrapper to compute target tensors for the temporal offset task.
+
+  This class has methods that take as input a batch of ground truth tensors
+  (in the form of a list) and returns the targets required to train the
+  temporal offset task.
+  """
+
+  def __init__(self, stride):
+    """Initializes the target assigner.
+
+    Args:
+      stride: int, the stride of the network in output pixels.
+    """
+
+    self._stride = stride
+
+  def assign_temporal_offset_targets(self,
+                                     height,
+                                     width,
+                                     gt_boxes_list,
+                                     gt_offsets_list,
+                                     gt_match_list,
+                                     gt_weights_list=None):
+    """Returns the temporal offset targets and their indices.
+
+    For each ground truth box, this function assigns it the corresponding
+    temporal offset to train the model.
+
+    Args:
+      height: int, height of input to the model. This is used to determine the
+        height of the output.
+      width: int, width of the input to the model. This is used to determine the
+        width of the output.
+      gt_boxes_list: A list of float tensors with shape [num_boxes, 4]
+        representing the groundtruth detection bounding boxes for each sample in
+        the batch. The coordinates are expected in normalized coordinates.
+      gt_offsets_list: A list of 2-D tf.float32 tensors of shape [num_boxes, 2]
+        containing the spatial offsets of objects' centers compared with the
+        previous frame.
+      gt_match_list: A list of 1-D tf.float32 tensors of shape [num_boxes]
+        containing flags that indicate if an object has existed in the
+        previous frame.
+      gt_weights_list: A list of tensors with shape [num_boxes] corresponding to
+        the weight of each groundtruth detection box.
+
+    Returns:
+      batch_indices: an integer tensor of shape [num_boxes, 3] holding the
+        indices inside the predicted tensor which should be penalized. The
+        first column indicates the index along the batch dimension and the
+        second and third columns indicate the index along the y and x
+        dimensions respectively.
+      batch_temporal_offsets: a float tensor of shape [num_boxes, 2] of the
+        expected y and x temporal offset of each object center in the
+        output space.
+      batch_weights: a float tensor of shape [num_boxes] indicating the
+        weight of each prediction.
+    """
+
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_boxes_list)
+
+    batch_indices = []
+    batch_weights = []
+    batch_temporal_offsets = []
+
+    for i, (boxes, offsets, match_flags, weights) in enumerate(zip(
+        gt_boxes_list, gt_offsets_list, gt_match_list, gt_weights_list)):
+      boxes = box_list.BoxList(boxes)
+      boxes = box_list_ops.to_absolute_coordinates(boxes,
+                                                   height // self._stride,
+                                                   width // self._stride)
+      # Get the box center coordinates. Each returned tensors have the shape of
+      # [num_boxes]
+      (y_center, x_center, _, _) = boxes.get_center_coordinates_and_sizes()
+      num_boxes = tf.shape(x_center)
+
+      # Compute the offsets and indices of the box centers. Shape:
+      #   offsets: [num_boxes, 2]
+      #   indices: [num_boxes, 2]
+      (_, indices) = ta_utils.compute_floor_offsets_with_indices(
+          y_source=y_center, x_source=x_center)
+
+      # Assign ones if weights are not provided.
+      # if an object is not matched, its weight becomes zero.
+      if weights is None:
+        weights = tf.ones(num_boxes, dtype=tf.float32)
+      weights *= match_flags
+
+      # Shape of [num_boxes, 1] integer tensor filled with current batch index.
+      batch_index = i * tf.ones_like(indices[:, 0:1], dtype=tf.int32)
+      batch_indices.append(tf.concat([batch_index, indices], axis=1))
+      batch_weights.append(weights)
+      batch_temporal_offsets.append(offsets)
+
+    batch_indices = tf.concat(batch_indices, axis=0)
+    batch_weights = tf.concat(batch_weights, axis=0)
+    batch_temporal_offsets = tf.concat(batch_temporal_offsets, axis=0)
+    return (batch_indices, batch_temporal_offsets, batch_weights)
+

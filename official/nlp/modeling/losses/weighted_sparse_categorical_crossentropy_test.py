@@ -39,7 +39,7 @@ class ClassificationLossTest(keras_parameterized.TestCase):
                       output="predictions"):
     # First, create a transformer stack that we can use to get the LM's
     # vocabulary weight.
-    xformer_stack = networks.TransformerEncoder(
+    xformer_stack = networks.BertEncoder(
         vocab_size=vocab_size,
         num_layers=1,
         sequence_length=sequence_length,

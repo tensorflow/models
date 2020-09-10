@@ -42,7 +42,7 @@ flags.DEFINE_string(
     "BertModel, with no task heads.)")
 flags.DEFINE_string("converted_checkpoint_path", None,
                     "Name for the created object-based V2 checkpoint.")
-flags.DEFINE_string("checkpoint_model_name", "model",
+flags.DEFINE_string("checkpoint_model_name", "encoder",
                     "The name of the model when saving the checkpoint, i.e., "
                     "the checkpoint will be saved using: "
                     "tf.train.Checkpoint(FLAGS.checkpoint_model_name=model).")
@@ -57,7 +57,7 @@ def _create_bert_model(cfg):
   Returns:
     A TransformerEncoder netowork.
   """
-  bert_encoder = networks.TransformerEncoder(
+  bert_encoder = networks.BertEncoder(
       vocab_size=cfg.vocab_size,
       hidden_size=cfg.hidden_size,
       num_layers=cfg.num_hidden_layers,

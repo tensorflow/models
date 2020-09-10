@@ -31,11 +31,11 @@ class CenterNetResnetFeatureExtractorTest(test_case.TestCase):
     model = center_net_resnet_feature_extractor.\
                 CenterNetResnetFeatureExtractor('resnet_v2_101')
     def graph_fn():
-      img = np.zeros((8, 224, 224, 3), dtype=np.float32)
+      img = np.zeros((8, 512, 512, 3), dtype=np.float32)
       processed_img = model.preprocess(img)
       return model(processed_img)
     outputs = self.execute(graph_fn, [])
-    self.assertEqual(outputs.shape, (8, 56, 56, 64))
+    self.assertEqual(outputs.shape, (8, 128, 128, 64))
 
   def test_output_size_resnet50(self):
     """Verify that shape of features returned by the backbone is correct."""

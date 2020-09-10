@@ -48,7 +48,8 @@ def _filter_grads(grads_and_vars):
 
 
 def _filter_and_allreduce_gradients(grads_and_vars,
-                                    allreduce_precision="float32"):
+                                    allreduce_precision="float32",
+                                    bytes_per_pack=0):
   """Filter None grads and then allreduce gradients in specified precision.
 
   This utils function is used when users intent to explicitly allreduce
@@ -59,6 +60,8 @@ def _filter_and_allreduce_gradients(grads_and_vars,
   Arguments:
       grads_and_vars: gradients and variables pairs.
       allreduce_precision: Whether to allreduce gradients in float32 or float16.
+      bytes_per_pack: A non-negative integer. Breaks collective operations into
+        packs of certain size. If it's zero, all gradients are in one pack.
 
   Returns:
       pairs of allreduced non-None gradients and variables.
@@ -67,8 +70,10 @@ def _filter_and_allreduce_gradients(grads_and_vars,
   (grads, variables) = zip(*filtered_grads_and_vars)
   if allreduce_precision == "float16":
     grads = [tf.cast(grad, "float16") for grad in grads]
+  hints = tf.distribute.experimental.CollectiveHints(
+      bytes_per_pack=bytes_per_pack)
   allreduced_grads = tf.distribute.get_replica_context().all_reduce(
-      tf.distribute.ReduceOp.SUM, grads)
+      tf.distribute.ReduceOp.SUM, grads, experimental_hints=hints)
   if allreduce_precision == "float16":
     allreduced_grads = [tf.cast(grad, "float32") for grad in allreduced_grads]
   return allreduced_grads, variables
@@ -85,7 +90,8 @@ def minimize_using_explicit_allreduce(tape,
                                       loss,
                                       trainable_variables,
                                       pre_allreduce_callbacks=None,
-                                      post_allreduce_callbacks=None):
+                                      post_allreduce_callbacks=None,
+                                      allreduce_bytes_per_pack=0):
   """Minimizes loss for one step by updating `trainable_variables`.
 
   Minimizes loss for one step by updating `trainable_variables`.
@@ -111,6 +117,9 @@ def minimize_using_explicit_allreduce(tape,
         returns a new gradients and model variables paris. The callback
         functions will be invoked in the list order and right before gradients
         are applied to variables for updates. Default is no callbacks.
+      allreduce_bytes_per_pack: A non-negative integer. Breaks collective
+        operations into packs of certain size. If it's zero, all gradients are
+        in one pack.
   """
   if isinstance(optimizer,
                 tf.keras.mixed_precision.experimental.LossScaleOptimizer):
@@ -123,7 +132,9 @@ def minimize_using_explicit_allreduce(tape,
       grads_and_vars = _run_callbacks(pre_allreduce_callbacks, grads_and_vars)
     (allreduced_scaled_grads,
      filtered_training_vars) = _filter_and_allreduce_gradients(
-         grads_and_vars, allreduce_precision="float16")
+         grads_and_vars,
+         allreduce_precision="float16",
+         bytes_per_pack=allreduce_bytes_per_pack)
     allreduced_unscaled_grads = optimizer.get_unscaled_gradients(
         allreduced_scaled_grads)
     grads_and_vars = zip(allreduced_unscaled_grads, filtered_training_vars)
@@ -135,7 +146,9 @@ def minimize_using_explicit_allreduce(tape,
       grads_and_vars = _run_callbacks(pre_allreduce_callbacks, grads_and_vars)
     (allreduced_grads,
      filtered_training_vars) = _filter_and_allreduce_gradients(
-         grads_and_vars, allreduce_precision="float32")
+         grads_and_vars,
+         allreduce_precision="float32",
+         bytes_per_pack=allreduce_bytes_per_pack)
     grads_and_vars = zip(allreduced_grads, filtered_training_vars)
   if post_allreduce_callbacks:
     grads_and_vars = _run_callbacks(post_allreduce_callbacks, grads_and_vars)

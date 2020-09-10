@@ -3111,6 +3111,7 @@ def resize_pad_to_multiple(image, masks=None, multiple=1):
     image_height, image_width, num_channels = _get_image_info(image)
     image = image[tf.newaxis, :, :, :]
     image = ops.pad_to_multiple(image, multiple)[0, :, :, :]
+    result = [image]
 
     if masks is not None:
       masks = tf.transpose(masks, (1, 2, 0))
@@ -3118,11 +3119,10 @@ def resize_pad_to_multiple(image, masks=None, multiple=1):
 
       masks = ops.pad_to_multiple(masks, multiple)[0, :, :, :]
       masks = tf.transpose(masks, (2, 0, 1))
+      result.append(masks)
 
-  if masks is None:
-    return image, tf.stack([image_height, image_width, num_channels])
-  else:
-    return image, masks, tf.stack([image_height, image_width, num_channels])
+    result.append(tf.stack([image_height, image_width, num_channels]))
+    return result
 
 
 def scale_boxes_to_pixel_coordinates(image, boxes, keypoints=None):

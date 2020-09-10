@@ -404,7 +404,7 @@ def get_bert2bert_layers(params: configs.BERT2BERTConfig):
   target_ids = tf.keras.layers.Input(
       shape=(None,), name="target_ids", dtype=tf.int32)
   bert_config = utils.get_bert_config_from_params(params)
-  bert_model_layer = networks.TransformerEncoder(
+  bert_model_layer = networks.BertEncoder(
       vocab_size=bert_config.vocab_size,
       hidden_size=bert_config.hidden_size,
       num_layers=bert_config.num_hidden_layers,
@@ -454,7 +454,7 @@ def get_nhnet_layers(params: configs.NHNetConfig):
   segment_ids = tf.keras.layers.Input(
       shape=(None,), name="segment_ids", dtype=tf.int32)
   bert_config = utils.get_bert_config_from_params(params)
-  bert_model_layer = networks.TransformerEncoder(
+  bert_model_layer = networks.BertEncoder(
       vocab_size=bert_config.vocab_size,
       hidden_size=bert_config.hidden_size,
       num_layers=bert_config.num_hidden_layers,

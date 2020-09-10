@@ -1,61 +1,23 @@
 * @tensorflow/tf-garden-team @tensorflow/tf-model-garden-team
 /official/ @rachellj218 @saberkun @jaeyounkim
-/official/nlp/ @saberkun @chenGitHuber @lehougoogle @rachellj218
-/official/vision/ @pengchongjin @xianzhidu @yeqingli @arashwan @saberkun @rachellj218
-/research/adv_imagenet_models/ @alexeykurakin
-/research/adversarial_crypto/ @dave-andersen
-/research/adversarial_logit_pairing/ @alexeykurakin
+/official/nlp/ @saberkun @chenGitHuber @lehougoogle @rachellj218 @jaeyounkim
+/official/vision/ @pengchongjin @xianzhidu @yeqingli @arashwan @saberkun @rachellj218 @jaeyounkim
 /research/adversarial_text/ @rsepassi @a-dai
 /research/attention_ocr/ @xavigibert
 /research/audioset/ @plakal @dpwe
 /research/autoaugment/* @barretzoph
-/research/autoencoders/ @snurkabill
-/research/brain_coder/ @danabo
-/research/cognitive_mapping_and_planning/ @s-gupta
-/research/compression/ @nmjohn
+/research/cognitive_planning/ @s-gupta
 /research/cvt_text/ @clarkkev @lmthang
-/research/deep_contextual_bandits/ @rikel
 /research/deep_speech/ @yhliang2018
 /research/deeplab/ @aquariusjay @yknzhu @gpapan
 /research/delf/ @andrefaraujo
-/research/domain_adaptation/ @bousmalis @dmrd
 /research/efficient-hrl/ @ofirnachum
-/research/feelvos/ @pvoigtlaender @yuningchai @aquariusjay
-/research/fivo/ @dieterichlawson
-/research/global_objectives/ @mackeya-google
-/research/im2txt/ @cshallue
-/research/inception/ @shlens @vincentvanhoucke
-/research/keypointnet/ @mnorouzi
-/research/learned_optimizer/ @olganw @nirum
-/research/learning_to_remember_rare_events/ @lukaszkaiser @ofirnachum
-/research/learning_unsupervised_learning/ @lukemetz @nirum
-/research/lexnet_nc/ @vered1986 @waterson
 /research/lfads/ @jazcollins @sussillo
-/research/lm_1b/ @oriolvinyals @panyx0718
-/research/lm_commonsense/ @thtrieu
 /research/lstm_object_detection/ @yinxiaoli @yongzhe2160
 /research/marco/ @vincentvanhoucke
-/research/maskgan/ @liamb315 @a-dai
-/research/namignizer/ @knathanieltucker
-/research/neural_gpu/ @lukaszkaiser
-/research/neural_programmer/ @arvind2505
-/research/next_frame_prediction/ @panyx0718
 /research/object_detection/ @jch1 @tombstone @pkulzc
 /research/pcl_rl/ @ofirnachum
-/research/ptn/ @xcyan @arkanath @hellojas @honglaklee
-/research/qa_kg/ @yuyuz
-/research/real_nvp/ @laurent-dinh
 /research/rebar/ @gjtucker
-/research/sentiment_analysis/ @sculd
-/research/seq2species/ @apbusia @depristo
-/research/skip_thoughts/ @cshallue
+/research/sequence_projection/ @thunderfyc
 /research/slim/ @sguada @marksandler2
-/research/steve/ @buckman-google
-/research/street/ @theraysmith
-/research/struct2depth/ @aneliaangelova
-/research/swivel/ @waterson
-/research/tcn/ @coreylynch @sermanet
-/research/textsum/ @panyx0718 @peterjliu
-/research/transformer/ @daviddao
 /research/vid2depth/ @rezama
-/research/video_prediction/ @cbfinn

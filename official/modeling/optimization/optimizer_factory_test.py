@@ -274,6 +274,30 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
 
+  def test_power_lr_schedule(self):
+    params = {
+        'optimizer': {
+            'type': 'sgd',
+            'sgd': {
+                'momentum': 0.9
+            }
+        },
+        'learning_rate': {
+            'type': 'power',
+            'power': {
+                'initial_learning_rate': 1.0,
+                'power': -1.0
+            }
+        }
+    }
+    expected_lr_step_values = [[1, 1.0], [250, 1. / 250.]]
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+
+    for step, value in expected_lr_step_values:
+      self.assertAlmostEqual(lr(step).numpy(), value)
+
 
 if __name__ == '__main__':
   tf.test.main()

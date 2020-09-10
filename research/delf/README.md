@@ -112,11 +112,12 @@ in the [Detect-to-Retrieve paper](https://arxiv.org/abs/1812.01584). Boosts
 performance by ~4% mAP compared to ICCV'17 DELF model.
 
 **DELG pre-trained on the Google-Landmarks dataset v1**
-([link](http://storage.googleapis.com/delf/delg_gld_20200520.tar.gz)). Presented
-in the [DELG paper](https://arxiv.org/abs/2001.05027).
+([R101-DELG](http://storage.googleapis.com/delf/r101delg_gld_20200814.tar.gz),
+[R50-DELG](http://storage.googleapis.com/delf/r50delg_gld_20200814.tar.gz)).
+Presented in the [DELG paper](https://arxiv.org/abs/2001.05027).
 
 **RN101-ArcFace pre-trained on the Google-Landmarks dataset v2 (train-clean)**
-([link](https://storage.googleapis.com/delf/rn101_af_gldv2clean_20200521.tar.gz)).
+([link](https://storage.googleapis.com/delf/rn101_af_gldv2clean_20200814.tar.gz)).
 Presented in the [GLDv2 paper](https://arxiv.org/abs/2004.01804).
 
 **DELF pre-trained on Landmarks-Clean/Landmarks-Full dataset**

@@ -9,7 +9,7 @@ psutil>=5.4.3
 py-cpuinfo>=3.3.0
 scipy>=0.19.1
 tensorflow-hub>=0.6.0
-tensorflow-model-optimization>=0.2.1
+tensorflow-model-optimization>=0.4.1
 tensorflow-datasets
 tensorflow-addons
 dataclasses
@@ -17,7 +17,7 @@ gin-config
 tf_slim>=1.1.0
 Cython
 matplotlib
-pyyaml
+pyyaml>=5.1
 # CV related dependencies
 opencv-python-headless
 Pillow

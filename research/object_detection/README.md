@@ -73,6 +73,13 @@ documentation of the Object Detection API:
 
 ## Whats New
 
+### Mobile Inference for TF2 models
+
+TF2 OD API models can now be converted to TensorFlow Lite! Only SSD models
+currently supported. See <a href='running_on_mobile_tf2.md'>documentation</a>.
+
+**Thanks to contributors**: Sachin Joglekar
+
 ### TensorFlow 2 Support
 
 We are happy to announce that the TF OD API officially supports TF2! Our release

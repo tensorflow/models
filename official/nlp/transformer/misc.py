@@ -209,6 +209,14 @@ def define_transformer_flags():
       help=flags_core.help_wrap(
           'Whether to do checkpointing during training. When running under '
           'benchmark harness, we will avoid checkpointing.'))
+  flags.DEFINE_bool(
+      name='save_weights_only',
+      default=True,
+      help=flags_core.help_wrap(
+          'Only used when above `enable_checkpointing` is True. '
+          'If True, then only the model\'s weights will be saved '
+          '(`model.save_weights(filepath)`), else the full model is saved '
+          '(`model.save(filepath)`)'))
 
   flags_core.set_defaults(
       data_dir='/tmp/translate_ende',

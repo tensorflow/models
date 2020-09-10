@@ -89,8 +89,13 @@ class Delf(tf.keras.Model):
   from conv_4 are used to compute an attention map of the same resolution.
   """
 
-  def __init__(self, block3_strides=True, name='DELF', pooling='avg',
-               gem_power=3.0, embedding_layer=False, embedding_layer_dim=2048):
+  def __init__(self,
+               block3_strides=True,
+               name='DELF',
+               pooling='avg',
+               gem_power=3.0,
+               embedding_layer=False,
+               embedding_layer_dim=2048):
     """Initialization of DELF model.
 
     Args:
@@ -98,8 +103,8 @@ class Delf(tf.keras.Model):
       name: str, name to identify model.
       pooling: str, pooling mode for global feature extraction; possible values
         are 'None', 'avg', 'max', 'gem.'
-      gem_power: float, GeM power for GeM pooling. Only used if
-        pooling == 'gem'.
+      gem_power: float, GeM power for GeM pooling. Only used if pooling ==
+        'gem'.
       embedding_layer: bool, whether to create an embedding layer (FC whitening
         layer).
       embedding_layer_dim: int, size of the embedding layer.
@@ -125,10 +130,8 @@ class Delf(tf.keras.Model):
     """Define classifiers for training backbone and attention models."""
     self.num_classes = num_classes
     if desc_classification is None:
-      self.desc_classification = layers.Dense(num_classes,
-                                              activation=None,
-                                              kernel_regularizer=None,
-                                              name='desc_fc')
+      self.desc_classification = layers.Dense(
+          num_classes, activation=None, kernel_regularizer=None, name='desc_fc')
     else:
       self.desc_classification = desc_classification
     self.attn_classification = layers.Dense(
@@ -146,13 +149,17 @@ class Delf(tf.keras.Model):
     return (self.attention.trainable_weights +
             self.attn_classification.trainable_weights)
 
-  def call(self, input_image, training=True):
+  def build_call(self, input_image, training=True):
     blocks = {}
 
-    self.backbone.build_call(
+    global_feature = self.backbone.build_call(
         input_image, intermediates_dict=blocks, training=training)
 
     features = blocks['block3']  # pytype: disable=key-error
     _, probs, _ = self.attention(features, training=training)
 
+    return global_feature, probs, features
+
+  def call(self, input_image, training=True):
+    _, probs, features = self.build_call(input_image, training=training)
     return probs, features

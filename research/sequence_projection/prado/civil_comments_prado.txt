@@ -1,0 +1,30 @@
+{
+  "model_config" : {
+    "labels": ["identity_attack", "insult", "obscene", "severe_toxicity", "sexual_explicit", "threat", "toxicity"],
+    "multilabel": true,
+    "quantize": true,
+    "max_seq_len": 128,
+    "max_seq_len_inference": 128,
+    "exclude_nonalphaspace_unicodes": false,
+    "split_on_space": true,
+    "embedding_regularizer_scale": 35e-3,
+    "embedding_size": 64,
+    "heads": [0, 64, 64, 0, 0],
+    "feature_size": 512,
+    "network_regularizer_scale": 1e-4,
+    "keep_prob": 0.5,
+    "word_novelty_bits": 0,
+    "doc_size_levels": 0,
+    "add_eos_tag": false,
+    "pre_logits_fc_layers": [],
+    "text_distortion_probability": 0.25
+  },
+  "batch_size": 1024,
+  "save_checkpoints_steps": 100,
+  "train_steps": 100000,
+  "learning_rate": 1e-3,
+  "learning_rate_decay_steps": 42000,
+  "learning_rate_decay_rate": 0.7,
+  "iterations_per_loop": 100,
+  "dataset": "civil_comments"
+}

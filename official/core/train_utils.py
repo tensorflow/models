@@ -18,21 +18,44 @@
 import json
 import os
 import pprint
+from typing import Any, List
 
 from absl import logging
+import dataclasses
+import orbit
 import tensorflow as tf
 
+from official.core import base_task
 from official.core import base_trainer
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling.hyperparams import config_definitions
 
 
-def create_trainer(params, task, model_dir, train, evaluate):
+def create_trainer(
+    params: config_definitions.ExperimentConfig,
+    task: base_task.Task,
+    model_dir: str,
+    train: bool,
+    evaluate: bool,
+    checkpoint_exporter: Any = None):
+  """Create trainer."""
   del model_dir
   logging.info('Running default trainer.')
-  trainer = base_trainer.Trainer(params, task, train=train, evaluate=evaluate)
+  trainer = base_trainer.Trainer(
+      params, task, train=train, evaluate=evaluate,
+      checkpoint_exporter=checkpoint_exporter)
   return trainer
+
+
+@dataclasses.dataclass
+class ParseConfigOptions:
+  """Use this dataclass instead of FLAGS to customize parse_configuration()."""
+  experiment: str
+  config_file: List[str]
+  tpu: str = ''
+  tf_data_service: str = ''
+  params_override: str = ''
 
 
 def parse_configuration(flags_obj):
@@ -48,10 +71,18 @@ def parse_configuration(flags_obj):
     params = hyperparams.override_params_dict(
         params, config_file, is_strict=True)
 
-  # 3. Override the TPU address.
+  # 3. Override the TPU address and tf.data service address.
   params.override({
       'runtime': {
           'tpu': flags_obj.tpu,
+      },
+      'task': {
+          'train_data': {
+              'tf_data_service_address': flags_obj.tf_data_service,
+          },
+          'validation_data': {
+              'tf_data_service_address': flags_obj.tf_data_service,
+          }
       }
   })
 
@@ -122,10 +153,7 @@ def write_summary(summary_writer, global_step, eval_metrics):
   """Write evaluation metrics to TF summary."""
   numeric_dict = {}
   for name, value in eval_metrics.items():
-    if hasattr(value, 'numpy'):
-      numeric_dict[name] = value.numpy().astype(float)
-    else:
-      numeric_dict[name] = value
+    numeric_dict[name] = float(orbit.utils.get_value(value))
   with summary_writer.as_default():
     for name, value in numeric_dict.items():
       tf.summary.scalar(name, value, step=global_step)

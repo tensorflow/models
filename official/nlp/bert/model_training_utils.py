@@ -75,6 +75,13 @@ def _float_metric_value(metric):
   return metric.result().numpy().astype(float)
 
 
+def clip_by_global_norm_callback(grads_and_vars):
+  """Performs gradient clipping."""
+  grads, variables = zip(*grads_and_vars)
+  (clipped_grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+  return zip(clipped_grads, variables)
+
+
 def steps_to_run(current_step, steps_per_epoch, steps_per_loop):
   """Calculates steps to run on device."""
   if steps_per_loop <= 0:
@@ -126,7 +133,8 @@ def run_customized_training_loop(
     explicit_allreduce=False,
     pre_allreduce_callbacks=None,
     post_allreduce_callbacks=None,
-    train_summary_interval=0):
+    train_summary_interval=0,
+    allreduce_bytes_per_pack=0):
   """Run BERT pretrain model training using low-level API.
 
   Arguments:
@@ -194,6 +202,11 @@ def run_customized_training_loop(
         when explicit_allreduce=True.
       train_summary_interval: Step interval for training summaries. If the value
         is a negative number, then training summaries are not enabled.
+      allreduce_bytes_per_pack: A non-negative integer. Breaks collective
+        operations into packs of certain size. If it's zero, all gradients are
+        in one pack. Breaking gradient into packs could enable overlap between
+        allreduce and backprop computation. This flag only takes effect when
+        explicit_allreduce is set to True.'
 
   Returns:
       Trained model.
@@ -325,7 +338,8 @@ def run_customized_training_loop(
         grad_utils.minimize_using_explicit_allreduce(tape, optimizer, loss,
                                                      training_vars,
                                                      pre_allreduce_callbacks,
-                                                     post_allreduce_callbacks)
+                                                     post_allreduce_callbacks,
+                                                     allreduce_bytes_per_pack)
       else:
         if isinstance(optimizer,
                       tf.keras.mixed_precision.experimental.LossScaleOptimizer):

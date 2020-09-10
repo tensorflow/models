@@ -39,7 +39,7 @@ class InputExample(object):
                text_b=None,
                label=None,
                weight=None,
-               int_iden=None):
+               example_id=None):
     """Constructs a InputExample.
 
     Args:
@@ -53,15 +53,15 @@ class InputExample(object):
         examples, but not for test examples.
       weight: (Optional) float. The weight of the example to be used during
         training.
-      int_iden: (Optional) int. The int identification number of example in the
-        corpus.
+      example_id: (Optional) int. The int identification number of example in
+        the corpus.
     """
     self.guid = guid
     self.text_a = text_a
     self.text_b = text_b
     self.label = label
     self.weight = weight
-    self.int_iden = int_iden
+    self.example_id = example_id
 
 
 class InputFeatures(object):
@@ -74,14 +74,14 @@ class InputFeatures(object):
                label_id,
                is_real_example=True,
                weight=None,
-               int_iden=None):
+               example_id=None):
     self.input_ids = input_ids
     self.input_mask = input_mask
     self.segment_ids = segment_ids
     self.label_id = label_id
     self.is_real_example = is_real_example
     self.weight = weight
-    self.int_iden = int_iden
+    self.example_id = example_id
 
 
 class DataProcessor(object):
@@ -122,6 +122,54 @@ class DataProcessor(object):
       for line in reader:
         lines.append(line)
       return lines
+
+
+class AxProcessor(DataProcessor):
+  """Processor for the AX dataset (GLUE diagnostics dataset)."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    return ["contradiction", "entailment", "neutral"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "AX"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    text_a_index = 1 if set_type == "test" else 8
+    text_b_index = 2 if set_type == "test" else 9
+    examples = []
+    for i, line in enumerate(lines):
+      # Skip header.
+      if i == 0:
+        continue
+      guid = "%s-%s" % (set_type, self.process_text_fn(line[0]))
+      text_a = self.process_text_fn(line[text_a_index])
+      text_b = self.process_text_fn(line[text_b_index])
+      if set_type == "test":
+        label = "contradiction"
+      else:
+        label = self.process_text_fn(line[-1])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
 
 
 class ColaProcessor(DataProcessor):
@@ -1050,7 +1098,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     logging.info("segment_ids: %s", " ".join([str(x) for x in segment_ids]))
     logging.info("label: %s (id = %s)", example.label, str(label_id))
     logging.info("weight: %s", example.weight)
-    logging.info("int_iden: %s", str(example.int_iden))
+    logging.info("example_id: %s", example.example_id)
 
   feature = InputFeatures(
       input_ids=input_ids,
@@ -1059,7 +1107,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
       label_id=label_id,
       is_real_example=True,
       weight=example.weight,
-      int_iden=example.int_iden)
+      example_id=example.example_id)
 
   return feature
 
@@ -1102,8 +1150,10 @@ def file_based_convert_examples_to_features(examples,
         [int(feature.is_real_example)])
     if feature.weight is not None:
       features["weight"] = create_float_feature([feature.weight])
-    if feature.int_iden is not None:
-      features["int_iden"] = create_int_feature([feature.int_iden])
+    if feature.example_id is not None:
+      features["example_id"] = create_int_feature([feature.example_id])
+    else:
+      features["example_id"] = create_int_feature([ex_index])
 
     tf_example = tf.train.Example(features=tf.train.Features(feature=features))
     writer.write(tf_example.SerializeToString())

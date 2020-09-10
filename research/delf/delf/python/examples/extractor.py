@@ -43,18 +43,21 @@ def MakeExtractor(config):
   Raises:
     ValueError: if config is invalid.
   """
-  # Assert the configuration
-  if config.use_global_features and hasattr(
-      config, 'is_tf2_exported') and config.is_tf2_exported:
-    raise ValueError('use_global_features is incompatible with is_tf2_exported')
+  # Assert the configuration.
+  if not config.use_local_features and not config.use_global_features:
+    raise ValueError('Invalid config: at least one of '
+                     '{use_local_features, use_global_features} must be True')
 
   # Load model.
   model = tf.saved_model.load(config.model_path)
 
-  # Input/output end-points/tensors.
+  # Input image scales to use for extraction.
+  image_scales_tensor = tf.convert_to_tensor(list(config.image_scales))
+
+  # Input (feeds) and output (fetches) end-points. These are only needed when
+  # using a model that was exported using TF1.
   feeds = ['input_image:0', 'input_scales:0']
   fetches = []
-  image_scales_tensor = tf.convert_to_tensor(list(config.image_scales))
 
   # Custom configuration needed when local features are used.
   if config.use_local_features:
@@ -96,8 +99,14 @@ def MakeExtractor(config):
 
   # Custom configuration needed when global features are used.
   if config.use_global_features:
-    # Extra output end-point.
+    # Extra input/output end-points/tensors.
+    feeds.append('input_global_scales_ind:0')
     fetches.append('global_descriptors:0')
+    if config.delf_global_config.image_scales_ind:
+      global_scales_ind_tensor = tf.constant(
+          list(config.delf_global_config.image_scales_ind))
+    else:
+      global_scales_ind_tensor = tf.range(len(config.image_scales))
 
     # If using PCA, pre-load required parameters.
     global_pca_parameters = {}
@@ -168,9 +177,22 @@ def MakeExtractor(config):
     extracted_features = {}
     output = None
 
-    if config.use_local_features:
-      if hasattr(config, 'is_tf2_exported') and config.is_tf2_exported:
-        predict = model.signatures['serving_default']
+    if hasattr(config, 'is_tf2_exported') and config.is_tf2_exported:
+      predict = model.signatures['serving_default']
+      if config.use_local_features and config.use_global_features:
+        if config.use_global_features:
+          output_dict = predict(
+              input_image=image_tensor,
+              input_scales=image_scales_tensor,
+              input_max_feature_num=max_feature_num_tensor,
+              input_abs_thres=score_threshold_tensor,
+              input_global_scales_ind=global_scales_ind_tensor)
+          output = [
+              output_dict['boxes'], output_dict['features'],
+              output_dict['scales'], output_dict['scores'],
+              output_dict['global_descriptors']
+          ]
+      elif config.use_local_features:
         output_dict = predict(
             input_image=image_tensor,
             input_scales=image_scales_tensor,
@@ -181,23 +203,29 @@ def MakeExtractor(config):
             output_dict['scales'], output_dict['scores']
         ]
       else:
+        output_dict = predict(
+            input_image=image_tensor,
+            input_scales=image_scales_tensor,
+            input_global_scales_ind=global_scales_ind_tensor)
+        output = [output_dict['global_descriptors']]
+    else:
+      if config.use_local_features and config.use_global_features:
+        output = model(image_tensor, image_scales_tensor,
+                       score_threshold_tensor, max_feature_num_tensor,
+                       global_scales_ind_tensor)
+      elif config.use_local_features:
         output = model(image_tensor, image_scales_tensor,
                        score_threshold_tensor, max_feature_num_tensor)
-    else:
-      output = model(image_tensor, image_scales_tensor)
+      else:
+        output = model(image_tensor, image_scales_tensor,
+                       global_scales_ind_tensor)
 
     # Post-process extracted features: normalize, PCA (optional), pooling.
     if config.use_global_features:
       raw_global_descriptors = output[-1]
-      if config.delf_global_config.image_scales_ind:
-        raw_global_descriptors_selected_scales = tf.gather(
-            raw_global_descriptors,
-            list(config.delf_global_config.image_scales_ind))
-      else:
-        raw_global_descriptors_selected_scales = raw_global_descriptors
       global_descriptors_per_scale = feature_extractor.PostProcessDescriptors(
-          raw_global_descriptors_selected_scales,
-          config.delf_global_config.use_pca, global_pca_parameters)
+          raw_global_descriptors, config.delf_global_config.use_pca,
+          global_pca_parameters)
       unnormalized_global_descriptor = tf.reduce_sum(
           global_descriptors_per_scale, axis=0, name='sum_pooling')
       global_descriptor = tf.nn.l2_normalize(

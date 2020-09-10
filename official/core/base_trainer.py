@@ -42,7 +42,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
                train: bool = True,
                evaluate: bool = True,
                model=None,
-               optimizer=None):
+               optimizer=None,
+               checkpoint_exporter=None):
     """Initialize common trainer for TensorFlow models.
 
     Args:
@@ -56,6 +57,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
         building model using task.build_model(). Default to None.
       optimizer: tf.keras.optimizers.Optimizer instance. If provided, it will
         used instead of the optimizer from config. Default to None.
+      checkpoint_exporter: an object that has the `maybe_export_checkpoint`
+        interface.
     """
     # Gets the current distribution strategy. If not inside any strategy scope,
     # it gets a single-replica no-op strategy.
@@ -72,6 +75,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
           opt_factory.build_learning_rate())
     else:
       self._optimizer = optimizer
+
+    self._checkpoint_exporter = checkpoint_exporter
 
     # Configuring optimizer when loss_scale is set in runtime config. This helps
     # avoiding overflow/underflow for float16 computations.
@@ -235,6 +240,14 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     if aggregated_logs:
       metrics = self.task.reduce_aggregated_logs(aggregated_logs)
       logs.update(metrics)
+
+    if self._checkpoint_exporter:
+      self._checkpoint_exporter.maybe_export_checkpoint(
+          self.checkpoint, logs, self.global_step.numpy())
+      metric_name = self.config.trainer.best_checkpoint_eval_metric
+      logs['best_' + metric_name] = self._checkpoint_exporter.best_ckpt_logs[
+          metric_name]
+
     return logs
 
   def eval_reduce(self, state=None, step_outputs=None):

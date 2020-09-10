@@ -15,5 +15,6 @@
 """All necessary imports for registration."""
 
 # pylint: disable=unused-import
-from official.nlp import tasks
+from official.nlp import tasks as nlp_task
 from official.utils.testing import mock_task
+from official.vision import beta

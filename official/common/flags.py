@@ -75,3 +75,6 @@ def define_flags():
       help='The Cloud TPU to use for training. This should be either the name '
       'used when creating the Cloud TPU, or a grpc://ip.address.of.tpu:8470 '
       'url.')
+
+  flags.DEFINE_string(
+      'tf_data_service', default=None, help='The tf.data service address')

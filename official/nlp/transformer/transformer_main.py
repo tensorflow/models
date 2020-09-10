@@ -213,10 +213,10 @@ class TransformerTask(object):
         train_loss_metric = tf.keras.metrics.Mean(
             "training_loss", dtype=tf.float32)
         if params["enable_tensorboard"]:
-          summary_writer = tf.compat.v2.summary.create_file_writer(
-              flags_obj.model_dir)
+          summary_writer = tf.summary.create_file_writer(
+              os.path.join(flags_obj.model_dir, "summary"))
         else:
-          summary_writer = tf.compat.v2.summary.create_noop_writer()
+          summary_writer = tf.summary.create_noop_writer()
         train_metrics = [train_loss_metric]
         if params["enable_metrics_in_training"]:
           train_metrics = train_metrics + model.metrics
@@ -322,8 +322,8 @@ class TransformerTask(object):
 
           if params["enable_tensorboard"]:
             for metric_obj in train_metrics:
-              tf.compat.v2.summary.scalar(metric_obj.name, metric_obj.result(),
-                                          current_step)
+              tf.summary.scalar(metric_obj.name, metric_obj.result(),
+                                current_step)
               summary_writer.flush()
 
         for cb in callbacks:
@@ -415,7 +415,7 @@ class TransformerTask(object):
       ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
       callbacks.append(
           tf.keras.callbacks.ModelCheckpoint(
-              ckpt_full_path, save_weights_only=True))
+              ckpt_full_path, save_weights_only=params["save_weights_only"]))
     return callbacks
 
   def _load_weights_if_possible(self, model, init_weight_path=None):
