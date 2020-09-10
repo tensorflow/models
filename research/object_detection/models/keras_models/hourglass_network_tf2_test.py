@@ -78,6 +78,12 @@ class HourglassFeatureExtractorTest(tf.test.TestCase, parameterized.TestCase):
     output = layer(np.zeros((2, 32, 32, 8), dtype=np.float32))
     self.assertEqual(output.shape, (2, 8, 8, 8))
 
+  def test_input_conv_block(self):
+    layer = hourglass.InputConvBlock(
+        out_channels_initial_conv=4, out_channels_residual_block=8)
+    output = layer(np.zeros((2, 32, 32, 8), dtype=np.float32))
+    self.assertEqual(output.shape, (2, 32, 32, 8))
+
   def test_encoder_decoder_block(self):
 
     layer = hourglass.EncoderDecoderBlock(
