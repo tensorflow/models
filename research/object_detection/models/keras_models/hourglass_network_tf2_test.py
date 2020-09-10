@@ -96,5 +96,30 @@ class HourglassFeatureExtractorTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(outputs[1].shape, (2, 16, 16, 6))
 
 
+@unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
+class HourglassDepthTest(tf.test.TestCase):
+
+  def test_hourglass_104(self):
+
+    net = hourglass.hourglass_104()
+    self.assertEqual(hourglass.hourglass_depth(net), 104)
+
+  def test_hourglass_10(self):
+    net = hourglass.hourglass_10(2)
+    self.assertEqual(hourglass.hourglass_depth(net), 10)
+
+  def test_hourglass_20(self):
+    net = hourglass.hourglass_20(2)
+    self.assertEqual(hourglass.hourglass_depth(net), 20)
+
+  def test_hourglass_32(self):
+    net = hourglass.hourglass_32(2)
+    self.assertEqual(hourglass.hourglass_depth(net), 32)
+
+  def test_hourglass_52(self):
+    net = hourglass.hourglass_52(2)
+    self.assertEqual(hourglass.hourglass_depth(net), 52)
+
+
 if __name__ == '__main__':
   tf.test.main()
