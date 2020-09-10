@@ -175,7 +175,7 @@ python3 train.py \
   --delg_global_features
 ```
 
-### Hyperparameters Guidelines
+### Hyperparameter Guidelines
 
 In order to improve the convergence of the training, the following
 hyperparameter values have been tested and validated on the following
