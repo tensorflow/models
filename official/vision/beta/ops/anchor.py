@@ -17,12 +17,12 @@
 import collections
 # Import libraries
 import tensorflow as tf
+from official.vision import keras_cv
 from official.vision.beta.ops.experimental import anchor_generator
 from official.vision.detection.utils.object_detection import argmax_matcher
 from official.vision.detection.utils.object_detection import balanced_positive_negative_sampler
 from official.vision.detection.utils.object_detection import box_list
 from official.vision.detection.utils.object_detection import faster_rcnn_box_coder
-from official.vision.detection.utils.object_detection import region_similarity_calculator
 from official.vision.detection.utils.object_detection import target_assigner
 
 
@@ -135,7 +135,7 @@ class AnchorLabeler(object):
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
     """
-    similarity_calc = region_similarity_calculator.IouSimilarity()
+    similarity_calc = keras_cv.ops.IouSimilarity()
     matcher = argmax_matcher.ArgMaxMatcher(
         match_threshold,
         unmatched_threshold=unmatched_threshold,

@@ -12,7 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Keras-NLP package definition."""
-# pylint: disable=wildcard-import
-from official.vision.keras_cv.losses import *
-from official.vision.keras_cv.ops import *
+"""Keras-CV layers package definition."""
+from official.vision.keras_cv.ops.iou_similarity import IouSimilarity
