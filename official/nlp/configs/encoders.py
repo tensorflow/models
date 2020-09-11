@@ -79,8 +79,6 @@ class MobileBertEncoderConfig(hyperparams.Config):
       MobileBERT paper. 'layer_norm' is used for the teacher model.
     classifier_activation: if using the tanh activation for the final
       representation of the [CLS] token in fine-tuning.
-    return_all_layers: if return all layer outputs.
-    return_attention_score: if return attention scores for each layer.
   """
   word_vocab_size: int = 30522
   word_embed_size: int = 128
@@ -99,8 +97,6 @@ class MobileBertEncoderConfig(hyperparams.Config):
   num_feedforward_networks: int = 1
   normalization_type: str = "layer_norm"
   classifier_activation: bool = True
-  return_all_layers: bool = False
-  return_attention_score: bool = False
 
 
 @dataclasses.dataclass
@@ -209,9 +205,7 @@ def build_encoder(
         key_query_shared_bottleneck=encoder_cfg.key_query_shared_bottleneck,
         num_feedforward_networks=encoder_cfg.num_feedforward_networks,
         normalization_type=encoder_cfg.normalization_type,
-        classifier_activation=encoder_cfg.classifier_activation,
-        return_all_layers=encoder_cfg.return_all_layers,
-        return_attention_score=encoder_cfg.return_attention_score)
+        classifier_activation=encoder_cfg.classifier_activation)
 
   if encoder_type == "albert":
     return encoder_cls(
