@@ -130,7 +130,7 @@ class DetectionFromImageModule(DetectionInferenceModule):
     """
     if zipped_side_inputs is None:
       zipped_side_inputs = []
-    sig = [tf.TensorSpec(shape=[1, None, None, 3],
+    sig = [tf.TensorSpec(shape=[None, None, None, 3],
                          dtype=tf.uint8,
                          name='input_tensor')]
     if use_side_inputs:
@@ -154,7 +154,7 @@ class DetectionFromFloatImageModule(DetectionInferenceModule):
 
   @tf.function(
       input_signature=[
-          tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.float32)])
+          tf.TensorSpec(shape=[None, None, None, 3], dtype=tf.float32)])
   def __call__(self, input_tensor):
     return self._run_inference_on_images(input_tensor)
 
@@ -162,7 +162,7 @@ class DetectionFromFloatImageModule(DetectionInferenceModule):
 class DetectionFromEncodedImageModule(DetectionInferenceModule):
   """Detection Inference Module for encoded image string inputs."""
 
-  @tf.function(input_signature=[tf.TensorSpec(shape=[1], dtype=tf.string)])
+  @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.string)])
   def __call__(self, input_tensor):
     with tf.device('cpu:0'):
       image = tf.map_fn(
@@ -177,7 +177,7 @@ class DetectionFromEncodedImageModule(DetectionInferenceModule):
 class DetectionFromTFExampleModule(DetectionInferenceModule):
   """Detection Inference Module for TF.Example inputs."""
 
-  @tf.function(input_signature=[tf.TensorSpec(shape=[1], dtype=tf.string)])
+  @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.string)])
   def __call__(self, input_tensor):
     with tf.device('cpu:0'):
       image = tf.map_fn(
