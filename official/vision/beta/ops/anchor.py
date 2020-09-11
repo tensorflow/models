@@ -18,7 +18,6 @@ import collections
 # Import libraries
 import tensorflow as tf
 from official.vision import keras_cv
-from official.vision.beta.ops.experimental import anchor_generator
 from official.vision.detection.utils.object_detection import argmax_matcher
 from official.vision.detection.utils.object_detection import balanced_positive_negative_sampler
 from official.vision.detection.utils.object_detection import box_list
@@ -318,7 +317,7 @@ def build_anchor_generator(min_level, max_level, num_scales, aspect_ratios,
     stride = 2**level
     strides[level] = stride
     anchor_sizes[level] = anchor_size * stride
-  anchor_gen = anchor_generator.AnchorGenerator(
+  anchor_gen = keras_cv.ops.AnchorGenerator(
       anchor_sizes=anchor_sizes,
       scales=scales,
       aspect_ratios=aspect_ratios,

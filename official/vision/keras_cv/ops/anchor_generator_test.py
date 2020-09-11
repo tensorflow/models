@@ -18,7 +18,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.vision.beta.ops.experimental import anchor_generator
+from official.vision.keras_cv.ops import anchor_generator
 
 
 class AnchorGeneratorTest(parameterized.TestCase, tf.test.TestCase):
