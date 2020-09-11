@@ -101,18 +101,18 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
     self.max_sequence_length = max_sequence_length
     self.dropout_rate = dropout_rate
 
-    self.word_embedding = layers.OnDeviceEmbedding(
+    self.word_embedding = keras_nlp.layers.OnDeviceEmbedding(
         self.word_vocab_size,
         self.word_embed_size,
         initializer=initializer,
         name='word_embedding')
-    self.type_embedding = layers.OnDeviceEmbedding(
+    self.type_embedding = keras_nlp.layers.OnDeviceEmbedding(
         self.type_vocab_size,
         self.output_embed_size,
         use_one_hot=True,
         initializer=initializer,
         name='type_embedding')
-    self.pos_embedding = keras_nlp.PositionEmbedding(
+    self.pos_embedding = keras_nlp.layers.PositionEmbedding(
         max_length=max_sequence_length,
         initializer=initializer,
         name='position_embedding')

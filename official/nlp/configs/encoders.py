@@ -26,7 +26,7 @@ import tensorflow as tf
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
-from official.nlp.modeling import layers
+from official.nlp import keras_nlp
 from official.nlp.modeling import networks
 
 
@@ -137,10 +137,11 @@ ENCODER_CLS = {
 
 
 @gin.configurable
-def build_encoder(config: EncoderConfig,
-                  embedding_layer: Optional[layers.OnDeviceEmbedding] = None,
-                  encoder_cls=None,
-                  bypass_config: bool = False):
+def build_encoder(
+    config: EncoderConfig,
+    embedding_layer: Optional[keras_nlp.layers.OnDeviceEmbedding] = None,
+    encoder_cls=None,
+    bypass_config: bool = False):
   """Instantiate a Transformer encoder network from EncoderConfig.
 
   Args:

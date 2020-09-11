@@ -142,12 +142,12 @@ class Seq2SeqTransformer(tf.keras.Model):
     self._beam_size = beam_size
     self._alpha = alpha
     self._dtype = dtype
-    self.embedding_lookup = layers.OnDeviceEmbedding(
+    self.embedding_lookup = keras_nlp.layers.OnDeviceEmbedding(
         vocab_size=self._vocab_size,
         embedding_width=self._embedding_width,
         initializer=tf.random_normal_initializer(
             mean=0., stddev=self._embedding_width**-0.5),
-        use_scale=True)
+        scale_factor=self._embedding_width**0.5)
     self.encoder_layer = encoder_layer
     self.decoder_layer = decoder_layer
     self.position_embedding = layers.RelativePositionEmbedding(
@@ -472,7 +472,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
     self.encoder_layers = []
     for i in range(self.num_layers):
       self.encoder_layers.append(
-          keras_nlp.TransformerEncoderBlock(
+          keras_nlp.layers.TransformerEncoderBlock(
               num_attention_heads=self.num_attention_heads,
               inner_dim=self._intermediate_size,
               inner_activation=self._activation,
