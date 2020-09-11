@@ -111,21 +111,34 @@ class HourglassDepthTest(tf.test.TestCase):
     self.assertEqual(hourglass.hourglass_depth(net), 104)
 
   def test_hourglass_10(self):
-    net = hourglass.hourglass_10(2)
+    net = hourglass.hourglass_10(2, downsample=False)
     self.assertEqual(hourglass.hourglass_depth(net), 10)
 
+    outputs = net(tf.zeros((2, 32, 32, 3)))
+    self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
+
   def test_hourglass_20(self):
-    net = hourglass.hourglass_20(2)
+    net = hourglass.hourglass_20(2, downsample=False)
     self.assertEqual(hourglass.hourglass_depth(net), 20)
 
+    outputs = net(tf.zeros((2, 32, 32, 3)))
+    self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
+
   def test_hourglass_32(self):
-    net = hourglass.hourglass_32(2)
+    net = hourglass.hourglass_32(2, downsample=False)
     self.assertEqual(hourglass.hourglass_depth(net), 32)
 
+    outputs = net(tf.zeros((2, 32, 32, 3)))
+    self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
+
   def test_hourglass_52(self):
-    net = hourglass.hourglass_52(2)
+    net = hourglass.hourglass_52(2, downsample=False)
     self.assertEqual(hourglass.hourglass_depth(net), 52)
+
+    outputs = net(tf.zeros((2, 32, 32, 3)))
+    self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
 
 
 if __name__ == '__main__':
   tf.test.main()
+
