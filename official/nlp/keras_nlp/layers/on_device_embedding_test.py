@@ -192,7 +192,8 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
     vocab_size = 31
     embedding_width = 27
     test_layer = on_device_embedding.OnDeviceEmbedding(
-        vocab_size=vocab_size, embedding_width=embedding_width, use_scale=True)
+        vocab_size=vocab_size, embedding_width=embedding_width,
+        scale_factor=embedding_width**0.5)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
     input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
