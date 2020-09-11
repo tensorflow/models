@@ -104,7 +104,7 @@ class Anchor(object):
       feat_size_y = tf.cast(self.image_size[0] / 2 ** level, tf.int32)
       feat_size_x = tf.cast(self.image_size[1] / 2 ** level, tf.int32)
       steps = feat_size_y * feat_size_x * self.anchors_per_location
-      unpacked_labels[level] = tf.reshape(
+      unpacked_labels[str(level)] = tf.reshape(
           labels[count:count + steps], [feat_size_y, feat_size_x, -1])
       count += steps
     return unpacked_labels
@@ -315,8 +315,8 @@ def build_anchor_generator(min_level, max_level, num_scales, aspect_ratios,
     scales.append(2**(scale / float(num_scales)))
   for level in range(min_level, max_level + 1):
     stride = 2**level
-    strides[level] = stride
-    anchor_sizes[level] = anchor_size * stride
+    strides[str(level)] = stride
+    anchor_sizes[str(level)] = anchor_size * stride
   anchor_gen = keras_cv.ops.AnchorGenerator(
       anchor_sizes=anchor_sizes,
       scales=scales,

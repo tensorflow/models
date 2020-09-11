@@ -133,16 +133,16 @@ class MultiScaleAnchorGeneratorTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
       # Multi scale anchor.
       (5, 6, [1.0], {
-          5: [[[-16., -16., 48., 48.], [-16., 16., 48., 80.]],
-              [[16., -16., 80., 48.], [16., 16., 80., 80.]]],
-          6: [[[-32, -32, 96, 96]]]
+          '5': [[[-16., -16., 48., 48.], [-16., 16., 48., 80.]],
+                [[16., -16., 80., 48.], [16., 16., 80., 80.]]],
+          '6': [[[-32, -32, 96, 96]]]
       }),)
   def testAnchorGenerationDict(self, min_level, max_level, aspect_ratios,
                                expected_boxes):
     image_size = [64, 64]
     levels = range(min_level, max_level + 1)
-    anchor_sizes = dict((level, 2**(level + 1)) for level in levels)
-    strides = dict((level, 2**level) for level in levels)
+    anchor_sizes = dict((str(level), 2**(level + 1)) for level in levels)
+    strides = dict((str(level), 2**level) for level in levels)
     anchor_gen = anchor_generator.AnchorGenerator(
         anchor_sizes=anchor_sizes,
         scales=[1.],

@@ -69,10 +69,10 @@ class MultiLevelCropAndResizeTest(tf.test.TestCase):
     for level in range(min_level, max_level + 1):
       feat_size = int(input_size / 2**level)
 
-      features[level] = tf.range(
+      features[str(level)] = tf.range(
           batch_size * feat_size * feat_size * num_filters, dtype=tf.float32)
-      features[level] = tf.reshape(
-          features[level], [batch_size, feat_size, feat_size, num_filters])
+      features[str(level)] = tf.reshape(
+          features[str(level)], [batch_size, feat_size, feat_size, num_filters])
     boxes = tf.constant([
         [[0, 0, 2, 2]],
     ], dtype=tf.float32)
@@ -135,10 +135,10 @@ class MultiLevelCropAndResizeTest(tf.test.TestCase):
     for level in range(min_level, max_level + 1):
       feat_size = int(input_size / 2**level)
 
-      features[level] = tf.range(
+      features[str(level)] = tf.range(
           batch_size * feat_size * feat_size * num_filters, dtype=tf.float32)
-      features[level] = tf.reshape(
-          features[level], [batch_size, feat_size, feat_size, num_filters])
+      features[str(level)] = tf.reshape(
+          features[str(level)], [batch_size, feat_size, feat_size, num_filters])
     boxes = tf.constant([
         [[0, 0, 2, 3]],
     ], dtype=tf.float32)
@@ -164,10 +164,10 @@ class MultiLevelCropAndResizeTest(tf.test.TestCase):
     for level in range(min_level, max_level + 1):
       feat_size = int(input_size / 2**level)
 
-      features[level] = tf.range(
+      features[str(level)] = tf.range(
           batch_size * feat_size * feat_size * num_filters, dtype=tf.float32)
-      features[level] = tf.reshape(
-          features[level], [batch_size, feat_size, feat_size, num_filters])
+      features[str(level)] = tf.reshape(
+          features[str(level)], [batch_size, feat_size, feat_size, num_filters])
     boxes = tf.constant([
         [[0, 0, 2, 2], [0, 0, 2, 3]],
     ], dtype=tf.float32)
@@ -191,7 +191,7 @@ class MultiLevelCropAndResizeTest(tf.test.TestCase):
     for level in range(min_level, max_level + 1):
       feat_size = int(input_size / 2**level)
 
-      features[level] = float(level) * tf.ones(
+      features[str(level)] = float(level) * tf.ones(
           [batch_size, feat_size, feat_size, num_filters], dtype=tf.float32)
     boxes = tf.constant(
         [
@@ -227,7 +227,7 @@ class MultiLevelCropAndResizeTest(tf.test.TestCase):
       features = {}
       for level in range(min_level, max_level + 1):
         feat_size = int(input_size / 2**level)
-        features[level] = tf.constant(
+        features[str(level)] = tf.constant(
             np.reshape(
                 np.arange(
                     batch_size * feat_size * feat_size * num_filters,
