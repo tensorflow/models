@@ -124,7 +124,7 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
 
     # Uses the first anchors as ground truth. The ground truth should map to
     # two anchors with two intermediate scales at the same location.
-    gt_boxes = anchor_boxes[3][0:1, 0, 0:4]
+    gt_boxes = anchor_boxes['3'][0:1, 0, 0:4]
     gt_classes = tf.constant([[ground_truth_class_id]], dtype=tf.float32)
     (cls_targets, box_targets, _,
      box_weights) = anchor_labeler.label_anchors(
@@ -137,7 +137,7 @@ class AnchorTest(parameterized.TestCase, tf.test.TestCase):
     box_weights = box_weights.numpy()
 
     anchor_locations = np.vstack(
-        np.where(cls_targets[min_level] > -1)).transpose()
+        np.where(cls_targets[str(min_level)] > -1)).transpose()
     self.assertAllClose(expected_anchor_locations, anchor_locations)
     # Two anchor boxes on min_level got matched to the gt_boxes.
     self.assertAllClose(tf.reduce_sum(box_weights), 2)

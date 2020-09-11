@@ -95,7 +95,7 @@ def _multilevel_propose_rois(raw_boxes,
     roi_scores = []
     image_shape = tf.expand_dims(image_shape, axis=1)
     for level in sorted(raw_scores.keys()):
-      with tf.name_scope('level_%d' % level):
+      with tf.name_scope('level_%s' % level):
         _, feature_h, feature_w, num_anchors_per_location = (
             raw_scores[level].get_shape().as_list())
 

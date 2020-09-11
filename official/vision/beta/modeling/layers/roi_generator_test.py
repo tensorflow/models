@@ -30,12 +30,12 @@ class MultilevelProposeRoisTest(tf.test.TestCase):
          [[[2, 2, 4, 4], [3, 3, 6, 6]],
           [[3.1, 3.1, 6.1, 6.1], [1, 1, 8, 8]]]])
     rpn_boxes = {
-        2: tf.constant(rpn_boxes_np, dtype=tf.float32)
+        '2': tf.constant(rpn_boxes_np, dtype=tf.float32)
     }
     rpn_scores_np = np.array(
         [[[[0.6], [0.9]], [[0.2], [0.3]]], [[[0.1], [0.8]], [[0.3], [0.5]]]])
     rpn_scores = {
-        2: tf.constant(rpn_scores_np, dtype=tf.float32)
+        '2': tf.constant(rpn_scores_np, dtype=tf.float32)
     }
     anchor_boxes_np = np.array(
         [[[[0, 0, 10, 10], [0.01, 0.01, 9.9, 9.9]],
@@ -43,7 +43,7 @@ class MultilevelProposeRoisTest(tf.test.TestCase):
          [[[2, 2, 4, 4], [3, 3, 6, 6]],
           [[3.1, 3.1, 6.1, 6.1], [1, 1, 8, 8]]]])
     anchor_boxes = {
-        2: tf.constant(anchor_boxes_np, dtype=tf.float32)
+        '2': tf.constant(anchor_boxes_np, dtype=tf.float32)
     }
     image_shape = tf.constant([[20, 20], [20, 20]], dtype=tf.int32)
 
@@ -108,15 +108,15 @@ class MultilevelProposeRoisTest(tf.test.TestCase):
     rpn_boxes_2_np = np.array(
         [[[[0, 0, 10.01, 10.01]]], [[[2, 2, 4.5, 4.5]]]])
     rpn_boxes = {
-        2: tf.constant(rpn_boxes_1_np, dtype=tf.float32),
-        3: tf.constant(rpn_boxes_2_np, dtype=tf.float32),
+        '2': tf.constant(rpn_boxes_1_np, dtype=tf.float32),
+        '3': tf.constant(rpn_boxes_2_np, dtype=tf.float32),
     }
     rpn_scores_1_np = np.array(
         [[[[0.6], [0.9]], [[0.2], [0.3]]], [[[0.1], [0.8]], [[0.3], [0.5]]]])
     rpn_scores_2_np = np.array([[[[0.95]]], [[[0.99]]]])
     rpn_scores = {
-        2: tf.constant(rpn_scores_1_np, dtype=tf.float32),
-        3: tf.constant(rpn_scores_2_np, dtype=tf.float32),
+        '2': tf.constant(rpn_scores_1_np, dtype=tf.float32),
+        '3': tf.constant(rpn_scores_2_np, dtype=tf.float32),
     }
     anchor_boxes_1_np = np.array(
         [[[[0, 0, 10, 10], [0.01, 0.01, 9.99, 9.99]],
@@ -126,8 +126,8 @@ class MultilevelProposeRoisTest(tf.test.TestCase):
     anchor_boxes_2_np = np.array(
         [[[[0, 0, 10.01, 10.01]]], [[[2, 2, 4.5, 4.5]]]])
     anchor_boxes = {
-        2: tf.constant(anchor_boxes_1_np, dtype=tf.float32),
-        3: tf.constant(anchor_boxes_2_np, dtype=tf.float32),
+        '2': tf.constant(anchor_boxes_1_np, dtype=tf.float32),
+        '3': tf.constant(anchor_boxes_2_np, dtype=tf.float32),
     }
     image_shape = tf.constant([[20, 20], [20, 20]], dtype=tf.int32)
 
@@ -208,3 +208,6 @@ class MultilevelROIGeneratorTest(tf.test.TestCase):
         generator.get_config())
 
     self.assertAllEqual(generator.get_config(), new_generator.get_config())
+
+if __name__ == '__main__':
+  tf.test.main()

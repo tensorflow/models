@@ -153,20 +153,20 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
       cls_outputs = model_outputs['cls_outputs']
       box_outputs = model_outputs['box_outputs']
       for level in range(min_level, max_level + 1):
-        self.assertIn(level, cls_outputs)
-        self.assertIn(level, box_outputs)
+        self.assertIn(str(level), cls_outputs)
+        self.assertIn(str(level), box_outputs)
         self.assertAllEqual([
             2,
             image_size[0] // 2**level,
             image_size[1] // 2**level,
             num_classes * num_anchors_per_location
-        ], cls_outputs[level].numpy().shape)
+        ], cls_outputs[str(level)].numpy().shape)
         self.assertAllEqual([
             2,
             image_size[0] // 2**level,
             image_size[1] // 2**level,
             4 * num_anchors_per_location
-        ], box_outputs[level].numpy().shape)
+        ], box_outputs[str(level)].numpy().shape)
     else:
       self.assertIn('detection_boxes', model_outputs)
       self.assertIn('detection_scores', model_outputs)
@@ -220,3 +220,4 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
 
 if __name__ == '__main__':
   tf.test.main()
+

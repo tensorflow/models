@@ -189,7 +189,7 @@ class EfficientNet(tf.keras.Model):
       x = self._block_group(
           inputs=x, specs=specs, name='block_group_{}'.format(i))
       if specs.is_output:
-        endpoints[endpoint_level] = x
+        endpoints[str(endpoint_level)] = x
         endpoint_level += 1
 
     # Build output specs for downstream tasks.
@@ -209,7 +209,7 @@ class EfficientNet(tf.keras.Model):
     x = self._norm(
         axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
             x)
-    endpoints[endpoint_level] = tf_utils.get_activation(activation)(x)
+    endpoints[str(endpoint_level)] = tf_utils.get_activation(activation)(x)
 
     super(EfficientNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)

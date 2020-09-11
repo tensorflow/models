@@ -65,19 +65,19 @@ class RetinaNetModel(tf.keras.Model):
         in the batch may be resized into different shapes before padding to the
         fixed size.
       anchor_boxes: a dict of tensors which includes multilevel anchors.
-        - key: `int`, the level of the multilevel predictions.
+        - key: `str`, the level of the multilevel predictions.
         - values: `Tensor`, the anchor coordinates of a particular feature
             level, whose shape is [height_l, width_l, num_anchors_per_location].
       training: `bool`, indicating whether it is in training mode.
 
     Returns:
       scores: a dict of tensors which includes scores of the predictions.
-        - key: `int`, the level of the multilevel predictions.
+        - key: `str`, the level of the multilevel predictions.
         - values: `Tensor`, the box scores predicted from a particular feature
             level, whose shape is
             [batch, height_l, width_l, num_classes * num_anchors_per_location].
       boxes: a dict of tensors which includes coordinates of the predictions.
-        - key: `int`, the level of the multilevel predictions.
+        - key: `str`, the level of the multilevel predictions.
         - values: `Tensor`, the box coordinates predicted from a particular
             feature level, whose shape is
             [batch, height_l, width_l, 4 * num_anchors_per_location].

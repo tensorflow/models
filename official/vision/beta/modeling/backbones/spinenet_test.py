@@ -54,10 +54,10 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
     endpoints = model(inputs)
 
     for l in range(min_level, max_level + 1):
-      self.assertIn(l, endpoints.keys())
+      self.assertIn(str(l), endpoints.keys())
       self.assertAllEqual(
           [1, input_size / 2**l, input_size / 2**l, endpoints_num_filters],
-          endpoints[l].shape.as_list())
+          endpoints[str(l)].shape.as_list())
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
