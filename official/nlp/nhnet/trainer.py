@@ -27,13 +27,13 @@ from absl import flags
 from absl import logging
 from six.moves import zip
 import tensorflow as tf
+from official.common import distribute_utils
 from official.modeling.hyperparams import params_dict
 from official.nlp.nhnet import evaluation
 from official.nlp.nhnet import input_pipeline
 from official.nlp.nhnet import models
 from official.nlp.nhnet import optimizer
 from official.nlp.transformer import metrics as transformer_metrics
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
@@ -185,7 +185,7 @@ def run():
   if FLAGS.enable_mlir_bridge:
     tf.config.experimental.enable_mlir_bridge()
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy, tpu_address=FLAGS.tpu)
   if strategy:
     logging.info("***** Number of cores used : %d",

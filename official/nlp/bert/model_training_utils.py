@@ -25,8 +25,8 @@ import tempfile
 from absl import logging
 import tensorflow as tf
 from tensorflow.python.util import deprecation
+from official.common import distribute_utils
 from official.staging.training import grad_utils
-from official.utils.misc import distribution_utils
 
 _SUMMARY_TXT = 'training_summary.txt'
 _MIN_SUMMARY_STEPS = 10
@@ -266,7 +266,7 @@ def run_customized_training_loop(
   train_iterator = _get_input_iterator(train_input_fn, strategy)
   eval_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
 
-  with distribution_utils.get_strategy_scope(strategy):
+  with distribute_utils.get_strategy_scope(strategy):
     # To correctly place the model weights on accelerators,
     # model and optimizer should be created in scope.
     model, sub_model = model_fn()

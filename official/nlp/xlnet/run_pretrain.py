@@ -23,13 +23,13 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 # pylint: disable=unused-import
+from official.common import distribute_utils
 from official.nlp.xlnet import common_flags
 from official.nlp.xlnet import data_utils
 from official.nlp.xlnet import optimization
 from official.nlp.xlnet import training_utils
 from official.nlp.xlnet import xlnet_config
 from official.nlp.xlnet import xlnet_modeling as modeling
-from official.utils.misc import distribution_utils
 
 flags.DEFINE_integer(
     "num_predict",
@@ -72,7 +72,7 @@ def get_pretrainxlnet_model(model_config, run_config):
 def main(unused_argv):
   del unused_argv
   num_hosts = 1
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.strategy_type,
       tpu_address=FLAGS.tpu)
   if FLAGS.strategy_type == "tpu":
