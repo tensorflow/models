@@ -15,8 +15,6 @@
 # ==============================================================================
 """Executes benchmark testing for bert pretraining."""
 # pylint: disable=line-too-long
-from __future__ import print_function
-
 import json
 import os
 import time
@@ -24,14 +22,14 @@ from typing import Optional
 
 from absl import flags
 from absl import logging
-import tensorflow as tf  # pylint: disable=g-bad-import-order
+import tensorflow as tf
 
 from official.benchmark import benchmark_wrappers
 from official.benchmark import bert_benchmark_utils
 from official.benchmark import owner_utils
+from official.common import distribute_utils
 from official.nlp.bert import run_pretraining
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 
 # Pretrain masked lanauge modeling accuracy range:
 MIN_MLM_ACCURACY = 0.635
@@ -85,13 +83,13 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
       A `tf.distribute.DistibutionStrategy` object.
     """
     if self.tpu or ds_type == 'tpu':
-      return distribution_utils.get_distribution_strategy(
+      return distribute_utils.get_distribution_strategy(
           distribution_strategy='tpu', tpu_address=self.tpu)
     elif ds_type == 'multi_worker_mirrored':
       # Configures cluster spec for multi-worker distribution strategy.
-      _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
-                                               FLAGS.task_index)
-    return distribution_utils.get_distribution_strategy(
+      _ = distribute_utils.configure_cluster(FLAGS.worker_hosts,
+                                             FLAGS.task_index)
+    return distribute_utils.get_distribution_strategy(
         distribution_strategy=ds_type,
         num_gpus=FLAGS.num_gpus,
         all_reduce_alg=FLAGS.all_reduce_alg)

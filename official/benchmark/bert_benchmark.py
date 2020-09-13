@@ -14,29 +14,22 @@
 # ==============================================================================
 """Executes BERT benchmarks and accuracy tests."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import functools
 import json
 import math
 import os
 import time
 
-# pylint: disable=g-bad-import-order
-
 from absl import flags
 from absl.testing import flagsaver
 import tensorflow as tf
-# pylint: enable=g-bad-import-order
 
+from official.benchmark import benchmark_wrappers
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.benchmark import owner_utils
+from official.common import distribute_utils
 from official.nlp.bert import configs
 from official.nlp.bert import run_classifier
-from official.utils.misc import distribution_utils
-from official.benchmark import benchmark_wrappers
 
 # pylint: disable=line-too-long
 PRETRAINED_CHECKPOINT_PATH = 'gs://cloud-tpu-checkpoints/bert/keras_bert/uncased_L-24_H-1024_A-16/bert_model.ckpt'
@@ -76,10 +69,10 @@ class BertClassifyBenchmarkBase(benchmark_utils.BertBenchmarkBase):
     eval_steps = int(
         math.ceil(input_meta_data['eval_data_size'] / FLAGS.eval_batch_size))
     if self.tpu:
-      strategy = distribution_utils.get_distribution_strategy(
+      strategy = distribute_utils.get_distribution_strategy(
           distribution_strategy='tpu', tpu_address=self.tpu)
     else:
-      strategy = distribution_utils.get_distribution_strategy(
+      strategy = distribute_utils.get_distribution_strategy(
           distribution_strategy='mirrored' if use_ds else 'off',
           num_gpus=self.num_gpus)
 

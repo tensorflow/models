@@ -26,10 +26,10 @@ from absl import app
 from absl import flags
 import numpy as np
 import tensorflow as tf
+from official.common import distribute_utils
 # pylint: enable=wrong-import-order
 
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 EMBEDDING_DIM = 256
@@ -177,14 +177,14 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
     train_steps = flags_obj.train_steps
   else:
     train_steps = BATCHES_PER_EPOCH // flags_obj.batch_size
-  strategy_scope = distribution_utils.get_strategy_scope(strategy)
+  strategy_scope = distribute_utils.get_strategy_scope(strategy)
 
   with strategy_scope:
     model = build_model(vocab_size=vocab_size, batch_size=flags_obj.batch_size,
                         use_cudnn=flags_obj.cudnn)
 
-   # When keras_use_ctl is False, Model.fit() automatically applies
-   # loss scaling so we don't need to create a LossScaleOptimizer.
+    # When keras_use_ctl is False, Model.fit() automatically applies
+    # loss scaling so we don't need to create a LossScaleOptimizer.
     model.compile(
         optimizer=tf.keras.optimizers.Adam(),
         loss=tf.keras.losses.CategoricalCrossentropy(),
@@ -276,7 +276,7 @@ def run(flags_obj):
   keras_utils.set_session_config(
       enable_xla=flags_obj.enable_xla)
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus)
 

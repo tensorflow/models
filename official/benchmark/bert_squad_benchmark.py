@@ -13,29 +13,21 @@
 # limitations under the License.
 # ==============================================================================
 """Executes BERT SQuAD benchmarks and accuracy tests."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
 import time
-
-# pylint: disable=g-bad-import-order
 
 from absl import flags
 from absl import logging
 from absl.testing import flagsaver
 import tensorflow as tf
-# pylint: enable=g-bad-import-order
 
+from official.benchmark import benchmark_wrappers
 from official.benchmark import bert_benchmark_utils as benchmark_utils
 from official.benchmark import owner_utils
+from official.common import distribute_utils
 from official.nlp.bert import run_squad
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
-from official.benchmark import benchmark_wrappers
 
 
 # pylint: disable=line-too-long
@@ -83,13 +75,13 @@ class BertSquadBenchmarkBase(benchmark_utils.BertBenchmarkBase):
       A `tf.distribute.DistibutionStrategy` object.
     """
     if self.tpu or ds_type == 'tpu':
-      return distribution_utils.get_distribution_strategy(
+      return distribute_utils.get_distribution_strategy(
           distribution_strategy='tpu', tpu_address=self.tpu)
     elif ds_type == 'multi_worker_mirrored':
       # Configures cluster spec for multi-worker distribution strategy.
-      _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
-                                               FLAGS.task_index)
-    return distribution_utils.get_distribution_strategy(
+      _ = distribute_utils.configure_cluster(FLAGS.worker_hosts,
+                                             FLAGS.task_index)
+    return distribute_utils.get_distribution_strategy(
         distribution_strategy=ds_type,
         num_gpus=self.num_gpus,
         all_reduce_alg=FLAGS.all_reduce_alg)

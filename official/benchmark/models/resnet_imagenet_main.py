@@ -25,10 +25,9 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-
+from official.common import distribute_utils
 from official.modeling import performance
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 from official.vision.image_classification import test_utils
@@ -102,10 +101,10 @@ def run(flags_obj):
   tf.keras.backend.set_image_data_format(data_format)
 
   # Configures cluster spec for distribution strategy.
-  _ = distribution_utils.configure_cluster(flags_obj.worker_hosts,
-                                           flags_obj.task_index)
+  _ = distribute_utils.configure_cluster(flags_obj.worker_hosts,
+                                         flags_obj.task_index)
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
       all_reduce_alg=flags_obj.all_reduce_alg,
@@ -120,7 +119,7 @@ def run(flags_obj):
         flags_obj.enable_get_next_as_optional
     )
 
-  strategy_scope = distribution_utils.get_strategy_scope(strategy)
+  strategy_scope = distribute_utils.get_strategy_scope(strategy)
 
   # pylint: disable=protected-access
   if flags_obj.use_synthetic_data:
