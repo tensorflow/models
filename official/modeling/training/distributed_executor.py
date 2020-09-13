@@ -31,7 +31,7 @@ import tensorflow as tf
 from typing import Optional, Dict, List, Text, Callable, Union, Iterator, Any
 from official.modeling.hyperparams import params_dict
 from official.utils import hyperparams_flags
-from official.utils.misc import distribution_utils
+from official.common import distribute_utils
 from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
@@ -745,8 +745,8 @@ class ExecutorBuilder(object):
   """
 
   def __init__(self, strategy_type=None, strategy_config=None):
-    _ = distribution_utils.configure_cluster(strategy_config.worker_hosts,
-                                             strategy_config.task_index)
+    _ = distribute_utils.configure_cluster(strategy_config.worker_hosts,
+                                           strategy_config.task_index)
     """Constructor.
 
     Args:
@@ -756,7 +756,7 @@ class ExecutorBuilder(object):
       strategy_config: necessary config for constructing the proper Strategy.
         Check strategy_flags_dict() for examples of the structure.
     """
-    self._strategy = distribution_utils.get_distribution_strategy(
+    self._strategy = distribute_utils.get_distribution_strategy(
         distribution_strategy=strategy_type,
         num_gpus=strategy_config.num_gpus,
         all_reduce_alg=strategy_config.all_reduce_alg,

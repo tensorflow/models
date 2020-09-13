@@ -28,6 +28,7 @@ from absl import flags
 from absl import logging
 import gin
 import tensorflow as tf
+from official.common import distribute_utils
 from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import bert_models
@@ -35,7 +36,6 @@ from official.nlp.bert import common_flags
 from official.nlp.bert import configs as bert_configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_saving_utils
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 flags.DEFINE_enum(
@@ -447,7 +447,7 @@ def custom_main(custom_callbacks=None, custom_metrics=None):
                       FLAGS.model_dir)
     return
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
       tpu_address=FLAGS.tpu)

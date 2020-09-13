@@ -23,11 +23,11 @@ from official.core import train_utils
 # pylint: disable=unused-import
 from official.common import registry_imports
 # pylint: enable=unused-import
+from official.common import distribute_utils
 from official.common import flags as tfm_flags
 from official.core import task_factory
 from official.core import train_lib
 from official.modeling import performance
-from official.utils.misc import distribution_utils
 
 FLAGS = flags.FLAGS
 
@@ -48,7 +48,7 @@ def main(_):
   if params.runtime.mixed_precision_dtype:
     performance.set_mixed_precision_policy(params.runtime.mixed_precision_dtype,
                                            params.runtime.loss_scale)
-  distribution_strategy = distribution_utils.get_distribution_strategy(
+  distribution_strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
       num_gpus=params.runtime.num_gpus,

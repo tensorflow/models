@@ -27,12 +27,11 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-
+from official.common import distribute_utils
 from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import run_squad_helper
 from official.nlp.bert import tokenization
 from official.nlp.data import squad_lib_sp
-from official.utils.misc import distribution_utils
 
 flags.DEFINE_string(
     'sp_model_file', None,
@@ -104,9 +103,8 @@ def main(_):
 
   # Configures cluster spec for multi-worker distribution strategy.
   if FLAGS.num_gpus > 0:
-    _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
-                                             FLAGS.task_index)
-  strategy = distribution_utils.get_distribution_strategy(
+    _ = distribute_utils.configure_cluster(FLAGS.worker_hosts, FLAGS.task_index)
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
       all_reduce_alg=FLAGS.all_reduce_alg,
