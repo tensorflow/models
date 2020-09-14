@@ -72,7 +72,11 @@ class BertClassifier(tf.keras.Model):
     if use_encoder_pooler:
       # Because we have a copy of inputs to create this Model object, we can
       # invoke the Network object with its own input tensors to start the Model.
-      _, cls_output = network(inputs)
+      outputs = network(inputs)
+      if isinstance(outputs, list):
+        cls_output = outputs[1]
+      else:
+        cls_output = outputs['pooled_output']
       cls_output = tf.keras.layers.Dropout(rate=dropout_rate)(cls_output)
 
       self.classifier = networks.Classification(
@@ -83,7 +87,11 @@ class BertClassifier(tf.keras.Model):
           name='sentence_prediction')
       predictions = self.classifier(cls_output)
     else:
-      sequence_output, _ = network(inputs)
+      outputs = network(inputs)
+      if isinstance(outputs, list):
+        sequence_output = outputs[0]
+      else:
+        sequence_output = outputs['sequence_output']
       self.classifier = layers.ClassificationHead(
           inner_dim=sequence_output.shape[-1],
           num_classes=num_classes,

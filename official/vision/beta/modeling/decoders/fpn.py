@@ -98,30 +98,30 @@ class FPN(tf.keras.Model):
 
     # Get input feature pyramid from backbone.
     inputs = self._build_input_pyramid(input_specs, min_level)
-    backbone_max_level = min(max(inputs.keys()), max_level)
+    backbone_max_level = min(int(max(inputs.keys())), max_level)
 
     # Build lateral connections.
     feats_lateral = {}
     for level in range(min_level, backbone_max_level + 1):
-      feats_lateral[level] = conv2d(
+      feats_lateral[str(level)] = conv2d(
           filters=num_filters,
           kernel_size=1,
           padding='same',
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer)(
-              inputs[level])
+              inputs[str(level)])
 
     # Build top-down path.
-    feats = {backbone_max_level: feats_lateral[backbone_max_level]}
+    feats = {str(backbone_max_level): feats_lateral[str(backbone_max_level)]}
     for level in range(backbone_max_level - 1, min_level - 1, -1):
-      feats[level] = spatial_transform_ops.nearest_upsampling(
-          feats[level + 1], 2) + feats_lateral[level]
+      feats[str(level)] = spatial_transform_ops.nearest_upsampling(
+          feats[str(level + 1)], 2) + feats_lateral[str(level)]
 
     # TODO(xianzhi): consider to remove bias in conv2d.
     # Build post-hoc 3x3 convolution kernel.
     for level in range(min_level, backbone_max_level + 1):
-      feats[level] = conv2d(
+      feats[str(level)] = conv2d(
           filters=num_filters,
           strides=1,
           kernel_size=3,
@@ -129,15 +129,15 @@ class FPN(tf.keras.Model):
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer)(
-              feats[level])
+              feats[str(level)])
 
     # TODO(xianzhi): consider to remove bias in conv2d.
     # Build coarser FPN levels introduced for RetinaNet.
     for level in range(backbone_max_level + 1, max_level + 1):
-      feats_in = feats[level - 1]
+      feats_in = feats[str(level - 1)]
       if level > backbone_max_level + 1:
         feats_in = activation_fn(feats_in)
-      feats[level] = conv2d(
+      feats[str(level)] = conv2d(
           filters=num_filters,
           strides=2,
           kernel_size=3,
@@ -149,12 +149,12 @@ class FPN(tf.keras.Model):
 
     # Apply batch norm layers.
     for level in range(min_level, max_level + 1):
-      feats[level] = norm(
+      feats[str(level)] = norm(
           axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
-              feats[level])
+              feats[str(level)])
 
     self._output_specs = {
-        level: feats[level].get_shape()
+        str(level): feats[str(level)].get_shape()
         for level in range(min_level, max_level + 1)
     }
 
@@ -162,7 +162,7 @@ class FPN(tf.keras.Model):
 
   def _build_input_pyramid(self, input_specs, min_level):
     assert isinstance(input_specs, dict)
-    if min(input_specs.keys()) > min_level:
+    if min(input_specs.keys()) > str(min_level):
       raise ValueError(
           'Backbone min level should be less or equal to FPN min level')
 

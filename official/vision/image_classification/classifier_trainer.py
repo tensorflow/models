@@ -23,11 +23,10 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-
+from official.common import distribute_utils
 from official.modeling import hyperparams
 from official.modeling import performance
 from official.utils import hyperparams_flags
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.vision.image_classification import callbacks as custom_callbacks
 from official.vision.image_classification import dataset_factory
@@ -291,17 +290,17 @@ def train_and_eval(
   """Runs the train and eval path using compile/fit."""
   logging.info('Running train and eval.')
 
-  distribution_utils.configure_cluster(params.runtime.worker_hosts,
-                                       params.runtime.task_index)
+  distribute_utils.configure_cluster(params.runtime.worker_hosts,
+                                     params.runtime.task_index)
 
   # Note: for TPUs, strategy and scope should be created before the dataset
-  strategy = strategy_override or distribution_utils.get_distribution_strategy(
+  strategy = strategy_override or distribute_utils.get_distribution_strategy(
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
       num_gpus=params.runtime.num_gpus,
       tpu_address=params.runtime.tpu)
 
-  strategy_scope = distribution_utils.get_strategy_scope(strategy)
+  strategy_scope = distribute_utils.get_strategy_scope(strategy)
 
   logging.info('Detected %d devices.',
                strategy.num_replicas_in_sync if strategy else 1)

@@ -18,7 +18,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from official.nlp.modeling.layers import on_device_embedding
+from official.nlp.keras_nlp.layers import on_device_embedding
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -192,7 +192,8 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
     vocab_size = 31
     embedding_width = 27
     test_layer = on_device_embedding.OnDeviceEmbedding(
-        vocab_size=vocab_size, embedding_width=embedding_width, use_scale=True)
+        vocab_size=vocab_size, embedding_width=embedding_width,
+        scale_factor=embedding_width**0.5)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
     input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)

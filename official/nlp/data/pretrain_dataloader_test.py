@@ -24,8 +24,12 @@ import tensorflow as tf
 from official.nlp.data import pretrain_dataloader
 
 
-def _create_fake_dataset(output_path, seq_length, max_predictions_per_seq,
-                         use_position_id, use_next_sentence_label):
+def _create_fake_dataset(output_path,
+                         seq_length,
+                         max_predictions_per_seq,
+                         use_position_id,
+                         use_next_sentence_label,
+                         use_v2_feature_names=False):
   """Creates a fake dataset."""
   writer = tf.io.TFRecordWriter(output_path)
 
@@ -40,9 +44,13 @@ def _create_fake_dataset(output_path, seq_length, max_predictions_per_seq,
   for _ in range(100):
     features = {}
     input_ids = np.random.randint(100, size=(seq_length))
-    features["input_ids"] = create_int_feature(input_ids)
     features["input_mask"] = create_int_feature(np.ones_like(input_ids))
-    features["segment_ids"] = create_int_feature(np.ones_like(input_ids))
+    if use_v2_feature_names:
+      features["input_word_ids"] = create_int_feature(input_ids)
+      features["input_type_ids"] = create_int_feature(np.ones_like(input_ids))
+    else:
+      features["input_ids"] = create_int_feature(input_ids)
+      features["segment_ids"] = create_int_feature(np.ones_like(input_ids))
 
     features["masked_lm_positions"] = create_int_feature(
         np.random.randint(100, size=(max_predictions_per_seq)))
@@ -101,6 +109,36 @@ class BertPretrainDataTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual("next_sentence_labels" in features,
                      use_next_sentence_label)
     self.assertEqual("position_ids" in features, use_position_id)
+
+  def test_v2_feature_names(self):
+    train_data_path = os.path.join(self.get_temp_dir(), "train.tf_record")
+    seq_length = 128
+    max_predictions_per_seq = 20
+    _create_fake_dataset(
+        train_data_path,
+        seq_length,
+        max_predictions_per_seq,
+        use_next_sentence_label=True,
+        use_position_id=False,
+        use_v2_feature_names=True)
+    data_config = pretrain_dataloader.BertPretrainDataConfig(
+        input_path=train_data_path,
+        max_predictions_per_seq=max_predictions_per_seq,
+        seq_length=seq_length,
+        global_batch_size=10,
+        is_training=True,
+        use_next_sentence_label=True,
+        use_position_id=False,
+        use_v2_feature_names=True)
+
+    dataset = pretrain_dataloader.BertPretrainDataLoader(data_config).load()
+    features = next(iter(dataset))
+    self.assertIn("input_word_ids", features)
+    self.assertIn("input_mask", features)
+    self.assertIn("input_type_ids", features)
+    self.assertIn("masked_lm_positions", features)
+    self.assertIn("masked_lm_ids", features)
+    self.assertIn("masked_lm_weights", features)
 
 
 if __name__ == "__main__":

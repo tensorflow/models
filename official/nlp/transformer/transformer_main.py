@@ -29,7 +29,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-
+from official.common import distribute_utils
 from official.modeling import performance
 from official.nlp.transformer import compute_bleu
 from official.nlp.transformer import data_pipeline
@@ -40,7 +40,6 @@ from official.nlp.transformer import transformer
 from official.nlp.transformer import translate
 from official.nlp.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 INF = int(1e9)
@@ -161,7 +160,7 @@ class TransformerTask(object):
     params["steps_between_evals"] = flags_obj.steps_between_evals
     params["enable_checkpointing"] = flags_obj.enable_checkpointing
 
-    self.distribution_strategy = distribution_utils.get_distribution_strategy(
+    self.distribution_strategy = distribute_utils.get_distribution_strategy(
         distribution_strategy=flags_obj.distribution_strategy,
         num_gpus=num_gpus,
         all_reduce_alg=flags_obj.all_reduce_alg,
@@ -197,7 +196,7 @@ class TransformerTask(object):
     keras_utils.set_session_config(enable_xla=flags_obj.enable_xla)
 
     _ensure_dir(flags_obj.model_dir)
-    with distribution_utils.get_strategy_scope(self.distribution_strategy):
+    with distribute_utils.get_strategy_scope(self.distribution_strategy):
       model = transformer.create_model(params, is_train=True)
       opt = self._create_optimizer()
 
@@ -376,7 +375,7 @@ class TransformerTask(object):
     # We only want to create the model under DS scope for TPU case.
     # When 'distribution_strategy' is None, a no-op DummyContextManager will
     # be used.
-    with distribution_utils.get_strategy_scope(distribution_strategy):
+    with distribute_utils.get_strategy_scope(distribution_strategy):
       if not self.predict_model:
         self.predict_model = transformer.create_model(self.params, False)
       self._load_weights_if_possible(
@@ -415,7 +414,7 @@ class TransformerTask(object):
       ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
       callbacks.append(
           tf.keras.callbacks.ModelCheckpoint(
-              ckpt_full_path, save_weights_only=True))
+              ckpt_full_path, save_weights_only=params["save_weights_only"]))
     return callbacks
 
   def _load_weights_if_possible(self, model, init_weight_path=None):

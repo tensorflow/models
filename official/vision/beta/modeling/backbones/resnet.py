@@ -152,7 +152,7 @@ class ResNet(tf.keras.Model):
           block_fn=block_fn,
           block_repeats=spec[2],
           name='block_group_l{}'.format(i + 2))
-      endpoints[i + 2] = x
+      endpoints[str(i + 2)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 

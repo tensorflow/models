@@ -14,28 +14,19 @@
 # ==============================================================================
 """Main function to train various object detection models."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import functools
 import pprint
-
-# pylint: disable=g-bad-import-order
-# Import libraries
-import tensorflow as tf
 
 from absl import app
 from absl import flags
 from absl import logging
-# pylint: enable=g-bad-import-order
+import tensorflow as tf
 
+from official.common import distribute_utils
 from official.modeling.hyperparams import params_dict
 from official.modeling.training import distributed_executor as executor
 from official.utils import hyperparams_flags
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.vision.detection.configs import factory as config_factory
 from official.vision.detection.dataloader import input_reader
@@ -87,9 +78,9 @@ def run_executor(params,
     strategy = prebuilt_strategy
   else:
     strategy_config = params.strategy_config
-    distribution_utils.configure_cluster(strategy_config.worker_hosts,
-                                         strategy_config.task_index)
-    strategy = distribution_utils.get_distribution_strategy(
+    distribute_utils.configure_cluster(strategy_config.worker_hosts,
+                                       strategy_config.task_index)
+    strategy = distribute_utils.get_distribution_strategy(
         distribution_strategy=params.strategy_type,
         num_gpus=strategy_config.num_gpus,
         all_reduce_alg=strategy_config.all_reduce_alg,

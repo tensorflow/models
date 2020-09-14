@@ -15,7 +15,7 @@ They are also useful for initializing your models when training on novel
 datasets. You can try this out on our few-shot training
 [colab](../colab_tutorials/eager_few_shot_od_training_tf2_colab.ipynb).
 
-Please look at [this guide](../running_on_mobile_tf2.md) for mobile inference.
+Please look at [this guide](running_on_mobile_tf2.md) for mobile inference.
 
 <!-- mdlint on -->
 

@@ -210,18 +210,18 @@ class RetinaNetHead(tf.keras.layers.Layer):
 
     Args:
       features: a dict of tensors
-        - key: `int`, the level of the multilevel features.
+        - key: `str`, the level of the multilevel features.
         - values: `Tensor`, the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
 
     Returns:
       scores: a dict of tensors which includes scores of the predictions.
-        - key: `int`, the level of the multilevel predictions.
+        - key: `str`, the level of the multilevel predictions.
         - values: `Tensor`, the box scores predicted from a particular feature
             level, whose shape is
             [batch, height_l, width_l, num_classes * num_anchors_per_location].
       boxes: a dict of tensors which includes coordinates of the predictions.
-        - key: `int`, the level of the multilevel predictions.
+        - key: `str`, the level of the multilevel predictions.
         - values: `Tensor`, the box scores predicted from a particular feature
             level, whose shape is
             [batch, height_l, width_l, 4 * num_anchors_per_location].
@@ -231,7 +231,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
     for i, level in enumerate(
         range(self._config_dict['min_level'],
               self._config_dict['max_level'] + 1)):
-      this_level_features = features[level]
+      this_level_features = features[str(level)]
 
       # class net.
       x = this_level_features
@@ -239,7 +239,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
         x = conv(x)
         x = norm(x)
         x = self._activation(x)
-      scores[level] = self._classifier(x)
+      scores[str(level)] = self._classifier(x)
 
       # box net.
       x = this_level_features
@@ -247,7 +247,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
         x = conv(x)
         x = norm(x)
         x = self._activation(x)
-      boxes[level] = self._box_regressor(x)
+      boxes[str(level)] = self._box_regressor(x)
     return scores, boxes
 
   def get_config(self):
@@ -433,13 +433,13 @@ class RPNHead(tf.keras.layers.Layer):
     for i, level in enumerate(
         range(self._config_dict['min_level'],
               self._config_dict['max_level'] + 1)):
-      x = features[level]
+      x = features[str(level)]
       for conv, norm in zip(self._convs, self._norms[i]):
         x = conv(x)
         x = norm(x)
         x = self._activation(x)
-      scores[level] = self._classifier(x)
-      boxes[level] = self._box_regressor(x)
+      scores[str(level)] = self._classifier(x)
+      boxes[str(level)] = self._box_regressor(x)
     return scores, boxes
 
   def get_config(self):

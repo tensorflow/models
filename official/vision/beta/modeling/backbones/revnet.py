@@ -130,7 +130,7 @@ class RevNet(tf.keras.Model):
           block_repeats=spec[2],
           batch_norm_first=(i != 0),  # Only skip on first block
           name='revblock_group_{}'.format(i + 2))
-      endpoints[i + 2] = x
+      endpoints[str(i + 2)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 

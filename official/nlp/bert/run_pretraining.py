@@ -23,6 +23,7 @@ from absl import flags
 from absl import logging
 import gin
 import tensorflow as tf
+from official.common import distribute_utils
 from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import bert_models
@@ -30,7 +31,6 @@ from official.nlp.bert import common_flags
 from official.nlp.bert import configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_training_utils
-from official.utils.misc import distribution_utils
 
 
 flags.DEFINE_string('input_files', None,
@@ -205,9 +205,8 @@ def main(_):
     FLAGS.model_dir = '/tmp/bert20/'
   # Configures cluster spec for multi-worker distribution strategy.
   if FLAGS.num_gpus > 0:
-    _ = distribution_utils.configure_cluster(FLAGS.worker_hosts,
-                                             FLAGS.task_index)
-  strategy = distribution_utils.get_distribution_strategy(
+    _ = distribute_utils.configure_cluster(FLAGS.worker_hosts, FLAGS.task_index)
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
       all_reduce_alg=FLAGS.all_reduce_alg,

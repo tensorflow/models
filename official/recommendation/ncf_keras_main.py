@@ -33,13 +33,13 @@ from absl import logging
 import tensorflow.compat.v2 as tf
 # pylint: enable=g-bad-import-order
 
+from official.common import distribute_utils
 from official.recommendation import constants as rconst
 from official.recommendation import movielens
 from official.recommendation import ncf_common
 from official.recommendation import ncf_input_pipeline
 from official.recommendation import neumf_model
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 
@@ -225,7 +225,7 @@ def run_ncf(_):
         loss_scale=flags_core.get_loss_scale(FLAGS, default_for_fp16="dynamic"))
     tf.keras.mixed_precision.experimental.set_policy(policy)
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
       tpu_address=FLAGS.tpu)
@@ -271,7 +271,7 @@ def run_ncf(_):
         params, producer, input_meta_data, strategy))
   steps_per_epoch = None if generate_input_online else num_train_steps
 
-  with distribution_utils.get_strategy_scope(strategy):
+  with distribute_utils.get_strategy_scope(strategy):
     keras_model = _get_keras_model(params)
     optimizer = tf.keras.optimizers.Adam(
         learning_rate=params["learning_rate"],

@@ -245,6 +245,21 @@ message CenterNet {
   }
   optional TrackEstimation track_estimation_task = 10;
 
+  // Temporal offset prediction head similar to CenterTrack.
+  // Currently our implementation adopts LSTM, different from original paper.
+  // See go/lstd-centernet for more details.
+  // Tracking Objects as Points [3]
+  // [3]: https://arxiv.org/abs/2004.01177
+  message TemporalOffsetEstimation {
+    // Weight of the task loss. The total loss of the model will be the
+    // summation of task losses weighted by the weights.
+    optional float task_loss_weight = 1 [default = 1.0];
+
+    // Localization loss configuration for offset loss.
+    optional LocalizationLoss localization_loss = 2;
+  }
+  optional TemporalOffsetEstimation temporal_offset_task = 12;
+
 
 }
 

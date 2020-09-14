@@ -14,7 +14,6 @@
 # ==============================================================================
 """Losses utilities for detection models."""
 
-# Import libraries
 import tensorflow as tf
 
 

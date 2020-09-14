@@ -48,14 +48,14 @@ class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
         bias_regularizer=None,
     )
     features = {
-        3: np.random.rand(2, 128, 128, 16),
-        4: np.random.rand(2, 64, 64, 16),
+        '3': np.random.rand(2, 128, 128, 16),
+        '4': np.random.rand(2, 64, 64, 16),
     }
     scores, boxes = retinanet_head(features)
-    self.assertAllEqual(scores[3].numpy().shape, [2, 128, 128, 9])
-    self.assertAllEqual(scores[4].numpy().shape, [2, 64, 64, 9])
-    self.assertAllEqual(boxes[3].numpy().shape, [2, 128, 128, 12])
-    self.assertAllEqual(boxes[4].numpy().shape, [2, 64, 64, 12])
+    self.assertAllEqual(scores['3'].numpy().shape, [2, 128, 128, 9])
+    self.assertAllEqual(scores['4'].numpy().shape, [2, 64, 64, 9])
+    self.assertAllEqual(boxes['3'].numpy().shape, [2, 128, 128, 12])
+    self.assertAllEqual(boxes['4'].numpy().shape, [2, 64, 64, 12])
 
   def test_serialize_deserialize(self):
     retinanet_head = dense_prediction_heads.RetinaNetHead(
@@ -104,14 +104,14 @@ class RpnHeadTest(parameterized.TestCase, tf.test.TestCase):
         bias_regularizer=None,
     )
     features = {
-        3: np.random.rand(2, 128, 128, 16),
-        4: np.random.rand(2, 64, 64, 16),
+        '3': np.random.rand(2, 128, 128, 16),
+        '4': np.random.rand(2, 64, 64, 16),
     }
     scores, boxes = rpn_head(features)
-    self.assertAllEqual(scores[3].numpy().shape, [2, 128, 128, 3])
-    self.assertAllEqual(scores[4].numpy().shape, [2, 64, 64, 3])
-    self.assertAllEqual(boxes[3].numpy().shape, [2, 128, 128, 12])
-    self.assertAllEqual(boxes[4].numpy().shape, [2, 64, 64, 12])
+    self.assertAllEqual(scores['3'].numpy().shape, [2, 128, 128, 3])
+    self.assertAllEqual(scores['4'].numpy().shape, [2, 64, 64, 3])
+    self.assertAllEqual(boxes['3'].numpy().shape, [2, 128, 128, 12])
+    self.assertAllEqual(boxes['4'].numpy().shape, [2, 64, 64, 12])
 
   def test_serialize_deserialize(self):
     rpn_head = dense_prediction_heads.RPNHead(

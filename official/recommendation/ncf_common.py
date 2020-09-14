@@ -21,20 +21,17 @@ from __future__ import print_function
 import json
 import os
 
-# pylint: disable=g-bad-import-order
-
-import numpy as np
 from absl import flags
 from absl import logging
+import numpy as np
 import tensorflow as tf
-# pylint: enable=g-bad-import-order
 
+from official.common import distribute_utils
 from official.recommendation import constants as rconst
 from official.recommendation import data_pipeline
 from official.recommendation import data_preprocessing
 from official.recommendation import movielens
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 
 FLAGS = flags.FLAGS
@@ -142,7 +139,7 @@ def get_v1_distribution_strategy(params):
         tpu_cluster_resolver, steps_per_run=100)
 
   else:
-    distribution = distribution_utils.get_distribution_strategy(
+    distribution = distribute_utils.get_distribution_strategy(
         num_gpus=params["num_gpus"])
 
   return distribution

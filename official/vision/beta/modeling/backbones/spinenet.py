@@ -349,7 +349,7 @@ class SpineNet(tf.keras.Model):
             block_spec.level > self._max_level):
           raise ValueError('Output level is out of range [{}, {}]'.format(
               self._min_level, self._max_level))
-        endpoints[block_spec.level] = x
+        endpoints[str(block_spec.level)] = x
 
     return endpoints
 
@@ -365,14 +365,14 @@ class SpineNet(tf.keras.Model):
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)(
-              net[level])
+              net[str(level)])
       x = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)(
               x)
       x = tf_utils.get_activation(self._activation_fn)(x)
-      endpoints[level] = x
+      endpoints[str(level)] = x
     return endpoints
 
   def _resample_with_alpha(self,
