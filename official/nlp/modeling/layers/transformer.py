@@ -25,7 +25,7 @@ from official.nlp.modeling.layers.util import tf_function_if_eager
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
-class Transformer(keras_nlp.TransformerEncoderBlock):
+class Transformer(keras_nlp.layers.TransformerEncoderBlock):
   """Transformer layer.
 
   This layer implements the Transformer from "Attention Is All You Need".

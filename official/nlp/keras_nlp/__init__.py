@@ -14,4 +14,4 @@
 # ==============================================================================
 """Keras-NLP package definition."""
 # pylint: disable=wildcard-import
-from official.nlp.keras_nlp.layers import *
+from official.nlp.keras_nlp import layers
