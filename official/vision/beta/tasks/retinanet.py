@@ -131,7 +131,7 @@ class RetinaNetTask(base_task.Task):
   def build_losses(self, outputs, labels, aux_losses=None):
     """Build RetinaNet losses."""
     params = self.task_config
-    cls_loss_fn = keras_cv.FocalLoss(
+    cls_loss_fn = keras_cv.losses.FocalLoss(
         alpha=params.losses.focal_loss_alpha,
         gamma=params.losses.focal_loss_gamma,
         reduction=tf.keras.losses.Reduction.SUM)
@@ -145,14 +145,14 @@ class RetinaNetTask(base_task.Task):
     num_positives = tf.reduce_sum(box_sample_weight) + 1.0
     cls_sample_weight = cls_sample_weight / num_positives
     box_sample_weight = box_sample_weight / num_positives
-    y_true_cls = keras_cv.multi_level_flatten(
+    y_true_cls = keras_cv.losses.multi_level_flatten(
         labels['cls_targets'], last_dim=None)
     y_true_cls = tf.one_hot(y_true_cls, params.model.num_classes)
-    y_pred_cls = keras_cv.multi_level_flatten(
+    y_pred_cls = keras_cv.losses.multi_level_flatten(
         outputs['cls_outputs'], last_dim=params.model.num_classes)
-    y_true_box = keras_cv.multi_level_flatten(
+    y_true_box = keras_cv.losses.multi_level_flatten(
         labels['box_targets'], last_dim=4)
-    y_pred_box = keras_cv.multi_level_flatten(
+    y_pred_box = keras_cv.losses.multi_level_flatten(
         outputs['box_outputs'], last_dim=4)
 
     cls_loss = cls_loss_fn(

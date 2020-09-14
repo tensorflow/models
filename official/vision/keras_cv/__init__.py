@@ -14,5 +14,5 @@
 # ==============================================================================
 """Keras-CV package definition."""
 # pylint: disable=wildcard-import
-from official.vision.keras_cv.losses import *
-from official.vision.keras_cv.ops import *
+from official.vision.keras_cv import losses
+from official.vision.keras_cv import ops
