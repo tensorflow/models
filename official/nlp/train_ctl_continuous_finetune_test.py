@@ -31,10 +31,10 @@ FLAGS = flags.FLAGS
 tfm_flags.define_flags()
 
 
-class MainContinuousFinetuneTest(tf.test.TestCase):
+class ContinuousFinetuneTest(tf.test.TestCase):
 
   def setUp(self):
-    super(MainContinuousFinetuneTest, self).setUp()
+    super().setUp()
     self._model_dir = os.path.join(self.get_temp_dir(), 'model_dir')
 
   @flagsaver.flagsaver
