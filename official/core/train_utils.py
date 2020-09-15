@@ -38,7 +38,7 @@ def create_trainer(
     model_dir: str,
     train: bool,
     evaluate: bool,
-    checkpoint_exporter: Any = None):
+    checkpoint_exporter: Any = None) -> base_trainer.Trainer:
   """Create trainer."""
   del model_dir
   logging.info('Running default trainer.')
