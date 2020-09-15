@@ -102,7 +102,6 @@ class InputReader:
     self._block_length = params.block_length
     self._deterministic = params.deterministic
     self._sharding = params.sharding
-    self._examples_consume = params.examples_consume
     self._tfds_split = params.tfds_split
     self._tfds_download = params.tfds_download
     self._tfds_as_supervised = params.tfds_as_supervised
@@ -236,9 +235,6 @@ class InputReader:
 
     if self._is_training:
       dataset = dataset.shuffle(self._shuffle_buffer_size)
-
-    if self._examples_consume > 0:
-      dataset = dataset.take(self._examples_consume)
 
     def maybe_map_fn(dataset, fn):
       return dataset if fn is None else dataset.map(
