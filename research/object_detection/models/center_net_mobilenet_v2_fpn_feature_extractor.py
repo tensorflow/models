@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""MobileNet V2[1] feature extractor for CenterNet[2] meta architecture.
+"""MobileNet V2[1] + FPN[2] feature extractor for CenterNet[3] meta architecture.
 
 [1]: https://arxiv.org/abs/1801.04381
-[2]: https://arxiv.org/abs/1904.07850
+[2]: https://arxiv.org/abs/1612.03144.
+[3]: https://arxiv.org/abs/1904.07850
 """
 
 import tensorflow.compat.v1 as tf
@@ -24,9 +25,14 @@ from object_detection.meta_architectures import center_net_meta_arch
 from object_detection.models.keras_models import mobilenet_v2 as mobilenetv2
 
 
-class CenterNetMobileNetV2FeatureExtractor(
+_MOBILENET_V2_FPN_SKIP_LAYERS = [
+    'block_2_add', 'block_5_add', 'block_9_add', 'out_relu'
+]
+
+
+class CenterNetMobileNetV2FPNFeatureExtractor(
     center_net_meta_arch.CenterNetFeatureExtractor):
-  """The MobileNet V2 feature extractor for CenterNet."""
+  """The MobileNet V2 with FPN skip layers feature extractor for CenterNet."""
 
   def __init__(self,
                mobilenet_v2_net,
@@ -45,7 +51,7 @@ class CenterNetMobileNetV2FeatureExtractor(
         [blue, red, green] order.
     """
 
-    super(CenterNetMobileNetV2FeatureExtractor, self).__init__(
+    super(CenterNetMobileNetV2FPNFeatureExtractor, self).__init__(
         channel_means=channel_means,
         channel_stds=channel_stds,
         bgr_ordering=bgr_ordering)
@@ -53,30 +59,51 @@ class CenterNetMobileNetV2FeatureExtractor(
 
     output = self._network(self._network.input)
 
-    # MobileNet by itself transforms a 224x224x3 volume into a 7x7x1280, which
-    # leads to a stride of 32. We perform upsampling to get it to a target
-    # stride of 4.
-    for num_filters in [256, 128, 64]:
-      # 1. We use a simple convolution instead of a deformable convolution
-      conv = tf.keras.layers.Conv2D(
-          filters=num_filters, kernel_size=1, strides=1, padding='same')
-      output = conv(output)
-      output = tf.keras.layers.BatchNormalization()(output)
-      output = tf.keras.layers.ReLU()(output)
+    # Add pyramid feature network on every layer that has stride 2.
+    skip_outputs = [
+        self._network.get_layer(skip_layer_name).output
+        for skip_layer_name in _MOBILENET_V2_FPN_SKIP_LAYERS
+    ]
+    self._fpn_model = tf.keras.models.Model(
+        inputs=self._network.input, outputs=skip_outputs)
+    fpn_outputs = self._fpn_model(self._network.input)
 
-      # 2. We use the default initialization for the convolution layers
-      # instead of initializing it to do bilinear upsampling.
-      conv_transpose = tf.keras.layers.Conv2DTranspose(
-          filters=num_filters, kernel_size=3, strides=2, padding='same')
-      output = conv_transpose(output)
-      output = tf.keras.layers.BatchNormalization()(output)
-      output = tf.keras.layers.ReLU()(output)
+    # Construct the top-down feature maps -- we start with an output of
+    # 7x7x1280, which we continually upsample, apply a residual on and merge.
+    # This results in a 56x56x24 output volume.
+    top_layer = fpn_outputs[-1]
+    residual_op = tf.keras.layers.Conv2D(
+        filters=64, kernel_size=1, strides=1, padding='same')
+    top_down = residual_op(top_layer)
+
+    num_filters_list = [64, 32, 24]
+    for i, num_filters in enumerate(num_filters_list):
+      level_ind = len(num_filters_list) - 1 - i
+      # Upsample.
+      upsample_op = tf.keras.layers.UpSampling2D(2, interpolation='nearest')
+      top_down = upsample_op(top_down)
+
+      # Residual (skip-connection) from bottom-up pathway.
+      residual_op = tf.keras.layers.Conv2D(
+          filters=num_filters, kernel_size=1, strides=1, padding='same')
+      residual = residual_op(fpn_outputs[level_ind])
+
+      # Merge.
+      top_down = top_down + residual
+      next_num_filters = num_filters_list[i + 1] if i + 1 <= 2 else 24
+      conv = tf.keras.layers.Conv2D(
+          filters=next_num_filters, kernel_size=3, strides=1, padding='same')
+      top_down = conv(top_down)
+      top_down = tf.keras.layers.BatchNormalization()(top_down)
+      top_down = tf.keras.layers.ReLU()(top_down)
+
+    output = top_down
 
     self._network = tf.keras.models.Model(
         inputs=self._network.input, outputs=output)
 
   def preprocess(self, resized_inputs):
-    resized_inputs = super(CenterNetMobileNetV2FeatureExtractor,
+    resized_inputs = super(CenterNetMobileNetV2FPNFeatureExtractor,
                            self).preprocess(resized_inputs)
     return tf.keras.applications.mobilenet_v2.preprocess_input(resized_inputs)
 
@@ -99,23 +126,16 @@ class CenterNetMobileNetV2FeatureExtractor(
     """The number of feature outputs returned by the feature extractor."""
     return 1
 
-  @property
-  def supported_sub_model_types(self):
-    return ['detection']
-
-  def get_sub_model(self, sub_model_type):
-    if sub_model_type == 'detection':
-      return self._network
-    else:
-      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
+  def get_model(self):
+    return self._network
 
 
-def mobilenet_v2(channel_means, channel_stds, bgr_ordering):
-  """The MobileNetV2 backbone for CenterNet."""
+def mobilenet_v2_fpn(channel_means, channel_stds, bgr_ordering):
+  """The MobileNetV2+FPN backbone for CenterNet."""
 
-  # We set 'is_training' to True for now.
+  # Set to is_training to True for now.
   network = mobilenetv2.mobilenet_v2(True, include_top=False)
-  return CenterNetMobileNetV2FeatureExtractor(
+  return CenterNetMobileNetV2FPNFeatureExtractor(
       network,
       channel_means=channel_means,
       channel_stds=channel_stds,
