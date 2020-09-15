@@ -114,7 +114,7 @@ class AlbertTransformerEncoder(tf.keras.Model):
     word_embeddings = self._embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
-    self._position_embedding_layer = keras_nlp.PositionEmbedding(
+    self._position_embedding_layer = keras_nlp.layers.PositionEmbedding(
         initializer=initializer,
         max_length=max_sequence_length,
         name='position_embedding')
@@ -150,7 +150,7 @@ class AlbertTransformerEncoder(tf.keras.Model):
 
     data = embeddings
     attention_mask = layers.SelfAttentionMask()([data, mask])
-    shared_layer = keras_nlp.TransformerEncoderBlock(
+    shared_layer = keras_nlp.layers.TransformerEncoderBlock(
         num_attention_heads=num_attention_heads,
         inner_dim=intermediate_size,
         inner_activation=activation,

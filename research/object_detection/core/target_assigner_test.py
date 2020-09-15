@@ -115,6 +115,7 @@ class TargetAssignerTest(test_case.TestCase):
     self.assertEqual(reg_weights_out.dtype, np.float32)
 
   def test_assign_agnostic_with_keypoints(self):
+
     def graph_fn(anchor_means, groundtruth_box_corners,
                  groundtruth_keypoints):
       similarity_calc = region_similarity_calculator.IouSimilarity()
@@ -2408,6 +2409,95 @@ class CenterNetTemporalOffsetTargetAssigner(test_case.TestCase):
         temporal_offset,
         [[0.5, 0.4], [-0.1, 0.1], [0.4, 0.3], [0.1, 0.1], [0.125, -0.125]])
     np.testing.assert_array_equal(weights, [0, 0, 1, 1, 1])
+
+
+class DETRTargetAssignerTest(test_case.TestCase):
+
+  def test_assign_detr(self):
+    def graph_fn(pred_corners, groundtruth_box_corners,
+                 groundtruth_labels, predicted_labels):
+      detr_target_assigner = targetassigner.DETRTargetAssigner()
+      pred_boxlist = box_list.BoxList(pred_corners)
+      groundtruth_boxlist = box_list.BoxList(groundtruth_box_corners)
+      result = detr_target_assigner.assign(
+          pred_boxlist, groundtruth_boxlist,
+          predicted_labels, groundtruth_labels)
+      (cls_targets, cls_weights, reg_targets, reg_weights) = result
+      return (cls_targets, cls_weights, reg_targets, reg_weights)
+
+    pred_corners = np.array([[0.25, 0.25, 0.4, 0.2],
+                             [0.5, 0.8, 1.0, 0.8],
+                             [0.9, 0.5, 0.1, 1.0]], dtype=np.float32)
+    groundtruth_box_corners = np.array([[0.0, 0.0, 0.5, 0.5],
+                                        [0.5, 0.5, 0.9, 0.9]],
+                                       dtype=np.float32)
+    predicted_labels = np.array([[-3.0, 3.0], [2.0, 9.4], [5.0, 1.0]],
+                                dtype=np.float32)
+    groundtruth_labels = np.array([[0.0, 1.0], [0.0, 1.0]],
+                                  dtype=np.float32)
+
+    exp_cls_targets = [[0, 1], [0, 1], [1, 0]]
+    exp_cls_weights = [[1, 1], [1, 1], [1, 1]]
+    exp_reg_targets = [[0.25, 0.25, 0.5, 0.5],
+                       [0.7, 0.7, 0.4, 0.4],
+                       [0, 0, 0, 0]]
+    exp_reg_weights = [1, 1, 0]
+
+    (cls_targets_out,
+     cls_weights_out, reg_targets_out, reg_weights_out) = self.execute_cpu(
+         graph_fn, [pred_corners, groundtruth_box_corners,
+                    groundtruth_labels, predicted_labels])
+
+    self.assertAllClose(cls_targets_out, exp_cls_targets)
+    self.assertAllClose(cls_weights_out, exp_cls_weights)
+    self.assertAllClose(reg_targets_out, exp_reg_targets)
+    self.assertAllClose(reg_weights_out, exp_reg_weights)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
+
+  def test_batch_assign_detr(self):
+    def graph_fn(pred_corners, groundtruth_box_corners,
+                 groundtruth_labels, predicted_labels):
+      detr_target_assigner = targetassigner.DETRTargetAssigner()
+      result = detr_target_assigner.batch_assign(
+          pred_corners, groundtruth_box_corners,
+          [predicted_labels], [groundtruth_labels])
+      (cls_targets, cls_weights, reg_targets, reg_weights) = result
+      return (cls_targets, cls_weights, reg_targets, reg_weights)
+
+    pred_corners = np.array([[[0.25, 0.25, 0.4, 0.2],
+                              [0.5, 0.8, 1.0, 0.8],
+                              [0.9, 0.5, 0.1, 1.0]]], dtype=np.float32)
+    groundtruth_box_corners = np.array([[[0.0, 0.0, 0.5, 0.5],
+                                         [0.5, 0.5, 0.9, 0.9]]],
+                                       dtype=np.float32)
+    predicted_labels = np.array([[-3.0, 3.0], [2.0, 9.4], [5.0, 1.0]],
+                                dtype=np.float32)
+    groundtruth_labels = np.array([[0.0, 1.0], [0.0, 1.0]],
+                                  dtype=np.float32)
+
+    exp_cls_targets = [[[0, 1], [0, 1], [1, 0]]]
+    exp_cls_weights = [[[1, 1], [1, 1], [1, 1]]]
+    exp_reg_targets = [[[0.25, 0.25, 0.5, 0.5],
+                        [0.7, 0.7, 0.4, 0.4],
+                        [0, 0, 0, 0]]]
+    exp_reg_weights = [[1, 1, 0]]
+
+    (cls_targets_out,
+     cls_weights_out, reg_targets_out, reg_weights_out) = self.execute_cpu(
+         graph_fn, [pred_corners, groundtruth_box_corners,
+                    groundtruth_labels, predicted_labels])
+
+    self.assertAllClose(cls_targets_out, exp_cls_targets)
+    self.assertAllClose(cls_weights_out, exp_cls_weights)
+    self.assertAllClose(reg_targets_out, exp_reg_targets)
+    self.assertAllClose(reg_weights_out, exp_reg_weights)
+    self.assertEqual(cls_targets_out.dtype, np.float32)
+    self.assertEqual(cls_weights_out.dtype, np.float32)
+    self.assertEqual(reg_targets_out.dtype, np.float32)
+    self.assertEqual(reg_weights_out.dtype, np.float32)
 
 
 if __name__ == '__main__':
