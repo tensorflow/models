@@ -29,6 +29,8 @@ def _create_mock_attention_data(
     seq_length,
     batch_size,
     memory_length=0,
+    num_predictions=2,
+    two_stream=False,
     include_state=False,
     include_mask=False,
     include_segment=False):
@@ -41,6 +43,9 @@ def _create_mock_attention_data(
     seq_length: `int`, Sequence length of the input.
     batch_size: `int`, the batch size.
     memory_length: optional `int`, the length of the state. Defaults to 0.
+    num_predictions: `int`, the number of predictions used in two stream
+      attention.
+    two_stream: `bool`, whether or not to generate two stream data.
     include_state: optional `bool`, whether or not to include state data.
     include_mask: optional `bool`, whether or not to include mask data.
     include_segment: optional `bool`, whether or not to include segment data.
@@ -54,12 +59,24 @@ def _create_mock_attention_data(
   attention_bias_shape = (num_heads, key_dim)
 
   data = dict(
-      query=tf.random.normal(shape=query_shape),
-      value=tf.random.normal(shape=value_shape),
-      key=tf.random.normal(shape=value_shape),
       relative_position_encoding=tf.random.normal(shape=encoding_shape),
       content_attention_bias=tf.random.normal(shape=attention_bias_shape),
       positional_attention_bias=tf.random.normal(shape=attention_bias_shape))
+
+  if two_stream:
+    query_stream_shape = (batch_size, num_predictions, key_dim)
+    target_mapping_shape = (batch_size, num_predictions, seq_length)
+    stream_data = dict(
+        content_stream=tf.random.normal(shape=query_shape),
+        query_stream=tf.random.normal(shape=query_stream_shape),
+        target_mapping=tf.random.normal(shape=target_mapping_shape))
+  else:
+    stream_data = dict(
+        query=tf.random.normal(shape=query_shape),
+        value=tf.random.normal(shape=value_shape),
+        key=tf.random.normal(shape=value_shape))
+
+  data.update(stream_data)
 
   if include_state:
     total_seq_length = seq_length + memory_length
@@ -71,9 +88,15 @@ def _create_mock_attention_data(
 
   if include_mask:
     mask_shape = (batch_size, num_heads, seq_length, total_seq_length)
-    mask_data = dict(
-        attention_mask=np.random.randint(2, size=mask_shape).astype("float32"))
+    mask_data = np.random.randint(2, size=mask_shape).astype("float32")
+    if two_stream:
+      mask_data = dict(
+          content_attention_mask=mask_data,
+          query_attention_mask=mask_data)
+    else:
+      mask_data = dict(attention_mask=mask_data)
     data.update(mask_data)
+
   if include_segment:
     segment_encoding_shape = (2, num_heads, key_dim)
     segment_matrix = np.random.randint(
@@ -115,12 +138,51 @@ class MultiHeadRelativeAttentionTest(keras_parameterized.TestCase):
         value_dim=value_dim,
         seq_length=seq_length,
         memory_length=memory_length,
+        two_stream=False,
         batch_size=batch_size,
         include_state=state,
         include_mask=mask,
         include_segment=segment)
     output = test_layer(**data)
     self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
+
+
+@keras_parameterized.run_all_keras_modes
+class TwoStreamRelativeAttentionTest(keras_parameterized.TestCase):
+
+  @combinations.generate(combinations.combine(
+      num_predictions=[2, 10],
+      memory_length=[0, 4],
+      state=[True, False],
+      mask=[True, False],
+      segment=[True, False]))
+  def test_attention_scores(self,
+                            num_predictions,
+                            memory_length,
+                            state,
+                            mask,
+                            segment):
+    """Tests combinations of attention score calculations."""
+    batch_size, num_heads, key_dim, seq_length = 2, 12, 64, 8
+    test_layer = relative_attention.TwoStreamRelativeAttention(
+        num_heads=num_heads,
+        key_dim=key_dim,
+        value_dim=key_dim)
+    data = _create_mock_attention_data(
+        num_heads=num_heads,
+        key_dim=key_dim,
+        value_dim=key_dim,
+        seq_length=seq_length,
+        memory_length=memory_length,
+        num_predictions=num_predictions,
+        two_stream=True,
+        batch_size=batch_size,
+        include_state=state,
+        include_mask=mask,
+        include_segment=segment)
+    content_output, query_output, = test_layer(**data)
+    self.assertEqual(content_output.shape, [batch_size, seq_length, key_dim])
+    self.assertEqual(query_output.shape, [batch_size, num_predictions, key_dim])
 
 
 if __name__ == "__main__":
