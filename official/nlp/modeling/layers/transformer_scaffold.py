@@ -115,18 +115,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
       raise ValueError(
           "TransformerScaffold expects a three-dimensional input of "
           "shape [batch, sequence, width].")
-    batch_size, sequence_length, hidden_size = input_tensor_shape
-
-    if len(input_shape) == 2:
-      mask_tensor_shape = tf.TensorShape(input_shape[1])
-      expected_mask_tensor_shape = tf.TensorShape(
-          [batch_size, sequence_length, sequence_length])
-      if not expected_mask_tensor_shape.is_compatible_with(mask_tensor_shape):
-        raise ValueError("When passing a mask tensor to TransformerLayer, the "
-                         "mask tensor must be of shape [batch, "
-                         "sequence_length, sequence_length] (here %s). Got a "
-                         "mask tensor of shape %s." %
-                         (expected_mask_tensor_shape, mask_tensor_shape))
+    hidden_size = input_tensor_shape[-1]
     if hidden_size % self._num_heads != 0:
       raise ValueError(
           "The input size (%d) is not a multiple of the number of attention "
