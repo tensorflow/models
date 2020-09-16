@@ -15,7 +15,7 @@
 # ==============================================================================
 """Common configuration settings."""
 
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 import dataclasses
 
@@ -30,9 +30,12 @@ class DataConfig(base_config.Config):
   """The base configuration for building datasets.
 
   Attributes:
-    input_path: The path to the input. It can be either (1) a file pattern, or
-      (2) multiple file patterns separated by comma. It should not be specified
-      when the following `tfds_name` is specified.
+    input_path: The path to the input. It can be either (1) a str indicating
+      a file path/pattern, or (2) a str indicating multiple file paths/patterns
+      separated by comma (e.g "a, b, c" or no spaces "a,b,c"), or
+      (3) a list of str, each of which is a file path/pattern or multiple file
+      paths/patterns separated by comma.
+      It should not be specified when the following `tfds_name` is specified.
     tfds_name: The name of the tensorflow dataset (TFDS). It should not be
       specified when the above `input_path` is specified.
     tfds_split: A str indicating which split of the data to load from TFDS. It
@@ -71,7 +74,7 @@ class DataConfig(base_config.Config):
       features. The main use case is to skip the image/video decoding for better
       performance.
   """
-  input_path: str = ""
+  input_path: Union[Sequence[str], str] = ""
   tfds_name: str = ""
   tfds_split: str = ""
   global_batch_size: int = 0
