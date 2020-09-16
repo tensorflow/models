@@ -165,12 +165,15 @@ class CallbacksConfig(base_config.Config):
   Attributes:
     enable_checkpoint_and_export: Whether or not to enable checkpoints as a
       Callback. Defaults to True.
+    enable_backup_and_restore: Whether or not to add BackupAndRestore
+      callback. Defaults to True.
     enable_tensorboard: Whether or not to enable Tensorboard as a Callback.
       Defaults to True.
     enable_time_history: Whether or not to enable TimeHistory Callbacks.
       Defaults to True.
   """
   enable_checkpoint_and_export: bool = True
+  enable_backup_and_restore: bool = False
   enable_tensorboard: bool = True
   enable_time_history: bool = True
 
