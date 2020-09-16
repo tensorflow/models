@@ -124,8 +124,6 @@ class RuntimeConfig(base_config.Config):
     run_eagerly: Whether or not to run the experiment eagerly.
     batchnorm_spatial_persistent: Whether or not to enable the spatial
       persistent mode for CuDNN batch norm kernel for improved GPU performance.
-    allow_tpu_summary: Whether to allow summary happen inside the XLA program
-      runs on TPU through automatic outside compilation.
   """
   distribution_strategy: str = "mirrored"
   enable_xla: bool = False
@@ -188,6 +186,8 @@ class TrainerConfig(base_config.Config):
     train_tf_while_loop: whether or not to use tf while loop.
     train_tf_function: whether or not to use tf_function for training loop.
     eval_tf_function: whether or not to use tf_function for eval.
+    allow_tpu_summary: Whether to allow summary happen inside the XLA program
+      runs on TPU through automatic outside compilation.
     steps_per_loop: number of steps per loop.
     summary_interval: number of steps between each summary.
     checkpoint_interval: number of steps between checkpoints.
