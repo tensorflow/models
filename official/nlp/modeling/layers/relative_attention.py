@@ -113,8 +113,8 @@ class MultiHeadRelativeAttention(tf.keras.layers.MultiHeadAttention):
     value: Value `Tensor` of shape `[B, S, dim]`.
     content_attention_bias: Bias `Tensor` for content based attention of shape
       `[num_heads, dim]`.
-    position_attention_bias: Bias `Tensor` for position based attention of shape
-      `[num_heads, dim]`.
+    positional_attention_bias: Bias `Tensor` for position based attention of
+      shape `[num_heads, dim]`.
     key: Optional key `Tensor` of shape `[B, S, dim]`. If not given, will use
       `value` for both `key` and `value`, which is the most common case.
     relative_position_encoding: Relative positional encoding `Tensor` of shape
@@ -368,8 +368,8 @@ class TwoStreamRelativeAttention(MultiHeadRelativeAttention):
     content_stream: `Tensor` of shape `[B, T, dim]`.
     content_attention_bias: Bias `Tensor` for content based attention of shape
       `[num_heads, dim]`.
-    position_attention_bias: Bias `Tensor` for position based attention of shape
-      `[num_heads, dim]`.
+    positional_attention_bias: Bias `Tensor` for position based attention of
+      shape `[num_heads, dim]`.
     query_stream: `Tensor` of shape `[B, P, dim]`.
     target_mapping: `Tensor` of shape `[B, P, S]`.
     relative_position_encoding: Relative positional encoding `Tensor` of shape
