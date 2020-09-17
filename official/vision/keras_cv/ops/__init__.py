@@ -14,4 +14,6 @@
 # ==============================================================================
 """Keras-CV layers package definition."""
 from official.vision.keras_cv.ops.anchor_generator import AnchorGenerator
+from official.vision.keras_cv.ops.anchor_labeler import AnchorLabeler
+from official.vision.keras_cv.ops.box_matcher import BoxMatcher
 from official.vision.keras_cv.ops.iou_similarity import IouSimilarity
