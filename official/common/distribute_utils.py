@@ -98,7 +98,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
                               num_gpus=0,
                               all_reduce_alg=None,
                               num_packs=1,
-                              tpu_address=None):
+                              tpu_address=None,
+                              **kwargs):
   """Return a DistributionStrategy for running the model.
 
   Args:
@@ -117,6 +118,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
       or `tf.distribute.HierarchicalCopyAllReduce` for `MirroredStrategy`.
     tpu_address: Optional. String that represents TPU to connect to. Must not be
       None if `distribution_strategy` is set to `tpu`.
+    **kwargs: Additional kwargs for internal usages.
 
   Returns:
     tf.distribute.DistibutionStrategy object.
@@ -125,6 +127,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
       `num_gpus` is larger than 1; or `num_gpus` is negative or if
       `distribution_strategy` is `tpu` but `tpu_address` is not specified.
   """
+  del kwargs
   if num_gpus < 0:
     raise ValueError("`num_gpus` can not be negative.")
 
