@@ -18,11 +18,9 @@ import collections
 # Import libraries
 import tensorflow as tf
 from official.vision import keras_cv
-from official.vision.detection.utils.object_detection import argmax_matcher
 from official.vision.detection.utils.object_detection import balanced_positive_negative_sampler
 from official.vision.detection.utils.object_detection import box_list
 from official.vision.detection.utils.object_detection import faster_rcnn_box_coder
-from official.vision.detection.utils.object_detection import target_assigner
 
 
 class Anchor(object):
@@ -134,18 +132,13 @@ class AnchorLabeler(object):
         upper-bound threshold to assign negative labels for anchors. An anchor
         with a score below the threshold is labeled negative.
     """
-    similarity_calc = keras_cv.ops.IouSimilarity()
-    matcher = argmax_matcher.ArgMaxMatcher(
-        match_threshold,
-        unmatched_threshold=unmatched_threshold,
-        negatives_lower_than_unmatched=True,
+    self.similarity_calc = keras_cv.ops.IouSimilarity()
+    self.anchor_labeler = keras_cv.ops.AnchorLabeler()
+    self.matcher = keras_cv.ops.BoxMatcher(
+        positive_threshold=match_threshold,
+        negative_threshold=unmatched_threshold,
         force_match_for_each_row=True)
-    box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder()
-
-    self._target_assigner = target_assigner.TargetAssigner(
-        similarity_calc, matcher, box_coder)
-    self._match_threshold = match_threshold
-    self._unmatched_threshold = unmatched_threshold
+    self.box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder()
 
   def label_anchors(self, anchor_boxes, gt_boxes, gt_labels):
     """Labels anchors with ground truth inputs.
@@ -176,30 +169,17 @@ class AnchorLabeler(object):
         1.0 for positive matched anchors, and 0.0 for negative and ignored
         anchors.
     """
-    gt_box_list = box_list.BoxList(gt_boxes)
     flattened_anchor_boxes = []
     for anchors in anchor_boxes.values():
       flattened_anchor_boxes.append(tf.reshape(anchors, [-1, 4]))
     flattened_anchor_boxes = tf.concat(flattened_anchor_boxes, axis=0)
+    similarity_matrix = self.similarity_calc(gt_boxes, flattened_anchor_boxes)
+    match_results = self.matcher(similarity_matrix)
+    cls_targets, box_targets, cls_weights, box_weights = self.anchor_labeler(
+        gt_boxes, gt_labels, match_results)
+    box_targets_list = box_list.BoxList(box_targets)
     anchor_box_list = box_list.BoxList(flattened_anchor_boxes)
-
-    # The cls_weights, box_weights are not used.
-    (cls_targets, cls_weights, box_targets, box_weights,
-     matches) = self._target_assigner.assign(anchor_box_list, gt_box_list,
-                                             gt_labels)
-
-    # Labels definition in matches.match_results:
-    # (1) match_results[i]>=0, meaning that column i is matched with row
-    #     match_results[i].
-    # (2) match_results[i]=-1, meaning that column i is not matched.
-    # (3) match_results[i]=-2, meaning that column i is ignored.
-    match_results = tf.expand_dims(matches.match_results, axis=1)
-    cls_targets = tf.cast(cls_targets, tf.int32)
-    cls_targets = tf.where(
-        tf.equal(match_results, -1), -tf.ones_like(cls_targets), cls_targets)
-    cls_targets = tf.where(
-        tf.equal(match_results, -2), -2 * tf.ones_like(cls_targets),
-        cls_targets)
+    box_targets = self.box_coder.encode(box_targets_list, anchor_box_list)
 
     # Unpacks labels into multi-level representations.
     cls_targets_dict = unpack_targets(cls_targets, anchor_boxes)
@@ -284,19 +264,33 @@ class RpnAnchorLabeler(AnchorLabeler):
         width_l represent the dimension of bounding box regression output at
         l-th level.
     """
-    gt_box_list = box_list.BoxList(gt_boxes)
     flattened_anchor_boxes = []
     for anchors in anchor_boxes.values():
       flattened_anchor_boxes.append(tf.reshape(anchors, [-1, 4]))
     flattened_anchor_boxes = tf.concat(flattened_anchor_boxes, axis=0)
-    anchor_box_list = box_list.BoxList(flattened_anchor_boxes)
-
+    similarity_matrix = self.similarity_calc(gt_boxes, flattened_anchor_boxes)
+    match_results = self.matcher(similarity_matrix)
     # cls_targets, cls_weights, box_weights are not used.
-    _, _, box_targets, _, matches = self._target_assigner.assign(
-        anchor_box_list, gt_box_list, gt_labels)
+    _, box_targets, _, _ = self.anchor_labeler(
+        gt_boxes, gt_labels, match_results)
+    box_targets_list = box_list.BoxList(box_targets)
+    anchor_box_list = box_list.BoxList(flattened_anchor_boxes)
+    box_targets = self.box_coder.encode(box_targets_list, anchor_box_list)
+
+    # Zero out the unmatched and ignored regression targets.
+    num_matches = match_results.shape.as_list()[0] or tf.shape(match_results)[0]
+    unmatched_ignored_box_targets = tf.zeros([num_matches, 4], dtype=tf.float32)
+    matched_anchors_mask = tf.greater_equal(match_results, 0)
+    # To broadcast matched_anchors_mask to the same shape as
+    # matched_reg_targets.
+    matched_anchors_mask = tf.tile(
+        tf.expand_dims(matched_anchors_mask, 1),
+        [1, tf.shape(box_targets)[1]])
+    box_targets = tf.where(matched_anchors_mask, box_targets,
+                           unmatched_ignored_box_targets)
 
     # score_targets contains the subsampled positive and negative anchors.
-    score_targets, _, _ = self._get_rpn_samples(matches.match_results)
+    score_targets, _, _ = self._get_rpn_samples(match_results)
 
     # Unpacks labels.
     score_targets_dict = unpack_targets(score_targets, anchor_boxes)
