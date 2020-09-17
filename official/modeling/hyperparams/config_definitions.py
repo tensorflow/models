@@ -141,6 +141,15 @@ class RuntimeConfig(base_config.Config):
   run_eagerly: bool = False
   batchnorm_spatial_persistent: bool = False
 
+  # Global model parallelism configurations.
+  num_cores_per_replica: int = 1
+  default_shard_dim: int = -1
+
+  def model_parallelism(self):
+    return dict(
+        num_cores_per_replica=self.num_cores_per_replica,
+        default_shard_dim=self.default_shard_dim)
+
 
 @dataclasses.dataclass
 class TensorboardConfig(base_config.Config):

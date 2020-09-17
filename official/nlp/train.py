@@ -20,10 +20,10 @@ from absl import flags
 import gin
 
 from official.core import train_utils
+from official.common import distribute_utils
 # pylint: disable=unused-import
 from official.common import registry_imports
 # pylint: enable=unused-import
-from official.common import distribute_utils
 from official.common import flags as tfm_flags
 from official.core import task_factory
 from official.core import train_lib
@@ -52,7 +52,8 @@ def main(_):
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
       num_gpus=params.runtime.num_gpus,
-      tpu_address=params.runtime.tpu)
+      tpu_address=params.runtime.tpu,
+      **params.runtime.model_parallelism())
   with distribution_strategy.scope():
     task = task_factory.get_task(params.task, logging_dir=model_dir)
 
