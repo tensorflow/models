@@ -146,16 +146,12 @@ class BoxMatcher:
       else:
         return matches
 
-    if similarity_matrix.shape.is_fully_defined():
-      if similarity_matrix.shape.dims[0].value == 0:
-        return _match_when_rows_are_empty()
-      else:
-        return _match_when_rows_are_non_empty()
-    else:
-      return tf.cond(
-          pred=tf.greater(tf.shape(similarity_matrix)[0], 0),
-          true_fn=_match_when_rows_are_non_empty,
-          false_fn=_match_when_rows_are_empty)
+    num_gt_boxes = similarity_matrix.shape.as_list()[0] or tf.shape(
+        similarity_matrix)[0]
+    return tf.cond(
+        pred=tf.greater(num_gt_boxes, 0),
+        true_fn=_match_when_rows_are_non_empty,
+        false_fn=_match_when_rows_are_empty)
 
   def _set_values_using_indicator(self, x, indicator, val):
     """Set the indicated fields of x to val.
