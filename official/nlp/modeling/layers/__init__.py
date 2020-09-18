@@ -27,5 +27,6 @@ from official.nlp.modeling.layers.position_embedding import RelativePositionEmbe
 from official.nlp.modeling.layers.rezero_transformer import ReZeroTransformer
 from official.nlp.modeling.layers.self_attention_mask import SelfAttentionMask
 from official.nlp.modeling.layers.talking_heads_attention import TalkingHeadsAttention
+from official.nlp.modeling.layers.tn_transformer_expand_condense import TNTransformerExpandCondense
 from official.nlp.modeling.layers.transformer import *
 from official.nlp.modeling.layers.transformer_scaffold import TransformerScaffold
