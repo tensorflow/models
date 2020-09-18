@@ -22,6 +22,35 @@ import tensorflow as tf
 from official.nlp.modeling.layers import relative_attention
 
 
+def _cache_memory(current_state, previous_state, memory_length, reuse_length=0):
+  """Caches hidden states into memory.
+
+  Arguments:
+    current_state: `Tensor`, the current state.
+    previous_state: `Tensor`, the previous state.
+    memory_length: `int`, the number of tokens to cache.
+    reuse_length: `int`, the number of tokens in the current batch to be cached
+      and reused in the future.
+
+  Returns:
+    A `Tensor`, representing the cached state with stopped gradients.
+
+  """
+  if memory_length is None or memory_length == 0:
+    return None
+  else:
+    if reuse_length > 0:
+      current_state = current_state[:, :reuse_length, :]
+
+    if previous_state is None:
+      new_mem = current_state[:, -memory_length:, :]
+    else:
+      new_mem = tf.concat(
+          [previous_state, current_state], 1)[:, -memory_length:, :]
+
+  return tf.stop_gradient(new_mem)
+
+
 @tf.keras.utils.register_keras_serializable(package="Text")
 class TransformerXLBlock(tf.keras.layers.Layer):
   """Transformer XL block.
@@ -290,3 +319,243 @@ class TransformerXLBlock(tf.keras.layers.Layer):
 
     return attention_output
 
+
+class TransformerXL(tf.keras.layers.Layer):
+  """Transformer XL.
+
+  This layer combines multiple Transformer XL blocks from "Transformer-XL:
+  Attentive Language Models Beyond a Fixed-Length Context"
+  (https://arxiv.org/abs/1901.02860).
+
+  This layer handles the attention biases as well as memory caching and reuse
+  as in Transformer XL and XLNet.
+
+
+  Attributes:
+    vocab_size: The number of tokens in vocabulary.
+    num_layers: The number of layers.
+    hidden_size: The hidden size.
+    num_attention_heads: The number of attention heads.
+    head_size: The dimension size of each attention head.
+    inner_size: The hidden size in feed-forward layers.
+    dropout_rate: Dropout rate used in each Transformer XL block.
+    attention_dropout_rate: Dropout rate on attention probabilities.
+    two_stream: Whether or not to use `TwoStreamRelativeAttention` used
+      in the XLNet pretrainer. If `False`, then it will use
+      `MultiHeadRelativeAttention` as in Transformer XL.
+    initializer: The initializer to use for attention biases.
+    tie_attention_biases: Whether or not to tie biases together. If `True`, then
+      each Transformer XL block shares the same trainable attention bias. If
+      `False`, then each block has its own attention bias. This is usually set
+      to `True`.
+    memory_length: The number of tokens to cache.
+    reuse_length: The number of tokens in the current batch to be cached
+      and reused in the future.
+    inner_activation: The activation to use in the inner layers
+     for Transformer XL blocks. Typically "relu" or "gelu".
+  """
+
+  def __init__(self,
+               vocab_size,
+               num_layers,
+               hidden_size,
+               num_attention_heads,
+               head_size,
+               inner_size,
+               dropout_rate,
+               attention_dropout_rate,
+               initializer,
+               two_stream=False,
+               tie_attention_biases=True,
+               memory_length=None,
+               reuse_length=None,
+               inner_activation="relu",
+               **kwargs):
+    """Initializes TransformerXL."""
+    super(TransformerXL, self).__init__(**kwargs)
+
+    self._vocab_size = vocab_size
+    self._initializer = initializer
+    self._num_layers = num_layers
+    self._hidden_size = hidden_size
+    self._num_attention_heads = num_attention_heads
+    self._head_size = head_size
+    self._inner_size = inner_size
+    self._inner_activation = inner_activation
+    self._dropout_rate = dropout_rate
+    self._attention_dropout_rate = attention_dropout_rate
+    self._tie_attention_biases = tie_attention_biases
+    self._two_stream = two_stream
+
+    self._memory_length = memory_length
+    self._reuse_length = reuse_length
+
+    if self._tie_attention_biases:
+      attention_bias_shape = [self._num_attention_heads, self._head_size]
+    else:
+      attention_bias_shape = [self._num_layers, self._num_attention_heads,
+                              self._head_size]
+
+    self.content_attention_bias = self.add_weight(
+        "content_attention_bias",
+        shape=attention_bias_shape,
+        dtype=tf.float32,
+        initializer=self._initializer)
+    self.positional_attention_bias = self.add_weight(
+        "positional_attention_bias",
+        shape=attention_bias_shape,
+        dtype=tf.float32,
+        initializer=self._initializer)
+    self.segment_attention_bias = self.add_weight(
+        "segment_attention_bias",
+        shape=attention_bias_shape,
+        dtype=tf.float32,
+        initializer=self._initializer)
+
+    self.transformer_xl_layers = []
+    for i in range(self._num_layers):
+      self.transformer_xl_layers.append(
+          TransformerXLBlock(
+              vocab_size=self._vocab_size,
+              hidden_size=self._head_size * self._num_attention_heads,
+              num_attention_heads=self._num_attention_heads,
+              head_size=self._head_size,
+              inner_size=self._inner_size,
+              dropout_rate=self._dropout_rate,
+              attention_dropout_rate=self._attention_dropout_rate,
+              norm_epsilon=1e-12,
+              inner_activation=self._inner_activation,
+              two_stream=self._two_stream,
+              kernel_initializer="variance_scaling",
+              name="layer_%d" % i))
+
+    self.output_dropout = tf.keras.layers.Dropout(rate=self._dropout_rate)
+
+  def get_config(self):
+    config = {
+        "vocab_size":
+            self._vocab_size,
+        "num_layers":
+            self._num_layers,
+        "hidden_size":
+            self._hidden_size,
+        "num_attention_heads":
+            self._num_attention_heads,
+        "head_size":
+            self._head_size,
+        "inner_size":
+            self._inner_size,
+        "dropout_rate":
+            self._dropout_rate,
+        "attention_dropout_rate":
+            self._attention_dropout_rate,
+        "initializer":
+            self._initializer,
+        "two_stream":
+            self._two_stream,
+        "tie_attention_biases":
+            self._tie_attention_biases,
+        "memory_length":
+            self._memory_length,
+        "reuse_length":
+            self._reuse_length,
+        "inner_activation":
+            self._inner_activation,
+    }
+    base_config = super(TransformerXL, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def call(self,
+           content_stream,
+           relative_position_encoding,
+           segment_matrix=None,
+           segment_embedding=None,
+           state=None,
+           content_attention_mask=None,
+           query_stream=None,
+           query_attention_mask=None,
+           target_mapping=None):
+    """Implements call() for the layer.
+
+    Arguments:
+      content_stream: `Tensor`, the input content stream. This is the standard
+        input to Transformer XL and is commonly referred to as `h` in XLNet.
+      relative_position_encoding: Relative positional encoding `Tensor` of shape
+        `[B, L, dim]`.
+      segment_matrix: Optional `Tensor` of shape `[B, S, S + M]`. Used in XLNet,
+        but not in Transformer XL.
+      segment_embedding: Optional `Tensor` of shape `[2, num_heads, dim]`. Used
+        in XLNet, but not in Transformer XL.
+      state: Optional `Tensor` of shape `[B, M, E]`, where M is the length of
+        the state or memory. If passed, this is also attended over as in
+        Transformer XL.
+      content_attention_mask: Optional `Tensor` representing the mask that is
+        added to content attention logits. If state is not None, the mask source
+        sequence dimension should extend M.
+      query_stream: Optional `Tensor`, the query stream. This is introduced in
+        `TwoStreamRelativeAttention`/XLNet pretrainer. This is ignored if
+        `two_stream` is `False`.
+      query_attention_mask: Optional `Tensor` representing the mask that is
+        added to query attention logits. If state is not None, the mask source
+        sequence dimension should extend M.
+      target_mapping: Optional `Tensor` representing the target mapping when
+        calculating query attention.
+
+    Returns:
+      A tuple consisting of the attention output and the list of cached memory
+      states.
+      The attention output is `content_attention` if `two_stream` is `False`,
+      otherwise it is `query_attention`.
+    """
+    new_mems = []
+
+    if state is None:
+      state = [None] * self._num_layers
+    for i in range(self._num_layers):
+      # cache new mems
+      new_mems.append(
+          _cache_memory(content_stream, state[i],
+                        self._memory_length, self._reuse_length))
+
+      # segment bias
+      if segment_matrix is None:
+        segment_attention_bias = None
+        segment_encoding = None
+      else:
+        segment_attention_bias = (self.segment_attention_bias
+                                  if self._tie_attention_biases
+                                  else self.segment_attention_bias[i])
+        segment_encoding = segment_embedding[i]
+
+      content_attention_bias = (self.content_attention_bias
+                                if self._tie_attention_biases
+                                else self.content_attention_bias[i])
+      positional_attention_bias = (self.positional_attention_bias
+                                   if self._tie_attention_biases
+                                   else self.positional_attention_bias[i])
+      transformer_xl_layer = self.transformer_xl_layers[i]
+      transformer_xl_output = transformer_xl_layer(
+          content_stream=content_stream,
+          content_attention_bias=content_attention_bias,
+          positional_attention_bias=positional_attention_bias,
+          relative_position_encoding=relative_position_encoding,
+          segment_matrix=segment_matrix,
+          segment_encoding=segment_encoding,
+          segment_attention_bias=segment_attention_bias,
+          state=state[i],
+          content_attention_mask=content_attention_mask,
+          query_attention_mask=query_attention_mask,
+          query_stream=query_stream,
+          target_mapping=target_mapping)
+      content_stream = transformer_xl_output["content_attention"]
+      if self._two_stream:
+        query_stream = transformer_xl_output["query_attention"]
+      else:
+        query_stream = None
+
+    if self._two_stream:
+      output_stream = query_stream
+    else:
+      output_stream = content_stream
+
+    return output_stream, new_mems
