@@ -19,7 +19,7 @@ assemble new layers, networks, or models.
 *   [SelfAttentionMask](layers/self_attention_mask.py) creates a 3D attention
     mask from a 2D tensor mask.
 
-*   [`MaskedLM`](layers/masked_lm.py) implements a masked language model. It
+*   [MaskedLM](layers/masked_lm.py) implements a masked language model. It
     assumes the embedding table variable is passed to it.
 
 
@@ -30,7 +30,7 @@ sub-units of models that would not be trained alone. It encapsulates common
 network structures like a classification head or a transformer encoder into an
 easily handled object with a standardized configuration.
 
-*   [`BertEncoder`](encoders/bert_encoder.py) implements a bi-directional
+*   [BertEncoder](encoders/bert_encoder.py) implements a bi-directional
     Transformer-based encoder as described in
     ["BERT: Pre-training of Deep Bidirectional Transformers for Language
     Understanding"](https://arxiv.org/abs/1810.04805). It includes the embedding
