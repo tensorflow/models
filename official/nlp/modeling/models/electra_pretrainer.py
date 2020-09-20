@@ -139,14 +139,11 @@ class ElectraPretrainer(tf.keras.Model):
     masked_lm_positions = inputs['masked_lm_positions']
 
     ### Generator ###
-    sequence_output, cls_output = self.generator_network(
-        [input_word_ids, input_mask, input_type_ids])
-
+    sequence_output = self.generator_network(
+        [input_word_ids, input_mask, input_type_ids])['sequence_output']
     # The generator encoder network may get outputs from all layers.
     if isinstance(sequence_output, list):
       sequence_output = sequence_output[-1]
-    if isinstance(cls_output, list):
-      cls_output = cls_output[-1]
 
     lm_outputs = self.masked_lm(sequence_output, masked_lm_positions)
     sentence_outputs = self.classification(sequence_output)
@@ -157,10 +154,10 @@ class ElectraPretrainer(tf.keras.Model):
     ### Discriminator ###
     disc_input = fake_data['inputs']
     disc_label = fake_data['is_fake_tokens']
-    disc_sequence_output, _ = self.discriminator_network([
+    disc_sequence_output = self.discriminator_network([
         disc_input['input_word_ids'], disc_input['input_mask'],
         disc_input['input_type_ids']
-    ])
+    ])['sequence_output']
 
     # The discriminator encoder network may get outputs from all layers.
     if isinstance(disc_sequence_output, list):
