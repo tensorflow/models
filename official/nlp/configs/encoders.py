@@ -185,7 +185,8 @@ def build_encoder(
         pooled_output_dim=encoder_cfg.hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
-        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs)
+        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs,
+        dict_outputs=True)
     return encoder_cls(**kwargs)
 
   if encoder_type == "mobilebert":
@@ -221,7 +222,8 @@ def build_encoder(
         dropout_rate=encoder_cfg.dropout_rate,
         attention_dropout_rate=encoder_cfg.attention_dropout_rate,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=encoder_cfg.initializer_range))
+            stddev=encoder_cfg.initializer_range),
+        dict_outputs=True)
 
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.
@@ -240,4 +242,5 @@ def build_encoder(
           stddev=encoder_cfg.initializer_range),
       embedding_width=encoder_cfg.embedding_size,
       embedding_layer=embedding_layer,
-      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs)
+      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
+      dict_outputs=True)
