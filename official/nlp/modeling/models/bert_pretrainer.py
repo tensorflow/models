@@ -161,8 +161,9 @@ class BertPretrainerV2(tf.keras.Model):
     name: The name of the model.
   Inputs: Inputs defined by the encoder network, plus `masked_lm_positions` as a
     dictionary.
-  Outputs: A dictionary of `lm_output` and classification head outputs keyed by
-    head names.
+  Outputs: A dictionary of `lm_output`, classification head outputs keyed by
+    head names, and also outputs from `encoder_network`, keyed by
+    `pooled_output`, `sequence_output` and `encoder_outputs` (if any).
   """
 
   def __init__(
@@ -180,21 +181,32 @@ class BertPretrainerV2(tf.keras.Model):
         'classification_heads': classification_heads,
         'name': name,
     }
-
     self.encoder_network = encoder_network
     inputs = copy.copy(self.encoder_network.inputs)
-    outputs = self.encoder_network(inputs)
-    if isinstance(outputs, list):
-      sequence_output = outputs[0]
+    outputs = dict()
+    encoder_network_outputs = self.encoder_network(inputs)
+    if isinstance(encoder_network_outputs, list):
+      outputs['pooled_output'] = encoder_network_outputs[1]
+      # When `encoder_network` was instantiated with return_all_encoder_outputs
+      # set to True, `encoder_network_outputs[0]` is a list containing
+      # all transformer layers' output.
+      if isinstance(encoder_network_outputs[0], list):
+        outputs['encoder_outputs'] = encoder_network_outputs[0]
+        outputs['sequence_output'] = encoder_network_outputs[0][-1]
+      else:
+        outputs['sequence_output'] = encoder_network_outputs[0]
+    elif isinstance(encoder_network_outputs, dict):
+      outputs = encoder_network_outputs
     else:
-      sequence_output = outputs['sequence_output']
+      raise ValueError('encoder_network\'s output should be either a list '
+                       'or a dict, but got %s' % encoder_network_outputs)
 
+    sequence_output = outputs['sequence_output']
     self.classification_heads = classification_heads or []
     if len(set([cls.name for cls in self.classification_heads])) != len(
         self.classification_heads):
       raise ValueError('Classification heads should have unique names.')
 
-    outputs = dict()
     self.masked_lm = layers.MaskedLM(
         embedding_table=self.encoder_network.get_embedding_table(),
         activation=mlm_activation,

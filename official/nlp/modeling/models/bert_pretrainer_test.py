@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for BERT pretrainer model."""
+import itertools
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -108,16 +109,23 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     self.assertAllEqual(bert_trainer_model.get_config(),
                         new_bert_trainer_model.get_config())
 
-  @parameterized.parameters(True, False)
-  def test_bert_pretrainerv2(self, dict_outputs):
+  @parameterized.parameters(itertools.product(
+      (False, True),
+      (False, True),
+  ))
+  def test_bert_pretrainerv2(self, dict_outputs, return_all_encoder_outputs):
     """Validate that the Keras object can be created."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
     sequence_length = 512
+    hidden_size = 48
+    num_layers = 2
     test_network = networks.BertEncoder(
         vocab_size=vocab_size,
-        num_layers=2,
+        num_layers=num_layers,
+        hidden_size=hidden_size,
         max_sequence_length=sequence_length,
+        return_all_encoder_outputs=return_all_encoder_outputs,
         dict_outputs=dict_outputs)
 
     # Create a BERT trainer with the created network.
@@ -133,9 +141,27 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     # Invoke the trainer model on the inputs. This causes the layer to be built.
     outputs = bert_trainer_model([word_ids, mask, type_ids, lm_mask])
 
+    has_encoder_outputs = dict_outputs or return_all_encoder_outputs
+    if has_encoder_outputs:
+      self.assertSameElements(
+          outputs.keys(),
+          ['sequence_output', 'pooled_output', 'lm_output', 'encoder_outputs'])
+      self.assertLen(outputs['encoder_outputs'], num_layers)
+    else:
+      self.assertSameElements(outputs.keys(),
+                              ['sequence_output', 'pooled_output', 'lm_output'])
+
     # Validate that the outputs are of the expected shape.
     expected_lm_shape = [None, num_token_predictions, vocab_size]
     self.assertAllEqual(expected_lm_shape, outputs['lm_output'].shape.as_list())
+
+    expected_sequence_output_shape = [None, sequence_length, hidden_size]
+    self.assertAllEqual(expected_sequence_output_shape,
+                        outputs['sequence_output'].shape.as_list())
+
+    expected_pooled_output_shape = [None, hidden_size]
+    self.assertAllEqual(expected_pooled_output_shape,
+                        outputs['pooled_output'].shape.as_list())
 
   def test_v2_serialize_deserialize(self):
     """Validate that the BERT trainer can be serialized and deserialized."""
