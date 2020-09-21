@@ -14,12 +14,7 @@
 # ==============================================================================
 """Trainer network for dual encoder style models."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
-# Import libraries
 import tensorflow as tf
 
 from official.nlp.modeling import layers
