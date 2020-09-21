@@ -3,7 +3,7 @@
 Patches to KerasNLP are welcome!
 
 The source-of-truth repository lives under
-[TF Model Garden NLP](https://github.com/tensorflow/models/official/nlp/keras_nlp),
+[TF Model Garden NLP](https://github.com/tensorflow/models/tree/master/official/nlp/keras_nlp),
 and is mirrored as a read-only repository under
 [keras-team/keras-nlp](https://github.com/keras-team/keras-nlp).
 Contributions should be made as PRs to the TF Model Garden repository.
