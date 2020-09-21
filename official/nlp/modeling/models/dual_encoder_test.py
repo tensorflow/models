@@ -14,7 +14,6 @@
 # ==============================================================================
 """Tests for dual encoder network."""
 
-# Import libraries
 from absl.testing import parameterized
 import tensorflow as tf
 
