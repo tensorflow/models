@@ -69,8 +69,7 @@ class BertEncoderTest(keras_parameterized.TestCase):
         vocab_size=100,
         hidden_size=hidden_size,
         num_attention_heads=2,
-        num_layers=3,
-        return_all_encoder_outputs=True)
+        num_layers=3)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -204,7 +203,6 @@ class BertEncoderTest(keras_parameterized.TestCase):
         output_dropout=0.05,
         attention_dropout=0.22,
         initializer="glorot_uniform",
-        return_all_encoder_outputs=False,
         output_range=-1,
         embedding_width=16)
     network = bert_encoder.BertEncoder(**kwargs)
