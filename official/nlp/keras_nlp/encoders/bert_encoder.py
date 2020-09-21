@@ -56,8 +56,6 @@ class BertEncoder(tf.keras.Model):
     attention_dropout: The dropout rate to use for the attention layers
       within the transformer layers.
     initializer: The initialzer to use for all weights in this encoder.
-    return_all_encoder_outputs: Whether to output sequence embedding outputs of
-      all encoder transformer layers.
     output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yeilds the full
@@ -82,7 +80,6 @@ class BertEncoder(tf.keras.Model):
       output_dropout=0.1,
       attention_dropout=0.1,
       initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
-      return_all_encoder_outputs=False,
       output_range=None,
       embedding_width=None,
       **kwargs):
@@ -102,7 +99,6 @@ class BertEncoder(tf.keras.Model):
         'output_dropout': output_dropout,
         'attention_dropout': attention_dropout,
         'initializer': tf.keras.initializers.serialize(initializer),
-        'return_all_encoder_outputs': return_all_encoder_outputs,
         'output_range': output_range,
         'embedding_width': embedding_width,
     }

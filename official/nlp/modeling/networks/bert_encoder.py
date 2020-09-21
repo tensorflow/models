@@ -60,7 +60,9 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
       within the transformer layers.
     initializer: The initialzer to use for all weights in this encoder.
     return_all_encoder_outputs: Whether to output sequence embedding outputs of
-      all encoder transformer layers.
+      all encoder transformer layers. Note: when the following `dict_outputs`
+      argument is True, all encoder outputs are always returned in the dict,
+      keyed by `encoder_outputs`.
     output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yeilds the full
@@ -112,7 +114,6 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
         output_dropout=dropout_rate,
         attention_dropout=attention_dropout_rate,
         initializer=initializer,
-        return_all_encoder_outputs=return_all_encoder_outputs,
         output_range=output_range,
         embedding_width=embedding_width)
 
@@ -123,6 +124,7 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
     self._config_dict['attention_dropout_rate'] = self._config_dict.pop(
         'attention_dropout')
     self._config_dict['dict_outputs'] = dict_outputs
+    self._config_dict['return_all_encoder_outputs'] = return_all_encoder_outputs
 
     if dict_outputs:
       return
