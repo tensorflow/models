@@ -15,9 +15,53 @@
 """Contains common building blocks for neural networks."""
 
 # Import libraries
+from absl import logging
+from typing import Optional
+
 import tensorflow as tf
 
 from official.modeling import tf_utils
+
+
+def make_divisible(value: float,
+                   divisor: int,
+                   min_value: Optional[float] = None
+                   ) -> int:
+  """This utility function is to ensure that all layers have a channel number
+  that is divisible by 8.
+  Args:
+    value: `float` original value.
+    divisor: `int` the divisor that need to be checked upon.
+    min_value: `float` minimum value threshold.
+
+  Returns:
+    The adjusted value in `int` that divisible against divisor.
+  """
+  if min_value is None:
+    min_value = divisor
+  new_value = max(min_value, int(value + divisor / 2) // divisor * divisor)
+  # Make sure that round down does not go down by more than 10%.
+  if new_value < 0.9 * value:
+    new_value += divisor
+  return new_value
+
+
+def round_filters(filters: int,
+                  multiplier: float,
+                  divisor: int = 8,
+                  min_depth: Optional[int] = None,
+                  skip: bool = False):
+  """Round number of filters based on width multiplier."""
+  orig_f = filters
+  if skip or not multiplier:
+    return filters
+
+  new_filters = make_divisible(value=filters * multiplier,
+                               divisor=divisor,
+                               min_value=min_depth)
+
+  logging.info('round_filter input=%s output=%s', orig_f, new_filters)
+  return int(new_filters)
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -67,37 +111,37 @@ class SqueezeExcitation(tf.keras.layers.Layer):
     num_reduced_filters = max(1, int(self._in_filters * self._se_ratio))
 
     self._se_reduce = tf.keras.layers.Conv2D(
-        filters=num_reduced_filters,
-        kernel_size=1,
-        strides=1,
-        padding='same',
-        use_bias=True,
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)
+      filters=num_reduced_filters,
+      kernel_size=1,
+      strides=1,
+      padding='same',
+      use_bias=True,
+      kernel_initializer=self._kernel_initializer,
+      kernel_regularizer=self._kernel_regularizer,
+      bias_regularizer=self._bias_regularizer)
 
     self._se_expand = tf.keras.layers.Conv2D(
-        filters=self._in_filters * self._expand_ratio,
-        kernel_size=1,
-        strides=1,
-        padding='same',
-        use_bias=True,
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)
+      filters=self._in_filters * self._expand_ratio,
+      kernel_size=1,
+      strides=1,
+      padding='same',
+      use_bias=True,
+      kernel_initializer=self._kernel_initializer,
+      kernel_regularizer=self._kernel_regularizer,
+      bias_regularizer=self._bias_regularizer)
 
     super(SqueezeExcitation, self).build(input_shape)
 
   def get_config(self):
     config = {
-        'in_filters': self._in_filters,
-        'se_ratio': self._se_ratio,
-        'expand_ratio': self._expand_ratio,
-        'strides': self._strides,
-        'kernel_initializer': self._kernel_initializer,
-        'kernel_regularizer': self._kernel_regularizer,
-        'bias_regularizer': self._bias_regularizer,
-        'activation': self._activation,
+      'in_filters': self._in_filters,
+      'se_ratio': self._se_ratio,
+      'expand_ratio': self._expand_ratio,
+      'strides': self._strides,
+      'kernel_initializer': self._kernel_initializer,
+      'kernel_regularizer': self._kernel_regularizer,
+      'bias_regularizer': self._bias_regularizer,
+      'activation': self._activation,
     }
     base_config = super(SqueezeExcitation, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
@@ -141,7 +185,7 @@ class StochasticDepth(tf.keras.layers.Layer):
     batch_size = tf.shape(inputs)[0]
     random_tensor = keep_prob
     random_tensor += tf.random.uniform(
-        [batch_size, 1, 1, 1], dtype=inputs.dtype)
+      [batch_size, 1, 1, 1], dtype=inputs.dtype)
     binary_tensor = tf.floor(random_tensor)
     output = tf.math.divide(inputs, keep_prob) * binary_tensor
     return output
