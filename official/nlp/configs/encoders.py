@@ -203,6 +203,7 @@ def build_encoder(
         hidden_dropout_prob=encoder_cfg.hidden_dropout_prob,
         attention_probs_dropout_prob=encoder_cfg.attention_probs_dropout_prob,
         intra_bottleneck_size=encoder_cfg.intra_bottleneck_size,
+        initializer_range=encoder_cfg.initializer_range,
         key_query_shared_bottleneck=encoder_cfg.key_query_shared_bottleneck,
         num_feedforward_networks=encoder_cfg.num_feedforward_networks,
         normalization_type=encoder_cfg.normalization_type,
