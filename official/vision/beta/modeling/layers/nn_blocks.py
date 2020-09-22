@@ -391,7 +391,13 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
                kernel_regularizer=None,
                bias_regularizer=None,
                activation='relu',
+               depthwise_activation=None,
                use_sync_bn=False,
+               dilation_rate=1,
+               divisible_by=1,
+               regularize_depthwise=False,
+               use_depthwise=True,
+               use_residual=True,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                **kwargs):
@@ -414,7 +420,16 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       activation: `str` name of the activation function.
+      depthwise_activation: `str` name of the activation function for depthwise only.
       use_sync_bn: if True, use synchronized batch normalization.
+      dilation_rate: `int` an integer specifying the dilation rate to use for.
+      divisible_by: `int` ensures all inner dimensions are divisible by this number.
+      dilated convolution. Can be a single integer to specify the same value for
+      all spatial dimensions.
+      regularize_depthwise: `bool` whether or not apply regularization on depthwise.
+      use_depthwise: `bool` whether to uses fused convolutions instead of depthwise.
+      use_residual: `bool`whether to include residual connection between input
+      and output.
       norm_momentum: `float` normalization omentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
@@ -428,9 +443,15 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._strides = strides
     self._kernel_size = kernel_size
     self._se_ratio = se_ratio
+    self._divisible_by = divisible_by
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
+    self._dilation_rate = dilation_rate
     self._use_sync_bn = use_sync_bn
+    self._regularize_depthwise = regularize_depthwise
+    self._use_depthwise = use_depthwise
+    self._use_residual = use_residual
     self._activation = activation
+    self._depthwise_activation = depthwise_activation
     self._kernel_initializer = kernel_initializer
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -446,14 +467,26 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     else:
       self._bn_axis = 1
     self._activation_fn = tf_utils.get_activation(activation)
+    if not depthwise_activation:
+      self._depthwise_activation = activation
+    self._depthwise_activation_fn = tf_utils.get_activation(
+        self._depthwise_activation)
+    self._depthsize_regularizer = kernel_regularizer if regularize_depthwise else None
 
   def build(self, input_shape):
+    expand_filters = self._in_filters
     if self._expand_ratio != 1:
       # First 1x1 conv for channel expansion.
+      expand_filters = nn_layers.make_divisible(
+          self._in_filters * self._expand_ratio, self._divisible_by)
+      expand_kernel = 1 if self._use_depthwise else self._kernel_size
+      expand_stride = 1 if self._use_depthwise else self._strides
+
       self._conv0 = tf.keras.layers.Conv2D(
-          filters=self._in_filters * self._expand_ratio,
-          kernel_size=1,
-          strides=1,
+          filters=expand_filters,
+          kernel_size=expand_kernel,
+          strides=expand_stride,
+          padding='same',
           use_bias=False,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
@@ -463,26 +496,29 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)
 
-    # Depthwise conv.
-    self._conv1 = tf.keras.layers.DepthwiseConv2D(
-        kernel_size=(self._kernel_size, self._kernel_size),
-        strides=self._strides,
-        padding='same',
-        use_bias=False,
-        depthwise_initializer=self._kernel_initializer,
-        depthwise_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)
-    self._norm1 = self._norm(
-        axis=self._bn_axis,
-        momentum=self._norm_momentum,
-        epsilon=self._norm_epsilon)
+    if self._use_depthwise:
+      # Depthwise conv.
+      self._conv1 = tf.keras.layers.DepthwiseConv2D(
+          kernel_size=(self._kernel_size, self._kernel_size),
+          strides=self._strides,
+          padding='same',
+          depth_multiplier=1,
+          dilation_rate=self._dilation_rate,
+          use_bias=False,
+          depthwise_initializer=self._kernel_initializer,
+          depthwise_regularizer=self._depthsize_regularizer,
+          bias_regularizer=self._bias_regularizer)
+      self._norm1 = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon)
 
     # Squeeze and excitation.
     if self._se_ratio is not None and self._se_ratio > 0 and self._se_ratio <= 1:
       self._squeeze_excitation = nn_layers.SqueezeExcitation(
-          in_filters=self._in_filters,
+          in_filters=expand_filters,
           se_ratio=self._se_ratio,
-          expand_ratio=self._expand_ratio,
+          divisible_by=self._divisible_by,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
@@ -494,6 +530,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         filters=self._out_filters,
         kernel_size=1,
         strides=1,
+        padding='same',
         use_bias=False,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -519,12 +556,18 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         'strides': self._strides,
         'kernel_size': self._kernel_size,
         'se_ratio': self._se_ratio,
+        'divisible_by': self._divisible_by,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
         'activation': self._activation,
+        'depthwise_activation': self._depthwise_activation,
+        'dilation_rate': self._dilation_rate,
         'use_sync_bn': self._use_sync_bn,
+        'regularize_depthwise': self._regularize_depthwise,
+        'use_depthwise': self._use_depthwise,
+        'use_residual': self._use_residual,
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon
     }
@@ -540,9 +583,10 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     else:
       x = inputs
 
-    x = self._conv1(x)
-    x = self._norm1(x)
-    x = self._activation_fn(x)
+    if self._use_depthwise:
+      x = self._conv1(x)
+      x = self._norm1(x)
+      x = self._depthwise_activation_fn(x)
 
     if self._squeeze_excitation:
       x = self._squeeze_excitation(x)
@@ -550,7 +594,9 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     x = self._conv2(x)
     x = self._norm2(x)
 
-    if self._in_filters == self._out_filters and self._strides == 1:
+    if (self._use_residual and
+        self._in_filters == self._out_filters and
+        self._strides == 1):
       if self._stochastic_depth:
         x = self._stochastic_depth(x, training=training)
       x = tf.add(x, shortcut)
