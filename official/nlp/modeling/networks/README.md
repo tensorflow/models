@@ -26,3 +26,4 @@ to 1) head.
 
 * [`SpanLabeling`](span_labeling.py) implements a single-span labeler (that is, a prediction head that can predict one start and end index per batch item) based on a single dense hidden layer. It can be used in the SQuAD task.
 
+* [`XLNetBase`](xlnet_base.py) implements the base network used in "XLNet: Generalized Autoregressive Pretraining for Language Understanding"(https://arxiv.org/abs/1906.08237). It includes embedding lookups, relative position encodings, mask computations, segment matrix computations and Transformer XL layers using one or two stream relative self-attention.
