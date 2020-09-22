@@ -109,7 +109,7 @@ class CompiledTransformer(Transformer):
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
-class TransformerDecoderLayer(tf.keras.layers.Layer):
+class TransformerDecoderBlock(tf.keras.layers.Layer):
   """Single transformer layer for decoder.
 
   It has three sub-layers:
@@ -163,7 +163,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
                intermediate_dropout=0.0,
                attention_initializer=None,
                **kwargs):
-    super(TransformerDecoderLayer, self).__init__(**kwargs)
+    super().__init__(**kwargs)
     self.num_attention_heads = num_attention_heads
     self.intermediate_size = intermediate_size
     self.intermediate_activation = tf.keras.activations.get(
@@ -274,7 +274,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
     self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm", axis=-1, epsilon=self._norm_epsilon)
-    super(TransformerDecoderLayer, self).build(input_shape)
+    super().build(input_shape)
 
   def get_config(self):
     config = {
@@ -315,7 +315,7 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
         "attention_initializer":
             tf.keras.initializers.serialize(self._attention_initializer)
     }
-    base_config = super(TransformerDecoderLayer, self).get_config()
+    base_config = super().get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def common_layers_with_encoder(self):
@@ -329,11 +329,11 @@ class TransformerDecoderLayer(tf.keras.layers.Layer):
     if self.multi_channel_cross_attention:
       if len(inputs) != 5:
         raise ValueError(
-            "TransformerDecoderLayer must have 5 inputs, when it uses "
+            "TransformerDecoderBlock must have 5 inputs, when it uses "
             "multi_channel_cross_attention. But it got: %d" % len(inputs))
     elif len(inputs) != 4:
       raise ValueError(
-          "TransformerDecoderLayer must have 4 inputs, but it got: %d" %
+          "TransformerDecoderBlock must have 4 inputs, but it got: %d" %
           len(inputs))
     input_tensor, memory, attention_mask, self_attention_mask = inputs[:4]
     source_tensor = input_tensor

@@ -581,7 +581,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
     self.decoder_layers = []
     for i in range(self.num_layers):
       self.decoder_layers.append(
-          layers.TransformerDecoderLayer(
+          layers.TransformerDecoderBlock(
               num_attention_heads=self.num_attention_heads,
               intermediate_size=self._intermediate_size,
               intermediate_activation=self._activation,
