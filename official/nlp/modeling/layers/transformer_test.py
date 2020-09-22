@@ -32,12 +32,12 @@ def _create_cache(batch_size, init_decode_length, num_heads, head_size):
 
 
 @keras_parameterized.run_all_keras_modes
-class TransformerDecoderLayerTest(keras_parameterized.TestCase):
+class TransformerDecoderBlockTest(keras_parameterized.TestCase):
 
   def test_decoder_block_with_cache(self):
     num_attention_heads = 2
     hidden_size = 16
-    decoder_block = transformer.TransformerDecoderLayer(
+    decoder_block = transformer.TransformerDecoderBlock(
         num_attention_heads=num_attention_heads,
         intermediate_size=32,
         intermediate_activation='relu',
@@ -56,7 +56,7 @@ class TransformerDecoderLayerTest(keras_parameterized.TestCase):
   def test_use_bias_norm_first(self):
     num_attention_heads = 2
     hidden_size = 16
-    decoder_block = transformer.TransformerDecoderLayer(
+    decoder_block = transformer.TransformerDecoderBlock(
         num_attention_heads=num_attention_heads,
         intermediate_size=32,
         intermediate_activation='relu',
@@ -77,7 +77,7 @@ class TransformerDecoderLayerTest(keras_parameterized.TestCase):
 
   def test_get_config(self):
     num_attention_heads = 2
-    decoder_block = transformer.TransformerDecoderLayer(
+    decoder_block = transformer.TransformerDecoderBlock(
         num_attention_heads=num_attention_heads,
         intermediate_size=32,
         intermediate_activation='relu',
@@ -90,7 +90,7 @@ class TransformerDecoderLayerTest(keras_parameterized.TestCase):
         attention_initializer=tf.keras.initializers.RandomUniform(
             minval=0., maxval=1.))
     decoder_block_config = decoder_block.get_config()
-    new_decoder_block = transformer.TransformerDecoderLayer.from_config(
+    new_decoder_block = transformer.TransformerDecoderBlock.from_config(
         decoder_block_config)
     self.assertEqual(decoder_block_config, new_decoder_block.get_config())
 

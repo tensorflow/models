@@ -29,7 +29,7 @@ assemble new layers, networks, or models.
     described in
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
 
-*   [TransformerDecoderLayer](transformer.py) TransformerDecoderLayer is made up
+*   [TransformerDecoderBlock](transformer.py) TransformerDecoderBlock is made up
     of self multi-head attention, cross multi-head attention and feedforward
     network.
 
