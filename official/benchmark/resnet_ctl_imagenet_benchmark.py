@@ -313,6 +313,16 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.batch_size = 128 * 8  # 8 GPUs
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_fp32_no_tf32(self):
+    """Test Keras model with 8 GPUs.Runs in FP32 by disabling TF32 execution."""
+    self._setup()
+    tf.config.experimental.enable_tensor_float_32_execution(False)
+    FLAGS.num_gpus = 8
+    FLAGS.distribution_strategy = 'mirrored'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_fp32_no_tf32')
+    FLAGS.batch_size = 128 * 8  # 8 GPUs
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu_fp16(self):
     """Test Keras model with 8 GPUs with tf.keras mixed precision."""
     self._setup()
