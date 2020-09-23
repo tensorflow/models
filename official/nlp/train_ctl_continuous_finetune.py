@@ -15,6 +15,7 @@
 # ==============================================================================
 """TFM continuous finetuning+eval training driver."""
 
+import gc
 import os
 import time
 from typing import Any, Mapping, Optional
@@ -145,6 +146,13 @@ def run_continuous_finetune(
     train_utils.write_summary(summary_writer, global_step, summaries)
 
     train_utils.remove_ckpts(model_dir)
+    # In TF2, the resource life cycle is bound with the python object life
+    # cycle. Force trigger python garbage collection here so those resources
+    # can be deallocated in time, so it doesn't cause OOM when allocating new
+    # objects.
+    # TODO(b/169178664): Fix cycle reference in Keras model and revisit to see
+    # if we need gc here.
+    gc.collect()
 
     if pretrain_steps and global_step.numpy() >= pretrain_steps:
       logging.info('The global_step reaches the pretraining end. Continuous '
