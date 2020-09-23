@@ -390,7 +390,12 @@ class BigBirdMasks(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 class BigBirdAttention(tf.keras.layers.MultiHeadAttention):
-  """Attention layer with cache used for auto-agressive decoding.
+  """BigBird, a sparse attention mechanism.
+
+  This layer follows the paper "Big Bird: Transformers for Longer Sequences"
+  (https://arxiv.org/abs/2007.14062).
+  It reduces this quadratic dependency of attention
+  computation to linear.
 
   Arguments are the same as `MultiHeadAttention` layer.
   """
