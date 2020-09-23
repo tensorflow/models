@@ -148,6 +148,27 @@ class GlobalPoolingBlock(tf.keras.layers.Layer):
     return outputs
 
 
+MNV1_BLOCK_SPECS = {
+    'spec_name': 'MobileNetV1',
+    'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters'],
+    'block_specs': [
+        ('convbn', 3, 2, 32),
+        ('depsepconv', 3, 1, 64),
+        ('depsepconv', 3, 2, 128),
+        ('depsepconv', 3, 1, 128),
+        ('depsepconv', 3, 2, 256),
+        ('depsepconv', 3, 1, 256),
+        ('depsepconv', 3, 2, 512),
+        ('depsepconv', 3, 1, 512),
+        ('depsepconv', 3, 1, 512),
+        ('depsepconv', 3, 1, 512),
+        ('depsepconv', 3, 1, 512),
+        ('depsepconv', 3, 1, 512),
+        ('depsepconv', 3, 2, 1024),
+        ('depsepconv', 3, 1, 1024),
+    ]
+}
+
 MNV2_BLOCK_SPECS = {
     'spec_name': 'MobileNetV2',
     'block_spec_schema': ['block_fn', 'kernel_size', 'strides',
@@ -292,6 +313,7 @@ MNV3EdgeTPU_BLOCK_SPECS = {
 }
 
 SUPPORTED_SPECS_MAP = {
+    'MobileNetV1': MNV1_BLOCK_SPECS,
     'MobileNetV2': MNV2_BLOCK_SPECS,
     'MobileNetV3Large': MNV3Large_BLOCK_SPECS,
     'MobileNetV3Small': MNV3Small_BLOCK_SPECS,
@@ -301,6 +323,7 @@ SUPPORTED_SPECS_MAP = {
 BLOCK_FN_MAP = {
     'convbn': Conv2DBNBlock,
     'gpooling': GlobalPoolingBlock,
+    'depsepconv': nn_blocks.DepthwiseSeparableConvBlock,
     'mbconv': nn_blocks.InvertedBottleneckBlock,
 
 }
@@ -391,7 +414,33 @@ def mobilenet_base(inputs: tf.Tensor,
                    norm_momentum=0.99,
                    norm_epsilon=0.001,
                    ) -> (tf.Tensor, Dict[tf.Tensor]):
-  """Build the base MobileNet architecture."""
+  """Build the base MobileNet architecture.
+
+  Args:
+    inputs: Input tensor of shape [batch_size, height, width, channels].
+    spec_blocks: `List[BlockSpec]` defines structure of the base network.
+    divisible_by: `int` ensures all inner dimensions are divisible by
+      this number.
+    output_stride: `int` specifies the requested ratio of input to
+      output spatial resolution. If not None, then we invoke atrous convolution
+      if necessary to prevent the network from reducing the spatial resolution
+      of activation maps. Allowed values are 8 (accurate fully convolutional
+      mode), 16 (fast fully convolutional mode), 32 (classification mode).
+    stochastic_depth_drop_rate: `float` drop rate for drop connect layer.
+    regularize_depthwise: if Ture, apply regularization on depthwise.
+    kernel_initializer: `str` kernel_initializer for convolutional layers.
+    kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      Default to None.
+    bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      Default to None.
+    use_sync_bn: if True, use synchronized batch normalization.
+    norm_momentum: `float` normalization omentum for the moving average.
+    norm_epsilon: `float` small float added to variance to avoid dividing by
+      zero.
+
+  Returns:
+    A tuple of output Tensor and dictionary that collects endpoints.
+  """
 
   input_shape = inputs.get_shape().as_list()
   if len(input_shape) != 4:
@@ -432,13 +481,29 @@ def mobilenet_base(inputs: tf.Tensor,
           strides=block_def.strides,
           activation=block_def.activation,
           use_biase=block_def.use_biase,
+          use_normalization=block_def.use_normalization,
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer,
-          use_normalization=block_def.use_normalization,
           use_sync_bn=use_sync_bn,
           norm_momentum=norm_momentum,
           norm_epsilon=norm_epsilon
+      )(net)
+
+    elif block_def.block_fn == 'depsepconv':
+      net = nn_blocks.DepthwiseSeparableConvBlock(
+          filters=block_def.filters,
+          kernel_size=block_def.kernel_size,
+          strides=block_def.strides,
+          activation=block_def.activation,
+          use_normalization=block_def.use_normalization,
+          dilation_rate=layer_rate,
+          regularize_depthwise=regularize_depthwise,
+          kernel_initializer=kernel_initializer,
+          kernel_regularizer=kernel_regularizer,
+          use_sync_bn=use_sync_bn,
+          norm_momentum=norm_momentum,
+          norm_epsilon=norm_epsilon,
       )(net)
 
     elif block_def.block_fn == 'mbconv':

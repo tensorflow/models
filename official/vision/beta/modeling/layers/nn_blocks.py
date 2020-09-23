@@ -14,7 +14,7 @@
 # ==============================================================================
 """Contains common building blocks for neural networks."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Text
 
 # Import libraries
 
@@ -617,7 +617,7 @@ class ResidualInner(tf.keras.layers.Layer):
       filters: int,
       strides: int,
       kernel_initializer: Union[
-          str, Callable[..., tf.keras.initializers.Initializer]]
+        str, Callable[..., tf.keras.initializers.Initializer]]
       = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       activation: Union[str, Callable[..., tf.Tensor]] = 'relu',
@@ -740,7 +740,7 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
       filters: int,
       strides: int,
       kernel_initializer: Union[
-          str, Callable[..., tf.keras.initializers.Initializer]]
+        str, Callable[..., tf.keras.initializers.Initializer]]
       = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       activation: Union[str, Callable[..., tf.Tensor]] = 'relu',
@@ -933,7 +933,7 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
     @tf.custom_gradient
     def reversible(x: tf.Tensor) -> Tuple[
-        tf.Tensor, Callable[[Any], Tuple[List[tf.Tensor], List[tf.Tensor]]]]:
+      tf.Tensor, Callable[[Any], Tuple[List[tf.Tensor], List[tf.Tensor]]]]:
       """Implements Algorithm 1 in RevNet paper.
 
       Paper: https://arxiv.org/pdf/1707.04585.pdf
@@ -972,7 +972,7 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
       def grad_fn(dy: tf.Tensor,
                   variables: Optional[List[tf.Variable]] = None,
-                 ) -> Tuple[List[tf.Tensor], List[tf.Tensor]]:
+                  ) -> Tuple[List[tf.Tensor], List[tf.Tensor]]:
         """Given dy calculate (dy/dx)|_{x_{input}} using f/g."""
         if irreversible or not self._manual_grads:
           grads_combined = fwdtape.gradient(
@@ -993,11 +993,11 @@ class ReversibleLayer(tf.keras.layers.Layer):
           self_to_var_index = [fg_var_refs.index(v.ref()) for v in variables]
 
           # Algorithm 1 in paper (line # documented in-line)
-          z1 = y1_nograd                                         # line 2
+          z1 = y1_nograd  # line 2
           with tf.GradientTape() as gtape:
             gtape.watch(z1)
             g_z1 = self._g(z1, training=training)
-          x2 = y2_nograd - g_z1                                  # line 3
+          x2 = y2_nograd - g_z1  # line 3
 
           with tf.GradientTape() as ftape:
             ftape.watch(x2)
@@ -1009,16 +1009,16 @@ class ReversibleLayer(tf.keras.layers.Layer):
               g_z1,
               [z1] + self._g.trainable_variables,
               output_gradients=dy2)
-          dz1 = dy1 + g_grads_combined[0]                        # line 5
-          dwg = g_grads_combined[1:]                             # line 9
+          dz1 = dy1 + g_grads_combined[0]  # line 5
+          dwg = g_grads_combined[1:]  # line 9
 
           f_grads_combined = ftape.gradient(
               f_x2,
               [x2] + self._f.trainable_variables,
               output_gradients=dz1)
-          dx2 = dy2 + f_grads_combined[0]                        # line 6
-          dwf = f_grads_combined[1:]                             # line 8
-          dx1 = dz1                                              # line 7
+          dx2 = dy2 + f_grads_combined[0]  # line 6
+          dwf = f_grads_combined[1:]  # line 8
+          dx1 = dz1  # line 7
 
           # Pack the input and variable gradients.
           dx = tf.concat([dx1, dx2], axis=self._axis)
@@ -1035,3 +1035,139 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
     activations = reversible(inputs)
     return activations
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
+  """An depthwise separable convolution block with batch normalization."""
+
+  def __init__(self,
+               filters: int,
+               kernel_size: int = 3,
+               strides: int = 1,
+               regularize_depthwise=False,
+               activation: Text = 'relu6',
+               kernel_initializer: Text = 'VarianceScaling',
+               kernel_regularizer: Optional[
+                 tf.keras.regularizers.Regularizer] = None,
+               dilation_rate: int = 1,
+               use_normalization: bool = True,
+               use_sync_bn: bool = False,
+               norm_momentum: float = 0.99,
+               norm_epsilon: float = 0.001,
+               **kwargs):
+    """An convolution block with batch normalization.
+
+    Args:
+      filters: `int` number of filters for the first two convolutions. Note that
+        the third and final convolution will use 4 times as many filters.
+      kernel_size: `int` an integer specifying the height and width of the
+      2D convolution window.
+      strides: `int` block stride. If greater than 1, this block will ultimately
+        downsample the input.
+      regularize_depthwise: if Ture, apply regularization on depthwise.
+      activation: `str` name of the activation function.
+      kernel_size: `int` kernel_size of the conv layer.
+      kernel_initializer: kernel_initializer for convolutional layers.
+      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+                          Default to None.
+      dilation_rate: an integer or tuple/list of 2 integers, specifying
+        the dilation rate to use for dilated convolution.
+        Can be a single integer to specify the same value for
+        all spatial dimensions.
+      use_normalization: if True, use batch normalization.
+      use_sync_bn: if True, use synchronized batch normalization.
+      norm_momentum: `float` normalization omentum for the moving average.
+      norm_epsilon: `float` small float added to variance to avoid dividing by
+        zero.
+      **kwargs: keyword arguments to be passed.
+    """
+    super(DepthwiseSeparableConvBlock, self).__init__(**kwargs)
+    self._filters = filters
+    self._kernel_size = kernel_size
+    self._strides = strides
+    self._activation = activation
+    self._regularize_depthwise = regularize_depthwise
+    self._kernel_initializer = kernel_initializer
+    self._kernel_regularizer = kernel_regularizer
+    self._dilation_rate = dilation_rate
+    self._use_normalization = use_normalization
+    self._use_sync_bn = use_sync_bn
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+
+    if use_sync_bn:
+      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
+    else:
+      self._norm = tf.keras.layers.BatchNormalization
+    if tf.keras.backend.image_data_format() == 'channels_last':
+      self._bn_axis = -1
+    else:
+      self._bn_axis = 1
+    self._activation_fn = tf_utils.get_activation(activation)
+    if regularize_depthwise:
+      self._depthsize_regularizer = kernel_regularizer
+    else:
+      self._depthsize_regularizer = None
+
+  def get_config(self):
+    config = {
+        'filters': self._filters,
+        'strides': self._strides,
+        'regularize_depthwise': self._regularize_depthwise,
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
+        'kernel_initializer': self._kernel_initializer,
+        'kernel_regularizer': self._kernel_regularizer,
+        'bias_regularizer': self._bias_regularizer,
+        'activation': self._activation,
+        'use_sync_bn': self._use_sync_bn,
+        'use_normalization': self._use_normalization,
+        'norm_momentum': self._norm_momentum,
+        'norm_epsilon': self._norm_epsilon
+    }
+    base_config = super(DepthwiseSeparableConvBlock, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
+
+  def build(self, input_shape):
+
+    self._dwconv0 = tf.keras.layers.DepthwiseConv2D(
+        kernel_size=self._kernel_size,
+        strides=self._strides,
+        padding='same',
+        depth_multiplier=1,
+        dilation_rate=self._dilation_rate,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._depthsize_regularizer,
+        use_bias=False)
+    if self._use_normalization:
+      self._norm0 = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon)
+
+    self._conv1 = tf.keras.layers.Conv2D(
+        filters=self._filters,
+        kernel_size=1,
+        strides=1,
+        padding='same',
+        use_bias=False,
+        kernel_initializer=self._kernel_initializer,
+        kernel_regularizer=self._kernel_regularizer)
+    if self._use_normalization:
+      self._norm1 = self._norm(
+          axis=self._bn_axis,
+          momentum=self._norm_momentum,
+          epsilon=self._norm_epsilon)
+
+    super(DepthwiseSeparableConvBlock, self).build(input_shape)
+
+  def call(self, inputs, training=None):
+    x = self.__dwconv0(inputs)
+    if self._use_normalization:
+      x = self._norm0(x)
+    x = self._activation_fn(x)
+
+    x = self._conv1(x)
+    if self._use_normalization:
+      x = self._norm1(x)
+    return self._activation_fn(x)
