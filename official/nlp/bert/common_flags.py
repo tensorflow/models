@@ -77,6 +77,18 @@ def define_common_bert_flags():
       'sub_model_export_name', None,
       'If set, `sub_model` checkpoints are exported into '
       'FLAGS.model_dir/FLAGS.sub_model_export_name.')
+  flags.DEFINE_bool('explicit_allreduce', False,
+                    'True to use explicit allreduce instead of the implicit '
+                    'allreduce in optimizer.apply_gradients(). If fp16 mixed '
+                    'precision training is used, this also enables allreduce '
+                    'gradients in fp16.')
+  flags.DEFINE_integer('allreduce_bytes_per_pack', 0,
+                       'Number of bytes of a gradient pack for allreduce. '
+                       'Should be positive integer, if set to 0, all '
+                       'gradients are in one pack. Breaking gradient into '
+                       'packs could enable overlap between allreduce and '
+                       'backprop computation. This flag only takes effect '
+                       'when explicit_allreduce is set to True.')
 
   flags_core.define_log_steps()
 

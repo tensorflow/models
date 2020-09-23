@@ -14,10 +14,7 @@
 # ==============================================================================
 """Tests for BERT trainer network."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
@@ -30,13 +27,14 @@ from official.nlp.modeling.models import bert_span_labeler
 @keras_parameterized.run_all_keras_modes
 class BertSpanLabelerTest(keras_parameterized.TestCase):
 
-  def test_bert_trainer(self):
+  @parameterized.parameters(True, False)
+  def test_bert_trainer(self, dict_outputs):
     """Validate that the Keras object can be created."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
     sequence_length = 512
-    test_network = networks.TransformerEncoder(
-        vocab_size=vocab_size, num_layers=2)
+    test_network = networks.BertEncoder(
+        vocab_size=vocab_size, num_layers=2, dict_outputs=dict_outputs)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_span_labeler.BertSpanLabeler(test_network)
@@ -59,8 +57,7 @@ class BertSpanLabelerTest(keras_parameterized.TestCase):
     """Validate compilation using explicit output names."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
-    test_network = networks.TransformerEncoder(
-        vocab_size=vocab_size, num_layers=2)
+    test_network = networks.BertEncoder(vocab_size=vocab_size, num_layers=2)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_span_labeler.BertSpanLabeler(test_network)
@@ -79,7 +76,7 @@ class BertSpanLabelerTest(keras_parameterized.TestCase):
     """Validate that the Keras object can be invoked."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
-    test_network = networks.TransformerEncoder(vocab_size=100, num_layers=2)
+    test_network = networks.BertEncoder(vocab_size=100, num_layers=2)
 
     # Create a BERT trainer with the created network.
     bert_trainer_model = bert_span_labeler.BertSpanLabeler(test_network)
@@ -98,7 +95,8 @@ class BertSpanLabelerTest(keras_parameterized.TestCase):
     """Validate that the BERT trainer can be serialized and deserialized."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
-    test_network = networks.TransformerEncoder(vocab_size=100, num_layers=2)
+    test_network = networks.BertEncoder(
+        vocab_size=100, num_layers=2, sequence_length=5)
 
     # Create a BERT trainer with the created network. (Note that all the args
     # are different, so we can catch any serialization mismatches.)

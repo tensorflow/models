@@ -29,7 +29,7 @@ assemble new layers, networks, or models.
     described in
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762).
 
-*   [TransformerDecoderLayer](transformer.py) TransformerDecoderLayer is made up
+*   [TransformerDecoderBlock](transformer.py) TransformerDecoderBlock is made up
     of self multi-head attention, cross multi-head attention and feedforward
     network.
 
@@ -63,3 +63,24 @@ assemble new layers, networks, or models.
 *   [GatedFeedforward](gated_feedforward.py) implements the gated linear layer
     feedforward as described in
     ["GLU Variants Improve Transformer"](https://arxiv.org/abs/2002.05202).
+
+*   [MultiHeadRelativeAttention](relative_attention.py) implements a variant
+    of multi-head attention with support for relative position encodings as
+    described in "Transformer-XL: Attentive Language Models Beyond a
+    Fixed-Length Context"(https://arxiv.org/abs/1901.02860). This also has
+    extended support for segment-based attention, a re-parameterization
+    introduced in "XLNet: Generalized Autoregressive Pretraining for Language
+    Understanding" (https://arxiv.org/abs/1906.08237).
+
+*   [TwoStreamRelativeAttention](relative_attention.py) implements a variant
+    of multi-head relative attention as described in "XLNet: Generalized
+    Autoregressive Pretraining for Language Understanding"
+    (https://arxiv.org/abs/1906.08237). This takes in a query and content
+    stream and applies self attention.
+
+*   [TransformerXL](transformer_xl.py) implements Transformer XL introduced in
+    "Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context"
+    (https://arxiv.org/abs/1901.02860). This contains `TransformerXLBlock`, a
+    block containing either one or two stream relative self-attention as well as
+    subsequent feedforward networks. It also contains `TransformerXL`, which
+    contains attention biases as well as multiple `TransformerXLBlocks`.

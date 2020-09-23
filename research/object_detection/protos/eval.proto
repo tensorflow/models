@@ -3,7 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 // Message for configuring DetectionModel evaluation jobs (eval.py).
-// Next id - 34
+// Next id - 35
 message EvalConfig {
   optional uint32 batch_size = 25 [default = 1];
   // Number of visualization images to generate.
@@ -81,6 +81,11 @@ message EvalConfig {
 
   // If True, additionally include per-category metrics.
   optional bool include_metrics_per_category = 24 [default = false];
+
+  // Optional super-category definitions: keys are super-category names;
+  // values are comma-separated categories (assumed to correspond to category
+  // names (`display_name`) in the label map.
+  map<string, string> super_categories = 34;
 
   // Recall range within which precision should be computed.
   optional float recall_lower_bound = 26 [default = 0.0];

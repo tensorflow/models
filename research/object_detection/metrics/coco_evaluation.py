@@ -35,7 +35,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
                categories,
                include_metrics_per_category=False,
                all_metrics_per_category=False,
-               skip_predictions_for_unlabeled_class=False):
+               skip_predictions_for_unlabeled_class=False,
+               super_categories=None):
     """Constructor.
 
     Args:
@@ -49,6 +50,11 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         your mldash.
       skip_predictions_for_unlabeled_class: Skip predictions that do not match
         with the labeled classes for the image.
+      super_categories: None or a python dict mapping super-category names
+        (strings) to lists of categories (corresponding to category names
+        in the label_map).  Metrics are aggregated along these super-categories
+        and added to the `per_category_ap` and are associated with the name
+          `PerformanceBySuperCategory/<super-category-name>`.
     """
     super(CocoDetectionEvaluator, self).__init__(categories)
     # _image_ids is a dictionary that maps unique image ids to Booleans which
@@ -63,6 +69,7 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     self._all_metrics_per_category = all_metrics_per_category
     self._skip_predictions_for_unlabeled_class = skip_predictions_for_unlabeled_class
     self._groundtruth_labeled_classes = {}
+    self._super_categories = super_categories
 
   def clear(self):
     """Clears the state to prepare for a fresh evaluation."""
@@ -268,6 +275,9 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
       no supercategories exist). For backward compatibility
       'PerformanceByCategory' is included in the output regardless of
       all_metrics_per_category.
+        If super_categories are provided, then this will additionally include
+      metrics aggregated along the super_categories with keys of the form:
+      `PerformanceBySuperCategory/<super-category-name>`
     """
     tf.logging.info('Performing evaluation on %d images.', len(self._image_ids))
     groundtruth_dict = {
@@ -282,7 +292,8 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
         coco_wrapped_groundtruth, coco_wrapped_detections, agnostic_mode=False)
     box_metrics, box_per_category_ap = box_evaluator.ComputeMetrics(
         include_metrics_per_category=self._include_metrics_per_category,
-        all_metrics_per_category=self._all_metrics_per_category)
+        all_metrics_per_category=self._all_metrics_per_category,
+        super_categories=self._super_categories)
     box_metrics.update(box_per_category_ap)
     box_metrics = {'DetectionBoxes_'+ key: value
                    for key, value in iter(box_metrics.items())}
@@ -933,7 +944,9 @@ class CocoKeypointEvaluator(CocoDetectionEvaluator):
 class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
   """Class to evaluate COCO detection metrics."""
 
-  def __init__(self, categories, include_metrics_per_category=False):
+  def __init__(self, categories,
+               include_metrics_per_category=False,
+               super_categories=None):
     """Constructor.
 
     Args:
@@ -941,6 +954,11 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         'id': (required) an integer id uniquely identifying this category.
         'name': (required) string representing category name e.g., 'cat', 'dog'.
       include_metrics_per_category: If True, include metrics for each category.
+      super_categories: None or a python dict mapping super-category names
+        (strings) to lists of categories (corresponding to category names
+        in the label_map).  Metrics are aggregated along these super-categories
+        and added to the `per_category_ap` and are associated with the name
+          `PerformanceBySuperCategory/<super-category-name>`.
     """
     super(CocoMaskEvaluator, self).__init__(categories)
     self._image_id_to_mask_shape_map = {}
@@ -950,6 +968,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     self._category_id_set = set([cat['id'] for cat in self._categories])
     self._annotation_id = 1
     self._include_metrics_per_category = include_metrics_per_category
+    self._super_categories = super_categories
 
   def clear(self):
     """Clears the state to prepare for a fresh evaluation."""
@@ -1106,6 +1125,9 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
       no supercategories exist). For backward compatibility
       'PerformanceByCategory' is included in the output regardless of
       all_metrics_per_category.
+        If super_categories are provided, then this will additionally include
+      metrics aggregated along the super_categories with keys of the form:
+      `PerformanceBySuperCategory/<super-category-name>`
     """
     groundtruth_dict = {
         'annotations': self._groundtruth_list,
@@ -1122,7 +1144,8 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         coco_wrapped_groundtruth, coco_wrapped_detection_masks,
         agnostic_mode=False, iou_type='segm')
     mask_metrics, mask_per_category_ap = mask_evaluator.ComputeMetrics(
-        include_metrics_per_category=self._include_metrics_per_category)
+        include_metrics_per_category=self._include_metrics_per_category,
+        super_categories=self._super_categories)
     mask_metrics.update(mask_per_category_ap)
     mask_metrics = {'DetectionMasks_'+ key: value
                     for key, value in mask_metrics.items()}

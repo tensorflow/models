@@ -311,6 +311,7 @@ def prediction_tensors_to_boxes(detection_scores, y_indices, x_indices,
 
   height_width = tf.gather(height_width_flat, peak_spatial_indices,
                            batch_dims=1)
+  height_width = tf.maximum(height_width, 0)
   offsets = tf.gather(offsets_flat, peak_spatial_indices, batch_dims=1)
 
   heights, widths = tf.unstack(height_width, axis=2)
@@ -326,6 +327,39 @@ def prediction_tensors_to_boxes(detection_scores, y_indices, x_indices,
                     x_indices + x_offsets + widths / 2.0], axis=2)
 
   return boxes, detection_classes, detection_scores, num_detections
+
+
+def prediction_tensors_to_temporal_offsets(
+    y_indices, x_indices, offset_predictions):
+  """Converts CenterNet temporal offset map predictions to batched format.
+
+  This function is similiar to the box offset conversion function, as both
+  temporal offsets and box offsets are size-2 vectors.
+
+  Args:
+    y_indices: A [batch, num_boxes] int32 tensor with y indices corresponding to
+      object center locations (expressed in output coordinate frame).
+    x_indices: A [batch, num_boxes] int32 tensor with x indices corresponding to
+      object center locations (expressed in output coordinate frame).
+    offset_predictions: A float tensor of shape [batch_size, height, width, 2]
+      representing the y and x offsets of a box's center across adjacent frames.
+
+  Returns:
+    offsets: A tensor of shape [batch_size, num_boxes, 2] holding the
+      the object temporal offsets of (y, x) dimensions.
+
+  """
+  _, _, width, _ = _get_shape(offset_predictions, 4)
+
+  peak_spatial_indices = flattened_indices_from_row_col_indices(
+      y_indices, x_indices, width)
+  y_indices = _to_float32(y_indices)
+  x_indices = _to_float32(x_indices)
+
+  offsets_flat = _flatten_spatial_dimensions(offset_predictions)
+
+  offsets = tf.gather(offsets_flat, peak_spatial_indices, batch_dims=1)
+  return offsets
 
 
 def prediction_tensors_to_keypoint_candidates(
@@ -1533,6 +1567,32 @@ class TrackParams(
                               num_fc_layers, classification_loss,
                               task_loss_weight)
 
+
+class TemporalOffsetParams(
+    collections.namedtuple('TemporalOffsetParams', [
+        'localization_loss', 'task_loss_weight'
+    ])):
+  """Namedtuple to store temporal offset related parameters."""
+
+  __slots__ = ()
+
+  def __new__(cls,
+              localization_loss,
+              task_loss_weight=1.0):
+    """Constructor with default values for TrackParams.
+
+    Args:
+      localization_loss: an object_detection.core.losses.Loss object to
+        compute the loss for the temporal offset in CenterNet.
+      task_loss_weight: float, the loss weight for the temporal offset
+        task.
+
+    Returns:
+      An initialized TemporalOffsetParams namedtuple.
+    """
+    return super(TemporalOffsetParams,
+                 cls).__new__(cls, localization_loss, task_loss_weight)
+
 # The following constants are used to generate the keys of the
 # (prediction, loss, target assigner,...) dictionaries used in CenterNetMetaArch
 # class.
@@ -1551,6 +1611,8 @@ DENSEPOSE_REGRESSION = 'densepose/regression'
 LOSS_KEY_PREFIX = 'Loss'
 TRACK_TASK = 'track_task'
 TRACK_REID = 'track/reid'
+TEMPORALOFFSET_TASK = 'temporal_offset_task'
+TEMPORAL_OFFSET = 'track/offset'
 
 
 def get_keypoint_name(task_name, head_name):
@@ -1595,7 +1657,8 @@ class CenterNetMetaArch(model.DetectionModel):
                keypoint_params_dict=None,
                mask_params=None,
                densepose_params=None,
-               track_params=None):
+               track_params=None,
+               temporal_offset_params=None):
     """Initializes a CenterNet model.
 
     Args:
@@ -1630,6 +1693,8 @@ class CenterNetMetaArch(model.DetectionModel):
       track_params: A TrackParams namedtuple. This object
         holds the hyper-parameters for tracking. Please see the class
         definition for more details.
+      temporal_offset_params: A TemporalOffsetParams namedtuple. This object
+        holds the hyper-parameters for offset prediction based tracking.
     """
     assert object_detection_params or keypoint_params_dict
     # Shorten the name for convenience and better formatting.
@@ -1650,6 +1715,7 @@ class CenterNetMetaArch(model.DetectionModel):
                        'be supplied.')
     self._densepose_params = densepose_params
     self._track_params = track_params
+    self._temporal_offset_params = temporal_offset_params
 
     # Construct the prediction head nets.
     self._prediction_head_dict = self._construct_prediction_heads(
@@ -1763,6 +1829,11 @@ class CenterNetMetaArch(model.DetectionModel):
           tf.keras.layers.Dense(self._track_params.num_track_ids,
                                 input_shape=(
                                     self._track_params.reid_embed_size,)))
+    if self._temporal_offset_params is not None:
+      prediction_heads[TEMPORAL_OFFSET] = [
+          make_prediction_net(NUM_OFFSET_CHANNELS)
+          for _ in range(num_feature_outputs)
+      ]
     return prediction_heads
 
   def _initialize_target_assigners(self, stride, min_box_overlap_iou):
@@ -1805,6 +1876,9 @@ class CenterNetMetaArch(model.DetectionModel):
       target_assigners[TRACK_TASK] = (
           cn_assigner.CenterNetTrackTargetAssigner(
               stride, self._track_params.num_track_ids))
+    if self._temporal_offset_params is not None:
+      target_assigners[TEMPORALOFFSET_TASK] = (
+          cn_assigner.CenterNetTemporalOffsetTargetAssigner(stride))
 
     return target_assigners
 
@@ -2393,6 +2467,54 @@ class CenterNetMetaArch(model.DetectionModel):
 
     return loss_per_instance
 
+  def _compute_temporal_offset_loss(self, input_height,
+                                    input_width, prediction_dict):
+    """Computes the temporal offset loss for tracking.
+
+    Args:
+      input_height: An integer scalar tensor representing input image height.
+      input_width: An integer scalar tensor representing input image width.
+      prediction_dict: The dictionary returned from the predict() method.
+
+    Returns:
+      A dictionary with track/temporal_offset losses.
+    """
+    gt_boxes_list = self.groundtruth_lists(fields.BoxListFields.boxes)
+    gt_offsets_list = self.groundtruth_lists(
+        fields.BoxListFields.temporal_offsets)
+    gt_match_list = self.groundtruth_lists(
+        fields.BoxListFields.track_match_flags)
+    gt_weights_list = self.groundtruth_lists(fields.BoxListFields.weights)
+    num_boxes = tf.cast(
+        get_num_instances_from_weights(gt_weights_list), tf.float32)
+
+    offset_predictions = prediction_dict[TEMPORAL_OFFSET]
+    num_predictions = float(len(offset_predictions))
+
+    assigner = self._target_assigner_dict[TEMPORALOFFSET_TASK]
+    (batch_indices, batch_offset_targets,
+     batch_weights) = assigner.assign_temporal_offset_targets(
+         height=input_height,
+         width=input_width,
+         gt_boxes_list=gt_boxes_list,
+         gt_offsets_list=gt_offsets_list,
+         gt_match_list=gt_match_list,
+         gt_weights_list=gt_weights_list)
+    batch_weights = tf.expand_dims(batch_weights, -1)
+
+    offset_loss_fn = self._temporal_offset_params.localization_loss
+    loss_dict = {}
+    offset_loss = 0
+    for offset_pred in offset_predictions:
+      offset_pred = cn_assigner.get_batch_predictions_from_indices(
+          offset_pred, batch_indices)
+      offset_loss += offset_loss_fn(offset_pred[:, None],
+                                    batch_offset_targets[:, None],
+                                    weights=batch_weights)
+    offset_loss = tf.reduce_sum(offset_loss) / (num_predictions * num_boxes)
+    loss_dict[TEMPORAL_OFFSET] = offset_loss
+    return loss_dict
+
   def preprocess(self, inputs):
     outputs = shape_utils.resize_images_and_return_shapes(
         inputs, self._image_resizer_fn)
@@ -2489,6 +2611,7 @@ class CenterNetMetaArch(model.DetectionModel):
         'Loss/densepose/heatmap', (optional)
         'Loss/densepose/regression', (optional)
         'Loss/track/reid'] (optional)
+        'Loss/track/offset'] (optional)
         scalar tensors corresponding to the losses for different tasks. Note the
         $TASK_NAME is provided by the KeypointEstimation namedtuple used to
         differentiate between different keypoint tasks.
@@ -2565,6 +2688,16 @@ class CenterNetMetaArch(model.DetectionModel):
         track_losses[key] = (
             track_losses[key] * self._track_params.task_loss_weight)
       losses.update(track_losses)
+
+    if self._temporal_offset_params is not None:
+      offset_losses = self._compute_temporal_offset_loss(
+          input_height=input_height,
+          input_width=input_width,
+          prediction_dict=prediction_dict)
+      for key in offset_losses:
+        offset_losses[key] = (
+            offset_losses[key] * self._temporal_offset_params.task_loss_weight)
+      losses.update(offset_losses)
 
     # Prepend the LOSS_KEY_PREFIX to the keys in the dictionary such that the
     # losses will be grouped together in Tensorboard.
@@ -2681,6 +2814,12 @@ class CenterNetMetaArch(model.DetectionModel):
       postprocess_dict.update({
           fields.DetectionResultFields.detection_embeddings: embeddings
       })
+
+    if self._temporal_offset_params:
+      offsets = prediction_tensors_to_temporal_offsets(
+          y_indices, x_indices,
+          prediction_dict[TEMPORAL_OFFSET][-1])
+      postprocess_dict[fields.DetectionResultFields.detection_offsets] = offsets
 
     return postprocess_dict
 

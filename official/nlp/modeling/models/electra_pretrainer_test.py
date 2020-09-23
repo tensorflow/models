@@ -14,10 +14,6 @@
 # ==============================================================================
 """Tests for ELECTRA pre trainer network."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
@@ -35,14 +31,16 @@ class ElectraPretrainerTest(keras_parameterized.TestCase):
     # Build a transformer network to use within the ELECTRA trainer.
     vocab_size = 100
     sequence_length = 512
-    test_generator_network = networks.TransformerEncoder(
+    test_generator_network = networks.BertEncoder(
         vocab_size=vocab_size,
         num_layers=2,
-        max_sequence_length=sequence_length)
-    test_discriminator_network = networks.TransformerEncoder(
+        max_sequence_length=sequence_length,
+        dict_outputs=True)
+    test_discriminator_network = networks.BertEncoder(
         vocab_size=vocab_size,
         num_layers=2,
-        max_sequence_length=sequence_length)
+        max_sequence_length=sequence_length,
+        dict_outputs=True)
 
     # Create a ELECTRA trainer with the created network.
     num_classes = 3
@@ -91,10 +89,10 @@ class ElectraPretrainerTest(keras_parameterized.TestCase):
     """Validate that the Keras object can be invoked."""
     # Build a transformer network to use within the ELECTRA trainer. (Here, we
     # use a short sequence_length for convenience.)
-    test_generator_network = networks.TransformerEncoder(
-        vocab_size=100, num_layers=4, max_sequence_length=3)
-    test_discriminator_network = networks.TransformerEncoder(
-        vocab_size=100, num_layers=4, max_sequence_length=3)
+    test_generator_network = networks.BertEncoder(
+        vocab_size=100, num_layers=4, max_sequence_length=3, dict_outputs=True)
+    test_discriminator_network = networks.BertEncoder(
+        vocab_size=100, num_layers=4, max_sequence_length=3, dict_outputs=True)
 
     # Create a ELECTRA trainer with the created network.
     eletrca_trainer_model = electra_pretrainer.ElectraPretrainer(
@@ -128,9 +126,9 @@ class ElectraPretrainerTest(keras_parameterized.TestCase):
     """Validate that the ELECTRA trainer can be serialized and deserialized."""
     # Build a transformer network to use within the BERT trainer. (Here, we use
     # a short sequence_length for convenience.)
-    test_generator_network = networks.TransformerEncoder(
+    test_generator_network = networks.BertEncoder(
         vocab_size=100, num_layers=4, max_sequence_length=3)
-    test_discriminator_network = networks.TransformerEncoder(
+    test_discriminator_network = networks.BertEncoder(
         vocab_size=100, num_layers=4, max_sequence_length=3)
 
     # Create a ELECTRA trainer with the created network. (Note that all the args

@@ -14,11 +14,6 @@
 # ==============================================================================
 """Tests for Keras-based transformer block layer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-# Import libraries
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -244,17 +239,6 @@ class TransformerArgumentTest(keras_parameterized.TestCase):
     new_encoder_block = TransformerEncoderBlock.from_config(
         encoder_block_config)
     self.assertEqual(encoder_block_config, new_encoder_block.get_config())
-
-
-def _create_cache(batch_size, init_decode_length, num_heads, head_size):
-  return {
-      'key':
-          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
-                   dtype=tf.float32),
-      'value':
-          tf.zeros([batch_size, init_decode_length, num_heads, head_size],
-                   dtype=tf.float32)
-  }
 
 
 if __name__ == '__main__':

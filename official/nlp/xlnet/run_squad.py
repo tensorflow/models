@@ -14,11 +14,6 @@
 # ==============================================================================
 """XLNet SQUAD finetuning runner in tf2.0."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import functools
 import json
 import os
@@ -32,6 +27,7 @@ from absl import logging
 import tensorflow as tf
 # pylint: disable=unused-import
 import sentencepiece as spm
+from official.common import distribute_utils
 from official.nlp.xlnet import common_flags
 from official.nlp.xlnet import data_utils
 from official.nlp.xlnet import optimization
@@ -39,7 +35,6 @@ from official.nlp.xlnet import squad_utils
 from official.nlp.xlnet import training_utils
 from official.nlp.xlnet import xlnet_config
 from official.nlp.xlnet import xlnet_modeling as modeling
-from official.utils.misc import tpu_lib
 
 flags.DEFINE_string(
     "test_feature_path", default=None, help="Path to feature of test set.")
@@ -217,14 +212,9 @@ def get_qaxlnet_model(model_config, run_config, start_n_top, end_n_top):
 
 def main(unused_argv):
   del unused_argv
-  if FLAGS.strategy_type == "mirror":
-    strategy = tf.distribute.MirroredStrategy()
-  elif FLAGS.strategy_type == "tpu":
-    cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
-  else:
-    raise ValueError("The distribution strategy type is not supported: %s" %
-                     FLAGS.strategy_type)
+  strategy = distribute_utils.get_distribution_strategy(
+      distribution_strategy=FLAGS.strategy_type,
+      tpu_address=FLAGS.tpu)
   if strategy:
     logging.info("***** Number of cores used : %d",
                  strategy.num_replicas_in_sync)

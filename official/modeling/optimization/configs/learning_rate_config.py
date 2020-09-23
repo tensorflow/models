@@ -131,6 +131,22 @@ class CosineLrConfig(base_config.Config):
 
 
 @dataclasses.dataclass
+class DirectPowerLrConfig(base_config.Config):
+  """Configuration for DirectPower learning rate decay.
+
+  This class configures a schedule following follows lr * (step)^power.
+
+  Attributes:
+    name: The name of the learning rate schedule. Defaults to DirectPowerDecay.
+    initial_learning_rate: A float. The initial learning rate. Defaults to None.
+    power: A float. Defaults to -0.5, for sqrt decay.
+  """
+  name: str = 'DirectPowerDecay'
+  initial_learning_rate: Optional[float] = None
+  power: float = -0.5
+
+
+@dataclasses.dataclass
 class LinearWarmupConfig(base_config.Config):
   """Configuration for linear warmup schedule config.
 

@@ -1,7 +1,7 @@
-# DELF Training Instructions
+# DELF/DELG Training Instructions
 
-This README documents the end-to-end process for training a landmark detection
-and retrieval model using the DELF library on the
+This README documents the end-to-end process for training a local and/or global
+image feature model on the
 [Google Landmarks Dataset v2](https://github.com/cvdfoundation/google-landmark)
 (GLDv2). This can be achieved following these steps:
 
@@ -143,6 +143,8 @@ curl -Os http://storage.googleapis.com/delf/resnet50_imagenet_weights.tar.gz
 tar -xzvf resnet50_imagenet_weights.tar.gz
 ```
 
+### Training with Local Features
+
 Assuming the TFRecord files were generated in the `gldv2_dataset/tfrecord/`
 directory, running the following command should start training a model and
 output the results in the `gldv2_training` directory:
@@ -156,17 +158,11 @@ python3 train.py \
   --logdir=gldv2_training/
 ```
 
-On a multi-GPU machine the batch size can be increased to speed up the training
-using the `--batch_size` parameter. On a 8 Tesla P100 GPUs machine you can set
-the batch size to `256`:
-
-```
---batch_size=256
-```
+### Training with Local and Global Features
 
 It is also possible to train the model with an improved global features head as
 introduced in the [DELG paper](https://arxiv.org/abs/2001.05027). To do this,
-specify the additional parameter `--delg_global_features` when launching the 
+specify the additional parameter `--delg_global_features` when launching the
 training, like in the following example:
 
 ```
@@ -179,18 +175,57 @@ python3 train.py \
   --delg_global_features
 ```
 
+### Hyperparameter Guidelines
+
+In order to improve the convergence of the training, the following
+hyperparameter values have been tested and validated on the following
+infrastructures, the remaining `train.py` flags keeping their **default 
+values**:
+* 8 Tesla P100 GPUs: `--batch_size=256`, `--initial_lr=0.01`
+* 4 Tesla P100 GPUs: `--batch_size=128`, `--initial_lr=0.005`
+
+*NOTE*: We are currently working on adding the autoencoder described in the DELG
+paper to this codebase. Currently, it is not yet implemented here. Stay tuned!
 
 ## Exporting the Trained Model
 
 Assuming the training output, the TensorFlow checkpoint, is in the
 `gldv2_training` directory, running the following commands exports the model.
 
-### DELF local feature model
+### DELF local feature-only model
+
+This should be used when you are only interested in having a local feature
+model.
 
 ```
-python3 model/export_model.py \
+python3 model/export_local_model.py \
   --ckpt_path=gldv2_training/delf_weights \
   --export_path=gldv2_model_local \
+  --block3_strides
+```
+
+### DELG global feature-only model
+
+This should be used when you are only interested in having a global feature
+model.
+
+```
+python3 model/export_global_model.py \
+  --ckpt_path=gldv2_training/delf_weights \
+  --export_path=gldv2_model_global \
+  --delg_global_features
+```
+
+### DELG local+global feature model
+
+This should be used when you are interested in jointly extracting local and
+global features.
+
+```
+python3 model/export_local_and_global_model.py \
+  --ckpt_path=gldv2_training/delf_weights \
+  --export_path=gldv2_model_local_and_global \
+  --delg_global_features \
   --block3_strides
 ```
 
@@ -199,6 +234,13 @@ python3 model/export_model.py \
 To export a global feature model in the format required by the
 [2020 Landmark Retrieval challenge](https://www.kaggle.com/c/landmark-retrieval-2020),
 you can use the following command:
+
+*NOTE*: this command is helpful to use the model directly in the above-mentioned
+Kaggle competition; however, this is a different format than the one required in
+this DELF/DELG codebase (ie, if you export the model this way, the commands
+found in the [DELG instructions](../delg/DELG_INSTRUCTIONS.md) would not work).
+To export the model in a manner compatible to this codebase, use a similar
+command as the "DELG global feature-only model" above.
 
 ```
 python3 model/export_global_model.py \
@@ -209,7 +251,9 @@ python3 model/export_global_model.py \
   --normalize_global_descriptor
 ```
 
-## Testing the Trained Model
+## Testing the trained model
+
+### Testing the trained local feature model
 
 After the trained model has been exported, it can be used to extract DELF
 features from 2 images of the same landmark and to perform a matching test
@@ -282,3 +326,13 @@ python3 ../examples/match_images.py \
 The generated image `matched_images.png` should look similar to this one:
 
 ![MatchedImagesDemo](./matched_images_demo.png)
+
+### Testing the trained global (or global+local) feature model
+
+Please follow the [DELG instructions](../delg/DELG_INSTRUCTIONS.md). The only
+modification should be to pass a different `delf_config_path` when doing feature
+extraction, which should point to the newly-trained model. As described in the
+[DelfConfig](../../protos/delf_config.proto), you should set the
+`use_local_features` and `use_global_features` in the right way, depending on
+which feature modalities you are using. Note also that you should set
+`is_tf2_exported` to `true`.

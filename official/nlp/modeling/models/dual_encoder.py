@@ -14,12 +14,7 @@
 # ==============================================================================
 """Trainer network for dual encoder style models."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
-# Import libraries
 import tensorflow as tf
 
 from official.nlp.modeling import layers
@@ -67,19 +62,33 @@ class DualEncoder(tf.keras.Model):
 
     self.network = network
 
-    left_word_ids = tf.keras.layers.Input(
-        shape=(max_seq_length,), dtype=tf.int32, name='left_word_ids')
-    left_mask = tf.keras.layers.Input(
-        shape=(max_seq_length,), dtype=tf.int32, name='left_mask')
-    left_type_ids = tf.keras.layers.Input(
-        shape=(max_seq_length,), dtype=tf.int32, name='left_type_ids')
+    if output == 'logits':
+      left_word_ids = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='left_word_ids')
+      left_mask = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='left_mask')
+      left_type_ids = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='left_type_ids')
+    else:
+      # Keep the consistant with legacy BERT hub module input names.
+      left_word_ids = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='input_word_ids')
+      left_mask = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='input_mask')
+      left_type_ids = tf.keras.layers.Input(
+          shape=(max_seq_length,), dtype=tf.int32, name='input_type_ids')
 
     left_inputs = [left_word_ids, left_mask, left_type_ids]
-    _, left_encoded = network(left_inputs)
-
+    left_outputs = network(left_inputs)
+    if isinstance(left_outputs, list):
+      left_sequence_output, left_encoded = left_outputs
+    else:
+      left_sequence_output = left_outputs['sequence_output']
+      left_encoded = left_outputs['pooled_output']
     if normalize:
       left_encoded = tf.keras.layers.Lambda(
-          lambda x: tf.nn.l2_normalize(x, axis=1))(left_encoded)
+          lambda x: tf.nn.l2_normalize(x, axis=1))(
+              left_encoded)
 
     if output == 'logits':
       right_word_ids = tf.keras.layers.Input(
@@ -90,30 +99,43 @@ class DualEncoder(tf.keras.Model):
           shape=(max_seq_length,), dtype=tf.int32, name='right_type_ids')
 
       right_inputs = [right_word_ids, right_mask, right_type_ids]
-      _, right_encoded = network(right_inputs)
-
+      right_outputs = network(right_inputs)
+      if isinstance(right_outputs, list):
+        _, right_encoded = right_outputs
+      else:
+        right_encoded = right_outputs['pooled_output']
       if normalize:
         right_encoded = tf.keras.layers.Lambda(
-            lambda x: tf.nn.l2_normalize(x, axis=1))(right_encoded)
+            lambda x: tf.nn.l2_normalize(x, axis=1))(
+                right_encoded)
 
-      dot_products = layers.MatMulWithMargin(logit_scale=logit_scale,
-                                             logit_margin=logit_margin,
-                                             name='dot_product')
+      dot_products = layers.MatMulWithMargin(
+          logit_scale=logit_scale,
+          logit_margin=logit_margin,
+          name='dot_product')
 
-      inputs = [left_word_ids, left_mask, left_type_ids, right_word_ids,
-                right_mask, right_type_ids]
+      inputs = [
+          left_word_ids, left_mask, left_type_ids, right_word_ids, right_mask,
+          right_type_ids
+      ]
       left_logits, right_logits = dot_products(left_encoded, right_encoded)
 
-      outputs = [left_logits, right_logits]
+      outputs = dict(left_logits=left_logits, right_logits=right_logits)
 
     elif output == 'predictions':
       inputs = [left_word_ids, left_mask, left_type_ids]
-      outputs = left_encoded
+
+      # To keep consistent with legacy BERT hub modules, the outputs are
+      # "pooled_output" and "sequence_output".
+      outputs = dict(
+          sequence_output=left_sequence_output, pooled_output=left_encoded)
     else:
       raise ValueError('output type %s is not supported' % output)
 
-    super(DualEncoder, self).__init__(
-        inputs=inputs, outputs=outputs, **kwargs)
+    super(DualEncoder, self).__init__(inputs=inputs, outputs=outputs, **kwargs)
+
+    # Set _self_setattr_tracking to True so it can be exported with assets.
+    self._self_setattr_tracking = True
 
   def get_config(self):
     return self._config

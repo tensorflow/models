@@ -26,11 +26,10 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-
+from official.common import distribute_utils
 from official.nlp.albert import configs as albert_configs
 from official.nlp.bert import bert_models
 from official.nlp.bert import run_classifier as run_classifier_bert
-from official.utils.misc import distribution_utils
 
 
 FLAGS = flags.FLAGS
@@ -77,7 +76,7 @@ def main(_):
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
       tpu_address=FLAGS.tpu)

@@ -35,6 +35,12 @@ class BertPretrainDataConfig(cfg.DataConfig):
   max_predictions_per_seq: int = 76
   use_next_sentence_label: bool = True
   use_position_id: bool = False
+  # Historically, BERT implementations take `input_ids` and `segment_ids` as
+  # feature names. Inside the TF Model Garden implementation, the Keras model
+  # inputs are set as `input_word_ids` and `input_type_ids`. When
+  # v2_feature_names is True, the data loader assumes the tf.Examples use
+  # `input_word_ids` and `input_type_ids` as keys.
+  use_v2_feature_names: bool = False
 
 
 @data_loader_factory.register_data_loader_cls(BertPretrainDataConfig)
@@ -56,11 +62,7 @@ class BertPretrainDataLoader(data_loader.DataLoader):
   def _decode(self, record: tf.Tensor):
     """Decodes a serialized tf.Example."""
     name_to_features = {
-        'input_ids':
-            tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'input_mask':
-            tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'segment_ids':
             tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'masked_lm_positions':
             tf.io.FixedLenFeature([self._max_predictions_per_seq], tf.int64),
@@ -69,6 +71,16 @@ class BertPretrainDataLoader(data_loader.DataLoader):
         'masked_lm_weights':
             tf.io.FixedLenFeature([self._max_predictions_per_seq], tf.float32),
     }
+    if self._params.use_v2_feature_names:
+      name_to_features.update({
+          'input_word_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
+          'input_type_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
+      })
+    else:
+      name_to_features.update({
+          'input_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
+          'segment_ids': tf.io.FixedLenFeature([self._seq_length], tf.int64),
+      })
     if self._use_next_sentence_label:
       name_to_features['next_sentence_labels'] = tf.io.FixedLenFeature([1],
                                                                        tf.int64)
@@ -91,13 +103,17 @@ class BertPretrainDataLoader(data_loader.DataLoader):
   def _parse(self, record: Mapping[str, tf.Tensor]):
     """Parses raw tensors into a dict of tensors to be consumed by the model."""
     x = {
-        'input_word_ids': record['input_ids'],
         'input_mask': record['input_mask'],
-        'input_type_ids': record['segment_ids'],
         'masked_lm_positions': record['masked_lm_positions'],
         'masked_lm_ids': record['masked_lm_ids'],
         'masked_lm_weights': record['masked_lm_weights'],
     }
+    if self._params.use_v2_feature_names:
+      x['input_word_ids'] = record['input_word_ids']
+      x['input_type_ids'] = record['input_type_ids']
+    else:
+      x['input_word_ids'] = record['input_ids']
+      x['input_type_ids'] = record['segment_ids']
     if self._use_next_sentence_label:
       x['next_sentence_labels'] = record['next_sentence_labels']
     if self._use_position_id:

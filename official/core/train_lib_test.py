@@ -49,6 +49,7 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
             'train_steps': 10,
             'validation_steps': 5,
             'validation_interval': 10,
+            'continuous_eval_timeout': 1,
             'optimizer_config': {
                 'optimizer': {
                     'type': 'sgd',
@@ -97,9 +98,19 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEmpty(logs)
     self.assertNotEmpty(
         tf.io.gfile.glob(os.path.join(model_dir, 'params.yaml')))
-    if flag_mode != 'eval':
-      self.assertNotEmpty(
-          tf.io.gfile.glob(os.path.join(model_dir, 'checkpoint')))
+    if flag_mode == 'eval':
+      return
+    self.assertNotEmpty(
+        tf.io.gfile.glob(os.path.join(model_dir, 'checkpoint')))
+    # Tests continuous evaluation.
+    _, logs = train_lib.run_experiment(
+        distribution_strategy=distribution_strategy,
+        task=task,
+        mode='continuous_eval',
+        params=params,
+        model_dir=model_dir,
+        run_post_eval=run_post_eval)
+    print(logs)
 
 
 if __name__ == '__main__':

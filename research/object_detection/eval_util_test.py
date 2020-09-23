@@ -25,6 +25,7 @@ import numpy as np
 import six
 from six.moves import range
 import tensorflow.compat.v1 as tf
+from google.protobuf import text_format
 
 from object_detection import eval_util
 from object_detection.core import standard_fields as fields
@@ -405,6 +406,48 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose([[[[0., 0.], [100., 100.], [200., 200.]]],
                          [[[0., 0.], [75., 150.], [150., 300.]]]],
                         detection_keypoints)
+
+  def test_evaluator_options_from_eval_config_no_super_categories(self):
+    eval_config_text_proto = """
+      metrics_set: "coco_detection_metrics"
+      metrics_set: "coco_mask_metrics"
+      include_metrics_per_category: true
+      use_moving_averages: false
+      batch_size: 1;
+    """
+    eval_config = eval_pb2.EvalConfig()
+    text_format.Merge(eval_config_text_proto, eval_config)
+    evaluator_options = eval_util.evaluator_options_from_eval_config(
+        eval_config)
+    self.assertNotIn('super_categories', evaluator_options['coco_mask_metrics'])
+
+  def test_evaluator_options_from_eval_config_with_super_categories(self):
+    eval_config_text_proto = """
+      metrics_set: "coco_detection_metrics"
+      metrics_set: "coco_mask_metrics"
+      include_metrics_per_category: true
+      use_moving_averages: false
+      batch_size: 1;
+      super_categories {
+        key: "supercat1"
+        value: "a,b,c"
+      }
+      super_categories {
+        key: "supercat2"
+        value: "d,e,f"
+      }
+    """
+    eval_config = eval_pb2.EvalConfig()
+    text_format.Merge(eval_config_text_proto, eval_config)
+    evaluator_options = eval_util.evaluator_options_from_eval_config(
+        eval_config)
+    self.assertIn('super_categories', evaluator_options['coco_mask_metrics'])
+    super_categories = evaluator_options[
+        'coco_mask_metrics']['super_categories']
+    self.assertIn('supercat1', super_categories)
+    self.assertIn('supercat2', super_categories)
+    self.assertAllEqual(super_categories['supercat1'], ['a', 'b', 'c'])
+    self.assertAllEqual(super_categories['supercat2'], ['d', 'e', 'f'])
 
 
 if __name__ == '__main__':

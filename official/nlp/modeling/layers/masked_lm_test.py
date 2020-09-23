@@ -20,7 +20,7 @@ import tensorflow as tf
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
 
 from official.nlp.modeling.layers import masked_lm
-from official.nlp.modeling.networks import transformer_encoder
+from official.nlp.modeling.networks import bert_encoder
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -36,7 +36,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
     # First, create a transformer stack that we can use to get the LM's
     # vocabulary weight.
     if xformer_stack is None:
-      xformer_stack = transformer_encoder.TransformerEncoder(
+      xformer_stack = bert_encoder.BertEncoder(
           vocab_size=vocab_size,
           num_layers=1,
           hidden_size=hidden_size,
@@ -69,7 +69,7 @@ class MaskedLMTest(keras_parameterized.TestCase):
     sequence_length = 32
     hidden_size = 64
     num_predictions = 21
-    xformer_stack = transformer_encoder.TransformerEncoder(
+    xformer_stack = bert_encoder.BertEncoder(
         vocab_size=vocab_size,
         num_layers=1,
         hidden_size=hidden_size,

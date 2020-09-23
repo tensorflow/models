@@ -14,11 +14,10 @@
 # ==============================================================================
 """Keras-based TransformerEncoder block layer."""
 
-# Import libraries
 import tensorflow as tf
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
+@tf.keras.utils.register_keras_serializable(package="keras_nlp")
 class TransformerEncoderBlock(tf.keras.layers.Layer):
   """TransformerEncoderBlock layer.
 
@@ -158,7 +157,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
             axis=-1,
             epsilon=self._norm_epsilon,
             dtype=tf.float32))
-    self._inner_dense = tf.keras.layers.experimental.EinsumDense(
+    self._intermediate_dense = tf.keras.layers.experimental.EinsumDense(
         "abc,cd->abd",
         output_shape=(None, self._inner_dim),
         bias_axes="d",
@@ -171,7 +170,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       # as well, so we use float32.
       # TODO(b/154538392): Investigate this.
       policy = tf.float32
-    self._inner_activation_layer = tf.keras.layers.Activation(
+    self._intermediate_activation_layer = tf.keras.layers.Activation(
         self._inner_activation, dtype=policy)
     self._inner_dropout_layer = tf.keras.layers.Dropout(
         rate=self._inner_dropout)
@@ -260,8 +259,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     if self._norm_first:
       source_attention_output = attention_output
       attention_output = self._output_layer_norm(attention_output)
-    inner_output = self._inner_dense(attention_output)
-    inner_output = self._inner_activation_layer(inner_output)
+    inner_output = self._intermediate_dense(attention_output)
+    inner_output = self._intermediate_activation_layer(inner_output)
     inner_output = self._inner_dropout_layer(inner_output)
     layer_output = self._output_dense(inner_output)
     layer_output = self._output_dropout(layer_output)

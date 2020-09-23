@@ -182,30 +182,6 @@ class TransformerLayerTest(keras_parameterized.TestCase):
     self.assertNotEmpty(call_list)
     self.assertTrue(call_list[0], "The passed layer class wasn't instantiated.")
 
-  def test_layer_creation_with_incorrect_mask_fails(self):
-    sequence_length = 21
-    width = 80
-
-    call_list = []
-    attention_layer_cfg = {
-        'num_heads': 10,
-        'key_dim': 8,
-        'call_list': call_list,
-    }
-    test_layer = transformer_scaffold.TransformerScaffold(
-        attention_cls=ValidatedAttentionLayer,
-        attention_cfg=attention_layer_cfg,
-        num_attention_heads=10,
-        intermediate_size=2048,
-        intermediate_activation='relu')
-
-    # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
-    # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length - 3))
-    with self.assertRaisesRegex(ValueError, 'When passing a mask tensor.*'):
-      _ = test_layer([data_tensor, mask_tensor])
-
   def test_layer_invocation(self):
     sequence_length = 21
     width = 80

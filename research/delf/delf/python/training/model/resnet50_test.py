@@ -42,8 +42,8 @@ class Resnet50Test(tf.test.TestCase):
                                               threshold=threshold)
 
     # Define expected result.
-    expected_pooled_feature_map = np.array([[[[0.707107, 1.414214]]],
-                                            [[[1.0, 70.710678]]]],
+    expected_pooled_feature_map = np.array([[0.707107, 1.414214],
+                                            [1.0, 70.710678]],
                                            dtype=float)
 
     # Compare actual and expected.

@@ -159,7 +159,8 @@ class SentencePredictionTask(base_task.Task):
     if self.metric_type == 'matthews_corrcoef':
       logs.update({
           'sentence_prediction':
-              tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=0),
+              # Ensure one prediction along batch dimension.
+              tf.expand_dims(tf.math.argmax(outputs, axis=1), axis=1),
           'labels':
               labels,
       })
@@ -175,7 +176,6 @@ class SentencePredictionTask(base_task.Task):
       return None
     if state is None:
       state = {'sentence_prediction': [], 'labels': []}
-    # TODO(b/160712818): Add support for concatenating partial batches.
     state['sentence_prediction'].append(
         np.concatenate([v.numpy() for v in step_outputs['sentence_prediction']],
                        axis=0))

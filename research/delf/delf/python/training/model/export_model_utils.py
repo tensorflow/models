@@ -27,6 +27,9 @@ from object_detection.core import box_list
 from object_detection.core import box_list_ops
 
 
+# TODO(andrearaujo): Rewrite this function to be more similar to
+# "ExtractLocalAndGlobalFeatures" below, leveraging autograph to avoid the need
+# for tf.while loop.
 def ExtractLocalFeatures(image, image_scales, max_feature_num, abs_thres, iou,
                          attention_model_fn, stride_factor):
   """Extract local features for input image.
@@ -35,9 +38,9 @@ def ExtractLocalFeatures(image, image_scales, max_feature_num, abs_thres, iou,
     image: image tensor of type tf.uint8 with shape [h, w, channels].
     image_scales: 1D float tensor which contains float scales used for image
       pyramid construction.
-    max_feature_num: int tensor denotes the maximum selected feature points.
-    abs_thres: float tensor denotes the score threshold for feature selection.
-    iou: float scalar denotes the iou threshold for NMS.
+    max_feature_num: int tensor denoting the maximum selected feature points.
+    abs_thres: float tensor denoting the score threshold for feature selection.
+    iou: float scalar denoting the iou threshold for NMS.
     attention_model_fn: model function. Follows the signature:
       * Args:
         * `images`: Image tensor which is re-scaled.
@@ -55,7 +58,7 @@ def ExtractLocalFeatures(image, image_scales, max_feature_num, abs_thres, iou,
       scales such that larger image scales correspond to larger image regions,
       which is compatible with keypoints detected with other techniques, for
       example Congas.
-    scores: [N, 1] float tensor denotes the attention score.
+    scores: [N, 1] float tensor denoting the attention score.
 
   """
   original_image_shape_float = tf.gather(
@@ -66,6 +69,8 @@ def ExtractLocalFeatures(image, image_scales, max_feature_num, abs_thres, iou,
   image_tensor = tf.expand_dims(image_tensor, 0, name='image/expand_dims')
 
   # Hard code the feature depth and receptive field parameters for now.
+  # We need to revisit this once we change the architecture and selected
+  # convolutional blocks to use as local features.
   rf, stride, padding = [291.0, 16.0 * stride_factor, 145.0]
   feature_depth = 1024
 
@@ -189,7 +194,7 @@ def ExtractGlobalFeatures(image,
       `image_scales`, those with corresponding indices from this tensor.
     model_fn: model function. Follows the signature:
       * Args:
-        * `images`: Image tensor which is re-scaled.
+        * `images`: Batched image tensor.
       * Returns:
         * `global_descriptors`: Global descriptors for input images.
     multi_scale_pool_type: If set, the global descriptor of each scale is pooled
@@ -266,3 +271,138 @@ def ExtractGlobalFeatures(image,
         output_global, axis=normalization_axis, name='l2_normalization')
 
   return output_global
+
+
+@tf.function
+def ExtractLocalAndGlobalFeatures(image, image_scales, max_feature_num,
+                                  abs_thres, global_scales_ind, iou, model_fn,
+                                  stride_factor):
+  """Extract local+global features for input image.
+
+  Args:
+    image: image tensor of type tf.uint8 with shape [h, w, channels].
+    image_scales: 1D float tensor which contains float scales used for image
+      pyramid construction.
+    max_feature_num: int tensor denoting the maximum selected feature points.
+    abs_thres: float tensor denoting the score threshold for feature selection.
+    global_scales_ind: Global feature extraction happens only for a subset of
+      `image_scales`, those with corresponding indices from this tensor.
+    iou: float scalar denoting the iou threshold for NMS.
+    model_fn: model function. Follows the signature:
+      * Args:
+        * `images`: Batched image tensor.
+      * Returns:
+        * `global_descriptors`: Global descriptors for input images.
+        * `attention_prob`: Attention map after the non-linearity.
+        * `feature_map`: Feature map after ResNet convolution.
+    stride_factor: integer accounting for striding after block3.
+
+  Returns:
+    boxes: [N, 4] float tensor which denotes the selected receptive boxes. N is
+      the number of final feature points which pass through keypoint selection
+      and NMS steps.
+    local_descriptors: [N, depth] float tensor.
+    feature_scales: [N] float tensor. It is the inverse of the input image
+      scales such that larger image scales correspond to larger image regions,
+      which is compatible with keypoints detected with other techniques, for
+      example Congas.
+    scores: [N, 1] float tensor denoting the attention score.
+    global_descriptors: [S, D] float tensor, with the global descriptors for
+      each scale; S is the number of scales, and D the global descriptor
+      dimensionality.
+  """
+  original_image_shape_float = tf.gather(
+      tf.dtypes.cast(tf.shape(image), tf.float32), [0, 1])
+  image_tensor = gld.NormalizeImages(
+      image, pixel_value_offset=128.0, pixel_value_scale=128.0)
+  image_tensor = tf.expand_dims(image_tensor, 0, name='image/expand_dims')
+
+  # Hard code the receptive field parameters for now.
+  # We need to revisit this once we change the architecture and selected
+  # convolutional blocks to use as local features.
+  rf, stride, padding = [291.0, 16.0 * stride_factor, 145.0]
+
+  def _ResizeAndExtract(scale_index):
+    """Helper function to resize image then extract features.
+
+    Args:
+      scale_index: A valid index in image_scales.
+
+    Returns:
+      global_descriptor: [1,D] tensor denoting the extracted global descriptor.
+      boxes: Box tensor with the shape of [K, 4].
+      local_descriptors: Local descriptor tensor with the shape of [K, depth].
+      scales: Scale tensor with the shape of [K].
+      scores: Score tensor with the shape of [K].
+    """
+    scale = tf.gather(image_scales, scale_index)
+    new_image_size = tf.dtypes.cast(
+        tf.round(original_image_shape_float * scale), tf.int32)
+    resized_image = tf.image.resize(image_tensor, new_image_size)
+    global_descriptor, attention_prob, feature_map = model_fn(resized_image)
+
+    attention_prob = tf.squeeze(attention_prob, axis=[0])
+    feature_map = tf.squeeze(feature_map, axis=[0])
+
+    # Compute RF boxes and re-project them to the original image space.
+    rf_boxes = feature_extractor.CalculateReceptiveBoxes(
+        tf.shape(feature_map)[0],
+        tf.shape(feature_map)[1], rf, stride, padding)
+    rf_boxes = tf.divide(rf_boxes, scale)
+
+    attention_prob = tf.reshape(attention_prob, [-1])
+    feature_map = tf.reshape(feature_map, [-1, tf.shape(feature_map)[2]])
+
+    # Use attention score to select local features.
+    indices = tf.reshape(tf.where(attention_prob >= abs_thres), [-1])
+    boxes = tf.gather(rf_boxes, indices)
+    local_descriptors = tf.gather(feature_map, indices)
+    scores = tf.gather(attention_prob, indices)
+    scales = tf.ones_like(scores, tf.float32) / scale
+
+    return global_descriptor, boxes, local_descriptors, scales, scores
+
+  # TODO(andrearaujo): Currently, a global feature is extracted even for scales
+  # which are not using it. The obtained result is correct, however feature
+  # extraction is slower than expected. We should try to fix this in the future.
+
+  # Run first scale.
+  (output_global_descriptors, output_boxes, output_local_descriptors,
+   output_scales, output_scores) = _ResizeAndExtract(0)
+  if not tf.reduce_any(tf.equal(global_scales_ind, 0)):
+    # If global descriptor is not using the first scale, clear it out.
+    output_global_descriptors = tf.zeros(
+        [0, tf.shape(output_global_descriptors)[1]])
+
+  # Loop over subsequent scales.
+  num_scales = tf.shape(image_scales)[0]
+  for scale_index in tf.range(1, num_scales):
+    # Allow an undefined number of global feature scales to be extracted.
+    tf.autograph.experimental.set_loop_options(
+        shape_invariants=[(output_global_descriptors,
+                           tf.TensorShape([None, None]))])
+
+    (global_descriptor, boxes, local_descriptors, scales,
+     scores) = _ResizeAndExtract(scale_index)
+    output_boxes = tf.concat([output_boxes, boxes], 0)
+    output_local_descriptors = tf.concat(
+        [output_local_descriptors, local_descriptors], 0)
+    output_scales = tf.concat([output_scales, scales], 0)
+    output_scores = tf.concat([output_scores, scores], 0)
+    if tf.reduce_any(tf.equal(global_scales_ind, scale_index)):
+      output_global_descriptors = tf.concat(
+          [output_global_descriptors, global_descriptor], 0)
+
+  feature_boxes = box_list.BoxList(output_boxes)
+  feature_boxes.add_field('local_descriptors', output_local_descriptors)
+  feature_boxes.add_field('scales', output_scales)
+  feature_boxes.add_field('scores', output_scores)
+
+  nms_max_boxes = tf.minimum(max_feature_num, feature_boxes.num_boxes())
+  final_boxes = box_list_ops.non_max_suppression(feature_boxes, iou,
+                                                 nms_max_boxes)
+
+  return (final_boxes.get(), final_boxes.get_field('local_descriptors'),
+          final_boxes.get_field('scales'),
+          tf.expand_dims(final_boxes.get_field('scores'),
+                         1), output_global_descriptors)

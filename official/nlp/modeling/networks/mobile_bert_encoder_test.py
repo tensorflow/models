@@ -18,10 +18,21 @@ import numpy as np
 import tensorflow as tf
 from official.nlp.modeling import models
 from official.nlp.modeling.networks import mobile_bert_encoder
-from official.nlp.projects.mobilebert import utils
 
 
-class ModelingTest(parameterized.TestCase, tf.test.TestCase):
+def generate_fake_input(batch_size=1, seq_len=5, vocab_size=10000, seed=0):
+  """Generate consisitant fake integer input sequences."""
+  np.random.seed(seed)
+  fake_input = []
+  for _ in range(batch_size):
+    fake_input.append([])
+    for _ in range(seq_len):
+      fake_input[-1].append(np.random.randint(0, vocab_size))
+  fake_input = np.asarray(fake_input)
+  return fake_input
+
+
+class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_embedding_layer_with_token_type(self):
     layer = mobile_bert_encoder.MobileBertEmbedding(10, 8, 2, 16)
@@ -48,9 +59,8 @@ class ModelingTest(parameterized.TestCase, tf.test.TestCase):
     expected_shape = [2, 3, 4]
     self.assertListEqual(output_shape, expected_shape, msg=None)
 
-  @parameterized.named_parameters(
-      ('with_kq_shared_bottleneck', False),
-      ('without_kq_shared_bottleneck', True))
+  @parameterized.named_parameters(('with_kq_shared_bottleneck', False),
+                                  ('without_kq_shared_bottleneck', True))
   def test_transfomer_kq_shared_bottleneck(self, is_kq_shared):
     feature = tf.random.uniform([2, 3, 512])
     layer = mobile_bert_encoder.TransformerLayer(
@@ -62,12 +72,8 @@ class ModelingTest(parameterized.TestCase, tf.test.TestCase):
 
   def test_transfomer_with_mask(self):
     feature = tf.random.uniform([2, 3, 512])
-    input_mask = [[[0., 0., 1.],
-                   [0., 0., 1.],
-                   [0., 0., 1.]],
-                  [[0., 1., 1.],
-                   [0., 1., 1.],
-                   [0., 1., 1.]]]
+    input_mask = [[[0., 0., 1.], [0., 0., 1.], [0., 0., 1.]],
+                  [[0., 1., 1.], [0., 1., 1.], [0., 1., 1.]]]
     input_mask = np.asarray(input_mask)
     layer = mobile_bert_encoder.TransformerLayer()
     output = layer(feature, input_mask)
@@ -83,8 +89,8 @@ class ModelingTest(parameterized.TestCase, tf.test.TestCase):
         num_attention_heads=num_attention_heads)
     _, attention_score = layer(feature, return_attention_scores=True)
     expected_shape = [2, num_attention_heads, sequence_length, sequence_length]
-    self.assertListEqual(attention_score.shape.as_list(), expected_shape,
-                         msg=None)
+    self.assertListEqual(
+        attention_score.shape.as_list(), expected_shape, msg=None)
 
   @parameterized.named_parameters(
       ('default_setting', 'relu', True, 'no_norm', False),
@@ -110,7 +116,9 @@ class ModelingTest(parameterized.TestCase, tf.test.TestCase):
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    layer_output, pooler_output = test_network([word_ids, mask, type_ids])
+    outputs = test_network([word_ids, mask, type_ids])
+    layer_output, pooler_output = outputs['sequence_output'], outputs[
+        'pooled_output']
 
     self.assertIsInstance(test_network.transformer_layers, list)
     self.assertLen(test_network.transformer_layers, num_blocks)
@@ -128,13 +136,13 @@ class ModelingTest(parameterized.TestCase, tf.test.TestCase):
     test_network = mobile_bert_encoder.MobileBERTEncoder(
         word_vocab_size=100,
         hidden_size=hidden_size,
-        num_blocks=num_blocks,
-        return_all_layers=True)
+        num_blocks=num_blocks)
 
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    all_layer_output, _ = test_network([word_ids, mask, type_ids])
+    outputs = test_network([word_ids, mask, type_ids])
+    all_layer_output = outputs['encoder_outputs']
 
     self.assertIsInstance(all_layer_output, list)
     self.assertLen(all_layer_output, num_blocks + 1)
@@ -147,33 +155,26 @@ class ModelingTest(parameterized.TestCase, tf.test.TestCase):
     test_network = mobile_bert_encoder.MobileBERTEncoder(
         word_vocab_size=vocab_size,
         hidden_size=hidden_size,
-        num_blocks=num_blocks,
-        return_all_layers=False)
+        num_blocks=num_blocks)
 
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    layer_out_tensor, pooler_out_tensor = test_network([word_ids,
-                                                        mask, type_ids])
-    model = tf.keras.Model([word_ids, mask, type_ids],
-                           [layer_out_tensor, pooler_out_tensor])
+    outputs = test_network([word_ids, mask, type_ids])
+    model = tf.keras.Model([word_ids, mask, type_ids], outputs)
 
-    input_seq = utils.generate_fake_input(batch_size=1,
-                                          seq_len=sequence_length,
-                                          vocab_size=vocab_size)
-    input_mask = utils.generate_fake_input(batch_size=1,
-                                           seq_len=sequence_length,
-                                           vocab_size=2)
-    token_type = utils.generate_fake_input(batch_size=1,
-                                           seq_len=sequence_length,
-                                           vocab_size=2)
-    layer_output, pooler_output = model.predict([input_seq, input_mask,
-                                                 token_type])
+    input_seq = generate_fake_input(
+        batch_size=1, seq_len=sequence_length, vocab_size=vocab_size)
+    input_mask = generate_fake_input(
+        batch_size=1, seq_len=sequence_length, vocab_size=2)
+    token_type = generate_fake_input(
+        batch_size=1, seq_len=sequence_length, vocab_size=2)
+    outputs = model.predict([input_seq, input_mask, token_type])
 
-    layer_output_shape = [1, sequence_length, hidden_size]
-    self.assertAllEqual(layer_output.shape, layer_output_shape)
-    pooler_output_shape = [1, hidden_size]
-    self.assertAllEqual(pooler_output.shape, pooler_output_shape)
+    sequence_output_shape = [1, sequence_length, hidden_size]
+    self.assertAllEqual(outputs['sequence_output'].shape, sequence_output_shape)
+    pooled_output_shape = [1, hidden_size]
+    self.assertAllEqual(outputs['pooled_output'].shape, pooled_output_shape)
 
   def test_mobilebert_encoder_invocation_with_attention_score(self):
     vocab_size = 100
@@ -183,31 +184,22 @@ class ModelingTest(parameterized.TestCase, tf.test.TestCase):
     test_network = mobile_bert_encoder.MobileBERTEncoder(
         word_vocab_size=vocab_size,
         hidden_size=hidden_size,
-        num_blocks=num_blocks,
-        return_all_layers=False,
-        return_attention_score=True)
+        num_blocks=num_blocks)
 
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    layer_out_tensor, pooler_out_tensor, attention_out_tensor = test_network(
-        [word_ids, mask, type_ids])
-    model = tf.keras.Model([word_ids, mask, type_ids],
-                           [layer_out_tensor, pooler_out_tensor,
-                            attention_out_tensor])
+    outputs = test_network([word_ids, mask, type_ids])
+    model = tf.keras.Model([word_ids, mask, type_ids], outputs)
 
-    input_seq = utils.generate_fake_input(batch_size=1,
-                                          seq_len=sequence_length,
-                                          vocab_size=vocab_size)
-    input_mask = utils.generate_fake_input(batch_size=1,
-                                           seq_len=sequence_length,
-                                           vocab_size=2)
-    token_type = utils.generate_fake_input(batch_size=1,
-                                           seq_len=sequence_length,
-                                           vocab_size=2)
-    _, _, attention_score_output = model.predict([input_seq, input_mask,
-                                                  token_type])
-    self.assertLen(attention_score_output, num_blocks)
+    input_seq = generate_fake_input(
+        batch_size=1, seq_len=sequence_length, vocab_size=vocab_size)
+    input_mask = generate_fake_input(
+        batch_size=1, seq_len=sequence_length, vocab_size=2)
+    token_type = generate_fake_input(
+        batch_size=1, seq_len=sequence_length, vocab_size=2)
+    outputs = model.predict([input_seq, input_mask, token_type])
+    self.assertLen(outputs['attention_scores'], num_blocks)
 
   @parameterized.named_parameters(
       ('sequence_classification', models.BertClassifier, [None, 5]),
@@ -218,14 +210,14 @@ class ModelingTest(parameterized.TestCase, tf.test.TestCase):
     mobilebert_encoder = mobile_bert_encoder.MobileBERTEncoder(
         word_vocab_size=100, hidden_size=hidden_size)
     num_classes = 5
-    classifier = task(network=mobilebert_encoder,
-                      num_classes=num_classes)
+    classifier = task(network=mobilebert_encoder, num_classes=num_classes)
 
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     prediction = classifier([word_ids, mask, type_ids])
     self.assertAllEqual(prediction.shape.as_list(), prediction_shape)
+
 
 if __name__ == '__main__':
   tf.test.main()

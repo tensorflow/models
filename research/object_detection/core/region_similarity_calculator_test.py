@@ -93,6 +93,25 @@ class RegionSimilarityCalculatorTest(test_case.TestCase):
     iou_output = self.execute(graph_fn, [])
     self.assertAllClose(iou_output, exp_output)
 
+  def test_detr_similarity(self):
+    def graph_fn():
+      corners1 = tf.constant([[5.0, 7.0, 7.0, 9.0]])
+      corners2 = tf.constant([[5.0, 7.0, 7.0, 9.0], [5.0, 11.0, 7.0, 13.0]])
+      groundtruth_labels = tf.constant([[1.0, 0.0]])
+      predicted_labels = tf.constant([[0.0, 1000.0], [1000.0, 0.0]])
+      boxes1 = box_list.BoxList(corners1)
+      boxes2 = box_list.BoxList(corners2)
+      boxes1.add_field(fields.BoxListFields.classes, groundtruth_labels)
+      boxes2.add_field(fields.BoxListFields.classes, predicted_labels)
+      detr_similarity_calculator = \
+          region_similarity_calculator.DETRSimilarity()
+      detr_similarity = detr_similarity_calculator.compare(
+          boxes1, boxes2, None)
+      return detr_similarity
+    exp_output = [[0.0, -20 - 8.0/3.0 + 1000.0]]
+    sim_output = self.execute(graph_fn, [])
+    self.assertAllClose(sim_output, exp_output)
+
 
 if __name__ == '__main__':
   tf.test.main()

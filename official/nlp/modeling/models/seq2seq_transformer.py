@@ -20,6 +20,7 @@ import math
 
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 from official.nlp.modeling.ops import beam_search
 from official.nlp.transformer import metrics
@@ -141,12 +142,12 @@ class Seq2SeqTransformer(tf.keras.Model):
     self._beam_size = beam_size
     self._alpha = alpha
     self._dtype = dtype
-    self.embedding_lookup = layers.OnDeviceEmbedding(
+    self.embedding_lookup = keras_nlp.layers.OnDeviceEmbedding(
         vocab_size=self._vocab_size,
         embedding_width=self._embedding_width,
         initializer=tf.random_normal_initializer(
             mean=0., stddev=self._embedding_width**-0.5),
-        use_scale=True)
+        scale_factor=self._embedding_width**0.5)
     self.encoder_layer = encoder_layer
     self.decoder_layer = decoder_layer
     self.position_embedding = layers.RelativePositionEmbedding(
@@ -471,16 +472,16 @@ class TransformerEncoder(tf.keras.layers.Layer):
     self.encoder_layers = []
     for i in range(self.num_layers):
       self.encoder_layers.append(
-          layers.Transformer(
+          keras_nlp.layers.TransformerEncoderBlock(
               num_attention_heads=self.num_attention_heads,
-              intermediate_size=self._intermediate_size,
-              intermediate_activation=self._activation,
-              dropout_rate=self._dropout_rate,
-              attention_dropout_rate=self._attention_dropout_rate,
+              inner_dim=self._intermediate_size,
+              inner_activation=self._activation,
+              output_dropout=self._dropout_rate,
+              attention_dropout=self._attention_dropout_rate,
               use_bias=self._use_bias,
               norm_first=self._norm_first,
               norm_epsilon=self._norm_epsilon,
-              intermediate_dropout=self._intermediate_dropout,
+              inner_dropout=self._intermediate_dropout,
               attention_initializer=attention_initializer(input_shape[2]),
               name=("layer_%d" % i)))
     self.output_normalization = tf.keras.layers.LayerNormalization(
@@ -580,7 +581,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
     self.decoder_layers = []
     for i in range(self.num_layers):
       self.decoder_layers.append(
-          layers.TransformerDecoderLayer(
+          layers.TransformerDecoderBlock(
               num_attention_heads=self.num_attention_heads,
               intermediate_size=self._intermediate_size,
               intermediate_activation=self._activation,

@@ -26,15 +26,15 @@ class OptimizerConfigTest(tf.test.TestCase):
 
   def test_no_optimizer(self):
     optimizer = optimization_config.OptimizationConfig({}).optimizer.get()
-    self.assertEqual(optimizer, None)
+    self.assertIsNone(optimizer)
 
   def test_no_lr_schedule(self):
     lr = optimization_config.OptimizationConfig({}).learning_rate.get()
-    self.assertEqual(lr, None)
+    self.assertIsNone(lr)
 
   def test_no_warmup_schedule(self):
     warmup = optimization_config.OptimizationConfig({}).warmup.get()
-    self.assertEqual(warmup, None)
+    self.assertIsNone(warmup)
 
   def test_config(self):
     opt_config = optimization_config.OptimizationConfig({

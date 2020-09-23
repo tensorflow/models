@@ -23,6 +23,7 @@ from absl import flags
 from absl import logging
 import gin
 import tensorflow as tf
+from official.common import distribute_utils
 from official.modeling import performance
 from official.nlp import optimization
 from official.nlp.bert import bert_models
@@ -30,7 +31,6 @@ from official.nlp.bert import common_flags
 from official.nlp.bert import configs
 from official.nlp.bert import input_pipeline
 from official.nlp.bert import model_training_utils
-from official.utils.misc import distribution_utils
 
 
 flags.DEFINE_string('input_files', None,
@@ -106,7 +106,11 @@ def run_customized_training(strategy,
                             train_batch_size,
                             use_next_sentence_label=True,
                             train_summary_interval=0,
-                            custom_callbacks=None):
+                            custom_callbacks=None,
+                            explicit_allreduce=False,
+                            pre_allreduce_callbacks=None,
+                            post_allreduce_callbacks=None,
+                            allreduce_bytes_per_pack=0):
   """Run BERT pretrain model training using low-level API."""
 
   train_input_fn = get_pretrain_dataset_fn(input_files, max_seq_length,
@@ -140,6 +144,10 @@ def run_customized_training(strategy,
       steps_per_loop=steps_per_loop,
       epochs=epochs,
       sub_model_export_name='pretrained/bert_model',
+      explicit_allreduce=explicit_allreduce,
+      pre_allreduce_callbacks=pre_allreduce_callbacks,
+      post_allreduce_callbacks=post_allreduce_callbacks,
+      allreduce_bytes_per_pack=allreduce_bytes_per_pack,
       train_summary_interval=train_summary_interval,
       custom_callbacks=custom_callbacks)
 
@@ -159,6 +167,12 @@ def run_bert_pretrain(strategy, custom_callbacks=None):
 
   performance.set_mixed_precision_policy(common_flags.dtype())
 
+  # Only when explicit_allreduce = True, post_allreduce_callbacks and
+  # allreduce_bytes_per_pack will take effect. optimizer.apply_gradients() no
+  # longer implicitly allreduce gradients, users manually allreduce gradient and
+  # pass the allreduced grads_and_vars to apply_gradients().
+  # With explicit_allreduce = True, clip_by_global_norm is moved to after
+  # allreduce.
   return run_customized_training(
       strategy,
       bert_config,
@@ -177,16 +191,25 @@ def run_bert_pretrain(strategy, custom_callbacks=None):
       FLAGS.train_batch_size,
       FLAGS.use_next_sentence_label,
       FLAGS.train_summary_interval,
-      custom_callbacks=custom_callbacks)
+      custom_callbacks=custom_callbacks,
+      explicit_allreduce=FLAGS.explicit_allreduce,
+      pre_allreduce_callbacks=[
+          model_training_utils.clip_by_global_norm_callback
+      ],
+      allreduce_bytes_per_pack=FLAGS.allreduce_bytes_per_pack)
 
 
 def main(_):
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_param)
   if not FLAGS.model_dir:
     FLAGS.model_dir = '/tmp/bert20/'
-  strategy = distribution_utils.get_distribution_strategy(
+  # Configures cluster spec for multi-worker distribution strategy.
+  if FLAGS.num_gpus > 0:
+    _ = distribute_utils.configure_cluster(FLAGS.worker_hosts, FLAGS.task_index)
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=FLAGS.distribution_strategy,
       num_gpus=FLAGS.num_gpus,
+      all_reduce_alg=FLAGS.all_reduce_alg,
       tpu_address=FLAGS.tpu)
   if strategy:
     print('***** Number of cores used : ', strategy.num_replicas_in_sync)

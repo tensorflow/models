@@ -92,7 +92,6 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types)
-    self.assertTrue(test_network._position_embedding_layer._use_dynamic_slicing)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -110,7 +109,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
     mask_data = np.random.randint(2, size=(batch_size, sequence_length))
     type_id_data = np.random.randint(
         num_types, size=(batch_size, sequence_length))
-    _ = model.predict([word_id_data, mask_data, type_id_data])
+    list_outputs = model.predict([word_id_data, mask_data, type_id_data])
 
     # Creates a TransformerEncoder with max_sequence_length != sequence_length
     max_sequence_length = 128
@@ -122,9 +121,29 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3,
         type_vocab_size=num_types)
-    self.assertTrue(test_network._position_embedding_layer._use_dynamic_slicing)
     model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
     _ = model.predict([word_id_data, mask_data, type_id_data])
+
+    # Tests dictionary outputs.
+    test_network_dict = albert_transformer_encoder.AlbertTransformerEncoder(
+        vocab_size=vocab_size,
+        embedding_width=8,
+        hidden_size=hidden_size,
+        max_sequence_length=max_sequence_length,
+        num_attention_heads=2,
+        num_layers=3,
+        type_vocab_size=num_types,
+        dict_outputs=True)
+    _ = test_network_dict([word_ids, mask, type_ids])
+    test_network_dict.set_weights(test_network.get_weights())
+    list_outputs = test_network([word_id_data, mask_data, type_id_data])
+    dict_outputs = test_network_dict(
+        dict(
+            input_word_ids=word_id_data,
+            input_mask=mask_data,
+            input_type_ids=type_id_data))
+    self.assertAllEqual(list_outputs[0], dict_outputs["sequence_output"])
+    self.assertAllEqual(list_outputs[1], dict_outputs["pooled_output"])
 
   def test_serialize_deserialize(self):
     tf.keras.mixed_precision.experimental.set_policy("mixed_float16")

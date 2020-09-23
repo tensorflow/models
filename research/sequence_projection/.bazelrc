@@ -1,0 +1,28 @@
+# gRPC using libcares in opensource has some issues.
+build --define=grpc_no_ares=true
+
+# Suppress all warning messages.
+build:short_logs --output_filter=DONT_MATCH_ANYTHING
+
+# Force python3
+build --action_env=PYTHON_BIN_PATH=/usr/bin/python3
+build --repo_env=PYTHON_BIN_PATH=/usr/bin/python3
+build --python_path=/usr/bin/python3
+
+common --experimental_repo_remote_exec
+
+build:manylinux2010 --crosstool_top=//third_party/toolchains/preconfig/ubuntu16.04/gcc7_manylinux2010:toolchain
+
+build -c opt
+build --cxxopt="-std=c++14"
+build --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0"
+build --auto_output_filter=subpackages
+build --copt="-Wall" --copt="-Wno-sign-compare"
+build --linkopt="-lrt -lm"
+
+# TF isn't built in dbg mode, so our dbg builds will segfault due to inconsistency
+# of defines when using tf's headers.  In particular in refcount.h.
+build --cxxopt="-DNDEBUG"
+
+# Options from ./configure
+try-import %workspace%/.reverb.bazelrc
