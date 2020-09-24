@@ -17,7 +17,7 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Text
 
 # Import libraries
-
+from absl import logging
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -400,6 +400,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
                use_residual=True,
                norm_momentum=0.99,
                norm_epsilon=0.001,
+               target_backbone='efficientnet',
                **kwargs):
     """An inverted bottleneck block with BN after convolutions.
 
@@ -457,6 +458,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._target_backbone = target_backbone
 
     if use_sync_bn:
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
@@ -479,6 +481,9 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       # First 1x1 conv for channel expansion.
       expand_filters = nn_layers.make_divisible(
           self._in_filters * self._expand_ratio, self._divisible_by)
+      logging.info('expand_filter: {}, divisible_version {}'.format(
+          self._in_filters * self._expand_ratio, expand_filters
+      ))
       expand_kernel = 1 if self._use_depthwise else self._kernel_size
       expand_stride = 1 if self._use_depthwise else self._strides
 
@@ -515,8 +520,13 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
 
     # Squeeze and excitation.
     if self._se_ratio is not None and self._se_ratio > 0 and self._se_ratio <= 1:
+      logging.info('Use Squeeze and excitation.')
+      in_filters = self._in_filters
+      if self._target_backbone == 'mobilenet':
+        in_filters = expand_filters
       self._squeeze_excitation = nn_layers.SqueezeExcitation(
-          in_filters=expand_filters,
+          in_filters=in_filters,
+          out_filters=expand_filters,
           se_ratio=self._se_ratio,
           divisible_by=self._divisible_by,
           kernel_initializer=self._kernel_initializer,

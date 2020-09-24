@@ -70,6 +70,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
 
   def __init__(self,
                in_filters,
+               out_filters,
                se_ratio,
                divisible_by=1,
                kernel_initializer='VarianceScaling',
@@ -82,6 +83,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
 
     Args:
       in_filters: `int` number of filters of the input tensor.
+      out_filters: `int` number of filters of the output tensor.
       se_ratio: `float` or None. If not None, se ratio for the squeeze and
         excitation layer.
       divisible_by: `int` ensures all inner dimensions are divisible by this number.
@@ -97,6 +99,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
     super(SqueezeExcitation, self).__init__(**kwargs)
 
     self._in_filters = in_filters
+    self._out_filters = out_filters
     self._se_ratio = se_ratio
     self._divisible_by = divisible_by
     self._activation = activation
@@ -127,7 +130,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
         bias_regularizer=self._bias_regularizer)
 
     self._se_expand = tf.keras.layers.Conv2D(
-        filters=self._in_filters,
+        filters=self._out_filters,
         kernel_size=1,
         strides=1,
         padding='same',
@@ -141,8 +144,8 @@ class SqueezeExcitation(tf.keras.layers.Layer):
   def get_config(self):
     config = {
         'in_filters': self._in_filters,
+        'out_filters': self._out_filters,
         'se_ratio': self._se_ratio,
-        'expand_ratio': self._expand_ratio,
         'divisible_by': self._divisible_by,
         'strides': self._strides,
         'kernel_initializer': self._kernel_initializer,
