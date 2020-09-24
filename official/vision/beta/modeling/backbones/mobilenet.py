@@ -524,7 +524,9 @@ class MobileNet(tf.keras.Model):
     super(MobileNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
 
-  def _mobilenet_base(self, inputs: tf.Tensor) -> (tf.Tensor, Dict[tf.Tensor]):
+  def _mobilenet_base(self,
+                      inputs: tf.Tensor
+                      ) -> (tf.Tensor, Dict[int, tf.Tensor]):
     """Build the base MobileNet architecture.
 
     Args:
