@@ -19,6 +19,7 @@ import math
 from absl import logging
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
 
 layers = tf.keras.layers
@@ -290,3 +291,27 @@ class EfficientNet(tf.keras.Model):
   def output_specs(self):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_backbone_builder('efficientnet')
+def build_efficientnet(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds ResNet 3d backbone from a config."""
+  backbone_type = model_config.backbone.type
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+  assert backbone_type == 'efficientnet', (f'Inconsistent backbone type '
+                                           f'{backbone_type}')
+
+  return EfficientNet(
+      model_id=backbone_cfg.model_id,
+      input_specs=input_specs,
+      stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
+      se_ratio=backbone_cfg.se_ratio,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
