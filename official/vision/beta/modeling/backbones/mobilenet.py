@@ -97,8 +97,8 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     config = {
         'filters': self._filters,
         'strides': self._strides,
+        'kernel_size': self._kernel_size,
         'use_bias': self._use_bias,
-        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
@@ -114,7 +114,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
   def build(self, input_shape):
     self._conv0 = tf.keras.layers.Conv2D(
         filters=self._filters,
-        kernel_size=1,
+        kernel_size=self._kernel_size,
         strides=self._strides,
         padding='same',
         use_bias=self._use_bias,
@@ -210,26 +210,26 @@ MNV3Large_BLOCK_SPECS = {
     'block_specs': [
         ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False),
 
-        ('mbconv', 3, 1, 16, 'relu', None, 1., True, False),
+        ('mbconv', 3, 1, 16, 'relu', None, 1., None, False),
 
-        ('mbconv', 3, 2, 24, 'relu', None, 4., True, False),
-        ('mbconv', 3, 1, 24, 'relu', None, 3., True, False),
+        ('mbconv', 3, 2, 24, 'relu', None, 4., None, False),
+        ('mbconv', 3, 1, 24, 'relu', None, 3., None, False),
 
-        ('mbconv', 5, 2, 40, 'relu', 1. / 4, 3., True, False),
-        ('mbconv', 5, 1, 40, 'relu', 1. / 4, 3., True, False),
-        ('mbconv', 5, 1, 40, 'relu', 1. / 4, 3., True, False),
+        ('mbconv', 5, 2, 40, 'relu', 1. / 4, 3., None, False),
+        ('mbconv', 5, 1, 40, 'relu', 1. / 4, 3., None, False),
+        ('mbconv', 5, 1, 40, 'relu', 1. / 4, 3., None, False),
 
-        ('mbconv', 3, 2, 80, 'hard_swish', None, 6., True, False),
-        ('mbconv', 3, 1, 80, 'hard_swish', None, 2.5, True, False),
-        ('mbconv', 3, 1, 80, 'hard_swish', None, 2.3, True, False),
-        ('mbconv', 3, 1, 80, 'hard_swish', None, 2.3, True, False),
+        ('mbconv', 3, 2, 80, 'hard_swish', None, 6., None, False),
+        ('mbconv', 3, 1, 80, 'hard_swish', None, 2.5, None, False),
+        ('mbconv', 3, 1, 80, 'hard_swish', None, 2.3, None, False),
+        ('mbconv', 3, 1, 80, 'hard_swish', None, 2.3, None, False),
 
-        ('mbconv', 3, 1, 112, 'hard_swish', 1. / 4, 6., True, False),
-        ('mbconv', 3, 1, 112, 'hard_swish', 1. / 4, 6., True, False),
+        ('mbconv', 3, 1, 112, 'hard_swish', 1. / 4, 6., None, False),
+        ('mbconv', 3, 1, 112, 'hard_swish', 1. / 4, 6., None, False),
 
-        ('mbconv', 5, 2, 160, 'hard_swish', 1. / 4, 6, True, False),
-        ('mbconv', 5, 1, 160, 'hard_swish', 1. / 4, 6, True, False),
-        ('mbconv', 5, 1, 160, 'hard_swish', 1. / 4, 6, True, False),
+        ('mbconv', 5, 2, 160, 'hard_swish', 1. / 4, 6, None, False),
+        ('mbconv', 5, 1, 160, 'hard_swish', 1. / 4, 6, None, False),
+        ('mbconv', 5, 1, 160, 'hard_swish', 1. / 4, 6, None, False),
 
         ('convbn', 1, 1, 960, 'hard_swish', None, None, True, False),
         ('gpooling', None, None, None, None, None, None, None, None),
@@ -245,21 +245,21 @@ MNV3Small_BLOCK_SPECS = {
     'block_specs': [
         ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False),
 
-        ('mbconv', 3, 2, 16, 'relu', 1. / 4, 1, True, False),
+        ('mbconv', 3, 2, 16, 'relu', 1. / 4, 1, None, False),
 
-        ('mbconv', 3, 2, 24, 'relu', None, 72. / 16, True, False),
-        ('mbconv', 3, 1, 24, 'relu', None, 88. / 24, True, False),
+        ('mbconv', 3, 2, 24, 'relu', None, 72. / 16, None, False),
+        ('mbconv', 3, 1, 24, 'relu', None, 88. / 24, None, False),
 
-        ('mbconv', 5, 2, 40, 'hard_swish', 1. / 4, 4., True, False),
-        ('mbconv', 5, 1, 40, 'hard_swish', 1. / 4, 6., True, False),
-        ('mbconv', 5, 1, 40, 'hard_swish', 1. / 4, 6., True, False),
+        ('mbconv', 5, 2, 40, 'hard_swish', 1. / 4, 4., None, False),
+        ('mbconv', 5, 1, 40, 'hard_swish', 1. / 4, 6., None, False),
+        ('mbconv', 5, 1, 40, 'hard_swish', 1. / 4, 6., None, False),
 
-        ('mbconv', 5, 1, 48, 'hard_swish', 1. / 4, 3., True, False),
-        ('mbconv', 5, 1, 48, 'hard_swish', 1. / 4, 3., True, False),
+        ('mbconv', 5, 1, 48, 'hard_swish', 1. / 4, 3., None, False),
+        ('mbconv', 5, 1, 48, 'hard_swish', 1. / 4, 3., None, False),
 
-        ('mbconv', 5, 2, 96, 'hard_swish', 1. / 4, 6., True, False),
-        ('mbconv', 5, 1, 96, 'hard_swish', 1. / 4, 6., True, False),
-        ('mbconv', 5, 1, 96, 'hard_swish', 1. / 4, 6., True, False),
+        ('mbconv', 5, 2, 96, 'hard_swish', 1. / 4, 6., None, False),
+        ('mbconv', 5, 1, 96, 'hard_swish', 1. / 4, 6., None, False),
+        ('mbconv', 5, 1, 96, 'hard_swish', 1. / 4, 6., None, False),
 
         ('convbn', 1, 1, 576, 'hard_swish', None, None, True, False),
         ('gpooling', None, None, None, None, None, None, None, None),
@@ -279,12 +279,12 @@ MNV3EdgeTPU_BLOCK_SPECS = {
 
         ('mbconv', 3, 2, 32, 'relu', None, 8., True, False),
         ('mbconv', 3, 1, 32, 'relu', None, 4., True, False),
-        ('mbconv', 3, 2, 32, 'relu', None, 4., True, False),
+        ('mbconv', 3, 1, 32, 'relu', None, 4., True, False),
         ('mbconv', 3, 1, 32, 'relu', None, 4., True, False),
 
         ('mbconv', 3, 2, 48, 'relu', None, 8., True, False),
         ('mbconv', 3, 1, 48, 'relu', None, 4., True, False),
-        ('mbconv', 3, 2, 48, 'relu', None, 4., True, False),
+        ('mbconv', 3, 1, 48, 'relu', None, 4., True, False),
         ('mbconv', 3, 1, 48, 'relu', None, 4., True, False),
 
         ('mbconv', 3, 2, 96, 'relu', None, 8., True, True),
@@ -302,7 +302,7 @@ MNV3EdgeTPU_BLOCK_SPECS = {
         ('mbconv', 5, 1, 160, 'relu', None, 4., True, True),
         ('mbconv', 5, 1, 160, 'relu', None, 4., True, True),
 
-        ('mbconv', 3, 1, 192, 'relu', None, 8., True, False),
+        ('mbconv', 3, 1, 192, 'relu', None, 8., True, True),
 
         ('convbn', 1, 1, 1280, 'relu', None, None, None, None),
     ]
@@ -405,12 +405,13 @@ def block_spec_decoder(specs: Dict,
     decoded_specs[-1].filters /= width_multiplier
 
   for ds in decoded_specs:
-    ds.filters = nn_layers.round_filters(filters=ds.filters,
-                                         multiplier=width_multiplier,
-                                         divisor=divisible_by,
-                                         min_depth=8)
+    if ds.filters:
+      ds.filters = nn_layers.round_filters(filters=ds.filters,
+                                           multiplier=width_multiplier,
+                                           divisor=divisible_by,
+                                           min_depth=8)
 
-    return decoded_specs
+  return decoded_specs
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -488,9 +489,6 @@ class MobileNet(tf.keras.Model):
         if output_stride == 0 or (output_stride > 1 and output_stride % 2):
           raise ValueError('Output stride must be None, 1 or a multiple of 2.')
 
-    if version == 'MobileNetV1':
-      divisible_by = 1
-
     self._version = version
     self._input_specs = input_specs
     self._width_multiplier = width_multiplier
@@ -513,7 +511,7 @@ class MobileNet(tf.keras.Model):
     self._decoded_specs = block_spec_decoder(
         specs=block_specs,
         width_multiplier=self._width_multiplier,
-        divisible_by=self._divisible_by,
+        divisible_by=self._get_divisible_by(),
         finegrain_classification_mode=self._finegrain_classification_mode)
 
     x, endpoints = self._mobilenet_base(inputs=inputs)
@@ -523,6 +521,12 @@ class MobileNet(tf.keras.Model):
 
     super(MobileNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
+
+  def _get_divisible_by(self):
+    if self._version == 'MobileNetV1':
+      return 1
+    else:
+      return self._divisible_by
 
   def _mobilenet_base(self,
                       inputs: tf.Tensor
@@ -553,8 +557,11 @@ class MobileNet(tf.keras.Model):
     net = inputs
     endpoints = {}
     endpoint_level = 1
-    for i, block_def in enumerate(self._spec_blocks):
+    for i, block_def in enumerate(self._decoded_specs):
       block_name = 'block_group_{}_{}'.format(block_def.block_fn, i)
+      # A small catch for gpooling block with None strides
+      if not block_def.strides:
+        block_def.strides = 1
       if self._output_stride is not None \
           and current_stride == self._output_stride:
         # If we have reached the target output_stride, then we need to employ
@@ -591,7 +598,6 @@ class MobileNet(tf.keras.Model):
             kernel_size=block_def.kernel_size,
             strides=block_def.strides,
             activation=block_def.activation,
-            use_normalization=block_def.use_normalization,
             dilation_rate=layer_rate,
             regularize_depthwise=self._regularize_depthwise,
             kernel_initializer=self._kernel_initializer,
@@ -620,8 +626,8 @@ class MobileNet(tf.keras.Model):
             expand_ratio=block_def.expand_ratio,
             se_ratio=block_def.se_ratio,
             activation=block_def.activation,
+            use_depthwise=block_def.use_depthwise,
             use_residual=block_def.use_residual,
-            use_normalization=block_def.use_normalization,
             dilation_rate=use_rate,
             regularize_depthwise=self._regularize_depthwise,
             kernel_initializer=self._kernel_initializer,
@@ -631,7 +637,7 @@ class MobileNet(tf.keras.Model):
             norm_momentum=self._norm_momentum,
             norm_epsilon=self._norm_epsilon,
             stochastic_depth_drop_rate=self._stochastic_depth_drop_rate,
-            divisible_by=self._divisible_by,
+            divisible_by=self._get_divisible_by(),
             target_backbone='mobilenet'
         )(net)
 

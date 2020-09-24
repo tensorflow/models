@@ -391,6 +391,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
                kernel_regularizer=None,
                bias_regularizer=None,
                activation='relu',
+               se_inner_activation='relu',
+               se_gating_activation='sigmoid',
                depthwise_activation=None,
                use_sync_bn=False,
                dilation_rate=1,
@@ -452,6 +454,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._use_depthwise = use_depthwise
     self._use_residual = use_residual
     self._activation = activation
+    self._se_inner_activation = se_inner_activation
+    self._se_gating_activation = se_gating_activation
     self._depthwise_activation = depthwise_activation
     self._kernel_initializer = kernel_initializer
     self._norm_momentum = norm_momentum
@@ -460,6 +464,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._bias_regularizer = bias_regularizer
     self._target_backbone = target_backbone
 
+    if target_backbone == 'mobilenet':
+      self._se_gating_activation = 'hard_sigmoid'
     if use_sync_bn:
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
     else:
@@ -473,11 +479,14 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       self._depthwise_activation = activation
     self._depthwise_activation_fn = tf_utils.get_activation(
         self._depthwise_activation)
-    self._depthsize_regularizer = kernel_regularizer if regularize_depthwise else None
+    if regularize_depthwise:
+      self._depthsize_regularizer = kernel_regularizer
+    else:
+      self._depthsize_regularizer = None
 
   def build(self, input_shape):
     expand_filters = self._in_filters
-    if self._expand_ratio != 1:
+    if self._expand_ratio > 1:
       # First 1x1 conv for channel expansion.
       expand_filters = nn_layers.make_divisible(
           self._in_filters * self._expand_ratio, self._divisible_by)
@@ -531,7 +540,9 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
           divisible_by=self._divisible_by,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)
+          bias_regularizer=self._bias_regularizer,
+          activation=self._se_inner_activation,
+          gating_activation=self._se_gating_activation)
     else:
       self._squeeze_excitation = None
 
@@ -572,6 +583,8 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
         'activation': self._activation,
+        'se_inner_activation': self._se_inner_activation,
+        'se_gating_activation': self._se_gating_activation,
         'depthwise_activation': self._depthwise_activation,
         'dilation_rate': self._dilation_rate,
         'use_sync_bn': self._use_sync_bn,
@@ -586,7 +599,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
 
   def call(self, inputs, training=None):
     shortcut = inputs
-    if self._expand_ratio != 1:
+    if self._expand_ratio > 1:
       x = self._conv0(inputs)
       x = self._norm0(x)
       x = self._activation_fn(x)
@@ -1061,7 +1074,6 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
                kernel_regularizer: Optional[
                  tf.keras.regularizers.Regularizer] = None,
                dilation_rate: int = 1,
-               use_normalization: bool = True,
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
@@ -1085,7 +1097,6 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         the dilation rate to use for dilated convolution.
         Can be a single integer to specify the same value for
         all spatial dimensions.
-      use_normalization: if True, use batch normalization.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float` normalization omentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
@@ -1101,7 +1112,6 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._dilation_rate = dilation_rate
-    self._use_normalization = use_normalization
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -1131,7 +1141,6 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         'bias_regularizer': self._bias_regularizer,
         'activation': self._activation,
         'use_sync_bn': self._use_sync_bn,
-        'use_normalization': self._use_normalization,
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon
     }
@@ -1149,11 +1158,10 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._depthsize_regularizer,
         use_bias=False)
-    if self._use_normalization:
-      self._norm0 = self._norm(
-          axis=self._bn_axis,
-          momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+    self._norm0 = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon)
 
     self._conv1 = tf.keras.layers.Conv2D(
         filters=self._filters,
@@ -1163,21 +1171,18 @@ class DepthwiseSeparableConvBlock(tf.keras.layers.Layer):
         use_bias=False,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer)
-    if self._use_normalization:
-      self._norm1 = self._norm(
-          axis=self._bn_axis,
-          momentum=self._norm_momentum,
-          epsilon=self._norm_epsilon)
+    self._norm1 = self._norm(
+        axis=self._bn_axis,
+        momentum=self._norm_momentum,
+        epsilon=self._norm_epsilon)
 
     super(DepthwiseSeparableConvBlock, self).build(input_shape)
 
   def call(self, inputs, training=None):
-    x = self.__dwconv0(inputs)
-    if self._use_normalization:
-      x = self._norm0(x)
+    x = self._dwconv0(inputs)
+    x = self._norm0(x)
     x = self._activation_fn(x)
 
     x = self._conv1(x)
-    if self._use_normalization:
-      x = self._norm1(x)
+    x = self._norm1(x)
     return self._activation_fn(x)
