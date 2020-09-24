@@ -632,6 +632,7 @@ class MobileNet(tf.keras.Model):
             norm_epsilon=self._norm_epsilon,
             stochastic_depth_drop_rate=self._stochastic_depth_drop_rate,
             divisible_by=self._divisible_by,
+            target_backbone='mobilenet'
         )(net)
 
       elif block_def.block_fn == 'gpooling':
