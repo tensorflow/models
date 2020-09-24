@@ -95,8 +95,8 @@ class HourglassFeatureExtractorTest(tf.test.TestCase, parameterized.TestCase):
   def test_hourglass_feature_extractor(self):
 
     model = hourglass.HourglassNetwork(
-        num_stages=4, blocks_per_stage=[2, 3, 4, 5, 6],
-        channel_dims=[4, 6, 8, 10, 12, 14], num_hourglasses=2)
+        num_stages=4, blocks_per_stage=[2, 3, 4, 5, 6], input_channel_dims=4,
+        channel_dims_per_stage=[6, 8, 10, 12, 14], num_hourglasses=2)
     outputs = model(np.zeros((2, 64, 64, 3), dtype=np.float32))
     self.assertEqual(outputs[0].shape, (2, 16, 16, 6))
     self.assertEqual(outputs[1].shape, (2, 16, 16, 6))
@@ -111,29 +111,43 @@ class HourglassDepthTest(tf.test.TestCase):
     self.assertEqual(hourglass.hourglass_depth(net), 104)
 
   def test_hourglass_10(self):
-    net = hourglass.hourglass_10(2, downsample=False)
+    net = hourglass.hourglass_10(2, initial_downsample=False)
     self.assertEqual(hourglass.hourglass_depth(net), 10)
 
     outputs = net(tf.zeros((2, 32, 32, 3)))
     self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
 
   def test_hourglass_20(self):
-    net = hourglass.hourglass_20(2, downsample=False)
+    net = hourglass.hourglass_20(2, initial_downsample=False)
     self.assertEqual(hourglass.hourglass_depth(net), 20)
 
     outputs = net(tf.zeros((2, 32, 32, 3)))
     self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
 
   def test_hourglass_32(self):
-    net = hourglass.hourglass_32(2, downsample=False)
+    net = hourglass.hourglass_32(2, initial_downsample=False)
     self.assertEqual(hourglass.hourglass_depth(net), 32)
 
     outputs = net(tf.zeros((2, 32, 32, 3)))
     self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
 
   def test_hourglass_52(self):
-    net = hourglass.hourglass_52(2, downsample=False)
+    net = hourglass.hourglass_52(2, initial_downsample=False)
     self.assertEqual(hourglass.hourglass_depth(net), 52)
+
+    outputs = net(tf.zeros((2, 32, 32, 3)))
+    self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
+
+  def test_hourglass_20_uniform_size(self):
+    net = hourglass.hourglass_20_uniform_size(2)
+    self.assertEqual(hourglass.hourglass_depth(net), 20)
+
+    outputs = net(tf.zeros((2, 32, 32, 3)))
+    self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
+
+  def test_hourglass_100(self):
+    net = hourglass.hourglass_100(2, initial_downsample=False)
+    self.assertEqual(hourglass.hourglass_depth(net), 100)
 
     outputs = net(tf.zeros((2, 32, 32, 3)))
     self.assertEqual(outputs[0].shape, (2, 32, 32, 4))
