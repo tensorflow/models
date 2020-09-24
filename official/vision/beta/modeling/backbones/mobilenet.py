@@ -15,7 +15,7 @@
 """Contains definitions of EfficientNet Networks."""
 
 import math
-from typing import Text, Optional, List, Dict
+from typing import Text, Optional, Dict
 
 # Import libraries
 from absl import logging
@@ -25,6 +25,7 @@ from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.modeling.layers import nn_layers
 
 layers = tf.keras.layers
+regularizers = tf.keras.regularizers
 
 
 class Conv2DBNBlock(tf.keras.layers.Layer):
@@ -34,13 +35,11 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
                filters: int,
                kernel_size: int = 3,
                strides: int = 1,
-               use_biase: bool = False,
+               use_bias: bool = False,
                activation: Text = 'relu6',
                kernel_initializer: Text = 'VarianceScaling',
-               kernel_regularizer: Optional[
-                 tf.keras.regularizers.Regularizer] = None,
-               bias_regularizer: Optional[
-                 tf.keras.regularizers.Regularizer] = None,
+               kernel_regularizer: Optional[regularizers.Regularizer] = None,
+               bias_regularizer: Optional[regularizers.Regularizer] = None,
                use_normalization: bool = True,
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
@@ -55,7 +54,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       2D convolution window.
       strides: `int` block stride. If greater than 1, this block will ultimately
         downsample the input.
-      use_biase: if True, use biase in the convolution layer.
+      use_bias: if True, use biase in the convolution layer.
       activation: `str` name of the activation function.
       kernel_size: `int` kernel_size of the conv layer.
       kernel_initializer: kernel_initializer for convolutional layers.
@@ -65,7 +64,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
                         Default to None.
       use_normalization: if True, use batch normalization.
       use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
+      norm_momentum: `float` normalization momentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
       **kwargs: keyword arguments to be passed.
@@ -75,7 +74,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     self._kernel_size = kernel_size
     self._strides = strides
     self._activation = activation
-    self._use_biase = use_biase
+    self._use_bias = use_bias
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -98,7 +97,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     config = {
         'filters': self._filters,
         'strides': self._strides,
-        'use_biase': self._use_biase,
+        'use_bias': self._use_bias,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
@@ -113,13 +112,12 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def build(self, input_shape):
-
     self._conv0 = tf.keras.layers.Conv2D(
         filters=self._filters,
         kernel_size=1,
         strides=self._strides,
         padding='same',
-        use_bias=self._use_biase,
+        use_bias=self._use_bias,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
@@ -171,33 +169,34 @@ MNV1_BLOCK_SPECS = {
 
 MNV2_BLOCK_SPECS = {
     'spec_name': 'MobileNetV2',
-    'block_spec_schema': ['block_fn', 'kernel_size', 'strides',
-                          'filters', 'expand_ratio'],
+    'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
+                          'expand_ratio'],
     'block_specs': [
         ('convbn', 3, 2, 32, None),
-        ('mbconv', 3, 1, 16, 1),
 
-        ('mbconv', 3, 2, 24, 6),
-        ('mbconv', 3, 1, 24, 6),
+        ('mbconv', 3, 1, 16, 1.),
 
-        ('mbconv', 3, 2, 32, 6),
-        ('mbconv', 3, 1, 32, 6),
-        ('mbconv', 3, 1, 32, 6),
+        ('mbconv', 3, 2, 24, 6.),
+        ('mbconv', 3, 1, 24, 6.),
 
-        ('mbconv', 3, 2, 64, 6),
-        ('mbconv', 3, 1, 64, 6),
-        ('mbconv', 3, 1, 64, 6),
-        ('mbconv', 3, 1, 64, 6),
+        ('mbconv', 3, 2, 32, 6.),
+        ('mbconv', 3, 1, 32, 6.),
+        ('mbconv', 3, 1, 32, 6.),
 
-        ('mbconv', 3, 1, 96, 6),
-        ('mbconv', 3, 1, 96, 6),
-        ('mbconv', 3, 1, 96, 6),
+        ('mbconv', 3, 2, 64, 6.),
+        ('mbconv', 3, 1, 64, 6.),
+        ('mbconv', 3, 1, 64, 6.),
+        ('mbconv', 3, 1, 64, 6.),
 
-        ('mbconv', 3, 2, 160, 6),
-        ('mbconv', 3, 1, 160, 6),
-        ('mbconv', 3, 1, 160, 6),
+        ('mbconv', 3, 1, 96, 6.),
+        ('mbconv', 3, 1, 96, 6.),
+        ('mbconv', 3, 1, 96, 6.),
 
-        ('mbconv', 3, 1, 320, 6),
+        ('mbconv', 3, 2, 160, 6.),
+        ('mbconv', 3, 1, 160, 6.),
+        ('mbconv', 3, 1, 160, 6.),
+
+        ('mbconv', 3, 1, 320, 6.),
 
         ('convbn', 1, 2, 1280, None),
     ]
@@ -205,10 +204,9 @@ MNV2_BLOCK_SPECS = {
 
 MNV3Large_BLOCK_SPECS = {
     'spec_name': 'MobileNetV3Large',
-    'block_spec_schema': ['block_fn', 'kernel_size', 'strides',
-                          'filters', 'activation',
-                          'se_ratio', 'expand_ratio',
-                          'use_normalization', 'use_biase'],
+    'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
+                          'activation', 'se_ratio', 'expand_ratio',
+                          'use_normalization', 'use_bias'],
     'block_specs': [
         ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False),
 
@@ -241,14 +239,13 @@ MNV3Large_BLOCK_SPECS = {
 
 MNV3Small_BLOCK_SPECS = {
     'spec_name': 'MobileNetV3Small',
-    'block_spec_schema': ['block_fn', 'kernel_size', 'strides',
-                          'filters', 'activation',
-                          'se_ratio', 'expand_ratio',
-                          'use_normalization', 'use_biase'],
+    'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
+                          'activation', 'se_ratio', 'expand_ratio',
+                          'use_normalization', 'use_bias'],
     'block_specs': [
         ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False),
 
-        ('mbconv', 3, 2, 16, 'relu', None, 1, True, False),
+        ('mbconv', 3, 2, 16, 'relu', 1. / 4, 1, True, False),
 
         ('mbconv', 3, 2, 24, 'relu', None, 72. / 16, True, False),
         ('mbconv', 3, 1, 24, 'relu', None, 88. / 24, True, False),
@@ -272,14 +269,13 @@ MNV3Small_BLOCK_SPECS = {
 
 MNV3EdgeTPU_BLOCK_SPECS = {
     'spec_name': 'MobileNetV3EdgeTPU',
-    'block_spec_schema': ['block_fn', 'kernel_size', 'strides',
-                          'filters', 'activation',
-                          'se_ratio', 'expand_ratio',
+    'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
+                          'activation', 'se_ratio', 'expand_ratio',
                           'use_residual', 'use_depthwise'],
     'block_specs': [
         ('convbn', 3, 2, 32, 'relu', None, None, None, None),
 
-        ('mbconv', 3, 1, 16, 'relu', None, 1, True, False),
+        ('mbconv', 3, 1, 16, 'relu', None, 1., True, False),
 
         ('mbconv', 3, 2, 32, 'relu', None, 8., True, False),
         ('mbconv', 3, 1, 32, 'relu', None, 4., True, False),
@@ -293,17 +289,17 @@ MNV3EdgeTPU_BLOCK_SPECS = {
 
         ('mbconv', 3, 2, 96, 'relu', None, 8., True, True),
         ('mbconv', 3, 1, 96, 'relu', None, 4., True, True),
-        ('mbconv', 3, 2, 96, 'relu', None, 4., True, True),
+        ('mbconv', 3, 1, 96, 'relu', None, 4., True, True),
         ('mbconv', 3, 1, 96, 'relu', None, 4., True, True),
 
         ('mbconv', 3, 1, 96, 'relu', None, 8., False, True),
         ('mbconv', 3, 1, 96, 'relu', None, 4., True, True),
-        ('mbconv', 3, 2, 96, 'relu', None, 4., True, True),
+        ('mbconv', 3, 1, 96, 'relu', None, 4., True, True),
         ('mbconv', 3, 1, 96, 'relu', None, 4., True, True),
 
         ('mbconv', 5, 2, 160, 'relu', None, 8., True, True),
         ('mbconv', 5, 1, 160, 'relu', None, 4., True, True),
-        ('mbconv', 5, 2, 160, 'relu', None, 4., True, True),
+        ('mbconv', 5, 1, 160, 'relu', None, 4., True, True),
         ('mbconv', 5, 1, 160, 'relu', None, 4., True, True),
 
         ('mbconv', 3, 1, 192, 'relu', None, 8., True, False),
@@ -337,7 +333,7 @@ class BlockSpec(object):
                kernel_size: int = 3,
                strides: int = 1,
                filters: int = 32,
-               use_biase: bool = False,
+               use_bias: bool = False,
                use_normalization: bool = True,
                activation: Text = 'relu6',
                # used for block type InvertedResConv
@@ -350,7 +346,7 @@ class BlockSpec(object):
     self.kernel_size = kernel_size
     self.strides = strides
     self.filters = filters
-    self.use_biase = use_biase
+    self.use_bias = use_bias
     self.use_normalization = use_normalization
     self.activation = activation
     self.expand_ratio = expand_ratio
@@ -359,12 +355,28 @@ class BlockSpec(object):
     self.use_residual = use_residual
 
 
-def block_spec_decoder(specs,
-                       width_multiplier,
+def block_spec_decoder(specs: Dict,
+                       width_multiplier: float,
                        # set to 1 for mobilenetv1
                        divisible_by: int = 8,
                        finegrain_classification_mode: bool = True):
-  """Decode specs for a block."""
+  """Decode specs for a block.
+
+  Args:
+    specs: `dict` specification of block specs of a mobilenet version.
+    width_multiplier: `float` multiplier for the depth (number of channels)
+      for all convolution ops. The value must be greater than zero. Typical
+      usage will be to set this value in (0, 1) to reduce the number of
+      parameters or computation cost of the model.
+    divisible_by: `int` ensures all inner dimensions are divisible by
+      this number.
+    finegrain_classification_mode: if True, the model
+      will keep the last layer large even for small multipliers. Following
+      https://arxiv.org/abs/1801.04381
+
+  Returns:
+    List[BlockSpec]` defines structure of the base network.
+  """
 
   spec_name = specs['spec_name']
   block_spec_schema = specs['block_spec_schema']
@@ -401,157 +413,6 @@ def block_spec_decoder(specs,
     return decoded_specs
 
 
-def mobilenet_base(inputs: tf.Tensor,
-                   spec_blocks: List[BlockSpec],
-                   divisible_by: int = 8,
-                   output_stride: int = None,
-                   stochastic_depth_drop_rate=0.0,
-                   regularize_depthwise=False,
-                   kernel_initializer='VarianceScaling',
-                   kernel_regularizer=None,
-                   bias_regularizer=None,
-                   use_sync_bn=False,
-                   norm_momentum=0.99,
-                   norm_epsilon=0.001,
-                   ) -> (tf.Tensor, Dict[tf.Tensor]):
-  """Build the base MobileNet architecture.
-
-  Args:
-    inputs: Input tensor of shape [batch_size, height, width, channels].
-    spec_blocks: `List[BlockSpec]` defines structure of the base network.
-    divisible_by: `int` ensures all inner dimensions are divisible by
-      this number.
-    output_stride: `int` specifies the requested ratio of input to
-      output spatial resolution. If not None, then we invoke atrous convolution
-      if necessary to prevent the network from reducing the spatial resolution
-      of activation maps. Allowed values are 8 (accurate fully convolutional
-      mode), 16 (fast fully convolutional mode), 32 (classification mode).
-    stochastic_depth_drop_rate: `float` drop rate for drop connect layer.
-    regularize_depthwise: if Ture, apply regularization on depthwise.
-    kernel_initializer: `str` kernel_initializer for convolutional layers.
-    kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      Default to None.
-    bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-      Default to None.
-    use_sync_bn: if True, use synchronized batch normalization.
-    norm_momentum: `float` normalization omentum for the moving average.
-    norm_epsilon: `float` small float added to variance to avoid dividing by
-      zero.
-
-  Returns:
-    A tuple of output Tensor and dictionary that collects endpoints.
-  """
-
-  input_shape = inputs.get_shape().as_list()
-  if len(input_shape) != 4:
-    raise ValueError('Expected rank 4 input, was: %d' % len(input_shape))
-
-  # The current_stride variable keeps track of the output stride of the
-  # activations, i.e., the running product of convolution strides up to the
-  # current network layer. This allows us to invoke atrous convolution
-  # whenever applying the next convolution would result in the activations
-  # having output stride larger than the target output_stride.
-  current_stride = 1
-
-  # The atrous convolution rate parameter.
-  rate = 1
-
-  net = inputs
-  endpoints = {}
-  endpoint_level = 1
-  for i, block_def in enumerate(spec_blocks):
-    name = 'block_group_{}_{}'.format(block_def.block_fn, i)
-    if output_stride is not None and current_stride == output_stride:
-      # If we have reached the target output_stride, then we need to employ
-      # atrous convolution with stride=1 and multiply the atrous rate by the
-      # current unit's stride for use in subsequent layers.
-      layer_stride = 1
-      layer_rate = rate
-      rate *= block_def.strides
-    else:
-      layer_stride = block_def.strides
-      layer_rate = 1
-      current_stride *= block_def.strides
-
-    if block_def.block_fn == 'convbn':
-
-      net = Conv2DBNBlock(
-          filters=block_def.filters,
-          kernel_size=block_def.kernel_size,
-          strides=block_def.strides,
-          activation=block_def.activation,
-          use_biase=block_def.use_biase,
-          use_normalization=block_def.use_normalization,
-          kernel_initializer=kernel_initializer,
-          kernel_regularizer=kernel_regularizer,
-          bias_regularizer=bias_regularizer,
-          use_sync_bn=use_sync_bn,
-          norm_momentum=norm_momentum,
-          norm_epsilon=norm_epsilon
-      )(net)
-
-    elif block_def.block_fn == 'depsepconv':
-      net = nn_blocks.DepthwiseSeparableConvBlock(
-          filters=block_def.filters,
-          kernel_size=block_def.kernel_size,
-          strides=block_def.strides,
-          activation=block_def.activation,
-          use_normalization=block_def.use_normalization,
-          dilation_rate=layer_rate,
-          regularize_depthwise=regularize_depthwise,
-          kernel_initializer=kernel_initializer,
-          kernel_regularizer=kernel_regularizer,
-          use_sync_bn=use_sync_bn,
-          norm_momentum=norm_momentum,
-          norm_epsilon=norm_epsilon,
-      )(net)
-
-    elif block_def.block_fn == 'mbconv':
-      use_rate = rate
-      if layer_rate > 1 and block_def.kernel_size != 1:
-        # We will apply atrous rate in the following cases:
-        # 1) When kernel_size is not in params, the operation then uses
-        #   default kernel size 3x3.
-        # 2) When kernel_size is in params, and if the kernel_size is not
-        #   equal to (1, 1) (there is no need to apply atrous convolution to
-        #   any 1x1 convolution).
-        use_rate = layer_rate
-      in_filters = net.shape.as_list()[-1]
-      net = nn_blocks.InvertedBottleneckBlock(
-          in_filters=in_filters,
-          out_filters=block_def.filters,
-          kernel_size=block_def.kernel_size,
-          strides=layer_stride,
-          expand_ratio=block_def.expand_ratio,
-          se_ratio=block_def.se_ratio,
-          activation=block_def.activation,
-          use_biase=block_def.use_biase,
-          use_residual=block_def.use_residual,
-          use_normalization=block_def.use_normalization,
-          dilation_rate=use_rate,
-          regularize_depthwise=regularize_depthwise,
-          kernel_initializer=kernel_initializer,
-          kernel_regularizer=kernel_regularizer,
-          bias_regularizer=bias_regularizer,
-          use_sync_bn=use_sync_bn,
-          norm_momentum=norm_momentum,
-          norm_epsilon=norm_epsilon,
-          stochastic_depth_drop_rate=stochastic_depth_drop_rate,
-          divisible_by=divisible_by,
-      )(net)
-
-    elif block_def.block_fn == 'gpooling':
-      net = GlobalPoolingBlock()(net)
-    else:
-      raise ValueError('Unknown block type {} for layer {}'.format(
-          block_def.block_fn, i))
-
-    endpoints[endpoint_level] = net
-    endpoint_level += 1
-    net = tf.identity(net, name=name)
-  return net, endpoints
-
-
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class MobileNet(tf.keras.Model):
   def __init__(self,
@@ -562,12 +423,9 @@ class MobileNet(tf.keras.Model):
                # The followings are for hyper-parameter tuning
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
-               dropout_keep_prob: float = 0.8,
                kernel_initializer: Text = 'VarianceScaling',
-               kernel_regularizer: Optional[
-                 tf.keras.regularizers.Regularizer] = None,
-               bias_regularizer: Optional[
-                 tf.keras.regularizers.Regularizer] = None,
+               kernel_regularizer: Optional[regularizers.Regularizer] = None,
+               bias_regularizer: Optional[regularizers.Regularizer] = None,
                # The followings should be kept the same most of the times
                output_stride: int = None,
                min_depth: int = 8,
@@ -592,8 +450,6 @@ class MobileNet(tf.keras.Model):
       norm_momentum: `float` normalization omentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
-      dropout_keep_prob: `float` the percentage of activation values that are
-        retained.
       kernel_initializer: `str` kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
         Default to None.
@@ -649,42 +505,144 @@ class MobileNet(tf.keras.Model):
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
-    self._dropout_keep_prob = dropout_keep_prob
     self._finegrain_classification_mode = finegrain_classification_mode
-    if use_sync_bn:
-      self._norm = layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = layers.BatchNormalization
 
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
     block_specs = SUPPORTED_SPECS_MAP.get(version)
-    decoded_specs = block_spec_decoder(
+    self._decoded_specs = block_spec_decoder(
         specs=block_specs,
         width_multiplier=self._width_multiplier,
-        # set to 1 for mobilenetv1
         divisible_by=self._divisible_by,
         finegrain_classification_mode=self._finegrain_classification_mode)
 
-    x, endpoints = mobilenet_base(
-        inputs=inputs,
-        spec_blocks=decoded_specs,
-        divisible_by=self._divisible_by,
-        output_stride=self._output_stride,
-        stochastic_depth_drop_rate=self._stochastic_depth_drop_rate,
-        regularize_depthwise=self._regularize_depthwise,
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer,
-        use_sync_bn=self._use_sync_bn,
-        norm_momentum=self._norm_momentum,
-        norm_epsilon=self._norm_epsilon)
+    x, endpoints = self._mobilenet_base(inputs=inputs)
 
     endpoints[max(endpoints.keys()) + 1] = x
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
     super(MobileNet, self).__init__(
         inputs=inputs, outputs=endpoints, **kwargs)
+
+  def _mobilenet_base(self, inputs: tf.Tensor) -> (tf.Tensor, Dict[tf.Tensor]):
+    """Build the base MobileNet architecture.
+
+    Args:
+      inputs: Input tensor of shape [batch_size, height, width, channels].
+
+    Returns:
+      A tuple of output Tensor and dictionary that collects endpoints.
+    """
+
+    input_shape = inputs.get_shape().as_list()
+    if len(input_shape) != 4:
+      raise ValueError('Expected rank 4 input, was: %d' % len(input_shape))
+
+    # The current_stride variable keeps track of the output stride of the
+    # activations, i.e., the running product of convolution strides up to the
+    # current network layer. This allows us to invoke atrous convolution
+    # whenever applying the next convolution would result in the activations
+    # having output stride larger than the target output_stride.
+    current_stride = 1
+
+    # The atrous convolution rate parameter.
+    rate = 1
+
+    net = inputs
+    endpoints = {}
+    endpoint_level = 1
+    for i, block_def in enumerate(self._spec_blocks):
+      block_name = 'block_group_{}_{}'.format(block_def.block_fn, i)
+      if self._output_stride is not None \
+          and current_stride == self._output_stride:
+        # If we have reached the target output_stride, then we need to employ
+        # atrous convolution with stride=1 and multiply the atrous rate by the
+        # current unit's stride for use in subsequent layers.
+        layer_stride = 1
+        layer_rate = rate
+        rate *= block_def.strides
+      else:
+        layer_stride = block_def.strides
+        layer_rate = 1
+        current_stride *= block_def.strides
+
+      if block_def.block_fn == 'convbn':
+
+        net = Conv2DBNBlock(
+            filters=block_def.filters,
+            kernel_size=block_def.kernel_size,
+            strides=block_def.strides,
+            activation=block_def.activation,
+            use_bias=block_def.use_bias,
+            use_normalization=block_def.use_normalization,
+            kernel_initializer=self._kernel_initializer,
+            kernel_regularizer=self._kernel_regularizer,
+            bias_regularizer=self._bias_regularizer,
+            use_sync_bn=self._use_sync_bn,
+            norm_momentum=self._norm_momentum,
+            norm_epsilon=self._norm_epsilon
+        )(net)
+
+      elif block_def.block_fn == 'depsepconv':
+        net = nn_blocks.DepthwiseSeparableConvBlock(
+            filters=block_def.filters,
+            kernel_size=block_def.kernel_size,
+            strides=block_def.strides,
+            activation=block_def.activation,
+            use_normalization=block_def.use_normalization,
+            dilation_rate=layer_rate,
+            regularize_depthwise=self._regularize_depthwise,
+            kernel_initializer=self._kernel_initializer,
+            kernel_regularizer=self._kernel_regularizer,
+            use_sync_bn=self._use_sync_bn,
+            norm_momentum=self._norm_momentum,
+            norm_epsilon=self._norm_epsilon,
+        )(net)
+
+      elif block_def.block_fn == 'mbconv':
+        use_rate = rate
+        if layer_rate > 1 and block_def.kernel_size != 1:
+          # We will apply atrous rate in the following cases:
+          # 1) When kernel_size is not in params, the operation then uses
+          #   default kernel size 3x3.
+          # 2) When kernel_size is in params, and if the kernel_size is not
+          #   equal to (1, 1) (there is no need to apply atrous convolution to
+          #   any 1x1 convolution).
+          use_rate = layer_rate
+        in_filters = net.shape.as_list()[-1]
+        net = nn_blocks.InvertedBottleneckBlock(
+            in_filters=in_filters,
+            out_filters=block_def.filters,
+            kernel_size=block_def.kernel_size,
+            strides=layer_stride,
+            expand_ratio=block_def.expand_ratio,
+            se_ratio=block_def.se_ratio,
+            activation=block_def.activation,
+            use_residual=block_def.use_residual,
+            use_normalization=block_def.use_normalization,
+            dilation_rate=use_rate,
+            regularize_depthwise=self._regularize_depthwise,
+            kernel_initializer=self._kernel_initializer,
+            kernel_regularizer=self._kernel_regularizer,
+            bias_regularizer=self._bias_regularizer,
+            use_sync_bn=self._use_sync_bn,
+            norm_momentum=self._norm_momentum,
+            norm_epsilon=self._norm_epsilon,
+            stochastic_depth_drop_rate=self._stochastic_depth_drop_rate,
+            divisible_by=self._divisible_by,
+        )(net)
+
+      elif block_def.block_fn == 'gpooling':
+        net = GlobalPoolingBlock()(net)
+
+      else:
+        raise ValueError('Unknown block type {} for layer {}'.format(
+            block_def.block_fn, i))
+
+      endpoints[endpoint_level] = net
+      endpoint_level += 1
+      net = tf.identity(net, name=block_name)
+    return net, endpoints
 
   def get_config(self):
     config_dict = {
@@ -701,7 +659,6 @@ class MobileNet(tf.keras.Model):
         'use_sync_bn': self._use_sync_bn,
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon,
-        'dropout_keep_prob': self._dropout_keep_prob,
         'finegrain_classification_mode': self._finegrain_classification_mode,
     }
     return config_dict
