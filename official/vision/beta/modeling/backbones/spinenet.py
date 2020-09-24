@@ -25,6 +25,7 @@ import math
 from absl import logging
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.ops import spatial_transform_ops
 
@@ -476,3 +477,36 @@ class SpineNet(tf.keras.Model):
   def output_specs(self):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_backbone_builder('spinenet')
+def build_spinenet(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds ResNet 3d backbone from a config."""
+  backbone_type = model_config.backbone.type
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+  assert backbone_type == 'spinenet', (f'Inconsistent backbone type '
+                                       f'{backbone_type}')
+
+  model_id = backbone_cfg.model_id
+  if model_id not in SCALING_MAP:
+    raise ValueError(
+        'SpineNet-{} is not a valid architecture.'.format(model_id))
+  scaling_params = SCALING_MAP[model_id]
+
+  return SpineNet(
+      input_specs=input_specs,
+      min_level=model_config.min_level,
+      max_level=model_config.max_level,
+      endpoints_num_filters=scaling_params['endpoints_num_filters'],
+      resample_alpha=scaling_params['resample_alpha'],
+      block_repeats=scaling_params['block_repeats'],
+      filter_size_scale=scaling_params['filter_size_scale'],
+      kernel_regularizer=l2_regularizer,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon)
