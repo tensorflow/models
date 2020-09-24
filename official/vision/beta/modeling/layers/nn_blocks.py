@@ -17,7 +17,7 @@
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 # Import libraries
-
+from absl import logging
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -400,6 +400,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
                use_residual=True,
                norm_momentum=0.99,
                norm_epsilon=0.001,
+               target_backbone='efficientnet',
                **kwargs):
     """An inverted bottleneck block with BN after convolutions.
 
@@ -457,6 +458,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._norm_epsilon = norm_epsilon
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._target_backbone = target_backbone
 
     if use_sync_bn:
       self._norm = tf.keras.layers.experimental.SyncBatchNormalization
@@ -479,6 +481,9 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       # First 1x1 conv for channel expansion.
       expand_filters = nn_layers.make_divisible(
           self._in_filters * self._expand_ratio, self._divisible_by)
+      logging.info('expand_filter: {}, divisible_version {}'.format(
+          self._in_filters * self._expand_ratio, expand_filters
+      ))
       expand_kernel = 1 if self._use_depthwise else self._kernel_size
       expand_stride = 1 if self._use_depthwise else self._strides
 
@@ -515,8 +520,13 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
 
     # Squeeze and excitation.
     if self._se_ratio is not None and self._se_ratio > 0 and self._se_ratio <= 1:
+      logging.info('Use Squeeze and excitation.')
+      in_filters = self._in_filters
+      if self._target_backbone == 'mobilenet':
+        in_filters = expand_filters
       self._squeeze_excitation = nn_layers.SqueezeExcitation(
-          in_filters=expand_filters,
+          in_filters=in_filters,
+          out_filters=expand_filters,
           se_ratio=self._se_ratio,
           divisible_by=self._divisible_by,
           kernel_initializer=self._kernel_initializer,
@@ -617,7 +627,7 @@ class ResidualInner(tf.keras.layers.Layer):
       filters: int,
       strides: int,
       kernel_initializer: Union[
-          str, Callable[..., tf.keras.initializers.Initializer]]
+        str, Callable[..., tf.keras.initializers.Initializer]]
       = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       activation: Union[str, Callable[..., tf.Tensor]] = 'relu',
@@ -740,7 +750,7 @@ class BottleneckResidualInner(tf.keras.layers.Layer):
       filters: int,
       strides: int,
       kernel_initializer: Union[
-          str, Callable[..., tf.keras.initializers.Initializer]]
+        str, Callable[..., tf.keras.initializers.Initializer]]
       = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       activation: Union[str, Callable[..., tf.Tensor]] = 'relu',
@@ -933,7 +943,7 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
     @tf.custom_gradient
     def reversible(x: tf.Tensor) -> Tuple[
-        tf.Tensor, Callable[[Any], Tuple[List[tf.Tensor], List[tf.Tensor]]]]:
+      tf.Tensor, Callable[[Any], Tuple[List[tf.Tensor], List[tf.Tensor]]]]:
       """Implements Algorithm 1 in RevNet paper.
 
       Paper: https://arxiv.org/pdf/1707.04585.pdf
@@ -972,7 +982,7 @@ class ReversibleLayer(tf.keras.layers.Layer):
 
       def grad_fn(dy: tf.Tensor,
                   variables: Optional[List[tf.Variable]] = None,
-                 ) -> Tuple[List[tf.Tensor], List[tf.Tensor]]:
+                  ) -> Tuple[List[tf.Tensor], List[tf.Tensor]]:
         """Given dy calculate (dy/dx)|_{x_{input}} using f/g."""
         if irreversible or not self._manual_grads:
           grads_combined = fwdtape.gradient(
@@ -993,11 +1003,11 @@ class ReversibleLayer(tf.keras.layers.Layer):
           self_to_var_index = [fg_var_refs.index(v.ref()) for v in variables]
 
           # Algorithm 1 in paper (line # documented in-line)
-          z1 = y1_nograd                                         # line 2
+          z1 = y1_nograd  # line 2
           with tf.GradientTape() as gtape:
             gtape.watch(z1)
             g_z1 = self._g(z1, training=training)
-          x2 = y2_nograd - g_z1                                  # line 3
+          x2 = y2_nograd - g_z1  # line 3
 
           with tf.GradientTape() as ftape:
             ftape.watch(x2)
@@ -1009,16 +1019,16 @@ class ReversibleLayer(tf.keras.layers.Layer):
               g_z1,
               [z1] + self._g.trainable_variables,
               output_gradients=dy2)
-          dz1 = dy1 + g_grads_combined[0]                        # line 5
-          dwg = g_grads_combined[1:]                             # line 9
+          dz1 = dy1 + g_grads_combined[0]  # line 5
+          dwg = g_grads_combined[1:]  # line 9
 
           f_grads_combined = ftape.gradient(
               f_x2,
               [x2] + self._f.trainable_variables,
               output_gradients=dz1)
-          dx2 = dy2 + f_grads_combined[0]                        # line 6
-          dwf = f_grads_combined[1:]                             # line 8
-          dx1 = dz1                                              # line 7
+          dx2 = dy2 + f_grads_combined[0]  # line 6
+          dwf = f_grads_combined[1:]  # line 8
+          dx1 = dz1  # line 7
 
           # Pack the input and variable gradients.
           dx = tf.concat([dx1, dx2], axis=self._axis)
