@@ -82,6 +82,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
                feedforward_cfg=None,
                dropout_rate=0.0,
                attention_dropout_rate=0.0,
+               norm_first=False,
                kernel_initializer="glorot_uniform",
                bias_initializer="zeros",
                kernel_regularizer=None,
@@ -96,6 +97,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
     self._attention_cls = attention_cls
     self._feedforward_cls = feedforward_cls
     self._feedforward_cfg = feedforward_cfg
+    self._norm_first = norm_first
     self._num_heads = num_attention_heads
     self._intermediate_size = intermediate_size
     self._intermediate_activation = intermediate_activation
@@ -246,11 +248,23 @@ class TransformerScaffold(tf.keras.layers.Layer):
     else:
       input_tensor, attention_mask = (inputs, None)
 
+    if self._norm_first:
+      source_tensor = input_tensor
+      input_tensor = self._attention_layer_norm(input_tensor)
+
     attention_output = self._attention_layer(
         query=input_tensor, value=input_tensor, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
-    attention_output = self._attention_layer_norm(input_tensor +
-                                                  attention_output)
+
+    if self._norm_first:
+      attention_output = source_tensor + attention_output
+    else:
+      attention_output = self._attention_layer_norm(input_tensor +
+                                                    attention_output)
+    if self._norm_first:
+      source_attention_output = attention_output
+      attention_output = self._output_layer_norm(attention_output)
+
     if self._feedforward_block is None:
       intermediate_output = self._intermediate_dense(attention_output)
       intermediate_output = self._intermediate_activation_layer(
@@ -261,8 +275,17 @@ class TransformerScaffold(tf.keras.layers.Layer):
       # and is always fp32 for now. Cast layer_output to fp32 for the subsequent
       # add.
       layer_output = tf.cast(layer_output, tf.float32)
-      layer_output = self._output_layer_norm(layer_output + attention_output)
+      if self._norm_first:
+        layer_output = source_attention_output + layer_output
+      else:
+        layer_output = self._output_layer_norm(layer_output + attention_output)
     else:
-      layer_output = self._feedforward_block(attention_output)
+      if self._norm_first:
+        # if norm_first, assume the feedforward block will not apply layer norm
+        layer_output = self._feedforward_block(attention_output)
+        layer_output += source_attention_output
+      else:
+        # if not norm_first, assume that the feedforwad does apply layer norm
+        layer_output = self._feedforward_block(attention_output)
 
     return layer_output
