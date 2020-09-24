@@ -104,6 +104,8 @@ def get_activation(identifier):
         "gelu": activations.gelu,
         "simple_swish": activations.simple_swish,
         "hard_swish": activations.hard_swish,
+        "relu6": activations.relu6,
+        "hard_sigmoid": activations.hard_sigmoid,
         "identity": activations.identity,
     }
     identifier = str(identifier).lower()
