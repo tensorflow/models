@@ -67,7 +67,7 @@ class MaskedLMTask(base_task.Task):
       metrics = dict([(metric.name, metric) for metric in metrics])
       lm_prediction_losses = tf.keras.losses.sparse_categorical_crossentropy(
           labels['masked_lm_ids'],
-          tf.cast(model_outputs['lm_output'], tf.float32),
+          tf.cast(model_outputs['mlm_logits'], tf.float32),
           from_logits=True)
       lm_label_weights = labels['masked_lm_weights']
       lm_numerator_loss = tf.reduce_sum(lm_prediction_losses *
@@ -134,7 +134,7 @@ class MaskedLMTask(base_task.Task):
       metrics = dict([(metric.name, metric) for metric in metrics])
       if 'masked_lm_accuracy' in metrics:
         metrics['masked_lm_accuracy'].update_state(
-            labels['masked_lm_ids'], model_outputs['lm_output'],
+            labels['masked_lm_ids'], model_outputs['mlm_logits'],
             labels['masked_lm_weights'])
       if 'next_sentence_accuracy' in metrics:
         metrics['next_sentence_accuracy'].update_state(
