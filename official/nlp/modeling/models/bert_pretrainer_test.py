@@ -145,15 +145,16 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     if has_encoder_outputs:
       self.assertSameElements(
           outputs.keys(),
-          ['sequence_output', 'pooled_output', 'lm_output', 'encoder_outputs'])
+          ['sequence_output', 'pooled_output', 'mlm_logits', 'encoder_outputs'])
       self.assertLen(outputs['encoder_outputs'], num_layers)
     else:
-      self.assertSameElements(outputs.keys(),
-                              ['sequence_output', 'pooled_output', 'lm_output'])
+      self.assertSameElements(
+          outputs.keys(), ['sequence_output', 'pooled_output', 'mlm_logits'])
 
     # Validate that the outputs are of the expected shape.
     expected_lm_shape = [None, num_token_predictions, vocab_size]
-    self.assertAllEqual(expected_lm_shape, outputs['lm_output'].shape.as_list())
+    self.assertAllEqual(expected_lm_shape,
+                        outputs['mlm_logits'].shape.as_list())
 
     expected_sequence_output_shape = [None, sequence_length, hidden_size]
     self.assertAllEqual(expected_sequence_output_shape,

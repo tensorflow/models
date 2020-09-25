@@ -215,7 +215,7 @@ class BertPretrainerV2(tf.keras.Model):
     masked_lm_positions = tf.keras.layers.Input(
         shape=(None,), name='masked_lm_positions', dtype=tf.int32)
     inputs.append(masked_lm_positions)
-    outputs['lm_output'] = self.masked_lm(
+    outputs['mlm_logits'] = self.masked_lm(
         sequence_output, masked_positions=masked_lm_positions)
     for cls_head in self.classification_heads:
       outputs[cls_head.name] = cls_head(sequence_output)
