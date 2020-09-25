@@ -23,7 +23,7 @@ from official.nlp.modeling import layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
-class AlbertTransformerEncoder(tf.keras.Model):
+class AlbertEncoder(tf.keras.Model):
   """ALBERT (https://arxiv.org/abs/1810.04805) text encoder network.
 
   This network implements the encoder described in the paper "ALBERT: A Lite
@@ -158,8 +158,10 @@ class AlbertTransformerEncoder(tf.keras.Model):
         attention_dropout=attention_dropout_rate,
         kernel_initializer=initializer,
         name='transformer')
+    encoder_outputs = []
     for _ in range(num_layers):
       data = shared_layer([data, attention_mask])
+      encoder_outputs.append(data)
 
     first_token_tensor = (
         tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(data)
@@ -173,12 +175,13 @@ class AlbertTransformerEncoder(tf.keras.Model):
     if dict_outputs:
       outputs = dict(
           sequence_output=data,
+          encoder_outputs=encoder_outputs,
           pooled_output=cls_output,
       )
     else:
       outputs = [data, cls_output]
 
-    super(AlbertTransformerEncoder, self).__init__(
+    super(AlbertEncoder, self).__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
   def get_embedding_table(self):

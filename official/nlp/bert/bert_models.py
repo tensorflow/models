@@ -167,7 +167,7 @@ def get_transformer_encoder(bert_config,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range))
   if isinstance(bert_config, albert_configs.AlbertConfig):
-    return networks.AlbertTransformerEncoder(**kwargs)
+    return networks.AlbertEncoder(**kwargs)
   else:
     assert isinstance(bert_config, configs.BertConfig)
     kwargs['output_range'] = output_range

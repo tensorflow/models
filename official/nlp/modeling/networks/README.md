@@ -10,7 +10,7 @@ Transformer-based encoder as described in ["BERT: Pre-training of Deep
 Bidirectional Transformers for Language Understanding"](https://arxiv.org/abs/1810.04805). It includes the embedding lookups,
 transformer layers and pooling layer.
 
-* [`AlbertTransformerEncoder`](albert_transformer_encoder.py) implements a
+* [`AlbertEncoder`](albert_encoder.py) implements a
 Transformer-encoder described in the paper ["ALBERT: A Lite BERT for
 Self-supervised Learning of Language Representations"]
 (https://arxiv.org/abs/1909.11942). Compared with [BERT](https://arxiv.org/abs/1810.04805), ALBERT refactorizes embedding parameters
