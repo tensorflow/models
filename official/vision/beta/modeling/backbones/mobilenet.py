@@ -417,7 +417,7 @@ def block_spec_decoder(specs: Dict,
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class MobileNet(tf.keras.Model):
   def __init__(self,
-               version: Text = 'MobileNetV2',
+               model_id: Text = 'MobileNetV2',
                width_multiplier: float = 1.0,
                input_specs: layers.InputSpec = layers.InputSpec(
                    shape=[None, None, None, 3]),
@@ -441,7 +441,7 @@ class MobileNet(tf.keras.Model):
     """
 
     Args:
-      version: `str` version of MobileNet. The supported values are MobileNetV2',
+      model_id: `str` version of MobileNet. The supported values are MobileNetV2',
       'MobileNetV3Large', 'MobileNetV3Small', and 'MobileNetV3EdgeTPU'.
       width_multiplier: `float` multiplier for the depth (number of channels)
         for all convolution ops. The value must be greater than zero. Typical
@@ -474,22 +474,22 @@ class MobileNet(tf.keras.Model):
         https://arxiv.org/abs/1801.04381
       **kwargs: keyword arguments to be passed.
     """
-    if version not in SUPPORTED_SPECS_MAP:
+    if model_id not in SUPPORTED_SPECS_MAP:
       raise ValueError('The MobileNet version {} '
-                       'is not supported'.format(version))
+                       'is not supported'.format(model_id))
 
     if width_multiplier <= 0:
       raise ValueError('depth_multiplier is not greater than zero.')
 
     if output_stride is not None:
-      if version == 'MobileNetV1':
+      if model_id == 'MobileNetV1':
         if output_stride not in [8, 16, 32]:
           raise ValueError('Only allowed output_stride values are 8, 16, 32.')
       else:
         if output_stride == 0 or (output_stride > 1 and output_stride % 2):
           raise ValueError('Output stride must be None, 1 or a multiple of 2.')
 
-    self._version = version
+    self._model_id = model_id
     self._input_specs = input_specs
     self._width_multiplier = width_multiplier
     self._min_depth = min_depth
@@ -507,7 +507,7 @@ class MobileNet(tf.keras.Model):
 
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
-    block_specs = SUPPORTED_SPECS_MAP.get(version)
+    block_specs = SUPPORTED_SPECS_MAP.get(model_id)
     self._decoded_specs = block_spec_decoder(
         specs=block_specs,
         width_multiplier=self._width_multiplier,
@@ -523,7 +523,7 @@ class MobileNet(tf.keras.Model):
         inputs=inputs, outputs=endpoints, **kwargs)
 
   def _get_divisible_by(self):
-    if self._version == 'MobileNetV1':
+    if self._model_id == 'MobileNetV1':
       return 1
     else:
       return self._divisible_by
@@ -655,7 +655,7 @@ class MobileNet(tf.keras.Model):
 
   def get_config(self):
     config_dict = {
-        'version': self._version,
+        'model_id': self._model_id,
         'width_multiplier': self._width_multiplier,
         'min_depth': self._min_depth,
         'output_stride': self._output_stride,

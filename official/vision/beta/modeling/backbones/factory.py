@@ -87,6 +87,16 @@ def build_backbone(input_specs: tf.keras.layers.InputSpec,
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,
         kernel_regularizer=l2_regularizer)
+  elif backbone_type == 'mobilenet':
+    backbone = backbones.MobileNet(
+        model_id=backbone_cfg.model_id,
+        width_multiplier=backbone_cfg.width_multiplier,
+        input_specs=input_specs,
+        stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
+        use_sync_bn=norm_activation_config.use_sync_bn,
+        norm_momentum=norm_activation_config.norm_momentum,
+        norm_epsilon=norm_activation_config.norm_epsilon,
+        kernel_regularizer=l2_regularizer)
   else:
     raise ValueError('Backbone {!r} not implement'.format(backbone_type))
 

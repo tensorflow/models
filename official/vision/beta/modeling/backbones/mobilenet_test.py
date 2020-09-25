@@ -28,10 +28,10 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters('MobileNetV1', 'MobileNetV2',
                             'MobileNetV3Large', 'MobileNetV3Small',
                             'MobileNetV3EdgeTPU')
-  def test_serialize_deserialize(self, version):
+  def test_serialize_deserialize(self, model_id):
     # Create a network object that sets all of its config options.
     kwargs = dict(
-        version=version,
+        model_id=model_id,
         width_multiplier=1.0,
         stochastic_depth_drop_rate=None,
         use_sync_bn=False,
@@ -66,12 +66,12 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
                'MobileNetV3Large', 'MobileNetV3Small',
                'MobileNetV3EdgeTPU'))
   )
-  def test_input_specs(self, input_dim, version):
+  def test_input_specs(self, input_dim, model_id):
     """Test different input feature dimensions."""
     tf.keras.backend.set_image_data_format('channels_last')
 
     input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
-    network = mobilenet.MobileNet(version=version, input_specs=input_specs)
+    network = mobilenet.MobileNet(model_id=model_id, input_specs=input_specs)
 
     inputs = tf.keras.Input(shape=(128, 128, input_dim), batch_size=1)
     _ = network(inputs)
@@ -81,7 +81,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test creation of EfficientNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = mobilenet.MobileNet(version='MobileNetV1', width_multiplier=0.75)
+    network = mobilenet.MobileNet(model_id='MobileNetV1', width_multiplier=0.75)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
@@ -100,7 +100,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test creation of EfficientNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = mobilenet.MobileNet(version='MobileNetV2', width_multiplier=1.0)
+    network = mobilenet.MobileNet(model_id='MobileNetV2', width_multiplier=1.0)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
@@ -119,7 +119,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test creation of EfficientNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = mobilenet.MobileNet(version='MobileNetV3Small',
+    network = mobilenet.MobileNet(model_id='MobileNetV3Small',
                                   width_multiplier=0.75)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
@@ -139,7 +139,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test creation of EfficientNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = mobilenet.MobileNet(version='MobileNetV3Large',
+    network = mobilenet.MobileNet(model_id='MobileNetV3Large',
                                   width_multiplier=0.75)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
@@ -159,7 +159,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test creation of EfficientNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = mobilenet.MobileNet(version='MobileNetV3EdgeTPU',
+    network = mobilenet.MobileNet(model_id='MobileNetV3EdgeTPU',
                                   width_multiplier=0.75)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
@@ -182,7 +182,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     }
 
     input_size = 224
-    network = mobilenet.MobileNet(version='MobileNetV1',
+    network = mobilenet.MobileNet(model_id='MobileNetV1',
                                   width_multiplier=width_multiplier)
     self.assertEqual(network.count_params(),
                      mobilenet_v1_params[width_multiplier])
@@ -198,7 +198,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     }
 
     input_size = 224
-    network = mobilenet.MobileNet(version='MobileNetV2',
+    network = mobilenet.MobileNet(model_id='MobileNetV2',
                                   width_multiplier=width_multiplier)
     self.assertEqual(network.count_params(),
                      mobilenet_v2_params[width_multiplier])
@@ -214,7 +214,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     }
 
     input_size = 224
-    network = mobilenet.MobileNet(version='MobileNetV3Large',
+    network = mobilenet.MobileNet(model_id='MobileNetV3Large',
                                   width_multiplier=width_multiplier)
     self.assertEqual(network.count_params(),
                      mobilenet_v3_large_params[width_multiplier])
@@ -230,7 +230,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     }
 
     input_size = 224
-    network = mobilenet.MobileNet(version='MobileNetV3Small',
+    network = mobilenet.MobileNet(model_id='MobileNetV3Small',
                                   width_multiplier=width_multiplier)
     self.assertEqual(network.count_params(),
                      mobilenet_v3_small_params[width_multiplier])
@@ -246,7 +246,7 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     }
 
     input_size = 224
-    network = mobilenet.MobileNet(version='MobileNetV3EdgeTPU',
+    network = mobilenet.MobileNet(model_id='MobileNetV3EdgeTPU',
                                   width_multiplier=width_multiplier)
     self.assertEqual(network.count_params(),
                      mobilenet_v3_edgetpu_params[width_multiplier])
