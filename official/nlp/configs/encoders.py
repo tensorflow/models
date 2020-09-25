@@ -149,7 +149,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
 ENCODER_CLS = {
     "bert": networks.BertEncoder,
     "mobilebert": networks.MobileBERTEncoder,
-    "albert": networks.AlbertTransformerEncoder,
+    "albert": networks.AlbertEncoder,
     "bigbird": bigbird_encoder.BigBirdEncoder,
 }
 
