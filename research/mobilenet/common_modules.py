@@ -734,15 +734,6 @@ def mobilenet_base(inputs: tf.Tensor,
       current_stride *= block_def.stride
 
     if block_def.block_type == archs.BlockType.Conv.value:
-      # This adjustment applies to V2 and V3
-      if (not isinstance(config, archs.MobileNetV1Config)
-          and (i == 0 or width_multiplier > 1.0)):
-        filters = width_multiplier_op_divisible(
-          filters=block_def.filters,
-          width_multiplier=width_multiplier,
-          min_depth=min_depth)
-      else:
-        filters = block_def.filters
 
       # For V2 and V3, divisable should be explicitly ensured.
       divisable = False
@@ -751,7 +742,7 @@ def mobilenet_base(inputs: tf.Tensor,
 
       net = conv2d_block(
         inputs=net,
-        filters=filters,
+        filters=block_def.filters,
         kernel=block_def.kernel,
         strides=block_def.stride,
         activation_name=block_def.activation_name,
