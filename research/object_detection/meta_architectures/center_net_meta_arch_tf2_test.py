@@ -35,11 +35,14 @@ from object_detection.utils import tf_version
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class CenterNetMetaArchPredictionHeadTest(test_case.TestCase):
+class CenterNetMetaArchPredictionHeadTest(
+    test_case.TestCase, parameterized.TestCase):
   """Test CenterNet meta architecture prediction head."""
 
-  def test_prediction_head(self):
-    head = cnma.make_prediction_net(num_out_channels=7)
+  @parameterized.parameters([True, False])
+  def test_prediction_head(self, use_depthwise):
+    head = cnma.make_prediction_net(num_out_channels=7,
+                                    use_depthwise=use_depthwise)
     output = head(np.zeros((4, 128, 128, 8)))
 
     self.assertEqual((4, 128, 128, 7), output.shape)
