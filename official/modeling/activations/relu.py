@@ -19,14 +19,7 @@ import tensorflow as tf
 
 @tf.keras.utils.register_keras_serializable(package='Text')
 def relu6(features):
-  """Computes the Swish activation function.
-
-  The tf.nn.relu6 operation uses a custom gradient to reduce memory usage.
-  Since saving custom gradients in SavedModel is currently not supported, and
-  one would not be able to use an exported TF-Hub module for fine-tuning, we
-  provide this wrapper that can allow to select whether to use the native
-  TensorFlow relu operation, or whether to use a customized operation that
-  has uses default TensorFlow gradient computation.
+  """Computes the Relu6 activation function.
 
   Args:
     features: A `Tensor` representing preactivation values.
