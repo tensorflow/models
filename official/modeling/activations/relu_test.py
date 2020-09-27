@@ -12,10 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Activations package definition."""
-from official.modeling.activations.gelu import gelu
-from official.modeling.activations.swish import hard_swish
-from official.modeling.activations.swish import identity
-from official.modeling.activations.swish import simple_swish
-from official.modeling.activations.relu import relu6
-from official.modeling.activations.sigmoid import hard_sigmoid
+"""Tests for the customized Relu activation."""
+
+import tensorflow as tf
+
+from tensorflow.python.keras import \
+  keras_parameterized  # pylint: disable=g-direct-tensorflow-import
+from official.modeling import activations
+
+
+@keras_parameterized.run_all_keras_modes
+class CustomizedReluTest(keras_parameterized.TestCase):
+
+  def test_relu6(self):
+    features = [[.25, 0, -.25], [-1, -2, 3]]
+    customized_relu6_data = activations.relu6(features)
+    relu6_data = tf.nn.relu6(features)
+    self.assertAllClose(customized_relu6_data, relu6_data)
+
+
+if __name__ == '__main__':
+  tf.test.main()

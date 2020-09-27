@@ -12,10 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Activations package definition."""
-from official.modeling.activations.gelu import gelu
-from official.modeling.activations.swish import hard_swish
-from official.modeling.activations.swish import identity
-from official.modeling.activations.swish import simple_swish
-from official.modeling.activations.relu import relu6
-from official.modeling.activations.sigmoid import hard_sigmoid
+"""Customized Sigmoid activation."""
+
+import tensorflow as tf
+
+
+@tf.keras.utils.register_keras_serializable(package='Text')
+def hard_sigmoid(features):
+  """Computes the hard sigmoid activation function.
+
+  Args:
+    features: A `Tensor` representing preactivation values.
+
+  Returns:
+    The activation value.
+  """
+  features = tf.convert_to_tensor(features)
+  return tf.nn.relu6(features + tf.constant(3.)) * 0.16667

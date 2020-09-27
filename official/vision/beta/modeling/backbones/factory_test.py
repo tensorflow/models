@@ -86,7 +86,41 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertEqual(network_config, factory_network_config)
 
-  @combinations.generate(combinations.combine(model_id=['49'],))
+  @combinations.generate(
+      combinations.combine(
+          model_id=['MobileNetV1', 'MobileNetV2',
+                    'MobileNetV3Large', 'MobileNetV3Small',
+                    'MobileNetV3EdgeTPU'],
+          width_multiplier=[1.0, 0.75],
+      ))
+  def test_mobilenet_creation(self, model_id, width_multiplier):
+    """Test creation of Mobilenet models."""
+
+    network = backbones.MobileNet(
+        model_id=model_id,
+        width_multiplier=width_multiplier,
+        norm_momentum=0.99,
+        norm_epsilon=1e-5)
+
+    backbone_config = backbones_cfg.Backbone(
+        type='mobilenet',
+        mobilenet=backbones_cfg.MobileNet(
+            model_id=model_id, width_multiplier=width_multiplier))
+    norm_activation_config = common_cfg.NormActivation(
+        norm_momentum=0.99, norm_epsilon=1e-5)
+    model_config = retinanet_cfg.RetinaNet(
+        backbone=backbone_config, norm_activation=norm_activation_config)
+
+    factory_network = factory.build_backbone(
+        input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+        model_config=model_config)
+
+    network_config = network.get_config()
+    factory_network_config = factory_network.get_config()
+
+    self.assertEqual(network_config, factory_network_config)
+
+  @combinations.generate(combinations.combine(model_id=['49'], ))
   def test_spinenet_creation(self, model_id):
     """Test creation of SpineNet models."""
     input_size = 128
