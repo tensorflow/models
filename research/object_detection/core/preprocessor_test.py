@@ -3931,6 +3931,32 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllClose(image[:, :, 0],
                         masks[0, :, :])
 
+  def test_random_scale_crop_and_pad_to_square_handles_confidences(self):
+
+    def graph_fn():
+      image = tf.zeros([10, 10, 1])
+      boxes = tf.constant([[0, 0, 0.5, 0.5], [0.5, 0.5, 0.75, 0.75]])
+      label_weights = tf.constant([1.0, 1.0])
+      box_labels = tf.constant([0, 1])
+      box_confidences = tf.constant([-1.0, 1.0])
+
+      (_, new_boxes, _, _,
+       new_confidences) = preprocessor.random_scale_crop_and_pad_to_square(
+           image,
+           boxes,
+           box_labels,
+           label_weights,
+           label_confidences=box_confidences,
+           scale_min=0.8,
+           scale_max=0.9,
+           output_size=10)
+      return new_boxes, new_confidences
+
+    boxes, confidences = self.execute_cpu(graph_fn, [])
+
+    self.assertLen(boxes, 2)
+    self.assertAllEqual(confidences, [-1.0, 1.0])
+
 
 if __name__ == '__main__':
   tf.test.main()

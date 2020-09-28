@@ -17,7 +17,7 @@ gin-config
 tf_slim>=1.1.0
 Cython
 matplotlib
-pyyaml
+pyyaml>=5.1
 # CV related dependencies
 opencv-python-headless
 Pillow

@@ -22,6 +22,7 @@ Residual networks (ResNets) were proposed in:
 # Import libraries
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
 
 layers = tf.keras.layers
@@ -152,7 +153,7 @@ class ResNet(tf.keras.Model):
           block_fn=block_fn,
           block_repeats=spec[2],
           name='block_group_l{}'.format(i + 2))
-      endpoints[i + 2] = x
+      endpoints[str(i + 2)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
@@ -229,3 +230,25 @@ class ResNet(tf.keras.Model):
   def output_specs(self):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_backbone_builder('resnet')
+def build_resnet(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds ResNet 3d backbone from a config."""
+  backbone_type = model_config.backbone.type
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+  assert backbone_type == 'resnet', (f'Inconsistent backbone type '
+                                     f'{backbone_type}')
+
+  return ResNet(
+      model_id=backbone_cfg.model_id,
+      input_specs=input_specs,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)

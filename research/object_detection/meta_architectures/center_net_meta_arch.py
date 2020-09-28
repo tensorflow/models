@@ -139,7 +139,7 @@ class CenterNetFeatureExtractor(tf.keras.Model):
 
 
 def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
-                        bias_fill=None):
+                        bias_fill=None, use_depthwise=False, name=None):
   """Creates a network to predict the given number of output channels.
 
   This function is intended to make the prediction heads for the CenterNet
@@ -151,12 +151,19 @@ def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
     num_filters: The number of filters in the intermediate conv layer.
     bias_fill: If not None, is used to initialize the bias in the final conv
       layer.
+    use_depthwise: If true, use SeparableConv2D to construct the Sequential
+      layers instead of Conv2D.
+    name: Optional name for the prediction net.
 
   Returns:
     net: A keras module which when called on an input tensor of size
       [batch_size, height, width, num_in_channels] returns an output
       of size [batch_size, height, width, num_out_channels]
   """
+  if use_depthwise:
+    conv_fn = tf.keras.layers.SeparableConv2D
+  else:
+    conv_fn = tf.keras.layers.Conv2D
 
   out_conv = tf.keras.layers.Conv2D(num_out_channels, kernel_size=1)
 
@@ -164,11 +171,10 @@ def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
     out_conv.bias_initializer = tf.keras.initializers.constant(bias_fill)
 
   net = tf.keras.Sequential(
-      [tf.keras.layers.Conv2D(num_filters, kernel_size=kernel_size,
-                              padding='same'),
+      [conv_fn(num_filters, kernel_size=kernel_size, padding='same'),
        tf.keras.layers.ReLU(),
-       out_conv]
-  )
+       out_conv],
+      name=name)
 
   return net
 
@@ -327,6 +333,39 @@ def prediction_tensors_to_boxes(detection_scores, y_indices, x_indices,
                     x_indices + x_offsets + widths / 2.0], axis=2)
 
   return boxes, detection_classes, detection_scores, num_detections
+
+
+def prediction_tensors_to_temporal_offsets(
+    y_indices, x_indices, offset_predictions):
+  """Converts CenterNet temporal offset map predictions to batched format.
+
+  This function is similiar to the box offset conversion function, as both
+  temporal offsets and box offsets are size-2 vectors.
+
+  Args:
+    y_indices: A [batch, num_boxes] int32 tensor with y indices corresponding to
+      object center locations (expressed in output coordinate frame).
+    x_indices: A [batch, num_boxes] int32 tensor with x indices corresponding to
+      object center locations (expressed in output coordinate frame).
+    offset_predictions: A float tensor of shape [batch_size, height, width, 2]
+      representing the y and x offsets of a box's center across adjacent frames.
+
+  Returns:
+    offsets: A tensor of shape [batch_size, num_boxes, 2] holding the
+      the object temporal offsets of (y, x) dimensions.
+
+  """
+  _, _, width, _ = _get_shape(offset_predictions, 4)
+
+  peak_spatial_indices = flattened_indices_from_row_col_indices(
+      y_indices, x_indices, width)
+  y_indices = _to_float32(y_indices)
+  x_indices = _to_float32(x_indices)
+
+  offsets_flat = _flatten_spatial_dimensions(offset_predictions)
+
+  offsets = tf.gather(offsets_flat, peak_spatial_indices, batch_dims=1)
+  return offsets
 
 
 def prediction_tensors_to_keypoint_candidates(
@@ -555,15 +594,23 @@ def refine_keypoints(regressed_keypoints, keypoint_candidates, keypoint_scores,
 
   # Pairwise squared distances between regressed keypoints and candidate
   # keypoints (for a single keypoint type).
-  # Shape [batch_size, num_instances, max_candidates, num_keypoints].
+  # Shape [batch_size, num_instances, 1, num_keypoints, 2].
   regressed_keypoint_expanded = tf.expand_dims(regressed_keypoints,
                                                axis=2)
+  # Shape [batch_size, 1, max_candidates, num_keypoints, 2].
   keypoint_candidates_expanded = tf.expand_dims(
       keypoint_candidates_with_nans, axis=1)
-  sqrd_distances = tf.math.reduce_sum(
-      tf.math.squared_difference(regressed_keypoint_expanded,
-                                 keypoint_candidates_expanded),
-      axis=-1)
+  # Use explicit tensor shape broadcasting (since the tensor dimensions are
+  # expanded to 5D) to make it tf.lite compatible.
+  regressed_keypoint_expanded = tf.tile(
+      regressed_keypoint_expanded, multiples=[1, 1, max_candidates, 1, 1])
+  keypoint_candidates_expanded = tf.tile(
+      keypoint_candidates_expanded, multiples=[1, num_instances, 1, 1, 1])
+  # Replace tf.math.squared_difference by "-" operator and tf.multiply ops since
+  # tf.lite convert doesn't support squared_difference with undetermined
+  # dimension.
+  diff = regressed_keypoint_expanded - keypoint_candidates_expanded
+  sqrd_distances = tf.math.reduce_sum(tf.multiply(diff, diff), axis=-1)
   distances = tf.math.sqrt(sqrd_distances)
 
   # Determine the candidates that have the minimum distance to the regressed
@@ -935,9 +982,16 @@ def convert_strided_predictions_to_normalized_keypoints(
     def clip_to_window(inputs):
       keypoints, window = inputs
       return keypoint_ops.clip_to_window(keypoints, window)
+
+    # Specify the TensorSpec explicitly in the tf.map_fn to make it tf.lite
+    # compatible.
+    kpts_dims = _get_shape(keypoint_coords_normalized, 4)
+    output_spec = tf.TensorSpec(
+        shape=[kpts_dims[1], kpts_dims[2], kpts_dims[3]], dtype=tf.float32)
     keypoint_coords_normalized = tf.map_fn(
         clip_to_window, (keypoint_coords_normalized, batch_window),
-        dtype=tf.float32, back_prop=False)
+        dtype=tf.float32, back_prop=False,
+        fn_output_signature=output_spec)
     keypoint_scores = tf.where(valid_indices, keypoint_scores,
                                tf.zeros_like(keypoint_scores))
   return keypoint_coords_normalized, keypoint_scores
@@ -1534,6 +1588,32 @@ class TrackParams(
                               num_fc_layers, classification_loss,
                               task_loss_weight)
 
+
+class TemporalOffsetParams(
+    collections.namedtuple('TemporalOffsetParams', [
+        'localization_loss', 'task_loss_weight'
+    ])):
+  """Namedtuple to store temporal offset related parameters."""
+
+  __slots__ = ()
+
+  def __new__(cls,
+              localization_loss,
+              task_loss_weight=1.0):
+    """Constructor with default values for TrackParams.
+
+    Args:
+      localization_loss: an object_detection.core.losses.Loss object to
+        compute the loss for the temporal offset in CenterNet.
+      task_loss_weight: float, the loss weight for the temporal offset
+        task.
+
+    Returns:
+      An initialized TemporalOffsetParams namedtuple.
+    """
+    return super(TemporalOffsetParams,
+                 cls).__new__(cls, localization_loss, task_loss_weight)
+
 # The following constants are used to generate the keys of the
 # (prediction, loss, target assigner,...) dictionaries used in CenterNetMetaArch
 # class.
@@ -1552,6 +1632,8 @@ DENSEPOSE_REGRESSION = 'densepose/regression'
 LOSS_KEY_PREFIX = 'Loss'
 TRACK_TASK = 'track_task'
 TRACK_REID = 'track/reid'
+TEMPORALOFFSET_TASK = 'temporal_offset_task'
+TEMPORAL_OFFSET = 'track/offset'
 
 
 def get_keypoint_name(task_name, head_name):
@@ -1596,7 +1678,9 @@ class CenterNetMetaArch(model.DetectionModel):
                keypoint_params_dict=None,
                mask_params=None,
                densepose_params=None,
-               track_params=None):
+               track_params=None,
+               temporal_offset_params=None,
+               use_depthwise=False):
     """Initializes a CenterNet model.
 
     Args:
@@ -1631,6 +1715,10 @@ class CenterNetMetaArch(model.DetectionModel):
       track_params: A TrackParams namedtuple. This object
         holds the hyper-parameters for tracking. Please see the class
         definition for more details.
+      temporal_offset_params: A TemporalOffsetParams namedtuple. This object
+        holds the hyper-parameters for offset prediction based tracking.
+      use_depthwise: If true, all task heads will be constructed using
+        separable_conv. Otherwise, standard convoltuions will be used.
     """
     assert object_detection_params or keypoint_params_dict
     # Shorten the name for convenience and better formatting.
@@ -1651,6 +1739,9 @@ class CenterNetMetaArch(model.DetectionModel):
                        'be supplied.')
     self._densepose_params = densepose_params
     self._track_params = track_params
+    self._temporal_offset_params = temporal_offset_params
+
+    self._use_depthwise = use_depthwise
 
     # Construct the prediction head nets.
     self._prediction_head_dict = self._construct_prediction_heads(
@@ -1695,58 +1786,75 @@ class CenterNetMetaArch(model.DetectionModel):
     """
     prediction_heads = {}
     prediction_heads[OBJECT_CENTER] = [
-        make_prediction_net(num_classes, bias_fill=class_prediction_bias_init)
+        make_prediction_net(num_classes, bias_fill=class_prediction_bias_init,
+                            use_depthwise=self._use_depthwise)
         for _ in range(num_feature_outputs)
     ]
     if self._od_params is not None:
       prediction_heads[BOX_SCALE] = [
-          make_prediction_net(NUM_SIZE_CHANNELS)
+          make_prediction_net(
+              NUM_SIZE_CHANNELS, use_depthwise=self._use_depthwise)
           for _ in range(num_feature_outputs)
       ]
       prediction_heads[BOX_OFFSET] = [
-          make_prediction_net(NUM_OFFSET_CHANNELS)
+          make_prediction_net(
+              NUM_OFFSET_CHANNELS, use_depthwise=self._use_depthwise)
           for _ in range(num_feature_outputs)
       ]
     if self._kp_params_dict is not None:
       for task_name, kp_params in self._kp_params_dict.items():
         num_keypoints = len(kp_params.keypoint_indices)
+        # pylint: disable=g-complex-comprehension
         prediction_heads[get_keypoint_name(task_name, KEYPOINT_HEATMAP)] = [
             make_prediction_net(
-                num_keypoints, bias_fill=kp_params.heatmap_bias_init)
+                num_keypoints,
+                bias_fill=kp_params.heatmap_bias_init,
+                use_depthwise=self._use_depthwise)
             for _ in range(num_feature_outputs)
         ]
+        # pylint: enable=g-complex-comprehension
         prediction_heads[get_keypoint_name(task_name, KEYPOINT_REGRESSION)] = [
-            make_prediction_net(NUM_OFFSET_CHANNELS * num_keypoints)
+            make_prediction_net(NUM_OFFSET_CHANNELS * num_keypoints,
+                                use_depthwise=self._use_depthwise)
             for _ in range(num_feature_outputs)
         ]
         if kp_params.per_keypoint_offset:
           prediction_heads[get_keypoint_name(task_name, KEYPOINT_OFFSET)] = [
-              make_prediction_net(NUM_OFFSET_CHANNELS * num_keypoints)
+              make_prediction_net(NUM_OFFSET_CHANNELS * num_keypoints,
+                                  use_depthwise=self._use_depthwise)
               for _ in range(num_feature_outputs)
           ]
         else:
           prediction_heads[get_keypoint_name(task_name, KEYPOINT_OFFSET)] = [
-              make_prediction_net(NUM_OFFSET_CHANNELS)
+              make_prediction_net(NUM_OFFSET_CHANNELS,
+                                  use_depthwise=self._use_depthwise)
               for _ in range(num_feature_outputs)
           ]
+    # pylint: disable=g-complex-comprehension
     if self._mask_params is not None:
       prediction_heads[SEGMENTATION_HEATMAP] = [
-          make_prediction_net(num_classes,
-                              bias_fill=self._mask_params.heatmap_bias_init)
+          make_prediction_net(
+              num_classes,
+              bias_fill=self._mask_params.heatmap_bias_init,
+              use_depthwise=self._use_depthwise)
           for _ in range(num_feature_outputs)]
     if self._densepose_params is not None:
       prediction_heads[DENSEPOSE_HEATMAP] = [
-          make_prediction_net(  # pylint: disable=g-complex-comprehension
+          make_prediction_net(
               self._densepose_params.num_parts,
-              bias_fill=self._densepose_params.heatmap_bias_init)
+              bias_fill=self._densepose_params.heatmap_bias_init,
+              use_depthwise=self._use_depthwise)
           for _ in range(num_feature_outputs)]
       prediction_heads[DENSEPOSE_REGRESSION] = [
-          make_prediction_net(2 * self._densepose_params.num_parts)
+          make_prediction_net(2 * self._densepose_params.num_parts,
+                              use_depthwise=self._use_depthwise)
           for _ in range(num_feature_outputs)
       ]
+    # pylint: enable=g-complex-comprehension
     if self._track_params is not None:
       prediction_heads[TRACK_REID] = [
-          make_prediction_net(self._track_params.reid_embed_size)
+          make_prediction_net(self._track_params.reid_embed_size,
+                              use_depthwise=self._use_depthwise)
           for _ in range(num_feature_outputs)]
 
       # Creates a classification network to train object embeddings by learning
@@ -1764,6 +1872,12 @@ class CenterNetMetaArch(model.DetectionModel):
           tf.keras.layers.Dense(self._track_params.num_track_ids,
                                 input_shape=(
                                     self._track_params.reid_embed_size,)))
+    if self._temporal_offset_params is not None:
+      prediction_heads[TEMPORAL_OFFSET] = [
+          make_prediction_net(NUM_OFFSET_CHANNELS,
+                              use_depthwise=self._use_depthwise)
+          for _ in range(num_feature_outputs)
+      ]
     return prediction_heads
 
   def _initialize_target_assigners(self, stride, min_box_overlap_iou):
@@ -1806,6 +1920,9 @@ class CenterNetMetaArch(model.DetectionModel):
       target_assigners[TRACK_TASK] = (
           cn_assigner.CenterNetTrackTargetAssigner(
               stride, self._track_params.num_track_ids))
+    if self._temporal_offset_params is not None:
+      target_assigners[TEMPORALOFFSET_TASK] = (
+          cn_assigner.CenterNetTemporalOffsetTargetAssigner(stride))
 
     return target_assigners
 
@@ -2394,6 +2511,54 @@ class CenterNetMetaArch(model.DetectionModel):
 
     return loss_per_instance
 
+  def _compute_temporal_offset_loss(self, input_height,
+                                    input_width, prediction_dict):
+    """Computes the temporal offset loss for tracking.
+
+    Args:
+      input_height: An integer scalar tensor representing input image height.
+      input_width: An integer scalar tensor representing input image width.
+      prediction_dict: The dictionary returned from the predict() method.
+
+    Returns:
+      A dictionary with track/temporal_offset losses.
+    """
+    gt_boxes_list = self.groundtruth_lists(fields.BoxListFields.boxes)
+    gt_offsets_list = self.groundtruth_lists(
+        fields.BoxListFields.temporal_offsets)
+    gt_match_list = self.groundtruth_lists(
+        fields.BoxListFields.track_match_flags)
+    gt_weights_list = self.groundtruth_lists(fields.BoxListFields.weights)
+    num_boxes = tf.cast(
+        get_num_instances_from_weights(gt_weights_list), tf.float32)
+
+    offset_predictions = prediction_dict[TEMPORAL_OFFSET]
+    num_predictions = float(len(offset_predictions))
+
+    assigner = self._target_assigner_dict[TEMPORALOFFSET_TASK]
+    (batch_indices, batch_offset_targets,
+     batch_weights) = assigner.assign_temporal_offset_targets(
+         height=input_height,
+         width=input_width,
+         gt_boxes_list=gt_boxes_list,
+         gt_offsets_list=gt_offsets_list,
+         gt_match_list=gt_match_list,
+         gt_weights_list=gt_weights_list)
+    batch_weights = tf.expand_dims(batch_weights, -1)
+
+    offset_loss_fn = self._temporal_offset_params.localization_loss
+    loss_dict = {}
+    offset_loss = 0
+    for offset_pred in offset_predictions:
+      offset_pred = cn_assigner.get_batch_predictions_from_indices(
+          offset_pred, batch_indices)
+      offset_loss += offset_loss_fn(offset_pred[:, None],
+                                    batch_offset_targets[:, None],
+                                    weights=batch_weights)
+    offset_loss = tf.reduce_sum(offset_loss) / (num_predictions * num_boxes)
+    loss_dict[TEMPORAL_OFFSET] = offset_loss
+    return loss_dict
+
   def preprocess(self, inputs):
     outputs = shape_utils.resize_images_and_return_shapes(
         inputs, self._image_resizer_fn)
@@ -2490,6 +2655,7 @@ class CenterNetMetaArch(model.DetectionModel):
         'Loss/densepose/heatmap', (optional)
         'Loss/densepose/regression', (optional)
         'Loss/track/reid'] (optional)
+        'Loss/track/offset'] (optional)
         scalar tensors corresponding to the losses for different tasks. Note the
         $TASK_NAME is provided by the KeypointEstimation namedtuple used to
         differentiate between different keypoint tasks.
@@ -2566,6 +2732,16 @@ class CenterNetMetaArch(model.DetectionModel):
         track_losses[key] = (
             track_losses[key] * self._track_params.task_loss_weight)
       losses.update(track_losses)
+
+    if self._temporal_offset_params is not None:
+      offset_losses = self._compute_temporal_offset_loss(
+          input_height=input_height,
+          input_width=input_width,
+          prediction_dict=prediction_dict)
+      for key in offset_losses:
+        offset_losses[key] = (
+            offset_losses[key] * self._temporal_offset_params.task_loss_weight)
+      losses.update(offset_losses)
 
     # Prepend the LOSS_KEY_PREFIX to the keys in the dictionary such that the
     # losses will be grouped together in Tensorboard.
@@ -2683,6 +2859,12 @@ class CenterNetMetaArch(model.DetectionModel):
           fields.DetectionResultFields.detection_embeddings: embeddings
       })
 
+    if self._temporal_offset_params:
+      offsets = prediction_tensors_to_temporal_offsets(
+          y_indices, x_indices,
+          prediction_dict[TEMPORAL_OFFSET][-1])
+      postprocess_dict[fields.DetectionResultFields.detection_offsets] = offsets
+
     return postprocess_dict
 
   def _postprocess_embeddings(self, prediction_dict, y_indices, x_indices):
@@ -2753,6 +2935,7 @@ class CenterNetMetaArch(model.DetectionModel):
             get_keypoint_name(task_name, KEYPOINT_REGRESSION)][-1]
         instance_inds = self._get_instance_indices(
             classes, num_detections, ex_ind, kp_params.class_id)
+        num_ind = _get_shape(instance_inds, 1)
 
         def true_fn(
             keypoint_heatmap, keypoint_offsets, keypoint_regression,
@@ -2787,7 +2970,8 @@ class CenterNetMetaArch(model.DetectionModel):
             true_fn, keypoint_heatmap, keypoint_offsets, keypoint_regression,
             classes, y_indices, x_indices, boxes, instance_inds, ex_ind,
             kp_params)
-        results = tf.cond(tf.size(instance_inds) > 0, true_fn, false_fn)
+        # Use dimension values instead of tf.size for tf.lite compatibility.
+        results = tf.cond(num_ind[0] > 0, true_fn, false_fn)
 
         kpt_coords_for_class_list.append(results[0])
         kpt_scores_for_class_list.append(results[1])
@@ -2799,7 +2983,9 @@ class CenterNetMetaArch(model.DetectionModel):
       instance_inds_for_example = tf.concat(instance_inds_for_class_list,
                                             axis=0)
 
-      if tf.size(instance_inds_for_example) > 0:
+      # Use dimension values instead of tf.size for tf.lite compatibility.
+      num_inds = _get_shape(instance_inds_for_example, 1)
+      if num_inds[0] > 0:
         # Scatter into tensor where instances align with original detection
         # instances. New shape of keypoint coordinates and scores are
         # [1, max_detections, num_total_keypoints, 2] and
@@ -2839,7 +3025,7 @@ class CenterNetMetaArch(model.DetectionModel):
       class_id: Class id
 
     Returns:
-      instance_inds: A [num_instances] int tensor where each element indicates
+      instance_inds: A [num_instances] int32 tensor where each element indicates
         the instance location within the `classes` tensor. This is useful to
         associate the refined keypoints with the original detections (i.e.
         boxes)
@@ -2848,11 +3034,14 @@ class CenterNetMetaArch(model.DetectionModel):
     _, max_detections = shape_utils.combined_static_and_dynamic_shape(
         classes)
     # Get the detection indices corresponding to the target class.
+    # Call tf.math.equal with matched tensor shape to make it tf.lite
+    # compatible.
     valid_detections_with_kpt_class = tf.math.logical_and(
         tf.range(max_detections) < num_detections[batch_index],
-        classes[0] == class_id)
+        tf.math.equal(classes[0], tf.fill(classes[0].shape, class_id)))
     instance_inds = tf.where(valid_detections_with_kpt_class)[:, 0]
-    return instance_inds
+    # Cast the indices tensor to int32 for tf.lite compatibility.
+    return tf.cast(instance_inds, tf.int32)
 
   def _postprocess_keypoints_for_class_and_image(
       self, keypoint_heatmap, keypoint_offsets, keypoint_regression, classes,

@@ -15,9 +15,10 @@
 # ==============================================================================
 """TFM continuous finetuning+eval training driver."""
 
+import gc
 import os
 import time
-from typing import Mapping, Any
+from typing import Any, Mapping, Optional
 
 from absl import app
 from absl import flags
@@ -28,16 +29,20 @@ import tensorflow as tf
 # pylint: disable=unused-import
 from official.common import registry_imports
 # pylint: enable=unused-import
+from official.common import distribute_utils
 from official.common import flags as tfm_flags
 from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
 from official.modeling.hyperparams import config_definitions
-from official.utils.misc import distribution_utils
-
 
 FLAGS = flags.FLAGS
+
+flags.DEFINE_integer(
+    'pretrain_steps',
+    default=None,
+    help='The number of total training steps for the pretraining job.')
 
 
 def run_continuous_finetune(
@@ -45,21 +50,23 @@ def run_continuous_finetune(
     params: config_definitions.ExperimentConfig,
     model_dir: str,
     run_post_eval: bool = False,
+    pretrain_steps: Optional[int] = None,
 ) -> Mapping[str, Any]:
   """Run modes with continuous training.
 
   Currently only supports continuous_train_and_eval.
 
   Args:
-    mode: A 'str', specifying the mode.
-      continuous_train_and_eval - monitors a checkpoint directory. Once a new
-        checkpoint is discovered, loads the checkpoint, finetune the model by
-        training it (probably on another dataset or with another task), then
-        evaluate the finetuned model.
+    mode: A 'str', specifying the mode. continuous_train_and_eval - monitors a
+      checkpoint directory. Once a new checkpoint is discovered, loads the
+      checkpoint, finetune the model by training it (probably on another dataset
+      or with another task), then evaluate the finetuned model.
     params: ExperimentConfig instance.
     model_dir: A 'str', a path to store model checkpoints and summaries.
     run_post_eval: Whether to run post eval once after training, metrics logs
       are returned.
+    pretrain_steps: Optional, the number of total training steps for the
+      pretraining job.
 
   Returns:
     eval logs: returns eval metrics logs when run_post_eval is set to True,
@@ -77,7 +84,7 @@ def run_continuous_finetune(
   if params.runtime.mixed_precision_dtype:
     performance.set_mixed_precision_policy(params.runtime.mixed_precision_dtype,
                                            params.runtime.loss_scale)
-  distribution_strategy = distribution_utils.get_distribution_strategy(
+  distribution_strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
       num_gpus=params.runtime.num_gpus,
@@ -95,10 +102,24 @@ def run_continuous_finetune(
 
   summary_writer = tf.summary.create_file_writer(
       os.path.join(model_dir, 'eval'))
+
+  global_step = 0
+
+  def timeout_fn():
+    if pretrain_steps and global_step < pretrain_steps:
+      # Keeps waiting for another timeout period.
+      logging.info(
+          'Continue waiting for new checkpoint as current pretrain '
+          'global_step=%d and target is %d.', global_step, pretrain_steps)
+      return False
+    # Quits the loop.
+    return True
+
   for pretrain_ckpt in tf.train.checkpoints_iterator(
       checkpoint_dir=params.task.init_checkpoint,
       min_interval_secs=10,
-      timeout=params.trainer.continuous_eval_timeout):
+      timeout=params.trainer.continuous_eval_timeout,
+      timeout_fn=timeout_fn):
     with distribution_strategy.scope():
       global_step = train_utils.read_global_step_from_checkpoint(pretrain_ckpt)
 
@@ -139,6 +160,13 @@ def run_continuous_finetune(
     train_utils.write_summary(summary_writer, global_step, summaries)
 
     train_utils.remove_ckpts(model_dir)
+    # In TF2, the resource life cycle is bound with the python object life
+    # cycle. Force trigger python garbage collection here so those resources
+    # can be deallocated in time, so it doesn't cause OOM when allocating new
+    # objects.
+    # TODO(b/169178664): Fix cycle reference in Keras model and revisit to see
+    # if we need gc here.
+    gc.collect()
 
   if run_post_eval:
     return eval_metrics
@@ -150,7 +178,7 @@ def main(_):
   params = train_utils.parse_configuration(FLAGS)
   model_dir = FLAGS.model_dir
   train_utils.serialize_config(params, model_dir)
-  run_continuous_finetune(FLAGS.mode, params, model_dir)
+  run_continuous_finetune(FLAGS.mode, params, model_dir, FLAGS.pretrain_steps)
 
 
 if __name__ == '__main__':

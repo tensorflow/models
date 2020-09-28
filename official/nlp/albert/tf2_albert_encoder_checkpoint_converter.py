@@ -15,7 +15,7 @@
 """A converter from a tf1 ALBERT encoder checkpoint to a tf2 encoder checkpoint.
 
 The conversion will yield an object-oriented checkpoint that can be used
-to restore a AlbertTransformerEncoder object.
+to restore an AlbertEncoder object.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -81,7 +81,7 @@ def _create_albert_model(cfg):
   Returns:
     A keras model.
   """
-  albert_encoder = networks.AlbertTransformerEncoder(
+  albert_encoder = networks.AlbertEncoder(
       vocab_size=cfg.vocab_size,
       hidden_size=cfg.hidden_size,
       embedding_width=cfg.embedding_size,

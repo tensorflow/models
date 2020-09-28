@@ -563,24 +563,25 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     boxes = []
     scores = []
     levels = list(raw_boxes.keys())
-    min_level = min(levels)
-    max_level = max(levels)
+    min_level = int(min(levels))
+    max_level = int(max(levels))
     for i in range(min_level, max_level + 1):
-      raw_boxes_i_shape = tf.shape(raw_boxes[i])
+      raw_boxes_i_shape = tf.shape(raw_boxes[str(i)])
       batch_size = raw_boxes_i_shape[0]
       num_anchors_per_locations = raw_boxes_i_shape[-1] // 4
-      num_classes = tf.shape(raw_scores[i])[-1] // num_anchors_per_locations
+      num_classes = tf.shape(
+          raw_scores[str(i)])[-1] // num_anchors_per_locations
 
       # Applies score transformation and remove the implicit background class.
       scores_i = tf.sigmoid(
-          tf.reshape(raw_scores[i], [batch_size, -1, num_classes]))
+          tf.reshape(raw_scores[str(i)], [batch_size, -1, num_classes]))
       scores_i = tf.slice(scores_i, [0, 0, 1], [-1, -1, -1])
 
       # Box decoding.
       # The anchor boxes are shared for all data in a batch.
       # One stage detector only supports class agnostic box regression.
-      anchor_boxes_i = tf.reshape(anchor_boxes[i], [batch_size, -1, 4])
-      raw_boxes_i = tf.reshape(raw_boxes[i], [batch_size, -1, 4])
+      anchor_boxes_i = tf.reshape(anchor_boxes[str(i)], [batch_size, -1, 4])
+      raw_boxes_i = tf.reshape(raw_boxes[str(i)], [batch_size, -1, 4])
       boxes_i = box_ops.decode_boxes(raw_boxes_i, anchor_boxes_i)
 
       # Box clipping.

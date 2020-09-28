@@ -151,8 +151,8 @@ class TargetAssigner(object):
       groundtruth_weights = tf.ones([num_gt_boxes], dtype=tf.float32)
     with tf.control_dependencies(
         [unmatched_shape_assert, labels_and_box_shapes_assert]):
-      match_quality_matrix = self._similarity_calc.compare(
-          groundtruth_boxes, anchors)
+      match_quality_matrix = self._similarity_calc(
+          groundtruth_boxes.get(), anchors.get())
       match = self._matcher.match(match_quality_matrix, **params)
       reg_targets = self._create_regression_targets(anchors, groundtruth_boxes,
                                                     match)

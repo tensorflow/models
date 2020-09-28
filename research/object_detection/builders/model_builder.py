@@ -50,6 +50,7 @@ from object_detection.utils import tf_version
 if tf_version.is_tf2():
   from object_detection.models import center_net_hourglass_feature_extractor
   from object_detection.models import center_net_mobilenet_v2_feature_extractor
+  from object_detection.models import center_net_mobilenet_v2_fpn_feature_extractor
   from object_detection.models import center_net_resnet_feature_extractor
   from object_detection.models import center_net_resnet_v1_fpn_feature_extractor
   from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
@@ -140,8 +141,10 @@ if tf_version.is_tf2():
   }
 
   CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
-      'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
-      'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v2_50':
+          center_net_resnet_feature_extractor.resnet_v2_50,
+      'resnet_v2_101':
+          center_net_resnet_feature_extractor.resnet_v2_101,
       'resnet_v1_18_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_18_fpn,
       'resnet_v1_34_fpn':
@@ -154,6 +157,8 @@ if tf_version.is_tf2():
           center_net_hourglass_feature_extractor.hourglass_104,
       'mobilenet_v2':
           center_net_mobilenet_v2_feature_extractor.mobilenet_v2,
+      'mobilenet_v2_fpn':
+          center_net_mobilenet_v2_fpn_feature_extractor.mobilenet_v2_fpn,
   }
 
   FEATURE_EXTRACTOR_MAPS = [
@@ -936,6 +941,21 @@ def tracking_proto_to_params(tracking_config):
       task_loss_weight=tracking_config.task_loss_weight)
 
 
+def temporal_offset_proto_to_params(temporal_offset_config):
+  """Converts CenterNet.TemporalOffsetEstimation proto to param-tuple."""
+  loss = losses_pb2.Loss()
+  # Add dummy classification loss to avoid the loss_builder throwing error.
+  # TODO(yuhuic): update the loss builder to take the classification loss
+  # directly.
+  loss.classification_loss.weighted_sigmoid.CopyFrom(
+      losses_pb2.WeightedSigmoidClassificationLoss())
+  loss.localization_loss.CopyFrom(temporal_offset_config.localization_loss)
+  _, localization_loss, _, _, _, _, _ = losses_builder.build(loss)
+  return center_net_meta_arch.TemporalOffsetParams(
+      localization_loss=localization_loss,
+      task_loss_weight=temporal_offset_config.task_loss_weight)
+
+
 def _build_center_net_model(center_net_config, is_training, add_summaries):
   """Build a CenterNet detection model.
 
@@ -998,6 +1018,11 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
     track_params = tracking_proto_to_params(
         center_net_config.track_estimation_task)
 
+  temporal_offset_params = None
+  if center_net_config.HasField('temporal_offset_task'):
+    temporal_offset_params = temporal_offset_proto_to_params(
+        center_net_config.temporal_offset_task)
+
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
@@ -1009,7 +1034,9 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       keypoint_params_dict=keypoint_params_dict,
       mask_params=mask_params,
       densepose_params=densepose_params,
-      track_params=track_params)
+      track_params=track_params,
+      temporal_offset_params=temporal_offset_params,
+      use_depthwise=center_net_config.use_depthwise)
 
 
 def _build_center_net_feature_extractor(

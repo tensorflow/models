@@ -30,7 +30,8 @@ class CenterNetHourglassFeatureExtractorTest(test_case.TestCase):
 
     net = hourglass_network.HourglassNetwork(
         num_stages=4, blocks_per_stage=[2, 3, 4, 5, 6],
-        channel_dims=[4, 6, 8, 10, 12, 14], num_hourglasses=2)
+        input_channel_dims=4, channel_dims_per_stage=[6, 8, 10, 12, 14],
+        num_hourglasses=2)
 
     model = hourglass.CenterNetHourglassFeatureExtractor(net)
     def graph_fn():

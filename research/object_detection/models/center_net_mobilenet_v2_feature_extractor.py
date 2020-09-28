@@ -53,8 +53,6 @@ class CenterNetMobileNetV2FeatureExtractor(
 
     output = self._network(self._network.input)
 
-    # TODO(nkhadke): Try out MobileNet+FPN next (skip connections are cheap and
-    # should help with performance).
     # MobileNet by itself transforms a 224x224x3 volume into a 7x7x1280, which
     # leads to a stride of 32. We perform upsampling to get it to a target
     # stride of 4.

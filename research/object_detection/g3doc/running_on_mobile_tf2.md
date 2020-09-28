@@ -1,7 +1,10 @@
 # Running TF2 Detection API Models on mobile
 
-[![TensorFlow 2.2](https://img.shields.io/badge/TensorFlow-2.2-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.2.0)
+[![TensorFlow 2.3](https://img.shields.io/badge/TensorFlow-2.3-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.3.0)
 [![Python 3.6](https://img.shields.io/badge/Python-3.6-3776AB)](https://www.python.org/downloads/release/python-360/)
+
+**NOTE:** This support was added *after* TF2.3, so please use the latest nightly
+for the TensorFlow Lite Converter for this to work.
 
 [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/)(TFLite) is
 TensorFlow’s lightweight solution for mobile and embedded devices. It enables
@@ -54,16 +57,30 @@ python object_detection/export_tflite_graph_tf2.py \
     --output_directory path/to/exported_model_directory
 ```
 
-Use `--help` with the aboev script to get the full list of supported parameters.
+Use `--help` with the above script to get the full list of supported parameters.
+These can fine-tune accuracy and speed for your model.
 
 ### Step 2: Convert to TFLite
 
 Use the [TensorFlow Lite Converter](https://www.tensorflow.org/lite/convert) to
-convert the `SavedModel` to TFLite. You can also leverage
+convert the `SavedModel` to TFLite. Note that you need to use `from_saved_model`
+for TFLite conversion with the Python API.
+
+You can also leverage
 [Post-training Quantization](https://www.tensorflow.org/lite/performance/post_training_quantization)
 to
 [optimize performance](https://www.tensorflow.org/lite/performance/model_optimization)
-and obtain a smaller model.
+and obtain a smaller model. Note that this is only possible from the *Python
+API*. Be sure to use a
+[representative dataset](https://www.tensorflow.org/lite/performance/post_training_quantization#full_integer_quantization)
+and set the following options on the converter:
+
+```
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8,
+                                       tf.lite.OpsSet.TFLITE_BUILTINS]
+converter.representative_dataset = <...>
+```
 
 ## Running our model on Android
 

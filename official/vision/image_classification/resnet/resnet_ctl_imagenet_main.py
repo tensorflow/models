@@ -23,10 +23,9 @@ from absl import flags
 from absl import logging
 import orbit
 import tensorflow as tf
-
+from official.common import distribute_utils
 from official.modeling import performance
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
 from official.utils.misc import model_helpers
 from official.vision.image_classification.resnet import common
@@ -117,7 +116,7 @@ def run(flags_obj):
                    else 'channels_last')
   tf.keras.backend.set_image_data_format(data_format)
 
-  strategy = distribution_utils.get_distribution_strategy(
+  strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
       all_reduce_alg=flags_obj.all_reduce_alg,
@@ -144,7 +143,7 @@ def run(flags_obj):
       flags_obj.batch_size,
       flags_obj.log_steps,
       logdir=flags_obj.model_dir if flags_obj.enable_tensorboard else None)
-  with distribution_utils.get_strategy_scope(strategy):
+  with distribute_utils.get_strategy_scope(strategy):
     runnable = resnet_runnable.ResnetRunnable(flags_obj, time_callback,
                                               per_epoch_steps)
 

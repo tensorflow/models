@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""XLNet classification finetuning runner in tf2.0."""
-
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+"""XLNet pretraining runner in tf2.0."""
 
 import functools
 import os
@@ -28,13 +23,13 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 # pylint: disable=unused-import
+from official.common import distribute_utils
 from official.nlp.xlnet import common_flags
 from official.nlp.xlnet import data_utils
 from official.nlp.xlnet import optimization
 from official.nlp.xlnet import training_utils
 from official.nlp.xlnet import xlnet_config
 from official.nlp.xlnet import xlnet_modeling as modeling
-from official.utils.misc import tpu_lib
 
 flags.DEFINE_integer(
     "num_predict",
@@ -77,17 +72,11 @@ def get_pretrainxlnet_model(model_config, run_config):
 def main(unused_argv):
   del unused_argv
   num_hosts = 1
-  if FLAGS.strategy_type == "mirror":
-    strategy = tf.distribute.MirroredStrategy()
-  elif FLAGS.strategy_type == "tpu":
-    cluster_resolver = tpu_lib.tpu_initialize(FLAGS.tpu)
-    strategy = tf.distribute.experimental.TPUStrategy(cluster_resolver)
-    topology = FLAGS.tpu_topology.split("x")
-    total_num_core = 2 * int(topology[0]) * int(topology[1])
-    num_hosts = total_num_core // FLAGS.num_core_per_host
-  else:
-    raise ValueError("The distribution strategy type is not supported: %s" %
-                     FLAGS.strategy_type)
+  strategy = distribute_utils.get_distribution_strategy(
+      distribution_strategy=FLAGS.strategy_type,
+      tpu_address=FLAGS.tpu)
+  if FLAGS.strategy_type == "tpu":
+    num_hosts = strategy.extended.num_hosts
   if strategy:
     logging.info("***** Number of cores used : %d",
                  strategy.num_replicas_in_sync)

@@ -26,8 +26,9 @@ import tensorflow as tf
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
-from official.nlp.modeling import layers
+from official.nlp import keras_nlp
 from official.nlp.modeling import networks
+from official.nlp.projects.bigbird import encoder as bigbird_encoder
 
 
 @dataclasses.dataclass
@@ -60,18 +61,18 @@ class MobileBertEncoderConfig(hyperparams.Config):
     num_blocks: number of transformer block in the encoder model.
     hidden_size: the hidden size for the transformer block.
     num_attention_heads: number of attention heads in the transformer block.
-    intermediate_size: the size of the "intermediate" (a.k.a., feed
-      forward) layer.
-    intermediate_act_fn: the non-linear activation function to apply
-      to the output of the intermediate/feed-forward layer.
+    intermediate_size: the size of the "intermediate" (a.k.a., feed forward)
+      layer.
+    intermediate_act_fn: the non-linear activation function to apply to the
+      output of the intermediate/feed-forward layer.
     hidden_dropout_prob: dropout probability for the hidden layers.
     attention_probs_dropout_prob: dropout probability of the attention
       probabilities.
     intra_bottleneck_size: the size of bottleneck.
     initializer_range: The stddev of the truncated_normal_initializer for
-        initializing all weight matrices.
-    key_query_shared_bottleneck: whether to share linear transformation for
-      keys and queries.
+      initializing all weight matrices.
+    key_query_shared_bottleneck: whether to share linear transformation for keys
+      and queries.
     num_feedforward_networks: number of stacked feed-forward networks.
     normalization_type: the type of normalization_type, only 'no_norm' and
       'layer_norm' are supported. 'no_norm' represents the element-wise linear
@@ -79,8 +80,6 @@ class MobileBertEncoderConfig(hyperparams.Config):
       MobileBERT paper. 'layer_norm' is used for the teacher model.
     classifier_activation: if using the tanh activation for the final
       representation of the [CLS] token in fine-tuning.
-    return_all_layers: if return all layer outputs.
-    return_attention_score: if return attention scores for each layer.
   """
   word_vocab_size: int = 30522
   word_embed_size: int = 128
@@ -99,8 +98,6 @@ class MobileBertEncoderConfig(hyperparams.Config):
   num_feedforward_networks: int = 1
   normalization_type: str = "layer_norm"
   classifier_activation: bool = True
-  return_all_layers: bool = False
-  return_attention_score: bool = False
 
 
 @dataclasses.dataclass
@@ -121,26 +118,48 @@ class AlbertEncoderConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class BigBirdEncoderConfig(hyperparams.Config):
+  """BigBird encoder configuration."""
+  vocab_size: int = 50358
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3072
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  max_position_embeddings: int = 4096
+  num_rand_blocks: int = 3
+  block_size: int = 64
+  type_vocab_size: int = 16
+  initializer_range: float = 0.02
+  embedding_size: Optional[int] = None
+
+
+@dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
   type: Optional[str] = "bert"
   albert: AlbertEncoderConfig = AlbertEncoderConfig()
   bert: BertEncoderConfig = BertEncoderConfig()
+  bigbird: BigBirdEncoderConfig = BigBirdEncoderConfig()
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
 
 
 ENCODER_CLS = {
     "bert": networks.BertEncoder,
     "mobilebert": networks.MobileBERTEncoder,
-    "albert": networks.AlbertTransformerEncoder,
+    "albert": networks.AlbertEncoder,
+    "bigbird": bigbird_encoder.BigBirdEncoder,
 }
 
 
 @gin.configurable
-def build_encoder(config: EncoderConfig,
-                  embedding_layer: Optional[layers.OnDeviceEmbedding] = None,
-                  encoder_cls=None,
-                  bypass_config: bool = False):
+def build_encoder(
+    config: EncoderConfig,
+    embedding_layer: Optional[keras_nlp.layers.OnDeviceEmbedding] = None,
+    encoder_cls=None,
+    bypass_config: bool = False):
   """Instantiate a Transformer encoder network from EncoderConfig.
 
   Args:
@@ -188,7 +207,8 @@ def build_encoder(config: EncoderConfig,
         pooled_output_dim=encoder_cfg.hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
-        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs)
+        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs,
+        dict_outputs=True)
     return encoder_cls(**kwargs)
 
   if encoder_type == "mobilebert":
@@ -205,12 +225,11 @@ def build_encoder(config: EncoderConfig,
         hidden_dropout_prob=encoder_cfg.hidden_dropout_prob,
         attention_probs_dropout_prob=encoder_cfg.attention_probs_dropout_prob,
         intra_bottleneck_size=encoder_cfg.intra_bottleneck_size,
+        initializer_range=encoder_cfg.initializer_range,
         key_query_shared_bottleneck=encoder_cfg.key_query_shared_bottleneck,
         num_feedforward_networks=encoder_cfg.num_feedforward_networks,
         normalization_type=encoder_cfg.normalization_type,
-        classifier_activation=encoder_cfg.classifier_activation,
-        return_all_layers=encoder_cfg.return_all_layers,
-        return_attention_score=encoder_cfg.return_attention_score)
+        classifier_activation=encoder_cfg.classifier_activation)
 
   if encoder_type == "albert":
     return encoder_cls(
@@ -226,7 +245,26 @@ def build_encoder(config: EncoderConfig,
         dropout_rate=encoder_cfg.dropout_rate,
         attention_dropout_rate=encoder_cfg.attention_dropout_rate,
         initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=encoder_cfg.initializer_range))
+            stddev=encoder_cfg.initializer_range),
+        dict_outputs=True)
+
+  if encoder_type == "bigbird":
+    return encoder_cls(
+        vocab_size=encoder_cfg.vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        intermediate_size=encoder_cfg.intermediate_size,
+        activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        num_rand_blocks=encoder_cfg.num_rand_blocks,
+        block_size=encoder_cfg.block_size,
+        max_sequence_length=encoder_cfg.max_position_embeddings,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        embedding_width=encoder_cfg.embedding_size)
 
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.
@@ -245,4 +283,5 @@ def build_encoder(config: EncoderConfig,
           stddev=encoder_cfg.initializer_range),
       embedding_width=encoder_cfg.embedding_size,
       embedding_layer=embedding_layer,
-      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs)
+      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
+      dict_outputs=True)

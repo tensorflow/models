@@ -40,16 +40,16 @@ class RevNetTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertAllEqual(
         [1, input_size / 2**2, input_size / 2**2, 128 * endpoint_filter_scale],
-        endpoints[2].shape.as_list())
+        endpoints['2'].shape.as_list())
     self.assertAllEqual(
         [1, input_size / 2**3, input_size / 2**3, 256 * endpoint_filter_scale],
-        endpoints[3].shape.as_list())
+        endpoints['3'].shape.as_list())
     self.assertAllEqual(
         [1, input_size / 2**4, input_size / 2**4, 512 * endpoint_filter_scale],
-        endpoints[4].shape.as_list())
+        endpoints['4'].shape.as_list())
     self.assertAllEqual(
         [1, input_size / 2**5, input_size / 2**5, 832 * endpoint_filter_scale],
-        endpoints[5].shape.as_list())
+        endpoints['5'].shape.as_list())
 
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):

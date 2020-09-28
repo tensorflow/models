@@ -19,11 +19,13 @@ import tensorflow as tf
 
 from official.modeling import activations
 from official.nlp import keras_nlp
-from official.nlp.modeling import layers
 
 
+# This class is being replaced by keras_nlp.encoders.BertEncoder and merely
+# acts as a wrapper if you need: 1) list outputs instead of dict outputs,
+# 2) shared embedding layer.
 @tf.keras.utils.register_keras_serializable(package='Text')
-class BertEncoder(tf.keras.Model):
+class BertEncoder(keras_nlp.encoders.BertEncoder):
   """Bi-directional Transformer-based encoder network.
 
   This network implements a bi-directional Transformer-based encoder as
@@ -58,7 +60,9 @@ class BertEncoder(tf.keras.Model):
       within the transformer layers.
     initializer: The initialzer to use for all weights in this encoder.
     return_all_encoder_outputs: Whether to output sequence embedding outputs of
-      all encoder transformer layers.
+      all encoder transformer layers. Note: when the following `dict_outputs`
+      argument is True, all encoder outputs are always returned in the dict,
+      keyed by `encoder_outputs`.
     output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
       target sequence will attend to the source sequence, which yeilds the full
@@ -72,6 +76,7 @@ class BertEncoder(tf.keras.Model):
       embedding layer. Otherwise, we will reuse the given embedding layer. This
       parameter is originally added for ELECTRA model which needs to tie the
       generator embeddings with the discriminator embeddings.
+    dict_outputs: Whether to use a dictionary as the model outputs.
   """
 
   def __init__(self,
@@ -91,140 +96,53 @@ class BertEncoder(tf.keras.Model):
                output_range=None,
                embedding_width=None,
                embedding_layer=None,
+               dict_outputs=False,
                **kwargs):
-    activation = tf.keras.activations.get(activation)
-    initializer = tf.keras.initializers.get(initializer)
 
     self._self_setattr_tracking = False
-    self._config_dict = {
-        'vocab_size': vocab_size,
-        'hidden_size': hidden_size,
-        'num_layers': num_layers,
-        'num_attention_heads': num_attention_heads,
-        'max_sequence_length': max_sequence_length,
-        'type_vocab_size': type_vocab_size,
-        'intermediate_size': intermediate_size,
-        'activation': tf.keras.activations.serialize(activation),
-        'dropout_rate': dropout_rate,
-        'attention_dropout_rate': attention_dropout_rate,
-        'initializer': tf.keras.initializers.serialize(initializer),
-        'return_all_encoder_outputs': return_all_encoder_outputs,
-        'output_range': output_range,
-        'embedding_width': embedding_width,
-    }
-
-    word_ids = tf.keras.layers.Input(
-        shape=(None,), dtype=tf.int32, name='input_word_ids')
-    mask = tf.keras.layers.Input(
-        shape=(None,), dtype=tf.int32, name='input_mask')
-    type_ids = tf.keras.layers.Input(
-        shape=(None,), dtype=tf.int32, name='input_type_ids')
-
-    if embedding_width is None:
-      embedding_width = hidden_size
-    if embedding_layer is None:
-      self._embedding_layer = layers.OnDeviceEmbedding(
-          vocab_size=vocab_size,
-          embedding_width=embedding_width,
-          initializer=initializer,
-          name='word_embeddings')
-    else:
-      self._embedding_layer = embedding_layer
-    word_embeddings = self._embedding_layer(word_ids)
-
-    # Always uses dynamic slicing for simplicity.
-    self._position_embedding_layer = keras_nlp.PositionEmbedding(
-        initializer=initializer,
-        max_length=max_sequence_length,
-        name='position_embedding')
-    position_embeddings = self._position_embedding_layer(word_embeddings)
-    self._type_embedding_layer = layers.OnDeviceEmbedding(
-        vocab_size=type_vocab_size,
-        embedding_width=embedding_width,
-        initializer=initializer,
-        use_one_hot=True,
-        name='type_embeddings')
-    type_embeddings = self._type_embedding_layer(type_ids)
-
-    embeddings = tf.keras.layers.Add()(
-        [word_embeddings, position_embeddings, type_embeddings])
-
-    self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
-        name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
-
-    embeddings = self._embedding_norm_layer(embeddings)
-    embeddings = (tf.keras.layers.Dropout(rate=dropout_rate)(embeddings))
-
-    # We project the 'embedding' output to 'hidden_size' if it is not already
-    # 'hidden_size'.
-    if embedding_width != hidden_size:
-      self._embedding_projection = tf.keras.layers.experimental.EinsumDense(
-          '...x,xy->...y',
-          output_shape=hidden_size,
-          bias_axes='y',
-          kernel_initializer=initializer,
-          name='embedding_projection')
-      embeddings = self._embedding_projection(embeddings)
-
-    self._transformer_layers = []
-    data = embeddings
-    attention_mask = layers.SelfAttentionMask()([data, mask])
-    encoder_outputs = []
-    for i in range(num_layers):
-      if i == num_layers - 1 and output_range is not None:
-        transformer_output_range = output_range
-      else:
-        transformer_output_range = None
-      layer = keras_nlp.layers.TransformerEncoderBlock(
-          num_attention_heads=num_attention_heads,
-          inner_dim=intermediate_size,
-          inner_activation=activation,
-          output_dropout=dropout_rate,
-          attention_dropout=attention_dropout_rate,
-          output_range=transformer_output_range,
-          kernel_initializer=initializer,
-          name='transformer/layer_%d' % i)
-      self._transformer_layers.append(layer)
-      data = layer([data, attention_mask])
-      encoder_outputs.append(data)
-
-    first_token_tensor = (
-        tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
-            encoder_outputs[-1]))
-    self._pooler_layer = tf.keras.layers.Dense(
-        units=hidden_size,
-        activation='tanh',
-        kernel_initializer=initializer,
-        name='pooler_transform')
-    cls_output = self._pooler_layer(first_token_tensor)
-
-    if return_all_encoder_outputs:
-      outputs = [encoder_outputs, cls_output]
-    else:
-      outputs = [encoder_outputs[-1], cls_output]
+    self._embedding_layer_instance = embedding_layer
 
     super(BertEncoder, self).__init__(
-        inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
+        vocab_size=vocab_size,
+        hidden_size=hidden_size,
+        num_layers=num_layers,
+        num_attention_heads=num_attention_heads,
+        max_sequence_length=max_sequence_length,
+        type_vocab_size=type_vocab_size,
+        inner_dim=intermediate_size,
+        inner_activation=activation,
+        output_dropout=dropout_rate,
+        attention_dropout=attention_dropout_rate,
+        initializer=initializer,
+        output_range=output_range,
+        embedding_width=embedding_width)
 
-  def get_embedding_table(self):
-    return self._embedding_layer.embeddings
+    # Replace arguments from keras_nlp.encoders.BertEncoder.
+    self._config_dict['activation'] = self._config_dict.pop('inner_activation')
+    self._config_dict['intermediate_size'] = self._config_dict.pop('inner_dim')
+    self._config_dict['dropout_rate'] = self._config_dict.pop('output_dropout')
+    self._config_dict['attention_dropout_rate'] = self._config_dict.pop(
+        'attention_dropout')
+    self._config_dict['dict_outputs'] = dict_outputs
+    self._config_dict['return_all_encoder_outputs'] = return_all_encoder_outputs
 
-  def get_embedding_layer(self):
-    return self._embedding_layer
+    if dict_outputs:
+      return
+    else:
+      nested_output = self._nested_outputs
+      cls_output = nested_output['pooled_output']
+      if return_all_encoder_outputs:
+        encoder_outputs = nested_output['encoder_outputs']
+        outputs = [encoder_outputs, cls_output]
+      else:
+        sequence_output = nested_output['sequence_output']
+        outputs = [sequence_output, cls_output]
+    super(keras_nlp.encoders.BertEncoder, self).__init__(
+        inputs=self.inputs, outputs=outputs, **kwargs)
 
-  def get_config(self):
-    return self._config_dict
-
-  @property
-  def transformer_layers(self):
-    """List of Transformer layers in the encoder."""
-    return self._transformer_layers
-
-  @property
-  def pooler_layer(self):
-    """The pooler dense layer after the transformer layers."""
-    return self._pooler_layer
-
-  @classmethod
-  def from_config(cls, config, custom_objects=None):
-    return cls(**config)
+  # Override method for shared embedding use case.
+  def _build_embedding_layer(self):
+    if self._embedding_layer_instance is None:
+      return super(BertEncoder, self)._build_embedding_layer()
+    else:
+      return self._embedding_layer_instance

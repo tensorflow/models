@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """TFM common training driver library."""
-
+# pytype: disable=attribute-error
 import copy
 import json
 import os
@@ -219,9 +219,14 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
     elif mode == 'eval':
       controller.evaluate(steps=params.trainer.validation_steps)
     elif mode == 'continuous_eval':
+      def timeout_fn():
+        if trainer.global_step.numpy() >= params.trainer.train_steps:
+          return True
+        return False
       controller.evaluate_continuously(
           steps=params.trainer.validation_steps,
-          timeout=params.trainer.continuous_eval_timeout)
+          timeout=params.trainer.continuous_eval_timeout,
+          timeout_fn=timeout_fn)
     else:
       raise NotImplementedError('The mode is not implemented: %s' % mode)
 

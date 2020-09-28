@@ -21,11 +21,11 @@ from official.vision.beta.configs import image_classification as classification_
 from official.vision.beta.configs import maskrcnn as maskrcnn_cfg
 from official.vision.beta.configs import retinanet as retinanet_cfg
 from official.vision.beta.configs import video_classification as video_classification_cfg
+from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling import classification_model
 from official.vision.beta.modeling import maskrcnn_model
 from official.vision.beta.modeling import retinanet_model
 from official.vision.beta.modeling import video_classification_model
-from official.vision.beta.modeling.backbones import factory as backbone_factory
 from official.vision.beta.modeling.decoders import factory as decoder_factory
 from official.vision.beta.modeling.heads import dense_prediction_heads
 from official.vision.beta.modeling.heads import instance_heads
@@ -41,7 +41,7 @@ def build_classification_model(
     model_config: classification_cfg.ImageClassificationModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds the classification model."""
-  backbone = backbone_factory.build_backbone(
+  backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
@@ -64,7 +64,7 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
                    model_config: maskrcnn_cfg.MaskRCNN,
                    l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds Mask R-CNN model."""
-  backbone = backbone_factory.build_backbone(
+  backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
@@ -193,7 +193,7 @@ def build_retinanet(input_specs: tf.keras.layers.InputSpec,
                     model_config: retinanet_cfg.RetinaNet,
                     l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds RetinaNet model."""
-  backbone = backbone_factory.build_backbone(
+  backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)
@@ -242,7 +242,7 @@ def build_video_classification_model(
     num_classes: int,
     l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds the video classification model."""
-  backbone = backbone_factory.build_backbone_3d(
+  backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
       model_config=model_config,
       l2_regularizer=l2_regularizer)

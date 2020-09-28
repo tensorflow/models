@@ -143,6 +143,8 @@ curl -Os http://storage.googleapis.com/delf/resnet50_imagenet_weights.tar.gz
 tar -xzvf resnet50_imagenet_weights.tar.gz
 ```
 
+### Training with Local Features
+
 Assuming the TFRecord files were generated in the `gldv2_dataset/tfrecord/`
 directory, running the following command should start training a model and
 output the results in the `gldv2_training` directory:
@@ -156,13 +158,7 @@ python3 train.py \
   --logdir=gldv2_training/
 ```
 
-On a multi-GPU machine the batch size can be increased to speed up the training
-using the `--batch_size` parameter. On a 8 Tesla P100 GPUs machine you can set
-the batch size to `256`:
-
-```
---batch_size=256
-```
+### Training with Local and Global Features
 
 It is also possible to train the model with an improved global features head as
 introduced in the [DELG paper](https://arxiv.org/abs/2001.05027). To do this,
@@ -178,6 +174,15 @@ python3 train.py \
   --logdir=gldv2_training/ \
   --delg_global_features
 ```
+
+### Hyperparameter Guidelines
+
+In order to improve the convergence of the training, the following
+hyperparameter values have been tested and validated on the following
+infrastructures, the remaining `train.py` flags keeping their **default 
+values**:
+* 8 Tesla P100 GPUs: `--batch_size=256`, `--initial_lr=0.01`
+* 4 Tesla P100 GPUs: `--batch_size=128`, `--initial_lr=0.005`
 
 *NOTE*: We are currently working on adding the autoencoder described in the DELG
 paper to this codebase. Currently, it is not yet implemented here. Stay tuned!

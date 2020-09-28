@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for transformer-based text encoder network."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Tests for transformer-based bert encoder network."""
 
 # Import libraries
 from absl.testing import parameterized
@@ -63,6 +59,35 @@ class BertEncoderTest(keras_parameterized.TestCase):
     # The default output dtype is float32.
     self.assertAllEqual(tf.float32, data.dtype)
     self.assertAllEqual(tf.float32, pooled.dtype)
+
+    test_network_dict = bert_encoder.BertEncoder(
+        vocab_size=100,
+        hidden_size=hidden_size,
+        num_attention_heads=2,
+        num_layers=3,
+        dict_outputs=True)
+    # Create the inputs (note that the first dimension is implicit).
+    inputs = dict(
+        input_word_ids=word_ids, input_mask=mask, input_type_ids=type_ids)
+    _ = test_network_dict(inputs)
+
+    test_network_dict.set_weights(test_network.get_weights())
+    batch_size = 2
+    vocab_size = 100
+    num_types = 2
+    word_id_data = np.random.randint(
+        vocab_size, size=(batch_size, sequence_length))
+    mask_data = np.random.randint(2, size=(batch_size, sequence_length))
+    type_id_data = np.random.randint(
+        num_types, size=(batch_size, sequence_length))
+    list_outputs = test_network([word_id_data, mask_data, type_id_data])
+    dict_outputs = test_network_dict(
+        dict(
+            input_word_ids=word_id_data,
+            input_mask=mask_data,
+            input_type_ids=type_id_data))
+    self.assertAllEqual(list_outputs[0], dict_outputs["sequence_output"])
+    self.assertAllEqual(list_outputs[1], dict_outputs["pooled_output"])
 
   def test_all_encoder_outputs_network_creation(self):
     hidden_size = 32
@@ -199,7 +224,8 @@ class BertEncoderTest(keras_parameterized.TestCase):
         initializer="glorot_uniform",
         return_all_encoder_outputs=False,
         output_range=-1,
-        embedding_width=16)
+        embedding_width=16,
+        dict_outputs=True)
     network = bert_encoder.BertEncoder(**kwargs)
     expected_config = dict(kwargs)
     expected_config["activation"] = tf.keras.activations.serialize(

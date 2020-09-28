@@ -159,12 +159,12 @@ def multilevel_crop_and_resize(features,
 
   with tf.name_scope('multilevel_crop_and_resize'):
     levels = list(features.keys())
-    min_level = min(levels)
-    max_level = max(levels)
+    min_level = int(min(levels))
+    max_level = int(max(levels))
     batch_size, max_feature_height, max_feature_width, num_filters = (
-        features[min_level].get_shape().as_list())
+        features[str(min_level)].get_shape().as_list())
     if batch_size is None:
-      batch_size = tf.shape(features[min_level])[0]
+      batch_size = tf.shape(features[str(min_level)])[0]
     _, num_boxes, _ = boxes.get_shape().as_list()
 
     # Stack feature pyramid into a features_all of shape
@@ -173,13 +173,13 @@ def multilevel_crop_and_resize(features,
     feature_heights = []
     feature_widths = []
     for level in range(min_level, max_level + 1):
-      shape = features[level].get_shape().as_list()
+      shape = features[str(level)].get_shape().as_list()
       feature_heights.append(shape[1])
       feature_widths.append(shape[2])
       # Concat tensor of [batch_size, height_l * width_l, num_filters] for each
       # levels.
       features_all.append(
-          tf.reshape(features[level], [batch_size, -1, num_filters]))
+          tf.reshape(features[str(level)], [batch_size, -1, num_filters]))
     features_r2 = tf.reshape(tf.concat(features_all, 1), [-1, num_filters])
 
     # Calculate height_l * width_l for each level.

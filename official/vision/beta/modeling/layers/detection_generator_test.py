@@ -148,22 +148,25 @@ class MultilevelDetectionGeneratorTest(
         np.random.rand(84, num_classes) - 0.5) * 3  # random 84x3 outputs.
     box_outputs_all = np.random.rand(84, 4)  # random 84 boxes.
     class_outputs = {
-        4: tf.reshape(tf.convert_to_tensor(
-            cls_outputs_all[0:64], dtype=tf.float32),
-                      [1, 8, 8, num_classes]),
-        5: tf.reshape(tf.convert_to_tensor(
-            cls_outputs_all[64:80], dtype=tf.float32),
-                      [1, 4, 4, num_classes]),
-        6: tf.reshape(tf.convert_to_tensor(
-            cls_outputs_all[80:84], dtype=tf.float32),
-                      [1, 2, 2, num_classes]),
+        '4':
+            tf.reshape(
+                tf.convert_to_tensor(cls_outputs_all[0:64], dtype=tf.float32),
+                [1, 8, 8, num_classes]),
+        '5':
+            tf.reshape(
+                tf.convert_to_tensor(cls_outputs_all[64:80], dtype=tf.float32),
+                [1, 4, 4, num_classes]),
+        '6':
+            tf.reshape(
+                tf.convert_to_tensor(cls_outputs_all[80:84], dtype=tf.float32),
+                [1, 2, 2, num_classes]),
     }
     box_outputs = {
-        4: tf.reshape(tf.convert_to_tensor(
+        '4': tf.reshape(tf.convert_to_tensor(
             box_outputs_all[0:64], dtype=tf.float32), [1, 8, 8, 4]),
-        5: tf.reshape(tf.convert_to_tensor(
+        '5': tf.reshape(tf.convert_to_tensor(
             box_outputs_all[64:80], dtype=tf.float32), [1, 4, 4, 4]),
-        6: tf.reshape(tf.convert_to_tensor(
+        '6': tf.reshape(tf.convert_to_tensor(
             box_outputs_all[80:84], dtype=tf.float32), [1, 2, 2, 4]),
     }
     image_info = tf.constant([[[1000, 1000], [100, 100], [0.1, 0.1], [0, 0]]],

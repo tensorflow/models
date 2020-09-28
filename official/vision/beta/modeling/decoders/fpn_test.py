@@ -47,10 +47,10 @@ class FPNTest(parameterized.TestCase, tf.test.TestCase):
     feats = network(endpoints)
 
     for level in range(min_level, max_level + 1):
-      self.assertIn(level, feats)
+      self.assertIn(str(level), feats)
       self.assertAllEqual(
           [1, input_size // 2**level, input_size // 2**level, 256],
-          feats[level].shape.as_list())
+          feats[str(level)].shape.as_list())
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.

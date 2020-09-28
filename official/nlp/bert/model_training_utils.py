@@ -25,8 +25,8 @@ import tempfile
 from absl import logging
 import tensorflow as tf
 from tensorflow.python.util import deprecation
+from official.common import distribute_utils
 from official.staging.training import grad_utils
-from official.utils.misc import distribution_utils
 
 _SUMMARY_TXT = 'training_summary.txt'
 _MIN_SUMMARY_STEPS = 10
@@ -164,9 +164,9 @@ def run_customized_training_loop(
         evaluation is skipped.
       eval_steps: Number of steps to run evaluation. Required if `eval_input_fn`
         is not none.
-      metric_fn: A metrics function that returns a Keras Metric object to record
-        evaluation result using evaluation dataset or with training dataset
-        after every epoch.
+      metric_fn: A metrics function that returns either a Keras Metric object or
+        a list of Keras Metric objects to record evaluation result using
+        evaluation dataset or with training dataset after every epoch.
       init_checkpoint: Optional checkpoint to load to `sub_model` returned by
         `model_fn`.
       custom_callbacks: A list of Keras Callbacks objects to run during
@@ -266,7 +266,7 @@ def run_customized_training_loop(
   train_iterator = _get_input_iterator(train_input_fn, strategy)
   eval_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
 
-  with distribution_utils.get_strategy_scope(strategy):
+  with distribute_utils.get_strategy_scope(strategy):
     # To correctly place the model weights on accelerators,
     # model and optimizer should be created in scope.
     model, sub_model = model_fn()
@@ -291,7 +291,9 @@ def run_customized_training_loop(
       logging.info('Loading from checkpoint file completed')
 
     train_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)
-    eval_metrics = [metric_fn()] if metric_fn else []
+    eval_metrics = metric_fn() if metric_fn else []
+    if not isinstance(eval_metrics, list):
+      eval_metrics = [eval_metrics]
     # If evaluation is required, make a copy of metric as it will be used by
     # both train and evaluation.
     train_metrics = [

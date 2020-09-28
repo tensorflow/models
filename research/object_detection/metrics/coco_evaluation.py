@@ -1286,15 +1286,15 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     metric_names = ['DetectionMasks_Precision/mAP',
                     'DetectionMasks_Precision/mAP@.50IOU',
                     'DetectionMasks_Precision/mAP@.75IOU',
-                    'DetectionMasks_Precision/mAP (large)',
-                    'DetectionMasks_Precision/mAP (medium)',
                     'DetectionMasks_Precision/mAP (small)',
+                    'DetectionMasks_Precision/mAP (medium)',
+                    'DetectionMasks_Precision/mAP (large)',
                     'DetectionMasks_Recall/AR@1',
                     'DetectionMasks_Recall/AR@10',
                     'DetectionMasks_Recall/AR@100',
-                    'DetectionMasks_Recall/AR@100 (large)',
+                    'DetectionMasks_Recall/AR@100 (small)',
                     'DetectionMasks_Recall/AR@100 (medium)',
-                    'DetectionMasks_Recall/AR@100 (small)']
+                    'DetectionMasks_Recall/AR@100 (large)']
     if self._include_metrics_per_category:
       for category_dict in self._categories:
         metric_names.append('DetectionMasks_PerformanceByCategory/mAP/' +

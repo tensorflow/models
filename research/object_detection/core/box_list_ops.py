@@ -151,7 +151,10 @@ def clip_to_window(boxlist, window, filter_nonoverlapping=True, scope=None):
   with tf.name_scope(scope, 'ClipToWindow'):
     y_min, x_min, y_max, x_max = tf.split(
         value=boxlist.get(), num_or_size_splits=4, axis=1)
-    win_y_min, win_x_min, win_y_max, win_x_max = tf.unstack(window)
+    win_y_min = window[0]
+    win_x_min = window[1]
+    win_y_max = window[2]
+    win_x_max = window[3]
     y_min_clipped = tf.maximum(tf.minimum(y_min, win_y_max), win_y_min)
     y_max_clipped = tf.maximum(tf.minimum(y_max, win_y_max), win_y_min)
     x_min_clipped = tf.maximum(tf.minimum(x_min, win_x_max), win_x_min)

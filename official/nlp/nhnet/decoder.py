@@ -22,7 +22,6 @@ from __future__ import print_function
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
-from official.nlp.modeling.layers import transformer
 from official.nlp.transformer import model_utils as transformer_utils
 
 
@@ -59,7 +58,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
     self.layers = []
     for i in range(self.num_hidden_layers):
       self.layers.append(
-          transformer.TransformerDecoderLayer(
+          layers.TransformerDecoderBlock(
               num_attention_heads=self.num_attention_heads,
               intermediate_size=self.intermediate_size,
               intermediate_activation=self.intermediate_activation,
