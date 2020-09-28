@@ -277,9 +277,6 @@ def image_classification_imagenet_mobilenet() -> cfg.ExperimentConfig:
                       'warmup_learning_rate': 0
                   }
               },
-              'ema': {
-                  'average_decay': 0.9999
-              }
           })),
       restrictions=[
           'task.train_data.is_training != None',

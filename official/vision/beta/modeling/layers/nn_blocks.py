@@ -490,9 +490,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
       # First 1x1 conv for channel expansion.
       expand_filters = nn_layers.make_divisible(
           self._in_filters * self._expand_ratio, self._divisible_by)
-      logging.info('expand_filter: {}, divisible_version {}'.format(
-          self._in_filters * self._expand_ratio, expand_filters
-      ))
+
       expand_kernel = 1 if self._use_depthwise else self._kernel_size
       expand_stride = 1 if self._use_depthwise else self._strides
 
