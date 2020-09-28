@@ -28,7 +28,8 @@ from official.vision.beta.configs import image_classification as exp_cfg
 class ImageClassificationConfigTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(('resnet_imagenet',),
-                            ('revnet_imagenet',))
+                            ('revnet_imagenet',),
+                            ('mobilenet_imagenet'),)
   def test_image_classification_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)

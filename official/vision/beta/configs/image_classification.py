@@ -126,10 +126,10 @@ def image_classification_imagenet() -> cfg.ExperimentConfig:
                           80 * steps_per_epoch
                       ],
                       'values': [
-                          0.1 *  train_batch_size / 256,
-                          0.01 *  train_batch_size / 256,
-                          0.001 *  train_batch_size / 256,
-                          0.0001 *  train_batch_size / 256,
+                          0.1 * train_batch_size / 256,
+                          0.01 * train_batch_size / 256,
+                          0.001 * train_batch_size / 256,
+                          0.0001 * train_batch_size / 256,
                       ]
                   }
               },
@@ -205,6 +205,77 @@ def image_classification_imagenet_revnet() -> cfg.ExperimentConfig:
                       'warmup_steps': 5 * steps_per_epoch,
                       'warmup_learning_rate': 0
                   }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+
+  return config
+
+
+@exp_factory.register_config_factory('mobilenet_imagenet')
+def image_classification_imagenet_mobilenet() -> cfg.ExperimentConfig:
+  """Image classification on imagenet with mobilenet."""
+  train_batch_size = 192
+  eval_batch_size = 192
+  steps_per_epoch = IMAGENET_TRAIN_EXAMPLES // train_batch_size
+  config = cfg.ExperimentConfig(
+      task=ImageClassificationTask(
+          model=ImageClassificationModel(
+              num_classes=1001,
+              dropout_rate=0.2,
+              input_size=[224, 224, 3],
+              backbone=backbones.Backbone(
+                  type='mobilenet',
+                  mobilenet=backbones.MobileNet(
+                      model_id='MobileNetV2', width_multiplier=1.0)),
+              norm_activation=common.NormActivation(
+                  norm_momentum=0.9997, norm_epsilon=1e-3)),
+          losses=Losses(l2_weight_decay=1e-4, label_smoothing=0.1),
+          train_data=DataConfig(
+              input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
+              is_training=True,
+              global_batch_size=train_batch_size),
+          validation_data=DataConfig(
+              input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
+              is_training=False,
+              global_batch_size=eval_batch_size)),
+      trainer=cfg.TrainerConfig(
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          train_steps=90 * steps_per_epoch,
+          validation_steps=IMAGENET_VAL_EXAMPLES // eval_batch_size,
+          validation_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'rmsprop',
+                  'rmsprop': {
+                      'decay': 0.9,
+                      'momentum': 0.9,
+                      'epsilon': 0.002,
+                  }
+              },
+              'learning_rate': {
+                  'type': 'exponential',
+                  'exponential': {
+                      'initial_learning_rate': 0.045,
+                      'decay_steps': int(2.4 * steps_per_epoch),
+                      'decay_rate': 0.97,
+                      'staircase': True
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 5 * steps_per_epoch,
+                      'warmup_learning_rate': 0
+                  }
+              },
+              'ema': {
+                  'average_decay': 0.9999
               }
           })),
       restrictions=[

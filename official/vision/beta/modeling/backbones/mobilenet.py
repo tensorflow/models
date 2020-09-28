@@ -593,6 +593,7 @@ class MobileNet(tf.keras.Model):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
 
+
 @factory.register_backbone_builder('mobilenet')
 def build_mobilenet(
     input_specs: tf.keras.layers.InputSpec,
