@@ -102,10 +102,24 @@ def run_continuous_finetune(
 
   summary_writer = tf.summary.create_file_writer(
       os.path.join(model_dir, 'eval'))
+
+  global_step = 0
+
+  def timeout_fn():
+    if pretrain_steps and global_step < pretrain_steps:
+      # Keeps waiting for another timeout period.
+      logging.info(
+          'Continue waiting for new checkpoint as current pretrain '
+          'global_step=%d and target is %d.', global_step, pretrain_steps)
+      return False
+    # Quits the loop.
+    return True
+
   for pretrain_ckpt in tf.train.checkpoints_iterator(
       checkpoint_dir=params.task.init_checkpoint,
       min_interval_secs=10,
-      timeout=params.trainer.continuous_eval_timeout):
+      timeout=params.trainer.continuous_eval_timeout,
+      timeout_fn=timeout_fn):
     with distribution_strategy.scope():
       global_step = train_utils.read_global_step_from_checkpoint(pretrain_ckpt)
 
@@ -153,11 +167,6 @@ def run_continuous_finetune(
     # TODO(b/169178664): Fix cycle reference in Keras model and revisit to see
     # if we need gc here.
     gc.collect()
-
-    if pretrain_steps and global_step.numpy() >= pretrain_steps:
-      logging.info('The global_step reaches the pretraining end. Continuous '
-                   'finetuning terminates.')
-      break
 
   if run_post_eval:
     return eval_metrics
