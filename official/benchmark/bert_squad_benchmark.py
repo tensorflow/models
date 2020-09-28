@@ -294,6 +294,31 @@ class BertSquadBenchmarkReal(BertSquadBenchmarkBase):
 
     self._run_and_report_benchmark()
 
+  def benchmark_8_gpu_xla_tf32(self):
+    """Tests BERT SQuAD model performance with 8 GPUs with XLA using TF32."""
+
+    self._setup()
+    self.num_gpus = 8
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_xla_tf32')
+    FLAGS.train_batch_size = 32
+    FLAGS.enable_xla = True
+    FLAGS.loss_scale = 'dynamic'
+
+    self._run_and_report_benchmark()
+
+  def benchmark_8_gpu_xla_fp32_no_tf32(self):
+    """Tests BERT SQuAD model performance with 8 GPUs with XLA using FP32."""
+
+    self._setup()
+    tf.config.experimental.enable_tensor_float_32_execution(False)
+    self.num_gpus = 8
+    FLAGS.model_dir = self._get_model_dir('benchmark_8_gpu_xla_fp32_no_tf32')
+    FLAGS.train_batch_size = 32
+    FLAGS.enable_xla = True
+    FLAGS.loss_scale = 'dynamic'
+
+    self._run_and_report_benchmark()
+
   def benchmark_1_gpu_amp(self):
     """Tests BERT SQuAD model performance with 1 GPU with automatic mixed precision."""
 
