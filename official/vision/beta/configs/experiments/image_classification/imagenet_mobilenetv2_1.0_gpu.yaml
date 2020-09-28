@@ -19,21 +19,21 @@ task:
   train_data:
     input_path: 'imagenet-2012-tfrecord/train*'
     is_training: True
-    global_batch_size: 96
+    global_batch_size: 768  # 96 * 8
     dtype: 'float32'
   validation_data:
     input_path: 'imagenet-2012-tfrecord/valid*'
     is_training: False
-    global_batch_size: 96
+    global_batch_size: 768  # 96 * 8
     dtype: 'float32'
     drop_remainder: False
 trainer:
-  train_steps: 1201050 # 90 * steps_per_epoch
-  validation_steps: 520
-  validation_interval: 13345
-  steps_per_loop: 13345 # NUM_EXAMPLES (1281167) // global_batch_size
-  summary_interval: 13345
-  checkpoint_interval: 13345
+  train_steps: 150120  # 90 * steps_per_epoch
+  validation_steps: 65
+  validation_interval: 1668
+  steps_per_loop: 1668  # NUM_EXAMPLES (1281167) // global_batch_size
+  summary_interval: 1668
+  checkpoint_interval: 1668
   optimizer_config:
     optimizer:
       type: 'rmsprop'
@@ -44,13 +44,13 @@ trainer:
     learning_rate:
       type: 'exponential'
       exponential:
-        initial_learning_rate: 0.045,
-        decay_steps: 33362, # 2.5 * steps_per_epoch
+        initial_learning_rate: 0.36,  # 0.045 * NUM_GPUS
+        decay_steps: 4170,  # 2.5 * steps_per_epoch
         decay_rate: 0.97,
         staircase: True
     warmup:
       type: 'linear'
       linear:
-        warmup_steps: 66725 # 5 * steps_per_epoch
+        warmup_steps: 8340  # 5 * steps_per_epoch
     ema:
       average_decay: 0.9999

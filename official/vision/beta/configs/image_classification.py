@@ -218,8 +218,8 @@ def image_classification_imagenet_revnet() -> cfg.ExperimentConfig:
 @exp_factory.register_config_factory('mobilenet_imagenet')
 def image_classification_imagenet_mobilenet() -> cfg.ExperimentConfig:
   """Image classification on imagenet with mobilenet."""
-  train_batch_size = 192
-  eval_batch_size = 192
+  train_batch_size = 1536  # 96 * 16
+  eval_batch_size = 1536  # 96 * 16
   steps_per_epoch = IMAGENET_TRAIN_EXAMPLES // train_batch_size
   config = cfg.ExperimentConfig(
       task=ImageClassificationTask(
@@ -261,9 +261,12 @@ def image_classification_imagenet_mobilenet() -> cfg.ExperimentConfig:
               'learning_rate': {
                   'type': 'exponential',
                   'exponential': {
-                      'initial_learning_rate': 0.045,
-                      'decay_steps': int(2.4 * steps_per_epoch),
-                      'decay_rate': 0.97,
+                      # 0.045 * NUM_GPUS
+                      'initial_learning_rate': 0.045 * (train_batch_size // 96),
+                      # (2.5 / NUM_GPUS) epochs
+                      'decay_steps': int((2.5 / (train_batch_size // 96))
+                                         * steps_per_epoch),
+                      'decay_rate': 0.98,
                       'staircase': True
                   }
               },
