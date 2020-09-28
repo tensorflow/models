@@ -12,7 +12,7 @@ on-device machine learning inference with low latency and a small binary size.
 TensorFlow Lite uses many techniques for this such as quantized kernels that
 allow smaller and faster (fixed-point math) models.
 
-This document shows how elgible models from the
+This document shows how eligible models from the
 [TF2 Detection zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md)
 can be converted for inference with TFLite.
 
