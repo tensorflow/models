@@ -233,7 +233,7 @@ def image_classification_imagenet_mobilenet() -> cfg.ExperimentConfig:
                       model_id='MobileNetV2', width_multiplier=1.0)),
               norm_activation=common.NormActivation(
                   norm_momentum=0.9997, norm_epsilon=1e-3)),
-          losses=Losses(l2_weight_decay=1e-4, label_smoothing=0.1),
+          losses=Losses(l2_weight_decay=2e-5, label_smoothing=0.1),
           train_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
@@ -264,8 +264,7 @@ def image_classification_imagenet_mobilenet() -> cfg.ExperimentConfig:
                       # 0.045 * NUM_GPUS
                       'initial_learning_rate': 0.045 * (train_batch_size // 96),
                       # (2.5 / NUM_GPUS) epochs
-                      'decay_steps': int((2.5 / (train_batch_size // 96))
-                                         * steps_per_epoch),
+                      'decay_steps': int(2.5 * steps_per_epoch),
                       'decay_rate': 0.98,
                       'staircase': True
                   }

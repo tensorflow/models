@@ -13,7 +13,7 @@ task:
         width_multiplier: 1.0
     dropout_rate: 0.2
   losses:
-    l2_weight_decay: 0.0001
+    l2_weight_decay: 0.00002
     one_hot: True
     label_smoothing: 0.1
   train_data:
@@ -28,7 +28,7 @@ task:
     dtype: 'float32'
     drop_remainder: False
 trainer:
-  train_steps: 150120  # 90 * steps_per_epoch
+  train_steps: 700000  # 700K
   validation_steps: 65
   validation_interval: 1668
   steps_per_loop: 1668  # NUM_EXAMPLES (1281167) // global_batch_size
@@ -46,7 +46,7 @@ trainer:
       exponential:
         initial_learning_rate: 0.36  # 0.045 * NUM_GPUS
         decay_steps: 4170  # 2.5 * steps_per_epoch
-        decay_rate: 0.97
+        decay_rate: 0.98
         staircase: True
     warmup:
       type: 'linear'
