@@ -155,7 +155,7 @@ def main(unused_argv):
       adam_epsilon=FLAGS.adam_epsilon)
   model_config = xlnet_config.XLNetConfig(FLAGS)
   run_config = xlnet_config.create_run_config(True, False, FLAGS)
-  model_fn = functools.partial(modeling.classification_model, model_config,
+  model_fn = functools.partial(get_classificationxlnet_model, model_config,
                                run_config, FLAGS.n_class, FLAGS.summary_type)
   input_meta_data = {}
   input_meta_data["d_model"] = FLAGS.d_model
