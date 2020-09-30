@@ -40,7 +40,9 @@ class BoxMatcher:
       self,
       positive_threshold,
       negative_threshold=None,
-      force_match_for_each_row=False,
+      force_match_for_each_col=False,
+      negative_lower_than_ignore=True,
+      positive_value=1,
       negative_value=-1,
       ignore_value=-2):
     """Construct BoxMatcher.
@@ -53,11 +55,15 @@ class BoxMatcher:
         sim < negative_threshold or
         positive_threshold > sim >= negative_threshold.
         Defaults to positive_threshold when set to None.
-      force_match_for_each_row: If True, ensures that each row is matched to
-        at least one column (which is not guaranteed otherwise if the
+      force_match_for_each_col: If True, ensures that each column is matched to
+        at least one row (which is not guaranteed otherwise if the
         positive_threshold is high). Defaults to False.
-      negative_value: An integer to fill for negative matches.
-      ignore_value: An integer to fill for ignored matches.
+      negative_lower_than_ignore: If True, the threshold is
+        positive|ignore|negative, else positive|negative|ignore. Defaults to
+        True.
+      positive_value: An integer to fill for positive match labels.
+      negative_value: An integer to fill for negative match labels.
+      ignore_value: An integer to fill for ignored match labels.
 
     Raises:
       ValueError: If negative_threshold > positive_threshold.
@@ -71,9 +77,11 @@ class BoxMatcher:
                          'to positive_threshold')
       self._negative_threshold = negative_threshold
 
+    self._positive_value = positive_value
     self._negative_value = negative_value
     self._ignore_value = ignore_value
-    self._force_match_for_each_row = force_match_for_each_row
+    self._force_match_for_each_col = force_match_for_each_col
+    self._negative_lower_than_ignore = negative_lower_than_ignore
 
   def __call__(self, similarity_matrix):
     """Tries to match each column of the similarity matrix to a row.
@@ -83,11 +91,20 @@ class BoxMatcher:
         similarity metric.
 
     Returns:
-      A integer tensor with corresponding match indices for each of M columns,
-      for positive match, the match result will be the corresponding row index,
-      for negative match, the match will be `negative_value`, for ignored match,
-      the match result will be `ignore_value`.
+      A integer tensor of shape [N] with corresponding match indices for each
+      of M columns, for positive match, the match result will be the
+      corresponding row index, for negative match, the match will be
+      `negative_value`, for ignored match, the match result will be
+      `ignore_value`.
     """
+    squeeze_result = False
+    if len(similarity_matrix.shape) == 2:
+      squeeze_result = True
+      similarity_matrix = tf.expand_dims(similarity_matrix, axis=0)
+
+    static_shape = similarity_matrix.shape.as_list()
+    num_rows = static_shape[1] or tf.shape(similarity_matrix)[1]
+    batch_size = static_shape[0] or tf.shape(similarity_matrix)[0]
 
     def _match_when_rows_are_empty():
       """Performs matching when the rows of similarity matrix are empty.
@@ -98,9 +115,11 @@ class BoxMatcher:
       Returns:
         matches:  int32 tensor indicating the row each column matches to.
       """
-      static_shape = similarity_matrix.shape.as_list()
-      num_cols = static_shape[1] or tf.shape(similarity_matrix)[1]
-      return -1 * tf.ones([num_cols], dtype=tf.int32)
+      with tf.name_scope('empty_gt_boxes'):
+        matches = tf.zeros([batch_size, num_rows], dtype=tf.int32)
+        match_labels = self._negative_value * tf.ones(
+            [batch_size, num_rows], dtype=tf.int32)
+        return matches, match_labels
 
     def _match_when_rows_are_non_empty():
       """Performs matching when the rows of similarity matrix are non empty.
@@ -109,49 +128,74 @@ class BoxMatcher:
         matches:  int32 tensor indicating the row each column matches to.
       """
       # Matches for each column
-      matches = tf.argmax(input=similarity_matrix, axis=0, output_type=tf.int32)
+      with tf.name_scope('non_empty_gt_boxes'):
+        matches = tf.argmax(similarity_matrix, axis=-1, output_type=tf.int32)
 
-      # Deal with matched and unmatched threshold
-      if self._positive_threshold is not None:
         # Get logical indices of ignored and unmatched columns as tf.int64
-        matched_vals = tf.reduce_max(similarity_matrix, axis=0)
-        below_negative_threshold = tf.greater(self._negative_threshold,
-                                              matched_vals)
+        matched_vals = tf.reduce_max(similarity_matrix, axis=-1)
+        matched_labels = self._positive_value * tf.ones(
+            [batch_size, num_rows], tf.int32)
+
+        positive_threshold = tf.cast(
+            self._positive_threshold, matched_vals.dtype)
+        negative_threshold = tf.cast(
+            self._negative_threshold, matched_vals.dtype)
+        below_negative_threshold = tf.greater(negative_threshold, matched_vals)
         between_thresholds = tf.logical_and(
-            tf.greater_equal(matched_vals, self._negative_threshold),
-            tf.greater(self._positive_threshold, matched_vals))
+            tf.greater_equal(matched_vals, negative_threshold),
+            tf.greater(positive_threshold, matched_vals))
 
-        matches = self._set_values_using_indicator(matches,
-                                                   below_negative_threshold,
-                                                   self._negative_value)
-        matches = self._set_values_using_indicator(matches,
-                                                   between_thresholds,
-                                                   self._ignore_value)
+        if self._negative_lower_than_ignore:
+          matched_labels = self._set_values_using_indicator(
+              matched_labels, below_negative_threshold, self._negative_value)
+          matched_labels = self._set_values_using_indicator(
+              matched_labels, between_thresholds, self._ignore_value)
+        else:
+          matched_labels = self._set_values_using_indicator(
+              matched_labels, below_negative_threshold, self._ignore_value)
+          matched_labels = self._set_values_using_indicator(
+              matched_labels, between_thresholds, self._negative_value)
 
-      if self._force_match_for_each_row:
-        num_gt_boxes = similarity_matrix.shape.as_list()[1] or tf.shape(
-            similarity_matrix)[1]
-        force_match_column_ids = tf.argmax(
-            input=similarity_matrix, axis=1, output_type=tf.int32)
-        force_match_column_indicators = tf.one_hot(
-            force_match_column_ids, depth=num_gt_boxes)
-        force_match_row_ids = tf.argmax(
-            input=force_match_column_indicators, axis=0, output_type=tf.int32)
-        force_match_column_mask = tf.cast(
-            tf.reduce_max(force_match_column_indicators, axis=0),
-            tf.bool)
-        final_matches = tf.where(force_match_column_mask, force_match_row_ids,
-                                 matches)
-        return final_matches
-      else:
-        return matches
+        if self._force_match_for_each_col:
+          # [batch_size, M], for each col (groundtruth_box), find the best
+          # matching row (anchor).
+          force_match_column_ids = tf.argmax(
+              input=similarity_matrix, axis=1, output_type=tf.int32)
+          # [batch_size, M, N]
+          force_match_column_indicators = tf.one_hot(
+              force_match_column_ids, depth=num_rows)
+          # [batch_size, N], for each row (anchor), find the largest column
+          # index for groundtruth box
+          force_match_row_ids = tf.argmax(
+              input=force_match_column_indicators, axis=1, output_type=tf.int32)
+          # [batch_size, N]
+          force_match_column_mask = tf.cast(
+              tf.reduce_max(force_match_column_indicators, axis=1),
+              tf.bool)
+          # [batch_size, N]
+          final_matches = tf.where(force_match_column_mask, force_match_row_ids,
+                                   matches)
+          final_matched_labels = tf.where(
+              force_match_column_mask,
+              self._positive_value * tf.ones(
+                  [batch_size, num_rows], dtype=tf.int32),
+              matched_labels)
+          return final_matches, final_matched_labels
+        else:
+          return matches, matched_labels
 
-    num_gt_boxes = similarity_matrix.shape.as_list()[0] or tf.shape(
-        similarity_matrix)[0]
-    return tf.cond(
+    num_gt_boxes = similarity_matrix.shape.as_list()[-1] or tf.shape(
+        similarity_matrix)[-1]
+    result_match, result_match_labels = tf.cond(
         pred=tf.greater(num_gt_boxes, 0),
         true_fn=_match_when_rows_are_non_empty,
         false_fn=_match_when_rows_are_empty)
+
+    if squeeze_result:
+      result_match = tf.squeeze(result_match, axis=0)
+      result_match_labels = tf.squeeze(result_match_labels, axis=0)
+
+    return result_match, result_match_labels
 
   def _set_values_using_indicator(self, x, indicator, val):
     """Set the indicated fields of x to val.
