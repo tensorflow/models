@@ -15,9 +15,12 @@
 """A light weight utilities to train TF2 models."""
 
 import time
+
 from typing import Callable, Dict, Optional, Text, Union
+
 from absl import logging
 import numpy as np
+
 from orbit import runner
 from orbit import utils
 
