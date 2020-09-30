@@ -17,14 +17,17 @@
 from typing import Text, Optional, Dict
 
 # Import libraries
+import dataclasses
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.modeling.hyperparams import base_config
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 regularizers = tf.keras.regularizers
+
 
 class Conv2DBNBlock(tf.keras.layers.Layer):
   """A convolution block with batch normalization."""
@@ -135,6 +138,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       x = self._norm0(x)
     return self._activation_fn(x)
 
+
 """
 Architecture: https://arxiv.org/abs/1704.04861.
 
@@ -176,23 +180,23 @@ MNV2_BLOCK_SPECS = {
                           'expand_ratio'],
     'block_specs': [
         ('convbn', 3, 2, 32, None),
-        ('invertedresidual', 3, 1, 16, 1.),
-        ('invertedresidual', 3, 2, 24, 6.),
-        ('invertedresidual', 3, 1, 24, 6.),
-        ('invertedresidual', 3, 2, 32, 6.),
-        ('invertedresidual', 3, 1, 32, 6.),
-        ('invertedresidual', 3, 1, 32, 6.),
-        ('invertedresidual', 3, 2, 64, 6.),
-        ('invertedresidual', 3, 1, 64, 6.),
-        ('invertedresidual', 3, 1, 64, 6.),
-        ('invertedresidual', 3, 1, 64, 6.),
-        ('invertedresidual', 3, 1, 96, 6.),
-        ('invertedresidual', 3, 1, 96, 6.),
-        ('invertedresidual', 3, 1, 96, 6.),
-        ('invertedresidual', 3, 2, 160, 6.),
-        ('invertedresidual', 3, 1, 160, 6.),
-        ('invertedresidual', 3, 1, 160, 6.),
-        ('invertedresidual', 3, 1, 320, 6.),
+        ('invertedbottleneck', 3, 1, 16, 1.),
+        ('invertedbottleneck', 3, 2, 24, 6.),
+        ('invertedbottleneck', 3, 1, 24, 6.),
+        ('invertedbottleneck', 3, 2, 32, 6.),
+        ('invertedbottleneck', 3, 1, 32, 6.),
+        ('invertedbottleneck', 3, 1, 32, 6.),
+        ('invertedbottleneck', 3, 2, 64, 6.),
+        ('invertedbottleneck', 3, 1, 64, 6.),
+        ('invertedbottleneck', 3, 1, 64, 6.),
+        ('invertedbottleneck', 3, 1, 64, 6.),
+        ('invertedbottleneck', 3, 1, 96, 6.),
+        ('invertedbottleneck', 3, 1, 96, 6.),
+        ('invertedbottleneck', 3, 1, 96, 6.),
+        ('invertedbottleneck', 3, 2, 160, 6.),
+        ('invertedbottleneck', 3, 1, 160, 6.),
+        ('invertedbottleneck', 3, 1, 160, 6.),
+        ('invertedbottleneck', 3, 1, 320, 6.),
         ('convbn', 1, 2, 1280, None),
     ]
 }
@@ -211,21 +215,21 @@ MNV3Large_BLOCK_SPECS = {
                           'use_normalization', 'use_bias'],
     'block_specs': [
         ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False),
-        ('invertedresidual', 3, 1, 16, 'relu', None, 1., None, False),
-        ('invertedresidual', 3, 2, 24, 'relu', None, 4., None, False),
-        ('invertedresidual', 3, 1, 24, 'relu', None, 3., None, False),
-        ('invertedresidual', 5, 2, 40, 'relu', 1. / 4, 3., None, False),
-        ('invertedresidual', 5, 1, 40, 'relu', 1. / 4, 3., None, False),
-        ('invertedresidual', 5, 1, 40, 'relu', 1. / 4, 3., None, False),
-        ('invertedresidual', 3, 2, 80, 'hard_swish', None, 6., None, False),
-        ('invertedresidual', 3, 1, 80, 'hard_swish', None, 2.5, None, False),
-        ('invertedresidual', 3, 1, 80, 'hard_swish', None, 2.3, None, False),
-        ('invertedresidual', 3, 1, 80, 'hard_swish', None, 2.3, None, False),
-        ('invertedresidual', 3, 1, 112, 'hard_swish', 1. / 4, 6., None, False),
-        ('invertedresidual', 3, 1, 112, 'hard_swish', 1. / 4, 6., None, False),
-        ('invertedresidual', 5, 2, 160, 'hard_swish', 1. / 4, 6., None, False),
-        ('invertedresidual', 5, 1, 160, 'hard_swish', 1. / 4, 6., None, False),
-        ('invertedresidual', 5, 1, 160, 'hard_swish', 1. / 4, 6., None, False),
+        ('invertedbottleneck', 3, 1, 16, 'relu', None, 1., None, False),
+        ('invertedbottleneck', 3, 2, 24, 'relu', None, 4., None, False),
+        ('invertedbottleneck', 3, 1, 24, 'relu', None, 3., None, False),
+        ('invertedbottleneck', 5, 2, 40, 'relu', 0.25, 3., None, False),
+        ('invertedbottleneck', 5, 1, 40, 'relu', 0.25, 3., None, False),
+        ('invertedbottleneck', 5, 1, 40, 'relu', 0.25, 3., None, False),
+        ('invertedbottleneck', 3, 2, 80, 'hard_swish', None, 6., None, False),
+        ('invertedbottleneck', 3, 1, 80, 'hard_swish', None, 2.5, None, False),
+        ('invertedbottleneck', 3, 1, 80, 'hard_swish', None, 2.3, None, False),
+        ('invertedbottleneck', 3, 1, 80, 'hard_swish', None, 2.3, None, False),
+        ('invertedbottleneck', 3, 1, 112, 'hard_swish', 0.25, 6., None, False),
+        ('invertedbottleneck', 3, 1, 112, 'hard_swish', 0.25, 6., None, False),
+        ('invertedbottleneck', 5, 2, 160, 'hard_swish', 0.25, 6., None, False),
+        ('invertedbottleneck', 5, 1, 160, 'hard_swish', 0.25, 6., None, False),
+        ('invertedbottleneck', 5, 1, 160, 'hard_swish', 0.25, 6., None, False),
         ('convbn', 1, 1, 960, 'hard_swish', None, None, True, False),
         ('gpooling', None, None, None, None, None, None, None, None),
         ('convbn', 1, 1, 1280, 'hard_swish', None, None, False, True),
@@ -239,17 +243,17 @@ MNV3Small_BLOCK_SPECS = {
                           'use_normalization', 'use_bias'],
     'block_specs': [
         ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False),
-        ('invertedresidual', 3, 2, 16, 'relu', 1. / 4, 1, None, False),
-        ('invertedresidual', 3, 2, 24, 'relu', None, 72. / 16, None, False),
-        ('invertedresidual', 3, 1, 24, 'relu', None, 88. / 24, None, False),
-        ('invertedresidual', 5, 2, 40, 'hard_swish', 1. / 4, 4., None, False),
-        ('invertedresidual', 5, 1, 40, 'hard_swish', 1. / 4, 6., None, False),
-        ('invertedresidual', 5, 1, 40, 'hard_swish', 1. / 4, 6., None, False),
-        ('invertedresidual', 5, 1, 48, 'hard_swish', 1. / 4, 3., None, False),
-        ('invertedresidual', 5, 1, 48, 'hard_swish', 1. / 4, 3., None, False),
-        ('invertedresidual', 5, 2, 96, 'hard_swish', 1. / 4, 6., None, False),
-        ('invertedresidual', 5, 1, 96, 'hard_swish', 1. / 4, 6., None, False),
-        ('invertedresidual', 5, 1, 96, 'hard_swish', 1. / 4, 6., None, False),
+        ('invertedbottleneck', 3, 2, 16, 'relu', 0.25, 1, None, False),
+        ('invertedbottleneck', 3, 2, 24, 'relu', None, 72. / 16, None, False),
+        ('invertedbottleneck', 3, 1, 24, 'relu', None, 88. / 24, None, False),
+        ('invertedbottleneck', 5, 2, 40, 'hard_swish', 0.25, 4., None, False),
+        ('invertedbottleneck', 5, 1, 40, 'hard_swish', 0.25, 6., None, False),
+        ('invertedbottleneck', 5, 1, 40, 'hard_swish', 0.25, 6., None, False),
+        ('invertedbottleneck', 5, 1, 48, 'hard_swish', 0.25, 3., None, False),
+        ('invertedbottleneck', 5, 1, 48, 'hard_swish', 0.25, 3., None, False),
+        ('invertedbottleneck', 5, 2, 96, 'hard_swish', 0.25, 6., None, False),
+        ('invertedbottleneck', 5, 1, 96, 'hard_swish', 0.25, 6., None, False),
+        ('invertedbottleneck', 5, 1, 96, 'hard_swish', 0.25, 6., None, False),
         ('convbn', 1, 1, 576, 'hard_swish', None, None, True, False),
         ('gpooling', None, None, None, None, None, None, None, None),
         ('convbn', 1, 1, 1024, 'hard_swish', None, None, False, True),
@@ -267,28 +271,28 @@ MNV3EdgeTPU_BLOCK_SPECS = {
                           'use_residual', 'use_depthwise'],
     'block_specs': [
         ('convbn', 3, 2, 32, 'relu', None, None, None, None),
-        ('invertedresidual', 3, 1, 16, 'relu', None, 1., True, False),
-        ('invertedresidual', 3, 2, 32, 'relu', None, 8., True, False),
-        ('invertedresidual', 3, 1, 32, 'relu', None, 4., True, False),
-        ('invertedresidual', 3, 1, 32, 'relu', None, 4., True, False),
-        ('invertedresidual', 3, 1, 32, 'relu', None, 4., True, False),
-        ('invertedresidual', 3, 2, 48, 'relu', None, 8., True, False),
-        ('invertedresidual', 3, 1, 48, 'relu', None, 4., True, False),
-        ('invertedresidual', 3, 1, 48, 'relu', None, 4., True, False),
-        ('invertedresidual', 3, 1, 48, 'relu', None, 4., True, False),
-        ('invertedresidual', 3, 2, 96, 'relu', None, 8., True, True),
-        ('invertedresidual', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedresidual', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedresidual', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedresidual', 3, 1, 96, 'relu', None, 8., False, True),
-        ('invertedresidual', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedresidual', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedresidual', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedresidual', 5, 2, 160, 'relu', None, 8., True, True),
-        ('invertedresidual', 5, 1, 160, 'relu', None, 4., True, True),
-        ('invertedresidual', 5, 1, 160, 'relu', None, 4., True, True),
-        ('invertedresidual', 5, 1, 160, 'relu', None, 4., True, True),
-        ('invertedresidual', 3, 1, 192, 'relu', None, 8., True, True),
+        ('invertedbottleneck', 3, 1, 16, 'relu', None, 1., True, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', None, 8., True, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False),
+        ('invertedbottleneck', 3, 2, 48, 'relu', None, 8., True, False),
+        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False),
+        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False),
+        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False),
+        ('invertedbottleneck', 3, 2, 96, 'relu', None, 8., True, True),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 8., False, True),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 5, 2, 160, 'relu', None, 8., True, True),
+        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True),
+        ('invertedbottleneck', 3, 1, 192, 'relu', None, 8., True, True),
         ('convbn', 1, 1, 1280, 'relu', None, None, None, None),
     ]
 }
@@ -302,34 +306,23 @@ SUPPORTED_SPECS_MAP = {
 }
 
 
-class BlockSpec(object):
+@dataclasses.dataclass
+class BlockSpec(base_config.Config):
   """A container class that specifies the block configuration for MobileNet."""
 
-  def __init__(self,
-               block_fn: Text = 'convbn',
-               kernel_size: int = 3,
-               strides: int = 1,
-               filters: int = 32,
-               use_bias: bool = False,
-               use_normalization: bool = True,
-               activation: Text = 'relu6',
-               # used for block type InvertedResConv
-               expand_ratio: Optional[float] = 6.,
-               # used for block type InvertedResConv with SE
-               se_ratio: Optional[float] = None,
-               use_depthwise: bool = True,
-               use_residual: bool = True, ):
-    self.block_fn = block_fn
-    self.kernel_size = kernel_size
-    self.strides = strides
-    self.filters = filters
-    self.use_bias = use_bias
-    self.use_normalization = use_normalization
-    self.activation = activation
-    self.expand_ratio = expand_ratio
-    self.se_ratio = se_ratio
-    self.use_depthwise = use_depthwise
-    self.use_residual = use_residual
+  block_fn: Text = 'convbn'
+  kernel_size: int = 3
+  strides: int = 1
+  filters: int = 32
+  use_bias: bool = False
+  use_normalization: bool = True
+  activation: Text = 'relu6'
+  # used for block type InvertedResConv
+  expand_ratio: Optional[float] = 6.
+  # used for block type InvertedResConv with SE
+  se_ratio: Optional[float] = None
+  use_depthwise: bool = True
+  use_residual: bool = True
 
 
 def block_spec_decoder(specs: Dict,
@@ -583,7 +576,7 @@ class MobileNet(tf.keras.Model):
             norm_epsilon=self._norm_epsilon,
         )(net)
 
-      elif block_def.block_fn == 'invertedresidual':
+      elif block_def.block_fn == 'invertedbottleneck':
         use_rate = rate
         if layer_rate > 1 and block_def.kernel_size != 1:
           # We will apply atrous rate in the following cases:
