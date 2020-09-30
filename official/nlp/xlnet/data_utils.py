@@ -167,8 +167,7 @@ def get_input_iterator(input_fn, strategy):
   # pass callable that returns a dataset.
   input_data = input_fn()
   if callable(input_data):
-    iterator = iter(
-        strategy.experimental_distribute_datasets_from_function(input_data))
+    iterator = iter(strategy.distribute_datasets_from_function(input_data))
   else:
     iterator = iter(strategy.experimental_distribute_dataset(input_data))
   return iterator
@@ -189,7 +188,7 @@ def get_classification_input_data(batch_size, seq_len, strategy, is_training,
               strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
@@ -222,7 +221,7 @@ def get_squad_input_data(batch_size, seq_len, q_len, strategy, is_training,
               strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
@@ -624,7 +623,7 @@ def get_pretrain_input_data(batch_size,
               strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
