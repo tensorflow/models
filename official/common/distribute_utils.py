@@ -16,10 +16,6 @@
 
 import json
 import os
-import random
-import string
-
-from absl import logging
 import tensorflow as tf
 
 
@@ -165,7 +161,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
         cross_device_ops=_mirrored_cross_device_ops(all_reduce_alg, num_packs))
 
   if distribution_strategy == "parameter_server":
-    return tf.distribute.experimental.ParameterServerStrategy()
+    return tf.compat.v1.distribute.experimental.ParameterServerStrategy()
 
   raise ValueError("Unrecognized Distribution Strategy: %r" %
                    distribution_strategy)
