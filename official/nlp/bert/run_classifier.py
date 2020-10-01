@@ -325,8 +325,7 @@ def get_predictions_and_labels(strategy,
       tf.experimental.async_clear_error()
     return preds, golds
 
-  test_iter = iter(
-      strategy.experimental_distribute_datasets_from_function(eval_input_fn))
+  test_iter = iter(strategy.distribute_datasets_from_function(eval_input_fn))
   predictions, labels = _run_evaluation(test_iter)
 
   return predictions, labels

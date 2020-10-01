@@ -207,8 +207,7 @@ class DistributedExecutor(object):
     # across workers. Since Dataset instance cannot be cloned in eager mode,
     # we instead pass callable that returns a dataset.
     if self._is_multi_host:
-      return iter(
-          strategy.experimental_distribute_datasets_from_function(input_fn))
+      return iter(strategy.distribute_datasets_from_function(input_fn))
     else:
       input_data = input_fn()
       return iter(strategy.experimental_distribute_dataset(input_data))

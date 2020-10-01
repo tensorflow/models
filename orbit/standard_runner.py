@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""An abstraction that users can easily handle their custom training loops."""
+"""AbstractTrainer/Evaluator implementations for standard settings."""
 
 import abc
+
 from typing import Any, Dict, Optional, Text
+
 import dataclasses
+
 from orbit import runner
-from orbit import utils
+from orbit.utils import loop_fns
+
 import tensorflow as tf
 
 
@@ -45,6 +49,21 @@ class StandardTrainerOptions:
   use_tpu_summary_optimization: bool = False
 
 
+def _create_train_loop_fn(train_step_fn, options: StandardTrainerOptions):
+  """Creates a training loop from the given step function and options."""
+  if options.use_tf_while_loop:
+    loop_fn = loop_fns.create_tf_while_loop_fn(train_step_fn)
+    if options.use_tpu_summary_optimization:
+      loop_fn = loop_fns.LoopFnWithSummaries(loop_fn)
+    else:
+      loop_fn = tf.function(loop_fn)
+  else:
+    if options.use_tf_function:
+      train_step_fn = tf.function(train_step_fn)
+    loop_fn = loop_fns.create_loop_fn(train_step_fn)
+  return loop_fn
+
+
 class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
   """Implements the standard functionality of AbstractTrainer APIs."""
 
@@ -64,35 +83,24 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
       raise ValueError("`use_tpu_summary_optimization=True` and "
                        "`use_tf_while_loop=False` is not supported")
 
-    self._use_tf_while_loop = options.use_tf_while_loop
-    self._use_tf_function = options.use_tf_function
-    self._use_tpu_summary_optimization = options.use_tpu_summary_optimization
-
+    self._train_options = options
     self._train_dataset = train_dataset
     self._train_iter = None
     self._train_loop_fn = None
 
-  def train(self,
-            num_steps: Optional[tf.Tensor]) -> Optional[Dict[Text, tf.Tensor]]:
+  def train(
+      self,
+      num_steps: Optional[tf.Tensor],
+  ) -> Optional[Dict[Text, tf.Tensor]]:
     """See base class."""
     self.train_loop_begin()
 
+    if self._train_loop_fn is None:
+      self._train_loop_fn = _create_train_loop_fn(
+          self.train_step, options=self._train_options)
+
     if self._train_iter is None:
       self._train_iter = tf.nest.map_structure(iter, self.train_dataset)
-
-    if self._train_loop_fn is None:
-      train_fn = self.train_step
-      if self._use_tf_while_loop:
-        self._train_loop_fn = utils.create_tf_while_loop_fn(train_fn)
-        if self._use_tpu_summary_optimization:
-          self._train_loop_fn = utils.train_function_with_summaries(
-              self._train_loop_fn)
-        else:
-          self._train_loop_fn = tf.function(self._train_loop_fn)
-      else:
-        if self._use_tf_function:
-          train_fn = tf.function(train_fn)
-        self._train_loop_fn = utils.create_loop_fn(train_fn)
 
     self._train_loop_fn(self._train_iter, num_steps)
     return self.train_loop_end()
@@ -172,6 +180,12 @@ class StandardEvaluatorOptions:
   use_tf_function: bool = True
 
 
+def _create_eval_loop_fn(eval_step_fn, options: StandardEvaluatorOptions):
+  if options.use_tf_function:
+    eval_step_fn = tf.function(eval_step_fn)
+  return loop_fns.create_loop_fn(eval_step_fn)
+
+
 class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
   """Implements the standard functionality of AbstractEvaluator APIs."""
 
@@ -183,25 +197,25 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
         DistributedDataset.
       options: An `orbit.StandardEvaluatorOptions` instance.
     """
-    options = options or StandardEvaluatorOptions()
-    self._eval_use_tf_function = options.use_tf_function
+    self._eval_options = options or StandardEvaluatorOptions()
     self._eval_dataset = eval_dataset
     self._eval_loop_fn = None
 
   def evaluate(
-      self, num_steps: Optional[tf.Tensor]) -> Optional[Dict[Text, tf.Tensor]]:
+      self,
+      num_steps: Optional[tf.Tensor],
+  ) -> Optional[Dict[Text, tf.Tensor]]:
     """See base class."""
     outputs = self.eval_begin()  # pylint: disable=assignment-from-no-return
 
-    eval_iter = tf.nest.map_structure(iter, self.eval_dataset)
     if self._eval_loop_fn is None:
-      eval_fn = self.eval_step
-      if self._eval_use_tf_function:
-        eval_fn = tf.function(eval_fn)
-      self._eval_loop_fn = utils.create_loop_fn(eval_fn)
+      self._eval_loop_fn = _create_eval_loop_fn(
+          self.eval_step, options=self._eval_options)
 
+    eval_iter = tf.nest.map_structure(iter, self.eval_dataset)
     outputs = self._eval_loop_fn(
         eval_iter, num_steps, state=outputs, reduce_fn=self.eval_reduce)
+
     if outputs is None:
       return self.eval_end()
     else:

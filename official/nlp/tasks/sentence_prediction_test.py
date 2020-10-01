@@ -80,7 +80,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     metrics = task.build_metrics()
 
     strategy = tf.distribute.get_strategy()
-    dataset = strategy.experimental_distribute_datasets_from_function(
+    dataset = strategy.distribute_datasets_from_function(
         functools.partial(task.build_inputs, config.train_data))
 
     iterator = iter(dataset)
