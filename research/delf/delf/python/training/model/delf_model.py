@@ -137,28 +137,34 @@ class Delf(tf.keras.Model):
     self.attn_classification = layers.Dense(
         num_classes, activation=None, kernel_regularizer=None, name='att_fc')
 
-  @property
-  def desc_trainable_weights(self):
-    """Weights to optimize for descriptor fine tuning."""
-    return (self.backbone.trainable_weights +
-            self.desc_classification.trainable_weights)
+  def global_and_local_forward_pass(self, images, training=True):
+    """Run a forward to calculate global descriptor and attention prelogits.
 
-  @property
-  def attn_trainable_weights(self):
-    """Weights to optimize for attention model training."""
-    return (self.attention.trainable_weights +
-            self.attn_classification.trainable_weights)
+    Args:
+      images: Tensor containing the dataset on which to run the forward pass.
+      training: Indicator of wether the forward pass is running in training mode
+        or not.
+
+    Returns:
+      Global descriptor prelogits, attention prelogits, attention scores,
+        backbone weights.
+    """
+    backbone_blocks = {}
+    desc_prelogits = self.backbone.build_call(
+        images, intermediates_dict=backbone_blocks, training=training)
+    # Prevent gradients from propagating into the backbone. See DELG paper:
+    # https://arxiv.org/abs/2001.05027.
+    block3 = backbone_blocks['block3']  # pytype: disable=key-error
+    block3 = tf.stop_gradient(block3)
+    attn_prelogits, attn_scores, _ = self.attention(block3, training=training)
+    return desc_prelogits, attn_prelogits, attn_scores, backbone_blocks
 
   def build_call(self, input_image, training=True):
-    blocks = {}
-
-    global_feature = self.backbone.build_call(
-        input_image, intermediates_dict=blocks, training=training)
-
-    features = blocks['block3']  # pytype: disable=key-error
-    _, probs, _ = self.attention(features, training=training)
-
-    return global_feature, probs, features
+    (global_feature, _, attn_scores,
+     backbone_blocks) = self.global_and_local_forward_pass(input_image,
+                                                           training)
+    features = backbone_blocks['block3']  # pytype: disable=key-error
+    return global_feature, attn_scores, features
 
   def call(self, input_image, training=True):
     _, probs, features = self.build_call(input_image, training=training)

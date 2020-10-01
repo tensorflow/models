@@ -245,7 +245,8 @@ def MakeExtractor(config):
           feature_extractor.DelfFeaturePostProcessing(
               boxes, raw_local_descriptors, config.delf_local_config.use_pca,
               local_pca_parameters))
-      locations /= scale_factors
+      if not config.delf_local_config.use_resized_coordinates:
+        locations /= scale_factors
 
       extracted_features.update({
           'local_features': {
