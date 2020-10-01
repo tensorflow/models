@@ -178,7 +178,9 @@ class RetinaNetTask(base_task.Task):
 
     if not training:
       self.coco_metric = coco_evaluator.COCOEvaluator(
-          annotation_file=None, include_mask=False)
+          annotation_file=self._task_config.annotation_file,
+          include_mask=False,
+          per_category_metrics=self._task_config.per_category_metrics)
 
     return metrics
 
