@@ -128,6 +128,7 @@ class RetinaNetTask(cfg.TaskConfig):
   losses: Losses = Losses()
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
+  annotation_file: Optional[str] = None
   gradient_clip_norm: float = 0.0
   per_category_metrics = False
 
@@ -160,6 +161,8 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
       task=RetinaNetTask(
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',
           init_checkpoint_modules='backbone',
+          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
+                                       'instances_val2017.json'),
           model=RetinaNet(
               num_classes=91,
               input_size=[640, 640, 3],
@@ -230,6 +233,8 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='float32'),
       task=RetinaNetTask(
+          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
+                                       'instances_val2017.json'),
           model=RetinaNet(
               backbone=backbones.Backbone(
                   type='spinenet',
