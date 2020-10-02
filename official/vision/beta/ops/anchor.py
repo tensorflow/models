@@ -135,8 +135,8 @@ class AnchorLabeler(object):
     self.similarity_calc = keras_cv.ops.IouSimilarity()
     self.anchor_labeler = keras_cv.ops.AnchorLabeler()
     self.matcher = keras_cv.ops.BoxMatcher(
-        positive_threshold=match_threshold,
-        negative_threshold=unmatched_threshold,
+        thresholds=[unmatched_threshold, match_threshold],
+        indicators=[-1, -2, 1],
         force_match_for_each_col=True)
     self.box_coder = faster_rcnn_box_coder.FasterRcnnBoxCoder()
 
