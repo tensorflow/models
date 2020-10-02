@@ -141,7 +141,7 @@ class EncoderScaffold(tf.keras.Model):
           shape=(seq_length,), dtype=tf.int32, name='input_type_ids')
       inputs = [word_ids, mask, type_ids]
 
-      self._embedding_layer = layers.OnDeviceEmbedding(
+      self._embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
           initializer=embedding_cfg['initializer'],
@@ -150,13 +150,13 @@ class EncoderScaffold(tf.keras.Model):
       word_embeddings = self._embedding_layer(word_ids)
 
       # Always uses dynamic slicing for simplicity.
-      self._position_embedding_layer = keras_nlp.PositionEmbedding(
+      self._position_embedding_layer = keras_nlp.layers.PositionEmbedding(
           initializer=embedding_cfg['initializer'],
           max_length=embedding_cfg['max_seq_length'],
           name='position_embedding')
       position_embeddings = self._position_embedding_layer(word_embeddings)
 
-      self._type_embedding_layer = layers.OnDeviceEmbedding(
+      self._type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['type_vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
           initializer=embedding_cfg['initializer'],

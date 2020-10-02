@@ -92,38 +92,5 @@ class CachedAttentionTest(keras_parameterized.TestCase):
     self.assertEqual(cache["value"].shape, (3, 4, 2, 2))
 
 
-@keras_parameterized.run_all_keras_modes
-class MultiHeadRelativeAttentionTest(keras_parameterized.TestCase):
-
-  def test_attention_scores(self):
-    num_heads = 12
-    key_dim = 64
-    value_dim = 32
-    seq_length = 8
-    batch_size = 2
-    test_layer = attention.MultiHeadRelativeAttention(
-        num_heads=num_heads,
-        key_dim=key_dim,
-        value_dim=value_dim)
-    query = tf.random.normal(
-        shape=(batch_size, seq_length, key_dim))
-    value = query
-    relative_position_encoding = tf.random.normal(
-        shape=(batch_size, seq_length * 2, key_dim))
-    content_attention_bias = tf.random.normal(
-        shape=(num_heads, key_dim))
-    positional_attention_bias = tf.random.normal(
-        shape=(num_heads, key_dim))
-    output = test_layer(
-        query=query,
-        value=value,
-        content_attention_bias=content_attention_bias,
-        positional_attention_bias=positional_attention_bias,
-        relative_position_encoding=relative_position_encoding,
-        state=None,
-        attention_mask=None)
-    self.assertEqual(output.shape, [batch_size, seq_length, key_dim])
-
-
 if __name__ == "__main__":
   tf.test.main()

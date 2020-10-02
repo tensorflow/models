@@ -29,16 +29,18 @@ from official.modeling import optimization
 from official.utils.misc import keras_utils
 
 
-def get_callbacks(model_checkpoint: bool = True,
-                  include_tensorboard: bool = True,
-                  time_history: bool = True,
-                  track_lr: bool = True,
-                  write_model_weights: bool = True,
-                  apply_moving_average: bool = False,
-                  initial_step: int = 0,
-                  batch_size: int = 0,
-                  log_steps: int = 0,
-                  model_dir: str = None) -> List[tf.keras.callbacks.Callback]:
+def get_callbacks(
+    model_checkpoint: bool = True,
+    include_tensorboard: bool = True,
+    time_history: bool = True,
+    track_lr: bool = True,
+    write_model_weights: bool = True,
+    apply_moving_average: bool = False,
+    initial_step: int = 0,
+    batch_size: int = 0,
+    log_steps: int = 0,
+    model_dir: str = None,
+    backup_and_restore: bool = False) -> List[tf.keras.callbacks.Callback]:
   """Get all callbacks."""
   model_dir = model_dir or ''
   callbacks = []
@@ -47,6 +49,10 @@ def get_callbacks(model_checkpoint: bool = True,
     callbacks.append(
         tf.keras.callbacks.ModelCheckpoint(
             ckpt_full_path, save_weights_only=True, verbose=1))
+  if backup_and_restore:
+    backup_dir = os.path.join(model_dir, 'tmp')
+    callbacks.append(
+        tf.keras.callbacks.experimental.BackupAndRestore(backup_dir))
   if include_tensorboard:
     callbacks.append(
         CustomTensorBoard(

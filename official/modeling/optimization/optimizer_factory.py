@@ -144,6 +144,12 @@ class OptimizerFactory(object):
     """
 
     optimizer_dict = self._optimizer_config.as_dict()
+    ## Delete clipnorm and clipvalue if None
+    if optimizer_dict['clipnorm'] is None:
+      del optimizer_dict['clipnorm']
+    if optimizer_dict['clipvalue'] is None:
+      del optimizer_dict['clipvalue']
+
     optimizer_dict['learning_rate'] = lr
 
     optimizer = OPTIMIZERS_CLS[self._optimizer_type](**optimizer_dict)

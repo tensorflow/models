@@ -19,6 +19,9 @@ message CenterNet {
   // Image resizer for preprocessing the input image.
   optional ImageResizer image_resizer = 3;
 
+  // If set, all task heads will be constructed with separable convolutions.
+  optional bool use_depthwise = 13 [default = false];
+
   // Parameters which are related to object detection task.
   message ObjectDetection {
     // The original fields are moved to ObjectCenterParams or deleted.
@@ -278,4 +281,9 @@ message CenterNetFeatureExtractor {
   // If set, will change channel order to be [blue, green, red]. This can be
   // useful to be compatible with some pre-trained feature extractors.
   optional bool bgr_ordering = 4 [default = false];
+
+  // If set, the feature upsampling layers will be constructed with
+  // separable convolutions. This is typically applied to feature pyramid
+  // network if any.
+  optional bool use_depthwise = 5 [default = false];
 }

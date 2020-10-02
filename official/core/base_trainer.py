@@ -39,9 +39,9 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
   def __init__(self,
                config: ExperimentConfig,
                task: base_task.Task,
+               model: tf.keras.Model,
                train: bool = True,
                evaluate: bool = True,
-               model=None,
                optimizer=None,
                checkpoint_exporter=None):
     """Initialize common trainer for TensorFlow models.
@@ -49,12 +49,12 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     Args:
       config: An `ExperimentConfig` instance specifying experiment config.
       task: A base_task.Task instance.
+      model: tf.keras.Model instance. If provided, it will be used instead of
+        building model using task.build_model(). Default to None.
       train: bool, whether or not this trainer will be used for training.
         default to True.
       evaluate: bool, whether or not this trainer will be used for evaluation.
         default to True.
-      model: tf.keras.Model instance. If provided, it will be used instead of
-        building model using task.build_model(). Default to None.
       optimizer: tf.keras.optimizers.Optimizer instance. If provided, it will
         used instead of the optimizer from config. Default to None.
       checkpoint_exporter: an object that has the `maybe_export_checkpoint`
@@ -65,8 +65,7 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     self._strategy = tf.distribute.get_strategy()
     self._config = config
     self._task = task
-
-    self._model = model or task.build_model()
+    self._model = model
 
     if optimizer is None:
       opt_factory = optimization.OptimizerFactory(

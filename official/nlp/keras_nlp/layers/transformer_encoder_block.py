@@ -14,11 +14,10 @@
 # ==============================================================================
 """Keras-based TransformerEncoder block layer."""
 
-# Import libraries
 import tensorflow as tf
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
+@tf.keras.utils.register_keras_serializable(package="keras_nlp")
 class TransformerEncoderBlock(tf.keras.layers.Layer):
   """TransformerEncoderBlock layer.
 
@@ -241,6 +240,9 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       input_tensor, attention_mask = (inputs, None)
 
     if self._output_range:
+      if self._norm_first:
+        source_tensor = input_tensor[:, 0:self._output_range, :]
+        input_tensor = self._attention_layer_norm(input_tensor)
       target_tensor = input_tensor[:, 0:self._output_range, :]
       attention_mask = attention_mask[:, 0:self._output_range, :]
     else:

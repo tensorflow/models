@@ -25,9 +25,8 @@ from absl import flags
 from absl import logging
 import tensorflow as tf
 import tensorflow_datasets as tfds
-
+from official.common import distribute_utils
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import model_helpers
 from official.vision.image_classification.resnet import common
 
@@ -82,12 +81,12 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
   Returns:
     Dictionary of training and eval stats.
   """
-  strategy = strategy_override or distribution_utils.get_distribution_strategy(
+  strategy = strategy_override or distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
       tpu_address=flags_obj.tpu)
 
-  strategy_scope = distribution_utils.get_strategy_scope(strategy)
+  strategy_scope = distribute_utils.get_strategy_scope(strategy)
 
   mnist = tfds.builder('mnist', data_dir=flags_obj.data_dir)
   if flags_obj.download:

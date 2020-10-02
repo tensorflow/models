@@ -25,6 +25,7 @@ import math
 from absl import logging
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
 from official.vision.beta.ops import spatial_transform_ops
 
@@ -349,7 +350,7 @@ class SpineNet(tf.keras.Model):
             block_spec.level > self._max_level):
           raise ValueError('Output level is out of range [{}, {}]'.format(
               self._min_level, self._max_level))
-        endpoints[block_spec.level] = x
+        endpoints[str(block_spec.level)] = x
 
     return endpoints
 
@@ -365,14 +366,14 @@ class SpineNet(tf.keras.Model):
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)(
-              net[level])
+              net[str(level)])
       x = self._norm(
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)(
               x)
       x = tf_utils.get_activation(self._activation_fn)(x)
-      endpoints[level] = x
+      endpoints[str(level)] = x
     return endpoints
 
   def _resample_with_alpha(self,
@@ -476,3 +477,36 @@ class SpineNet(tf.keras.Model):
   def output_specs(self):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_backbone_builder('spinenet')
+def build_spinenet(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds ResNet 3d backbone from a config."""
+  backbone_type = model_config.backbone.type
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+  assert backbone_type == 'spinenet', (f'Inconsistent backbone type '
+                                       f'{backbone_type}')
+
+  model_id = backbone_cfg.model_id
+  if model_id not in SCALING_MAP:
+    raise ValueError(
+        'SpineNet-{} is not a valid architecture.'.format(model_id))
+  scaling_params = SCALING_MAP[model_id]
+
+  return SpineNet(
+      input_specs=input_specs,
+      min_level=model_config.min_level,
+      max_level=model_config.max_level,
+      endpoints_num_filters=scaling_params['endpoints_num_filters'],
+      resample_alpha=scaling_params['resample_alpha'],
+      block_repeats=scaling_params['block_repeats'],
+      filter_size_scale=scaling_params['filter_size_scale'],
+      kernel_regularizer=l2_regularizer,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon)

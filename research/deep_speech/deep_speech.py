@@ -21,6 +21,7 @@ import os
 # pylint: disable=g-bad-import-order
 from absl import app as absl_app
 from absl import flags
+from absl import logging
 import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
@@ -225,7 +226,7 @@ def run_deep_speech(_):
   """Run deep speech training and eval loop."""
   tf.compat.v1.set_random_seed(flags_obj.seed)
   # Data preprocessing
-  tf.compat.v1.logging.info("Data preprocessing...")
+  logging.info("Data preprocessing...")
   train_speech_dataset = generate_dataset(flags_obj.train_data_dir)
   eval_speech_dataset = generate_dataset(flags_obj.eval_data_dir)
 
@@ -271,7 +272,7 @@ def run_deep_speech(_):
   total_training_cycle = (flags_obj.train_epochs //
                           flags_obj.epochs_between_evals)
   for cycle_index in range(total_training_cycle):
-    tf.compat.v1.logging.info("Starting a training cycle: %d/%d",
+    logging.info("Starting a training cycle: %d/%d",
                     cycle_index + 1, total_training_cycle)
 
     # Perform batch_wise dataset shuffling
@@ -282,7 +283,7 @@ def run_deep_speech(_):
     estimator.train(input_fn=input_fn_train)
 
     # Evaluation
-    tf.compat.v1.logging.info("Starting to evaluate...")
+    logging.info("Starting to evaluate...")
 
     eval_results = evaluate_model(
         estimator, eval_speech_dataset.speech_labels,
@@ -290,7 +291,7 @@ def run_deep_speech(_):
 
     # Log the WER and CER results.
     benchmark_logger.log_evaluation_result(eval_results)
-    tf.compat.v1.logging.info(
+    logging.info(
         "Iteration {}: WER = {:.2f}, CER = {:.2f}".format(
             cycle_index + 1, eval_results[_WER_KEY], eval_results[_CER_KEY]))
 
@@ -409,7 +410,7 @@ def main(_):
 
 
 if __name__ == "__main__":
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_deep_speech_flags()
   flags_obj = flags.FLAGS
   absl_app.run(main)

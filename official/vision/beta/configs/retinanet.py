@@ -129,6 +129,7 @@ class RetinaNetTask(cfg.TaskConfig):
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
   gradient_clip_norm: float = 0.0
+  per_category_metrics = False
 
 
 @exp_factory.register_config_factory('retinanet')

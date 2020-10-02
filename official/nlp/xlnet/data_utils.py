@@ -95,7 +95,6 @@ def file_based_input_fn_builder(input_file, name_to_features, batch_size,
 
       d = d.interleave(
           tf.data.TFRecordDataset,
-          sloppy=is_training,
           cycle_length=cycle_length)
 
       if is_training:
@@ -168,8 +167,7 @@ def get_input_iterator(input_fn, strategy):
   # pass callable that returns a dataset.
   input_data = input_fn()
   if callable(input_data):
-    iterator = iter(
-        strategy.experimental_distribute_datasets_from_function(input_data))
+    iterator = iter(strategy.distribute_datasets_from_function(input_data))
   else:
     iterator = iter(strategy.experimental_distribute_dataset(input_data))
   return iterator
@@ -190,7 +188,7 @@ def get_classification_input_data(batch_size, seq_len, strategy, is_training,
               strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
@@ -223,7 +221,7 @@ def get_squad_input_data(batch_size, seq_len, q_len, strategy, is_training,
               strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
@@ -495,7 +493,7 @@ def create_pretrain_dataset(file_names,
 
     # reshape back to fixed shape
     example["perm_mask"] = tf.reshape(perm_mask, [seq_len, seq_len])
-    example["input_k"] = tf.reshape(input_k, [seq_len])
+    example["input_ids"] = tf.reshape(input_k, [seq_len])
     example["input_q"] = tf.reshape(input_q, [seq_len])
 
     # Directly use raw inputs as the target
@@ -625,7 +623,7 @@ def get_pretrain_input_data(batch_size,
               strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
@@ -718,11 +716,9 @@ def parse_files_to_dataset(parser,
     cycle_length = min(8, len(file_paths))
     logging.info("Interleave %d files", cycle_length)
 
-    # `sloppy` mode means that the interleaving is not exact. This adds
-    # even more randomness to the training pipeline.
     dataset = dataset.apply(
         tf.data.experimental.parallel_interleave(
-            tf.data.TFRecordDataset, sloppy=True, cycle_length=cycle_length))
+            tf.data.TFRecordDataset, cycle_length=cycle_length))
     buffer_size = 2048
     logging.info("Perform sample-level shuffle with size %d", buffer_size)
     dataset = dataset.shuffle(buffer_size=buffer_size)

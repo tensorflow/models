@@ -14,9 +14,8 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for optimizer_factory.py."""
-
 from absl.testing import parameterized
-
+import numpy as np
 import tensorflow as tf
 
 from official.modeling.optimization import optimizer_factory
@@ -49,6 +48,49 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertIsInstance(optimizer, optimizer_cls)
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
+
+  @parameterized.parameters(
+      (None, None),
+      (1.0, None),
+      (None, 1.0))
+  def test_gradient_clipping(self, clipnorm, clipvalue):
+    params = {
+        'optimizer': {
+            'type': 'sgd',
+            'sgd': {
+                'clipnorm': clipnorm,
+                'clipvalue': clipvalue
+            }
+        },
+        'learning_rate': {
+            'type': 'constant',
+            'constant': {
+                'learning_rate': 1.0
+            }
+        }
+    }
+
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+    optimizer = opt_factory.build_optimizer(lr)
+
+    var0 = tf.Variable([1.0, 2.0])
+    var1 = tf.Variable([3.0, 4.0])
+
+    grads0 = tf.constant([0.1, 0.1])
+    grads1 = tf.constant([2.0, 3.0])
+
+    grads_and_vars = list(zip([grads0, grads1], [var0, var1]))
+    optimizer.apply_gradients(grads_and_vars)
+
+    self.assertAllClose(np.array([0.9, 1.9]), var0.numpy())
+    if clipvalue is not None:
+      self.assertAllClose(np.array([2.0, 3.0]), var1.numpy())
+    elif clipnorm is not None:
+      self.assertAllClose(np.array([2.4452999, 3.1679497]), var1.numpy())
+    else:
+      self.assertAllClose(np.array([1.0, 1.0]), var1.numpy())
 
   def test_missing_types(self):
     params = {'optimizer': {'type': 'sgd', 'sgd': {'momentum': 0.9}}}

@@ -208,6 +208,7 @@ class MaskRCNNTask(cfg.TaskConfig):
   init_checkpoint_modules: str = 'all'  # all or backbone
   annotation_file: Optional[str] = None
   gradient_clip_norm: float = 0.0
+  per_category_metrics = False
 
 
 COCO_INPUT_PATH_BASE = 'coco'

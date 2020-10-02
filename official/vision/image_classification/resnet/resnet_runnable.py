@@ -42,7 +42,7 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
               self.strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     self.batch_size = int(batch_size / self.strategy.num_replicas_in_sync)

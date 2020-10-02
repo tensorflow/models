@@ -17,7 +17,7 @@
 import tensorflow as tf
 
 
-@tf.keras.utils.register_keras_serializable(package="Text")
+@tf.keras.utils.register_keras_serializable(package="keras_nlp")
 class PositionEmbedding(tf.keras.layers.Layer):
   """Creates a positional embedding.
 
