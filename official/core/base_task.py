@@ -21,8 +21,6 @@ from typing import Any, Callable, Optional
 from absl import logging
 import tensorflow as tf
 
-from official.modeling.hyperparams import config_definitions as cfg
-
 
 class Task(tf.Module, metaclass=abc.ABCMeta):
   """A single-replica view of training procedure.
@@ -35,11 +33,12 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
   # Special keys in train/validate step returned logs.
   loss = "loss"
 
-  def __init__(self, params: cfg.TaskConfig, logging_dir: str = None):
+  def __init__(self, params, logging_dir: str = None):
     """Task initialization.
 
     Args:
-      params: cfg.TaskConfig instance.
+      params: the task configuration instance, which can be any of
+        dataclass, ConfigDict, namedtuple, etc.
       logging_dir: a string pointing to where the model, summaries etc. will be
         saved. You can also write additional stuff in this directory.
     """
@@ -47,7 +46,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     self._logging_dir = logging_dir
 
   @property
-  def task_config(self) -> cfg.TaskConfig:
+  def task_config(self):
     return self._task_config
 
   @property
@@ -55,7 +54,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     return self._logging_dir
 
   def initialize(self, model: tf.keras.Model):
-    """A callback function used as CheckpointManager's init_fn.
+    """[Optional] A callback function used as CheckpointManager's init_fn.
 
     This function will be called when no checkpoint is found for the model.
     If there is a checkpoint, the checkpoint will be loaded and this function
@@ -83,9 +82,8 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     logging.info("Finished loading pretrained checkpoint from %s",
                  ckpt_dir_or_file)
 
-  @abc.abstractmethod
   def build_model(self) -> tf.keras.Model:
-    """Creates model architecture.
+    """[Optional] Creates model architecture.
 
     Returns:
       A model instance.
@@ -128,7 +126,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def build_inputs(self,
-                   params: cfg.DataConfig,
+                   params,
                    input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a dataset or a nested structure of dataset functions.
 
@@ -136,7 +134,8 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     With distributed training, this method runs on remote hosts.
 
     Args:
-      params: hyperparams to create input pipelines.
+      params: hyperparams to create input pipelines, which can be any of
+        dataclass, ConfigDict, namedtuple, etc.
       input_context: optional distribution input pipeline context.
 
     Returns:

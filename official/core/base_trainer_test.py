@@ -54,15 +54,15 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 }
             })))
 
-  def create_test_trainer(self):
+  def create_test_trainer(self, config):
     task = mock_task.MockTask()
-    trainer = trainer_lib.Trainer(self._config, task)
+    trainer = trainer_lib.Trainer(config, task, model=task.build_model())
     return trainer
 
   @combinations.generate(all_strategy_combinations())
   def test_trainer_train(self, distribution):
     with distribution.scope():
-      trainer = self.create_test_trainer()
+      trainer = self.create_test_trainer(self._config)
       logs = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
       self.assertIn('training_loss', logs)
       self.assertIn('learning_rate', logs)
@@ -70,7 +70,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(all_strategy_combinations())
   def test_trainer_validate(self, distribution):
     with distribution.scope():
-      trainer = self.create_test_trainer()
+      trainer = self.create_test_trainer(self._config)
       logs = trainer.evaluate(tf.convert_to_tensor(5, dtype=tf.int32))
       self.assertIn('validation_loss', logs)
       self.assertEqual(logs['acc'], 5. * distribution.num_replicas_in_sync)
@@ -93,8 +93,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                     'type': 'constant'
                 }
             })))
-    task = mock_task.MockTask()
-    trainer = trainer_lib.Trainer(config, task)
+    trainer = self.create_test_trainer(config)
     if mixed_precision_dtype != 'float16':
       self.assertIsInstance(trainer.optimizer, tf.keras.optimizers.SGD)
     elif mixed_precision_dtype == 'float16' and loss_scale is None:
@@ -125,11 +124,14 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
     task = mock_task.MockTask(config.task, logging_dir=model_dir)
     ckpt_exporter = train_lib.maybe_create_best_ckpt_exporter(config, model_dir)
     trainer = trainer_lib.Trainer(
-        config, task, checkpoint_exporter=ckpt_exporter)
+        config,
+        task,
+        model=task.build_model(),
+        checkpoint_exporter=ckpt_exporter)
     trainer.train(tf.convert_to_tensor(1, dtype=tf.int32))
     trainer.evaluate(tf.convert_to_tensor(1, dtype=tf.int32))
-    self.assertTrue(tf.io.gfile.exists(
-        os.path.join(model_dir, 'best_ckpt', 'info.json')))
+    self.assertTrue(
+        tf.io.gfile.exists(os.path.join(model_dir, 'best_ckpt', 'info.json')))
 
 
 if __name__ == '__main__':
