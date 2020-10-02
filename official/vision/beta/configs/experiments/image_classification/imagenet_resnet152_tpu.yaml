@@ -1,4 +1,4 @@
-# ResNet-50 ImageNet classification. 78.1% top-1 and 93.9% top-5 accuracy.
+# ResNet-152 ImageNet classification. 79.4% top-1 and 94.7% top-5 accuracy.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -9,7 +9,7 @@ task:
     backbone:
       type: 'resnet'
       resnet:
-        model_id: 50
+        model_id: 152
     norm_activation:
       activation: 'swish'
   losses:
