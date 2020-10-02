@@ -55,6 +55,7 @@ class WMTDataLoaderTest(tf.test.TestCase):
         input_path=train_data_path,
         max_seq_length=35,
         global_batch_size=batch_tokens_size,
+        is_training=True,
         static_batch=False)
     dataset = wmt_dataloader.WMTDataLoader(data_config).load()
     examples = next(iter(dataset))
@@ -64,6 +65,7 @@ class WMTDataLoaderTest(tf.test.TestCase):
         input_path=train_data_path,
         max_seq_length=35,
         global_batch_size=batch_tokens_size,
+        is_training=True,
         static_batch=True)
     dataset = wmt_dataloader.WMTDataLoader(data_config).load()
     examples = next(iter(dataset))
@@ -79,7 +81,8 @@ class WMTDataLoaderTest(tf.test.TestCase):
     data_config = wmt_dataloader.WMTDataConfig(
         input_path=train_data_path,
         max_seq_length=100,
-        global_batch_size=batch_tokens_size)
+        global_batch_size=batch_tokens_size,
+        is_training=True)
     with self.assertRaisesRegex(
         ValueError, 'The token budget, global batch size, is too small.*'):
       _ = wmt_dataloader.WMTDataLoader(data_config).load()
