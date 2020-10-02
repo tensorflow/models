@@ -26,6 +26,7 @@ from official.vision.beta.configs import maskrcnn as maskrcnn_cfg
 from official.vision.beta.configs import retinanet as retinanet_cfg
 from official.vision.beta.configs import video_classification as video_classification_cfg
 from official.vision.beta.modeling import factory
+from official.vision.beta.modeling import factory_3d
 
 
 class ClassificationModelBuilderTest(parameterized.TestCase, tf.test.TestCase):
@@ -105,7 +106,7 @@ class VideoClassificationModelBuilderTest(parameterized.TestCase,
         backbone=backbones_3d.Backbone3D(type=backbone_type))
     l2_regularizer = (
         tf.keras.regularizers.l2(weight_decay) if weight_decay else None)
-    _ = factory.build_video_classification_model(
+    _ = factory_3d.build_video_classification_model(
         input_specs=input_specs,
         model_config=model_config,
         num_classes=2,
