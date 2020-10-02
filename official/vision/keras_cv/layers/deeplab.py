@@ -18,7 +18,7 @@ import tensorflow as tf
 
 
 @tf.keras.utils.register_keras_serializable(package='keras_cv')
-class ASPP(tf.keras.layers.Layer):
+class SpatialPyramidPooling(tf.keras.layers.Layer):
   """Implements the Atrous Spatial Pyramid Pooling.
 
   Reference:
@@ -36,10 +36,10 @@ class ASPP(tf.keras.layers.Layer):
       kernel_regularizer=None,
       interpolation='bilinear',
       **kwargs):
-    """Initializes `ASPP`.
+    """Initializes `SpatialPyramidPooling`.
 
     Arguments:
-      output_channels: Number of channels produced by ASPP.
+      output_channels: Number of channels produced by SpatialPyramidPooling.
       dilation_rates: A list of integers for parallel dilated conv.
       batchnorm_momentum: A float for the momentum in BatchNorm. Defaults to
         0.99.
@@ -51,7 +51,7 @@ class ASPP(tf.keras.layers.Layer):
         `bilinear`.
       **kwargs: Other keyword arguments for the layer.
     """
-    super(ASPP, self).__init__(**kwargs)
+    super(SpatialPyramidPooling, self).__init__(**kwargs)
 
     self.output_channels = output_channels
     self.dilation_rates = dilation_rates
@@ -133,5 +133,5 @@ class ASPP(tf.keras.layers.Layer):
             self.kernel_regularizer),
         'interpolation': self.interpolation,
     }
-    base_config = super(ASPP, self).get_config()
+    base_config = super(SpatialPyramidPooling, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
