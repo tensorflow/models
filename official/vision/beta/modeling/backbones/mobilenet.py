@@ -197,7 +197,7 @@ MNV2_BLOCK_SPECS = {
         ('invertedbottleneck', 3, 1, 160, 6.),
         ('invertedbottleneck', 3, 1, 160, 6.),
         ('invertedbottleneck', 3, 1, 320, 6.),
-        ('convbn', 1, 2, 1280, None),
+        ('convbn', 1, 1, 1280, None),
     ]
 }
 

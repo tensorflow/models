@@ -232,7 +232,7 @@ def image_classification_imagenet_mobilenet() -> cfg.ExperimentConfig:
                   mobilenet=backbones.MobileNet(
                       model_id='MobileNetV2', width_multiplier=1.0)),
               norm_activation=common.NormActivation(
-                  norm_momentum=0.9997, norm_epsilon=1e-3)),
+                  norm_momentum=0.997, norm_epsilon=1e-3)),
           losses=Losses(l2_weight_decay=2e-5, label_smoothing=0.1),
           train_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
