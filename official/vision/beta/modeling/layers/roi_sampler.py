@@ -61,6 +61,7 @@ class ROISampler(tf.keras.layers.Layer):
         'background_iou_low_threshold': background_iou_low_threshold,
     }
 
+    self._sim_calc = keras_cv.ops.IouSimilarity()
     self._box_matcher = keras_cv.ops.BoxMatcher(
         thresholds=[
             background_iou_low_threshold, background_iou_high_threshold,
@@ -114,7 +115,12 @@ class ROISampler(tf.keras.layers.Layer):
       gt_boxes = tf.cast(gt_boxes, dtype=boxes.dtype)
       boxes = tf.concat([boxes, gt_boxes], axis=1)
 
-    similarity_matrix = box_ops.bbox_overlap(boxes, gt_boxes)
+    boxes_invalid_mask = tf.less(
+        tf.reduce_max(boxes, axis=-1, keepdims=True), 0.0)
+    gt_invalid_mask = tf.less(
+        tf.reduce_max(gt_boxes, axis=-1, keepdims=True), 0.0)
+    similarity_matrix = self._sim_calc(boxes, gt_boxes, boxes_invalid_mask,
+                                       gt_invalid_mask)
     matched_gt_indices, match_indicators = self._box_matcher(similarity_matrix)
     positive_matches = tf.greater_equal(match_indicators, 0)
     negative_matches = tf.equal(match_indicators, -1)
