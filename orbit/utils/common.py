@@ -16,7 +16,6 @@
 
 import inspect
 
-import numpy as np
 import tensorflow as tf
 
 
@@ -46,16 +45,16 @@ def create_global_step() -> tf.Variable:
 
 
 def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
-  """A helper function to create distributed dataset.
+  """A utility function to help create a `tf.distribute.DistributedDataset`.
 
   Args:
     strategy: An instance of `tf.distribute.Strategy`.
-    dataset_or_fn: A instance of `tf.data.Dataset` or a function which takes an
-      `tf.distribute.InputContext` as input and returns a `tf.data.Dataset`. If
-      it is a function, it could optionally have an argument named
-      `input_context` which is `tf.distribute.InputContext` argument type.
-    *args: The list of arguments to be passed to dataset_or_fn.
-    **kwargs: Any keyword arguments to be passed.
+    dataset_or_fn: A instance of `tf.data.Dataset`, or a "dataset function"
+      returning a `tf.data.Dataset`. If it is a function, it may optionally have
+      an argument named `input_context` which will be passed a
+      `tf.distribute.InputContext` instance.
+    *args: Any positional arguments to pass through to `dataset_or_fn`.
+    **kwargs: Any keyword arguments to pass through to `dataset_or_fn`.
 
   Returns:
     A distributed Dataset.
@@ -64,38 +63,37 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
     strategy = tf.distribute.get_strategy()
 
   if isinstance(dataset_or_fn, tf.data.Dataset):
-    return strategy.experimental_distribute_dataset(dataset_or_fn)
+    return strategy.distribute_dataset(dataset_or_fn)
 
   if not callable(dataset_or_fn):
     raise ValueError("`dataset_or_fn` should be either callable or an instance "
-                     "of `tf.data.Dataset`")
+                     "of `tf.data.Dataset`.")
 
-  def dataset_fn(ctx):
-    """Wrapped dataset function for creating distributed dataset.."""
+  def dataset_fn(input_context):
+    """Wraps `dataset_or_fn` for strategy.distribute_datasets_from_function."""
 
-    # If `dataset_or_fn` is a function and has `input_context` as argument
-    # names, pass `ctx` as the value of `input_context` when calling
-    # `dataset_or_fn`. Otherwise `ctx` will not be used when calling
-    # `dataset_or_fn`.
+    # If `dataset_or_fn` is a function and has an argument named
+    # `input_context`, pass through the given `input_context`. Otherwise
+    # `input_context` will be ignored.
     argspec = inspect.getfullargspec(dataset_or_fn)
-    args_names = argspec.args
+    arg_names = argspec.args
 
-    if "input_context" in args_names:
-      kwargs["input_context"] = ctx
-    ds = dataset_or_fn(*args, **kwargs)
-    return ds
+    if "input_context" in arg_names:
+      kwargs["input_context"] = input_context
+    return dataset_or_fn(*args, **kwargs)
 
-  return strategy.experimental_distribute_datasets_from_function(dataset_fn)
+  return strategy.distribute_datasets_from_function(dataset_fn)
 
 
-def get_value(x) -> np.number:
-  """Returns the value of a variable/tensor.
+def get_value(x):
+  """Returns input values, converting any TensorFlow values to NumPy values.
 
   Args:
-      x: input variable.
+    x: The input. May be a `tf.Tensor` or `tf.Variable`.
 
   Returns:
-      A Numpy array or number.
+    If the input is a TensorFlow `Tensor`, returns the `Tensor`'s equivalent
+    NumPy value. Otherwise, just returns the input.
   """
   if not tf.is_tensor(x):
     return x
