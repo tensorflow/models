@@ -16,6 +16,10 @@ This document shows how elgible models from the
 [TF2 Detection zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md)
 can be converted for inference with TFLite.
 
+For an end-to-end Python guide on how to fine-tune an SSD model for mobile
+inference, look at
+[this Colab](../colab_tutorials/eager_few_shot_od_training_tflite.ipynb).
+
 **NOTE:** TFLite currently only supports **SSD Architectures** (excluding
 EfficientDet) for boxes-based detection. Support for EfficientDet is coming
 soon.
