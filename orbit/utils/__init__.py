@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Defines exported symbols for `orbit.utils` package."""
+"""Defines exported symbols for the `orbit.utils` package."""
 
 from orbit.utils.common import create_global_step
 from orbit.utils.common import get_value

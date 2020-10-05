@@ -18,14 +18,14 @@ import tensorflow as tf
 
 
 class EpochHelper:
-  """A Helper class to handle epochs in Customized Training Loop."""
+  """A helper class handle bookkeeping of epochs in custom training loops."""
 
   def __init__(self, epoch_steps: int, global_step: tf.Variable):
-    """Constructs the EpochHelper.
+    """Initializes the `EpochHelper` instance.
 
     Args:
-      epoch_steps: An integer indicates how many steps in an epoch.
-      global_step: A `tf.Variable` instance indicates the current global step.
+      epoch_steps: An integer indicating how many steps are in an epoch.
+      global_step: A `tf.Variable` providing the current global step.
     """
     self._epoch_steps = epoch_steps
     self._global_step = global_step
@@ -46,7 +46,7 @@ class EpochHelper:
   def epoch_end(self):
     """Returns whether the current epoch should end."""
     if not self._in_epoch:
-      raise ValueError("`epoch_end` can only be called inside an epoch")
+      raise ValueError("`epoch_end` can only be called inside an epoch.")
     current_step = self._global_step.numpy()
     epoch = current_step // self._epoch_steps
 

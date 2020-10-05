@@ -20,18 +20,19 @@ import tensorflow as tf
 
 
 class SummaryManager:
-  """A class manages writing summaries."""
+  """A utility class for managing summary writing."""
 
   def __init__(self, summary_dir, summary_fn, global_step=None):
-    """Construct a summary manager object.
+    """Initializes the `SummaryManager` instance.
 
     Args:
-      summary_dir: the directory to write summaries.
-      summary_fn: A callable defined as `def summary_fn(name, tensor,
-        step=None)`, which describes the summary operation.
-      global_step: A `tf.Variable` instance for the global step.
+      summary_dir: The directory in which to write summaries. If `None`, all
+        summary writing operations provided by this class are no-ops.
+      summary_fn: A callable defined accepting `name`, `value`, and `step`
+        parameters, making calls to `tf.summary` functions to write summaries.
+      global_step: A `tf.Variable` containing the global step value.
     """
-    self._enabled = (summary_dir is not None)
+    self._enabled = summary_dir is not None
     self._summary_dir = summary_dir
     self._summary_fn = summary_fn
     self._summary_writers = {}
@@ -42,12 +43,12 @@ class SummaryManager:
       self._global_step = global_step
 
   def summary_writer(self, relative_path=""):
-    """Returns the underlying summary writer.
+    """Returns the underlying summary writer for a specific subdirectory.
 
     Args:
       relative_path: The current path in which to write summaries, relative to
-        the summary directory. By default it is empty, which specifies the root
-        directory.
+        the summary directory. By default it is empty, which corresponds to the
+        root directory.
     """
     if self._summary_writers and relative_path in self._summary_writers:
       return self._summary_writers[relative_path]
@@ -59,43 +60,41 @@ class SummaryManager:
     return self._summary_writers[relative_path]
 
   def flush(self):
-    """Flush the underlying summary writers."""
+    """Flushes the underlying summary writers."""
     if self._enabled:
       tf.nest.map_structure(tf.summary.flush, self._summary_writers)
 
   def write_summaries(self, summary_dict):
-    """Write summaries for the given values.
+    """Writes summaries for the given dictionary of values.
 
     This recursively creates subdirectories for any nested dictionaries
     provided in `summary_dict`, yielding a hierarchy of directories which will
     then be reflected in the TensorBoard UI as different colored curves.
 
-    E.g. users may evaluate on muliple datasets and return `summary_dict` as a
-    nested dictionary.
+    For example, users may evaluate on muliple datasets and return
+    `summary_dict` as a nested dictionary:
 
-    ```
-    {
-        "dataset": {
-            "loss": loss,
-            "accuracy": accuracy
-        },
-        "dataset2": {
-            "loss": loss2,
-            "accuracy": accuracy2
-        },
-    }
-    ```
+        {
+            "dataset1": {
+                "loss": loss1,
+                "accuracy": accuracy1
+            },
+            "dataset2": {
+                "loss": loss2,
+                "accuracy": accuracy2
+            },
+        }
 
-    This will create two subdirectories "dataset" and "dataset2" inside the
+    This will create two subdirectories, "dataset1" and "dataset2", inside the
     summary root directory. Each directory will contain event files including
     both "loss" and "accuracy" summaries.
 
     Args:
       summary_dict: A dictionary of values. If any value in `summary_dict` is
-        itself a dictionary, then the function will recursively create
-        subdirectories with names given by the keys in the dictionary. The
-        Tensor values are summarized using the summary writer instance specific
-        to the parent relative path.
+        itself a dictionary, then the function will create a subdirectory with
+        name given by the corresponding key. This is performed recursively. Leaf
+        values are then summarized using the summary writer instance specific to
+        the parent relative path.
     """
     if not self._enabled:
       return
