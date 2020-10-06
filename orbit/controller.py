@@ -273,7 +273,7 @@ class Controller:
 
   def train_and_evaluate(self,
                          train_steps: int = None,
-                         eval_steps: int = None,
+                         eval_steps: int = -1,
                          eval_interval: int = None):
     """Runs interleaved training and evaluation.
 
@@ -285,7 +285,7 @@ class Controller:
 
     Args:
       train_steps: The global step count to train up to.
-      eval_steps: The number of steps to run during an evaluation. If None, this
+      eval_steps: The number of steps to run during an evaluation. If -1, this
         method will evaluate over the entire evaluation dataset.
       eval_interval: The number of training steps to run between evaluations. If
         set, training will always stop every `eval_interval` steps, even if this
@@ -310,7 +310,7 @@ class Controller:
     self._maybe_save_checkpoint(check_interval=False)
 
   def evaluate_continuously(self,
-                            steps: int = None,
+                            steps: int = -1,
                             timeout: Optional[Union[int, float]] = None,
                             timeout_fn: Optional[Callable[[], bool]] = None):
     """Continuously monitors a directory and evaluates new checkpoints in it.
@@ -320,7 +320,8 @@ class Controller:
     checkpoints found there.
 
     Args:
-      steps: The number of steps to run when evaluating.
+      steps: The number of steps to run when evaluating. If -1, this method will
+        evaluate over the entire evaluation dataset.
       timeout: The maximum number of seconds to wait between checkpoints. See
         tf.train.checkpoints_iterator documentation.
       timeout_fn: Optional callable to call after a timeout. If the function
