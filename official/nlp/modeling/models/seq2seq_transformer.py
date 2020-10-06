@@ -23,71 +23,10 @@ from official.modeling import tf_utils
 from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 from official.nlp.modeling.ops import beam_search
-from official.nlp.transformer import metrics
 from official.nlp.transformer import model_utils
 
 EOS_ID = 1
 # pylint: disable=g-classes-have-attributes
-
-
-def create_model(params, is_train):
-  """Creates transformer model."""
-
-  encdec_kwargs = dict(
-      num_layers=params["num_hidden_layers"],
-      num_attention_heads=params["num_heads"],
-      intermediate_size=params["filter_size"],
-      activation="relu",
-      dropout_rate=params["relu_dropout"],
-      attention_dropout_rate=params["attention_dropout"],
-      use_bias=False,
-      norm_first=True,
-      norm_epsilon=1e-6,
-      intermediate_dropout=params["relu_dropout"])
-  encoder_layer = TransformerEncoder(**encdec_kwargs)
-  decoder_layer = TransformerDecoder(**encdec_kwargs)
-
-  model_kwargs = dict(
-      vocab_size=params["vocab_size"],
-      embedding_width=params["hidden_size"],
-      dropout_rate=params["layer_postprocess_dropout"],
-      padded_decode=params["padded_decode"],
-      decode_max_length=params["decode_max_length"],
-      dtype=params["dtype"],
-      extra_decode_length=params["extra_decode_length"],
-      beam_size=params["beam_size"],
-      alpha=params["alpha"],
-      encoder_layer=encoder_layer,
-      decoder_layer=decoder_layer,
-      name="transformer_v2")
-
-  if is_train:
-    inputs = tf.keras.layers.Input((None,), dtype="int64", name="inputs")
-    targets = tf.keras.layers.Input((None,), dtype="int64", name="targets")
-    internal_model = Seq2SeqTransformer(**model_kwargs)
-    logits = internal_model([inputs, targets], training=is_train)
-    vocab_size = params["vocab_size"]
-    label_smoothing = params["label_smoothing"]
-    if params["enable_metrics_in_training"]:
-      logits = metrics.MetricLayer(vocab_size)([logits, targets])
-    logits = tf.keras.layers.Lambda(
-        lambda x: x, name="logits", dtype=tf.float32)(
-            logits)
-    model = tf.keras.Model([inputs, targets], logits)
-    loss = metrics.transformer_loss(logits, targets, label_smoothing,
-                                    vocab_size)
-    model.add_loss(loss)
-    return model
-
-  batch_size = params["decode_batch_size"] if params["padded_decode"] else None
-  inputs = tf.keras.layers.Input((None,),
-                                 batch_size=batch_size,
-                                 dtype="int64",
-                                 name="inputs")
-  internal_model = Seq2SeqTransformer(**model_kwargs)
-  ret = internal_model([inputs], training=is_train)
-  outputs, scores = ret["outputs"], ret["scores"]
-  return tf.keras.Model(inputs, [outputs, scores])
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")

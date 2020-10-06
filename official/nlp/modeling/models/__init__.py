@@ -19,4 +19,5 @@ from official.nlp.modeling.models.bert_span_labeler import BertSpanLabeler
 from official.nlp.modeling.models.bert_token_classifier import BertTokenClassifier
 from official.nlp.modeling.models.dual_encoder import DualEncoder
 from official.nlp.modeling.models.electra_pretrainer import ElectraPretrainer
+from official.nlp.modeling.models.seq2seq_transformer import *
 from official.nlp.modeling.models.xlnet import XLNetClassifier
