@@ -192,6 +192,7 @@ class Parser(parser.Parser):
     self._num_classes = input_params.num_classes
     self._image_key = image_key
     self._label_key = label_key
+    self._dtype = tf.dtypes.as_dtype(input_params.dtype)
 
   def _parse_train_data(
       self, decoded_tensors: Dict[str, tf.Tensor]
@@ -208,6 +209,7 @@ class Parser(parser.Parser):
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
         crop_size=self._crop_size)
+    image = tf.cast(image, dtype=self._dtype)
     label = _process_label(label, self._one_hot_label, self._num_classes)
 
     return {'image': image}, label
@@ -226,6 +228,7 @@ class Parser(parser.Parser):
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
         crop_size=self._crop_size)
+    image = tf.cast(image, dtype=self._dtype)
     label = _process_label(label, self._one_hot_label, self._num_classes)
 
     return {'image': image}, label
