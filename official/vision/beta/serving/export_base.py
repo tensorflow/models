@@ -62,7 +62,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
 
   @tf.function
   def inference_from_image_tensors(self, input_tensor):
-    return dict(outputs=self._run_inference_on_image_tensors(input_tensor))
+    return self._run_inference_on_image_tensors(input_tensor)
 
   @tf.function
   def inference_from_image_bytes(self, input_tensor):
@@ -76,7 +76,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
                   shape=self._input_image_size + [3], dtype=tf.uint8),
               parallel_iterations=32))
       images = tf.stack(images)
-    return dict(outputs=self._run_inference_on_image_tensors(images))
+    return self._run_inference_on_image_tensors(images)
 
   @tf.function
   def inference_from_tf_example(self, input_tensor):
@@ -91,4 +91,4 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
               dtype=tf.uint8,
               parallel_iterations=32))
       images = tf.stack(images)
-    return dict(outputs=self._run_inference_on_image_tensors(images))
+    return self._run_inference_on_image_tensors(images)
