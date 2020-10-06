@@ -37,10 +37,7 @@ class BestCheckpointExporter:
   together with orbit once this functionality is ready.
   """
 
-  def __init__(self,
-               export_dir: str,
-               metric_name: str,
-               metric_comp: str):
+  def __init__(self, export_dir: str, metric_name: str, metric_comp: str):
     """Initialization.
 
     Arguments:
@@ -53,9 +50,8 @@ class BestCheckpointExporter:
     self._metric_name = metric_name
     self._metric_comp = metric_comp
     if self._metric_comp not in ('lower', 'higher'):
-      raise ValueError(
-          'best checkpoint metric comp must be one of '
-          'higher, lower. Got: {}'.format(self._metric_comp))
+      raise ValueError('best checkpoint metric comp must be one of '
+                       'higher, lower. Got: {}'.format(self._metric_comp))
     tf.io.gfile.makedirs(os.path.dirname(self.best_ckpt_logs_path))
     self._best_ckpt_logs = self._maybe_load_best_eval_metric()
 
@@ -65,8 +61,8 @@ class BestCheckpointExporter:
     if self._best_ckpt_logs is None or self._new_metric_is_better(
         self._best_ckpt_logs, eval_logs):
       self._best_ckpt_logs = eval_logs
-      self._export_best_eval_metric(
-          checkpoint, self._best_ckpt_logs, global_step)
+      self._export_best_eval_metric(checkpoint, self._best_ckpt_logs,
+                                    global_step)
 
   def _maybe_load_best_eval_metric(self):
     if not tf.io.gfile.exists(self.best_ckpt_logs_path):
@@ -77,10 +73,9 @@ class BestCheckpointExporter:
   def _new_metric_is_better(self, old_logs, new_logs):
     """Check if the metric in new_logs is better than the metric in old_logs."""
     if self._metric_name not in old_logs or self._metric_name not in new_logs:
-      raise KeyError(
-          'best checkpoint eval metric name {} is not valid. '
-          'old_logs: {}, new_logs: {}'.format(
-              self._metric_name, old_logs, new_logs))
+      raise KeyError('best checkpoint eval metric name {} is not valid. '
+                     'old_logs: {}, new_logs: {}'.format(
+                         self._metric_name, old_logs, new_logs))
     old_value = float(orbit.utils.get_value(old_logs[self._metric_name]))
     new_value = float(orbit.utils.get_value(new_logs[self._metric_name]))
 
@@ -126,22 +121,22 @@ class BestCheckpointExporter:
     return os.path.join(self._export_dir, 'best_ckpt')
 
 
-def maybe_create_best_ckpt_exporter(
-    params: config_definitions.ExperimentConfig,
-    data_dir: str) -> Any:
+def maybe_create_best_ckpt_exporter(params: config_definitions.ExperimentConfig,
+                                    data_dir: str) -> Any:
   """Maybe create a BestCheckpointExporter object, according to the config."""
   export_subdir = params.trainer.best_checkpoint_export_subdir
   metric_name = params.trainer.best_checkpoint_eval_metric
   metric_comp = params.trainer.best_checkpoint_metric_comp
   if data_dir and export_subdir and metric_name:
     best_ckpt_dir = os.path.join(data_dir, export_subdir)
-    best_ckpt_exporter = BestCheckpointExporter(
-        best_ckpt_dir, metric_name, metric_comp)
+    best_ckpt_exporter = BestCheckpointExporter(best_ckpt_dir, metric_name,
+                                                metric_comp)
   else:
     best_ckpt_exporter = None
-    logging.info('Not exporting the best checkpoint. '
-                 'data_dir: %s, export_subdir: %s, metric_name: %s',
-                 data_dir, export_subdir, metric_name)
+    logging.info(
+        'Not exporting the best checkpoint. '
+        'data_dir: %s, export_subdir: %s, metric_name: %s', data_dir,
+        export_subdir, metric_name)
   return best_ckpt_exporter
 
 
@@ -174,10 +169,12 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
   """
 
   with distribution_strategy.scope():
+    model = task.build_model()
     trainer = train_utils.create_trainer(
         params,
         task,
-        model_dir,
+        model=model,
+        model_dir=model_dir,
         train='train' in mode,
         evaluate=('eval' in mode) or run_post_eval,
         checkpoint_exporter=maybe_create_best_ckpt_exporter(params, model_dir))
@@ -200,12 +197,11 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
       global_step=trainer.global_step,
       steps_per_loop=params.trainer.steps_per_loop,
       checkpoint_manager=checkpoint_manager,
-      summary_dir=os.path.join(model_dir, 'train') if (
-          save_summary) else None,
-      eval_summary_dir=os.path.join(model_dir, 'validation') if (
-          save_summary) else None,
-      summary_interval=params.trainer.summary_interval if (
-          save_summary) else None)
+      summary_dir=os.path.join(model_dir, 'train') if (save_summary) else None,
+      eval_summary_dir=os.path.join(model_dir, 'validation') if
+      (save_summary) else None,
+      summary_interval=params.trainer.summary_interval if
+      (save_summary) else None)
 
   logging.info('Starts to execute mode: %s', mode)
   with distribution_strategy.scope():
@@ -219,10 +215,12 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
     elif mode == 'eval':
       controller.evaluate(steps=params.trainer.validation_steps)
     elif mode == 'continuous_eval':
+
       def timeout_fn():
         if trainer.global_step.numpy() >= params.trainer.train_steps:
           return True
         return False
+
       controller.evaluate_continuously(
           steps=params.trainer.validation_steps,
           timeout=params.trainer.continuous_eval_timeout,

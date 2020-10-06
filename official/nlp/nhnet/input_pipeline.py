@@ -230,7 +230,7 @@ def get_input_dataset(input_file_pattern,
               strategy.num_replicas_in_sync))
 
     # As auto rebatching is not supported in
-    # `experimental_distribute_datasets_from_function()` API, which is
+    # `distribute_datasets_from_function()` API, which is
     # required when cloning dataset to multiple workers in eager mode,
     # we use per-replica batch size.
     batch_size = int(batch_size / strategy.num_replicas_in_sync)
@@ -249,6 +249,6 @@ def get_input_dataset(input_file_pattern,
         input_pipeline_context=ctx)
 
   if use_dataset_fn:
-    return strategy.experimental_distribute_datasets_from_function(_dataset_fn)
+    return strategy.distribute_datasets_from_function(_dataset_fn)
   else:
     return strategy.experimental_distribute_dataset(_dataset_fn())

@@ -32,18 +32,22 @@ from official.modeling import hyperparams
 from official.modeling.hyperparams import config_definitions
 
 
-def create_trainer(
-    params: config_definitions.ExperimentConfig,
-    task: base_task.Task,
-    model_dir: str,
-    train: bool,
-    evaluate: bool,
-    checkpoint_exporter: Any = None) -> base_trainer.Trainer:
+def create_trainer(params: config_definitions.ExperimentConfig,
+                   task: base_task.Task,
+                   model: tf.keras.Model,
+                   model_dir: str,
+                   train: bool,
+                   evaluate: bool,
+                   checkpoint_exporter: Any = None) -> base_trainer.Trainer:
   """Create trainer."""
   del model_dir
   logging.info('Running default trainer.')
   trainer = base_trainer.Trainer(
-      params, task, train=train, evaluate=evaluate,
+      params,
+      task,
+      train=train,
+      evaluate=evaluate,
+      model=model,
       checkpoint_exporter=checkpoint_exporter)
   return trainer
 
@@ -129,8 +133,8 @@ def read_global_step_from_checkpoint(ckpt_file_path):
                      'make sure that your pretrain model writes '
                      'global_step in its checkpoints.'.format(ckpt_file_path))
   global_step_restored = global_step.numpy()
-  logging.info('get global_step %d from checkpoint %s',
-               global_step_restored, ckpt_file_path)
+  logging.info('get global_step %d from checkpoint %s', global_step_restored,
+               ckpt_file_path)
   return global_step_restored
 
 
@@ -143,8 +147,8 @@ def write_json_summary(log_dir, global_step, eval_metrics):
     else:
       serializable_dict[name] = str(value)
   output_json = os.path.join(log_dir, 'metrics-{}.json'.format(global_step))
-  logging.info('Evaluation results at pretrain step %d: %s',
-               global_step, serializable_dict)
+  logging.info('Evaluation results at pretrain step %d: %s', global_step,
+               serializable_dict)
   with tf.io.gfile.GFile(output_json, 'w') as writer:
     writer.write(json.dumps(serializable_dict, indent=4) + '\n')
 

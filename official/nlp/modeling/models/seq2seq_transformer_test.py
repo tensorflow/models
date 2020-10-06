@@ -22,43 +22,9 @@ import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 from official.nlp.modeling.models import seq2seq_transformer
-from official.nlp.transformer import model_params
 
 
 class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
-
-  def test_create_model(self):
-    self.params = model_params.TINY_PARAMS
-    self.params["batch_size"] = 16
-    self.params["hidden_size"] = 12
-    self.params["num_hidden_layers"] = 2
-    self.params["filter_size"] = 14
-    self.params["num_heads"] = 2
-    self.params["vocab_size"] = 41
-    self.params["extra_decode_length"] = 2
-    self.params["beam_size"] = 3
-    self.params["dtype"] = tf.float32
-    model = seq2seq_transformer.create_model(self.params, is_train=True)
-    inputs, outputs = model.inputs, model.outputs
-    self.assertLen(inputs, 2)
-    self.assertLen(outputs, 1)
-    self.assertEqual(inputs[0].shape.as_list(), [None, None])
-    self.assertEqual(inputs[0].dtype, tf.int64)
-    self.assertEqual(inputs[1].shape.as_list(), [None, None])
-    self.assertEqual(inputs[1].dtype, tf.int64)
-    self.assertEqual(outputs[0].shape.as_list(), [None, None, 41])
-    self.assertEqual(outputs[0].dtype, tf.float32)
-
-    model = seq2seq_transformer.create_model(self.params, is_train=False)
-    inputs, outputs = model.inputs, model.outputs
-    self.assertLen(inputs, 1)
-    self.assertLen(outputs, 2)
-    self.assertEqual(inputs[0].shape.as_list(), [None, None])
-    self.assertEqual(inputs[0].dtype, tf.int64)
-    self.assertEqual(outputs[0].shape.as_list(), [None, None])
-    self.assertEqual(outputs[0].dtype, tf.int32)
-    self.assertEqual(outputs[1].shape.as_list(), [None])
-    self.assertEqual(outputs[1].dtype, tf.float32)
 
   def _build_model(self, padded_decode, decode_max_length):
     num_layers = 1

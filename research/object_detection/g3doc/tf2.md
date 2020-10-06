@@ -55,6 +55,9 @@ python object_detection/builders/model_builder_tf2_test.py
 *   Inference -
     [Run inference with models from the zoo](../colab_tutorials/inference_tf2_colab.ipynb)
 
+*   Few Shot Learning for Mobile Inference -
+    [Fine-tune a pre-trained detector for use with TensorFlow Lite](../colab_tutorials/eager_few_shot_od_training_tflite.ipynb)
+
 <!-- mdlint on -->
 
 ## Training and Evaluation

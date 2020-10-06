@@ -64,6 +64,7 @@ def kinetics600(is_training):
 @dataclasses.dataclass
 class VideoClassificationModel(hyperparams.Config):
   """The model config."""
+  model_type: str = 'video_classification'
   backbone: backbones_3d.Backbone3D = backbones_3d.Backbone3D(
       type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50())
   norm_activation: common.NormActivation = common.NormActivation()
@@ -142,6 +143,7 @@ def add_trainer(experiment: cfg.ExperimentConfig,
 def video_classification() -> cfg.ExperimentConfig:
   """Video classification general."""
   return cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
       task=VideoClassificationTask(),
       trainer=cfg.TrainerConfig(),
       restrictions=[
@@ -166,6 +168,7 @@ def video_classification_kinetics600() -> cfg.ExperimentConfig:
       train_data=train_dataset,
       validation_data=validation_dataset)
   config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
       task=task,
       restrictions=[
           'task.train_data.is_training != None',

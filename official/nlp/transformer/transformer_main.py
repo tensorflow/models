@@ -227,12 +227,11 @@ class TransformerTask(object):
 
     if self.use_tpu:
       # Different from experimental_distribute_dataset,
-      # experimental_distribute_datasets_from_function requires
+      # distribute_datasets_from_function requires
       # per-replica/local batch size.
       params["batch_size"] /= self.distribution_strategy.num_replicas_in_sync
       train_ds = (
-          self.distribution_strategy
-          .experimental_distribute_datasets_from_function(
+          self.distribution_strategy.distribute_datasets_from_function(
               lambda ctx: data_pipeline.train_input_fn(params, ctx)))
     else:
       train_ds = data_pipeline.train_input_fn(params)

@@ -17,7 +17,7 @@
 # Import libraries
 import tensorflow as tf
 
-from official.vision.beta.modeling.layers import box_matcher
+from official.vision import keras_cv
 from official.vision.beta.modeling.layers import box_sampler
 from official.vision.beta.ops import box_ops
 
@@ -60,10 +60,16 @@ class ROISampler(tf.keras.layers.Layer):
         'background_iou_high_threshold': background_iou_high_threshold,
         'background_iou_low_threshold': background_iou_low_threshold,
     }
-    self._matcher = box_matcher.BoxMatcher(
-        foreground_iou_threshold,
-        background_iou_high_threshold,
-        background_iou_low_threshold)
+
+    self._sim_calc = keras_cv.ops.IouSimilarity()
+    self._box_matcher = keras_cv.ops.BoxMatcher(
+        thresholds=[
+            background_iou_low_threshold, background_iou_high_threshold,
+            foreground_iou_threshold
+        ],
+        indicators=[-3, -1, -2, 1])
+    self._anchor_labeler = keras_cv.ops.AnchorLabeler()
+
     self._sampler = box_sampler.BoxSampler(
         num_sampled_rois, foreground_fraction)
     super(ROISampler, self).__init__(**kwargs)
@@ -109,9 +115,35 @@ class ROISampler(tf.keras.layers.Layer):
       gt_boxes = tf.cast(gt_boxes, dtype=boxes.dtype)
       boxes = tf.concat([boxes, gt_boxes], axis=1)
 
-    (matched_gt_boxes, matched_gt_classes, matched_gt_indices,
-     positive_matches, negative_matches, ignored_matches) = (
-         self._matcher(boxes, gt_boxes, gt_classes))
+    boxes_invalid_mask = tf.less(
+        tf.reduce_max(boxes, axis=-1, keepdims=True), 0.0)
+    gt_invalid_mask = tf.less(
+        tf.reduce_max(gt_boxes, axis=-1, keepdims=True), 0.0)
+    similarity_matrix = self._sim_calc(boxes, gt_boxes, boxes_invalid_mask,
+                                       gt_invalid_mask)
+    matched_gt_indices, match_indicators = self._box_matcher(similarity_matrix)
+    positive_matches = tf.greater_equal(match_indicators, 0)
+    negative_matches = tf.equal(match_indicators, -1)
+    ignored_matches = tf.equal(match_indicators, -2)
+    invalid_matches = tf.equal(match_indicators, -3)
+
+    background_mask = tf.expand_dims(
+        tf.logical_or(negative_matches, invalid_matches), -1)
+    gt_classes = tf.expand_dims(gt_classes, axis=-1)
+    matched_gt_classes = self._anchor_labeler(gt_classes, matched_gt_indices,
+                                              background_mask)
+    matched_gt_classes = tf.where(background_mask,
+                                  tf.zeros_like(matched_gt_classes),
+                                  matched_gt_classes)
+    matched_gt_classes = tf.squeeze(matched_gt_classes, axis=-1)
+    matched_gt_boxes = self._anchor_labeler(gt_boxes, matched_gt_indices,
+                                            tf.tile(background_mask, [1, 1, 4]))
+    matched_gt_boxes = tf.where(background_mask,
+                                tf.zeros_like(matched_gt_boxes),
+                                matched_gt_boxes)
+    matched_gt_indices = tf.where(
+        tf.squeeze(background_mask, -1), -tf.ones_like(matched_gt_indices),
+        matched_gt_indices)
 
     sampled_indices = self._sampler(
         positive_matches, negative_matches, ignored_matches)

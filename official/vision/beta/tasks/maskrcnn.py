@@ -204,7 +204,8 @@ class MaskRCNNTask(base_task.Task):
     else:
       self.coco_metric = coco_evaluator.COCOEvaluator(
           annotation_file=self._task_config.annotation_file,
-          include_mask=self._task_config.model.include_mask)
+          include_mask=self._task_config.model.include_mask,
+          per_category_metrics=self._task_config.per_category_metrics)
 
     return metrics
 

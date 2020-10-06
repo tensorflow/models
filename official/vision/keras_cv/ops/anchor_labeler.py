@@ -20,55 +20,20 @@ import tensorflow as tf
 class AnchorLabeler:
   """Labeler for dense object detector."""
 
-  def __init__(
-      self,
-      positive_class_weight=1.0,
-      positive_regression_weight=1.0,
-      negative_class_weight=1.0,
-      negative_regression_weight=0.0,
-      negative_class_label=-1,
-      ignore_class_label=-2,
-      negative_regression_label=0.,
-      ignore_regression_label=0.):
-    """Constructs Anchor Labeler.
-
-    Args:
-      positive_class_weight: classification weight to be associated to positive
-        matched anchor. Defaults to 1.0.
-      positive_regression_weight: regression weight to be associated to positive
-        matched anchor. Defaults to 1.0.
-      negative_class_weight: classification weight to be associated to negative
-        matched anchor. Default to 1.0
-      negative_regression_weight: classification weight to be associated to
-        negative matched anchor. Default to 0.0.
-      negative_class_label: An integer for classification label to be associated
-        for negative matched anchor. Defaults to -1.
-      ignore_class_label: An integer for classification label to be associated
-        for ignored anchor. Defaults to -2.
-      negative_regression_label: A float for regression label to be associated
-        for negative matched anchor. Defaults to 0.
-      ignore_regression_label: A float for regression label to be associated
-        for ignored anchor. Defaults to 0.
-    """
-    self.positive_class_weight = positive_class_weight
-    self.positive_regression_weight = positive_regression_weight
-    self.negative_class_weight = negative_class_weight
-    self.negative_regression_weight = negative_regression_weight
-    self.negative_class_label = negative_class_label
-    self.ignore_class_label = ignore_class_label
-    self.negative_regression_label = negative_regression_label
-    self.ignore_regression_label = ignore_regression_label
-
-  def __call__(self, boxes, labels, matches):
+  def __call__(self, labels, match_indices, mask, mask_val=0.0):
     """Labels anchors with ground truth inputs.
 
+    B: batch_size
+    N: number of groundtruth boxes.
+
     Args:
-      boxes: A float tensor with shape [N, 4] representing groundtruth boxes.
-        For each row, it stores [y0, x0, y1, x1] for four corners of a box.
-      labels: An integer tensor with shape [N, 1] representing groundtruth
-        classes.
-      matches: An integer tensor with shape [N] representing match results, must
-        be -1 for negative matched anchor, and -2 for ignored anchor.
+      labels: An integer tensor with shape [N, 1] or [B, N, 1] representing
+        groundtruth labels.
+      match_indices: An integer tensor with shape [N] or [B, N] representing
+        match label index.
+      mask: An integer tensor with shape [N] or [B, N] representing match
+        labels, e.g., 1 for positive, -1 for negative, -2 for ignore.
+      mask_val: An integer to fill in for mask.
 
     Returns:
       class_targets: A integer Tensor with shape [num_anchors].
@@ -82,65 +47,43 @@ class AnchorLabeler:
         1.0 for positive matched anchors, and 0.0 for negative and ignored
         anchors.
     """
+    if len(labels.shape) <= 2:
+      return self._gather_unbatched(labels, match_indices, mask, mask_val)
+    elif len(labels.shape) == 3:
+      return self._gather_batched(labels, match_indices, mask, mask_val)
 
-    class_targets = self._gather_based_on_match(
-        matches, tf.cast(labels, tf.int32),
-        negative_value=tf.constant([self.negative_class_label], tf.int32),
-        ignored_value=tf.constant([self.ignore_class_label], tf.int32))
+  def _gather_unbatched(self, labels, match_indices, mask, mask_val):
+    """Gather based on unbatched labels and boxes."""
+    num_gt_boxes = tf.shape(labels)[0]
+    masked_targets = tf.cast(mask_val, labels.dtype) * tf.ones_like(
+        mask, dtype=labels.dtype)
 
-    negative_reg_value = tf.constant(
-        [self.negative_regression_label] * 4, dtype=tf.float32)
-    ignore_reg_value = tf.constant(
-        [self.ignore_regression_label] * 4, dtype=tf.float32)
-    reg_targets = self._gather_based_on_match(
-        matches, boxes, negative_reg_value, ignore_reg_value)
+    def _assign_when_rows_empty():
+      return masked_targets
 
-    num_gt_boxes = boxes.shape.as_list()[0] or tf.shape(boxes)[0]
+    def _assign_when_rows_not_empty():
+      targets = tf.gather(labels, match_indices)
+      return tf.where(mask, masked_targets, targets)
 
-    groundtruth_class_weights = self.positive_class_weight * tf.ones(
-        [num_gt_boxes], dtype=tf.float32)
-    class_weights = self._gather_based_on_match(
-        matches, groundtruth_class_weights,
-        negative_value=self.negative_class_weight,
-        ignored_value=0.)
+    return tf.cond(tf.greater(num_gt_boxes, 0),
+                   _assign_when_rows_not_empty,
+                   _assign_when_rows_empty)
 
-    groundtruth_reg_weights = self.positive_regression_weight * tf.ones(
-        [num_gt_boxes], dtype=tf.float32)
-    reg_weights = self._gather_based_on_match(
-        matches, groundtruth_reg_weights,
-        negative_value=self.negative_regression_weight, ignored_value=0.)
-
-    return class_targets, reg_targets, class_weights, reg_weights
-
-  def _gather_based_on_match(
-      self, matches, inputs, negative_value, ignored_value):
-    """Gathers elements from `input_tensor` based on match results.
-
-    For columns that are matched to a row, gathered_tensor[col] is set to
-    input_tensor[match[col]]. For columns that are unmatched,
-    gathered_tensor[col] is set to negative_value. Finally, for columns that
-    are ignored gathered_tensor[col] is set to ignored_value.
-
-    Note that the input_tensor.shape[1:] must match with unmatched_value.shape
-    and ignored_value.shape
-
-    Args:
-      matches: A integer tensor with shape [N] representing the
-        matching results of anchors. (1) match_results[i]>=0,
-        meaning that column i is matched with row match_results[i].
-        (2) match_results[i]=-1, meaning that column i is not matched.
-        (3) match_results[i]=-2, meaning that column i is ignored.
-      inputs: Tensor to gather values from.
-      negative_value: Constant tensor value for unmatched columns.
-      ignored_value: Constant tensor value for ignored columns.
-
-    Returns:
-      gathered_tensor: A tensor containing values gathered from input_tensor.
-        The shape of the gathered tensor is [match.shape[0]] +
-        input_tensor.shape[1:].
-    """
-    inputs = tf.concat(
-        [tf.stack([ignored_value, negative_value]), inputs], axis=0)
-    gather_indices = tf.maximum(matches + 2, 0)
-    gathered_tensor = tf.gather(inputs, gather_indices)
-    return gathered_tensor
+  def _gather_batched(self, labels, match_indices, mask, mask_val):
+    """Gather based on batched labels."""
+    batch_size = labels.shape[0]
+    if batch_size == 1:
+      result = self._gather_unbatched(
+          tf.squeeze(labels, axis=0), tf.squeeze(match_indices, axis=0),
+          tf.squeeze(mask, axis=0), mask_val)
+      return tf.expand_dims(result, axis=0)
+    else:
+      indices_shape = tf.shape(match_indices)
+      indices_dtype = match_indices.dtype
+      batch_indices = (tf.expand_dims(
+          tf.range(indices_shape[0], dtype=indices_dtype), axis=-1) *
+                       tf.ones([1, indices_shape[-1]], dtype=indices_dtype))
+      gather_nd_indices = tf.stack(
+          [batch_indices, match_indices], axis=-1)
+      targets = tf.gather_nd(labels, gather_nd_indices)
+      return targets

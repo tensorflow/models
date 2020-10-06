@@ -186,8 +186,7 @@ def predict_squad_customized(strategy, input_meta_data, predict_tfrecord_path,
       FLAGS.predict_batch_size,
       is_training=False)
   predict_iterator = iter(
-      strategy.experimental_distribute_datasets_from_function(
-          predict_dataset_fn))
+      strategy.distribute_datasets_from_function(predict_dataset_fn))
 
   @tf.function
   def predict_step(iterator):

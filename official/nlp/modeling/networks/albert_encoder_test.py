@@ -23,16 +23,16 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
-from official.nlp.modeling.networks import albert_transformer_encoder
+from official.nlp.modeling.networks import albert_encoder
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
 # guarantees forward compatibility of this code for the V2 switchover.
 @keras_parameterized.run_all_keras_modes
-class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
+class AlbertEncoderTest(keras_parameterized.TestCase):
 
   def tearDown(self):
-    super(AlbertTransformerEncoderTest, self).tearDown()
+    super(AlbertEncoderTest, self).tearDown()
     tf.keras.mixed_precision.experimental.set_policy("float32")
 
   @parameterized.named_parameters(
@@ -52,7 +52,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
       tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
 
     # Create a small TransformerEncoder for testing.
-    test_network = albert_transformer_encoder.AlbertTransformerEncoder(**kwargs)
+    test_network = albert_encoder.AlbertEncoder(**kwargs)
 
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -84,13 +84,14 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
     sequence_length = 21
     vocab_size = 57
     num_types = 7
+    num_layers = 3
     # Create a small TransformerEncoder for testing.
-    test_network = albert_transformer_encoder.AlbertTransformerEncoder(
+    test_network = albert_encoder.AlbertEncoder(
         vocab_size=vocab_size,
         embedding_width=8,
         hidden_size=hidden_size,
         num_attention_heads=2,
-        num_layers=3,
+        num_layers=num_layers,
         type_vocab_size=num_types)
     # Create the inputs (note that the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -113,25 +114,25 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
 
     # Creates a TransformerEncoder with max_sequence_length != sequence_length
     max_sequence_length = 128
-    test_network = albert_transformer_encoder.AlbertTransformerEncoder(
+    test_network = albert_encoder.AlbertEncoder(
         vocab_size=vocab_size,
         embedding_width=8,
         hidden_size=hidden_size,
         max_sequence_length=max_sequence_length,
         num_attention_heads=2,
-        num_layers=3,
+        num_layers=num_layers,
         type_vocab_size=num_types)
     model = tf.keras.Model([word_ids, mask, type_ids], [data, pooled])
     _ = model.predict([word_id_data, mask_data, type_id_data])
 
     # Tests dictionary outputs.
-    test_network_dict = albert_transformer_encoder.AlbertTransformerEncoder(
+    test_network_dict = albert_encoder.AlbertEncoder(
         vocab_size=vocab_size,
         embedding_width=8,
         hidden_size=hidden_size,
         max_sequence_length=max_sequence_length,
         num_attention_heads=2,
-        num_layers=3,
+        num_layers=num_layers,
         type_vocab_size=num_types,
         dict_outputs=True)
     _ = test_network_dict([word_ids, mask, type_ids])
@@ -144,6 +145,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
             input_type_ids=type_id_data))
     self.assertAllEqual(list_outputs[0], dict_outputs["sequence_output"])
     self.assertAllEqual(list_outputs[1], dict_outputs["pooled_output"])
+    self.assertLen(dict_outputs["pooled_output"], num_layers)
 
   def test_serialize_deserialize(self):
     tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
@@ -161,7 +163,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
         dropout_rate=0.05,
         attention_dropout_rate=0.22,
         initializer="glorot_uniform")
-    network = albert_transformer_encoder.AlbertTransformerEncoder(**kwargs)
+    network = albert_encoder.AlbertEncoder(**kwargs)
 
     expected_config = dict(kwargs)
     expected_config["activation"] = tf.keras.activations.serialize(
@@ -172,7 +174,7 @@ class AlbertTransformerEncoderTest(keras_parameterized.TestCase):
 
     # Create another network object from the first object's config.
     new_network = (
-        albert_transformer_encoder.AlbertTransformerEncoder.from_config(
+        albert_encoder.AlbertEncoder.from_config(
             network.get_config()))
 
     # Validate that the config can be forced to JSON.

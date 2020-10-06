@@ -14,6 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Video classification task definition."""
+from absl import logging
 import tensorflow as tf
 from official.core import base_task
 from official.core import input_reader
@@ -21,7 +22,7 @@ from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import video_input
-from official.vision.beta.modeling import factory
+from official.vision.beta.modeling import factory_3d
 
 
 @task_factory.register_task_cls(exp_cfg.VideoClassificationTask)
@@ -30,7 +31,13 @@ class VideoClassificationTask(base_task.Task):
 
   def build_model(self):
     """Builds video classification model."""
-    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, None, 3])
+    common_input_shape = [
+        d1 if d1 == d2 else None
+        for d1, d2 in zip(self.task_config.train_data.feature_shape,
+                          self.task_config.validation_data.feature_shape)
+    ]
+    input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
+    logging.info('Build model input %r', common_input_shape)
 
     l2_weight_decay = self.task_config.losses.l2_weight_decay
     # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
@@ -39,7 +46,8 @@ class VideoClassificationTask(base_task.Task):
     l2_regularizer = (tf.keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
-    model = factory.build_video_classification_model(
+    model = factory_3d.build_model(
+        self.task_config.model.model_type,
         input_specs=input_specs,
         model_config=self.task_config.model,
         num_classes=self.task_config.train_data.num_classes,

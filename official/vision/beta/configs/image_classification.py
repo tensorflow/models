@@ -93,6 +93,8 @@ def image_classification_imagenet() -> cfg.ExperimentConfig:
           model=ImageClassificationModel(
               num_classes=1001,
               input_size=[224, 224, 3],
+              backbone=backbones.Backbone(
+                  type='resnet', resnet=backbones.ResNet(model_id=50)),
               norm_activation=common.NormActivation(
                   norm_momentum=0.9, norm_epsilon=1e-5)),
           losses=Losses(l2_weight_decay=1e-4),

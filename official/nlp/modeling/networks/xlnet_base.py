@@ -586,8 +586,11 @@ class XLNetBase(tf.keras.layers.Layer):
     masked_tokens = inputs["masked_tokens"]
 
     batch_size = tf.shape(input_ids)[0]
-    seq_length = input_ids.shape.as_list()[1]
-    memory_length = state[0].shape.as_list()[1] if state is not None else 0
+    seq_length = tf.shape(input_ids)[1]
+    if state is not None:
+      memory_length = tf.shape(state[0])[1]
+    else:
+      memory_length = 0
     total_length = memory_length + seq_length
 
     if self._two_stream and masked_tokens is None:
