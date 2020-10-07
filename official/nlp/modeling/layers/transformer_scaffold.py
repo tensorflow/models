@@ -224,6 +224,8 @@ class TransformerScaffold(tf.keras.layers.Layer):
             self._dropout_rate,
         "attention_dropout_rate":
             self._attention_dropout_rate,
+        "norm_first":
+            self._norm_first,
         "kernel_initializer":
             tf.keras.initializers.serialize(self._kernel_initializer),
         "bias_initializer":
