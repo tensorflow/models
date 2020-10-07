@@ -58,7 +58,7 @@ Setup commands:
 export SPIECE_DIR=~/cased_spiece/
 export SPIECE_MODEL=${SPIECE_DIR}/cased_spiece.model
 export DATASETS_DIR=gs://some_bucket/datasets
-mkdir -p ${SPIECE_MODEL}
+mkdir -p ${SPIECE_DIR}
 gsutil cp gs://cloud-tpu-checkpoints/xlnet/cased_spiece.model ${SPIECE_DIR}
 ```
 
