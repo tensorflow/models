@@ -63,7 +63,7 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
     strategy = tf.distribute.get_strategy()
 
   if isinstance(dataset_or_fn, tf.data.Dataset):
-    return strategy.distribute_dataset(dataset_or_fn)
+    return strategy.experimental_distribute_dataset(dataset_or_fn)
 
   if not callable(dataset_or_fn):
     raise ValueError("`dataset_or_fn` should be either callable or an instance "
