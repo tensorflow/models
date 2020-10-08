@@ -1507,7 +1507,7 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     keypoint_offsets = np.zeros((1, 32, 32, 2), dtype=np.float32)
     keypoint_regression = np.random.randn(1, 32, 32, num_keypoints * 2)
 
-    class_probs = np.zeros(10)
+    class_probs = np.ones(10) * _logit(0.25)
     class_probs[target_class_id] = _logit(0.75)
     class_center[0, 16, 16] = class_probs
     height_width[0, 16, 16] = [5, 10]
@@ -1582,6 +1582,11 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
                         np.array([55, 46, 75, 86]) / 128.0)
     self.assertAllClose(detections['detection_scores'][0],
                         [.75, .5, .5, .5, .5])
+    expected_multiclass_scores = [.25] * 10
+    expected_multiclass_scores[target_class_id] = .75
+    self.assertAllClose(expected_multiclass_scores,
+                        detections['detection_multiclass_scores'][0][0])
+
     # The output embedding extracted at the object center will be a 3-D array of
     # shape [batch, num_boxes, embedding_size]. The valid predicted embedding
     # will be the first embedding in the first batch. It is a 1-D array of

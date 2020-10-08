@@ -2856,6 +2856,8 @@ class CenterNetMetaArch(model.DetectionModel):
           feature extractor's final layer output.
         detection_scores: A tensor of shape [batch, max_detections] holding
           the predicted score for each box.
+        detection_multiclass_scores: A tensor of shape [batch, max_detection,
+          num_classes] holding multiclass score for each box.
         detection_classes: An integer tensor of shape [batch, max_detections]
           containing the detected class for each box.
         num_detections: An integer tensor of shape [batch] containing the
@@ -2883,7 +2885,8 @@ class CenterNetMetaArch(model.DetectionModel):
         top_k_feature_map_locations(
             object_center_prob, max_pool_kernel_size=3,
             k=self._center_params.max_box_predictions))
-
+    multiclass_scores = tf.gather_nd(
+        object_center_prob, tf.stack([y_indices, x_indices], -1), batch_dims=1)
     boxes_strided, classes, scores, num_detections = (
         prediction_tensors_to_boxes(
             detection_scores, y_indices, x_indices, channel_indices,
@@ -2895,6 +2898,8 @@ class CenterNetMetaArch(model.DetectionModel):
     postprocess_dict = {
         fields.DetectionResultFields.detection_boxes: boxes,
         fields.DetectionResultFields.detection_scores: scores,
+        fields.DetectionResultFields.detection_multiclass_scores:
+            multiclass_scores,
         fields.DetectionResultFields.detection_classes: classes,
         fields.DetectionResultFields.num_detections: num_detections,
         'detection_boxes_strided': boxes_strided
