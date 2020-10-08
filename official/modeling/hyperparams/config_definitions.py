@@ -236,7 +236,8 @@ class TrainerConfig(base_config.Config):
   continuous_eval_timeout: int = 60 * 60
   # Train/Eval routines.
   train_steps: int = 0
-  validation_steps: Optional[int] = None
+  # Sets validation steps to be -1 to evaluate the entire dataset.
+  validation_steps: int = -1
   validation_interval: int = 1000
   # Best checkpoint export.
   best_checkpoint_export_subdir: str = ""
