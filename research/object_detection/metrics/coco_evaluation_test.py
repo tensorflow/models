@@ -255,9 +255,7 @@ class CocoDetectionEvaluationTest(tf.test.TestCase):
 @unittest.skipIf(tf_version.is_tf2(), 'Only Supported in TF1.X')
 class CocoEvaluationPyFuncTest(tf.test.TestCase):
 
-  def testGetOneMAPWithMatchingGroundtruthAndDetections(self):
-    coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
-        _get_categories_list())
+  def _MatchingGroundtruthAndDetections(self, coco_evaluator):
     image_id = tf.placeholder(tf.string, shape=())
     groundtruth_boxes = tf.placeholder(tf.float32, shape=(None, 4))
     groundtruth_classes = tf.placeholder(tf.float32, shape=(None))
@@ -329,6 +327,20 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
     self.assertFalse(coco_evaluator._groundtruth_list)
     self.assertFalse(coco_evaluator._detection_boxes_list)
     self.assertFalse(coco_evaluator._image_ids)
+
+  def testGetOneMAPWithMatchingGroundtruthAndDetections(self):
+    coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
+        _get_categories_list())
+    self._MatchingGroundtruthAndDetections(coco_evaluator)
+
+  # Configured to skip unmatched detector predictions with
+  # groundtruth_labeled_classes, but reverts to fully-labeled eval since there
+  # are no groundtruth_labeled_classes set.
+  def testGetMAPWithSkipUnmatchedPredictionsIgnoreGrountruthLabeledClasses(
+      self):
+    coco_evaluator = coco_evaluation.CocoDetectionEvaluator(
+        _get_categories_list(), skip_predictions_for_unlabeled_class=True)
+    self._MatchingGroundtruthAndDetections(coco_evaluator)
 
   # Test skipping unmatched detector predictions with
   # groundtruth_labeled_classes.
