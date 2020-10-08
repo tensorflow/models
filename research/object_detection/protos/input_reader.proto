@@ -30,7 +30,7 @@ enum InputType {
   TF_SEQUENCE_EXAMPLE = 2;  // TfSequenceExample Input
 }
 
-// Next id: 34
+// Next id: 35
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -61,6 +61,9 @@ message InputReader {
   optional uint32 sample_1_of_n_examples = 22 [default = 1];
 
   // Number of file shards to read in parallel.
+  //
+  // When sample_from_datasets_weights are configured, num_readers is applied
+  // for each dataset.
   optional uint32 num_readers = 6 [default = 64];
 
   // Number of batches to produce in parallel. If this is run on a 2x2 TPU set
@@ -143,6 +146,18 @@ message InputReader {
     TFRecordInputReader tf_record_input_reader = 8;
     ExternalInputReader external_input_reader = 9;
   }
+
+  // When multiple input files are configured, we can sample across them based
+  // on weights.
+  //
+  // The number of weights must match the number of input files configured.
+  //
+  // When set, shuffling, shuffle buffer size, and num_readers settings are
+  // applied individually to each dataset.
+  //
+  // Implementation follows tf.data.experimental.sample_from_datasets sampling
+  // strategy.
+  repeated float sample_from_datasets_weights = 34;
 
 
   // Expand labels to ancestors or descendants in the hierarchy for
