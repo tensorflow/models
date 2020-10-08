@@ -54,9 +54,15 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 }
             })))
 
-  def create_test_trainer(self, config):
-    task = mock_task.MockTask()
-    trainer = trainer_lib.Trainer(config, task, model=task.build_model())
+  def create_test_trainer(self, config, model_dir=None):
+    task = mock_task.MockTask(config.task, logging_dir=model_dir)
+    ckpt_exporter = train_lib.maybe_create_best_ckpt_exporter(config, model_dir)
+    trainer = trainer_lib.Trainer(
+        config,
+        task,
+        model=task.build_model(),
+        optimizer=trainer_lib.create_optimizer(config.trainer, config.runtime),
+        checkpoint_exporter=ckpt_exporter)
     return trainer
 
   @combinations.generate(all_strategy_combinations())
@@ -121,13 +127,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 }
             })))
     model_dir = self.get_temp_dir()
-    task = mock_task.MockTask(config.task, logging_dir=model_dir)
-    ckpt_exporter = train_lib.maybe_create_best_ckpt_exporter(config, model_dir)
-    trainer = trainer_lib.Trainer(
-        config,
-        task,
-        model=task.build_model(),
-        checkpoint_exporter=ckpt_exporter)
+    trainer = self.create_test_trainer(config, model_dir=model_dir)
     trainer.train(tf.convert_to_tensor(1, dtype=tf.int32))
     trainer.evaluate(tf.convert_to_tensor(1, dtype=tf.int32))
     self.assertTrue(

@@ -18,7 +18,7 @@
 import json
 import os
 import pprint
-from typing import Any, List
+from typing import Any, List, Optional
 
 from absl import logging
 import dataclasses
@@ -34,20 +34,22 @@ from official.modeling.hyperparams import config_definitions
 
 def create_trainer(params: config_definitions.ExperimentConfig,
                    task: base_task.Task,
-                   model_dir: str,
                    train: bool,
                    evaluate: bool,
-                   checkpoint_exporter: Any = None) -> base_trainer.Trainer:
+                   checkpoint_exporter: Any = None,
+                   model_dir: Optional[str] = None) -> base_trainer.Trainer:
   """Create trainer."""
   del model_dir
   logging.info('Running default trainer.')
   model = task.build_model()
+  optimizer = base_trainer.create_optimizer(params.trainer, params.runtime)
   trainer = base_trainer.Trainer(
       params,
       task,
+      model=model,
+      optimizer=optimizer,
       train=train,
       evaluate=evaluate,
-      model=model,
       checkpoint_exporter=checkpoint_exporter)
   return trainer
 
