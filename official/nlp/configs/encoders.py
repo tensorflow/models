@@ -63,7 +63,7 @@ class MobileBertEncoderConfig(hyperparams.Config):
     num_attention_heads: number of attention heads in the transformer block.
     intermediate_size: the size of the "intermediate" (a.k.a., feed forward)
       layer.
-    intermediate_act_fn: the non-linear activation function to apply to the
+    hidden_activation: the non-linear activation function to apply to the
       output of the intermediate/feed-forward layer.
     hidden_dropout_prob: dropout probability for the hidden layers.
     attention_probs_dropout_prob: dropout probability of the attention
@@ -89,7 +89,7 @@ class MobileBertEncoderConfig(hyperparams.Config):
   hidden_size: int = 512
   num_attention_heads: int = 4
   intermediate_size: int = 4096
-  intermediate_act_fn: str = "gelu"
+  hidden_activation: str = "gelu"
   hidden_dropout_prob: float = 0.1
   attention_probs_dropout_prob: float = 0.1
   intra_bottleneck_size: int = 1024
@@ -221,7 +221,7 @@ def build_encoder(
         hidden_size=encoder_cfg.hidden_size,
         num_attention_heads=encoder_cfg.num_attention_heads,
         intermediate_size=encoder_cfg.intermediate_size,
-        intermediate_act_fn=encoder_cfg.intermediate_act_fn,
+        intermediate_act_fn=encoder_cfg.hidden_activation,
         hidden_dropout_prob=encoder_cfg.hidden_dropout_prob,
         attention_probs_dropout_prob=encoder_cfg.attention_probs_dropout_prob,
         intra_bottleneck_size=encoder_cfg.intra_bottleneck_size,
