@@ -34,7 +34,6 @@ from official.modeling.hyperparams import config_definitions
 
 def create_trainer(params: config_definitions.ExperimentConfig,
                    task: base_task.Task,
-                   model: tf.keras.Model,
                    model_dir: str,
                    train: bool,
                    evaluate: bool,
@@ -42,6 +41,7 @@ def create_trainer(params: config_definitions.ExperimentConfig,
   """Create trainer."""
   del model_dir
   logging.info('Running default trainer.')
+  model = task.build_model()
   trainer = base_trainer.Trainer(
       params,
       task,
