@@ -114,6 +114,17 @@ def build_block_specs(block_specs=None):
   return [BlockSpec(*b) for b in block_specs]
 
 
+def get_stochastic_depth_rate(init_rate, i, n):
+  """Get drop connect rate for the ith block."""
+  if init_rate is not None:
+    if init_rate < 0 or init_rate > 1:
+      raise ValueError('Initial drop rate must be within 0 and 1.')
+    dc_rate = init_rate * float(i + 1) / n
+  else:
+    dc_rate = None
+  return dc_rate
+
+
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class SpineNet(tf.keras.Model):
   """Class to build SpineNet models."""
@@ -127,6 +138,7 @@ class SpineNet(tf.keras.Model):
                resample_alpha=0.5,
                block_repeats=1,
                filter_size_scale=1.0,
+               init_stochastic_depth_rate=0.0,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
@@ -144,6 +156,7 @@ class SpineNet(tf.keras.Model):
     self._resample_alpha = resample_alpha
     self._block_repeats = block_repeats
     self._filter_size_scale = filter_size_scale
+    self._init_stochastic_depth_rate = init_stochastic_depth_rate
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -187,6 +200,7 @@ class SpineNet(tf.keras.Model):
                    strides,
                    block_fn_cand,
                    block_repeats=1,
+                   stochastic_depth_drop_rate=None,
                    name='block_group'):
     """Creates one group of blocks for the SpineNet model."""
     block_fn_candidates = {
@@ -205,6 +219,7 @@ class SpineNet(tf.keras.Model):
         filters=filters,
         strides=strides,
         use_projection=use_projection,
+        stochastic_depth_drop_rate=stochastic_depth_drop_rate,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
@@ -218,6 +233,7 @@ class SpineNet(tf.keras.Model):
           filters=filters,
           strides=1,
           use_projection=False,
+          stochastic_depth_drop_rate=stochastic_depth_drop_rate,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
@@ -334,6 +350,8 @@ class SpineNet(tf.keras.Model):
           strides=1,
           block_fn_cand=target_block_fn,
           block_repeats=self._block_repeats,
+          stochastic_depth_drop_rate=get_stochastic_depth_rate(
+              self._init_stochastic_depth_rate, i, len(self._block_specs)),
           name='scale_permuted_block_{}'.format(i + 1))
 
       net.append(x)
@@ -459,6 +477,7 @@ class SpineNet(tf.keras.Model):
         'resample_alpha': self._resample_alpha,
         'block_repeats': self._block_repeats,
         'filter_size_scale': self._filter_size_scale,
+        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
@@ -505,6 +524,7 @@ def build_spinenet(
       resample_alpha=scaling_params['resample_alpha'],
       block_repeats=scaling_params['block_repeats'],
       filter_size_scale=scaling_params['filter_size_scale'],
+      init_stochastic_depth_rate=backbone_cfg.stochastic_depth_drop_rate,
       kernel_regularizer=l2_regularizer,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,

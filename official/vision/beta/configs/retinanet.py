@@ -200,9 +200,9 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
                           57 * steps_per_epoch, 67 * steps_per_epoch
                       ],
                       'values': [
-                          0.28 * train_batch_size / 256.0,
-                          0.028 * train_batch_size / 256.0,
-                          0.0028 * train_batch_size / 256.0
+                          0.32 * train_batch_size / 256.0,
+                          0.032 * train_batch_size / 256.0,
+                          0.0032 * train_batch_size / 256.0
                       ],
                   }
               },
@@ -238,11 +238,13 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
           model=RetinaNet(
               backbone=backbones.Backbone(
                   type='spinenet',
-                  spinenet=backbones.SpineNet(model_id='49')),
+                  spinenet=backbones.SpineNet(
+                      model_id='49', stochastic_depth_drop_rate=0.2)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               anchor=Anchor(anchor_size=3),
-              norm_activation=common.NormActivation(use_sync_bn=True),
+              norm_activation=common.NormActivation(
+                  use_sync_bn=True, activation='swish'),
               num_classes=91,
               input_size=[input_size, input_size, 3],
               min_level=3,
@@ -253,13 +255,13 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
               is_training=True,
               global_batch_size=train_batch_size,
               parser=Parser(
-                  aug_rand_hflip=True, aug_scale_min=0.5, aug_scale_max=2.0)),
+                  aug_rand_hflip=True, aug_scale_min=0.1, aug_scale_max=2.0)),
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
               global_batch_size=eval_batch_size)),
       trainer=cfg.TrainerConfig(
-          train_steps=350 * steps_per_epoch,
+          train_steps=500 * steps_per_epoch,
           validation_steps=COCO_VAL_EXAMPLES // eval_batch_size,
           validation_interval=steps_per_epoch,
           steps_per_loop=steps_per_epoch,
@@ -276,12 +278,12 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
                   'type': 'stepwise',
                   'stepwise': {
                       'boundaries': [
-                          320 * steps_per_epoch, 340 * steps_per_epoch
+                          475 * steps_per_epoch, 490 * steps_per_epoch
                       ],
                       'values': [
-                          0.28 * train_batch_size / 256.0,
-                          0.028 * train_batch_size / 256.0,
-                          0.0028 * train_batch_size / 256.0
+                          0.32 * train_batch_size / 256.0,
+                          0.032 * train_batch_size / 256.0,
+                          0.0032 * train_batch_size / 256.0
                       ],
                   }
               },

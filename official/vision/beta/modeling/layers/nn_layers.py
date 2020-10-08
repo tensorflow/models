@@ -133,8 +133,8 @@ class StochasticDepth(tf.keras.layers.Layer):
 
   def call(self, inputs, training=None):
     if training is None:
-      is_training = tf.keras.backend.learning_phase()
-    if not is_training or self._drop_rate is None or self._drop_rate == 0:
+      training = tf.keras.backend.learning_phase()
+    if not training or self._drop_rate is None or self._drop_rate == 0:
       return inputs
 
     keep_prob = 1.0 - self._drop_rate
