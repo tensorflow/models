@@ -48,6 +48,7 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
         resample_alpha=resample_alpha,
         block_repeats=block_repeats,
         filter_size_scale=filter_size_scale,
+        init_stochastic_depth_rate=0.2,
     )
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
@@ -68,6 +69,7 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
         resample_alpha=0.5,
         block_repeats=1,
         filter_size_scale=1.0,
+        init_stochastic_depth_rate=0.2,
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,

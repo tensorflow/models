@@ -40,6 +40,7 @@ class EfficientNet(hyperparams.Config):
 class SpineNet(hyperparams.Config):
   """SpineNet config."""
   model_id: str = '49'
+  stochastic_depth_drop_rate: float = 0.0
 
 
 @dataclasses.dataclass
