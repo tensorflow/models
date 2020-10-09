@@ -19,7 +19,6 @@ import tensorflow as tf
 
 from official.vision import keras_cv
 from official.vision.beta.modeling.layers import box_sampler
-from official.vision.beta.ops import box_ops
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -68,7 +67,7 @@ class ROISampler(tf.keras.layers.Layer):
             foreground_iou_threshold
         ],
         indicators=[-3, -1, -2, 1])
-    self._anchor_labeler = keras_cv.ops.AnchorLabeler()
+    self._target_gather = keras_cv.ops.TargetGather()
 
     self._sampler = box_sampler.BoxSampler(
         num_sampled_rois, foreground_fraction)
@@ -130,14 +129,13 @@ class ROISampler(tf.keras.layers.Layer):
     background_mask = tf.expand_dims(
         tf.logical_or(negative_matches, invalid_matches), -1)
     gt_classes = tf.expand_dims(gt_classes, axis=-1)
-    matched_gt_classes = self._anchor_labeler(gt_classes, matched_gt_indices,
-                                              background_mask)
+    matched_gt_classes = self._target_gather(gt_classes, matched_gt_indices,
+                                             background_mask)
     matched_gt_classes = tf.where(background_mask,
                                   tf.zeros_like(matched_gt_classes),
                                   matched_gt_classes)
-    matched_gt_classes = tf.squeeze(matched_gt_classes, axis=-1)
-    matched_gt_boxes = self._anchor_labeler(gt_boxes, matched_gt_indices,
-                                            tf.tile(background_mask, [1, 1, 4]))
+    matched_gt_boxes = self._target_gather(gt_boxes, matched_gt_indices,
+                                           tf.tile(background_mask, [1, 1, 4]))
     matched_gt_boxes = tf.where(background_mask,
                                 tf.zeros_like(matched_gt_boxes),
                                 matched_gt_boxes)
@@ -148,13 +146,12 @@ class ROISampler(tf.keras.layers.Layer):
     sampled_indices = self._sampler(
         positive_matches, negative_matches, ignored_matches)
 
-    sampled_rois, sampled_gt_boxes, sampled_gt_classes, sampled_gt_indices = (
-        box_ops.gather_instances(
-            sampled_indices,
-            boxes,
-            matched_gt_boxes,
-            matched_gt_classes,
-            matched_gt_indices))
+    sampled_rois = self._target_gather(boxes, sampled_indices)
+    sampled_gt_boxes = self._target_gather(matched_gt_boxes, sampled_indices)
+    sampled_gt_classes = tf.squeeze(self._target_gather(
+        matched_gt_classes, sampled_indices), axis=-1)
+    sampled_gt_indices = tf.squeeze(self._target_gather(
+        tf.expand_dims(matched_gt_indices, -1), sampled_indices), axis=-1)
     return (sampled_rois, sampled_gt_boxes, sampled_gt_classes,
             sampled_gt_indices)
 

@@ -133,7 +133,7 @@ class AnchorLabeler(object):
         with a score below the threshold is labeled negative.
     """
     self.similarity_calc = keras_cv.ops.IouSimilarity()
-    self.anchor_labeler = keras_cv.ops.AnchorLabeler()
+    self.target_gather = keras_cv.ops.TargetGather()
     self.matcher = keras_cv.ops.BoxMatcher(
         thresholds=[unmatched_threshold, match_threshold],
         indicators=[-1, -2, 1],
@@ -177,13 +177,13 @@ class AnchorLabeler(object):
     match_indices, match_indicators = self.matcher(similarity_matrix)
     mask = tf.less_equal(match_indicators, 0)
     cls_mask = tf.expand_dims(mask, -1)
-    cls_targets = self.anchor_labeler(gt_labels, match_indices, cls_mask, -1)
+    cls_targets = self.target_gather(gt_labels, match_indices, cls_mask, -1)
     box_mask = tf.tile(cls_mask, [1, 4])
-    box_targets = self.anchor_labeler(gt_boxes, match_indices, box_mask)
+    box_targets = self.target_gather(gt_boxes, match_indices, box_mask)
     weights = tf.squeeze(tf.ones_like(gt_labels, dtype=tf.float32), -1)
-    box_weights = self.anchor_labeler(weights, match_indices, mask)
+    box_weights = self.target_gather(weights, match_indices, mask)
     ignore_mask = tf.equal(match_indicators, -2)
-    cls_weights = self.anchor_labeler(weights, match_indices, ignore_mask)
+    cls_weights = self.target_gather(weights, match_indices, ignore_mask)
     box_targets_list = box_list.BoxList(box_targets)
     anchor_box_list = box_list.BoxList(flattened_anchor_boxes)
     box_targets = self.box_coder.encode(box_targets_list, anchor_box_list)
@@ -279,7 +279,7 @@ class RpnAnchorLabeler(AnchorLabeler):
     match_indices, match_indicators = self.matcher(similarity_matrix)
     box_mask = tf.tile(tf.expand_dims(tf.less_equal(match_indicators, 0), -1),
                        [1, 4])
-    box_targets = self.anchor_labeler(gt_boxes, match_indices, box_mask)
+    box_targets = self.target_gather(gt_boxes, match_indices, box_mask)
     box_targets_list = box_list.BoxList(box_targets)
     anchor_box_list = box_list.BoxList(flattened_anchor_boxes)
     box_targets = self.box_coder.encode(box_targets_list, anchor_box_list)
