@@ -32,7 +32,7 @@ export_dir_path = XX
 input_type = XX
 input_images = XX
 imported = tf.saved_model.load(export_dir_path)
-model_fn = .signatures['serving_default']
+model_fn = imported.signatures['serving_default']
 output = model_fn(input_images)
 """
 
