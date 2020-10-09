@@ -74,8 +74,7 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     Args:
       config: An `ExperimentConfig` instance specifying experiment config.
       task: A base_task.Task instance.
-      model: tf.keras.Model instance. If provided, it will be used instead of
-        building model using task.build_model(). Default to None.
+      model: The model instance, e.g. a tf.keras.Model instance.
       optimizer: tf.optimizers.Optimizer instance.
       train: bool, whether or not this trainer will be used for training.
         default to True.
