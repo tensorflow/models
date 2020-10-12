@@ -14,10 +14,55 @@
 # ==============================================================================
 """Contains common building blocks for neural networks."""
 
+from typing import Optional
+
 # Import libraries
+
+from absl import logging
 import tensorflow as tf
 
 from official.modeling import tf_utils
+
+
+def make_divisible(value: float,
+                   divisor: int,
+                   min_value: Optional[float] = None
+                   ) -> int:
+  """This is to ensure that all layers have channels that are divisible by 8.
+
+  Args:
+    value: `float` original value.
+    divisor: `int` the divisor that need to be checked upon.
+    min_value: `float` minimum value threshold.
+
+  Returns:
+    The adjusted value in `int` that divisible against divisor.
+  """
+  if min_value is None:
+    min_value = divisor
+  new_value = max(min_value, int(value + divisor / 2) // divisor * divisor)
+  # Make sure that round down does not go down by more than 10%.
+  if new_value < 0.9 * value:
+    new_value += divisor
+  return new_value
+
+
+def round_filters(filters: int,
+                  multiplier: float,
+                  divisor: int = 8,
+                  min_depth: Optional[int] = None,
+                  skip: bool = False):
+  """Round number of filters based on width multiplier."""
+  orig_f = filters
+  if skip or not multiplier:
+    return filters
+
+  new_filters = make_divisible(value=filters * multiplier,
+                               divisor=divisor,
+                               min_value=min_depth)
+
+  logging.info('round_filter input=%s output=%s', orig_f, new_filters)
+  return int(new_filters)
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -26,34 +71,42 @@ class SqueezeExcitation(tf.keras.layers.Layer):
 
   def __init__(self,
                in_filters,
+               out_filters,
                se_ratio,
-               expand_ratio,
+               divisible_by=1,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
                activation='relu',
+               gating_activation='sigmoid',
                **kwargs):
     """Implementation for squeeze and excitation.
 
     Args:
       in_filters: `int` number of filters of the input tensor.
+      out_filters: `int` number of filters of the output tensor.
       se_ratio: `float` or None. If not None, se ratio for the squeeze and
         excitation layer.
-      expand_ratio: `int` expand_ratio for a MBConv block.
+      divisible_by: `int` ensures all inner dimensions are divisible by this
+        number.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
         Default to None.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
         Default to None.
       activation: `str` name of the activation function.
+      gating_activation: `str` name of the activation function for final gating
+        function.
       **kwargs: keyword arguments to be passed.
     """
     super(SqueezeExcitation, self).__init__(**kwargs)
 
     self._in_filters = in_filters
+    self._out_filters = out_filters
     self._se_ratio = se_ratio
-    self._expand_ratio = expand_ratio
+    self._divisible_by = divisible_by
     self._activation = activation
+    self._gating_activation = gating_activation
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -62,9 +115,12 @@ class SqueezeExcitation(tf.keras.layers.Layer):
     else:
       self._spatial_axis = [2, 3]
     self._activation_fn = tf_utils.get_activation(activation)
+    self._gating_activation_fn = tf_utils.get_activation(gating_activation)
 
   def build(self, input_shape):
-    num_reduced_filters = max(1, int(self._in_filters * self._se_ratio))
+    num_reduced_filters = make_divisible(
+        max(1, int(self._in_filters * self._se_ratio)),
+        divisor=self._divisible_by)
 
     self._se_reduce = tf.keras.layers.Conv2D(
         filters=num_reduced_filters,
@@ -77,7 +133,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
         bias_regularizer=self._bias_regularizer)
 
     self._se_expand = tf.keras.layers.Conv2D(
-        filters=self._in_filters * self._expand_ratio,
+        filters=self._out_filters,
         kernel_size=1,
         strides=1,
         padding='same',
@@ -91,22 +147,24 @@ class SqueezeExcitation(tf.keras.layers.Layer):
   def get_config(self):
     config = {
         'in_filters': self._in_filters,
+        'out_filters': self._out_filters,
         'se_ratio': self._se_ratio,
-        'expand_ratio': self._expand_ratio,
+        'divisible_by': self._divisible_by,
         'strides': self._strides,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
         'activation': self._activation,
+        'gating_activation': self._gating_activation,
     }
     base_config = super(SqueezeExcitation, self).get_config()
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):
     x = tf.reduce_mean(inputs, self._spatial_axis, keepdims=True)
-    x = self._se_expand(self._activation_fn(self._se_reduce(x)))
-
-    return tf.sigmoid(x) * inputs
+    x = self._activation_fn(self._se_reduce(x))
+    x = self._gating_activation_fn(self._se_expand(x))
+    return x * inputs
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')

@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,11 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Backbones package definition."""
+"""Customized Relu activation."""
 
-from official.vision.beta.modeling.backbones.efficientnet import EfficientNet
-from official.vision.beta.modeling.backbones.mobilenet import MobileNet
-from official.vision.beta.modeling.backbones.resnet import ResNet
-from official.vision.beta.modeling.backbones.resnet_3d import ResNet3D
-from official.vision.beta.modeling.backbones.revnet import RevNet
-from official.vision.beta.modeling.backbones.spinenet import SpineNet
+import tensorflow as tf
+
+
+@tf.keras.utils.register_keras_serializable(package='Text')
+def relu6(features):
+  """Computes the Relu6 activation function.
+
+  Args:
+    features: A `Tensor` representing preactivation values.
+
+  Returns:
+    The activation value.
+  """
+  features = tf.convert_to_tensor(features)
+  return tf.nn.relu6(features)
