@@ -237,7 +237,7 @@ def build_resnet(
     input_specs: tf.keras.layers.InputSpec,
     model_config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
-  """Builds ResNet 3d backbone from a config."""
+  """Builds ResNet backbone from a config."""
   backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
   norm_activation_config = model_config.norm_activation
