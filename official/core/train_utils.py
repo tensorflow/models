@@ -27,9 +27,9 @@ import tensorflow as tf
 
 from official.core import base_task
 from official.core import base_trainer
+from official.core import config_definitions
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.modeling.hyperparams import config_definitions
 
 
 def create_trainer(params: config_definitions.ExperimentConfig,

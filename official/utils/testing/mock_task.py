@@ -20,9 +20,9 @@ import numpy as np
 import tensorflow as tf
 
 from official.core import base_task
+from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.core import task_factory
-from official.modeling.hyperparams import config_definitions as cfg
 
 
 class MockModel(tf.keras.Model):

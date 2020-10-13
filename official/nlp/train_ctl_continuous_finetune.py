@@ -14,7 +14,6 @@
 # limitations under the License.
 # ==============================================================================
 """TFM continuous finetuning+eval training driver."""
-
 import gc
 import os
 import time
@@ -31,11 +30,11 @@ from official.common import registry_imports
 # pylint: enable=unused-import
 from official.common import distribute_utils
 from official.common import flags as tfm_flags
+from official.core import config_definitions
 from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
-from official.modeling.hyperparams import config_definitions
 
 FLAGS = flags.FLAGS
 

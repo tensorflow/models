@@ -23,8 +23,8 @@ import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 from official.core import base_trainer as trainer_lib
+from official.core import config_definitions as cfg
 from official.core import train_lib
-from official.modeling.hyperparams import config_definitions as cfg
 from official.utils.testing import mock_task
 
 

@@ -27,7 +27,7 @@ import tensorflow as tf
 
 from official.core import train_utils
 from official.core import base_task
-from official.modeling.hyperparams import config_definitions
+from official.core import config_definitions
 
 
 class BestCheckpointExporter:
