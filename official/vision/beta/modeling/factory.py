@@ -156,7 +156,8 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
         activation=model_config.norm_activation.activation,
         norm_momentum=model_config.norm_activation.norm_momentum,
         norm_epsilon=model_config.norm_activation.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
+        kernel_regularizer=l2_regularizer,
+        class_agnostic=model_config.mask_head.class_agnostic)
 
     mask_sampler_obj = mask_sampler.MaskSampler(
         mask_target_size=(
