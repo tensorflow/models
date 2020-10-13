@@ -33,15 +33,17 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
   # Special keys in train/validate step returned logs.
   loss = "loss"
 
-  def __init__(self, params, logging_dir: str = None):
+  def __init__(self, params, logging_dir: str = None, name: str = None):
     """Task initialization.
 
     Args:
-      params: the task configuration instance, which can be any of
-        dataclass, ConfigDict, namedtuple, etc.
+      params: the task configuration instance, which can be any of dataclass,
+        ConfigDict, namedtuple, etc.
       logging_dir: a string pointing to where the model, summaries etc. will be
         saved. You can also write additional stuff in this directory.
+      name: the task name.
     """
+    super().__init__(name=name)
     self._task_config = params
     self._logging_dir = logging_dir
 

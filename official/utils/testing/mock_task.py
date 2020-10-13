@@ -46,8 +46,8 @@ class MockTaskConfig(cfg.TaskConfig):
 class MockTask(base_task.Task):
   """Mock task object for testing."""
 
-  def __init__(self, params=None, logging_dir=None):
-    super().__init__(params=params, logging_dir=logging_dir)
+  def __init__(self, params=None, logging_dir=None, name=None):
+    super().__init__(params=params, logging_dir=logging_dir, name=name)
 
   def build_model(self, *arg, **kwargs):
     inputs = tf.keras.layers.Input(shape=(2,), name="random", dtype=tf.float32)
