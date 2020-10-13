@@ -145,6 +145,7 @@ class MaskHead(hyperparams.Config):
   num_convs: int = 4
   num_filters: int = 256
   use_separable_conv: bool = False
+  class_agnostic: bool = False
 
 
 @dataclasses.dataclass
