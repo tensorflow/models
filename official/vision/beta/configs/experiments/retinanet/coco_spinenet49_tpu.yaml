@@ -1,3 +1,4 @@
+# SpineNet-49 COCO detection with protocal C config. Expecting 44.2% AP.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
