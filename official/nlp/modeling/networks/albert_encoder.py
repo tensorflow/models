@@ -163,9 +163,10 @@ class AlbertEncoder(tf.keras.Model):
       data = shared_layer([data, attention_mask])
       encoder_outputs.append(data)
 
-    first_token_tensor = (
-        tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(data)
-    )
+    # Applying a tf.slice op (through subscript notation) to a Keras tensor
+    # like this will create a SliceOpLambda layer. This is better than a Lambda
+    # layer with Python code, because that is fundamentally less portable.
+    first_token_tensor = data[:, 0, :]
     cls_output = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
