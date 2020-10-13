@@ -193,9 +193,11 @@ class EncoderScaffold(tf.keras.Model):
       layer_output_data.append(data)
       self._hidden_layers.append(layer)
 
-    first_token_tensor = (
-        tf.keras.layers.Lambda(lambda x: tf.squeeze(x[:, 0:1, :], axis=1))(
-            layer_output_data[-1]))
+    last_layer_output = layer_output_data[-1]
+    # Applying a tf.slice op (through subscript notation) to a Keras tensor
+    # like this will create a SliceOpLambda layer. This is better than a Lambda
+    # layer with Python code, because that is fundamentally less portable.
+    first_token_tensor = last_layer_output[:, 0, :]
     self._pooler_layer = tf.keras.layers.Dense(
         units=pooled_output_dim,
         activation='tanh',
