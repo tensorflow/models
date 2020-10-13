@@ -21,7 +21,7 @@ from typing import Any, Callable, Optional
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from official.modeling.hyperparams import config_definitions as cfg
+from official.core import config_definitions as cfg
 
 
 def _get_random_integer():

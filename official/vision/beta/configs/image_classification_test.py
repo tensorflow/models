@@ -14,13 +14,12 @@
 # limitations under the License.
 # ==============================================================================
 """Tests for image_classification."""
-
 # pylint: disable=unused-import
 from absl.testing import parameterized
 import tensorflow as tf
 
+from official.core import config_definitions as cfg
 from official.core import exp_factory
-from official.modeling.hyperparams import config_definitions as cfg
 from official.vision import beta
 from official.vision.beta.configs import image_classification as exp_cfg
 

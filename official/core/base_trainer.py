@@ -25,9 +25,9 @@ import orbit
 import tensorflow as tf
 
 from official.core import base_task
+from official.core import config_definitions
 from official.modeling import optimization
 from official.modeling import performance
-from official.modeling.hyperparams import config_definitions
 
 ExperimentConfig = config_definitions.ExperimentConfig
 TrainerConfig = config_definitions.TrainerConfig
