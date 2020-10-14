@@ -150,9 +150,9 @@ def run_continuous_finetune(
     train_utils.write_json_summary(model_dir, global_step, eval_metrics)
 
     if not os.path.basename(model_dir):  # if model_dir.endswith('/')
-      summary_grp = os.path.dirname(model_dir) + '_' + task.__class__.__name__
+      summary_grp = os.path.dirname(model_dir) + '_' + task.name
     else:
-      summary_grp = os.path.basename(model_dir) + '_' + task.__class__.__name__
+      summary_grp = os.path.basename(model_dir) + '_' + task.name
     summaries = {}
     for name, value in eval_metrics.items():
       summaries[summary_grp + '/' + name] = value
