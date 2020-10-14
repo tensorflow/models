@@ -1556,6 +1556,41 @@ class CocoMaskEvaluationTest(tf.test.TestCase):
     self.assertFalse(coco_evaluator._groundtruth_list)
     self.assertFalse(coco_evaluator._detection_masks_list)
 
+  def testGetOneMAPWithMatchingGroundtruthAndDetectionsSkipCrowd(self):
+    """Tests computing mAP with is_crowd GT boxes skipped."""
+    coco_evaluator = coco_evaluation.CocoMaskEvaluator(
+        _get_categories_list())
+    coco_evaluator.add_single_ground_truth_image_info(
+        image_id='image1',
+        groundtruth_dict={
+            standard_fields.InputDataFields.groundtruth_boxes:
+                np.array([[100., 100., 200., 200.], [99., 99., 200., 200.]]),
+            standard_fields.InputDataFields.groundtruth_classes:
+                np.array([1, 2]),
+            standard_fields.InputDataFields.groundtruth_is_crowd:
+                np.array([0, 1]),
+            standard_fields.InputDataFields.groundtruth_instance_masks:
+                np.concatenate(
+                    [np.pad(np.ones([1, 100, 100], dtype=np.uint8),
+                            ((0, 0), (100, 56), (100, 56)), mode='constant'),
+                     np.pad(np.ones([1, 101, 101], dtype=np.uint8),
+                            ((0, 0), (99, 56), (99, 56)), mode='constant')],
+                    axis=0)
+        })
+    coco_evaluator.add_single_detected_image_info(
+        image_id='image1',
+        detections_dict={
+            standard_fields.DetectionResultFields.detection_scores:
+                np.array([.8]),
+            standard_fields.DetectionResultFields.detection_classes:
+                np.array([1]),
+            standard_fields.DetectionResultFields.detection_masks:
+                np.pad(np.ones([1, 100, 100], dtype=np.uint8),
+                       ((0, 0), (100, 56), (100, 56)), mode='constant')
+        })
+    metrics = coco_evaluator.evaluate()
+    self.assertAlmostEqual(metrics['DetectionMasks_Precision/mAP'], 1.0)
+
 
 @unittest.skipIf(tf_version.is_tf2(), 'Only Supported in TF1.X')
 class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):

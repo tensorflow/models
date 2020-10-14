@@ -997,11 +997,26 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
           [num_boxes, image_height, image_width] containing groundtruth masks
           corresponding to the boxes. The elements of the array must be in
           {0, 1}.
+        InputDataFields.groundtruth_is_crowd (optional): integer numpy array of
+          shape [num_boxes] containing iscrowd flag for groundtruth boxes.
+        InputDataFields.groundtruth_area (optional): float numpy array of
+          shape [num_boxes] containing the area (in the original absolute
+          coordinates) of the annotated object.
     """
     if image_id in self._image_id_to_mask_shape_map:
       tf.logging.warning('Ignoring ground truth with image id %s since it was '
                          'previously added', image_id)
       return
+
+    # Drop optional fields if empty tensor.
+    groundtruth_is_crowd = groundtruth_dict.get(
+        standard_fields.InputDataFields.groundtruth_is_crowd)
+    groundtruth_area = groundtruth_dict.get(
+        standard_fields.InputDataFields.groundtruth_area)
+    if groundtruth_is_crowd is not None and not groundtruth_is_crowd.shape[0]:
+      groundtruth_is_crowd = None
+    if groundtruth_area is not None and not groundtruth_area.shape[0]:
+      groundtruth_area = None
 
     groundtruth_instance_masks = groundtruth_dict[
         standard_fields.InputDataFields.groundtruth_instance_masks]
@@ -1018,7 +1033,9 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
             groundtruth_classes=groundtruth_dict[standard_fields.
                                                  InputDataFields.
                                                  groundtruth_classes],
-            groundtruth_masks=groundtruth_instance_masks))
+            groundtruth_masks=groundtruth_instance_masks,
+            groundtruth_is_crowd=groundtruth_is_crowd,
+            groundtruth_area=groundtruth_area))
     self._annotation_id += groundtruth_dict[standard_fields.InputDataFields.
                                             groundtruth_boxes].shape[0]
     self._image_id_to_mask_shape_map[image_id] = groundtruth_dict[
