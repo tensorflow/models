@@ -66,23 +66,22 @@ class SentencePredictionConfig(cfg.TaskConfig):
 class SentencePredictionTask(base_task.Task):
   """Task object for sentence_prediction."""
 
-  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
-    super(SentencePredictionTask, self).__init__(params, logging_dir)
-    if params.hub_module_url and params.init_checkpoint:
-      raise ValueError('At most one of `hub_module_url` and '
-                       '`init_checkpoint` can be specified.')
-    if params.hub_module_url:
-      self._hub_module = hub.load(params.hub_module_url)
-    else:
-      self._hub_module = None
-
+  def __init__(self, params: cfg.TaskConfig, logging_dir=None, name=None):
+    super().__init__(params, logging_dir, name=name)
     if params.metric_type not in METRIC_TYPES:
       raise ValueError('Invalid metric_type: {}'.format(params.metric_type))
     self.metric_type = params.metric_type
 
   def build_model(self):
-    if self._hub_module:
-      encoder_network = utils.get_encoder_from_hub(self._hub_module)
+    if self.task_config.hub_module_url and self.task_config.init_checkpoint:
+      raise ValueError('At most one of `hub_module_url` and '
+                       '`init_checkpoint` can be specified.')
+    if self.task_config.hub_module_url:
+      hub_module = hub.load(self.task_config.hub_module_url)
+    else:
+      hub_module = None
+    if hub_module:
+      encoder_network = utils.get_encoder_from_hub(hub_module)
     else:
       encoder_network = encoders.build_encoder(self.task_config.model.encoder)
     encoder_cfg = self.task_config.model.encoder.get()

@@ -84,22 +84,16 @@ def _masked_labels_and_weights(y_true):
 class TaggingTask(base_task.Task):
   """Task object for tagging (e.g., NER or POS)."""
 
-  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
-    super(TaggingTask, self).__init__(params, logging_dir)
-    if params.hub_module_url and params.init_checkpoint:
+  def build_model(self):
+    if self.task_config.hub_module_url and self.task_config.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
-    if not params.class_names:
-      raise ValueError('TaggingConfig.class_names cannot be empty.')
-
-    if params.hub_module_url:
-      self._hub_module = hub.load(params.hub_module_url)
+    if self.task_config.hub_module_url:
+      hub_module = hub.load(self.task_config.hub_module_url)
     else:
-      self._hub_module = None
-
-  def build_model(self):
-    if self._hub_module:
-      encoder_network = utils.get_encoder_from_hub(self._hub_module)
+      hub_module = None
+    if hub_module:
+      encoder_network = utils.get_encoder_from_hub(hub_module)
     else:
       encoder_network = encoders.build_encoder(self.task_config.model.encoder)
 

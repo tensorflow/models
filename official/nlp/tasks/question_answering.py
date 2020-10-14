@@ -63,15 +63,8 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
 class QuestionAnsweringTask(base_task.Task):
   """Task object for question answering."""
 
-  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
-    super(QuestionAnsweringTask, self).__init__(params, logging_dir)
-    if params.hub_module_url and params.init_checkpoint:
-      raise ValueError('At most one of `hub_module_url` and '
-                       '`init_checkpoint` can be specified.')
-    if params.hub_module_url:
-      self._hub_module = hub.load(params.hub_module_url)
-    else:
-      self._hub_module = None
+  def __init__(self, params: cfg.TaskConfig, logging_dir=None, name=None):
+    super().__init__(params, logging_dir, name=name)
 
     if params.validation_data.tokenization == 'WordPiece':
       self.squad_lib = squad_lib_wp
@@ -90,8 +83,15 @@ class QuestionAnsweringTask(base_task.Task):
     self._tf_record_input_path = eval_input_path
 
   def build_model(self):
-    if self._hub_module:
-      encoder_network = utils.get_encoder_from_hub(self._hub_module)
+    if self.task_config.hub_module_url and self.task_config.init_checkpoint:
+      raise ValueError('At most one of `hub_module_url` and '
+                       '`init_checkpoint` can be specified.')
+    if self.task_config.hub_module_url:
+      hub_module = hub.load(self.task_config.hub_module_url)
+    else:
+      hub_module = None
+    if hub_module:
+      encoder_network = utils.get_encoder_from_hub(hub_module)
     else:
       encoder_network = encoders.build_encoder(self.task_config.model.encoder)
     encoder_cfg = self.task_config.model.encoder.get()
