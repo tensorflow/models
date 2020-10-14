@@ -113,6 +113,9 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
   positions, and then uses either the true start positions (if training) or
   beam search to predict the end positions.
 
+  **Note: `compute_with_beam_search` will not work with the Functional API
+  (https://www.tensorflow.org/guide/keras/functional).
+
   Arguments:
     input_width: The innermost dimension of the input tensor to this network.
     start_n_top: Beam size for span start.
@@ -150,6 +153,7 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
     self.end_logits_inner_dense = tf.keras.layers.Dense(
         units=input_width,
         kernel_initializer=initializer,
+        activation=activation,
         name='predictions/transform/end_logits/inner')
     self.end_logits_layer_norm = tf.keras.layers.LayerNormalization(
         axis=-1, epsilon=1e-12,
@@ -172,13 +176,33 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
         name='predictions/transform/answer_logits/output')
 
   def end_logits(self, inputs):
-    """Computes the end logits."""
+    """Computes the end logits.
+
+    Input shapes into the inner, layer norm, output layers should match.
+
+    During training, inputs shape should be
+    [batch_size, seq_length, input_width].
+
+    During inference, input shapes should be
+    [batch_size, seq_length, start_n_top, input_width].
+
+    Args:
+      inputs: The input for end logits.
+
+    Returns:
+      Calculated end logits.
+
+    """
+    if len(tf.shape(inputs)) == 3:
+      # inputs: [B, S, H] -> [B, S, 1, H]
+      inputs = tf.expand_dims(inputs, axis=2)
+
     end_logits = self.end_logits_inner_dense(inputs)
     end_logits = self.end_logits_layer_norm(end_logits)
     end_logits = self.end_logits_output_dense(end_logits)
     end_logits = tf.squeeze(end_logits)
     if tf.rank(end_logits) > 2:
-      # shape = [batch_size, seq_length, start_n_top]
+      # shape = [B, S, K] -> [B, K, S]
       end_logits = tf.transpose(end_logits, [0, 2, 1])
 
     return end_logits
