@@ -98,7 +98,7 @@ export IMDB_DIR=~/imdb
 mkdir -p ${IMDB_DIR}
 
 cd ${IMDB_DIR}
-wget http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz .
+wget http://ai.stanford.edu/~amaas/data/sentiment/aclImdb_v1.tar.gz
 tar zxvf aclImdb_v1.tar.gz -C ${IMDB_DIR}
 rm aclImdb_v1.tar.gz
 ```
@@ -108,7 +108,7 @@ Then, the dataset can be converted into TFRecords with the following command:
 ```shell
 export TASK_NAME=imdb
 
-python3 preprocess_classification_data.py --max_seq_length=512 --spiece_model_file=${SPIECE_MODEL} --output_dir=${DATASETS_DIR}/${TASK_NAME} --data_dir=${IMDB_DIR} --task_name=${TASK_NAME}
+python3 preprocess_classification_data.py --max_seq_length=512 --spiece_model_file=${SPIECE_MODEL} --output_dir=${DATASETS_DIR}/${TASK_NAME} --data_dir=${IMDB_DIR}/aclImdb --task_name=${TASK_NAME}
 ```
 
 Note: To obtain SOTA on the IMDB dataset, using a sequence length of 512 is
