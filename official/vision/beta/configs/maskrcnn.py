@@ -209,6 +209,8 @@ class MaskRCNNTask(cfg.TaskConfig):
   annotation_file: Optional[str] = None
   gradient_clip_norm: float = 0.0
   per_category_metrics: bool = False
+  # If set, we only use masks for the specified class IDs.
+  allowed_mask_class_ids: Optional[List[int]] = None
 
 
 COCO_INPUT_PATH_BASE = 'coco'
