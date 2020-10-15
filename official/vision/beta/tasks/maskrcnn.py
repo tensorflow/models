@@ -29,6 +29,29 @@ from official.vision.beta.losses import maskrcnn_losses
 from official.vision.beta.modeling import factory
 
 
+def zero_out_disallowed_class_ids(batch_class_ids, allowed_class_ids):
+  """Zero out IDs of classes not in allowed_class_ids.
+
+  Args:
+    batch_class_ids: A [batch_size, num_instances] int tensor of input
+      class IDs.
+    allowed_class_ids: A python list of class IDs which we want to allow.
+
+  Returns:
+      filtered_class_ids: A [batch_size, num_instances] int tensor with any
+        class ID not in allowed_class_ids set to 0.
+  """
+
+  allowed_class_ids = tf.constant(allowed_class_ids,
+                                  dtype=batch_class_ids.dtype)
+
+  match_ids = (batch_class_ids[:, :, tf.newaxis] ==
+               allowed_class_ids[tf.newaxis, tf.newaxis, :])
+
+  match_ids = tf.reduce_any(match_ids, axis=2)
+  return tf.where(match_ids, batch_class_ids, tf.zeros_like(batch_class_ids))
+
+
 @task_factory.register_task_cls(exp_cfg.MaskRCNNTask)
 class MaskRCNNTask(base_task.Task):
   """A single-replica view of training procedure.
@@ -154,11 +177,17 @@ class MaskRCNNTask(base_task.Task):
 
     if params.model.include_mask:
       mask_loss_fn = maskrcnn_losses.MaskrcnnLoss()
+      mask_class_targets = outputs['mask_class_targets']
+      if self._task_config.allowed_mask_class_ids is not None:
+        # Classes with ID=0 are ignored by mask_loss_fn in loss computation.
+        mask_class_targets = zero_out_disallowed_class_ids(
+            mask_class_targets, self._task_config.allowed_mask_class_ids)
+
       mask_loss = tf.reduce_mean(
           mask_loss_fn(
               outputs['mask_outputs'],
               outputs['mask_targets'],
-              outputs['mask_class_targets']))
+              mask_class_targets))
     else:
       mask_loss = 0.0
 
