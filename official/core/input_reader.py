@@ -277,8 +277,6 @@ class InputReader:
               service=self._tf_data_service_address,
               job_name=self._tf_data_service_job_name))
 
-    dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-
     if self._deterministic is not None:
       options = tf.data.Options()
       options.experimental_deterministic = self._deterministic
