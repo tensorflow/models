@@ -15,4 +15,5 @@
 # ==============================================================================
 """Decoders package definition."""
 
+from official.vision.beta.modeling.decoders.aspp import ASPP
 from official.vision.beta.modeling.decoders.fpn import FPN

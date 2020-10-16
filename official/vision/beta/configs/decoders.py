@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Decoders configurations."""
-from typing import Optional
+from typing import Optional, List
 
 # Import libraries
 import dataclasses
@@ -36,6 +36,15 @@ class FPN(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class ASPP(hyperparams.Config):
+  """ASPP config."""
+  level: int = 4
+  dilation_rates: List[int] = dataclasses.field(default_factory=list)
+  dropout_rate: float = 0.0
+  num_filters: int = 256
+
+
+@dataclasses.dataclass
 class Decoder(hyperparams.OneOfConfig):
   """Configuration for decoders.
 
@@ -46,3 +55,4 @@ class Decoder(hyperparams.OneOfConfig):
   type: Optional[str] = None
   fpn: FPN = FPN()
   identity: Identity = Identity()
+  aspp: ASPP = ASPP()
