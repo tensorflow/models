@@ -15,6 +15,7 @@
 """Keras-based transformer scaffold layer."""
 # pylint: disable=g-classes-have-attributes
 
+from absl import logging
 import gin
 import tensorflow as tf
 
@@ -207,6 +208,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
         name="output_layer_norm", axis=-1, epsilon=1e-12, dtype=tf.float32)
 
     super(TransformerScaffold, self).build(input_shape)
+    logging.info("%s configs: %s", self.__class__.__name__, self.get_config())
 
   def get_config(self):
     config = {
