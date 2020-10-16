@@ -214,6 +214,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
   def __init__(self,
                filters,
                strides,
+               dilation_rate=1,
                use_projection=False,
                stochastic_depth_drop_rate=None,
                kernel_initializer='VarianceScaling',
@@ -231,6 +232,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         the third and final convolution will use 4 times as many filters.
       strides: `int` block stride. If greater than 1, this block will ultimately
         downsample the input.
+      dilation_rate: `int` dilation_rate of convolutions. Default to 1.
       use_projection: `bool` for whether this block should use a projection
         shortcut (versus the default identity shortcut). This is usually `True`
         for the first block of a block group, which may change the number of
@@ -253,6 +255,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
 
     self._filters = filters
     self._strides = strides
+    self._dilation_rate = dilation_rate
     self._use_projection = use_projection
     self._use_sync_bn = use_sync_bn
     self._activation = activation
@@ -304,6 +307,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         filters=self._filters,
         kernel_size=3,
         strides=self._strides,
+        dilation_rate=self._dilation_rate,
         padding='same',
         use_bias=False,
         kernel_initializer=self._kernel_initializer,
@@ -339,6 +343,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
     config = {
         'filters': self._filters,
         'strides': self._strides,
+        'dilation_rate': self._dilation_rate,
         'use_projection': self._use_projection,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
