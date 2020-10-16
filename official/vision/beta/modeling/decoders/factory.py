@@ -52,6 +52,16 @@ def build_decoder(input_specs,
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,
         kernel_regularizer=l2_regularizer)
+  elif decoder_type == 'aspp':
+    decoder = decoders.ASPP(
+        level=decoder_cfg.level,
+        dilation_rates=decoder_cfg.dilation_rates,
+        num_filters=decoder_cfg.num_filters,
+        dropout_rate=decoder_cfg.dropout_rate,
+        use_sync_bn=norm_activation_config.use_sync_bn,
+        norm_momentum=norm_activation_config.norm_momentum,
+        norm_epsilon=norm_activation_config.norm_epsilon,
+        kernel_regularizer=l2_regularizer)
   else:
     raise ValueError('Decoder {!r} not implement'.format(decoder_type))
 
