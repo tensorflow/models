@@ -77,8 +77,14 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
   def call(self, inputs):
     flat_inputs = tf.reshape(inputs, [-1])
     if self._use_one_hot:
+      dtype = self._compute_dtype
+      if not tf.dtypes.as_dtype(dtype).is_floating:
+        # TensorFlow 1 compatibility. In TF1, self._compute_dtype is int32
+        # instead of a floating-point dtype, as the dtype is inferred from the
+        # dtype of the inputs
+        dtype = tf.float32
       one_hot_data = tf.one_hot(
-          flat_inputs, depth=self._vocab_size, dtype=self.embeddings.dtype)
+          flat_inputs, depth=self._vocab_size, dtype=dtype)
       embeddings = tf.matmul(one_hot_data, self.embeddings)
     else:
       embeddings = tf.gather(self.embeddings, flat_inputs)
