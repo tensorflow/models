@@ -15,8 +15,7 @@
 # ==============================================================================
 """Defines the base task abstraction."""
 import abc
-import functools
-from typing import Any, Callable, Optional
+from typing import Optional
 
 from absl import logging
 import tensorflow as tf
@@ -25,9 +24,9 @@ import tensorflow as tf
 class Task(tf.Module, metaclass=abc.ABCMeta):
   """A single-replica view of training procedure.
 
-  Tasks provide artifacts for training/evalution procedures, including
-  loading/iterating over Datasets, initializing the model, calculating the loss
-  and customized metrics with reduction.
+  Tasks provide artifacts for training/validation procedures, including
+  loading/iterating over Datasets, training/validation steps, calculating the
+  loss and customized metrics with reduction.
   """
 
   # Special keys in train/validate step returned logs.
@@ -90,41 +89,6 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     Returns:
       A model instance.
     """
-
-  def compile_model(self,
-                    model: tf.keras.Model,
-                    optimizer: tf.keras.optimizers.Optimizer,
-                    loss=None,
-                    train_step: Optional[Callable[..., Any]] = None,
-                    validation_step: Optional[Callable[..., Any]] = None,
-                    **kwargs) -> tf.keras.Model:
-    """Compiles the model with objects created by the task.
-
-    The method should not be used in any customized training implementation.
-
-    Args:
-      model: a keras.Model.
-      optimizer: the keras optimizer.
-      loss: a callable/list of losses.
-      train_step: optional train step function defined by the task.
-      validation_step: optional validation_step step function defined by the
-        task.
-      **kwargs: other kwargs consumed by keras.Model compile().
-
-    Returns:
-      a compiled keras.Model.
-    """
-    if bool(loss is None) == bool(train_step is None):
-      raise ValueError("`loss` and `train_step` should be exclusive to "
-                       "each other.")
-    model.compile(optimizer=optimizer, loss=loss, **kwargs)
-
-    if train_step:
-      model.train_step = functools.partial(
-          train_step, model=model, optimizer=model.optimizer)
-    if validation_step:
-      model.test_step = functools.partial(validation_step, model=model)
-    return model
 
   @abc.abstractmethod
   def build_inputs(self,
@@ -244,9 +208,9 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
+    if model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics or []})
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
@@ -273,9 +237,9 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
+    if model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics or []})
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 

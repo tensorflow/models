@@ -78,8 +78,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
     with distribution.scope():
       trainer = self.create_test_trainer(self._config)
       logs = trainer.evaluate(tf.convert_to_tensor(5, dtype=tf.int32))
-      self.assertIn('validation_loss', logs)
-      self.assertEqual(logs['acc'], 5. * distribution.num_replicas_in_sync)
+      self.assertEqual(logs['counter'], 5. * distribution.num_replicas_in_sync)
 
   @combinations.generate(
       combinations.combine(

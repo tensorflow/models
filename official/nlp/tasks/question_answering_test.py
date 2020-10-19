@@ -131,24 +131,6 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
             version_2_with_negative))
     self._run_task(config)
 
-  def test_task_with_fit(self):
-    config = question_answering.QuestionAnsweringConfig(
-        model=question_answering.ModelConfig(encoder=self._encoder_config),
-        train_data=self._train_data_config,
-        validation_data=self._get_validation_data_config())
-    task = question_answering.QuestionAnsweringTask(config)
-    model = task.build_model()
-    model = task.compile_model(
-        model,
-        optimizer=tf.keras.optimizers.SGD(lr=0.1),
-        train_step=task.train_step,
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")])
-    dataset = task.build_inputs(config.train_data)
-    logs = model.fit(dataset, epochs=1, steps_per_epoch=2)
-    self.assertIn("loss", logs.history)
-    self.assertIn("start_positions_accuracy", logs.history)
-    self.assertIn("end_positions_accuracy", logs.history)
-
   def _export_bert_tfhub(self):
     bert_config = configs.BertConfig(
         vocab_size=30522,

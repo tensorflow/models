@@ -210,20 +210,6 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     outputs = self._run_task(config)
     self.assertEqual(outputs["sentence_prediction"].shape.as_list(), [8, 1])
 
-  def test_task_with_fit(self):
-    config = sentence_prediction.SentencePredictionConfig(
-        model=self.get_model_config(2), train_data=self._train_data_config)
-    task = sentence_prediction.SentencePredictionTask(config)
-    model = task.build_model()
-    model = task.compile_model(
-        model,
-        optimizer=tf.keras.optimizers.SGD(lr=0.1),
-        train_step=task.train_step,
-        metrics=task.build_metrics())
-    dataset = task.build_inputs(config.train_data)
-    logs = model.fit(dataset, epochs=1, steps_per_epoch=2)
-    self.assertIn("loss", logs.history)
-
   def _export_bert_tfhub(self):
     bert_config = configs.BertConfig(
         vocab_size=30522,
