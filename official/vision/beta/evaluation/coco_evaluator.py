@@ -190,42 +190,46 @@ class COCOEvaluator(object):
 
     if hasattr(coco_eval, 'category_stats'):
       for category_index, category_id in enumerate(coco_eval.params.catIds):
+        coco_category = self._coco_gt.cats[category_id]
+        # if 'name' is available use it, otherwise use `id`
+        category_display_name = coco_category.get('name', category_id)
+
         metrics_dict[prefix + 'Precision mAP ByCategory/{}'.format(
-            category_id)] = coco_eval.category_stats[0][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[0][category_index].astype(np.float32)
         metrics_dict[prefix + 'Precision mAP ByCategory@50IoU/{}'.format(
-            category_id)] = coco_eval.category_stats[1][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[1][category_index].astype(np.float32)
         metrics_dict[prefix + 'Precision mAP ByCategory@75IoU/{}'.format(
-            category_id)] = coco_eval.category_stats[2][category_index].astype(
-                np.float32)
-        metrics_dict[prefix +'Precision mAP ByCategory (small) /{}'.format(
-            category_id)] = coco_eval.category_stats[3][category_index].astype(
-                np.float32)
-        metrics_dict[prefix +'Precision mAP ByCategory (medium) /{}'.format(
-            category_id)] = coco_eval.category_stats[4][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[2][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Precision mAP ByCategory (small) /{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[3][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Precision mAP ByCategory (medium) /{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[4][category_index].astype(np.float32)
         metrics_dict[prefix + 'Precision mAP ByCategory (large) /{}'.format(
-            category_id)] = coco_eval.category_stats[5][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[5][category_index].astype(np.float32)
         metrics_dict[prefix + 'Recall AR@1 ByCategory/{}'.format(
-            category_id)] = coco_eval.category_stats[6][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[6][category_index].astype(np.float32)
         metrics_dict[prefix + 'Recall AR@10 ByCategory/{}'.format(
-            category_id)] = coco_eval.category_stats[7][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[7][category_index].astype(np.float32)
         metrics_dict[prefix + 'Recall AR@100 ByCategory/{}'.format(
-            category_id)] = coco_eval.category_stats[8][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[8][category_index].astype(np.float32)
         metrics_dict[prefix + 'Recall AR (small) ByCategory/{}'.format(
-            category_id)] = coco_eval.category_stats[9][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[9][category_index].astype(np.float32)
         metrics_dict[prefix + 'Recall AR (medium) ByCategory/{}'.format(
-            category_id)] = coco_eval.category_stats[10][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[10][category_index].astype(np.float32)
         metrics_dict[prefix + 'Recall AR (large) ByCategory/{}'.format(
-            category_id)] = coco_eval.category_stats[11][category_index].astype(
-                np.float32)
+            category_display_name
+        )] = coco_eval.category_stats[11][category_index].astype(np.float32)
 
     return metrics_dict
 
