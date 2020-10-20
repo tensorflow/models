@@ -31,6 +31,7 @@ class ASPP(tf.keras.layers.Layer):
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
+               activation='relu',
                dropout_rate=0.0,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
@@ -46,6 +47,7 @@ class ASPP(tf.keras.layers.Layer):
       norm_momentum: `float` normalization omentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
+      activation: `str` activation to be used in ASPP.
       dropout_rate: `float` rate for dropout regularization.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
@@ -61,6 +63,7 @@ class ASPP(tf.keras.layers.Layer):
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
+        'activation': activation,
         'dropout_rate': dropout_rate,
         'kernel_initializer': kernel_initializer,
         'kernel_regularizer': kernel_regularizer,
@@ -74,6 +77,7 @@ class ASPP(tf.keras.layers.Layer):
         use_sync_bn=self._config_dict['use_sync_bn'],
         batchnorm_momentum=self._config_dict['norm_momentum'],
         batchnorm_epsilon=self._config_dict['norm_epsilon'],
+        activation=self._config_dict['activation'],
         dropout=self._config_dict['dropout_rate'],
         kernel_initializer=self._config_dict['kernel_initializer'],
         kernel_regularizer=self._config_dict['kernel_regularizer'],

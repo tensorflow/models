@@ -64,6 +64,7 @@ class ASPPTest(parameterized.TestCase, tf.test.TestCase):
         use_sync_bn=False,
         norm_momentum=0.99,
         norm_epsilon=0.001,
+        activation='relu',
         kernel_initializer='VarianceScaling',
         kernel_regularizer=None,
         interpolation='bilinear',
