@@ -22,7 +22,6 @@ from absl import logging
 import dataclasses
 import orbit
 import tensorflow as tf
-import tensorflow_hub as hub
 
 from official.core import base_task
 from official.core import config_definitions as cfg
@@ -87,11 +86,8 @@ class QuestionAnsweringTask(base_task.Task):
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
     if self.task_config.hub_module_url:
-      hub_module = hub.load(self.task_config.hub_module_url)
-    else:
-      hub_module = None
-    if hub_module:
-      encoder_network = utils.get_encoder_from_hub(hub_module)
+      encoder_network = utils.get_encoder_from_hub(
+          self.task_config.hub_module_url)
     else:
       encoder_network = encoders.build_encoder(self.task_config.model.encoder)
     encoder_cfg = self.task_config.model.encoder.get()

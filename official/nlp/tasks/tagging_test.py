@@ -73,6 +73,7 @@ class TaggingTest(tf.test.TestCase):
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
+    model.save(os.path.join(self.get_temp_dir(), "saved_model"))
 
   def test_task(self):
     # Saves a checkpoint.
