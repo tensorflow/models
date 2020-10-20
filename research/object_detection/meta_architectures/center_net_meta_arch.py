@@ -674,6 +674,11 @@ def refine_keypoints(regressed_keypoints, keypoint_candidates, keypoint_scores,
   sqrd_distances = tf.math.reduce_sum(tf.multiply(diff, diff), axis=-1)
   distances = tf.math.sqrt(sqrd_distances)
 
+  # Replace the NaNs with Infs to make sure the following reduce_min/argmin
+  # behaves properly.
+  distances = tf.where(
+      tf.math.is_nan(distances), np.inf * tf.ones_like(distances), distances)
+
   # Determine the candidates that have the minimum distance to the regressed
   # keypoints. Shape [batch_size, num_instances, num_keypoints].
   min_distances = tf.math.reduce_min(distances, axis=2)
