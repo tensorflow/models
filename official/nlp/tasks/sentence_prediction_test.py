@@ -86,6 +86,7 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
     iterator = iter(dataset)
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
+    model.save(os.path.join(self.get_temp_dir(), "saved_model"))
     return task.validation_step(next(iterator), model, metrics=metrics)
 
   @parameterized.named_parameters(

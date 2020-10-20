@@ -22,11 +22,11 @@ import tensorflow as tf
 import tensorflow_hub as hub
 
 
-def get_encoder_from_hub(hub_model) -> tf.keras.Model:
+def get_encoder_from_hub(hub_model_path: str) -> tf.keras.Model:
   """Gets an encoder from hub.
 
   Args:
-    hub_model: A tfhub model loaded by `hub.load(...)`.
+    hub_model_path: The path to the tfhub model.
 
   Returns:
     A tf.keras.Model.
@@ -37,7 +37,7 @@ def get_encoder_from_hub(hub_model) -> tf.keras.Model:
       shape=(None,), dtype=tf.int32, name='input_mask')
   input_type_ids = tf.keras.layers.Input(
       shape=(None,), dtype=tf.int32, name='input_type_ids')
-  hub_layer = hub.KerasLayer(hub_model, trainable=True)
+  hub_layer = hub.KerasLayer(hub_model_path, trainable=True)
   output_dict = {}
   dict_input = dict(
       input_word_ids=input_word_ids,
@@ -49,6 +49,7 @@ def get_encoder_from_hub(hub_model) -> tf.keras.Model:
   # as input and returns a dict.
   # TODO(chendouble): Remove the support of legacy hub model when the new ones
   # are released.
+  hub_model = hub.load(hub_model_path)
   hub_output_signature = hub_model.signatures['serving_default'].outputs
   if len(hub_output_signature) == 2:
     logging.info('Use the legacy hub module with list as input/output.')

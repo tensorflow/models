@@ -104,6 +104,7 @@ class QuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
     logs = task.aggregate_logs(step_outputs=logs)
     metrics = task.reduce_aggregated_logs(logs)
     self.assertIn("final_f1", metrics)
+    model.save(os.path.join(self.get_temp_dir(), "saved_model"))
 
   @parameterized.parameters(
       itertools.product(
