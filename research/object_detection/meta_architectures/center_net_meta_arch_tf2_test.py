@@ -484,6 +484,70 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     np.testing.assert_array_equal([1, 0, 0, 2], x_inds[1])
     np.testing.assert_array_equal([0, 0, 1, 1], channel_inds[1])
 
+  def test_top_k_feature_map_locations_k1(self):
+    feature_map_np = np.zeros((2, 3, 3, 2), dtype=np.float32)
+    feature_map_np[0, 2, 0, 0] = 1.0  # Selected.
+    feature_map_np[0, 2, 1, 0] = 0.9
+    feature_map_np[0, 0, 1, 0] = 0.7
+    feature_map_np[0, 2, 2, 1] = 0.5
+    feature_map_np[0, 0, 0, 1] = 0.3
+    feature_map_np[1, 2, 1, 0] = 0.7
+    feature_map_np[1, 1, 0, 0] = 0.4
+    feature_map_np[1, 1, 2, 0] = 0.3
+    feature_map_np[1, 1, 0, 1] = 0.8  # Selected.
+    feature_map_np[1, 1, 2, 1] = 0.3
+
+    def graph_fn():
+      feature_map = tf.constant(feature_map_np)
+      scores, y_inds, x_inds, channel_inds = (
+          cnma.top_k_feature_map_locations(
+              feature_map, max_pool_kernel_size=3, k=1, per_channel=False))
+      return scores, y_inds, x_inds, channel_inds
+
+    scores, y_inds, x_inds, channel_inds = self.execute(graph_fn, [])
+
+    np.testing.assert_allclose([1.0], scores[0])
+    np.testing.assert_array_equal([2], y_inds[0])
+    np.testing.assert_array_equal([0], x_inds[0])
+    np.testing.assert_array_equal([0], channel_inds[0])
+
+    np.testing.assert_allclose([0.8], scores[1])
+    np.testing.assert_array_equal([1], y_inds[1])
+    np.testing.assert_array_equal([0], x_inds[1])
+    np.testing.assert_array_equal([1], channel_inds[1])
+
+  def test_top_k_feature_map_locations_k1_per_channel(self):
+    feature_map_np = np.zeros((2, 3, 3, 2), dtype=np.float32)
+    feature_map_np[0, 2, 0, 0] = 1.0  # Selected.
+    feature_map_np[0, 2, 1, 0] = 0.9
+    feature_map_np[0, 0, 1, 0] = 0.7
+    feature_map_np[0, 2, 2, 1] = 0.5  # Selected.
+    feature_map_np[0, 0, 0, 1] = 0.3
+    feature_map_np[1, 2, 1, 0] = 0.7  # Selected.
+    feature_map_np[1, 1, 0, 0] = 0.4
+    feature_map_np[1, 1, 2, 0] = 0.3
+    feature_map_np[1, 1, 0, 1] = 0.8  # Selected.
+    feature_map_np[1, 1, 2, 1] = 0.3
+
+    def graph_fn():
+      feature_map = tf.constant(feature_map_np)
+      scores, y_inds, x_inds, channel_inds = (
+          cnma.top_k_feature_map_locations(
+              feature_map, max_pool_kernel_size=3, k=1, per_channel=True))
+      return scores, y_inds, x_inds, channel_inds
+
+    scores, y_inds, x_inds, channel_inds = self.execute(graph_fn, [])
+
+    np.testing.assert_allclose([1.0, 0.5], scores[0])
+    np.testing.assert_array_equal([2, 2], y_inds[0])
+    np.testing.assert_array_equal([0, 2], x_inds[0])
+    np.testing.assert_array_equal([0, 1], channel_inds[0])
+
+    np.testing.assert_allclose([0.7, 0.8], scores[1])
+    np.testing.assert_array_equal([2, 1], y_inds[1])
+    np.testing.assert_array_equal([1, 0], x_inds[1])
+    np.testing.assert_array_equal([0, 1], channel_inds[1])
+
   def test_box_prediction(self):
 
     class_pred = np.zeros((3, 128, 128, 5), dtype=np.float32)
@@ -1213,7 +1277,7 @@ def get_fake_temporal_offset_params():
       task_loss_weight=1.0)
 
 
-def build_center_net_meta_arch(build_resnet=False):
+def build_center_net_meta_arch(build_resnet=False, num_classes=_NUM_CLASSES):
   """Builds the CenterNet meta architecture."""
   if build_resnet:
     feature_extractor = (
@@ -1231,19 +1295,31 @@ def build_center_net_meta_arch(build_resnet=False):
       min_dimension=128,
       max_dimension=128,
       pad_to_max_dimesnion=True)
-  return cnma.CenterNetMetaArch(
-      is_training=True,
-      add_summaries=False,
-      num_classes=_NUM_CLASSES,
-      feature_extractor=feature_extractor,
-      image_resizer_fn=image_resizer_fn,
-      object_center_params=get_fake_center_params(),
-      object_detection_params=get_fake_od_params(),
-      keypoint_params_dict={_TASK_NAME: get_fake_kp_params()},
-      mask_params=get_fake_mask_params(),
-      densepose_params=get_fake_densepose_params(),
-      track_params=get_fake_track_params(),
-      temporal_offset_params=get_fake_temporal_offset_params())
+
+  if num_classes == 1:
+    return cnma.CenterNetMetaArch(
+        is_training=True,
+        add_summaries=False,
+        num_classes=num_classes,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=image_resizer_fn,
+        object_center_params=get_fake_center_params(),
+        object_detection_params=get_fake_od_params(),
+        keypoint_params_dict={_TASK_NAME: get_fake_kp_params()})
+  else:
+    return cnma.CenterNetMetaArch(
+        is_training=True,
+        add_summaries=False,
+        num_classes=num_classes,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=image_resizer_fn,
+        object_center_params=get_fake_center_params(),
+        object_detection_params=get_fake_od_params(),
+        keypoint_params_dict={_TASK_NAME: get_fake_kp_params()},
+        mask_params=get_fake_mask_params(),
+        densepose_params=get_fake_densepose_params(),
+        track_params=get_fake_track_params(),
+        temporal_offset_params=get_fake_temporal_offset_params())
 
 
 def _logit(p):
@@ -1649,6 +1725,72 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
       np.testing.assert_allclose(
           detections['detection_surface_coords'][0, 0, :, :],
           np.zeros_like(detections['detection_surface_coords'][0, 0, :, :]))
+
+  def test_postprocess_simple(self):
+    """Test the postprocess function."""
+    model = build_center_net_meta_arch(num_classes=1)
+    max_detection = model._center_params.max_box_predictions
+    num_keypoints = len(model._kp_params_dict[_TASK_NAME].keypoint_indices)
+
+    class_center = np.zeros((1, 32, 32, 1), dtype=np.float32)
+    height_width = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    offset = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    keypoint_heatmaps = np.zeros((1, 32, 32, num_keypoints), dtype=np.float32)
+    keypoint_offsets = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    keypoint_regression = np.random.randn(1, 32, 32, num_keypoints * 2)
+
+    class_probs = np.zeros(1)
+    class_probs[0] = _logit(0.75)
+    class_center[0, 16, 16] = class_probs
+    height_width[0, 16, 16] = [5, 10]
+    offset[0, 16, 16] = [.25, .5]
+    keypoint_regression[0, 16, 16] = [
+        -1., -1.,
+        -1., 1.,
+        1., -1.,
+        1., 1.]
+    keypoint_heatmaps[0, 14, 14, 0] = _logit(0.9)
+    keypoint_heatmaps[0, 14, 18, 1] = _logit(0.9)
+    keypoint_heatmaps[0, 18, 14, 2] = _logit(0.9)
+    keypoint_heatmaps[0, 18, 18, 3] = _logit(0.05)  # Note the low score.
+
+    class_center = tf.constant(class_center)
+    height_width = tf.constant(height_width)
+    offset = tf.constant(offset)
+    keypoint_heatmaps = tf.constant(keypoint_heatmaps, dtype=tf.float32)
+    keypoint_offsets = tf.constant(keypoint_offsets, dtype=tf.float32)
+    keypoint_regression = tf.constant(keypoint_regression, dtype=tf.float32)
+
+    prediction_dict = {
+        cnma.OBJECT_CENTER: [class_center],
+        cnma.BOX_SCALE: [height_width],
+        cnma.BOX_OFFSET: [offset],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_HEATMAP):
+            [keypoint_heatmaps],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_OFFSET):
+            [keypoint_offsets],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_REGRESSION):
+            [keypoint_regression],
+    }
+
+    def graph_fn():
+      detections = model.postprocess(prediction_dict,
+                                     tf.constant([[128, 128, 3]]))
+      return detections
+
+    detections = self.execute_cpu(graph_fn, [])
+
+    self.assertAllClose(detections['detection_boxes'][0, 0],
+                        np.array([55, 46, 75, 86]) / 128.0)
+    self.assertAllClose(detections['detection_scores'][0],
+                        [.75, .5, .5, .5, .5])
+
+    self.assertEqual(detections['detection_classes'][0, 0], 0)
+    self.assertEqual(detections['num_detections'], [5])
+    self.assertAllEqual([1, max_detection, num_keypoints, 2],
+                        detections['detection_keypoints'].shape)
+    self.assertAllEqual([1, max_detection, num_keypoints],
+                        detections['detection_keypoint_scores'].shape)
 
   def test_get_instance_indices(self):
     classes = tf.constant([[0, 1, 2, 0], [2, 1, 2, 2]], dtype=tf.int32)
