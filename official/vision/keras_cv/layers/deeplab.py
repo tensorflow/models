@@ -33,6 +33,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       use_sync_bn=False,
       batchnorm_momentum=0.99,
       batchnorm_epsilon=0.001,
+      activation='relu',
       dropout=0.5,
       kernel_initializer='glorot_uniform',
       kernel_regularizer=None,
@@ -48,6 +49,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
         0.99.
       batchnorm_epsilon: A float for the epsilon value in BatchNorm. Defaults to
         0.001.
+      activation: A `str` for type of activation to be used. Defaults to 'relu'.
       dropout: A float for the dropout rate before output. Defaults to 0.5.
       kernel_initializer: Kernel initializer for conv layers. Defaults to
         `glorot_uniform`.
@@ -63,6 +65,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
     self.use_sync_bn = use_sync_bn
     self.batchnorm_momentum = batchnorm_momentum
     self.batchnorm_epsilon = batchnorm_epsilon
+    self.activation = activation
     self.dropout = dropout
     self.kernel_initializer = tf.keras.initializers.get(kernel_initializer)
     self.kernel_regularizer = tf.keras.regularizers.get(kernel_regularizer)
@@ -96,7 +99,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
             axis=bn_axis,
             momentum=self.batchnorm_momentum,
             epsilon=self.batchnorm_epsilon),
-        tf.keras.layers.Activation('relu')
+        tf.keras.layers.Activation(self.activation)
     ])
     self.aspp_layers.append(conv_sequential)
 
@@ -109,7 +112,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
               dilation_rate=dilation_rate, use_bias=False),
           bn_op(axis=bn_axis, momentum=self.batchnorm_momentum,
                 epsilon=self.batchnorm_epsilon),
-          tf.keras.layers.Activation('relu')])
+          tf.keras.layers.Activation(self.activation)])
       self.aspp_layers.append(conv_sequential)
 
     pool_sequential = tf.keras.Sequential([
@@ -124,7 +127,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
             axis=bn_axis,
             momentum=self.batchnorm_momentum,
             epsilon=self.batchnorm_epsilon),
-        tf.keras.layers.Activation('relu'),
+        tf.keras.layers.Activation(self.activation),
         tf.keras.layers.experimental.preprocessing.Resizing(
             height, width, interpolation=self.interpolation)])
     self.aspp_layers.append(pool_sequential)
@@ -139,7 +142,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
             axis=bn_axis,
             momentum=self.batchnorm_momentum,
             epsilon=self.batchnorm_epsilon),
-        tf.keras.layers.Activation('relu'),
+        tf.keras.layers.Activation(self.activation),
         tf.keras.layers.Dropout(rate=self.dropout)])
 
   def call(self, inputs, training=None):
@@ -159,6 +162,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
         'use_sync_bn': self.use_sync_bn,
         'batchnorm_momentum': self.batchnorm_momentum,
         'batchnorm_epsilon': self.batchnorm_epsilon,
+        'activation': self.activation,
         'dropout': self.dropout,
         'kernel_initializer': tf.keras.initializers.serialize(
             self.kernel_initializer),

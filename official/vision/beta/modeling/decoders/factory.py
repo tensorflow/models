@@ -61,6 +61,7 @@ def build_decoder(input_specs,
         use_sync_bn=norm_activation_config.use_sync_bn,
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,
+        activation=norm_activation_config.activation,
         kernel_regularizer=l2_regularizer)
   else:
     raise ValueError('Decoder {!r} not implement'.format(decoder_type))
