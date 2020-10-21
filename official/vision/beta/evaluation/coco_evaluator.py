@@ -190,9 +190,12 @@ class COCOEvaluator(object):
 
     if hasattr(coco_eval, 'category_stats'):
       for category_index, category_id in enumerate(coco_eval.params.catIds):
-        coco_category = self._coco_gt.cats[category_id]
-        # if 'name' is available use it, otherwise use `id`
-        category_display_name = coco_category.get('name', category_id)
+        if self._annotation_file:
+          coco_category = self._coco_gt.cats[category_id]
+          # if 'name' is available use it, otherwise use `id`
+          category_display_name = coco_category.get('name', category_id)
+        else:
+          category_display_name = category_id
 
         metrics_dict[prefix + 'Precision mAP ByCategory/{}'.format(
             category_display_name
