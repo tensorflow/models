@@ -5,9 +5,8 @@ import collections
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
 
-
 # builder required classes
-class CSPBlockConfig(object):
+class BlockConfig(object):
     def __init__(self, layer, stack, reps, bottleneck, filters, kernel_size,
                  strides, padding, activation, route, output_name, is_output):
         '''
@@ -35,26 +34,11 @@ class CSPBlockConfig(object):
         self.is_output = is_output
         return
 
-def csp_build_block_specs(config):
+def build_block_specs(config):
     specs = []
     for layer in config:
-        specs.append(CSPBlockConfig(*layer))
+        specs.append(BlockConfig(*layer))
     return specs
-
-class layer_registry(object):
-    def __init__(self):
-        self._layer_dict = {"DarkTiny": (nn_blocks.DarkTiny, darktiny_config_todict),
-                            "DarkConv": (nn_blocks.DarkConv, darkconv_config_todict),
-                            "MaxPool": (tf.keras.layers.MaxPool2D, maxpool_config_todict)}
-        return
-
-    def _get_layer(self, key):
-        return self._layer_dict[key]
-
-    def __call__(self, config, kwargs):
-        layer, get_param_dict = self._get_layer(config.layer)
-        param_dict = get_param_dict(config, kwargs)
-        return layer(**param_dict)
 
 def darkconv_config_todict(config, kwargs):
     dictvals = {
@@ -78,6 +62,21 @@ def maxpool_config_todict(config, kwargs):
             "strides": config.strides,
             "padding": config.padding,
             "name": kwargs["name"]}
+
+class layer_registry(object):
+    def __init__(self):
+        self._layer_dict = {"DarkTiny": (nn_blocks.DarkTiny, darktiny_config_todict),
+                            "DarkConv": (nn_blocks.DarkConv, darkconv_config_todict),
+                            "MaxPool": (tf.keras.layers.MaxPool2D, maxpool_config_todict)}
+        return
+
+    def _get_layer(self, key):
+        return self._layer_dict[key]
+
+    def __call__(self, config, kwargs):
+        layer, get_param_dict = self._get_layer(config.layer)
+        param_dict = get_param_dict(config, kwargs)
+        return layer(**param_dict)
 
 # model configs
 LISTNAMES = ["default_layer_name", "level_type", "number_of_layers_in_level", "bottleneck", "filters", "kernal_size", "strides", "padding",  "default_activation", "route", "level/name", "is_output"]
@@ -307,14 +306,12 @@ class Darknet(ks.Model):
         self._default_dict["name"] = None
         return x
 
-
-
     @staticmethod
     def get_model_config(name):
         name = name.lower()
         backbone = BACKBONES[name]["backbone"]
         splits = BACKBONES[name]["splits"]
-        return csp_build_block_specs(backbone), splits
+        return build_block_specs(backbone), splits
 
 @factory.register_backbone_builder('darknet')
 def build_darknet(
@@ -325,7 +322,6 @@ def build_darknet(
     backbone_type = model_config.backbone.type
     backbone_cfg = model_config.backbone.get()
     norm_activation_config = model_config.norm_activation
-
     return Darknet(model_id=backbone_cfg.model_id,
                 input_shape=input_specs,
                 activation=norm_activation_config.activation,
