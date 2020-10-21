@@ -1787,7 +1787,8 @@ class CenterNetMetaArch(model.DetectionModel):
                densepose_params=None,
                track_params=None,
                temporal_offset_params=None,
-               use_depthwise=False):
+               use_depthwise=False,
+               compute_heatmap_sparse=False):
     """Initializes a CenterNet model.
 
     Args:
@@ -1826,6 +1827,10 @@ class CenterNetMetaArch(model.DetectionModel):
         holds the hyper-parameters for offset prediction based tracking.
       use_depthwise: If true, all task heads will be constructed using
         separable_conv. Otherwise, standard convoltuions will be used.
+      compute_heatmap_sparse: bool, whether or not to use the sparse version of
+        the Op that computes the center heatmaps. The sparse version scales
+        better with number of channels in the heatmap, but in some cases is
+        known to cause an OOM error. See b/170989061.
     """
     assert object_detection_params or keypoint_params_dict
     # Shorten the name for convenience and better formatting.
@@ -1850,6 +1855,7 @@ class CenterNetMetaArch(model.DetectionModel):
     self._temporal_offset_params = temporal_offset_params
 
     self._use_depthwise = use_depthwise
+    self._compute_heatmap_sparse = compute_heatmap_sparse
 
     # Construct the prediction head nets.
     self._prediction_head_dict = self._construct_prediction_heads(
@@ -2003,7 +2009,7 @@ class CenterNetMetaArch(model.DetectionModel):
     target_assigners = {}
     target_assigners[OBJECT_CENTER] = (
         cn_assigner.CenterNetCenterHeatmapTargetAssigner(
-            stride, min_box_overlap_iou))
+            stride, min_box_overlap_iou, self._compute_heatmap_sparse))
     if self._od_params is not None:
       target_assigners[DETECTION_TASK] = (
           cn_assigner.CenterNetBoxTargetAssigner(stride))
@@ -2016,7 +2022,8 @@ class CenterNetMetaArch(model.DetectionModel):
                 keypoint_indices=kp_params.keypoint_indices,
                 keypoint_std_dev=kp_params.keypoint_std_dev,
                 peak_radius=kp_params.offset_peak_radius,
-                per_keypoint_offset=kp_params.per_keypoint_offset))
+                per_keypoint_offset=kp_params.per_keypoint_offset,
+                compute_heatmap_sparse=self._compute_heatmap_sparse))
     if self._mask_params is not None:
       target_assigners[SEGMENTATION_TASK] = (
           cn_assigner.CenterNetMaskTargetAssigner(stride))

@@ -1036,7 +1036,8 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       densepose_params=densepose_params,
       track_params=track_params,
       temporal_offset_params=temporal_offset_params,
-      use_depthwise=center_net_config.use_depthwise)
+      use_depthwise=center_net_config.use_depthwise,
+      compute_heatmap_sparse=center_net_config.compute_heatmap_sparse)
 
 
 def _build_center_net_feature_extractor(
