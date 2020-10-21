@@ -1,10 +1,10 @@
-import importlib
-import collections
-from typing import *
 import tensorflow as tf
 import tensorflow.keras as ks
-import official.vision.beta.projects.yolo.modeling.building_blocks as nn_blocks
+import collections
+
 from official.vision.beta.modeling.backbones import factory
+from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
+
 
 # builder required classes
 class CSPBlockConfig(object):
