@@ -82,15 +82,15 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
         return tf.nest.map_structure(distribution.experimental_local_results,
                                      outputs)
 
-      fake_inputs = [np.zeros((batch_size, decode_max_length), dtype=np.int32)]
+      fake_inputs = dict(
+          inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32))
       local_outputs = step(fake_inputs)
       logging.info("local_outputs=%s", local_outputs)
       self.assertEqual(local_outputs["outputs"][0].shape, (4, 10))
 
-      fake_inputs = [
-          np.zeros((batch_size, decode_max_length), dtype=np.int32),
-          np.zeros((batch_size, 8), dtype=np.int32)
-      ]
+      fake_inputs = dict(
+          inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32),
+          targets=np.zeros((batch_size, 8), dtype=np.int32))
       local_outputs = step(fake_inputs)
       logging.info("local_outputs=%s", local_outputs)
       self.assertEqual(local_outputs[0].shape, (4, 8, 100))
@@ -108,7 +108,7 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
 
       @tf.function
       def serve(self, inputs):
-        return self.model.call([inputs])
+        return self.model.call(dict(inputs=inputs))
 
     save_module = SaveModule(model)
     if padded_decode:

@@ -130,9 +130,9 @@ class Seq2SeqTransformer(tf.keras.Model):
     """Calculate target logits or inferred target sequences.
 
     Args:
-      inputs: input tensor list of size 1 or 2.
-        First item, inputs: int tensor with shape [batch_size, input_length].
-        Second item (optional), targets: None or int tensor with shape
+      inputs: a dictionary of tensors.
+        Feature `inputs`: int tensor with shape [batch_size, input_length].
+        Feature `targets` (optional): None or int tensor with shape
           [batch_size, target_length].
 
     Returns:
@@ -147,12 +147,8 @@ class Seq2SeqTransformer(tf.keras.Model):
     Raises:
       NotImplementedError: If try to use padded decode method on CPU/GPUs.
     """
-    inputs = inputs if isinstance(inputs, list) else [inputs]
-    if len(inputs) == 2:
-      sources, targets = inputs[0], inputs[1]
-    else:
-      # Decoding path.
-      sources, targets = inputs[0], None
+    sources = inputs["inputs"]
+    targets = inputs.get("targets", None)
     attention_bias = model_utils.get_padding_bias(sources)
     attention_bias = tf.cast(attention_bias, self._dtype)
     # Prepare inputs to the layer stack by adding positional encodings and
