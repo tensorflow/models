@@ -49,8 +49,8 @@ def get_encoder_from_hub(hub_model_path: str) -> tf.keras.Model:
   # as input and returns a dict.
   # TODO(chendouble): Remove the support of legacy hub model when the new ones
   # are released.
-  hub_model = hub.load(hub_model_path)
-  hub_output_signature = hub_model.signatures['serving_default'].outputs
+  hub_output_signature = hub_layer.resolved_object.signatures[
+      'serving_default'].outputs
   if len(hub_output_signature) == 2:
     logging.info('Use the legacy hub module with list as input/output.')
     pooled_output, sequence_output = hub_layer(
