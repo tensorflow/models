@@ -352,13 +352,15 @@ def build_darknet(
   backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
   norm_activation_config = model_config.norm_activation
-  return Darknet(model_id=backbone_cfg.model_id,
+  model = Darknet(model_id=backbone_cfg.model_id,
                  input_shape=input_specs,
                  activation=norm_activation_config.activation,
                  use_sync_bn=norm_activation_config.use_sync_bn,
                  norm_momentum=norm_activation_config.norm_momentum,
                  norm_epsilon=norm_activation_config.norm_epsilon,
                  kernel_regularizer=l2_regularizer)
+  model.summary()
+  return model
 
 
 # if __name__ == "__main__":
