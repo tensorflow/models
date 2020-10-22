@@ -157,6 +157,10 @@ BACKBONES = {
     "cspdarknettiny": CSPDARKNETTINY
 }
 
+CSPBlockConfig = collections.namedtuple('CSPBlockConfig', ['layer', 'stack', 'repetitions', 'bottleneck',
+  'filters', 'kernel_size', 'strides', 'padding', 'activation', 'route',
+  'output_name', 'is_output'])
+
 
 @ks.utils.register_keras_serializable(package='yolo')
 class Darknet(ks.Model):
@@ -177,7 +181,11 @@ class Darknet(ks.Model):
       config=None,
       **kwargs):
 
-    layer_specs, splits = Darknet.get_config(model_id)
+    # layer_specs, splits = Darknet.get_config(model_id)
+    print(len(BACKBONES[model_id]['backbone'][-1]))
+    layer_specs = [CSPBlockConfig(*config) for config in BACKBONES[model_id]['backbone']]
+    splits = BACKBONES[model_id]['splits']
+
     self._model_name = model_id
     self._splits = splits
     self._input_shape = input_shape

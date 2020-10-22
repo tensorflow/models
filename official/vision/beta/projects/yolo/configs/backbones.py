@@ -4,7 +4,7 @@ import dataclasses
 from typing import Optional
 from official.modeling import hyperparams
 
-from official.vision.beta.configs import backbones
+# from official.vision.beta.configs import backbones
 
 
 @dataclasses.dataclass
@@ -13,6 +13,6 @@ class DarkNet(hyperparams.Config):
   model_id: str = "darknet53"
 
 
-@dataclasses.dataclass
-class Backbone(backbones.Backbone):
-  darknet: DarkNet = DarkNet()
+# @dataclasses.dataclass
+# class Backbone(backbones.Backbone):
+#   darknet: DarkNet = DarkNet()

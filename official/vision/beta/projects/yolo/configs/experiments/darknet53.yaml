@@ -19,23 +19,23 @@ task:
     tfds_split: 'test'
     tfds_download: True
     is_training: True
-    global_batch_size: 128
+    global_batch_size: 2
     dtype: 'float16'
   validation_data:
     tfds_name: 'imagenet_a'
     tfds_split: 'test'
     tfds_download: True
     is_training: False
-    global_batch_size: 128
+    global_batch_size: 2
     dtype: 'float16'
     drop_remainder: False
 trainer:
-  train_steps: 800000 # in the paper
-  validation_steps: 400 # size of validation data
-  validation_interval: 10000 
-  steps_per_loop: 10000
-  summary_interval: 10000
-  checkpoint_interval: 10000
+  train_steps: 51200000 # in the paper
+  validation_steps: 25600 # size of validation data
+  validation_interval: 150 
+  steps_per_loop: 150
+  summary_interval: 150
+  checkpoint_interval: 150
   optimizer_config:
     optimizer:
       type: 'sgd'
@@ -47,8 +47,8 @@ trainer:
         initial_learning_rate: 0.1
         end_learning_rate: 0.0001
         power: 4.0 
-        decay_steps: 799000
+        decay_steps: 51136000
     warmup:
       type: 'linear'
       linear:
-        warmup_steps: 1000 #lr rise from 0 to 0.1 over 1000 steps
+        warmup_steps: 64000 #lr rise from 0 to 0.1 over 1000 steps

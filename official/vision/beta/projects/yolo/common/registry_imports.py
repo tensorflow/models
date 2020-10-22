@@ -20,3 +20,4 @@ from official.utils.testing import mock_task
 from official.vision import beta
 
 from official.vision.beta.projects import yolo
+from official.vision.beta.projects.yolo.modeling.backbones import Darknet

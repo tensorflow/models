@@ -6,7 +6,7 @@ import tensorflow.keras as ks
 import tensorflow.keras.backend as K
 from ._Identity import Identity
 
-from yolo.modeling.functions.mish_activation import mish
+from official.vision.beta.projects.yolo.modeling.functions.mish_activation import mish
 
 
 @ks.utils.register_keras_serializable(package='yolo')
