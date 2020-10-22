@@ -354,14 +354,3 @@ def build_darknet(
                  kernel_regularizer=l2_regularizer)
   model.summary()
   return model
-
-
-# if __name__ == "__main__":
-#     from yolo.configs import backbones
-#     from official.core import registry
-
-#     model = backbones.Backbone(type="darknet", darknet=backbones.DarkNet(model_id="darknet53"))
-#     cfg = temp(model)
-
-#     model = factory.build_backbone(tf.keras.layers.InputSpec(shape = [None, 416, 416, 3]), cfg, None)
-#     print(model.output_specs)
