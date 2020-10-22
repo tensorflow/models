@@ -6,6 +6,14 @@ syntax = "proto2";
 
 package object_detection.protos;
 
+// LVIS frequency:
+enum LVISFrequency {
+  UNSPECIFIED = 0;
+  FREQUENT = 1;
+  COMMON = 2;
+  RARE = 3;
+}
+
 message StringIntLabelMapItem {
   // String name. The most common practice is to set this to a MID or synsets
   // id.
@@ -38,6 +46,10 @@ message StringIntLabelMapItem {
   // current element. Value should correspond to another label id element.
   repeated int32 ancestor_ids = 5;
   repeated int32 descendant_ids = 6;
+
+  // LVIS specific label map fields
+  optional LVISFrequency frequency = 7;
+  optional int32 instance_count = 8;
 };
 
 message StringIntLabelMap {
