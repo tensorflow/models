@@ -33,13 +33,11 @@ class Decoder(decoder.Decoder):
         'image/class/label': (
             tf.io.FixedLenFeature((), tf.int64, default_value=-1))
     }
-  '''
+
   def decode(self, serialized_example):
     return tf.io.parse_single_example(
         serialized_example, self._keys_to_features)
-  '''
-  def decode(self, data):
-      return {'image/encoded': data['image'], 'image/class/label': data['label']}
+
 
 class Parser(parser.Parser):
   """Parser to parse an image and its annotations into a dictionary of tensors."""
@@ -50,7 +48,6 @@ class Parser(parser.Parser):
                aug_rand_hflip=True,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
-
     Args:
       output_size: `Tenssor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
@@ -74,11 +71,11 @@ class Parser(parser.Parser):
 
   def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
-    
     label = tf.cast(decoded_tensors['image/class/label'], dtype=tf.int32)
-    '''
+
     image_bytes = decoded_tensors['image/encoded']
     image_shape = tf.image.extract_jpeg_shape(image_bytes)
+
     # Crops image.
     # TODO(pengchong): support image format other than JPEG.
     cropped_image = preprocess_ops.random_crop_image_v2(
@@ -87,8 +84,7 @@ class Parser(parser.Parser):
         tf.reduce_all(tf.equal(tf.shape(cropped_image), image_shape)),
         lambda: preprocess_ops.center_crop_image_v2(image_bytes, image_shape),
         lambda: cropped_image)
-    '''
-    image = tf.cast(decoded_tensors['image/encoded'], tf.float32)
+
     if self._aug_rand_hflip:
       image = tf.image.random_flip_left_right(image)
 
@@ -109,14 +105,12 @@ class Parser(parser.Parser):
   def _parse_eval_data(self, decoded_tensors):
     """Parses data for evaluation."""
     label = tf.cast(decoded_tensors['image/class/label'], dtype=tf.int32)
-    '''
     image_bytes = decoded_tensors['image/encoded']
     image_shape = tf.image.extract_jpeg_shape(image_bytes)
-    
+
     # Center crops and resizes image.
     image = preprocess_ops.center_crop_image_v2(image_bytes, image_shape)
-    '''
-    image = tf.cast(decoded_tensors['image/encoded'], tf.float32)
+
     image = tf.image.resize(
         image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
 
