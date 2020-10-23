@@ -18,7 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
-
+import collections
 import tensorflow as tf
 
 
@@ -53,13 +53,6 @@ class SpanLabeling(tf.keras.Model):
                initializer='glorot_uniform',
                output='logits',
                **kwargs):
-    self._self_setattr_tracking = False
-    self._config = {
-        'input_width': input_width,
-        'activation': activation,
-        'initializer': initializer,
-        'output': output,
-    }
 
     sequence_data = tf.keras.layers.Input(
         shape=(None, input_width), name='sequence_data', dtype=tf.float32)
@@ -70,16 +63,14 @@ class SpanLabeling(tf.keras.Model):
         kernel_initializer=initializer,
         name='predictions/transform/logits')(
             sequence_data)
-    self.start_logits, self.end_logits = (
-        tf.keras.layers.Lambda(self._split_output_tensor)(intermediate_logits))
+    start_logits, end_logits = self._split_output_tensor(intermediate_logits)
 
     start_predictions = tf.keras.layers.Activation(tf.nn.log_softmax)(
-        self.start_logits)
-    end_predictions = tf.keras.layers.Activation(tf.nn.log_softmax)(
-        self.end_logits)
+        start_logits)
+    end_predictions = tf.keras.layers.Activation(tf.nn.log_softmax)(end_logits)
 
     if output == 'logits':
-      output_tensors = [self.start_logits, self.end_logits]
+      output_tensors = [start_logits, end_logits]
     elif output == 'predictions':
       output_tensors = [start_predictions, end_predictions]
     else:
@@ -87,15 +78,37 @@ class SpanLabeling(tf.keras.Model):
           ('Unknown `output` value "%s". `output` can be either "logits" or '
            '"predictions"') % output)
 
+    # b/164516224
+    # Once we've created the network using the Functional API, we call
+    # super().__init__ as though we were invoking the Functional API Model
+    # constructor, resulting in this object having all the properties of a model
+    # created using the Functional API. Once super().__init__ is called, we
+    # can assign attributes to `self` - note that all `self` assignments are
+    # below this line.
     super(SpanLabeling, self).__init__(
         inputs=[sequence_data], outputs=output_tensors, **kwargs)
+    config_dict = {
+        'input_width': input_width,
+        'activation': activation,
+        'initializer': initializer,
+        'output': output,
+    }
+    # We are storing the config dict as a namedtuple here to ensure checkpoint
+    # compatibility with an earlier version of this model which did not track
+    # the config dict attribute. TF does not track immutable attrs which
+    # do not contain Trackables, so by creating a config namedtuple instead of
+    # a dict we avoid tracking it.
+    config_cls = collections.namedtuple('Config', config_dict.keys())
+    self._config = config_cls(**config_dict)
+    self.start_logits = start_logits
+    self.end_logits = end_logits
 
   def _split_output_tensor(self, tensor):
     transposed_tensor = tf.transpose(tensor, [2, 0, 1])
     return tf.unstack(transposed_tensor)
 
   def get_config(self):
-    return self._config
+    return dict(self._config._asdict())
 
   @classmethod
   def from_config(cls, config, custom_objects=None):

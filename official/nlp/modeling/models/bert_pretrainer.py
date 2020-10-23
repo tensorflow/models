@@ -14,7 +14,7 @@
 # ==============================================================================
 """BERT Pre-training model."""
 # pylint: disable=g-classes-have-attributes
-
+import collections
 import copy
 from typing import List, Optional
 
@@ -64,21 +64,12 @@ class BertPretrainer(tf.keras.Model):
                initializer='glorot_uniform',
                output='logits',
                **kwargs):
-    self._self_setattr_tracking = False
-    self._config = {
-        'network': network,
-        'num_classes': num_classes,
-        'num_token_predictions': num_token_predictions,
-        'activation': activation,
-        'initializer': initializer,
-        'output': output,
-    }
-    self.encoder = network
+
     # We want to use the inputs of the passed network as the inputs to this
     # Model. To do this, we need to keep a copy of the network inputs for use
     # when we construct the Model object at the end of init. (We keep a copy
     # because we'll be adding another tensor to the copy later.)
-    network_inputs = self.encoder.inputs
+    network_inputs = network.inputs
     inputs = copy.copy(network_inputs)
 
     # Because we have a copy of inputs to create this Model object, we can
@@ -86,7 +77,7 @@ class BertPretrainer(tf.keras.Model):
     # Note that, because of how deferred construction happens, we can't use
     # the copy of the list here - by the time the network is invoked, the list
     # object contains the additional input added below.
-    sequence_output, cls_output = self.encoder(network_inputs)
+    sequence_output, cls_output = network(network_inputs)
 
     # The encoder network may get outputs from all layers.
     if isinstance(sequence_output, list):
@@ -108,31 +99,59 @@ class BertPretrainer(tf.keras.Model):
     inputs.append(masked_lm_positions)
 
     if embedding_table is None:
-      embedding_table = self.encoder.get_embedding_table()
-    self.masked_lm = layers.MaskedLM(
+      embedding_table = network.get_embedding_table()
+    masked_lm = layers.MaskedLM(
         embedding_table=embedding_table,
         activation=activation,
         initializer=initializer,
         output=output,
         name='cls/predictions')
-    lm_outputs = self.masked_lm(
+    lm_outputs = masked_lm(
         sequence_output, masked_positions=masked_lm_positions)
 
-    self.classification = networks.Classification(
+    classification = networks.Classification(
         input_width=cls_output.shape[-1],
         num_classes=num_classes,
         initializer=initializer,
         output=output,
         name='classification')
-    sentence_outputs = self.classification(cls_output)
+    sentence_outputs = classification(cls_output)
 
     super(BertPretrainer, self).__init__(
         inputs=inputs,
         outputs=dict(masked_lm=lm_outputs, classification=sentence_outputs),
         **kwargs)
 
+    # b/164516224
+    # Once we've created the network using the Functional API, we call
+    # super().__init__ as though we were invoking the Functional API Model
+    # constructor, resulting in this object having all the properties of a model
+    # created using the Functional API. Once super().__init__ is called, we
+    # can assign attributes to `self` - note that all `self` assignments are
+    # below this line.
+    config_dict = {
+        'network': network,
+        'num_classes': num_classes,
+        'num_token_predictions': num_token_predictions,
+        'activation': activation,
+        'initializer': initializer,
+        'output': output,
+    }
+
+    # We are storing the config dict as a namedtuple here to ensure checkpoint
+    # compatibility with an earlier version of this model which did not track
+    # the config dict attribute. TF does not track immutable attrs which
+    # do not contain Trackables, so by creating a config namedtuple instead of
+    # a dict we avoid tracking it.
+    config_cls = collections.namedtuple('Config', config_dict.keys())
+    self._config = config_cls(**config_dict)
+
+    self.encoder = network
+    self.classification = classification
+    self.masked_lm = masked_lm
+
   def get_config(self):
-    return self._config
+    return dict(self._config._asdict())
 
   @classmethod
   def from_config(cls, config, custom_objects=None):

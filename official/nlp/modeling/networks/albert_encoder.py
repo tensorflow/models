@@ -14,7 +14,7 @@
 # ==============================================================================
 """ALBERT (https://arxiv.org/abs/1810.04805) text encoder network."""
 # pylint: disable=g-classes-have-attributes
-
+import collections
 import tensorflow as tf
 
 from official.modeling import activations
@@ -81,22 +81,6 @@ class AlbertEncoder(tf.keras.Model):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
 
-    self._self_setattr_tracking = False
-    self._config_dict = {
-        'vocab_size': vocab_size,
-        'embedding_width': embedding_width,
-        'hidden_size': hidden_size,
-        'num_layers': num_layers,
-        'num_attention_heads': num_attention_heads,
-        'max_sequence_length': max_sequence_length,
-        'type_vocab_size': type_vocab_size,
-        'intermediate_size': intermediate_size,
-        'activation': tf.keras.activations.serialize(activation),
-        'dropout_rate': dropout_rate,
-        'attention_dropout_rate': attention_dropout_rate,
-        'initializer': tf.keras.initializers.serialize(initializer),
-    }
-
     word_ids = tf.keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_word_ids')
     mask = tf.keras.layers.Input(
@@ -106,19 +90,19 @@ class AlbertEncoder(tf.keras.Model):
 
     if embedding_width is None:
       embedding_width = hidden_size
-    self._embedding_layer = layers.OnDeviceEmbedding(
+    embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
         initializer=initializer,
         name='word_embeddings')
-    word_embeddings = self._embedding_layer(word_ids)
+    word_embeddings = embedding_layer(word_ids)
 
     # Always uses dynamic slicing for simplicity.
-    self._position_embedding_layer = keras_nlp.layers.PositionEmbedding(
+    position_embedding_layer = keras_nlp.layers.PositionEmbedding(
         initializer=initializer,
         max_length=max_sequence_length,
         name='position_embedding')
-    position_embeddings = self._position_embedding_layer(word_embeddings)
+    position_embeddings = position_embedding_layer(word_embeddings)
 
     type_embeddings = (
         layers.OnDeviceEmbedding(
@@ -182,14 +166,45 @@ class AlbertEncoder(tf.keras.Model):
     else:
       outputs = [data, cls_output]
 
+    # b/164516224
+    # Once we've created the network using the Functional API, we call
+    # super().__init__ as though we were invoking the Functional API Model
+    # constructor, resulting in this object having all the properties of a model
+    # created using the Functional API. Once super().__init__ is called, we
+    # can assign attributes to `self` - note that all `self` assignments are
+    # below this line.
     super(AlbertEncoder, self).__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
+    config_dict = {
+        'vocab_size': vocab_size,
+        'embedding_width': embedding_width,
+        'hidden_size': hidden_size,
+        'num_layers': num_layers,
+        'num_attention_heads': num_attention_heads,
+        'max_sequence_length': max_sequence_length,
+        'type_vocab_size': type_vocab_size,
+        'intermediate_size': intermediate_size,
+        'activation': tf.keras.activations.serialize(activation),
+        'dropout_rate': dropout_rate,
+        'attention_dropout_rate': attention_dropout_rate,
+        'initializer': tf.keras.initializers.serialize(initializer),
+    }
+
+    # We are storing the config dict as a namedtuple here to ensure checkpoint
+    # compatibility with an earlier version of this model which did not track
+    # the config dict attribute. TF does not track immutable attrs which
+    # do not contain Trackables, so by creating a config namedtuple instead of
+    # a dict we avoid tracking it.
+    config_cls = collections.namedtuple('Config', config_dict.keys())
+    self._config = config_cls(**config_dict)
+    self._embedding_layer = embedding_layer
+    self._position_embedding_layer = position_embedding_layer
 
   def get_embedding_table(self):
     return self._embedding_layer.embeddings
 
   def get_config(self):
-    return self._config_dict
+    return dict(self._config._asdict())
 
   @classmethod
   def from_config(cls, config):

@@ -109,29 +109,18 @@ class EncoderScaffold(tf.keras.Model):
                return_all_layer_outputs=False,
                dict_outputs=False,
                **kwargs):
-    self._self_setattr_tracking = False
-    self._hidden_cls = hidden_cls
-    self._hidden_cfg = hidden_cfg
-    self._num_hidden_instances = num_hidden_instances
-    self._pooled_output_dim = pooled_output_dim
-    self._pooler_layer_initializer = pooler_layer_initializer
-    self._embedding_cls = embedding_cls
-    self._embedding_cfg = embedding_cfg
-    self._embedding_data = embedding_data
-    self._return_all_layer_outputs = return_all_layer_outputs
-    self._dict_outputs = dict_outputs
-    self._kwargs = kwargs
 
     if embedding_cls:
       if inspect.isclass(embedding_cls):
-        self._embedding_network = embedding_cls(
+        embedding_network = embedding_cls(
             **embedding_cfg) if embedding_cfg else embedding_cls()
       else:
-        self._embedding_network = embedding_cls
-      inputs = self._embedding_network.inputs
-      embeddings, attention_mask = self._embedding_network(inputs)
+        embedding_network = embedding_cls
+      inputs = embedding_network.inputs
+      embeddings, attention_mask = embedding_network(inputs)
+      embedding_layer = None
     else:
-      self._embedding_network = None
+      embedding_network = None
       seq_length = embedding_cfg.get('seq_length', None)
       word_ids = tf.keras.layers.Input(
           shape=(seq_length,), dtype=tf.int32, name='input_word_ids')
@@ -141,38 +130,38 @@ class EncoderScaffold(tf.keras.Model):
           shape=(seq_length,), dtype=tf.int32, name='input_type_ids')
       inputs = [word_ids, mask, type_ids]
 
-      self._embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+      embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
           initializer=embedding_cfg['initializer'],
           name='word_embeddings')
 
-      word_embeddings = self._embedding_layer(word_ids)
+      word_embeddings = embedding_layer(word_ids)
 
       # Always uses dynamic slicing for simplicity.
-      self._position_embedding_layer = keras_nlp.layers.PositionEmbedding(
+      position_embedding_layer = keras_nlp.layers.PositionEmbedding(
           initializer=embedding_cfg['initializer'],
           max_length=embedding_cfg['max_seq_length'],
           name='position_embedding')
-      position_embeddings = self._position_embedding_layer(word_embeddings)
+      position_embeddings = position_embedding_layer(word_embeddings)
 
-      self._type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
+      type_embedding_layer = keras_nlp.layers.OnDeviceEmbedding(
           vocab_size=embedding_cfg['type_vocab_size'],
           embedding_width=embedding_cfg['hidden_size'],
           initializer=embedding_cfg['initializer'],
           use_one_hot=True,
           name='type_embeddings')
-      type_embeddings = self._type_embedding_layer(type_ids)
+      type_embeddings = type_embedding_layer(type_ids)
 
       embeddings = tf.keras.layers.Add()(
           [word_embeddings, position_embeddings, type_embeddings])
 
-      self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
+      embedding_norm_layer = tf.keras.layers.LayerNormalization(
           name='embeddings/layer_norm',
           axis=-1,
           epsilon=1e-12,
           dtype=tf.float32)
-      embeddings = self._embedding_norm_layer(embeddings)
+      embeddings = embedding_norm_layer(embeddings)
 
       embeddings = (
           tf.keras.layers.Dropout(
@@ -183,7 +172,7 @@ class EncoderScaffold(tf.keras.Model):
     data = embeddings
 
     layer_output_data = []
-    self._hidden_layers = []
+    hidden_layers = []
     for _ in range(num_hidden_instances):
       if inspect.isclass(hidden_cls):
         layer = hidden_cls(**hidden_cfg) if hidden_cfg else hidden_cls()
@@ -191,19 +180,19 @@ class EncoderScaffold(tf.keras.Model):
         layer = hidden_cls
       data = layer([data, attention_mask])
       layer_output_data.append(data)
-      self._hidden_layers.append(layer)
+      hidden_layers.append(layer)
 
     last_layer_output = layer_output_data[-1]
     # Applying a tf.slice op (through subscript notation) to a Keras tensor
     # like this will create a SliceOpLambda layer. This is better than a Lambda
     # layer with Python code, because that is fundamentally less portable.
     first_token_tensor = last_layer_output[:, 0, :]
-    self._pooler_layer = tf.keras.layers.Dense(
+    pooler_layer = tf.keras.layers.Dense(
         units=pooled_output_dim,
         activation='tanh',
         kernel_initializer=pooler_layer_initializer,
         name='cls_transform')
-    cls_output = self._pooler_layer(first_token_tensor)
+    cls_output = pooler_layer(first_token_tensor)
 
     if dict_outputs:
       outputs = dict(
@@ -216,8 +205,32 @@ class EncoderScaffold(tf.keras.Model):
     else:
       outputs = [layer_output_data[-1], cls_output]
 
+    # b/164516224
+    # Once we've created the network using the Functional API, we call
+    # super().__init__ as though we were invoking the Functional API Model
+    # constructor, resulting in this object having all the properties of a model
+    # created using the Functional API. Once super().__init__ is called, we
+    # can assign attributes to `self` - note that all `self` assignments are
+    # below this line.
     super(EncoderScaffold, self).__init__(
         inputs=inputs, outputs=outputs, **kwargs)
+
+    self._hidden_cls = hidden_cls
+    self._hidden_cfg = hidden_cfg
+    self._num_hidden_instances = num_hidden_instances
+    self._pooled_output_dim = pooled_output_dim
+    self._pooler_layer_initializer = pooler_layer_initializer
+    self._embedding_cls = embedding_cls
+    self._embedding_cfg = embedding_cfg
+    self._embedding_data = embedding_data
+    self._return_all_layer_outputs = return_all_layer_outputs
+    self._dict_outputs = dict_outputs
+    self._kwargs = kwargs
+
+    self._embedding_layer = embedding_layer
+    self._embedding_network = embedding_network
+    self._hidden_layers = hidden_layers
+    self._pooler_layer = pooler_layer
 
     logging.info('EncoderScaffold configs: %s', self.get_config())
 

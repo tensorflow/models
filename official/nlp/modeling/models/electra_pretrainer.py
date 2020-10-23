@@ -100,12 +100,12 @@ class ElectraPretrainer(tf.keras.Model):
         output=output_type,
         name='generator_masked_lm')
     self.classification = layers.ClassificationHead(
-        inner_dim=generator_network._config_dict['hidden_size'],
+        inner_dim=generator_network.get_config()['hidden_size'],
         num_classes=num_classes,
         initializer=mlm_initializer,
         name='generator_classification_head')
     self.discriminator_projection = tf.keras.layers.Dense(
-        units=discriminator_network._config_dict['hidden_size'],
+        units=discriminator_network.get_config()['hidden_size'],
         activation=mlm_activation,
         kernel_initializer=mlm_initializer,
         name='discriminator_projection_head')
