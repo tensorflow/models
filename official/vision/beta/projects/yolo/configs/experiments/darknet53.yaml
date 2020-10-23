@@ -31,7 +31,7 @@ task:
 trainer:
   train_steps: 51200000 # in the paper
   validation_steps: 25600 # size of validation data
-  validation_interval: 150 
+  validation_interval: 150
   steps_per_loop: 150
   summary_interval: 150
   checkpoint_interval: 150
@@ -50,4 +50,4 @@ trainer:
     warmup:
       type: 'linear'
       linear:
-        warmup_steps: 64000 #lr rise from 0 to 0.1 over 1000 steps
+        warmup_steps: 64000 #learning rate rises from 0 to 0.1 over 1000 steps

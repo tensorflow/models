@@ -23,7 +23,7 @@ class DarkConv(ks.layers.Layer):
       kernel_initializer='glorot_uniform',
       bias_initializer='zeros',
       bias_regularizer=None,
-      weight_decay=None,  # default find where is it is stated
+      weight_decay=None,  # Specify the weight decay as the default will not work.
       use_bn=True,
       use_sync_bn=False,
       norm_momentum=0.99,
@@ -99,7 +99,7 @@ class DarkConv(ks.layers.Layer):
         self._kernel_size) == int else self._kernel_size[0]
     if self._padding == "same" and kernel_size != 1:
       self._zeropad = ks.layers.ZeroPadding2D(
-          ((1, 1), (1, 1)))  # symetric padding
+          ((1, 1), (1, 1)))  # symmetric padding
     else:
       self._zeropad = Identity()
 
@@ -107,7 +107,7 @@ class DarkConv(ks.layers.Layer):
         filters=self._filters,
         kernel_size=self._kernel_size,
         strides=self._strides,
-        padding="valid",  #self._padding,
+        padding="valid",
         dilation_rate=self._dilation_rate,
         use_bias=self._use_bias,
         kernel_initializer=self._kernel_initializer,
@@ -148,7 +148,7 @@ class DarkConv(ks.layers.Layer):
     return x
 
   def get_config(self):
-    # used to store/share parameters to reconsturct the model
+    # used to store/share parameters to reconstruct the model
     layer_config = {
         "filters": self._filters,
         "kernel_size": self._kernel_size,
