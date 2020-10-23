@@ -14,7 +14,7 @@ class CSPTiny(ks.layers.Layer):
       kernel_initializer='glorot_uniform',
       bias_initializer='zeros',
       bias_regularizer=None,
-      weight_decay=None,  # default find where is it is stated
+      weight_decay=None,
       use_bn=True,
       use_sync_bn=False,
       group_id=1,

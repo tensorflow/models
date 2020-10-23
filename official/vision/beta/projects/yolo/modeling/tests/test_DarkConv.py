@@ -54,19 +54,5 @@ class DarkConvTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotIn(None, grad)
     return
 
-  # @parameterized.named_parameters(("filters", 3), ("filters", 20), ("filters", 512))
-  # def test_time(self, filters):
-  #     # finish the test for time
-  #     dataset = tfds.load("mnist")
-  #     model = ks.Sequential([
-  #             DarkConv(7, kernel_size=(3,3), strides = (2,2), activation='relu'),
-  #             DarkConv(10, kernel_size=(3,3), strides = (2,2), activation='relu'),
-  #             DarkConv(filters, kernel_size=(3,3), strides = (1,1), activation='relu'),
-  #             DarkConv(9, kernel_size=(3,3), strides = (2,2), activation='relu'),
-  #             ks.layers.GlobalAveragePooling2D(),
-  #             ks.layers.Dense(10, activation='softmax')], name='test')
-  #     return
-
-
 if __name__ == "__main__":
   tf.test.main()

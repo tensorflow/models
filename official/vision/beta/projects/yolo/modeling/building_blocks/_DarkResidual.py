@@ -138,7 +138,7 @@ class DarkResidual(ks.layers.Layer):
     return self._activation_fn(x)
 
   def get_config(self):
-    # used to store/share parameters to reconsturct the model
+    # used to store/share parameters to reconstruct the model
     layer_config = {
         "filters": self._filters,
         "use_bias": self._use_bias,

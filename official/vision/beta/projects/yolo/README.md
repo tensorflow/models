@@ -15,7 +15,7 @@ This repository is the unofficial implementation of the following papers. Howeve
 
 Yolo v1 the original implementation was released in 2015 providing a ground breaking algorithm that would quickly process images, and locate objects in a single pass through the detector. The original implementation based used a backbone derived from state of the art object classifier of the time, like [GoogLeNet](https://arxiv.org/abs/1409.4842) and [VGG](https://arxiv.org/abs/1409.1556). More attention was given to the novel Yolo Detection head that allowed for Object Detection with a single pass of an image. Though limited, the network could predict up to 90 bounding boxes per image, and was tested for about 80 classes per box. Also, the model could only make prediction at one scale. These attributes caused yolo v1 to be more limited, and less versatile, so as the year passed, the Developers continued to update and develop this model.
 
-Yolo v3 and v4 serve as the most up to date and capable versions of the Yolo network group. These model uses a custom backbone called Darknet53 that uses knowledge gained from the ResNet paper to improve its predictions. The new backbone also allows for objects to be detected at multiple scales. As for the new detection head, the model now predicts the bounding boxes using a set of anchor box priors (Anchor Boxes) as suggestions. The multiscale predictions in combination with the Anchor boxes allows for the network to make up to 1000 object predictions on a single image. Finally, the new loss function forces the network to make better prediction by using Intersection Over Union (IOU) to inform the models confidence rather than relying on the mean squared error for the entire output.
+Yolo v3 and v4 serve as the most up to date and capable versions of the Yolo network group. These model uses a custom backbone called Darknet53 that uses knowledge gained from the ResNet paper to improve its predictions. The new backbone also allows for objects to be detected at multiple scales. As for the new detection head, the model now predicts the bounding boxes using a set of anchor box priors (Anchor Boxes) as suggestions. The multiscale predictions in combination with the Anchor boxes allows for the network to make up to 1000 object predictions on a single image. Finally, the new loss function forces the network to make better prediction by using Intersection Over Union (IOU) to inform the model's confidence rather than relying on the mean squared error for the entire output.
 
 ## Authors
 
@@ -33,7 +33,8 @@ Yolo v3 and v4 serve as the most up to date and capable versions of the Yolo net
 
 
 ## Our Goal
-Our goal with this model conversion is to provide highly versatile implementations of the Backbone and Yolo Head. We have tried to build the model in such a way that the Yolo head could easily be connected to a new, more powerful backbone if a person chose to.
+
+Our goal with this model conversion is to provide implementations of the Backbone and Yolo Head. We have built the model in such a way that the Yolo head could be connected to a new, more powerful backbone if a person chose to.
 
 ## Models in the library
 

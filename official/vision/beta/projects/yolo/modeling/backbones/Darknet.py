@@ -252,7 +252,7 @@ class Darknet(ks.Model):
                                      name=f"{config.layer}_{i}")
         stack_outputs.append(x_pass)
       if (config.is_output and
-          self._min_size == None):  # or isinstance(config.output_name, str):
+          self._min_size == None):
         endpoints[str(config.output_name)] = x
       elif self._min_size != None and config.output_name >= self._min_size and config.output_name <= self._max_size:
         endpoints[str(config.output_name)] = x
