@@ -80,7 +80,7 @@ class VideoClassificationModel(hyperparams.Config):
       type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50())
   norm_activation: common.NormActivation = common.NormActivation()
   dropout_rate: float = 0.2
-  add_head_batch_norm: bool = False
+  aggregate_endpoints: bool = False
 
 
 @dataclasses.dataclass
