@@ -13,7 +13,7 @@ class DarkNet(hyperparams.Config):
   model_id: str = "darknet53"
 
 
-# # we could not get this to work
-# @dataclasses.dataclass
-# class Backbone(backbones.Backbone):
-#   darknet: DarkNet = DarkNet()
+# we could not get this to work
+@dataclasses.dataclass
+class Backbone(backbones.Backbone):
+  darknet: DarkNet = DarkNet()

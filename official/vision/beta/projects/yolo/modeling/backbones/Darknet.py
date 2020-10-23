@@ -9,7 +9,7 @@ from official.vision.beta.projects.yolo.modeling import building_blocks as nn_bl
 # builder required classes
 class BlockConfig(object):
 
-  def __init__(self, layer, stack, reps, bottleneck, filters, kernel_size,
+  def __init__(self, layer, stack, reps, bottleneck, filters, pool_size, kernel_size,
                strides, padding, activation, route, output_name, is_output):
     '''
         get layer config to make code more readable
@@ -28,13 +28,13 @@ class BlockConfig(object):
     self.bottleneck = bottleneck
     self.filters = filters
     self.kernel_size = kernel_size
+    self.pool_size = pool_size
     self.strides = strides
     self.padding = padding
     self.activation = activation
     self.route = route
     self.output_name = output_name
     self.is_output = is_output
-    return
 
 
 def build_block_specs(config):
@@ -44,47 +44,50 @@ def build_block_specs(config):
   return specs
 
 
-def darkconv_config_todict(config, kwargs):
-  dictvals = {
-      "filters": config.filters,
-      "kernel_size": config.kernel_size,
-      "strides": config.strides,
-      "padding": config.padding
-  }
-  dictvals.update(kwargs)
-  return dictvals
 
 
-def darktiny_config_todict(config, kwargs):
-  dictvals = {"filters": config.filters, "strides": config.strides}
-  dictvals.update(kwargs)
-  return dictvals
 
-
-def maxpool_config_todict(config, kwargs):
-  return {
-      "pool_size": config.kernel_size,
-      "strides": config.strides,
-      "padding": config.padding,
-      "name": kwargs["name"]
-  }
-
-
-class layer_registry(object):
-
+class layer_factory(object):
+  """ 
+  class for quick look up of default layers used by darknet to
+  connect, introduce or exit a level. Used in place of an if condition 
+  or switch to make adding new layers easier and to reduce redundant code  
+  """
   def __init__(self):
     self._layer_dict = {
-        "DarkTiny": (nn_blocks.DarkTiny, darktiny_config_todict),
-        "DarkConv": (nn_blocks.DarkConv, darkconv_config_todict),
-        "MaxPool": (tf.keras.layers.MaxPool2D, maxpool_config_todict)
+        "DarkTiny": (nn_blocks.DarkTiny, self.darktiny_config_todict),
+        "DarkConv": (nn_blocks.DarkConv, self.darkconv_config_todict),
+        "MaxPool": (tf.keras.layers.MaxPool2D, self.maxpool_config_todict)
     }
     return
 
-  def _get_layer(self, key):
-    return self._layer_dict[key]
+  def darkconv_config_todict(config, kwargs):
+    dictvals = {
+        "filters": config.filters,
+        "kernel_size": config.kernel_size,
+        "strides": config.strides,
+        "padding": config.padding
+    }
+    dictvals.update(kwargs)
+    return dictvals
+
+
+  def darktiny_config_todict(config, kwargs):
+    dictvals = {"filters": config.filters, "strides": config.strides}
+    dictvals.update(kwargs)
+    return dictvals
+
+
+  def maxpool_config_todict(config, kwargs):
+    return {
+        "pool_size": config.pool_size,
+        "strides": config.strides,
+        "padding": config.padding,
+        "name": kwargs["name"]
+    }
 
   def __call__(self, config, kwargs):
-    layer, get_param_dict = self._get_layer(config.layer)
+    layer, get_param_dict = self._layer_dict[key]
     param_dict = get_param_dict(config, kwargs)
     return layer(**param_dict)
 
@@ -92,7 +95,7 @@ class layer_registry(object):
 # model configs
 LISTNAMES = [
     "default_layer_name", "level_type", "number_of_layers_in_level",
-    "bottleneck", "filters", "kernal_size", "strides", "padding",
+    "bottleneck", "filters", "kernal_size", "pool_size", "strides", "padding",
     "default_activation", "route", "level/name", "is_output"
 ]
 
@@ -101,12 +104,12 @@ CSPDARKNET53 = {
     "splits": {"backbone_split": 106,
                "neck_split": 138},
     "backbone": [
-        ["DarkConv", None, 1, False, 32, 3, 1, "same", "mish", -1, 0, False],  # 1
-        ["DarkRes", "csp", 1, True, 64, None, None, None, "mish", -1, 1, False],  # 3
-        ["DarkRes", "csp", 2, False, 128, None, None, None, "mish", -1, 2, False],  # 2
-        ["DarkRes", "csp", 8, False, 256, None, None, None, "mish", -1, 3, True],
-        ["DarkRes", "csp", 8, False, 512, None, None, None, "mish", -1, 4, True],  # 3
-        ["DarkRes", "csp", 4, False, 1024, None, None, None, "mish", -1, 5, True],  # 6  #route
+        ["DarkConv", None, 1, False, 32, None, 3, 1, "same", "mish", -1, 0, False],  # 1
+        ["DarkRes", "csp", 1, True, 64, None, None, None, None, "mish", -1, 1, False],  # 3
+        ["DarkRes", "csp", 2, False, 128, None, None, None, None, "mish", -1, 2, False],  # 2
+        ["DarkRes", "csp", 8, False, 256, None, None, None, None, "mish", -1, 3, True],
+        ["DarkRes", "csp", 8, False, 512, None, None, None, None, "mish", -1, 4, True],  # 3
+        ["DarkRes", "csp", 4, False, 1024, None, None, None, None, "mish", -1, 5, True],  # 6  #route
     ]
 }
 
@@ -114,12 +117,12 @@ DARKNET53 = {
     "list_names": LISTNAMES,
     "splits": {"backbone_split": 76},
     "backbone": [
-        ["DarkConv", None, 1, False, 32, 3, 1, "same", "leaky", -1, 0, False],  # 1
-        ["DarkRes", "residual", 1, True, 64, None, None, None, "leaky", -1, 1, False],  # 3
-        ["DarkRes", "residual", 2, False, 128, None, None, None, "leaky", -1, 2, False],  # 2
-        ["DarkRes", "residual", 8, False, 256, None, None, None, "leaky", -1, 3, True],
-        ["DarkRes", "residual", 8, False, 512, None, None, None, "leaky", -1, 4, True],  # 3
-        ["DarkRes", "residual", 4, False, 1024, None, None, None, "leaky", -1, 5, True],  # 6
+        ["DarkConv", None, 1, False, 32, None, 3, 1, "same", "leaky", -1, 0, False],  # 1
+        ["DarkRes", "residual", 1, True, 64, None, None, None, None, "leaky", -1, 1, False],  # 3
+        ["DarkRes", "residual", 2, False, 128, None, None, None, None, "leaky", -1, 2, False],  # 2
+        ["DarkRes", "residual", 8, False, 256, None, None, None, None, "leaky", -1, 3, True],
+        ["DarkRes", "residual", 8, False, 512, None, None, None, None, "leaky", -1, 4, True],  # 3
+        ["DarkRes", "residual", 4, False, 1024, None, None, None, None, "leaky", -1, 5, True],  # 6
     ]
 }
 
@@ -127,12 +130,12 @@ CSPDARKNETTINY = {
     "list_names": LISTNAMES,
     "splits": {"backbone_split": 28},
     "backbone": [
-        ["DarkConv", None, 1, False, 32, 3, 2, "same", "leaky", -1, 0, False],  # 1
-        ["DarkConv", None, 1, False, 64, 3, 2, "same", "leaky", -1, 1, False],  # 1
-        ["CSPTiny", "csp_tiny", 1, False, 64, 3, 2, "same", "leaky", -1, 2, False],  # 3
-        ["CSPTiny", "csp_tiny", 1, False, 128, 3, 2, "same", "leaky", -1, 3, False],  # 3
-        ["CSPTiny", "csp_tiny", 1, False, 256, 3, 2, "same", "leaky", -1, 4, True],  # 3
-        ["DarkConv", None, 1, False, 512, 3, 1, "same", "leaky", -1, 5, True],  # 1
+        ["DarkConv", None, 1, False, 32, None, 3, 2, "same", "leaky", -1, 0, False],  # 1
+        ["DarkConv", None, 1, False, 64, None, 3, 2, "same", "leaky", -1, 1, False],  # 1
+        ["CSPTiny", "csp_tiny", 1, False, 64, None, 3, 2, "same", "leaky", -1, 2, False],  # 3
+        ["CSPTiny", "csp_tiny", 1, False, 128, None, 3, 2, "same", "leaky", -1, 3, False],  # 3
+        ["CSPTiny", "csp_tiny", 1, False, 256, None, 3, 2, "same", "leaky", -1, 4, True],  # 3
+        ["DarkConv", None, 1, False, 512, None, 3, 1, "same", "leaky", -1, 5, True],  # 1
     ]
 }
 
@@ -140,13 +143,13 @@ DARKNETTINY = {
     "list_names": LISTNAMES,
     "splits": {"backbone_split": 14},
     "backbone": [
-        ["DarkConv", None, 1, False, 16, 3, 1, "same", "leaky", -1, 0, False],  # 1
-        ["DarkTiny", None, 1, True, 32, 3, 2, "same", "leaky", -1, 1, False],  # 3
-        ["DarkTiny", None, 1, True, 64, 3, 2, "same", "leaky", -1, 2, False],  # 3
-        ["DarkTiny", None, 1, False, 128, 3, 2, "same", "leaky", -1, 3, False],  # 2
-        ["DarkTiny", None, 1, False, 256, 3, 2, "same", "leaky", -1, 4, True],
-        ["DarkTiny", None, 1, False, 512, 3, 2, "same", "leaky", -1, 5, False],  # 3
-        ["DarkTiny", None, 1, False, 1024, 3, 1, "same", "leaky", -1, 5, True],  # 6  #route
+        ["DarkConv", None, 1, False, 16, None, 3, 1, "same", "leaky", -1, 0, False],  # 1
+        ["DarkTiny", None, 1, True, 32, None, 3, 2, "same", "leaky", -1, 1, False],  # 3
+        ["DarkTiny", None, 1, True, 64, None, 3, 2, "same", "leaky", -1, 2, False],  # 3
+        ["DarkTiny", None, 1, False, 128, None, 3, 2, "same", "leaky", -1, 3, False],  # 2
+        ["DarkTiny", None, 1, False, 256, None, 3, 2, "same", "leaky", -1, 4, True],
+        ["DarkTiny", None, 1, False, 512, None, 3, 2, "same", "leaky", -1, 5, False],  # 3
+        ["DarkTiny", None, 1, False, 1024, None, 3, 1, "same", "leaky", -1, 5, True],  # 6  #route
     ]
 }
 
@@ -164,7 +167,7 @@ class Darknet(ks.Model):
   def __init__(
       self,
       model_id="darknet53",
-      input_shape=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+      input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
       min_size=None,
       max_size=5,
       activation=None,
@@ -181,8 +184,8 @@ class Darknet(ks.Model):
 
     self._model_name = model_id
     self._splits = splits
-    self._input_shape = input_shape
-    self._registry = layer_registry()
+    self._input_shape = input_specs
+    self._registry = layer_factory()
 
     # default layer look up
     self._min_size = min_size
@@ -195,11 +198,11 @@ class Darknet(ks.Model):
     self._norm_epislon = norm_epsilon
     self._use_sync_bn = use_sync_bn
     self._activation = activation
-    self._weight_decay = kernel_regularizer
+    self._kernel_regularizer = kernel_regularizer
 
     self._default_dict = {
         "kernel_initializer": self._kernel_initializer,
-        "weight_decay": self._weight_decay,
+        "weight_decay": self._kernel_regularizer,
         "bias_regularizer": self._bias_regularizer,
         "norm_momentum": self._norm_momentum,
         "norm_epsilon": self._norm_epislon,
@@ -211,7 +214,6 @@ class Darknet(ks.Model):
     inputs = ks.layers.Input(shape=self._input_shape.shape[1:])
     output = self._build_struct(layer_specs, inputs)
     super().__init__(inputs=inputs, outputs=output, name=self._model_name)
-    return
 
   @property
   def input_specs(self):
@@ -251,9 +253,9 @@ class Darknet(ks.Model):
         stack_outputs.append(x_pass)
       if (config.is_output and
           self._min_size == None):  # or isinstance(config.output_name, str):
-        endpoints[config.output_name] = x
+        endpoints[str(config.output_name)] = x
       elif self._min_size != None and config.output_name >= self._min_size and config.output_name <= self._max_size:
-        endpoints[config.output_name] = x
+        endpoints[str(config.output_name)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints.keys()}
     return endpoints
