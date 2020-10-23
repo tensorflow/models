@@ -15,6 +15,8 @@
 """Bert encoder network."""
 # pylint: disable=g-classes-have-attributes
 
+import collections
+from absl import logging
 import tensorflow as tf
 
 from official.nlp.keras_nlp import layers
@@ -65,6 +67,8 @@ class BertEncoder(tf.keras.Model):
       matrices in the shape of ['vocab_size', 'embedding_width'] and
       ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
       smaller than 'hidden_size').
+    embedding_layer: An optional Layer instance which will be called to
+     generate embeddings for the input word IDs.
   """
 
   def __init__(
@@ -82,26 +86,10 @@ class BertEncoder(tf.keras.Model):
       initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
       output_range=None,
       embedding_width=None,
+      embedding_layer=None,
       **kwargs):
     activation = tf.keras.activations.get(inner_activation)
     initializer = tf.keras.initializers.get(initializer)
-
-    self._self_setattr_tracking = False
-    self._config_dict = {
-        'vocab_size': vocab_size,
-        'hidden_size': hidden_size,
-        'num_layers': num_layers,
-        'num_attention_heads': num_attention_heads,
-        'max_sequence_length': max_sequence_length,
-        'type_vocab_size': type_vocab_size,
-        'inner_dim': inner_dim,
-        'inner_activation': tf.keras.activations.serialize(activation),
-        'output_dropout': output_dropout,
-        'attention_dropout': attention_dropout,
-        'initializer': tf.keras.initializers.serialize(initializer),
-        'output_range': output_range,
-        'embedding_width': embedding_width,
-    }
 
     word_ids = tf.keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_word_ids')
@@ -112,44 +100,54 @@ class BertEncoder(tf.keras.Model):
 
     if embedding_width is None:
       embedding_width = hidden_size
-    self._embedding_layer = self._build_embedding_layer()
-    word_embeddings = self._embedding_layer(word_ids)
+
+    if embedding_layer is None:
+      embedding_layer_inst = layers.OnDeviceEmbedding(
+          vocab_size=vocab_size,
+          embedding_width=embedding_width,
+          initializer=initializer,
+          name='word_embeddings')
+    else:
+      embedding_layer_inst = embedding_layer
+    word_embeddings = embedding_layer_inst(word_ids)
 
     # Always uses dynamic slicing for simplicity.
-    self._position_embedding_layer = layers.PositionEmbedding(
+    position_embedding_layer = layers.PositionEmbedding(
         initializer=initializer,
         max_length=max_sequence_length,
         name='position_embedding')
-    position_embeddings = self._position_embedding_layer(word_embeddings)
-    self._type_embedding_layer = layers.OnDeviceEmbedding(
+    position_embeddings = position_embedding_layer(word_embeddings)
+    type_embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=type_vocab_size,
         embedding_width=embedding_width,
         initializer=initializer,
         use_one_hot=True,
         name='type_embeddings')
-    type_embeddings = self._type_embedding_layer(type_ids)
+    type_embeddings = type_embedding_layer(type_ids)
 
     embeddings = tf.keras.layers.Add()(
         [word_embeddings, position_embeddings, type_embeddings])
 
-    self._embedding_norm_layer = tf.keras.layers.LayerNormalization(
+    embedding_norm_layer = tf.keras.layers.LayerNormalization(
         name='embeddings/layer_norm', axis=-1, epsilon=1e-12, dtype=tf.float32)
 
-    embeddings = self._embedding_norm_layer(embeddings)
+    embeddings = embedding_norm_layer(embeddings)
     embeddings = (tf.keras.layers.Dropout(rate=output_dropout)(embeddings))
 
     # We project the 'embedding' output to 'hidden_size' if it is not already
     # 'hidden_size'.
     if embedding_width != hidden_size:
-      self._embedding_projection = tf.keras.layers.experimental.EinsumDense(
+      embedding_projection = tf.keras.layers.experimental.EinsumDense(
           '...x,xy->...y',
           output_shape=hidden_size,
           bias_axes='y',
           kernel_initializer=initializer,
           name='embedding_projection')
-      embeddings = self._embedding_projection(embeddings)
+      embeddings = embedding_projection(embeddings)
+    else:
+      embedding_projection = None
 
-    self._transformer_layers = []
+    transformer_layers = []
     data = embeddings
     attention_mask = layers.SelfAttentionMask()(data, mask)
     encoder_outputs = []
@@ -167,7 +165,7 @@ class BertEncoder(tf.keras.Model):
           output_range=transformer_output_range,
           kernel_initializer=initializer,
           name='transformer/layer_%d' % i)
-      self._transformer_layers.append(layer)
+      transformer_layers.append(layer)
       data = layer([data, attention_mask])
       encoder_outputs.append(data)
 
@@ -176,38 +174,68 @@ class BertEncoder(tf.keras.Model):
     # like this will create a SliceOpLambda layer. This is better than a Lambda
     # layer with Python code, because that is fundamentally less portable.
     first_token_tensor = last_enocder_output[:, 0, :]
-    self._pooler_layer = tf.keras.layers.Dense(
+    pooler_layer = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
         kernel_initializer=initializer,
         name='pooler_transform')
-    cls_output = self._pooler_layer(first_token_tensor)
+    cls_output = pooler_layer(first_token_tensor)
 
     outputs = dict(
         sequence_output=encoder_outputs[-1],
         pooled_output=cls_output,
         encoder_outputs=encoder_outputs,
     )
+
+    # Once we've created the network using the Functional API, we call
+    # super().__init__ as though we were invoking the Functional API Model
+    # constructor, resulting in this object having all the properties of a model
+    # created using the Functional API. Once super().__init__ is called, we
+    # can assign attributes to `self` - note that all `self` assignments are
+    # below this line.
     super(BertEncoder, self).__init__(
         inputs=[word_ids, mask, type_ids], outputs=outputs, **kwargs)
 
+    config_dict = {
+        'vocab_size': vocab_size,
+        'hidden_size': hidden_size,
+        'num_layers': num_layers,
+        'num_attention_heads': num_attention_heads,
+        'max_sequence_length': max_sequence_length,
+        'type_vocab_size': type_vocab_size,
+        'inner_dim': inner_dim,
+        'inner_activation': tf.keras.activations.serialize(activation),
+        'output_dropout': output_dropout,
+        'attention_dropout': attention_dropout,
+        'initializer': tf.keras.initializers.serialize(initializer),
+        'output_range': output_range,
+        'embedding_width': embedding_width,
+        'embedding_layer': embedding_layer,
+    }
+
+    # We are storing the config dict as a namedtuple here to ensure checkpoint
+    # compatibility with an earlier version of this model which did not track
+    # the config dict attribute. TF does not track immutable attrs which
+    # do not contain Trackables, so by creating a config namedtuple instead of
+    # a dict we avoid tracking it.
+    config_cls = collections.namedtuple('Config', config_dict.keys())
+    self._config = config_cls(**config_dict)
+    self._pooler_layer = pooler_layer
+    self._transformer_layers = transformer_layers
+    self._embedding_norm_layer = embedding_norm_layer
+    self._embedding_layer = embedding_layer_inst
+    self._position_embedding_layer = position_embedding_layer
+    self._type_embedding_layer = type_embedding_layer
+    self._embedding_projection = embedding_projection
+
   def get_embedding_table(self):
     return self._embedding_layer.embeddings
-
-  def _build_embedding_layer(self):
-    embedding_width = self._config_dict[
-        'embedding_width'] or self._config_dict['hidden_size']
-    return layers.OnDeviceEmbedding(
-        vocab_size=self._config_dict['vocab_size'],
-        embedding_width=embedding_width,
-        initializer=self._config_dict['initializer'],
-        name='word_embeddings')
 
   def get_embedding_layer(self):
     return self._embedding_layer
 
   def get_config(self):
-    return self._config_dict
+    return dict(self._config._asdict())
 
   @property
   def transformer_layers(self):
@@ -221,4 +249,13 @@ class BertEncoder(tf.keras.Model):
 
   @classmethod
   def from_config(cls, config, custom_objects=None):
+    if config['embedding_layer'] is not None:
+      warn_string = (
+          'You are reloading a model that was saved with a '
+          'potentially-shared embedding layer object. If you contine to '
+          'train this model, the embedding layer will no longer be shared. '
+          'To work around this, load the model outside of the Keras API.')
+      print('WARNING: ' + warn_string)
+      logging.warn(warn_string)
+
     return cls(**config)
