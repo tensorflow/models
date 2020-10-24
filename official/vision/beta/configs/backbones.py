@@ -64,8 +64,6 @@ class RevNet(hyperparams.Config):
   # Specifies the depth of RevNet.
   model_id: int = 56
 
-from official.vision.beta.projects.yolo.configs.backbones import DarkNet
-
 @dataclasses.dataclass
 class Backbone(hyperparams.OneOfConfig):
   """Configuration for backbones.
@@ -86,4 +84,3 @@ class Backbone(hyperparams.OneOfConfig):
   efficientnet: EfficientNet = EfficientNet()
   spinenet: SpineNet = SpineNet()
   mobilenet: MobileNet = MobileNet()
-  darknet: DarkNet = DarkNet()

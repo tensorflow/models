@@ -14,7 +14,7 @@ class DarkResidual(ks.layers.Layer):
                use_bias=True,
                kernel_initializer='glorot_uniform',
                bias_initializer='zeros',
-               weight_decay=None,
+               kernel_regularizer=None,
                bias_regularizer=None,
                use_bn=True,
                use_sync_bn=False,
@@ -59,7 +59,7 @@ class DarkResidual(ks.layers.Layer):
     self._bias_regularizer = bias_regularizer
     self._use_bn = use_bn
     self._use_sync_bn = use_sync_bn
-    self._weight_decay = weight_decay
+    self._kernel_regularizer = kernel_regularizer
 
     # normal params
     self._norm_moment = norm_momentum
@@ -88,7 +88,7 @@ class DarkResidual(ks.layers.Layer):
                              norm_momentum=self._norm_moment,
                              norm_epsilon=self._norm_epsilon,
                              activation=self._conv_activation,
-                             weight_decay=self._weight_decay,
+                             kernel_regularizer=self._kernel_regularizer,
                              leaky_alpha=self._leaky_alpha)
     else:
       self._dconv = Identity()
@@ -106,7 +106,7 @@ class DarkResidual(ks.layers.Layer):
                            norm_momentum=self._norm_moment,
                            norm_epsilon=self._norm_epsilon,
                            activation=self._conv_activation,
-                           weight_decay=self._weight_decay,
+                           kernel_regularizer=self._kernel_regularizer,
                            leaky_alpha=self._leaky_alpha)
     self._conv2 = DarkConv(filters=self._filters,
                            kernel_size=(3, 3),
@@ -121,7 +121,7 @@ class DarkResidual(ks.layers.Layer):
                            norm_momentum=self._norm_moment,
                            norm_epsilon=self._norm_epsilon,
                            activation=self._conv_activation,
-                           weight_decay=self._weight_decay,
+                           kernel_regularizer=self._kernel_regularizer,
                            leaky_alpha=self._leaky_alpha)
 
     self._shortcut = ks.layers.Add()
@@ -144,7 +144,7 @@ class DarkResidual(ks.layers.Layer):
         "use_bias": self._use_bias,
         "kernel_initializer": self._kernel_initializer,
         "bias_initializer": self._bias_initializer,
-        "weight_decay": self._weight_decay,
+        "kernel_regularizer": self._kernel_regularizer,
         "use_bn": self._use_bn,
         "use_sync_bn": self._use_sync_bn,
         "norm_moment": self._norm_moment,

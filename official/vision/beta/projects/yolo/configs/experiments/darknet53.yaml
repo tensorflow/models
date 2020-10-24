@@ -1,7 +1,6 @@
 runtime:
   distribution_strategy: 'mirrored'
   mixed_precision_dtype: 'float32'
-  loss_scale: 'dynamic'
 task:
   model:
     num_classes: 1001
@@ -9,25 +8,21 @@ task:
     backbone:
       type: 'darknet'
       darknet:
-        model_id: 'darknet53'
+        model_id: 'cspdarknettiny'
   losses:
     l2_weight_decay: 0.0005
     one_hot: True
   train_data:
-    tfds_name: 'imagenet_a'
-    tfds_split: 'test'
-    tfds_download: True
-    is_training: True
+    input_path: 'imagenet-2012-tfrecord/train*'
+    is_training: true
     global_batch_size: 128
     dtype: 'float16'
   validation_data:
-    tfds_name: 'imagenet_a'
-    tfds_split: 'test'
-    tfds_download: True
-    is_training: False
-    global_batch_size: 2
+    input_path: 'imagenet-2012-tfrecord/valid*'
+    is_training: true
+    global_batch_size: 128 
     dtype: 'float16'
-    drop_remainder: False
+    drop_remainder: false
 trainer:
   train_steps: 800000 # in the paper
   validation_steps: 400 # size of validation data

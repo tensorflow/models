@@ -23,7 +23,7 @@ class DarkConv(ks.layers.Layer):
       kernel_initializer='glorot_uniform',
       bias_initializer='zeros',
       bias_regularizer=None,
-      weight_decay=None,  # Specify the weight decay as the default will not work.
+      kernel_regularizer=None,  # Specify the weight decay as the default will not work.
       use_bn=True,
       use_sync_bn=False,
       norm_momentum=0.99,
@@ -66,7 +66,7 @@ class DarkConv(ks.layers.Layer):
     self._use_bias = use_bias
     self._kernel_initializer = kernel_initializer
     self._bias_initializer = bias_initializer
-    self._weight_decay = weight_decay
+    self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
 
     # batchnorm params
@@ -112,7 +112,7 @@ class DarkConv(ks.layers.Layer):
         use_bias=self._use_bias,
         kernel_initializer=self._kernel_initializer,
         bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._weight_decay,
+        kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
 
     #self.conv =tf.nn.convolution(filters=self._filters, strides=self._strides, padding=self._padding
@@ -136,8 +136,6 @@ class DarkConv(ks.layers.Layer):
       self._activation_fn = mish()
     else:
       self._activation_fn = ks.layers.Activation(activation=self._activation)
-
-    super(DarkConv, self).build(input_shape)
     return
 
   def call(self, inputs):
@@ -159,7 +157,7 @@ class DarkConv(ks.layers.Layer):
         "kernel_initializer": self._kernel_initializer,
         "bias_initializer": self._bias_initializer,
         "bias_regularizer": self._bias_regularizer,
-        "l2_regularization": self._l2_regularization,
+        "kernel_regularizer": self._kernel_regularizer,
         "use_bn": self._use_bn,
         "use_sync_bn": self._use_sync_bn,
         "norm_moment": self._norm_moment,

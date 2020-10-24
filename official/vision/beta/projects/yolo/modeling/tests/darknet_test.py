@@ -25,24 +25,25 @@ from tensorflow.python.distribute import strategy_combinations
 from official.vision.beta.projects.yolo.modeling.backbones import Darknet
 
 
-class ResNetTest(parameterized.TestCase, tf.test.TestCase):
-
+class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(
-      (224, "darknet53", 2),
-      (224, "darknettiny", 2),
-      (224, "cspdarknettiny", 1),
-      (224, "cspdarknet53", 2),
+      (224, "darknet53", 2, 1),
+      (224, "darknettiny", 1, 2),
+      (224, "cspdarknettiny", 1, 1),
+      (224, "cspdarknet53", 2, 1),
   )
   def test_network_creation(self, input_size, model_id,
-                            endpoint_filter_scale):
+                            endpoint_filter_scale, scale_final):
     """Test creation of ResNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = Darknet.Darknet(model_id=model_id, min_size=3, max_size=5)
-    self.assertEqual(network.count_params(), resnet_params[model_id])
+    network = Darknet.Darknet(model_id=model_id, min_level=3, max_level=5)
+    print(network.model_id)
+    self.assertEqual(network.model_id, model_id)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
+
 
     self.assertAllEqual(
         [1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale],
@@ -51,7 +52,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         [1, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale],
         endpoints['4'].shape.as_list())
     self.assertAllEqual(
-        [1, input_size / 2**5, input_size / 2**5, 512 * endpoint_filter_scale],
+        [1, input_size / 2**5, input_size / 2**5, 512 * endpoint_filter_scale * scale_final],
         endpoints['5'].shape.as_list())
 
   @combinations.generate(
@@ -64,7 +65,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
       ))
   def test_sync_bn_multiple_devices(self, strategy, use_sync_bn):
     """Test for sync bn on TPU and GPU devices."""
-    inputs = np.random.rand(64, 224, 224, 3)
+    inputs = np.random.rand(1, 224, 224, 3)
 
     tf.keras.backend.set_image_data_format('channels_last')
 
@@ -78,7 +79,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     tf.keras.backend.set_image_data_format('channels_last')
 
     input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
-    network = Darknet.Darknet(model_id="darknet53", min_size=3, max_size=5, input_shape=input_specs)
+    network = Darknet.Darknet(model_id="darknet53", min_level=3, max_level=5, input_specs=input_specs)
 
     inputs = tf.keras.Input(shape=(224, 224, input_dim), batch_size=1)
     _ = network(inputs)
@@ -87,6 +88,8 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     # Create a network object that sets all of its config options.
     kwargs = dict(
         model_id="darknet53",
+        min_level = 3, 
+        max_level = 5, 
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,

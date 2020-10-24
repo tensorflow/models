@@ -18,6 +18,7 @@
 from absl import app
 from absl import flags
 import gin
+import sys
 
 from official.core import train_utils
 # pylint: disable=unused-import
@@ -31,9 +32,21 @@ from official.modeling import performance
 
 FLAGS = flags.FLAGS
 
+'''
+python3 -m official.vision.beta.projects.yolo.train --mode=train_and_eval --experiment=darknet_classification --model_dir=training_dir --config_file=official/vision/beta/projects/yolo/configs/experiments/darknet53.yaml
+'''
+
+def import_overrides():
+  print(sys.modules["official.vision.beta.configs.backbones"])
+  return 
+
 def main(_):
+  import_overrides()
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_params)
+  print(FLAGS.experiment)
   params = train_utils.parse_configuration(FLAGS)
+
+  
   model_dir = FLAGS.model_dir
   if 'train' in FLAGS.mode:
     # Pure eval modes do not output yaml files. Otherwise continuous eval job

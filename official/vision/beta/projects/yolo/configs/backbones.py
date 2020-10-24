@@ -4,6 +4,8 @@ import dataclasses
 
 from official.modeling import hyperparams
 
+from official.vision.beta.configs import backbones
+
 @dataclasses.dataclass
 class DarkNet(hyperparams.Config):
   """DarkNet config."""
