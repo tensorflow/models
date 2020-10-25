@@ -48,6 +48,7 @@ class Parser(parser.Parser):
                aug_rand_hflip=True,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
+
     Args:
       output_size: `Tenssor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
