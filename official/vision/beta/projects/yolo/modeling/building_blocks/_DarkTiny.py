@@ -49,12 +49,6 @@ class DarkTiny(ks.layers.Layer):
     return
 
   def build(self, input_shape):
-    # if self._strides == 2:
-    #     self._zeropad = ks.layers.ZeroPadding2D(((1,0), (1,0)))
-    #     padding = "valid"
-    # else:
-    #     self._zeropad = ks.layers.ZeroPadding2D(((0,1), (0,1)))#nn_blocks.Identity()#ks.layers.ZeroPadding2D(((1,0), (1,0)))
-    #     padding = "valid"
     self._maxpool = tf.keras.layers.MaxPool2D(pool_size=2,
                                               strides=self._strides,
                                               padding="same",
