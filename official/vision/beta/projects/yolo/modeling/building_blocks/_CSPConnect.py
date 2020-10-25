@@ -14,7 +14,7 @@ class CSPConnect(ks.layers.Layer):
       kernel_initializer='glorot_uniform',
       bias_initializer='zeros',
       bias_regularizer=None,
-      weight_decay=None,  # default find where is it is stated
+      kernel_regularizer=None,
       use_bn=True,
       use_sync_bn=False,
       norm_momentum=0.99,
@@ -30,7 +30,7 @@ class CSPConnect(ks.layers.Layer):
     #convoultion params
     self._kernel_initializer = kernel_initializer
     self._bias_initializer = bias_initializer
-    self._weight_decay = weight_decay
+    self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._use_bn = use_bn
     self._use_sync_bn = use_sync_bn
@@ -45,7 +45,7 @@ class CSPConnect(ks.layers.Layer):
                            kernel_initializer=self._kernel_initializer,
                            bias_initializer=self._bias_initializer,
                            bias_regularizer=self._bias_regularizer,
-                           weight_decay=self._weight_decay,
+                           kernel_regularizer=self._kernel_regularizer,
                            use_bn=self._use_bn,
                            use_sync_bn=self._use_sync_bn,
                            norm_momentum=self._norm_moment,
@@ -58,7 +58,7 @@ class CSPConnect(ks.layers.Layer):
                            kernel_initializer=self._kernel_initializer,
                            bias_initializer=self._bias_initializer,
                            bias_regularizer=self._bias_regularizer,
-                           weight_decay=self._weight_decay,
+                           kernel_regularizer=self._kernel_regularizer,
                            use_bn=self._use_bn,
                            use_sync_bn=self._use_sync_bn,
                            norm_momentum=self._norm_moment,
