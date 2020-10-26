@@ -32,7 +32,7 @@ def all_strategy_combinations():
   return combinations.combine(
       distribution=[
           strategy_combinations.default_strategy,
-          strategy_combinations.tpu_strategy,
+          strategy_combinations.cloud_tpu_strategy,
           strategy_combinations.one_device_strategy_gpu,
       ],
       mode='eager',

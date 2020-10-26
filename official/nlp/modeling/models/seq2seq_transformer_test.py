@@ -61,7 +61,7 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
       combinations.combine(
           distribution=[
               strategy_combinations.default_strategy,
-              strategy_combinations.tpu_strategy,
+              strategy_combinations.cloud_tpu_strategy,
           ],
           mode="eager"))
   def test_create_model_with_ds(self, distribution):
