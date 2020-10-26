@@ -65,7 +65,7 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
       combinations.combine(
           distribution_strategy=[
               strategy_combinations.default_strategy,
-              strategy_combinations.tpu_strategy,
+              strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
           mode='eager',

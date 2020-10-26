@@ -126,7 +126,7 @@ class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
   @combinations.generate(
       combinations.combine(
           strategy=[
-              strategy_combinations.tpu_strategy,
+              strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
           use_sync_bn=[False, True],
