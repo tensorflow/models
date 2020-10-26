@@ -13,9 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Run masked LM/next sentence pre-training for BERT in TF 2.x."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 # Import libraries
 from absl import app

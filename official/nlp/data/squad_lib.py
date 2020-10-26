@@ -13,12 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Library to process data for SQuAD 1.1 and SQuAD 2.0."""
-
 # pylint: disable=g-bad-import-order
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import copy
 import json

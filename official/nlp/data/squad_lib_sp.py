@@ -18,10 +18,6 @@ The file is forked from:
 
 https://github.com/google-research/ALBERT/blob/master/run_squad_sp.py
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import copy
 import json

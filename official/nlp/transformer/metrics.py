@@ -22,9 +22,6 @@ Metrics:
  - ROUGE score. Source:
      https://github.com/tensorflow/tensor2tensor/blob/master/tensor2tensor/utils/rouge.py
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import functools
 

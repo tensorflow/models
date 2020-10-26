@@ -13,9 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """BERT classification or regression finetuning runner in TF 2.x."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import functools
 import json
