@@ -137,6 +137,31 @@ class BigBirdEncoderConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class XLNetEncoderConfig(hyperparams.Config):
+  """XLNet encoder configuration."""
+  vocab_size: int = 32000
+  num_layers: int = 24
+  hidden_size: int = 1024
+  num_attention_heads: int = 16
+  head_size: int = 64
+  inner_size: int = 4096
+  inner_activation: str = "gelu"
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  attention_type: str = "bi"
+  bi_data: bool = False
+  tie_attention_biases: bool = False
+  memory_length: int = 0
+  same_length: bool = False
+  clamp_length: int = -1
+  reuse_length: int = 0
+  use_cls_mask: bool = False
+  embedding_width: int = 1024
+  initializer_range: float = 0.02
+  two_stream: bool = False
+
+
+@dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
   type: Optional[str] = "bert"
@@ -144,6 +169,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   bert: BertEncoderConfig = BertEncoderConfig()
   bigbird: BigBirdEncoderConfig = BigBirdEncoderConfig()
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
+  xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
 
 
 ENCODER_CLS = {
@@ -151,6 +177,7 @@ ENCODER_CLS = {
     "mobilebert": networks.MobileBERTEncoder,
     "albert": networks.AlbertEncoder,
     "bigbird": bigbird_encoder.BigBirdEncoder,
+    "xlnet": networks.XLNetBase,
 }
 
 
@@ -265,6 +292,29 @@ def build_encoder(
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
         embedding_width=encoder_cfg.embedding_size)
+
+  if encoder_type == "xlnet":
+    return encoder_cls(
+        vocab_size=encoder_cfg.vocab_size,
+        num_layers=encoder_cfg.num_layers,
+        hidden_size=encoder_cfg.hidden_size,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        head_size=encoder_cfg.head_size,
+        inner_size=encoder_cfg.inner_size,
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        attention_type=encoder_cfg.attention_type,
+        bi_data=encoder_cfg.bi_data,
+        two_stream=encoder_cfg.two_stream,
+        tie_attention_biases=encoder_cfg.tie_attention_biases,
+        memory_length=encoder_cfg.memory_length,
+        clamp_length=encoder_cfg.clamp_length,
+        reuse_length=encoder_cfg.reuse_length,
+        inner_activation=encoder_cfg.inner_activation,
+        use_cls_mask=encoder_cfg.use_cls_mask,
+        embedding_width=encoder_cfg.embedding_width,
+        initializer=tf.keras.initializers.RandomNormal(
+            stddev=encoder_cfg.initializer_range))
 
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.

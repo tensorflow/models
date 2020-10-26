@@ -81,13 +81,19 @@ class SentencePredictionTask(base_task.Task):
     else:
       encoder_network = encoders.build_encoder(self.task_config.model.encoder)
     encoder_cfg = self.task_config.model.encoder.get()
-    # Currently, we only support bert-style sentence prediction finetuning.
-    return models.BertClassifier(
-        network=encoder_network,
-        num_classes=self.task_config.model.num_classes,
-        initializer=tf.keras.initializers.TruncatedNormal(
-            stddev=encoder_cfg.initializer_range),
-        use_encoder_pooler=self.task_config.model.use_encoder_pooler)
+    if self.task_config.model.encoder.type == 'xlnet':
+      return models.XLNetClassifier(
+          network=encoder_network,
+          num_classes=self.task_config.model.num_classes,
+          initializer=tf.keras.initializers.RandomNormal(
+              stddev=encoder_cfg.initializer_range))
+    else:
+      return models.BertClassifier(
+          network=encoder_network,
+          num_classes=self.task_config.model.num_classes,
+          initializer=tf.keras.initializers.TruncatedNormal(
+              stddev=encoder_cfg.initializer_range),
+          use_encoder_pooler=self.task_config.model.use_encoder_pooler)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
     if self.task_config.model.num_classes == 1:
