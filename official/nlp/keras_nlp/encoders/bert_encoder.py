@@ -250,7 +250,7 @@ class BertEncoder(tf.keras.Model):
 
   @classmethod
   def from_config(cls, config, custom_objects=None):
-    if config['embedding_layer'] is not None:
+    if 'embedding_layer' in config and config['embedding_layer'] is not None:
       warn_string = (
           'You are reloading a model that was saved with a '
           'potentially-shared embedding layer object. If you contine to '
