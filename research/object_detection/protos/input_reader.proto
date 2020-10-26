@@ -30,7 +30,7 @@ enum InputType {
   TF_SEQUENCE_EXAMPLE = 2;  // TfSequenceExample Input
 }
 
-// Next id: 35
+// Next id: 36
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -92,6 +92,9 @@ message InputReader {
 
   // Number of parallel decode ops to apply.
   optional uint32 num_parallel_map_calls = 14 [default = 64, deprecated = true];
+
+  // Drop remainder when batch size does not divide dataset size.
+  optional bool drop_remainder = 35 [default = true];
 
   // If positive, TfExampleDecoder will try to decode rasters of additional
   // channels from tf.Examples.

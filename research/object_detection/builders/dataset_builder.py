@@ -242,7 +242,8 @@ def build(input_reader_config, batch_size=None, transform_input_data_fn=None,
       dataset = dataset_map_fn(dataset, transform_input_data_fn,
                                batch_size, input_reader_config)
     if batch_size:
-      dataset = dataset.batch(batch_size, drop_remainder=True)
+      dataset = dataset.batch(batch_size,
+                              drop_remainder=input_reader_config.drop_remainder)
     dataset = dataset.prefetch(input_reader_config.num_prefetch_batches)
     return dataset
 
