@@ -14,10 +14,6 @@
 # ==============================================================================
 """Run ALBERT on SQuAD 1.1 and SQuAD 2.0 in TF 2.x."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
 import time

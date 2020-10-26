@@ -17,9 +17,6 @@
 Model paper: https://arxiv.org/pdf/1706.03762.pdf
 Transformer model code source: https://github.com/tensorflow/tensor2tensor
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import tensorflow as tf
 from official.nlp.modeling.layers import position_embedding

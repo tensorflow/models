@@ -18,9 +18,6 @@ The conversion will yield an object-oriented checkpoint that can be used
 to restore a BertEncoder or BertPretrainerV2 object (see the `converted_model`
 FLAG below).
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 

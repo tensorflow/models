@@ -13,9 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Library for running BERT family models on SQuAD 1.1/2.0 in TF 2.x."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import json
