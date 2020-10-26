@@ -64,10 +64,10 @@ class XLNetClassifierTest(keras_parameterized.TestCase):
         summary_type='last',
         dropout_rate=0.1)
     inputs = dict(
-        input_ids=tf.keras.layers.Input(
+        input_word_ids=tf.keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_word_ids'),
-        segment_ids=tf.keras.layers.Input(
-            shape=(seq_length,), dtype=tf.int32, name='segment_ids'),
+        input_type_ids=tf.keras.layers.Input(
+            shape=(seq_length,), dtype=tf.int32, name='input_type_ids'),
         input_mask=tf.keras.layers.Input(
             shape=(seq_length,), dtype=tf.float32, name='input_mask'),
         permutation_mask=tf.keras.layers.Input(
@@ -76,7 +76,7 @@ class XLNetClassifierTest(keras_parameterized.TestCase):
         masked_tokens=tf.keras.layers.Input(
             shape=(seq_length,), dtype=tf.float32, name='masked_tokens'))
 
-    logits, _ = xlnet_trainer_model(inputs)
+    logits = xlnet_trainer_model(inputs)
 
     expected_classification_shape = [None, num_classes]
     self.assertAllEqual(expected_classification_shape, logits.shape.as_list())
@@ -99,8 +99,9 @@ class XLNetClassifierTest(keras_parameterized.TestCase):
 
     sequence_shape = (batch_size, seq_length)
     inputs = dict(
-        input_ids=np.random.randint(10, size=sequence_shape, dtype='int32'),
-        segment_ids=np.random.randint(2, size=sequence_shape, dtype='int32'),
+        input_word_ids=np.random.randint(
+            10, size=sequence_shape, dtype='int32'),
+        input_type_ids=np.random.randint(2, size=sequence_shape, dtype='int32'),
         input_mask=np.random.randint(2, size=sequence_shape).astype('float32'),
         permutation_mask=np.random.randint(
             2, size=(batch_size, seq_length, seq_length)).astype('float32'),

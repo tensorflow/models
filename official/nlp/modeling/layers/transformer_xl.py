@@ -85,7 +85,6 @@ class TransformerXLBlock(tf.keras.layers.Layer):
     kernel_initializer: Initializer for dense layer kernels.
     inner_dropout: Dropout probability for the inner dropout
       layer.
-
   """
 
   def __init__(self,

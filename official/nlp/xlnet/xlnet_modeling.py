@@ -15,6 +15,7 @@
 """Keras layers of XLNet model in TF 2.0."""
 
 import copy
+import warnings
 
 import tensorflow as tf
 
@@ -416,6 +417,9 @@ class TransformerXLModel(tf.keras.layers.Layer):
     """
 
     super(TransformerXLModel, self).__init__(**kwargs)
+    warnings.warn(
+        "`TransformerXLModel` is deprecated, please use `XLNetBase` instead",
+        DeprecationWarning, stacklevel=2)
 
     self.n_token = n_token
     self.initializer = initializer
@@ -745,11 +749,13 @@ class PretrainingXLNetModel(tf.keras.Model):
 
   """
 
-  def __init__(self, use_proj, xlnet_config, run_config, **kwargs):
+  def __init__(self, use_proj, xlnet_config, run_config, use_legacy_mask=True,
+               **kwargs):
     super(PretrainingXLNetModel, self).__init__(**kwargs)
     self.run_config = run_config
     self.initializer = _get_initializer(run_config)
     self.xlnet_config = copy.deepcopy(xlnet_config)
+    self._use_legacy_mask = use_legacy_mask
 
     self.xlnet_model = networks.XLNetBase(
         vocab_size=self.xlnet_config.n_token,
@@ -788,7 +794,10 @@ class PretrainingXLNetModel(tf.keras.Model):
     input_ids = features["input_ids"]
     masked_tokens = features["input_q"]
     seg_ids = features["seg_id"]
-    perm_mask = features["perm_mask"]
+    if self._use_legacy_mask:
+      perm_mask = 1 - features["perm_mask"]
+    else:
+      perm_mask = features["perm_mask"]
     target_mapping = features["target_mapping"]
 
     # target for LM loss
@@ -823,11 +832,16 @@ class ClassificationXLNetModel(tf.keras.Model):
 
   """
 
-  def __init__(self, xlnet_config, run_config, n_class, summary_type, **kwargs):
+  def __init__(self, xlnet_config, run_config, n_class, summary_type,
+               use_legacy_mask=True, **kwargs):
     super(ClassificationXLNetModel, self).__init__(**kwargs)
+    warnings.warn(
+        "`ClassificationXLNetModel` is deprecated, please use `XLNetClassifier`"
+        "instead.", DeprecationWarning, stacklevel=2)
     self.run_config = run_config
     self.initializer = _get_initializer(run_config)
     self.xlnet_config = copy.deepcopy(xlnet_config)
+    self._use_legacy_mask = use_legacy_mask
 
     self.xlnet_model = networks.XLNetBase(
         vocab_size=self.xlnet_config.n_token,
@@ -870,7 +884,10 @@ class ClassificationXLNetModel(tf.keras.Model):
 
     input_ids = features["input_ids"]
     segment_ids = features["segment_ids"]
-    input_mask = features["input_mask"]
+    if self._use_legacy_mask:
+      input_mask = 1 - features["input_mask"]
+    else:
+      input_mask = features["input_mask"]
 
     label = tf.reshape(features["label_ids"], [batch_size_per_core])
 
@@ -1068,11 +1085,15 @@ class QAXLNetModel(tf.keras.Model):
   """
 
   def __init__(self, xlnet_config, run_config, start_n_top, end_n_top,
-               **kwargs):
+               use_legacy_mask=True, **kwargs):
     super(QAXLNetModel, self).__init__(**kwargs)
+    warnings.warn(
+        "`QAXLNetModel` is deprecated, please use `XLNetSpanLabeler` instead.",
+        DeprecationWarning, stacklevel=2)
     self.run_config = run_config
     self.initializer = _get_initializer(run_config)
     self.xlnet_config = copy.deepcopy(xlnet_config)
+    self._use_legacy_mask = use_legacy_mask
 
     self.xlnet_model = networks.XLNetBase(
         vocab_size=self.xlnet_config.n_token,
@@ -1108,7 +1129,10 @@ class QAXLNetModel(tf.keras.Model):
 
     input_ids = features["input_ids"]
     segment_ids = features["segment_ids"]
-    input_mask = features["input_mask"]
+    if self._use_legacy_mask:
+      input_mask = 1 - features["input_mask"]
+    else:
+      input_mask = features["input_mask"]
 
     cls_index = tf.reshape(features["cls_index"], [-1])
     p_mask = features["p_mask"]

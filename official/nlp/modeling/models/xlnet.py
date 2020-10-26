@@ -31,6 +31,9 @@ class XLNetClassifier(tf.keras.Model):
   Transformer-XL encoder as described in "XLNet: Generalized Autoregressive
   Pretraining for Language Understanding" (https://arxiv.org/abs/1906.08237).
 
+  Note: This model does not use utilize the memory mechanism used in the
+  original XLNet Classifier.
+
   Arguments:
     network: An XLNet/Transformer-XL based network. This network should output a
       sequence output and list of `state` tensors.
@@ -70,7 +73,7 @@ class XLNetClassifier(tf.keras.Model):
       raise ValueError('Invalid summary type provided: %s.' % summary_type)
 
     self.classifier = layers.ClassificationHead(
-        inner_dim=network.get_config()['inner_size'],
+        inner_dim=network.get_config()['hidden_size'],
         num_classes=num_classes,
         initializer=initializer,
         dropout_rate=dropout_rate,
@@ -78,12 +81,12 @@ class XLNetClassifier(tf.keras.Model):
         name='sentence_prediction')
 
   def call(self, inputs: Mapping[str, Any]):
-    input_ids = inputs['input_ids']
-    segment_ids = inputs['segment_ids']
-    input_mask = inputs['input_mask']
+    input_ids = inputs['input_word_ids']
+    segment_ids = inputs['input_type_ids']
+    input_mask = tf.cast(inputs['input_mask'], tf.float32)
     state = inputs.get('mems', None)
 
-    attention_output, new_states = self._network(
+    attention_output, _ = self._network(
         input_ids=input_ids,
         segment_ids=segment_ids,
         input_mask=input_mask,
@@ -91,7 +94,7 @@ class XLNetClassifier(tf.keras.Model):
 
     logits = self.classifier(attention_output)
 
-    return logits, new_states
+    return logits
 
   def get_config(self):
     return self._config
@@ -99,6 +102,14 @@ class XLNetClassifier(tf.keras.Model):
   @classmethod
   def from_config(cls, config, custom_objects=None):
     return cls(**config)
+
+  @property
+  def checkpoint_items(self):
+    items = dict(encoder=self._network)
+    if hasattr(self.classifier, 'checkpoint_items'):
+      for key, item in self.classifier.checkpoint_items.items():
+        items['.'.join([self.classifier.name, key])] = item
+    return items
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
