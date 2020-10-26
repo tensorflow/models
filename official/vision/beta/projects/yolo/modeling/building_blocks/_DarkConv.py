@@ -92,7 +92,6 @@ class DarkConv(ks.layers.Layer):
     self._leaky_alpha = leaky_alpha
 
     super(DarkConv, self).__init__(**kwargs)
-    return
 
   def build(self, input_shape):
     kernel_size = self._kernel_size if type(
@@ -136,7 +135,6 @@ class DarkConv(ks.layers.Layer):
       self._activation_fn = mish()
     else:
       self._activation_fn = ks.layers.Activation(activation=self._activation)
-    return
 
   def call(self, inputs):
     x = self._zeropad(inputs)

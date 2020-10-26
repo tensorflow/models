@@ -27,6 +27,3 @@ from official.vision.beta.projects.yolo.configs.darknet_classification import im
 from official.vision.beta.projects.yolo.configs.darknet_classification import ImageClassificationTask
 
 from official.vision.beta.projects.yolo.tasks.image_classification import ImageClassificationTask
-
-# task_factory.register_task_cls(ImageClassificationTask)(ImageClassificationTask)
-# print(task_factory._REGISTERED_TASK_CLS)

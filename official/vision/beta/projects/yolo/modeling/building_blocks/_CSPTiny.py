@@ -48,7 +48,6 @@ class CSPTiny(ks.layers.Layer):
     self._leaky_alpha = leaky_alpha
 
     super().__init__(**kwargs)
-    return
 
   def build(self, input_shape):
     self._convlayer1 = DarkConv(filters=self._filters,
@@ -121,7 +120,6 @@ class CSPTiny(ks.layers.Layer):
                                               data_format=None)
 
     super().build(input_shape)
-    return
 
   def call(self, inputs):
     x1 = self._convlayer1(inputs)

@@ -24,7 +24,6 @@ class DarkResidualTest(tf.test.TestCase, parameterized.TestCase):
         outx.shape.as_list(),
         [None, np.ceil(width / mod),
          np.ceil(height / mod), filters])
-    return
 
   @parameterized.named_parameters(("same", 64, 224, 224, False),
                                   ("downsample", 32, 223, 223, True),
@@ -54,7 +53,6 @@ class DarkResidualTest(tf.test.TestCase, parameterized.TestCase):
     optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
 
     self.assertNotIn(None, grad)
-    return
 
 
 if __name__ == "__main__":

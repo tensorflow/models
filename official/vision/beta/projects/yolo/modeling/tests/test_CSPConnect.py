@@ -23,7 +23,6 @@ class CSPConnect(tf.test.TestCase, parameterized.TestCase):
         outx.shape.as_list(),
         [None, np.ceil(width // 2),
          np.ceil(height // 2), (filters)])
-    return
 
   @parameterized.named_parameters(("same", 224, 224, 64, 1),
                                   ("downsample", 224, 224, 128, 2))
@@ -49,7 +48,6 @@ class CSPConnect(tf.test.TestCase, parameterized.TestCase):
     optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
 
     self.assertNotIn(None, grad)
-    return
 
 
 if __name__ == "__main__":

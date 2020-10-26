@@ -71,7 +71,6 @@ class DarkResidual(ks.layers.Layer):
     self._sc_activation = sc_activation
 
     super().__init__(**kwargs)
-    return
 
   def build(self, input_shape):
     if self._downsample:
@@ -128,7 +127,6 @@ class DarkResidual(ks.layers.Layer):
     self._activation_fn = ks.layers.Activation(activation=self._sc_activation)
 
     super().build(input_shape)
-    return
 
   def call(self, inputs):
     shortcut = self._dconv(inputs)

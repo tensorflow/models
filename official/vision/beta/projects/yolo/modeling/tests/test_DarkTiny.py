@@ -20,7 +20,6 @@ class DarkTinyTest(tf.test.TestCase, parameterized.TestCase):
     self.assertEqual(height % strides, 0, msg="height % strides != 0")
     self.assertAllEqual(outx.shape.as_list(),
                         [None, width // strides, height // strides, filters])
-    return
 
   @parameterized.named_parameters(("middle", 224, 224, 64, 2),
                                   ("last", 224, 224, 1024, 1))
@@ -43,7 +42,6 @@ class DarkTinyTest(tf.test.TestCase, parameterized.TestCase):
     optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
 
     self.assertNotIn(None, grad)
-    return
 
 
 if __name__ == "__main__":

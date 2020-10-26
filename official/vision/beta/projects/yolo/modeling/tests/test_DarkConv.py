@@ -31,7 +31,6 @@ class DarkConvTest(tf.test.TestCase, parameterized.TestCase):
     ]
     print(test)
     self.assertAllEqual(outx.shape.as_list(), test)
-    return
 
   @parameterized.named_parameters(("filters", 3))
   def test_gradient_pass_though(self, filters):
@@ -52,7 +51,6 @@ class DarkConvTest(tf.test.TestCase, parameterized.TestCase):
     grad = tape.gradient(grad_loss, test_layer.trainable_variables)
     optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
     self.assertNotIn(None, grad)
-    return
 
 if __name__ == "__main__":
   tf.test.main()

@@ -36,7 +36,6 @@ class CSPDownSample(ks.layers.Layer):
     self._use_sync_bn = use_sync_bn
     self._norm_moment = norm_momentum
     self._norm_epsilon = norm_epsilon
-    return
 
   def build(self, input_shape):
     self._conv1 = DarkConv(filters=self._filters,
@@ -76,7 +75,6 @@ class CSPDownSample(ks.layers.Layer):
                            norm_momentum=self._norm_moment,
                            norm_epsilon=self._norm_epsilon,
                            activation=self._activation)
-    return
 
   def call(self, inputs):
     x = self._conv1(inputs)

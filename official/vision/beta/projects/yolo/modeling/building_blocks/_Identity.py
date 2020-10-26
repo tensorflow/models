@@ -7,8 +7,6 @@ import tensorflow.keras as ks
 class Identity(ks.layers.Layer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        return
 
     def call(self, input):
         return input
-

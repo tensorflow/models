@@ -378,7 +378,6 @@ class Darknet(ks.Model):
         "use_sync_bn": self._use_sync_bn,
         "activation": self._activation
     }
-    #layer_config.update(super().get_config())
     return layer_config
 
 @factory.register_backbone_builder('darknet')

@@ -46,7 +46,6 @@ class DarkTiny(ks.layers.Layer):
     self._sc_activation = sc_activation
 
     super().__init__(**kwargs)
-    return
 
   def build(self, input_shape):
     self._maxpool = tf.keras.layers.MaxPool2D(pool_size=2,
@@ -71,7 +70,6 @@ class DarkTiny(ks.layers.Layer):
                                leaky_alpha=self._leaky_alpha)
 
     super().build(input_shape)
-    return
 
   def call(self, inputs):
     output = self._maxpool(inputs)
