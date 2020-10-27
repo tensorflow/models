@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Image segmentation configuration definition."""
+"""Semantic segmentation configuration definition."""
 import os
 from typing import List, Union, Optional
 import dataclasses
@@ -50,8 +50,8 @@ class SegmentationHead(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class ImageSegmentationModel(hyperparams.Config):
-  """Image segmentation model config."""
+class SemanticSegmentationModel(hyperparams.Config):
+  """Semantic segmentation model config."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
   min_level: int = 3
@@ -73,9 +73,9 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class ImageSegmentationTask(cfg.TaskConfig):
+class SemanticSegmentationTask(cfg.TaskConfig):
   """The model config."""
-  model: ImageSegmentationModel = ImageSegmentationModel()
+  model: SemanticSegmentationModel = SemanticSegmentationModel()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
@@ -89,7 +89,7 @@ class ImageSegmentationTask(cfg.TaskConfig):
 def semantic_segmentation() -> cfg.ExperimentConfig:
   """Semantic segmentation general."""
   return cfg.ExperimentConfig(
-      task=ImageSegmentationModel(),
+      task=SemanticSegmentationModel(),
       trainer=cfg.TrainerConfig(),
       restrictions=[
           'task.train_data.is_training != None',
@@ -109,8 +109,8 @@ def seg_deeplabv3_pascal() -> cfg.ExperimentConfig:
   eval_batch_size = 8
   steps_per_epoch = PASCAL_TRAIN_EXAMPLES // train_batch_size
   config = cfg.ExperimentConfig(
-      task=ImageSegmentationTask(
-          model=ImageSegmentationModel(
+      task=SemanticSegmentationTask(
+          model=SemanticSegmentationModel(
               num_classes=21,
               # TODO(arashwan): test changing size to 513 to match deeplab.
               input_size=[512, 512, 3],
