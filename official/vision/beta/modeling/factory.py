@@ -241,7 +241,7 @@ def build_retinanet(input_specs: tf.keras.layers.InputSpec,
 
 def build_segmentation_model(
     input_specs: tf.keras.layers.InputSpec,
-    model_config: segmentation_cfg.ImageSegmentationModel,
+    model_config: segmentation_cfg.SemanticSegmentationModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds Segmentation model."""
   backbone = backbones.factory.build_backbone(

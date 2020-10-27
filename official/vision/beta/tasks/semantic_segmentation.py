@@ -28,9 +28,9 @@ from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.modeling import factory
 
 
-@task_factory.register_task_cls(exp_cfg.ImageSegmentationTask)
-class ImageSegmentationTask(base_task.Task):
-  """A task for image classification."""
+@task_factory.register_task_cls(exp_cfg.SemanticSegmentationTask)
+class SemanticSegmentationTask(base_task.Task):
+  """A task for semantic classification."""
 
   def build_model(self):
     """Builds classification model."""
@@ -219,8 +219,12 @@ class ImageSegmentationTask(base_task.Task):
 
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
-    loss = self.build_losses(model_outputs=outputs, labels=labels,
-                             aux_losses=model.losses)
+
+    if self.task_config.validation_data.resize_eval_groundtruth:
+      loss = self.build_losses(model_outputs=outputs, labels=labels,
+                               aux_losses=model.losses)
+    else:
+      loss = 0
 
     logs = {self.loss: loss}
     logs.update({self.miou_metric.name: (labels, outputs)})
