@@ -20,7 +20,7 @@ from official.utils.testing import mock_task
 from official.vision import beta
 
 from official.vision.beta.projects import yolo
-from official.vision.beta.projects.yolo.modeling.backbones import Darknet
+from official.vision.beta.projects.yolo.modeling.backbones import darknet
 from official.vision.beta.projects.yolo.configs import darknet_classification
 
 from official.vision.beta.projects.yolo.configs.darknet_classification import image_classification
