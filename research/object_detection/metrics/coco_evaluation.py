@@ -1191,18 +1191,20 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                   groundtruth_instance_masks_batched,
                   groundtruth_is_crowd_batched, num_gt_boxes_per_image,
                   detection_scores_batched, detection_classes_batched,
-                  detection_masks_batched, num_det_boxes_per_image):
+                  detection_masks_batched, num_det_boxes_per_image,
+                  original_image_spatial_shape):
       """Update op for metrics."""
 
       for (image_id, groundtruth_boxes, groundtruth_classes,
            groundtruth_instance_masks, groundtruth_is_crowd, num_gt_box,
            detection_scores, detection_classes,
-           detection_masks, num_det_box) in zip(
+           detection_masks, num_det_box, original_image_shape) in zip(
                image_id_batched, groundtruth_boxes_batched,
                groundtruth_classes_batched, groundtruth_instance_masks_batched,
                groundtruth_is_crowd_batched, num_gt_boxes_per_image,
                detection_scores_batched, detection_classes_batched,
-               detection_masks_batched, num_det_boxes_per_image):
+               detection_masks_batched, num_det_boxes_per_image,
+               original_image_spatial_shape):
         self.add_single_ground_truth_image_info(
             image_id, {
                 'groundtruth_boxes':
@@ -1210,7 +1212,8 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                 'groundtruth_classes':
                     groundtruth_classes[:num_gt_box],
                 'groundtruth_instance_masks':
-                    groundtruth_instance_masks[:num_gt_box],
+                    groundtruth_instance_masks[:num_gt_box][
+                        :original_image_shape[0], :original_image_shape[1]],
                 'groundtruth_is_crowd':
                     groundtruth_is_crowd[:num_gt_box]
             })
@@ -1218,13 +1221,16 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
             image_id, {
                 'detection_scores': detection_scores[:num_det_box],
                 'detection_classes': detection_classes[:num_det_box],
-                'detection_masks': detection_masks[:num_det_box]
+                'detection_masks': detection_masks[:num_det_box][
+                    :original_image_shape[0], :original_image_shape[1]]
             })
 
     # Unpack items from the evaluation dictionary.
     input_data_fields = standard_fields.InputDataFields
     detection_fields = standard_fields.DetectionResultFields
     image_id = eval_dict[input_data_fields.key]
+    original_image_spatial_shape = eval_dict[
+        input_data_fields.original_image_spatial_shape]
     groundtruth_boxes = eval_dict[input_data_fields.groundtruth_boxes]
     groundtruth_classes = eval_dict[input_data_fields.groundtruth_classes]
     groundtruth_instance_masks = eval_dict[
@@ -1276,7 +1282,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         image_id, groundtruth_boxes, groundtruth_classes,
         groundtruth_instance_masks, groundtruth_is_crowd,
         num_gt_boxes_per_image, detection_scores, detection_classes,
-        detection_masks, num_det_boxes_per_image
+        detection_masks, num_det_boxes_per_image, original_image_spatial_shape
     ], [])
 
   def get_estimator_eval_metric_ops(self, eval_dict):

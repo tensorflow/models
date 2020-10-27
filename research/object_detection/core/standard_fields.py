@@ -70,6 +70,9 @@ class InputDataFields(object):
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
     groundtruth_keypoint_weights: groundtruth weight factor for keypoints.
     groundtruth_label_weights: groundtruth label weights.
+    groundtruth_verified_negative_classes: groundtruth verified negative classes
+    groundtruth_not_exhaustive_classes: groundtruth not-exhaustively labeled
+      classes.
     groundtruth_weights: groundtruth weight factor for bounding boxes.
     groundtruth_dp_num_points: The number of DensePose sampled points for each
       instance.
@@ -120,6 +123,8 @@ class InputDataFields(object):
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
   groundtruth_keypoint_weights = 'groundtruth_keypoint_weights'
   groundtruth_label_weights = 'groundtruth_label_weights'
+  groundtruth_verified_neg_classes = 'groundtruth_verified_neg_classes'
+  groundtruth_not_exhaustive_classes = 'groundtruth_not_exhaustive_classes'
   groundtruth_weights = 'groundtruth_weights'
   groundtruth_dp_num_points = 'groundtruth_dp_num_points'
   groundtruth_dp_part_ids = 'groundtruth_dp_part_ids'
