@@ -3,7 +3,7 @@ import tensorflow.keras as ks
 import numpy as np
 from absl.testing import parameterized
 
-from official.vision.beta.projects.yolo.modeling.building_blocks import DarkTiny
+from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
 
 
 class DarkTinyTest(tf.test.TestCase, parameterized.TestCase):
@@ -12,7 +12,7 @@ class DarkTinyTest(tf.test.TestCase, parameterized.TestCase):
                                   ("last", 224, 224, 1024, 1))
   def test_pass_through(self, width, height, filters, strides):
     x = ks.Input(shape=(width, height, filters))
-    test_layer = DarkTiny(filters=filters, strides=strides)
+    test_layer = nn_blocks.DarkTiny(filters=filters, strides=strides)
     outx = test_layer(x)
     self.assertEqual(width % strides, 0, msg="width % strides != 0")
     self.assertEqual(height % strides, 0, msg="height % strides != 0")
@@ -24,7 +24,7 @@ class DarkTinyTest(tf.test.TestCase, parameterized.TestCase):
   def test_gradient_pass_though(self, width, height, filters, strides):
     loss = ks.losses.MeanSquaredError()
     optimizer = ks.optimizers.SGD()
-    test_layer = DarkTiny(filters=filters, strides=strides)
+    test_layer = nn_blocks.DarkTiny(filters=filters, strides=strides)
 
     init = tf.random_normal_initializer()
     x = tf.Variable(

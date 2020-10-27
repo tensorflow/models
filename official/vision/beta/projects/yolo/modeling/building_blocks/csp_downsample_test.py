@@ -3,9 +3,7 @@ import tensorflow.keras as ks
 import numpy as np
 from absl.testing import parameterized
 
-from official.vision.beta.projects.yolo.modeling.building_blocks import CSPDownSample as layer
-from official.vision.beta.projects.yolo.modeling.building_blocks import CSPConnect as layer_companion
-
+from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
 
 class CSPDownSample(tf.test.TestCase, parameterized.TestCase):
 
@@ -13,7 +11,7 @@ class CSPDownSample(tf.test.TestCase, parameterized.TestCase):
                                   ("downsample", 224, 224, 64, 2))
   def test_pass_through(self, width, height, filters, mod):
     x = ks.Input(shape=(width, height, filters))
-    test_layer = layer(filters=filters, filter_reduce=mod)
+    test_layer = nn_blocks.CSPDownSample(filters=filters, filter_reduce=mod)
     outx, px = test_layer(x)
     print(outx)
     print(outx.shape.as_list())
@@ -27,8 +25,8 @@ class CSPDownSample(tf.test.TestCase, parameterized.TestCase):
   def test_gradient_pass_though(self, filters, width, height, mod):
     loss = ks.losses.MeanSquaredError()
     optimizer = ks.optimizers.SGD()
-    test_layer = layer(filters, filter_reduce=mod)
-    path_layer = layer_companion(filters, filter_reduce=mod)
+    test_layer = nn_blocks.CSPDownSample(filters, filter_reduce=mod)
+    path_layer = nn_blocks.CSPConnect(filters, filter_reduce=mod)
 
     init = tf.random_normal_initializer()
     x = tf.Variable(

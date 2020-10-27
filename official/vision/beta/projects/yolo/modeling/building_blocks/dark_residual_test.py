@@ -3,8 +3,7 @@ import tensorflow.keras as ks
 import numpy as np
 from absl.testing import parameterized
 
-from official.vision.beta.projects.yolo.modeling.building_blocks import DarkResidual as layer
-
+from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
 
 class DarkResidualTest(tf.test.TestCase, parameterized.TestCase):
 
@@ -16,7 +15,7 @@ class DarkResidualTest(tf.test.TestCase, parameterized.TestCase):
     if downsample:
       mod = 2
     x = ks.Input(shape=(width, height, filters))
-    test_layer = layer(filters=filters, downsample=downsample)
+    test_layer = nn_blocks.DarkResidual(filters=filters, downsample=downsample)
     outx = test_layer(x)
     print(outx)
     print(outx.shape.as_list())
@@ -31,7 +30,7 @@ class DarkResidualTest(tf.test.TestCase, parameterized.TestCase):
   def test_gradient_pass_though(self, filters, width, height, downsample):
     loss = ks.losses.MeanSquaredError()
     optimizer = ks.optimizers.SGD()
-    test_layer = layer(filters, downsample=downsample)
+    test_layer = nn_blocks.DarkResidual(filters, downsample=downsample)
 
     if downsample:
       mod = 2

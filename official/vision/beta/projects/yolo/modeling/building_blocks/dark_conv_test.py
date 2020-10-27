@@ -2,8 +2,7 @@ import tensorflow as tf
 import tensorflow.keras as ks
 import tensorflow_datasets as tfds
 from absl.testing import parameterized
-
-from official.vision.beta.projects.yolo.modeling.building_blocks import DarkConv
+from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
 
 
 class DarkConvTest(tf.test.TestCase, parameterized.TestCase):
@@ -17,7 +16,7 @@ class DarkConvTest(tf.test.TestCase, parameterized.TestCase):
     else:
       pad_const = 0
     x = ks.Input(shape=(224, 224, 3))
-    test_layer = DarkConv(filters=64,
+    test_layer = nn_blocks.DarkConv(filters=64,
                           kernel_size=kernel_size,
                           padding=padding,
                           strides=strides,
@@ -37,7 +36,7 @@ class DarkConvTest(tf.test.TestCase, parameterized.TestCase):
     loss = ks.losses.MeanSquaredError()
     optimizer = ks.optimizers.SGD()
     with tf.device("/CPU:0"):
-      test_layer = DarkConv(filters, kernel_size=(3, 3), padding="same")
+      test_layer = nn_blocks.DarkConv(filters, kernel_size=(3, 3), padding="same")
 
     init = tf.random_normal_initializer()
     x = tf.Variable(initial_value=init(shape=(1, 224, 224,
