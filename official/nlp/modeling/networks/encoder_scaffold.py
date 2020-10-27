@@ -114,6 +114,9 @@ class EncoderScaffold(tf.keras.Model):
       inputs = embedding_network.inputs
       embeddings, attention_mask = embedding_network(inputs)
       embedding_layer = None
+      position_embedding_layer = None
+      type_embedding_layer = None
+      embedding_norm_layer = None
     else:
       embedding_network = None
       seq_length = embedding_cfg.get('seq_length', None)
@@ -223,6 +226,10 @@ class EncoderScaffold(tf.keras.Model):
     self._kwargs = kwargs
 
     self._embedding_layer = embedding_layer
+    self._embedding_network = embedding_network
+    self._position_embedding_layer = position_embedding_layer
+    self._type_embedding_layer = type_embedding_layer
+    self._embedding_norm_layer = embedding_norm_layer
     self._embedding_network = embedding_network
     self._hidden_layers = hidden_layers
     self._pooler_layer = pooler_layer
