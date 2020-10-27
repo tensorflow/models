@@ -14,8 +14,6 @@ class DarkTinyTest(tf.test.TestCase, parameterized.TestCase):
     x = ks.Input(shape=(width, height, filters))
     test_layer = DarkTiny(filters=filters, strides=strides)
     outx = test_layer(x)
-    print(outx)
-    print(outx.shape.as_list())
     self.assertEqual(width % strides, 0, msg="width % strides != 0")
     self.assertEqual(height % strides, 0, msg="height % strides != 0")
     self.assertAllEqual(outx.shape.as_list(),

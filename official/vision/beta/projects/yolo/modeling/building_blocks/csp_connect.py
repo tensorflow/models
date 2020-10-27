@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow.keras as ks
-from ._DarkConv import DarkConv
+from .dark_conv import DarkConv
 
 
 @ks.utils.register_keras_serializable(package='yolo')

@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.vision.beta.projects.yolo.modeling.backbones import Darknet
+from official.vision.beta.projects.yolo.modeling.backbones import darknet
 
 
 class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
@@ -37,8 +37,7 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test creation of ResNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = Darknet.Darknet(model_id=model_id, min_level=3, max_level=5)
-    print(network.model_id)
+    network = darknet.Darknet(model_id=model_id, min_level=3, max_level=5)
     self.assertEqual(network.model_id, model_id)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
@@ -70,7 +69,7 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     tf.keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
-      network = Darknet.Darknet(model_id="darknet53", min_size=3, max_size=5)
+      network = darknet.Darknet(model_id="darknet53", min_size=3, max_size=5)
       _ = network(inputs)
 
   @parameterized.parameters(1, 3, 4)
@@ -79,7 +78,7 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     tf.keras.backend.set_image_data_format('channels_last')
 
     input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
-    network = Darknet.Darknet(model_id="darknet53", min_level=3, max_level=5, input_specs=input_specs)
+    network = darknet.Darknet(model_id="darknet53", min_level=3, max_level=5, input_specs=input_specs)
 
     inputs = tf.keras.Input(shape=(224, 224, input_dim), batch_size=1)
     _ = network(inputs)
@@ -88,8 +87,8 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     # Create a network object that sets all of its config options.
     kwargs = dict(
         model_id="darknet53",
-        min_level = 3, 
-        max_level = 5, 
+        min_level = 3,
+        max_level = 5,
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,
@@ -98,13 +97,13 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
         kernel_regularizer=None,
         bias_regularizer=None,
     )
-    network = Darknet.Darknet(**kwargs)
+    network = darknet.Darknet(**kwargs)
 
     expected_config = dict(kwargs)
     self.assertEqual(network.get_config(), expected_config)
 
     # Create another network object from the first object's config.
-    new_network = Darknet.Darknet.from_config(network.get_config())
+    new_network = darknet.Darknet.from_config(network.get_config())
 
     # Validate that the config can be forced to JSON.
     _ = new_network.to_json()

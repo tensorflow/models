@@ -4,7 +4,7 @@ from functools import partial
 import tensorflow as tf
 import tensorflow.keras as ks
 import tensorflow.keras.backend as K
-from ._Identity import Identity
+from .identity import Identity
 
 from official.vision.beta.projects.yolo.modeling.functions.mish_activation import mish
 
