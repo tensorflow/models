@@ -82,15 +82,19 @@ def parse_configuration(flags_obj):
       'runtime': {
           'tpu': flags_obj.tpu,
       },
-      'task': {
-          'train_data': {
-              'tf_data_service_address': flags_obj.tf_data_service,
-          },
-          'validation_data': {
-              'tf_data_service_address': flags_obj.tf_data_service,
-          }
-      }
   })
+  if flags_obj.tf_data_service and isinstance(params.task,
+                                              config_definitions.TaskConfig):
+    params.override({
+        'task': {
+            'train_data': {
+                'tf_data_service_address': flags_obj.tf_data_service,
+            },
+            'validation_data': {
+                'tf_data_service_address': flags_obj.tf_data_service,
+            }
+        }
+    })
 
   # 4. Get the second level of override from `--params_override`.
   #    `--params_override` is typically used as a further override over the
