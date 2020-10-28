@@ -2,7 +2,7 @@ import tensorflow as tf
 import tensorflow.keras as ks
 import tensorflow_datasets as tfds
 from absl.testing import parameterized
-from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
+from official.vision.beta.projects.yolo.modeling import layers as nn_blocks
 
 
 class DarkConvTest(tf.test.TestCase, parameterized.TestCase):

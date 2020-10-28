@@ -3,24 +3,22 @@ import tensorflow.keras as ks
 import numpy as np
 from absl.testing import parameterized
 
-from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
+from official.vision.beta.projects.yolo.modeling import layers as nn_blocks
 
-class CSPConnect(tf.test.TestCase, parameterized.TestCase):
+class CSPDownSample(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(("same", 224, 224, 64, 1),
                                   ("downsample", 224, 224, 64, 2))
   def test_pass_through(self, width, height, filters, mod):
     x = ks.Input(shape=(width, height, filters))
     test_layer = nn_blocks.CSPDownSample(filters=filters, filter_reduce=mod)
-    test_layer2 = nn_blocks.CSPConnect(filters=filters, filter_reduce=mod)
     outx, px = test_layer(x)
-    outx = test_layer2([outx, px])
     print(outx)
     print(outx.shape.as_list())
     self.assertAllEqual(
         outx.shape.as_list(),
         [None, np.ceil(width // 2),
-         np.ceil(height // 2), (filters)])
+         np.ceil(height // 2), (filters / mod)])
 
   @parameterized.named_parameters(("same", 224, 224, 64, 1),
                                   ("downsample", 224, 224, 128, 2))

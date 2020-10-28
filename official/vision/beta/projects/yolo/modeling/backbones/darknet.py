@@ -23,7 +23,7 @@ import tensorflow.keras as ks
 import collections
 
 from official.vision.beta.modeling.backbones import factory
-from official.vision.beta.projects.yolo.modeling import building_blocks as nn_blocks
+from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
 # builder required classes
