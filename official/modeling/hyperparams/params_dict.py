@@ -69,7 +69,6 @@ class ParamsDict(object):
     if default_params is None:
       default_params = {}
     self.override(default_params, is_strict=False)
-    self.validate()
 
   def _set(self, k, v):
     if isinstance(v, dict):
