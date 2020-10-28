@@ -112,6 +112,22 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
         run_post_eval=run_post_eval)
     print(logs)
 
+  def test_parse_configuration(self):
+    model_dir = self.get_temp_dir()
+    flags_dict = dict(
+        experiment='mock',
+        mode='train',
+        model_dir=model_dir,
+        params_override=json.dumps(self._test_config))
+    with flagsaver.flagsaver(**flags_dict):
+      params = train_utils.parse_configuration(flags.FLAGS, lock_return=True)
+      with self.assertRaises(ValueError):
+        params.override({'task': {'init_checkpoint': 'Foo'}})
+
+      params = train_utils.parse_configuration(flags.FLAGS, lock_return=False)
+      params.override({'task': {'init_checkpoint': 'Bar'}})
+      self.assertEqual(params.task.init_checkpoint, 'Bar')
+
 
 if __name__ == '__main__':
   tf.test.main()
