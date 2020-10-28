@@ -1,0 +1,63 @@
+# 3D ResNet-50 video classification on Kinetics-400. 75.3% top-1 and 91.2% top-5 accuracy.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    backbone:
+      resnet_3d:
+        block_specs: !!python/tuple
+        - temporal_kernel_sizes: !!python/tuple
+          - 3
+          - 3
+          - 3
+          temporal_strides: 1
+          use_self_gating: true
+        - temporal_kernel_sizes: !!python/tuple
+          - 3
+          - 1
+          - 3
+          - 1
+          temporal_strides: 1
+          use_self_gating: true
+        - temporal_kernel_sizes: !!python/tuple
+          - 3
+          - 1
+          - 3
+          - 1
+          - 3
+          - 1
+          temporal_strides: 1
+          use_self_gating: true
+        - temporal_kernel_sizes: !!python/tuple
+          - 1
+          - 3
+          - 1
+          temporal_strides: 1
+          use_self_gating: true
+        model_id: 50
+        stem_conv_temporal_kernel_size: 5
+        stem_conv_temporal_stride: 2
+        stem_pool_temporal_stride: 2
+    dropout_rate: 0.5
+  train_data:
+    global_batch_size: 1024
+    dtype: 'bfloat16'
+    shuffle_buffer_size: 1024
+  validation_data:
+    global_batch_size: 32
+    dtype: 'bfloat16'
+    drop_remainder: false
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        initial_learning_rate: 0.8
+        decay_steps: 42104
+    warmup:
+      linear:
+        warmup_steps: 1053
+  train_steps: 42104
+  steps_per_loop: 500
+  summary_interval: 500
+  validation_interval: 500
