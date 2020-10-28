@@ -12,6 +12,7 @@ task:
   losses:
     l2_weight_decay: 0.0005
     one_hot: True
+    label_smoothing: 0.1
   train_data:
     input_path: 'imagenet-2012-tfrecord/train*'
     is_training: true
@@ -24,7 +25,7 @@ task:
     dtype: 'float16'
     drop_remainder: false
 trainer:
-  train_steps: 800000 # epochs: 80
+  train_steps: 1200000 # epochs: 120
   validation_steps: 400 # size of validation data
   validation_interval: 10000
   steps_per_loop: 10000
@@ -41,7 +42,7 @@ trainer:
         initial_learning_rate: 0.1
         end_learning_rate: 0.0001
         power: 4.0
-        decay_steps: 799000
+        decay_steps: 1190000
     warmup:
       type: 'linear'
       linear:
