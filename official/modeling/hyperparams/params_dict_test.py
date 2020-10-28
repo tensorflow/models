@@ -155,6 +155,7 @@ class ParamsDictTest(tf.test.TestCase):
     # Raise error due to the unknown parameter.
     with self.assertRaises(KeyError):
       params = params_dict.ParamsDict({'a': 1, 'b': {'a': 11}}, ['a == c'])
+      params.validate()
 
     # OK to check equality of two nested dicts.
     params = params_dict.ParamsDict({
@@ -170,6 +171,7 @@ class ParamsDictTest(tf.test.TestCase):
     # Raise error due to inconsistency
     with self.assertRaises(KeyError):
       params = params_dict.ParamsDict({'a': 1, 'c': {'a': 10}}, ['a == c.a'])
+      params.validate()
 
     # Valid rule.
     params = params_dict.ParamsDict({'a': 1, 'c': {'a': 1}}, ['a == c.a'])
@@ -194,6 +196,7 @@ class ParamsDictTest(tf.test.TestCase):
               'a': 1
           }
       }, ['a == None', 'c.a == 1'])
+      params.validate()
 
 
 class ParamsDictIOTest(tf.test.TestCase):
