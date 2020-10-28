@@ -64,7 +64,7 @@ class ParseConfigOptions:
   params_override: str = ''
 
 
-def parse_configuration(flags_obj):
+def parse_configuration(flags_obj, lock_return=True, print_return=True):
   """Parses ExperimentConfig from flags."""
 
   # 1. Get the default config from the registered experiment.
@@ -106,10 +106,13 @@ def parse_configuration(flags_obj):
         params, flags_obj.params_override, is_strict=True)
 
   params.validate()
-  params.lock()
+  if lock_return:
+    params.lock()
 
-  pp = pprint.PrettyPrinter()
-  logging.info('Final experiment parameters: %s', pp.pformat(params.as_dict()))
+  if print_return:
+    pp = pprint.PrettyPrinter()
+    logging.info('Final experiment parameters: %s',
+                 pp.pformat(params.as_dict()))
 
   return params
 
