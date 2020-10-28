@@ -34,8 +34,9 @@ class ResNet3DBlock(hyperparams.Config):
 class ResNet3D(hyperparams.Config):
   """ResNet config."""
   model_id: int = 50
-  stem_temporal_conv_stride: int = 2
-  stem_temporal_pool_stride: int = 2
+  stem_conv_temporal_kernel_size: int = 5
+  stem_conv_temporal_stride: int = 2
+  stem_pool_temporal_stride: int = 2
   block_specs: Tuple[ResNet3DBlock, ...] = ()
 
 
