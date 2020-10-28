@@ -8,7 +8,7 @@ task:
     backbone:
       type: 'darknet'
       darknet:
-        model_id: 'cspdarknettiny'
+        model_id: 'darknet53'
   losses:
     l2_weight_decay: 0.0005
     one_hot: True
