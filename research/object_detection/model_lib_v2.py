@@ -703,6 +703,7 @@ def eager_eval_loop(
 
   evaluator_options = eval_util.evaluator_options_from_eval_config(
       eval_config)
+  batch_size = eval_config.batch_size
 
   class_agnostic_category_index = (
       label_map_util.create_class_agnostic_category_index())
@@ -731,7 +732,9 @@ def eager_eval_loop(
     # must be unpadded.
     boxes_shape = (
         labels[fields.InputDataFields.groundtruth_boxes].get_shape().as_list())
-    unpad_groundtruth_tensors = boxes_shape[1] is not None and not use_tpu
+    unpad_groundtruth_tensors = (boxes_shape[1] is not None
+                                 and not use_tpu
+                                 and batch_size == 1)
     labels = model_lib.unstack_batch(
         labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
@@ -799,7 +802,8 @@ def eager_eval_loop(
       tf.logging.info('Finished eval step %d', i)
 
     use_original_images = fields.InputDataFields.original_image in features
-    if use_original_images and i < eval_config.num_visualizations:
+    if (use_original_images and i < eval_config.num_visualizations
+        and batch_size == 1):
       sbys_image_list = vutils.draw_side_by_side_evaluation_image(
           eval_dict,
           category_index=category_index,
