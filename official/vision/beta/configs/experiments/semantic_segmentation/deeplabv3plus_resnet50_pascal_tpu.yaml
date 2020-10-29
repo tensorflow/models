@@ -1,0 +1,16 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'float32'
+task:
+  model:
+    backbone:
+      type: 'dilated_resnet'
+      dilated_resnet:
+        model_id: 50
+        output_stride: 16
+    head:
+      feature_fusion: 'deeplabv3plus'
+      low_level: 2
+      low_level_num_filters: 48
+  init_checkpoint: 'gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet50_imagenet/ckpt-62400'
+  init_checkpoint_modules: 'backbone'

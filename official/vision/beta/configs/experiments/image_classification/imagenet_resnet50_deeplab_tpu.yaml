@@ -9,7 +9,7 @@ task:
       type: 'dilated_resnet'
       dilated_resnet:
         model_id: 50
-        output_stride: 8
+        output_stride: 16
     norm_activation:
       activation: 'swish'
   losses:
