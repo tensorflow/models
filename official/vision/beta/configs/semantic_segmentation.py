@@ -39,6 +39,7 @@ class DataConfig(cfg.DataConfig):
   groundtruth_padded_size: List[int] = dataclasses.field(default_factory=list)
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
+  drop_remainder: bool = True
 
 
 @dataclasses.dataclass
@@ -138,7 +139,8 @@ def seg_deeplabv3_pascal() -> cfg.ExperimentConfig:
               is_training=False,
               global_batch_size=eval_batch_size,
               resize_eval_groundtruth=False,
-              groundtruth_padded_size=[512, 512]),
+              groundtruth_padded_size=[512, 512],
+              drop_remainder=False),
           # resnet50
           init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet50_imagenet/ckpt-62400',
           init_checkpoint_modules='backbone'),
