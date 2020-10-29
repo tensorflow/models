@@ -30,10 +30,10 @@ from official.vision.beta.modeling import factory
 
 @task_factory.register_task_cls(exp_cfg.SemanticSegmentationTask)
 class SemanticSegmentationTask(base_task.Task):
-  """A task for semantic classification."""
+  """A task for semantic segmentation."""
 
   def build_model(self):
-    """Builds classification model."""
+    """Builds segmentation model."""
     input_specs = tf.keras.layers.InputSpec(
         shape=[None] + self.task_config.model.input_size)
 
@@ -105,7 +105,7 @@ class SemanticSegmentationTask(base_task.Task):
     return dataset
 
   def build_losses(self, labels, model_outputs, aux_losses=None):
-    """Sparse categorical cross entropy loss.
+    """Segmentation loss.
 
     Args:
       labels: labels.

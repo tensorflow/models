@@ -14,7 +14,6 @@
 # ==============================================================================
 """Segmentation heads."""
 
-# Import libraries
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -31,6 +30,9 @@ class SegmentationHead(tf.keras.layers.Layer):
                num_convs=2,
                num_filters=256,
                upsample_factor=1,
+               feature_fusion=None,
+               low_level=2,
+               low_level_num_filters=48,
                activation='relu',
                use_sync_bn=False,
                norm_momentum=0.99,
@@ -50,6 +52,14 @@ class SegmentationHead(tf.keras.layers.Layer):
         Default is 256.
       upsample_factor: `int` number to specify the upsampling factor to generate
         finer mask. Default 1 means no upsampling is applied.
+      feature_fusion: One of `deeplabv3plus`, or None. If `deeplabv3plus`,
+        features from decoder_features[level] will be fused with
+        low level feature maps from backbone.
+      low_level: `int`, backbone level to be used for feature fusion. This arg
+        is used when feature_fusion is set to deeplabv3plus.
+      low_level_num_filters: `int`, reduced number of filters for the low
+        level features before fusing it with higher level features. This args is
+        only used when feature_fusion is set to deeplabv3plus.
       activation: `string`, indicating which activation is used, e.g. 'relu',
         'swish', etc.
       use_sync_bn: `bool`, whether to use synchronized batch normalization
@@ -63,12 +73,16 @@ class SegmentationHead(tf.keras.layers.Layer):
       **kwargs: other keyword arguments passed to Layer.
     """
     super(SegmentationHead, self).__init__(**kwargs)
+
     self._config_dict = {
         'num_classes': num_classes,
         'level': level,
         'num_convs': num_convs,
         'num_filters': num_filters,
         'upsample_factor': upsample_factor,
+        'feature_fusion': feature_fusion,
+        'low_level': low_level,
+        'low_level_num_filters': low_level_num_filters,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
@@ -101,6 +115,20 @@ class SegmentationHead(tf.keras.layers.Layer):
         'epsilon': self._config_dict['norm_epsilon'],
     }
 
+    if self._config_dict['feature_fusion'] == 'deeplabv3plus':
+      # Deeplabv3+ feature fusion layers.
+      self._dlv3p_conv = conv_op(
+          kernel_size=1,
+          padding='same',
+          bias_initializer=tf.zeros_initializer(),
+          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+          kernel_regularizer=self._config_dict['kernel_regularizer'],
+          name='segmentation_head_deeplabv3p_fusion_conv',
+          filters=self._config_dict['low_level_num_filters'])
+
+      self._dlv3p_norm = bn_op(
+          name='segmentation_head_deeplabv3p_fusion_norm', **bn_kwargs)
+
     # Segmentation head layers.
     self._convs = []
     self._norms = []
@@ -121,11 +149,15 @@ class SegmentationHead(tf.keras.layers.Layer):
 
     super(SegmentationHead, self).build(input_shape)
 
-  def call(self, features):
+  def call(self, backbone_output, decoder_output):
     """Forward pass of the segmentation head.
 
     Args:
-      features: a dict of tensors
+      backbone_output: a dict of tensors
+        - key: `str`, the level of the multilevel features.
+        - values: `Tensor`, the feature map tensors, whose shape is
+            [batch, height_l, width_l, channels].
+      decoder_output: a dict of tensors
         - key: `str`, the level of the multilevel features.
         - values: `Tensor`, the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
@@ -133,7 +165,20 @@ class SegmentationHead(tf.keras.layers.Layer):
       segmentation prediction mask: `Tensor`, the segmentation mask scores
         predicted from input feature.
     """
-    x = features[str(self._config_dict['level'])]
+
+    x = decoder_output[str(self._config_dict['level'])]
+
+    if self._config_dict['feature_fusion'] == 'deeplabv3plus':
+      # deeplabv3+ feature fusion
+      y = backbone_output[str(
+          self._config_dict['low_level'])]
+      y = self._dlv3p_norm(self._dlv3p_conv(y))
+      y = self._activation(y)
+
+      x = tf.image.resize(
+          x, tf.shape(y)[1:3], method=tf.image.ResizeMethod.BILINEAR)
+      x = tf.concat([x, y], axis=self._bn_axis)
+
     for conv, norm in zip(self._convs, self._norms):
       x = conv(x)
       x = norm(x)
