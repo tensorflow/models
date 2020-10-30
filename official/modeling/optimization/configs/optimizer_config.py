@@ -29,9 +29,12 @@ class BaseOptimizerConfig(base_config.Config):
       their L2 norm exceeds this value.
     clipvalue: float >= 0 or None. If not None, Gradients will be clipped when
       their absolute value exceeds this value.
+    global_clipnorm: float >= 0 or None. If not None, gradient of all weights is
+        clipped so that their global norm is no higher than this value
   """
   clipnorm: Optional[float] = None
   clipvalue: Optional[float] = None
+  global_clipnorm: Optional[float] = None
 
 
 @dataclasses.dataclass
