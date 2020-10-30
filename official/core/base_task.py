@@ -195,14 +195,14 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
       # For mixed precision, when a LossScaleOptimizer is used, the loss is
       # scaled to avoid numeric underflow.
       if isinstance(optimizer,
-                    tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                    tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
 
     if isinstance(optimizer,
-                  tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                  tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
     logs = {self.loss: loss}
