@@ -67,6 +67,11 @@ TF_INIT_CKPT="deeplabv3_pascal_train_aug_2018_01_04.tar.gz"
 cd "${INIT_FOLDER}"
 wget -nd -c "${TF_INIT_ROOT}/${TF_INIT_CKPT}"
 tar -xf "${TF_INIT_CKPT}"
+if [ ! -e "${INIT_FOLDER}/deeplabv3_pascal_train_aug/model.ckpt" ]; then
+  if [ -e "${INIT_FOLDER}/deeplabv3_pascal_train_aug/model.ckpt.data-00000-of-00001" ]; then
+    mv "${INIT_FOLDER}/deeplabv3_pascal_train_aug/model.ckpt.data-00000-of-00001" "${INIT_FOLDER}/deeplabv3_pascal_train_aug/model.ckpt"
+  fi
+fi
 cd "${CURRENT_DIR}"
 
 PASCAL_DATASET="${WORK_DIR}/${DATASET_DIR}/${PASCAL_FOLDER}/tfrecord"
