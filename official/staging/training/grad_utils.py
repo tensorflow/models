@@ -122,7 +122,7 @@ def minimize_using_explicit_allreduce(tape,
         in one pack.
   """
   if isinstance(optimizer,
-                tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                tf.keras.mixed_precision.LossScaleOptimizer):
     # FP16 GPU code path
     with tape:
       scaled_loss = optimizer.get_scaled_loss(loss)

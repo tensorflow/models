@@ -96,7 +96,10 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 },
                 'learning_rate': {
                     'type': 'constant'
-                }
+                },
+                'use_experimental_api': {
+                    'type': False
+                },
             })))
     trainer = self.create_test_trainer(config)
     if mixed_precision_dtype != 'float16':
@@ -106,7 +109,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
     else:
       self.assertIsInstance(
           trainer.optimizer,
-          tf.keras.mixed_precision.experimental.LossScaleOptimizer)
+          tf.keras.mixed_precision.LossScaleOptimizer)
 
     metrics = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
     self.assertIn('training_loss', metrics)
