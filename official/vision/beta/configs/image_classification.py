@@ -15,7 +15,7 @@
 # ==============================================================================
 """Image classification configuration definition."""
 import os
-from typing import List
+from typing import List, Optional
 import dataclasses
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -63,6 +63,8 @@ class ImageClassificationTask(cfg.TaskConfig):
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
   gradient_clip_norm: float = 0.0
+  init_checkpoint: Optional[str] = None
+  init_checkpoint_modules: str = 'all'  # all or backbone
 
 
 @exp_factory.register_config_factory('image_classification')
