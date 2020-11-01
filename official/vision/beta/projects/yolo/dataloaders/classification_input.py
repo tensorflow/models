@@ -27,7 +27,7 @@ STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for classification task."""
   def __init__(self):
-    print("decoder ahs been init")
+    tf.print("decoder ahs been init")
     return
 
   def decode(self, serialized_example):
