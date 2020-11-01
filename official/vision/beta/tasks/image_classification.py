@@ -54,9 +54,12 @@ class ImageClassificationTask(base_task.Task):
     input_size = self.task_config.model.input_size
 
     if params.tfds_name != None: 
+      print("i am here for training using tfds")
       decoder = cli.Decoder()
     else:
+      print("i am here for regular input")
       decoder = classification_input.Decoder()
+
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,
