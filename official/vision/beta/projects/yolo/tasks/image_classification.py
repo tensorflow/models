@@ -19,7 +19,7 @@ from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
 from official.modeling import tf_utils
-from official.vision.beta.configs import image_classification as exp_cfg
+from official.vision.beta.projects.yolo.configs import darknet_classification as exp_cfg
 from official.vision.beta.projects.yolo.dataloaders import classification_input as cli
 from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.modeling import factory
