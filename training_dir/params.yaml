@@ -7,7 +7,7 @@ runtime:
   enable_xla: false
   gpu_thread_mode: null
   loss_scale: null
-  mixed_precision_dtype: float32
+  mixed_precision_dtype: float16
   num_cores_per_replica: 1
   num_gpus: 0
   num_packs: 1
@@ -120,5 +120,5 @@ trainer:
   train_steps: 800000
   train_tf_function: true
   train_tf_while_loop: true
-  validation_interval: 10000
+  validation_interval: 500
   validation_steps: 400
