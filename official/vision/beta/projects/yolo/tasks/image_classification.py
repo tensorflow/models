@@ -141,7 +141,8 @@ class ImageClassificationTask(base_task.Task):
       # Computes per-replica loss.
       loss = self.build_losses(
           model_outputs=outputs, labels=labels, aux_losses=model.losses)
-      # Scales loss as the default gradients allreduce performs sum inside the
+
+      #Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
       scaled_loss = loss / num_replicas
 
@@ -150,7 +151,7 @@ class ImageClassificationTask(base_task.Task):
       if isinstance(
           optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
-
+      tf.print("batch loss: ", loss, end = "\r")
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
