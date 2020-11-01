@@ -15,14 +15,16 @@ task:
   train_data:
     tfds_name: 'imagenet2012'
     tfds_split: 'train'
-    tfds_data_dir: '~/tensorflow_datasets'
+    tfds_data_dir: '~/tensorflow_datasets/'
+    tfds_download: true
     is_training: true
     global_batch_size: 128
     dtype: 'float16'
   validation_data:
     tfds_name: 'imagenet2012'
     tfds_split: 'validation'
-    tfds_data_dir: '~/tensorflow_datasets'
+    tfds_data_dir: '~/tensorflow_datasets/'
+    tfds_download: true
     is_training: true
     global_batch_size: 128
     dtype: 'float16'
