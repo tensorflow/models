@@ -20,7 +20,6 @@ from official.core import input_reader
 from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.configs import image_classification as exp_cfg
-from official.vision.beta.projects.yolo.dataloaders import classification_input as cli
 from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.modeling import factory
 
@@ -53,12 +52,7 @@ class ImageClassificationTask(base_task.Task):
     num_classes = self.task_config.model.num_classes
     input_size = self.task_config.model.input_size
 
-    if params.tfds_name != None: 
-      tf.print("i am here for training using tfds")
-      decoder = cli.Decoder()
-    else:
-      tf.print("i am here for regular input")
-      decoder = classification_input.Decoder()
+    decoder = classification_input.Decoder()
 
     parser = classification_input.Parser(
         output_size=input_size[:2],
