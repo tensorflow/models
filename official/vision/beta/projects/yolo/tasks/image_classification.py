@@ -23,30 +23,12 @@ from official.vision.beta.projects.yolo.configs import darknet_classification as
 from official.vision.beta.projects.yolo.dataloaders import classification_input as cli
 from official.vision.beta.dataloaders import classification_input
 from official.vision.beta.modeling import factory
+from official.vision.beta.tasks import image_classification
 
 
 @task_factory.register_task_cls(exp_cfg.ImageClassificationTask)
-class ImageClassificationTask(base_task.Task):
+class ImageClassificationTask(image_classification.ImageClassificationTask):
   """A task for image classification."""
-
-  def build_model(self):
-    """Builds classification model."""
-    input_specs = tf.keras.layers.InputSpec(
-        shape=[None] + self.task_config.model.input_size)
-
-    l2_weight_decay = self.task_config.losses.l2_weight_decay
-    # Divide weight decay by 2.0 to match the implementation of tf.nn.l2_loss.
-    # (https://www.tensorflow.org/api_docs/python/tf/keras/regularizers/l2)
-    # (https://www.tensorflow.org/api_docs/python/tf/nn/l2_loss)
-    l2_regularizer = (tf.keras.regularizers.l2(
-        l2_weight_decay / 2.0) if l2_weight_decay else None)
-
-    model = factory.build_classification_model(
-        input_specs=input_specs,
-        model_config=self.task_config.model,
-        l2_regularizer=l2_regularizer)
-    return model
-
   def build_inputs(self, params, input_context=None):
     """Builds classification input."""
 
@@ -70,142 +52,6 @@ class ImageClassificationTask(base_task.Task):
         parser_fn=parser.parse_fn(params.is_training))
 
     dataset = reader.read(input_context=input_context)
-
     return dataset
-
-  def build_losses(self, labels, model_outputs, aux_losses=None):
-    """Sparse categorical cross entropy loss.
-
-    Args:
-      labels: labels.
-      model_outputs: Output logits of the classifier.
-      aux_losses: auxiliarly loss tensors, i.e. `losses` in keras.Model.
-
-    Returns:
-      The total loss tensor.
-    """
-    losses_config = self.task_config.losses
-    if losses_config.one_hot:
-      total_loss = tf.keras.losses.categorical_crossentropy(
-          labels,
-          model_outputs,
-          from_logits=True,
-          label_smoothing=losses_config.label_smoothing)
-    else:
-      total_loss = tf.keras.losses.sparse_categorical_crossentropy(
-          labels, model_outputs, from_logits=True)
-
-    total_loss = tf_utils.safe_mean(total_loss)
-    if aux_losses:
-      total_loss += tf.add_n(aux_losses)
-
-    return total_loss
-
-  def build_metrics(self, training=True):
-    """Gets streaming metrics for training/validation."""
-    if self.task_config.losses.one_hot:
-      metrics = [
-          tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-          tf.keras.metrics.TopKCategoricalAccuracy(k=5, name='top_5_accuracy')]
-    else:
-      metrics = [
-          tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
-          tf.keras.metrics.SparseTopKCategoricalAccuracy(
-              k=5, name='top_5_accuracy')]
-    return metrics
-
-  def train_step(self, inputs, model, optimizer, metrics=None):
-    """Does forward and backward.
-
-    Args:
-      inputs: a dictionary of input tensors.
-      model: the model, forward pass definition.
-      optimizer: the optimizer for this training step.
-      metrics: a nested structure of metrics objects.
-
-    Returns:
-      A dictionary of logs.
-    """
-    features, labels = inputs
-    if self.task_config.losses.one_hot:
-      labels = tf.one_hot(labels, self.task_config.model.num_classes)
-
-    num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
-    with tf.GradientTape() as tape:
-      outputs = model(features, training=True)
-      # Casting output layer as float32 is necessary when mixed_precision is
-      # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
-      outputs = tf.nest.map_structure(
-          lambda x: tf.cast(x, tf.float32), outputs)
-
-      # Computes per-replica loss.
-      loss = self.build_losses(
-          model_outputs=outputs, labels=labels, aux_losses=model.losses)
-
-      #Scales loss as the default gradients allreduce performs sum inside the
-      # optimizer.
-      scaled_loss = loss / num_replicas
-
-      # For mixed_precision policy, when LossScaleOptimizer is used, loss is
-      # scaled for numerical stability.
-      if isinstance(
-          optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
-        scaled_loss = optimizer.get_scaled_loss(scaled_loss)
-      tf.print("batch loss: ", loss, end = "\r")
-    tvars = model.trainable_variables
-    grads = tape.gradient(scaled_loss, tvars)
-    # Scales back gradient before apply_gradients when LossScaleOptimizer is
-    # used.
-    if isinstance(
-        optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
-      grads = optimizer.get_unscaled_gradients(grads)
-
-    # Apply gradient clipping.
-    if self.task_config.gradient_clip_norm > 0:
-      grads, _ = tf.clip_by_global_norm(
-          grads, self.task_config.gradient_clip_norm)
-    optimizer.apply_gradients(list(zip(grads, tvars)))
-
-    logs = {self.loss: loss}
-    if metrics:
-      self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
-      self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in model.metrics})
-    return logs
-
-  def validation_step(self, inputs, model, metrics=None):
-    """Validatation step.
-
-    Args:
-      inputs: a dictionary of input tensors.
-      model: the keras.Model.
-      metrics: a nested structure of metrics objects.
-
-    Returns:
-      A dictionary of logs.
-    """
-    features, labels = inputs
-    if self.task_config.losses.one_hot:
-      labels = tf.one_hot(labels, self.task_config.model.num_classes)
-
-    outputs = self.inference_step(features, model)
-    outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
-    loss = self.build_losses(model_outputs=outputs, labels=labels,
-                             aux_losses=model.losses)
-
-    logs = {self.loss: loss}
-    if metrics:
-      self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
-      self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in model.metrics})
-    return logs
-
-  def inference_step(self, inputs, model):
-    """Performs the forward step."""
-    return model(inputs, training=False)
 
 

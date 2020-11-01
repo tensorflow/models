@@ -33,15 +33,10 @@ from official.modeling import performance
 FLAGS = flags.FLAGS
 
 '''
-python3 -m official.vision.beta.projects.yolo.train --mode=train_and_eval --experiment=darknet_classification --model_dir=training_dir --config_file=official/vision/beta/projects/yolo/configs/experiments/darknet53.yaml
+python3 -m official.vision.beta.projects.yolo.train --mode=train_and_eval --experiment=darknet_classification --model_dir=training_dir --config_file=official/vision/beta/projects/yolo/configs/experiments/darknet53_tfds.yaml
 '''
 
-def import_overrides():
-  print(sys.modules["official.vision.beta.configs.backbones"])
-  return 
-
 def main(_):
-  import_overrides()
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_params)
   print(FLAGS.experiment)
   params = train_utils.parse_configuration(FLAGS)

@@ -3,7 +3,7 @@ from functools import partial
 import tensorflow as tf
 import tensorflow.keras as ks
 import tensorflow.keras.backend as K
-from official.vision.beta.projects.yolo.modeling.functions.mish_activation import mish
+from official.vision.beta.projects.yolo.modeling.activations.mish import mish
 
 
 
@@ -18,7 +18,40 @@ class Identity(ks.layers.Layer):
 
 @ks.utils.register_keras_serializable(package='yolo')
 class DarkConv(ks.layers.Layer):
+  '''
+  Modified Convolution layer to match that of the DarkNet Library. The Layer is a standards combination of Conv BatchNorm Activation, 
+  however, the use of bias in the conv is determined by the use of batch normalization. The Layer also allows for feature grouping 
+  suggested in the CSPNet paper 
 
+  Cross Stage Partial networks (CSPNets) were proposed in:
+  [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu, Ping-Yang Chen, Jun-Wei Hsieh
+      CSPNet: A New Backbone that can Enhance Learning Capability of CNN. arXiv:1911.11929
+
+  Args:
+      filters: integer for output depth, or the number of features to learn
+      kernel_size: integer or tuple for the shape of the weight matrix or kernel to learn
+      strides: integer of tuple how much to move the kernel after each kernel use
+      padding: string 'valid' or 'same', if same, then pad the image, else do not
+      dialtion_rate: tuple to indicate how much to modulate kernel weights and
+                      the how many pixels ina featur map to skip
+      use_bias: boolean to indicate wither to use bias in convolution layer
+      kernel_initializer: string to indicate which function to use to initialize weigths
+      bias_initializer: string to indicate which function to use to initialize bias
+      kernel_regularizer: string to indicate which function to use to regularizer weights
+      bias_regularizer: string to indicate which function to use to regularizer bias
+      group_id: integer for which group of features to pass through the conv. 
+      groups: integer for how many splits there should be in the convolution feature stack input
+      grouping_only: skip the convolution and only return the group of featuresindicated by grouping_only
+      use_bn: boolean for wether to use batchnormalization
+      use_sync_bn: boolean for wether sync batch normalization statistics
+                    of all batch norm layers to the models global statistics (across all input batches)
+      norm_moment: float for moment to use for batchnorm
+      norm_epsilon: float for batchnorm epsilon
+      activation: string or None for activation function to use in layer,
+                  if None activation is replaced by linear
+      leaky_alpha: float to use as alpha if activation function is leaky
+      **kwargs: Keyword Arguments
+  '''
   def __init__(
       self,
       filters=1,
@@ -27,6 +60,9 @@ class DarkConv(ks.layers.Layer):
       padding='same',
       dilation_rate=(1, 1),
       use_bias=True,
+      groups = 1, 
+      group_id = 0, 
+      grouping_only = False, 
       kernel_initializer='glorot_uniform',
       bias_initializer='zeros',
       bias_regularizer=None,
@@ -38,30 +74,7 @@ class DarkConv(ks.layers.Layer):
       activation='leaky',
       leaky_alpha=0.1,
       **kwargs):
-    '''
-        Modified Convolution layer to match that of the DarkNet Library
-
-        Args:
-            filters: integer for output depth, or the number of features to learn
-            kernel_size: integer or tuple for the shape of the weight matrix or kernel to learn
-            strides: integer of tuple how much to move the kernel after each kernel use
-            padding: string 'valid' or 'same', if same, then pad the image, else do not
-            dialtion_rate: tuple to indicate how much to modulate kernel weights and
-                            the how many pixels ina featur map to skip
-            use_bias: boolean to indicate wither to use bias in convolution layer
-            kernel_initializer: string to indicate which function to use to initialize weigths
-            bias_initializer: string to indicate which function to use to initialize bias
-            l2_regularization: float to use as a constant for weight regularization
-            use_bn: boolean for wether to use batchnormalization
-            use_sync_bn: boolean for wether sync batch normalization statistics
-                         of all batch norm layers to the models global statistics (across all input batches)
-            norm_moment: float for moment to use for batchnorm
-            norm_epsilon: float for batchnorm epsilon
-            activation: string or None for activation function to use in layer,
-                        if None activation is replaced by linear
-            leaky_alpha: float to use as alpha if activation function is leaky
-            **kwargs: Keyword Arguments
-        '''
+    
 
     # convolution params
     self._filters = filters
@@ -70,6 +83,9 @@ class DarkConv(ks.layers.Layer):
     self._padding = padding
     self._dilation_rate = dilation_rate
     self._use_bias = use_bias
+    self._groups = groups
+    self._group_id = group_id
+    self._grouping_only = grouping_only
     self._kernel_initializer = kernel_initializer
     self._bias_initializer = bias_initializer
     self._kernel_regularizer = kernel_regularizer
@@ -100,53 +116,58 @@ class DarkConv(ks.layers.Layer):
     super(DarkConv, self).__init__(**kwargs)
 
   def build(self, input_shape):
-    kernel_size = self._kernel_size if type(
-        self._kernel_size) == int else self._kernel_size[0]
-    if self._padding == "same" and kernel_size != 1:
-      self._zeropad = ks.layers.ZeroPadding2D(
-          ((1, 1), (1, 1)))  # symmetric padding
-    else:
-      self._zeropad = Identity()
-
-    self.conv = ks.layers.Conv2D(
-        filters=self._filters,
-        kernel_size=self._kernel_size,
-        strides=self._strides,
-        padding="valid",
-        dilation_rate=self._dilation_rate,
-        use_bias=self._use_bias,
-        kernel_initializer=self._kernel_initializer,
-        bias_initializer=self._bias_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)
-
-    #self.conv =tf.nn.convolution(filters=self._filters, strides=self._strides, padding=self._padding
-    if self._use_bn:
-      if self._use_sync_bn:
-        self.bn = tf.keras.layers.experimental.SyncBatchNormalization(
-            momentum=self._norm_moment,
-            epsilon=self._norm_epsilon,
-            axis=self._bn_axis)
+    if not self._grouping_only:
+      kernel_size = self._kernel_size if type(
+          self._kernel_size) == int else self._kernel_size[0]
+      if self._padding == "same" and kernel_size != 1:
+        self._zeropad = ks.layers.ZeroPadding2D(
+            ((1, 1), (1, 1)))  # symmetric padding
       else:
-        self.bn = ks.layers.BatchNormalization(momentum=self._norm_moment,
-                                               epsilon=self._norm_epsilon,
-                                               axis=self._bn_axis)
-    else:
-      self.bn = Identity()
+        self._zeropad = Identity()
 
-    if self._activation == 'leaky':
-      alpha = {"alpha": self._leaky_alpha}
-      self._activation_fn = partial(tf.nn.leaky_relu, **alpha)
-    elif self._activation == 'mish':
-      self._activation_fn = mish()
-    else:
-      self._activation_fn = ks.layers.Activation(activation=self._activation)
+      self.conv = ks.layers.Conv2D(
+          filters=self._filters,
+          kernel_size=self._kernel_size,
+          strides=self._strides,
+          padding="valid",
+          dilation_rate=self._dilation_rate,
+          use_bias=self._use_bias,
+          kernel_initializer=self._kernel_initializer,
+          bias_initializer=self._bias_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)
 
-  def call(self, inputs):
-    x = self._zeropad(inputs)
-    x = self.conv(x)
-    x = self.bn(x)
-    x = self._activation_fn(x)
+      #self.conv =tf.nn.convolution(filters=self._filters, strides=self._strides, padding=self._padding
+      if self._use_bn:
+        if self._use_sync_bn:
+          self.bn = tf.keras.layers.experimental.SyncBatchNormalization(
+              momentum=self._norm_moment,
+              epsilon=self._norm_epsilon,
+              axis=self._bn_axis)
+        else:
+          self.bn = ks.layers.BatchNormalization(momentum=self._norm_moment,
+                                                epsilon=self._norm_epsilon,
+                                                axis=self._bn_axis)
+      else:
+        self.bn = Identity()
+
+      if self._activation == 'leaky':
+        alpha = {"alpha": self._leaky_alpha}
+        self._activation_fn = partial(tf.nn.leaky_relu, **alpha)
+      elif self._activation == 'mish':
+        self._activation_fn = mish
+      else:
+        self._activation_fn = ks.layers.Activation(activation=self._activation)
+
+  def call(self, x):
+    if self._groups != 1:
+      x = tf.split(x, self._groups, axis=-1)
+      x = x[self._group_id] # grouping 
+    if not self._grouping_only:
+      x = self._zeropad(x)
+      x = self.conv(x)
+      x = self.bn(x)
+      x = self._activation_fn(x)
     return x
 
   def get_config(self):
@@ -158,6 +179,9 @@ class DarkConv(ks.layers.Layer):
         "padding": self._padding,
         "dilation_rate": self._dilation_rate,
         "use_bias": self._use_bias,
+        "groups": self._groups, 
+        "group_id": self._group_id,
+        "grouping_only": self._grouping_only,
         "kernel_initializer": self._kernel_initializer,
         "bias_initializer": self._bias_initializer,
         "bias_regularizer": self._bias_regularizer,
@@ -178,7 +202,27 @@ class DarkConv(ks.layers.Layer):
 
 @ks.utils.register_keras_serializable(package='yolo')
 class DarkTiny(ks.layers.Layer):
-
+  """
+  Automatic Maxpool Downsampling Convolution layer, created to make routing easier. 
+    
+  Args:
+      filters: integer for output depth, or the number of features to learn
+      use_bias: boolean to indicate wither to use bias in convolution layer
+      kernel_initializer: string to indicate which function to use to initialize weigths
+      bias_initializer: string to indicate which function to use to initialize bias
+      kernel_regularizer: string to indicate which function to use to regularizer weights
+      bias_regularizer: string to indicate which function to use to regularizer bias
+      use_bn: boolean for wether to use batchnormalization
+      use_sync_bn: boolean for wether sync batch normalization statistics
+                    of all batch norm layers to the models global statistics (across all input batches)
+      group_id: integer for which group of features to pass through the csp tiny stack. 
+      groups: integer for how many splits there should be in the convolution feature stack output
+      norm_moment: float for moment to use for batchnorm
+      norm_epsilon: float for batchnorm epsilon
+      activation: string or None for activation function to use in layer,
+                  if None activation is replaced by linear
+      **kwargs: Keyword Arguments
+  """
   def __init__(
       self,
       filters=1,
@@ -193,8 +237,6 @@ class DarkTiny(ks.layers.Layer):
       norm_momentum=0.99,
       norm_epsilon=0.001,
       activation='leaky',
-      leaky_alpha=0.1,
-      sc_activation='linear',
       **kwargs):
 
     # darkconv params
@@ -214,8 +256,6 @@ class DarkTiny(ks.layers.Layer):
 
     # activation params
     self._conv_activation = activation
-    self._leaky_alpha = leaky_alpha
-    self._sc_activation = sc_activation
 
     super().__init__(**kwargs)
 
@@ -238,8 +278,7 @@ class DarkTiny(ks.layers.Layer):
                                use_sync_bn=self._use_sync_bn,
                                norm_momentum=self._norm_moment,
                                norm_epsilon=self._norm_epsilon,
-                               activation=self._conv_activation,
-                               leaky_alpha=self._leaky_alpha)
+                               activation=self._conv_activation)
 
     super().build(input_shape)
 
@@ -270,7 +309,30 @@ class DarkTiny(ks.layers.Layer):
 
 @ks.utils.register_keras_serializable(package='yolo')
 class DarkResidual(ks.layers.Layer):
+  '''
+  DarkNet block with Residual connection for Yolo v3 Backbone
 
+  Args:
+      filters: integer for output depth, or the number of features to learn
+      use_bias: boolean to indicate wither to use bias in convolution layer
+      kernel_initializer: string to indicate which function to use to initialize weigths
+      bias_initializer: string to indicate which function to use to initialize bias
+      kernel_regularizer: string to indicate which function to use to regularizer weights
+      bias_regularizer: string to indicate which function to use to regularizer bias
+      use_bn: boolean for wether to use batchnormalization
+      use_sync_bn: boolean for wether sync batch normalization statistics
+                    of all batch norm layers to the models global statistics (across all input batches)
+      norm_moment: float for moment to use for batchnorm
+      norm_epsilon: float for batchnorm epsilon
+      conv_activation: string or None for activation function to use in layer,
+                  if None activation is replaced by linear
+      leaky_alpha: float to use as alpha if activation function is leaky
+      sc_activation: string for activation function to use in layer
+      downsample: boolean for if image input is larger than layer output, set downsample to True
+                  so the dimentions are forced to match
+      **kwargs: Keyword Arguments
+
+  '''
   def __init__(self,
                filters=1,
                filter_scale=2,
@@ -288,28 +350,7 @@ class DarkResidual(ks.layers.Layer):
                sc_activation='linear',
                downsample=False,
                **kwargs):
-    '''
-        DarkNet block with Residual connection for Yolo v3 Backbone
 
-        Args:
-            filters: integer for output depth, or the number of features to learn
-            use_bias: boolean to indicate wither to use bias in convolution layer
-            kernel_initializer: string to indicate which function to use to initialize weigths
-            bias_initializer: string to indicate which function to use to initialize bias
-            use_bn: boolean for wether to use batchnormalization
-            use_sync_bn: boolean for wether sync batch normalization statistics
-                         of all batch norm layers to the models global statistics (across all input batches)
-            norm_moment: float for moment to use for batchnorm
-            norm_epsilon: float for batchnorm epsilon
-            conv_activation: string or None for activation function to use in layer,
-                        if None activation is replaced by linear
-            leaky_alpha: float to use as alpha if activation function is leaky
-            sc_activation: string for activation function to use in layer
-            downsample: boolean for if image input is larger than layer output, set downsample to True
-                        so the dimentions are forced to match
-            **kwargs: Keyword Arguments
-
-        '''
     # downsample
     self._downsample = downsample
 
@@ -421,7 +462,36 @@ class DarkResidual(ks.layers.Layer):
 
 @ks.utils.register_keras_serializable(package='yolo')
 class CSPTiny(ks.layers.Layer):
+  """
+  A Small size convolution block proposed in the CSPNet. The layer uses shortcuts, routing(concatnation), and feature grouping 
+  in order to improve gradient variablity and allow for high efficency, low power residual learning for small networks. 
 
+  Cross Stage Partial networks (CSPNets) were proposed in:
+  [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu, Ping-Yang Chen, Jun-Wei Hsieh
+      CSPNet: A New Backbone that can Enhance Learning Capability of CNN. arXiv:1911.11929
+    
+  Args:
+      filters: integer for output depth, or the number of features to learn
+      use_bias: boolean to indicate wither to use bias in convolution layer
+      kernel_initializer: string to indicate which function to use to initialize weigths
+      bias_initializer: string to indicate which function to use to initialize bias
+      use_bn: boolean for wether to use batchnormalization
+      kernel_regularizer: string to indicate which function to use to regularizer weights
+      bias_regularizer: string to indicate which function to use to regularizer bias
+      use_sync_bn: boolean for wether sync batch normalization statistics
+                    of all batch norm layers to the models global statistics (across all input batches)
+      group_id: integer for which group of features to pass through the csp tiny stack. 
+      groups: integer for how many splits there should be in the convolution feature stack output
+      norm_moment: float for moment to use for batchnorm
+      norm_epsilon: float for batchnorm epsilon
+      conv_activation: string or None for activation function to use in layer,
+                  if None activation is replaced by linear
+      leaky_alpha: float to use as alpha if activation function is leaky
+      sc_activation: string for activation function to use in layer
+      downsample: boolean for if image input is larger than layer output, set downsample to True
+                  so the dimentions are forced to match
+      **kwargs: Keyword Arguments
+  """
   def __init__(
       self,
       filters=1,
@@ -486,6 +556,8 @@ class CSPTiny(ks.layers.Layer):
                                 strides=(1, 1),
                                 padding='same',
                                 use_bias=self._use_bias,
+                                groups = self._groups, 
+                                group_id = self._group_id,
                                 kernel_initializer=self._kernel_initializer,
                                 bias_initializer=self._bias_initializer,
                                 bias_regularizer=self._bias_regularizer,
@@ -538,15 +610,14 @@ class CSPTiny(ks.layers.Layer):
 
   def call(self, inputs):
     x1 = self._convlayer1(inputs)
-    x2 = tf.split(x1, self._groups, axis=-1)
-    x3 = self._convlayer2(x2[self._group_id])
-    x4 = self._convlayer3(x3)
-    x5 = tf.concat([x4, x3], axis=-1)
-    x6 = self._convlayer4(x5)
-    x = tf.concat([x1, x6], axis=-1)
+    x2 = self._convlayer2(x1) # grouping 
+    x3 = self._convlayer3(x2)
+    x4 = tf.concat([x3, x2], axis=-1) # csp partial using grouping
+    x5 = self._convlayer4(x4)
+    x = tf.concat([x1, x5], axis=-1) # csp connect 
     if self._downsample:
       x = self._maxpool(x)
-    return x, x6
+    return x, x5
 
   def get_config(self):
     # used to store/share parameters to reconsturct the model
@@ -571,7 +642,36 @@ class CSPTiny(ks.layers.Layer):
 
 @ks.utils.register_keras_serializable(package='yolo')
 class CSPDownSample(ks.layers.Layer):
+  """
+  Down sampling layer to take the place of down sampleing done in Residual networks. This is 
+  the first of 2 layers needed to convert any Residual Network model to a CSPNet. At the start of a new
+  level change, this CSPDownsample layer creates a learned identity that will act as a cross stage connection, 
+  that is used to inform the inputs to the next stage. It is called cross stage partial because the number of filters 
+  required in every intermitent Residual layer is reduced by half. The sister layer will take the partial generated by
+  this layer and concatnate it with the output of the final residual layer in the stack to create a fully feature level 
+  output. This concatnation merges the partial blocks of 2 levels as input to the next allowing the gradients of each 
+  level to be more unique, and reducing the number of parameters required by each level by 50% while keeping accuracy 
+  consistent. 
 
+  Cross Stage Partial networks (CSPNets) were proposed in:
+  [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu, Ping-Yang Chen, Jun-Wei Hsieh
+      CSPNet: A New Backbone that can Enhance Learning Capability of CNN. arXiv:1911.11929
+    
+  Args:
+      filters: integer for output depth, or the number of features to learn
+      filter_reduce: integer dicating (filters//2) or the number of filters in the partial feature stack 
+      activation: string for activation function to use in layer
+      kernel_initializer: string to indicate which function to use to initialize weights
+      bias_initializer: string to indicate which function to use to initialize bias
+      kernel_regularizer: string to indicate which function to use to regularizer weights
+      bias_regularizer: string to indicate which function to use to regularizer bias
+      use_bn: boolean for wether to use batchnormalization
+      use_sync_bn: boolean for wether sync batch normalization statistics
+                    of all batch norm layers to the models global statistics (across all input batches)
+      norm_moment: float for moment to use for batchnorm
+      norm_epsilon: float for batchnorm epsilon
+      **kwargs: Keyword Arguments
+  """
   def __init__(
       self,
       filters,
@@ -651,7 +751,29 @@ class CSPDownSample(ks.layers.Layer):
 
 @ks.utils.register_keras_serializable(package='yolo')
 class CSPConnect(ks.layers.Layer):
+  """
+  Sister Layer to the CSPDownsample layer. Merges the partial feature stacks generated by the CSPDownsampling layer, 
+  and the finaly output of the residual stack. Suggested in the CSPNet paper. 
 
+  Cross Stage Partial networks (CSPNets) were proposed in:
+  [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu, Ping-Yang Chen, Jun-Wei Hsieh
+      CSPNet: A New Backbone that can Enhance Learning Capability of CNN. arXiv:1911.11929
+    
+  Args:
+      filters: integer for output depth, or the number of features to learn
+      filter_reduce: integer dicating (filters//2) or the number of filters in the partial feature stack 
+      activation: string for activation function to use in layer
+      kernel_initializer: string to indicate which function to use to initialize weights
+      bias_initializer: string to indicate which function to use to initialize bias
+      kernel_regularizer: string to indicate which function to use to regularizer weights
+      bias_regularizer: string to indicate which function to use to regularizer bias
+      use_bn: boolean for wether to use batchnormalization
+      use_sync_bn: boolean for wether sync batch normalization statistics
+                    of all batch norm layers to the models global statistics (across all input batches)
+      norm_moment: float for moment to use for batchnorm
+      norm_epsilon: float for batchnorm epsilon
+      **kwargs: Keyword Arguments
+  """
   def __init__(
       self,
       filters,
