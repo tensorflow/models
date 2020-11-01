@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 import dataclasses
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -27,7 +27,6 @@ class Losses(hyperparams.Config):
   one_hot: bool = True
   label_smoothing: float = 0.0
   l2_weight_decay: float = 0.0
-
 
 @dataclasses.dataclass
 class ImageClassificationTask(cfg.TaskConfig):
