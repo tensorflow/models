@@ -338,8 +338,7 @@ def run_customized_training_loop(
                                                      post_allreduce_callbacks,
                                                      allreduce_bytes_per_pack)
       else:
-        if isinstance(optimizer,
-                      tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+        if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
           with tape:
             scaled_loss = optimizer.get_scaled_loss(loss)
           scaled_grads = tape.gradient(scaled_loss, training_vars)

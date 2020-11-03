@@ -272,15 +272,13 @@ class MaskRCNNTask(base_task.Task):
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
-      if isinstance(
-          optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+      if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
     # Scales back gradient when LossScaleOptimizer is used.
-    if isinstance(
-        optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+    if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
 
     # Apply gradient clipping.
