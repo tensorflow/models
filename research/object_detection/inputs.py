@@ -68,8 +68,24 @@ def _multiclass_scores_or_one_hot_labels(multiclass_scores,
   return tf.cond(tf.size(multiclass_scores) > 0, true_fn, false_fn)
 
 
-def _convert_labeled_classes_to_k_hot(groundtruth_labeled_classes, num_classes):
-  """Returns k-hot encoding of the labeled classes."""
+def _convert_labeled_classes_to_k_hot(groundtruth_labeled_classes, num_classes,
+                                      map_empty_to_ones=False):
+  """Returns k-hot encoding of the labeled classes.
+
+  If map_empty_to_ones is enabled and the input labeled_classes is empty,
+  this function assumes all classes are exhaustively labeled, thus returning
+  an all-one encoding.
+
+  Args:
+    groundtruth_labeled_classes: a Tensor holding a sparse representation of
+      labeled classes.
+    num_classes: an integer representing the number of classes
+    map_empty_to_ones: boolean (default: False).  Set this to be True to default
+    to an all-ones result if given an empty `groundtruth_labeled_classes`.
+  Returns:
+    A k-hot (and 0-indexed) tensor representation of
+    `groundtruth_labeled_classes`.
+  """
 
   # If the input labeled_classes is empty, it assumes all classes are
   # exhaustively labeled, thus returning an all-one encoding.
@@ -82,7 +98,9 @@ def _convert_labeled_classes_to_k_hot(groundtruth_labeled_classes, num_classes):
   def false_fn():
     return tf.ones(num_classes, dtype=tf.float32)
 
-  return tf.cond(tf.size(groundtruth_labeled_classes) > 0, true_fn, false_fn)
+  if map_empty_to_ones:
+    return tf.cond(tf.size(groundtruth_labeled_classes) > 0, true_fn, false_fn)
+  return true_fn()
 
 
 def _remove_unrecognized_classes(class_ids, unrecognized_label):
@@ -209,15 +227,16 @@ def transform_input_data(tensor_dict,
     raise KeyError('groundtruth_labeled_classes and groundtruth_image_classes'
                    'are provided by the decoder, but only one should be set.')
 
-  for field in [labeled_classes_field,
-                image_classes_field,
-                verified_neg_classes_field,
-                not_exhaustive_field]:
+  for field, map_empty_to_ones in [
+      (labeled_classes_field, True),
+      (image_classes_field, True),
+      (verified_neg_classes_field, False),
+      (not_exhaustive_field, False)]:
     if field in out_tensor_dict:
       out_tensor_dict[field] = _remove_unrecognized_classes(
           out_tensor_dict[field], unrecognized_label=-1)
       out_tensor_dict[field] = _convert_labeled_classes_to_k_hot(
-          out_tensor_dict[field], num_classes)
+          out_tensor_dict[field], num_classes, map_empty_to_ones)
 
   if input_fields.multiclass_scores in out_tensor_dict:
     out_tensor_dict[

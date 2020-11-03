@@ -162,18 +162,21 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
     groundtruth[input_data_fields.groundtruth_group_of] = tf.stack(
         detection_model.groundtruth_lists(fields.BoxListFields.group_of))
 
+  label_id_offset_paddings = tf.constant([[0, 0], [1, 0]])
   if detection_model.groundtruth_has_field(
       input_data_fields.groundtruth_verified_neg_classes):
-    groundtruth[input_data_fields.groundtruth_verified_neg_classes] = tf.stack(
-        detection_model.groundtruth_lists(
-            input_data_fields.groundtruth_verified_neg_classes))
+    groundtruth[input_data_fields.groundtruth_verified_neg_classes] = tf.pad(
+        tf.stack(detection_model.groundtruth_lists(
+            input_data_fields.groundtruth_verified_neg_classes)),
+        label_id_offset_paddings)
 
   if detection_model.groundtruth_has_field(
       input_data_fields.groundtruth_not_exhaustive_classes):
     groundtruth[
-        input_data_fields.groundtruth_not_exhaustive_classes] = tf.stack(
-            detection_model.groundtruth_lists(
-                input_data_fields.groundtruth_not_exhaustive_classes))
+        input_data_fields.groundtruth_not_exhaustive_classes] = tf.pad(
+            tf.stack(detection_model.groundtruth_lists(
+                input_data_fields.groundtruth_not_exhaustive_classes)),
+            label_id_offset_paddings)
 
   if detection_model.groundtruth_has_field(
       fields.BoxListFields.densepose_num_points):
