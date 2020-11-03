@@ -24,13 +24,13 @@ import tensorflow as tf
 
 from official.common import distribute_utils
 from official.modeling.hyperparams import params_dict
-from official.modeling.training import distributed_executor as executor
 from official.utils import hyperparams_flags
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
 from official.vision.detection.configs import factory as config_factory
 from official.vision.detection.dataloader import input_reader
 from official.vision.detection.dataloader import mode_keys as ModeKeys
+from official.vision.detection.executor import distributed_executor as executor
 from official.vision.detection.executor.detection_executor import DetectionDistributedExecutor
 from official.vision.detection.modeling import factory as model_factory
 
