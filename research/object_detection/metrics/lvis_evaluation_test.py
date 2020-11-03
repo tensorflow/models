@@ -59,19 +59,19 @@ class LvisMaskEvaluationTest(tf.test.TestCase):
     lvis_evaluator = lvis_evaluation.LVISMaskEvaluator(
         _get_categories_list())
     lvis_evaluator.add_single_ground_truth_image_info(
-        image_id='image1',
+        image_id=1,
         groundtruth_dict={
             fields.InputDataFields.groundtruth_boxes:
                 np.array([[100., 100., 200., 200.]]),
             fields.InputDataFields.groundtruth_classes: np.array([1]),
             fields.InputDataFields.groundtruth_instance_masks: masks1,
             fields.InputDataFields.groundtruth_verified_neg_classes:
-                np.array([0, 0, 0]),
+                np.array([0, 0, 0, 0]),
             fields.InputDataFields.groundtruth_not_exhaustive_classes:
-                np.array([0, 0, 0])
+                np.array([0, 0, 0, 0])
         })
     lvis_evaluator.add_single_detected_image_info(
-        image_id='image1',
+        image_id=1,
         detections_dict={
             fields.DetectionResultFields.detection_masks: masks1,
             fields.DetectionResultFields.detection_scores:
@@ -80,19 +80,19 @@ class LvisMaskEvaluationTest(tf.test.TestCase):
             np.array([1])
         })
     lvis_evaluator.add_single_ground_truth_image_info(
-        image_id='image2',
+        image_id=2,
         groundtruth_dict={
             fields.InputDataFields.groundtruth_boxes:
             np.array([[50., 50., 100., 100.]]),
             fields.InputDataFields.groundtruth_classes: np.array([1]),
             fields.InputDataFields.groundtruth_instance_masks: masks2,
             fields.InputDataFields.groundtruth_verified_neg_classes:
-                np.array([0, 0, 0]),
+                np.array([0, 0, 0, 0]),
             fields.InputDataFields.groundtruth_not_exhaustive_classes:
-                np.array([0, 0, 0])
+                np.array([0, 0, 0, 0])
         })
     lvis_evaluator.add_single_detected_image_info(
-        image_id='image2',
+        image_id=2,
         detections_dict={
             fields.DetectionResultFields.detection_masks: masks2,
             fields.DetectionResultFields.detection_scores:
@@ -101,19 +101,19 @@ class LvisMaskEvaluationTest(tf.test.TestCase):
             np.array([1])
         })
     lvis_evaluator.add_single_ground_truth_image_info(
-        image_id='image3',
+        image_id=3,
         groundtruth_dict={
             fields.InputDataFields.groundtruth_boxes:
             np.array([[25., 25., 50., 50.]]),
             fields.InputDataFields.groundtruth_classes: np.array([1]),
             fields.InputDataFields.groundtruth_instance_masks: masks3,
             fields.InputDataFields.groundtruth_verified_neg_classes:
-                np.array([0, 0, 0]),
+                np.array([0, 0, 0, 0]),
             fields.InputDataFields.groundtruth_not_exhaustive_classes:
-                np.array([0, 0, 0])
+                np.array([0, 0, 0, 0])
         })
     lvis_evaluator.add_single_detected_image_info(
-        image_id='image3',
+        image_id=3,
         detections_dict={
             fields.DetectionResultFields.detection_masks: masks3,
             fields.DetectionResultFields.detection_scores:
@@ -130,7 +130,7 @@ class LVISMaskEvaluationPyFuncTest(tf.test.TestCase):
 
   def testAddEvalDict(self):
     lvis_evaluator = lvis_evaluation.LVISMaskEvaluator(_get_categories_list())
-    image_id = tf.constant('image1', dtype=tf.string)
+    image_id = tf.constant(1, dtype=tf.int32)
     groundtruth_boxes = tf.constant(
         np.array([[100., 100., 200., 200.], [50., 50., 100., 100.]]),
         dtype=tf.float32)
@@ -143,9 +143,9 @@ class LVISMaskEvaluationPyFuncTest(tf.test.TestCase):
     ]), dtype=tf.uint8)
     original_image_spatial_shapes = tf.constant([[120, 120], [120, 120]],
                                                 dtype=tf.int32)
-    groundtruth_verified_neg_classes = tf.constant(np.array([0, 0, 0]),
+    groundtruth_verified_neg_classes = tf.constant(np.array([0, 0, 0, 0]),
                                                    dtype=tf.float32)
-    groundtruth_not_exhaustive_classes = tf.constant(np.array([0, 0, 0]),
+    groundtruth_not_exhaustive_classes = tf.constant(np.array([0, 0, 0, 0]),
                                                      dtype=tf.float32)
     detection_scores = tf.constant(np.array([.9, .8]), dtype=tf.float32)
     detection_classes = tf.constant(np.array([2, 1]), dtype=tf.float32)

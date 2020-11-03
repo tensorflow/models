@@ -772,9 +772,12 @@ def eager_eval_loop(
       true_image_shapes = None
       original_image_spatial_shapes = None
 
+    keys = features[inputs.HASH_KEY]
+    if eval_input_config.include_source_id:
+      keys = features[fields.InputDataFields.source_id]
     eval_dict = eval_util.result_dict_for_batched_example(
         eval_images,
-        features[inputs.HASH_KEY],
+        keys,
         detections,
         groundtruth,
         class_agnostic=class_agnostic,

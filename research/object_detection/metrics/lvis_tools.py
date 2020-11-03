@@ -134,7 +134,7 @@ def ExportSingleImageGroundtruthToLVIS(image_id,
   groundtruth bounding box.
 
   Args:
-    image_id: a unique image identifier either of type integer or string.
+    image_id: a unique image identifier castable to integer.
     next_annotation_id: integer specifying the first id to use for the
       groundtruth annotations. All annotations are assigned a continuous integer
       id starting from this value.
@@ -187,7 +187,7 @@ def ExportSingleImageGroundtruthToLVIS(image_id,
           'id':
               next_annotation_id + i,
           'image_id':
-              image_id,
+              int(image_id),
           'category_id':
               int(groundtruth_classes[i]),
           'bbox':
@@ -215,7 +215,7 @@ def ExportSingleImageDetectionMasksToLVIS(image_id,
     are associated with the same annotation.
 
   Args:
-    image_id: unique image identifier either of type integer or string.
+    image_id: unique image identifier castable to integer.
     category_id_set: A set of valid class ids. Detections with classes not in
       category_id_set are dropped.
     detection_masks: uint8 numpy array of shape [num_detections, image_height,
@@ -251,9 +251,10 @@ def ExportSingleImageDetectionMasksToLVIS(image_id,
   for i in range(num_boxes):
     if detection_classes[i] in category_id_set:
       detections_list.append({
-          'image_id': image_id,
+          'image_id': int(image_id),
           'category_id': int(detection_classes[i]),
           'segmentation': RleCompress(detection_masks[i]),
           'score': float(detection_scores[i])
       })
+
   return detections_list

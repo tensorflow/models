@@ -35,7 +35,7 @@ class LVISToolsTest(tf.test.TestCase):
     groundtruth_annotations_list = [
         {
             'id': 1,
-            'image_id': 'first',
+            'image_id': 1,
             'category_id': 1,
             'bbox': [100., 100., 100., 100.],
             'area': 100.**2,
@@ -43,7 +43,7 @@ class LVISToolsTest(tf.test.TestCase):
         },
         {
             'id': 2,
-            'image_id': 'second',
+            'image_id': 2,
             'category_id': 1,
             'bbox': [50., 50., 50., 50.],
             'area': 50.**2,
@@ -52,14 +52,14 @@ class LVISToolsTest(tf.test.TestCase):
     ]
     image_list = [
         {
-            'id': 'first',
+            'id': 1,
             'neg_category_ids': [],
             'not_exhaustive_category_ids': [],
             'height': 256,
             'width': 256
         },
         {
-            'id': 'second',
+            'id': 2,
             'neg_category_ids': [],
             'not_exhaustive_category_ids': [],
             'height': 256,
@@ -77,13 +77,13 @@ class LVISToolsTest(tf.test.TestCase):
 
     self._detections_list = [
         {
-            'image_id': 'first',
+            'image_id': 1,
             'category_id': 1,
             'segmentation': mask1_rle,
             'score': .8
         },
         {
-            'image_id': 'second',
+            'image_id': 2,
             'category_id': 1,
             'segmentation': mask2_rle,
             'score': .7
@@ -106,7 +106,7 @@ class LVISToolsTest(tf.test.TestCase):
     classes = np.array([1, 2, 3], dtype=np.int32)
     scores = np.array([0.8, 0.2, 0.7], dtype=np.float32)
     lvis_annotations = lvis_tools.ExportSingleImageDetectionMasksToLVIS(
-        image_id='first_image',
+        image_id=1,
         category_id_set=set([1, 2, 3]),
         detection_classes=classes,
         detection_scores=scores,
@@ -117,7 +117,7 @@ class LVISToolsTest(tf.test.TestCase):
                        expected_counts[i])
       self.assertTrue(np.all(np.equal(mask.decode(
           mask_annotation['segmentation']), masks[i])))
-      self.assertEqual(mask_annotation['image_id'], 'first_image')
+      self.assertEqual(mask_annotation['image_id'], 1)
       self.assertEqual(mask_annotation['category_id'], classes[i])
       self.assertAlmostEqual(mask_annotation['score'], scores[i])
 
@@ -137,7 +137,7 @@ class LVISToolsTest(tf.test.TestCase):
     expected_counts = ['04', '31', '4']
 
     lvis_annotations = lvis_tools.ExportSingleImageGroundtruthToLVIS(
-        image_id='first_image',
+        image_id=1,
         category_id_set=set([1, 2, 3]),
         next_annotation_id=next_annotation_id,
         groundtruth_boxes=boxes,
@@ -149,7 +149,7 @@ class LVISToolsTest(tf.test.TestCase):
       self.assertTrue(np.all(np.equal(mask.decode(
           annotation['segmentation']), masks[i])))
       self.assertTrue(np.all(np.isclose(annotation['bbox'], lvis_boxes[i])))
-      self.assertEqual(annotation['image_id'], 'first_image')
+      self.assertEqual(annotation['image_id'], 1)
       self.assertEqual(annotation['category_id'], classes[i])
       self.assertEqual(annotation['id'], i + next_annotation_id)
 

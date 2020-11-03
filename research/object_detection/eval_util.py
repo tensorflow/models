@@ -1192,6 +1192,11 @@ def evaluator_options_from_eval_config(eval_config):
         key = super_category
         value = eval_config.super_categories[key].split(',')
         evaluator_options[eval_metric_fn_key]['super_categories'][key] = value
+      if eval_metric_fn_key == 'lvis_mask_metrics' and hasattr(
+          eval_config, 'export_path'):
+        evaluator_options[eval_metric_fn_key].update({
+            'export_path': eval_config.export_path
+        })
 
     elif eval_metric_fn_key == 'precision_at_recall_detection_metrics':
       evaluator_options[eval_metric_fn_key] = {

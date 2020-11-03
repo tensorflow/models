@@ -40,13 +40,18 @@ class LVISMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
   """Class to evaluate LVIS mask metrics."""
 
   def __init__(self,
-               categories):
+               categories,
+               include_metrics_per_category=False,
+               export_path=None):
     """Constructor.
 
     Args:
       categories: A list of dicts, each of which has the following keys -
         'id': (required) an integer id uniquely identifying this category.
         'name': (required) string representing category name e.g., 'cat', 'dog'.
+      include_metrics_per_category: Additionally include per-category metrics
+        (this option is currently unsupported).
+      export_path: Path to export detections to LVIS compatible JSON format.
     """
     super(LVISMaskEvaluator, self).__init__(categories)
     self._image_ids_with_detections = set([])
@@ -57,6 +62,10 @@ class LVISMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     self._image_id_to_mask_shape_map = {}
     self._image_id_to_verified_neg_classes = {}
     self._image_id_to_not_exhaustive_classes = {}
+    if include_metrics_per_category:
+      raise ValueError('include_metrics_per_category not yet supported '
+                       'for LVISMaskEvaluator.')
+    self._export_path = export_path
 
   def clear(self):
     """Clears the state to prepare for a fresh evaluation."""
@@ -86,10 +95,14 @@ class LVISMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         InputDataFields.groundtruth_instance_masks: uint8 numpy array of shape
           [num_masks, image_height, image_width] containing groundtruth masks.
           The elements of the array must be in {0, 1}.
-        InputDataFields.groundtruth_verified_neg_classes: [num_classes]
-          float indicator vector with values in {0, 1}.
-        InputDataFields.groundtruth_not_exhaustive_classes: [num_classes]
-          float indicator vector with values in {0, 1}.
+        InputDataFields.groundtruth_verified_neg_classes: [num_classes + 1]
+          float indicator vector with values in {0, 1}. The length is
+          num_classes + 1 so as to be compatible with the 1-indexed groundtruth
+          classes.
+        InputDataFields.groundtruth_not_exhaustive_classes: [num_classes + 1]
+          float indicator vector with values in {0, 1}. The length is
+          num_classes + 1 so as to be compatible with the 1-indexed groundtruth
+          classes.
         InputDataFields.groundtruth_area (optional): float numpy array of
           shape [num_boxes] containing the area (in the original absolute
           coordinates) of the annotated object.
@@ -116,9 +129,9 @@ class LVISMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         fields.InputDataFields.groundtruth_verified_neg_classes].shape
     not_exhaustive_classes_shape = groundtruth_dict[
         fields.InputDataFields.groundtruth_not_exhaustive_classes].shape
-    if verified_neg_classes_shape != (len(self._category_id_set),):
+    if verified_neg_classes_shape != (len(self._category_id_set) + 1,):
       raise ValueError('Invalid shape for verified_neg_classes_shape.')
-    if not_exhaustive_classes_shape != (len(self._category_id_set),):
+    if not_exhaustive_classes_shape != (len(self._category_id_set) + 1,):
       raise ValueError('Invalid shape for not_exhaustive_classes_shape.')
     self._image_id_to_verified_neg_classes[image_id] = np.flatnonzero(
         groundtruth_dict[
@@ -210,6 +223,9 @@ class LVISMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     Returns:
       A dictionary holding
     """
+    if self._export_path:
+      tf.logging.info('Dumping detections to json.')
+      self.dump_detections_to_json_file(self._export_path)
     tf.logging.info('Performing evaluation on %d images.',
                     len(self._image_id_to_mask_shape_map.keys()))
     # pylint: disable=g-complex-comprehension
@@ -217,7 +233,7 @@ class LVISMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         'annotations': self._groundtruth_list,
         'images': [
             {
-                'id': image_id,
+                'id': int(image_id),
                 'height': shape[1],
                 'width': shape[2],
                 'neg_category_ids':
@@ -287,8 +303,10 @@ class LVISMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                 input_data_fields.groundtruth_classes:
                     groundtruth_classes[:num_gt_box],
                 input_data_fields.groundtruth_instance_masks:
-                    groundtruth_instance_masks[:num_gt_box][
-                        :original_image_shape[0], :original_image_shape[1]],
+                    groundtruth_instance_masks[
+                        :num_gt_box,
+                        :original_image_shape[0],
+                        :original_image_shape[1]],
                 input_data_fields.groundtruth_verified_neg_classes:
                     groundtruth_verified_neg_classes,
                 input_data_fields.groundtruth_not_exhaustive_classes:
@@ -298,8 +316,10 @@ class LVISMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
             image_id, {
                 'detection_scores': detection_scores[:num_det_box],
                 'detection_classes': detection_classes[:num_det_box],
-                'detection_masks': detection_masks[:num_det_box][
-                    :original_image_shape[0], :original_image_shape[1]]
+                'detection_masks': detection_masks[
+                    :num_det_box,
+                    :original_image_shape[0],
+                    :original_image_shape[1]]
             })
 
     # Unpack items from the evaluation dictionary.

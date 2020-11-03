@@ -1212,8 +1212,10 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
                 'groundtruth_classes':
                     groundtruth_classes[:num_gt_box],
                 'groundtruth_instance_masks':
-                    groundtruth_instance_masks[:num_gt_box][
-                        :original_image_shape[0], :original_image_shape[1]],
+                    groundtruth_instance_masks[
+                        :num_gt_box,
+                        :original_image_shape[0],
+                        :original_image_shape[1]],
                 'groundtruth_is_crowd':
                     groundtruth_is_crowd[:num_gt_box]
             })
@@ -1221,8 +1223,10 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
             image_id, {
                 'detection_scores': detection_scores[:num_det_box],
                 'detection_classes': detection_classes[:num_det_box],
-                'detection_masks': detection_masks[:num_det_box][
-                    :original_image_shape[0], :original_image_shape[1]]
+                'detection_masks': detection_masks[
+                    :num_det_box,
+                    :original_image_shape[0],
+                    :original_image_shape[1]]
             })
 
     # Unpack items from the evaluation dictionary.
