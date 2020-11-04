@@ -306,21 +306,14 @@ class Seq2SeqTransformer(tf.keras.Model):
           tf.not_equal(source_decoder_input, 0),
           self.embedding_lookup.embeddings.dtype)
       decoder_input *= tf.expand_dims(embedding_mask, -1)
-
+      decoder_input += timing_signal[i]
       if self._padded_decode:
-        timing_signal_shape = timing_signal.shape.as_list()
-        decoder_input += tf.slice(timing_signal, [i, 0],
-                                  [1, timing_signal_shape[1]])
-
         bias_shape = decoder_self_attention_bias.shape.as_list()
         self_attention_bias = tf.slice(
             decoder_self_attention_bias, [0, 0, i, 0],
             [bias_shape[0], bias_shape[1], 1, bias_shape[3]])
       else:
-        decoder_input += timing_signal[i:i + 1]
-
         self_attention_bias = decoder_self_attention_bias[:, :, i:i + 1, :i + 1]
-
       decoder_shape = tf_utils.get_shape_list(decoder_input, expected_rank=3)
       batch_size = decoder_shape[0]
       decoder_length = decoder_shape[1]
