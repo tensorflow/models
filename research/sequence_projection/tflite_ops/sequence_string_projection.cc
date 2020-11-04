@@ -333,18 +333,53 @@ void TypedEval(const T* mapping_table, ProjectionParams* params, T* data) {
   if (params->DocSizeFeatureEnabled()) {
     params->DocSizeFeature(&doc_size_feature, tokens.size());
   }
-  const int num_tokens = tokens.size() + params->EosToken();
-  for (int j = -params->BosToken(), offset0 = 0; j < num_tokens; ++j) {
-    std::string word;
-    if (j < 0) {
-      word = kBeginToken;
-    } else if (j < tokens.size()) {
-      word = params->LowerCaseUTF8WithSupportedUnicodes(tokens[j]);
-      word = params->PreprocessToken(word);
-    } else {
-      word = kEndToken;
+  const int size_tokens = tokens.size();
+  const int num_tokens = size_tokens + params->EosToken();
+  int offset0 = 0;
+  int j;
+  for (j = -params->BosToken(); j < 0; ++j) {
+    params->Hash(kBeginToken, &hash_codes);
+    for (int hindex = 0, k = 0; hindex < hash_codes.size(); hindex++) {
+      auto hash = hash_codes[hindex];
+      for (int kmax = std::min(k + kIncrement, params->FeatureSize());
+           k < kmax;) {
+        data[offset0 + k++] = mapping_table[hash & ((1 << kMapBits) - 1)];
+        hash >>= kMapBits;
+      }
     }
+    offset0 += params->FeatureSize();
+    if (params->WordNoveltyEnabled() && !hash_codes.empty()) {
+      params->WordNoveltyFeature(&data[offset0 - 1],
+                                 word_counter[hash_codes[0]]++);
+    }
+    if (params->DocSizeFeatureEnabled()) {
+      data[offset0 - 2] = doc_size_feature;
+    }
+  }
+  for (j = 0; j < size_tokens; ++j) {
+    std::string word;
+    word = params->LowerCaseUTF8WithSupportedUnicodes(tokens[j]);
+    word = params->PreprocessToken(word);
     params->Hash(word, &hash_codes);
+    for (int hindex = 0, k = 0; hindex < hash_codes.size(); hindex++) {
+      auto hash = hash_codes[hindex];
+      for (int kmax = std::min(k + kIncrement, params->FeatureSize());
+           k < kmax;) {
+        data[offset0 + k++] = mapping_table[hash & ((1 << kMapBits) - 1)];
+        hash >>= kMapBits;
+      }
+    }
+    offset0 += params->FeatureSize();
+    if (params->WordNoveltyEnabled() && !hash_codes.empty()) {
+      params->WordNoveltyFeature(&data[offset0 - 1],
+                                 word_counter[hash_codes[0]]++);
+    }
+    if (params->DocSizeFeatureEnabled()) {
+      data[offset0 - 2] = doc_size_feature;
+    }
+  }
+  for (j = size_tokens; j < num_tokens; ++j) {
+    params->Hash(kEndToken, &hash_codes);
     for (int hindex = 0, k = 0; hindex < hash_codes.size(); hindex++) {
       auto hash = hash_codes[hindex];
       for (int kmax = std::min(k + kIncrement, params->FeatureSize());
