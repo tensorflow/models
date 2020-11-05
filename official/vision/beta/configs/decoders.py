@@ -36,6 +36,14 @@ class FPN(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class NASFPN(hyperparams.Config):
+  """NASFPN config."""
+  num_filters: int = 256
+  num_repeats: int = 5
+  use_separable_conv: bool = False
+
+
+@dataclasses.dataclass
 class ASPP(hyperparams.Config):
   """ASPP config."""
   level: int = 4
@@ -54,5 +62,6 @@ class Decoder(hyperparams.OneOfConfig):
   """
   type: Optional[str] = None
   fpn: FPN = FPN()
+  nasfpn: NASFPN = NASFPN()
   identity: Identity = Identity()
   aspp: ASPP = ASPP()
