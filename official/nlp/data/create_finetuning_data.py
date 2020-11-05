@@ -100,6 +100,11 @@ flags.DEFINE_bool(
     "version_2_with_negative", False,
     "If true, the SQuAD examples contain some that do not have an answer.")
 
+flags.DEFINE_bool(
+    "xlnet_format", False,
+    "If true, then data will be preprocessed in a paragraph, query, class order"
+    " instead of the BERT-style class, paragraph, query order.")
+
 # Shared flags across BERT fine-tuning tasks.
 flags.DEFINE_string("vocab_file", None,
                     "The vocabulary file that the BERT model was trained on.")
@@ -263,9 +268,15 @@ def generate_squad_dataset():
   else:
     assert FLAGS.tokenization == "SentencePiece"
     return squad_lib_sp.generate_tf_record_from_json_file(
-        FLAGS.squad_data_file, FLAGS.sp_model_file,
-        FLAGS.train_data_output_path, FLAGS.max_seq_length, FLAGS.do_lower_case,
-        FLAGS.max_query_length, FLAGS.doc_stride, FLAGS.version_2_with_negative)
+        input_file_path=FLAGS.squad_data_file,
+        sp_model_file=FLAGS.sp_model_file,
+        output_path=FLAGS.train_data_output_path,
+        max_seq_length=FLAGS.max_seq_length,
+        do_lower_case=FLAGS.do_lower_case,
+        max_query_length=FLAGS.max_query_length,
+        doc_stride=FLAGS.doc_stride,
+        xlnet_format=FLAGS.xlnet_format,
+        version_2_with_negative=FLAGS.version_2_with_negative)
 
 
 def generate_retrieval_dataset():
