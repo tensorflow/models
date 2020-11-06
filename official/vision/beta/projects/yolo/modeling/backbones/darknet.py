@@ -1,5 +1,5 @@
-"""Contains definitions of Darknet Backbone Networks. 
-   The models are inspired by ResNet, and CSPNet 
+"""Contains definitions of Darknet Backbone Networks.
+   The models are inspired by ResNet, and CSPNet
 
 Residual networks (ResNets) were proposed in:
 [1] Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun
@@ -12,7 +12,7 @@ Cross Stage Partial networks (CSPNets) were proposed in:
 
 DarkNets Are used mainly for Object detection in:
 [1] Joseph Redmon, Ali Farhadi
-    YOLOv3: An Incremental Improvement. arXiv:1804.02767 
+    YOLOv3: An Incremental Improvement. arXiv:1804.02767
 
 [2] Alexey Bochkovskiy, Chien-Yao Wang, Hong-Yuan Mark Liao
     YOLOv4: Optimal Speed and Accuracy of Object Detection. arXiv:2004.10934
@@ -35,13 +35,13 @@ class BlockConfig(object):
         layer: string layer name
         stack: the type of layer ordering to use for this specific level
         repetitions: integer for the number of times to repeat block
-        bottelneck: boolean for does this stack have a bottle neck layer 
+        bottelneck: boolean for does this stack have a bottle neck layer
         filters: integer for the output depth of the level
-        pool_size: integer the pool_size of max pool layers 
+        pool_size: integer the pool_size of max pool layers
         kernel_size: optional integer, for convolution kernel size
-        strides: integer or tuple to indicate convolution strides 
+        strides: integer or tuple to indicate convolution strides
         padding: the padding to apply to layers in this stack
-        activation: string for the activation to use for this stack 
+        activation: string for the activation to use for this stack
         route: integer for what level to route from to get the next input
         output_name: the name to use for this output
         is_output: is this layer an output in the default model
@@ -70,14 +70,13 @@ def build_block_specs(config):
   return specs
 
 class layer_factory(object):
-  """ 
+  """
   class for quick look up of default layers used by darknet to
-  connect, introduce or exit a level. Used in place of an if condition 
-  or switch to make adding new layers easier and to reduce redundant code  
+  connect, introduce or exit a level. Used in place of an if condition
+  or switch to make adding new layers easier and to reduce redundant code
   """
   def __init__(self):
     self._layer_dict = {
-        "DarkTiny": (nn_blocks.DarkTiny, self.darktiny_config_todict),
         "DarkConv": (nn_blocks.DarkConv, self.darkconv_config_todict),
         "MaxPool": (tf.keras.layers.MaxPool2D, self.maxpool_config_todict)
     }
@@ -125,12 +124,12 @@ CSPDARKNET53 = {
     "splits": {"backbone_split": 106,
                "neck_split": 138},
     "backbone": [
-        ["DarkConv", None, 1, False, 32, None, 3, 1, "same", "mish", -1, 0, False],  
-        ["DarkRes", "csp", 1, True, 64, None, None, None, None, "mish", -1, 1, False],  
-        ["DarkRes", "csp", 2, False, 128, None, None, None, None, "mish", -1, 2, False],  
+        ["DarkConv", None, 1, False, 32, None, 3, 1, "same", "mish", -1, 0, False],
+        ["DarkRes", "csp", 1, True, 64, None, None, None, None, "mish", -1, 1, False],
+        ["DarkRes", "csp", 2, False, 128, None, None, None, None, "mish", -1, 2, False],
         ["DarkRes", "csp", 8, False, 256, None, None, None, None, "mish", -1, 3, True],
-        ["DarkRes", "csp", 8, False, 512, None, None, None, None, "mish", -1, 4, True],  
-        ["DarkRes", "csp", 4, False, 1024, None, None, None, None, "mish", -1, 5, True],  
+        ["DarkRes", "csp", 8, False, 512, None, None, None, None, "mish", -1, 4, True],
+        ["DarkRes", "csp", 4, False, 1024, None, None, None, None, "mish", -1, 5, True],
     ]
 }
 
@@ -138,12 +137,12 @@ DARKNET53 = {
     "list_names": LISTNAMES,
     "splits": {"backbone_split": 76},
     "backbone": [
-        ["DarkConv", None, 1, False, 32, None, 3, 1, "same", "leaky", -1, 0, False], 
-        ["DarkRes", "residual", 1, True, 64, None, None, None, None, "leaky", -1, 1, False],  
-        ["DarkRes", "residual", 2, False, 128, None, None, None, None, "leaky", -1, 2, False],  
+        ["DarkConv", None, 1, False, 32, None, 3, 1, "same", "leaky", -1, 0, False],
+        ["DarkRes", "residual", 1, True, 64, None, None, None, None, "leaky", -1, 1, False],
+        ["DarkRes", "residual", 2, False, 128, None, None, None, None, "leaky", -1, 2, False],
         ["DarkRes", "residual", 8, False, 256, None, None, None, None, "leaky", -1, 3, True],
-        ["DarkRes", "residual", 8, False, 512, None, None, None, None, "leaky", -1, 4, True], 
-        ["DarkRes", "residual", 4, False, 1024, None, None, None, None, "leaky", -1, 5, True], 
+        ["DarkRes", "residual", 8, False, 512, None, None, None, None, "leaky", -1, 4, True],
+        ["DarkRes", "residual", 4, False, 1024, None, None, None, None, "leaky", -1, 5, True],
     ]
 }
 
@@ -165,12 +164,12 @@ DARKNETTINY = {
     "splits": {"backbone_split": 14},
     "backbone": [
         ["DarkConv", None, 1, False, 16, None, 3, 1, "same", "leaky", -1, 0, False],
-        ["DarkTiny", None, 1, True, 32, None, 3, 2, "same", "leaky", -1, 1, False],
-        ["DarkTiny", None, 1, True, 64, None, 3, 2, "same", "leaky", -1, 2, False], 
-        ["DarkTiny", None, 1, False, 128, None, 3, 2, "same", "leaky", -1, 3, False],
-        ["DarkTiny", None, 1, False, 256, None, 3, 2, "same", "leaky", -1, 4, True],
-        ["DarkTiny", None, 1, False, 512, None, 3, 2, "same", "leaky", -1, 5, False],
-        ["DarkTiny", None, 1, False, 1024, None, 3, 1, "same", "leaky", -1, 5, True],
+        ["DarkTiny", "tiny", 1, True, 32, None, 3, 2, "same", "leaky", -1, 1, False],
+        ["DarkTiny", "tiny", 1, True, 64, None, 3, 2, "same", "leaky", -1, 2, False],
+        ["DarkTiny", "tiny", 1, False, 128, None, 3, 2, "same", "leaky", -1, 3, False],
+        ["DarkTiny", "tiny", 1, False, 256, None, 3, 2, "same", "leaky", -1, 4, True],
+        ["DarkTiny", "tiny", 1, False, 512, None, 3, 2, "same", "leaky", -1, 5, False],
+        ["DarkTiny", "tiny", 1, False, 1024, None, 3, 1, "same", "leaky", -1, 5, True],
     ]
 }
 
@@ -267,10 +266,15 @@ class Darknet(ks.Model):
                             name=f"{config.layer}_{i}")
         stack_outputs.append(x)
       elif config.stack == "csp_tiny":
-        x_pass, x = self._tiny_stack(stack_outputs[config.route],
+        x_pass, x = self._csp_tiny_stack(stack_outputs[config.route],
                                      config,
                                      name=f"{config.layer}_{i}")
         stack_outputs.append(x_pass)
+      elif config.stack == "tiny":
+        x = self._tiny_stack(stack_outputs[config.route],
+                             config,
+                             name=f"{config.layer}_{i}")
+        stack_outputs.append(x)
       if (config.is_output and
           self._min_size == None):
         endpoints[str(config.output_name)] = x
@@ -314,14 +318,31 @@ class Darknet(ks.Model):
     self._default_dict["name"] = None
     return output
 
-  def _tiny_stack(self, inputs, config, name):
+  def _csp_tiny_stack(self, inputs, config, name):
     self._default_dict["activation"] = self._get_activation(config.activation)
-    self._default_dict["name"] = f"{name}_tiny"
+    self._default_dict["name"] = f"{name}_csp_tiny"
     x, x_route = nn_blocks.CSPTiny(filters=config.filters,
                                    **self._default_dict)(inputs)
     self._default_dict["activation"] = self._activation
     self._default_dict["name"] = None
     return x, x_route
+
+  def _tiny_stack(self, inputs, config, name):
+    x = tf.keras.layers.MaxPool2D(pool_size=2,
+                                  strides=config.strides,
+                                  padding="same",
+                                  data_format=None,
+                                  name=f"{name}_tiny/pool")(inputs)
+    self._default_dict["activation"] = self._get_activation(config.activation)
+    self._default_dict["name"] = f"{name}_tiny/conv"
+    x = nn_blocks.DarkConv(filters=config.filters,
+                           kernel_size=(3, 3),
+                           strides=(1, 1),
+                           padding='same',
+                           **self._default_dict)(x)
+    self._default_dict["activation"] = self._activation
+    self._default_dict["name"] = None
+    return x
 
   def _residual_stack(self, inputs, config, name):
     self._default_dict["activation"] = self._get_activation(config.activation)
@@ -356,7 +377,7 @@ class Darknet(ks.Model):
     backbone = BACKBONES[name]["backbone"]
     splits = BACKBONES[name]["splits"]
     return build_block_specs(backbone), splits
-  
+
   @property
   def model_id(self):
     return self._model_name
