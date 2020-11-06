@@ -154,7 +154,6 @@ class DarkConv(ks.layers.Layer):
         self._activation_fn = lambda x: x * tf.math.tanh(tf.math.softplus(x))
       else:
         self._activation_fn = tf_utils.get_activation(self._activation)
-      tf.print(self._activation_fn)
 
   def call(self, x):
     if self._groups != 1:
