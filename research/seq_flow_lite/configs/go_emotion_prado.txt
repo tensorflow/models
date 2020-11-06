@@ -1,0 +1,27 @@
+{
+  "model_config" : {
+    "labels": ["admiration", "amusement", "anger", "annoyance", "approval", "caring", "confusion", "curiosity", "desire", "disappointment", "disapproval", "disgust", "embarrassment", "excitement", "fear", "gratitude", "grief", "joy", "love", "nervousness", "optimism", "pride", "realization", "relief", "remorse", "sadness", "surprise", "neutral"],
+    "multilabel": true,
+    "quantize": true,
+    "max_seq_len": 128,
+    "max_seq_len_inference": 128,
+    "split_on_space": true,
+    "embedding_regularizer_scale": 35e-3,
+    "embedding_size": 64,
+    "heads": [0, 64, 64, 0, 0],
+    "feature_size": 512,
+    "network_regularizer_scale": 1e-4,
+    "keep_prob": 0.5,
+    "distortion_probability": 0.0
+  },
+  "name": "models.prado",
+  "batch_size": 1024,
+  "save_checkpoints_steps": 100,
+  "train_steps": 100000,
+  "learning_rate": 0.0006,
+  "learning_rate_decay_steps": 340,
+  "learning_rate_decay_rate": 0.7,
+  "iterations_per_loop": 100,
+  "dataset": "goemotions"
+}
+
