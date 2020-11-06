@@ -3,7 +3,7 @@ from functools import partial
 import tensorflow as tf
 import tensorflow.keras as ks
 import tensorflow.keras.backend as K
-from official.vision.beta.projects.yolo.modeling.activations.mish import mish
+from official.modeling import tf_utils
 
 
 
@@ -107,10 +107,7 @@ class DarkConv(ks.layers.Layer):
       self._bn_axis = 1
 
     # activation params
-    if activation is None:
-      self._activation = 'linear'
-    else:
-      self._activation = activation
+    self._activation = activation
     self._leaky_alpha = leaky_alpha
 
     super(DarkConv, self).__init__(**kwargs)
@@ -153,10 +150,11 @@ class DarkConv(ks.layers.Layer):
       if self._activation == 'leaky':
         alpha = {"alpha": self._leaky_alpha}
         self._activation_fn = partial(tf.nn.leaky_relu, **alpha)
-      elif self._activation == 'mish':
-        self._activation_fn = mish
+      elif self._activation == "mish":
+        self._activation_fn = lambda x: x * tf.math.tanh(tf.math.softplus(x))
       else:
-        self._activation_fn = ks.layers.Activation(activation=self._activation)
+        self._activation_fn = tf_utils.get_activation(self._activation)
+      tf.print(self._activation_fn)
 
   def call(self, x):
     if self._groups != 1:
@@ -320,8 +318,14 @@ class DarkResidual(ks.layers.Layer):
                            leaky_alpha=self._leaky_alpha)
 
     self._shortcut = ks.layers.Add()
-    self._activation_fn = ks.layers.Activation(activation=self._sc_activation)
-
+    # self._activation_fn = ks.layers.Activation(activation=self._sc_activation)
+    if self._sc_activation == 'leaky':
+      alpha = {"alpha": self._leaky_alpha}
+      self._activation_fn = partial(tf.nn.leaky_relu, **alpha)
+    elif self._sc_activation == "mish":
+      self._activation_fn = lambda x: x * tf.math.tanh(tf.math.softplus(x))
+    else:
+      self._activation_fn = tf_utils.get_activation(self._sc_activation)
     super().build(input_shape)
 
   def call(self, inputs):
