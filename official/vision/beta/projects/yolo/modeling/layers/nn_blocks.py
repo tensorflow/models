@@ -266,22 +266,24 @@ class DarkResidual(ks.layers.Layer):
     super().__init__(**kwargs)
 
   def build(self, input_shape):
+    _dark_conv_args = {"use_bias" : self._use_bias,
+                       "kernel_initializer" : self._kernel_initializer,
+                       "bias_initializer" : self._bias_initializer,
+                       "bias_regularizer" : self._bias_regularizer,
+                       "use_bn" : self._use_bn,
+                       "use_sync_bn" : self._use_sync_bn,
+                       "norm_momentum" : self._norm_moment,
+                       "norm_epsilon" : self._norm_epsilon,
+                       "activation" : self._conv_activation,
+                       "kernel_regularizer" : self._kernel_regularizer,
+                       "leaky_alpha" : self._leaky_alpha
+                      }
     if self._downsample:
       self._dconv = DarkConv(filters=self._filters,
                              kernel_size=(3, 3),
                              strides=(2, 2),
                              padding='same',
-                             use_bias=self._use_bias,
-                             kernel_initializer=self._kernel_initializer,
-                             bias_initializer=self._bias_initializer,
-                             bias_regularizer=self._bias_regularizer,
-                             use_bn=self._use_bn,
-                             use_sync_bn=self._use_sync_bn,
-                             norm_momentum=self._norm_moment,
-                             norm_epsilon=self._norm_epsilon,
-                             activation=self._conv_activation,
-                             kernel_regularizer=self._kernel_regularizer,
-                             leaky_alpha=self._leaky_alpha)
+                             **_dark_conv_args)
     else:
       self._dconv = Identity()
 
@@ -289,32 +291,13 @@ class DarkResidual(ks.layers.Layer):
                            kernel_size=(1, 1),
                            strides=(1, 1),
                            padding='same',
-                           use_bias=self._use_bias,
-                           kernel_initializer=self._kernel_initializer,
-                           bias_initializer=self._bias_initializer,
-                           bias_regularizer=self._bias_regularizer,
-                           use_bn=self._use_bn,
-                           use_sync_bn=self._use_sync_bn,
-                           norm_momentum=self._norm_moment,
-                           norm_epsilon=self._norm_epsilon,
-                           activation=self._conv_activation,
-                           kernel_regularizer=self._kernel_regularizer,
-                           leaky_alpha=self._leaky_alpha)
+                           **_dark_conv_args)
+
     self._conv2 = DarkConv(filters=self._filters,
                            kernel_size=(3, 3),
                            strides=(1, 1),
                            padding='same',
-                           use_bias=self._use_bias,
-                           kernel_initializer=self._kernel_initializer,
-                           bias_initializer=self._bias_initializer,
-                           bias_regularizer=self._bias_regularizer,
-                           use_bn=self._use_bn,
-                           use_sync_bn=self._use_sync_bn,
-                           norm_momentum=self._norm_moment,
-                           norm_epsilon=self._norm_epsilon,
-                           activation=self._conv_activation,
-                           kernel_regularizer=self._kernel_regularizer,
-                           leaky_alpha=self._leaky_alpha)
+                           **_dark_conv_args)
 
     self._shortcut = ks.layers.Add()
     # self._activation_fn = ks.layers.Activation(activation=self._sc_activation)
@@ -430,21 +413,23 @@ class CSPTiny(ks.layers.Layer):
     super().__init__(**kwargs)
 
   def build(self, input_shape):
+    _dark_conv_args = {"use_bias" : self._use_bias,
+                       "kernel_initializer" : self._kernel_initializer,
+                       "bias_initializer" : self._bias_initializer,
+                       "bias_regularizer" : self._bias_regularizer,
+                       "use_bn" : self._use_bn,
+                       "use_sync_bn" : self._use_sync_bn,
+                       "norm_momentum" : self._norm_moment,
+                       "norm_epsilon" : self._norm_epsilon,
+                       "activation" : self._conv_activation,
+                       "kernel_regularizer" : self._kernel_regularizer,
+                       "leaky_alpha" : self._leaky_alpha
+                      }
     self._convlayer1 = DarkConv(filters=self._filters,
                                 kernel_size=(3, 3),
                                 strides=(1, 1),
                                 padding='same',
-                                use_bias=self._use_bias,
-                                kernel_initializer=self._kernel_initializer,
-                                bias_initializer=self._bias_initializer,
-                                bias_regularizer=self._bias_regularizer,
-                                kernel_regularizer=self._kernel_regularizer,
-                                use_bn=self._use_bn,
-                                use_sync_bn=self._use_sync_bn,
-                                norm_momentum=self._norm_moment,
-                                norm_epsilon=self._norm_epsilon,
-                                activation=self._conv_activation,
-                                leaky_alpha=self._leaky_alpha)
+                                **_dark_conv_args)
 
     self._convlayer2 = DarkConv(filters=self._filters // 2,
                                 kernel_size=(3, 3),
@@ -468,33 +453,13 @@ class CSPTiny(ks.layers.Layer):
                                 kernel_size=(3, 3),
                                 strides=(1, 1),
                                 padding='same',
-                                use_bias=self._use_bias,
-                                kernel_initializer=self._kernel_initializer,
-                                bias_initializer=self._bias_initializer,
-                                bias_regularizer=self._bias_regularizer,
-                                kernel_regularizer=self._kernel_regularizer,
-                                use_bn=self._use_bn,
-                                use_sync_bn=self._use_sync_bn,
-                                norm_momentum=self._norm_moment,
-                                norm_epsilon=self._norm_epsilon,
-                                activation=self._conv_activation,
-                                leaky_alpha=self._leaky_alpha)
+                                **_dark_conv_args)
 
     self._convlayer4 = DarkConv(filters=self._filters,
                                 kernel_size=(1, 1),
                                 strides=(1, 1),
                                 padding='same',
-                                use_bias=self._use_bias,
-                                kernel_initializer=self._kernel_initializer,
-                                bias_initializer=self._bias_initializer,
-                                bias_regularizer=self._bias_regularizer,
-                                kernel_regularizer=self._kernel_regularizer,
-                                use_bn=self._use_bn,
-                                use_sync_bn=self._use_sync_bn,
-                                norm_momentum=self._norm_moment,
-                                norm_epsilon=self._norm_epsilon,
-                                activation=self._conv_activation,
-                                leaky_alpha=self._leaky_alpha)
+                                **_dark_conv_args)
 
     self._maxpool = tf.keras.layers.MaxPool2D(pool_size=2,
                                               strides=2,
@@ -599,43 +564,29 @@ class CSPDownSample(ks.layers.Layer):
     self._norm_epsilon = norm_epsilon
 
   def build(self, input_shape):
+    _dark_conv_args = {"kernel_initializer" : self._kernel_initializer,
+                       "bias_initializer" : self._bias_initializer,
+                       "bias_regularizer" : self._bias_regularizer,
+                       "use_bn" : self._use_bn,
+                       "use_sync_bn" : self._use_sync_bn,
+                       "norm_momentum" : self._norm_moment,
+                       "norm_epsilon" : self._norm_epsilon,
+                       "activation" : self._activation,
+                       "kernel_regularizer" : self._kernel_regularizer,
+                      }
     self._conv1 = DarkConv(filters=self._filters,
                            kernel_size=(3, 3),
                            strides=(2, 2),
-                           kernel_initializer=self._kernel_initializer,
-                           bias_initializer=self._bias_initializer,
-                           bias_regularizer=self._bias_regularizer,
-                           kernel_regularizer=self._kernel_regularizer,
-                           use_bn=self._use_bn,
-                           use_sync_bn=self._use_sync_bn,
-                           norm_momentum=self._norm_moment,
-                           norm_epsilon=self._norm_epsilon,
-                           activation=self._activation)
+                           **_dark_conv_args)
     self._conv2 = DarkConv(filters=self._filters // self._filter_reduce,
                            kernel_size=(1, 1),
                            strides=(1, 1),
-                           kernel_initializer=self._kernel_initializer,
-                           bias_initializer=self._bias_initializer,
-                           bias_regularizer=self._bias_regularizer,
-                           kernel_regularizer=self._kernel_regularizer,
-                           use_bn=self._use_bn,
-                           use_sync_bn=self._use_sync_bn,
-                           norm_momentum=self._norm_moment,
-                           norm_epsilon=self._norm_epsilon,
-                           activation=self._activation)
+                           **_dark_conv_args)
 
     self._conv3 = DarkConv(filters=self._filters // self._filter_reduce,
                            kernel_size=(1, 1),
                            strides=(1, 1),
-                           kernel_initializer=self._kernel_initializer,
-                           bias_initializer=self._bias_initializer,
-                           bias_regularizer=self._bias_regularizer,
-                           kernel_regularizer=self._kernel_regularizer,
-                           use_bn=self._use_bn,
-                           use_sync_bn=self._use_sync_bn,
-                           norm_momentum=self._norm_moment,
-                           norm_epsilon=self._norm_epsilon,
-                           activation=self._activation)
+                           **_dark_conv_args)
 
   def call(self, inputs):
     x = self._conv1(inputs)
@@ -701,31 +652,26 @@ class CSPConnect(ks.layers.Layer):
     self._norm_epsilon = norm_epsilon
 
   def build(self, input_shape):
+    _dark_conv_args = {
+                    "kernel_initializer" : self._kernel_initializer,
+                    "bias_initializer" : self._bias_initializer,
+                    "bias_regularizer" : self._bias_regularizer,
+                    "use_bn" : self._use_bn,
+                    "use_sync_bn" : self._use_sync_bn,
+                    "norm_momentum" : self._norm_moment,
+                    "norm_epsilon" : self._norm_epsilon,
+                    "activation" : self._activation,
+                    "kernel_regularizer" : self._kernel_regularizer,
+                  }
     self._conv1 = DarkConv(filters=self._filters // self._filter_reduce,
                            kernel_size=(1, 1),
                            strides=(1, 1),
-                           kernel_initializer=self._kernel_initializer,
-                           bias_initializer=self._bias_initializer,
-                           bias_regularizer=self._bias_regularizer,
-                           kernel_regularizer=self._kernel_regularizer,
-                           use_bn=self._use_bn,
-                           use_sync_bn=self._use_sync_bn,
-                           norm_momentum=self._norm_moment,
-                           norm_epsilon=self._norm_epsilon,
-                           activation=self._activation)
+                           **_dark_conv_args)
     self._concat = ks.layers.Concatenate(axis=-1)
     self._conv2 = DarkConv(filters=self._filters,
                            kernel_size=(1, 1),
                            strides=(1, 1),
-                           kernel_initializer=self._kernel_initializer,
-                           bias_initializer=self._bias_initializer,
-                           bias_regularizer=self._bias_regularizer,
-                           kernel_regularizer=self._kernel_regularizer,
-                           use_bn=self._use_bn,
-                           use_sync_bn=self._use_sync_bn,
-                           norm_momentum=self._norm_moment,
-                           norm_epsilon=self._norm_epsilon,
-                           activation=self._activation)
+                           **_dark_conv_args)
 
   def call(self, inputs):
     x_prev, x_csp = inputs
