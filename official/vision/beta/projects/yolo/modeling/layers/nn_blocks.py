@@ -6,7 +6,6 @@ import tensorflow.keras.backend as K
 from official.modeling import tf_utils
 
 
-
 @ks.utils.register_keras_serializable(package='yolo')
 class Identity(ks.layers.Layer):
     def __init__(self, **kwargs):

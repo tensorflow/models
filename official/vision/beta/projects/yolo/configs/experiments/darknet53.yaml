@@ -9,6 +9,8 @@ task:
       type: 'darknet'
       darknet:
         model_id: 'darknet53'
+    norm_activation: 
+      activation: 'mish'
   losses:
     l2_weight_decay: 0.0005
     one_hot: True
