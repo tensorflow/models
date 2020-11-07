@@ -770,7 +770,8 @@ def result_dict_for_batched_example(images,
                                     scale_to_absolute=False,
                                     original_image_spatial_shapes=None,
                                     true_image_shapes=None,
-                                    max_gt_boxes=None):
+                                    max_gt_boxes=None,
+                                    label_id_offset=1):
   """Merges all detection and groundtruth information for a single example.
 
   Note that evaluation tools require classes that are 1-indexed, and so this
@@ -825,6 +826,7 @@ def result_dict_for_batched_example(images,
       containing the size of the unpadded original_image.
     max_gt_boxes: [batch_size] tensor representing the maximum number of
       groundtruth boxes to pad.
+    label_id_offset: offset for class ids.
 
   Returns:
     A dictionary with:
@@ -879,8 +881,6 @@ def result_dict_for_batched_example(images,
     ValueError: if true_image_shapes is not 2D int32 tensor of shape
       [3].
   """
-  label_id_offset = 1  # Applying label id offset (b/63711816)
-
   input_data_fields = fields.InputDataFields
   if original_image_spatial_shapes is None:
     original_image_spatial_shapes = tf.tile(
