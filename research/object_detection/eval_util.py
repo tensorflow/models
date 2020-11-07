@@ -1177,6 +1177,12 @@ def evaluator_options_from_eval_config(eval_config):
           'include_metrics_per_category': (
               eval_config.include_metrics_per_category)
       }
+
+      if (hasattr(eval_config, 'all_metrics_per_category') and
+          eval_config.all_metrics_per_category):
+        evaluator_options[eval_metric_fn_key].update({
+            'all_metrics_per_category': eval_config.all_metrics_per_category
+        })
       # For coco detection eval, if the eval_config proto contains the
       # "skip_predictions_for_unlabeled_class" field, include this field in
       # evaluator_options.

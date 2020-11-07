@@ -961,6 +961,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
 
   def __init__(self, categories,
                include_metrics_per_category=False,
+               all_metrics_per_category=False,
                super_categories=None):
     """Constructor.
 
@@ -969,6 +970,10 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         'id': (required) an integer id uniquely identifying this category.
         'name': (required) string representing category name e.g., 'cat', 'dog'.
       include_metrics_per_category: If True, include metrics for each category.
+      all_metrics_per_category: Whether to include all the summary metrics for
+        each category in per_category_ap. Be careful with setting it to true if
+        you have more than handful of categories, because it will pollute
+        your mldash.
       super_categories: None or a python dict mapping super-category names
         (strings) to lists of categories (corresponding to category names
         in the label_map).  Metrics are aggregated along these super-categories
@@ -984,6 +989,7 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
     self._annotation_id = 1
     self._include_metrics_per_category = include_metrics_per_category
     self._super_categories = super_categories
+    self._all_metrics_per_category = all_metrics_per_category
 
   def clear(self):
     """Clears the state to prepare for a fresh evaluation."""
@@ -1177,7 +1183,8 @@ class CocoMaskEvaluator(object_detection_evaluation.DetectionEvaluator):
         agnostic_mode=False, iou_type='segm')
     mask_metrics, mask_per_category_ap = mask_evaluator.ComputeMetrics(
         include_metrics_per_category=self._include_metrics_per_category,
-        super_categories=self._super_categories)
+        super_categories=self._super_categories,
+        all_metrics_per_category=self._all_metrics_per_category)
     mask_metrics.update(mask_per_category_ap)
     mask_metrics = {'DetectionMasks_'+ key: value
                     for key, value in mask_metrics.items()}
