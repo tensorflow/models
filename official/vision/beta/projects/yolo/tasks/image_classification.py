@@ -83,7 +83,6 @@ class ImageClassificationTask(image_classification.ImageClassificationTask):
           model_outputs=outputs, labels=labels, aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
-      # tf.print("training loss: ", loss, end="\r")
       scaled_loss = loss / num_replicas
 
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
