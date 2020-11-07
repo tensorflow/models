@@ -104,10 +104,10 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
           numpy array of keypoint visibilities with shape [num_gt_boxes,
           num_keypoints]. Integer is treated as an enum with 0=not labeled,
           1=labeled but not visible and 2=labeled and visible.
-        InputDataFields.groundtruth_labeled_classes (optional): a dictionary of
-          image_id to groundtruth_labeled_class, where groundtruth_labeled_class
-          is a 1-indexed integer numpy array indicating which classes have been
-          annotated over the image.
+        InputDataFields.groundtruth_labeled_classes (optional): a tensor of
+          shape [num_classes + 1] containing the multi-hot tensor indicating the
+          classes that each image is labeled for. Note that the classes labels
+          are 1-indexed.
     """
     if image_id in self._image_ids:
       tf.logging.warning('Ignoring ground truth with image id %s since it was '
@@ -150,8 +150,19 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
 
     self._annotation_id += groundtruth_dict[standard_fields.InputDataFields.
                                             groundtruth_boxes].shape[0]
-    self._groundtruth_labeled_classes[image_id] = groundtruth_dict.get(
-        standard_fields.InputDataFields.groundtruth_labeled_classes)
+    if (standard_fields.InputDataFields.groundtruth_labeled_classes
+       ) in groundtruth_dict:
+      labeled_classes = groundtruth_dict[
+          standard_fields.InputDataFields.groundtruth_labeled_classes]
+      if labeled_classes.shape != (len(self._category_id_set) + 1,):
+        raise ValueError('Invalid shape for groundtruth labeled classes: {}, '
+                         'num_categories_including_background: {}'.format(
+                             labeled_classes,
+                             len(self._category_id_set) + 1))
+      self._groundtruth_labeled_classes[image_id] = np.flatnonzero(
+          groundtruth_dict[standard_fields.InputDataFields
+                           .groundtruth_labeled_classes] == 1).tolist()
+
     # Boolean to indicate whether a detection has been added for this image.
     self._image_ids[image_id] = False
 
@@ -373,7 +384,11 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     # detection_classes. This assumes that all predictions will be kept to
     # compute eval metrics.
     if groundtruth_labeled_classes is None:
-      groundtruth_labeled_classes = detection_classes
+      groundtruth_labeled_classes = tf.reduce_max(
+          tf.one_hot(
+              tf.cast(detection_classes, tf.int32),
+              len(self._category_id_set) + 1),
+          axis=-2)
 
     if not image_id.shape.as_list():
       # Apply a batch dimension to all tensors.

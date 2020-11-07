@@ -200,22 +200,11 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
 
   if detection_model.groundtruth_has_field(
       input_data_fields.groundtruth_labeled_classes):
-    labeled_classes_list = detection_model.groundtruth_lists(
-        input_data_fields.groundtruth_labeled_classes)
-    labeled_classes = [
-        tf.where(x)[:, 0] + label_id_offset for x in labeled_classes_list
-    ]
-    if len(labeled_classes) > 1:
-      num_classes = labeled_classes_list[0].shape[0]
-      padded_labeled_classes = []
-      for x in labeled_classes:
-        padding = num_classes - tf.shape(x)[0]
-        padded_labeled_classes.append(tf.pad(x, [[0, padding]]))
-      groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.stack(
-          padded_labeled_classes)
-    else:
-      groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.stack(
-          labeled_classes)
+    groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.pad(
+        tf.stack(
+            detection_model.groundtruth_lists(
+                input_data_fields.groundtruth_labeled_classes)),
+        label_id_offset_paddings)
 
   groundtruth[input_data_fields.num_groundtruth_boxes] = (
       tf.tile([max_number_of_boxes], multiples=[groundtruth_boxes_shape[0]]))
@@ -832,12 +821,14 @@ def create_estimator_and_inputs(run_config,
       train_config=train_config,
       train_input_config=train_input_config,
       model_config=model_config)
-  eval_input_fns = [
-      create_eval_input_fn(
-          eval_config=eval_config,
-          eval_input_config=eval_input_config,
-          model_config=model_config) for eval_input_config in eval_input_configs
-  ]
+  eval_input_fns = []
+  for eval_input_config in eval_input_configs:
+    eval_input_fns.append(
+        create_eval_input_fn(
+            eval_config=eval_config,
+            eval_input_config=eval_input_config,
+            model_config=model_config))
+
   eval_input_names = [
       eval_input_config.name for eval_input_config in eval_input_configs
   ]

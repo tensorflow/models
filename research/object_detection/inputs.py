@@ -891,7 +891,7 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
 
 
 def eval_input(eval_config, eval_input_config, model_config,
-               model=None, params=None):
+               model=None, params=None, input_context=None):
   """Returns `features` and `labels` tensor dictionaries for evaluation.
 
   Args:
@@ -901,6 +901,9 @@ def eval_input(eval_config, eval_input_config, model_config,
     model: A pre-constructed Detection Model.
       If None, one will be created from the config.
     params: Parameter dictionary passed from the estimator.
+    input_context: optional, A tf.distribute.InputContext object used to
+      shard filenames and compute per-replica batch_size when this function
+      is being called per-replica.
 
   Returns:
     A tf.data.Dataset that holds (features, labels) tuple.
@@ -1021,6 +1024,7 @@ def eval_input(eval_config, eval_input_config, model_config,
       eval_input_config,
       batch_size=params['batch_size'] if params else eval_config.batch_size,
       transform_input_data_fn=transform_and_pad_input_data_fn,
+      input_context=input_context,
       reduce_to_frame_fn=reduce_to_frame_fn)
   return dataset
 
