@@ -449,8 +449,8 @@ class CSPTiny(tf.keras.layers.Layer):
 
     def call(self, inputs):
         x1 = self._convlayer1(inputs)
-        x_iterm = tf.split(x, self._groups, axis = -1)[self._group_id]
-        x2 = self._convlayer2(x_interm)  # grouping
+        x1_group = tf.split(x1, self._groups, axis = -1)[self._group_id]
+        x2 = self._convlayer2(x1_group)  # grouping
         x3 = self._convlayer3(x2)
         x4 = tf.concat([x3, x2], axis=-1)  # csp partial using grouping
         x5 = self._convlayer4(x4)
