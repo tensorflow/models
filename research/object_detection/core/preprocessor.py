@@ -2937,7 +2937,7 @@ def resize_to_range(image,
               for i in range(len(channels))
           ],
           axis=2)
-      new_image.set_shape([max_dimension, max_dimension, 3])
+      new_image.set_shape([max_dimension, max_dimension, len(channels)])
 
     result = [new_image]
     if masks is not None:
