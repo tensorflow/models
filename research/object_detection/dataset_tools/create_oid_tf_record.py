@@ -103,7 +103,7 @@ def main(_):
       image_id, image_annotations = image_data
       # In OID image file names are formed by appending ".jpg" to the image ID.
       image_path = os.path.join(FLAGS.input_images_directory, image_id + '.jpg')
-      with tf.gfile.Open(image_path) as image_file:
+      with tf.gfile.Open(image_path, 'rb') as image_file:
         encoded_image = image_file.read()
 
       tf_example = oid_tfrecord_creation.tf_example_from_annotations_data_frame(
