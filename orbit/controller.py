@@ -272,9 +272,9 @@ class Controller:
     return eval_output
 
   def train_and_evaluate(self,
-                         train_steps: int = None,
+                         train_steps: int,
                          eval_steps: int = -1,
-                         eval_interval: int = None):
+                         eval_interval: Optional[int] = None) -> None:
     """Runs interleaved training and evaluation.
 
     This method interleaves calls to `self.train()` and `self.evaluate()`,
