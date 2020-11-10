@@ -141,7 +141,8 @@ class TaggingTask(base_task.Task):
   def inference_step(self, inputs, model: tf.keras.Model):
     """Performs the forward step."""
     logits = model(inputs, training=False)
-    return {'logits': logits, 'predict_ids': tf.argmax(logits, axis=-1)}
+    return {'logits': logits,
+            'predict_ids': tf.argmax(logits, axis=-1, output_type=tf.int32)}
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     """Validatation step.
