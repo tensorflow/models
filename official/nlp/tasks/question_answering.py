@@ -14,9 +14,9 @@
 # limitations under the License.
 # ==============================================================================
 """Question answering task."""
-import collections
 import json
 import os
+from typing import List, Optional
 
 from absl import logging
 import dataclasses
@@ -58,6 +58,17 @@ class QuestionAnsweringConfig(cfg.TaskConfig):
   validation_data: cfg.DataConfig = cfg.DataConfig()
 
 
+@dataclasses.dataclass
+class RawAggregatedResult:
+  """Raw representation for SQuAD predictions."""
+  unique_id: int
+  start_logits: List[float]
+  end_logits: List[float]
+  start_indexes: Optional[List[int]] = None
+  end_indexes: Optional[List[int]] = None
+  class_logits: Optional[float] = None
+
+
 @task_factory.register_task_cls(QuestionAnsweringConfig)
 class QuestionAnsweringTask(base_task.Task):
   """Task object for question answering."""
@@ -91,7 +102,6 @@ class QuestionAnsweringTask(base_task.Task):
     else:
       encoder_network = encoders.build_encoder(self.task_config.model.encoder)
     encoder_cfg = self.task_config.model.encoder.get()
-    # Currently, we only supports bert-style question answering finetuning.
     return models.BertSpanLabeler(
         network=encoder_network,
         initializer=tf.keras.initializers.TruncatedNormal(
@@ -147,6 +157,7 @@ class QuestionAnsweringTask(base_task.Task):
       kwargs['do_lower_case'] = params.do_lower_case
       kwargs['tokenizer'] = tokenization.FullSentencePieceTokenizer(
           sp_model_file=params.vocab_file)
+      kwargs['xlnet_format'] = self.task_config.model.encoder.type == 'xlnet'
     elif params.tokenization == 'WordPiece':
       kwargs['tokenizer'] = tokenization.FullTokenizer(
           vocab_file=params.vocab_file, do_lower_case=params.do_lower_case)
@@ -176,7 +187,8 @@ class QuestionAnsweringTask(base_task.Task):
             input_type_ids=dummy_ids)
         y = dict(
             start_positions=tf.constant(0, dtype=tf.int32),
-            end_positions=tf.constant(1, dtype=tf.int32))
+            end_positions=tf.constant(1, dtype=tf.int32),
+            is_impossible=tf.constant(0, dtype=tf.int32))
         return (x, y)
 
       dataset = tf.data.Dataset.range(1)
@@ -235,25 +247,22 @@ class QuestionAnsweringTask(base_task.Task):
     }
     return logs
 
-  raw_aggregated_result = collections.namedtuple(
-      'RawResult', ['unique_id', 'start_logits', 'end_logits'])
-
   def aggregate_logs(self, state=None, step_outputs=None):
     assert step_outputs is not None, 'Got no logs from self.validation_step.'
     if state is None:
       state = []
 
-    for unique_ids, start_logits, end_logits in zip(
-        step_outputs['unique_ids'], step_outputs['start_logits'],
-        step_outputs['end_logits']):
-      u_ids, s_logits, e_logits = (unique_ids.numpy(), start_logits.numpy(),
-                                   end_logits.numpy())
-      for values in zip(u_ids, s_logits, e_logits):
-        state.append(
-            self.raw_aggregated_result(
-                unique_id=values[0],
-                start_logits=values[1].tolist(),
-                end_logits=values[2].tolist()))
+    for outputs in zip(step_outputs['unique_ids'],
+                       step_outputs['start_logits'],
+                       step_outputs['end_logits']):
+      numpy_values = [
+          output.numpy() for output in outputs if output is not None]
+
+      for values in zip(*numpy_values):
+        state.append(RawAggregatedResult(
+            unique_id=values[0],
+            start_logits=values[1],
+            end_logits=values[2]))
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs):
@@ -297,6 +306,127 @@ class QuestionAnsweringTask(base_task.Task):
           'final_f1': eval_metrics['final_f1']
       }
     return eval_metrics
+
+
+@dataclasses.dataclass
+class XLNetQuestionAnsweringConfig(QuestionAnsweringConfig):
+  """The config for the XLNet variation of QuestionAnswering."""
+  pass
+
+
+@task_factory.register_task_cls(XLNetQuestionAnsweringConfig)
+class XLNetQuestionAnsweringTask(QuestionAnsweringTask):
+  """XLNet variant of the Question Answering Task.
+
+  The main differences include:
+    - The encoder is an `XLNetBase` class.
+    - The `SpanLabeling` head is an instance of `XLNetSpanLabeling` which
+      predicts start/end positions and impossibility score. During inference,
+      it predicts the top N scores and indexes.
+  """
+
+  def build_model(self):
+    if self.task_config.hub_module_url and self.task_config.init_checkpoint:
+      raise ValueError('At most one of `hub_module_url` and '
+                       '`init_checkpoint` can be specified.')
+    if self.task_config.hub_module_url:
+      encoder_network = utils.get_encoder_from_hub(
+          self.task_config.hub_module_url)
+    else:
+      encoder_network = encoders.build_encoder(self.task_config.model.encoder)
+    encoder_cfg = self.task_config.model.encoder.get()
+    return models.XLNetSpanLabeler(
+        network=encoder_network,
+        start_n_top=self.task_config.n_best_size,
+        end_n_top=self.task_config.n_best_size,
+        initializer=tf.keras.initializers.RandomNormal(
+            stddev=encoder_cfg.initializer_range))
+
+  def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
+    start_positions = labels['start_positions']
+    end_positions = labels['end_positions']
+    is_impossible = labels['is_impossible']
+    is_impossible = tf.cast(tf.reshape(is_impossible, [-1]), tf.float32)
+
+    start_logits = model_outputs['start_logits']
+    end_logits = model_outputs['end_logits']
+    class_logits = model_outputs['class_logits']
+
+    start_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        start_positions, start_logits)
+    end_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        end_positions, end_logits)
+    is_impossible_loss = tf.keras.losses.binary_crossentropy(
+        is_impossible, class_logits, from_logits=True)
+
+    loss = (tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)) / 2
+    loss += tf.reduce_mean(is_impossible_loss) / 2
+    return loss
+
+  def process_metrics(self, metrics, labels, model_outputs):
+    metrics = dict([(metric.name, metric) for metric in metrics])
+    start_logits = model_outputs['start_logits']
+    end_logits = model_outputs['end_logits']
+    metrics['start_position_accuracy'].update_state(labels['start_positions'],
+                                                    start_logits)
+    metrics['end_position_accuracy'].update_state(labels['end_positions'],
+                                                  end_logits)
+
+  def process_compiled_metrics(self, compiled_metrics, labels, model_outputs):
+    start_logits = model_outputs['start_logits']
+    end_logits = model_outputs['end_logits']
+    compiled_metrics.update_state(
+        y_true=labels,  # labels has keys 'start_positions' and 'end_positions'.
+        y_pred={
+            'start_positions': start_logits,
+            'end_positions': end_logits,
+        })
+
+  def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
+    features, _ = inputs
+    unique_ids = features.pop('unique_ids')
+    model_outputs = self.inference_step(features, model)
+    start_top_predictions = model_outputs['start_top_predictions']
+    end_top_predictions = model_outputs['end_top_predictions']
+    start_indexes = model_outputs['start_top_index']
+    end_indexes = model_outputs['end_top_index']
+    class_logits = model_outputs['class_logits']
+
+    logs = {
+        self.loss: 0.0,  # TODO(lehou): compute the real validation loss.
+        'unique_ids': unique_ids,
+        'start_top_predictions': start_top_predictions,
+        'end_top_predictions': end_top_predictions,
+        'start_indexes': start_indexes,
+        'end_indexes': end_indexes,
+        'class_logits': class_logits,
+    }
+    return logs
+
+  def aggregate_logs(self, state=None, step_outputs=None):
+    assert step_outputs is not None, 'Got no logs from self.validation_step.'
+    if state is None:
+      state = []
+
+    for outputs in zip(step_outputs['unique_ids'],
+                       step_outputs['start_top_predictions'],
+                       step_outputs['end_top_predictions'],
+                       step_outputs['start_indexes'],
+                       step_outputs['end_indexes'],
+                       step_outputs['class_logits']):
+      numpy_values = [
+          output.numpy() for output in outputs]
+
+      for (unique_id, start_top_predictions, end_top_predictions, start_indexes,
+           end_indexes, class_logits) in zip(*numpy_values):
+        state.append(RawAggregatedResult(
+            unique_id=unique_id,
+            start_logits=start_top_predictions.tolist(),
+            end_logits=end_top_predictions.tolist(),
+            start_indexes=start_indexes.tolist(),
+            end_indexes=end_indexes.tolist(),
+            class_logits=class_logits))
+    return state
 
 
 def predict(task: QuestionAnsweringTask, params: cfg.DataConfig,

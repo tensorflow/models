@@ -629,6 +629,7 @@ class XLNetBase(tf.keras.layers.Layer):
                       "enabled. Please enable `two_stream` to enable two "
                       "stream attention.")
 
+    dtype = input_mask.dtype if input_mask is not None else tf.float32
     query_attention_mask, content_attention_mask = _compute_attention_mask(
         input_mask=input_mask,
         permutation_mask=permutation_mask,
@@ -636,7 +637,7 @@ class XLNetBase(tf.keras.layers.Layer):
         seq_length=seq_length,
         memory_length=memory_length,
         batch_size=batch_size,
-        dtype=tf.float32)
+        dtype=dtype)
     relative_position_encoding = _compute_positional_encoding(
         attention_type=self._attention_type,
         position_encoding_layer=self.position_encoding,

@@ -137,9 +137,9 @@ class XLNetClassifierTest(keras_parameterized.TestCase):
 @keras_parameterized.run_all_keras_modes
 class XLNetSpanLabelerTest(keras_parameterized.TestCase):
 
-  @parameterized.parameters(1, 2)
-  def test_xlnet_trainer(self, top_n):
+  def test_xlnet_trainer(self):
     """Validate that the Keras object can be created."""
+    top_n = 2
     seq_length = 4
     # Build a simple XLNet based network to use with the XLNet trainer.
     xlnet_base = _get_xlnet_base()
@@ -153,46 +153,50 @@ class XLNetSpanLabelerTest(keras_parameterized.TestCase):
         span_labeling_activation='tanh',
         dropout_rate=0.1)
     inputs = dict(
-        input_ids=tf.keras.layers.Input(
+        input_word_ids=tf.keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_word_ids'),
-        segment_ids=tf.keras.layers.Input(
-            shape=(seq_length,), dtype=tf.int32, name='segment_ids'),
+        input_type_ids=tf.keras.layers.Input(
+            shape=(seq_length,), dtype=tf.int32, name='input_type_ids'),
         input_mask=tf.keras.layers.Input(
             shape=(seq_length,), dtype=tf.float32, name='input_mask'),
-        position_mask=tf.keras.layers.Input(
-            shape=(seq_length,), dtype=tf.float32, name='position_mask'),
+        paragraph_mask=tf.keras.layers.Input(
+            shape=(seq_length,), dtype=tf.float32, name='paragraph_mask'),
         class_index=tf.keras.layers.Input(
             shape=(), dtype=tf.int32, name='class_index'),
         start_positions=tf.keras.layers.Input(
             shape=(), dtype=tf.int32, name='start_positions'))
-    outputs, _ = xlnet_trainer_model(inputs)
+    outputs = xlnet_trainer_model(inputs)
     self.assertIsInstance(outputs, dict)
 
     # Test tensor value calls for the created model.
     batch_size = 2
     sequence_shape = (batch_size, seq_length)
     inputs = dict(
-        input_ids=np.random.randint(10, size=sequence_shape, dtype='int32'),
-        segment_ids=np.random.randint(2, size=sequence_shape, dtype='int32'),
+        input_word_ids=np.random.randint(
+            10, size=sequence_shape, dtype='int32'),
+        input_type_ids=np.random.randint(2, size=sequence_shape, dtype='int32'),
         input_mask=np.random.randint(2, size=sequence_shape).astype('float32'),
-        position_mask=np.random.randint(
+        paragraph_mask=np.random.randint(
             1, size=(sequence_shape)).astype('float32'),
         class_index=np.random.randint(1, size=(batch_size)).astype('uint8'),
         start_positions=tf.random.uniform(
             shape=(batch_size,), maxval=5, dtype=tf.int32))
-    outputs, _ = xlnet_trainer_model(inputs)
-    expected_inference_keys = {
-        'start_top_log_probs', 'end_top_log_probs', 'class_logits',
-        'start_top_index', 'end_top_index',
-    }
-    self.assertSetEqual(expected_inference_keys, set(outputs.keys()))
 
-    outputs, _ = xlnet_trainer_model(inputs, training=True)
-    self.assertIsInstance(outputs, dict)
-    expected_train_keys = {
-        'start_log_probs', 'end_log_probs', 'class_logits'
+    common_keys = {
+        'start_logits', 'end_logits', 'start_predictions', 'end_predictions',
+        'class_logits',
     }
-    self.assertSetEqual(expected_train_keys, set(outputs.keys()))
+    inference_keys = {
+        'start_top_predictions', 'end_top_predictions', 'start_top_index',
+        'end_top_index',
+    }
+
+    outputs = xlnet_trainer_model(inputs)
+    self.assertSetEqual(common_keys | inference_keys, set(outputs.keys()))
+
+    outputs = xlnet_trainer_model(inputs, training=True)
+    self.assertIsInstance(outputs, dict)
+    self.assertSetEqual(common_keys, set(outputs.keys()))
     self.assertIsInstance(outputs, dict)
 
   def test_serialize_deserialize(self):

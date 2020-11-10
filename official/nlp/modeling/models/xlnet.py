@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""XLNet cls-token classifier."""
+"""XLNet models."""
 # pylint: disable=g-classes-have-attributes
 
 from typing import Any, Mapping, Union
@@ -127,7 +127,7 @@ class XLNetSpanLabeler(tf.keras.Model):
     start_n_top: Beam size for span start.
     end_n_top: Beam size for span end.
     dropout_rate: The dropout rate for the span labeling layer.
-    span_labeling_activation
+    span_labeling_activation: The activation for the span labeling head.
     initializer: The initializer (if any) to use in the span labeling network.
       Defaults to a Glorot uniform initializer.
   """
@@ -135,9 +135,9 @@ class XLNetSpanLabeler(tf.keras.Model):
   def __init__(
       self,
       network: Union[tf.keras.layers.Layer, tf.keras.Model],
-      start_n_top: int,
-      end_n_top: int,
-      dropout_rate: float,
+      start_n_top: int = 5,
+      end_n_top: int = 5,
+      dropout_rate: float = 0.1,
       span_labeling_activation: tf.keras.initializers.Initializer = 'tanh',
       initializer: tf.keras.initializers.Initializer = 'glorot_uniform',
       **kwargs):
@@ -165,24 +165,27 @@ class XLNetSpanLabeler(tf.keras.Model):
         initializer=self._initializer)
 
   def call(self, inputs: Mapping[str, Any]):
-    input_ids = inputs['input_ids']
-    segment_ids = inputs['segment_ids']
+    input_ids = inputs['input_word_ids']
+    segment_ids = inputs['input_type_ids']
     input_mask = inputs['input_mask']
+    class_index = inputs['class_index']
+    paragraph_mask = inputs['paragraph_mask']
+    start_positions = inputs.get('start_positions', None)
 
-    class_index = tf.reshape(inputs['class_index'], [-1])
-    position_mask = inputs['position_mask']
-    start_positions = inputs['start_positions']
-
-    attention_output, new_states = self._network(
+    attention_output, _ = self._network(
         input_ids=input_ids,
         segment_ids=segment_ids,
         input_mask=input_mask)
     outputs = self.span_labeling(
         sequence_data=attention_output,
         class_index=class_index,
-        position_mask=position_mask,
+        paragraph_mask=paragraph_mask,
         start_positions=start_positions)
-    return outputs, new_states
+    return outputs
+
+  @property
+  def checkpoint_items(self):
+    return dict(encoder=self._network)
 
   def get_config(self):
     return self._config

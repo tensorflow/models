@@ -18,11 +18,9 @@ import collections
 import tensorflow as tf
 
 
-def _apply_position_mask(logits, position_mask):
+def _apply_paragraph_mask(logits, paragraph_mask):
   """Applies a position mask to calculated logits."""
-  if tf.rank(logits) != tf.rank(position_mask):
-    position_mask = position_mask[:, None, :]
-  masked_logits = logits * (1 - position_mask) - 1e30 * position_mask
+  masked_logits = logits * (paragraph_mask) - 1e30 * (1 - paragraph_mask)
   return tf.nn.log_softmax(masked_logits, -1), masked_logits
 
 
@@ -137,8 +135,8 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
 
   def __init__(self,
                input_width,
-               start_n_top,
-               end_n_top,
+               start_n_top=5,
+               end_n_top=5,
                activation='tanh',
                dropout_rate=0.,
                initializer='glorot_uniform',
@@ -152,6 +150,8 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
         'end_n_top': end_n_top,
         'dropout_rate': dropout_rate,
     }
+    if start_n_top <= 1:
+      raise ValueError('`start_n_top` must be greater than 1.')
     self._start_n_top = start_n_top
     self._end_n_top = end_n_top
     self.start_logits_dense = tf.keras.layers.Dense(
@@ -210,16 +210,12 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
     end_logits = self.end_logits_layer_norm(end_logits)
     end_logits = self.end_logits_output_dense(end_logits)
     end_logits = tf.squeeze(end_logits)
-    if tf.rank(end_logits) > 2:
-      # shape = [B, S, K] -> [B, K, S]
-      end_logits = tf.transpose(end_logits, [0, 2, 1])
-
     return end_logits
 
   def call(self,
            sequence_data,
            class_index,
-           position_mask=None,
+           paragraph_mask=None,
            start_positions=None,
            training=False):
     """Implements call().
@@ -234,31 +230,35 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
       sequence_data: The input sequence data of shape
         (batch_size, seq_length, input_width).
       class_index: The class indices of the inputs of shape (batch_size,).
-      position_mask: Invalid position mask such as query and special symbols
+      paragraph_mask: Invalid position mask such as query and special symbols
         (e.g. PAD, SEP, CLS) of shape (batch_size,).
       start_positions: The start positions of each example of shape
         (batch_size,).
       training: Whether or not this is the training phase.
 
     Returns:
-      A dictionary with the keys 'cls_logits' and
-        - (if training)              'start_log_probs', 'end_log_probs'.
-        - (if inference/beam search) 'start_top_log_probs', 'start_top_index',
-                                     'end_top_log_probs', 'end_top_index'.
+      A dictionary with the keys 'start_predictions', 'end_predictions',
+      'start_logits', 'end_logits'.
+
+      If inference, then 'start_top_predictions', 'start_top_index',
+      'end_top_predictions', 'end_top_index' are also included.
 
     """
+    paragraph_mask = tf.cast(paragraph_mask, dtype=sequence_data.dtype)
+    class_index = tf.reshape(class_index, [-1])
+
     seq_length = tf.shape(sequence_data)[1]
     start_logits = self.start_logits_dense(sequence_data)
     start_logits = tf.squeeze(start_logits, -1)
-    start_log_probs, masked_start_logits = _apply_position_mask(
-        start_logits, position_mask)
+    start_predictions, masked_start_logits = _apply_paragraph_mask(
+        start_logits, paragraph_mask)
 
     compute_with_beam_search = not training or start_positions is None
 
     if compute_with_beam_search:
       # Compute end logits using beam search.
-      start_top_log_probs, start_top_index = tf.nn.top_k(
-          start_log_probs, k=self._start_n_top)
+      start_top_predictions, start_top_index = tf.nn.top_k(
+          start_predictions, k=self._start_n_top)
       start_index = tf.one_hot(
           start_top_index, depth=seq_length, axis=-1, dtype=tf.float32)
       # start_index: [batch_size, end_n_top, seq_length]
@@ -272,8 +272,13 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
                           [1, 1, self._start_n_top, 1])
       end_input = tf.concat([end_input, start_features], axis=-1)
       # end_input: [batch_size, seq_length, end_n_top, 2*input_width]
+      paragraph_mask = paragraph_mask[:, None, :]
+      end_logits = self.end_logits(end_input)
+
+      # Note: this will fail if start_n_top is not >= 1.
+      end_logits = tf.transpose(end_logits, [0, 2, 1])
     else:
-      start_positions = tf.reshape(start_positions, -1)
+      start_positions = tf.reshape(start_positions, [-1])
       start_index = tf.one_hot(
           start_positions, depth=seq_length, axis=-1, dtype=tf.float32)
       # start_index: [batch_size, seq_length]
@@ -285,24 +290,28 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
       end_input = tf.concat([sequence_data, start_features],
                             axis=-1)
       # end_input: [batch_size, seq_length, 2*input_width]
+      end_logits = self.end_logits(end_input)
+    end_predictions, masked_end_logits = _apply_paragraph_mask(
+        end_logits, paragraph_mask)
 
-    end_logits = self.end_logits(end_input)
-    end_log_probs, _ = _apply_position_mask(end_logits, position_mask)
+    output_dict = dict(
+        start_predictions=start_predictions,
+        end_predictions=end_predictions,
+        start_logits=masked_start_logits,
+        end_logits=masked_end_logits)
 
-    output_dict = {}
-    if training:
-      output_dict['start_log_probs'] = start_log_probs
-      output_dict['end_log_probs'] = end_log_probs
-    else:
-      end_top_log_probs, end_top_index = tf.nn.top_k(
-          end_log_probs, k=self._end_n_top)
-      end_top_log_probs = tf.reshape(end_top_log_probs,
-                                     [-1, self._start_n_top * self._end_n_top])
-      end_top_index = tf.reshape(end_top_index,
-                                 [-1, self._start_n_top * self._end_n_top])
-      output_dict['start_top_log_probs'] = start_top_log_probs
+    if not training:
+      end_top_predictions, end_top_index = tf.nn.top_k(
+          end_predictions, k=self._end_n_top)
+      end_top_predictions = tf.reshape(
+          end_top_predictions,
+          [-1, self._start_n_top * self._end_n_top])
+      end_top_index = tf.reshape(
+          end_top_index,
+          [-1, self._start_n_top * self._end_n_top])
+      output_dict['start_top_predictions'] = start_top_predictions
       output_dict['start_top_index'] = start_top_index
-      output_dict['end_top_log_probs'] = end_top_log_probs
+      output_dict['end_top_predictions'] = end_top_predictions
       output_dict['end_top_index'] = end_top_index
 
     # get the representation of CLS
