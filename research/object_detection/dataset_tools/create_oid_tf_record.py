@@ -30,7 +30,7 @@ This script will include every image found in the input_images_directory in the
 output TFRecord, even if the image has no corresponding bounding box annotations
 in the input_annotations_csv. If input_image_label_annotations_csv is specified,
 it will add image-level labels as well. Note that the information of whether a
-label is positivelly or negativelly verified is NOT added to tfrecord.
+label is positively or negatively verified is NOT added to tfrecord.
 """
 from __future__ import absolute_import
 from __future__ import division
