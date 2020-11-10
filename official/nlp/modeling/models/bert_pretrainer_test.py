@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow.python.keras import keras_parameterized  # pylint: disable=g-direct-tensorflow-import
+from official.nlp.modeling import layers
 from official.nlp.modeling import networks
 from official.nlp.modeling.models import bert_pretrainer
 
@@ -112,8 +113,10 @@ class BertPretrainerTest(keras_parameterized.TestCase):
   @parameterized.parameters(itertools.product(
       (False, True),
       (False, True),
+      (False, True),
   ))
-  def test_bert_pretrainerv2(self, dict_outputs, return_all_encoder_outputs):
+  def test_bert_pretrainerv2(self, dict_outputs, return_all_encoder_outputs,
+                             use_customized_masked_lm):
     """Validate that the Keras object can be created."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
@@ -129,8 +132,14 @@ class BertPretrainerTest(keras_parameterized.TestCase):
         dict_outputs=dict_outputs)
 
     # Create a BERT trainer with the created network.
+    if use_customized_masked_lm:
+      customized_masked_lm = layers.MaskedLM(
+          embedding_table=test_network.get_embedding_table())
+    else:
+      customized_masked_lm = None
+
     bert_trainer_model = bert_pretrainer.BertPretrainerV2(
-        encoder_network=test_network)
+        encoder_network=test_network, customized_masked_lm=customized_masked_lm)
     num_token_predictions = 20
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
