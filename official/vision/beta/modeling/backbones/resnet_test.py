@@ -83,6 +83,21 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
       network = resnet.ResNet(model_id=50, use_sync_bn=use_sync_bn)
       _ = network(inputs)
 
+  @parameterized.parameters(
+      (128, 34, 1, 'v0', None),
+      (128, 34, 1, 'v1', 0.25),
+      (128, 50, 4, 'v0', None),
+      (128, 50, 4, 'v1', 0.25),
+  )
+  def test_resnet_addons(self, input_size, model_id, endpoint_filter_scale,
+                         stem_type, se_ratio):
+    """Test creation of ResNet family models."""
+    tf.keras.backend.set_image_data_format('channels_last')
+    network = resnet.ResNet(
+        model_id=model_id, stem_type=stem_type, se_ratio=se_ratio)
+    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
+    _ = network(inputs)
+
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
@@ -98,6 +113,8 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     # Create a network object that sets all of its config options.
     kwargs = dict(
         model_id=50,
+        stem_type='v0',
+        se_ratio=None,
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,

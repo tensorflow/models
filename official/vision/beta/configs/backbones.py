@@ -26,6 +26,8 @@ from official.modeling import hyperparams
 class ResNet(hyperparams.Config):
   """ResNet config."""
   model_id: int = 50
+  stem_type: str = 'v0'
+  se_ratio: float = 0.0
 
 
 @dataclasses.dataclass
