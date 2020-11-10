@@ -62,6 +62,7 @@ class ResidualBlock(tf.keras.layers.Layer):
                filters,
                strides,
                use_projection=False,
+               se_ratio=None,
                stochastic_depth_drop_rate=None,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
@@ -82,6 +83,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         shortcut (versus the default identity shortcut). This is usually `True`
         for the first block of a block group, which may change the number of
         filters and the resolution.
+      se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
       stochastic_depth_drop_rate: `float` or None. if not None, drop rate for
         the stochastic depth layer.
       kernel_initializer: kernel_initializer for convolutional layers.
@@ -101,6 +103,7 @@ class ResidualBlock(tf.keras.layers.Layer):
     self._filters = filters
     self._strides = strides
     self._use_projection = use_projection
+    self._se_ratio = se_ratio
     self._use_sync_bn = use_sync_bn
     self._activation = activation
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
@@ -163,6 +166,17 @@ class ResidualBlock(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
+    if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
+      self._squeeze_excitation = nn_layers.SqueezeExcitation(
+          in_filters=self._filters,
+          out_filters=self._filters,
+          se_ratio=self._se_ratio,
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)
+    else:
+      self._squeeze_excitation = None
+
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(
           self._stochastic_depth_drop_rate)
@@ -176,6 +190,7 @@ class ResidualBlock(tf.keras.layers.Layer):
         'filters': self._filters,
         'strides': self._strides,
         'use_projection': self._use_projection,
+        'se_ratio': self._se_ratio,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
@@ -201,6 +216,9 @@ class ResidualBlock(tf.keras.layers.Layer):
     x = self._conv2(x)
     x = self._norm2(x)
 
+    if self._squeeze_excitation:
+      x = self._squeeze_excitation(x)
+
     if self._stochastic_depth:
       x = self._stochastic_depth(x, training=training)
 
@@ -216,6 +234,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
                strides,
                dilation_rate=1,
                use_projection=False,
+               se_ratio=None,
                stochastic_depth_drop_rate=None,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
@@ -237,6 +256,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         shortcut (versus the default identity shortcut). This is usually `True`
         for the first block of a block group, which may change the number of
         filters and the resolution.
+      se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
       stochastic_depth_drop_rate: `float` or None. if not None, drop rate for
         the stochastic depth layer.
       kernel_initializer: kernel_initializer for convolutional layers.
@@ -257,6 +277,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
     self._strides = strides
     self._dilation_rate = dilation_rate
     self._use_projection = use_projection
+    self._se_ratio = se_ratio
     self._use_sync_bn = use_sync_bn
     self._activation = activation
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
@@ -331,6 +352,17 @@ class BottleneckBlock(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
+    if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
+      self._squeeze_excitation = nn_layers.SqueezeExcitation(
+          in_filters=self._filters * 4,
+          out_filters=self._filters * 4,
+          se_ratio=self._se_ratio,
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)
+    else:
+      self._squeeze_excitation = None
+
     if self._stochastic_depth_drop_rate:
       self._stochastic_depth = nn_layers.StochasticDepth(
           self._stochastic_depth_drop_rate)
@@ -345,6 +377,7 @@ class BottleneckBlock(tf.keras.layers.Layer):
         'strides': self._strides,
         'dilation_rate': self._dilation_rate,
         'use_projection': self._use_projection,
+        'se_ratio': self._se_ratio,
         'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
@@ -373,6 +406,9 @@ class BottleneckBlock(tf.keras.layers.Layer):
 
     x = self._conv3(x)
     x = self._norm3(x)
+
+    if self._squeeze_excitation:
+      x = self._squeeze_excitation(x)
 
     if self._stochastic_depth:
       x = self._stochastic_depth(x, training=training)
