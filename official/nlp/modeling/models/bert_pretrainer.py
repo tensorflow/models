@@ -177,6 +177,10 @@ class BertPretrainerV2(tf.keras.Model):
       to a Glorot uniform initializer.
     classification_heads: A list of optional head layers to transform on encoder
       sequence outputs.
+    customized_masked_lm: A customized masked_lm layer. If None, will create
+      a standard layer from `layers.MaskedLM`; if not None, will use the
+      specified masked_lm layer. Above arguments `mlm_activation` and
+      `mlm_initializer` will be ignored.
     name: The name of the model.
   Inputs: Inputs defined by the encoder network, plus `masked_lm_positions` as a
     dictionary.
@@ -191,6 +195,7 @@ class BertPretrainerV2(tf.keras.Model):
       mlm_activation=None,
       mlm_initializer='glorot_uniform',
       classification_heads: Optional[List[tf.keras.layers.Layer]] = None,
+      customized_masked_lm: Optional[tf.keras.layers.Layer] = None,
       name: str = 'bert',
       **kwargs):
     self._self_setattr_tracking = False
@@ -226,11 +231,14 @@ class BertPretrainerV2(tf.keras.Model):
         self.classification_heads):
       raise ValueError('Classification heads should have unique names.')
 
-    self.masked_lm = layers.MaskedLM(
-        embedding_table=self.encoder_network.get_embedding_table(),
-        activation=mlm_activation,
-        initializer=mlm_initializer,
-        name='cls/predictions')
+    if customized_masked_lm is not None:
+      self.masked_lm = customized_masked_lm
+    else:
+      self.masked_lm = layers.MaskedLM(
+          embedding_table=self.encoder_network.get_embedding_table(),
+          activation=mlm_activation,
+          initializer=mlm_initializer,
+          name='cls/predictions')
     masked_lm_positions = tf.keras.layers.Input(
         shape=(None,), name='masked_lm_positions', dtype=tf.int32)
     inputs.append(masked_lm_positions)
