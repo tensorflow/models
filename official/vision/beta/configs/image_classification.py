@@ -58,12 +58,18 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Evaluation(hyperparams.Config):
+  top_k: int = 5
+
+
+@dataclasses.dataclass
 class ImageClassificationTask(cfg.TaskConfig):
   """The task config."""
   model: ImageClassificationModel = ImageClassificationModel()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
+  evaluation: Evaluation = Evaluation()
   gradient_clip_norm: float = 0.0
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
