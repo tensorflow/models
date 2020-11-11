@@ -34,64 +34,6 @@ def generate_fake_input(batch_size=1, seq_len=5, vocab_size=10000, seed=0):
 
 class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
 
-  def test_embedding_layer_with_token_type(self):
-    layer = mobile_bert_encoder.MobileBertEmbedding(10, 8, 2, 16)
-    input_seq = tf.Variable([[2, 3, 4, 5]])
-    token_type = tf.Variable([[0, 1, 1, 1]])
-    output = layer(input_seq, token_type)
-    output_shape = output.shape.as_list()
-    expected_shape = [1, 4, 16]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
-
-  def test_embedding_layer_without_token_type(self):
-    layer = mobile_bert_encoder.MobileBertEmbedding(10, 8, 2, 16)
-    input_seq = tf.Variable([[2, 3, 4, 5]])
-    output = layer(input_seq)
-    output_shape = output.shape.as_list()
-    expected_shape = [1, 4, 16]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
-
-  def test_no_norm(self):
-    layer = mobile_bert_encoder.NoNorm()
-    feature = tf.random.normal([2, 3, 4])
-    output = layer(feature)
-    output_shape = output.shape.as_list()
-    expected_shape = [2, 3, 4]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
-
-  @parameterized.named_parameters(('with_kq_shared_bottleneck', False),
-                                  ('without_kq_shared_bottleneck', True))
-  def test_transfomer_kq_shared_bottleneck(self, is_kq_shared):
-    feature = tf.random.uniform([2, 3, 512])
-    layer = mobile_bert_encoder.TransformerLayer(
-        key_query_shared_bottleneck=is_kq_shared)
-    output = layer(feature)
-    output_shape = output.shape.as_list()
-    expected_shape = [2, 3, 512]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
-
-  def test_transfomer_with_mask(self):
-    feature = tf.random.uniform([2, 3, 512])
-    input_mask = [[[0., 0., 1.], [0., 0., 1.], [0., 0., 1.]],
-                  [[0., 1., 1.], [0., 1., 1.], [0., 1., 1.]]]
-    input_mask = np.asarray(input_mask)
-    layer = mobile_bert_encoder.TransformerLayer()
-    output = layer(feature, input_mask)
-    output_shape = output.shape.as_list()
-    expected_shape = [2, 3, 512]
-    self.assertListEqual(output_shape, expected_shape, msg=None)
-
-  def test_transfomer_return_attention_score(self):
-    sequence_length = 5
-    num_attention_heads = 8
-    feature = tf.random.uniform([2, sequence_length, 512])
-    layer = mobile_bert_encoder.TransformerLayer(
-        num_attention_heads=num_attention_heads)
-    _, attention_score = layer(feature, return_attention_scores=True)
-    expected_shape = [2, num_attention_heads, sequence_length, sequence_length]
-    self.assertListEqual(
-        attention_score.shape.as_list(), expected_shape, msg=None)
-
   @parameterized.named_parameters(
       ('default_setting', 'relu', True, 'no_norm', False),
       ('gelu', 'gelu', True, 'no_norm', False),
