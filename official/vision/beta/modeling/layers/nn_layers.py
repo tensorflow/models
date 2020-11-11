@@ -167,6 +167,26 @@ class SqueezeExcitation(tf.keras.layers.Layer):
     return x * inputs
 
 
+def get_stochastic_depth_rate(init_rate, i, n):
+  """Get drop connect rate for the ith block.
+
+  Args:
+    init_rate: `float` initial drop rate.
+    i: `int` order of the current block.
+    n: `int` total number of blocks.
+
+  Returns:
+    Drop rate of the ith block.
+  """
+  if init_rate is not None:
+    if init_rate < 0 or init_rate > 1:
+      raise ValueError('Initial drop rate must be within 0 and 1.')
+    rate = init_rate * float(i) / n
+  else:
+    rate = None
+  return rate
+
+
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class StochasticDepth(tf.keras.layers.Layer):
   """Stochastic depth layer."""

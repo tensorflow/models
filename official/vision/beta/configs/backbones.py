@@ -28,6 +28,7 @@ class ResNet(hyperparams.Config):
   model_id: int = 50
   stem_type: str = 'v0'
   se_ratio: float = 0.0
+  stochastic_depth_drop_rate: float = 0.0
 
 
 @dataclasses.dataclass
@@ -41,8 +42,8 @@ class DilatedResNet(hyperparams.Config):
 class EfficientNet(hyperparams.Config):
   """EfficientNet config."""
   model_id: str = 'b0'
-  stochastic_depth_drop_rate: float = 0.0
   se_ratio: float = 0.0
+  stochastic_depth_drop_rate: float = 0.0
 
 
 @dataclasses.dataclass
