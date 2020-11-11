@@ -21,6 +21,8 @@ from official.nlp.modeling.layers.gated_feedforward import GatedFeedforward
 from official.nlp.modeling.layers.masked_lm import MaskedLM
 from official.nlp.modeling.layers.masked_softmax import MaskedSoftmax
 from official.nlp.modeling.layers.mat_mul_with_margin import MatMulWithMargin
+from official.nlp.modeling.layers.mobile_bert_layers import MobileBertEmbedding
+from official.nlp.modeling.layers.mobile_bert_layers import MobileBertTransformer
 from official.nlp.modeling.layers.multi_channel_attention import *
 from official.nlp.modeling.layers.on_device_embedding import OnDeviceEmbedding
 from official.nlp.modeling.layers.position_embedding import RelativePositionEmbedding
