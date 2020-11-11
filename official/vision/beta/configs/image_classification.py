@@ -70,7 +70,6 @@ class ImageClassificationTask(cfg.TaskConfig):
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
   evaluation: Evaluation = Evaluation()
-  gradient_clip_norm: float = 0.0
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
 

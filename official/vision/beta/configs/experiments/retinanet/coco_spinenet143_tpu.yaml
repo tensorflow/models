@@ -4,7 +4,6 @@ runtime:
   mixed_precision_dtype: 'bfloat16'
 task:
   annotation_file: '/readahead/200M/placer/prod/home/snaggletooth/test/data/coco/instances_val2017.json'
-  gradient_clip_norm: 10.0
   losses:
     l2_weight_decay: 4.0e-05
   model:

@@ -87,7 +87,6 @@ class SemanticSegmentationTask(cfg.TaskConfig):
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
-  gradient_clip_norm: float = 0.0
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: Union[
       str, List[str]] = 'all'  # all, backbone, and/or decoder

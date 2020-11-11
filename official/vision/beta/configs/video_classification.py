@@ -97,7 +97,6 @@ class VideoClassificationTask(cfg.TaskConfig):
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
-  gradient_clip_norm: float = -1.0
 
 
 def add_trainer(experiment: cfg.ExperimentConfig,
