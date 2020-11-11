@@ -24,6 +24,7 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 
@@ -80,6 +81,7 @@ class ResNet(tf.keras.Model):
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
                stem_type='v0',
                se_ratio=None,
+               init_stochastic_depth_rate=0.0,
                activation='relu',
                use_sync_bn=False,
                norm_momentum=0.99,
@@ -96,6 +98,7 @@ class ResNet(tf.keras.Model):
       stem_type: `str` stem type of ResNet. Default to `v0`. If set to `v1`,
         use ResNet-C type stem (https://arxiv.org/abs/1812.01187).
       se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
+      init_stochastic_depth_rate: `float` initial stochastic depth rate.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float` normalization omentum for the moving average.
@@ -112,6 +115,7 @@ class ResNet(tf.keras.Model):
     self._input_specs = input_specs
     self._stem_type = stem_type
     self._se_ratio = se_ratio
+    self._init_stochastic_depth_rate = init_stochastic_depth_rate
     self._use_sync_bn = use_sync_bn
     self._activation = activation
     self._norm_momentum = norm_momentum
@@ -195,7 +199,6 @@ class ResNet(tf.keras.Model):
 
     x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 
-    # TODO(xianzhi): keep a list of blocks to make blocks accessible.
     endpoints = {}
     for i, spec in enumerate(RESNET_SPECS[model_id]):
       if spec[0] == 'residual':
@@ -210,6 +213,8 @@ class ResNet(tf.keras.Model):
           strides=(1 if i == 0 else 2),
           block_fn=block_fn,
           block_repeats=spec[2],
+          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
+              self._init_stochastic_depth_rate, i + 2, 5),
           name='block_group_l{}'.format(i + 2))
       endpoints[str(i + 2)] = x
 
@@ -223,6 +228,7 @@ class ResNet(tf.keras.Model):
                    strides,
                    block_fn,
                    block_repeats=1,
+                   stochastic_depth_drop_rate=0.0,
                    name='block_group'):
     """Creates one group of blocks for the ResNet model.
 
@@ -233,6 +239,7 @@ class ResNet(tf.keras.Model):
         greater than 1, this layer will downsample the input.
       block_fn: Either `nn_blocks.ResidualBlock` or `nn_blocks.BottleneckBlock`.
       block_repeats: `int` number of blocks contained in the layer.
+      stochastic_depth_drop_rate: `float` drop rate of the current block group.
       name: `str`name for the block.
 
     Returns:
@@ -242,6 +249,7 @@ class ResNet(tf.keras.Model):
         filters=filters,
         strides=strides,
         use_projection=True,
+        stochastic_depth_drop_rate=stochastic_depth_drop_rate,
         se_ratio=self._se_ratio,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -257,6 +265,7 @@ class ResNet(tf.keras.Model):
           filters=filters,
           strides=1,
           use_projection=False,
+          stochastic_depth_drop_rate=stochastic_depth_drop_rate,
           se_ratio=self._se_ratio,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
@@ -275,6 +284,7 @@ class ResNet(tf.keras.Model):
         'stem_type': self._stem_type,
         'activation': self._activation,
         'se_ratio': self._se_ratio,
+        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
         'use_sync_bn': self._use_sync_bn,
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon,
@@ -311,6 +321,7 @@ def build_resnet(
       input_specs=input_specs,
       stem_type=backbone_cfg.stem_type,
       se_ratio=backbone_cfg.se_ratio,
+      init_stochastic_depth_rate=backbone_cfg.stochastic_depth_drop_rate,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
