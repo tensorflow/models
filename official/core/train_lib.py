@@ -185,6 +185,8 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
         step_counter=trainer.global_step,
         checkpoint_interval=params.trainer.checkpoint_interval,
         init_fn=trainer.initialize)
+    # Adds recovery handling.
+    trainer.add_recovery(params.trainer, checkpoint_manager=checkpoint_manager)
   else:
     checkpoint_manager = None
 

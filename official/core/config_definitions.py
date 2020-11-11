@@ -209,6 +209,13 @@ class TrainerConfig(base_config.Config):
   best_checkpoint_export_subdir: str = ""
   best_checkpoint_eval_metric: str = ""
   best_checkpoint_metric_comp: str = "higher"
+  # Blowup recovery.
+  loss_upper_bound: float = 1e6
+  recovery_begin_steps: int = 0  # Enforcing the loss bound after these steps.
+  # When max trials < 0, no recovery module; max trials = 0, we will check
+  # the condition and fail the job if the condition happens; max trials > 0,
+  # we will retore the model states.
+  recovery_max_trials: int = 0
 
 
 @dataclasses.dataclass
