@@ -1,3 +1,49 @@
+# Lint as: python3
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""Resnet50 Keras core benchmark."""
+
+import tempfile
+import time
+
+import tensorflow as tf
+import tensorflow_datasets as tfds
+
+from official.benchmark import perfzero_benchmark
+
+
+def _decode_and_center_crop(image_bytes):
+  """Crops to center of image with padding then scales image_size."""
+  shape = tf.image.extract_jpeg_shape(image_bytes)
+  image_height, image_width, image_size = shape[0], shape[1], 224
+
+  padded_center_crop_size = tf.cast(
+      ((image_size / (image_size + 32)) *
+       tf.cast(tf.minimum(image_height, image_width), tf.float32)),
+      tf.int32,
+  )
+
+  offset_height = ((image_height - padded_center_crop_size) + 1) // 2
+  offset_width = ((image_width - padded_center_crop_size) + 1) // 2
+  crop_window = tf.stack([
+      offset_height, offset_width, padded_center_crop_size,
+      padded_center_crop_size
+  ])
+  image = tf.image.decode_and_crop_jpeg(image_bytes, crop_window, channels=3)
+  return tf.image.resize(image, [image_size, image_size], method="bicubic")
+
 
 def _preprocessing(data):
   return (
