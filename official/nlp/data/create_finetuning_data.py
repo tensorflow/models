@@ -262,9 +262,15 @@ def generate_squad_dataset():
   assert FLAGS.squad_data_file
   if FLAGS.tokenization == "WordPiece":
     return squad_lib_wp.generate_tf_record_from_json_file(
-        FLAGS.squad_data_file, FLAGS.vocab_file, FLAGS.train_data_output_path,
-        FLAGS.max_seq_length, FLAGS.do_lower_case, FLAGS.max_query_length,
-        FLAGS.doc_stride, FLAGS.version_2_with_negative)
+        input_file_path=FLAGS.squad_data_file,
+        vocab_file_path=FLAGS.vocab_file,
+        output_path=FLAGS.train_data_output_path,
+        max_seq_length=FLAGS.max_seq_length,
+        do_lower_case=FLAGS.do_lower_case,
+        max_query_length=FLAGS.max_query_length,
+        doc_stride=FLAGS.doc_stride,
+        version_2_with_negative=FLAGS.version_2_with_negative,
+        xlnet_format=FLAGS.xlnet_format)
   else:
     assert FLAGS.tokenization == "SentencePiece"
     return squad_lib_sp.generate_tf_record_from_json_file(
