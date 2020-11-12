@@ -228,6 +228,9 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
     else:
       raise NotImplementedError('The mode is not implemented: %s' % mode)
 
+  if hasattr(trainer.model, 'count_params'):
+    logging.info('Number of trainable params in model: %f Millions.',
+                 trainer.model.count_params() / 10.**6)
   if run_post_eval:
     with distribution_strategy.scope():
       return trainer.model, trainer.evaluate(
