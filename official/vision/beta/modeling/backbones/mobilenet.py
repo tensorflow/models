@@ -296,12 +296,78 @@ MNV3EdgeTPU_BLOCK_SPECS = {
     ]
 }
 
+"""
+Architecture: https://arxiv.org/pdf/2008.08178.pdf
+
+"Discovering Multi-Hardware Mobile Models via Architecture Search"
+Grace Chu, Okan Arikan, Gabriel Bender, Weijun Wang,
+Achille Brighton, Pieter-Jan Kindermans, Hanxiao Liu,
+Berkin Akin, Suyog Gupta, and Andrew Howard
+"""
+MNMultiMAX_BLOCK_SPECS = {
+    'spec_name': 'MobileNetMultiMAX',
+    'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
+                          'activation', 'expand_ratio',
+                          'use_normalization', 'use_bias'],
+    'block_specs': [
+        ('convbn', 3, 2, 32, 'relu', None, True, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', 3., None, False),
+        ('invertedbottleneck', 5, 2, 64, 'relu', 6., None, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False),
+        ('invertedbottleneck', 5, 2, 128, 'relu', 6., None, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 4., None, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 6., None, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
+        ('invertedbottleneck', 3, 2, 160, 'relu', 6., None, False),
+        ('invertedbottleneck', 5, 1, 160, 'relu', 4., None, False),
+        ('invertedbottleneck', 3, 1, 160, 'relu', 5., None, False),
+        ('invertedbottleneck', 5, 1, 160, 'relu', 4., None, False),
+        ('convbn', 1, 1, 960, 'relu', None, True, False),
+        ('gpooling', None, None, None, None, None, None, None),
+        ('convbn', 1, 1, 1280, 'relu', None, False, True),
+    ]
+}
+
+MNMultiAVG_BLOCK_SPECS = {
+    'spec_name': 'MobileNetMultiAVG',
+    'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
+                          'activation', 'expand_ratio',
+                          'use_normalization', 'use_bias'],
+    'block_specs': [
+        ('convbn', 3, 2, 32, 'relu', None, True, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', 3., None, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', 2., None, False),
+        ('invertedbottleneck', 5, 2, 64, 'relu', 5., None, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 3., None, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 3., None, False),
+        ('invertedbottleneck', 5, 2, 128, 'relu', 6., None, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
+        ('invertedbottleneck', 3, 1, 160, 'relu', 6., None, False),
+        ('invertedbottleneck', 3, 1, 160, 'relu', 4., None, False),
+        ('invertedbottleneck', 3, 2, 192, 'relu', 6., None, False),
+        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False),
+        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False),
+        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False),
+        ('convbn', 1, 1, 960, 'relu', None, True, False),
+        ('gpooling', None, None, None, None, None, None, None),
+        ('convbn', 1, 1, 1280, 'relu', None, False, True),
+    ]
+}
+
 SUPPORTED_SPECS_MAP = {
     'MobileNetV1': MNV1_BLOCK_SPECS,
     'MobileNetV2': MNV2_BLOCK_SPECS,
     'MobileNetV3Large': MNV3Large_BLOCK_SPECS,
     'MobileNetV3Small': MNV3Small_BLOCK_SPECS,
     'MobileNetV3EdgeTPU': MNV3EdgeTPU_BLOCK_SPECS,
+    'MobileNetMultiMAX': MNMultiMAX_BLOCK_SPECS,
+    'MobileNetMultiAVG': MNMultiAVG_BLOCK_SPECS,
 }
 
 
