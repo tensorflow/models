@@ -14,6 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Question answering task."""
+import functools
 import json
 import os
 from typing import List, Optional
@@ -143,6 +144,9 @@ class QuestionAnsweringTask(base_task.Task):
         eval_features.append(feature)
       eval_writer.process_feature(feature)
 
+    # XLNet preprocesses SQuAD examples in a P, Q, class order whereas
+    # BERT preprocesses in a class, Q, P order.
+    xlnet_ordering = self.task_config.model.encoder.type == 'xlnet'
     kwargs = dict(
         examples=eval_examples,
         max_seq_length=params.seq_length,
@@ -150,14 +154,14 @@ class QuestionAnsweringTask(base_task.Task):
         max_query_length=params.query_length,
         is_training=False,
         output_fn=_append_feature,
-        batch_size=params.global_batch_size)
+        batch_size=params.global_batch_size,
+        xlnet_format=xlnet_ordering)
 
     if params.tokenization == 'SentencePiece':
       # squad_lib_sp requires one more argument 'do_lower_case'.
       kwargs['do_lower_case'] = params.do_lower_case
       kwargs['tokenizer'] = tokenization.FullSentencePieceTokenizer(
           sp_model_file=params.vocab_file)
-      kwargs['xlnet_format'] = self.task_config.model.encoder.type == 'xlnet'
     elif params.tokenization == 'WordPiece':
       kwargs['tokenizer'] = tokenization.FullTokenizer(
           vocab_file=params.vocab_file, do_lower_case=params.do_lower_case)
@@ -175,24 +179,25 @@ class QuestionAnsweringTask(base_task.Task):
 
     return eval_writer.filename, eval_examples, eval_features
 
+  def _dummy_data(self, params, _):
+    """Returns dummy data."""
+    dummy_ids = tf.zeros((1, params.seq_length), dtype=tf.int32)
+    x = dict(
+        input_word_ids=dummy_ids,
+        input_mask=dummy_ids,
+        input_type_ids=dummy_ids)
+    y = dict(
+        start_positions=tf.constant(0, dtype=tf.int32),
+        end_positions=tf.constant(1, dtype=tf.int32),
+        is_impossible=tf.constant(0, dtype=tf.int32))
+    return x, y
+
   def build_inputs(self, params, input_context=None):
     """Returns tf.data.Dataset for sentence_prediction task."""
     if params.input_path == 'dummy':
-      # Dummy training data for unit test.
-      def dummy_data(_):
-        dummy_ids = tf.zeros((1, params.seq_length), dtype=tf.int32)
-        x = dict(
-            input_word_ids=dummy_ids,
-            input_mask=dummy_ids,
-            input_type_ids=dummy_ids)
-        y = dict(
-            start_positions=tf.constant(0, dtype=tf.int32),
-            end_positions=tf.constant(1, dtype=tf.int32),
-            is_impossible=tf.constant(0, dtype=tf.int32))
-        return (x, y)
-
       dataset = tf.data.Dataset.range(1)
       dataset = dataset.repeat()
+      dummy_data = functools.partial(self._dummy_data, params)
       dataset = dataset.map(
           dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
       return dataset
@@ -278,6 +283,7 @@ class QuestionAnsweringTask(base_task.Task):
                 self.task_config.validation_data.version_2_with_negative),
             null_score_diff_threshold=(
                 self.task_config.null_score_diff_threshold),
+            xlnet_format=self.task_config.validation_data.xlnet_format,
             verbose=False))
 
     with tf.io.gfile.GFile(self.task_config.validation_data.input_path,
@@ -382,6 +388,24 @@ class XLNetQuestionAnsweringTask(QuestionAnsweringTask):
             'end_positions': end_logits,
         })
 
+  def _dummy_data(self, params, _):
+    """Returns dummy data."""
+    dummy_ids = tf.zeros((1, params.seq_length), dtype=tf.int32)
+    zero = tf.constant(0, dtype=tf.int32)
+    x = dict(
+        input_word_ids=dummy_ids,
+        input_mask=dummy_ids,
+        input_type_ids=dummy_ids,
+        class_index=zero,
+        is_impossible=zero,
+        paragraph_mask=dummy_ids,
+        start_positions=tf.zeros((1), dtype=tf.int32))
+    y = dict(
+        start_positions=tf.zeros((1), dtype=tf.int32),
+        end_positions=tf.ones((1), dtype=tf.int32),
+        is_impossible=zero)
+    return x, y
+
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     features, _ = inputs
     unique_ids = features.pop('unique_ids')
@@ -468,5 +492,6 @@ def predict(task: QuestionAnsweringTask, params: cfg.DataConfig,
           task.task_config.validation_data.do_lower_case,
           version_2_with_negative=(params.version_2_with_negative),
           null_score_diff_threshold=task.task_config.null_score_diff_threshold,
+          xlnet_format=task.task_config.validation_data.xlnet_format,
           verbose=False))
   return all_predictions, all_nbest, scores_diff

@@ -150,6 +150,15 @@ class XLNetSpanLabeler(tf.keras.Model):
         'span_labeling_activation': span_labeling_activation,
         'initializer': initializer,
     }
+    network_config = network.get_config()
+    try:
+      input_width = network_config['inner_size']
+      self._xlnet_base = True
+    except KeyError:
+      # BertEncoder uses 'intermediate_size' due to legacy naming.
+      input_width = network_config['intermediate_size']
+      self._xlnet_base = False
+
     self._network = network
     self._initializer = initializer
     self._start_n_top = start_n_top
@@ -157,7 +166,7 @@ class XLNetSpanLabeler(tf.keras.Model):
     self._dropout_rate = dropout_rate
     self._activation = span_labeling_activation
     self.span_labeling = networks.XLNetSpanLabeling(
-        input_width=network.get_config()['inner_size'],
+        input_width=input_width,
         start_n_top=self._start_n_top,
         end_n_top=self._end_n_top,
         activation=self._activation,
@@ -165,17 +174,25 @@ class XLNetSpanLabeler(tf.keras.Model):
         initializer=self._initializer)
 
   def call(self, inputs: Mapping[str, Any]):
-    input_ids = inputs['input_word_ids']
-    segment_ids = inputs['input_type_ids']
+    input_word_ids = inputs['input_word_ids']
+    input_type_ids = inputs['input_type_ids']
     input_mask = inputs['input_mask']
     class_index = inputs['class_index']
     paragraph_mask = inputs['paragraph_mask']
     start_positions = inputs.get('start_positions', None)
 
-    attention_output, _ = self._network(
-        input_ids=input_ids,
-        segment_ids=segment_ids,
-        input_mask=input_mask)
+    if self._xlnet_base:
+      attention_output, _ = self._network(
+          input_ids=input_word_ids,
+          segment_ids=input_type_ids,
+          input_mask=input_mask)
+    else:
+      network_output_dict = self._network(dict(
+          input_word_ids=input_word_ids,
+          input_type_ids=input_type_ids,
+          input_mask=input_mask))
+      attention_output = network_output_dict['sequence_output']
+
     outputs = self.span_labeling(
         sequence_data=attention_output,
         class_index=class_index,

@@ -645,16 +645,11 @@ def postprocess_output(all_examples,
                        do_lower_case,
                        version_2_with_negative=False,
                        null_score_diff_threshold=0.0,
+                       xlnet_format=False,
                        verbose=False):
   """Postprocess model output, to form predicton results."""
 
   del do_lower_case, verbose
-
-  # XLNet emits further predictions for start, end indexes and impossibility
-  # classifications.
-  xlnet_format = (hasattr(all_results[0], "start_indexes")
-                  and all_results[0].start_indexes is not None)
-
   example_index_to_features = collections.defaultdict(list)
   for feature in all_features:
     example_index_to_features[feature.example_index].append(feature)
@@ -904,9 +899,9 @@ class FeatureWriter(object):
     features["input_ids"] = create_int_feature(feature.input_ids)
     features["input_mask"] = create_int_feature(feature.input_mask)
     features["segment_ids"] = create_int_feature(feature.segment_ids)
-    if feature.paragraph_mask:
+    if feature.paragraph_mask is not None:
       features["paragraph_mask"] = create_int_feature(feature.paragraph_mask)
-    if feature.class_index:
+    if feature.class_index is not None:
       features["class_index"] = create_int_feature([feature.class_index])
 
     if self.is_training:
