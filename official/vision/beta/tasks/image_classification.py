@@ -53,7 +53,6 @@ class ImageClassificationTask(base_task.Task):
     input_size = self.task_config.model.input_size
 
     decoder = classification_input.Decoder()
-
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,

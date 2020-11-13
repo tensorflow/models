@@ -82,7 +82,6 @@ def make_distributed_dataset(strategy, dataset_or_fn, *args, **kwargs):
       kwargs["input_context"] = input_context
     return dataset_or_fn(*args, **kwargs)
 
-  
   return strategy.distribute_datasets_from_function(dataset_fn)
 
 

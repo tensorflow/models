@@ -16,7 +16,6 @@
 from official.modeling.activations.gelu import gelu
 from official.modeling.activations.relu import relu6
 from official.modeling.activations.sigmoid import hard_sigmoid
-
 from official.modeling.activations.swish import hard_swish
 from official.modeling.activations.swish import identity
 from official.modeling.activations.swish import simple_swish
