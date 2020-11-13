@@ -52,6 +52,11 @@ def configure_optimizer(optimizer,
 def set_mixed_precision_policy(dtype, loss_scale=None,
                                use_experimental_api=True):
   """Sets mix precision policy."""
+  assert use_experimental_api or loss_scale is None, (
+      'loss_scale cannot be specified if use_experimental_api is False. If the '
+      'non-experimental API is used, specify the loss scaling configuration '
+      'when creating the LossScaleOptimizer instead.'
+  )
   if dtype == tf.float16:
     # TODO(b/171936854): Move all methods to non-experimental api.
     if use_experimental_api:
