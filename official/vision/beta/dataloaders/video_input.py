@@ -146,6 +146,11 @@ def _process_label(label: tf.Tensor,
   if one_hot_label:
     # Replace label index by one hot representation.
     label = tf.one_hot(label, num_classes)
+    if len(label.shape.as_list()) > 1:
+      label = tf.reduce_sum(label, axis=0)
+    if num_classes == 1:
+      # The trick for single label.
+      label = 1 - label
 
   return label
 
@@ -154,11 +159,11 @@ class Decoder(decoder.Decoder):
   """A tf.Example decoder for classification task."""
 
   def __init__(self, image_key: str = IMAGE_KEY, label_key: str = LABEL_KEY):
-    self._image_key = IMAGE_KEY
-    self._label_key = LABEL_KEY
+    self._image_key = image_key
+    self._label_key = label_key
     self._context_description = {
         # One integer stored in context.
-        self._label_key: tf.io.FixedLenFeature((), tf.int64),
+        self._label_key: tf.io.VarLenFeature(tf.int64),
     }
     self._sequence_description = {
         # Each image is a string encoding JPEG.
@@ -172,7 +177,7 @@ class Decoder(decoder.Decoder):
         self._sequence_description)
     return {
         self._image_key: sequences[self._image_key],
-        self._label_key: context[self._label_key]
+        self._label_key: tf.sparse.to_dense(context[self._label_key])
     }
 
 
@@ -200,7 +205,6 @@ class Parser(parser.Parser):
     """Parses data for training."""
     # Process image and label.
     image = decoded_tensors[self._image_key]
-    label = decoded_tensors[self._label_key]
     image = _process_image(
         image=image,
         is_training=True,
@@ -210,6 +214,8 @@ class Parser(parser.Parser):
         min_resize=self._min_resize,
         crop_size=self._crop_size)
     image = tf.cast(image, dtype=self._dtype)
+
+    label = decoded_tensors[self._label_key]
     label = _process_label(label, self._one_hot_label, self._num_classes)
 
     return {'image': image}, label
@@ -219,7 +225,6 @@ class Parser(parser.Parser):
   ) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
     """Parses data for evaluation."""
     image = decoded_tensors[self._image_key]
-    label = decoded_tensors[self._label_key]
     image = _process_image(
         image=image,
         is_training=False,
@@ -229,6 +234,8 @@ class Parser(parser.Parser):
         min_resize=self._min_resize,
         crop_size=self._crop_size)
     image = tf.cast(image, dtype=self._dtype)
+
+    label = decoded_tensors[self._label_key]
     label = _process_label(label, self._one_hot_label, self._num_classes)
 
     return {'image': image}, label

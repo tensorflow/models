@@ -48,6 +48,7 @@ class DataConfig(cfg.DataConfig):
   is_training: bool = True
   cycle_length: int = 10
   min_image_size: int = 256
+  is_multilabel: bool = False
 
 
 def kinetics400(is_training):
