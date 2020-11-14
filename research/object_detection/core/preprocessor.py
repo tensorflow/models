@@ -1049,6 +1049,22 @@ def random_rgb_to_gray(image,
   return image
 
 
+def adjust_gamma(image, gamma=1.0, gain=1.0):
+  """Adjusts the gamma.
+
+  Args:
+    image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
+           with pixel values varying between [0, 255].
+    gamma: the gamma value. Must be a non-negative real number.
+    gain: a constant multiplier.
+
+  Returns:
+    image: image which is the same shape as input image.
+  """
+  with tf.name_scope('AdjustGamma', values=[image]):
+    return tf.image.adjust_gamma(image, gamma, gain)
+
+
 def random_adjust_brightness(image,
                              max_delta=0.2,
                              seed=None,
@@ -1069,7 +1085,6 @@ def random_adjust_brightness(image,
 
   Returns:
     image: image which is the same shape as input image.
-    boxes: boxes which is the same shape as input boxes.
   """
   with tf.name_scope('RandomAdjustBrightness', values=[image]):
     generator_func = functools.partial(tf.random_uniform, [],
@@ -4504,6 +4519,7 @@ def get_default_func_arg_map(include_label_weights=True,
            fields.InputDataFields.groundtruth_classes,
            groundtruth_label_weights, groundtruth_instance_masks,
            groundtruth_keypoints, groundtruth_label_confidences),
+      adjust_gamma: (fields.InputDataFields.image,),
   }
 
   return prep_func_arg_map
