@@ -109,11 +109,21 @@ class InputFeatures(object):
     self.is_impossible = is_impossible
 
 
-def read_squad_examples(input_file, is_training, version_2_with_negative):
+def read_squad_examples(input_file,
+                        is_training,
+                        version_2_with_negative,
+                        translated_input_folder=None):
   """Read a SQuAD json file into a list of SquadExample."""
   del version_2_with_negative
   with tf.io.gfile.GFile(input_file, "r") as reader:
     input_data = json.load(reader)["data"]
+
+  if translated_input_folder is not None:
+    translated_files = tf.io.gfile.glob(
+        os.path.join(translated_input_folder, "*.json"))
+    for file in translated_files:
+      with tf.io.gfile.GFile(file, "r") as reader:
+        input_data.extend(json.load(reader)["data"])
 
   examples = []
   for entry in input_data:
@@ -922,6 +932,7 @@ class FeatureWriter(object):
 def generate_tf_record_from_json_file(input_file_path,
                                       sp_model_file,
                                       output_path,
+                                      translated_input_folder=None,
                                       max_seq_length=384,
                                       do_lower_case=True,
                                       max_query_length=64,
@@ -932,7 +943,8 @@ def generate_tf_record_from_json_file(input_file_path,
   train_examples = read_squad_examples(
       input_file=input_file_path,
       is_training=True,
-      version_2_with_negative=version_2_with_negative)
+      version_2_with_negative=version_2_with_negative,
+      translated_input_folder=translated_input_folder)
   tokenizer = tokenization.FullSentencePieceTokenizer(
       sp_model_file=sp_model_file)
   train_writer = FeatureWriter(
