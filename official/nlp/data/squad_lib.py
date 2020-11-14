@@ -158,10 +158,19 @@ class FeatureWriter(object):
     self._writer.close()
 
 
-def read_squad_examples(input_file, is_training, version_2_with_negative):
+def read_squad_examples(input_file, is_training,
+                        version_2_with_negative,
+                        translated_input_folder=None):
   """Read a SQuAD json file into a list of SquadExample."""
   with tf.io.gfile.GFile(input_file, "r") as reader:
     input_data = json.load(reader)["data"]
+
+  if translated_input_folder is not None:
+    translated_files = tf.io.gfile.glob(
+        os.path.join(translated_input_folder, "*.json"))
+    for file in translated_files:
+      with tf.io.gfile.GFile(file, "r") as reader:
+        input_data.extend(json.load(reader)["data"])
 
   def is_whitespace(c):
     if c == " " or c == "\t" or c == "\r" or c == "\n" or ord(c) == 0x202F:
@@ -930,6 +939,7 @@ def _compute_softmax(scores):
 def generate_tf_record_from_json_file(input_file_path,
                                       vocab_file_path,
                                       output_path,
+                                      translated_input_folder=None,
                                       max_seq_length=384,
                                       do_lower_case=True,
                                       max_query_length=64,
@@ -940,7 +950,8 @@ def generate_tf_record_from_json_file(input_file_path,
   train_examples = read_squad_examples(
       input_file=input_file_path,
       is_training=True,
-      version_2_with_negative=version_2_with_negative)
+      version_2_with_negative=version_2_with_negative,
+      translated_input_folder=translated_input_folder)
   tokenizer = tokenization.FullTokenizer(
       vocab_file=vocab_file_path, do_lower_case=do_lower_case)
   train_writer = FeatureWriter(filename=output_path, is_training=True)
