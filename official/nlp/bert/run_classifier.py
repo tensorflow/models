@@ -151,7 +151,8 @@ def run_bert_classifier(strategy,
     classifier_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite())
+        use_graph_rewrite=common_flags.use_graph_rewrite(),
+        use_experimental_api=False)
     return classifier_model, core_model
 
   # tf.keras.losses objects accept optional sample_weight arguments (eg. coming
@@ -348,7 +349,7 @@ def export_classifier(model_export_path, input_meta_data, bert_config,
     raise ValueError('Export path is not specified: %s' % model_dir)
 
   # Export uses float32 for now, even if training uses mixed precision.
-  tf.keras.mixed_precision.experimental.set_policy('float32')
+  tf.keras.mixed_precision.set_global_policy('float32')
   classifier_model = bert_models.classifier_model(
       bert_config,
       input_meta_data.get('num_labels', 1),
@@ -370,7 +371,8 @@ def run_bert(strategy,
   """Run BERT training."""
   # Enables XLA in Session Config. Should not be set for TPU.
   keras_utils.set_session_config(FLAGS.enable_xla)
-  performance.set_mixed_precision_policy(common_flags.dtype())
+  performance.set_mixed_precision_policy(common_flags.dtype(),
+                                         use_experimental_api=False)
 
   epochs = FLAGS.num_train_epochs * FLAGS.num_eval_per_epoch
   train_data_size = (

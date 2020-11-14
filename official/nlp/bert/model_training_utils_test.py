@@ -107,9 +107,8 @@ def create_model_fn(input_shape, num_classes, use_float16=False):
         tf.reduce_mean(input_layer), name='mean_input', aggregation='mean')
     model.optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
     if use_float16:
-      model.optimizer = (
-          tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-              model.optimizer, loss_scale='dynamic'))
+      model.optimizer = tf.keras.mixed_precision.LossScaleOptimizer(
+          model.optimizer)
     return model, sub_model
 
   return _model_fn
@@ -198,8 +197,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(eager_gpu_strategy_combinations())
   def test_train_eager_mixed_precision(self, distribution):
     model_dir = self.create_tempdir().full_path
-    policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
     self._model_fn = create_model_fn(
         input_shape=[128], num_classes=3, use_float16=True)
     self.run_training(
