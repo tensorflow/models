@@ -44,7 +44,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
+    optimizer = opt_factory.build_optimizer(lr, postprocessor=lambda x: x)
 
     self.assertIsInstance(optimizer, optimizer_cls)
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
