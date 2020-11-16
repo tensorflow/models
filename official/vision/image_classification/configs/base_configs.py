@@ -75,7 +75,7 @@ class TrainConfig(hyperparams.Config):
     callbacks: An instance of CallbacksConfig.
     metrics: An instance of MetricsConfig.
     tensorboard: An instance of TensorboardConfig.
-    set_epoch_loop: Whether or not to set `experimental_steps_per_execution` to
+    set_epoch_loop: Whether or not to set `steps_per_execution` to
       equal the number of training steps in `model.compile`. This reduces the
       number of callbacks run per epoch which significantly improves end-to-end
       TPU training time.

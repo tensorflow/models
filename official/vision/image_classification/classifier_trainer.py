@@ -352,7 +352,7 @@ def train_and_eval(
         optimizer=optimizer,
         loss=loss_obj,
         metrics=metrics,
-        experimental_steps_per_execution=steps_per_loop)
+        steps_per_execution=steps_per_loop)
 
     initial_epoch = 0
     if params.train.resume_checkpoint:
