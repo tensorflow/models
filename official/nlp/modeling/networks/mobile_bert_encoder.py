@@ -37,6 +37,7 @@ class MobileBERTEncoder(tf.keras.Model):
                attention_probs_dropout_prob=0.1,
                intra_bottleneck_size=128,
                initializer_range=0.02,
+               use_bottleneck_attention=False,
                key_query_shared_bottleneck=True,
                num_feedforward_networks=4,
                normalization_type='no_norm',
@@ -62,6 +63,9 @@ class MobileBERTEncoder(tf.keras.Model):
       intra_bottleneck_size: Size of bottleneck.
       initializer_range: The stddev of the truncated_normal_initializer for
         initializing all weight matrices.
+      use_bottleneck_attention: Use attention inputs from the bottleneck
+        transformation. If true, the following `key_query_shared_bottleneck`
+        will be ignored.
       key_query_shared_bottleneck: Whether to share linear transformation for
         keys and queries.
       num_feedforward_networks: Number of stacked feed-forward networks.
@@ -98,6 +102,7 @@ class MobileBERTEncoder(tf.keras.Model):
           hidden_dropout_prob=hidden_dropout_prob,
           attention_probs_dropout_prob=attention_probs_dropout_prob,
           intra_bottleneck_size=intra_bottleneck_size,
+          use_bottleneck_attention=use_bottleneck_attention,
           key_query_shared_bottleneck=key_query_shared_bottleneck,
           num_feedforward_networks=num_feedforward_networks,
           normalization_type=normalization_type,

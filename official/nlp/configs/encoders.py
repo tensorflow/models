@@ -71,6 +71,9 @@ class MobileBertEncoderConfig(hyperparams.Config):
     intra_bottleneck_size: the size of bottleneck.
     initializer_range: The stddev of the truncated_normal_initializer for
       initializing all weight matrices.
+    use_bottleneck_attention: Use attention inputs from the bottleneck
+      transformation. If true, the following `key_query_shared_bottleneck`
+      will be ignored.
     key_query_shared_bottleneck: whether to share linear transformation for keys
       and queries.
     num_feedforward_networks: number of stacked feed-forward networks.
@@ -94,6 +97,7 @@ class MobileBertEncoderConfig(hyperparams.Config):
   attention_probs_dropout_prob: float = 0.1
   intra_bottleneck_size: int = 1024
   initializer_range: float = 0.02
+  use_bottleneck_attention: bool = False
   key_query_shared_bottleneck: bool = False
   num_feedforward_networks: int = 1
   normalization_type: str = "layer_norm"
@@ -253,6 +257,7 @@ def build_encoder(
         attention_probs_dropout_prob=encoder_cfg.attention_probs_dropout_prob,
         intra_bottleneck_size=encoder_cfg.intra_bottleneck_size,
         initializer_range=encoder_cfg.initializer_range,
+        use_bottleneck_attention=encoder_cfg.use_bottleneck_attention,
         key_query_shared_bottleneck=encoder_cfg.key_query_shared_bottleneck,
         num_feedforward_networks=encoder_cfg.num_feedforward_networks,
         normalization_type=encoder_cfg.normalization_type,
