@@ -229,7 +229,7 @@ def run_keras_compile_fit(model_dir,
         optimizer=optimizer,
         loss=loss_fn,
         metrics=[fn() for fn in metric_fn],
-        experimental_steps_per_execution=steps_per_loop)
+        steps_per_execution=steps_per_loop)
 
     summary_dir = os.path.join(model_dir, 'summaries')
     summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)

@@ -144,7 +144,7 @@ def train(params, strategy, dataset=None):
 
     trainer.compile(
         optimizer=opt,
-        experimental_steps_per_execution=FLAGS.steps_per_loop)
+        steps_per_execution=FLAGS.steps_per_loop)
     summary_dir = os.path.join(FLAGS.model_dir, "summaries")
     summary_callback = tf.keras.callbacks.TensorBoard(
         summary_dir, update_freq=max(100, FLAGS.steps_per_loop))
