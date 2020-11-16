@@ -16,7 +16,7 @@ class Identity(tf.keras.layers.Layer):
 class ConvBN(tf.keras.layers.Layer):
     '''
   Modified Convolution layer to match that of the DarkNet Library. The Layer is a standards combination of Conv BatchNorm Activation,
-  however, the use of bias in the conv is determined by the use of batch normalization. 
+  however, the use of bias in the conv is determined by the use of batch normalization.
 
   Cross Stage Partial networks (CSPNets) were proposed in:
   [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu, Ping-Yang Chen, Jun-Wei Hsieh
@@ -29,7 +29,6 @@ class ConvBN(tf.keras.layers.Layer):
       padding: string 'valid' or 'same', if same, then pad the image, else do not
       dialtion_rate: tuple to indicate how much to modulate kernel weights and
                       how many pixels in a feature map to skip
-      use_bias: boolean to indicate whether to use bias in convolution layer
       kernel_initializer: string to indicate which function to use to initialize weights
       bias_initializer: string to indicate which function to use to initialize bias
       kernel_regularizer: string to indicate which function to use to regularizer weights
@@ -51,7 +50,6 @@ class ConvBN(tf.keras.layers.Layer):
             strides=(1, 1),
             padding='same',
             dilation_rate=(1, 1),
-            use_bias=True,
             kernel_initializer='glorot_uniform',
             bias_initializer='zeros',
             bias_regularizer=None,
@@ -70,7 +68,6 @@ class ConvBN(tf.keras.layers.Layer):
         self._strides = strides
         self._padding = padding
         self._dilation_rate = dilation_rate
-        self._use_bias = use_bias
         self._kernel_initializer = kernel_initializer
         self._bias_initializer = bias_initializer
         self._kernel_regularizer = kernel_regularizer
@@ -78,8 +75,6 @@ class ConvBN(tf.keras.layers.Layer):
 
         # batch normalization params
         self._use_bn = use_bn
-        if self._use_bn:
-            self._use_bias = False
         self._use_sync_bn = use_sync_bn
         self._norm_moment = norm_momentum
         self._norm_epsilon = norm_epsilon
@@ -107,13 +102,15 @@ class ConvBN(tf.keras.layers.Layer):
         else:
             self._zeropad = Identity()
 
+        use_bias = not self._use_bn
+
         self.conv = tf.keras.layers.Conv2D(
             filters=self._filters,
             kernel_size=self._kernel_size,
             strides=self._strides,
             padding="valid",
             dilation_rate=self._dilation_rate,
-            use_bias=self._use_bias,
+            use_bias=use_bias,
             kernel_initializer=self._kernel_initializer,
             bias_initializer=self._bias_initializer,
             kernel_regularizer=self._kernel_regularizer,
@@ -157,7 +154,6 @@ class ConvBN(tf.keras.layers.Layer):
             "strides": self._strides,
             "padding": self._padding,
             "dilation_rate": self._dilation_rate,
-            "use_bias": self._use_bias,
             "kernel_initializer": self._kernel_initializer,
             "bias_initializer": self._bias_initializer,
             "bias_regularizer": self._bias_regularizer,
@@ -183,7 +179,6 @@ class DarkResidual(tf.keras.layers.Layer):
 
   Args:
       filters: integer for output depth, or the number of features to learn
-      use_bias: boolean to indicate whether to use bias in convolution layer
       kernel_initializer: string to indicate which function to use to initialize weights
       bias_initializer: string to indicate which function to use to initialize bias
       kernel_regularizer: string to indicate which function to use to regularizer weights
@@ -205,7 +200,6 @@ class DarkResidual(tf.keras.layers.Layer):
     def __init__(self,
                  filters=1,
                  filter_scale=2,
-                 use_bias=True,
                  kernel_initializer='glorot_uniform',
                  bias_initializer='zeros',
                  kernel_regularizer=None,
@@ -226,7 +220,6 @@ class DarkResidual(tf.keras.layers.Layer):
         # ConvBN params
         self._filters = filters
         self._filter_scale = filter_scale
-        self._use_bias = use_bias
         self._kernel_initializer = kernel_initializer
         self._bias_initializer = bias_initializer
         self._bias_regularizer = bias_regularizer
@@ -247,7 +240,6 @@ class DarkResidual(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         _dark_conv_args = {
-            "use_bias": self._use_bias,
             "kernel_initializer": self._kernel_initializer,
             "bias_initializer": self._bias_initializer,
             "bias_regularizer": self._bias_regularizer,
@@ -302,7 +294,6 @@ class DarkResidual(tf.keras.layers.Layer):
         # used to store/share parameters to reconstruct the model
         layer_config = {
             "filters": self._filters,
-            "use_bias": self._use_bias,
             "kernel_initializer": self._kernel_initializer,
             "bias_initializer": self._bias_initializer,
             "kernel_regularizer": self._kernel_regularizer,
@@ -331,7 +322,6 @@ class CSPTiny(tf.keras.layers.Layer):
 
   Args:
       filters: integer for output depth, or the number of features to learn
-      use_bias: boolean to indicate whether to use bias in convolution layer
       kernel_initializer: string to indicate which function to use to initialize weights
       bias_initializer: string to indicate which function to use to initialize bias
       use_bn: boolean for whether to use batch normalization
@@ -353,7 +343,6 @@ class CSPTiny(tf.keras.layers.Layer):
   """
     def __init__(self,
                  filters=1,
-                 use_bias=True,
                  kernel_initializer='glorot_uniform',
                  bias_initializer='zeros',
                  bias_regularizer=None,
@@ -371,7 +360,6 @@ class CSPTiny(tf.keras.layers.Layer):
 
         # ConvBN params
         self._filters = filters
-        self._use_bias = use_bias
         self._kernel_initializer = kernel_initializer
         self._bias_initializer = bias_initializer
         self._bias_regularizer = bias_regularizer
@@ -394,7 +382,6 @@ class CSPTiny(tf.keras.layers.Layer):
 
     def build(self, input_shape):
         _dark_conv_args = {
-            "use_bias": self._use_bias,
             "kernel_initializer": self._kernel_initializer,
             "bias_initializer": self._bias_initializer,
             "bias_regularizer": self._bias_regularizer,
@@ -416,7 +403,6 @@ class CSPTiny(tf.keras.layers.Layer):
                                   kernel_size=(3, 3),
                                   strides=(1, 1),
                                   padding='same',
-                                  use_bias=self._use_bias,
                                   kernel_initializer=self._kernel_initializer,
                                   bias_initializer=self._bias_initializer,
                                   bias_regularizer=self._bias_regularizer,
@@ -463,7 +449,6 @@ class CSPTiny(tf.keras.layers.Layer):
         # used to store/share parameters to reconsturct the model
         layer_config = {
             "filters": self._filters,
-            "use_bias": self._use_bias,
             "strides": self._strides,
             "kernel_initializer": self._kernel_initializer,
             "bias_initializer": self._bias_initializer,
@@ -671,16 +656,16 @@ class CSPConnect(tf.keras.layers.Layer):
 
 class CSPStack(tf.keras.layers.Layer):
     """
-    CSP full stack, combines the route and the connect in case you dont want to jsut quickly wrap an existing callable or list of layers to 
-    make it a cross stage partial. Added for ease of use. you should be able to wrap any layer stack with a CSP independent of wether it belongs 
-    to the Darknet family. if filter_scale = 2, then the blocks in the stack passed into the the CSP stack should also have filters = filters/filter_scale 
+    CSP full stack, combines the route and the connect in case you dont want to jsut quickly wrap an existing callable or list of layers to
+    make it a cross stage partial. Added for ease of use. you should be able to wrap any layer stack with a CSP independent of wether it belongs
+    to the Darknet family. if filter_scale = 2, then the blocks in the stack passed into the the CSP stack should also have filters = filters/filter_scale
 
     Cross Stage Partial networks (CSPNets) were proposed in:
     [1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu, Ping-Yang Chen, Jun-Wei Hsieh
         CSPNet: A New Backbone that can Enhance Learning Capability of CNN. arXiv:1911.11929
 
     Args:
-        model_to_wrap: callable Model or a list of callable objects that will process the output of CSPRoute, and be input into CSPConnect. 
+        model_to_wrap: callable Model or a list of callable objects that will process the output of CSPRoute, and be input into CSPConnect.
                       list will be called sequentially.
         downsample: down_sample the input
         filters: integer for output depth, or the number of features to learn
