@@ -180,6 +180,8 @@ class Config(params_dict.ParamsDict):
             'the list/tuple is determined by the type annotation and '
             'values provided. This is error-prone.')
         self.__dict__[k] = self._import_config(v, subconfig_type)
+      else:
+        self.__dict__[k] = self._import_config(v, subconfig_type)
     else:
       self.__dict__[k] = self._import_config(v, subconfig_type)
 
