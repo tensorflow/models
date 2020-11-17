@@ -245,7 +245,9 @@ def run_customized_training_loop(
   assert tf.executing_eagerly()
 
   if run_eagerly:
-    if isinstance(strategy, tf.distribute.experimental.TPUStrategy):
+    if isinstance(
+        strategy,
+        (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy)):
       raise ValueError(
           'TPUStrategy should not run eagerly as it heavily relies on graph'
           ' optimization for the distributed system.')

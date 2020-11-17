@@ -182,8 +182,7 @@ class TransformerTask(object):
   @property
   def use_tpu(self):
     if self.distribution_strategy:
-      return isinstance(self.distribution_strategy,
-                        tf.distribute.experimental.TPUStrategy)
+      return isinstance(self.distribution_strategy, tf.distribute.TPUStrategy)
     return False
 
   def train(self):

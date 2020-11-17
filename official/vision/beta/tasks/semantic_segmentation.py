@@ -135,7 +135,7 @@ class SemanticSegmentationTask(base_task.Task):
     if training:
       # TODO(arashwan): make MeanIoU tpu friendly.
       if not isinstance(tf.distribute.get_strategy(),
-                        tf.distribute.experimental.TPUStrategy):
+                        tf.distribute.TPUStrategy):
         metrics.append(segmentation_metrics.MeanIoU(
             name='mean_iou',
             num_classes=self.task_config.model.num_classes,
