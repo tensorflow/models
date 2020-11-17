@@ -347,6 +347,15 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
     self.assertIsInstance(config.y[1], DumpConfig4)
     self.assertSameElements(config.z, ['a', 'b', 'c'])
 
+  def test_override_by_empty_sequence(self):
+    config = DummyConfig5()
+    config.override({
+        'y': [],
+        'z': (),
+    }, is_strict=True)
+    self.assertEmpty(config.y)
+    self.assertEmpty(config.z)
+
 
 if __name__ == '__main__':
   tf.test.main()
