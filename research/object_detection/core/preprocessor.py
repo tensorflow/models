@@ -1062,7 +1062,13 @@ def adjust_gamma(image, gamma=1.0, gain=1.0):
     image: image which is the same shape as input image.
   """
   with tf.name_scope('AdjustGamma', values=[image]):
-    return tf.image.adjust_gamma(image, gamma, gain)
+    def _adjust_gamma(image):
+      image = tf.image.adjust_gamma(image / 255, gamma, gain) * 255
+      image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
+      return image
+
+    image = _augment_only_rgb_channels(image, _adjust_gamma)
+    return image
 
 
 def random_adjust_brightness(image,
