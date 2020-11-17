@@ -186,7 +186,9 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(eager_strategy_combinations())
   def test_train_eager_single_step(self, distribution):
     model_dir = self.create_tempdir().full_path
-    if isinstance(distribution, tf.distribute.experimental.TPUStrategy):
+    if isinstance(
+        distribution,
+        (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy)):
       with self.assertRaises(ValueError):
         self.run_training(
             distribution, model_dir, steps_per_loop=1, run_eagerly=True)

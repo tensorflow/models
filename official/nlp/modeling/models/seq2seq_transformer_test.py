@@ -66,8 +66,9 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
           mode="eager"))
   def test_create_model_with_ds(self, distribution):
     with distribution.scope():
-      padded_decode = isinstance(distribution,
-                                 tf.distribute.experimental.TPUStrategy)
+      padded_decode = isinstance(
+          distribution,
+          (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy))
       decode_max_length = 10
       batch_size = 4
       model = self._build_model(padded_decode, decode_max_length)

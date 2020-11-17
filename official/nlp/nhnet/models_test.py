@@ -179,8 +179,9 @@ class Bert2BertTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(all_strategy_combinations())
   def test_bert2bert_eval(self, distribution):
     seq_length = 10
-    padded_decode = isinstance(distribution,
-                               tf.distribute.experimental.TPUStrategy)
+    padded_decode = isinstance(
+        distribution,
+        (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy))
     self._config.override(
         {
             "beam_size": 3,
@@ -286,8 +287,9 @@ class NHNetTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(all_strategy_combinations())
   def test_nhnet_eval(self, distribution):
     seq_length = 10
-    padded_decode = isinstance(distribution,
-                               tf.distribute.experimental.TPUStrategy)
+    padded_decode = isinstance(
+        distribution,
+        (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy))
     self._nhnet_config.override(
         {
             "beam_size": 4,

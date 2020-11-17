@@ -210,7 +210,7 @@ def run():
   if "eval" in FLAGS.mode:
     timeout = 0 if FLAGS.mode == "train_and_eval" else FLAGS.eval_timeout
     # Uses padded decoding for TPU. Always uses cache.
-    padded_decode = isinstance(strategy, tf.distribute.experimental.TPUStrategy)
+    padded_decode = isinstance(strategy, tf.distribute.TPUStrategy)
     params.override({
         "padded_decode": padded_decode,
     }, is_strict=False)
