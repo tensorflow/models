@@ -31,7 +31,7 @@ from official.benchmark import owner_utils
 from official.vision.segmentation import unet_main as unet_training_lib
 from official.vision.segmentation import unet_model as unet_model_lib
 
-UNET3D_MIN_ACCURACY = 0.90
+UNET3D_MIN_ACCURACY = 0.94
 UNET3D_MAX_ACCURACY = 0.98
 UNET_TRAINING_FILES = 'gs://mlcompass-data/unet3d/train_data/*'
 UNET_EVAL_FILES = 'gs://mlcompass-data/unet3d/eval_data/*'
