@@ -143,8 +143,7 @@ class XLNetPretrainDataConfig(cfg.DataConfig):
     reuse_length: The number of tokens in a previous segment to reuse. This
       should be the same value used during pretrain data creation.
     sample_strategy: The strategy used to sample factorization permutations.
-      Possible values: 'fixed', 'single_token', 'whole_word', 'token_span',
-      'word_span'.
+      Possible values: 'single_token', 'whole_word', 'token_span', 'word_span'.
     min_num_tokens: The minimum number of tokens to sample in a span.
       This is used when `sample_strategy` is 'token_span'.
     max_num_tokens: The maximum number of tokens to sample in a span.
@@ -208,12 +207,8 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
             tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'input_type_ids':
             tf.io.FixedLenFeature([self._seq_length], tf.int64),
-        'target':
-            tf.io.FixedLenFeature([self._seq_length], tf.int64),
         'boundary_indices':
             tf.io.VarLenFeature(tf.int64),
-        'input_mask':
-            tf.io.FixedLenFeature([self._seq_length], tf.int64),
     }
     example = tf.io.parse_single_example(record, name_to_features)
 
@@ -234,20 +229,12 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
     inputs = record['input_word_ids']
     x['input_type_ids'] = record['input_type_ids']
 
-    if self._sample_strategy == 'fixed':
-      input_mask = record['input_mask']
-    else:
-      input_mask = None
-
     if self._sample_strategy in ['whole_word', 'word_span']:
       boundary = tf.sparse.to_dense(record['boundary_indices'])
     else:
       boundary = None
 
-    input_mask = self._online_sample_mask(
-        inputs=inputs,
-        input_mask=input_mask,
-        boundary=boundary)
+    input_mask = self._online_sample_mask(inputs=inputs, boundary=boundary)
 
     if self._reuse_length > 0:
       if self._permutation_size > self._reuse_length:
@@ -503,14 +490,10 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
 
   def _online_sample_mask(self,
                           inputs: tf.Tensor,
-                          input_mask: tf.Tensor,
                           boundary: tf.Tensor) -> tf.Tensor:
     """Samples target positions for predictions.
 
     Descriptions of each strategy:
-      - 'fixed': Returns the input mask that was computed during pretrain data
-        creation. The value for `max_predictions_per_seq` must match the value
-        used during dataset creation.
       - 'single_token': Samples individual tokens as prediction targets.
       - 'token_span': Samples spans of tokens as prediction targets.
       - 'whole_word': Samples individual words as prediction targets.
@@ -518,9 +501,6 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
 
     Args:
       inputs: The input tokens.
-      input_mask: The `bool` Tensor of the same shape as `inputs`. This is the
-        input mask calculated when creating pretraining the pretraining dataset.
-        If `sample_strategy` is not 'fixed', this is not used.
       boundary: The `int` Tensor of indices indicating whole word boundaries.
         This is used in 'whole_word' and 'word_span'
 
@@ -528,26 +508,17 @@ class XLNetPretrainDataLoader(data_loader.DataLoader):
       The sampled `bool` input mask.
 
     Raises:
-      `ValueError`: if `max_predictions_per_seq` is not set
-        and the sample strategy is not 'fixed', or if boundary is not provided
-        for 'whole_word' and 'word_span' sample strategies.
+      `ValueError`: if `max_predictions_per_seq` is not set or if boundary is
+        not provided for 'whole_word' and 'word_span' sample strategies.
     """
-    if (self._sample_strategy != 'fixed' and
-        self._max_predictions_per_seq is None):
-      raise ValueError(
-          '`max_predictions_per_seq` must be set if using '
-          'sample strategy {}.'.format(self._sample_strategy))
+    if self._max_predictions_per_seq is None:
+      raise ValueError('`max_predictions_per_seq` must be set.')
 
     if boundary is None and 'word' in self._sample_strategy:
       raise ValueError('`boundary` must be provided for {} strategy'.format(
           self._sample_strategy))
 
-    if self._sample_strategy == 'fixed':
-      # Uses the computed input masks from preprocessing.
-      # Note: This should have `max_predictions_per_seq` number of tokens set
-      # to 1.
-      return tf.cast(input_mask, tf.bool)
-    elif self._sample_strategy == 'single_token':
+    if self._sample_strategy == 'single_token':
       return self._single_token_mask(inputs)
     elif self._sample_strategy == 'token_span':
       return self._token_span_mask(inputs)
