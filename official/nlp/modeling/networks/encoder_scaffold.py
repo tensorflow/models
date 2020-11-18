@@ -259,6 +259,7 @@ class EncoderScaffold(tf.keras.Model):
         'embedding_cls': self._embedding_network,
         'embedding_cfg': self._embedding_cfg,
         'hidden_cfg': self._hidden_cfg,
+        'layer_norm_before_pooling': self._layer_norm_before_pooling,
         'return_all_layer_outputs': self._return_all_layer_outputs,
         'dict_outputs': self._dict_outputs,
     }
