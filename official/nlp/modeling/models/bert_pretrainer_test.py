@@ -142,13 +142,15 @@ class BertPretrainerTest(keras_parameterized.TestCase):
         encoder_network=test_network, customized_masked_lm=customized_masked_lm)
     num_token_predictions = 20
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
-    word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    lm_mask = tf.keras.Input(shape=(num_token_predictions,), dtype=tf.int32)
+    inputs = dict(
+        input_word_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        input_mask=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        input_type_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        masked_lm_positions=tf.keras.Input(
+            shape=(num_token_predictions,), dtype=tf.int32))
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.
-    outputs = bert_trainer_model([word_ids, mask, type_ids, lm_mask])
+    outputs = bert_trainer_model(inputs)
 
     has_encoder_outputs = dict_outputs or return_all_encoder_outputs
     if has_encoder_outputs:
