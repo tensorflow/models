@@ -103,8 +103,6 @@ class SentencePredictionTaskTest(tf.test.TestCase, parameterized.TestCase):
                 inner_dim=768, num_classes=2, name="next_sentence")
         ])
     pretrain_model = masked_lm.MaskedLMTask(None).build_model(pretrain_cfg)
-    # The model variables will be created after the forward call.
-    _ = pretrain_model(pretrain_model.inputs)
     ckpt = tf.train.Checkpoint(
         model=pretrain_model, **pretrain_model.checkpoint_items)
     init_path = ckpt.save(self.get_temp_dir())
