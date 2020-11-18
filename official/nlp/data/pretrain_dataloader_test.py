@@ -174,7 +174,7 @@ class BertPretrainDataTest(tf.test.TestCase, parameterized.TestCase):
 class XLNetPretrainDataTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(itertools.product(
-      ("fixed", "single_token", "whole_word", "token_span"),
+      ("single_token", "whole_word", "token_span"),
       (0, 64),
       (20, None),
       ))
@@ -200,9 +200,8 @@ class XLNetPretrainDataTest(parameterized.TestCase, tf.test.TestCase):
         permutation_size=seq_length // 2,
         leak_ratio=0.1)
 
-    if (max_predictions_per_seq is None and sample_strategy != "fixed"):
-      with self.assertRaisesWithRegexpMatch(
-          ValueError, "`max_predictions_per_seq` must be set"):
+    if max_predictions_per_seq is None:
+      with self.assertRaises(ValueError):
         dataset = pretrain_dataloader.XLNetPretrainDataLoader(
             data_config).load()
         features = next(iter(dataset))
