@@ -18,7 +18,6 @@ import collections
 import copy
 from typing import List, Optional
 
-from absl import logging
 import gin
 import tensorflow as tf
 
@@ -165,6 +164,7 @@ class BertPretrainer(tf.keras.Model):
 class BertPretrainerV2(tf.keras.Model):
   """BERT pretraining model V2.
 
+  (Experimental).
   Adds the masked language model head and optional classification heads upon the
   transformer encoder.
 
@@ -198,7 +198,7 @@ class BertPretrainerV2(tf.keras.Model):
       customized_masked_lm: Optional[tf.keras.layers.Layer] = None,
       name: str = 'bert',
       **kwargs):
-    super().__init__(self, name=name, **kwargs)
+    self._self_setattr_tracking = False
     self._config = {
         'encoder_network': encoder_network,
         'mlm_initializer': mlm_initializer,
@@ -207,28 +207,6 @@ class BertPretrainerV2(tf.keras.Model):
     }
     self.encoder_network = encoder_network
     inputs = copy.copy(self.encoder_network.inputs)
-    self.classification_heads = classification_heads or []
-    if len(set([cls.name for cls in self.classification_heads])) != len(
-        self.classification_heads):
-      raise ValueError('Classification heads should have unique names.')
-
-    self.masked_lm = customized_masked_lm or layers.MaskedLM(
-        embedding_table=self.encoder_network.get_embedding_table(),
-        activation=mlm_activation,
-        initializer=mlm_initializer,
-        name='cls/predictions')
-    masked_lm_positions = tf.keras.layers.Input(
-        shape=(None,), name='masked_lm_positions', dtype=tf.int32)
-    inputs.append(masked_lm_positions)
-    self.inputs = inputs
-
-  def call(self, inputs):
-    if isinstance(inputs, list):
-      logging.warning('List inputs to BertPretrainer are discouraged.')
-      inputs = dict([
-          (ref.name, tensor) for ref, tensor in zip(self.inputs, inputs)
-      ])
-
     outputs = dict()
     encoder_network_outputs = self.encoder_network(inputs)
     if isinstance(encoder_network_outputs, list):
@@ -246,13 +224,31 @@ class BertPretrainerV2(tf.keras.Model):
     else:
       raise ValueError('encoder_network\'s output should be either a list '
                        'or a dict, but got %s' % encoder_network_outputs)
+
     sequence_output = outputs['sequence_output']
-    masked_lm_positions = inputs['masked_lm_positions']
+    self.classification_heads = classification_heads or []
+    if len(set([cls.name for cls in self.classification_heads])) != len(
+        self.classification_heads):
+      raise ValueError('Classification heads should have unique names.')
+
+    if customized_masked_lm is not None:
+      self.masked_lm = customized_masked_lm
+    else:
+      self.masked_lm = layers.MaskedLM(
+          embedding_table=self.encoder_network.get_embedding_table(),
+          activation=mlm_activation,
+          initializer=mlm_initializer,
+          name='cls/predictions')
+    masked_lm_positions = tf.keras.layers.Input(
+        shape=(None,), name='masked_lm_positions', dtype=tf.int32)
+    inputs.append(masked_lm_positions)
     outputs['mlm_logits'] = self.masked_lm(
         sequence_output, masked_positions=masked_lm_positions)
     for cls_head in self.classification_heads:
       outputs[cls_head.name] = cls_head(sequence_output)
-    return outputs
+
+    super(BertPretrainerV2, self).__init__(
+        inputs=inputs, outputs=outputs, name=name, **kwargs)
 
   @property
   def checkpoint_items(self):
