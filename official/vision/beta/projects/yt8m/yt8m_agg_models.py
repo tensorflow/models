@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Contains model definitions."""
+import math
 import models
 import tensorflow as tf
 import utils
@@ -42,7 +43,7 @@ class LogisticModel(models.BaseModel):
     output = layers.Dense(
         model_input,
         vocab_size,
-        activation_fn=tf.math.sigmoid,
+        activation_fn=tf.nn.sigmoid,
         weights_regularizer=regularizers.L2(l2_penalty))
     return {"predictions": output}
 
@@ -95,7 +96,7 @@ class MoeModel(models.BaseModel):
         tf.reshape(
             gate_activations,
             [-1, num_mixtures + 1]))  # (Batch * #Labels) x (num_mixtures + 1)
-    expert_distribution = tf.math.sigmoid(
+    expert_distribution = tf.nn.sigmoid(
         tf.reshape(expert_activations,
                    [-1, num_mixtures]))  # (Batch * #Labels) x num_mixtures
 

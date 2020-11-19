@@ -1,16 +1,16 @@
 import tensorflow as tf
 import model_utils as utils
 from configs import yt8m as yt8m_cfg
-import yt8m_agg_models 
+import yt8m_agg_models
 
 layers = tf.keras.layers
 
+
 class YT8MModel(tf.keras.Model):
-    
-    ACT_FN_MAP = {
-      "sigmoid": tf.math.sigmoid,
-      "relu6": tf.nn.relu6,
-    }
+  ACT_FN_MAP = {
+    "sigmoid": tf.math.sigmoid,
+    "relu6": tf.nn.relu6,
+  }
 
   def __init__(self,
                input_params: yt8m_cfg.YT8MModel,
@@ -27,27 +27,26 @@ class YT8MModel(tf.keras.Model):
     self._self_setattr_tracking = False
     self._config_dict = {
       'input_specs': input_specs,
-      'num_classes' : input_params.num_classes,
-      'num_frames' : input_params.num_frames,
-      'iterations' : input_params.iterations,
-      'cluster_size' : input_params.cluster_size,
-      'hidden_size' : input_params.hidden_size,
-      'add_batch_norm' : input_params.add_batch_norm,
-      'sample_random_frames' : input_params.sample_random_frames,
-      'is_training' : input_params.is_training,
-      'activation' : input_params.activation,
-      'pooling_method' : input_params.pooling_method,
-      'yt8m_agg_classifier_model' : input_params.yt8m_agg_classifier_model
+      'num_classes': input_params.num_classes,
+      'num_frames': input_params.num_frames,
+      'iterations': input_params.iterations,
+      'cluster_size': input_params.cluster_size,
+      'hidden_size': input_params.hidden_size,
+      'add_batch_norm': input_params.add_batch_norm,
+      'sample_random_frames': input_params.sample_random_frames,
+      'is_training': input_params.is_training,
+      'activation': input_params.activation,
+      'pooling_method': input_params.pooling_method,
+      'yt8m_agg_classifier_model': input_params.yt8m_agg_classifier_model
     }
-    self._num_classes = num_classes
-    self._num_frames = num_frames
+    self._num_classes = input_params.num_classes  # TODO: get from reader
+    self._num_frames = input_params.num_frames  # TODO: get from reader
     self._input_specs = input_specs
     self._act_fn = self.ACT_FN_MAP.get(input_params.activation)
 
-
     inputs = tf.keras.Input(shape=self._input_specs)
 
-    num_frames = tf.cast(tf.expand_dims(num_frames, 1), tf.float32)
+    num_frames = tf.cast(tf.expand_dims(self._num_frames, 1), tf.float32)
     if input_params.sample_random_frames:
       model_input = utils.SampleRandomFrames(inputs, num_frames, input_params.iterations)
     else:
@@ -60,11 +59,12 @@ class YT8MModel(tf.keras.Model):
 
     if input_params.add_batch_norm:
       reshaped_input = layers.BatchNormalization(name="input_bn",
-                                                scale=True,
-                                                center=True,
-                                                is_training=input_params.is_training)(reshaped_input)
+                                                 scale=True,
+                                                 center=True,
+                                                 is_training=input_params.is_training)(reshaped_input)
 
-    cluster_weights = tf.Variable(tf.random_normal_initializer(stddev=1/tf.math.sqrt(feature_size))(shape=[feature_size, input_params.cluster_size]),
+    cluster_weights = tf.Variable(tf.random_normal_initializer(stddev=1 / tf.math.sqrt(feature_size))(
+      shape=[feature_size, input_params.cluster_size]),
                                   name="cluster_weights")
 
     tf.summary.histogram("cluster_weights", cluster_weights)
@@ -72,23 +72,25 @@ class YT8MModel(tf.keras.Model):
 
     if input_params.add_batch_norm:
       activation = layers.BatchNormalization(name="cluster_bn",
-                                                scale=True,
-                                                center=True,
-                                                is_training=input_params.is_training)(activation)
+                                             scale=True,
+                                             center=True,
+                                             is_training=input_params.is_training)(activation)
 
     else:
-      cluster_biases = tf.Variable(tf.random_normal_initializer(stddev=1/tf.math.sqrt(feature_size))(shape=[input_params.cluster_size]),
-                                  name="cluster_biases")
+      cluster_biases = tf.Variable(
+        tf.random_normal_initializer(stddev=1 / tf.math.sqrt(feature_size))(shape=[input_params.cluster_size]),
+        name="cluster_biases")
       tf.summary.histogram("cluster_biases", cluster_biases)
       activation += cluster_biases
-    
+
     activation = self._act_fn(activation)
     tf.summary.histogram("cluster_output", activation)
 
     activation = tf.reshape(activation, [-1, max_frames, input_params.cluster_size])
     activation = utils.FramePooling(activation, input_params.pooling_method)
 
-    hidden1_weights = tf.Variable(tf.random_normal_initializer(stddev=1/tf.math.sqrt(input_params.cluster_size))(shape=[input_params.cluster_size, input_params.hidden_size]),
+    hidden1_weights = tf.Variable(tf.random_normal_initializer(stddev=1 / tf.math.sqrt(input_params.cluster_size))(
+      shape=[input_params.cluster_size, input_params.hidden_size]),
                                   name="hidden1_weights")
 
     tf.summary.histogram("hidden1_weights", hidden1_weights)
@@ -96,14 +98,14 @@ class YT8MModel(tf.keras.Model):
 
     if input_params.add_batch_norm:
       activation = layers.BatchNormalization(name="hidden1_bn",
-                                                scale=True,
-                                                center=True,
-                                                is_training=input_params.is_training)(activation)
+                                             scale=True,
+                                             center=True,
+                                             is_training=input_params.is_training)(activation)
 
 
     else:
       hidden1_biases = tf.Variable(tf.random_normal_initializer(stddev=0.01)(shape=[input_params.hidden_size]),
-                                    name="hidden1_biases")
+                                   name="hidden1_biases")
 
       tf.summary.histogram("hidden1_biases", hidden1_biases)
       activation += hidden1_biases
@@ -114,11 +116,9 @@ class YT8MModel(tf.keras.Model):
     aggregated_model = getattr(yt8m_agg_models,
                                input_params.yt8m_agg_classifier_model)
     output = aggregated_model().create_model(model_input=activation,
-                                           vocab_size=num_classes,
-                                           **unused_params)
+                                             vocab_size=self._num_classes)
 
     super(YT8MModel, self).__init__(inputs=inputs, outputs=output.get("predictions"), **kwargs)
-
 
   @property
   def checkpoint_items(self):
