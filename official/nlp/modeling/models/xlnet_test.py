@@ -47,6 +47,104 @@ def _get_xlnet_base() -> tf.keras.layers.Layer:
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
 # guarantees forward compatibility of this code for the V2 switchover.
 @keras_parameterized.run_all_keras_modes
+class XLNetMaskedLMTest(keras_parameterized.TestCase):
+
+  def test_xlnet_masked_lm_head(self):
+    hidden_size = 10
+    seq_length = 8
+    batch_size = 2
+    masked_lm = xlnet.XLNetMaskedLM(vocab_size=10,
+                                    hidden_size=hidden_size,
+                                    initializer='glorot_uniform')
+    sequence_data = np.random.uniform(size=(batch_size, seq_length))
+    embedding_table = np.random.uniform(size=(hidden_size, hidden_size))
+    mlm_output = masked_lm(sequence_data, embedding_table)
+    self.assertAllClose(mlm_output.shape, (batch_size, hidden_size))
+
+
+@keras_parameterized.run_all_keras_modes
+class XLNetPretrainerTest(keras_parameterized.TestCase):
+
+  def test_xlnet_trainer(self):
+    """Validates that the Keras object can be created."""
+    seq_length = 4
+    num_predictions = 2
+    # Build a simple XLNet based network to use with the XLNet trainer.
+    xlnet_base = _get_xlnet_base()
+
+    # Create an XLNet trainer with the created network.
+    xlnet_trainer_model = xlnet.XLNetPretrainer(network=xlnet_base)
+    inputs = dict(
+        input_word_ids=tf.keras.layers.Input(
+            shape=(seq_length,), dtype=tf.int32, name='input_word_ids'),
+        input_type_ids=tf.keras.layers.Input(
+            shape=(seq_length,), dtype=tf.int32, name='input_type_ids'),
+        input_mask=tf.keras.layers.Input(
+            shape=(seq_length,), dtype=tf.int32, name='input_mask'),
+        permutation_mask=tf.keras.layers.Input(
+            shape=(seq_length, seq_length,), dtype=tf.int32,
+            name='permutation_mask'),
+        target_mapping=tf.keras.layers.Input(
+            shape=(num_predictions, seq_length), dtype=tf.int32,
+            name='target_mapping'),
+        masked_tokens=tf.keras.layers.Input(
+            shape=(seq_length,), dtype=tf.int32, name='masked_tokens'))
+    logits, _ = xlnet_trainer_model(inputs)
+
+    # [None, hidden_size, vocab_size]
+    expected_output_shape = [None, 4, 100]
+    self.assertAllEqual(expected_output_shape, logits.shape.as_list())
+
+  def test_xlnet_tensor_call(self):
+    """Validates that the Keras object can be invoked."""
+    seq_length = 4
+    batch_size = 2
+    num_predictions = 2
+    # Build a simple XLNet based network to use with the XLNet trainer.
+    xlnet_base = _get_xlnet_base()
+
+    # Create an XLNet trainer with the created network.
+    xlnet_trainer_model = xlnet.XLNetPretrainer(network=xlnet_base)
+
+    sequence_shape = (batch_size, seq_length)
+    inputs = dict(
+        input_word_ids=np.random.randint(
+            10, size=sequence_shape, dtype='int32'),
+        input_type_ids=np.random.randint(2, size=sequence_shape, dtype='int32'),
+        input_mask=np.random.randint(2, size=sequence_shape).astype('int32'),
+        permutation_mask=np.random.randint(
+            2, size=(batch_size, seq_length, seq_length)).astype('int32'),
+        target_mapping=np.random.randint(
+            10, size=(num_predictions, seq_length), dtype='int32'),
+        masked_tokens=np.random.randint(
+            10, size=sequence_shape, dtype='int32'))
+    xlnet_trainer_model(inputs)
+
+  def test_serialize_deserialize(self):
+    """Validates that the XLNet trainer can be serialized and deserialized."""
+    # Build a simple XLNet based network to use with the XLNet trainer.
+    xlnet_base = _get_xlnet_base()
+
+    # Create an XLNet trainer with the created network.
+    xlnet_trainer_model = xlnet.XLNetPretrainer(
+        network=xlnet_base,
+        mlm_activation='gelu',
+        mlm_initializer='random_normal')
+
+    # Create another XLNet trainer via serialization and deserialization.
+    config = xlnet_trainer_model.get_config()
+    new_xlnet_trainer_model = xlnet.XLNetPretrainer.from_config(
+        config)
+
+    # Validate that the config can be forced to JSON.
+    _ = new_xlnet_trainer_model.to_json()
+
+    # If serialization was successful, then the new config should match the old.
+    self.assertAllEqual(xlnet_trainer_model.get_config(),
+                        new_xlnet_trainer_model.get_config())
+
+
+@keras_parameterized.run_all_keras_modes
 class XLNetClassifierTest(keras_parameterized.TestCase):
 
   def test_xlnet_trainer(self):
@@ -69,13 +167,12 @@ class XLNetClassifierTest(keras_parameterized.TestCase):
         input_type_ids=tf.keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_type_ids'),
         input_mask=tf.keras.layers.Input(
-            shape=(seq_length,), dtype=tf.float32, name='input_mask'),
+            shape=(seq_length,), dtype=tf.int32, name='input_mask'),
         permutation_mask=tf.keras.layers.Input(
-            shape=(seq_length, seq_length,), dtype=tf.float32,
+            shape=(seq_length, seq_length,), dtype=tf.int32,
             name='permutation_mask'),
         masked_tokens=tf.keras.layers.Input(
-            shape=(seq_length,), dtype=tf.float32, name='masked_tokens'))
-
+            shape=(seq_length,), dtype=tf.int32, name='masked_tokens'))
     logits = xlnet_trainer_model(inputs)
 
     expected_classification_shape = [None, num_classes]
@@ -102,10 +199,11 @@ class XLNetClassifierTest(keras_parameterized.TestCase):
         input_word_ids=np.random.randint(
             10, size=sequence_shape, dtype='int32'),
         input_type_ids=np.random.randint(2, size=sequence_shape, dtype='int32'),
-        input_mask=np.random.randint(2, size=sequence_shape).astype('float32'),
+        input_mask=np.random.randint(2, size=sequence_shape).astype('int32'),
         permutation_mask=np.random.randint(
-            2, size=(batch_size, seq_length, seq_length)).astype('float32'),
-        masked_tokens=tf.random.uniform(shape=sequence_shape))
+            2, size=(batch_size, seq_length, seq_length)).astype('int32'),
+        masked_tokens=np.random.randint(
+            10, size=sequence_shape, dtype='int32'))
     xlnet_trainer_model(inputs)
 
   def test_serialize_deserialize(self):
@@ -158,9 +256,9 @@ class XLNetSpanLabelerTest(keras_parameterized.TestCase):
         input_type_ids=tf.keras.layers.Input(
             shape=(seq_length,), dtype=tf.int32, name='input_type_ids'),
         input_mask=tf.keras.layers.Input(
-            shape=(seq_length,), dtype=tf.float32, name='input_mask'),
+            shape=(seq_length,), dtype=tf.int32, name='input_mask'),
         paragraph_mask=tf.keras.layers.Input(
-            shape=(seq_length,), dtype=tf.float32, name='paragraph_mask'),
+            shape=(seq_length,), dtype=tf.int32, name='paragraph_mask'),
         class_index=tf.keras.layers.Input(
             shape=(), dtype=tf.int32, name='class_index'),
         start_positions=tf.keras.layers.Input(
@@ -175,9 +273,9 @@ class XLNetSpanLabelerTest(keras_parameterized.TestCase):
         input_word_ids=np.random.randint(
             10, size=sequence_shape, dtype='int32'),
         input_type_ids=np.random.randint(2, size=sequence_shape, dtype='int32'),
-        input_mask=np.random.randint(2, size=sequence_shape).astype('float32'),
+        input_mask=np.random.randint(2, size=sequence_shape).astype('int32'),
         paragraph_mask=np.random.randint(
-            1, size=(sequence_shape)).astype('float32'),
+            1, size=(sequence_shape)).astype('int32'),
         class_index=np.random.randint(1, size=(batch_size)).astype('uint8'),
         start_positions=tf.random.uniform(
             shape=(batch_size,), maxval=5, dtype=tf.int32))
