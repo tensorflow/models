@@ -385,28 +385,21 @@ def convert_examples_to_features(examples,
       assert len(segment_ids) == max_seq_length
       assert len(paragraph_mask) == max_seq_length
 
-      start_position = None
-      end_position = None
+      start_position = 0
+      end_position = 0
+      span_contains_answer = False
+
       if is_training and not example.is_impossible:
         # For training, if our document chunk does not contain an annotation
         # we throw it out, since there is nothing to predict.
         doc_start = doc_span.start
         doc_end = doc_span.start + doc_span.length - 1
-        out_of_span = False
-        if not (tok_start_position >= doc_start and
-                tok_end_position <= doc_end):
-          out_of_span = True
-        if out_of_span:
-          start_position = 0
-          end_position = 0
-        else:
+        span_contains_answer = (tok_start_position >= doc_start and
+                                tok_end_position <= doc_end)
+        if span_contains_answer:
           doc_offset = 0 if xlnet_format else len(query_tokens) + 2
           start_position = tok_start_position - doc_start + doc_offset
           end_position = tok_end_position - doc_start + doc_offset
-
-      if is_training and example.is_impossible:
-        start_position = 0
-        end_position = 0
 
       if example_index < 20:
         logging.info("*** Example ***")
@@ -430,13 +423,14 @@ def convert_examples_to_features(examples,
         logging.info("paragraph_mask: %s", " ".join(
             [str(x) for x in paragraph_mask]))
         logging.info("class_index: %d", class_index)
-        if is_training and example.is_impossible:
-          logging.info("impossible example")
-        if is_training and not example.is_impossible:
-          answer_text = " ".join(tokens[start_position:(end_position + 1)])
-          logging.info("start_position: %d", (start_position))
-          logging.info("end_position: %d", (end_position))
-          logging.info("answer: %s", tokenization.printable_text(answer_text))
+        if is_training:
+          if span_contains_answer:
+            answer_text = " ".join(tokens[start_position:(end_position + 1)])
+            logging.info("start_position: %d", (start_position))
+            logging.info("end_position: %d", (end_position))
+            logging.info("answer: %s", tokenization.printable_text(answer_text))
+          else:
+            logging.info("document span doesn't contain answer")
 
       feature = InputFeatures(
           unique_id=unique_id,
@@ -452,7 +446,7 @@ def convert_examples_to_features(examples,
           segment_ids=segment_ids,
           start_position=start_position,
           end_position=end_position,
-          is_impossible=example.is_impossible)
+          is_impossible=not span_contains_answer)
 
       # Run callback
       if is_training:
