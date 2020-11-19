@@ -8,6 +8,4 @@ the inner training loop. It integrates with `tf.distribute` seamlessly and
 supports running on different device types (CPU, GPU, and TPU). The core code is
 intended to be easy to read and fork.
 
-See our [g3doc](g3doc) at go/orbit-trainer for additional documentation.
-
 [custom_training]: https://www.tensorflow.org/tutorials/distribute/custom_training
