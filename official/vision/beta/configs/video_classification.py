@@ -47,8 +47,12 @@ class DataConfig(cfg.DataConfig):
   input_path: str = ''
   is_training: bool = True
   cycle_length: int = 10
+  drop_remainder: bool = True
   min_image_size: int = 256
   is_multilabel: bool = False
+  output_audio: bool = False
+  audio_feature: str = ''
+  audio_feature_shape: Tuple[int, ...] = (-1,)
 
 
 def kinetics400(is_training):
@@ -58,6 +62,7 @@ def kinetics400(is_training):
       num_classes=400,
       is_training=is_training,
       split='train' if is_training else 'valid',
+      drop_remainder=is_training,
       num_examples=215570 if is_training else 17706,
       feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
 
@@ -69,6 +74,7 @@ def kinetics600(is_training):
       num_classes=600,
       is_training=is_training,
       split='train' if is_training else 'valid',
+      drop_remainder=is_training,
       num_examples=366016 if is_training else 27780,
       feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
 
@@ -95,8 +101,9 @@ class Losses(hyperparams.Config):
 class VideoClassificationTask(cfg.TaskConfig):
   """The task config."""
   model: VideoClassificationModel = VideoClassificationModel()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
+  train_data: DataConfig = DataConfig(is_training=True, drop_remainder=True)
+  validation_data: DataConfig = DataConfig(
+      is_training=False, drop_remainder=False)
   losses: Losses = Losses()
 
 
