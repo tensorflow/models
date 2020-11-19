@@ -242,7 +242,8 @@ def _compute_segment_matrix(
   if segment_ids is None:
     return None
 
-  memory_padding = tf.zeros([batch_size, memory_length], dtype=tf.int32)
+  memory_padding = tf.zeros([batch_size, memory_length],
+                            dtype=segment_ids.dtype)
   padded_segment_ids = tf.concat([memory_padding, segment_ids], 1)
   # segment_ids: [B, S]
   # padded_segment_ids: [B, S + M]
@@ -629,7 +630,12 @@ class XLNetBase(tf.keras.layers.Layer):
                       "enabled. Please enable `two_stream` to enable two "
                       "stream attention.")
 
-    dtype = input_mask.dtype if input_mask is not None else tf.float32
+    if input_mask is not None:
+      dtype = input_mask.dtype
+    elif permutation_mask is not None:
+      dtype = permutation_mask.dtype
+    else:
+      dtype = tf.int32
     query_attention_mask, content_attention_mask = _compute_attention_mask(
         input_mask=input_mask,
         permutation_mask=permutation_mask,
