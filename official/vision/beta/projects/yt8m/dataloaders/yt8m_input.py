@@ -5,22 +5,18 @@
   context feature and a fixed length byte-quantized feature vector, obtained
   from the features in 'feature_names'. The quantized features will be mapped
   back into a range between min_quantized_value and max_quantized_value.
+  link for details: https://research.google.com/youtube8m/download.html
   '''
 
 from typing import Dict, Optional, Tuple
-
 from absl import logging
 import tensorflow as tf
 import utils
-
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import preprocess_ops_3d
 
-
-# IMAGE_KEY = 'image/encoded'
-# LABEL_KEY = 'clip/label/index'
 
 def resize_axis(tensor, axis, new_size, fill_value=0):
   """Truncates or pads a tensor to new_size on on a given axis.
@@ -54,11 +50,38 @@ def resize_axis(tensor, axis, new_size, fill_value=0):
   ], axis)
 
   # Update shape.
-  new_shape = tensor.get_shape().as_list()  # A copy is being made.
+  new_shape = tensor.shape.as_list()  # A copy is being made.
   new_shape[axis] = new_size
-  resized.set_shape(new_shape)
+  resized = tf.ensure_shape(resized, new_shape)
   return resized
 
+def sampler(video_matrix,
+            num_frames: int = 32,
+            stride: int = 1,
+            seed: Optional[int] = None) -> tf.Tensor:
+  """
+  Args:
+    video_matrix: different features concatenated into one matrix
+                  [num_segment, segment_size, features]
+    is_training: Whether or not in training mode. If True, random sample, crop
+      and left right flip is used.
+    num_frames: Number of frames per subclip.
+    stride: Temporal stride to sample frames.
+    seed: A deterministic seed to use when sampling.
+
+  Returns:
+    matrix of size: [num_segment, segment_size, features]
+    maintained the same as video_matrix
+  """
+  # Sample random clip.
+  sampled_video_matrix = []
+  for image in video_matrix: #iterate over num segment / image: (segment_size, features)
+    image = preprocess_ops_3d.sample_sequence(image, num_frames, True, stride,
+                                            seed)
+    sampled_video_matrix.append(image)
+
+  sampled_video_matrix = tf.stack(sampled_video_matrix, axis=0)
+  return sampled_video_matrix
 
 def _process_segment_and_label(video_matrix,
                                num_frames,
@@ -69,6 +92,12 @@ def _process_segment_and_label(video_matrix,
   """Processes a batched Tensor of frames.
   The same parameters used in process should be used here.
   Args:
+    video_matrix: different features concatenated into one matrix
+    num_frames: Number of frames per subclip.
+    contexts: context information extracted from decoder
+    segment_labels: if we read segment labels instead.
+    segment_size: the segment_size used for reading segments.
+    num_classes: a positive integer for the number of classes.
 
   Returns:
     output: dictionary containing batch information
@@ -80,7 +109,6 @@ def _process_segment_and_label(video_matrix,
     # the same segment_size.
     uniq_start_times, seg_idxs = tf.unique(start_times,
                                            out_idx=tf.dtypes.int64)
-    # TODO(zhengxu): Ensure the segment_sizes are all same.
     # Range gather matrix, e.g., [[0,1,2],[1,2,3]] for segment_size == 3.
     range_mtx = tf.expand_dims(uniq_start_times, axis=-1) + tf.expand_dims(
       tf.range(0, segment_size, dtype=tf.int64), axis=0)
@@ -140,29 +168,19 @@ def _process_segment_and_label(video_matrix,
 
 
 def _postprocess_image(image,
-                       is_training: bool = True,
-                       num_frames: int = 32,
-                       num_test_clips: int = 1) -> tf.Tensor:
+                       num_frames: int = 32) -> tf.Tensor:
   """Processes a batched Tensor of frames.
   The same parameters used in process should be used here.
   Args:
     image: Input Tensor of shape [batch, timesteps, height, width, 3].
-    is_training: Whether or not in training mode. If True, random sample, crop
-      and left right flip is used.
     num_frames: Number of frames per subclip.
-    num_test_clips: Number of test clips (1 by default). If more than 1, this
-      will sample multiple linearly spaced clips within each video at test time.
-      If 1, then a single clip in the middle of the video is sampled. The clips
-      are aggreagated in the batch dimension.
   Returns:
     Processed frames. Tensor of shape
       [batch * num_test_clips, num_frames, height, width, 3].
   """
-  if num_test_clips > 1 and not is_training:
-    # In this case, multiple clips are merged together in batch dimension which
-    # will be B * num_test_clips.
-    image = tf.reshape(
-      image, (-1, num_frames, image.shape[2], image.shape[3], image.shape[4]))
+
+  image = tf.reshape(
+    image, (-1, num_frames, image.shape[2], image.shape[3], image.shape[4]))
 
   return image
 
@@ -202,12 +220,12 @@ def _concat_features(features, feature_names, feature_sizes,
           features: raw feature values
           feature_names: list of feature names
           feature_sizes: list of features sizes
-          max_frames:
-          max_quantized_value:
-          min_quantized_value:
+          max_frames: number of frames in the sequence
+          max_quantized_value: the maximum of the quantized value.
+          min_quantized_value: the minimum of the quantized value.
 
       Returns:
-          video_matrix: different features concatenated
+          video_matrix: different features concatenated into one matrix
           num_frames: the number of frames in the video
   '''
 
@@ -244,8 +262,6 @@ class Decoder(decoder.Decoder):
 
   def __init__(self,
                input_params: exp_cfg.DataConfig,
-               # image_key: str = IMAGE_KEY,
-               # label_key: str = LABEL_KEY
                ):
 
     self._segment_labels = input_params.segment_labels
@@ -291,19 +307,15 @@ class Parser(parser.Parser):
                contexts,
                features,
                input_params: exp_cfg.DataConfig,
-               # image_key: str = IMAGE_KEY,
-               # label_key: str = LABEL_KEY,
                max_quantized_value=2,
                min_quantized_value=-2,
                ):
     self._num_classes = input_params.num_classes
-    # self._image_key = image_key
-    # self._label_key = label_key
-
     self._segment_size = input_params.segment_size
     self._segment_labels = input_params.segment_labels
     self._feature_names = input_params.feature_names
     self._feature_sizes = input_params.feature_sizes
+    self.stride = input_params.temporal_stride
     self._max_frames = input_params.max_frames
     self._max_quantized_value = max_quantized_value
     self._min_quantized_value = min_quantized_value
@@ -317,17 +329,18 @@ class Parser(parser.Parser):
 
   def _parse_train_data(self):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
     """Parses data for training."""
+    # call sampler
+    self.video_matrix = sampler(self.video_matrix, self.num_frames, self.stride, self.seed)
     output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, self.contexts, self._segment_labels,
                                              self._segment_size, self._num_classes)
-
-    return output_dict  # batched
+    return output_dict
 
   def _parse_eval_data(self):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
-    """Parses data for evaluation."""
+    """Parses data for training."""
     output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, self.contexts, self._segment_labels,
-                                             self._segment_size, self._num_classes)
+                                               self._segment_size, self._num_classes)
 
-    return output_dict
+    return output_dict  # batched
 
 
 class PostBatchProcessor(object):
@@ -345,9 +358,7 @@ class PostBatchProcessor(object):
     num_frames = batched_data["num_frames"]
     postprocessed_image = _postprocess_image(
       image=image,
-      is_training=self._is_training,
       num_frames=num_frames,
-      num_test_clips=self._num_test_clips
     )
     batched_data["video_matrix"] = postprocessed_image
 
