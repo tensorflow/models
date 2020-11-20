@@ -169,11 +169,11 @@ class BertEncoder(tf.keras.Model):
       data = layer([data, attention_mask])
       encoder_outputs.append(data)
 
-    last_enocder_output = encoder_outputs[-1]
+    last_encoder_output = encoder_outputs[-1]
     # Applying a tf.slice op (through subscript notation) to a Keras tensor
     # like this will create a SliceOpLambda layer. This is better than a Lambda
     # layer with Python code, because that is fundamentally less portable.
-    first_token_tensor = last_enocder_output[:, 0, :]
+    first_token_tensor = last_encoder_output[:, 0, :]
     pooler_layer = tf.keras.layers.Dense(
         units=hidden_size,
         activation='tanh',
