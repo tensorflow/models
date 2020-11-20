@@ -121,8 +121,7 @@ class UtilTests(parameterized.TestCase, tf.test.TestCase):
   def test_resume_from_checkpoint(self):
     """Tests functionality for resuming from checkpoint."""
     # Set the keras policy
-    policy = tf.keras.mixed_precision.experimental.Policy('mixed_bfloat16')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    tf.keras.mixed_precision.set_global_policy('mixed_bfloat16')
 
     # Get the model, datasets, and compile it.
     model = get_trivial_model(10)
