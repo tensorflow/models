@@ -69,6 +69,12 @@ RESNET_SPECS = {
         ('bottleneck', 256, 36),
         ('bottleneck', 512, 3),
     ],
+    300: [
+        ('bottleneck', 64, 4),
+        ('bottleneck', 128, 36),
+        ('bottleneck', 256, 54),
+        ('bottleneck', 512, 4),
+    ],
 }
 
 
