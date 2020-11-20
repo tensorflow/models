@@ -373,8 +373,9 @@ class CocoDetectionEvaluator(object_detection_evaluation.DetectionEvaluator):
     detection_scores = eval_dict[detection_fields.detection_scores]
     detection_classes = eval_dict[detection_fields.detection_classes]
     num_gt_boxes_per_image = eval_dict.get(
-        'num_groundtruth_boxes_per_image', None)
-    num_det_boxes_per_image = eval_dict.get('num_det_boxes_per_image', None)
+        input_data_fields.num_groundtruth_boxes, None)
+    num_det_boxes_per_image = eval_dict.get(detection_fields.num_detections,
+                                            None)
     is_annotated = eval_dict.get('is_annotated', None)
 
     if groundtruth_is_crowd is None:

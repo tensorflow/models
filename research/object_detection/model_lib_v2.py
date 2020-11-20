@@ -890,8 +890,7 @@ def eager_eval_loop(
       tf.logging.info('Finished eval step %d', i)
 
     use_original_images = fields.InputDataFields.original_image in features
-    if (use_original_images and i < eval_config.num_visualizations
-        and batch_size == 1):
+    if (use_original_images and i < eval_config.num_visualizations):
       sbys_image_list = vutils.draw_side_by_side_evaluation_image(
           eval_dict,
           category_index=category_index,
@@ -899,21 +898,21 @@ def eager_eval_loop(
           min_score_thresh=eval_config.min_score_threshold,
           use_normalized_coordinates=False,
           keypoint_edges=keypoint_edges or None)
-      sbys_images = tf.concat(sbys_image_list, axis=0)
-      tf.compat.v2.summary.image(
-          name='eval_side_by_side_' + str(i),
-          step=global_step,
-          data=sbys_images,
-          max_outputs=eval_config.num_visualizations)
+      for j, sbys_image in enumerate(sbys_image_list):
+        tf.compat.v2.summary.image(
+            name='eval_side_by_side_{}_{}'.format(i, j),
+            step=global_step,
+            data=sbys_image,
+            max_outputs=eval_config.num_visualizations)
       if eval_util.has_densepose(eval_dict):
         dp_image_list = vutils.draw_densepose_visualizations(
             eval_dict)
-        dp_images = tf.concat(dp_image_list, axis=0)
-        tf.compat.v2.summary.image(
-            name='densepose_detections_' + str(i),
-            step=global_step,
-            data=dp_images,
-            max_outputs=eval_config.num_visualizations)
+        for j, dp_image in enumerate(dp_image_list):
+          tf.compat.v2.summary.image(
+              name='densepose_detections_{}_{}'.format(i, j),
+              step=global_step,
+              data=dp_image,
+              max_outputs=eval_config.num_visualizations)
 
     if evaluators is None:
       if class_agnostic:
