@@ -1,6 +1,6 @@
 from official.core import input_reader
 from official.vision.beta.projects.yolo.dataloaders import YOLO_Detection_Input
-from official.vision.beta.projects.yolo.dataloaders import tfds_coco_decoder
+from official.vision.beta.projects.yolo.dataloaders.decoders import tfds_coco_decoder
 from official.vision.beta.projects.yolo.utils import box_ops
 import matplotlib.pyplot as plt
 import dataclasses
@@ -19,7 +19,7 @@ class Parser(hyperparams.Config):
     max_process_size: int = 608
     max_num_instances: int = 200
     random_flip: bool = True
-    pct_rand: float = 0.5
+    pct_rand: float = 1.0
     seed: int = 10
     shuffle_buffer_size: int = 10000
 
@@ -28,7 +28,7 @@ class Parser(hyperparams.Config):
 class DataConfig(cfg.DataConfig):
     """Input config for training."""
     input_path: str = ''
-    tfds_name: str = 'coco'
+    tfds_name: str = 'coco/2017'
     tfds_split: str = 'train'
     global_batch_size: int = 10
     is_training: bool = True
@@ -43,12 +43,12 @@ def test_yolo_input():
         params = DataConfig(is_training = True)
         num_boxes = 9
 
-        decoder = tfds_coco_decoder.TFDS_Example_Decoder()
+        decoder = tfds_coco_decoder.MSCOCODecoder()
 
         #anchors = box_rd.read(k = num_boxes, image_width = params.parser.image_w, input_context=None)
         anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0], [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0], [348.0, 340.0]]
         # write the boxes to a file
-        
+
         parser = YOLO_Detection_Input.Parser(
                         image_w=params.parser.image_w,
                         fixed_size=params.parser.fixed_size,
@@ -62,7 +62,7 @@ def test_yolo_input():
                         pct_rand=params.parser.pct_rand,
                         seed = params.parser.seed,
                         anchors = anchors)
-        
+
         reader = input_reader.InputReader(params,
                                     dataset_fn = tf.data.TFRecordDataset,
                                     decoder_fn = decoder.decode,
@@ -71,7 +71,7 @@ def test_yolo_input():
     return dataset
 
 if __name__ == "__main__":
-    
+
     dataset = test_yolo_input()
 
     for l, (i, j) in enumerate(dataset):
