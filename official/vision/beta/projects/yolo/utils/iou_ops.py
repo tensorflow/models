@@ -4,7 +4,7 @@
 import tensorflow as tf
 import math
 
-from yolo.utils import box_ops as box_utils
+from official.vision.beta.projects.yolo.utils import box_ops as box_utils
 
 
 
