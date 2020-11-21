@@ -1,12 +1,11 @@
 from official.core import input_reader
-from official.vision.beta.projects.yolo.dataloaders import yolo_input
-from official.vision.beta.projects.yolo.dataloaders import tfds_example_decoder
-from official.vision.beta.projects.yolo.ops import kmeans_anchors
-from official.vision.beta.projects.yolo.ops import box_ops
-import matplotlib.pyplot as plt 
+from official.vision.beta.projects.yolo.dataloaders import YOLO_Detection_Input
+from official.vision.beta.projects.yolo.dataloaders import tfds_coco_decoder
+from official.vision.beta.projects.yolo.utils import box_ops
+import matplotlib.pyplot as plt
 import dataclasses
 from official.modeling import hyperparams
-from official.core import config_definitions as cfg 
+from official.core import config_definitions as cfg
 import tensorflow as tf
 
 @dataclasses.dataclass
@@ -44,14 +43,13 @@ def test_yolo_input():
         params = DataConfig(is_training = True)
         num_boxes = 9
 
-        decoder = tfds_example_decoder.TFDS_Example_Decoder()
-        box_rd = kmeans_anchors.BoxGenInputReader(params, decoder_fn=decoder.decode)
+        decoder = tfds_coco_decoder.TFDS_Example_Decoder()
 
         #anchors = box_rd.read(k = num_boxes, image_width = params.parser.image_w, input_context=None)
         anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0], [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0], [348.0, 340.0]]
         # write the boxes to a file
         
-        parser = yolo_input.Parser(
+        parser = YOLO_Detection_Input.Parser(
                         image_w=params.parser.image_w,
                         fixed_size=params.parser.fixed_size,
                         jitter_im=params.parser.jitter_im,
@@ -82,5 +80,5 @@ if __name__ == "__main__":
         plt.imshow(i[0].numpy())
         plt.show()
 
-        if l > 10: 
+        if l > 10:
             break
