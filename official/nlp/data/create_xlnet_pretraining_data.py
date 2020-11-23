@@ -477,6 +477,10 @@ def _convert_tokens_to_instances(
                      + [1] * b_length + [1] + [2])
       boundary_indices = _get_boundary_indices(tokenizer=tokenizer,
                                                data=data)
+      assert len(data) == seq_length
+      assert len(segment_ids) == seq_length
+      assert len(boundary_indices) > 0  # pylint: disable=g-explicit-length-test
+
       instances.append(TrainingInstance(
           data=data,
           segment_ids=segment_ids,
