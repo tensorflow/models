@@ -102,7 +102,7 @@ class SegmentationHead(tf.keras.layers.Layer):
     conv_kwargs = {
         'kernel_size': 3,
         'padding': 'same',
-        'bias_initializer': tf.zeros_initializer(),
+        'use_bias': False,
         'kernel_initializer': tf.keras.initializers.RandomNormal(stddev=0.01),
         'kernel_regularizer': self._config_dict['kernel_regularizer'],
     }
@@ -120,7 +120,7 @@ class SegmentationHead(tf.keras.layers.Layer):
       self._dlv3p_conv = conv_op(
           kernel_size=1,
           padding='same',
-          bias_initializer=tf.zeros_initializer(),
+          use_bias=False,
           kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
           kernel_regularizer=self._config_dict['kernel_regularizer'],
           name='segmentation_head_deeplabv3p_fusion_conv',
@@ -145,7 +145,12 @@ class SegmentationHead(tf.keras.layers.Layer):
     self._classifier = conv_op(
         name='segmentation_output',
         filters=self._config_dict['num_classes'],
-        **conv_kwargs)
+        kernel_size=1,
+        padding='same',
+        bias_initializer=tf.zeros_initializer(),
+        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        kernel_regularizer=self._config_dict['kernel_regularizer'],
+        bias_regularizer=self._config_dict['bias_regularizer'])
 
     super(SegmentationHead, self).build(input_shape)
 

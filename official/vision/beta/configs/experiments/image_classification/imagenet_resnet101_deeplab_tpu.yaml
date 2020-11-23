@@ -1,3 +1,4 @@
+# Top1 accuracy 80.36%
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -10,6 +11,9 @@ task:
       dilated_resnet:
         model_id: 101
         output_stride: 16
+        stem_type: 'v1'
+        multigrid: [1, 2, 4]
+        last_stage_repeats: 1
     norm_activation:
       activation: 'swish'
   losses:

@@ -81,17 +81,18 @@ class SemanticSegmentationTask(base_task.Task):
   def build_inputs(self, params, input_context=None):
     """Builds classification input."""
 
-    input_size = self.task_config.model.input_size
     ignore_label = self.task_config.losses.ignore_label
 
     decoder = segmentation_input.Decoder()
     parser = segmentation_input.Parser(
-        output_size=input_size[:2],
+        output_size=params.output_size,
+        train_on_crops=params.train_on_crops,
         ignore_label=ignore_label,
         resize_eval_groundtruth=params.resize_eval_groundtruth,
         groundtruth_padded_size=params.groundtruth_padded_size,
         aug_scale_min=params.aug_scale_min,
         aug_scale_max=params.aug_scale_max,
+        aug_rand_hflip=params.aug_rand_hflip,
         dtype=params.dtype)
 
     reader = input_reader.InputReader(
@@ -120,7 +121,8 @@ class SemanticSegmentationTask(base_task.Task):
         loss_params.label_smoothing,
         loss_params.class_weights,
         loss_params.ignore_label,
-        use_groundtruth_dimension=loss_params.use_groundtruth_dimension)
+        use_groundtruth_dimension=loss_params.use_groundtruth_dimension,
+        top_k_percent_pixels=loss_params.top_k_percent_pixels)
 
     total_loss = segmentation_loss_fn(model_outputs, labels['masks'])
 
@@ -133,19 +135,18 @@ class SemanticSegmentationTask(base_task.Task):
     """Gets streaming metrics for training/validation."""
     metrics = []
     if training:
-      # TODO(arashwan): make MeanIoU tpu friendly.
-      if not isinstance(tf.distribute.get_strategy(),
-                        tf.distribute.TPUStrategy):
-        metrics.append(segmentation_metrics.MeanIoU(
-            name='mean_iou',
-            num_classes=self.task_config.model.num_classes,
-            rescale_predictions=False))
+      metrics.append(segmentation_metrics.MeanIoU(
+          name='mean_iou',
+          num_classes=self.task_config.model.num_classes,
+          rescale_predictions=False,
+          dtype=tf.float32))
     else:
       self.miou_metric = segmentation_metrics.MeanIoU(
           name='val_mean_iou',
           num_classes=self.task_config.model.num_classes,
           rescale_predictions=not self.task_config.validation_data
-          .resize_eval_groundtruth)
+          .resize_eval_groundtruth,
+          dtype=tf.float32)
 
     return metrics
 

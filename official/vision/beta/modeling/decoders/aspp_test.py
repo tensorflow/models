@@ -61,6 +61,7 @@ class ASPPTest(parameterized.TestCase, tf.test.TestCase):
         level=3,
         dilation_rates=[6, 12],
         num_filters=256,
+        pool_kernel_size=None,
         use_sync_bn=False,
         norm_momentum=0.99,
         norm_epsilon=0.001,

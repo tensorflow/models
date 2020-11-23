@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Backbones configurations."""
-from typing import Optional
+from typing import Optional, List
 
 # Import libraries
 import dataclasses
@@ -36,6 +36,9 @@ class DilatedResNet(hyperparams.Config):
   """DilatedResNet config."""
   model_id: int = 50
   output_stride: int = 16
+  multigrid: Optional[List[int]] = None
+  stem_type: str = 'v0'
+  last_stage_repeats: int = 1
 
 
 @dataclasses.dataclass

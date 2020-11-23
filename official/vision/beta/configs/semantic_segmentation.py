@@ -32,6 +32,8 @@ from official.vision.beta.configs import decoders
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
+  output_size: List[int] = dataclasses.field(default_factory=list)
+  train_on_crops: bool = False
   input_path: str = ''
   global_batch_size: int = 0
   is_training: bool = True
@@ -42,6 +44,7 @@ class DataConfig(cfg.DataConfig):
   groundtruth_padded_size: List[int] = dataclasses.field(default_factory=list)
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
+  aug_rand_hflip: bool = True
   drop_remainder: bool = True
 
 
@@ -73,11 +76,12 @@ class SemanticSegmentationModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
-  label_smoothing: float = 0.1
+  label_smoothing: float = 0.0
   ignore_label: int = 255
   class_weights: List[float] = dataclasses.field(default_factory=list)
   l2_weight_decay: float = 0.0
   use_groundtruth_dimension: bool = True
+  top_k_percent_pixels: float = 1.0
 
 
 @dataclasses.dataclass
@@ -115,18 +119,20 @@ def seg_deeplabv3_pascal() -> cfg.ExperimentConfig:
   train_batch_size = 16
   eval_batch_size = 8
   steps_per_epoch = PASCAL_TRAIN_EXAMPLES // train_batch_size
-  output_stride = 8
+  output_stride = 16
   aspp_dilation_rates = [12, 24, 36]  # [6, 12, 18] if output_stride = 16
+  multigrid = [1, 2, 4]
+  stem_type = 'v1'
   level = int(np.math.log2(output_stride))
   config = cfg.ExperimentConfig(
       task=SemanticSegmentationTask(
           model=SemanticSegmentationModel(
               num_classes=21,
-              # TODO(arashwan): test changing size to 513 to match deeplab.
-              input_size=[512, 512, 3],
+              input_size=[None, None, 3],
               backbone=backbones.Backbone(
                   type='dilated_resnet', dilated_resnet=backbones.DilatedResNet(
-                      model_id=50, output_stride=output_stride)),
+                      model_id=101, output_stride=output_stride,
+                      multigrid=multigrid, stem_type=stem_type)),
               decoder=decoders.Decoder(
                   type='aspp', aspp=decoders.ASPP(
                       level=level, dilation_rates=aspp_dilation_rates)),
@@ -139,19 +145,22 @@ def seg_deeplabv3_pascal() -> cfg.ExperimentConfig:
           losses=Losses(l2_weight_decay=1e-4),
           train_data=DataConfig(
               input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'train_aug*'),
+              # TODO(arashwan): test changing size to 513 to match deeplab.
+              output_size=[512, 512],
               is_training=True,
               global_batch_size=train_batch_size,
               aug_scale_min=0.5,
               aug_scale_max=2.0),
           validation_data=DataConfig(
               input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'val*'),
+              output_size=[512, 512],
               is_training=False,
               global_batch_size=eval_batch_size,
               resize_eval_groundtruth=False,
               groundtruth_padded_size=[512, 512],
               drop_remainder=False),
-          # resnet50
-          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet50_imagenet/ckpt-62400',
+          # resnet101
+          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet101_imagenet/ckpt-62400',
           init_checkpoint_modules='backbone'),
       trainer=cfg.TrainerConfig(
           steps_per_loop=steps_per_epoch,
@@ -199,16 +208,19 @@ def seg_deeplabv3plus_pascal() -> cfg.ExperimentConfig:
   eval_batch_size = 8
   steps_per_epoch = PASCAL_TRAIN_EXAMPLES // train_batch_size
   output_stride = 16
-  aspp_dilation_rates = [6, 12, 18]  # [12, 24, 36] if output_stride = 8
+  aspp_dilation_rates = [6, 12, 18]
+  multigrid = [1, 2, 4]
+  stem_type = 'v1'
   level = int(np.math.log2(output_stride))
   config = cfg.ExperimentConfig(
       task=SemanticSegmentationTask(
           model=SemanticSegmentationModel(
               num_classes=21,
-              input_size=[512, 512, 3],
+              input_size=[None, None, 3],
               backbone=backbones.Backbone(
                   type='dilated_resnet', dilated_resnet=backbones.DilatedResNet(
-                      model_id=50, output_stride=output_stride)),
+                      model_id=101, output_stride=output_stride,
+                      stem_type=stem_type, multigrid=multigrid)),
               decoder=decoders.Decoder(
                   type='aspp',
                   aspp=decoders.ASPP(
@@ -227,19 +239,21 @@ def seg_deeplabv3plus_pascal() -> cfg.ExperimentConfig:
           losses=Losses(l2_weight_decay=1e-4),
           train_data=DataConfig(
               input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'train_aug*'),
+              output_size=[512, 512],
               is_training=True,
               global_batch_size=train_batch_size,
               aug_scale_min=0.5,
               aug_scale_max=2.0),
           validation_data=DataConfig(
               input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'val*'),
+              output_size=[512, 512],
               is_training=False,
               global_batch_size=eval_batch_size,
               resize_eval_groundtruth=False,
               groundtruth_padded_size=[512, 512],
               drop_remainder=False),
-          # resnet50
-          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet50_imagenet/ckpt-62400',
+          # resnet101
+          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/deeplab/deeplab_resnet101_imagenet/ckpt-62400',
           init_checkpoint_modules='backbone'),
       trainer=cfg.TrainerConfig(
           steps_per_loop=steps_per_epoch,
