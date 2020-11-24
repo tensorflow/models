@@ -58,6 +58,58 @@ class StateKeys:
   FINISHED_FLAGS = "FINISHED_FLAGS"
 
 
+def log_prob_from_logits(logits):
+  return logits - tf.reduce_logsumexp(logits, axis=-1, keepdims=True)
+
+
+def shape_list(tensor):
+  """Return a list of the tensor's shape, and ensure no None values in list."""
+  # Get statically known shape (may contain None's for unknown dimensions)
+  shape = tensor.get_shape().as_list()
+
+  # Ensure that the shape values are not None
+  dynamic_shape = tf.shape(tensor)
+  for i in range(len(shape)):  # pylint: disable=consider-using-enumerate
+    if shape[i] is None:
+      shape[i] = dynamic_shape[i]
+  return shape
+
+
+def get_shape_keep_last_dim(tensor):
+  shape_list_obj = shape_list(tensor)
+  for i in range(len(shape_list_obj) - 1):
+    shape_list_obj[i] = None
+
+  if isinstance(shape_list_obj[-1], tf.Tensor):
+    shape_list_obj[-1] = None
+  return tf.TensorShape(shape_list_obj)
+
+
+def expand_to_same_rank(tensor, target):
+  """Expands a given tensor to target's rank to be broadcastable.
+
+  Args:
+    tensor: input tensor to tile. Shape: [b, d1, ..., da]
+    target: target tensor. Shape: [b, d1, ..., da, ..., dn]
+
+  Returns:
+    Tiled tensor of shape [b, d1, ..., da, 1, ..., 1] with same rank of target
+
+  Raises:
+    ValueError, if the shape rank of rank tensor/target is None.
+  """
+  if tensor.shape.rank is None:
+    raise ValueError("Expect rank for tensor shape, but got None.")
+  if target.shape.rank is None:
+    raise ValueError("Expect rank for target shape, but got None.")
+
+  with tf.name_scope("expand_rank"):
+    diff_rank = target.shape.rank - tensor.shape.rank
+    for _ in range(diff_rank):
+      tensor = tf.expand_dims(tensor, -1)
+    return tensor
+
+
 class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
   """A base class for the API required for decoding (go/decoding-tf-nlp)."""
 
@@ -232,58 +284,6 @@ class DecodingModule(tf.Module, metaclass=abc.ABCMeta):
       return dtypes.float16.max
     else:
       raise AssertionError("Invalid dtype: %s" % self.dtype)
-
-  @staticmethod
-  def _log_prob_from_logits(logits):
-    return logits - tf.reduce_logsumexp(logits, axis=-1, keepdims=True)
-
-  @staticmethod
-  def _shape_list(tensor):
-    """Return a list of the tensor's shape, and ensure no None values in list."""
-    # Get statically known shape (may contain None's for unknown dimensions)
-    shape = tensor.get_shape().as_list()
-
-    # Ensure that the shape values are not None
-    dynamic_shape = tf.shape(tensor)
-    for i in range(len(shape)):  # pylint: disable=consider-using-enumerate
-      if shape[i] is None:
-        shape[i] = dynamic_shape[i]
-    return shape
-
-  @staticmethod
-  def _get_shape_keep_last_dim(tensor):
-    shape_list_obj = DecodingModule._shape_list(tensor)
-    for i in range(len(shape_list_obj) - 1):
-      shape_list_obj[i] = None
-
-    if isinstance(shape_list_obj[-1], tf.Tensor):
-      shape_list_obj[-1] = None
-    return tf.TensorShape(shape_list_obj)
-
-  @staticmethod
-  def _expand_to_same_rank(tensor, target):
-    """Expands a given tensor to target's rank to be broadcastable.
-
-    Args:
-      tensor: input tensor to tile. Shape: [b, d1, ..., da]
-      target: target tensor. Shape: [b, d1, ..., da, ..., dn]
-
-    Returns:
-      Tiled tensor of shape [b, d1, ..., da, 1, ..., 1] with same rank of target
-
-    Raises:
-      ValueError, if the shape rank of rank tensor/target is None.
-    """
-    if tensor.shape.rank is None:
-      raise ValueError("Expect rank for tensor shape, but got None.")
-    if target.shape.rank is None:
-      raise ValueError("Expect rank for target shape, but got None.")
-
-    with tf.name_scope("expand_rank"):
-      diff_rank = target.shape.rank - tensor.shape.rank
-      for _ in range(diff_rank):
-        tensor = tf.expand_dims(tensor, -1)
-      return tensor
 
 
 
