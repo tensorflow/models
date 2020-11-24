@@ -136,5 +136,5 @@ class LayerNormalization(base_layers.BaseLayer):
       tensor = (tensor - mean) / tf.sqrt(variance + 1e-6)
       return tensor * self.scale + self.offset
     else:
-      return tf_custom_ops_py.layer_norm_v2(
+      return tf_custom_ops_py.layer_norm(
           tensor, self.scale, self.offset, axes=self.axes)

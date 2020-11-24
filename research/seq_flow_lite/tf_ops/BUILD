@@ -101,6 +101,8 @@ cc_library(
         ":text_distorter",
         "@tensorflow_includes//:includes",
         "@tensorflow_solib//:framework_lib",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/random",
     ],
     alwayslink = 1,
 )

@@ -25,13 +25,13 @@ limitations under the License.
 
 using ::tensorflow::int32;
 using ::tensorflow::int64;
-using ::tensorflow::uint64;
 using ::tensorflow::OpKernel;
 using ::tensorflow::OpKernelConstruction;
 using ::tensorflow::OpKernelContext;
 using ::tensorflow::Tensor;
 using ::tensorflow::TensorShape;
 using ::tensorflow::TensorShapeUtils;
+using ::tensorflow::uint64;
 using ::tensorflow::errors::InvalidArgument;
 
 using tensorflow::shape_inference::DimensionHandle;
@@ -56,7 +56,11 @@ class SequenceStringProjectionOp : public OpKernel {
   explicit SequenceStringProjectionOp(OpKernelConstruction* context)
       : OpKernel(context) {
     OP_REQUIRES_OK(context, context->GetAttr("feature_size", &feature_size_));
-    hasher_ = absl::make_unique<Hasher>(feature_size_);
+    std::string hashtype;
+    OP_REQUIRES_OK(context, context->GetAttr("hashtype", &hashtype));
+    hasher_ =
+        absl::WrapUnique<Hasher>(Hasher::CreateHasher(feature_size_, hashtype));
+    CHECK(hasher_);
     float distortion_probability = 0.0;
     OP_REQUIRES_OK(context, context->GetAttr("distortion_probability",
                                              &distortion_probability));
@@ -109,6 +113,22 @@ class SequenceStringProjectionOp : public OpKernel {
     if (!separators.empty() || normalize_repetition) {
       projection_normalizer_ = absl::make_unique<ProjectionNormalizer>(
           separators, normalize_repetition);
+    }
+
+    OP_REQUIRES_OK(context, context->GetAttr("add_first_cap_feature",
+                                             &add_first_cap_feature_));
+    CHECK_GE(add_first_cap_feature_, 0.0);
+    CHECK_LE(add_first_cap_feature_, 1.0);
+    if (add_first_cap_feature_ > 0.0) {
+      CHECK_GE(feature_size_, 3);
+    }
+
+    OP_REQUIRES_OK(context, context->GetAttr("add_all_caps_feature",
+                                             &add_all_caps_feature_));
+    CHECK_GE(add_all_caps_feature_, 0.0);
+    CHECK_LE(add_all_caps_feature_, 1.0);
+    if (add_all_caps_feature_ > 0.0) {
+      CHECK_GE(feature_size_, 4);
     }
   }
 
@@ -173,13 +193,15 @@ class SequenceStringProjectionOp : public OpKernel {
       doc_size_feature = std::min(doc_size_feature, 1.0f) * 2.0f - 1.0f;
       for (int64 j = -bos_tag_; j < num_tokens + eos_tag_; ++j) {
         std::string word;
+        bool first_cap = false;
+        bool all_caps = false;
         if (j < 0) {
           // Use a special tag for begin of sentence.
           word = kBeginTokenTSP;
         } else if (j < num_tokens) {
           auto uword = icu::UnicodeString::fromUTF8(
               unicode_handler_->LowerCaseUTF8WithSupportedUnicodes(
-                  words_batches[i][j]));
+                  words_batches[i][j], &first_cap, &all_caps));
           word = text_distorter_->DistortText(&uword);
         } else {
           // Use a special tag for end of sentence.
@@ -196,14 +218,31 @@ class SequenceStringProjectionOp : public OpKernel {
         }
         if (word_novelty_bits_ != 0 && !hash_codes.empty()) {
           const auto word_hash = hash_codes[0];
-          projection[offset0 + feature_size_ - 1] =
+          projection[offset0 + feature_size_ - kWordNoveltyOffset] =
               std::min((word_counter[word_hash]++ * word_novelty_offset_),
                        1.0f) *
                   2.0f -
               1.0f;
         }
         if (doc_size_levels_ != 0) {
-          projection[offset0 + feature_size_ - 2] = doc_size_feature;
+          projection[offset0 + feature_size_ - kDocSizeOffset] =
+              doc_size_feature;
+        }
+        if (add_first_cap_feature_ > 0.0f) {
+          if (text_distorter_->BernouilleSample(add_first_cap_feature_)) {
+            projection[offset0 + feature_size_ - kFirstCapOffset] =
+                first_cap ? 1.0 : -1.0;
+          } else {
+            projection[offset0 + feature_size_ - kFirstCapOffset] = 0.0;
+          }
+        }
+        if (add_all_caps_feature_ > 0.0f) {
+          if (text_distorter_->BernouilleSample(add_all_caps_feature_)) {
+            projection[offset0 + feature_size_ - kAllCapsOffset] =
+                all_caps ? 1.0 : -1.0;
+          } else {
+            projection[offset0 + feature_size_ - kAllCapsOffset] = 0.0;
+          }
         }
         offset0 += feature_size_;
       }
@@ -227,6 +266,8 @@ class SequenceStringProjectionOp : public OpKernel {
   int word_novelty_bits_;
   int doc_size_levels_;
   float word_novelty_offset_;
+  float add_first_cap_feature_;
+  float add_all_caps_feature_;
 };
 
 REGISTER_KERNEL_BUILDER(
@@ -241,16 +282,19 @@ REGISTER_OP("SequenceStringProjection")
     .Attr("feature_size: int")
     .Attr("distortion_probability: float = 0.0")
     .Attr("vocabulary: string = ''")
+    .Attr("hashtype: string = 'murmur'")
     .Attr("max_splits: int = -1")
     .Attr("exclude_nonalphaspace_unicodes: bool = False")
     .Attr("add_bos_tag: bool = False")
     .Attr("add_eos_tag: bool = True")
+    .Attr("add_first_cap_feature: float = 0.0")
+    .Attr("add_all_caps_feature: float = 0.0")
     .Attr("word_novelty_bits: int = 0")
     .Attr("doc_size_levels: int = 0")
     .Attr("split_on_space: bool = True")
     .Attr("token_separators: string = ''")
     .Attr("normalize_repetition: bool = false")
-    .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
+    .SetShapeFn([](InferenceContext* c) {
       DimensionHandle size;
 
       int32 feature_size;
@@ -285,10 +329,11 @@ Attribute(s):
     will be allowed in the input text before fingerprinting. Another way to
     say it is that the vocabulary is an optional character allowlist for the
     input text. It helps normalize the text.
+- hashtype: Hashing method to use for projection.
 - max_splits: Maximum number of tokens that are allowed. It helps restrict the
     max token length of the projection output. When the value is -1 the op
     does not restrict the number of tokens in the output.
-- exclude_nonalphaspace_unicodes: When set to true excludes unicodes that are
+- exclude_nonalphaspace_unicodes: When true excludes all unicodes that are
     not alphabets or space character. This is multilingual. Though the effect
     of this flag can be achieved using vocabulary, the vocabulary will have to
     be very large for multilingual input.
@@ -301,6 +346,12 @@ Attribute(s):
     output the document size in log scale. This is an experimental feature.
 - split_on_space: When true tokenization is done on space segmentation.
     Otherwise tokenization is done by segmenting on unicode boundary.
+- add_first_cap_feature: Specifies the probability with which a feature to the
+     resulting projection tensor that helps discriminate if the input token is
+     Camel case will be added.
+- add_all_caps_feature: Specifies the probability with which a feature to the
+    resulting projection tensor that helps discriminate if the input token is
+    ALLCAPS will be added.
 
 Output(s):
 - projection: Floating point tensor with ternary values of shape

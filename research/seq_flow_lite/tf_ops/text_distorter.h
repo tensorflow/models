@@ -32,6 +32,7 @@ class TextDistorter {
     assert(distortion_probability_ <= 1.0);
   }
   std::string DistortText(icu::UnicodeString* uword);
+  bool BernouilleSample(float p) { return (generator_.RandFloat() <= p); }
 
  private:
   tensorflow::random::PhiloxRandom philox_;
