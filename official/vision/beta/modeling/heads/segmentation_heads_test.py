@@ -26,10 +26,12 @@ from official.vision.beta.modeling.heads import segmentation_heads
 class SegmentationHeadTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (3), (4),
+      (2, 'pyramid_fusion'),
+      (3, 'pyramid_fusion'),
   )
-  def test_forward(self, level):
-    head = segmentation_heads.SegmentationHead(num_classes=10, level=level)
+  def test_forward(self, level, feature_fusion):
+    head = segmentation_heads.SegmentationHead(
+        num_classes=10, level=level, feature_fusion=feature_fusion)
     backbone_features = {
         '3': np.random.rand(2, 128, 128, 16),
         '4': np.random.rand(2, 64, 64, 16),
@@ -39,10 +41,12 @@ class SegmentationHeadTest(parameterized.TestCase, tf.test.TestCase):
         '4': np.random.rand(2, 64, 64, 16),
     }
     logits = head(backbone_features, decoder_features)
-    self.assertAllEqual(
-        logits.numpy().shape,
-        [2, decoder_features[str(level)].shape[1],
-         decoder_features[str(level)].shape[2], 10])
+
+    if level in decoder_features:
+      self.assertAllEqual(logits.numpy().shape, [
+          2, decoder_features[str(level)].shape[1],
+          decoder_features[str(level)].shape[2], 10
+      ])
 
   def test_serialize_deserialize(self):
     head = segmentation_heads.SegmentationHead(num_classes=10, level=3)

@@ -17,6 +17,7 @@
 import tensorflow as tf
 
 from official.modeling import tf_utils
+from official.vision.beta.modeling.layers import nn_layers
 from official.vision.beta.ops import spatial_transform_ops
 
 
@@ -52,9 +53,10 @@ class SegmentationHead(tf.keras.layers.Layer):
         Default is 256.
       upsample_factor: `int` number to specify the upsampling factor to generate
         finer mask. Default 1 means no upsampling is applied.
-      feature_fusion: One of `deeplabv3plus`, or None. If `deeplabv3plus`,
-        features from decoder_features[level] will be fused with
-        low level feature maps from backbone.
+      feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`, or None. If
+        `deeplabv3plus`, features from decoder_features[level] will be fused
+        with low level feature maps from backbone. If `pyramid_fusion`,
+        multiscale features will be resized and fused at the target level.
       low_level: `int`, backbone level to be used for feature fusion. This arg
         is used when feature_fusion is set to deeplabv3plus.
       low_level_num_filters: `int`, reduced number of filters for the low
@@ -170,11 +172,9 @@ class SegmentationHead(tf.keras.layers.Layer):
       segmentation prediction mask: `Tensor`, the segmentation mask scores
         predicted from input feature.
     """
-
-    x = decoder_output[str(self._config_dict['level'])]
-
     if self._config_dict['feature_fusion'] == 'deeplabv3plus':
       # deeplabv3+ feature fusion
+      x = decoder_output[str(self._config_dict['level'])]
       y = backbone_output[str(
           self._config_dict['low_level'])]
       y = self._dlv3p_norm(self._dlv3p_conv(y))
@@ -183,6 +183,11 @@ class SegmentationHead(tf.keras.layers.Layer):
       x = tf.image.resize(
           x, tf.shape(y)[1:3], method=tf.image.ResizeMethod.BILINEAR)
       x = tf.concat([x, y], axis=self._bn_axis)
+    elif self._config_dict['feature_fusion'] == 'pyramid_fusion':
+      x = nn_layers.pyramid_feature_fusion(decoder_output,
+                                           self._config_dict['level'])
+    else:
+      x = decoder_output[str(self._config_dict['level'])]
 
     for conv, norm in zip(self._convs, self._norms):
       x = conv(x)
@@ -198,4 +203,3 @@ class SegmentationHead(tf.keras.layers.Layer):
   @classmethod
   def from_config(cls, config):
     return cls(**config)
-

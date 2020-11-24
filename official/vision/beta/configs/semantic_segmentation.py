@@ -54,7 +54,7 @@ class SegmentationHead(hyperparams.Config):
   num_convs: int = 2
   num_filters: int = 256
   upsample_factor: int = 1
-  feature_fusion: Optional[str] = None  # None, or deeplabv3plus
+  feature_fusion: Optional[str] = None  # None, deeplabv3plus, or pyramid_fusion
   # deeplabv3plus feature fusion params
   low_level: int = 2
   low_level_num_filters: int = 48
@@ -274,6 +274,80 @@ def seg_deeplabv3plus_pascal() -> cfg.ExperimentConfig:
                   'polynomial': {
                       'initial_learning_rate': 0.007,
                       'decay_steps': 45 * steps_per_epoch,
+                      'end_learning_rate': 0.0,
+                      'power': 0.9
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 5 * steps_per_epoch,
+                      'warmup_learning_rate': 0
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+
+  return config
+
+
+@exp_factory.register_config_factory('seg_resnetfpn_pascal')
+def seg_resnetfpn_pascal() -> cfg.ExperimentConfig:
+  """Image segmentation on imagenet with resnet-fpn."""
+  train_batch_size = 256
+  eval_batch_size = 32
+  steps_per_epoch = PASCAL_TRAIN_EXAMPLES // train_batch_size
+  config = cfg.ExperimentConfig(
+      task=SemanticSegmentationTask(
+          model=SemanticSegmentationModel(
+              num_classes=21,
+              input_size=[512, 512, 3],
+              min_level=3,
+              max_level=7,
+              backbone=backbones.Backbone(
+                  type='resnet', resnet=backbones.ResNet(model_id=50)),
+              decoder=decoders.Decoder(type='fpn', fpn=decoders.FPN()),
+              head=SegmentationHead(level=3, num_convs=3),
+              norm_activation=common.NormActivation(
+                  activation='swish',
+                  use_sync_bn=True)),
+          losses=Losses(l2_weight_decay=1e-4),
+          train_data=DataConfig(
+              input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'train_aug*'),
+              is_training=True,
+              global_batch_size=train_batch_size,
+              aug_scale_min=0.2,
+              aug_scale_max=1.5),
+          validation_data=DataConfig(
+              input_path=os.path.join(PASCAL_INPUT_PATH_BASE, 'val*'),
+              is_training=False,
+              global_batch_size=eval_batch_size,
+              resize_eval_groundtruth=False,
+              groundtruth_padded_size=[512, 512],
+              drop_remainder=False),
+      ),
+      trainer=cfg.TrainerConfig(
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          train_steps=450 * steps_per_epoch,
+          validation_steps=PASCAL_VAL_EXAMPLES // eval_batch_size,
+          validation_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'sgd',
+                  'sgd': {
+                      'momentum': 0.9
+                  }
+              },
+              'learning_rate': {
+                  'type': 'polynomial',
+                  'polynomial': {
+                      'initial_learning_rate': 0.007,
+                      'decay_steps': 450 * steps_per_epoch,
                       'end_learning_rate': 0.0,
                       'power': 0.9
                   }
