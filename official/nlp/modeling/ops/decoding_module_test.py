@@ -62,12 +62,12 @@ class DecodingModuleTest(tf.test.TestCase):
   def test_get_shape_keep_last_dim(self):
     y = tf.constant(4.0)
     x = tf.ones([7, tf.cast(tf.sqrt(y), tf.int32), 2, 5])
-    shape = decoding_module.DecodingModule._get_shape_keep_last_dim(x)
+    shape = decoding_module.get_shape_keep_last_dim(x)
     self.assertAllEqual([None, None, None, 5], shape.as_list())
 
   def test_shape_list(self):
     x = tf.ones([7, 1])
-    shape = decoding_module.DecodingModule._shape_list(x)
+    shape = decoding_module.shape_list(x)
     self.assertAllEqual([7, 1], shape)
 
   def test_inf(self):
