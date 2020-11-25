@@ -93,6 +93,8 @@ def _create_bert_pretrainer_model(cfg):
       mlm_activation=tf_utils.get_activation(cfg.hidden_act),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=cfg.initializer_range))
+  # Makes sure the pretrainer variables are created.
+  _ = pretrainer(pretrainer.inputs)
   return pretrainer
 
 

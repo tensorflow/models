@@ -50,6 +50,7 @@ BERT_V2_NAME_REPLACEMENTS = (
     ("output/dense", "output"),
     ("output/LayerNorm", "output_layer_norm"),
     ("pooler/dense", "pooler_transform"),
+    ("cls/predictions", "bert/cls/predictions"),
     ("cls/predictions/output_bias", "cls/predictions/output_bias/bias"),
     ("cls/seq_relationship/output_bias", "predictions/transform/logits/bias"),
     ("cls/seq_relationship/output_weights",
