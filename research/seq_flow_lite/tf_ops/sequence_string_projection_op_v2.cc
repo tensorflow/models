@@ -40,12 +40,16 @@ constexpr char kEndTokenTSP[] = "<EOS>";
 constexpr float kMappingTable[4] = {0, 1, -1, 0};
 constexpr int kIncrement = 32;
 
+template <typename T>
 class SequenceStringProjectionOpV2 : public OpKernel {
  public:
   explicit SequenceStringProjectionOpV2(OpKernelConstruction* context)
       : OpKernel(context) {
     OP_REQUIRES_OK(context, context->GetAttr("feature_size", &feature_size_));
-    hasher_ = absl::make_unique<Hasher>(feature_size_);
+    std::string hashtype;
+    OP_REQUIRES_OK(context, context->GetAttr("hashtype", &hashtype));
+    hasher_ =
+        absl::WrapUnique<Hasher>(Hasher::CreateHasher(feature_size_, hashtype));
 
     float distortion_probability = 0.0;
     OP_REQUIRES_OK(context, context->GetAttr("distortion_probability",
@@ -88,13 +92,13 @@ class SequenceStringProjectionOpV2 : public OpKernel {
         ctx, TensorShapeUtils::IsVector(seq_len->shape()),
         InvalidArgument("`sequence_length` must be a vector, got shape: ",
                         seq_len->shape().DebugString()));
-    auto seq_len_vector = seq_len->vec<int32>();
+    auto seq_len_flat = seq_len->flat<T>();
 
     OP_REQUIRES(
-        ctx, seq_len_vector.size() == batch_size,
+        ctx, seq_len_flat.size() == batch_size,
         InvalidArgument("`sequence_length` should have batch size number "
                         "of elements, got size ",
-                        seq_len_vector.size(), ", batch size is ", batch_size));
+                        seq_len_flat.size(), ", batch size is ", batch_size));
 
     Tensor* output_tensor = nullptr;
     OP_REQUIRES_OK(
@@ -106,7 +110,7 @@ class SequenceStringProjectionOpV2 : public OpKernel {
 
     std::vector<uint64_t> hash_codes;
     for (int64 i = 0; i < batch_size; ++i) {
-      const int64 num_tokens = seq_len_vector(i);
+      const int64 num_tokens = seq_len_flat(i);
       OP_REQUIRES(ctx, num_tokens >= 0,
                   InvalidArgument("`sequence_length` should have values "
                                   "greater than or equal to 0"));
@@ -159,20 +163,27 @@ class SequenceStringProjectionOpV2 : public OpKernel {
   int bos_tag_;
 };
 
-REGISTER_KERNEL_BUILDER(
-    Name("SequenceStringProjectionV2").Device(::tensorflow::DEVICE_CPU),
-    SequenceStringProjectionOpV2);
+REGISTER_KERNEL_BUILDER(Name("SequenceStringProjectionV2")
+                            .Device(::tensorflow::DEVICE_CPU)
+                            .TypeConstraint<int64>("Tsequence_length"),
+                        SequenceStringProjectionOpV2<int64>);
+REGISTER_KERNEL_BUILDER(Name("SequenceStringProjectionV2")
+                            .Device(::tensorflow::DEVICE_CPU)
+                            .TypeConstraint<int32>("Tsequence_length"),
+                        SequenceStringProjectionOpV2<int32>);
 
 REGISTER_OP("SequenceStringProjectionV2")
     .Input("input: string")
-    .Input("sequence_length: int32")
+    .Input("sequence_length: Tsequence_length")
     .Output("projection: float32")
     .Attr("feature_size: int")
     .Attr("distortion_probability: float = 0.0")
     .Attr("vocabulary: string = ''")
+    .Attr("hashtype: string = 'murmur'")
     .Attr("add_bos_tag: bool = False")
     .Attr("add_eos_tag: bool = False")
     .Attr("normalize_repetition: bool = False")
+    .Attr("Tsequence_length: {int32, int64}")
     .SetShapeFn([](::tensorflow::shape_inference::InferenceContext* c) {
       DimensionHandle size;
 
@@ -181,9 +192,10 @@ REGISTER_OP("SequenceStringProjectionV2")
       const int kMaxFeatureSize = 4096;
       CHECK_GT(feature_size, 0);
       CHECK_LE(feature_size, kMaxFeatureSize);
-      auto batch_size = c->Dim(c->input(0), 0);
-      c->set_output(0, c->MakeShape({batch_size, InferenceContext::kUnknownDim,
-                                     feature_size}));
+      ShapeHandle output_shape;
+      TF_RETURN_IF_ERROR(c->Concatenate(
+          c->input(0), c->MakeShape({feature_size}), &output_shape));
+      c->set_output(0, output_shape);
       return tensorflow::Status::OK();
     })
     .Doc(R"doc(
@@ -209,6 +221,7 @@ Attribute(s):
     will be allowed in the input text before fingerprinting. Expressed another
     way the vocabulary is an optional character allowlist for the
     input tokens. It helps normalize the text.
+- hashtype: Hashing method to use for projection.
 - add_bos_tag: When true inserts a begin of sentence tag.
 - add_eos_tag: When true inserts a end of sentence tag.
 - normalize_repetition: When true normalizes repetition in text tokens before

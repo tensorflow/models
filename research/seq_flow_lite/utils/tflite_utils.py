@@ -42,13 +42,20 @@ def set_output_quantized_for_custom_ops(graph_def):
       'SequenceStringProjectionV2': [tf.float32.as_datatype_enum],
       'PoolingOp': [tf.float32.as_datatype_enum],
       'ExpectedValueOp': [tf.float32.as_datatype_enum],
-      'LayerNormV2': [tf.float32.as_datatype_enum],
+      'LayerNorm': [tf.float32.as_datatype_enum],
+      'UniformCausalAttn': [tf.float32.as_datatype_enum],
+  }
+  custom_op_renames = {
+      'SequenceStringProjection': 'SEQUENCE_STRING_PROJECTION',
+      'SequenceStringProjectionV2': 'SEQUENCE_STRING_PROJECTION_V2',
   }
 
   for node in graph_def.node:
     if node.op in quantized_custom_ops:
       node.attr['_output_quantized'].b = True
       node.attr['_output_types'].list.type[:] = quantized_custom_ops[node.op]
+    if node.op in custom_op_renames:
+      node.op = custom_op_renames[node.op]
 
 
 def generate_tflite(session, graph, input_tensors, output_tensors):
@@ -59,16 +66,16 @@ def generate_tflite(session, graph, input_tensors, output_tensors):
 
   set_output_quantized_for_custom_ops(graph_def)
 
-# TODO(b/171063452): Bug needs to be fixed to handle this correctly.
-#   def _node_name(tensor):
-#     return tensor.name.split(':')[0]
+  # TODO(b/171063452): Bug needs to be fixed to handle this correctly.
+  #   def _node_name(tensor):
+  #     return tensor.name.split(':')[0]
 
-#   input_arrays_with_shape = [
-#       (_node_name(tensor), None) for tensor in input_tensors
-#   ]
-#   output_arrays = [_node_name(tensor) for tensor in output_tensors]
-#   converter = tf.lite.TFLiteConverter(graph_def, None, None,
-#                                       input_arrays_with_shape, output_arrays)
+  #   input_arrays_with_shape = [
+  #       (_node_name(tensor), None) for tensor in input_tensors
+  #   ]
+  #   output_arrays = [_node_name(tensor) for tensor in output_tensors]
+  #   converter = tf.lite.TFLiteConverter(graph_def, None, None,
+  #                                      input_arrays_with_shape, output_arrays)
   converter = tf.lite.TFLiteConverter(graph_def, input_tensors, output_tensors)
   converter.inference_type = tf.uint8
   converter.default_ranges_stats = (127.5, 127.5)

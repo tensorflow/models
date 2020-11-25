@@ -72,7 +72,7 @@ py_strict_library(
         # package tensorflow
         # "//tf_ops:sequence_string_projection_op"  # sequence projection
         "//tf_ops:sequence_string_projection_op_py",  # sequence projection
-        "//tf_ops:sequence_string_projection_op_v2",  # sequence projection
+        # "//tf_ops:sequence_string_projection_op_v2"  # sequence projection
         "//tf_ops:sequence_string_projection_op_v2_py",  # sequence projection
     ],
 )

@@ -36,8 +36,9 @@ cc_test(
         "@org_tensorflow//tensorflow/lite/core/api",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
         "@org_tensorflow//tensorflow/lite/kernels:test_util",
+        "//tf_ops:projection_util",  # sequence projection
         # "//tf_ops:sequence_string_projection_op"  # sequence projection
-        "//tf_ops:sequence_string_projection_op_v2",  # sequence projection
+        # "//tf_ops:sequence_string_projection_op_v2"  # sequence projection
     ],
 )
 
@@ -83,7 +84,7 @@ cc_library(
     deps = [
         ":quantization_util",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
-        "@flatbuffers",
+        "@org_tensorflow//tensorflow/lite/kernels:kernel_util",
     ],
     alwayslink = 1,
 )
