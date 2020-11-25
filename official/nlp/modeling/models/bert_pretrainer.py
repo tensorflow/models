@@ -28,11 +28,9 @@ from official.nlp.modeling import networks
 
 @tf.keras.utils.register_keras_serializable(package='Text')
 class BertPretrainer(tf.keras.Model):
-  """BERT network training model.
+  """BERT pretraining model.
 
-  This is an implementation of the network structure surrounding a transformer
-  encoder as described in "BERT: Pre-training of Deep Bidirectional Transformers
-  for Language Understanding" (https://arxiv.org/abs/1810.04805).
+  [Note] Please use the new BertPretrainerV2 for your projects.
 
   The BertPretrainer allows a user to pass in a transformer stack, and
   instantiates the masked language model and classification networks that are
@@ -159,7 +157,6 @@ class BertPretrainer(tf.keras.Model):
     return cls(**config)
 
 
-# TODO(hongkuny): Migrate to BertPretrainerV2 for all usages.
 @tf.keras.utils.register_keras_serializable(package='Text')
 @gin.configurable
 class BertPretrainerV2(tf.keras.Model):
