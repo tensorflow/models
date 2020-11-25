@@ -1112,6 +1112,7 @@ def visualize_boxes_and_labels_on_image_array(
     min_score_thresh=.5,
     agnostic_mode=False,
     line_thickness=4,
+    mask_alpha=.4,
     groundtruth_box_visualization_color='black',
     skip_boxes=False,
     skip_scores=False,
@@ -1157,6 +1158,7 @@ def visualize_boxes_and_labels_on_image_array(
       class-agnostic mode or not.  This mode will display scores but ignore
       classes.
     line_thickness: integer (default: 4) controlling line width of the boxes.
+    mask_alpha: transparency value between 0 and 1 (default: 0.4).
     groundtruth_box_visualization_color: box color for visualizing groundtruth
       boxes
     skip_boxes: whether to skip the drawing of bounding boxes.
@@ -1232,7 +1234,8 @@ def visualize_boxes_and_labels_on_image_array(
       draw_mask_on_image_array(
           image,
           box_to_instance_masks_map[box],
-          color=color
+          color=color,
+          alpha=mask_alpha
       )
     if instance_boundaries is not None:
       draw_mask_on_image_array(
