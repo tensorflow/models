@@ -76,7 +76,8 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
                max_sequence_length=512,
                normalization_type='no_norm',
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
-               dropout_rate=0.1):
+               dropout_rate=0.1,
+               **kwargs):
     """Class initialization.
 
     Arguments:
@@ -90,13 +91,16 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
       initializer: The initializer to use for the embedding weights and
         linear projection weights.
       dropout_rate: Dropout rate.
+      **kwargs: keyword arguments.
     """
-    super(MobileBertEmbedding, self).__init__()
+    super(MobileBertEmbedding, self).__init__(**kwargs)
     self.word_vocab_size = word_vocab_size
     self.word_embed_size = word_embed_size
     self.type_vocab_size = type_vocab_size
     self.output_embed_size = output_embed_size
     self.max_sequence_length = max_sequence_length
+    self.normalization_type = normalization_type
+    self.initializer = tf.keras.initializers.get(initializer)
     self.dropout_rate = dropout_rate
 
     self.word_embedding = keras_nlp.layers.OnDeviceEmbedding(
@@ -124,6 +128,20 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
     self.dropout_layer = tf.keras.layers.Dropout(
         self.dropout_rate,
         name='embedding_dropout')
+
+  def get_config(self):
+    config = {
+        'word_vocab_size': self.word_vocab_size,
+        'word_embed_size': self.word_embed_size,
+        'type_vocab_size': self.type_vocab_size,
+        'output_embed_size': self.output_embed_size,
+        'max_sequence_length': self.max_sequence_length,
+        'normalization_type': self.normalization_type,
+        'initializer': tf.keras.initializers.serialize(self.initializer),
+        'dropout_rate': self.dropout_rate
+    }
+    base_config = super(MobileBertEmbedding, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, input_ids, token_type_ids=None):
     word_embedding_out = self.word_embedding(input_ids)
@@ -168,7 +186,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
                num_feedforward_networks=4,
                normalization_type='no_norm',
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
-               name=None):
+               **kwargs):
     """Class initialization.
 
     Arguments:
@@ -194,12 +212,12 @@ class MobileBertTransformer(tf.keras.layers.Layer):
         original MobileBERT paper. 'layer_norm' is used for the teacher model.
       initializer: The initializer to use for the embedding weights and
         linear projection weights.
-      name: A string represents the layer name.
+      **kwargs: keyword arguments.
 
     Raises:
       ValueError: A Tensor shape or parameter is invalid.
     """
-    super(MobileBertTransformer, self).__init__(name=name)
+    super(MobileBertTransformer, self).__init__(**kwargs)
     self.hidden_size = hidden_size
     self.num_attention_heads = num_attention_heads
     self.intermediate_size = intermediate_size
@@ -211,6 +229,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
     self.key_query_shared_bottleneck = key_query_shared_bottleneck
     self.num_feedforward_networks = num_feedforward_networks
     self.normalization_type = normalization_type
+    self.initializer = tf.keras.initializers.get(initializer)
 
     if intra_bottleneck_size % num_attention_heads != 0:
       raise ValueError(
@@ -299,6 +318,24 @@ class MobileBertTransformer(tf.keras.layers.Layer):
     self.block_layers['bottleneck_output'] = [bottleneck,
                                               dropout_layer,
                                               layer_norm]
+
+  def get_config(self):
+    config = {
+        'hidden_size': self.hidden_size,
+        'num_attention_heads': self.num_attention_heads,
+        'intermediate_size': self.intermediate_size,
+        'intermediate_act_fn': self.intermediate_act_fn,
+        'hidden_dropout_prob': self.hidden_dropout_prob,
+        'attention_probs_dropout_prob': self.attention_probs_dropout_prob,
+        'intra_bottleneck_size': self.intra_bottleneck_size,
+        'use_bottleneck_attention': self.use_bottleneck_attention,
+        'key_query_shared_bottleneck': self.key_query_shared_bottleneck,
+        'num_feedforward_networks': self.num_feedforward_networks,
+        'normalization_type': self.normalization_type,
+        'initializer': tf.keras.initializers.serialize(self.initializer),
+    }
+    base_config = super(MobileBertTransformer, self).get_config()
+    return dict(list(base_config.items()) + list(config.items()))
 
   def call(self,
            input_tensor,
