@@ -35,13 +35,12 @@ done
 """
 
 from __future__ import print_function
+from imageio import imread
 
 import os
 import os.path
 
-import scipy.io
-import scipy.io.wavfile
-import scipy.ndimage
+import scipy
 import tensorflow as tf
 
 
@@ -79,7 +78,7 @@ def main():
             writer = tf.python_io.TFRecordWriter(file_out)
         if example_idx % 1000 == 0:
             print(example_idx, "/", num_examples)
-        image_raw = scipy.ndimage.imread(os.path.join(fn_root, img_fn))
+        image_raw = imread(os.path.join(fn_root, img_fn))
         rows = image_raw.shape[0]
         cols = image_raw.shape[1]
         depth = image_raw.shape[2]
