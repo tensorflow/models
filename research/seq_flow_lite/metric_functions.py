@@ -27,6 +27,9 @@ def classification_metric(per_example_loss, label_ids, logits):
   }
 
 
+THRESHOLDS = [0.5]
+
+
 def labeling_metric(per_example_loss, label_ids, logits):
   """Compute eval metrics."""
   scores = tf.math.sigmoid(logits)
@@ -35,4 +38,10 @@ def labeling_metric(per_example_loss, label_ids, logits):
   for idx in range(num_classes):
     return_dict["auc/" + str(idx)] = tf.metrics.auc(label_ids[:, idx],
                                                     scores[:, idx])
+    return_dict["precision@" + str(THRESHOLDS) + "/" +
+                str(idx)] = tf.metrics.precision_at_thresholds(
+                    label_ids[:, idx], scores[:, idx], thresholds=THRESHOLDS)
+    return_dict["recall@" + str(THRESHOLDS) + "/" +
+                str(idx)] = tf.metrics.recall_at_thresholds(
+                    label_ids[:, idx], scores[:, idx], thresholds=THRESHOLDS)
   return return_dict

@@ -67,6 +67,14 @@ namespace sequence_string_projection {
  *                 true. Defaults to true.
  *   attribute[7]: add_bos_tag, add a begin of sequence tag to the output when
  *                 true. Defaults to false.
+ *   attribute[8]: add_first_cap_feature, when set to 1.0f add a feature to the
+ *                 resulting projection tensor that helps discriminate if the
+ *                 input token is Camel case. Otherwise leaves the projection
+ *                 output unmodified.
+ *   attribute[9]: add_all_caps_feature, when set to 1.0f add a feature to the
+ *                 resulting projection tensor that helps discriminate if the
+ *                 input token is ALLCAPS. Otherwise leaves the projection
+ *                 output unmodified.
  * Output:
  * tensor[0]: computed projections.
  *            float32[true number of tokens][feature size]
@@ -87,22 +95,32 @@ enum class EosTag { kGenerate, kNone };
 class ProjectionParams {
  public:
   ProjectionParams(int feature_size, const std::string& vocabulary,
-                   int max_splits, bool split_on_space, int word_novelty_bits,
+                   const std::string& hashtype, int max_splits,
+                   bool split_on_space, int word_novelty_bits,
                    int doc_size_levels, BosTag add_bos_tag, EosTag add_eos_tag,
                    bool exclude_nonalphaspace_unicodes,
                    const std::string& token_separators,
-                   bool normalize_repetition)
+                   bool normalize_repetition, bool add_first_cap_feature,
+                   bool add_all_caps_feature)
       : feature_size_(feature_size),
         unicode_handler_(vocabulary, exclude_nonalphaspace_unicodes),
-        hasher_(feature_size),
+        hasher_(Hasher::CreateHasher(feature_size, hashtype)),
         max_splits_(max_splits),
         split_on_space_(split_on_space),
         word_novelty_bits_(word_novelty_bits),
         doc_size_levels_(doc_size_levels),
         add_bos_tag_(add_bos_tag == BosTag::kGenerate),
-        add_eos_tag_(add_eos_tag == EosTag::kGenerate) {
+        add_eos_tag_(add_eos_tag == EosTag::kGenerate),
+        add_first_cap_feature_(add_first_cap_feature),
+        add_all_caps_feature_(add_all_caps_feature) {
     assert(max_splits_ == -1 || max_splits_ > 0);
     assert(word_novelty_bits >= 0 && word_novelty_bits <= 7);
+    // hasher_ can be nullptr if the hashtype is invalid. But there is a similar
+    // check in tensorflow op when the model is created. So this failure will
+    // never happen if the model was successfully trained. Still adding a check
+    // here since you can edit the model post training, which is the only
+    // situation when this assertion will fail.
+    assert(hasher_ != nullptr);
     if (word_novelty_bits_ != 0) {
       assert(feature_size_ >= 1);
     }
@@ -113,8 +131,8 @@ class ProjectionParams {
     word_novelty_offset_ = 2.0f / (1 << word_novelty_bits_);
 
     if (!token_separators.empty() || normalize_repetition) {
-      projection_normalizer_.reset(
-          new ProjectionNormalizer(token_separators, normalize_repetition));
+      projection_normalizer_ = std::make_unique<ProjectionNormalizer>(
+          token_separators, normalize_repetition);
     }
   }
   virtual ~ProjectionParams() {}
@@ -129,6 +147,8 @@ class ProjectionParams {
     *data = PodQuantize(word_novelty_feature, 127.0f, 127);
   }
   bool DocSizeFeatureEnabled() const { return (doc_size_levels_ != 0); }
+  bool FirstCap() const { return add_first_cap_feature_; }
+  bool AllCaps() const { return add_all_caps_feature_; }
   int BosToken() const { return add_bos_tag_ ? 1 : 0; }
   int EosToken() const { return add_eos_tag_ ? 1 : 0; }
   void DocSizeFeature(float* data, int num_tokens) {
@@ -144,13 +164,15 @@ class ProjectionParams {
     *data = PodQuantize(doc_size_feature, 127.0f, 127);
   }
   void Hash(const std::string& word, std::vector<uint64_t>* hash_codes) {
-    hasher_.GetHashCodes(word, hash_codes);
+    hasher_->GetHashCodes(word, hash_codes);
   }
   // Lower cases the input text and eliminates all unsupported
   // unicodes in it if a vocabulary is provided.
   std::string LowerCaseUTF8WithSupportedUnicodes(
-      std::pair<const char*, size_t> source) const {
-    return unicode_handler_.LowerCaseUTF8WithSupportedUnicodes(source);
+      std::pair<const char*, size_t> source, bool* first_cap,
+      bool* all_caps) const {
+    return unicode_handler_.LowerCaseUTF8WithSupportedUnicodes(
+        source, first_cap, all_caps);
   }
   // Splits the input text into a set of tokens. Uses space as the delimiter
   // when split_on_space is True and unicode boundaries as the delimiter
@@ -190,13 +212,15 @@ class ProjectionParams {
  private:
   int feature_size_;
   ProjectionUnicodeHandler unicode_handler_;
-  Hasher hasher_;
+  std::unique_ptr<Hasher> hasher_;
   int max_splits_;
   bool split_on_space_;
   int word_novelty_bits_;
   int doc_size_levels_;
   bool add_bos_tag_;
   bool add_eos_tag_;
+  bool add_first_cap_feature_;
+  bool add_all_caps_feature_;
   float word_novelty_offset_;
   std::string normalized_input_;
 
@@ -208,14 +232,17 @@ class ProjectionParams {
 class ProjectionParamsV2 : public ProjectionParams {
  public:
   ProjectionParamsV2(int feature_size, const std::string& vocabulary,
-                     BosTag add_bos_tag, EosTag add_eos_tag,
-                     bool normalize_repetition)
-      : ProjectionParams(feature_size, vocabulary, /*max_splits = */ -1,
+                     const std::string& hashtype, BosTag add_bos_tag,
+                     EosTag add_eos_tag, bool normalize_repetition)
+      : ProjectionParams(feature_size, vocabulary, hashtype,
+                         /*max_splits = */ -1,
                          /* split_on_space = */ true,
                          /*word_novelty_bits = */ 0, /*doc_size_levels = */ 0,
                          add_bos_tag, add_eos_tag,
                          /*exclude_nonalphaspace_unicodes = */ false,
-                         /*token_separators = */ "", normalize_repetition) {}
+                         /*token_separators = */ "", normalize_repetition,
+                         /*add_first_cap_feature = */ false,
+                         /*add_all_caps_feature = */ false) {}
   ~ProjectionParamsV2() override {}
 
   TfLiteStatus PreprocessInput(TfLiteTensor* input_t,
@@ -271,6 +298,8 @@ inline bool IsDynamicTensor(const TfLiteTensor* tensor) {
 void* Init(TfLiteContext* context, const char* buffer, size_t length) {
   const uint8_t* buffer_t = reinterpret_cast<const uint8_t*>(buffer);
   const flexbuffers::Map& m = flexbuffers::GetRoot(buffer_t, length).AsMap();
+  const std::string hashtype =
+      m["hashtype"].IsNull() ? kMurmurHash : m["hashtype"].AsString().str();
   const int word_novelty_bits =
       m["word_novelty_bits"].IsNull() ? 0 : m["word_novelty_bits"].AsInt32();
   const int doc_size_levels =
@@ -279,6 +308,28 @@ void* Init(TfLiteContext* context, const char* buffer, size_t length) {
       m["add_bos_tag"].IsNull() ? false : m["add_bos_tag"].AsBool();
   const bool add_eos_tag =
       m["add_eos_tag"].IsNull() ? true : m["add_eos_tag"].AsBool();
+  float add_first_cap_feature = m["add_first_cap_feature"].IsNull()
+                                    ? 0.0f
+                                    : m["add_first_cap_feature"].AsFloat();
+  float add_all_caps_feature = m["add_all_caps_feature"].IsNull()
+                                   ? 0.0f
+                                   : m["add_all_caps_feature"].AsFloat();
+  if (add_first_cap_feature != 0.0f && add_first_cap_feature != 1.0f) {
+    context->ReportError(
+        context,
+        "add_first_cap_feature is %f, it should be 0.0 or 1.0., "
+        "resetting it to 1.0f\n",
+        add_first_cap_feature);
+    add_first_cap_feature = 1.0f;
+  }
+  if (add_all_caps_feature != 0.0f && add_all_caps_feature != 1.0f) {
+    context->ReportError(
+        context,
+        "add_all_caps_feature is %f, it should be 0.0 or 1.0., "
+        "resetting it to 1.0f\n",
+        add_all_caps_feature);
+    add_all_caps_feature = 1.0f;
+  }
   // Old models that use the op may not have this attribute set, for those
   // models the default value of false will be used.
   const bool exclude_nonalphaspace_unicodes =
@@ -288,22 +339,35 @@ void* Init(TfLiteContext* context, const char* buffer, size_t length) {
   const std::string token_separators =
       m["token_separators"].IsNull() ? "" : m["token_separators"].ToString();
   const bool normalize_repetition = m["normalize_repetition"].AsBool();
+  if (!Hasher::SupportedHashType(hashtype)) {
+    context->ReportError(context, "Unsupported hashtype %s\n",
+                         hashtype.c_str());
+    return nullptr;
+  }
 
   return new ProjectionParams(
-      m["feature_size"].AsInt32(), m["vocabulary"].AsString().str(),
+      m["feature_size"].AsInt32(), m["vocabulary"].AsString().str(), hashtype,
       m["max_splits"].AsInt32(), m["split_on_space"].AsBool(),
       word_novelty_bits, doc_size_levels,
       add_bos_tag ? BosTag::kGenerate : BosTag::kNone,
       add_eos_tag ? EosTag::kGenerate : EosTag::kNone,
-      exclude_nonalphaspace_unicodes, token_separators, normalize_repetition);
+      exclude_nonalphaspace_unicodes, token_separators, normalize_repetition,
+      add_first_cap_feature == 1.0f, add_all_caps_feature == 1.0f);
 }
 
 void* InitV2(TfLiteContext* context, const char* buffer, size_t length) {
   const uint8_t* buffer_t = reinterpret_cast<const uint8_t*>(buffer);
   const flexbuffers::Map& m = flexbuffers::GetRoot(buffer_t, length).AsMap();
+  const std::string hashtype =
+      m["hashtype"].IsNull() ? kMurmurHash : m["hashtype"].AsString().str();
+  if (!Hasher::SupportedHashType(hashtype)) {
+    context->ReportError(context, "Unsupported hashtype %s\n",
+                         hashtype.c_str());
+    return nullptr;
+  }
 
   return new ProjectionParamsV2(
-      m["feature_size"].AsInt32(), m["vocabulary"].AsString().str(),
+      m["feature_size"].AsInt32(), m["vocabulary"].AsString().str(), hashtype,
       m["add_bos_tag"].AsBool() ? BosTag::kGenerate : BosTag::kNone,
       m["add_eos_tag"].AsBool() ? EosTag::kGenerate : EosTag::kNone,
       m["normalize_repetition"].AsBool());
@@ -322,6 +386,8 @@ TfLiteStatus Resize(TfLiteContext* context, TfLiteNode* node) {
 constexpr int kHashCodeBits = 64;
 constexpr int kMapBits = 2;
 constexpr int kIncrement = kHashCodeBits / kMapBits;
+constexpr int kMapHigh = 1;
+constexpr int kMapLow = 2;
 
 template <typename T>
 void TypedEval(const T* mapping_table, ProjectionParams* params, T* data) {
@@ -336,10 +402,12 @@ void TypedEval(const T* mapping_table, ProjectionParams* params, T* data) {
   const int num_tokens = tokens.size() + params->EosToken();
   for (int j = -params->BosToken(), offset0 = 0; j < num_tokens; ++j) {
     std::string word;
+    bool first_cap, all_caps;
     if (j < 0) {
       word = kBeginToken;
     } else if (j < tokens.size()) {
-      word = params->LowerCaseUTF8WithSupportedUnicodes(tokens[j]);
+      word = params->LowerCaseUTF8WithSupportedUnicodes(tokens[j], &first_cap,
+                                                        &all_caps);
       word = params->PreprocessToken(word);
     } else {
       word = kEndToken;
@@ -355,17 +423,29 @@ void TypedEval(const T* mapping_table, ProjectionParams* params, T* data) {
     }
     offset0 += params->FeatureSize();
     if (params->WordNoveltyEnabled() && !hash_codes.empty()) {
-      params->WordNoveltyFeature(&data[offset0 - 1],
+      params->WordNoveltyFeature(&data[offset0 - kWordNoveltyOffset],
                                  word_counter[hash_codes[0]]++);
     }
     if (params->DocSizeFeatureEnabled()) {
-      data[offset0 - 2] = doc_size_feature;
+      data[offset0 - kDocSizeOffset] = doc_size_feature;
+    }
+    if (params->FirstCap()) {
+      data[offset0 - kFirstCapOffset] =
+          mapping_table[first_cap ? kMapHigh : kMapLow];
+    }
+    if (params->AllCaps()) {
+      data[offset0 - kAllCapsOffset] =
+          mapping_table[all_caps ? kMapHigh : kMapLow];
     }
   }
 }
 
 TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
   auto* params = reinterpret_cast<ProjectionParams*>(node->user_data);
+  if (params == nullptr) {
+    context->ReportError(context, "Empty user data.");
+    return kTfLiteError;
+  }
   TF_LITE_ENSURE_OK(
       context,
       params->PreprocessInput(

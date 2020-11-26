@@ -1,8 +1,13 @@
 licenses(["notice"])
 
 package(
-    default_visibility = [
-        "//:__subpackages__",
+    default_visibility = [":friends"],
+)
+
+package_group(
+    name = "friends",
+    packages = [
+        "//...",
     ],
 )
 

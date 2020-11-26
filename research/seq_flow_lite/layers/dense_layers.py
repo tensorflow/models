@@ -29,12 +29,14 @@ class BaseQDense(base_layers.BaseLayer):
                activation=tf.keras.layers.ReLU(),
                bias=True,
                rank=2,
+               normalize=True,
                **kwargs):
     self.units = units
     self.rank = rank
     assert rank >= 2 and rank <= 4
     self.activation = activation
     self.bias = bias
+    self.normalize = normalize
     self.qoutput = quantization_layers.ActivationQuantization(**kwargs)
     self._create_normalizer(**kwargs)
     super(BaseQDense, self).__init__(**kwargs)
@@ -56,7 +58,8 @@ class BaseQDense(base_layers.BaseLayer):
     outputs = tf.matmul(inputs, self.w)
     if self.bias:
       outputs = tf.nn.bias_add(outputs, self.b)
-    outputs = normalize_method(outputs)
+    if self.normalize:
+      outputs = normalize_method(outputs)
     if self.activation:
       outputs = self.activation(outputs)
     return self.qoutput(outputs)

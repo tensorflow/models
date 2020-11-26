@@ -26,7 +26,7 @@ limitations under the License.
 bool IsDigit(const std::string& text) {
   Rune rune;
   for (size_t i = 0; i < text.length();) {
-    const int bytes_read = charntorune(&rune, text.data(), 1);
+    const int bytes_read = chartorune(&rune, const_cast<char *>(text.data()));
     if (rune == Runeerror || bytes_read == 0) break;
     if (rune >= static_cast<Rune>('0') && rune <= static_cast<Rune>('9')) {
       return true;

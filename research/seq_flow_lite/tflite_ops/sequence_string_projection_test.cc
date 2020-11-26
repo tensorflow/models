@@ -16,13 +16,14 @@ limitations under the License.
 
 #include <vector>
 
-#include "tflite_ops/tf_tflite_diff_test_util.h"  // seq_flow_lite
 #include "flatbuffers/flexbuffers.h"  // flatbuffer
 #include "tensorflow/lite/interpreter.h"
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/kernels/test_util.h"
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/string_util.h"
+#include "tf_ops/projection_util.h"  // seq_flow_lite
+#include "tflite_ops/tf_tflite_diff_test_util.h"  // seq_flow_lite
 
 namespace tflite {
 
@@ -45,7 +46,8 @@ class SequenceStringProjectionModel : public SingleOpModel {
       bool split_on_space, int max_splits, int word_novelty_bits,
       int doc_size_levels, bool add_eos_tag, TensorType output_type,
       const std::string& token_separators = "",
-      bool normalize_repetition = false) {
+      bool normalize_repetition = false, float add_first_cap = 0.0,
+      float add_all_caps = 0.0, const string& hashtype = kMurmurHash) {
     flexbuffers::Builder fbb;
     fbb.Map([&] {
       fbb.Int("feature_size", 4);
@@ -56,7 +58,10 @@ class SequenceStringProjectionModel : public SingleOpModel {
       fbb.Bool("split_on_space", split_on_space);
       fbb.Bool("add_eos_tag", add_eos_tag);
       fbb.String("token_separators", token_separators);
+      fbb.String("hashtype", hashtype);
       fbb.Bool("normalize_repetition", normalize_repetition);
+      fbb.Float("add_first_cap_feature", add_first_cap);
+      fbb.Float("add_all_caps_feature", add_all_caps);
     });
     fbb.Finish();
     output_ = AddOutput({output_type, {}});
@@ -74,7 +79,7 @@ class SequenceStringProjectionModel : public SingleOpModel {
     PopulateStringTensor(input_, {input});
     CHECK(interpreter_->AllocateTensors() == kTfLiteOk)
         << "Cannot allocate tensors";
-    return interpreter_->Invoke();
+    return SingleOpModel::InvokeUnchecked();
   }
 
   template <typename T>
@@ -90,6 +95,12 @@ class SequenceStringProjectionModel : public SingleOpModel {
   int input_ = AddInput(TensorType_STRING);
   int output_;
 };
+
+TEST(SequenceStringProjectionTest, IncorrectHashtype) {
+  SequenceStringProjectionModel m(true, -1, 0, 0, true, TensorType_UINT8, "",
+                                  false, 0.0, 0.0, "unsupported");
+  EXPECT_EQ(m.InvokeFailable(" "), kTfLiteError);
+}
 
 TEST(SequenceStringProjectionTest, RegularInputUint8) {
   std::vector<std::pair<std::string, std::vector<uint8_t>>> testcase = {
@@ -271,6 +282,39 @@ TEST(SequenceStringProjectionTest, EmptyInput) {
   EXPECT_EQ(with_eos.InvokeFailable("   "), kTfLiteOk);
   EXPECT_EQ(with_eos.InvokeFailable(""), kTfLiteOk);
   EXPECT_EQ(with_eos.InvokeFailable("hello"), kTfLiteOk);
+}
+
+TEST(SequenceStringProjectionTest, FirstCap) {
+  SequenceStringProjectionModel op(/*split_on_space=*/true, /*max_splits=*/-1,
+                                   /*word_novelty_bits=*/0,
+                                   /*doc_size_levels=*/0, /*add_eos_tag=*/false,
+                                   /*output_type=*/TensorType_UINT8,
+                                   /*token_separators=*/" ",
+                                   /*normalize_repetition=*/false,
+                                   /*add_first_cap=*/0.5);
+  op.Invoke("hello");
+  auto output1 = op.GetOutput<uint8_t>();
+
+  op.Invoke("Hello");
+  auto output2 = op.GetOutput<uint8_t>();
+
+  EXPECT_NE(output1[1], output2[1]);
+}
+
+TEST(SequenceStringProjectionTest, AllCaps) {
+  SequenceStringProjectionModel op(
+      /*split_on_space=*/true, /*max_splits=*/-1, /*word_novelty_bits=*/0,
+      /*doc_size_levels=*/0, /*add_eos_tag=*/false,
+      /*output_type=*/TensorType_UINT8, /*token_separators=*/" ",
+      /*normalize_repetition=*/false, /*add_first_cap=*/0.0,
+      /*add_all_caps=*/0.5);
+  op.Invoke("hello");
+  auto output1 = op.GetOutput<uint8_t>();
+
+  op.Invoke("HELLO");
+  auto output2 = op.GetOutput<uint8_t>();
+
+  EXPECT_NE(output1[0], output2[0]);
 }
 
 TEST(SequenceStringProjectionTest, NormalizeRepetition) {
@@ -691,6 +735,62 @@ std::vector<OpEquivTestCase> SequenceStringProjectionTestCases() {
     test_cases.push_back(test_case);
   }
 
+  {
+    OpEquivTestCase test_case;
+    test_case.test_name = "CapBaseline";
+    test_case.attributes["vocabulary"] = AttrValue("");
+    test_case.attributes["split_on_space"] = AttrValue(true);
+    test_case.attributes["feature_size"] = AttrValue(8);
+    test_case.attributes["add_eos_tag"] = AttrValue(false);
+    test_case.attributes["add_bos_tag"] = AttrValue(false);
+    test_case.input_tensors.push_back(StringTensor({1}, {"Hello hello HELLO"}));
+    test_case.output_tensors.emplace_back(FloatTensor({}, {}), kScale, kZero);
+    test_cases.push_back(test_case);
+  }
+
+  {
+    OpEquivTestCase test_case;
+    test_case.test_name = "FirstCap";
+    test_case.attributes["vocabulary"] = AttrValue("");
+    test_case.attributes["split_on_space"] = AttrValue(true);
+    test_case.attributes["feature_size"] = AttrValue(8);
+    test_case.attributes["add_eos_tag"] = AttrValue(false);
+    test_case.attributes["add_bos_tag"] = AttrValue(false);
+    test_case.attributes["add_first_cap_feature"] = AttrValue(1.0);
+    test_case.input_tensors.push_back(StringTensor({1}, {"Hello hello HELLO"}));
+    test_case.output_tensors.emplace_back(FloatTensor({}, {}), kScale, kZero);
+    test_cases.push_back(test_case);
+  }
+
+  {
+    OpEquivTestCase test_case;
+    test_case.test_name = "AllCaps";
+    test_case.attributes["vocabulary"] = AttrValue("");
+    test_case.attributes["split_on_space"] = AttrValue(true);
+    test_case.attributes["feature_size"] = AttrValue(8);
+    test_case.attributes["add_eos_tag"] = AttrValue(false);
+    test_case.attributes["add_bos_tag"] = AttrValue(false);
+    test_case.attributes["add_all_caps_feature"] = AttrValue(1.0);
+    test_case.input_tensors.push_back(StringTensor({1}, {"Hello hello HELLO"}));
+    test_case.output_tensors.emplace_back(FloatTensor({}, {}), kScale, kZero);
+    test_cases.push_back(test_case);
+  }
+
+  {
+    OpEquivTestCase test_case;
+    test_case.test_name = "FirstCapAllCaps";
+    test_case.attributes["vocabulary"] = AttrValue("");
+    test_case.attributes["split_on_space"] = AttrValue(true);
+    test_case.attributes["feature_size"] = AttrValue(8);
+    test_case.attributes["add_eos_tag"] = AttrValue(false);
+    test_case.attributes["add_bos_tag"] = AttrValue(false);
+    test_case.attributes["add_first_cap_feature"] = AttrValue(1.0);
+    test_case.attributes["add_all_caps_feature"] = AttrValue(1.0);
+    test_case.input_tensors.push_back(StringTensor({1}, {"Hello hello HELLO"}));
+    test_case.output_tensors.emplace_back(FloatTensor({}, {}), kScale, kZero);
+    test_cases.push_back(test_case);
+  }
+
   return test_cases;
 }
 
@@ -701,9 +801,13 @@ INSTANTIATE_TEST_SUITE_P(
 class SequenceStringProjectionV2Model : public SingleOpModel {
  public:
   explicit SequenceStringProjectionV2Model(
-      std::vector<std::vector<int>> input_shapes) {
+      std::vector<std::vector<int>> input_shapes,
+      const string& hashtype = kMurmurHash) {
     flexbuffers::Builder fbb;
-    fbb.Map([&] { fbb.Int("feature_size", 4); });
+    fbb.Map([&] {
+      fbb.Int("feature_size", 4);
+      fbb.String("hashtype", hashtype);
+    });
     fbb.Finish();
     input_ = AddInput(TensorType_STRING);
     output_ = AddOutput({TensorType_UINT8, {}});
@@ -715,13 +819,24 @@ class SequenceStringProjectionV2Model : public SingleOpModel {
     PopulateStringTensor(input_, input);
     CHECK(interpreter_->AllocateTensors() == kTfLiteOk)
         << "Cannot allocate tensors";
-    ASSERT_EQ(interpreter_->Invoke(), expected);
+    ASSERT_EQ(SingleOpModel::InvokeUnchecked(), expected);
+  }
+  TfLiteStatus InvokeFailable(const std::string& input) {
+    PopulateStringTensor(input_, {input});
+    CHECK(interpreter_->AllocateTensors() == kTfLiteOk)
+        << "Cannot allocate tensors";
+    return SingleOpModel::InvokeUnchecked();
   }
 
  private:
   int input_;
   int output_;
 };
+
+TEST(SequenceStringProjectionV2Test, IncorrectHashtype) {
+  SequenceStringProjectionV2Model m({{1, 0}}, "unsupported");
+  EXPECT_EQ(m.InvokeFailable(" "), kTfLiteError);
+}
 
 TEST(SequenceStringProjectionV2Test, RegularInputUint8EmptyNotSupported) {
   // TFLite test infratructure currently does not let the error message to be

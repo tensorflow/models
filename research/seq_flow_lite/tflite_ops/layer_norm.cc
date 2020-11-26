@@ -17,8 +17,8 @@ limitations under the License.
 #include <unordered_set>
 #include <vector>
 
-#include "flatbuffers/flexbuffers.h"  // flatbuffer
 #include "tflite_ops/quantization_util.h"  // seq_flow_lite
+#include "tensorflow/lite/kernels/kernel_util.h"
 
 namespace tflite {
 namespace ops {
@@ -213,6 +213,34 @@ TfLiteStatus FlexibleLayerNorm(const TfLiteTensor* input, const float scale,
   return kTfLiteOk;
 }
 
+TfLiteStatus DefaultLayerNormFloat(const TfLiteTensor* input, const float scale,
+                                   const float offset, TfLiteTensor* output) {
+  const int input_rank = input->dims->size;
+  const int num_features = input->dims->data[input_rank - 1];
+  const int time_steps =
+      static_cast<int>(GetNumberOfSteps(input) / num_features);
+  float* out_ptr = output->data.f;
+  for (int i = 0; i < time_steps; ++i) {
+    float sum_x = 0;
+    float sum_xx = 0;
+    for (int j = 0, index = i * num_features; j < num_features; ++j, ++index) {
+      sum_x += input->data.f[index];
+      sum_xx += input->data.f[index] * input->data.f[index];
+    }
+    const float exp_xx = sum_xx / num_features;
+    const float exp_x = sum_x / num_features;
+    const float variance = exp_xx - exp_x * exp_x;
+    const float inverse_stddev = 1 / sqrt(variance + 1e-6);
+    const float multiplier = inverse_stddev * scale;
+
+    const float bias = offset - exp_x * inverse_stddev * scale;
+    for (int j = 0, index = i * num_features; j < num_features; ++j, ++index) {
+      out_ptr[index] = input->data.f[index] * multiplier + bias;
+    }
+  }
+  return kTfLiteOk;
+}
+
 TfLiteStatus DefaultLayerNorm(const TfLiteTensor* input, const float scale,
                               const float offset, TfLiteTensor* output) {
   const int input_rank = input->dims->size;
@@ -250,25 +278,40 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
   const TfLiteTensor* input =
       &context->tensors[node->inputs->data[kInputIndex]];
   TfLiteTensor* output = &context->tensors[node->outputs->data[kOutputIndex]];
-  const float scale =
-      PodDequantize(context->tensors[node->inputs->data[kScaleIndex]], 0);
-  const float offset =
-      PodDequantize(context->tensors[node->inputs->data[kOffsetIndex]], 0);
+  TfLiteTensor scale_tensor = context->tensors[node->inputs->data[kScaleIndex]];
+  TfLiteTensor offset_tensor =
+      context->tensors[node->inputs->data[kOffsetIndex]];
+  float scale = 1.0;
+  float offset = 0.0;
+  if (input->type == kTfLiteUInt8) {
+    scale = PodDequantize(scale_tensor, 0);
+    offset = PodDequantize(offset_tensor, 0);
+  } else {
+    scale = scale_tensor.data.f[0];
+    offset = offset_tensor.data.f[0];
+  }
 
-  const std::vector<int>& axes =
-      *reinterpret_cast<std::vector<int>*>(node->user_data);
-  const size_t num_axis = axes.size();
+  TfLiteTensor* axis = &context->tensors[node->inputs->data[kAxisIndex]];
+  int num_axis = static_cast<int>(tflite::NumElements(axis));
   // For backward compatibility reasons, we handle the default layer norm for
   // last channel as below.
-  if (num_axis == 1 && (axes[0] == -1 || axes[0] == (input->dims->size - 1))) {
-    return DefaultLayerNorm(input, scale, offset, output);
+  if (num_axis == 1 && (axis->data.i32[0] == -1 ||
+                        axis->data.i32[0] == (input->dims->size - 1))) {
+    if (input->type == kTfLiteUInt8) {
+      return DefaultLayerNorm(input, scale, offset, output);
+    } else if (input->type == kTfLiteFloat32) {
+      return DefaultLayerNormFloat(input, scale, offset, output);
+    } else {
+      TF_LITE_ENSURE_MSG(context, false,
+                         "Input should be eith Uint8 or Float32.");
+    }
   }
 
   std::vector<int> resolved_axis(num_axis);
   // Resolve axis.
   int num_resolved_axis = 0;
-  if (!ResolveAxis(input->dims->size, axes.data(), num_axis, &resolved_axis[0],
-                   &num_resolved_axis)) {
+  if (!ResolveAxis(input->dims->size, axis->data.i32, num_axis,
+                   &resolved_axis[0], &num_resolved_axis)) {
     return kTfLiteError;
   }
 
@@ -276,25 +319,10 @@ TfLiteStatus Eval(TfLiteContext* context, TfLiteNode* node) {
                            num_resolved_axis, output);
 }
 
-void* Init(TfLiteContext* context, const char* buffer, size_t length) {
-  const uint8_t* buffer_t = reinterpret_cast<const uint8_t*>(buffer);
-  const flexbuffers::Map& m = flexbuffers::GetRoot(buffer_t, length).AsMap();
-  std::vector<int>* axes = new std::vector<int>();
-  auto axes_fb = m["axes"].AsTypedVector();
-  for (int i = 0; i < axes_fb.size(); ++i) {
-    axes->push_back(axes_fb[i].AsInt32());
-  }
-  return axes;
-}
-
-void Free(TfLiteContext* context, void* buffer) {
-  delete reinterpret_cast<std::vector<int>*>(buffer);
-}
-
 }  // namespace
 
 TfLiteRegistration* Register_LAYER_NORM() {
-  static TfLiteRegistration r = {Init, Free, Resize, Eval};
+  static TfLiteRegistration r = {nullptr, nullptr, Resize, Eval};
   return &r;
 }
 
