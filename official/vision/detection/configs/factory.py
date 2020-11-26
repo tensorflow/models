@@ -16,6 +16,7 @@
 
 from official.modeling.hyperparams import params_dict
 from official.vision.detection.configs import maskrcnn_config
+from official.vision.detection.configs import olnmask_config
 from official.vision.detection.configs import retinanet_config
 from official.vision.detection.configs import shapemask_config
 
@@ -28,6 +29,9 @@ def config_generator(model):
   elif model == 'mask_rcnn':
     default_config = maskrcnn_config.MASKRCNN_CFG
     restrictions = maskrcnn_config.MASKRCNN_RESTRICTIONS
+  elif model == 'olnmask':
+    default_config = olnmask_config.OLNMASK_CFG
+    restrictions = olnmask_config.OLNMASK_RESTRICTIONS
   elif model == 'shapemask':
     default_config = shapemask_config.SHAPEMASK_CFG
     restrictions = shapemask_config.SHAPEMASK_RESTRICTIONS
