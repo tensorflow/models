@@ -137,6 +137,130 @@ class RpnHead(tf.keras.layers.Layer):
       return scores_outputs, box_outputs
 
 
+class OlnRpnHead(tf.keras.layers.Layer):
+  """Region Proposal Network for Object Localization Network (OLN)."""
+
+  def __init__(
+      self,
+      min_level,
+      max_level,
+      anchors_per_location,
+      num_convs=2,
+      num_filters=256,
+      use_separable_conv=False,
+      activation='relu',
+      use_batch_norm=True,
+      norm_activation=nn_ops.norm_activation_builder(activation='relu')):
+    """Initialize params to build Region Proposal Network head.
+
+    Args:
+      min_level: `int` number of minimum feature level.
+      max_level: `int` number of maximum feature level.
+      anchors_per_location: `int` number of number of anchors per pixel
+        location.
+      num_convs: `int` number that represents the number of the intermediate
+        conv layers before the prediction.
+      num_filters: `int` number that represents the number of filters of the
+        intermediate conv layers.
+      use_separable_conv: `bool`, indicating whether the separable conv layers
+        is used.
+      activation: activation function. Support 'relu' and 'swish'.
+      use_batch_norm: 'bool', indicating whether batchnorm layers are added.
+      norm_activation: an operation that includes a normalization layer followed
+        by an optional activation layer.
+    """
+    self._min_level = min_level
+    self._max_level = max_level
+    self._anchors_per_location = anchors_per_location
+    if activation == 'relu':
+      self._activation_op = tf.nn.relu
+    elif activation == 'swish':
+      self._activation_op = tf.nn.swish
+    else:
+      raise ValueError('Unsupported activation `{}`.'.format(activation))
+    self._use_batch_norm = use_batch_norm
+
+    if use_separable_conv:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.SeparableConv2D,
+          depth_multiplier=1,
+          bias_initializer=tf.zeros_initializer())
+    else:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.Conv2D,
+          kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+          bias_initializer=tf.zeros_initializer())
+
+    self._rpn_conv = self._conv2d_op(
+        num_filters,
+        kernel_size=(3, 3),
+        strides=(1, 1),
+        activation=(None if self._use_batch_norm else self._activation_op),
+        padding='same',
+        name='rpn')
+    self._rpn_class_conv = self._conv2d_op(
+        anchors_per_location,
+        kernel_size=(1, 1),
+        strides=(1, 1),
+        padding='valid',
+        name='rpn-class')
+    self._rpn_box_conv = self._conv2d_op(
+        4 * anchors_per_location,
+        kernel_size=(1, 1),
+        strides=(1, 1),
+        padding='valid',
+        name='rpn-box-lrtb')
+    self._rpn_center_conv = self._conv2d_op(
+        anchors_per_location,
+        kernel_size=(1, 1),
+        strides=(1, 1),
+        padding='valid',
+        name='rpn-centerness')
+
+    self._norm_activations = {}
+    if self._use_batch_norm:
+      for level in range(self._min_level, self._max_level + 1):
+        self._norm_activations[level] = norm_activation(name='rpn-l%d-bn' %
+                                                        level)
+
+  def _shared_rpn_heads(self, features, anchors_per_location, level,
+                        is_training):
+    """Shared RPN heads."""
+    features = self._rpn_conv(features)
+    if self._use_batch_norm:
+      # The batch normalization layers are not shared between levels.
+      features = self._norm_activations[level](
+          features, is_training=is_training)
+    # Feature L2 normalization for training stability
+    features = tf.math.l2_normalize(
+        features,
+        axis=-1,
+        name='rpn-norm',)
+    # Proposal classification scores
+    scores = self._rpn_class_conv(features)
+    # Proposal bbox regression deltas
+    bboxes = self._rpn_box_conv(features)
+    # Proposal centerness scores
+    centers = self._rpn_center_conv(features)
+
+    return scores, bboxes, centers
+
+  def __call__(self, features, is_training=None):
+
+    scores_outputs = {}
+    box_outputs = {}
+    center_outputs = {}
+
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('rpn_head'):
+      for level in range(self._min_level, self._max_level + 1):
+        scores_output, box_output, center_output = self._shared_rpn_heads(
+            features[level], self._anchors_per_location, level, is_training)
+        scores_outputs[level] = scores_output
+        box_outputs[level] = box_output
+        center_outputs[level] = center_output
+      return scores_outputs, box_outputs, center_outputs
+
+
 class FastrcnnHead(tf.keras.layers.Layer):
   """Fast R-CNN box head."""
 
@@ -274,6 +398,151 @@ class FastrcnnHead(tf.keras.layers.Layer):
       class_outputs = self._class_predict(net)
       box_outputs = self._box_predict(net)
       return class_outputs, box_outputs
+
+
+class OlnBoxScoreHead(tf.keras.layers.Layer):
+  """Box head of Object Localization Network (OLN)."""
+
+  def __init__(
+      self,
+      num_classes,
+      num_convs=0,
+      num_filters=256,
+      use_separable_conv=False,
+      num_fcs=2,
+      fc_dims=1024,
+      activation='relu',
+      use_batch_norm=True,
+      norm_activation=nn_ops.norm_activation_builder(activation='relu')):
+    """Initialize params to build OLN box head.
+
+    Args:
+      num_classes: a integer for the number of classes.
+      num_convs: `int` number that represents the number of the intermediate
+        conv layers before the FC layers.
+      num_filters: `int` number that represents the number of filters of the
+        intermediate conv layers.
+      use_separable_conv: `bool`, indicating whether the separable conv layers
+        is used.
+      num_fcs: `int` number that represents the number of FC layers before the
+        predictions.
+      fc_dims: `int` number that represents the number of dimension of the FC
+        layers.
+      activation: activation function. Support 'relu' and 'swish'.
+      use_batch_norm: 'bool', indicating whether batchnorm layers are added.
+      norm_activation: an operation that includes a normalization layer followed
+        by an optional activation layer.
+    """
+    self._num_classes = num_classes
+
+    self._num_convs = num_convs
+    self._num_filters = num_filters
+    if use_separable_conv:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.SeparableConv2D,
+          depth_multiplier=1,
+          bias_initializer=tf.zeros_initializer())
+    else:
+      self._conv2d_op = functools.partial(
+          tf.keras.layers.Conv2D,
+          kernel_initializer=tf.keras.initializers.VarianceScaling(
+              scale=2, mode='fan_out', distribution='untruncated_normal'),
+          bias_initializer=tf.zeros_initializer())
+
+    self._num_fcs = num_fcs
+    self._fc_dims = fc_dims
+    if activation == 'relu':
+      self._activation_op = tf.nn.relu
+    elif activation == 'swish':
+      self._activation_op = tf.nn.swish
+    else:
+      raise ValueError('Unsupported activation `{}`.'.format(activation))
+    self._use_batch_norm = use_batch_norm
+    self._norm_activation = norm_activation
+
+    self._conv_ops = []
+    self._conv_bn_ops = []
+    for i in range(self._num_convs):
+      self._conv_ops.append(
+          self._conv2d_op(
+              self._num_filters,
+              kernel_size=(3, 3),
+              strides=(1, 1),
+              padding='same',
+              dilation_rate=(1, 1),
+              activation=(None
+                          if self._use_batch_norm else self._activation_op),
+              name='conv_{}'.format(i)))
+      if self._use_batch_norm:
+        self._conv_bn_ops.append(self._norm_activation())
+
+    self._fc_ops = []
+    self._fc_bn_ops = []
+    for i in range(self._num_fcs):
+      self._fc_ops.append(
+          tf.keras.layers.Dense(
+              units=self._fc_dims,
+              activation=(None
+                          if self._use_batch_norm else self._activation_op),
+              name='fc{}'.format(i)))
+      if self._use_batch_norm:
+        self._fc_bn_ops.append(self._norm_activation(fused=False))
+
+    self._class_predict = tf.keras.layers.Dense(
+        self._num_classes,
+        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        bias_initializer=tf.zeros_initializer(),
+        name='class-predict')
+    self._box_predict = tf.keras.layers.Dense(
+        self._num_classes * 4,
+        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.001),
+        bias_initializer=tf.zeros_initializer(),
+        name='box-predict')
+    self._score_predict = tf.keras.layers.Dense(
+        1,
+        kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
+        bias_initializer=tf.zeros_initializer(),
+        name='score-predict')
+
+  def __call__(self, roi_features, is_training=None):
+    """Box and class branches for the Mask-RCNN model.
+
+    Args:
+      roi_features: A ROI feature tensor of shape [batch_size, num_rois,
+        height_l, width_l, num_filters].
+      is_training: `boolean`, if True if model is in training mode.
+
+    Returns:
+      class_outputs: a tensor with a shape of
+        [batch_size, num_rois, num_classes], representing the class predictions.
+      box_outputs: a tensor with a shape of
+        [batch_size, num_rois, num_classes * 4], representing the box
+        predictions.
+    """
+
+    with keras_utils.maybe_enter_backend_graph(), tf.name_scope(
+        'fast_rcnn_head'):
+      # reshape inputs beofre FC.
+      _, num_rois, height, width, filters = roi_features.get_shape().as_list()
+
+      net = tf.reshape(roi_features, [-1, height, width, filters])
+      for i in range(self._num_convs):
+        net = self._conv_ops[i](net)
+        if self._use_batch_norm:
+          net = self._conv_bn_ops[i](net, is_training=is_training)
+
+      filters = self._num_filters if self._num_convs > 0 else filters
+      net = tf.reshape(net, [-1, num_rois, height * width * filters])
+
+      for i in range(self._num_fcs):
+        net = self._fc_ops[i](net)
+        if self._use_batch_norm:
+          net = self._fc_bn_ops[i](net, is_training=is_training)
+
+      class_outputs = self._class_predict(net)
+      box_outputs = self._box_predict(net)
+      score_outputs = self._score_predict(net)
+      return class_outputs, box_outputs, score_outputs
 
 
 class MaskrcnnHead(tf.keras.layers.Layer):
