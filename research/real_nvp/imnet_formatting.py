@@ -36,6 +36,7 @@ done
 
 from __future__ import print_function
 from imageio import imread
+from absl import app, flags
 
 import os
 import os.path
@@ -44,11 +45,11 @@ import scipy
 import tensorflow as tf
 
 
-tf.flags.DEFINE_string("file_out", "",
+flags.DEFINE_string("file_out", "",
                        "Filename of the output .tfrecords file.")
-tf.flags.DEFINE_string("fn_root", "", "Name of root file path.")
+flags.DEFINE_string("fn_root", "", "Name of root file path.")
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 
 
 def _int64_feature(value):
@@ -59,7 +60,7 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def main():
+def main(argv):
     """Main converter function."""
     # LSUN
     fn_root = FLAGS.fn_root
@@ -75,7 +76,7 @@ def main():
             file_out = file_out % (FLAGS.file_out,
                                    example_idx // n_examples_per_file)
             print("Writing on:", file_out)
-            writer = tf.python_io.TFRecordWriter(file_out)
+            writer = tf.io.TFRecordWriter(file_out)
         if example_idx % 1000 == 0:
             print(example_idx, "/", num_examples)
         image_raw = imread(os.path.join(fn_root, img_fn))
@@ -101,4 +102,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    app.run(main)
