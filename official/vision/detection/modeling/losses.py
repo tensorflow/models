@@ -330,7 +330,6 @@ class OlnRpnIoULoss(object):
                     (gt_left + gt_right) * (gt_top + gt_bottom) -
                     inter_area)
       iou = inter_area / (union_area + 1e-8)
-      iou = tf.where(mask, iou, tf.ones_like(iou))
       mask_ = tf.cast(mask, tf.float32)
       iou = tf.clip_by_value(iou, clip_value_min=1e-8, clip_value_max=1.0)
       neg_log_iou = -tf.math.log(iou)
@@ -498,7 +497,7 @@ class OlnBoxScoreLoss(object):
       mask = tf.cast(mask, dtype=tf.float32)
       score_loss = self._l1_loss(score_targets, score_outputs,
                                  sample_weight=mask)
-      score_loss /= num_valid
+      score_loss /= (num_valid + 1e-10)
       return score_loss
 
 
