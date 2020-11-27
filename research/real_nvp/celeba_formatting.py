@@ -32,6 +32,7 @@ python celeba_formatting.py \
 
 from __future__ import print_function
 from imageio import imread
+from absl import app, flags
 
 import os
 import os.path
@@ -40,13 +41,13 @@ import scipy
 import tensorflow as tf
 
 
-tf.flags.DEFINE_string("file_out", "",
+flags.DEFINE_string("file_out", "",
                        "Filename of the output .tfrecords file.")
-tf.flags.DEFINE_string("fn_root", "", "Name of root file path.")
-tf.flags.DEFINE_string("partition_fn", "", "Partition file path.")
-tf.flags.DEFINE_string("set", "", "Name of subset.")
+flags.DEFINE_string("fn_root", "", "Name of root file path.")
+flags.DEFINE_string("partition_fn", "", "Partition file path.")
+flags.DEFINE_string("set", "", "Name of subset.")
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 
 
 def _int64_feature(value):
@@ -57,7 +58,7 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def main():
+def main(argv):
     """Main converter function."""
     # Celeb A
     with open(FLAGS.partition_fn, "r") as infile:
@@ -68,7 +69,7 @@ def main():
     num_examples = len(img_fn_list)
 
     file_out = "%s.tfrecords" % FLAGS.file_out
-    writer = tf.python_io.TFRecordWriter(file_out)
+    writer = tf.io.TFRecordWriter(file_out)
     for example_idx, img_fn in enumerate(img_fn_list):
         if example_idx % 1000 == 0:
             print(example_idx, "/", num_examples)
@@ -92,4 +93,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    app.run(main)
