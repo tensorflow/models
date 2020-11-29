@@ -24,6 +24,7 @@ $ python real_nvp_multiscale_dataset.py \
 """
 
 from __future__ import print_function
+from absl import app, flags
 
 import time
 from datetime import datetime
@@ -33,53 +34,53 @@ import numpy
 from six.moves import xrange
 import tensorflow as tf
 
-from tensorflow import gfile
+from tensorflow.compat.v1 import gfile
 
-from real_nvp_utils import (
+from utils import (
     batch_norm, batch_norm_log_diff, conv_layer,
     squeeze_2x2, squeeze_2x2_ordered, standard_normal_ll,
     standard_normal_sample, unsqueeze_2x2, variable_on_cpu)
 
 
-tf.flags.DEFINE_string("master", "local",
+flags.DEFINE_string("master", "local",
                        "BNS name of the TensorFlow master, or local.")
 
-tf.flags.DEFINE_string("logdir", "/tmp/real_nvp_multiscale",
+flags.DEFINE_string("logdir", "/tmp/real_nvp_multiscale",
                        "Directory to which writes logs.")
 
-tf.flags.DEFINE_string("traindir", "/tmp/real_nvp_multiscale",
+flags.DEFINE_string("traindir", "/tmp/real_nvp_multiscale",
                        "Directory to which writes logs.")
 
-tf.flags.DEFINE_integer("train_steps", 1000000000000000000,
+flags.DEFINE_integer("train_steps", 10,
                         "Number of steps to train for.")
 
-tf.flags.DEFINE_string("data_path", "", "Path to the data.")
+flags.DEFINE_string("data_path", "", "Path to the data.")
 
-tf.flags.DEFINE_string("mode", "train",
+flags.DEFINE_string("mode", "train",
                        "Mode of execution. Must be 'train', "
                        "'sample' or 'eval'.")
 
-tf.flags.DEFINE_string("dataset", "imnet",
+flags.DEFINE_string("dataset", "imnet",
                        "Dataset used. Must be 'imnet', "
                        "'celeba' or 'lsun'.")
 
-tf.flags.DEFINE_integer("recursion_type", 2,
+flags.DEFINE_integer("recursion_type", 2,
                         "Type of the recursion.")
 
-tf.flags.DEFINE_integer("image_size", 64,
+flags.DEFINE_integer("image_size", 64,
                         "Size of the input image.")
 
-tf.flags.DEFINE_integer("eval_set_size", 0,
+flags.DEFINE_integer("eval_set_size", 0,
                         "Size of evaluation dataset.")
 
-tf.flags.DEFINE_string(
+flags.DEFINE_string(
     "hpconfig", "",
     "A comma separated list of hyperparameters for the model. Format is "
     "hp1=value1,hp2=value2,etc. If this FLAG is set, the model will be trained "
     "with the specified hyperparameters, filling in missing hyperparameters "
     "from the default_values in |hyper_params|.")
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 
 class HParams(object):
     """Dictionary of hyperparameters."""
@@ -132,7 +133,7 @@ def get_default_hparams():
 def residual_block(input_, dim, name, use_batch_norm=True,
                    train=True, weight_norm=True, bottleneck=False):
     """Residual convolutional block."""
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         res = input_
         if use_batch_norm:
             res = batch_norm(
@@ -194,7 +195,7 @@ def resnet(input_, dim_in, dim, dim_out, name, use_batch_norm=True,
            train=True, weight_norm=True, residual_blocks=5,
            bottleneck=False, skip=True):
     """Residual convolutional network."""
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         res = input_
         if residual_blocks != 0:
             res = conv_layer(
@@ -299,7 +300,7 @@ def masked_conv_aff_coupling(input_, mask_in, dim, name,
                              bottleneck=False, use_width=1., use_height=1.,
                              mask_channel=0., skip=True):
     """Affine coupling with masked convolution."""
-    with tf.variable_scope(name) as scope:
+    with tf.compat.v1.variable_scope(name) as scope:
         if reverse or (not train):
             scope.reuse_variables()
         shape = input_.get_shape().as_list()
@@ -312,11 +313,11 @@ def masked_conv_aff_coupling(input_, mask_in, dim, name,
         mask = use_width * numpy.arange(width)
         mask = use_height * numpy.arange(height).reshape((-1, 1)) + mask
         mask = mask.astype("float32")
-        mask = tf.mod(mask_in + mask, 2)
+        mask = tf.math.floormod(mask_in + mask, 2)
         mask = tf.reshape(mask, [-1, height, width, 1])
         if mask.get_shape().as_list()[0] == 1:
             mask = tf.tile(mask, [batch_size, 1, 1, 1])
-        res = input_ * tf.mod(mask_channel + mask, 2)
+        res = input_ * tf.math.floormod(mask_channel + mask, 2)
 
         # initial input
         if use_batch_norm:
@@ -326,7 +327,7 @@ def masked_conv_aff_coupling(input_, mask_in, dim, name,
             res *= 2.
         res = tf.concat([res, -res], 3)
         res = tf.concat([res, mask], 3)
-        dim_in = 2. * channels + 1
+        dim_in = 2 * channels + 1
         res = tf.nn.relu(res)
         res = resnet(input_=res, dim_in=dim_in, dim=dim,
                      dim_out=2 * channels,
@@ -334,12 +335,12 @@ def masked_conv_aff_coupling(input_, mask_in, dim, name,
                      train=train, weight_norm=weight_norm,
                      residual_blocks=residual_blocks,
                      bottleneck=bottleneck, skip=skip)
-        mask = tf.mod(mask_channel + mask, 2)
+        mask = tf.math.floormod(mask_channel + mask, 2)
         res = tf.split(axis=3, num_or_size_splits=2, value=res)
         shift, log_rescaling = res[-2], res[-1]
         scale = variable_on_cpu(
             "rescaling_scale", [],
-            tf.constant_initializer(0.))
+            tf.compat.v1.constant_initializer(0.))
         shift = tf.reshape(
             shift, [batch_size, height, width, channels])
         log_rescaling = tf.reshape(
@@ -348,7 +349,7 @@ def masked_conv_aff_coupling(input_, mask_in, dim, name,
         if not use_batch_norm:
             scale_shift = variable_on_cpu(
                 "scale_shift", [],
-                tf.constant_initializer(0.))
+                tf.compat.v1.constant_initializer(0.))
             log_rescaling += scale_shift
         shift *= (1. - mask)
         log_rescaling *= (1. - mask)
@@ -358,7 +359,7 @@ def masked_conv_aff_coupling(input_, mask_in, dim, name,
                 mean, var = batch_norm_log_diff(
                     input_=res * (1. - mask), dim=channels, name="bn_out",
                     train=False, epsilon=1e-4, axes=[0, 1, 2])
-                log_var = tf.log(var)
+                log_var = tf.math.log(var)
                 res *= tf.exp(.5 * log_var * (1. - mask))
                 res += mean * (1. - mask)
             res *= tf.exp(-log_rescaling)
@@ -375,7 +376,7 @@ def masked_conv_aff_coupling(input_, mask_in, dim, name,
                 mean, var = batch_norm_log_diff(
                     input_=res * (1. - mask), dim=channels, name="bn_out",
                     train=train, epsilon=1e-4, axes=[0, 1, 2])
-                log_var = tf.log(var)
+                log_var = tf.math.log(var)
                 res -= mean * (1. - mask)
                 res *= tf.exp(-.5 * log_var * (1. - mask))
                 log_diff -= .5 * log_var * (1. - mask)
@@ -389,7 +390,7 @@ def masked_conv_add_coupling(input_, mask_in, dim, name,
                              bottleneck=False, use_width=1., use_height=1.,
                              mask_channel=0., skip=True):
     """Additive coupling with masked convolution."""
-    with tf.variable_scope(name) as scope:
+    with tf.compat.v1.variable_scope(name) as scope:
         if reverse or (not train):
             scope.reuse_variables()
         shape = input_.get_shape().as_list()
@@ -402,11 +403,11 @@ def masked_conv_add_coupling(input_, mask_in, dim, name,
         mask = use_width * numpy.arange(width)
         mask = use_height * numpy.arange(height).reshape((-1, 1)) + mask
         mask = mask.astype("float32")
-        mask = tf.mod(mask_in + mask, 2)
+        mask = tf.math.floormod(mask_in + mask, 2)
         mask = tf.reshape(mask, [-1, height, width, 1])
         if mask.get_shape().as_list()[0] == 1:
             mask = tf.tile(mask, [batch_size, 1, 1, 1])
-        res = input_ * tf.mod(mask_channel + mask, 2)
+        res = input_ * tf.math.floormod(mask_channel + mask, 2)
 
         # initial input
         if use_batch_norm:
@@ -416,14 +417,14 @@ def masked_conv_add_coupling(input_, mask_in, dim, name,
             res *= 2.
         res = tf.concat([res, -res], 3)
         res = tf.concat([res, mask], 3)
-        dim_in = 2. * channels + 1
+        dim_in = 2 * channels + 1
         res = tf.nn.relu(res)
         shift = resnet(input_=res, dim_in=dim_in, dim=dim, dim_out=channels,
                        name="resnet", use_batch_norm=use_batch_norm,
                        train=train, weight_norm=weight_norm,
                        residual_blocks=residual_blocks,
                        bottleneck=bottleneck, skip=skip)
-        mask = tf.mod(mask_channel + mask, 2)
+        mask = tf.math.floormod(mask_channel + mask, 2)
         shift *= (1. - mask)
         # use_batch_norm = False
         if reverse:
@@ -432,7 +433,7 @@ def masked_conv_add_coupling(input_, mask_in, dim, name,
                 mean, var = batch_norm_log_diff(
                     input_=res * (1. - mask),
                     dim=channels, name="bn_out", train=False, epsilon=1e-4)
-                log_var = tf.log(var)
+                log_var = tf.math.log(var)
                 res *= tf.exp(.5 * log_var * (1. - mask))
                 res += mean * (1. - mask)
             res -= shift
@@ -447,7 +448,7 @@ def masked_conv_add_coupling(input_, mask_in, dim, name,
                 mean, var = batch_norm_log_diff(
                     input_=res * (1. - mask), dim=channels,
                     name="bn_out", train=train, epsilon=1e-4, axes=[0, 1, 2])
-                log_var = tf.log(var)
+                log_var = tf.math.log(var)
                 res -= mean * (1. - mask)
                 res *= tf.exp(-.5 * log_var * (1. - mask))
                 log_diff -= .5 * log_var * (1. - mask)
@@ -484,7 +485,7 @@ def conv_ch_aff_coupling(input_, dim, name,
                          reverse=False, residual_blocks=5,
                          bottleneck=False, change_bottom=True, skip=True):
     """Affine coupling with channel-wise splitting."""
-    with tf.variable_scope(name) as scope:
+    with tf.compat.v1.variable_scope(name) as scope:
         if reverse or (not train):
             scope.reuse_variables()
 
@@ -505,7 +506,7 @@ def conv_ch_aff_coupling(input_, dim, name,
                 input_=res, dim=channels, name="bn_in", scale=False,
                 train=train, epsilon=1e-4, axes=[0, 1, 2])
         res = tf.concat([res, -res], 3)
-        dim_in = 2. * channels
+        dim_in = 2 * channels
         res = tf.nn.relu(res)
         res = resnet(input_=res, dim_in=dim_in, dim=dim, dim_out=2 * channels,
                      name="resnet", use_batch_norm=use_batch_norm,
@@ -515,7 +516,7 @@ def conv_ch_aff_coupling(input_, dim, name,
         shift, log_rescaling = tf.split(axis=3, num_or_size_splits=2, value=res)
         scale = variable_on_cpu(
             "scale", [],
-            tf.constant_initializer(1.))
+            tf.compat.v1.constant_initializer(1.))
         shift = tf.reshape(
             shift, [batch_size, height, width, channels])
         log_rescaling = tf.reshape(
@@ -524,7 +525,7 @@ def conv_ch_aff_coupling(input_, dim, name,
         if not use_batch_norm:
             scale_shift = variable_on_cpu(
                 "scale_shift", [],
-                tf.constant_initializer(0.))
+                tf.compat.v1.constant_initializer(0.))
             log_rescaling += scale_shift
         if reverse:
             res = canvas
@@ -532,7 +533,7 @@ def conv_ch_aff_coupling(input_, dim, name,
                 mean, var = batch_norm_log_diff(
                     input_=res, dim=channels, name="bn_out", train=False,
                     epsilon=1e-4, axes=[0, 1, 2])
-                log_var = tf.log(var)
+                log_var = tf.math.log(var)
                 res *= tf.exp(.5 * log_var)
                 res += mean
             res *= tf.exp(-log_rescaling)
@@ -549,7 +550,7 @@ def conv_ch_aff_coupling(input_, dim, name,
                 mean, var = batch_norm_log_diff(
                     input_=res, dim=channels, name="bn_out", train=train,
                     epsilon=1e-4, axes=[0, 1, 2])
-                log_var = tf.log(var)
+                log_var = tf.math.log(var)
                 res -= mean
                 res *= tf.exp(-.5 * log_var)
                 log_diff -= .5 * log_var
@@ -568,7 +569,7 @@ def conv_ch_add_coupling(input_, dim, name,
                          reverse=False, residual_blocks=5,
                          bottleneck=False, change_bottom=True, skip=True):
     """Additive coupling with channel-wise splitting."""
-    with tf.variable_scope(name) as scope:
+    with tf.compat.v1.variable_scope(name) as scope:
         if reverse or (not train):
             scope.reuse_variables()
 
@@ -586,7 +587,7 @@ def conv_ch_add_coupling(input_, dim, name,
                 input_=res, dim=channels, name="bn_in", scale=False,
                 train=train, epsilon=1e-4, axes=[0, 1, 2])
         res = tf.concat([res, -res], 3)
-        dim_in = 2. * channels
+        dim_in = 2 * channels
         res = tf.nn.relu(res)
         shift = resnet(input_=res, dim_in=dim_in, dim=dim, dim_out=channels,
                        name="resnet", use_batch_norm=use_batch_norm,
@@ -599,7 +600,7 @@ def conv_ch_add_coupling(input_, dim, name,
                 mean, var = batch_norm_log_diff(
                     input_=res, dim=channels, name="bn_out", train=False,
                     epsilon=1e-4, axes=[0, 1, 2])
-                log_var = tf.log(var)
+                log_var = tf.math.log(var)
                 res *= tf.exp(.5 * log_var)
                 res += mean
             res -= shift
@@ -614,7 +615,7 @@ def conv_ch_add_coupling(input_, dim, name,
                 mean, var = batch_norm_log_diff(
                     input_=res, dim=channels, name="bn_out", train=train,
                     epsilon=1e-4, axes=[0, 1, 2])
-                log_var = tf.log(var)
+                log_var = tf.math.log(var)
                 res -= mean
                 res *= tf.exp(-.5 * log_var)
                 log_diff -= .5 * log_var
@@ -665,7 +666,7 @@ def rec_masked_conv_coupling(input_, hps, scale_idx, n_scale,
     dim = base_dim
     if FLAGS.recursion_type < 4:
         dim *= 2 ** scale_idx
-    with tf.variable_scope("scale_%d" % scale_idx):
+    with tf.compat.v1.variable_scope("scale_%d" % scale_idx):
         # initial coupling layers
         res, inc_log_diff = masked_conv_coupling(
             input_=res,
@@ -698,7 +699,7 @@ def rec_masked_conv_coupling(input_, hps, scale_idx, n_scale,
             use_width=1., use_height=1., skip=skip)
         log_diff += inc_log_diff
     if scale_idx < (n_scale - 1):
-        with tf.variable_scope("scale_%d" % scale_idx):
+        with tf.compat.v1.variable_scope("scale_%d" % scale_idx):
             res = squeeze_2x2(res)
             log_diff = squeeze_2x2(log_diff)
             res, inc_log_diff = conv_ch_coupling(
@@ -761,7 +762,7 @@ def rec_masked_conv_coupling(input_, hps, scale_idx, n_scale,
             res = squeeze_2x2_ordered(res, reverse=True)
             log_diff = squeeze_2x2_ordered(log_diff, reverse=True)
     else:
-        with tf.variable_scope("scale_%d" % scale_idx):
+        with tf.compat.v1.variable_scope("scale_%d" % scale_idx):
             res, inc_log_diff = masked_conv_coupling(
                 input_=res,
                 mask_in=1. - mask, dim=dim,
@@ -822,7 +823,7 @@ def rec_masked_deconv_coupling(input_, hps, scale_idx, n_scale,
                 train=train)
             res = squeeze_2x2_ordered(res, reverse=True)
             log_diff = squeeze_2x2_ordered(log_diff, reverse=True)
-        with tf.variable_scope("scale_%d" % scale_idx):
+        with tf.compat.v1.variable_scope("scale_%d" % scale_idx):
             res = squeeze_2x2(res)
             log_diff = squeeze_2x2(log_diff)
             res, inc_log_diff = conv_ch_coupling(
@@ -855,7 +856,7 @@ def rec_masked_deconv_coupling(input_, hps, scale_idx, n_scale,
             res = unsqueeze_2x2(res)
             log_diff = unsqueeze_2x2(log_diff)
     else:
-        with tf.variable_scope("scale_%d" % scale_idx):
+        with tf.compat.v1.variable_scope("scale_%d" % scale_idx):
             res, inc_log_diff = masked_conv_coupling(
                 input_=res,
                 mask_in=1. - mask, dim=dim,
@@ -867,7 +868,7 @@ def rec_masked_deconv_coupling(input_, hps, scale_idx, n_scale,
                 use_width=1., use_height=1., skip=skip)
             log_diff += inc_log_diff
 
-    with tf.variable_scope("scale_%d" % scale_idx):
+    with tf.compat.v1.variable_scope("scale_%d" % scale_idx):
         res, inc_log_diff = masked_conv_coupling(
             input_=res,
             mask_in=mask, dim=dim,
@@ -934,27 +935,27 @@ class RealNVP(object):
         device = "/cpu:0"
         if FLAGS.dataset == "imnet":
             with tf.device(
-                tf.train.replica_device_setter(0, worker_device=device)):
-                filename_queue = tf.train.string_input_producer(
+                tf.compat.v1.train.replica_device_setter(0, worker_device=device)):
+                filename_queue = tf.compat.v1.train.string_input_producer(
                     gfile.Glob(FLAGS.data_path), num_epochs=None)
-                reader = tf.TFRecordReader()
+                reader = tf.compat.v1.TFRecordReader()
                 _, serialized_example = reader.read(filename_queue)
-                features = tf.parse_single_example(
-                    serialized_example,
+                features = tf.io.parse_single_example(
+                    serialized=serialized_example,
                     features={
-                        "image_raw": tf.FixedLenFeature([], tf.string),
+                        "image_raw": tf.io.FixedLenFeature([], tf.string),
                     })
-                image = tf.decode_raw(features["image_raw"], tf.uint8)
+                image = tf.io.decode_raw(features["image_raw"], tf.uint8)
                 image.set_shape([FLAGS.image_size * FLAGS.image_size * 3])
                 image = tf.cast(image, tf.float32)
                 if FLAGS.mode == "train":
-                    images = tf.train.shuffle_batch(
+                    images = tf.compat.v1.train.shuffle_batch(
                         [image], batch_size=hps.batch_size, num_threads=1,
                         capacity=1000 + 3 * hps.batch_size,
                         # Ensures a minimum amount of shuffling of examples.
                         min_after_dequeue=1000)
                 else:
-                    images = tf.train.batch(
+                    images = tf.compat.v1.train.batch(
                         [image], batch_size=hps.batch_size, num_threads=1,
                         capacity=1000 + 3 * hps.batch_size)
             self.x_orig = x_orig = images
@@ -964,57 +965,57 @@ class RealNVP(object):
                 [hps.batch_size, FLAGS.image_size, FLAGS.image_size, 3])
             x_in = tf.clip_by_value(x_in, 0, 255)
             x_in = (tf.cast(x_in, tf.float32)
-                    + tf.random_uniform(tf.shape(x_in))) / 256.
+                    + tf.random.uniform(tf.shape(input=x_in))) / 256.
         elif FLAGS.dataset == "celeba":
             with tf.device(
-                tf.train.replica_device_setter(0, worker_device=device)):
-                filename_queue = tf.train.string_input_producer(
+                tf.compat.v1.train.replica_device_setter(0, worker_device=device)):
+                filename_queue = tf.compat.v1.train.string_input_producer(
                     gfile.Glob(FLAGS.data_path), num_epochs=None)
-                reader = tf.TFRecordReader()
+                reader = tf.compat.v1.TFRecordReader()
                 _, serialized_example = reader.read(filename_queue)
-                features = tf.parse_single_example(
-                    serialized_example,
+                features = tf.io.parse_single_example(
+                    serialized=serialized_example,
                     features={
-                        "image_raw": tf.FixedLenFeature([], tf.string),
+                        "image_raw": tf.io.FixedLenFeature([], tf.string),
                     })
-                image = tf.decode_raw(features["image_raw"], tf.uint8)
+                image = tf.io.decode_raw(features["image_raw"], tf.uint8)
                 image.set_shape([218 * 178 * 3])  # 218, 178
                 image = tf.cast(image, tf.float32)
                 image = tf.reshape(image, [218, 178, 3])
                 image = image[40:188, 15:163, :]
                 if FLAGS.mode == "train":
                     image = tf.image.random_flip_left_right(image)
-                    images = tf.train.shuffle_batch(
+                    images = tf.compat.v1.train.shuffle_batch(
                         [image], batch_size=hps.batch_size, num_threads=1,
                         capacity=1000 + 3 * hps.batch_size,
                         min_after_dequeue=1000)
                 else:
-                    images = tf.train.batch(
+                    images = tf.compat.v1.train.batch(
                         [image], batch_size=hps.batch_size, num_threads=1,
                         capacity=1000 + 3 * hps.batch_size)
             self.x_orig = x_orig = images
             image_size = 64
             x_in = tf.reshape(x_orig, [hps.batch_size, 148, 148, 3])
-            x_in = tf.image.resize_images(
-                x_in, [64, 64], method=0, align_corners=False)
+            x_in = tf.image.resize(
+                x_in, [64, 64], method=0)
             x_in = (tf.cast(x_in, tf.float32)
-                    + tf.random_uniform(tf.shape(x_in))) / 256.
+                    + tf.random.uniform(tf.shape(input=x_in))) / 256.
         elif FLAGS.dataset == "lsun":
             with tf.device(
-                tf.train.replica_device_setter(0, worker_device=device)):
-                filename_queue = tf.train.string_input_producer(
+                tf.compat.v1.train.replica_device_setter(0, worker_device=device)):
+                filename_queue = tf.compat.v1.train.string_input_producer(
                     gfile.Glob(FLAGS.data_path), num_epochs=None)
-                reader = tf.TFRecordReader()
+                reader = tf.compat.v1.TFRecordReader()
                 _, serialized_example = reader.read(filename_queue)
-                features = tf.parse_single_example(
-                    serialized_example,
+                features = tf.io.parse_single_example(
+                    serialized=serialized_example,
                     features={
-                        "image_raw": tf.FixedLenFeature([], tf.string),
-                        "height": tf.FixedLenFeature([], tf.int64),
-                        "width": tf.FixedLenFeature([], tf.int64),
-                        "depth": tf.FixedLenFeature([], tf.int64)
+                        "image_raw": tf.io.FixedLenFeature([], tf.string),
+                        "height": tf.io.FixedLenFeature([], tf.int64),
+                        "width": tf.io.FixedLenFeature([], tf.int64),
+                        "depth": tf.io.FixedLenFeature([], tf.int64)
                     })
-                image = tf.decode_raw(features["image_raw"], tf.uint8)
+                image = tf.io.decode_raw(features["image_raw"], tf.uint8)
                 height = tf.reshape((features["height"], tf.int64)[0], [1])
                 height = tf.cast(height, tf.int32)
                 width = tf.reshape((features["width"], tf.int64)[0], [1])
@@ -1022,38 +1023,38 @@ class RealNVP(object):
                 depth = tf.reshape((features["depth"], tf.int64)[0], [1])
                 depth = tf.cast(depth, tf.int32)
                 image = tf.reshape(image, tf.concat([height, width, depth], 0))
-                image = tf.random_crop(image, [64, 64, 3])
+                image = tf.image.random_crop(image, [64, 64, 3])
                 if FLAGS.mode == "train":
                     image = tf.image.random_flip_left_right(image)
-                    images = tf.train.shuffle_batch(
+                    images = tf.compat.v1.train.shuffle_batch(
                         [image], batch_size=hps.batch_size, num_threads=1,
                         capacity=1000 + 3 * hps.batch_size,
                         # Ensures a minimum amount of shuffling of examples.
                         min_after_dequeue=1000)
                 else:
-                    images = tf.train.batch(
+                    images = tf.compat.v1.train.batch(
                         [image], batch_size=hps.batch_size, num_threads=1,
                         capacity=1000 + 3 * hps.batch_size)
             self.x_orig = x_orig = images
             image_size = 64
             x_in = tf.reshape(x_orig, [hps.batch_size, 64, 64, 3])
             x_in = (tf.cast(x_in, tf.float32)
-                    + tf.random_uniform(tf.shape(x_in))) / 256.
+                    + tf.random.uniform(tf.shape(input=x_in))) / 256.
         else:
             raise ValueError("Unknown dataset.")
         x_in = tf.reshape(x_in, [hps.batch_size, image_size, image_size, 3])
         side_shown = int(numpy.sqrt(hps.batch_size))
         shown_x = tf.transpose(
-            tf.reshape(
+            a=tf.reshape(
                 x_in[:(side_shown * side_shown), :, :, :],
                 [side_shown, image_size * side_shown, image_size, 3]),
-            [0, 2, 1, 3])
+            perm=[0, 2, 1, 3])
         shown_x = tf.transpose(
-            tf.reshape(
+            a=tf.reshape(
                 shown_x,
                 [1, image_size * side_shown, image_size * side_shown, 3]),
-            [0, 2, 1, 3]) * 255.
-        tf.summary.image(
+            perm=[0, 2, 1, 3]) * 255.
+        tf.compat.v1.summary.image(
             "inputs",
             tf.cast(shown_x, tf.uint8),
             max_outputs=1)
@@ -1070,11 +1071,11 @@ class RealNVP(object):
         logit_x_in += 1.  # [.1, 1.9]
         logit_x_in /= 2.  # [.05, .95]
         # logit the data
-        logit_x_in = tf.log(logit_x_in) - tf.log(1. - logit_x_in)
+        logit_x_in = tf.math.log(logit_x_in) - tf.math.log(1. - logit_x_in)
         transform_cost = tf.reduce_sum(
-            tf.nn.softplus(logit_x_in) + tf.nn.softplus(-logit_x_in)
+            input_tensor=tf.nn.softplus(logit_x_in) + tf.nn.softplus(-logit_x_in)
             - tf.nn.softplus(-pre_logit_scale),
-            [1, 2, 3])
+            axis=[1, 2, 3])
 
         # INFERENCE AND COSTS
         z_out, log_diff = encoder(
@@ -1088,17 +1089,17 @@ class RealNVP(object):
                   train=False)
         final_shape = [image_size, image_size, 3]
         prior_ll = standard_normal_ll(z_out)
-        prior_ll = tf.reduce_sum(prior_ll, [1, 2, 3])
-        log_diff = tf.reduce_sum(log_diff, [1, 2, 3])
+        prior_ll = tf.reduce_sum(input_tensor=prior_ll, axis=[1, 2, 3])
+        log_diff = tf.reduce_sum(input_tensor=log_diff, axis=[1, 2, 3])
         log_diff += transform_cost
         cost = -(prior_ll + log_diff)
 
         self.x_in = x_in
         self.z_out = z_out
-        self.cost = cost = tf.reduce_mean(cost)
+        self.cost = cost = tf.reduce_mean(input_tensor=cost)
 
         l2_reg = sum(
-            [tf.reduce_sum(tf.square(v)) for v in tf.trainable_variables()
+            [tf.reduce_sum(input_tensor=tf.square(v)) for v in tf.compat.v1.trainable_variables()
              if ("magnitude" in v.name) or ("rescaling_scale" in v.name)])
 
         bit_per_dim = ((cost + numpy.log(256.) * image_size * image_size * 3.)
@@ -1109,53 +1110,53 @@ class RealNVP(object):
         momentum = 1. - hps.momentum
         decay = 1. - hps.decay
         if hps.optimizer == "adam":
-            optimizer = tf.train.AdamOptimizer(
+            optimizer = tf.compat.v1.train.AdamOptimizer(
                 learning_rate=hps.learning_rate,
                 beta1=momentum, beta2=decay, epsilon=1e-08,
                 use_locking=False, name="Adam")
         elif hps.optimizer == "rmsprop":
-            optimizer = tf.train.RMSPropOptimizer(
+            optimizer = tf.compat.v1.train.RMSPropOptimizer(
                 learning_rate=hps.learning_rate, decay=decay,
                 momentum=momentum, epsilon=1e-04,
                 use_locking=False, name="RMSProp")
         else:
-            optimizer = tf.train.MomentumOptimizer(hps.learning_rate,
+            optimizer = tf.compat.v1.train.MomentumOptimizer(hps.learning_rate,
                                                    momentum=momentum)
 
-        step = tf.get_variable(
+        step = tf.compat.v1.get_variable(
             "global_step", [], tf.int64,
-            tf.zeros_initializer(),
+            tf.compat.v1.zeros_initializer(),
             trainable=False)
         self.step = step
         grads_and_vars = optimizer.compute_gradients(
             cost + hps.l2_coeff * l2_reg,
-            tf.trainable_variables())
+            tf.compat.v1.trainable_variables())
         grads, vars_ = zip(*grads_and_vars)
         capped_grads, gradient_norm = tf.clip_by_global_norm(
             grads, clip_norm=hps.clip_gradient)
-        gradient_norm = tf.check_numerics(gradient_norm,
+        gradient_norm = tf.debugging.check_numerics(gradient_norm,
                                           "Gradient norm is NaN or Inf.")
 
-        l2_z = tf.reduce_sum(tf.square(z_out), [1, 2, 3])
+        l2_z = tf.reduce_sum(input_tensor=tf.square(z_out), axis=[1, 2, 3])
         if not sampling:
-            tf.summary.scalar("negative_log_likelihood", tf.reshape(cost, []))
-            tf.summary.scalar("gradient_norm", tf.reshape(gradient_norm, []))
-            tf.summary.scalar("bit_per_dim", tf.reshape(bit_per_dim, []))
-            tf.summary.scalar("log_diff", tf.reshape(tf.reduce_mean(log_diff), []))
-            tf.summary.scalar("prior_ll", tf.reshape(tf.reduce_mean(prior_ll), []))
-            tf.summary.scalar(
+            tf.compat.v1.summary.scalar("negative_log_likelihood", tf.reshape(cost, []))
+            tf.compat.v1.summary.scalar("gradient_norm", tf.reshape(gradient_norm, []))
+            tf.compat.v1.summary.scalar("bit_per_dim", tf.reshape(bit_per_dim, []))
+            tf.compat.v1.summary.scalar("log_diff", tf.reshape(tf.reduce_mean(input_tensor=log_diff), []))
+            tf.compat.v1.summary.scalar("prior_ll", tf.reshape(tf.reduce_mean(input_tensor=prior_ll), []))
+            tf.compat.v1.summary.scalar(
                 "log_diff_var",
-                tf.reshape(tf.reduce_mean(tf.square(log_diff))
-                           - tf.square(tf.reduce_mean(log_diff)), []))
-            tf.summary.scalar(
+                tf.reshape(tf.reduce_mean(input_tensor=tf.square(log_diff))
+                           - tf.square(tf.reduce_mean(input_tensor=log_diff)), []))
+            tf.compat.v1.summary.scalar(
                 "prior_ll_var",
-                tf.reshape(tf.reduce_mean(tf.square(prior_ll))
-                           - tf.square(tf.reduce_mean(prior_ll)), []))
-            tf.summary.scalar("l2_z_mean", tf.reshape(tf.reduce_mean(l2_z), []))
-            tf.summary.scalar(
+                tf.reshape(tf.reduce_mean(input_tensor=tf.square(prior_ll))
+                           - tf.square(tf.reduce_mean(input_tensor=prior_ll)), []))
+            tf.compat.v1.summary.scalar("l2_z_mean", tf.reshape(tf.reduce_mean(input_tensor=l2_z), []))
+            tf.compat.v1.summary.scalar(
                 "l2_z_var",
-                tf.reshape(tf.reduce_mean(tf.square(l2_z))
-                           - tf.square(tf.reduce_mean(l2_z)), []))
+                tf.reshape(tf.reduce_mean(input_tensor=tf.square(l2_z))
+                           - tf.square(tf.reduce_mean(input_tensor=l2_z)), []))
 
 
         capped_grads_and_vars = zip(capped_grads, vars_)
@@ -1175,12 +1176,12 @@ class RealNVP(object):
             sample = tf.clip_by_value(sample, 0, 1) * 255.
             sample = tf.reshape(sample, [100, image_size, image_size, 3])
             sample = tf.transpose(
-                tf.reshape(sample, [10, image_size * 10, image_size, 3]),
-                [0, 2, 1, 3])
+                a=tf.reshape(sample, [10, image_size * 10, image_size, 3]),
+                perm=[0, 2, 1, 3])
             sample = tf.transpose(
-                tf.reshape(sample, [1, image_size * 10, image_size * 10, 3]),
-                [0, 2, 1, 3])
-            tf.summary.image(
+                a=tf.reshape(sample, [1, image_size * 10, image_size * 10, 3]),
+                perm=[0, 2, 1, 3])
+            tf.compat.v1.summary.image(
                 "samples",
                 tf.cast(sample, tf.uint8),
                 max_outputs=1)
@@ -1195,21 +1196,21 @@ class RealNVP(object):
                 concatenation,
                 [(side_shown * side_shown), image_size, image_size, 3])
             concatenation = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     concatenation,
                     [side_shown, image_size * side_shown, image_size, 3]),
-                [0, 2, 1, 3])
+                perm=[0, 2, 1, 3])
             concatenation = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     concatenation,
                     [1, image_size * side_shown, image_size * side_shown, 3]),
-                [0, 2, 1, 3])
+                perm=[0, 2, 1, 3])
             concatenation, _ = decoder(
                 input_=concatenation, hps=hps, n_scale=hps.n_scale,
                 use_batch_norm=hps.use_batch_norm, weight_norm=True,
                 train=False)
             concatenation = tf.nn.sigmoid(concatenation) * 255.
-            tf.summary.image(
+            tf.compat.v1.summary.image(
                 "concatenation",
                 tf.cast(concatenation, tf.uint8),
                 max_outputs=1)
@@ -1277,22 +1278,22 @@ class RealNVP(object):
                  image_size,
                  3])
             manifold = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     manifold,
                     [n_angle_3, manifold_side,
-                     image_size * manifold_side, image_size, 3]), [0, 1, 3, 2, 4])
+                     image_size * manifold_side, image_size, 3]), perm=[0, 1, 3, 2, 4])
             manifold = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     manifold,
                     [n_angle_3, image_size * manifold_side,
                      image_size * manifold_side, 3]),
-                [0, 2, 1, 3])
-            manifold = tf.transpose(manifold, [1, 2, 0, 3])
+                perm=[0, 2, 1, 3])
+            manifold = tf.transpose(a=manifold, perm=[1, 2, 0, 3])
             manifold = tf.reshape(
                 manifold,
                 [1, image_size * manifold_side,
                  image_size * manifold_side, 3 * n_angle_3])
-            tf.summary.image(
+            tf.compat.v1.summary.image(
                 "manifold",
                 tf.cast(manifold[:, :, :, :3], tf.uint8),
                 max_outputs=1)
@@ -1317,7 +1318,7 @@ class RealNVP(object):
                     z_compressed = squeeze_2x2_ordered(
                         z_compressed, reverse=True)
                     z_noisy = tf.concat(
-                        [z_noisy, tf.random_normal(
+                        [z_noisy, tf.random.normal(
                             z_noisy.get_shape().as_list())], 3)
                     z_noisy = squeeze_2x2_ordered(z_noisy, reverse=True)
                 z_compressed_list.append(z_compressed)
@@ -1341,16 +1342,16 @@ class RealNVP(object):
                 noisy_images,
                 [(hps.n_scale * hps.n_scale), image_size, image_size, 3])
             noisy_images = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     noisy_images,
                     [hps.n_scale, image_size * hps.n_scale, image_size, 3]),
-                [0, 2, 1, 3])
+                perm=[0, 2, 1, 3])
             noisy_images = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     noisy_images,
                     [1, image_size * hps.n_scale, image_size * hps.n_scale, 3]),
-                [0, 2, 1, 3])
-            tf.summary.image(
+                perm=[0, 2, 1, 3])
+            tf.compat.v1.summary.image(
                 "noise",
                 tf.cast(noisy_images, tf.uint8),
                 max_outputs=1)
@@ -1359,16 +1360,16 @@ class RealNVP(object):
                 compressed_images,
                 [(hps.n_scale * hps.n_scale), image_size, image_size, 3])
             compressed_images = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     compressed_images,
                     [hps.n_scale, image_size * hps.n_scale, image_size, 3]),
-                [0, 2, 1, 3])
+                perm=[0, 2, 1, 3])
             compressed_images = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     compressed_images,
                     [1, image_size * hps.n_scale, image_size * hps.n_scale, 3]),
-                [0, 2, 1, 3])
-            tf.summary.image(
+                perm=[0, 2, 1, 3])
+            tf.compat.v1.summary.image(
                 "compression",
                 tf.cast(compressed_images, tf.uint8),
                 max_outputs=1)
@@ -1388,15 +1389,15 @@ class RealNVP(object):
                 big_sample,
                 [25, image_size * 2, image_size * 2, 3])
             big_sample = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     big_sample,
-                    [5, image_size * 10, image_size * 2, 3]), [0, 2, 1, 3])
+                    [5, image_size * 10, image_size * 2, 3]), perm=[0, 2, 1, 3])
             big_sample = tf.transpose(
-                tf.reshape(
+                a=tf.reshape(
                     big_sample,
                     [1, image_size * 10, image_size * 10, 3]),
-                [0, 2, 1, 3])
-            tf.summary.image(
+                perm=[0, 2, 1, 3])
+            tf.compat.v1.summary.image(
                 "big_sample",
                 tf.cast(big_sample, tf.uint8),
                 max_outputs=1)
@@ -1412,7 +1413,7 @@ class RealNVP(object):
             extra_large = tf.nn.sigmoid(extra_large)
 
             extra_large = tf.clip_by_value(extra_large, 0, 1) * 255.
-            tf.summary.image(
+            tf.compat.v1.summary.image(
                 "extra_large",
                 tf.cast(extra_large, tf.uint8),
                 max_outputs=1)
@@ -1448,22 +1449,22 @@ class RealNVP(object):
 def train_model(hps, logdir):
     """Training."""
     with tf.Graph().as_default():
-        with tf.device(tf.train.replica_device_setter(0)):
-            with tf.variable_scope("model"):
+        with tf.device(tf.compat.v1.train.replica_device_setter(0)):
+            with tf.compat.v1.variable_scope("model"):
                 model = RealNVP(hps)
 
-            saver = tf.train.Saver(tf.global_variables())
+            saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables())
 
             # Build the summary operation from the last tower summaries.
-            summary_op = tf.summary.merge_all()
+            summary_op = tf.compat.v1.summary.merge_all()
 
             # Build an initialization operation to run below.
-            init = tf.global_variables_initializer()
+            init = tf.compat.v1.global_variables_initializer()
 
             # Start running operations on the Graph. allow_soft_placement must be set to
             # True to build towers on GPU, as some of the ops do not have GPU
             # implementations.
-            sess = tf.Session(config=tf.ConfigProto(
+            sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True,
                 log_device_placement=True))
             sess.run(init)
@@ -1474,9 +1475,9 @@ def train_model(hps, logdir):
                 saver.restore(sess, ckpt_state.model_checkpoint_path)
 
             # Start the queue runners.
-            tf.train.start_queue_runners(sess=sess)
+            tf.compat.v1.train.start_queue_runners(sess=sess)
 
-            summary_writer = tf.summary.FileWriter(
+            summary_writer = tf.compat.v1.summary.FileWriter(
                 logdir,
                 graph=sess.graph)
 
@@ -1528,16 +1529,16 @@ def evaluate(hps, logdir, traindir, subset="valid", return_val=False):
     hps.batch_size = 100
     with tf.Graph().as_default():
         with tf.device("/cpu:0"):
-            with tf.variable_scope("model") as var_scope:
+            with tf.compat.v1.variable_scope("model") as var_scope:
                 eval_model = RealNVP(hps)
-                summary_writer = tf.summary.FileWriter(logdir)
+                summary_writer = tf.compat.v1.summary.FileWriter(logdir)
                 var_scope.reuse_variables()
 
-            saver = tf.train.Saver()
-            sess = tf.Session(config=tf.ConfigProto(
+            saver = tf.compat.v1.train.Saver()
+            sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True,
                 log_device_placement=True))
-            tf.train.start_queue_runners(sess)
+            tf.compat.v1.train.start_queue_runners(sess)
 
             previous_global_step = 0  # don"t run eval for step = 0
 
@@ -1551,7 +1552,7 @@ def evaluate(hps, logdir, traindir, subset="valid", return_val=False):
                     print("Loading file %s" % ckpt_state.model_checkpoint_path)
                     saver.restore(sess, ckpt_state.model_checkpoint_path)
 
-                    current_step = tf.train.global_step(sess, eval_model.step)
+                    current_step = tf.compat.v1.train.global_step(sess, eval_model.step)
                     if current_step == previous_global_step:
                         print("Waiting for the checkpoint to be updated.")
                         time.sleep(30)
@@ -1563,9 +1564,9 @@ def evaluate(hps, logdir, traindir, subset="valid", return_val=False):
                     print("Epoch: %d, %s -> %.3f bits/dim"
                           % (current_step, subset, bit_per_dim))
                     print("Writing summary...")
-                    summary = tf.Summary()
+                    summary = tf.compat.v1.Summary()
                     summary.value.extend(
-                        [tf.Summary.Value(
+                        [tf.compat.v1.Summary.Value(
                             tag="bit_per_dim",
                             simple_value=bit_per_dim)])
                     summary_writer.add_summary(summary, current_step)
@@ -1579,18 +1580,18 @@ def sample_from_model(hps, logdir, traindir):
     hps.batch_size = 100
     with tf.Graph().as_default():
         with tf.device("/cpu:0"):
-            with tf.variable_scope("model") as var_scope:
+            with tf.compat.v1.variable_scope("model") as var_scope:
                 eval_model = RealNVP(hps, sampling=True)
-                summary_writer = tf.summary.FileWriter(logdir)
+                summary_writer = tf.compat.v1.summary.FileWriter(logdir)
                 var_scope.reuse_variables()
 
-                summary_op = tf.summary.merge_all()
-            saver = tf.train.Saver()
-            sess = tf.Session(config=tf.ConfigProto(
+                summary_op = tf.compat.v1.summary.merge_all()
+            saver = tf.compat.v1.train.Saver()
+            sess = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(
                 allow_soft_placement=True,
                 log_device_placement=True))
             coord = tf.train.Coordinator()
-            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+            threads = tf.compat.v1.train.start_queue_runners(sess=sess, coord=coord)
 
             previous_global_step = 0  # don"t run eval for step = 0
 
@@ -1608,7 +1609,7 @@ def sample_from_model(hps, logdir, traindir):
                                % ckpt_state.model_checkpoint_path)
                         saver.restore(sess, ckpt_state.model_checkpoint_path)
 
-                    current_step = tf.train.global_step(sess, eval_model.step)
+                    current_step = tf.compat.v1.train.global_step(sess, eval_model.step)
                     if current_step == previous_global_step:
                         print("Waiting for the checkpoint to be updated.")
                         time.sleep(30)
@@ -1636,4 +1637,4 @@ def main(unused_argv):
                  traindir=FLAGS.traindir, subset=FLAGS.mode)
 
 if __name__ == "__main__":
-    tf.app.run()
+    app.run(main)

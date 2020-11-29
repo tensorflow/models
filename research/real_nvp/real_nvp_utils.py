@@ -29,11 +29,11 @@ DEFAULT_BN_LAG = .0
 def stable_var(input_, mean=None, axes=[0]):
     """Numerically more stable variance computation."""
     if mean is None:
-        mean = tf.reduce_mean(input_, axes)
+        mean = tf.reduce_mean(input_tensor=input_, axis=axes)
     res = tf.square(input_ - mean)
-    max_sqr = tf.reduce_max(res, axes)
+    max_sqr = tf.reduce_max(input_tensor=res, axis=axes)
     res /= max_sqr
-    res = tf.reduce_mean(res, axes)
+    res = tf.reduce_mean(input_tensor=res, axis=axes)
     res *= max_sqr
 
     return res
@@ -50,7 +50,7 @@ def variable_on_cpu(name, shape, initializer, trainable=True):
     Returns:
             Variable Tensor
     """
-    var = tf.get_variable(
+    var = tf.compat.v1.get_variable(
         name, shape, initializer=initializer, trainable=trainable)
     return var
 
@@ -69,19 +69,19 @@ def conv_layer(input_,
                weight_norm=False,
                scale=False):
     """Convolutional layer."""
-    with tf.variable_scope(name) as scope:
+    with tf.compat.v1.variable_scope(name) as scope:
         weights = variable_on_cpu(
             "weights",
             filter_size + [dim_in, dim_out],
-            tf.random_uniform_initializer(
+            tf.compat.v1.random_uniform_initializer(
                 minval=-stddev, maxval=stddev))
         # weight normalization
         if weight_norm:
-            weights /= tf.sqrt(tf.reduce_sum(tf.square(weights), [0, 1, 2]))
+            weights /= tf.sqrt(tf.reduce_sum(input_tensor=tf.square(weights), axis=[0, 1, 2]))
             if scale:
                 magnitude = variable_on_cpu(
                     "magnitude", [dim_out],
-                    tf.constant_initializer(
+                    tf.compat.v1.constant_initializer(
                         stddev * numpy.sqrt(dim_in * numpy.prod(filter_size) / 12.)))
                 weights *= magnitude
         res = input_
@@ -104,7 +104,7 @@ def conv_layer(input_,
                 res = tf.concat(axis=2, values=[pad_2, res])
         res = tf.nn.conv2d(
             input=res,
-            filter=weights,
+            filters=weights,
             strides=strides,
             padding=padding,
             name=scope.name)
@@ -117,7 +117,7 @@ def conv_layer(input_,
                 ], [-1, -1, -1, -1])
 
         if bias:
-            biases = variable_on_cpu("biases", [dim_out], tf.constant_initializer(0.))
+            biases = variable_on_cpu("biases", [dim_out], tf.compat.v1.constant_initializer(0.))
             res = tf.nn.bias_add(res, biases)
         if nonlinearity is not None:
             res = nonlinearity(res)
@@ -127,8 +127,8 @@ def conv_layer(input_,
 
 def max_pool_2x2(input_):
     """Max pooling."""
-    return tf.nn.max_pool(
-        input_, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
+    return tf.nn.max_pool2d(
+        input=input_, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
 
 
 def depool_2x2(input_, stride=2):
@@ -178,8 +178,8 @@ def as_one_hot(input_, n_indices):
     indices = tf.cast(indices, tf.int64)
     indices_input = tf.concat(axis=0, values=[indices, tf.reshape(input_, [-1])])
     indices_input = tf.reshape(indices_input, [2, -1])
-    indices_input = tf.transpose(indices_input)
-    res = tf.sparse_to_dense(
+    indices_input = tf.transpose(a=indices_input)
+    res = tf.compat.v1.sparse_to_dense(
         indices_input, [n_elem, n_indices], 1., 0., name="flat_one_hot")
     res = tf.reshape(res, [elem for elem in shape] + [n_indices])
 
@@ -210,7 +210,7 @@ def squeeze_nxn(input_, n_factor=2):
          height // n_factor,
          n_factor, width // n_factor,
          n_factor, channels])
-    res = tf.transpose(res, [0, 1, 3, 5, 2, 4])
+    res = tf.transpose(a=res, perm=[0, 1, 3, 5, 2, 4])
     res = tf.reshape(
         res,
         [batch_size,
@@ -233,7 +233,7 @@ def unsqueeze_2x2(input_):
     if channels % 4 != 0:
         raise ValueError("Number of channels not divisible by 4.")
     res = tf.reshape(input_, [batch_size, height, width, channels // 4, 2, 2])
-    res = tf.transpose(res, [0, 1, 4, 2, 5, 3])
+    res = tf.transpose(a=res, perm=[0, 1, 4, 2, 5, 3])
     res = tf.reshape(res, [batch_size, 2 * height, 2 * width, channels // 4])
 
     return res
@@ -251,18 +251,18 @@ def batch_norm(input_,
                bn_lag=DEFAULT_BN_LAG):
     """Batch normalization."""
     # create variables
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         var = variable_on_cpu(
-            "var", [dim], tf.constant_initializer(1.), trainable=False)
+            "var", [dim], tf.compat.v1.constant_initializer(1.), trainable=False)
         mean = variable_on_cpu(
-            "mean", [dim], tf.constant_initializer(0.), trainable=False)
-        step = variable_on_cpu("step", [], tf.constant_initializer(0.), trainable=False)
+            "mean", [dim], tf.compat.v1.constant_initializer(0.), trainable=False)
+        step = variable_on_cpu("step", [], tf.compat.v1.constant_initializer(0.), trainable=False)
         if scale:
-            gamma = variable_on_cpu("gamma", [dim], tf.constant_initializer(1.))
-        beta = variable_on_cpu("beta", [dim], tf.constant_initializer(0.))
+            gamma = variable_on_cpu("gamma", [dim], tf.compat.v1.constant_initializer(1.))
+        beta = variable_on_cpu("beta", [dim], tf.compat.v1.constant_initializer(0.))
     # choose the appropriate moments
     if train:
-        used_mean, used_var = tf.nn.moments(input_, axes, name="batch_norm")
+        used_mean, used_var = tf.nn.moments(x=input_, axes=axes, name="batch_norm")
         cur_mean, cur_var = used_mean, used_var
         if bn_lag > 0.:
             used_mean -= (1. - bn_lag) * (used_mean - tf.stop_gradient(mean))
@@ -282,20 +282,20 @@ def batch_norm(input_,
 
     # update variables
     if train:
-        with tf.name_scope(name, "AssignMovingAvg", [mean, cur_mean, decay]):
+        with tf.compat.v1.name_scope(name, "AssignMovingAvg", [mean, cur_mean, decay]):
             with ops.colocate_with(mean):
-                new_mean = tf.assign_sub(
+                new_mean = tf.compat.v1.assign_sub(
                     mean,
-                    tf.check_numerics(decay * (mean - cur_mean), "NaN in moving mean."))
-        with tf.name_scope(name, "AssignMovingAvg", [var, cur_var, decay]):
+                    tf.debugging.check_numerics(decay * (mean - cur_mean), "NaN in moving mean."))
+        with tf.compat.v1.name_scope(name, "AssignMovingAvg", [var, cur_var, decay]):
             with ops.colocate_with(var):
-                new_var = tf.assign_sub(
+                new_var = tf.compat.v1.assign_sub(
                     var,
-                    tf.check_numerics(decay * (var - cur_var),
+                    tf.debugging.check_numerics(decay * (var - cur_var),
                                       "NaN in moving variance."))
-        with tf.name_scope(name, "IncrementTime", [step]):
+        with tf.compat.v1.name_scope(name, "IncrementTime", [step]):
             with ops.colocate_with(step):
-                new_step = tf.assign_add(step, 1.)
+                new_step = tf.compat.v1.assign_add(step, 1.)
         res += 0. * new_mean * new_var * new_step
 
     return res
@@ -315,17 +315,17 @@ def batch_norm_log_diff(input_,
     if reuse is None:
         reuse = not train
     # create variables
-    with tf.variable_scope(name) as scope:
+    with tf.compat.v1.variable_scope(name) as scope:
         if reuse:
             scope.reuse_variables()
         var = variable_on_cpu(
-            "var", [dim], tf.constant_initializer(1.), trainable=False)
+            "var", [dim], tf.compat.v1.constant_initializer(1.), trainable=False)
         mean = variable_on_cpu(
-            "mean", [dim], tf.constant_initializer(0.), trainable=False)
-        step = variable_on_cpu("step", [], tf.constant_initializer(0.), trainable=False)
+            "mean", [dim], tf.compat.v1.constant_initializer(0.), trainable=False)
+        step = variable_on_cpu("step", [], tf.compat.v1.constant_initializer(0.), trainable=False)
     # choose the appropriate moments
     if train:
-        used_mean, used_var = tf.nn.moments(input_, axes, name="batch_norm")
+        used_mean, used_var = tf.nn.moments(x=input_, axes=axes, name="batch_norm")
         cur_mean, cur_var = used_mean, used_var
         if bn_lag > 0.:
             used_var = stable_var(input_=input_, mean=used_mean, axes=axes)
@@ -340,21 +340,21 @@ def batch_norm_log_diff(input_,
 
     # update variables
     if train:
-        with tf.name_scope(name, "AssignMovingAvg", [mean, cur_mean, decay]):
+        with tf.compat.v1.name_scope(name, "AssignMovingAvg", [mean, cur_mean, decay]):
             with ops.colocate_with(mean):
-                new_mean = tf.assign_sub(
+                new_mean = tf.compat.v1.assign_sub(
                     mean,
-                    tf.check_numerics(
+                    tf.debugging.check_numerics(
                         decay * (mean - cur_mean), "NaN in moving mean."))
-        with tf.name_scope(name, "AssignMovingAvg", [var, cur_var, decay]):
+        with tf.compat.v1.name_scope(name, "AssignMovingAvg", [var, cur_var, decay]):
             with ops.colocate_with(var):
-                new_var = tf.assign_sub(
+                new_var = tf.compat.v1.assign_sub(
                     var,
-                    tf.check_numerics(decay * (var - cur_var),
+                    tf.debugging.check_numerics(decay * (var - cur_var),
                                       "NaN in moving variance."))
-        with tf.name_scope(name, "IncrementTime", [step]):
+        with tf.compat.v1.name_scope(name, "IncrementTime", [step]):
             with ops.colocate_with(step):
-                new_step = tf.assign_add(step, 1.)
+                new_step = tf.compat.v1.assign_add(step, 1.)
         used_var += 0. * new_mean * new_var * new_step
     used_var += epsilon
 
@@ -376,7 +376,7 @@ def convnet(input_,
     res = input_
 
     bias = (not use_batch_norm)
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         for layer_idx in xrange(len(dim_hid)):
             res = conv_layer(
                 input_=res,
@@ -422,7 +422,7 @@ def standard_normal_ll(input_):
 
 def standard_normal_sample(shape):
     """Samples from standard Gaussian distribution."""
-    return tf.random_normal(shape)
+    return tf.random.normal(shape)
 
 
 SQUEEZE_MATRIX = numpy.array([[[[1., 0., 0., 0.]], [[0., 0., 1., 0.]]],
@@ -458,8 +458,8 @@ def squeeze_2x2_ordered(input_, reverse=False):
     weights = weights[:, :, :, shuffle_channels].astype("float32")
     if reverse:
         res = tf.nn.conv2d_transpose(
-            value=input_,
-            filter=weights,
+            input=input_,
+            filters=weights,
             output_shape=[batch_size, height * 2, width * 2, channels],
             strides=[1, 2, 2, 1],
             padding="SAME",
@@ -467,7 +467,7 @@ def squeeze_2x2_ordered(input_, reverse=False):
     else:
         res = tf.nn.conv2d(
             input=input_,
-            filter=weights,
+            filters=weights,
             strides=[1, 2, 2, 1],
             padding="SAME",
             name="squeeze_2x2")
