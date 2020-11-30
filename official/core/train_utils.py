@@ -101,7 +101,7 @@ class BestCheckpointExporter:
     eval_logs_ext = copy.copy(eval_logs)
     eval_logs_ext['best_ckpt_global_step'] = global_step
     for name, value in eval_logs_ext.items():
-      eval_logs_ext[name] = str(orbit.utils.get_value(value))
+      eval_logs_ext[name] = float(orbit.utils.get_value(value))
     # Saving json file is very fast.
     with tf.io.gfile.GFile(self.best_ckpt_logs_path, 'w') as writer:
       writer.write(json.dumps(eval_logs_ext, indent=4) + '\n')
