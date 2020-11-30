@@ -29,6 +29,18 @@ def evaluator_generator(params):
   elif params.type == 'box_and_mask':
     evaluator = coco_evaluator.COCOEvaluator(
         annotation_file=params.val_json_file, include_mask=True)
+  elif params.type == 'oln_xclass_box':
+    evaluator = coco_evaluator.OlnXclassEvaluator(
+        annotation_file=params.val_json_file, include_mask=False,
+        use_category=False, seen_class=params.seen_class,)
+  elif params.type == 'oln_xclass_box_and_mask':
+    evaluator = coco_evaluator.OlnXclassEvaluator(
+        annotation_file=params.val_json_file, include_mask=True,
+        use_category=False, seen_class=params.seen_class,)
+  elif params.type == 'oln_xdata_box':
+    evaluator = coco_evaluator.OlnXdataEvaluator(
+        annotation_file=params.val_json_file, include_mask=False,
+        use_category=False, seen_class='all',)
   elif params.type == 'shapemask_box_and_mask':
     evaluator = coco_evaluator.ShapeMaskCOCOEvaluator(
         mask_eval_class=params.mask_eval_class,
