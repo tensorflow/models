@@ -40,12 +40,13 @@ def maybe_create_best_ckpt_exporter(params: config_definitions.ExperimentConfig,
     best_ckpt_dir = os.path.join(data_dir, export_subdir)
     best_ckpt_exporter = BestCheckpointExporter(
         best_ckpt_dir, metric_name, metric_comp)
-  else:
-    best_ckpt_exporter = None
     logging.info(
-        'Not exporting the best checkpoint. '
+        'Created the best checkpoint exporter. '
         'data_dir: %s, export_subdir: %s, metric_name: %s', data_dir,
         export_subdir, metric_name)
+  else:
+    best_ckpt_exporter = None
+
   return best_ckpt_exporter
 
 
