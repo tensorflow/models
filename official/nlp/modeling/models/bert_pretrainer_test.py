@@ -110,6 +110,9 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     self.assertAllEqual(bert_trainer_model.get_config(),
                         new_bert_trainer_model.get_config())
 
+
+class BertPretrainerV2Test(keras_parameterized.TestCase):
+
   @parameterized.parameters(itertools.product(
       (False, True),
       (False, True),
@@ -174,6 +177,38 @@ class BertPretrainerTest(keras_parameterized.TestCase):
     expected_pooled_output_shape = [None, hidden_size]
     self.assertAllEqual(expected_pooled_output_shape,
                         outputs['pooled_output'].shape.as_list())
+
+  def test_multiple_cls_outputs(self):
+    """Validate that the Keras object can be created."""
+    # Build a transformer network to use within the BERT trainer.
+    vocab_size = 100
+    sequence_length = 512
+    hidden_size = 48
+    num_layers = 2
+    test_network = networks.BertEncoder(
+        vocab_size=vocab_size,
+        num_layers=num_layers,
+        hidden_size=hidden_size,
+        max_sequence_length=sequence_length,
+        dict_outputs=True)
+
+    bert_trainer_model = bert_pretrainer.BertPretrainerV2(
+        encoder_network=test_network,
+        classification_heads=[layers.MultiClsHeads(
+            inner_dim=5, cls_list=[('foo', 2), ('bar', 3)])])
+    num_token_predictions = 20
+    # Create a set of 2-dimensional inputs (the first dimension is implicit).
+    inputs = dict(
+        input_word_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        input_mask=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        input_type_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
+        masked_lm_positions=tf.keras.Input(
+            shape=(num_token_predictions,), dtype=tf.int32))
+
+    # Invoke the trainer model on the inputs. This causes the layer to be built.
+    outputs = bert_trainer_model(inputs)
+    self.assertEqual(outputs['foo'].shape.as_list(), [None, 2])
+    self.assertEqual(outputs['bar'].shape.as_list(), [None, 3])
 
   def test_v2_serialize_deserialize(self):
     """Validate that the BERT trainer can be serialized and deserialized."""
