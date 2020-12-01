@@ -1007,27 +1007,12 @@ def convert_strided_predictions_to_normalized_boxes(boxes, stride,
     boxes: A tensor of shape [batch_size, num_boxes, 4] representing the
       coordinates of the normalized boxes.
   """
-
-  def _normalize_boxlist(args):
-
-    boxes, height, width = args
-    boxes = box_list_ops.scale(boxes, stride, stride)
-    boxes = box_list_ops.to_normalized_coordinates(boxes, height, width)
-    boxes = box_list_ops.clip_to_window(boxes, [0., 0., 1., 1.],
-                                        filter_nonoverlapping=False)
-    return boxes
-
-  box_lists = [box_list.BoxList(boxes) for boxes in tf.unstack(boxes, axis=0)]
-  true_heights, true_widths, _ = tf.unstack(true_image_shapes, axis=1)
-
-  true_heights_list = tf.unstack(true_heights, axis=0)
-  true_widths_list = tf.unstack(true_widths, axis=0)
-
-  box_lists = list(map(_normalize_boxlist,
-                       zip(box_lists, true_heights_list, true_widths_list)))
-  boxes = tf.stack([box_list_instance.get() for
-                    box_list_instance in box_lists], axis=0)
-
+  # Note: We use tf ops instead of functions in box_list_ops to make this
+  # function compatible with dynamic batch size.
+  boxes = boxes * stride
+  true_image_shapes = tf.tile(true_image_shapes[:, tf.newaxis, :2], [1, 1, 2])
+  boxes = boxes / tf.cast(true_image_shapes, tf.float32)
+  boxes = tf.clip_by_value(boxes, 0.0, 1.0)
   return boxes
 
 
