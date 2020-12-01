@@ -18,6 +18,8 @@ limitations under the License.
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 
+using ::tensorflow::int32;
+
 class PoolingOp : public tensorflow::OpKernel {
  public:
   explicit PoolingOp(tensorflow::OpKernelConstruction* context)
