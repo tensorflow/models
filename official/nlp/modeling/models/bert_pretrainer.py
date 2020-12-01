@@ -183,7 +183,7 @@ class BertPretrainerV2(tf.keras.Model):
     dictionary.
   Outputs: A dictionary of `lm_output`, classification head outputs keyed by
     head names, and also outputs from `encoder_network`, keyed by
-    `pooled_output`, `sequence_output` and `encoder_outputs` (if any).
+    `sequence_output` and `encoder_outputs` (if any).
   """
 
   def __init__(
@@ -248,7 +248,11 @@ class BertPretrainerV2(tf.keras.Model):
     outputs['mlm_logits'] = self.masked_lm(
         sequence_output, masked_positions=masked_lm_positions)
     for cls_head in self.classification_heads:
-      outputs[cls_head.name] = cls_head(sequence_output)
+      cls_outputs = cls_head(sequence_output)
+      if isinstance(cls_outputs, dict):
+        outputs.update(cls_outputs)
+      else:
+        outputs[cls_head.name] = cls_outputs
     return outputs
 
   @property
