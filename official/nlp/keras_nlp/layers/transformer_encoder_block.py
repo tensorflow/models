@@ -244,7 +244,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         source_tensor = input_tensor[:, 0:self._output_range, :]
         input_tensor = self._attention_layer_norm(input_tensor)
       target_tensor = input_tensor[:, 0:self._output_range, :]
-      attention_mask = attention_mask[:, 0:self._output_range, :]
+      if attention_mask is not None:
+        attention_mask = attention_mask[:, 0:self._output_range, :]
     else:
       if self._norm_first:
         source_tensor = input_tensor

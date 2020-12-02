@@ -125,7 +125,7 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     output_tensor = test_layer([input_data, mask_data])
 
     # The layer only attends to the first token and outputs the first token
-    # embeeding.
+    # embedding.
     new_layer = transformer_cls(
         num_attention_heads=10,
         inner_dim=2048,
@@ -134,6 +134,32 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     _ = new_layer([input_data, mask_data])
     new_layer.set_weights(test_layer.get_weights())
     new_output_tensor = new_layer([input_data, mask_data])
+    self.assertAllClose(
+        new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
+
+  def test_layer_output_range_without_mask(self, transformer_cls):
+    test_layer = transformer_cls(
+        num_attention_heads=10, inner_dim=2048,
+        inner_activation='relu', norm_first=True)
+    sequence_length = 21
+    width = 80
+
+    batch_size = 6
+    input_data = 10 * np.random.random_sample(
+        (batch_size, sequence_length, width))
+    output_tensor = test_layer(input_data)
+
+    # The layer only attends to the first token and outputs the first token
+    # embedding.
+    new_layer = transformer_cls(
+        num_attention_heads=10,
+        inner_dim=2048,
+        inner_activation='relu',
+        output_range=1,
+        norm_first=True)
+    _ = new_layer(input_data)
+    new_layer.set_weights(test_layer.get_weights())
+    new_output_tensor = new_layer(input_data)
     self.assertAllClose(
         new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
 
@@ -152,7 +178,7 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     output_tensor = test_layer([input_data, mask_data])
 
     # The layer only attends to the first token and outputs the first token
-    # embeeding.
+    # embedding.
     new_layer = transformer_cls(
         num_attention_heads=10,
         inner_dim=2048,
