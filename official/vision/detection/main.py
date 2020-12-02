@@ -40,7 +40,9 @@ flags_core.define_log_steps()
 flags.DEFINE_bool('enable_xla', default=False, help='Enable XLA for GPU')
 
 flags.DEFINE_string(
-    'mode', default='train', help='Mode to run: `train` or `eval`.')
+    'mode',
+    default='train',
+    help='Mode to run: `train`, `eval` or `eval_once`.')
 
 flags.DEFINE_string(
     'model', default='retinanet',
