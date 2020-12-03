@@ -398,7 +398,7 @@ class SequenceBeamSearch(tf.Module):
           raise TypeError(
               "initial_cache element for key '%s' has dtype %s that does not "
               "match SequenceBeamSearch's dtype of %s. Value: %s" %
-              (key, value.dtype.name, self.dtype.name, inner_value))
+              (key, inner_value.dtype.name, self.dtype.name, inner_value))
 
     # Current loop index (starts at 0)
     cur_index = tf.constant(0)
