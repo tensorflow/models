@@ -22,9 +22,9 @@ from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.projects.yt8m.dataloaders import yt8m_input
 from official.vision.beta.modeling import factory_3d
-from yt8m_model import YT8MModel
-from eval_utils import eval_util
-from configs import yt8m as yt8m_cfg
+from official.vision.beta.projects.yt8m.yt8m_model import YT8MModel
+from official.vision.beta.projects.yt8m.eval_utils import eval_util
+from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
 
 
 @task_factory.register_task_cls(yt8m_cfg.YT8MTask)
