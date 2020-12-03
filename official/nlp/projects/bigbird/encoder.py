@@ -142,7 +142,8 @@ class BigBirdEncoder(tf.keras.Model):
 
     self._transformer_layers = []
     data = embeddings
-    masks = attention.BigBirdMasks(block_size=block_size)(mask)
+    masks = attention.BigBirdMasks(block_size=block_size)(
+        tf.cast(mask, embeddings.dtype))
     encoder_outputs = []
     attn_head_dim = hidden_size // num_attention_heads
     for i in range(num_layers):
