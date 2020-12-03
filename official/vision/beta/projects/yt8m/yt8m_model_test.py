@@ -27,8 +27,7 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
   # test_yt8m_network_creation arbitrary params
   @parameterized.parameters(
-      (1,1,1),
-      (1,1,1),
+      (1, 1, 1)
   )
   def test_yt8m_network_creation(self, num_frames, height, width):
     """Test for creation of a YT8M Model."""
@@ -42,9 +41,9 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     num_classes = 3862
     model = yt8m_model.YT8MModel(
       input_params=yt8m_cfg.YT8MModel,
-      input_specs=input_specs,
       num_frames=num_frames,
       num_classes=num_classes,
+      input_specs=input_specs
     )
 
     # batch * num_test_clips = 2 -> arbitrary value for test
