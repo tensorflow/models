@@ -14,8 +14,8 @@ class YT8MModel(tf.keras.Model):
 
   def __init__(self,
                input_params: yt8m_cfg.YT8MModel,
-               num_frames,
-               num_classes,
+               num_frames=32,
+               num_classes=3862,
                input_specs=layers.InputSpec(shape=[None, None, None]),
                **kwargs):
     """YT8M initialization function.
@@ -35,7 +35,7 @@ class YT8MModel(tf.keras.Model):
       'cluster_size' : input_params.cluster_size,
       'hidden_size' : input_params.hidden_size,
       'add_batch_norm' : input_params.add_batch_norm,
-      'sample_random_frames' : input_params.sample_random_frames,
+      # 'sample_random_frames' : input_params.sample_random_frames,
       'is_training' : input_params.is_training,
       'activation' : input_params.activation,
       'pooling_method' : input_params.pooling_method,

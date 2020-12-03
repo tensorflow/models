@@ -40,7 +40,7 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
     num_classes = 3862
     model = yt8m_model.YT8MModel(
-      input_params=yt8m_cfg.YT8MModel,
+      input_params=yt8m_cfg.YT8MTask.model,
       num_frames=num_frames,
       num_classes=num_classes,
       input_specs=input_specs
@@ -55,8 +55,9 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     """Validate the classification network can be serialized and deserialized."""
 
     model = yt8m_model.YT8MModel(
-      input_params=yt8m_cfg.YT8MModel,
-      num_classes=3862
+      input_params=yt8m_cfg.YT8MTask.model
+      # input_params=yt8m_cfg.YT8MModel()
+      # input_specs=
     )
 
     config = model.get_config()
