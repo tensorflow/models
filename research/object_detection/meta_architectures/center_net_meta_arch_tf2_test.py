@@ -1207,13 +1207,13 @@ _REID_EMBED_SIZE = 2
 _NUM_FC_LAYERS = 1
 
 
-def get_fake_center_params():
+def get_fake_center_params(max_box_predictions=5):
   """Returns the fake object center parameter namedtuple."""
   return cnma.ObjectCenterParams(
       classification_loss=losses.WeightedSigmoidClassificationLoss(),
       object_center_loss_weight=1.0,
       min_box_overlap_iou=1.0,
-      max_box_predictions=5,
+      max_box_predictions=max_box_predictions,
       use_labeled_classes=False)
 
 
@@ -1225,7 +1225,7 @@ def get_fake_od_params():
       scale_loss_weight=0.1)
 
 
-def get_fake_kp_params():
+def get_fake_kp_params(num_candidates_per_keypoint=100):
   """Returns the fake keypoint estimation parameter namedtuple."""
   return cnma.KeypointEstimationParams(
       task_name=_TASK_NAME,
@@ -1234,7 +1234,8 @@ def get_fake_kp_params():
       keypoint_std_dev=[0.00001] * len(_KEYPOINT_INDICES),
       classification_loss=losses.WeightedSigmoidClassificationLoss(),
       localization_loss=losses.L1LocalizationLoss(),
-      keypoint_candidate_score_threshold=0.1)
+      keypoint_candidate_score_threshold=0.1,
+      num_candidates_per_keypoint=num_candidates_per_keypoint)
 
 
 def get_fake_mask_params():
@@ -1277,7 +1278,9 @@ def get_fake_temporal_offset_params():
       task_loss_weight=1.0)
 
 
-def build_center_net_meta_arch(build_resnet=False, num_classes=_NUM_CLASSES):
+def build_center_net_meta_arch(build_resnet=False,
+                               num_classes=_NUM_CLASSES,
+                               max_box_predictions=5):
   """Builds the CenterNet meta architecture."""
   if build_resnet:
     feature_extractor = (
@@ -1297,15 +1300,18 @@ def build_center_net_meta_arch(build_resnet=False, num_classes=_NUM_CLASSES):
       pad_to_max_dimesnion=True)
 
   if num_classes == 1:
+    num_candidates_per_keypoint = 100 if max_box_predictions > 1 else 1
     return cnma.CenterNetMetaArch(
         is_training=True,
         add_summaries=False,
         num_classes=num_classes,
         feature_extractor=feature_extractor,
         image_resizer_fn=image_resizer_fn,
-        object_center_params=get_fake_center_params(),
+        object_center_params=get_fake_center_params(max_box_predictions),
         object_detection_params=get_fake_od_params(),
-        keypoint_params_dict={_TASK_NAME: get_fake_kp_params()})
+        keypoint_params_dict={
+            _TASK_NAME: get_fake_kp_params(num_candidates_per_keypoint)
+        })
   else:
     return cnma.CenterNetMetaArch(
         is_training=True,
@@ -1726,7 +1732,7 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
           detections['detection_surface_coords'][0, 0, :, :],
           np.zeros_like(detections['detection_surface_coords'][0, 0, :, :]))
 
-  def test_postprocess_simple(self):
+  def test_postprocess_single_class(self):
     """Test the postprocess function."""
     model = build_center_net_meta_arch(num_classes=1)
     max_detection = model._center_params.max_box_predictions
