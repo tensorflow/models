@@ -13,15 +13,20 @@
 # limitations under the License.
 """Contains model definitions."""
 import math
-import models
 import tensorflow as tf
-import utils
 
 layers = tf.keras.layers
 regularizers = tf.keras.regularizers
 moe_num_mixtures = 2 #The number of mixtures (excluding the dummy 'expert') used for MoeModel.
 
-class LogisticModel(models.BaseModel):
+class BaseModel(object):
+  """Inherit from this class when implementing new models."""
+
+  def create_model(self, unused_model_input, **unused_params):
+    raise NotImplementedError()
+
+
+class LogisticModel(BaseModel):
   """Logistic model with L2 regularization."""
 
   def create_model(self,
@@ -48,7 +53,7 @@ class LogisticModel(models.BaseModel):
     return {"predictions": output}
 
 
-class MoeModel(models.BaseModel):
+class MoeModel(BaseModel):
   """A softmax over a mixture of logistic models (with L2 regularization)."""
 
   def create_model(self,

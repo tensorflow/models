@@ -20,10 +20,12 @@ from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
 from official.modeling import tf_utils
+# from official.vision.beta.dataloaders import video_input
 from official.vision.beta.projects.yt8m.dataloaders import yt8m_input
 from official.vision.beta.modeling import factory_3d
 from yt8m_model import YT8MModel
-from eval_utils import eval_util
+import average_precision_calculator as ap_calculator
+import mean_average_precision_calculator as map_calculator
 from configs import yt8m as yt8m_cfg
 
 
@@ -31,7 +33,7 @@ from configs import yt8m as yt8m_cfg
 class YT8MTask(base_task.Task):
   """A task for video classification."""
 
-  def build_model(self, num_classes: int=3862, num_frames: int=32):
+  def build_model(self, num_classes, num_frames):
     """Builds video classification model."""
     common_input_shape = [
         d1 if d1 == d2 else None
@@ -45,9 +47,9 @@ class YT8MTask(base_task.Task):
     model_config = self.task_config.model
     model = YT8MModel(
               input_params=model_config,
-              input_specs=input_specs,
               num_frames=num_frames,
-              num_classes=num_classes
+              num_classes=num_classes,
+              input_specs=input_specs
               )
     return model
 
@@ -93,27 +95,34 @@ class YT8MTask(base_task.Task):
 
     return total_loss
 
-  def build_metrics(self, num_classes, top_k=20, top_n=None, training=True):
+  def build_metrics(self, training=True):
     """Gets streaming metrics for training/validation.
-       metric: mAP/gAP
+       metric: mAP, gAP
       Args:
       num_class: A positive integer specifying the number of classes.
-      top_k: A positive integer specifying how many predictions are considered
-        per video.
       top_n: A positive Integer specifying the average precision at n, or None
         to use all provided data points.
     """
-    metrics = eval_util.EvaluationMetrics(num_classes, top_k=top_k, top_n=top_n)
+
+    metrics = {
+      'map_calculator' : map_calculator.MeanAveragePrecisionCalculator(
+        num_class=self.task_config.num_classes,
+        top_n=self.task_config.top_n),
+      'global_ap_calculator' : ap_calculator.AveragePrecisionCalculator()
+    }
     return metrics
 
-  def process_metrics(self, metrics, labels, outputs, loss):
+  def process_metrics(self, metrics, labels, outputs):
     '''Processes metrics'''
-    metrics.accumulate(outputs=outputs, labels=labels, loss=loss)
+    metrics['map_calculator'].accumulate(outputs, labels)
+    metrics['global_ap_calculator'].accumulate(outputs,labels)
+
+    # aps = metrics['map_calculator'].peek_map_at_n()
+    # gap = metrics['global_ap_calculator'].peek_ap_at_n()
 
 
   def train_step(self, inputs, model, optimizer, metrics=None):
     """Does forward and backward.
-
     Args:
       inputs: a dictionary of input tensors.
             output_dict = {
@@ -125,52 +134,35 @@ class YT8MTask(base_task.Task):
       model: the model, forward pass definition.
       optimizer: the optimizer for this training step.
       metrics: a nested structure of metrics objects.
-
     Returns:
       A dictionary of logs.
     """
     features, labels = inputs['video_matrix'], inputs['labels']
-    # video_ids, num_frames = inputs['video_ids'], inputs['num_frames']
+    video_ids, num_frames = inputs['video_ids'], inputs['num_frames']
 
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
-      # Casting output layer as float32 is necessary when mixed_precision is
-      # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
-      outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+      outputs =
 
       # Computes per-replica loss
       loss = self.build_losses(
-        model_outputs=outputs, labels=labels, aux_losses=model.losses)
-      # Scales loss as the default gradients allreduce performs sum inside the
-      # optimizer.
-      scaled_loss = loss / num_replicas
+        model_outputs=outputs,
 
-      # For mixed_precision policy, when LossScaleOptimizer is used, loss is
-      # scaled for numerical stability.
-      if isinstance(
-              optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
-        scaled_loss = optimizer.get_scaled_loss(scaled_loss)
+      )
 
-    tvars = model.trainable_variables
-    grads = tape.gradient(scaled_loss, tvars)
-    # Scales back gradient before apply_gradients when LossScaleOptimizer is
-    # used.
-    if isinstance(
-            optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
-      grads = optimizer.get_unscaled_gradients(grads)
 
-    # Apply gradient clipping.
-    if self.task_config.gradient_clip_norm > 0:
-      grads, _ = tf.clip_by_global_norm(
-        grads, self.task_config.gradient_clip_norm)
-    optimizer.apply_gradients(list(zip(grads, tvars)))
+    #reimplement in tf2
+
+
 
     logs = {self.loss: loss}
     if metrics:
-      info_dict = self.process_metrics(metrics, labels, outputs, loss)
-      logs.update(metrics.get())
-    #TODO: model.compiled_metrics - removed
+      self.process_metrics(metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics})
+    elif model.compiled_metrics:
+      self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
   def validation_step(self, inputs, model, metrics=None):
@@ -191,9 +183,11 @@ class YT8MTask(base_task.Task):
 
     logs = {self.loss: loss}
     if metrics:
-      info_dict = self.process_metrics(metrics, labels, outputs, loss)
-      logs.update(metrics.get())
-    #TODO: model.compiled_metrics - removed
+      self.process_metrics(metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics})
+    elif model.compiled_metrics:
+      self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
   def inference_step(self, inputs, model):
