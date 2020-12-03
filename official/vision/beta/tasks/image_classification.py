@@ -81,6 +81,7 @@ class ImageClassificationTask(base_task.Task):
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,
+        aug_policy=params.aug_policy,
         dtype=params.dtype)
 
     reader = input_reader.InputReader(
