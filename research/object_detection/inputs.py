@@ -419,7 +419,6 @@ def pad_input_data_to_static_shapes(tensor_dict,
       max_num_context_features is not specified and context_features is in the
       tensor dict.
   """
-
   if not spatial_image_shape or spatial_image_shape == [-1, -1]:
     height, width = None, None
   else:
@@ -539,11 +538,14 @@ def pad_input_data_to_static_shapes(tensor_dict,
     padding_shapes[input_fields.context_features] = padding_shape
 
     tensor_shape = tf.shape(
-        tensor_dict[input_fields.context_features])
-    tensor_dict[input_fields.valid_context_size] = tensor_shape[0]
-    padding_shapes[input_fields.valid_context_size] = []
-  if input_fields.context_feature_length in tensor_dict:
-    padding_shapes[input_fields.context_feature_length] = []
+        tensor_dict[fields.InputDataFields.context_features])
+    tensor_dict[fields.InputDataFields.valid_context_size] = tensor_shape[0]
+    padding_shapes[fields.InputDataFields.valid_context_size] = []
+  if fields.InputDataFields.context_feature_length in tensor_dict:
+    padding_shapes[fields.InputDataFields.context_feature_length] = []
+  if fields.InputDataFields.context_features_image_id_list in tensor_dict:
+    padding_shapes[fields.InputDataFields.context_features_image_id_list] = [
+        max_num_context_features]
 
   if input_fields.is_annotated in tensor_dict:
     padding_shapes[input_fields.is_annotated] = []
@@ -709,6 +711,9 @@ def _get_features_dict(input_dict, include_source_id=False):
   if fields.InputDataFields.valid_context_size in input_dict:
     features[fields.InputDataFields.valid_context_size] = input_dict[
         fields.InputDataFields.valid_context_size]
+  if fields.InputDataFields.context_features_image_id_list in input_dict:
+    features[fields.InputDataFields.context_features_image_id_list] = (
+        input_dict[fields.InputDataFields.context_features_image_id_list])
   return features
 
 

@@ -30,7 +30,7 @@ enum InputType {
   TF_SEQUENCE_EXAMPLE = 2;  // TfSequenceExample Input
 }
 
-// Next id: 36
+// Next id: 37
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -75,7 +75,7 @@ message InputReader {
   // to a small constant and increment linearly until the improvements become
   // marginal or you exceed your cpu memory budget. Setting this to -1,
   // automatically tunes this value for you.
-  optional int32 num_prefetch_batches = 20 [default = -1];
+  optional int32 num_prefetch_batches = 20 [default = 2];
 
   // Maximum number of records to keep in reader queue.
   optional uint32 queue_capacity = 3 [default = 2000, deprecated = true];
@@ -117,6 +117,9 @@ message InputReader {
 
   // Whether to load context features from the dataset.
   optional bool load_context_features = 25 [default = false];
+
+  // Whether to load context image ids from the dataset.
+  optional bool load_context_image_ids = 36 [default = false];
 
   // Whether to load groundtruth instance masks.
   optional bool load_instance_masks = 7 [default = false];

@@ -120,6 +120,145 @@ class TfSequenceExampleDecoderTest(test_case.TestCase):
     self.assertAllEqual(expected_groundtruth_classes,
                         tensor_dict_out[flds.groundtruth_classes])
 
+  def test_decode_sequence_example_context(self):
+    num_frames = 4
+    image_height = 20
+    image_width = 30
+
+    expected_groundtruth_boxes = [
+        [[0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 0.0, 0.0]],
+        [[0.2, 0.2, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0]],
+        [[0.0, 0.0, 1.0, 1.0], [0.1, 0.1, 0.2, 0.2]],
+        [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
+    ]
+    expected_groundtruth_classes = [
+        [-1, -1],
+        [-1, 1],
+        [1, 2],
+        [-1, -1]
+    ]
+
+    expected_context_features = np.array(
+        [[0.0, 0.1, 0.2], [0.3, 0.4, 0.5]], dtype=np.float32)
+
+    flds = fields.InputDataFields
+    encoded_images = self._make_random_serialized_jpeg_images(
+        num_frames, image_height, image_width)
+
+    def graph_fn():
+      label_map_proto_file = os.path.join(self.get_temp_dir(), 'labelmap.pbtxt')
+      self._create_label_map(label_map_proto_file)
+      decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder(
+          label_map_proto_file=label_map_proto_file,
+          load_context_features=True)
+      sequence_example_serialized = seq_example_util.make_sequence_example(
+          dataset_name='video_dataset',
+          video_id='video',
+          encoded_images=encoded_images,
+          image_height=image_height,
+          image_width=image_width,
+          image_format='JPEG',
+          image_source_ids=[str(i) for i in range(num_frames)],
+          is_annotated=[[1], [1], [1], [1]],
+          bboxes=[
+              [[0., 0., 1., 1.]],  # Frame 0.
+              [[0.2, 0.2, 1., 1.],
+               [0., 0., 1., 1.]],  # Frame 1.
+              [[0., 0., 1., 1.],  # Frame 2.
+               [0.1, 0.1, 0.2, 0.2]],
+              [[]],  # Frame 3.
+          ],
+          label_strings=[
+              ['fox'],  # Frame 0. Fox will be filtered out.
+              ['fox', 'dog'],  # Frame 1. Fox will be filtered out.
+              ['dog', 'cat'],  # Frame 2.
+              [],  # Frame 3
+          ],
+          context_features=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5],
+          context_feature_length=[3],
+          context_features_image_id_list=[b'im_1', b'im_2']
+          ).SerializeToString()
+
+      example_string_tensor = tf.convert_to_tensor(sequence_example_serialized)
+      return decoder.decode(example_string_tensor)
+
+    tensor_dict_out = self.execute(graph_fn, [])
+    self.assertAllClose(expected_groundtruth_boxes,
+                        tensor_dict_out[flds.groundtruth_boxes])
+    self.assertAllEqual(expected_groundtruth_classes,
+                        tensor_dict_out[flds.groundtruth_classes])
+    self.assertAllClose(expected_context_features,
+                        tensor_dict_out[flds.context_features])
+
+  def test_decode_sequence_example_context_image_id_list(self):
+    num_frames = 4
+    image_height = 20
+    image_width = 30
+
+    expected_groundtruth_boxes = [
+        [[0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 0.0, 0.0]],
+        [[0.2, 0.2, 1.0, 1.0], [0.0, 0.0, 1.0, 1.0]],
+        [[0.0, 0.0, 1.0, 1.0], [0.1, 0.1, 0.2, 0.2]],
+        [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]
+    ]
+    expected_groundtruth_classes = [
+        [-1, -1],
+        [-1, 1],
+        [1, 2],
+        [-1, -1]
+    ]
+
+    expected_context_image_ids = [b'im_1', b'im_2']
+
+    flds = fields.InputDataFields
+    encoded_images = self._make_random_serialized_jpeg_images(
+        num_frames, image_height, image_width)
+
+    def graph_fn():
+      label_map_proto_file = os.path.join(self.get_temp_dir(), 'labelmap.pbtxt')
+      self._create_label_map(label_map_proto_file)
+      decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder(
+          label_map_proto_file=label_map_proto_file,
+          load_context_image_ids=True)
+      sequence_example_serialized = seq_example_util.make_sequence_example(
+          dataset_name='video_dataset',
+          video_id='video',
+          encoded_images=encoded_images,
+          image_height=image_height,
+          image_width=image_width,
+          image_format='JPEG',
+          image_source_ids=[str(i) for i in range(num_frames)],
+          is_annotated=[[1], [1], [1], [1]],
+          bboxes=[
+              [[0., 0., 1., 1.]],  # Frame 0.
+              [[0.2, 0.2, 1., 1.],
+               [0., 0., 1., 1.]],  # Frame 1.
+              [[0., 0., 1., 1.],  # Frame 2.
+               [0.1, 0.1, 0.2, 0.2]],
+              [[]],  # Frame 3.
+          ],
+          label_strings=[
+              ['fox'],  # Frame 0. Fox will be filtered out.
+              ['fox', 'dog'],  # Frame 1. Fox will be filtered out.
+              ['dog', 'cat'],  # Frame 2.
+              [],  # Frame 3
+          ],
+          context_features=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5],
+          context_feature_length=[3],
+          context_features_image_id_list=[b'im_1', b'im_2']
+          ).SerializeToString()
+
+      example_string_tensor = tf.convert_to_tensor(sequence_example_serialized)
+      return decoder.decode(example_string_tensor)
+
+    tensor_dict_out = self.execute(graph_fn, [])
+    self.assertAllClose(expected_groundtruth_boxes,
+                        tensor_dict_out[flds.groundtruth_boxes])
+    self.assertAllEqual(expected_groundtruth_classes,
+                        tensor_dict_out[flds.groundtruth_classes])
+    self.assertAllEqual(expected_context_image_ids,
+                        tensor_dict_out[flds.context_features_image_id_list])
+
   def test_decode_sequence_example_negative_clip(self):
     num_frames = 4
     image_height = 20
