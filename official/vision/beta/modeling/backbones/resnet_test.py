@@ -84,17 +84,19 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
       _ = network(inputs)
 
   @parameterized.parameters(
-      (128, 34, 1, 'v0', None, 0.0),
-      (128, 34, 1, 'v1', 0.25, 0.2),
-      (128, 50, 4, 'v0', None, 0.0),
-      (128, 50, 4, 'v1', 0.25, 0.2),
+      (128, 34, 1, 'v0', None, 0.0, 1.0),
+      (128, 34, 1, 'v1', 0.25, 0.2, 1.25),
+      (128, 50, 4, 'v0', None, 0.0, 1.5),
+      (128, 50, 4, 'v1', 0.25, 0.2, 2.0),
   )
   def test_resnet_addons(self, input_size, model_id, endpoint_filter_scale,
-                         stem_type, se_ratio, init_stochastic_depth_rate):
+                         stem_type, se_ratio, init_stochastic_depth_rate,
+                         depth_multiplier):
     """Test creation of ResNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
     network = resnet.ResNet(
         model_id=model_id,
+        depth_multiplier=depth_multiplier,
         stem_type=stem_type,
         se_ratio=se_ratio,
         init_stochastic_depth_rate=init_stochastic_depth_rate)
@@ -116,6 +118,7 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
     # Create a network object that sets all of its config options.
     kwargs = dict(
         model_id=50,
+        depth_multiplier=1.0,
         stem_type='v0',
         se_ratio=None,
         init_stochastic_depth_rate=0.0,
