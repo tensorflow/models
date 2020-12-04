@@ -75,6 +75,12 @@ RESNET_SPECS = {
         ('bottleneck', 256, 54),
         ('bottleneck', 512, 4),
     ],
+    350: [
+        ('bottleneck', 64, 4),
+        ('bottleneck', 128, 36),
+        ('bottleneck', 256, 72),
+        ('bottleneck', 512, 4),
+    ],
 }
 
 
@@ -85,6 +91,7 @@ class ResNet(tf.keras.Model):
   def __init__(self,
                model_id,
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
+               depth_multiplier=1.0,
                stem_type='v0',
                se_ratio=None,
                init_stochastic_depth_rate=0.0,
@@ -101,6 +108,8 @@ class ResNet(tf.keras.Model):
     Args:
       model_id: `int` depth of ResNet backbone model.
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      depth_multiplier: `float` a depth multiplier to uniformaly scale up all
+        layers in channel size in ResNet.
       stem_type: `str` stem type of ResNet. Default to `v0`. If set to `v1`,
         use ResNet-C type stem (https://arxiv.org/abs/1812.01187).
       se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
@@ -119,6 +128,7 @@ class ResNet(tf.keras.Model):
     """
     self._model_id = model_id
     self._input_specs = input_specs
+    self._depth_multiplier = depth_multiplier
     self._stem_type = stem_type
     self._se_ratio = se_ratio
     self._init_stochastic_depth_rate = init_stochastic_depth_rate
@@ -144,7 +154,7 @@ class ResNet(tf.keras.Model):
 
     if stem_type == 'v0':
       x = layers.Conv2D(
-          filters=64,
+          filters=int(64 * self._depth_multiplier),
           kernel_size=7,
           strides=2,
           use_bias=False,
@@ -159,7 +169,7 @@ class ResNet(tf.keras.Model):
       x = tf_utils.get_activation(activation)(x)
     elif stem_type == 'v1':
       x = layers.Conv2D(
-          filters=32,
+          filters=int(32 * self._depth_multiplier),
           kernel_size=3,
           strides=2,
           use_bias=False,
@@ -173,7 +183,7 @@ class ResNet(tf.keras.Model):
               x)
       x = tf_utils.get_activation(activation)(x)
       x = layers.Conv2D(
-          filters=32,
+          filters=int(32 * self._depth_multiplier),
           kernel_size=3,
           strides=1,
           use_bias=False,
@@ -187,7 +197,7 @@ class ResNet(tf.keras.Model):
               x)
       x = tf_utils.get_activation(activation)(x)
       x = layers.Conv2D(
-          filters=64,
+          filters=int(64 * self._depth_multiplier),
           kernel_size=3,
           strides=1,
           use_bias=False,
@@ -215,7 +225,7 @@ class ResNet(tf.keras.Model):
         raise ValueError('Block fn `{}` is not supported.'.format(spec[0]))
       x = self._block_group(
           inputs=x,
-          filters=spec[1],
+          filters=int(spec[1] * self._depth_multiplier),
           strides=(1 if i == 0 else 2),
           block_fn=block_fn,
           block_repeats=spec[2],
@@ -287,6 +297,7 @@ class ResNet(tf.keras.Model):
   def get_config(self):
     config_dict = {
         'model_id': self._model_id,
+        'depth_multiplier': self._depth_multiplier,
         'stem_type': self._stem_type,
         'activation': self._activation,
         'se_ratio': self._se_ratio,
@@ -325,6 +336,7 @@ def build_resnet(
   return ResNet(
       model_id=backbone_cfg.model_id,
       input_specs=input_specs,
+      depth_multiplier=backbone_cfg.depth_multiplier,
       stem_type=backbone_cfg.stem_type,
       se_ratio=backbone_cfg.se_ratio,
       init_stochastic_depth_rate=backbone_cfg.stochastic_depth_drop_rate,
