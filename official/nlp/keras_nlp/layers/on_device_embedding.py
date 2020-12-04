@@ -96,3 +96,11 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
     if self._scale_factor:
       embeddings *= self._scale_factor
     return embeddings
+
+  @property
+  def vocab_size(self):
+    return self._vocab_size
+
+  @property
+  def embedding_width(self):
+    return self._embedding_width
