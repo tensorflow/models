@@ -159,7 +159,22 @@ message InputReader {
   // applied individually to each dataset.
   //
   // Implementation follows tf.data.experimental.sample_from_datasets sampling
-  // strategy.
+  // strategy. Weights may take any value - only relative weights matter.
+  // Zero weights will result in a dataset not being sampled.
+  //
+  // Examples, assuming two input files configured:
+  //
+  // Equal weighting:
+  // sample_from_datasets_weights: 0.5
+  // sample_from_datasets_weights: 0.5
+  //
+  // 2:1 weighting:
+  // sample_from_datasets_weights: 2
+  // sample_from_datasets_weights: 1
+  //
+  // Exclude the second dataset:
+  // sample_from_datasets_weights: 1
+  // sample_from_datasets_weights: 0
   repeated float sample_from_datasets_weights = 34;
 
 
