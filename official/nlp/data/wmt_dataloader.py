@@ -16,12 +16,6 @@
 
 1. Batching scheme
 
-   The examples encoded in the TFRecord files contain data in the format:
-     {'inputs': [variable length array of integers],
-      'targets': [variable length array of integers]}
-   Where integers in the arrays refer to tokens in the English and German vocab
-   file (named `vocab.ende.32768`).
-
    Prior to batching, elements in the dataset are grouped by length (max between
    'inputs' and 'targets' length). Each group is then batched such that:
      group_batch_size * length <= batch_size.
@@ -37,30 +31,20 @@
    This batching scheme decreases the fraction of padding tokens per training
    batch, thus improving the training speed significantly.
 """
-from typing import Optional
+from typing import Dict, Optional
 
 import dataclasses
 import tensorflow as tf
+import tensorflow_text as tftxt
 from official.core import config_definitions as cfg
 from official.core import input_reader
 from official.nlp.data import data_loader
 from official.nlp.data import data_loader_factory
 
-# Buffer size for reading records from a TFRecord file. Each training file is
-# 7.2 MB, so 8 MB allows an entire file to be kept in memory.
-_READ_RECORD_BUFFER = 8 * 1000 * 1000
-
 # Example grouping constants. Defines length boundaries for each group.
 # These values are the defaults used in Tensor2Tensor.
 _MIN_BOUNDARY = 8
 _BOUNDARY_SCALE = 1.1
-
-
-def _filter_max_length(example, max_length=256):
-  """Indicates whether the example's length is lower than the maximum length."""
-  return tf.logical_and(
-      tf.size(example[0]) <= max_length,
-      tf.size(example[1]) <= max_length)
 
 
 def _get_example_length(example):
@@ -181,7 +165,11 @@ class WMTDataConfig(cfg.DataConfig):
   """Data config for WMT translation."""
   max_seq_length: int = 64
   static_batch: bool = False
-  vocab_file: str = ''
+  sentencepiece_model_path: str = ''
+  src_lang: str = ''
+  tgt_lang: str = ''
+  transform_and_batch: bool = True
+  has_unique_id: bool = False
 
 
 @data_loader_factory.register_data_loader_cls(WMTDataConfig)
@@ -193,24 +181,20 @@ class WMTDataLoader(data_loader.DataLoader):
     self._max_seq_length = params.max_seq_length
     self._static_batch = params.static_batch
     self._global_batch_size = params.global_batch_size
+    if self._params.transform_and_batch:
+      self._tokenizer = tftxt.SentencepieceTokenizer(
+          model=tf.io.gfile.GFile(params.sentencepiece_model_path, 'rb').read(),
+          add_eos=True)
 
   def _decode(self, record: tf.Tensor):
     """Decodes a serialized tf.Example."""
-    if self._params.is_training:
-      name_to_features = {
-          'inputs': tf.io.VarLenFeature(tf.int64),
-          'targets': tf.io.VarLenFeature(tf.int64)
-      }
-      example = tf.io.parse_single_example(record, name_to_features)
-      example['inputs'] = tf.sparse.to_dense(example['inputs'])
-      example['targets'] = tf.sparse.to_dense(example['targets'])
-    else:
-      name_to_features = {
-          'inputs': tf.io.VarLenFeature(tf.int64),
-          'unique_id': tf.io.FixedLenFeature([], tf.int64)
-      }
-      example = tf.io.parse_single_example(record, name_to_features)
-      example['inputs'] = tf.sparse.to_dense(example['inputs'])
+    name_to_features = {
+        self._params.src_lang: tf.io.FixedLenFeature([], tf.string),
+        self._params.tgt_lang: tf.io.FixedLenFeature([], tf.string),
+    }
+    if self._params.has_unique_id:
+      name_to_features['unique_id'] = tf.io.FixedLenFeature([], tf.int64)
+    example = tf.io.parse_single_example(record, name_to_features)
     # tf.Example only supports tf.int64, but the TPU only supports tf.int32.
     # So cast all int64 to int32.
     for name in example:
@@ -220,21 +204,64 @@ class WMTDataLoader(data_loader.DataLoader):
       example[name] = t
     return example
 
-  def _bucketize_and_batch(
+  def _tokenize(self, inputs) -> Dict[str, tf.Tensor]:
+    tokenized_inputs = {}
+    for k, v in inputs.items():
+      if k == self._params.src_lang:
+        tokenized_inputs['inputs'] = self._tokenizer.tokenize(v)
+      elif k == self._params.tgt_lang:
+        tokenized_inputs['targets'] = self._tokenizer.tokenize(v)
+      else:
+        tokenized_inputs[k] = v
+    print(tokenized_inputs)
+    return tokenized_inputs
+
+  def _filter_max_length(self, inputs):
+    # return tf.constant(True)
+    return tf.logical_and(
+        tf.shape(inputs['inputs'])[0] <= self._max_seq_length,
+        tf.shape(inputs['targets'])[0] <= self._max_seq_length)
+
+  def _maybe_truncate(self, inputs):
+    truncated_inputs = {}
+    for k, v in inputs.items():
+      if k == 'inputs' or k == 'targets':
+        truncated_inputs[k] = tf.pad(
+            v[:self._max_seq_length - 1], [[0, 1]],
+            constant_values=1) if tf.shape(v)[0] > self._max_seq_length else v
+      else:
+        truncated_inputs[k] = v
+    return truncated_inputs
+
+  def _tokenize_bucketize_and_batch(
       self,
       dataset,
       input_context: Optional[tf.distribute.InputContext] = None):
-    # pylint: disable=g-long-lambda
-    dataset = dataset.filter(lambda x: _filter_max_length(
-        (x['inputs'], x['targets']), self._max_seq_length))
-    # pylint: enable=g-long-lambda
+    dataset = dataset.map(
+        self._tokenize, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+    if self._params.is_training:
+      dataset = dataset.filter(self._filter_max_length)
+    else:
+      dataset = dataset.map(
+          self._maybe_truncate,
+          num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
     per_replica_batch_size = input_context.get_per_replica_batch_size(
         self._global_batch_size) if input_context else self._global_batch_size
     if self._static_batch:
-      padded_shapes = dict([(name, [self._max_seq_length])
-                            for name, _ in dataset.element_spec.items()])
+      padded_shapes = {}
+      for name, _ in dataset.element_spec.items():
+        if name == 'unique_id':
+          padded_shapes[name] = []
+        else:
+          padded_shapes[name] = [self._max_seq_length
+                                ] if self._static_batch else [None]
+      batch_size = per_replica_batch_size
+      if self._params.is_training:
+        batch_size = int(batch_size // self._max_seq_length)
       dataset = dataset.padded_batch(
-          int(per_replica_batch_size // self._max_seq_length),
+          batch_size,
           padded_shapes,
           drop_remainder=True)
     else:
@@ -245,27 +272,24 @@ class WMTDataLoader(data_loader.DataLoader):
     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     return dataset
 
-  def _inference_padded_batch(
-      self,
-      dataset,
-      input_context: Optional[tf.distribute.InputContext] = None):
-    padded_shapes = {}
-    for name, _ in dataset.element_spec.items():
-      if name == 'unique_id':
-        padded_shapes[name] = []
-      else:
-        padded_shapes[name] = [self._max_seq_length
-                              ] if self._static_batch else [None]
-    per_replica_batch_size = input_context.get_per_replica_batch_size(
-        self._global_batch_size) if input_context else self._global_batch_size
-    return dataset.padded_batch(
-        per_replica_batch_size, padded_shapes, drop_remainder=True)
-
   def load(self, input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a tf.dataset.Dataset."""
+    decoder_fn = None
+    # Only decode for TFRecords.
+    if self._params.input_path:
+      decoder_fn = self._decode
+
+    def _identity(
+        dataset, input_context: Optional[tf.distribute.InputContext] = None):
+      del input_context
+      return dataset
+
+    transform_and_batch_fn = _identity
+    if self._params.transform_and_batch:
+      transform_and_batch_fn = self._tokenize_bucketize_and_batch
+
     reader = input_reader.InputReader(
         params=self._params,
-        decoder_fn=self._decode,
-        transform_and_batch_fn=self._bucketize_and_batch
-        if self._params.is_training else self._inference_padded_batch)
+        decoder_fn=decoder_fn,
+        transform_and_batch_fn=transform_and_batch_fn)
     return reader.read(input_context)

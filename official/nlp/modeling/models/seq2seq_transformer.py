@@ -53,6 +53,7 @@ class Seq2SeqTransformer(tf.keras.Model):
                encoder_layer=None,
                decoder_layer=None,
                dtype=tf.float32,
+               eos_id=EOS_ID,
                **kwargs):
     """Initialize layers to build Transformer model.
 
@@ -69,6 +70,7 @@ class Seq2SeqTransformer(tf.keras.Model):
       encoder_layer: An initialized encoder layer.
       decoder_layer: An initialized decoder layer.
       dtype: float dtype.
+      eos_id: Id of end of sentence token.
       **kwargs: other keyword arguments.
     """
     super(Seq2SeqTransformer, self).__init__(**kwargs)
@@ -81,6 +83,7 @@ class Seq2SeqTransformer(tf.keras.Model):
     self._beam_size = beam_size
     self._alpha = alpha
     self._dtype = dtype
+    self._eos_id = eos_id
     self.embedding_lookup = keras_nlp.layers.OnDeviceEmbedding(
         vocab_size=self._vocab_size,
         embedding_width=self._embedding_width,
@@ -102,6 +105,7 @@ class Seq2SeqTransformer(tf.keras.Model):
         "padded_decode": self._padded_decode,
         "decode_max_length": self._decode_max_length,
         "dtype": self._dtype,
+        "eos_id": self._eos_id,
         "extra_decode_length": self._extra_decode_length,
         "beam_size": self._beam_size,
         "alpha": self._alpha,
@@ -226,7 +230,7 @@ class Seq2SeqTransformer(tf.keras.Model):
           beam_size=self._beam_size,
           alpha=self._alpha,
           max_decode_length=max_decode_length,
-          eos_id=EOS_ID,
+          eos_id=self._eos_id,
           padded_decode=self._padded_decode,
           dtype=self._dtype)
 
