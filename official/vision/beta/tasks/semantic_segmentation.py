@@ -163,6 +163,13 @@ class SemanticSegmentationTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
+
+    input_partition_dims = self.task_config.train_input_partition_dims
+    if input_partition_dims:
+      strategy = tf.distribute.get_strategy()
+      features = strategy.experimental_split_to_logical_devices(
+          features, input_partition_dims)
+
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
@@ -210,6 +217,12 @@ class SemanticSegmentationTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
+
+    input_partition_dims = self.task_config.eval_input_partition_dims
+    if input_partition_dims:
+      strategy = tf.distribute.get_strategy()
+      features = strategy.experimental_split_to_logical_devices(
+          features, input_partition_dims)
 
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
