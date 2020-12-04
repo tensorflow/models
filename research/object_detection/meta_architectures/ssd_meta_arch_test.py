@@ -615,7 +615,6 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
           self.assertNotIn(six.ensure_binary('FeatureExtractor'), var)
 
   def test_load_all_det_checkpoint_vars(self):
-    # TODO(rathodv): Support TF2.X
     if self.is_tf2(): return
     test_graph_detection = tf.Graph()
     with test_graph_detection.as_default():
@@ -633,6 +632,39 @@ class SsdMetaArchTest(ssd_meta_arch_test_lib.SSDMetaArchTestBase,
           load_all_detection_checkpoint_vars=True)
       self.assertIsInstance(var_map, dict)
       self.assertIn('another_variable', var_map)
+
+  def test_load_checkpoint_vars_tf2(self):
+
+    if not self.is_tf2():
+      self.skipTest('Not running TF2 checkpoint test with TF1.')
+
+    model, _, _, _ = self._create_model()
+    inputs_shape = [2, 2, 2, 3]
+    inputs = tf.cast(
+        tf.random_uniform(inputs_shape, minval=0, maxval=255, dtype=tf.int32),
+        dtype=tf.float32)
+    model(inputs)
+
+    detection_var_names = sorted([
+        var.name for var in model.restore_from_objects('detection')[
+            'model']._feature_extractor.weights
+    ])
+    expected_detection_names = [
+        'ssd_meta_arch/fake_ssd_keras_feature_extractor/mock_model/layer1/bias:0',
+        'ssd_meta_arch/fake_ssd_keras_feature_extractor/mock_model/layer1/kernel:0'
+    ]
+    self.assertEqual(detection_var_names, expected_detection_names)
+
+    full_var_names = sorted([
+        var.name for var in
+        model.restore_from_objects('full')['model'].weights
+    ])
+
+    exepcted_full_names = ['box_predictor_var:0'] + expected_detection_names
+    self.assertEqual(exepcted_full_names, full_var_names)
+    # TODO(vighneshb) Add similar test for classification checkpoint type.
+    # TODO(vighneshb) Test loading a checkpoint from disk to verify that
+    # checkpoints are loaded correctly.
 
   def test_loss_results_are_correct_with_random_example_sampling(self):
     with test_utils.GraphContextOrNone() as g:
