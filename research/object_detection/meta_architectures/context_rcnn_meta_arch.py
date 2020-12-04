@@ -24,12 +24,14 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+import tensorflow.compat.v1 as tf
 
 from object_detection.core import standard_fields as fields
 from object_detection.meta_architectures import context_rcnn_lib
 from object_detection.meta_architectures import context_rcnn_lib_tf2
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.utils import tf_version
+from object_detection.utils import ops
 
 
 class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
@@ -326,6 +328,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         num_proposals, box_code_size] containing proposal boxes in normalized
         coordinates.
       image_shape: A 1D int32 tensors of size [4] containing the image shape.
+
       context_features: A float Tensor of shape [batch_size, context_size,
         num_context_features].
       valid_context_size: A int32 Tensor of shape [batch_size].
@@ -333,9 +336,21 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     Returns:
       A float32 Tensor with shape [K, new_height, new_width, depth].
     """
-    del image_shape
+    num_levels = len(features_to_crop)
+    box_levels = None
+    if num_levels != 1:
+      # If there are mutiple levels to select, get the box levels
+      # unit_scale_index: num_levels-2 is chosen based on section 4.2 of
+      # https://arxiv.org/pdf/1612.03144.pdf and works best for Resnet based
+      # feature extractor.
+      box_levels = ops.fpn_feature_levels(
+          num_levels, num_levels - 2,
+          tf.sqrt(
+              tf.cast(image_shape[1] * image_shape[2], tf.float32)) / 224.0,
+          proposal_boxes_normalized)
+
     box_features = self._crop_and_resize_fn(
-        features_to_crop, proposal_boxes_normalized, None,
+        features_to_crop, proposal_boxes_normalized, box_levels,
         [self._initial_crop_size, self._initial_crop_size])
 
     attention_features = self._context_feature_extract_fn(
