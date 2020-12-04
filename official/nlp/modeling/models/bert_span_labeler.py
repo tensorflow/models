@@ -63,6 +63,11 @@ class BertSpanLabeler(tf.keras.Model):
     else:
       sequence_output = outputs['sequence_output']
 
+    # The input network (typically a transformer model) may get outputs from all
+    # layers. When this case happens, we retrieve the last layer output.
+    if isinstance(sequence_output, list):
+      sequence_output = sequence_output[-1]
+
     # This is an instance variable for ease of access to the underlying task
     # network.
     span_labeling = networks.SpanLabeling(
