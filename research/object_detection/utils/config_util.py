@@ -621,6 +621,8 @@ def _maybe_update_config_with_key_value(configs, key, value):
                                                       value)
   elif field_name == "num_classes":
     _update_num_classes(configs["model"], value)
+  elif field_name == "sample_from_datasets_weights":
+    _update_sample_from_datasets_weights(configs["train_input_config"], value)
   else:
     return False
   return True
@@ -1073,3 +1075,17 @@ def _update_num_classes(model_config, num_classes):
     model_config.faster_rcnn.num_classes = num_classes
   if meta_architecture == "ssd":
     model_config.ssd.num_classes = num_classes
+
+
+def _update_sample_from_datasets_weights(input_reader_config, weights):
+  """Updated sample_from_datasets_weights with overrides."""
+  if len(weights) != len(input_reader_config.sample_from_datasets_weights):
+    raise ValueError(
+        "sample_from_datasets_weights override has a different number of values"
+        " ({}) than the configured dataset weights ({})."
+        .format(
+            len(input_reader_config.sample_from_datasets_weights),
+            len(weights)))
+
+  del input_reader_config.sample_from_datasets_weights[:]
+  input_reader_config.sample_from_datasets_weights.extend(weights)
