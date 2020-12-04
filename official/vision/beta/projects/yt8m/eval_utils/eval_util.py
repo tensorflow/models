@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Provides functions to help with evaluating models."""
-import average_precision_calculator as ap_calculator
-import mean_average_precision_calculator as map_calculator
+import official.vision.beta.projects.yt8m.eval_utils.average_precision_calculator as ap_calculator
+import official.vision.beta.projects.yt8m.eval_utils.mean_average_precision_calculator as map_calculator
 import numpy
 from tensorflow.python.platform import gfile
 

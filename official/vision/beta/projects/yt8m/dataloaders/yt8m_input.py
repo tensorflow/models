@@ -167,24 +167,6 @@ def _process_segment_and_label(video_matrix,
   return output_dict
 
 
-def _postprocess_image(image,
-                       num_frames: int = 32) -> tf.Tensor:
-  """Processes a batched Tensor of frames.
-  The same parameters used in process should be used here.
-  Args:
-    image: Input Tensor of shape [batch, timesteps, height, width, 3].
-    num_frames: Number of frames per subclip.
-  Returns:
-    Processed frames. Tensor of shape
-      [batch * num_test_clips, num_frames, height, width, 3].
-  """
-
-  image = tf.reshape(
-    image, (-1, num_frames, image.shape[2], image.shape[3], image.shape[4]))
-
-  return image
-
-
 def _get_video_matrix(features, feature_size, max_frames,
                       max_quantized_value, min_quantized_value):
   """Decodes features from an input string and quantizes it.
@@ -341,25 +323,3 @@ class Parser(parser.Parser):
                                                self._segment_size, self._num_classes)
 
     return output_dict  # batched
-
-
-class PostBatchProcessor(object):
-  """Processes a video and label dataset which is batched."""
-
-  def __init__(self, input_params: exp_cfg.DataConfig):
-    self._segment_labels = input_params.segment_labels
-    self._is_training = input_params.is_training
-    self._num_test_clips = input_params.num_test_clips
-
-  def __call__(
-          self, batched_data,
-          contexts: Dict[str, tf.io.VarLenFeature(tf.int64)]) -> Dict[str, tf.Tensor]:
-    image = batched_data["video_matrix"]
-    num_frames = batched_data["num_frames"]
-    postprocessed_image = _postprocess_image(
-      image=image,
-      num_frames=num_frames,
-    )
-    batched_data["video_matrix"] = postprocessed_image
-
-    return batched_data

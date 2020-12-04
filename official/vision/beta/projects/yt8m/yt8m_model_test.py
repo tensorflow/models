@@ -23,52 +23,49 @@ import tensorflow as tf
 from official.vision.beta.projects.yt8m import yt8m_model
 from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
 
+
 class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
-  # test_yt8m_network_creation arbitrary params
-  @parameterized.parameters(
-      (1, 1, 1)
-  )
-  def test_yt8m_network_creation(self, num_frames, height, width):
-    """Test for creation of a YT8M Model."""
+    # test_yt8m_network_creation arbitrary params
+    @parameterized.parameters(
+        (32, 1152)
+    ) #1152 = 1024 + 128
+    def test_yt8m_network_creation(self, num_frames, feature_dims):
+        """Test for creation of a YT8M Model."""
 
-    # None part : batch * num_test_clips
-    input_specs = tf.keras.layers.InputSpec(
-        shape=[None, num_frames, height, width, 3]) 
+        # None part : batch
+        input_specs = tf.keras.layers.InputSpec(
+            shape=[num_frames, feature_dims])
 
-    tf.keras.backend.set_image_data_format('channels_last')
+        num_classes = 3862
+        model = yt8m_model.YT8MModel(
+            input_params=yt8m_cfg.YT8MTask.model,
+            num_frames=num_frames,
+            num_classes=num_classes,
+            input_specs=input_specs
+        )
 
-    num_classes = 3862
-    model = yt8m_model.YT8MModel(
-      input_params=yt8m_cfg.YT8MTask.model,
-      num_frames=num_frames,
-      num_classes=num_classes,
-      input_specs=input_specs
-    )
+        # batch = 2 -> arbitrary value for test
+        inputs = np.random.rand(2, num_frames, feature_dims)
+        logits = model(inputs)
+        self.assertAllEqual([2, num_classes], logits.numpy().shape)  # expected, actual
 
-    # batch * num_test_clips = 2 -> arbitrary value for test
-    inputs = np.random.rand(2, num_frames, height, width, 3)
-    logits = model(inputs)
-    self.assertAllEqual([2, num_classes], logits.numpy().shape) # expected, actual
+    def test_serialize_deserialize(self):
+        """Validate the classification network can be serialized and deserialized."""
 
-  def test_serialize_deserialize(self):
-    """Validate the classification network can be serialized and deserialized."""
+        model = yt8m_model.YT8MModel(
+            input_params=yt8m_cfg.YT8MTask.model
+        )
 
-    model = yt8m_model.YT8MModel(
-      input_params=yt8m_cfg.YT8MTask.model
-      # input_params=yt8m_cfg.YT8MModel()
-      # input_specs=
-    )
+        config = model.get_config()
+        new_model = yt8m_model.YT8MModel.from_config(config)
 
-    config = model.get_config()
-    new_model = yt8m_model.YT8MModel.from_config(config)
+        # Validate that the config can be forced to JSON.
+        _ = new_model.to_json()
 
-    # Validate that the config can be forced to JSON.
-    _ = new_model.to_json()
-
-    # If the serialization was successful, the new config should match the old.
-    self.assertAllEqual(model.get_config(), new_model.get_config())
+        # If the serialization was successful, the new config should match the old.
+        self.assertAllEqual(model.get_config(), new_model.get_config())
 
 
 if __name__ == '__main__':
-  tf.test.main()
+    tf.test.main()
