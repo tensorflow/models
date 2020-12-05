@@ -51,7 +51,8 @@ class AttentionBlock(tf.keras.layers.Layer):
 
   def __init__(self, bottleneck_dimension, attention_temperature,
                output_dimension=None, is_training=False,
-               name='AttentionBlock', **kwargs):
+               name='AttentionBlock', max_num_proposals=100,
+               **kwargs):
     """Constructs an attention block.
 
     Args:
@@ -64,6 +65,7 @@ class AttentionBlock(tf.keras.layers.Layer):
         output feature.
       is_training: A boolean Tensor (affecting batch normalization).
       name: A string describing what to name the variables in this block.
+      max_num_proposals: The number of box proposals for each image
       **kwargs: Additional keyword arguments.
     """
 
@@ -75,6 +77,7 @@ class AttentionBlock(tf.keras.layers.Layer):
     self._bottleneck_dimension = bottleneck_dimension
     self._is_training = is_training
     self._output_dimension = output_dimension
+    self._max_num_proposals = max_num_proposals
     if self._output_dimension:
       self._feature_proj = ContextProjection(self._output_dimension)
     super(AttentionBlock, self).__init__(name=name, **kwargs)
@@ -89,15 +92,18 @@ class AttentionBlock(tf.keras.layers.Layer):
       self._output_dimension = input_shapes[-1]
       self._feature_proj = ContextProjection(self._output_dimension)
 
-  def call(self, box_features, context_features, valid_context_size):
+  def call(self, box_features, context_features, valid_context_size,
+           num_proposals):
     """Handles a call by performing attention.
 
     Args:
-      box_features: A float Tensor of shape [batch_size, input_size, height,
+      box_features: A float Tensor of shape [batch_size * input_size, height,
         width, num_input_features].
       context_features: A float Tensor of shape [batch_size, context_size,
         num_context_features].
       valid_context_size: A int32 Tensor of shape [batch_size].
+      num_proposals: A [batch_size] int32 Tensor specifying the number of valid
+        proposals per image in the batch.
 
     Returns:
       A float Tensor with shape [batch_size, input_size, num_input_features]
@@ -105,11 +111,25 @@ class AttentionBlock(tf.keras.layers.Layer):
     """
 
     _, context_size, _ = context_features.shape
-    valid_mask = compute_valid_mask(valid_context_size, context_size)
+    keys_values_valid_mask = compute_valid_mask(
+        valid_context_size, context_size)
+
+    total_proposals, height, width, channels = box_features.shape
+    batch_size = total_proposals // self._max_num_proposals
+    box_features = tf.reshape(
+        box_features,
+        [batch_size,
+         self._max_num_proposals,
+         height,
+         width,
+         channels])
 
     # Average pools over height and width dimension so that the shape of
     # box_features becomes [batch_size, max_num_proposals, channels].
     box_features = tf.reduce_mean(box_features, [2, 3])
+
+    queries_valid_mask = compute_valid_mask(num_proposals,
+                                            box_features.shape[1])
 
     queries = project_features(
         box_features, self._bottleneck_dimension, self._is_training,
@@ -121,8 +141,13 @@ class AttentionBlock(tf.keras.layers.Layer):
         context_features, self._bottleneck_dimension, self._is_training,
         self._val_proj, normalize=True)
 
+    # masking out any keys which are padding
+    keys *= tf.cast(keys_values_valid_mask[..., tf.newaxis], keys.dtype)
+    queries *= tf.cast(queries_valid_mask[..., tf.newaxis], queries.dtype)
+
     weights = tf.matmul(queries, keys, transpose_b=True)
-    weights, values = filter_weight_value(weights, values, valid_mask)
+    weights, values = filter_weight_value(weights, values,
+                                          keys_values_valid_mask)
     weights = tf.nn.softmax(weights / self._attention_temperature)
 
     features = tf.matmul(weights, values)
