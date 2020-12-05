@@ -765,7 +765,8 @@ class PenaltyReducedLogisticFocalLoss(Loss):
     sigmoid_prediction_tensor = tf.sigmoid(prediction_tensor)
 
     log_sigmoid_prediction_tensor = tf.math.log_sigmoid(prediction_tensor)
-    log_1_minus_sigmoid_prediction_tensor = log_sigmoid_prediction_tensor - prediction_tensor
+    log_1_minus_sigmoid_prediction_tensor = log_sigmoid_prediction_tensor \
+      - prediction_tensor
 
     positive_loss = (tf.math.pow((1 - sigmoid_prediction_tensor), self._alpha)*
                      log_sigmoid_prediction_tensor)
