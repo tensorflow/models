@@ -764,15 +764,16 @@ class PenaltyReducedLogisticFocalLoss(Loss):
     is_present_tensor = tf.math.equal(target_tensor, 1.0)
     sigmoid_prediction = tf.sigmoid(prediction_tensor)
 
-    log1p_exp_neg_abs = tf.math.log1p(tf.math.exp(-tf.math.abs(-prediction_tensor)))
-    neg_log_sigmoid_prediction = log1p_exp_neg_abs + tf.nn.relu(-prediction_tensor)
-    neg_log1m_sigmoid_prediction = log1p_exp_neg_abs + tf.nn.relu(prediction_tensor)
+    log1p_exp_neg_abs = tf.math.log1p(
+        tf.math.exp(-tf.math.abs(-prediction_tensor)))
+    neg_log_sigmoid = log1p_exp_neg_abs + tf.nn.relu(-prediction_tensor)
+    neg_log1m_sigmoid = log1p_exp_neg_abs + tf.nn.relu(prediction_tensor)
 
     positive_loss = (tf.math.pow((1 - sigmoid_prediction), self._alpha) *
-                     neg_log_sigmoid_prediction)
+                     neg_log_sigmoid)
     negative_loss = (tf.math.pow((1 - target_tensor), self._beta) *
                      tf.math.pow(sigmoid_prediction, self._alpha) *
-                     neg_log1m_sigmoid_prediction)
+                     neg_log1m_sigmoid)
 
     loss = tf.where(is_present_tensor, positive_loss, negative_loss)
     return loss * weights
