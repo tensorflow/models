@@ -724,7 +724,7 @@ class PenaltyReducedLogisticFocalLoss(Loss):
   [1]: https://arxiv.org/abs/1904.07850
   """
 
-  def __init__(self, alpha=2.0, beta=4.0, sigmoid_clip_value=1e-4):
+  def __init__(self, alpha=2.0, beta=4.0):
     """Constructor.
 
     Args:
@@ -732,12 +732,9 @@ class PenaltyReducedLogisticFocalLoss(Loss):
         decrease the loss contribution of the well classified examples.
       beta: The local penalty reduction factor. Increasing this will decrease
         the contribution of loss due to negative pixels near the keypoint.
-      sigmoid_clip_value: The sigmoid operation used internally will be clipped
-        between [sigmoid_clip_value, 1 - sigmoid_clip_value)
     """
     self._alpha = alpha
     self._beta = beta
-    self._sigmoid_clip_value = sigmoid_clip_value
     super(PenaltyReducedLogisticFocalLoss, self).__init__()
 
   def _compute_loss(self, prediction_tensor, target_tensor, weights):
@@ -765,15 +762,16 @@ class PenaltyReducedLogisticFocalLoss(Loss):
     """
 
     is_present_tensor = tf.math.equal(target_tensor, 1.0)
-    prediction_tensor = tf.clip_by_value(tf.sigmoid(prediction_tensor),
-                                         self._sigmoid_clip_value,
-                                         1 - self._sigmoid_clip_value)
+    sigmoid_prediction_tensor = tf.sigmoid(prediction_tensor)
 
-    positive_loss = (tf.math.pow((1 - prediction_tensor), self._alpha)*
-                     tf.math.log(prediction_tensor))
+    log_sigmoid_prediction_tensor = tf.math.log_sigmoid(prediction_tensor)
+    log_1_minus_sigmoid_prediction_tensor = log_sigmoid_prediction_tensor - prediction_tensor
+
+    positive_loss = (tf.math.pow((1 - sigmoid_prediction_tensor), self._alpha)*
+                     log_sigmoid_prediction_tensor)
     negative_loss = (tf.math.pow((1 - target_tensor), self._beta)*
-                     tf.math.pow(prediction_tensor, self._alpha)*
-                     tf.math.log(1 - prediction_tensor))
+                     tf.math.pow(sigmoid_prediction_tensor, self._alpha)*
+                     log_1_minus_sigmoid_prediction_tensor)
 
     loss = -tf.where(is_present_tensor, positive_loss, negative_loss)
     return loss * weights
