@@ -25,7 +25,7 @@ from official.nlp.modeling.layers import relative_attention
 def _cache_memory(current_state, previous_state, memory_length, reuse_length=0):
   """Caches hidden states into memory.
 
-  Arguments:
+  Args:
     current_state: `Tensor`, the current state.
     previous_state: `Tensor`, the previous state.
     memory_length: `int`, the number of tokens to cache.
@@ -228,7 +228,7 @@ class TransformerXLBlock(tf.keras.layers.Layer):
            target_mapping=None):
     """Implements `call` for the Layer.
 
-    Arguments:
+    Args:
       content_stream: `Tensor`, the input content stream. This is the standard
         input to Transformer XL and is commonly referred to as `h` in XLNet.
       content_attention_bias: Bias `Tensor` for content based attention of shape
@@ -476,7 +476,7 @@ class TransformerXL(tf.keras.layers.Layer):
            target_mapping=None):
     """Implements call() for the layer.
 
-    Arguments:
+    Args:
       content_stream: `Tensor`, the input content stream. This is the standard
         input to Transformer XL and is commonly referred to as `h` in XLNet.
       relative_position_encoding: Relative positional encoding `Tensor` of shape

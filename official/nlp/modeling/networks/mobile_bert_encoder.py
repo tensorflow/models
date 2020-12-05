@@ -45,7 +45,7 @@ class MobileBERTEncoder(tf.keras.Model):
                **kwargs):
     """Class initialization.
 
-    Arguments:
+    Args:
       word_vocab_size: Number of words in the vocabulary.
       word_embed_size: Word embedding size.
       type_vocab_size: Number of word types.

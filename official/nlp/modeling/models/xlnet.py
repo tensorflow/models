@@ -84,7 +84,7 @@ class XLNetPretrainer(tf.keras.Model):
   Transformer-XL encoder as described in "XLNet: Generalized Autoregressive
   Pretraining for Language Understanding" (https://arxiv.org/abs/1906.08237).
 
-  Arguments:
+  Args:
     network: An XLNet/Transformer-XL based network. This network should output a
       sequence output and list of `state` tensors.
     mlm_activation: The activation (if any) to use in the Masked LM network. If
@@ -163,7 +163,7 @@ class XLNetClassifier(tf.keras.Model):
   Note: This model does not use utilize the memory mechanism used in the
   original XLNet Classifier.
 
-  Arguments:
+  Args:
     network: An XLNet/Transformer-XL based network. This network should output a
       sequence output and list of `state` tensors.
     num_classes: Number of classes to predict from the classification network.
@@ -249,7 +249,7 @@ class XLNetSpanLabeler(tf.keras.Model):
   Transformer-XL encoder as described in "XLNet: Generalized Autoregressive
   Pretraining for Language Understanding" (https://arxiv.org/abs/1906.08237).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.

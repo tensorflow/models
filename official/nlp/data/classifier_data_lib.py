@@ -944,7 +944,7 @@ class XtremePawsxProcessor(DataProcessor):
                only_use_en_dev=True):
     """See base class.
 
-    Arguments:
+    Args:
       process_text_fn: See base class.
       translated_data_dir: If specified, will also include translated data in
         the training and testing data.
@@ -1061,7 +1061,7 @@ class XtremeXnliProcessor(DataProcessor):
                only_use_en_dev=True):
     """See base class.
 
-    Arguments:
+    Args:
       process_text_fn: See base class.
       translated_data_dir: If specified, will also include translated data in
         the training data.
@@ -1350,7 +1350,7 @@ def generate_tf_record_from_data_file(processor,
                                       max_seq_length=128):
   """Generates and saves training data into a tf record file.
 
-  Arguments:
+  Args:
       processor: Input processor object to be used for generating data. Subclass
         of `DataProcessor`.
       data_dir: Directory that contains train/eval/test data to process.

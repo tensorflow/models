@@ -41,7 +41,7 @@ class NoNorm(tf.keras.layers.Layer):
 def _get_norm_layer(normalization_type='no_norm', name=None):
   """Get normlization layer.
 
-  Arguments:
+  Args:
       normalization_type: String. The type of normalization_type, only
         'no_norm' and 'layer_norm' are supported.
       name: Name for the norm layer.
@@ -80,7 +80,7 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
                **kwargs):
     """Class initialization.
 
-    Arguments:
+    Args:
       word_vocab_size: Number of words in the vocabulary.
       word_embed_size: Word embedding size.
       type_vocab_size: Number of word types.
@@ -189,7 +189,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
                **kwargs):
     """Class initialization.
 
-    Arguments:
+    Args:
       hidden_size: Hidden size for the Transformer input and output tensor.
       num_attention_heads: Number of attention heads in the Transformer.
       intermediate_size: The size of the "intermediate" (a.k.a., feed
@@ -343,7 +343,7 @@ class MobileBertTransformer(tf.keras.layers.Layer):
            return_attention_scores=False):
     """Implementes the forward pass.
 
-    Arguments:
+    Args:
       input_tensor: Float tensor of shape [batch_size, seq_length, hidden_size].
       attention_mask: (optional) int32 tensor of shape [batch_size, seq_length,
         seq_length], with 1 for positions that can be attended to and 0 in

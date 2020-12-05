@@ -28,7 +28,7 @@ class GatedFeedforward(tf.keras.layers.Layer):
   (https://arxiv.org/abs/2002.05202). In additional, it allows to stack
   multiple feedforward blocks and specify the position of dropout layer.
 
-  Arguments:
+  Args:
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
     dropout: Dropout probability for the output dropout.

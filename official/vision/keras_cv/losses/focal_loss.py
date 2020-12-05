@@ -31,7 +31,7 @@ class FocalLoss(tf.keras.losses.Loss):
                name=None):
     """Initializes `FocalLoss`.
 
-    Arguments:
+    Args:
       alpha: The `alpha` weight factor for binary class imbalance.
       gamma: The `gamma` focusing parameter to re-weight loss.
       reduction: (Optional) Type of `tf.keras.losses.Reduction` to apply to
@@ -52,7 +52,7 @@ class FocalLoss(tf.keras.losses.Loss):
   def call(self, y_true, y_pred):
     """Invokes the `FocalLoss`.
 
-    Arguments:
+    Args:
       y_true: A tensor of size [batch, num_anchors, num_classes]
       y_pred: A tensor of size [batch, num_anchors, num_classes]
 

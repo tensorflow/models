@@ -35,7 +35,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
   instantiate the class with the config, or pass a class instance to
   `attention_cls`/`feedforward_cls`.
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.

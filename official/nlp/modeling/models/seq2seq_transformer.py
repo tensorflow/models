@@ -57,7 +57,7 @@ class Seq2SeqTransformer(tf.keras.Model):
                **kwargs):
     """Initialize layers to build Transformer model.
 
-    Arguments:
+    Args:
       vocab_size: Size of vocabulary.
       embedding_width: Size of hidden layer for embedding.
       dropout_rate: Dropout probability.
@@ -359,7 +359,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
     1. Self-attention layer
     2. Feedforward network (which is 2 fully-connected layers)
 
-  Arguments:
+  Args:
     num_layers: Number of layers.
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate (Feedforward) layer.
@@ -468,7 +468,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
        the previous self-attention layer.
     3. Feedforward network (2 fully-connected layers)
 
-  Arguments:
+  Args:
     num_layers: Number of layers.
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate (Feedforward) layer.

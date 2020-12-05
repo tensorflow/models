@@ -39,7 +39,7 @@ class BertEncoder(tf.keras.Model):
   *Note* that the network is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     vocab_size: The size of the token vocabulary.
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.

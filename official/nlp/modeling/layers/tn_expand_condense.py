@@ -36,7 +36,7 @@ class TNExpandCondense(Layer):
 
   Note the input shape and output shape will be identical.
 
-  Arguments:
+  Args:
     proj_multiplier: Positive integer, multiple of input_shape[-1] to project
       up to. Must be one of [2, 4, 6, 8].
     use_bias: Boolean, whether the layer uses a bias vector.

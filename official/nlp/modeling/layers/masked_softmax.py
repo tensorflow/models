@@ -39,7 +39,7 @@ def _large_compatible_negative(tensor_type):
 class MaskedSoftmax(tf.keras.layers.Layer):
   """Performs a softmax with optional masking on a tensor.
 
-  Arguments:
+  Args:
     mask_expansion_axes: Any axes that should be padded on the mask tensor.
     normalization_axes: On which axes the softmax should perform.
   """

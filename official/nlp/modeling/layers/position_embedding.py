@@ -31,7 +31,7 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
    "Attention is All You Need", section 3.5.
   (https://arxiv.org/abs/1706.03762).
 
-  Arguments:
+  Args:
     hidden_size: Size of the hidden layer.
     min_timescale: Minimum scale that will be applied at each position
     max_timescale: Maximum scale that will be applied at each position.
