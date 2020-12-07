@@ -135,6 +135,6 @@ class DetectionModule(export_base.ExportModule):
         'num_detections': detections['num_detections']
     }
     if 'detection_masks' in detections.keys():
-      final_outputs.update('detection_masks', detections['detection_masks'])
+      final_outputs['detection_masks'] = detections['detection_masks']
 
     return final_outputs
