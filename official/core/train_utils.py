@@ -108,7 +108,7 @@ class BestCheckpointExporter:
 
     # Saving the best checkpoint might be interrupted if the job got killed.
     for file_to_remove in tf.io.gfile.glob(self.best_ckpt_path + '*'):
-      tf.io.gfile.rmtree(file_to_remove)
+      tf.io.gfile.remove(file_to_remove)
     checkpoint.save(self.best_ckpt_path)
 
   @property
