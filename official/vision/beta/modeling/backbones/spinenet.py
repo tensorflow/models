@@ -178,7 +178,7 @@ class SpineNet(tf.keras.Model):
 
     net = self._build_stem(inputs=inputs)
     net = self._build_scale_permuted_network(
-        net=net, input_width=input_specs.shape[1])
+        net=net, input_width=input_specs.shape[2])
     endpoints = self._build_endpoints(net=net)
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
