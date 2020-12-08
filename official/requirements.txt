@@ -25,4 +25,3 @@ pycocotools
 # NLP related dependencies
 seqeval
 sentencepiece
-tensorflow-text
