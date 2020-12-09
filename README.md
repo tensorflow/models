@@ -2,7 +2,7 @@
 
 # Welcome to the Model Garden for TensorFlow
 
-The TensorFlow Model Garden is a repository with a number of different implementations of state-of-the-art (SOTA) models and modeling solutions for TensorFlow users. We aim to demonstrate the best practices for modeling so that TensorFlow users
+The TensorFlow Model Garden is a repository with a number of different implementations of state-of-the-art (SOTA) models and modeling solutions for TensorFlow users. We are aiming  to demonstrate the best practices for modeling so that TensorFlow users
 can take full advantage of TensorFlow for their research and product development.
 
 | Directory | Description |
@@ -29,7 +29,7 @@ can take full advantage of TensorFlow for their research and product development
 
 [![help wanted:paper implementation](https://img.shields.io/github/issues/tensorflow/models/help%20wanted%3Apaper%20implementation)](https://github.com/tensorflow/models/labels/help%20wanted%3Apaper%20implementation)
 
-If you want to contribute, please review the [contribution guidelines](https://github.com/tensorflow/models/wiki/How-to-contribute).
+If you want to contribute, please review the[contribution guidelines](https://github.com/tensorflow/models/wiki/How-to-contribute).
 
 ## License
 
