@@ -169,7 +169,7 @@ class EncoderScaffold(tf.keras.Model):
           tf.keras.layers.Dropout(
               rate=embedding_cfg['dropout_rate'])(embeddings))
 
-      attention_mask = layers.SelfAttentionMask()([embeddings, mask])
+      attention_mask = keras_nlp.layers.SelfAttentionMask()(embeddings, mask)
 
     data = embeddings
 

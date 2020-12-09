@@ -133,7 +133,7 @@ class AlbertEncoder(tf.keras.Model):
               embeddings)
 
     data = embeddings
-    attention_mask = layers.SelfAttentionMask()([data, mask])
+    attention_mask = keras_nlp.layers.SelfAttentionMask()(data, mask)
     shared_layer = keras_nlp.layers.TransformerEncoderBlock(
         num_attention_heads=num_attention_heads,
         inner_dim=intermediate_size,
