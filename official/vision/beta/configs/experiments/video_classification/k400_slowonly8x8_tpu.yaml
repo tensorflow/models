@@ -41,6 +41,7 @@ task:
         stem_pool_temporal_stride: 1
     dropout_rate: 0.5
   train_data:
+    name: kinetics400
     feature_shape: !!python/tuple
     - 8
     - 224
@@ -51,6 +52,7 @@ task:
     dtype: 'bfloat16'
     shuffle_buffer_size: 1024
   validation_data:
+    name: kinetics400
     global_batch_size: 32
     dtype: 'bfloat16'
     drop_remainder: false
