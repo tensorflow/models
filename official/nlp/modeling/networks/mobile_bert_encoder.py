@@ -16,6 +16,7 @@
 import gin
 import tensorflow as tf
 
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -118,7 +119,7 @@ class MobileBERTEncoder(tf.keras.Model):
     type_ids = tf.keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_type_ids')
     self.inputs = [input_ids, input_mask, type_ids]
-    attention_mask = layers.SelfAttentionMask()([input_ids, input_mask])
+    attention_mask = keras_nlp.layers.SelfAttentionMask()(input_ids, input_mask)
 
     # build the computation graph
     all_layer_outputs = []
