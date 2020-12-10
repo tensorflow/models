@@ -476,7 +476,7 @@ class BigBirdAttention(tf.keras.layers.MultiHeadAttention):
 
     attention_output = self._compute_attention(query, key, value,
                                                attention_mask)
-    attention_output.set_shape([None, None, self._num_heads, self._key_dim])
+    attention_output.set_shape([None, None, self._num_heads, self._value_dim])
     attention_output = self._output_dense(attention_output)
     return attention_output
 
