@@ -18,6 +18,7 @@ import tensorflow as tf
 from official.nlp import keras_nlp
 
 
+@tf.keras.utils.register_keras_serializable(package='Text')
 class NoNorm(tf.keras.layers.Layer):
   """Apply element-wise linear transformation to the last dimension."""
 
@@ -62,6 +63,7 @@ def _get_norm_layer(normalization_type='no_norm', name=None):
   return layer
 
 
+@tf.keras.utils.register_keras_serializable(package='Text')
 class MobileBertEmbedding(tf.keras.layers.Layer):
   """Performs an embedding lookup for MobileBERT.
 
@@ -163,6 +165,7 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
     return embedding_out
 
 
+@tf.keras.utils.register_keras_serializable(package='Text')
 class MobileBertTransformer(tf.keras.layers.Layer):
   """Transformer block for MobileBERT.
 
@@ -422,3 +425,129 @@ class MobileBertTransformer(tf.keras.layers.Layer):
       return layer_output, attention_scores
     else:
       return layer_output
+
+
+@tf.keras.utils.register_keras_serializable(package='Text')
+class MobileBertMaskedLM(tf.keras.layers.Layer):
+  """Masked language model network head for BERT modeling.
+
+  This layer implements a masked language model based on the provided
+  transformer based encoder. It assumes that the encoder network being passed
+  has a "get_embedding_table()" method. Different from canonical BERT's masked
+  LM layer, when the embedding width is smaller than hidden_size, it adds an
+  extra output weights in shape [vocab_size, (hidden_size - embedding_width)].
+  """
+
+  def __init__(self,
+               embedding_table,
+               activation=None,
+               initializer='glorot_uniform',
+               output='logits',
+               **kwargs):
+    """Class initialization.
+
+    Arguments:
+      embedding_table: The embedding table from encoder network.
+      activation: The activation, if any, for the dense layer.
+      initializer: The initializer for the dense layer. Defaults to a Glorot
+        uniform initializer.
+      output: The output style for this layer. Can be either 'logits' or
+        'predictions'.
+      **kwargs: keyword arguments.
+    """
+    super(MobileBertMaskedLM, self).__init__(**kwargs)
+    self.embedding_table = embedding_table
+    self.activation = activation
+    self.initializer = tf.keras.initializers.get(initializer)
+
+    if output not in ('predictions', 'logits'):
+      raise ValueError(
+          ('Unknown `output` value "%s". `output` can be either "logits" or '
+           '"predictions"') % output)
+    self._output_type = output
+
+  def build(self, input_shape):
+    self._vocab_size, embedding_width = self.embedding_table.shape
+    hidden_size = input_shape[-1]
+    self.dense = tf.keras.layers.Dense(
+        hidden_size,
+        activation=self.activation,
+        kernel_initializer=self.initializer,
+        name='transform/dense')
+
+    if hidden_size > embedding_width:
+      self.extra_output_weights = self.add_weight(
+          'extra_output_weights',
+          shape=(self._vocab_size, hidden_size - embedding_width),
+          initializer=self.initializer,
+          trainable=True)
+    elif hidden_size == embedding_width:
+      self.extra_output_weights = None
+    else:
+      raise ValueError(
+          'hidden size %d cannot be smaller than embedding width %d.' %
+          (hidden_size, embedding_width))
+
+    self.layer_norm = tf.keras.layers.LayerNormalization(
+        axis=-1, epsilon=1e-12, name='transform/LayerNorm')
+    self.bias = self.add_weight(
+        'output_bias/bias',
+        shape=(self._vocab_size,),
+        initializer='zeros',
+        trainable=True)
+
+    super(MobileBertMaskedLM, self).build(input_shape)
+
+  def call(self, sequence_data, masked_positions):
+    masked_lm_input = self._gather_indexes(sequence_data, masked_positions)
+    lm_data = self.dense(masked_lm_input)
+    lm_data = self.layer_norm(lm_data)
+    if self.extra_output_weights is None:
+      lm_data = tf.matmul(lm_data, self.embedding_table, transpose_b=True)
+    else:
+      lm_data = tf.matmul(
+          lm_data,
+          tf.concat([self.embedding_table, self.extra_output_weights], axis=1),
+          transpose_b=True)
+
+    logits = tf.nn.bias_add(lm_data, self.bias)
+    masked_positions_length = masked_positions.shape.as_list()[1] or tf.shape(
+        masked_positions)[1]
+    logits = tf.reshape(logits,
+                        [-1, masked_positions_length, self._vocab_size])
+    if self._output_type == 'logits':
+      return logits
+    return tf.nn.log_softmax(logits)
+
+  def get_config(self):
+    raise NotImplementedError('MaskedLM cannot be directly serialized because '
+                              'it has variable sharing logic.')
+
+  def _gather_indexes(self, sequence_tensor, positions):
+    """Gathers the vectors at the specific positions.
+
+    Args:
+      sequence_tensor: Sequence output of `BertModel` layer of shape
+        (`batch_size`, `seq_length`, num_hidden) where num_hidden is number of
+        hidden units of `BertModel` layer.
+      positions: Positions ids of tokens in sequence to mask for pretraining
+        of with dimension (batch_size, num_predictions) where
+        `num_predictions` is maximum number of tokens to mask out and predict
+        per each sequence.
+
+    Returns:
+      Masked out sequence tensor of shape (batch_size * num_predictions,
+      num_hidden).
+    """
+    sequence_shape = tf.shape(sequence_tensor)
+    batch_size, seq_length = sequence_shape[0], sequence_shape[1]
+    width = sequence_tensor.shape.as_list()[2] or sequence_shape[2]
+
+    flat_offsets = tf.reshape(
+        tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])
+    flat_positions = tf.reshape(positions + flat_offsets, [-1])
+    flat_sequence_tensor = tf.reshape(sequence_tensor,
+                                      [batch_size * seq_length, width])
+    output_tensor = tf.gather(flat_sequence_tensor, flat_positions)
+
+    return output_tensor
