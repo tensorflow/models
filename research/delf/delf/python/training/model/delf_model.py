@@ -80,6 +80,38 @@ class AttentionModel(tf.keras.Model):
     return feat, prob, score
 
 
+class AutoencoderModel(tf.keras.Model):
+  """Instantiates the Keras Autoencoder model."""
+
+  def __init__(self, reduced_dimension, expand_dimension, kernel_size=1,
+               name='autoencoder'):
+    """Initialization of Autoencoder model.
+
+    Args:
+      reduced_dimension: int, the output dimension of the autoencoder layer.
+      expand_dimension: int, the input dimension of the autoencoder layer.
+      kernel_size: int or tuple, height and width of the 2D convolution window.
+      name: str, name to identify model.
+    """
+    super(AutoencoderModel, self).__init__(name=name)
+    self.conv1 = layers.Conv2D(
+        reduced_dimension,
+        kernel_size,
+        padding='same',
+        name='autoenc_conv1')
+    self.conv2 = layers.Conv2D(
+        expand_dimension,
+        kernel_size,
+        activation=tf.keras.activations.relu,
+        padding='same',
+        name='autoenc_conv2')
+
+  def call(self, inputs):
+    dim_reduced_features = self.conv1(inputs)
+    dim_expanded_features = self.conv2(dim_reduced_features)
+    return dim_expanded_features, dim_reduced_features
+
+
 class Delf(tf.keras.Model):
   """Instantiates Keras DELF model using ResNet50 as backbone.
 
@@ -95,7 +127,10 @@ class Delf(tf.keras.Model):
                pooling='avg',
                gem_power=3.0,
                embedding_layer=False,
-               embedding_layer_dim=2048):
+               embedding_layer_dim=2048,
+               use_dim_reduction=False,
+               reduced_dimension=128,
+               dim_expand_channels=1024):
     """Initialization of DELF model.
 
     Args:
@@ -108,6 +143,14 @@ class Delf(tf.keras.Model):
       embedding_layer: bool, whether to create an embedding layer (FC whitening
         layer).
       embedding_layer_dim: int, size of the embedding layer.
+      use_dim_reduction: Whether to integrate dimensionality reduction layers.
+        If True, extra layers are added to reduce the dimensionality of the
+        extracted features.
+      reduced_dimension: int, only used if use_dim_reduction is True. The output
+        dimension of the autoencoder layer.
+      dim_expand_channels: int, only used if use_dim_reduction is True. The
+        number of channels of the backbone block used. Default value 1024 is the
+        number of channels of backbone block 'block3'.
     """
     super(Delf, self).__init__(name=name)
 
@@ -125,6 +168,13 @@ class Delf(tf.keras.Model):
 
     # Attention model.
     self.attention = AttentionModel(name='attention')
+
+    # Autoencoder model.
+    self._use_dim_reduction = use_dim_reduction
+    if self._use_dim_reduction:
+      self.autoencoder = AutoencoderModel(reduced_dimension,
+                                          dim_expand_channels,
+                                          name='autoencoder')
 
   def init_classifiers(self, num_classes, desc_classification=None):
     """Define classifiers for training backbone and attention models."""
@@ -156,14 +206,25 @@ class Delf(tf.keras.Model):
     # https://arxiv.org/abs/2001.05027.
     block3 = backbone_blocks['block3']  # pytype: disable=key-error
     block3 = tf.stop_gradient(block3)
-    attn_prelogits, attn_scores, _ = self.attention(block3, training=training)
-    return desc_prelogits, attn_prelogits, attn_scores, backbone_blocks
+    if self._use_dim_reduction:
+      (dim_expanded_features, dim_reduced_features) = self.autoencoder(block3)
+      attn_prelogits, attn_scores, _ = self.attention(dim_expanded_features,
+                                                      training=training)
+    else:
+      attn_prelogits, attn_scores, _ = self.attention(block3, training=training)
+      dim_expanded_features = None
+      dim_reduced_features = None
+    return (desc_prelogits, attn_prelogits, attn_scores, backbone_blocks,
+            dim_expanded_features, dim_reduced_features)
 
   def build_call(self, input_image, training=True):
-    (global_feature, _, attn_scores,
-     backbone_blocks) = self.global_and_local_forward_pass(input_image,
-                                                           training)
-    features = backbone_blocks['block3']  # pytype: disable=key-error
+    (global_feature, _, attn_scores, backbone_blocks, _,
+     dim_reduced_features) = self.global_and_local_forward_pass(input_image,
+                                                                training)
+    if self._use_dim_reduction:
+      features = dim_reduced_features
+    else:
+      features = backbone_blocks['block3']  # pytype: disable=key-error
     return global_feature, attn_scores, features
 
   def call(self, input_image, training=True):
