@@ -19,6 +19,7 @@ from __future__ import division
 # from __future__ import google_type_annotations
 from __future__ import print_function
 
+import random
 from absl.testing import parameterized
 
 import tensorflow as tf
@@ -86,7 +87,16 @@ class TransformsTest(parameterized.TestCase, tf.test.TestCase):
       self.assertAllEqual(image, augment.rotate(image, degrees))
 
 
-class AutoaugmentTest(tf.test.TestCase):
+class AutoaugmentTest(tf.test.TestCase, parameterized.TestCase):
+
+  AVAILABLE_POLICIES = [
+      'v0',
+      'test',
+      'simple',
+      'reduced_cifar10',
+      'svhn',
+      'reduced_imagenet',
+  ]
 
   AVAILABLE_POLICIES = [
       'v0',
@@ -134,6 +144,76 @@ class AutoaugmentTest(tf.test.TestCase):
       image = func(image, *args)
 
     self.assertEqual((224, 224, 3), image.shape)
+
+  def _generate_test_policy(self):
+    """Generate a test policy at random."""
+    op_list = list(augment.NAME_TO_FUNC.keys())
+    size = 6
+    prob = [round(random.uniform(0., 1.), 1) for _ in range(size)]
+    mag = [round(random.uniform(0, 10)) for _ in range(size)]
+    policy = []
+    for i in range(0, size, 2):
+      policy.append([(op_list[i], prob[i], mag[i]),
+                     (op_list[i + 1], prob[i + 1], mag[i + 1])])
+    return policy
+
+  def test_custom_policy(self):
+    """Test autoaugment with a custom policy."""
+    image = tf.zeros((224, 224, 3), dtype=tf.uint8)
+    augmenter = augment.AutoAugment(policies=self._generate_test_policy())
+    aug_image = augmenter.distort(image)
+
+    self.assertEqual((224, 224, 3), aug_image.shape)
+
+  @parameterized.named_parameters(
+      {'testcase_name': '_OutOfRangeProb',
+       'sub_policy': ('Equalize', 1.1, 3), 'value': '1.1'},
+      {'testcase_name': '_OutOfRangeMag',
+       'sub_policy': ('Equalize', 0.9, 11), 'value': '11'},
+  )
+  def test_invalid_custom_sub_policy(self, sub_policy, value):
+    """Test autoaugment with out-of-range values in the custom policy."""
+    image = tf.zeros((224, 224, 3), dtype=tf.uint8)
+    policy = self._generate_test_policy()
+    policy[0][0] = sub_policy
+    augmenter = augment.AutoAugment(policies=policy)
+
+    with self.assertRaisesRegex(
+        tf.errors.InvalidArgumentError,
+        r'Expected \'tf.Tensor\(False, shape=\(\), dtype=bool\)\' to be true. '
+        r'Summarized data: ({})'.format(value)):
+      augmenter.distort(image)
+
+  def test_invalid_custom_policy_ndim(self):
+    """Test autoaugment with wrong dimension in the custom policy."""
+    policy = [[('Equalize', 0.8, 1), ('Shear', 0.8, 4)],
+              [('TranslateY', 0.6, 3), ('Rotate', 0.9, 3)]]
+    policy = [[policy]]
+
+    with self.assertRaisesRegex(
+        ValueError,
+        r'Expected \(:, :, 3\) but got \(1, 1, 2, 2, 3\).'):
+      augment.AutoAugment(policies=policy)
+
+  def test_invalid_custom_policy_shape(self):
+    """Test autoaugment with wrong shape in the custom policy."""
+    policy = [[('Equalize', 0.8, 1, 1), ('Shear', 0.8, 4, 1)],
+              [('TranslateY', 0.6, 3, 1), ('Rotate', 0.9, 3, 1)]]
+
+    with self.assertRaisesRegex(
+        ValueError,
+        r'Expected \(:, :, 3\) but got \(2, 2, 4\)'):
+      augment.AutoAugment(policies=policy)
+
+  def test_invalid_custom_policy_key(self):
+    """Test autoaugment with invalid key in the custom policy."""
+    image = tf.zeros((224, 224, 3), dtype=tf.uint8)
+    policy = [[('AAAAA', 0.8, 1), ('Shear', 0.8, 4)],
+              [('TranslateY', 0.6, 3), ('Rotate', 0.9, 3)]]
+    augmenter = augment.AutoAugment(policies=policy)
+
+    with self.assertRaisesRegex(KeyError, '\'AAAAA\''):
+      augmenter.distort(image)
 
 
 if __name__ == '__main__':
