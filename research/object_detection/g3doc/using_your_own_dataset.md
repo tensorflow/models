@@ -99,7 +99,7 @@ import tensorflow as tf
 from object_detection.utils import dataset_util
 
 
-flags = tf.app.flags
+flags = tf.compat.v1.app.flags
 flags.DEFINE_string('output_path', '', 'Path to output TFRecord')
 FLAGS = flags.FLAGS
 
@@ -139,7 +139,7 @@ def create_tf_example(example):
 
 
 def main(_):
-  writer = tf.python_io.TFRecordWriter(FLAGS.output_path)
+  writer = tf.compat.v1.python_io.TFRecordWriter(FLAGS.output_path)
 
   # TODO(user): Write code to read in your dataset to examples variable
 
@@ -151,7 +151,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-  tf.app.run()
+  tf.compat.v1.app.run()
 
 ```
 
