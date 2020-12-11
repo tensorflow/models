@@ -88,14 +88,24 @@ class TransformsTest(parameterized.TestCase, tf.test.TestCase):
 
 class AutoaugmentTest(tf.test.TestCase):
 
+  AVAILABLE_POLICIES = [
+      'v0',
+      'test',
+      'simple',
+      'reduced_cifar10',
+      'svhn',
+      'reduced_imagenet',
+  ]
+
   def test_autoaugment(self):
     """Smoke test to be sure there are no syntax errors."""
     image = tf.zeros((224, 224, 3), dtype=tf.uint8)
 
-    augmenter = augment.AutoAugment()
-    aug_image = augmenter.distort(image)
+    for policy in self.AVAILABLE_POLICIES:
+      augmenter = augment.AutoAugment(augmentation_name=policy)
+      aug_image = augmenter.distort(image)
 
-    self.assertEqual((224, 224, 3), aug_image.shape)
+      self.assertEqual((224, 224, 3), aug_image.shape)
 
   def test_randaug(self):
     """Smoke test to be sure there are no syntax errors."""
