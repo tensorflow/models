@@ -100,7 +100,7 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
     checkpoint_manager = None
 
   controller = orbit.Controller(
-      distribution_strategy,
+      strategy=distribution_strategy,
       trainer=trainer if 'train' in mode else None,
       evaluator=trainer,
       global_step=trainer.global_step,
