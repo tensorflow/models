@@ -201,7 +201,7 @@ class LabelMapUtilTest(tf.test.TestCase):
         name:'n00007846'
       }
     """
-    text_format.Merge(label_map_string, label_map_proto)
+    text_format.Parse(label_map_string, label_map_proto)
     categories = label_map_util.convert_label_map_to_categories(
         label_map_proto, max_num_classes=3)
     self.assertListEqual([{
@@ -227,19 +227,61 @@ class LabelMapUtilTest(tf.test.TestCase):
     }]
     self.assertListEqual(expected_categories_list, categories)
 
+  def test_convert_label_map_to_categories_lvis_frequency_and_counts(self):
+    label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
+    label_map_string = """
+      item {
+        id:1
+        name:'person'
+        frequency: FREQUENT
+        instance_count: 1000
+      }
+      item {
+        id:2
+        name:'dog'
+        frequency: COMMON
+        instance_count: 100
+      }
+      item {
+        id:3
+        name:'cat'
+        frequency: RARE
+        instance_count: 10
+      }
+    """
+    text_format.Parse(label_map_string, label_map_proto)
+    categories = label_map_util.convert_label_map_to_categories(
+        label_map_proto, max_num_classes=3)
+    self.assertListEqual([{
+        'id': 1,
+        'name': u'person',
+        'frequency': 'f',
+        'instance_count': 1000
+    }, {
+        'id': 2,
+        'name': u'dog',
+        'frequency': 'c',
+        'instance_count': 100
+    }, {
+        'id': 3,
+        'name': u'cat',
+        'frequency': 'r',
+        'instance_count': 10
+    }], categories)
+
   def test_convert_label_map_to_categories(self):
     label_map_proto = self._generate_label_map(num_classes=4)
     categories = label_map_util.convert_label_map_to_categories(
         label_map_proto, max_num_classes=3)
     expected_categories_list = [{
         'name': u'1',
-        'id': 1
+        'id': 1,
     }, {
         'name': u'2',
-        'id': 2
+        'id': 2,
     }, {
         'name': u'3',
-        'id': 3
+        'id': 3,
     }]
     self.assertListEqual(expected_categories_list, categories)
 
@@ -259,7 +301,7 @@ class LabelMapUtilTest(tf.test.TestCase):
       }
     """
     label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
-    text_format.Merge(label_map_str, label_map_proto)
+    text_format.Parse(label_map_str, label_map_proto)
     categories = label_map_util.convert_label_map_to_categories(
         label_map_proto, max_num_classes=1)
     self.assertEqual('person', categories[0]['name'])
@@ -291,7 +333,7 @@ class LabelMapUtilTest(tf.test.TestCase):
       }
     """
     label_map_proto = string_int_label_map_pb2.StringIntLabelMap()
-    text_format.Merge(label_map_str, label_map_proto)
+    text_format.Parse(label_map_str, label_map_proto)
     with self.assertRaises(ValueError):
       label_map_util.convert_label_map_to_categories(
           label_map_proto, max_num_classes=2)

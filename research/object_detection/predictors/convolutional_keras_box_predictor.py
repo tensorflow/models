@@ -197,7 +197,7 @@ class ConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
 
       # Apply shared conv layers before the head predictors.
       for layer in self._shared_nets[index]:
-        net = layer(net)
+        net = layer(net, training=self._is_training)
 
       for head_name in self._sorted_head_names:
         head_obj = self._prediction_heads[head_name][index]
@@ -458,13 +458,13 @@ class WeightSharedConvolutionalBoxPredictor(box_predictor.KerasBoxPredictor):
 
     def _apply_layers(base_tower_layers, image_feature):
       for layer in base_tower_layers:
-        image_feature = layer(image_feature)
+        image_feature = layer(image_feature, training=self._is_training)
       return image_feature
 
     for (index, image_feature) in enumerate(image_features):
       # Apply additional projection layers to image features
       for layer in self._additional_projection_layers[index]:
-        image_feature = layer(image_feature)
+        image_feature = layer(image_feature, training=self._is_training)
 
       # Apply box tower layers.
       box_tower_feature = _apply_layers(

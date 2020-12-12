@@ -85,9 +85,9 @@ class CausalAttentionMaskTests(tf.test.TestCase):
         seq_length=seq_length,
         memory_length=memory_length)
 
-    expected_output = np.array([[0, 1, 1],
-                                [0, 0, 1],
-                                [0, 0, 0]])
+    expected_output = np.array([[1, 0, 0],
+                                [1, 1, 0],
+                                [1, 1, 1]])
     self.assertAllClose(causal_attention_mask, expected_output)
 
   def test_casual_attention_mask_with_memory(self):
@@ -96,9 +96,9 @@ class CausalAttentionMaskTests(tf.test.TestCase):
         seq_length=seq_length,
         memory_length=memory_length)
 
-    expected_output = np.array([[0, 0, 0, 1, 1],
-                                [0, 0, 0, 0, 1],
-                                [0, 0, 0, 0, 0]])
+    expected_output = np.array([[1, 1, 1, 0, 0],
+                                [1, 1, 1, 1, 0],
+                                [1, 1, 1, 1, 1]])
     self.assertAllClose(causal_attention_mask, expected_output)
 
   def test_causal_attention_mask_with_same_length(self):
@@ -108,9 +108,9 @@ class CausalAttentionMaskTests(tf.test.TestCase):
         memory_length=memory_length,
         same_length=True)
 
-    expected_output = np.array([[0, 0, 0, 1, 1],
-                                [1, 0, 0, 0, 1],
-                                [1, 1, 0, 0, 0]])
+    expected_output = np.array([[1, 1, 1, 0, 0],
+                                [0, 1, 1, 1, 0],
+                                [0, 0, 1, 1, 1]])
     self.assertAllClose(causal_attention_mask, expected_output)
 
 
@@ -179,15 +179,15 @@ class MaskComputationTests(keras_parameterized.TestCase):
     batch_size = 1
     memory_length = 0
 
-    input_mask = np.array([[0, 0, 1, 1]])
+    input_mask = np.array([[1, 1, 0, 0]])
     permutation_mask = None
 
     expected_query_mask = input_mask[None, None, :, :]
     expected_content_mask = np.array([[[
-        [0, 0, 1, 1],
-        [0, 0, 1, 1],
-        [0, 0, 0, 1],
-        [0, 0, 1, 0]]]])
+        [1, 1, 0, 0],
+        [1, 1, 0, 0],
+        [1, 1, 1, 0],
+        [1, 1, 0, 1]]]])
 
     query_mask, content_mask = xlnet_base._compute_attention_mask(
         input_mask=input_mask,
@@ -209,14 +209,14 @@ class MaskComputationTests(keras_parameterized.TestCase):
 
     input_mask = None
     permutation_mask = np.array([
-        [[0, 1],
-         [0, 1]],
+        [[1, 0],
+         [1, 0]],
     ])
 
     expected_query_mask = permutation_mask[:, None, :, :]
     expected_content_mask = np.array([[[
-        [0, 1],
-        [0, 0]]]])
+        [1, 0],
+        [1, 1]]]])
 
     query_mask, content_mask = xlnet_base._compute_attention_mask(
         input_mask=input_mask,
@@ -236,24 +236,24 @@ class MaskComputationTests(keras_parameterized.TestCase):
     batch_size = 1
     memory_length = 0
 
-    input_mask = np.array([[0, 0, 1, 1]])
+    input_mask = np.array([[1, 1, 0, 0]])
     permutation_mask = np.array([[
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1],
+        [0, 1, 1, 1],
+        [1, 0, 1, 1],
+        [1, 1, 0, 1],
+        [1, 1, 1, 0],
     ]])
 
     expected_query_mask = np.array([[[
-        [1, 0, 1, 1],
-        [0, 1, 1, 1],
-        [0, 0, 1, 1],
-        [0, 0, 1, 1]]]])
+        [0, 1, 0, 0],
+        [1, 0, 0, 0],
+        [1, 1, 0, 0],
+        [1, 1, 0, 0]]]])
     expected_content_mask = np.array([[[
-        [0, 0, 1, 1],
-        [0, 0, 1, 1],
-        [0, 0, 0, 1],
-        [0, 0, 1, 0]]]])
+        [1, 1, 0, 0],
+        [1, 1, 0, 0],
+        [1, 1, 1, 0],
+        [1, 1, 0, 1]]]])
     query_mask, content_mask = xlnet_base._compute_attention_mask(
         input_mask=input_mask,
         permutation_mask=permutation_mask,
@@ -272,24 +272,24 @@ class MaskComputationTests(keras_parameterized.TestCase):
     batch_size = 1
     memory_length = 0
 
-    input_mask = np.array([[0, 0, 0, 1]])
+    input_mask = np.array([[1, 1, 1, 0]])
     permutation_mask = np.array([[
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [0, 0, 0, 1],
+        [0, 1, 1, 1],
+        [1, 0, 1, 1],
+        [1, 1, 0, 1],
+        [1, 1, 1, 0],
     ]])
 
     expected_query_mask = np.array([[[
-        [1, 1, 1, 1],
-        [0, 1, 1, 1],
-        [0, 0, 1, 1],
-        [0, 0, 0, 1]]]])
+        [0, 0, 0, 0],
+        [1, 0, 0, 0],
+        [1, 1, 0, 0],
+        [1, 1, 1, 0]]]])
     expected_content_mask = np.array([[[
-        [0, 1, 1, 1],
-        [0, 0, 1, 1],
-        [0, 0, 0, 1],
-        [0, 0, 0, 0]]]])
+        [1, 0, 0, 0],
+        [1, 1, 0, 0],
+        [1, 1, 1, 0],
+        [1, 1, 1, 1]]]])
     query_mask, content_mask = xlnet_base._compute_attention_mask(
         input_mask=input_mask,
         permutation_mask=permutation_mask,

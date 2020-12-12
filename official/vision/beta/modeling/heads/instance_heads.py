@@ -225,6 +225,7 @@ class MaskHead(tf.keras.layers.Layer):
                norm_epsilon=0.001,
                kernel_regularizer=None,
                bias_regularizer=None,
+               class_agnostic=False,
                **kwargs):
     """Initialize params to build the mask head.
 
@@ -248,6 +249,8 @@ class MaskHead(tf.keras.layers.Layer):
       kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
         kernel.
       bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
+      class_agnostic: `bool`, if set, we use a single channel mask head that
+        is shared between all classes.
       **kwargs: other keyword arguments passed to Layer.
     """
     super(MaskHead, self).__init__(**kwargs)
@@ -263,6 +266,7 @@ class MaskHead(tf.keras.layers.Layer):
         'norm_epsilon': norm_epsilon,
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
+        'class_agnostic': class_agnostic
     }
 
     if tf.keras.backend.image_data_format() == 'channels_last':
@@ -330,8 +334,13 @@ class MaskHead(tf.keras.layers.Layer):
         name='mask-upsampling')
     self._deconv_bn = bn_op(name='mask-deconv-bn', **bn_kwargs)
 
+    if self._config_dict['class_agnostic']:
+      num_filters = 1
+    else:
+      num_filters = self._config_dict['num_classes']
+
     conv_kwargs = {
-        'filters': self._config_dict['num_classes'],
+        'filters': num_filters,
         'kernel_size': 1,
         'padding': 'valid',
     }
@@ -395,17 +404,27 @@ class MaskHead(tf.keras.layers.Layer):
 
     mask_height = height * self._config_dict['upsample_factor']
     mask_width = width * self._config_dict['upsample_factor']
-    logits = tf.reshape(
-        logits,
-        [-1, num_rois, mask_height, mask_width,
-         self._config_dict['num_classes']])
+
+    if self._config_dict['class_agnostic']:
+      logits = tf.reshape(logits, [-1, num_rois, mask_height, mask_width, 1])
+    else:
+      logits = tf.reshape(
+          logits,
+          [-1, num_rois, mask_height, mask_width,
+           self._config_dict['num_classes']])
 
     batch_indices = tf.tile(
         tf.expand_dims(tf.range(batch_size), axis=1), [1, num_rois])
     mask_indices = tf.tile(
         tf.expand_dims(tf.range(num_rois), axis=0), [batch_size, 1])
+
+    if self._config_dict['class_agnostic']:
+      class_gather_indices = tf.zeros_like(roi_classes, dtype=tf.int32)
+    else:
+      class_gather_indices = tf.cast(roi_classes, dtype=tf.int32)
+
     gather_indices = tf.stack(
-        [batch_indices, mask_indices, tf.cast(roi_classes, dtype=tf.int32)],
+        [batch_indices, mask_indices, class_gather_indices],
         axis=2)
     mask_outputs = tf.gather_nd(
         tf.transpose(logits, [0, 1, 4, 2, 3]), gather_indices)

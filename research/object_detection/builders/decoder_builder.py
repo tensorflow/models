@@ -65,7 +65,8 @@ def build(input_reader_config):
     elif input_type == input_reader_pb2.InputType.Value('TF_SEQUENCE_EXAMPLE'):
       decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder(
           label_map_proto_file=label_map_proto_file,
-          load_context_features=input_reader_config.load_context_features)
+          load_context_features=input_reader_config.load_context_features,
+          load_context_image_ids=input_reader_config.load_context_image_ids)
       return decoder
     raise ValueError('Unsupported input_type in config.')
 

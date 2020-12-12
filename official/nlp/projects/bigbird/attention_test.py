@@ -29,7 +29,7 @@ class BigbirdAttentionTest(tf.test.TestCase):
     block_size = 64
     mask_layer = attention.BigBirdMasks(block_size=block_size)
     encoder_inputs_mask = tf.zeros((batch_size, seq_length), dtype=tf.int32)
-    masks = mask_layer(encoder_inputs_mask)
+    masks = mask_layer(tf.cast(encoder_inputs_mask, dtype=tf.float64))
     test_layer = attention.BigBirdAttention(
         num_heads=num_heads,
         key_dim=key_dim,

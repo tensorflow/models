@@ -203,6 +203,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
             tf.VarLenFeature(tf.string),
         'image/class/label':
             tf.VarLenFeature(tf.int64),
+        'image/neg_category_ids':
+            tf.VarLenFeature(tf.int64),
+        'image/not_exhaustive_category_ids':
+            tf.VarLenFeature(tf.int64),
         'image/class/confidence':
             tf.VarLenFeature(tf.float32),
         # Object boxes and classes.
@@ -264,6 +268,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         # Image-level labels.
         fields.InputDataFields.groundtruth_image_confidences: (
             slim_example_decoder.Tensor('image/class/confidence')),
+        fields.InputDataFields.groundtruth_verified_neg_classes: (
+            slim_example_decoder.Tensor('image/neg_category_ids')),
+        fields.InputDataFields.groundtruth_not_exhaustive_classes: (
+            slim_example_decoder.Tensor('image/not_exhaustive_category_ids')),
         # Object boxes and classes.
         fields.InputDataFields.groundtruth_boxes: (
             slim_example_decoder.BoundingBox(['ymin', 'xmin', 'ymax', 'xmax'],

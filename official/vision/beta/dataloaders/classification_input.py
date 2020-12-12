@@ -13,11 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 """Classification decoder and parser."""
+from typing import List, Optional
 # Import libraries
 import tensorflow as tf
 
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
+from official.vision.beta.ops import augment
 from official.vision.beta.ops import preprocess_ops
 
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
@@ -43,18 +45,20 @@ class Parser(parser.Parser):
   """Parser to parse an image and its annotations into a dictionary of tensors."""
 
   def __init__(self,
-               output_size,
-               num_classes,
-               aug_rand_hflip=True,
-               dtype='float32'):
+               output_size: List[int],
+               num_classes: float,
+               aug_rand_hflip: bool = True,
+               aug_policy: Optional[str] = None,
+               dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
-      output_size: `Tenssor` or `list` for [height, width] of output image. The
+      output_size: `Tensor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
       num_classes: `float`, number of classes.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
+      aug_policy: `str`, augmentation policies. None, 'autoaug', or 'randaug'.
       dtype: `str`, cast output image in dtype. It can be 'float32', 'float16',
         or 'bfloat16'.
     """
@@ -69,6 +73,16 @@ class Parser(parser.Parser):
       self._dtype = tf.bfloat16
     else:
       raise ValueError('dtype {!r} is not supported!'.format(dtype))
+    if aug_policy:
+      if aug_policy == 'autoaug':
+        self._augmenter = augment.AutoAugment()
+      elif aug_policy == 'randaug':
+        self._augmenter = augment.RandAugment(num_layers=2, magnitude=20)
+      else:
+        raise ValueError(
+            'Augmentation policy {} not supported.'.format(aug_policy))
+    else:
+      self._augmenter = None
 
   def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
@@ -92,6 +106,10 @@ class Parser(parser.Parser):
     # Resizes image.
     image = tf.image.resize(
         image, self._output_size, method=tf.image.ResizeMethod.BILINEAR)
+
+    # Apply autoaug or randaug.
+    if self._augmenter is not None:
+      image = self._augmenter.distort(image)
 
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image,

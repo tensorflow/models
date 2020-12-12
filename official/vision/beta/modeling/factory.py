@@ -15,18 +15,22 @@
 """Factory methods to build models."""
 
 # Import libraries
+
 import tensorflow as tf
 
 from official.vision.beta.configs import image_classification as classification_cfg
 from official.vision.beta.configs import maskrcnn as maskrcnn_cfg
 from official.vision.beta.configs import retinanet as retinanet_cfg
+from official.vision.beta.configs import semantic_segmentation as segmentation_cfg
 from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling import classification_model
 from official.vision.beta.modeling import maskrcnn_model
 from official.vision.beta.modeling import retinanet_model
+from official.vision.beta.modeling import segmentation_model
 from official.vision.beta.modeling.decoders import factory as decoder_factory
 from official.vision.beta.modeling.heads import dense_prediction_heads
 from official.vision.beta.modeling.heads import instance_heads
+from official.vision.beta.modeling.heads import segmentation_heads
 from official.vision.beta.modeling.layers import detection_generator
 from official.vision.beta.modeling.layers import mask_sampler
 from official.vision.beta.modeling.layers import roi_aligner
@@ -156,7 +160,8 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
         activation=model_config.norm_activation.activation,
         norm_momentum=model_config.norm_activation.norm_momentum,
         norm_epsilon=model_config.norm_activation.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
+        kernel_regularizer=l2_regularizer,
+        class_agnostic=model_config.mask_head.class_agnostic)
 
     mask_sampler_obj = mask_sampler.MaskSampler(
         mask_target_size=(
@@ -231,4 +236,41 @@ def build_retinanet(input_specs: tf.keras.layers.InputSpec,
 
   model = retinanet_model.RetinaNetModel(
       backbone, decoder, head, detection_generator_obj)
+  return model
+
+
+def build_segmentation_model(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: segmentation_cfg.SemanticSegmentationModel,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+  """Builds Segmentation model."""
+  backbone = backbones.factory.build_backbone(
+      input_specs=input_specs,
+      model_config=model_config,
+      l2_regularizer=l2_regularizer)
+
+  decoder = decoder_factory.build_decoder(
+      input_specs=backbone.output_specs,
+      model_config=model_config,
+      l2_regularizer=l2_regularizer)
+
+  head_config = model_config.head
+  norm_activation_config = model_config.norm_activation
+
+  head = segmentation_heads.SegmentationHead(
+      num_classes=model_config.num_classes,
+      level=head_config.level,
+      num_convs=head_config.num_convs,
+      num_filters=head_config.num_filters,
+      upsample_factor=head_config.upsample_factor,
+      feature_fusion=head_config.feature_fusion,
+      low_level=head_config.low_level,
+      low_level_num_filters=head_config.low_level_num_filters,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
+
+  model = segmentation_model.SegmentationModel(backbone, decoder, head)
   return model

@@ -532,6 +532,9 @@ class ReadDatasetTest(test_case.TestCase):
 
     return get_iterator_next_for_testing(dataset, self.is_tf2())
 
+  def _assert_item_count(self, data, item, percentage):
+    self.assertAlmostEqual(data.count(item)/len(data), percentage, places=1)
+
   def test_make_initializable_iterator_with_hashTable(self):
 
     def graph_fn():
@@ -553,6 +556,88 @@ class ReadDatasetTest(test_case.TestCase):
 
     result = self.execute(graph_fn, [])
     self.assertAllEqual(result, [-1, 100, 1, 100])
+
+  def test_read_dataset_sample_from_datasets_weights_equal_weight(self):
+    """Ensure that the files' values are equally-weighted."""
+    config = input_reader_pb2.InputReader()
+    config.num_readers = 2
+    config.shuffle = False
+    config.sample_from_datasets_weights.extend([0.5, 0.5])
+
+    def graph_fn():
+      return self._get_dataset_next(
+          [self._path_template % '0', self._path_template % '1'],
+          config,
+          batch_size=1000)
+
+    data = list(self.execute(graph_fn, []))
+    self.assertEqual(len(data), 1000)
+    self._assert_item_count(data, 1, 0.25)
+    self._assert_item_count(data, 10, 0.25)
+    self._assert_item_count(data, 2, 0.25)
+    self._assert_item_count(data, 20, 0.25)
+
+  def test_read_dataset_sample_from_datasets_weights_non_normalized(self):
+    """Ensure that the values are equally-weighted when not normalized."""
+    config = input_reader_pb2.InputReader()
+    config.num_readers = 2
+    config.shuffle = False
+    # Values are not normalized to sum to 1. In this case, it's a 50/50 split
+    # with each dataset having weight of 1.
+    config.sample_from_datasets_weights.extend([1, 1])
+
+    def graph_fn():
+      return self._get_dataset_next(
+          [self._path_template % '0', self._path_template % '1'],
+          config,
+          batch_size=1000)
+
+    data = list(self.execute(graph_fn, []))
+    self.assertEqual(len(data), 1000)
+    self._assert_item_count(data, 1, 0.25)
+    self._assert_item_count(data, 10, 0.25)
+    self._assert_item_count(data, 2, 0.25)
+    self._assert_item_count(data, 20, 0.25)
+
+  def test_read_dataset_sample_from_datasets_weights_zero_weight(self):
+    """Ensure that the files' values are equally-weighted."""
+    config = input_reader_pb2.InputReader()
+    config.num_readers = 2
+    config.shuffle = False
+    config.sample_from_datasets_weights.extend([1.0, 0.0])
+
+    def graph_fn():
+      return self._get_dataset_next(
+          [self._path_template % '0', self._path_template % '1'],
+          config,
+          batch_size=1000)
+
+    data = list(self.execute(graph_fn, []))
+    self.assertEqual(len(data), 1000)
+    self._assert_item_count(data, 1, 0.5)
+    self._assert_item_count(data, 10, 0.5)
+    self._assert_item_count(data, 2, 0.0)
+    self._assert_item_count(data, 20, 0.0)
+
+  def test_read_dataset_sample_from_datasets_weights_unbalanced(self):
+    """Ensure that the files' values are equally-weighted."""
+    config = input_reader_pb2.InputReader()
+    config.num_readers = 2
+    config.shuffle = False
+    config.sample_from_datasets_weights.extend([0.1, 0.9])
+
+    def graph_fn():
+      return self._get_dataset_next(
+          [self._path_template % '0', self._path_template % '1'],
+          config,
+          batch_size=1000)
+
+    data = list(self.execute(graph_fn, []))
+    self.assertEqual(len(data), 1000)
+    self._assert_item_count(data, 1, 0.05)
+    self._assert_item_count(data, 10, 0.05)
+    self._assert_item_count(data, 2, 0.45)
+    self._assert_item_count(data, 20, 0.45)
 
   def test_read_dataset(self):
     config = input_reader_pb2.InputReader()

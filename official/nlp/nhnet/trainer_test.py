@@ -38,7 +38,7 @@ def all_strategy_combinations():
           strategy_combinations.one_device_strategy,
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
-          strategy_combinations.tpu_strategy,
+          strategy_combinations.cloud_tpu_strategy,
       ],
       mode="eager",
   )

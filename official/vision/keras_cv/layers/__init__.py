@@ -13,4 +13,4 @@
 # limitations under the License.
 # ==============================================================================
 """Keras-CV layers package definition."""
-from official.vision.keras_cv.layers.deeplab import ASPP
+from official.vision.keras_cv.layers.deeplab import SpatialPyramidPooling

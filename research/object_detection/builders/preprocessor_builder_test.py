@@ -753,6 +753,19 @@ class PreprocessorBuilderTest(tf.test.TestCase):
         'max_border': 128
     })
 
+  def test_adjust_gamma(self):
+    preprocessor_text_proto = """
+    adjust_gamma {
+      gamma: 2.2
+      gain: 2.0
+    }
+    """
+    preprocessor_proto = preprocessor_pb2.PreprocessingStep()
+    text_format.Parse(preprocessor_text_proto, preprocessor_proto)
+    function, args = preprocessor_builder.build(preprocessor_proto)
+    self.assertEqual(function, preprocessor.adjust_gamma)
+    self.assert_dictionary_close(args, {'gamma': 2.2, 'gain': 2.0})
+
 
 if __name__ == '__main__':
   tf.test.main()

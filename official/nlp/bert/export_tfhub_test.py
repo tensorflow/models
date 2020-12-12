@@ -14,23 +14,21 @@
 # ==============================================================================
 """Tests official.nlp.bert.export_tfhub."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
+from absl.testing import parameterized
 import numpy as np
-
 import tensorflow as tf
 import tensorflow_hub as hub
+
 from official.nlp.bert import configs
 from official.nlp.bert import export_tfhub
 
 
-class ExportTfhubTest(tf.test.TestCase):
+class ExportTfhubTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_export_tfhub(self):
+  @parameterized.parameters("model", "encoder")
+  def test_export_tfhub(self, ckpt_key_name):
     # Exports a savedmodel for TF-Hub
     hidden_size = 16
     bert_config = configs.BertConfig(
@@ -42,7 +40,7 @@ class ExportTfhubTest(tf.test.TestCase):
         num_hidden_layers=1)
     bert_model, encoder = export_tfhub.create_bert_model(bert_config)
     model_checkpoint_dir = os.path.join(self.get_temp_dir(), "checkpoint")
-    checkpoint = tf.train.Checkpoint(model=encoder)
+    checkpoint = tf.train.Checkpoint(**{ckpt_key_name: encoder})
     checkpoint.save(os.path.join(model_checkpoint_dir, "test"))
     model_checkpoint_path = tf.train.latest_checkpoint(model_checkpoint_dir)
 

@@ -294,20 +294,46 @@ class SortGroupedDataFn(beam.DoFn):
 
     sorted_example_list = sorted(example_list, key=sorting_fn)
 
+    num_embeddings = 0
+    for example in sorted_example_list:
+      num_embeddings += example.features.feature[
+          'image/embedding_count'].int64_list.value[0]
+
     self._num_examples_processed.inc(1)
 
-    if len(sorted_example_list) > self._max_num_elements_in_context_features:
+    # To handle cases where there are more context embeddings within
+    # the time horizon than the specified maximum, we split the context group
+    # into subsets sequentially in time, with each subset having the maximum
+    # number of context embeddings except the final one, which holds the
+    # remainder.
+    if num_embeddings > self._max_num_elements_in_context_features:
       leftovers = sorted_example_list
       output_list = []
       count = 0
       self._too_many_elements.inc(1)
-      while len(leftovers) > self._max_num_elements_in_context_features:
+      num_embeddings = 0
+      max_idx = 0
+      for idx, example in enumerate(leftovers):
+        num_embeddings += example.features.feature[
+            'image/embedding_count'].int64_list.value[0]
+        if num_embeddings <= self._max_num_elements_in_context_features:
+          max_idx = idx
+      while num_embeddings > self._max_num_elements_in_context_features:
         self._split_elements.inc(1)
         new_key = key + six.ensure_binary('_' + str(count))
-        new_list = leftovers[:self._max_num_elements_in_context_features]
+        new_list = leftovers[:max_idx]
         output_list.append((new_key, new_list))
-        leftovers = leftovers[:self._max_num_elements_in_context_features]
+        leftovers = leftovers[max_idx:]
         count += 1
+        num_embeddings = 0
+        max_idx = 0
+        for idx, example in enumerate(leftovers):
+          num_embeddings += example.features.feature[
+              'image/embedding_count'].int64_list.value[0]
+          if num_embeddings <= self._max_num_elements_in_context_features:
+            max_idx = idx
+      new_key = key + six.ensure_binary('_' + str(count))
+      output_list.append((new_key, leftovers))
     else:
       output_list = [(key, sorted_example_list)]
 
@@ -454,12 +480,15 @@ class GenerateContextFn(beam.DoFn):
       example_embedding = list(example.features.feature[
           'image/embedding'].float_list.value)
       context_features.extend(example_embedding)
-      example.features.feature[
-          'context_features_idx'].int64_list.value.append(count)
-      count += 1
+      num_embeddings = example.features.feature[
+          'image/embedding_count'].int64_list.value[0]
       example_image_id = example.features.feature[
           'image/source_id'].bytes_list.value[0]
-      context_features_image_id_list.append(example_image_id)
+      for _ in range(num_embeddings):
+        example.features.feature[
+            'context_features_idx'].int64_list.value.append(count)
+        count += 1
+        context_features_image_id_list.append(example_image_id)
 
     if not example_embedding:
       example_embedding.append(np.zeros(self._context_feature_length))

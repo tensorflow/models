@@ -16,8 +16,6 @@
 
 from absl.testing import parameterized
 import tensorflow as tf
-from tensorflow.python.distribute import combinations
-from tensorflow.python.distribute import strategy_combinations
 from official.vision.keras_cv.ops import anchor_generator
 
 
@@ -64,25 +62,6 @@ class AnchorGeneratorTest(parameterized.TestCase, tf.test.TestCase):
         clip_boxes=True)
     anchors = anchor_gen(image_size).numpy()
     self.assertAllClose(expected_boxes, anchors)
-
-  @combinations.generate(
-      combinations.combine(distribution=strategy_combinations.all_strategies))
-  def testAnchorGenerationDistributed(self, distribution):
-    image_size = [64, 64]
-    anchor_size = 64
-    stride = 32
-    aspect_ratios = [1.0]
-    with distribution.scope():
-      anchor_gen = anchor_generator._SingleAnchorGenerator(
-          anchor_size=anchor_size,
-          scales=[1.],
-          aspect_ratios=aspect_ratios,
-          stride=stride,
-          clip_boxes=False)
-      anchors = anchor_gen(image_size).numpy()
-      expected_boxes = [[[-16., -16., 48., 48.], [-16., 16., 48., 80.]],
-                        [[16., -16., 80., 48.], [16., 16., 80., 80.]]]
-      self.assertAllClose(expected_boxes, anchors)
 
 
 class MultiScaleAnchorGeneratorTest(parameterized.TestCase, tf.test.TestCase):

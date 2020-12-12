@@ -18,9 +18,6 @@ The conversion will yield an object-oriented checkpoint that can be used
 to restore a BertEncoder or BertPretrainerV2 object (see the `converted_model`
 FLAG below).
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 
@@ -96,6 +93,8 @@ def _create_bert_pretrainer_model(cfg):
       mlm_activation=tf_utils.get_activation(cfg.hidden_act),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=cfg.initializer_range))
+  # Makes sure the pretrainer variables are created.
+  _ = pretrainer(pretrainer.inputs)
   return pretrainer
 
 

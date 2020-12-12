@@ -14,19 +14,16 @@
 # limitations under the License.
 # ==============================================================================
 """Definitions for high level configuration groups.."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from typing import Any, List, Mapping, Optional
 
 import dataclasses
 
+from official.core import config_definitions
 from official.modeling import hyperparams
-from official.modeling.hyperparams import config_definitions
+from official.modeling.hyperparams import config_definitions as legacy_cfg
 
-CallbacksConfig = config_definitions.CallbacksConfig
-TensorboardConfig = config_definitions.TensorboardConfig
+CallbacksConfig = legacy_cfg.CallbacksConfig
+TensorboardConfig = legacy_cfg.TensorboardConfig
 RuntimeConfig = config_definitions.RuntimeConfig
 
 
@@ -78,7 +75,7 @@ class TrainConfig(hyperparams.Config):
     callbacks: An instance of CallbacksConfig.
     metrics: An instance of MetricsConfig.
     tensorboard: An instance of TensorboardConfig.
-    set_epoch_loop: Whether or not to set `experimental_steps_per_execution` to
+    set_epoch_loop: Whether or not to set `steps_per_execution` to
       equal the number of training steps in `model.compile`. This reduces the
       number of callbacks run per epoch which significantly improves end-to-end
       TPU training time.

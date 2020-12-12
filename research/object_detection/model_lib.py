@@ -108,6 +108,12 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
         group_of annotations (if provided in groundtruth).
       'groundtruth_labeled_classes': [batch_size, num_classes] int64
         tensor of 1-indexed classes.
+      'groundtruth_verified_neg_classes': [batch_size, num_classes] float32
+        K-hot representation of 1-indexed classes which were verified as not
+        present in the image.
+      'groundtruth_not_exhaustive_classes': [batch_size, num_classes] K-hot
+        representation of 1-indexed classes which don't have all of their
+        instances marked exhaustively.
     class_agnostic: Boolean indicating whether detections are class agnostic.
   """
   input_data_fields = fields.InputDataFields()
@@ -129,6 +135,7 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
       input_data_fields.groundtruth_boxes: groundtruth_boxes,
       input_data_fields.groundtruth_classes: groundtruth_classes
   }
+
   if detection_model.groundtruth_has_field(fields.BoxListFields.masks):
     groundtruth[input_data_fields.groundtruth_instance_masks] = tf.stack(
         detection_model.groundtruth_lists(fields.BoxListFields.masks))
@@ -155,24 +162,21 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
     groundtruth[input_data_fields.groundtruth_group_of] = tf.stack(
         detection_model.groundtruth_lists(fields.BoxListFields.group_of))
 
+  label_id_offset_paddings = tf.constant([[0, 0], [1, 0]])
   if detection_model.groundtruth_has_field(
-      fields.InputDataFields.groundtruth_labeled_classes):
-    labeled_classes_list = detection_model.groundtruth_lists(
-        fields.InputDataFields.groundtruth_labeled_classes)
-    labeled_classes = [
-        tf.where(x)[:, 0] + label_id_offset for x in labeled_classes_list
-    ]
-    if len(labeled_classes) > 1:
-      num_classes = labeled_classes_list[0].shape[0]
-      padded_labeled_classes = []
-      for x in labeled_classes:
-        padding = num_classes - tf.shape(x)[0]
-        padded_labeled_classes.append(tf.pad(x, [[0, padding]]))
-      groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.stack(
-          padded_labeled_classes)
-    else:
-      groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.stack(
-          labeled_classes)
+      input_data_fields.groundtruth_verified_neg_classes):
+    groundtruth[input_data_fields.groundtruth_verified_neg_classes] = tf.pad(
+        tf.stack(detection_model.groundtruth_lists(
+            input_data_fields.groundtruth_verified_neg_classes)),
+        label_id_offset_paddings)
+
+  if detection_model.groundtruth_has_field(
+      input_data_fields.groundtruth_not_exhaustive_classes):
+    groundtruth[
+        input_data_fields.groundtruth_not_exhaustive_classes] = tf.pad(
+            tf.stack(detection_model.groundtruth_lists(
+                input_data_fields.groundtruth_not_exhaustive_classes)),
+            label_id_offset_paddings)
 
   if detection_model.groundtruth_has_field(
       fields.BoxListFields.densepose_num_points):
@@ -193,6 +197,14 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
   if detection_model.groundtruth_has_field(fields.BoxListFields.track_ids):
     groundtruth[input_data_fields.groundtruth_track_ids] = tf.stack(
         detection_model.groundtruth_lists(fields.BoxListFields.track_ids))
+
+  if detection_model.groundtruth_has_field(
+      input_data_fields.groundtruth_labeled_classes):
+    groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.pad(
+        tf.stack(
+            detection_model.groundtruth_lists(
+                input_data_fields.groundtruth_labeled_classes)),
+        label_id_offset_paddings)
 
   groundtruth[input_data_fields.num_groundtruth_boxes] = (
       tf.tile([max_number_of_boxes], multiples=[groundtruth_boxes_shape[0]]))
@@ -339,6 +351,14 @@ def provide_groundtruth(model, labels):
   if fields.InputDataFields.groundtruth_labeled_classes in labels:
     gt_labeled_classes = labels[
         fields.InputDataFields.groundtruth_labeled_classes]
+  gt_verified_neg_classes = None
+  if fields.InputDataFields.groundtruth_verified_neg_classes in labels:
+    gt_verified_neg_classes = labels[
+        fields.InputDataFields.groundtruth_verified_neg_classes]
+  gt_not_exhaustive_classes = None
+  if fields.InputDataFields.groundtruth_not_exhaustive_classes in labels:
+    gt_not_exhaustive_classes = labels[
+        fields.InputDataFields.groundtruth_not_exhaustive_classes]
   model.provide_groundtruth(
       groundtruth_boxes_list=gt_boxes_list,
       groundtruth_classes_list=gt_classes_list,
@@ -354,7 +374,9 @@ def provide_groundtruth(model, labels):
       groundtruth_is_crowd_list=gt_is_crowd_list,
       groundtruth_group_of_list=gt_group_of_list,
       groundtruth_area_list=gt_area_list,
-      groundtruth_track_ids_list=gt_track_ids_list)
+      groundtruth_track_ids_list=gt_track_ids_list,
+      groundtruth_verified_neg_classes=gt_verified_neg_classes,
+      groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes)
 
 
 def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
@@ -799,12 +821,14 @@ def create_estimator_and_inputs(run_config,
       train_config=train_config,
       train_input_config=train_input_config,
       model_config=model_config)
-  eval_input_fns = [
-      create_eval_input_fn(
-          eval_config=eval_config,
-          eval_input_config=eval_input_config,
-          model_config=model_config) for eval_input_config in eval_input_configs
-  ]
+  eval_input_fns = []
+  for eval_input_config in eval_input_configs:
+    eval_input_fns.append(
+        create_eval_input_fn(
+            eval_config=eval_config,
+            eval_input_config=eval_input_config,
+            model_config=model_config))
+
   eval_input_names = [
       eval_input_config.name for eval_input_config in eval_input_configs
   ]

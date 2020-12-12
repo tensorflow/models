@@ -18,9 +18,8 @@ from typing import Mapping, Optional
 
 import dataclasses
 import tensorflow as tf
-
+from official.core import config_definitions as cfg
 from official.core import input_reader
-from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.data import data_loader
 from official.nlp.data import data_loader_factory
 

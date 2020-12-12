@@ -16,6 +16,10 @@ This document shows how elgible models from the
 [TF2 Detection zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/tf2_detection_zoo.md)
 can be converted for inference with TFLite.
 
+For an end-to-end Python guide on how to fine-tune an SSD model for mobile
+inference, look at
+[this Colab](../colab_tutorials/eager_few_shot_od_training_tflite.ipynb).
+
 **NOTE:** TFLite currently only supports **SSD Architectures** (excluding
 EfficientDet) for boxes-based detection. Support for EfficientDet is coming
 soon.
@@ -75,7 +79,7 @@ API*. Be sure to use a
 [representative dataset](https://www.tensorflow.org/lite/performance/post_training_quantization#full_integer_quantization)
 and set the following options on the converter:
 
-```
+```python
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8,
                                        tf.lite.OpsSet.TFLITE_BUILTINS]
@@ -111,8 +115,11 @@ directory.
 We will now edit the gradle build file to use these assets. First, open the
 `build.gradle` file
 `$TF_EXAMPLES/lite/examples/object_detection/android/app/build.gradle`. Comment
-out the model download script to avoid your assets being overwritten: `// apply
-from:'download_model.gradle'` ```
+out the model download script to avoid your assets being overwritten:
+
+```shell
+// apply from:'download_model.gradle'
+```
 
 If your model is named `detect.tflite`, and your labels file `labelmap.txt`, the
 example will use them automatically as long as they've been properly copied into
@@ -126,7 +133,7 @@ your model is floating point, the flag TF_OD_API_IS_QUANTIZED is set to false.
 This new section of DetectorActivity.java should now look as follows for a
 quantized model:
 
-```shell
+```java
   private static final boolean TF_OD_API_IS_QUANTIZED = true;
   private static final String TF_OD_API_MODEL_FILE = "detect.tflite";
   private static final String TF_OD_API_LABELS_FILE = "labels_list.txt";

@@ -22,43 +22,9 @@ import tensorflow as tf
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
 from official.nlp.modeling.models import seq2seq_transformer
-from official.nlp.transformer import model_params
 
 
 class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
-
-  def test_create_model(self):
-    self.params = model_params.TINY_PARAMS
-    self.params["batch_size"] = 16
-    self.params["hidden_size"] = 12
-    self.params["num_hidden_layers"] = 2
-    self.params["filter_size"] = 14
-    self.params["num_heads"] = 2
-    self.params["vocab_size"] = 41
-    self.params["extra_decode_length"] = 2
-    self.params["beam_size"] = 3
-    self.params["dtype"] = tf.float32
-    model = seq2seq_transformer.create_model(self.params, is_train=True)
-    inputs, outputs = model.inputs, model.outputs
-    self.assertLen(inputs, 2)
-    self.assertLen(outputs, 1)
-    self.assertEqual(inputs[0].shape.as_list(), [None, None])
-    self.assertEqual(inputs[0].dtype, tf.int64)
-    self.assertEqual(inputs[1].shape.as_list(), [None, None])
-    self.assertEqual(inputs[1].dtype, tf.int64)
-    self.assertEqual(outputs[0].shape.as_list(), [None, None, 41])
-    self.assertEqual(outputs[0].dtype, tf.float32)
-
-    model = seq2seq_transformer.create_model(self.params, is_train=False)
-    inputs, outputs = model.inputs, model.outputs
-    self.assertLen(inputs, 1)
-    self.assertLen(outputs, 2)
-    self.assertEqual(inputs[0].shape.as_list(), [None, None])
-    self.assertEqual(inputs[0].dtype, tf.int64)
-    self.assertEqual(outputs[0].shape.as_list(), [None, None])
-    self.assertEqual(outputs[0].dtype, tf.int32)
-    self.assertEqual(outputs[1].shape.as_list(), [None])
-    self.assertEqual(outputs[1].dtype, tf.float32)
 
   def _build_model(self, padded_decode, decode_max_length):
     num_layers = 1
@@ -95,13 +61,14 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
       combinations.combine(
           distribution=[
               strategy_combinations.default_strategy,
-              strategy_combinations.tpu_strategy,
+              strategy_combinations.cloud_tpu_strategy,
           ],
           mode="eager"))
   def test_create_model_with_ds(self, distribution):
     with distribution.scope():
-      padded_decode = isinstance(distribution,
-                                 tf.distribute.experimental.TPUStrategy)
+      padded_decode = isinstance(
+          distribution,
+          (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy))
       decode_max_length = 10
       batch_size = 4
       model = self._build_model(padded_decode, decode_max_length)
@@ -116,15 +83,15 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
         return tf.nest.map_structure(distribution.experimental_local_results,
                                      outputs)
 
-      fake_inputs = [np.zeros((batch_size, decode_max_length), dtype=np.int32)]
+      fake_inputs = dict(
+          inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32))
       local_outputs = step(fake_inputs)
       logging.info("local_outputs=%s", local_outputs)
       self.assertEqual(local_outputs["outputs"][0].shape, (4, 10))
 
-      fake_inputs = [
-          np.zeros((batch_size, decode_max_length), dtype=np.int32),
-          np.zeros((batch_size, 8), dtype=np.int32)
-      ]
+      fake_inputs = dict(
+          inputs=np.zeros((batch_size, decode_max_length), dtype=np.int32),
+          targets=np.zeros((batch_size, 8), dtype=np.int32))
       local_outputs = step(fake_inputs)
       logging.info("local_outputs=%s", local_outputs)
       self.assertEqual(local_outputs[0].shape, (4, 8, 100))
@@ -142,7 +109,7 @@ class Seq2SeqTransformerTest(tf.test.TestCase, parameterized.TestCase):
 
       @tf.function
       def serve(self, inputs):
-        return self.model.call([inputs])
+        return self.model.call(dict(inputs=inputs))
 
     save_module = SaveModule(model)
     if padded_decode:

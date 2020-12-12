@@ -28,13 +28,10 @@ class VideoClassificationModel(tf.keras.Model):
                num_classes,
                input_specs=layers.InputSpec(shape=[None, None, None, None, 3]),
                dropout_rate=0.0,
+               aggregate_endpoints=False,
                kernel_initializer='random_uniform',
                kernel_regularizer=None,
                bias_regularizer=None,
-               add_head_batch_norm=False,
-               use_sync_bn: bool = False,
-               norm_momentum: float = 0.99,
-               norm_epsilon: float = 0.001,
                **kwargs):
     """Video Classification initialization function.
 
@@ -43,17 +40,13 @@ class VideoClassificationModel(tf.keras.Model):
       num_classes: `int` number of classes in classification task.
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
       dropout_rate: `float` rate for dropout regularization.
+      aggregate_endpoints: `bool` aggregate all end ponits or only use the
+        final end point.
       kernel_initializer: kernel initializer for the dense layer.
       kernel_regularizer: tf.keras.regularizers.Regularizer object. Default to
         None.
       bias_regularizer: tf.keras.regularizers.Regularizer object. Default to
         None.
-      add_head_batch_norm: `bool` whether to add a batch normalization layer
-        before pool.
-      use_sync_bn: `bool` if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization momentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
       **kwargs: keyword arguments to be passed.
     """
     self._self_setattr_tracking = False
@@ -62,31 +55,29 @@ class VideoClassificationModel(tf.keras.Model):
         'num_classes': num_classes,
         'input_specs': input_specs,
         'dropout_rate': dropout_rate,
+        'aggregate_endpoints': aggregate_endpoints,
         'kernel_initializer': kernel_initializer,
         'kernel_regularizer': kernel_regularizer,
         'bias_regularizer': bias_regularizer,
-        'add_head_batch_norm': add_head_batch_norm,
-        'use_sync_bn': use_sync_bn,
-        'norm_momentum': norm_momentum,
-        'norm_epsilon': norm_epsilon,
     }
     self._input_specs = input_specs
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._backbone = backbone
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
-    axis = -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
 
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
     endpoints = backbone(inputs)
-    x = endpoints[max(endpoints.keys())]
 
-    if add_head_batch_norm:
-      x = self._norm(axis=axis, momentum=norm_momentum, epsilon=norm_epsilon)(x)
-    x = tf.keras.layers.GlobalAveragePooling3D()(x)
+    if aggregate_endpoints:
+      pooled_feats = []
+      for endpoint in endpoints.values():
+        x_pool = tf.keras.layers.GlobalAveragePooling3D()(endpoint)
+        pooled_feats.append(x_pool)
+      x = tf.concat(pooled_feats, axis=1)
+    else:
+      x = endpoints[max(endpoints.keys())]
+      x = tf.keras.layers.GlobalAveragePooling3D()(x)
+
     x = tf.keras.layers.Dropout(dropout_rate)(x)
     x = tf.keras.layers.Dense(
         num_classes, kernel_initializer=kernel_initializer,

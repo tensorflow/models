@@ -5,6 +5,10 @@ number of tasks can be found here: https://arxiv.org/abs/1810.04805.
 
 This repository contains TensorFlow 2.x implementation for BERT.
 
+**Note: We are in the progress to update the documentation to use
+official/nlp/train.py as the central place for the training driver.
+Internal users please refer to the g3doc for documentation.**
+
 ## Contents
   * [Contents](#contents)
   * [Pre-trained Models](#pre-trained-models)
@@ -72,21 +76,21 @@ Checkpoints featuring native serialized Keras models
 Pretrained tf.hub modules in TF 2.x SavedModel format can be found in the
 following links:
 
-*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_uncased_L-24_H-1024_A-16/1)**:
+*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_uncased_L-24_H-1024_A-16/)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Large, Cased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_cased_L-24_H-1024_A-16/1)**:
+*   **[`BERT-Large, Cased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_cased_L-24_H-1024_A-16/)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Base, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/1)**:
+*   **[`BERT-Base, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/)**:
     12-layer, 768-hidden, 12-heads, 110M parameters
-*   **[`BERT-Large, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-24_H-1024_A-16/1)**:
+*   **[`BERT-Large, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-24_H-1024_A-16/)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Base, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/1)**:
+*   **[`BERT-Base, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/)**:
     12-layer, 768-hidden, 12-heads , 110M parameters
-*   **[`BERT-Large, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-24_H-1024_A-16/1)**:
+*   **[`BERT-Large, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-24_H-1024_A-16/)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Base, Multilingual Cased`](https://tfhub.dev/tensorflow/bert_multi_cased_L-12_H-768_A-12/1)**:
+*   **[`BERT-Base, Multilingual Cased`](https://tfhub.dev/tensorflow/bert_multi_cased_L-12_H-768_A-12/)**:
     104 languages, 12-layer, 768-hidden, 12-heads, 110M parameters
-*   **[`BERT-Base, Chinese`](https://tfhub.dev/tensorflow/bert_zh_L-12_H-768_A-12/1)**:
+*   **[`BERT-Base, Chinese`](https://tfhub.dev/tensorflow/bert_zh_L-12_H-768_A-12/)**:
     Chinese Simplified and Traditional, 12-layer, 768-hidden, 12-heads,
     110M parameters
 

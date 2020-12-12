@@ -32,7 +32,7 @@ export_dir_path = XX
 input_type = XX
 input_images = XX
 imported = tf.saved_model.load(export_dir_path)
-model_fn = .signatures['serving_default']
+model_fn = imported.signatures['serving_default']
 output = model_fn(input_images)
 """
 
@@ -47,6 +47,7 @@ from official.core import exp_factory
 from official.core import train_utils
 from official.modeling import hyperparams
 from official.vision.beta import configs
+from official.vision.beta.serving import detection
 from official.vision.beta.serving import image_classification
 
 FLAGS = flags.FLAGS
@@ -105,6 +106,12 @@ def export_inference_graph(input_type, batch_size, input_image_size, params,
         params=params,
         batch_size=batch_size,
         input_image_size=input_image_size)
+  elif isinstance(params.task, configs.retinanet.RetinaNetTask) or isinstance(
+      params.task, configs.maskrcnn.MaskRCNNTask):
+    export_module = detection.DetectionModule(
+        params=params,
+        batch_size=batch_size,
+        input_image_size=input_image_size)
   else:
     raise ValueError('Export module not implemented for {} task.'.format(
         type(params.task)))
@@ -124,7 +131,7 @@ def export_inference_graph(input_type, batch_size, input_image_size, params,
         dtype=tf.uint8)
     signatures = {
         'serving_default':
-            export_module.inference_from_image.get_concrete_function(
+            export_module.inference_from_image_tensors.get_concrete_function(
                 input_signature)
     }
   elif input_type == 'image_bytes':

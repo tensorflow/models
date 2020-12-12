@@ -313,7 +313,9 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       groundtruth_group_of_list=None,
       groundtruth_area_list=None,
       is_annotated_list=None,
-      groundtruth_labeled_classes=None):
+      groundtruth_labeled_classes=None,
+      groundtruth_verified_neg_classes=None,
+      groundtruth_not_exhaustive_classes=None):
     """Provide groundtruth tensors.
 
     Args:
@@ -371,6 +373,12 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       groundtruth_labeled_classes: A list of 1-D tf.float32 tensors of shape
         [num_classes], containing label indices encoded as k-hot of the classes
         that are exhaustively annotated.
+      groundtruth_verified_neg_classes: A list of 1-D tf.float32 tensors of
+        shape [num_classes], containing a K-hot representation of classes
+        which were verified as not present in the image.
+      groundtruth_not_exhaustive_classes: A list of 1-D tf.float32 tensors of
+        shape [num_classes], containing a K-hot representation of classes
+        which don't have all of their instances marked exhaustively.
     """
     self._groundtruth_lists[fields.BoxListFields.boxes] = groundtruth_boxes_list
     self._groundtruth_lists[
@@ -430,6 +438,15 @@ class DetectionModel(six.with_metaclass(abc.ABCMeta, _BaseClass)):
       self._groundtruth_lists[
           fields.InputDataFields
           .groundtruth_labeled_classes] = groundtruth_labeled_classes
+    if groundtruth_verified_neg_classes:
+      self._groundtruth_lists[
+          fields.InputDataFields
+          .groundtruth_verified_neg_classes] = groundtruth_verified_neg_classes
+    if groundtruth_not_exhaustive_classes:
+      self._groundtruth_lists[
+          fields.InputDataFields
+          .groundtruth_not_exhaustive_classes] = (
+              groundtruth_not_exhaustive_classes)
 
   @abc.abstractmethod
   def regularization_losses(self):

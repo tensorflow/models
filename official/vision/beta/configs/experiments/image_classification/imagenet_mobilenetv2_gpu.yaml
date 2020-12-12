@@ -1,0 +1,49 @@
+# MobileNetV2_1.0 ImageNet classification. 71.0% top-1 and 90.0% top-5 accuracy.
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float16'
+  loss_scale: 'dynamic'
+task:
+  model:
+    num_classes: 1001
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'mobilenet'
+      mobilenet:
+        model_id: 'MobileNetV2'
+        filter_size_scale: 1.0
+    dropout_rate: 0.2
+  losses:
+    l2_weight_decay: 0.00001
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: 'imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 1024  # 128 * 8
+    dtype: 'float16'
+  validation_data:
+    input_path: 'imagenet-2012-tfrecord/valid*'
+    is_training: true
+    global_batch_size: 1024  # 128 * 8
+    dtype: 'float16'
+    drop_remainder: false
+trainer:
+  train_steps: 625500  # 500 epochs
+  validation_steps: 49
+  validation_interval: 1251
+  steps_per_loop: 1251  # NUM_EXAMPLES (1281167) // global_batch_size
+  summary_interval: 1251
+  checkpoint_interval: 1251
+  optimizer_config:
+    learning_rate:
+      type: 'exponential'
+      exponential:
+        initial_learning_rate: 0.064  # 0.008 * batch_size / 128
+        decay_steps: 3127  # 2.5 * steps_per_epoch
+        decay_rate: 0.96
+        staircase: true
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 6255

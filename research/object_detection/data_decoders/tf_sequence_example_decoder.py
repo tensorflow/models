@@ -117,11 +117,13 @@ class TfSequenceExampleDecoder(data_decoder.DataDecoder):
   Context R-CNN (see https://arxiv.org/abs/1912.03538):
     'image/context_features'
     'image/context_feature_length'
+    'image/context_features_image_id_list'
   """
 
   def __init__(self,
                label_map_proto_file,
                load_context_features=False,
+               load_context_image_ids=False,
                use_display_name=False,
                fully_annotated=False):
     """Constructs `TfSequenceExampleDecoder` object.
@@ -134,6 +136,8 @@ class TfSequenceExampleDecoder(data_decoder.DataDecoder):
       load_context_features: Whether to load information from context_features,
         to provide additional context to a detection model for training and/or
         inference
+      load_context_image_ids: Whether to load the corresponding image ids for
+        the context_features in order to visualize attention.
       use_display_name: whether or not to use the `display_name` for label
         mapping (instead of `name`).  Only used if label_map_proto_file is
         provided.
@@ -207,6 +211,16 @@ class TfSequenceExampleDecoder(data_decoder.DataDecoder):
           tf.FixedLenFeature((), tf.int64))
       self._items_to_handlers[fields.InputDataFields.context_feature_length] = (
           slim_example_decoder.Tensor('image/context_feature_length'))
+
+    if load_context_image_ids:
+      self._context_keys_to_features['image/context_features_image_id_list'] = (
+          tf.VarLenFeature(dtype=tf.string))
+      self._items_to_handlers[
+          fields.InputDataFields.context_features_image_id_list] = (
+              slim_example_decoder.Tensor(
+                  'image/context_features_image_id_list',
+                  default_value=''))
+
     self._fully_annotated = fully_annotated
 
   def decode(self, tf_seq_example_string_tensor):
@@ -239,6 +253,8 @@ class TfSequenceExampleDecoder(data_decoder.DataDecoder):
         the length of each feature in context_features
       fields.InputDataFields.image: a [num_frames] string tensor with
         the encoded images.
+      fields.inputDataFields.context_features_image_id_list: a 1D vector
+        of shape [num_context_features] containing string tensors.
     """
     serialized_example = tf.reshape(tf_seq_example_string_tensor, shape=[])
     decoder = slim_example_decoder.TFSequenceExampleDecoder(

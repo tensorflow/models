@@ -35,13 +35,13 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
     """Test creation of ResNet models."""
 
     network = backbones.ResNet(
-        model_id=model_id, norm_momentum=0.99, norm_epsilon=1e-5)
+        model_id=model_id, se_ratio=0.0, norm_momentum=0.99, norm_epsilon=1e-5)
 
     backbone_config = backbones_cfg.Backbone(
         type='resnet',
-        resnet=backbones_cfg.ResNet(model_id=model_id))
+        resnet=backbones_cfg.ResNet(model_id=model_id, se_ratio=0.0))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 
@@ -73,7 +73,41 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         efficientnet=backbones_cfg.EfficientNet(
             model_id=model_id, se_ratio=se_ratio))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
+    model_config = retinanet_cfg.RetinaNet(
+        backbone=backbone_config, norm_activation=norm_activation_config)
+
+    factory_network = factory.build_backbone(
+        input_specs=tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
+        model_config=model_config)
+
+    network_config = network.get_config()
+    factory_network_config = factory_network.get_config()
+
+    self.assertEqual(network_config, factory_network_config)
+
+  @combinations.generate(
+      combinations.combine(
+          model_id=['MobileNetV1', 'MobileNetV2',
+                    'MobileNetV3Large', 'MobileNetV3Small',
+                    'MobileNetV3EdgeTPU'],
+          filter_size_scale=[1.0, 0.75],
+      ))
+  def test_mobilenet_creation(self, model_id, filter_size_scale):
+    """Test creation of Mobilenet models."""
+
+    network = backbones.MobileNet(
+        model_id=model_id,
+        filter_size_scale=filter_size_scale,
+        norm_momentum=0.99,
+        norm_epsilon=1e-5)
+
+    backbone_config = backbones_cfg.Backbone(
+        type='mobilenet',
+        mobilenet=backbones_cfg.MobileNet(
+            model_id=model_id, filter_size_scale=filter_size_scale))
+    norm_activation_config = common_cfg.NormActivation(
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 
@@ -106,7 +140,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         type='spinenet',
         spinenet=backbones_cfg.SpineNet(model_id=model_id))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 
@@ -131,7 +165,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         type='revnet',
         revnet=backbones_cfg.RevNet(model_id=model_id))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 

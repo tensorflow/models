@@ -18,7 +18,7 @@
 import dataclasses
 import tensorflow as tf
 
-from official.modeling.hyperparams import config_definitions as cfg
+from official.core import config_definitions as cfg
 from official.nlp.data import data_loader_factory
 
 
