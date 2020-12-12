@@ -19,6 +19,7 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 
@@ -57,6 +58,8 @@ class DilatedResNet(tf.keras.Model):
                output_stride,
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
                stem_type='v0',
+               se_ratio=None,
+               init_stochastic_depth_rate=0.0,
                multigrid=None,
                last_stage_repeats=1,
                activation='relu',
@@ -75,6 +78,8 @@ class DilatedResNet(tf.keras.Model):
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
       stem_type: `standard` or `deeplab`, deeplab replaces 7x7 conv by 3 3x3
         convs.
+      se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
+      init_stochastic_depth_rate: `float` initial stochastic depth rate.
       multigrid: `Tuple` of the same length as the number of blocks in the last
         resnet stage.
       last_stage_repeats: `int`, how many times last stage is repeated.
@@ -105,6 +110,8 @@ class DilatedResNet(tf.keras.Model):
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._stem_type = stem_type
+    self._se_ratio = se_ratio
+    self._init_stochastic_depth_rate = init_stochastic_depth_rate
 
     if tf.keras.backend.image_data_format() == 'channels_last':
       bn_axis = -1
@@ -193,6 +200,8 @@ class DilatedResNet(tf.keras.Model):
           dilation_rate=1,
           block_fn=block_fn,
           block_repeats=spec[2],
+          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
+              self._init_stochastic_depth_rate, i + 2, 4 + last_stage_repeats),
           name='block_group_l{}'.format(i + 2))
       endpoints[str(i + 2)] = x
 
@@ -210,6 +219,8 @@ class DilatedResNet(tf.keras.Model):
           dilation_rate=dilation_rate,
           block_fn=block_fn,
           block_repeats=spec[2],
+          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
+              self._init_stochastic_depth_rate, i + 2, 4 + last_stage_repeats),
           multigrid=multigrid if i >= 3 else None,
           name='block_group_l{}'.format(i + 2))
       dilation_rate *= 2
@@ -228,6 +239,7 @@ class DilatedResNet(tf.keras.Model):
                    dilation_rate,
                    block_fn,
                    block_repeats=1,
+                   stochastic_depth_drop_rate=0.0,
                    multigrid=None,
                    name='block_group'):
     """Creates one group of blocks for the ResNet model.
@@ -242,6 +254,7 @@ class DilatedResNet(tf.keras.Model):
       dilation_rate: `int`, diluted convolution rates.
       block_fn: Either `nn_blocks.ResidualBlock` or `nn_blocks.BottleneckBlock`.
       block_repeats: `int` number of blocks contained in the layer.
+      stochastic_depth_drop_rate: `float` drop rate of the current block group.
       multigrid: List of ints or None, if specified, dilation rates for each
         block is scaled up by its corresponding factor in the multigrid.
       name: `str`name for the block.
@@ -261,6 +274,8 @@ class DilatedResNet(tf.keras.Model):
         strides=strides,
         dilation_rate=dilation_rate * multigrid[0],
         use_projection=True,
+        stochastic_depth_drop_rate=stochastic_depth_drop_rate,
+        se_ratio=self._se_ratio,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
@@ -275,6 +290,8 @@ class DilatedResNet(tf.keras.Model):
           strides=1,
           dilation_rate=dilation_rate * multigrid[i],
           use_projection=False,
+          stochastic_depth_drop_rate=stochastic_depth_drop_rate,
+          se_ratio=self._se_ratio,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
@@ -290,6 +307,9 @@ class DilatedResNet(tf.keras.Model):
     config_dict = {
         'model_id': self._model_id,
         'output_stride': self._output_stride,
+        'stem_type': self._stem_type,
+        'se_ratio': self._se_ratio,
+        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
         'activation': self._activation,
         'use_sync_bn': self._use_sync_bn,
         'norm_momentum': self._norm_momentum,
@@ -326,9 +346,11 @@ def build_dilated_resnet(
       model_id=backbone_cfg.model_id,
       output_stride=backbone_cfg.output_stride,
       input_specs=input_specs,
+      stem_type=backbone_cfg.stem_type,
+      se_ratio=backbone_cfg.se_ratio,
+      init_stochastic_depth_rate=backbone_cfg.stochastic_depth_drop_rate,
       multigrid=backbone_cfg.multigrid,
       last_stage_repeats=backbone_cfg.last_stage_repeats,
-      stem_type=backbone_cfg.stem_type,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,

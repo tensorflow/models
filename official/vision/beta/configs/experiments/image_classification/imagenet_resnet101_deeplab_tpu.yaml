@@ -1,4 +1,4 @@
-# Top1 accuracy 80.36%
+# Top-1 accuracy 81.6% on ImageNet
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -12,12 +12,14 @@ task:
         model_id: 101
         output_stride: 16
         stem_type: 'v1'
+        se_ratio: 0.25
+        stochastic_depth_drop_rate: 0.2
         multigrid: [1, 2, 4]
         last_stage_repeats: 1
     norm_activation:
       activation: 'swish'
   losses:
-    l2_weight_decay: 0.0001
+    l2_weight_decay: 0.00004
     one_hot: true
     label_smoothing: 0.1
   train_data:
@@ -25,6 +27,7 @@ task:
     is_training: true
     global_batch_size: 4096
     dtype: 'bfloat16'
+    aug_policy: 'randaug'
   validation_data:
     input_path: 'imagenet-2012-tfrecord/valid*'
     is_training: false
@@ -32,7 +35,7 @@ task:
     dtype: 'bfloat16'
     drop_remainder: false
 trainer:
-  train_steps: 62400
+  train_steps: 109200
   validation_steps: 13
   validation_interval: 312
   steps_per_loop: 312
@@ -47,7 +50,7 @@ trainer:
       type: 'cosine'
       cosine:
         initial_learning_rate: 1.6
-        decay_steps: 62400
+        decay_steps: 109200
     warmup:
       type: 'linear'
       linear:
