@@ -16,7 +16,6 @@
 """Common utils for tasks."""
 from typing import Any, Callable
 
-from absl import logging
 import orbit
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -43,23 +42,7 @@ def get_encoder_from_hub(hub_model_path: str) -> tf.keras.Model:
       input_word_ids=input_word_ids,
       input_mask=input_mask,
       input_type_ids=input_type_ids)
-
-  # The legacy hub model takes a list as input and returns a Tuple of
-  # `pooled_output` and `sequence_output`, while the new hub model takes dict
-  # as input and returns a dict.
-  # TODO(chendouble): Remove the support of legacy hub model when the new ones
-  # are released.
-  hub_output_signature = hub_layer.resolved_object.signatures[
-      'serving_default'].outputs
-  if len(hub_output_signature) == 2:
-    logging.info('Use the legacy hub module with list as input/output.')
-    pooled_output, sequence_output = hub_layer(
-        [input_word_ids, input_mask, input_type_ids])
-    output_dict['pooled_output'] = pooled_output
-    output_dict['sequence_output'] = sequence_output
-  else:
-    logging.info('Use the new hub module with dict as input/output.')
-    output_dict = hub_layer(dict_input)
+  output_dict = hub_layer(dict_input)
 
   return tf.keras.Model(inputs=dict_input, outputs=output_dict)
 
