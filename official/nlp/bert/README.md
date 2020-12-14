@@ -129,6 +129,23 @@ which is essentially branched from [BERT research repo](https://github.com/googl
 to get processed pre-training data and it adapts to TF2 symbols and python3
 compatibility.
 
+Running the pre-training script requires an input and output directory, as well as a vocab file.  Note that max_seq_length will need to match the sequence length parameter you specify when you run pre-training.
+
+Example shell script to call create_pretraining_data.py
+```
+set WORKING_DIR='local disk or cloud location'
+set BERT_DIR='local disk or cloud location'
+python models/official/nlp/data/create_pretraining_data.py \
+  --input_file=$WORKING_DIR/input/input.txt \
+  --output_file=$WORKING_DIR/output/tf_examples.tfrecord \
+  --vocab_file=$WORKING_DIR/wwm_uncased_L-24_H-1024_A-16/vocab.txt \
+  --do_lower_case=True \
+  --max_seq_length=128 \
+  --max_predictions_per_seq=20 \
+  --masked_lm_prob=0.15 \
+  --random_seed=12345 \
+  --dupe_factor=5
+```
 
 ### Fine-tuning
 
