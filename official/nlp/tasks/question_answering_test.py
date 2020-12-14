@@ -250,6 +250,7 @@ class XLNetQuestionAnsweringTaskTest(tf.test.TestCase, parameterized.TestCase):
     logs = task.aggregate_logs(step_outputs=logs)
     metrics = task.reduce_aggregated_logs(logs)
     self.assertIn("final_f1", metrics)
+    self.assertNotIn("loss", metrics)
 
   def test_task(self):
     config = question_answering.XLNetQuestionAnsweringConfig(
