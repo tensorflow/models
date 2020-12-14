@@ -27,6 +27,8 @@ from official.nlp.data import data_loader_factory
 @dataclasses.dataclass
 class QADataConfig(cfg.DataConfig):
   """Data config for question answering task (tasks/question_answering)."""
+  # For training, `input_path` is expected to be a pre-processed TFRecord file,
+  # while for evaluation, it is expected to be a raw JSON file (b/173814590).
   input_path: str = ''
   global_batch_size: int = 48
   is_training: bool = True
