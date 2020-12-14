@@ -301,7 +301,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     def step_fn(inputs):
       logs = self.task.validation_step(
           inputs, model=self.model, metrics=self.validation_metrics)
-      self._validation_loss.update_state(logs[self.task.loss])
+      if self.task.loss in logs:
+        self._validation_loss.update_state(logs[self.task.loss])
       return logs
 
     distributed_outputs = self.strategy.run(step_fn, args=(next(iterator),))
@@ -311,8 +312,14 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
   def eval_end(self, aggregated_logs=None):
     """Processes evaluation results."""
     logs = {}
-    for metric in self.validation_metrics + [self.validation_loss]:
+    for metric in self.validation_metrics:
       logs[metric.name] = metric.result()
+    if self.validation_loss.count.numpy() != 0:
+      logs[self.validation_loss.name] = self.validation_loss.result()
+    else:
+      # `self.validation_loss` metric was not updated, because the validation
+      # loss was not returned from the task's `validation_step` method.
+      logging.info("The task did not report validation loss.")
     if aggregated_logs:
       metrics = self.task.reduce_aggregated_logs(aggregated_logs)
       logs.update(metrics)

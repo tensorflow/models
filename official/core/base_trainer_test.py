@@ -54,8 +54,8 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 }
             })))
 
-  def create_test_trainer(self, config, model_dir=None):
-    task = mock_task.MockTask(config.task, logging_dir=model_dir)
+  def create_test_trainer(self, config, model_dir=None, task=None):
+    task = task or mock_task.MockTask(config.task, logging_dir=model_dir)
     ckpt_exporter = train_lib.maybe_create_best_ckpt_exporter(config, model_dir)
     trainer = trainer_lib.Trainer(
         config,
@@ -79,6 +79,25 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
       trainer = self.create_test_trainer(self._config)
       logs = trainer.evaluate(tf.convert_to_tensor(5, dtype=tf.int32))
       self.assertEqual(logs['counter'], 5. * distribution.num_replicas_in_sync)
+      self.assertIn('validation_loss', logs)
+
+  @combinations.generate(all_strategy_combinations())
+  def test_trainer_validate_without_loss(self, distribution):
+
+    class MockTaskWithoutValidationLoss(mock_task.MockTask):
+
+      def validation_step(self, inputs, model, metrics=None):
+        # Disable validation loss.
+        logs = super().validation_step(inputs, model)
+        del logs[self.loss]
+        return logs
+
+    with distribution.scope():
+      task = MockTaskWithoutValidationLoss()
+      trainer = self.create_test_trainer(self._config, task=task)
+      logs = trainer.evaluate(tf.convert_to_tensor(5, dtype=tf.int32))
+      self.assertEqual(logs['counter'], 5. * distribution.num_replicas_in_sync)
+      self.assertNotIn('validation_loss', logs)
 
   @combinations.generate(
       combinations.combine(
