@@ -20,6 +20,13 @@ from typing import Optional
 from absl import logging
 import tensorflow as tf
 
+from official.core import config_definitions
+from official.modeling import optimization
+from official.modeling import performance
+
+TrainerConfig = config_definitions.TrainerConfig
+RuntimeConfig = config_definitions.RuntimeConfig
+
 
 class Task(tf.Module, metaclass=abc.ABCMeta):
   """A single-replica view of training procedure.
@@ -53,6 +60,30 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
   @property
   def logging_dir(self) -> str:
     return self._logging_dir
+
+  @classmethod
+  def create_optimizer(cls, trainer_config: TrainerConfig,
+                       runtime_config: Optional[RuntimeConfig] = None):
+    """Creates an TF optimizer from configurations.
+
+    Args:
+      trainer_config: the parameters of the trainer.
+      runtime_config: the parameters of the runtime.
+
+    Returns:
+      A tf.optimizers.Optimizer object.
+    """
+    opt_factory = optimization.OptimizerFactory(trainer_config.optimizer_config)
+    optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
+    # Configuring optimizer when loss_scale is set in runtime config. This helps
+    # avoiding overflow/underflow for float16 computations.
+    if runtime_config and runtime_config.loss_scale:
+      optimizer = performance.configure_optimizer(
+          optimizer,
+          use_float16=runtime_config.mixed_precision_dtype == "float16",
+          loss_scale=runtime_config.loss_scale)
+
+    return optimizer
 
   def initialize(self, model: tf.keras.Model):
     """[Optional] A callback function used as CheckpointManager's init_fn.
