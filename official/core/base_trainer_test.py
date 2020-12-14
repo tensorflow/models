@@ -61,7 +61,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
         config,
         task,
         model=task.build_model(),
-        optimizer=trainer_lib.create_optimizer(config.trainer, config.runtime),
+        optimizer=task.create_optimizer(config.trainer, config.runtime),
         checkpoint_exporter=ckpt_exporter)
     return trainer
 
@@ -180,7 +180,7 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
         config,
         task,
         model=task.build_model(),
-        optimizer=trainer_lib.create_optimizer(config.trainer, config.runtime))
+        optimizer=task.create_optimizer(config.trainer, config.runtime))
     trainer.add_recovery(config.trainer, checkpoint_manager=checkpoint_manager)
     with self.assertRaises(RuntimeError):
       _ = trainer.train(tf.convert_to_tensor(2, dtype=tf.int32))

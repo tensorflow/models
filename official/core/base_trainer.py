@@ -19,7 +19,6 @@ The base trainer implements the Orbit `StandardTrainable` and
 `StandardEvaluable` interfaces. Trainers inside this project should be
 interchangable and independent on model architectures and tasks.
 """
-from typing import Optional
 
 from absl import logging
 import gin
@@ -28,35 +27,9 @@ import tensorflow as tf
 
 from official.core import base_task
 from official.core import config_definitions
-from official.modeling import optimization
-from official.modeling import performance
 
 ExperimentConfig = config_definitions.ExperimentConfig
 TrainerConfig = config_definitions.TrainerConfig
-RuntimeConfig = config_definitions.RuntimeConfig
-
-
-def create_optimizer(trainer_config: TrainerConfig,
-                     runtime_config: Optional[RuntimeConfig] = None):
-  """Creates an TF optimizer from configurations.
-
-  Args:
-    trainer_config: the parameters of the trainer.
-    runtime_config: the parameters of the runtime.
-
-  Returns:
-    A tf.optimizers.Optimizer object.
-  """
-  opt_factory = optimization.OptimizerFactory(trainer_config.optimizer_config)
-  optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
-  # Configuring optimizer when loss_scale is set in runtime config. This helps
-  # avoiding overflow/underflow for float16 computations.
-  if runtime_config and runtime_config.loss_scale:
-    optimizer = performance.configure_optimizer(
-        optimizer,
-        use_float16=runtime_config.mixed_precision_dtype == "float16",
-        loss_scale=runtime_config.loss_scale)
-  return optimizer
 
 
 class Recovery:

@@ -134,7 +134,7 @@ def create_trainer(params: config_definitions.ExperimentConfig,
   """Create trainer."""
   logging.info('Running default trainer.')
   model = task.build_model()
-  optimizer = base_trainer.create_optimizer(params.trainer, params.runtime)
+  optimizer = task.create_optimizer(params.trainer, params.runtime)
   return trainer_cls(
       params,
       task,
