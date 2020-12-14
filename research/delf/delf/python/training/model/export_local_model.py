@@ -35,12 +35,24 @@ from delf.python.training.model import export_model_utils
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('ckpt_path', '/tmp/delf-logdir/delf-weights',
-                    'Path to saved checkpoint.')
+flags.DEFINE_string(
+    'ckpt_path', '/tmp/delf-logdir/delf-weights', 'Path to saved checkpoint.')
 flags.DEFINE_string('export_path', None, 'Path where model will be exported.')
-flags.DEFINE_boolean('block3_strides', False,
-                     'Whether to apply strides after block3.')
+flags.DEFINE_boolean(
+    'block3_strides', True, 'Whether to apply strides after block3.')
 flags.DEFINE_float('iou', 1.0, 'IOU for non-max suppression.')
+flags.DEFINE_boolean(
+    'use_autoencoder', True,
+    'Whether the exported model should use an autoencoder.')
+flags.DEFINE_float(
+    'autoencoder_dimensions', 128,
+    'Number of dimensions of the autoencoder. Used only if'
+    'use_autoencoder=True.')
+flags.DEFINE_float(
+    'local_feature_map_channels', 1024,
+    'Number of channels at backbone layer used for local feature extraction. '
+    'Default value 1024 is the number of channels of block3. Used only if'
+    'use_autoencoder=True.')
 
 
 class _ExtractModule(tf.Module):
@@ -56,7 +68,12 @@ class _ExtractModule(tf.Module):
     self._stride_factor = 2.0 if block3_strides else 1.0
     self._iou = iou
     # Setup the DELF model for extraction.
-    self._model = delf_model.Delf(block3_strides=block3_strides, name='DELF')
+    self._model = delf_model.Delf(
+        block3_strides=block3_strides,
+        name='DELF',
+        use_dim_reduction=FLAGS.use_autoencoder,
+        reduced_dimension=FLAGS.autoencoder_dimensions,
+        dim_expand_channels=FLAGS.local_feature_map_channels)
 
   def LoadWeights(self, checkpoint_path):
     self._model.load_weights(checkpoint_path)

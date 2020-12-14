@@ -88,7 +88,7 @@ class DelfTest(tf.test.TestCase, parameterized.TestCase):
           per_example_loss, global_batch_size=batch_size)
 
     with tf.GradientTape() as gradient_tape:
-      (desc_prelogits, attn_prelogits, _,
+      (desc_prelogits, attn_prelogits, _, _, _,
        _) = model.global_and_local_forward_pass(images)
       # Calculate global loss by applying the descriptor classifier.
       desc_logits = model.desc_classification(desc_prelogits)
