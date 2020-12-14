@@ -1,9 +1,11 @@
-![TensorFlow Requirement: 2.x](https://img.shields.io/badge/TensorFlow%20Requirement-2.x-brightgreen)
-
 # Orbit
 
-Orbit is a customized training loop library built on top of Tensorflow 2. It
-provides a flexible lightweight library that users can easily use or fork when
-writing [customized training loop code](https://www.tensorflow.org/tutorials/distribute/custom_training)
-in TF2. It intergates with `tf.distribute` seamlessly and supports running on
-different device types (CPU, GPU, and TPU).
+Orbit is a flexible, lightweight library designed to make it easy to write
+[custom training loops][custom_training] in TensorFlow 2. Orbit handles common
+model training tasks such as saving checkpoints, running model evaluations, and
+setting up summary writing, while giving users full control over implementing
+the inner training loop. It integrates with `tf.distribute` seamlessly and
+supports running on different device types (CPU, GPU, and TPU). The core code is
+intended to be easy to read and fork.
+
+[custom_training]: https://www.tensorflow.org/tutorials/distribute/custom_training

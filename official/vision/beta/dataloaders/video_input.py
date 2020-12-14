@@ -15,7 +15,7 @@
 # ==============================================================================
 """Parser for video and label datasets."""
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
@@ -125,8 +125,7 @@ def _postprocess_image(image: tf.Tensor,
   if num_test_clips > 1 and not is_training:
     # In this case, multiple clips are merged together in batch dimenstion which
     # will be B * num_test_clips.
-    image = tf.reshape(
-        image, (-1, num_frames, image.shape[2], image.shape[3], image.shape[4]))
+    image = tf.reshape(image, (-1, num_frames) + image.shape[2:])
 
   return image
 
@@ -146,6 +145,11 @@ def _process_label(label: tf.Tensor,
   if one_hot_label:
     # Replace label index by one hot representation.
     label = tf.one_hot(label, num_classes)
+    if len(label.shape.as_list()) > 1:
+      label = tf.reduce_sum(label, axis=0)
+    if num_classes == 1:
+      # The trick for single label.
+      label = 1 - label
 
   return label
 
@@ -154,26 +158,41 @@ class Decoder(decoder.Decoder):
   """A tf.Example decoder for classification task."""
 
   def __init__(self, image_key: str = IMAGE_KEY, label_key: str = LABEL_KEY):
-    self._image_key = IMAGE_KEY
-    self._label_key = LABEL_KEY
+    self._image_key = image_key
+    self._label_key = label_key
     self._context_description = {
         # One integer stored in context.
-        self._label_key: tf.io.FixedLenFeature((), tf.int64),
+        self._label_key: tf.io.VarLenFeature(tf.int64),
     }
     self._sequence_description = {
         # Each image is a string encoding JPEG.
         self._image_key: tf.io.FixedLenSequenceFeature((), tf.string),
     }
 
+  def add_feature(self, feature_name: str,
+                  feature_type: Union[tf.io.VarLenFeature,
+                                      tf.io.FixedLenFeature,
+                                      tf.io.FixedLenSequenceFeature]):
+    self._sequence_description[feature_name] = feature_type
+
+  def add_context(self, feature_name: str,
+                  feature_type: Union[tf.io.VarLenFeature,
+                                      tf.io.FixedLenFeature,
+                                      tf.io.FixedLenSequenceFeature]):
+    self._context_description[feature_name] = feature_type
+
   def decode(self, serialized_example):
     """Parses a single tf.Example into image and label tensors."""
+    result = {}
     context, sequences = tf.io.parse_single_sequence_example(
         serialized_example, self._context_description,
         self._sequence_description)
-    return {
-        self._image_key: sequences[self._image_key],
-        self._label_key: context[self._label_key]
-    }
+    result.update(context)
+    result.update(sequences)
+    for key, value in result.items():
+      if isinstance(value, tf.SparseTensor):
+        result[key] = tf.sparse.to_dense(value)
+    return result
 
 
 class Parser(parser.Parser):
@@ -192,6 +211,11 @@ class Parser(parser.Parser):
     self._num_classes = input_params.num_classes
     self._image_key = image_key
     self._label_key = label_key
+    self._dtype = tf.dtypes.as_dtype(input_params.dtype)
+    self._output_audio = input_params.output_audio
+    if self._output_audio:
+      self._audio_feature = input_params.audio_feature
+      self._audio_shape = input_params.audio_feature_shape
 
   def _parse_train_data(
       self, decoded_tensors: Dict[str, tf.Tensor]
@@ -199,7 +223,6 @@ class Parser(parser.Parser):
     """Parses data for training."""
     # Process image and label.
     image = decoded_tensors[self._image_key]
-    label = decoded_tensors[self._label_key]
     image = _process_image(
         image=image,
         is_training=True,
@@ -208,16 +231,28 @@ class Parser(parser.Parser):
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
         crop_size=self._crop_size)
+    image = tf.cast(image, dtype=self._dtype)
+    features = {'image': image}
+
+    label = decoded_tensors[self._label_key]
     label = _process_label(label, self._one_hot_label, self._num_classes)
 
-    return {'image': image}, label
+    if self._output_audio:
+      audio = decoded_tensors[self._audio_feature]
+      audio = tf.cast(audio, dtype=self._dtype)
+      # TODO(yeqing): synchronize audio/video sampling. Especially randomness.
+      audio = preprocess_ops_3d.sample_sequence(
+          audio, self._audio_shape[0], random=False, stride=1)
+      audio = tf.ensure_shape(audio, self._audio_shape)
+      features['audio'] = audio
+
+    return features, label
 
   def _parse_eval_data(
       self, decoded_tensors: Dict[str, tf.Tensor]
   ) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
     """Parses data for evaluation."""
     image = decoded_tensors[self._image_key]
-    label = decoded_tensors[self._label_key]
     image = _process_image(
         image=image,
         is_training=False,
@@ -226,9 +261,21 @@ class Parser(parser.Parser):
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
         crop_size=self._crop_size)
+    image = tf.cast(image, dtype=self._dtype)
+    features = {'image': image}
+
+    label = decoded_tensors[self._label_key]
     label = _process_label(label, self._one_hot_label, self._num_classes)
 
-    return {'image': image}, label
+    if self._output_audio:
+      audio = decoded_tensors[self._audio_feature]
+      audio = tf.cast(audio, dtype=self._dtype)
+      audio = preprocess_ops_3d.sample_sequence(
+          audio, 20, random=False, stride=1)
+      audio = tf.ensure_shape(audio, [20, 2048])
+      features['audio'] = audio
+
+    return features, label
 
 
 class PostBatchProcessor(object):
@@ -240,16 +287,15 @@ class PostBatchProcessor(object):
     self._num_frames = input_params.feature_shape[0]
     self._num_test_clips = input_params.num_test_clips
 
-  def __call__(
-      self,
-      image: Dict[str, tf.Tensor],
-      label: tf.Tensor) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
+  def __call__(self, features: Dict[str, tf.Tensor],
+               label: tf.Tensor) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
     """Parses a single tf.Example into image and label tensors."""
-    image = image['image']
-    image = _postprocess_image(
-        image=image,
-        is_training=self._is_training,
-        num_frames=self._num_frames,
-        num_test_clips=self._num_test_clips)
+    for key in ['image', 'audio']:
+      if key in features:
+        features[key] = _postprocess_image(
+            image=features[key],
+            is_training=self._is_training,
+            num_frames=self._num_frames,
+            num_test_clips=self._num_test_clips)
 
-    return {'image': image}, label
+    return features, label

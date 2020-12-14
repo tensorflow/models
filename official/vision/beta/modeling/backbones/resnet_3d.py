@@ -18,6 +18,7 @@ from typing import List, Tuple
 # Import libraries
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks_3d
 
 layers = tf.keras.layers
@@ -48,6 +49,7 @@ class ResNet3D(tf.keras.Model):
                temporal_kernel_sizes: List[Tuple[int]],
                use_self_gating: List[int] = None,
                input_specs=layers.InputSpec(shape=[None, None, None, None, 3]),
+               stem_conv_temporal_kernel_size=5,
                stem_conv_temporal_stride=2,
                stem_pool_temporal_stride=2,
                activation='relu',
@@ -69,6 +71,8 @@ class ResNet3D(tf.keras.Model):
       use_self_gating: a list of booleans to specify applying self-gating module
         or not in each block group. If None, self-gating is not applied.
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      stem_conv_temporal_kernel_size: `int` temporal kernel size for the first
+        conv layer.
       stem_conv_temporal_stride: `int` temporal stride for the first conv layer.
       stem_pool_temporal_stride: `int` temporal stride for the first pool layer.
       activation: `str` name of the activation function.
@@ -87,6 +91,7 @@ class ResNet3D(tf.keras.Model):
     self._temporal_strides = temporal_strides
     self._temporal_kernel_sizes = temporal_kernel_sizes
     self._input_specs = input_specs
+    self._stem_conv_temporal_kernel_size = stem_conv_temporal_kernel_size
     self._stem_conv_temporal_stride = stem_conv_temporal_stride
     self._stem_pool_temporal_stride = stem_pool_temporal_stride
     self._use_self_gating = use_self_gating
@@ -112,7 +117,7 @@ class ResNet3D(tf.keras.Model):
     # Build stem.
     x = layers.Conv3D(
         filters=64,
-        kernel_size=[5, 7, 7],
+        kernel_size=[stem_conv_temporal_kernel_size, 7, 7],
         strides=[stem_conv_temporal_stride, 2, 2],
         use_bias=False,
         padding='same',
@@ -238,6 +243,7 @@ class ResNet3D(tf.keras.Model):
         'model_id': self._model_id,
         'temporal_strides': self._temporal_strides,
         'temporal_kernel_sizes': self._temporal_kernel_sizes,
+        'stem_conv_temporal_kernel_size': self._stem_conv_temporal_kernel_size,
         'stem_conv_temporal_stride': self._stem_conv_temporal_stride,
         'stem_pool_temporal_stride': self._stem_pool_temporal_stride,
         'use_self_gating': self._use_self_gating,
@@ -259,3 +265,37 @@ class ResNet3D(tf.keras.Model):
   def output_specs(self):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_backbone_builder('resnet_3d')
+def build_resnet3d(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds ResNet 3d backbone from a config."""
+  backbone_type = model_config.backbone.type
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+  assert backbone_type == 'resnet_3d', (f'Inconsistent backbone type '
+                                        f'{backbone_type}')
+
+  # Flatten configs before passing to the backbone.
+  temporal_strides = []
+  temporal_kernel_sizes = []
+  use_self_gating = []
+  for block_spec in backbone_cfg.block_specs:
+    temporal_strides.append(block_spec.temporal_strides)
+    temporal_kernel_sizes.append(block_spec.temporal_kernel_sizes)
+    use_self_gating.append(block_spec.use_self_gating)
+
+  return ResNet3D(
+      model_id=backbone_cfg.model_id,
+      temporal_strides=temporal_strides,
+      temporal_kernel_sizes=temporal_kernel_sizes,
+      use_self_gating=use_self_gating,
+      input_specs=input_specs,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)

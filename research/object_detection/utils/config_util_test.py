@@ -378,6 +378,45 @@ class ConfigUtilTest(tf.test.TestCase):
     self.assertEqual(10, new_batch_size)
 
   @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
+  def testOverwriteSampleFromDatasetWeights(self):
+    """Tests config override for sample_from_datasets_weights."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.train_input_reader.sample_from_datasets_weights.extend(
+        [1, 2])
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    _write_config(pipeline_config, pipeline_config_path)
+
+    # Override parameters:
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    hparams = contrib_training.HParams(sample_from_datasets_weights=[0.5, 0.5])
+    configs = config_util.merge_external_params_with_configs(configs, hparams)
+
+    # Ensure that the parameters have the overridden values:
+    self.assertListEqual(
+        [0.5, 0.5],
+        list(configs["train_input_config"].sample_from_datasets_weights))
+
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
+  def testOverwriteSampleFromDatasetWeightsWrongLength(self):
+    """Tests config override for sample_from_datasets_weights."""
+    pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
+    pipeline_config.train_input_reader.sample_from_datasets_weights.extend(
+        [1, 2])
+    pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")
+    _write_config(pipeline_config, pipeline_config_path)
+
+    # Try to override parameter with too many weights:
+    configs = config_util.get_configs_from_pipeline_file(pipeline_config_path)
+    hparams = contrib_training.HParams(
+        sample_from_datasets_weights=[0.5, 0.5, 0.5])
+    with self.assertRaises(
+        ValueError,
+        msg="sample_from_datasets_weights override has a different number of"
+        " values (3) than the configured dataset weights (2)."
+    ):
+      config_util.merge_external_params_with_configs(configs, hparams)
+
+  @unittest.skipIf(tf_version.is_tf2(), "Skipping TF1.X only test.")
   def testKeyValueOverrideBadKey(self):
     """Tests that overwriting with a bad key causes an exception."""
     pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()

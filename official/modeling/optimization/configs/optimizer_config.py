@@ -21,7 +21,24 @@ from official.modeling.hyperparams import base_config
 
 
 @dataclasses.dataclass
-class SGDConfig(base_config.Config):
+class BaseOptimizerConfig(base_config.Config):
+  """Base optimizer config.
+
+  Attributes:
+    clipnorm: float >= 0 or None. If not None, Gradients will be clipped when
+      their L2 norm exceeds this value.
+    clipvalue: float >= 0 or None. If not None, Gradients will be clipped when
+      their absolute value exceeds this value.
+    global_clipnorm: float >= 0 or None. If not None, gradient of all weights is
+        clipped so that their global norm is no higher than this value
+  """
+  clipnorm: Optional[float] = None
+  clipvalue: Optional[float] = None
+  global_clipnorm: Optional[float] = None
+
+
+@dataclasses.dataclass
+class SGDConfig(BaseOptimizerConfig):
   """Configuration for SGD optimizer.
 
   The attributes for this class matches the arguments of tf.keras.optimizer.SGD.
@@ -39,7 +56,7 @@ class SGDConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class RMSPropConfig(base_config.Config):
+class RMSPropConfig(BaseOptimizerConfig):
   """Configuration for RMSProp optimizer.
 
   The attributes for this class matches the arguments of
@@ -60,7 +77,7 @@ class RMSPropConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class AdamConfig(base_config.Config):
+class AdamConfig(BaseOptimizerConfig):
   """Configuration for Adam optimizer.
 
   The attributes for this class matches the arguments of
@@ -82,7 +99,7 @@ class AdamConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class AdamWeightDecayConfig(base_config.Config):
+class AdamWeightDecayConfig(BaseOptimizerConfig):
   """Configuration for Adam optimizer with weight decay.
 
   Attributes:
@@ -110,7 +127,7 @@ class AdamWeightDecayConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class LAMBConfig(base_config.Config):
+class LAMBConfig(BaseOptimizerConfig):
   """Configuration for LAMB optimizer.
 
   The attributes for this class matches the arguments of
@@ -139,7 +156,7 @@ class LAMBConfig(base_config.Config):
 
 
 @dataclasses.dataclass
-class EMAConfig(base_config.Config):
+class EMAConfig(BaseOptimizerConfig):
   """Exponential moving average optimizer config.
 
   Attributes:

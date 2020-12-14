@@ -15,6 +15,7 @@
 
 """Tests for object_detection.predictors.heads.class_head."""
 import unittest
+import numpy as np
 import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
@@ -197,6 +198,38 @@ class WeightSharedConvolutionalKerasClassPredictorTest(test_case.TestCase):
         [64, 17, 19, 1024], minval=-10.0, maxval=10.0, dtype=tf.float32)
     class_prediction_head(image_feature)
     self.assertEqual(len(class_prediction_head.variables), 2)
+
+  def test_softmax_score_converter(self):
+    num_class_slots = 10
+    batch_size = 2
+    height = 17
+    width = 19
+    num_predictions_per_location = 2
+    assert num_predictions_per_location != 1
+
+    conv_hyperparams = self._build_conv_hyperparams()
+    class_prediction_head = keras_class_head.WeightSharedConvolutionalClassHead(
+        num_class_slots=num_class_slots,
+        conv_hyperparams=conv_hyperparams,
+        num_predictions_per_location=num_predictions_per_location,
+        score_converter_fn=tf.nn.softmax)
+
+    def graph_fn():
+      image_feature = tf.random_uniform([batch_size, height, width, 1024],
+                                        minval=-10.0,
+                                        maxval=10.0,
+                                        dtype=tf.float32)
+      class_predictions = class_prediction_head(image_feature)
+      return class_predictions
+
+    class_predictions_out = self.execute(graph_fn, [])
+    class_predictions_sum = np.sum(class_predictions_out, axis=-1)
+    num_anchors = height * width * num_predictions_per_location
+    exp_class_predictions_sum = np.ones((batch_size, num_anchors),
+                                        dtype=np.float32)
+    self.assertAllEqual((batch_size, num_anchors, num_class_slots),
+                        class_predictions_out.shape)
+    self.assertAllClose(class_predictions_sum, exp_class_predictions_sum)
 
 
 if __name__ == '__main__':

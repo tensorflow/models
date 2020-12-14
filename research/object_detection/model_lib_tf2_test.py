@@ -90,7 +90,7 @@ class ModelLibTest(tf.test.TestCase):
     config_kwarg_overrides = _get_config_kwarg_overrides()
 
     train_steps = 2
-    strategy = tf2.distribute.OneDeviceStrategy(device='/cpu:0')
+    strategy = tf2.distribute.MirroredStrategy(['/cpu:0', '/cpu:1'])
     with strategy.scope():
       model_lib_v2.train_loop(
           new_pipeline_config_path,

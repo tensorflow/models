@@ -14,10 +14,6 @@
 # ==============================================================================
 """Common TF utilities."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import six
 import tensorflow as tf
 
@@ -104,6 +100,8 @@ def get_activation(identifier):
         "gelu": activations.gelu,
         "simple_swish": activations.simple_swish,
         "hard_swish": activations.hard_swish,
+        "relu6": activations.relu6,
+        "hard_sigmoid": activations.hard_sigmoid,
         "identity": activations.identity,
     }
     identifier = str(identifier).lower()

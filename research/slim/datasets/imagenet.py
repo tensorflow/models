@@ -86,7 +86,7 @@ def create_readable_names_for_imagenet_labels():
   """
 
   # pylint: disable=g-line-too-long
-  base_url = 'https://raw.githubusercontent.com/tensorflow/models/master/research/inception/inception/data/'
+  base_url = 'https://raw.githubusercontent.com/tensorflow/models/master/research/slim/datasets/'
   synset_url = '{}/imagenet_lsvrc_2015_synsets.txt'.format(base_url)
   synset_to_human_url = '{}/imagenet_metadata.txt'.format(base_url)
 

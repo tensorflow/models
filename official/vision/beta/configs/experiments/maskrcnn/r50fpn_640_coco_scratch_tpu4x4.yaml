@@ -1,0 +1,36 @@
+# Expect to reach: box mAP: 42.3%, mask mAP: 37.6% on COCO
+task:
+  init_checkpoint: null
+  train_data:
+    global_batch_size: 256
+    parser:
+      aug_rand_hflip: true
+      aug_scale_min: 0.5
+      aug_scale_max: 2.0
+  losses:
+    l2_weight_decay: 0.00008
+  model:
+    anchor:
+      anchor_size: 3.0
+    min_level: 3
+    max_level: 7
+    input_size: [640, 640, 3]
+    norm_activation:
+      norm_epsilon: 0.001
+      norm_momentum: 0.99
+      use_sync_bn: true
+    detection_generator:
+      pre_nms_top_k: 1000
+trainer:
+  train_steps: 162050
+  optimizer_config:
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        boundaries: [148160, 157420]
+        values: [0.32, 0.032, 0.0032]
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 2000
+        warmup_learning_rate: 0.0067

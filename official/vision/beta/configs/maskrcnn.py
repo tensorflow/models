@@ -18,11 +18,10 @@
 import os
 from typing import List, Optional
 import dataclasses
-
+from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.modeling.hyperparams import config_definitions as cfg
 from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
 from official.vision.beta.configs import decoders
@@ -146,6 +145,7 @@ class MaskHead(hyperparams.Config):
   num_convs: int = 4
   num_filters: int = 256
   use_separable_conv: bool = False
+  class_agnostic: bool = False
 
 
 @dataclasses.dataclass
@@ -207,7 +207,9 @@ class MaskRCNNTask(cfg.TaskConfig):
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
   annotation_file: Optional[str] = None
-  gradient_clip_norm: float = 0.0
+  per_category_metrics: bool = False
+  # If set, we only use masks for the specified class IDs.
+  allowed_mask_class_ids: Optional[List[int]] = None
 
 
 COCO_INPUT_PATH_BASE = 'coco'

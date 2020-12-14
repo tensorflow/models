@@ -13,9 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Library for running BERT family models on SQuAD 1.1/2.0 in TF 2.x."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import json
@@ -163,7 +160,7 @@ def get_squad_model_to_predict(strategy, bert_config, checkpoint_path,
   """Gets a squad model to make predictions."""
   with strategy.scope():
     # Prediction always uses float32, even if training uses mixed precision.
-    tf.keras.mixed_precision.experimental.set_policy('float32')
+    tf.keras.mixed_precision.set_global_policy('float32')
     squad_model, _ = bert_models.squad_model(
         bert_config,
         input_meta_data['max_seq_length'],
@@ -186,8 +183,7 @@ def predict_squad_customized(strategy, input_meta_data, predict_tfrecord_path,
       FLAGS.predict_batch_size,
       is_training=False)
   predict_iterator = iter(
-      strategy.experimental_distribute_datasets_from_function(
-          predict_dataset_fn))
+      strategy.distribute_datasets_from_function(predict_dataset_fn))
 
   @tf.function
   def predict_step(iterator):
@@ -229,7 +225,8 @@ def train_squad(strategy,
                  ' strategy.')
   # Enables XLA in Session Config. Should not be set for TPU.
   keras_utils.set_session_config(FLAGS.enable_xla)
-  performance.set_mixed_precision_policy(common_flags.dtype())
+  performance.set_mixed_precision_policy(common_flags.dtype(),
+                                         use_experimental_api=False)
 
   epochs = FLAGS.num_train_epochs
   num_train_examples = input_meta_data['train_data_size']
@@ -257,7 +254,8 @@ def train_squad(strategy,
     squad_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite())
+        use_graph_rewrite=common_flags.use_graph_rewrite(),
+        use_experimental_api=False)
     return squad_model, core_model
 
   # Only when explicit_allreduce = True, post_allreduce_callbacks and
@@ -469,7 +467,7 @@ def export_squad(model_export_path, input_meta_data, bert_config):
   if not model_export_path:
     raise ValueError('Export path is not specified: %s' % model_export_path)
   # Export uses float32 for now, even if training uses mixed precision.
-  tf.keras.mixed_precision.experimental.set_policy('float32')
+  tf.keras.mixed_precision.set_global_policy('float32')
   squad_model, _ = bert_models.squad_model(bert_config,
                                            input_meta_data['max_seq_length'])
   model_saving_utils.export_bert_model(

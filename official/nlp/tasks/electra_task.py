@@ -19,9 +19,9 @@ import dataclasses
 import tensorflow as tf
 
 from official.core import base_task
+from official.core import config_definitions as cfg
 from official.core import task_factory
 from official.modeling import tf_utils
-from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import bert
 from official.nlp.configs import electra
 from official.nlp.configs import encoders
@@ -215,7 +215,6 @@ class ElectraPretrainTask(base_task.Task):
           aux_losses=model.losses)
       # Scales loss as the default gradients allreduce performs sum inside the
       # optimizer.
-      # TODO(b/154564893): enable loss scaling.
       scaled_loss = loss / tf.distribute.get_strategy().num_replicas_in_sync
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)

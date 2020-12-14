@@ -178,8 +178,7 @@ class Parser(parser.Parser):
                                           self._unmatched_threshold)
     (cls_targets, box_targets, cls_weights,
      box_weights) = anchor_labeler.label_anchors(
-         anchor_boxes, boxes,
-         tf.cast(tf.expand_dims(classes, axis=1), tf.float32))
+         anchor_boxes, boxes, tf.expand_dims(classes, axis=1))
 
     # If bfloat16 is used, casts input image to tf.bfloat16.
     if self._use_bfloat16:
@@ -244,8 +243,7 @@ class Parser(parser.Parser):
                                           self._unmatched_threshold)
     (cls_targets, box_targets, cls_weights,
      box_weights) = anchor_labeler.label_anchors(
-         anchor_boxes, boxes,
-         tf.cast(tf.expand_dims(classes, axis=1), tf.float32))
+         anchor_boxes, boxes, tf.expand_dims(classes, axis=1))
 
     # If bfloat16 is used, casts input image to tf.bfloat16.
     if self._use_bfloat16:

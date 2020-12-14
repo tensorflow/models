@@ -14,10 +14,6 @@
 # ==============================================================================
 """Trainer network for ELECTRA models."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import copy
 
@@ -104,12 +100,12 @@ class ElectraPretrainer(tf.keras.Model):
         output=output_type,
         name='generator_masked_lm')
     self.classification = layers.ClassificationHead(
-        inner_dim=generator_network._config_dict['hidden_size'],
+        inner_dim=generator_network.get_config()['hidden_size'],
         num_classes=num_classes,
         initializer=mlm_initializer,
         name='generator_classification_head')
     self.discriminator_projection = tf.keras.layers.Dense(
-        units=discriminator_network._config_dict['hidden_size'],
+        units=discriminator_network.get_config()['hidden_size'],
         activation=mlm_activation,
         kernel_initializer=mlm_initializer,
         name='discriminator_projection_head')
@@ -139,14 +135,11 @@ class ElectraPretrainer(tf.keras.Model):
     masked_lm_positions = inputs['masked_lm_positions']
 
     ### Generator ###
-    sequence_output, cls_output = self.generator_network(
-        [input_word_ids, input_mask, input_type_ids])
-
+    sequence_output = self.generator_network(
+        [input_word_ids, input_mask, input_type_ids])['sequence_output']
     # The generator encoder network may get outputs from all layers.
     if isinstance(sequence_output, list):
       sequence_output = sequence_output[-1]
-    if isinstance(cls_output, list):
-      cls_output = cls_output[-1]
 
     lm_outputs = self.masked_lm(sequence_output, masked_lm_positions)
     sentence_outputs = self.classification(sequence_output)
@@ -157,10 +150,10 @@ class ElectraPretrainer(tf.keras.Model):
     ### Discriminator ###
     disc_input = fake_data['inputs']
     disc_label = fake_data['is_fake_tokens']
-    disc_sequence_output, _ = self.discriminator_network([
+    disc_sequence_output = self.discriminator_network([
         disc_input['input_word_ids'], disc_input['input_mask'],
         disc_input['input_type_ids']
-    ])
+    ])['sequence_output']
 
     # The discriminator encoder network may get outputs from all layers.
     if isinstance(disc_sequence_output, list):

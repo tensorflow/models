@@ -16,10 +16,6 @@
 
 import json
 import os
-import random
-import string
-
-from absl import logging
 import tensorflow as tf
 
 
@@ -98,7 +94,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
                               num_gpus=0,
                               all_reduce_alg=None,
                               num_packs=1,
-                              tpu_address=None):
+                              tpu_address=None,
+                              **kwargs):
   """Return a DistributionStrategy for running the model.
 
   Args:
@@ -117,6 +114,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
       or `tf.distribute.HierarchicalCopyAllReduce` for `MirroredStrategy`.
     tpu_address: Optional. String that represents TPU to connect to. Must not be
       None if `distribution_strategy` is set to `tpu`.
+    **kwargs: Additional kwargs for internal usages.
 
   Returns:
     tf.distribute.DistibutionStrategy object.
@@ -125,6 +123,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
       `num_gpus` is larger than 1; or `num_gpus` is negative or if
       `distribution_strategy` is `tpu` but `tpu_address` is not specified.
   """
+  del kwargs
   if num_gpus < 0:
     raise ValueError("`num_gpus` can not be negative.")
 
@@ -138,7 +137,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   if distribution_strategy == "tpu":
     # When tpu_address is an empty string, we communicate with local TPUs.
     cluster_resolver = tpu_initialize(tpu_address)
-    return tf.distribute.experimental.TPUStrategy(cluster_resolver)
+    return tf.distribute.TPUStrategy(cluster_resolver)
 
   if distribution_strategy == "multi_worker_mirrored":
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(
@@ -162,7 +161,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
         cross_device_ops=_mirrored_cross_device_ops(all_reduce_alg, num_packs))
 
   if distribution_strategy == "parameter_server":
-    return tf.distribute.experimental.ParameterServerStrategy()
+    return tf.compat.v1.distribute.experimental.ParameterServerStrategy()
 
   raise ValueError("Unrecognized Distribution Strategy: %r" %
                    distribution_strategy)

@@ -43,7 +43,7 @@ builder to 'records' or 'tfds' in the configurations.
 Note: These models will **not** work with TPUs on Colab.
 
 You can train image classification models on Cloud TPUs using
-[tf.distribute.experimental.TPUStrategy](https://www.tensorflow.org/api_docs/python/tf/distribute/experimental/TPUStrategy?version=nightly).
+[tf.distribute.TPUStrategy](https://www.tensorflow.org/api_docs/python/tf.distribute.TPUStrategy?version=nightly).
 If you are not familiar with Cloud TPUs, it is strongly recommended that you go
 through the
 [quickstart](https://cloud.google.com/tpu/docs/quickstart) to learn how to

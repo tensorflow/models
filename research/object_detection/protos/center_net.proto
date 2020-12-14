@@ -9,6 +9,7 @@ import "object_detection/protos/losses.proto";
 // Points" paper [1]
 // [1]: https://arxiv.org/abs/1904.07850
 
+// Next Id = 16
 message CenterNet {
   // Number of classes to predict.
   optional int32 num_classes = 1;
@@ -18,6 +19,15 @@ message CenterNet {
 
   // Image resizer for preprocessing the input image.
   optional ImageResizer image_resizer = 3;
+
+  // If set, all task heads will be constructed with separable convolutions.
+  optional bool use_depthwise = 13 [default = false];
+
+  // Indicates whether or not to use the sparse version of the Op that computes
+  // the center heatmaps. The sparse version scales better with number of
+  // channels in the heatmap, but in some cases is known to cause an OOM error.
+  // TODO(b/170989061) When bug is fixed, make this the default behavior.
+  optional bool compute_heatmap_sparse = 15 [default = false];
 
   // Parameters which are related to object detection task.
   message ObjectDetection {
@@ -278,4 +288,9 @@ message CenterNetFeatureExtractor {
   // If set, will change channel order to be [blue, green, red]. This can be
   // useful to be compatible with some pre-trained feature extractors.
   optional bool bgr_ordering = 4 [default = false];
+
+  // If set, the feature upsampling layers will be constructed with
+  // separable convolutions. This is typically applied to feature pyramid
+  // network if any.
+  optional bool use_depthwise = 5 [default = false];
 }

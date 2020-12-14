@@ -20,8 +20,6 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from official.nlp.bert import configs
-from official.nlp.bert import export_tfhub
 from official.nlp.configs import encoders
 from official.nlp.data import tagging_dataloader
 from official.nlp.tasks import tagging
@@ -66,13 +64,14 @@ class TaggingTest(tf.test.TestCase):
     metrics = task.build_metrics()
 
     strategy = tf.distribute.get_strategy()
-    dataset = strategy.experimental_distribute_datasets_from_function(
+    dataset = strategy.distribute_datasets_from_function(
         functools.partial(task.build_inputs, config.train_data))
 
     iterator = iter(dataset)
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
     task.train_step(next(iterator), model, optimizer, metrics=metrics)
     task.validation_step(next(iterator), model, metrics=metrics)
+    model.save(os.path.join(self.get_temp_dir(), "saved_model"))
 
   def test_task(self):
     # Saves a checkpoint.
@@ -96,45 +95,16 @@ class TaggingTest(tf.test.TestCase):
     task.validation_step(next(iterator), model, metrics=metrics)
     task.initialize(model)
 
-  def test_task_with_fit(self):
-    config = tagging.TaggingConfig(
-        model=tagging.ModelConfig(encoder=self._encoder_config),
-        train_data=self._train_data_config,
-        class_names=["O", "B-PER", "I-PER"])
-
-    task = tagging.TaggingTask(config)
-    model = task.build_model()
-    model = task.compile_model(
-        model,
-        optimizer=tf.keras.optimizers.SGD(lr=0.1),
-        train_step=task.train_step,
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy")])
-    dataset = task.build_inputs(config.train_data)
-    logs = model.fit(dataset, epochs=1, steps_per_epoch=2)
-    self.assertIn("loss", logs.history)
-    self.assertIn("accuracy", logs.history)
-
   def _export_bert_tfhub(self):
-    bert_config = configs.BertConfig(
-        vocab_size=30522,
-        hidden_size=16,
-        intermediate_size=32,
-        max_position_embeddings=128,
-        num_attention_heads=2,
-        num_hidden_layers=1)
-    _, encoder = export_tfhub.create_bert_model(bert_config)
-    model_checkpoint_dir = os.path.join(self.get_temp_dir(), "checkpoint")
-    checkpoint = tf.train.Checkpoint(model=encoder)
-    checkpoint.save(os.path.join(model_checkpoint_dir, "test"))
-    model_checkpoint_path = tf.train.latest_checkpoint(model_checkpoint_dir)
-
-    vocab_file = os.path.join(self.get_temp_dir(), "uncased_vocab.txt")
-    with tf.io.gfile.GFile(vocab_file, "w") as f:
-      f.write("dummy content")
-
+    encoder = encoders.build_encoder(
+        encoders.EncoderConfig(
+            bert=encoders.BertEncoderConfig(vocab_size=30522, num_layers=1)))
+    encoder_inputs_dict = {x.name: x for x in encoder.inputs}
+    encoder_output_dict = encoder(encoder_inputs_dict)
+    core_model = tf.keras.Model(
+        inputs=encoder_inputs_dict, outputs=encoder_output_dict)
     hub_destination = os.path.join(self.get_temp_dir(), "hub")
-    export_tfhub.export_bert_tfhub(bert_config, model_checkpoint_path,
-                                   hub_destination, vocab_file)
+    core_model.save(hub_destination, include_optimizer=False, save_format="tf")
     return hub_destination
 
   def test_task_with_hub(self):

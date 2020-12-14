@@ -13,12 +13,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""factory method."""
+"""Backbone registers and factory method.
+
+One can regitered a new backbone model by the following two steps:
+
+1 Import the factory and register the build in the backbone file.
+2 Import the backbone class and add a build in __init__.py.
+
+```
+# my_backbone.py
+
+from modeling.backbones import factory
+
+class MyBackbone():
+  ...
+
+@factory.register_backbone_builder('my_backbone')
+def build_my_backbone():
+  return MyBackbone()
+
+# backbones/__init__.py adds import
+from modeling.backbones.my_backbone import MyBackbone
+```
+
+If one wants the MyBackbone class to be used only by those binary
+then don't imported the backbone module in backbones/__init__.py, but import it
+in place that uses it.
+
+
+"""
 # Import libraries
 import tensorflow as tf
 
-from official.vision.beta.modeling import backbones
-from official.vision.beta.modeling.backbones import spinenet
+from official.core import registry
+
+
+_REGISTERED_BACKBONE_CLS = {}
+
+
+def register_backbone_builder(key: str):
+  """Decorates a builder of backbone class.
+
+  The builder should be a Callable (a class or a function).
+  This decorator supports registration of backbone builder as follows:
+
+  ```
+  class MyBackbone(tf.keras.Model):
+    pass
+
+  @register_backbone_builder('mybackbone')
+  def builder(input_specs, config, l2_reg):
+    return MyBackbone(...)
+
+  # Builds a MyBackbone object.
+  my_backbone = build_backbone_3d(input_specs, config, l2_reg)
+  ```
+
+  Args:
+    key: the key to look up the builder.
+
+  Returns:
+    A callable for use as class decorator that registers the decorated class
+    for creation from an instance of task_config_cls.
+  """
+  return registry.register(_REGISTERED_BACKBONE_CLS, key)
 
 
 def build_backbone(input_specs: tf.keras.layers.InputSpec,
@@ -34,104 +92,7 @@ def build_backbone(input_specs: tf.keras.layers.InputSpec,
   Returns:
     tf.keras.Model instance of the backbone.
   """
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_builder = registry.lookup(_REGISTERED_BACKBONE_CLS,
+                                     model_config.backbone.type)
 
-  if backbone_type == 'resnet':
-    backbone = backbones.ResNet(
-        model_id=backbone_cfg.model_id,
-        input_specs=input_specs,
-        activation=norm_activation_config.activation,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
-  elif backbone_type == 'efficientnet':
-    backbone = backbones.EfficientNet(
-        model_id=backbone_cfg.model_id,
-        input_specs=input_specs,
-        stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
-        se_ratio=backbone_cfg.se_ratio,
-        activation=norm_activation_config.activation,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
-  elif backbone_type == 'spinenet':
-    model_id = backbone_cfg.model_id
-    if model_id not in spinenet.SCALING_MAP:
-      raise ValueError(
-          'SpineNet-{} is not a valid architecture.'.format(model_id))
-    scaling_params = spinenet.SCALING_MAP[model_id]
-
-    backbone = backbones.SpineNet(
-        input_specs=input_specs,
-        min_level=model_config.min_level,
-        max_level=model_config.max_level,
-        endpoints_num_filters=scaling_params['endpoints_num_filters'],
-        resample_alpha=scaling_params['resample_alpha'],
-        block_repeats=scaling_params['block_repeats'],
-        filter_size_scale=scaling_params['filter_size_scale'],
-        kernel_regularizer=l2_regularizer,
-        activation=norm_activation_config.activation,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon)
-  elif backbone_type == 'revnet':
-    backbone = backbones.RevNet(
-        model_id=backbone_cfg.model_id,
-        input_specs=input_specs,
-        activation=norm_activation_config.activation,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
-  else:
-    raise ValueError('Backbone {!r} not implement'.format(backbone_type))
-
-  return backbone
-
-
-def build_backbone_3d(input_specs: tf.keras.layers.InputSpec,
-                      model_config,
-                      l2_regularizer: tf.keras.regularizers.Regularizer = None):
-  """Builds 3d backbone from a config.
-
-  Args:
-    input_specs: tf.keras.layers.InputSpec.
-    model_config: a OneOfConfig. Model config.
-    l2_regularizer: tf.keras.regularizers.Regularizer instance. Default to None.
-
-  Returns:
-    tf.keras.Model instance of the backbone.
-  """
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
-
-  # Flatten configs before passing to the backbone.
-  temporal_strides = []
-  temporal_kernel_sizes = []
-  use_self_gating = []
-  for block_spec in backbone_cfg.block_specs:
-    temporal_strides.append(block_spec.temporal_strides)
-    temporal_kernel_sizes.append(block_spec.temporal_kernel_sizes)
-    use_self_gating.append(block_spec.use_self_gating)
-
-  if backbone_type == 'resnet_3d':
-    backbone = backbones.ResNet3D(
-        model_id=backbone_cfg.model_id,
-        temporal_strides=temporal_strides,
-        temporal_kernel_sizes=temporal_kernel_sizes,
-        use_self_gating=use_self_gating,
-        input_specs=input_specs,
-        activation=norm_activation_config.activation,
-        use_sync_bn=norm_activation_config.use_sync_bn,
-        norm_momentum=norm_activation_config.norm_momentum,
-        norm_epsilon=norm_activation_config.norm_epsilon,
-        kernel_regularizer=l2_regularizer)
-  else:
-    raise ValueError('Backbone {!r} not implement'.format(backbone_type))
-
-  return backbone
+  return backbone_builder(input_specs, model_config, l2_regularizer)

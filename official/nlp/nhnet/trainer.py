@@ -15,10 +15,6 @@
 # ==============================================================================
 """Run NHNet model training and eval."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
 # Import libraries
@@ -145,20 +141,20 @@ def train(params, strategy, dataset=None):
         FLAGS.model_type, params, init_checkpoint=FLAGS.init_checkpoint)
     opt = optimizer.create_optimizer(params)
     trainer = Trainer(model, params)
-    model.global_step = opt.iterations
 
     trainer.compile(
         optimizer=opt,
-        experimental_steps_per_execution=FLAGS.steps_per_loop)
+        steps_per_execution=FLAGS.steps_per_loop)
     summary_dir = os.path.join(FLAGS.model_dir, "summaries")
     summary_callback = tf.keras.callbacks.TensorBoard(
         summary_dir, update_freq=max(100, FLAGS.steps_per_loop))
-    checkpoint = tf.train.Checkpoint(model=model, optimizer=opt)
+    checkpoint = tf.train.Checkpoint(
+        model=model, optimizer=opt, global_step=opt.iterations)
     checkpoint_manager = tf.train.CheckpointManager(
         checkpoint,
         directory=FLAGS.model_dir,
         max_to_keep=10,
-        step_counter=model.global_step,
+        step_counter=opt.iterations,
         checkpoint_interval=FLAGS.checkpoint_interval)
     if checkpoint_manager.restore_or_initialize():
       logging.info("Training restored from the checkpoints in: %s",
@@ -214,7 +210,7 @@ def run():
   if "eval" in FLAGS.mode:
     timeout = 0 if FLAGS.mode == "train_and_eval" else FLAGS.eval_timeout
     # Uses padded decoding for TPU. Always uses cache.
-    padded_decode = isinstance(strategy, tf.distribute.experimental.TPUStrategy)
+    padded_decode = isinstance(strategy, tf.distribute.TPUStrategy)
     params.override({
         "padded_decode": padded_decode,
     }, is_strict=False)

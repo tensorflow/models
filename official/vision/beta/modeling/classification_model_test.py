@@ -79,8 +79,60 @@ class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
 
   @combinations.generate(
       combinations.combine(
+          mobilenet_model_id=[
+              'MobileNetV1',
+              'MobileNetV2',
+              'MobileNetV3Large',
+              'MobileNetV3Small',
+              'MobileNetV3EdgeTPU',
+              'MobileNetMultiAVG',
+              'MobileNetMultiMAX',
+          ],
+          filter_size_scale=[1.0, 0.75],
+      ))
+  def test_mobilenet_network_creation(self, mobilenet_model_id,
+                                      filter_size_scale):
+    """Test for creation of a MobileNet classifier."""
+    mobilenet_params = {
+        ('MobileNetV1', 1.0): 4254889,
+        ('MobileNetV1', 0.75): 2602745,
+        ('MobileNetV2', 1.0): 3540265,
+        ('MobileNetV2', 0.75): 2664345,
+        ('MobileNetV3Large', 1.0): 5508713,
+        ('MobileNetV3Large', 0.75): 4013897,
+        ('MobileNetV3Small', 1.0): 2555993,
+        ('MobileNetV3Small', 0.75): 2052577,
+        ('MobileNetV3EdgeTPU', 1.0): 4131593,
+        ('MobileNetV3EdgeTPU', 0.75): 3019569,
+        ('MobileNetMultiAVG', 1.0): 4982857,
+        ('MobileNetMultiAVG', 0.75): 3628145,
+        ('MobileNetMultiMAX', 1.0): 4453001,
+        ('MobileNetMultiMAX', 0.75): 3324257,
+    }
+
+    inputs = np.random.rand(2, 224, 224, 3)
+
+    tf.keras.backend.set_image_data_format('channels_last')
+
+    backbone = backbones.MobileNet(
+        model_id=mobilenet_model_id, filter_size_scale=filter_size_scale)
+
+    num_classes = 1001
+    model = classification_model.ClassificationModel(
+        backbone=backbone,
+        num_classes=num_classes,
+        dropout_rate=0.2,
+    )
+    self.assertEqual(model.count_params(),
+                     mobilenet_params[(mobilenet_model_id, filter_size_scale)])
+
+    logits = model(inputs)
+    self.assertAllEqual([2, num_classes], logits.numpy().shape)
+
+  @combinations.generate(
+      combinations.combine(
           strategy=[
-              strategy_combinations.tpu_strategy,
+              strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
           use_sync_bn=[False, True],
@@ -129,7 +181,7 @@ class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
       _ = model(inputs)
 
   def test_serialize_deserialize(self):
-    """Validate the classification network can be serialized and deserialized."""
+    """Validate the classification net can be serialized and deserialized."""
 
     tf.keras.backend.set_image_data_format('channels_last')
     backbone = backbones.ResNet(model_id=50)

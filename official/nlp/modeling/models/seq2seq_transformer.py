@@ -23,71 +23,10 @@ from official.modeling import tf_utils
 from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 from official.nlp.modeling.ops import beam_search
-from official.nlp.transformer import metrics
 from official.nlp.transformer import model_utils
 
 EOS_ID = 1
 # pylint: disable=g-classes-have-attributes
-
-
-def create_model(params, is_train):
-  """Creates transformer model."""
-
-  encdec_kwargs = dict(
-      num_layers=params["num_hidden_layers"],
-      num_attention_heads=params["num_heads"],
-      intermediate_size=params["filter_size"],
-      activation="relu",
-      dropout_rate=params["relu_dropout"],
-      attention_dropout_rate=params["attention_dropout"],
-      use_bias=False,
-      norm_first=True,
-      norm_epsilon=1e-6,
-      intermediate_dropout=params["relu_dropout"])
-  encoder_layer = TransformerEncoder(**encdec_kwargs)
-  decoder_layer = TransformerDecoder(**encdec_kwargs)
-
-  model_kwargs = dict(
-      vocab_size=params["vocab_size"],
-      embedding_width=params["hidden_size"],
-      dropout_rate=params["layer_postprocess_dropout"],
-      padded_decode=params["padded_decode"],
-      decode_max_length=params["decode_max_length"],
-      dtype=params["dtype"],
-      extra_decode_length=params["extra_decode_length"],
-      beam_size=params["beam_size"],
-      alpha=params["alpha"],
-      encoder_layer=encoder_layer,
-      decoder_layer=decoder_layer,
-      name="transformer_v2")
-
-  if is_train:
-    inputs = tf.keras.layers.Input((None,), dtype="int64", name="inputs")
-    targets = tf.keras.layers.Input((None,), dtype="int64", name="targets")
-    internal_model = Seq2SeqTransformer(**model_kwargs)
-    logits = internal_model([inputs, targets], training=is_train)
-    vocab_size = params["vocab_size"]
-    label_smoothing = params["label_smoothing"]
-    if params["enable_metrics_in_training"]:
-      logits = metrics.MetricLayer(vocab_size)([logits, targets])
-    logits = tf.keras.layers.Lambda(
-        lambda x: x, name="logits", dtype=tf.float32)(
-            logits)
-    model = tf.keras.Model([inputs, targets], logits)
-    loss = metrics.transformer_loss(logits, targets, label_smoothing,
-                                    vocab_size)
-    model.add_loss(loss)
-    return model
-
-  batch_size = params["decode_batch_size"] if params["padded_decode"] else None
-  inputs = tf.keras.layers.Input((None,),
-                                 batch_size=batch_size,
-                                 dtype="int64",
-                                 name="inputs")
-  internal_model = Seq2SeqTransformer(**model_kwargs)
-  ret = internal_model([inputs], training=is_train)
-  outputs, scores = ret["outputs"], ret["scores"]
-  return tf.keras.Model(inputs, [outputs, scores])
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -114,6 +53,7 @@ class Seq2SeqTransformer(tf.keras.Model):
                encoder_layer=None,
                decoder_layer=None,
                dtype=tf.float32,
+               eos_id=EOS_ID,
                **kwargs):
     """Initialize layers to build Transformer model.
 
@@ -130,6 +70,7 @@ class Seq2SeqTransformer(tf.keras.Model):
       encoder_layer: An initialized encoder layer.
       decoder_layer: An initialized decoder layer.
       dtype: float dtype.
+      eos_id: Id of end of sentence token.
       **kwargs: other keyword arguments.
     """
     super(Seq2SeqTransformer, self).__init__(**kwargs)
@@ -142,6 +83,7 @@ class Seq2SeqTransformer(tf.keras.Model):
     self._beam_size = beam_size
     self._alpha = alpha
     self._dtype = dtype
+    self._eos_id = eos_id
     self.embedding_lookup = keras_nlp.layers.OnDeviceEmbedding(
         vocab_size=self._vocab_size,
         embedding_width=self._embedding_width,
@@ -163,6 +105,7 @@ class Seq2SeqTransformer(tf.keras.Model):
         "padded_decode": self._padded_decode,
         "decode_max_length": self._decode_max_length,
         "dtype": self._dtype,
+        "eos_id": self._eos_id,
         "extra_decode_length": self._extra_decode_length,
         "beam_size": self._beam_size,
         "alpha": self._alpha,
@@ -191,9 +134,9 @@ class Seq2SeqTransformer(tf.keras.Model):
     """Calculate target logits or inferred target sequences.
 
     Args:
-      inputs: input tensor list of size 1 or 2.
-        First item, inputs: int tensor with shape [batch_size, input_length].
-        Second item (optional), targets: None or int tensor with shape
+      inputs: a dictionary of tensors.
+        Feature `inputs`: int tensor with shape [batch_size, input_length].
+        Feature `targets` (optional): None or int tensor with shape
           [batch_size, target_length].
 
     Returns:
@@ -208,12 +151,8 @@ class Seq2SeqTransformer(tf.keras.Model):
     Raises:
       NotImplementedError: If try to use padded decode method on CPU/GPUs.
     """
-    inputs = inputs if isinstance(inputs, list) else [inputs]
-    if len(inputs) == 2:
-      sources, targets = inputs[0], inputs[1]
-    else:
-      # Decoding path.
-      sources, targets = inputs[0], None
+    sources = inputs["inputs"]
+    targets = inputs.get("targets", None)
     attention_bias = model_utils.get_padding_bias(sources)
     attention_bias = tf.cast(attention_bias, self._dtype)
     # Prepare inputs to the layer stack by adding positional encodings and
@@ -291,7 +230,7 @@ class Seq2SeqTransformer(tf.keras.Model):
           beam_size=self._beam_size,
           alpha=self._alpha,
           max_decode_length=max_decode_length,
-          eos_id=EOS_ID,
+          eos_id=self._eos_id,
           padded_decode=self._padded_decode,
           dtype=self._dtype)
 
@@ -371,21 +310,14 @@ class Seq2SeqTransformer(tf.keras.Model):
           tf.not_equal(source_decoder_input, 0),
           self.embedding_lookup.embeddings.dtype)
       decoder_input *= tf.expand_dims(embedding_mask, -1)
-
+      decoder_input += timing_signal[i]
       if self._padded_decode:
-        timing_signal_shape = timing_signal.shape.as_list()
-        decoder_input += tf.slice(timing_signal, [i, 0],
-                                  [1, timing_signal_shape[1]])
-
         bias_shape = decoder_self_attention_bias.shape.as_list()
         self_attention_bias = tf.slice(
             decoder_self_attention_bias, [0, 0, i, 0],
             [bias_shape[0], bias_shape[1], 1, bias_shape[3]])
       else:
-        decoder_input += timing_signal[i:i + 1]
-
         self_attention_bias = decoder_self_attention_bias[:, :, i:i + 1, :i + 1]
-
       decoder_shape = tf_utils.get_shape_list(decoder_input, expected_rank=3)
       batch_size = decoder_shape[0]
       decoder_length = decoder_shape[1]
@@ -581,7 +513,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
     self.decoder_layers = []
     for i in range(self.num_layers):
       self.decoder_layers.append(
-          layers.TransformerDecoderLayer(
+          layers.TransformerDecoderBlock(
               num_attention_heads=self.num_attention_heads,
               intermediate_size=self._intermediate_size,
               intermediate_activation=self._activation,

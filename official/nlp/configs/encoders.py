@@ -28,6 +28,7 @@ from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.nlp import keras_nlp
 from official.nlp.modeling import networks
+from official.nlp.projects.bigbird import encoder as bigbird_encoder
 
 
 @dataclasses.dataclass
@@ -60,18 +61,21 @@ class MobileBertEncoderConfig(hyperparams.Config):
     num_blocks: number of transformer block in the encoder model.
     hidden_size: the hidden size for the transformer block.
     num_attention_heads: number of attention heads in the transformer block.
-    intermediate_size: the size of the "intermediate" (a.k.a., feed
-      forward) layer.
-    intermediate_act_fn: the non-linear activation function to apply
-      to the output of the intermediate/feed-forward layer.
+    intermediate_size: the size of the "intermediate" (a.k.a., feed forward)
+      layer.
+    hidden_activation: the non-linear activation function to apply to the
+      output of the intermediate/feed-forward layer.
     hidden_dropout_prob: dropout probability for the hidden layers.
     attention_probs_dropout_prob: dropout probability of the attention
       probabilities.
     intra_bottleneck_size: the size of bottleneck.
     initializer_range: The stddev of the truncated_normal_initializer for
-        initializing all weight matrices.
-    key_query_shared_bottleneck: whether to share linear transformation for
-      keys and queries.
+      initializing all weight matrices.
+    use_bottleneck_attention: Use attention inputs from the bottleneck
+      transformation. If true, the following `key_query_shared_bottleneck`
+      will be ignored.
+    key_query_shared_bottleneck: whether to share linear transformation for keys
+      and queries.
     num_feedforward_networks: number of stacked feed-forward networks.
     normalization_type: the type of normalization_type, only 'no_norm' and
       'layer_norm' are supported. 'no_norm' represents the element-wise linear
@@ -88,11 +92,12 @@ class MobileBertEncoderConfig(hyperparams.Config):
   hidden_size: int = 512
   num_attention_heads: int = 4
   intermediate_size: int = 4096
-  intermediate_act_fn: str = "gelu"
+  hidden_activation: str = "gelu"
   hidden_dropout_prob: float = 0.1
   attention_probs_dropout_prob: float = 0.1
   intra_bottleneck_size: int = 1024
   initializer_range: float = 0.02
+  use_bottleneck_attention: bool = False
   key_query_shared_bottleneck: bool = False
   num_feedforward_networks: int = 1
   normalization_type: str = "layer_norm"
@@ -117,18 +122,66 @@ class AlbertEncoderConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class BigBirdEncoderConfig(hyperparams.Config):
+  """BigBird encoder configuration."""
+  vocab_size: int = 50358
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3072
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  max_position_embeddings: int = 4096
+  num_rand_blocks: int = 3
+  block_size: int = 64
+  type_vocab_size: int = 16
+  initializer_range: float = 0.02
+  embedding_size: Optional[int] = None
+
+
+@dataclasses.dataclass
+class XLNetEncoderConfig(hyperparams.Config):
+  """XLNet encoder configuration."""
+  vocab_size: int = 32000
+  num_layers: int = 24
+  hidden_size: int = 1024
+  num_attention_heads: int = 16
+  head_size: int = 64
+  inner_size: int = 4096
+  inner_activation: str = "gelu"
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  attention_type: str = "bi"
+  bi_data: bool = False
+  tie_attention_biases: bool = False
+  memory_length: int = 0
+  same_length: bool = False
+  clamp_length: int = -1
+  reuse_length: int = 0
+  use_cls_mask: bool = False
+  embedding_width: int = 1024
+  initializer_range: float = 0.02
+  two_stream: bool = False
+
+
+@dataclasses.dataclass
 class EncoderConfig(hyperparams.OneOfConfig):
   """Encoder configuration."""
   type: Optional[str] = "bert"
   albert: AlbertEncoderConfig = AlbertEncoderConfig()
   bert: BertEncoderConfig = BertEncoderConfig()
+  bigbird: BigBirdEncoderConfig = BigBirdEncoderConfig()
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
+  xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
 
 
 ENCODER_CLS = {
     "bert": networks.BertEncoder,
     "mobilebert": networks.MobileBERTEncoder,
-    "albert": networks.AlbertTransformerEncoder,
+    "albert": networks.AlbertEncoder,
+    "bigbird": bigbird_encoder.BigBirdEncoder,
+    "xlnet": networks.XLNetBase,
 }
 
 
@@ -185,7 +238,8 @@ def build_encoder(
         pooled_output_dim=encoder_cfg.hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
-        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs)
+        return_all_layer_outputs=encoder_cfg.return_all_encoder_outputs,
+        dict_outputs=True)
     return encoder_cls(**kwargs)
 
   if encoder_type == "mobilebert":
@@ -198,10 +252,12 @@ def build_encoder(
         hidden_size=encoder_cfg.hidden_size,
         num_attention_heads=encoder_cfg.num_attention_heads,
         intermediate_size=encoder_cfg.intermediate_size,
-        intermediate_act_fn=encoder_cfg.intermediate_act_fn,
+        intermediate_act_fn=encoder_cfg.hidden_activation,
         hidden_dropout_prob=encoder_cfg.hidden_dropout_prob,
         attention_probs_dropout_prob=encoder_cfg.attention_probs_dropout_prob,
         intra_bottleneck_size=encoder_cfg.intra_bottleneck_size,
+        initializer_range=encoder_cfg.initializer_range,
+        use_bottleneck_attention=encoder_cfg.use_bottleneck_attention,
         key_query_shared_bottleneck=encoder_cfg.key_query_shared_bottleneck,
         num_feedforward_networks=encoder_cfg.num_feedforward_networks,
         normalization_type=encoder_cfg.normalization_type,
@@ -221,6 +277,48 @@ def build_encoder(
         dropout_rate=encoder_cfg.dropout_rate,
         attention_dropout_rate=encoder_cfg.attention_dropout_rate,
         initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        dict_outputs=True)
+
+  if encoder_type == "bigbird":
+    return encoder_cls(
+        vocab_size=encoder_cfg.vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        num_layers=encoder_cfg.num_layers,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        intermediate_size=encoder_cfg.intermediate_size,
+        activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        num_rand_blocks=encoder_cfg.num_rand_blocks,
+        block_size=encoder_cfg.block_size,
+        max_sequence_length=encoder_cfg.max_position_embeddings,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        embedding_width=encoder_cfg.embedding_size)
+
+  if encoder_type == "xlnet":
+    return encoder_cls(
+        vocab_size=encoder_cfg.vocab_size,
+        num_layers=encoder_cfg.num_layers,
+        hidden_size=encoder_cfg.hidden_size,
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        head_size=encoder_cfg.head_size,
+        inner_size=encoder_cfg.inner_size,
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        attention_type=encoder_cfg.attention_type,
+        bi_data=encoder_cfg.bi_data,
+        two_stream=encoder_cfg.two_stream,
+        tie_attention_biases=encoder_cfg.tie_attention_biases,
+        memory_length=encoder_cfg.memory_length,
+        clamp_length=encoder_cfg.clamp_length,
+        reuse_length=encoder_cfg.reuse_length,
+        inner_activation=encoder_cfg.inner_activation,
+        use_cls_mask=encoder_cfg.use_cls_mask,
+        embedding_width=encoder_cfg.embedding_width,
+        initializer=tf.keras.initializers.RandomNormal(
             stddev=encoder_cfg.initializer_range))
 
   # Uses the default BERTEncoder configuration schema to create the encoder.
@@ -240,4 +338,5 @@ def build_encoder(
           stddev=encoder_cfg.initializer_range),
       embedding_width=encoder_cfg.embedding_size,
       embedding_layer=embedding_layer,
-      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs)
+      return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
+      dict_outputs=True)

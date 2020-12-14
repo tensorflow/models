@@ -15,47 +15,78 @@
 # ==============================================================================
 """Defines the base task abstraction."""
 import abc
-import functools
-from typing import Any, Callable, Optional
+from typing import Optional
 
 from absl import logging
 import tensorflow as tf
 
-from official.modeling.hyperparams import config_definitions as cfg
+from official.core import config_definitions
+from official.modeling import optimization
+from official.modeling import performance
+
+TrainerConfig = config_definitions.TrainerConfig
+RuntimeConfig = config_definitions.RuntimeConfig
 
 
 class Task(tf.Module, metaclass=abc.ABCMeta):
   """A single-replica view of training procedure.
 
-  Tasks provide artifacts for training/evalution procedures, including
-  loading/iterating over Datasets, initializing the model, calculating the loss
-  and customized metrics with reduction.
+  Tasks provide artifacts for training/validation procedures, including
+  loading/iterating over Datasets, training/validation steps, calculating the
+  loss and customized metrics with reduction.
   """
 
   # Special keys in train/validate step returned logs.
   loss = "loss"
 
-  def __init__(self, params: cfg.TaskConfig, logging_dir: str = None):
+  def __init__(self, params, logging_dir: str = None, name: str = None):
     """Task initialization.
 
     Args:
-      params: cfg.TaskConfig instance.
+      params: the task configuration instance, which can be any of dataclass,
+        ConfigDict, namedtuple, etc.
       logging_dir: a string pointing to where the model, summaries etc. will be
         saved. You can also write additional stuff in this directory.
+      name: the task name.
     """
+    super().__init__(name=name)
     self._task_config = params
     self._logging_dir = logging_dir
 
   @property
-  def task_config(self) -> cfg.TaskConfig:
+  def task_config(self):
     return self._task_config
 
   @property
   def logging_dir(self) -> str:
     return self._logging_dir
 
+  @classmethod
+  def create_optimizer(cls, trainer_config: TrainerConfig,
+                       runtime_config: Optional[RuntimeConfig] = None):
+    """Creates an TF optimizer from configurations.
+
+    Args:
+      trainer_config: the parameters of the trainer.
+      runtime_config: the parameters of the runtime.
+
+    Returns:
+      A tf.optimizers.Optimizer object.
+    """
+    opt_factory = optimization.OptimizerFactory(trainer_config.optimizer_config)
+    optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
+    # Configuring optimizer when loss_scale is set in runtime config. This helps
+    # avoiding overflow/underflow for float16 computations.
+    if runtime_config and runtime_config.loss_scale:
+      optimizer = performance.configure_optimizer(
+          optimizer,
+          use_float16=runtime_config.mixed_precision_dtype == "float16",
+          loss_scale=runtime_config.loss_scale)
+
+    return optimizer
+
   def initialize(self, model: tf.keras.Model):
-    """A callback function used as CheckpointManager's init_fn.
+    """[Optional] A callback function used as CheckpointManager's init_fn.
 
     This function will be called when no checkpoint is found for the model.
     If there is a checkpoint, the checkpoint will be loaded and this function
@@ -83,52 +114,16 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     logging.info("Finished loading pretrained checkpoint from %s",
                  ckpt_dir_or_file)
 
-  @abc.abstractmethod
   def build_model(self) -> tf.keras.Model:
-    """Creates model architecture.
+    """[Optional] Creates model architecture.
 
     Returns:
       A model instance.
     """
 
-  def compile_model(self,
-                    model: tf.keras.Model,
-                    optimizer: tf.keras.optimizers.Optimizer,
-                    loss=None,
-                    train_step: Optional[Callable[..., Any]] = None,
-                    validation_step: Optional[Callable[..., Any]] = None,
-                    **kwargs) -> tf.keras.Model:
-    """Compiles the model with objects created by the task.
-
-    The method should not be used in any customized training implementation.
-
-    Args:
-      model: a keras.Model.
-      optimizer: the keras optimizer.
-      loss: a callable/list of losses.
-      train_step: optional train step function defined by the task.
-      validation_step: optional validation_step step function defined by the
-        task.
-      **kwargs: other kwargs consumed by keras.Model compile().
-
-    Returns:
-      a compiled keras.Model.
-    """
-    if bool(loss is None) == bool(train_step is None):
-      raise ValueError("`loss` and `train_step` should be exclusive to "
-                       "each other.")
-    model.compile(optimizer=optimizer, loss=loss, **kwargs)
-
-    if train_step:
-      model.train_step = functools.partial(
-          train_step, model=model, optimizer=model.optimizer)
-    if validation_step:
-      model.test_step = functools.partial(validation_step, model=model)
-    return model
-
   @abc.abstractmethod
   def build_inputs(self,
-                   params: cfg.DataConfig,
+                   params,
                    input_context: Optional[tf.distribute.InputContext] = None):
     """Returns a dataset or a nested structure of dataset functions.
 
@@ -136,7 +131,8 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     With distributed training, this method runs on remote hosts.
 
     Args:
-      params: hyperparams to create input pipelines.
+      params: hyperparams to create input pipelines, which can be any of
+        dataclass, ConfigDict, namedtuple, etc.
       input_context: optional distribution input pipeline context.
 
     Returns:
@@ -230,22 +226,22 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
       # For mixed precision, when a LossScaleOptimizer is used, the loss is
       # scaled to avoid numeric underflow.
       if isinstance(optimizer,
-                    tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                    tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
     grads = tape.gradient(scaled_loss, tvars)
 
     if isinstance(optimizer,
-                  tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                  tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
     optimizer.apply_gradients(list(zip(grads, tvars)))
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
+    if model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics or []})
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
@@ -272,9 +268,9 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
-    elif model.compiled_metrics:
+    if model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
+      logs.update({m.name: m.result() for m in metrics or []})
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 

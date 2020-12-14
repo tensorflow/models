@@ -16,10 +16,11 @@
 
 import math
 # Import libraries
-from absl import logging
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 
@@ -47,22 +48,6 @@ SCALING_MAP = {
     'b6': dict(width_scale=1.8, depth_scale=2.6),
     'b7': dict(width_scale=2.0, depth_scale=3.1),
 }
-
-
-def round_filters(filters, multiplier, divisor=8, min_depth=None, skip=False):
-  """Round number of filters based on depth multiplier."""
-  orig_f = filters
-  if skip or not multiplier:
-    return filters
-
-  filters *= multiplier
-  min_depth = min_depth or divisor
-  new_filters = max(min_depth, int(filters + divisor / 2) // divisor * divisor)
-  # Make sure that round down does not go down by more than 10%.
-  if new_filters < 0.9 * filters:
-    new_filters += divisor
-  logging.info('round_filter input=%s output=%s', orig_f, new_filters)
-  return int(new_filters)
 
 
 def round_repeats(repeats, multiplier, skip=False):
@@ -95,8 +80,8 @@ class BlockSpec(object):
     self.kernel_size = kernel_size
     self.strides = strides
     self.expand_ratio = expand_ratio
-    self.in_filters = round_filters(in_filters, width_scale)
-    self.out_filters = round_filters(out_filters, width_scale)
+    self.in_filters = nn_layers.round_filters(in_filters, width_scale)
+    self.out_filters = nn_layers.round_filters(out_filters, width_scale)
     self.is_output = is_output
 
 
@@ -165,7 +150,7 @@ class EfficientNet(tf.keras.Model):
 
     # Build stem.
     x = layers.Conv2D(
-        filters=round_filters(32, width_scale),
+        filters=nn_layers.round_filters(32, width_scale),
         kernel_size=3,
         strides=2,
         use_bias=False,
@@ -197,7 +182,7 @@ class EfficientNet(tf.keras.Model):
 
     # Build the final conv for classification.
     x = layers.Conv2D(
-        filters=round_filters(1280, width_scale),
+        filters=nn_layers.round_filters(1280, width_scale),
         kernel_size=1,
         strides=1,
         use_bias=False,
@@ -290,3 +275,27 @@ class EfficientNet(tf.keras.Model):
   def output_specs(self):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_backbone_builder('efficientnet')
+def build_efficientnet(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds ResNet 3d backbone from a config."""
+  backbone_type = model_config.backbone.type
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+  assert backbone_type == 'efficientnet', (f'Inconsistent backbone type '
+                                           f'{backbone_type}')
+
+  return EfficientNet(
+      model_id=backbone_cfg.model_id,
+      input_specs=input_specs,
+      stochastic_depth_drop_rate=backbone_cfg.stochastic_depth_drop_rate,
+      se_ratio=backbone_cfg.se_ratio,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)

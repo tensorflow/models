@@ -5,16 +5,29 @@ TF Vision model garden provides a large collection of baselines and checkpoints 
 
 
 ## Image Classification
-### Common Settings and Notes
-* We provide ImageNet checkpoints for [ResNet](https://arxiv.org/abs/1512.03385) models.
-* Training details:
-  * All models are trained from scratch for 90 epochs with batch size 4096 and 1.6 initial stepwise decay learning rate.
-  * Unless noted, all models are trained with l2 weight regularization and ReLU activation.
-
 ### ImageNet Baselines
-| model        | resolution    | epochs  | FLOPs (B)    | params (M)  |  Top-1  |  Top-5  | download |
-| ------------ |:-------------:| ---------:|-----------:|--------:|--------:|---------:|---------:|
-| ResNet-50    | 224x224       |    90    | 4.1 | 25.6 | 76.1 | 92.9 | config |
+#### Models trained with vanilla settings:
+* Models are trained from scratch with batch size 4096 and 1.6 initial learning rate.
+* Linear warmup is applied for the first 5 epochs.
+* Models trained with l2 weight regularization and ReLU activation.
+
+| model        | resolution    | epochs  |  Top-1  |  Top-5  | download |
+| ------------ |:-------------:|--------:|--------:|---------:|---------:|
+| ResNet-50    | 224x224       |    90    | 76.1 | 92.9 | config |
+| ResNet-50    | 224x224       |    200   | 77.1 | 93.5 | config |
+| ResNet-101   | 224x224       |    200   | 78.3 | 94.2 | config |
+| ResNet-152   | 224x224       |    200   | 78.7 | 94.3 | config |
+
+#### Models trained with training features including:
+* Label smoothing 0.1.
+* Swish activation.
+
+| model        | resolution    | epochs  |   Top-1  |  Top-5  | download |
+| ------------ |:-------------:| ---------:|--------:|---------:|---------:|
+| ResNet-50    | 224x224       |    200    | 78.1 | 93.9 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) |
+| ResNet-101   | 224x224       |    200    | 79.1 | 94.5 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet101_tpu.yaml) |
+| ResNet-152   | 224x224       |    200    | 79.4 | 94.7 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet152_tpu.yaml) |
+| ResNet-200   | 224x224       |    200    | 79.9 | 94.8 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet200_tpu.yaml) |
 
 
 
@@ -36,12 +49,15 @@ TF Vision model garden provides a large collection of baselines and checkpoints 
 | R50-FPN      | 640x640       |    12    | 97.0 | 34.0 | 34.3 | config|
 | R50-FPN      | 640x640       |    36    | 97.0 | 34.0 | 37.3 | config|
 
-#### RetinaNet (Trained from scratch)
+#### RetinaNet (Trained from scratch) with training features including:
+* Stochastic depth with drop rate 0.2.
+* Swish activation.
+
 | backbone        | resolution    | epochs  | FLOPs (B)     | params (M) |  box AP |   download |
 | ------------ |:-------------:| ---------:|-----------:|--------:|---------:|-----------:|
-| SpineNet-49  | 640x640       |    350    | 85.4| 28.5 | 42.4| config|
-| SpineNet-96  | 1024x1024     |    350    | 265.4 | 43.0 | 46.0 |  config |
-| SpineNet-143 | 1280x1280     |    350    | 524.0 | 67.0 | 46.8 |config|
+| SpineNet-49  | 640x640       |    500    | 85.4| 28.5 | 44.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet49_tpu.yaml)|
+| SpineNet-96  | 1024x1024     |    500    | 265.4 | 43.0 | 48.5 |  [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet96_tpu.yaml) |
+| SpineNet-143 | 1280x1280     |    500    | 524.0 | 67.0 | 50.0 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet143_tpu.yaml)|
 
 
 ### Instance Segmentation Baselines

@@ -15,13 +15,28 @@
 """Keras layers of XLNet model in TF 2.0."""
 
 import copy
+import warnings
 
 import tensorflow as tf
+
+from official.nlp.modeling import networks
 from official.nlp.xlnet import data_utils
 
 
 def gelu(x):
   return tf.keras.activations.gelu(x, approximate=True)
+
+
+def _get_initializer(flags):
+  """Get variable initializer."""
+  if flags.init_method == "uniform":
+    initializer = tf.keras.initializers.RandomUniform(
+        minval=-flags.init_range, maxval=flags.init_range)
+  elif flags.init_method == "normal":
+    initializer = tf.keras.initializers.RandomNormal(stddev=flags.init_std)
+  else:
+    raise ValueError("Initializer {} not supported".format(flags.init_method))
+  return initializer
 
 
 def rel_shift(x, klen=-1):
@@ -34,18 +49,6 @@ def rel_shift(x, klen=-1):
   x = tf.slice(x, [0, 0, 0, 0], [-1, klen, -1, -1])
 
   return x
-
-
-def _get_initializer(flags):
-  """Get variable initializer."""
-  if flags.init_method == 'uniform':
-    initializer = tf.keras.initializers.RandomUniform(
-        minval=-flags.init_range, maxval=flags.init_range)
-  elif flags.init_method == 'normal':
-    initializer = tf.keras.initializers.RandomNormal(stddev=flags.init_std)
-  else:
-    raise ValueError('Initializer {} not supported'.format(flags.init_method))
-  return initializer
 
 
 def _create_mask(qlen, mlen, dtype=tf.float32, same_length=False):
@@ -84,7 +87,7 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-@tf.keras.utils.register_keras_serializable(package='Text')
+@tf.keras.utils.register_keras_serializable(package="Text")
 class RelativePositionEncoding(tf.keras.layers.Layer):
   """Creates a relative positional encoding.
 
@@ -121,7 +124,7 @@ class RelativePositionEncoding(tf.keras.layers.Layer):
         [len(pos_seq), batch_size, hidden_size] if batch_size is provided, else
         [len(pos_seq), 1, hidden_size].
     """
-    sinusoid_input = tf.einsum('i,d->id', pos_seq, self._inv_freq)
+    sinusoid_input = tf.einsum("i,d->id", pos_seq, self._inv_freq)
     pos_emb = tf.concat([tf.sin(sinusoid_input), tf.cos(sinusoid_input)], -1)
     pos_emb = pos_emb[:, None, :]
 
@@ -151,17 +154,17 @@ class RelativeAttention(tf.keras.layers.Layer):
     """Implements call() for the layer."""
 
     # content based attention score
-    ac = tf.einsum('ibnd,jbnd->ijbn', q_head + r_w_bias, k_head_h)
+    ac = tf.einsum("ibnd,jbnd->ijbn", q_head + r_w_bias, k_head_h)
 
     # position based attention score
-    bd = tf.einsum('ibnd,jbnd->ijbn', q_head + r_r_bias, k_head_r)
+    bd = tf.einsum("ibnd,jbnd->ijbn", q_head + r_r_bias, k_head_r)
     bd = rel_shift(bd, klen=tf.shape(ac)[1])
 
     # segment-based attention score
     if seg_mat is None:
       ef = 0
     else:
-      ef = tf.einsum('ibnd,snd->isbn', q_head + r_s_bias, seg_embed)
+      ef = tf.einsum("ibnd,snd->isbn", q_head + r_s_bias, seg_embed)
       tgt_shape = tf.shape(bd)
       ef = tf.where(
           tf.broadcast_to(tf.expand_dims(seg_mat, 3), tgt_shape),
@@ -178,7 +181,7 @@ class RelativeAttention(tf.keras.layers.Layer):
     attn_prob = self.attention_probs_dropout(attn_prob)
 
     # attention output
-    attn_vec = tf.einsum('ijbn,jbnd->ibnd', attn_prob, v_head_h)
+    attn_vec = tf.einsum("ijbn,jbnd->ibnd", attn_prob, v_head_h)
 
     return attn_vec
 
@@ -197,29 +200,29 @@ class PositionwiseFF(tf.keras.layers.Layer):
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
-    if self.activation_type == 'relu':
+    if self.activation_type == "relu":
       activation = tf.nn.relu
-    elif self.activation_type == 'gelu':
+    elif self.activation_type == "gelu":
       activation = gelu
     else:
-      raise (ValueError('Unsupported activation type {}'.format(
+      raise (ValueError("Unsupported activation type {}".format(
           self.activation_type)))
     self.inner_projection_layer = (
         tf.keras.layers.Dense(
             units=self.d_inner,
             activation=activation,
             kernel_initializer=self.kernel_initializer,
-            name='layer_1'))
+            name="layer_1"))
     self.output_projection_layer = (
         tf.keras.layers.Dense(
             units=self.d_model,
             kernel_initializer=self.kernel_initializer,
-            name='layer_2'))
+            name="layer_2"))
     self.output_dropout = tf.keras.layers.Dropout(
-        rate=self.dropout, name='drop_2')
+        rate=self.dropout, name="drop_2")
     self.output_layer_norm = (
         tf.keras.layers.LayerNormalization(
-            name='LayerNorm', axis=-1, epsilon=1e-12))
+            name="LayerNorm", axis=-1, epsilon=1e-12))
     super(PositionwiseFF, self).build(unused_input_shapes)
 
   def call(self, inp):
@@ -244,7 +247,7 @@ class EmbeddingLookup(tf.keras.layers.Layer):
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
     self.lookup_table = self.add_weight(
-        'lookup_table',
+        "lookup_table",
         shape=[self.n_token, self.d_embed],
         initializer=self.initializer,
         dtype=self.dtype)
@@ -273,22 +276,22 @@ class RelativeMultiheadAttention(tf.keras.layers.Layer):
     self.scale = 1.0 / (self.d_head**0.5)
 
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
-        name='LayerNorm', axis=-1, epsilon=1e-12)
+        name="LayerNorm", axis=-1, epsilon=1e-12)
 
     self.kh_projection_layer = self.add_weight(
-        'k/kernel',
+        "k/kernel",
         shape=[self.d_model, self.n_head, self.d_head],
         initializer=self.initializer)
     self.vh_projection_layer = self.add_weight(
-        'v/kernel',
+        "v/kernel",
         shape=[self.d_model, self.n_head, self.d_head],
         initializer=self.initializer)
     self.kr_projection_layer = self.add_weight(
-        'r/kernel',
+        "r/kernel",
         shape=[self.d_model, self.n_head, self.d_head],
         initializer=self.initializer)
     self.qh_projection_layer = self.add_weight(
-        'q/kernel',
+        "q/kernel",
         shape=[self.d_model, self.n_head, self.d_head],
         initializer=self.initializer)
 
@@ -296,7 +299,7 @@ class RelativeMultiheadAttention(tf.keras.layers.Layer):
         dropout_att=self.dropout_att, scale=self.scale)
 
     self.proj_o = self.add_weight(
-        'o/kernel',
+        "o/kernel",
         shape=[self.d_model, self.n_head, self.d_head],
         initializer=self.initializer)
 
@@ -314,12 +317,12 @@ class RelativeMultiheadAttention(tf.keras.layers.Layer):
       cat = h
 
     # content heads
-    q_head_h = tf.einsum('ibh,hnd->ibnd', h, self.qh_projection_layer)
-    k_head_h = tf.einsum('ibh,hnd->ibnd', cat, self.kh_projection_layer)
-    v_head_h = tf.einsum('ibh,hnd->ibnd', cat, self.vh_projection_layer)
+    q_head_h = tf.einsum("ibh,hnd->ibnd", h, self.qh_projection_layer)
+    k_head_h = tf.einsum("ibh,hnd->ibnd", cat, self.kh_projection_layer)
+    v_head_h = tf.einsum("ibh,hnd->ibnd", cat, self.vh_projection_layer)
 
     # positional heads
-    k_head_r = tf.einsum('ibh,hnd->ibnd', r, self.kr_projection_layer)
+    k_head_r = tf.einsum("ibh,hnd->ibnd", r, self.kr_projection_layer)
 
     # core attention ops
     attn_vec_h = self.relative_attention_layer(q_head_h, k_head_h, v_head_h,
@@ -328,21 +331,21 @@ class RelativeMultiheadAttention(tf.keras.layers.Layer):
                                                attn_mask_h)
 
     # post processing
-    output_h = tf.einsum('ibnd,hnd->ibh', attn_vec_h, self.proj_o)
+    output_h = tf.einsum("ibnd,hnd->ibh", attn_vec_h, self.proj_o)
     output_h = self.attention_dropout(output_h)
     output_h = self.output_layer_norm(output_h + h)
 
     output_g = None
     if g is not None:  # enable two-stream attention
       # g-stream
-      q_head_g = tf.einsum('ibh,hnd->ibnd', g, self.qh_projection_layer)
+      q_head_g = tf.einsum("ibh,hnd->ibnd", g, self.qh_projection_layer)
       if target_mapping is not None:
-        q_head_g = tf.einsum('mbnd,mlb->lbnd', q_head_g, target_mapping)
+        q_head_g = tf.einsum("mbnd,mlb->lbnd", q_head_g, target_mapping)
         attn_vec_g = self.relative_attention_layer(q_head_g, k_head_h, v_head_h,
                                                    k_head_r, seg_embed, seg_mat,
                                                    r_w_bias, r_r_bias, r_s_bias,
                                                    attn_mask_g)
-        attn_vec_g = tf.einsum('lbnd,mlb->mbnd', attn_vec_g, target_mapping)
+        attn_vec_g = tf.einsum("lbnd,mlb->mbnd", attn_vec_g, target_mapping)
 
       else:
         attn_vec_g = self.relative_attention_layer(q_head_g, k_head_h, v_head_h,
@@ -351,7 +354,7 @@ class RelativeMultiheadAttention(tf.keras.layers.Layer):
                                                    attn_mask_g)
 
       # post processing
-      output_g = tf.einsum('ibnd,hnd->ibh', attn_vec_g, self.proj_o)
+      output_g = tf.einsum("ibnd,hnd->ibh", attn_vec_g, self.proj_o)
       output_g = self.attention_dropout(output_g)
       output_g = self.output_layer_norm(output_g + g)
 
@@ -380,7 +383,7 @@ class TransformerXLModel(tf.keras.layers.Layer):
                untie_r=False,
                use_tpu=True,
                reuse_len=None,
-               ff_activation='relu',
+               ff_activation="relu",
                use_cls_mask=False,
                **kwargs):
     """Initializes TransformerXLModel.
@@ -414,6 +417,9 @@ class TransformerXLModel(tf.keras.layers.Layer):
     """
 
     super(TransformerXLModel, self).__init__(**kwargs)
+    warnings.warn(
+        "`TransformerXLModel` is deprecated, please use `XLNetBase` instead",
+        DeprecationWarning, stacklevel=2)
 
     self.n_token = n_token
     self.initializer = initializer
@@ -445,7 +451,7 @@ class TransformerXLModel(tf.keras.layers.Layer):
         d_embed=self.d_model,
         initializer=self.initializer,
         dtype=self.tf_float,
-        name='word_embedding')
+        name="word_embedding")
 
     self.h_dropout = tf.keras.layers.Dropout(rate=self.dropout)
     self.g_dropout = tf.keras.layers.Dropout(rate=self.dropout)
@@ -453,48 +459,48 @@ class TransformerXLModel(tf.keras.layers.Layer):
     if self.untie_r:
       self.r_w_bias = (
           self.add_weight(
-              'r_w_bias',
+              "r_w_bias",
               shape=[self.n_layer, self.n_head, self.d_head],
               dtype=self.tf_float,
               initializer=self.initializer))
       self.r_r_bias = (
           self.add_weight(
-              'r_r_bias',
+              "r_r_bias",
               shape=[self.n_layer, self.n_head, self.d_head],
               dtype=self.tf_float,
               initializer=self.initializer))
       self.r_s_bias = (
           self.add_weight(
-              'r_s_bias',
+              "r_s_bias",
               shape=[self.n_layer, self.n_head, self.d_head],
               dtype=self.tf_float,
               initializer=self.initializer))
     else:
       self.r_w_bias = (
           self.add_weight(
-              'r_w_bias',
+              "r_w_bias",
               shape=[self.n_head, self.d_head],
               dtype=self.tf_float,
               initializer=self.initializer))
       self.r_r_bias = (
           self.add_weight(
-              'r_r_bias',
+              "r_r_bias",
               shape=[self.n_head, self.d_head],
               dtype=self.tf_float,
               initializer=self.initializer))
       self.r_s_bias = (
           self.add_weight(
-              'r_s_bias', [self.n_head, self.d_head],
+              "r_s_bias", [self.n_head, self.d_head],
               dtype=self.tf_float,
               initializer=self.initializer))
 
     self.seg_embed = self.add_weight(
-        'seg_embed', [self.n_layer, 2, self.n_head, self.d_head],
+        "seg_embed", [self.n_layer, 2, self.n_head, self.d_head],
         dtype=self.tf_float,
         initializer=self.initializer)
 
     self.mask_emb = self.add_weight(
-        'mask_emb/mask_emb', shape=[1, 1, self.d_model], dtype=self.tf_float)
+        "mask_emb/mask_emb", shape=[1, 1, self.d_model], dtype=self.tf_float)
 
     self.emb_dropout = tf.keras.layers.Dropout(rate=self.dropout)
     self.fwd_position_embedding = RelativePositionEncoding(self.d_model)
@@ -511,7 +517,7 @@ class TransformerXLModel(tf.keras.layers.Layer):
               d_head=self.d_head,
               dropout_att=self.dropout_att,
               kernel_initializer=self.initializer,
-              name='layer_%d/rel_attn' % (i)))
+              name="layer_%d/rel_attn" % (i)))
       self.h_positionwise_ffn_layers.append(
           PositionwiseFF(
               d_model=self.d_model,
@@ -519,7 +525,7 @@ class TransformerXLModel(tf.keras.layers.Layer):
               dropout=self.dropout,
               kernel_initializer=self.initializer,
               activation_type=self.ff_activation,
-              name='layer_%d/ff' % (i)))
+              name="layer_%d/ff" % (i)))
 
     self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout)
 
@@ -537,25 +543,25 @@ class TransformerXLModel(tf.keras.layers.Layer):
     # Uses dict to feed inputs into call() in order to keep mems as a python
     # list.
     inputs = {
-        'inp_k': inp_k,
-        'seg_id': seg_id,
-        'input_mask': input_mask,
-        'mems': mems,
-        'perm_mask': perm_mask,
-        'target_mapping': target_mapping,
-        'inp_q': inp_q
+        "inp_k": inp_k,
+        "seg_id": seg_id,
+        "input_mask": input_mask,
+        "mems": mems,
+        "perm_mask": perm_mask,
+        "target_mapping": target_mapping,
+        "inp_q": inp_q
     }
     return super(TransformerXLModel, self).__call__(inputs, **kwargs)
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    inp_k = inputs['inp_k']
-    seg_id = inputs['seg_id']
-    input_mask = inputs['input_mask']
-    mems = inputs['mems']
-    perm_mask = inputs['perm_mask']
-    target_mapping = inputs['target_mapping']
-    inp_q = inputs['inp_q']
+    inp_k = inputs["inp_k"]
+    seg_id = inputs["seg_id"]
+    input_mask = inputs["input_mask"]
+    mems = inputs["mems"]
+    perm_mask = inputs["perm_mask"]
+    target_mapping = inputs["target_mapping"]
+    inp_q = inputs["inp_q"]
 
     new_mems = []
 
@@ -568,14 +574,14 @@ class TransformerXLModel(tf.keras.layers.Layer):
 
     ##### Attention mask
     # causal attention mask
-    if self.attn_type == 'uni':
+    if self.attn_type == "uni":
       attn_mask = _create_mask(qlen, mlen, self.tf_float, self.same_length)
       # pylint: enable=protected-access
       attn_mask = attn_mask[:, :, None, None]
-    elif self.attn_type == 'bi':
+    elif self.attn_type == "bi":
       attn_mask = None
     else:
-      raise ValueError('Unsupported attention type: {}'.format(self.attn_type))
+      raise ValueError("Unsupported attention type: {}".format(self.attn_type))
 
     # data mask: input mask & perm mask
     if input_mask is not None and perm_mask is not None:
@@ -652,12 +658,12 @@ class TransformerXLModel(tf.keras.layers.Layer):
     if dtype is not None and dtype != tf.float32:
       freq_seq = tf.cast(freq_seq, dtype=self.dtype)
 
-    if self.attn_type == 'bi':
+    if self.attn_type == "bi":
       beg, end = klen, -qlen
-    elif self.attn_type == 'uni':
+    elif self.attn_type == "uni":
       beg, end = klen, -1
     else:
-      raise ValueError('Unknown `attn_type` {}.'.format(self.attn_type))
+      raise ValueError("Unknown `attn_type` {}.".format(self.attn_type))
 
     if self.bi_data:
       fwd_pos_seq = tf.range(beg, end, -1.0)
@@ -743,79 +749,82 @@ class PretrainingXLNetModel(tf.keras.Model):
 
   """
 
-  def __init__(self, use_proj, xlnet_config, run_config, **kwargs):
+  def __init__(self, use_proj, xlnet_config, run_config, use_legacy_mask=True,
+               **kwargs):
     super(PretrainingXLNetModel, self).__init__(**kwargs)
     self.run_config = run_config
     self.initializer = _get_initializer(run_config)
     self.xlnet_config = copy.deepcopy(xlnet_config)
+    self._use_legacy_mask = use_legacy_mask
 
-    self.transformerxl_model = TransformerXLModel(
-        n_token=self.xlnet_config.n_token,
+    self.xlnet_model = networks.XLNetBase(
+        vocab_size=self.xlnet_config.n_token,
         initializer=self.initializer,
-        attn_type='bi',
-        n_layer=self.xlnet_config.n_layer,
-        d_model=self.xlnet_config.d_model,
-        n_head=self.xlnet_config.n_head,
-        d_head=self.xlnet_config.d_head,
-        d_inner=self.xlnet_config.d_inner,
-        ff_activation=self.xlnet_config.ff_activation,
-        untie_r=self.xlnet_config.untie_r,
-        is_training=self.run_config.is_training,
-        use_tpu=self.run_config.use_tpu,
-        dropout=self.run_config.dropout,
-        dropout_att=self.run_config.dropout_att,
-        mem_len=self.run_config.mem_len,
-        reuse_len=self.run_config.reuse_len,
+        attention_type="bi",
+        num_layers=self.xlnet_config.n_layer,
+        hidden_size=self.xlnet_config.d_model,
+        num_attention_heads=self.xlnet_config.n_head,
+        head_size=self.xlnet_config.d_head,
+        inner_size=self.xlnet_config.d_inner,
+        two_stream=True,
+        tie_attention_biases=not self.xlnet_config.untie_r,
+        inner_activation=self.xlnet_config.ff_activation,
+        dropout_rate=self.run_config.dropout,
+        attention_dropout_rate=self.run_config.dropout_att,
+        memory_length=self.run_config.mem_len,
+        reuse_length=self.run_config.reuse_len,
         bi_data=self.run_config.bi_data,
-        clamp_len=self.run_config.clamp_len,
-        same_length=self.run_config.same_length,
+        clamp_length=self.run_config.clamp_len,
         use_cls_mask=self.run_config.use_cls_mask,
-        name='transformer')
+        name="xlnet_model")
+
     self.lmloss_layer = LMLossLayer(
-        n_token=self.xlnet_config.n_token,
-        d_model=self.xlnet_config.d_model,
+        vocab_size=self.xlnet_config.n_token,
+        hidden_size=self.xlnet_config.d_model,
         initializer=self.initializer,
         tie_weight=True,
         bi_data=self.run_config.bi_data,
-        use_tpu=self.run_config.use_tpu,
+        use_one_hot=self.run_config.use_tpu,
         use_proj=use_proj,
-        name='lm_loss')
+        name="lm_loss")
 
   def call(self, features):
     """Implements call() for the layer."""
 
-    input_ids = tf.transpose(features['input_k'], [1, 0])
-    inp_q = tf.transpose(features['input_q'], [1, 0])
-
-    seg_ids = tf.transpose(features['seg_id'], [1, 0])
-
-    perm_mask = tf.transpose(features['perm_mask'], [1, 2, 0])
-
-    target_mapping = tf.transpose(features['target_mapping'], [1, 2, 0])
+    input_ids = features["input_ids"]
+    masked_tokens = features["input_q"]
+    seg_ids = features["seg_id"]
+    if self._use_legacy_mask:
+      # Legacy input mask assumes `real` values are 0 and `padding`
+      # values are 1.
+      perm_mask = 1 - features["perm_mask"]
+    else:
+      perm_mask = features["perm_mask"]
+    target_mapping = features["target_mapping"]
 
     # target for LM loss
-    target = tf.transpose(features['target'], [1, 0])
+    target = features["target"]
 
     # target mask for LM loss
-    tgt_mask = tf.transpose(features['target_mask'], [1, 0])
+    tgt_mask = features["target_mask"]
 
-    mems = features.get('mems', None)
+    mems = features.get("mems", None)
 
-    transformerxl_output, self.new_mems, self.lookup_table = self.transformerxl_model(
-        input_ids,
-        seg_id=seg_ids,
+    model_output, self.new_mems = self.xlnet_model(
+        input_ids=input_ids,
+        segment_ids=seg_ids,
         input_mask=None,
-        mems=mems,
-        perm_mask=perm_mask,
+        state=mems,
+        permutation_mask=perm_mask,
         target_mapping=target_mapping,
-        inp_q=inp_q)
+        masked_tokens=masked_tokens)
     lm_loss, _ = self.lmloss_layer(
-        hidden=transformerxl_output,
+        hidden=model_output,
         target=target,
-        lookup_table=self.transformerxl_model.embedding_lookup.lookup_table,
+        lookup_table=self.xlnet_model.get_embedding_lookup_table(),
         target_mask=tgt_mask)
     self.add_loss(lm_loss)
-    return self.new_mems, transformerxl_output
+    return self.new_mems, model_output
 
 
 class ClassificationXLNetModel(tf.keras.Model):
@@ -825,64 +834,73 @@ class ClassificationXLNetModel(tf.keras.Model):
 
   """
 
-  def __init__(self, xlnet_config, run_config, n_class, summary_type, **kwargs):
+  def __init__(self, xlnet_config, run_config, n_class, summary_type,
+               use_legacy_mask=True, **kwargs):
     super(ClassificationXLNetModel, self).__init__(**kwargs)
+    warnings.warn(
+        "`ClassificationXLNetModel` is deprecated, please use `XLNetClassifier`"
+        "instead.", DeprecationWarning, stacklevel=2)
     self.run_config = run_config
     self.initializer = _get_initializer(run_config)
     self.xlnet_config = copy.deepcopy(xlnet_config)
+    self._use_legacy_mask = use_legacy_mask
 
-    self.transformerxl_model = TransformerXLModel(
-        n_token=self.xlnet_config.n_token,
+    self.xlnet_model = networks.XLNetBase(
+        vocab_size=self.xlnet_config.n_token,
         initializer=self.initializer,
-        attn_type='bi',
-        n_layer=self.xlnet_config.n_layer,
-        d_model=self.xlnet_config.d_model,
-        n_head=self.xlnet_config.n_head,
-        d_head=self.xlnet_config.d_head,
-        d_inner=self.xlnet_config.d_inner,
-        ff_activation=self.xlnet_config.ff_activation,
-        untie_r=self.xlnet_config.untie_r,
-        is_training=self.run_config.is_training,
-        use_tpu=self.run_config.use_tpu,
-        dropout=self.run_config.dropout,
-        dropout_att=self.run_config.dropout_att,
-        mem_len=self.run_config.mem_len,
-        reuse_len=self.run_config.reuse_len,
+        attention_type="bi",
+        num_layers=self.xlnet_config.n_layer,
+        hidden_size=self.xlnet_config.d_model,
+        num_attention_heads=self.xlnet_config.n_head,
+        head_size=self.xlnet_config.d_head,
+        inner_size=self.xlnet_config.d_inner,
+        two_stream=False,
+        tie_attention_biases=not self.xlnet_config.untie_r,
+        inner_activation=self.xlnet_config.ff_activation,
+        dropout_rate=self.run_config.dropout,
+        attention_dropout_rate=self.run_config.dropout_att,
+        memory_length=self.run_config.mem_len,
+        reuse_length=self.run_config.reuse_len,
         bi_data=self.run_config.bi_data,
-        clamp_len=self.run_config.clamp_len,
-        same_length=self.run_config.same_length,
-        name='transformer')
+        clamp_length=self.run_config.clamp_len,
+        use_cls_mask=False,
+        name="xlnet_model")
 
     self.summarization_layer = Summarization(
-        d_model=self.xlnet_config.d_model,
-        n_head=self.xlnet_config.n_head,
-        d_head=self.xlnet_config.d_head,
-        dropout=self.run_config.dropout,
-        dropout_att=self.run_config.dropout_att,
+        hidden_size=self.xlnet_config.d_model,
+        num_attention_heads=self.xlnet_config.n_head,
+        head_size=self.xlnet_config.d_head,
+        dropout_rate=self.run_config.dropout,
+        attention_dropout_rate=self.run_config.dropout_att,
         initializer=self.initializer,
         use_proj=True,
         summary_type=summary_type,
-        name='sequence_summary')
+        name="sequence_summary")
 
     self.cl_loss_layer = ClassificationLossLayer(
-        n_class=n_class, initializer=self.initializer, name='classification')
+        n_class=n_class, initializer=self.initializer, name="classification")
 
   def call(self, features):
     """Implements call() for the layer."""
-    bsz_per_core = tf.shape(features['input_ids'])[0]
+    batch_size_per_core = tf.shape(features["input_ids"])[0]
 
-    input_ids = tf.transpose(features['input_ids'], [1, 0])
-    seg_ids = tf.transpose(features['segment_ids'], [1, 0])
-    input_mask = tf.transpose(features['input_mask'], [1, 0])
+    input_ids = features["input_ids"]
+    segment_ids = features["segment_ids"]
+    if self._use_legacy_mask:
+      # Legacy input mask assumes `real` values are 0 and `padding`
+      # values are 1.
+      input_mask = 1 - features["input_mask"]
+    else:
+      input_mask = features["input_mask"]
 
-    label = tf.reshape(features['label_ids'], [bsz_per_core])
+    label = tf.reshape(features["label_ids"], [batch_size_per_core])
 
-    mems = features.get('mems', None)
+    mems = features.get("mems", None)
 
-    transformerxl_output, new_mems, self.lookup_table = (
-        self.transformerxl_model(input_ids, seg_ids, input_mask, mems))
+    attention_output, new_mems = (
+        self.xlnet_model(input_ids, segment_ids, input_mask, mems))
 
-    summary = self.summarization_layer(transformerxl_output)
+    summary = self.summarization_layer(attention_output)
     per_example_loss, logits = self.cl_loss_layer(hidden=summary, labels=label)
     self.add_loss(tf.keras.backend.mean(per_example_loss))
     return new_mems, logits
@@ -892,56 +910,57 @@ class LMLossLayer(tf.keras.layers.Layer):
   """Layer computing cross entropy loss for language modeling."""
 
   def __init__(self,
-               n_token,
-               d_model,
+               vocab_size,
+               hidden_size,
                initializer,
                tie_weight=False,
                bi_data=True,
-               use_tpu=False,
+               use_one_hot=False,
                use_proj=False,
                **kwargs):
     """Constructs LMLoss layer.
 
     Args:
-      n_token: Number of tokens in vocabulary.
-      d_model: The dimension of model hidden state.
+      vocab_size: Number of tokens in vocabulary.
+      hidden_size: The dimension of model hidden state.
       initializer: Initializer used for parameters.
       tie_weight: Whether to share weights between embedding lookup layer and
         next-token prediction layer.
       bi_data: Whether to use bidirectional input pipeline. Usually set to True
         during pretraining and False during finetuning.
-      use_tpu: bool, whether to use TPU.
+      use_one_hot: bool, whether to use one hot encodings. This should be used
+        when TPUs are used.
       use_proj: bool, whether to add a projection layer before LM prediction.
       **kwargs: Other parameters.
     """
     super(LMLossLayer, self).__init__(**kwargs)
-    self.n_token = n_token
-    self.d_model = d_model
+    self.vocab_size = vocab_size
+    self.hidden_size = hidden_size
     self.initializer = initializer
 
     self.tie_weight = tie_weight
     self.bi_data = bi_data
-    self.use_tpu = use_tpu
+    self.use_one_hot = use_one_hot
     self.use_proj = use_proj
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
     if self.use_proj:
       self.proj_layer = tf.keras.layers.Dense(
-          units=self.d_model,
+          units=self.hidden_size,
           kernel_initializer=self.initializer,
           activation=gelu,
-          name='lm_projection/dense')
+          name="lm_projection/dense")
       self.proj_layer_norm = tf.keras.layers.LayerNormalization(
-          axis=-1, epsilon=1e-12, name='lm_projection/LayerNorm')
+          axis=-1, epsilon=1e-12, name="lm_projection/LayerNorm")
     if not self.tie_weight:
       self.softmax_w = self.add_weight(
-          'weight',
-          shape=[self.n_token, self.d_model],
+          "weight",
+          shape=[self.vocab_size, self.hidden_size],
           initializer=self.initializer)
 
     self.softmax_b = self.add_weight(
-        'bias', shape=[self.n_token], initializer=tf.zeros_initializer())
+        "bias", shape=[self.vocab_size], initializer=tf.zeros_initializer())
 
     super(LMLossLayer, self).build(unused_input_shapes)
 
@@ -950,12 +969,12 @@ class LMLossLayer(tf.keras.layers.Layer):
     if self.use_proj:
       hidden = self.proj_layer_norm(self.proj_layer(hidden))
     if self.tie_weight:
-      logits = tf.einsum('ibd,nd->ibn', hidden, lookup_table) + self.softmax_b
+      logits = tf.einsum("ibd,nd->ibn", hidden, lookup_table) + self.softmax_b
     else:
-      logits = tf.einsum('ibd,nd->ibn', hidden, self.softmax_w) + self.softmax_b
+      logits = tf.einsum("ibd,nd->ibn", hidden, self.softmax_w) + self.softmax_b
 
-    if self.use_tpu:
-      one_hot_target = tf.one_hot(target, self.n_token, dtype=logits.dtype)
+    if self.use_one_hot:
+      one_hot_target = tf.one_hot(target, self.vocab_size, dtype=logits.dtype)
       loss = -tf.reduce_sum(tf.nn.log_softmax(logits) * one_hot_target, -1)
     else:
       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -970,36 +989,36 @@ class Summarization(tf.keras.layers.Layer):
   """The layer to pool the output from XLNet model into a vector."""
 
   def __init__(self,
-               d_model,
-               n_head,
-               d_head,
-               dropout,
-               dropout_att,
+               hidden_size,
+               num_attention_heads,
+               head_size,
+               dropout_rate,
+               attention_dropout_rate,
                initializer,
                use_proj=True,
-               summary_type='last',
+               summary_type="last",
                **kwargs):
     """Constructs Summarization layer.
 
     Args:
-      d_model: int, the dimension of model hidden state.
-      n_head: int, the number of attention heads.
-      d_head: int, the dimension size of each attention head.
-      dropout: float, dropout rate.
-      dropout_att: float, dropout rate on attention probabilities.
+      hidden_size: int, the dimension of model hidden state.
+      num_attention_heads: int, the number of attention heads.
+      head_size: int, the dimension size of each attention head.
+      dropout_rate: float, dropout rate.
+      attention_dropout_rate: float, dropout rate on attention probabilities.
       initializer: Initializer used for parameters.
       use_proj: bool, whether to use projection layer for summarization.
       summary_type: Method used to summarize a sequence into a compact vector.
       **kwargs: Other parameters.
     """
     super(Summarization, self).__init__(**kwargs)
-    self.d_model = d_model
-    self.n_head = n_head
-    self.d_head = d_head
+    self.hidden_size = hidden_size
+    self.num_attention_heads = num_attention_heads
+    self.head_size = head_size
     self.initializer = initializer
 
-    self.dropout = dropout
-    self.dropout_att = dropout_att
+    self.dropout_rate = dropout_rate
+    self.attention_dropout_rate = attention_dropout_rate
     self.use_proj = use_proj
     self.summary_type = summary_type
 
@@ -1007,22 +1026,22 @@ class Summarization(tf.keras.layers.Layer):
     """Implements build() for the layer."""
     if self.use_proj:
       self.proj_layer = tf.keras.layers.Dense(
-          units=self.d_model,
+          units=self.hidden_size,
           kernel_initializer=self.initializer,
           activation=tf.nn.tanh,
-          name='summary')
-    self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout)
+          name="summary")
+    self.dropout_layer = tf.keras.layers.Dropout(rate=self.dropout_rate)
 
     super(Summarization, self).build(unused_input_shapes)
 
   def call(self, inputs):
     """Implements call() for the layer."""
-    if self.summary_type == 'last':
-      summary = inputs[-1]
-    elif self.summary_type == 'first':
-      summary = inputs[0]
+    if self.summary_type == "last":
+      summary = inputs[:, -1, :]
+    elif self.summary_type == "first":
+      summary = inputs[:, 0, :]
     else:
-      raise ValueError('Invalid summary type provided: %s' % self.summary_type)
+      raise ValueError("Invalid summary type provided: %s" % self.summary_type)
     if self.use_proj:
       summary = self.proj_layer(summary)
     summary = self.dropout_layer(summary)
@@ -1048,7 +1067,7 @@ class ClassificationLossLayer(tf.keras.layers.Layer):
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
     self.proj_layer = tf.keras.layers.Dense(
-        units=self.n_class, kernel_initializer=self.initializer, name='logit')
+        units=self.n_class, kernel_initializer=self.initializer, name="logit")
 
     super(ClassificationLossLayer, self).build(unused_input_shapes)
 
@@ -1070,116 +1089,125 @@ class QAXLNetModel(tf.keras.Model):
   """
 
   def __init__(self, xlnet_config, run_config, start_n_top, end_n_top,
-               **kwargs):
+               use_legacy_mask=True, **kwargs):
     super(QAXLNetModel, self).__init__(**kwargs)
+    warnings.warn(
+        "`QAXLNetModel` is deprecated, please use `XLNetSpanLabeler` instead.",
+        DeprecationWarning, stacklevel=2)
     self.run_config = run_config
     self.initializer = _get_initializer(run_config)
     self.xlnet_config = copy.deepcopy(xlnet_config)
+    self._use_legacy_mask = use_legacy_mask
 
-    self.transformerxl_model = TransformerXLModel(
-        n_token=self.xlnet_config.n_token,
+    self.xlnet_model = networks.XLNetBase(
+        vocab_size=self.xlnet_config.n_token,
         initializer=self.initializer,
-        attn_type='bi',
-        n_layer=self.xlnet_config.n_layer,
-        d_model=self.xlnet_config.d_model,
-        n_head=self.xlnet_config.n_head,
-        d_head=self.xlnet_config.d_head,
-        d_inner=self.xlnet_config.d_inner,
-        ff_activation=self.xlnet_config.ff_activation,
-        untie_r=self.xlnet_config.untie_r,
-        is_training=self.run_config.is_training,
-        use_tpu=self.run_config.use_tpu,
-        dropout=self.run_config.dropout,
-        dropout_att=self.run_config.dropout_att,
-        mem_len=self.run_config.mem_len,
-        reuse_len=self.run_config.reuse_len,
+        attention_type="bi",
+        num_layers=self.xlnet_config.n_layer,
+        hidden_size=self.xlnet_config.d_model,
+        num_attention_heads=self.xlnet_config.n_head,
+        head_size=self.xlnet_config.d_head,
+        inner_size=self.xlnet_config.d_inner,
+        tie_attention_biases=not self.xlnet_config.untie_r,
+        inner_activation=self.xlnet_config.ff_activation,
+        dropout_rate=self.run_config.dropout,
+        attention_dropout_rate=self.run_config.dropout_att,
+        two_stream=False,
+        memory_length=self.run_config.mem_len,
+        reuse_length=self.run_config.reuse_len,
         bi_data=self.run_config.bi_data,
-        clamp_len=self.run_config.clamp_len,
-        same_length=self.run_config.same_length,
-        name='transformer')
+        clamp_length=self.run_config.clamp_len,
+        use_cls_mask=False,
+        name="xlnet_model")
 
     self.qa_loss_layer = QALossLayer(
-        d_model=self.xlnet_config.d_model,
+        hidden_size=self.xlnet_config.d_model,
         start_n_top=start_n_top,
         end_n_top=end_n_top,
         initializer=self.initializer,
-        dropout=self.run_config.dropout)
+        dropout_rate=self.run_config.dropout,
+        name="qa_loss_layer")
 
   def call(self, features, training=False):
     """Implements call() for the layer."""
 
-    input_ids = tf.transpose(features['input_ids'], [1, 0])
-    seg_ids = tf.transpose(features['segment_ids'], [1, 0])
-    input_mask = tf.transpose(features['input_mask'], [1, 0])
+    input_ids = features["input_ids"]
+    segment_ids = features["segment_ids"]
+    if self._use_legacy_mask:
+      # Legacy input mask assumes `real` values are 0 and `padding`
+      # values are 1.
+      input_mask = 1 - features["input_mask"]
+    else:
+      input_mask = features["input_mask"]
 
-    cls_index = tf.reshape(features['cls_index'], [-1])
-    p_mask = features['p_mask']
+    cls_index = tf.reshape(features["cls_index"], [-1])
+    p_mask = features["p_mask"]
 
-    transformerxl_output, new_mems, self.lookup_table = (
-        self.transformerxl_model(input_ids, seg_ids, input_mask))
+    attention_output, new_mems = (
+        self.xlnet_model(input_ids, segment_ids, input_mask))
 
     if training:
       loss, logits = self.qa_loss_layer(
-          hidden=transformerxl_output,
+          hidden=attention_output,
           p_mask=p_mask,
           cls_index=cls_index,
-          start_positions=features['start_positions'],
-          end_positions=features['end_positions'],
-          is_impossible=features['is_impossible'])
+          start_positions=features["start_positions"],
+          end_positions=features["end_positions"],
+          is_impossible=features["is_impossible"])
       self.add_loss(loss)
       return new_mems, logits
     else:
       results = self.qa_loss_layer(
-          hidden=transformerxl_output, p_mask=p_mask, cls_index=cls_index)
+          hidden=attention_output, p_mask=p_mask, cls_index=cls_index)
       return results
 
 
 class QALossLayer(tf.keras.layers.Layer):
   """Layer computing position and regression loss for question answering task."""
 
-  def __init__(self, d_model, start_n_top, end_n_top, initializer, dropout,
-               **kwargs):
+  def __init__(self, hidden_size, start_n_top, end_n_top, initializer,
+               dropout_rate, **kwargs):
     """Constructs Summarization layer.
 
     Args:
-      d_model: Int, the hidden size.
+      hidden_size: Int, the hidden size.
       start_n_top: Beam size for span start.
       end_n_top: Beam size for span end.
       initializer: Initializer used for parameters.
-      dropout: float, dropout rate.
+      dropout_rate: float, dropout rate.
       **kwargs: Other parameters.
     """
     super(QALossLayer, self).__init__(**kwargs)
-    self.d_model = d_model
+    self.hidden_size = hidden_size
     self.start_n_top = start_n_top
     self.end_n_top = end_n_top
     self.initializer = initializer
-    self.dropout = dropout
+    self.dropout_rate = dropout_rate
 
   def build(self, unused_input_shapes):
     """Implements build() for the layer."""
     self.start_logits_proj_layer = tf.keras.layers.Dense(
-        units=1, kernel_initializer=self.initializer, name='start_logits/dense')
+        units=1, kernel_initializer=self.initializer, name="start_logits/dense")
     self.end_logits_proj_layer0 = tf.keras.layers.Dense(
-        units=self.d_model,
+        units=self.hidden_size,
         kernel_initializer=self.initializer,
         activation=tf.nn.tanh,
-        name='end_logits/dense_0')
+        name="end_logits/dense_0")
     self.end_logits_proj_layer1 = tf.keras.layers.Dense(
-        units=1, kernel_initializer=self.initializer, name='end_logits/dense_1')
+        units=1, kernel_initializer=self.initializer, name="end_logits/dense_1")
     self.end_logits_layer_norm = tf.keras.layers.LayerNormalization(
-        axis=-1, epsilon=1e-12, name='end_logits/LayerNorm')
+        axis=-1, epsilon=1e-12, name="end_logits/LayerNorm")
     self.answer_class_proj_layer0 = tf.keras.layers.Dense(
-        units=self.d_model,
+        units=self.hidden_size,
         kernel_initializer=self.initializer,
         activation=tf.nn.tanh,
-        name='answer_class/dense_0')
+        name="answer_class/dense_0")
     self.answer_class_proj_layer1 = tf.keras.layers.Dense(
         units=1,
         kernel_initializer=self.initializer,
         use_bias=False,
-        name='answer_class/dense_1')
-    self.ans_feature_dropout = tf.keras.layers.Dropout(rate=self.dropout)
+        name="answer_class/dense_1")
+    self.ans_feature_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     super(QALossLayer, self).build(unused_input_shapes)
 
   def __call__(self, hidden, p_mask, cls_index, **kwargs):
@@ -1190,20 +1218,21 @@ class QALossLayer(tf.keras.layers.Layer):
     """Implements call() for the layer."""
     hidden, p_mask, cls_index, kwargs = inputs
     return_dict = {}
-    seq_len = tf.shape(hidden)[0]
+    seq_len = tf.shape(hidden)[1]
 
+    hidden = tf.transpose(hidden, [1, 0, 2])
     start_logits = self.start_logits_proj_layer(hidden)
     start_logits = tf.transpose(tf.squeeze(start_logits, -1), [1, 0])
     start_logits_masked = start_logits * (1 - p_mask) - 1e30 * p_mask
     start_log_probs = tf.nn.log_softmax(start_logits_masked, -1)
     if training:
-      start_positions = kwargs['start_positions']
-      end_positions = kwargs['end_positions']
-      is_impossible = kwargs['is_impossible']
+      start_positions = kwargs["start_positions"]
+      end_positions = kwargs["end_positions"]
+      is_impossible = kwargs["is_impossible"]
       start_positions = tf.reshape(start_positions, [-1])
       start_index = tf.one_hot(
           start_positions, depth=seq_len, axis=-1, dtype=tf.float32)
-      start_features = tf.einsum('lbh,bl->bh', hidden, start_index)
+      start_features = tf.einsum("lbh,bl->bh", hidden, start_index)
       start_features = tf.tile(start_features[None], [seq_len, 1, 1])
       end_logits = self.end_logits_proj_layer0(
           tf.concat([hidden, start_features], axis=-1))
@@ -1221,16 +1250,16 @@ class QALossLayer(tf.keras.layers.Layer):
           start_log_probs, k=self.start_n_top)
       start_index = tf.one_hot(
           start_top_index, depth=seq_len, axis=-1, dtype=tf.float32)
-      start_features = tf.einsum('lbh,bkl->bkh', hidden, start_index)
+      start_features = tf.einsum("lbh,bkl->bkh", hidden, start_index)
       end_input = tf.tile(hidden[:, :, None], [1, 1, self.start_n_top, 1])
       start_features = tf.tile(start_features[None], [seq_len, 1, 1, 1])
       end_input = tf.concat([end_input, start_features], axis=-1)
       end_logits = self.end_logits_proj_layer0(end_input)
-      end_logits = tf.reshape(end_logits, [seq_len, -1, self.d_model])
+      end_logits = tf.reshape(end_logits, [seq_len, -1, self.hidden_size])
       end_logits = self.end_logits_layer_norm(end_logits)
 
       end_logits = tf.reshape(end_logits,
-                              [seq_len, -1, self.start_n_top, self.d_model])
+                              [seq_len, -1, self.start_n_top, self.hidden_size])
 
       end_logits = self.end_logits_proj_layer1(end_logits)
       end_logits = tf.reshape(end_logits, [seq_len, -1, self.start_n_top])
@@ -1246,29 +1275,29 @@ class QALossLayer(tf.keras.layers.Layer):
                                  [-1, self.start_n_top * self.end_n_top])
 
     if training:
-      return_dict['start_log_probs'] = start_log_probs
-      return_dict['end_log_probs'] = end_log_probs
+      return_dict["start_log_probs"] = start_log_probs
+      return_dict["end_log_probs"] = end_log_probs
     else:
-      return_dict['start_top_log_probs'] = start_top_log_probs
-      return_dict['start_top_index'] = start_top_index
-      return_dict['end_top_log_probs'] = end_top_log_probs
-      return_dict['end_top_index'] = end_top_index
+      return_dict["start_top_log_probs"] = start_top_log_probs
+      return_dict["start_top_index"] = start_top_index
+      return_dict["end_top_log_probs"] = end_top_log_probs
+      return_dict["end_top_index"] = end_top_index
     # an additional layer to predict answerability
 
     # get the representation of CLS
     cls_index = tf.one_hot(cls_index, seq_len, axis=-1, dtype=tf.float32)
-    cls_feature = tf.einsum('lbh,bl->bh', hidden, cls_index)
+    cls_feature = tf.einsum("lbh,bl->bh", hidden, cls_index)
 
     # get the representation of START
-    start_p = tf.nn.softmax(start_logits_masked, axis=-1, name='softmax_start')
-    start_feature = tf.einsum('lbh,bl->bh', hidden, start_p)
+    start_p = tf.nn.softmax(start_logits_masked, axis=-1, name="softmax_start")
+    start_feature = tf.einsum("lbh,bl->bh", hidden, start_p)
 
     ans_feature = tf.concat([start_feature, cls_feature], -1)
     ans_feature = self.answer_class_proj_layer0(ans_feature)
     ans_feature = self.ans_feature_dropout(ans_feature)
     cls_logits = self.answer_class_proj_layer1(ans_feature)
     cls_logits = tf.squeeze(cls_logits, -1)
-    return_dict['cls_logits'] = cls_logits
+    return_dict["cls_logits"] = cls_logits
 
     if not training:
       return return_dict

@@ -18,6 +18,7 @@ REQUIRED_PACKAGES = [
     'tf-slim',
     'six',
     'pycocotools',
+    'lvis',
     'scipy',
     'pandas',
     'tf-models-official'

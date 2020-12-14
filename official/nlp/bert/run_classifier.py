@@ -13,9 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """BERT classification or regression finetuning runner in TF 2.x."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import functools
 import json
@@ -154,7 +151,8 @@ def run_bert_classifier(strategy,
     classifier_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite())
+        use_graph_rewrite=common_flags.use_graph_rewrite(),
+        use_experimental_api=False)
     return classifier_model, core_model
 
   # tf.keras.losses objects accept optional sample_weight arguments (eg. coming
@@ -231,7 +229,7 @@ def run_keras_compile_fit(model_dir,
         optimizer=optimizer,
         loss=loss_fn,
         metrics=[fn() for fn in metric_fn],
-        experimental_steps_per_execution=steps_per_loop)
+        steps_per_execution=steps_per_loop)
 
     summary_dir = os.path.join(model_dir, 'summaries')
     summary_callback = tf.keras.callbacks.TensorBoard(summary_dir)
@@ -325,8 +323,7 @@ def get_predictions_and_labels(strategy,
       tf.experimental.async_clear_error()
     return preds, golds
 
-  test_iter = iter(
-      strategy.experimental_distribute_datasets_from_function(eval_input_fn))
+  test_iter = iter(strategy.distribute_datasets_from_function(eval_input_fn))
   predictions, labels = _run_evaluation(test_iter)
 
   return predictions, labels
@@ -352,7 +349,7 @@ def export_classifier(model_export_path, input_meta_data, bert_config,
     raise ValueError('Export path is not specified: %s' % model_dir)
 
   # Export uses float32 for now, even if training uses mixed precision.
-  tf.keras.mixed_precision.experimental.set_policy('float32')
+  tf.keras.mixed_precision.set_global_policy('float32')
   classifier_model = bert_models.classifier_model(
       bert_config,
       input_meta_data.get('num_labels', 1),
@@ -374,7 +371,8 @@ def run_bert(strategy,
   """Run BERT training."""
   # Enables XLA in Session Config. Should not be set for TPU.
   keras_utils.set_session_config(FLAGS.enable_xla)
-  performance.set_mixed_precision_policy(common_flags.dtype())
+  performance.set_mixed_precision_policy(common_flags.dtype(),
+                                         use_experimental_api=False)
 
   epochs = FLAGS.num_train_epochs * FLAGS.num_eval_per_epoch
   train_data_size = (

@@ -24,6 +24,7 @@ import numpy as np
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import soundfile
 import tensorflow as tf
+from absl import logging
 # pylint: enable=g-bad-import-order
 
 import data.featurizer as featurizer  # pylint: disable=g-bad-import-order
@@ -125,7 +126,7 @@ def _preprocess_data(file_path):
     A list of tuples (wav_filename, wav_filesize, transcript) sorted by
     file_size.
   """
-  tf.compat.v1.logging.info("Loading data set {}".format(file_path))
+  logging.info("Loading data set {}".format(file_path))
   with tf.io.gfile.GFile(file_path, "r") as f:
     lines = f.read().splitlines()
   # Skip the csv header in lines[0].

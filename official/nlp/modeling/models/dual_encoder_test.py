@@ -14,11 +14,6 @@
 # ==============================================================================
 """Tests for dual encoder network."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-# Import libraries
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -42,7 +37,8 @@ class DualEncoderTest(keras_parameterized.TestCase):
         vocab_size=vocab_size,
         num_layers=2,
         hidden_size=hidden_size,
-        sequence_length=sequence_length)
+        sequence_length=sequence_length,
+        dict_outputs=True)
 
     # Create a dual encoder model with the created network.
     dual_encoder_model = dual_encoder.DualEncoder(
@@ -59,21 +55,19 @@ class DualEncoderTest(keras_parameterized.TestCase):
 
     if output == 'logits':
       outputs = dual_encoder_model([
-          left_word_ids, left_mask, left_type_ids,
-          right_word_ids, right_mask, right_type_ids])
-
-      left_encoded, _ = outputs
+          left_word_ids, left_mask, left_type_ids, right_word_ids, right_mask,
+          right_type_ids
+      ])
+      _ = outputs['left_logits']
     elif output == 'predictions':
-      left_encoded, left_sequence_output = dual_encoder_model([
-          left_word_ids, left_mask, left_type_ids])
-
+      outputs = dual_encoder_model([left_word_ids, left_mask, left_type_ids])
       # Validate that the outputs are of the expected shape.
-      expected_encoding_shape = [None, 768]
-      self.assertAllEqual(expected_encoding_shape, left_encoded.shape.as_list())
-
       expected_sequence_shape = [None, sequence_length, 768]
       self.assertAllEqual(expected_sequence_shape,
-                          left_sequence_output.shape.as_list())
+                          outputs['sequence_output'].shape.as_list())
+      left_encoded = outputs['pooled_output']
+      expected_encoding_shape = [None, 768]
+      self.assertAllEqual(expected_encoding_shape, left_encoded.shape.as_list())
 
   @parameterized.parameters((192, 'logits'), (768, 'predictions'))
   def test_dual_encoder_tensor_call(self, hidden_size, output):

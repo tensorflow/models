@@ -14,10 +14,6 @@
 # ==============================================================================
 """A parameter dictionary class which supports the nest structure."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import copy
 import re
@@ -73,7 +69,6 @@ class ParamsDict(object):
     if default_params is None:
       default_params = {}
     self.override(default_params, is_strict=False)
-    self.validate()
 
   def _set(self, k, v):
     if isinstance(v, dict):

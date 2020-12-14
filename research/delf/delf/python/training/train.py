@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Training script for DELF on Google Landmarks Dataset.
+"""Training script for DELF/G on Google Landmarks Dataset.
 
-Script to train DELF using classification loss on Google Landmarks Dataset
-using MirroredStrategy to so it can run on multiple GPUs.
+Uses classification loss, with MirroredStrategy, to support running on multiple
+GPUs.
 """
 
 from __future__ import absolute_import
@@ -24,6 +24,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import time
 
 from absl import app
 from absl import flags
@@ -40,33 +41,63 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_boolean('debug', False, 'Debug mode.')
 flags.DEFINE_string('logdir', '/tmp/delf', 'WithTensorBoard logdir.')
-flags.DEFINE_string('train_file_pattern', '/tmp/data/train*',
-                    'File pattern of training dataset files.')
-flags.DEFINE_string('validation_file_pattern', '/tmp/data/validation*',
-                    'File pattern of validation dataset files.')
+flags.DEFINE_string(
+    'train_file_pattern', '/tmp/data/train*',
+    'File pattern of training dataset files.')
+flags.DEFINE_string(
+    'validation_file_pattern', '/tmp/data/validation*',
+    'File pattern of validation dataset files.')
 flags.DEFINE_enum(
     'dataset_version', 'gld_v1', ['gld_v1', 'gld_v2', 'gld_v2_clean'],
-    'Google Landmarks dataset version, used to determine the'
-    'number of classes.')
+    'Google Landmarks dataset version, used to determine the number of '
+    'classes.')
 flags.DEFINE_integer('seed', 0, 'Seed to training dataset.')
 flags.DEFINE_float('initial_lr', 0.01, 'Initial learning rate.')
 flags.DEFINE_integer('batch_size', 32, 'Global batch size.')
 flags.DEFINE_integer('max_iters', 500000, 'Maximum iterations.')
 flags.DEFINE_boolean('block3_strides', True, 'Whether to use block3_strides.')
-flags.DEFINE_boolean('use_augmentation', True,
-                     'Whether to use ImageNet style augmentation.')
+flags.DEFINE_boolean(
+    'use_augmentation', True, 'Whether to use ImageNet style augmentation.')
 flags.DEFINE_string(
     'imagenet_checkpoint', None,
     'ImageNet checkpoint for ResNet backbone. If None, no checkpoint is used.')
-flags.DEFINE_boolean('delg_global_features', False,
-                     'Whether to train a DELG model.')
-flags.DEFINE_float('delg_gem_power', 3.0, 'Power for Generalized Mean pooling.')
-flags.DEFINE_integer('delg_embedding_layer_dim', 2048,
-                     'Size of the FC whitening layer (embedding layer).')
-flags.DEFINE_float('delg_scale_factor_init', 45.25,
-                   ('Initial value of the scaling factor of the cosine logits.'
-                    'The default value is sqrt(2048).'))
-flags.DEFINE_float('delg_arcface_margin', 0.1, 'ArcFace margin.')
+flags.DEFINE_float(
+    'attention_loss_weight', 1.0,
+    'Weight to apply to the attention loss when calculating the '
+    'total loss of the model.')
+flags.DEFINE_boolean(
+    'delg_global_features', False, 'Whether to train a DELG model.')
+flags.DEFINE_float(
+    'delg_gem_power', 3.0,
+    'Power for Generalized Mean pooling. Used only if '
+    'delg_global_features=True.')
+flags.DEFINE_integer(
+    'delg_embedding_layer_dim', 2048,
+    'Size of the FC whitening layer (embedding layer). Used only if'
+    'delg_global_features:True.')
+flags.DEFINE_float(
+    'delg_scale_factor_init', 45.25,
+    'Initial value of the scaling factor of the cosine logits. The default '
+    'value is sqrt(2048). Used only if delg_global_features=True.')
+flags.DEFINE_float(
+    'delg_arcface_margin', 0.1,
+    'ArcFace margin. Used only if delg_global_features=True.')
+flags.DEFINE_integer('image_size', 321, 'Size of each image side to use.')
+flags.DEFINE_boolean(
+    'use_autoencoder', True, 'Whether to train an autoencoder.')
+flags.DEFINE_float(
+    'reconstruction_loss_weight', 10.0,
+    'Weight to apply to the reconstruction loss from the autoencoder when'
+    'calculating total loss of the model. Used only if use_autoencoder=True.')
+flags.DEFINE_float(
+    'autoencoder_dimensions', 128,
+    'Number of dimensions of the autoencoder. Used only if'
+    'use_autoencoder=True.')
+flags.DEFINE_float(
+    'local_feature_map_channels', 1024,
+    'Number of channels at backbone layer used for local feature extraction. '
+    'Default value 1024 is the number of channels of block3. Used only if'
+    'use_autoencoder=True.')
 
 
 def _record_accuracy(metric, logits, labels):
@@ -101,14 +132,23 @@ def _attention_summaries(scores, global_step):
 def create_model(num_classes):
   """Define DELF model, and initialize classifiers."""
   if FLAGS.delg_global_features:
-    model = delg_model.Delg(block3_strides=FLAGS.block3_strides,
-                            name='DELG',
-                            gem_power=FLAGS.delg_gem_power,
-                            embedding_layer_dim=FLAGS.delg_embedding_layer_dim,
-                            scale_factor_init=FLAGS.delg_scale_factor_init,
-                            arcface_margin=FLAGS.delg_arcface_margin)
+    model = delg_model.Delg(
+        block3_strides=FLAGS.block3_strides,
+        name='DELG',
+        gem_power=FLAGS.delg_gem_power,
+        embedding_layer_dim=FLAGS.delg_embedding_layer_dim,
+        scale_factor_init=FLAGS.delg_scale_factor_init,
+        arcface_margin=FLAGS.delg_arcface_margin,
+        use_dim_reduction=FLAGS.use_autoencoder,
+        reduced_dimension=FLAGS.autoencoder_dimensions,
+        dim_expand_channels=FLAGS.local_feature_map_channels)
   else:
-    model = delf_model.Delf(block3_strides=FLAGS.block3_strides, name='DELF')
+    model = delf_model.Delf(
+        block3_strides=FLAGS.block3_strides,
+        name='DELF',
+        use_dim_reduction=FLAGS.use_autoencoder,
+        reduced_dimension=FLAGS.autoencoder_dimensions,
+        dim_expand_channels=FLAGS.local_feature_map_channels)
   model.init_classifiers(num_classes)
   return model
 
@@ -148,11 +188,11 @@ def main(argv):
 
   max_iters = FLAGS.max_iters
   global_batch_size = FLAGS.batch_size
-  image_size = 321
+  image_size = FLAGS.image_size
   num_eval_batches = int(50000 / global_batch_size)
   report_interval = 100
   eval_interval = 1000
-  save_interval = 20000
+  save_interval = 1000
 
   initial_lr = FLAGS.initial_lr
 
@@ -164,7 +204,7 @@ def main(argv):
     max_iters = 100
     num_eval_batches = 1
     save_interval = 1
-    report_interval = 1
+    report_interval = 10
 
   # Determine the number of classes based on the version of the dataset.
   gld_info = gld.GoogleLandmarksInfo()
@@ -235,7 +275,12 @@ def main(argv):
     # Setup checkpoint directory.
     checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
     manager = tf.train.CheckpointManager(
-        checkpoint, checkpoint_prefix, max_to_keep=3)
+        checkpoint,
+        checkpoint_prefix,
+        max_to_keep=10,
+        keep_checkpoint_every_n_hours=3)
+    # Restores the checkpoint, if existing.
+    checkpoint.restore(manager.latest_checkpoint)
 
     # ------------------------------------------------------------
     # Train step to run on one GPU.
@@ -245,15 +290,6 @@ def main(argv):
       # Temporary workaround to avoid some corrupted labels.
       labels = tf.clip_by_value(labels, 0, model.num_classes)
 
-      global_step = optimizer.iterations
-      tf.summary.image('batch_images', (images + 1.0) / 2.0, step=global_step)
-      tf.summary.scalar(
-          'image_range/max', tf.reduce_max(images), step=global_step)
-      tf.summary.scalar(
-          'image_range/min', tf.reduce_min(images), step=global_step)
-
-      # TODO(andrearaujo): we should try to unify the backprop into a single
-      # function, instead of applying once to descriptor then to attention.
       def _backprop_loss(tape, loss, weights):
         """Backpropogate losses using clipped gradients.
 
@@ -267,59 +303,70 @@ def main(argv):
         optimizer.apply_gradients(zip(clipped, weights))
 
       # Record gradients and loss through backbone.
-      with tf.GradientTape() as desc_tape:
+      with tf.GradientTape() as gradient_tape:
+        # Make a forward pass to calculate prelogits.
+        (desc_prelogits, attn_prelogits, attn_scores, backbone_blocks,
+         dim_expanded_features, _) = model.global_and_local_forward_pass(images)
 
-        blocks = {}
-        prelogits = model.backbone(
-            images, intermediates_dict=blocks, training=True)
-
-        # Report sparsity.
-        activations_zero_fractions = {
-            'sparsity/%s' % k: tf.nn.zero_fraction(v)
-            for k, v in blocks.items()
-        }
-        for k, v in activations_zero_fractions.items():
-          tf.summary.scalar(k, v, step=global_step)
-
-        # Apply descriptor classifier and report scale factor.
+        # Calculate global loss by applying the descriptor classifier.
         if FLAGS.delg_global_features:
-          logits = model.desc_classification(prelogits, labels)
-          tf.summary.scalar('desc/scale_factor', model.scale_factor,
-                            step=global_step)
+          desc_logits = model.desc_classification(desc_prelogits, labels)
         else:
-          logits = model.desc_classification(prelogits)
+          desc_logits = model.desc_classification(desc_prelogits)
+        desc_loss = compute_loss(labels, desc_logits)
 
-        desc_loss = compute_loss(labels, logits)
+        # Calculate attention loss by applying the attention block classifier.
+        attn_logits = model.attn_classification(attn_prelogits)
+        attn_loss = compute_loss(labels, attn_logits)
 
-      # Backprop only through backbone weights.
-      _backprop_loss(desc_tape, desc_loss, model.desc_trainable_weights)
+        # Calculate reconstruction loss between the attention prelogits and the
+        # backbone.
+        if FLAGS.use_autoencoder:
+          block3 = tf.stop_gradient(backbone_blocks['block3'])
+          reconstruction_loss = tf.math.reduce_mean(
+              tf.keras.losses.MSE(block3, dim_expanded_features))
+        else:
+          reconstruction_loss = 0
 
-      # Record descriptor train accuracy.
-      _record_accuracy(desc_train_accuracy, logits, labels)
+        # Cumulate global loss, attention loss and reconstruction loss.
+        total_loss = (desc_loss
+                      + FLAGS.attention_loss_weight * attn_loss
+                      + FLAGS.reconstruction_loss_weight * reconstruction_loss)
 
-      # Record gradients and loss through attention block.
-      with tf.GradientTape() as attn_tape:
-        block3 = blocks['block3']  # pytype: disable=key-error
+      # Perform backpropagation through the descriptor and attention layers
+      # together. Note that this will increment the number of iterations of
+      # "optimizer".
+      _backprop_loss(gradient_tape, total_loss, model.trainable_weights)
 
-        # Stopping gradients according to DELG paper:
-        # (https://arxiv.org/abs/2001.05027).
-        block3 = tf.stop_gradient(block3)
+      # Step number, for summary purposes.
+      global_step = optimizer.iterations
 
-        prelogits, scores, _ = model.attention(block3, training=True)
-        _attention_summaries(scores, global_step)
+      # Input image-related summaries.
+      tf.summary.image('batch_images', (images + 1.0) / 2.0, step=global_step)
+      tf.summary.scalar(
+          'image_range/max', tf.reduce_max(images), step=global_step)
+      tf.summary.scalar(
+          'image_range/min', tf.reduce_min(images), step=global_step)
 
-        # Apply attention block classifier.
-        logits = model.attn_classification(prelogits)
+      # Attention and sparsity summaries.
+      _attention_summaries(attn_scores, global_step)
+      activations_zero_fractions = {
+          'sparsity/%s' % k: tf.nn.zero_fraction(v)
+          for k, v in backbone_blocks.items()
+      }
+      for k, v in activations_zero_fractions.items():
+        tf.summary.scalar(k, v, step=global_step)
 
-        attn_loss = compute_loss(labels, logits)
+      # Scaling factor summary for cosine logits for a DELG model.
+      if FLAGS.delg_global_features:
+        tf.summary.scalar(
+            'desc/scale_factor', model.scale_factor, step=global_step)
 
-      # Backprop only through attention weights.
-      _backprop_loss(attn_tape, attn_loss, model.attn_trainable_weights)
+      # Record train accuracies.
+      _record_accuracy(desc_train_accuracy, desc_logits, labels)
+      _record_accuracy(attn_train_accuracy, attn_logits, labels)
 
-      # Record attention train accuracy.
-      _record_accuracy(attn_train_accuracy, logits, labels)
-
-      return desc_loss, attn_loss
+      return desc_loss, attn_loss, reconstruction_loss
 
     # ------------------------------------------------------------
     def validation_step(inputs):
@@ -361,7 +408,7 @@ def main(argv):
     def distributed_train_step(dataset_inputs):
       """Get the actual losses."""
       # Each (desc, attn) is a list of 3 losses - crossentropy, reg, total.
-      desc_per_replica_loss, attn_per_replica_loss = (
+      desc_per_replica_loss, attn_per_replica_loss, recon_per_replica_loss = (
           strategy.run(train_step, args=(dataset_inputs,)))
 
       # Reduce over the replicas.
@@ -369,8 +416,10 @@ def main(argv):
           tf.distribute.ReduceOp.SUM, desc_per_replica_loss, axis=None)
       attn_global_loss = strategy.reduce(
           tf.distribute.ReduceOp.SUM, attn_per_replica_loss, axis=None)
+      recon_global_loss = strategy.reduce(
+          tf.distribute.ReduceOp.SUM, recon_per_replica_loss, axis=None)
 
-      return desc_global_loss, attn_global_loss
+      return desc_global_loss, attn_global_loss, recon_global_loss
 
     @tf.function
     def distributed_validation_step(dataset_inputs):
@@ -379,15 +428,16 @@ def main(argv):
     # ------------------------------------------------------------
     # *** TRAIN LOOP ***
     with summary_writer.as_default():
-      with tf.summary.record_if(
-          tf.math.equal(0, optimizer.iterations % report_interval)):
+      record_cond = lambda: tf.equal(optimizer.iterations % report_interval, 0)
+      with tf.summary.record_if(record_cond):
+        global_step_value = optimizer.iterations.numpy()
 
         # TODO(dananghel): try to load pretrained weights at backbone creation.
         # Load pretrained weights for ResNet50 trained on ImageNet.
-        if FLAGS.imagenet_checkpoint is not None:
+        if (FLAGS.imagenet_checkpoint is not None) and (not global_step_value):
           logging.info('Attempting to load ImageNet pretrained weights.')
           input_batch = next(train_iter)
-          _, _ = distributed_train_step(input_batch)
+          _, _, _ = distributed_train_step(input_batch)
           model.backbone.restore_weights(FLAGS.imagenet_checkpoint)
           logging.info('Done.')
         else:
@@ -395,9 +445,9 @@ def main(argv):
         if FLAGS.debug:
           model.backbone.log_weights()
 
-        global_step_value = optimizer.iterations.numpy()
+        last_summary_step_value = None
+        last_summary_time = None
         while global_step_value < max_iters:
-
           # input_batch : images(b, h, w, c), labels(b,).
           try:
             input_batch = next(train_iter)
@@ -407,24 +457,27 @@ def main(argv):
                          global_step_value)
             break
 
-          # Set learning rate for optimizer to use.
+          # Set learning rate and run the training step over num_gpu gpus.
+          optimizer.learning_rate = _learning_rate_schedule(
+              optimizer.iterations.numpy(), max_iters, initial_lr)
+          desc_dist_loss, attn_dist_loss, recon_dist_loss = (
+              distributed_train_step(input_batch))
+
+          # Step number, to be used for summary/logging.
           global_step = optimizer.iterations
           global_step_value = global_step.numpy()
 
-          learning_rate = _learning_rate_schedule(global_step_value, max_iters,
-                                                  initial_lr)
-          optimizer.learning_rate = learning_rate
+          # LR, losses and accuracies summaries.
           tf.summary.scalar(
               'learning_rate', optimizer.learning_rate, step=global_step)
-
-          # Run the training step over num_gpu gpus.
-          desc_dist_loss, attn_dist_loss = distributed_train_step(input_batch)
-
-          # Log losses and accuracies to tensorboard.
           tf.summary.scalar(
               'loss/desc/crossentropy', desc_dist_loss, step=global_step)
           tf.summary.scalar(
               'loss/attn/crossentropy', attn_dist_loss, step=global_step)
+          if FLAGS.use_autoencoder:
+            tf.summary.scalar(
+                'loss/recon/mse', recon_dist_loss, step=global_step)
+
           tf.summary.scalar(
               'train_accuracy/desc',
               desc_train_accuracy.result(),
@@ -433,6 +486,19 @@ def main(argv):
               'train_accuracy/attn',
               attn_train_accuracy.result(),
               step=global_step)
+
+          # Summary for number of global steps taken per second.
+          current_time = time.time()
+          if (last_summary_step_value is not None and
+              last_summary_time is not None):
+            tf.summary.scalar(
+                'global_steps_per_sec',
+                (global_step_value - last_summary_step_value) /
+                (current_time - last_summary_time),
+                step=global_step)
+          if tf.summary.should_record_summaries().numpy():
+            last_summary_step_value = global_step_value
+            last_summary_time = current_time
 
           # Print to console if running locally.
           if FLAGS.debug:
@@ -466,12 +532,14 @@ def main(argv):
               print('Validation: desc:', desc_validation_result.numpy())
               print('          : attn:', attn_validation_result.numpy())
 
-          # Save checkpoint once (each save_interval*n, n \in N) steps.
+          # Save checkpoint once (each save_interval*n, n \in N) steps, or if
+          # this is the last iteration.
           # TODO(andrearaujo): save only in one of the two ways. They are
           # identical, the only difference is that the manager adds some extra
           # prefixes and variables (eg, optimizer variables).
-          if global_step_value % save_interval == 0:
-            save_path = manager.save()
+          if (global_step_value %
+              save_interval == 0) or (global_step_value >= max_iters):
+            save_path = manager.save(checkpoint_number=global_step_value)
             logging.info('Saved (%d) at %s', global_step_value, save_path)
 
             file_path = '%s/delf_weights' % FLAGS.logdir
@@ -486,9 +554,6 @@ def main(argv):
           attn_validation_loss.reset_states()
           desc_validation_accuracy.reset_states()
           attn_validation_accuracy.reset_states()
-
-          if global_step.numpy() > max_iters:
-            break
 
     logging.info('Finished training for %d steps.', max_iters)
 

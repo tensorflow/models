@@ -14,10 +14,6 @@
 # ==============================================================================
 """BERT models that are compatible with TF 2.0."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import gin
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -167,7 +163,7 @@ def get_transformer_encoder(bert_config,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range))
   if isinstance(bert_config, albert_configs.AlbertConfig):
-    return networks.AlbertTransformerEncoder(**kwargs)
+    return networks.AlbertEncoder(**kwargs)
   else:
     assert isinstance(bert_config, configs.BertConfig)
     kwargs['output_range'] = output_range

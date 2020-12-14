@@ -13,15 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""TFM vision training driver."""
+"""TensorFlow Model Garden Vision training driver."""
 
 from absl import app
 from absl import flags
 import gin
 
+# pylint: disable=unused-import
+from official.common import registry_imports
+# pylint: enable=unused-import
 from official.common import distribute_utils
 from official.common import flags as tfm_flags
-from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils

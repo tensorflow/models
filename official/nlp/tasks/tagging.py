@@ -22,12 +22,11 @@ import orbit
 from seqeval import metrics as seqeval_metrics
 
 import tensorflow as tf
-import tensorflow_hub as hub
 
 from official.core import base_task
+from official.core import config_definitions as cfg
 from official.core import task_factory
 from official.modeling.hyperparams import base_config
-from official.modeling.hyperparams import config_definitions as cfg
 from official.nlp.configs import encoders
 from official.nlp.data import data_loader_factory
 from official.nlp.modeling import models
@@ -84,22 +83,13 @@ def _masked_labels_and_weights(y_true):
 class TaggingTask(base_task.Task):
   """Task object for tagging (e.g., NER or POS)."""
 
-  def __init__(self, params=cfg.TaskConfig, logging_dir=None):
-    super(TaggingTask, self).__init__(params, logging_dir)
-    if params.hub_module_url and params.init_checkpoint:
+  def build_model(self):
+    if self.task_config.hub_module_url and self.task_config.init_checkpoint:
       raise ValueError('At most one of `hub_module_url` and '
                        '`init_checkpoint` can be specified.')
-    if not params.class_names:
-      raise ValueError('TaggingConfig.class_names cannot be empty.')
-
-    if params.hub_module_url:
-      self._hub_module = hub.load(params.hub_module_url)
-    else:
-      self._hub_module = None
-
-  def build_model(self):
-    if self._hub_module:
-      encoder_network = utils.get_encoder_from_hub(self._hub_module)
+    if self.task_config.hub_module_url:
+      encoder_network = utils.get_encoder_from_hub(
+          self.task_config.hub_module_url)
     else:
       encoder_network = encoders.build_encoder(self.task_config.model.encoder)
 
@@ -151,7 +141,8 @@ class TaggingTask(base_task.Task):
   def inference_step(self, inputs, model: tf.keras.Model):
     """Performs the forward step."""
     logits = model(inputs, training=False)
-    return {'logits': logits, 'predict_ids': tf.argmax(logits, axis=-1)}
+    return {'logits': logits,
+            'predict_ids': tf.argmax(logits, axis=-1, output_type=tf.int32)}
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     """Validatation step.

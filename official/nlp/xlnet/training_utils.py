@@ -13,10 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """XLNet training utils."""
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import os
 import re
@@ -213,8 +209,8 @@ def train(
         if input_meta_data["mem_len"] > 0:
           for _ in range(input_meta_data["n_layer"]):
             zeros = tf.zeros([
-                input_meta_data["mem_len"],
                 input_meta_data["batch_size_per_core"],
+                input_meta_data["mem_len"],
                 input_meta_data["d_model"]
             ],
                              dtype=tf.float32)

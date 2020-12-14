@@ -48,6 +48,7 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
         resample_alpha=resample_alpha,
         block_repeats=block_repeats,
         filter_size_scale=filter_size_scale,
+        init_stochastic_depth_rate=0.2,
     )
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
@@ -59,6 +60,38 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
           [1, input_size / 2**l, input_size / 2**l, endpoints_num_filters],
           endpoints[str(l)].shape.as_list())
 
+  @parameterized.parameters(
+      ((128, 128), (128, 128)),
+      ((128, 128), (256, 256)),
+      ((640, 640), (896, 1664)),
+  )
+  def test_load_from_different_input_specs(self, input_size_1, input_size_2):
+    """Test loading checkpoints with different input size."""
+
+    def build_spinenet(input_size):
+      tf.keras.backend.set_image_data_format('channels_last')
+      input_specs = tf.keras.layers.InputSpec(
+          shape=[None, input_size[0], input_size[1], 3])
+      model = spinenet.SpineNet(
+          input_specs=input_specs,
+          min_level=3,
+          max_level=7,
+          endpoints_num_filters=384,
+          resample_alpha=1.0,
+          block_repeats=2,
+          filter_size_scale=0.5)
+      return model
+
+    model_1 = build_spinenet(input_size_1)
+    model_2 = build_spinenet(input_size_2)
+
+    ckpt_1 = tf.train.Checkpoint(backbone=model_1)
+    ckpt_2 = tf.train.Checkpoint(backbone=model_2)
+
+    ckpt_path = self.get_temp_dir() + '/ckpt'
+    ckpt_1.write(ckpt_path)
+    ckpt_2.restore(ckpt_path).expect_partial()
+
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
     kwargs = dict(
@@ -68,6 +101,7 @@ class SpineNetTest(parameterized.TestCase, tf.test.TestCase):
         resample_alpha=0.5,
         block_repeats=1,
         filter_size_scale=1.0,
+        init_stochastic_depth_rate=0.2,
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,

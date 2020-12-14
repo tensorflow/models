@@ -41,7 +41,11 @@ from official.vision.beta.evaluation import coco_utils
 class COCOEvaluator(object):
   """COCO evaluation metric class."""
 
-  def __init__(self, annotation_file, include_mask, need_rescale_bboxes=True):
+  def __init__(self,
+               annotation_file,
+               include_mask,
+               need_rescale_bboxes=True,
+               per_category_metrics=False):
     """Constructs COCO evaluation class.
 
     The class provides the interface to COCO metrics_fn. The
@@ -57,6 +61,7 @@ class COCOEvaluator(object):
         eval.
       need_rescale_bboxes: If true bboxes in `predictions` will be rescaled back
         to absolute values (`image_info` is needed in this case).
+      per_category_metrics: Whether to return per category metrics.
     """
     if annotation_file:
       if annotation_file.startswith('gs://'):
@@ -72,6 +77,7 @@ class COCOEvaluator(object):
           annotation_file=local_val_json)
     self._annotation_file = annotation_file
     self._include_mask = include_mask
+    self._per_category_metrics = per_category_metrics
     self._metric_names = [
         'AP', 'AP50', 'AP75', 'APs', 'APm', 'APl', 'ARmax1', 'ARmax10',
         'ARmax100', 'ARs', 'ARm', 'ARl'
@@ -156,6 +162,78 @@ class COCOEvaluator(object):
     metrics_dict = {}
     for i, name in enumerate(self._metric_names):
       metrics_dict[name] = metrics[i].astype(np.float32)
+
+    # Adds metrics per category.
+    if self._per_category_metrics:
+      metrics_dict.update(self._retrieve_per_category_metrics(coco_eval))
+
+      if self._include_mask:
+        metrics_dict.update(self._retrieve_per_category_metrics(
+            mcoco_eval, prefix='mask'))
+
+    return metrics_dict
+
+  def _retrieve_per_category_metrics(self, coco_eval, prefix=''):
+    """Retrieves and per-category metrics and retuns them in a dict.
+
+    Args:
+      coco_eval: a cocoeval.COCOeval object containing evaluation data.
+      prefix: str, A string used to prefix metric names.
+
+    Returns:
+      metrics_dict: A dictionary with per category metrics.
+    """
+
+    metrics_dict = {}
+    if prefix:
+      prefix = prefix + ' '
+
+    if hasattr(coco_eval, 'category_stats'):
+      for category_index, category_id in enumerate(coco_eval.params.catIds):
+        if self._annotation_file:
+          coco_category = self._coco_gt.cats[category_id]
+          # if 'name' is available use it, otherwise use `id`
+          category_display_name = coco_category.get('name', category_id)
+        else:
+          category_display_name = category_id
+
+        metrics_dict[prefix + 'Precision mAP ByCategory/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[0][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Precision mAP ByCategory@50IoU/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[1][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Precision mAP ByCategory@75IoU/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[2][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Precision mAP ByCategory (small) /{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[3][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Precision mAP ByCategory (medium) /{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[4][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Precision mAP ByCategory (large) /{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[5][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Recall AR@1 ByCategory/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[6][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Recall AR@10 ByCategory/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[7][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Recall AR@100 ByCategory/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[8][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Recall AR (small) ByCategory/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[9][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Recall AR (medium) ByCategory/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[10][category_index].astype(np.float32)
+        metrics_dict[prefix + 'Recall AR (large) ByCategory/{}'.format(
+            category_display_name
+        )] = coco_eval.category_stats[11][category_index].astype(np.float32)
+
     return metrics_dict
 
   def _process_predictions(self, predictions):

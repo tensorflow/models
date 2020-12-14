@@ -109,6 +109,8 @@ PREPROCESSING_FUNCTION_MAP = {
         preprocessor.subtract_channel_mean,
     'convert_class_logits_to_softmax':
         preprocessor.convert_class_logits_to_softmax,
+    'adjust_gamma':
+        preprocessor.adjust_gamma,
 }
 
 

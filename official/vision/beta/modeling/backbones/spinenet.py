@@ -25,7 +25,9 @@ import math
 from absl import logging
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.layers import nn_layers
 from official.vision.beta.ops import spatial_transform_ops
 
 layers = tf.keras.layers
@@ -126,6 +128,7 @@ class SpineNet(tf.keras.Model):
                resample_alpha=0.5,
                block_repeats=1,
                filter_size_scale=1.0,
+               init_stochastic_depth_rate=0.0,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
@@ -143,6 +146,7 @@ class SpineNet(tf.keras.Model):
     self._resample_alpha = resample_alpha
     self._block_repeats = block_repeats
     self._filter_size_scale = filter_size_scale
+    self._init_stochastic_depth_rate = init_stochastic_depth_rate
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
@@ -174,7 +178,7 @@ class SpineNet(tf.keras.Model):
 
     net = self._build_stem(inputs=inputs)
     net = self._build_scale_permuted_network(
-        net=net, input_width=input_specs.shape[1])
+        net=net, input_width=input_specs.shape[2])
     endpoints = self._build_endpoints(net=net)
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
@@ -186,6 +190,7 @@ class SpineNet(tf.keras.Model):
                    strides,
                    block_fn_cand,
                    block_repeats=1,
+                   stochastic_depth_drop_rate=None,
                    name='block_group'):
     """Creates one group of blocks for the SpineNet model."""
     block_fn_candidates = {
@@ -204,6 +209,7 @@ class SpineNet(tf.keras.Model):
         filters=filters,
         strides=strides,
         use_projection=use_projection,
+        stochastic_depth_drop_rate=stochastic_depth_drop_rate,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
@@ -217,6 +223,7 @@ class SpineNet(tf.keras.Model):
           filters=filters,
           strides=1,
           use_projection=False,
+          stochastic_depth_drop_rate=stochastic_depth_drop_rate,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
@@ -333,6 +340,8 @@ class SpineNet(tf.keras.Model):
           strides=1,
           block_fn_cand=target_block_fn,
           block_repeats=self._block_repeats,
+          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
+              self._init_stochastic_depth_rate, i + 1, len(self._block_specs)),
           name='scale_permuted_block_{}'.format(i + 1))
 
       net.append(x)
@@ -458,6 +467,7 @@ class SpineNet(tf.keras.Model):
         'resample_alpha': self._resample_alpha,
         'block_repeats': self._block_repeats,
         'filter_size_scale': self._filter_size_scale,
+        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
@@ -476,3 +486,37 @@ class SpineNet(tf.keras.Model):
   def output_specs(self):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_backbone_builder('spinenet')
+def build_spinenet(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds ResNet 3d backbone from a config."""
+  backbone_type = model_config.backbone.type
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+  assert backbone_type == 'spinenet', (f'Inconsistent backbone type '
+                                       f'{backbone_type}')
+
+  model_id = backbone_cfg.model_id
+  if model_id not in SCALING_MAP:
+    raise ValueError(
+        'SpineNet-{} is not a valid architecture.'.format(model_id))
+  scaling_params = SCALING_MAP[model_id]
+
+  return SpineNet(
+      input_specs=input_specs,
+      min_level=model_config.min_level,
+      max_level=model_config.max_level,
+      endpoints_num_filters=scaling_params['endpoints_num_filters'],
+      resample_alpha=scaling_params['resample_alpha'],
+      block_repeats=scaling_params['block_repeats'],
+      filter_size_scale=scaling_params['filter_size_scale'],
+      init_stochastic_depth_rate=backbone_cfg.stochastic_depth_drop_rate,
+      kernel_regularizer=l2_regularizer,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon)

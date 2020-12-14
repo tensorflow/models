@@ -304,7 +304,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
                resize_masks=True,
                freeze_batchnorm=False,
                return_raw_detections_during_predict=False,
-               output_final_box_features=False):
+               output_final_box_features=False,
+               output_final_box_rpn_features=False):
     """FasterRCNNMetaArch Constructor.
 
     Args:
@@ -437,8 +438,11 @@ class FasterRCNNMetaArch(model.DetectionModel):
         boxes in the predict() method. These are decoded boxes that have not
         been through postprocessing (i.e. NMS). Default False.
       output_final_box_features: Whether to output final box features. If true,
-        it crops the feauture map based on the final box prediction and returns
-        in the dict as detection_features.
+        it crops the rpn feature map and passes it through box_classifier then
+        returns in the output dict as `detection_features`.
+      output_final_box_rpn_features: Whether to output rpn box features. If
+        true, it crops the rpn feature map and returns in the output dict as
+        `detection_features`.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals` at
@@ -604,6 +608,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
     self._return_raw_detections_during_predict = (
         return_raw_detections_during_predict)
     self._output_final_box_features = output_final_box_features
+    self._output_final_box_rpn_features = output_final_box_rpn_features
 
   @property
   def first_stage_feature_extractor_scope(self):
@@ -821,7 +826,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
               prediction_dict['rpn_objectness_predictions_with_background'],
               prediction_dict['rpn_features_to_crop'],
               prediction_dict['anchors'], prediction_dict['image_shape'],
-              true_image_shapes, **side_inputs))
+              true_image_shapes,
+              **side_inputs))
 
     if self._number_of_stages == 3:
       prediction_dict = self._predict_third_stage(prediction_dict,
@@ -1059,7 +1065,7 @@ class FasterRCNNMetaArch(model.DetectionModel):
             image_shape, **side_inputs))
 
     box_classifier_features = self._extract_box_classifier_features(
-        flattened_proposal_feature_maps)
+        flattened_proposal_feature_maps, **side_inputs)
 
     if self._mask_rcnn_box_predictor.is_keras_model:
       box_predictions = self._mask_rcnn_box_predictor(
@@ -1547,10 +1553,22 @@ class FasterRCNNMetaArch(model.DetectionModel):
               'Please make sure rpn_features_to_crop is in the prediction_dict.'
           )
         detections_dict[
-            'detection_features'] = self._add_detection_features_output_node(
+            'detection_features'] = (
+                self._add_detection_box_boxclassifier_features_output_node(
+                    detections_dict[
+                        fields.DetectionResultFields.detection_boxes],
+                    prediction_dict['rpn_features_to_crop'],
+                    prediction_dict['image_shape']))
+      if self._output_final_box_rpn_features:
+        if 'rpn_features_to_crop' not in prediction_dict:
+          raise ValueError(
+              'Please make sure rpn_features_to_crop is in the prediction_dict.'
+          )
+        detections_dict['cropped_rpn_box_features'] = (
+            self._add_detection_box_rpn_features_output_node(
                 detections_dict[fields.DetectionResultFields.detection_boxes],
                 prediction_dict['rpn_features_to_crop'],
-                prediction_dict['image_shape'])
+                prediction_dict['image_shape']))
 
       return detections_dict
 
@@ -1566,8 +1584,8 @@ class FasterRCNNMetaArch(model.DetectionModel):
         prediction_dict.pop(k)
       return prediction_dict
 
-  def _add_detection_features_output_node(self, detection_boxes,
-                                          rpn_features_to_crop, image_shape):
+  def _add_detection_box_boxclassifier_features_output_node(
+      self, detection_boxes, rpn_features_to_crop, image_shape):
     """Add detection features to outputs.
 
     This function extracts box features for each box in rpn_features_to_crop.
@@ -1606,12 +1624,52 @@ class FasterRCNNMetaArch(model.DetectionModel):
       reshaped_detection_features_pool = tf.identity(
           reshaped_detection_features_pool, 'pooled_detection_features')
 
+      # TODO(sbeery) add node to extract rpn features here!!
+
       reshaped_detection_features = tf.reshape(
           detection_features_unpooled,
           [batch_size, max_detections,
            tf.shape(detection_features_unpooled)[1],
            tf.shape(detection_features_unpooled)[2],
            tf.shape(detection_features_unpooled)[3]])
+
+    return reshaped_detection_features
+
+  def _add_detection_box_rpn_features_output_node(self, detection_boxes,
+                                                  rpn_features_to_crop,
+                                                  image_shape):
+    """Add detection features to outputs.
+
+    This function extracts box features for each box in rpn_features_to_crop.
+    It returns the extracted box features, reshaped to
+    [batch size, max_detections, height, width, depth]
+
+    Args:
+      detection_boxes: a 3-D float32 tensor of shape
+        [batch_size, max_detections, 4] which represents the bounding boxes.
+      rpn_features_to_crop: A list of 4-D float32 tensor with shape
+        [batch, height, width, depth] representing image features to crop using
+        the proposals boxes.
+      image_shape: a 1-D tensor of shape [4] representing the image shape.
+
+    Returns:
+      detection_features: a 4-D float32 tensor of shape
+        [batch size, max_detections, height, width, depth] representing
+        cropped image features
+    """
+    with tf.name_scope('FirstStageDetectionFeaturesExtract'):
+      flattened_detected_feature_maps = (
+          self._compute_second_stage_input_feature_maps(
+              rpn_features_to_crop, detection_boxes, image_shape))
+
+      batch_size = tf.shape(detection_boxes)[0]
+      max_detections = tf.shape(detection_boxes)[1]
+      reshaped_detection_features = tf.reshape(
+          flattened_detected_feature_maps,
+          [batch_size, max_detections,
+           tf.shape(flattened_detected_feature_maps)[1],
+           tf.shape(flattened_detected_feature_maps)[2],
+           tf.shape(flattened_detected_feature_maps)[3]])
 
     return reshaped_detection_features
 

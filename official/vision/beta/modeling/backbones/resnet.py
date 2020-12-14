@@ -22,7 +22,9 @@ Residual networks (ResNets) were proposed in:
 # Import libraries
 import tensorflow as tf
 from official.modeling import tf_utils
+from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 
@@ -67,6 +69,18 @@ RESNET_SPECS = {
         ('bottleneck', 256, 36),
         ('bottleneck', 512, 3),
     ],
+    300: [
+        ('bottleneck', 64, 4),
+        ('bottleneck', 128, 36),
+        ('bottleneck', 256, 54),
+        ('bottleneck', 512, 4),
+    ],
+    350: [
+        ('bottleneck', 64, 4),
+        ('bottleneck', 128, 36),
+        ('bottleneck', 256, 72),
+        ('bottleneck', 512, 4),
+    ],
 }
 
 
@@ -77,6 +91,10 @@ class ResNet(tf.keras.Model):
   def __init__(self,
                model_id,
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
+               depth_multiplier=1.0,
+               stem_type='v0',
+               se_ratio=None,
+               init_stochastic_depth_rate=0.0,
                activation='relu',
                use_sync_bn=False,
                norm_momentum=0.99,
@@ -90,6 +108,12 @@ class ResNet(tf.keras.Model):
     Args:
       model_id: `int` depth of ResNet backbone model.
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      depth_multiplier: `float` a depth multiplier to uniformaly scale up all
+        layers in channel size in ResNet.
+      stem_type: `str` stem type of ResNet. Default to `v0`. If set to `v1`,
+        use ResNet-C type stem (https://arxiv.org/abs/1812.01187).
+      se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
+      init_stochastic_depth_rate: `float` initial stochastic depth rate.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float` normalization omentum for the moving average.
@@ -104,6 +128,10 @@ class ResNet(tf.keras.Model):
     """
     self._model_id = model_id
     self._input_specs = input_specs
+    self._depth_multiplier = depth_multiplier
+    self._stem_type = stem_type
+    self._se_ratio = se_ratio
+    self._init_stochastic_depth_rate = init_stochastic_depth_rate
     self._use_sync_bn = use_sync_bn
     self._activation = activation
     self._norm_momentum = norm_momentum
@@ -124,19 +152,69 @@ class ResNet(tf.keras.Model):
     # Build ResNet.
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
-    x = layers.Conv2D(
-        filters=64, kernel_size=7, strides=2, use_bias=False, padding='same',
-        kernel_initializer=self._kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)(
-            inputs)
-    x = self._norm(
-        axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
-            x)
-    x = tf_utils.get_activation(activation)(x)
+    if stem_type == 'v0':
+      x = layers.Conv2D(
+          filters=int(64 * self._depth_multiplier),
+          kernel_size=7,
+          strides=2,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)(
+              inputs)
+      x = self._norm(
+          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+              x)
+      x = tf_utils.get_activation(activation)(x)
+    elif stem_type == 'v1':
+      x = layers.Conv2D(
+          filters=int(32 * self._depth_multiplier),
+          kernel_size=3,
+          strides=2,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)(
+              inputs)
+      x = self._norm(
+          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+              x)
+      x = tf_utils.get_activation(activation)(x)
+      x = layers.Conv2D(
+          filters=int(32 * self._depth_multiplier),
+          kernel_size=3,
+          strides=1,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)(
+              x)
+      x = self._norm(
+          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+              x)
+      x = tf_utils.get_activation(activation)(x)
+      x = layers.Conv2D(
+          filters=int(64 * self._depth_multiplier),
+          kernel_size=3,
+          strides=1,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)(
+              x)
+      x = self._norm(
+          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+              x)
+      x = tf_utils.get_activation(activation)(x)
+    else:
+      raise ValueError('Stem type {} not supported.'.format(stem_type))
+
     x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 
-    # TODO(xianzhi): keep a list of blocks to make blocks accessible.
     endpoints = {}
     for i, spec in enumerate(RESNET_SPECS[model_id]):
       if spec[0] == 'residual':
@@ -147,10 +225,12 @@ class ResNet(tf.keras.Model):
         raise ValueError('Block fn `{}` is not supported.'.format(spec[0]))
       x = self._block_group(
           inputs=x,
-          filters=spec[1],
+          filters=int(spec[1] * self._depth_multiplier),
           strides=(1 if i == 0 else 2),
           block_fn=block_fn,
           block_repeats=spec[2],
+          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
+              self._init_stochastic_depth_rate, i + 2, 5),
           name='block_group_l{}'.format(i + 2))
       endpoints[str(i + 2)] = x
 
@@ -164,6 +244,7 @@ class ResNet(tf.keras.Model):
                    strides,
                    block_fn,
                    block_repeats=1,
+                   stochastic_depth_drop_rate=0.0,
                    name='block_group'):
     """Creates one group of blocks for the ResNet model.
 
@@ -174,6 +255,7 @@ class ResNet(tf.keras.Model):
         greater than 1, this layer will downsample the input.
       block_fn: Either `nn_blocks.ResidualBlock` or `nn_blocks.BottleneckBlock`.
       block_repeats: `int` number of blocks contained in the layer.
+      stochastic_depth_drop_rate: `float` drop rate of the current block group.
       name: `str`name for the block.
 
     Returns:
@@ -183,6 +265,8 @@ class ResNet(tf.keras.Model):
         filters=filters,
         strides=strides,
         use_projection=True,
+        stochastic_depth_drop_rate=stochastic_depth_drop_rate,
+        se_ratio=self._se_ratio,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
@@ -197,6 +281,8 @@ class ResNet(tf.keras.Model):
           filters=filters,
           strides=1,
           use_projection=False,
+          stochastic_depth_drop_rate=stochastic_depth_drop_rate,
+          se_ratio=self._se_ratio,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
@@ -211,7 +297,11 @@ class ResNet(tf.keras.Model):
   def get_config(self):
     config_dict = {
         'model_id': self._model_id,
+        'depth_multiplier': self._depth_multiplier,
+        'stem_type': self._stem_type,
         'activation': self._activation,
+        'se_ratio': self._se_ratio,
+        'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
         'use_sync_bn': self._use_sync_bn,
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon,
@@ -229,3 +319,29 @@ class ResNet(tf.keras.Model):
   def output_specs(self):
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs
+
+
+@factory.register_backbone_builder('resnet')
+def build_resnet(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds ResNet backbone from a config."""
+  backbone_type = model_config.backbone.type
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+  assert backbone_type == 'resnet', (f'Inconsistent backbone type '
+                                     f'{backbone_type}')
+
+  return ResNet(
+      model_id=backbone_cfg.model_id,
+      input_specs=input_specs,
+      depth_multiplier=backbone_cfg.depth_multiplier,
+      stem_type=backbone_cfg.stem_type,
+      se_ratio=backbone_cfg.se_ratio,
+      init_stochastic_depth_rate=backbone_cfg.stochastic_depth_drop_rate,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)

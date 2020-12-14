@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 from official.vision.detection.dataloader import maskrcnn_parser
+from official.vision.detection.dataloader import olnmask_parser
 from official.vision.detection.dataloader import retinanet_parser
 from official.vision.detection.dataloader import shapemask_parser
 
@@ -69,6 +70,38 @@ def parser_generator(params, mode):
         mask_crop_size=parser_params.mask_crop_size,
         use_bfloat16=params.architecture.use_bfloat16,
         mode=mode)
+  elif params.architecture.parser == 'olnmask_parser':
+    anchor_params = params.anchor
+    parser_params = params.olnmask_parser
+    parser_fn = olnmask_parser.Parser(
+        output_size=parser_params.output_size,
+        min_level=params.architecture.min_level,
+        max_level=params.architecture.max_level,
+        num_scales=anchor_params.num_scales,
+        aspect_ratios=anchor_params.aspect_ratios,
+        anchor_size=anchor_params.anchor_size,
+        rpn_match_threshold=parser_params.rpn_match_threshold,
+        rpn_unmatched_threshold=parser_params.rpn_unmatched_threshold,
+        rpn_batch_size_per_im=parser_params.rpn_batch_size_per_im,
+        rpn_fg_fraction=parser_params.rpn_fg_fraction,
+        aug_rand_hflip=parser_params.aug_rand_hflip,
+        aug_scale_min=parser_params.aug_scale_min,
+        aug_scale_max=parser_params.aug_scale_max,
+        skip_crowd_during_training=parser_params.skip_crowd_during_training,
+        max_num_instances=parser_params.max_num_instances,
+        include_mask=params.architecture.include_mask,
+        mask_crop_size=parser_params.mask_crop_size,
+        use_bfloat16=params.architecture.use_bfloat16,
+        mode=mode,
+        has_centerness=parser_params.has_centerness,
+        rpn_center_match_iou_threshold=(
+            parser_params.rpn_center_match_iou_threshold),
+        rpn_center_unmatched_iou_threshold=(
+            parser_params.rpn_center_unmatched_iou_threshold),
+        rpn_num_center_samples_per_im=(
+            parser_params.rpn_num_center_samples_per_im),
+        class_agnostic=parser_params.class_agnostic,
+        train_class=parser_params.train_class,)
   elif params.architecture.parser == 'shapemask_parser':
     anchor_params = params.anchor
     parser_params = params.shapemask_parser

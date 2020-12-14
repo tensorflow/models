@@ -73,7 +73,7 @@ def _filter_and_allreduce_gradients(grads_and_vars,
   hints = tf.distribute.experimental.CollectiveHints(
       bytes_per_pack=bytes_per_pack)
   allreduced_grads = tf.distribute.get_replica_context().all_reduce(
-      tf.distribute.ReduceOp.SUM, grads, experimental_hints=hints)
+      tf.distribute.ReduceOp.SUM, grads, hints)
   if allreduce_precision == "float16":
     allreduced_grads = [tf.cast(grad, "float32") for grad in allreduced_grads]
   return allreduced_grads, variables
@@ -122,7 +122,7 @@ def minimize_using_explicit_allreduce(tape,
         in one pack.
   """
   if isinstance(optimizer,
-                tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                tf.keras.mixed_precision.LossScaleOptimizer):
     # FP16 GPU code path
     with tape:
       scaled_loss = optimizer.get_scaled_loss(loss)

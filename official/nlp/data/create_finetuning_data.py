@@ -14,10 +14,6 @@
 # ==============================================================================
 """BERT finetuning task dataset generator."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import functools
 import json
 import os
@@ -50,20 +46,19 @@ flags.DEFINE_string(
     "The input data dir. Should contain the .tsv files (or other data files) "
     "for the task.")
 
-flags.DEFINE_enum("classification_task_name", "MNLI",
-                  ["AX", "COLA", "MNLI", "MRPC", "PAWS-X", "QNLI", "QQP", "RTE",
-                   "SST-2", "STS-B", "WNLI", "XNLI", "XTREME-XNLI",
-                   "XTREME-PAWS-X"],
-                  "The name of the task to train BERT classifier. The "
-                  "difference between XTREME-XNLI and XNLI is: 1. the format "
-                  "of input tsv files; 2. the dev set for XTREME is english "
-                  "only and for XNLI is all languages combined. Same for "
-                  "PAWS-X.")
+flags.DEFINE_enum(
+    "classification_task_name", "MNLI", [
+        "AX", "COLA", "IMDB", "MNLI", "MRPC", "PAWS-X", "QNLI", "QQP", "RTE",
+        "SST-2", "STS-B", "WNLI", "XNLI", "XTREME-XNLI", "XTREME-PAWS-X"
+    ], "The name of the task to train BERT classifier. The "
+    "difference between XTREME-XNLI and XNLI is: 1. the format "
+    "of input tsv files; 2. the dev set for XTREME is english "
+    "only and for XNLI is all languages combined. Same for "
+    "PAWS-X.")
 
 # MNLI task-specific flag.
-flags.DEFINE_enum(
-    "mnli_type", "matched", ["matched", "mismatched"],
-    "The type of MNLI dataset.")
+flags.DEFINE_enum("mnli_type", "matched", ["matched", "mismatched"],
+                  "The type of MNLI dataset.")
 
 # XNLI task-specific flag.
 flags.DEFINE_string(
@@ -77,6 +72,12 @@ flags.DEFINE_string(
     "Language of training data for PAWS-X task. If the value is 'all', the data "
     "of all languages will be used for training.")
 
+# XTREME classification specific flags. Only used in XtremePawsx and XtremeXnli.
+flags.DEFINE_string(
+    "translated_input_data_dir", None,
+    "The translated input data dir. Should contain the .tsv files (or other "
+    "data files) for the task.")
+
 # Retrieval task-specific flags.
 flags.DEFINE_enum("retrieval_task_name", "bucc", ["bucc", "tatoeba"],
                   "The name of sentence retrieval task for scoring")
@@ -85,10 +86,18 @@ flags.DEFINE_enum("retrieval_task_name", "bucc", ["bucc", "tatoeba"],
 flags.DEFINE_enum("tagging_task_name", "panx", ["panx", "udpos"],
                   "The name of BERT tagging (token classification) task.")
 
+flags.DEFINE_bool("tagging_only_use_en_train", True,
+                  "Whether only use english training data in tagging.")
+
 # BERT Squad task-specific flags.
 flags.DEFINE_string(
     "squad_data_file", None,
     "The input data file in for generating training data for BERT squad task.")
+
+flags.DEFINE_string(
+    "translated_squad_data_folder", None,
+    "The translated data folder for generating training data for BERT squad "
+    "task.")
 
 flags.DEFINE_integer(
     "doc_stride", 128,
@@ -103,6 +112,14 @@ flags.DEFINE_integer(
 flags.DEFINE_bool(
     "version_2_with_negative", False,
     "If true, the SQuAD examples contain some that do not have an answer.")
+
+flags.DEFINE_bool(
+    "xlnet_format", False,
+    "If true, then data will be preprocessed in a paragraph, query, class order"
+    " instead of the BERT-style class, paragraph, query order.")
+
+# XTREME specific flags.
+flags.DEFINE_bool("only_use_en_dev", True, "Whether only use english dev data.")
 
 # Shared flags across BERT fine-tuning tasks.
 flags.DEFINE_string("vocab_file", None,
@@ -147,16 +164,16 @@ flags.DEFINE_enum(
     "or SentencePiece tokenizer. Canonical BERT uses WordPiece tokenizer, "
     "while ALBERT uses SentencePiece tokenizer.")
 
-flags.DEFINE_string("tfds_params", "",
-                    "Comma-separated list of TFDS parameter assigments for "
-                    "generic classfication data import (for more details "
-                    "see the TfdsProcessor class documentation).")
+flags.DEFINE_string(
+    "tfds_params", "", "Comma-separated list of TFDS parameter assigments for "
+    "generic classfication data import (for more details "
+    "see the TfdsProcessor class documentation).")
 
 
 def generate_classifier_dataset():
   """Generates classifier dataset and returns input meta data."""
-  assert (FLAGS.input_data_dir and FLAGS.classification_task_name
-          or FLAGS.tfds_params)
+  assert (FLAGS.input_data_dir and FLAGS.classification_task_name or
+          FLAGS.tfds_params)
 
   if FLAGS.tokenization == "WordPiece":
     tokenizer = tokenization.FullTokenizer(
@@ -170,8 +187,7 @@ def generate_classifier_dataset():
 
   if FLAGS.tfds_params:
     processor = classifier_data_lib.TfdsProcessor(
-        tfds_params=FLAGS.tfds_params,
-        process_text_fn=processor_text_fn)
+        tfds_params=FLAGS.tfds_params, process_text_fn=processor_text_fn)
     return classifier_data_lib.generate_tf_record_from_data_file(
         processor,
         None,
@@ -186,30 +202,43 @@ def generate_classifier_dataset():
             classifier_data_lib.AxProcessor,
         "cola":
             classifier_data_lib.ColaProcessor,
+        "imdb":
+            classifier_data_lib.ImdbProcessor,
         "mnli":
-            functools.partial(classifier_data_lib.MnliProcessor,
-                              mnli_type=FLAGS.mnli_type),
+            functools.partial(
+                classifier_data_lib.MnliProcessor, mnli_type=FLAGS.mnli_type),
         "mrpc":
             classifier_data_lib.MrpcProcessor,
         "qnli":
             classifier_data_lib.QnliProcessor,
-        "qqp": classifier_data_lib.QqpProcessor,
-        "rte": classifier_data_lib.RteProcessor,
+        "qqp":
+            classifier_data_lib.QqpProcessor,
+        "rte":
+            classifier_data_lib.RteProcessor,
         "sst-2":
             classifier_data_lib.SstProcessor,
         "sts-b":
             classifier_data_lib.StsBProcessor,
         "xnli":
-            functools.partial(classifier_data_lib.XnliProcessor,
-                              language=FLAGS.xnli_language),
+            functools.partial(
+                classifier_data_lib.XnliProcessor,
+                language=FLAGS.xnli_language),
         "paws-x":
-            functools.partial(classifier_data_lib.PawsxProcessor,
-                              language=FLAGS.pawsx_language),
-        "wnli": classifier_data_lib.WnliProcessor,
+            functools.partial(
+                classifier_data_lib.PawsxProcessor,
+                language=FLAGS.pawsx_language),
+        "wnli":
+            classifier_data_lib.WnliProcessor,
         "xtreme-xnli":
-            functools.partial(classifier_data_lib.XtremeXnliProcessor),
+            functools.partial(
+                classifier_data_lib.XtremeXnliProcessor,
+                translated_data_dir=FLAGS.translated_input_data_dir,
+                only_use_en_dev=FLAGS.only_use_en_dev),
         "xtreme-paws-x":
-            functools.partial(classifier_data_lib.XtremePawsxProcessor)
+            functools.partial(
+                classifier_data_lib.XtremePawsxProcessor,
+                translated_data_dir=FLAGS.translated_input_data_dir,
+                only_use_en_dev=FLAGS.only_use_en_dev)
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:
@@ -240,8 +269,7 @@ def generate_regression_dataset():
 
   if FLAGS.tfds_params:
     processor = classifier_data_lib.TfdsProcessor(
-        tfds_params=FLAGS.tfds_params,
-        process_text_fn=processor_text_fn)
+        tfds_params=FLAGS.tfds_params, process_text_fn=processor_text_fn)
     return classifier_data_lib.generate_tf_record_from_data_file(
         processor,
         None,
@@ -259,15 +287,29 @@ def generate_squad_dataset():
   assert FLAGS.squad_data_file
   if FLAGS.tokenization == "WordPiece":
     return squad_lib_wp.generate_tf_record_from_json_file(
-        FLAGS.squad_data_file, FLAGS.vocab_file, FLAGS.train_data_output_path,
-        FLAGS.max_seq_length, FLAGS.do_lower_case, FLAGS.max_query_length,
-        FLAGS.doc_stride, FLAGS.version_2_with_negative)
+        input_file_path=FLAGS.squad_data_file,
+        vocab_file_path=FLAGS.vocab_file,
+        output_path=FLAGS.train_data_output_path,
+        translated_input_folder=FLAGS.translated_squad_data_folder,
+        max_seq_length=FLAGS.max_seq_length,
+        do_lower_case=FLAGS.do_lower_case,
+        max_query_length=FLAGS.max_query_length,
+        doc_stride=FLAGS.doc_stride,
+        version_2_with_negative=FLAGS.version_2_with_negative,
+        xlnet_format=FLAGS.xlnet_format)
   else:
     assert FLAGS.tokenization == "SentencePiece"
     return squad_lib_sp.generate_tf_record_from_json_file(
-        FLAGS.squad_data_file, FLAGS.sp_model_file,
-        FLAGS.train_data_output_path, FLAGS.max_seq_length, FLAGS.do_lower_case,
-        FLAGS.max_query_length, FLAGS.doc_stride, FLAGS.version_2_with_negative)
+        input_file_path=FLAGS.squad_data_file,
+        sp_model_file=FLAGS.sp_model_file,
+        output_path=FLAGS.train_data_output_path,
+        translated_input_folder=FLAGS.translated_squad_data_folder,
+        max_seq_length=FLAGS.max_seq_length,
+        do_lower_case=FLAGS.do_lower_case,
+        max_query_length=FLAGS.max_query_length,
+        doc_stride=FLAGS.doc_stride,
+        xlnet_format=FLAGS.xlnet_format,
+        version_2_with_negative=FLAGS.version_2_with_negative)
 
 
 def generate_retrieval_dataset():
@@ -295,19 +337,23 @@ def generate_retrieval_dataset():
   processor = processors[task_name](process_text_fn=processor_text_fn)
 
   return sentence_retrieval_lib.generate_sentence_retrevial_tf_record(
-      processor,
-      FLAGS.input_data_dir,
-      tokenizer,
-      FLAGS.eval_data_output_path,
-      FLAGS.test_data_output_path,
-      FLAGS.max_seq_length)
+      processor, FLAGS.input_data_dir, tokenizer, FLAGS.eval_data_output_path,
+      FLAGS.test_data_output_path, FLAGS.max_seq_length)
 
 
 def generate_tagging_dataset():
   """Generates tagging dataset."""
   processors = {
-      "panx": tagging_data_lib.PanxProcessor,
-      "udpos": tagging_data_lib.UdposProcessor,
+      "panx":
+          functools.partial(
+              tagging_data_lib.PanxProcessor,
+              only_use_en_train=FLAGS.tagging_only_use_en_train,
+              only_use_en_dev=FLAGS.only_use_en_dev),
+      "udpos":
+          functools.partial(
+              tagging_data_lib.UdposProcessor,
+              only_use_en_train=FLAGS.tagging_only_use_en_train,
+              only_use_en_dev=FLAGS.only_use_en_dev),
   }
   task_name = FLAGS.tagging_task_name.lower()
   if task_name not in processors:

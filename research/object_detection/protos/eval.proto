@@ -3,7 +3,7 @@ syntax = "proto2";
 package object_detection.protos;
 
 // Message for configuring DetectionModel evaluation jobs (eval.py).
-// Next id - 35
+// Next id - 36
 message EvalConfig {
   optional uint32 batch_size = 25 [default = 1];
   // Number of visualization images to generate.
@@ -81,6 +81,9 @@ message EvalConfig {
 
   // If True, additionally include per-category metrics.
   optional bool include_metrics_per_category = 24 [default = false];
+
+  // If true, includes all metrics per category.
+  optional bool all_metrics_per_category = 35 [default=false];
 
   // Optional super-category definitions: keys are super-category names;
   // values are comma-separated categories (assumed to correspond to category
