@@ -133,8 +133,8 @@ Running the pre-training script requires an input and output directory, as well 
 
 Example shell script to call create_pretraining_data.py
 ```
-set WORKING_DIR='local disk or cloud location'
-set BERT_DIR='local disk or cloud location'
+export WORKING_DIR='local disk or cloud location'
+export BERT_DIR='local disk or cloud location'
 python models/official/nlp/data/create_pretraining_data.py \
   --input_file=$WORKING_DIR/input/input.txt \
   --output_file=$WORKING_DIR/output/tf_examples.tfrecord \
