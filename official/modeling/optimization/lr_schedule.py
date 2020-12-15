@@ -188,3 +188,58 @@ class DirectPowerDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
         "power": self._power,
         "name": self._name,
     }
+
+
+class PowerAndLinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+  """Learning rate schedule with multiplied by linear decay at the end.
+
+  follows lr * (step)^power for the first total_decay_steps *
+  (1 - linear_decay_fraction) steps, and follows lr * (step)^power *
+  (total_decay_steps - step) / (total_decay_steps * linear_decay_fraction)
+  for the rest of the steps.
+  """
+
+  def __init__(self,
+               initial_learning_rate: float,
+               total_decay_steps: int,
+               power: float = 1.0,
+               linear_decay_fraction: float = 0.1,
+               name: str = "PowerAndLinearDecay"):
+    """Initialize configuration of the learning rate schedule.
+
+    Args:
+      initial_learning_rate: A float, the initial learning rate.
+      total_decay_steps: The total number of steps for power + linear decay.
+      power: A float, the number of steps required for linear warmup.
+      linear_decay_fraction: A float, in the last `linear_decay_fraction` steps,
+        the learning rate will be multiplied by a linear decay.
+      name: Optional, name of warmup schedule.
+    """
+    super(PowerAndLinearDecay, self).__init__()
+    self._initial_learning_rate = initial_learning_rate
+    self._total_decay_steps = total_decay_steps
+    self._power = power
+    self._linear_decay_fraction = linear_decay_fraction
+    self._name = name
+
+  def __call__(self, step):
+    with tf.name_scope(self._name or "PowerAndLinearDecay"):
+      step = tf.cast(step, tf.float32)
+      learning_rate = self._initial_learning_rate
+      learning_rate *= tf.math.pow(step, self._power)
+      if self._linear_decay_fraction > 0:
+        learning_rate *= tf.minimum(
+            1.0, (self._total_decay_steps - step) /
+            (self._total_decay_steps * self._linear_decay_fraction))
+        learning_rate = tf.maximum(0.0, learning_rate)
+      return learning_rate
+
+  def get_config(self):
+    """Get the configuration of the learning rate schedule."""
+    return {
+        "initial_learning_rate": self._initial_learning_rate,
+        "total_decay_steps": self._total_decay_steps,
+        "power": self._power,
+        "linear_decay_fraction": self._linear_decay_fraction,
+        "name": self._name,
+    }
