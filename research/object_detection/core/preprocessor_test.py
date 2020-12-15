@@ -3957,6 +3957,28 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertLen(boxes, 2)
     self.assertAllEqual(confidences, [-1.0, 1.0])
 
+  def testAdjustGamma(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.normalize_image, {
+          'original_minval': 0,
+          'original_maxval': 255,
+          'target_minval': 0,
+          'target_maxval': 1
+      }))
+      preprocessing_options.append((preprocessor.adjust_gamma, {}))
+      images_original = self.createTestImages()
+      tensor_dict = {fields.InputDataFields.image: images_original}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      images_gamma = tensor_dict[fields.InputDataFields.image]
+      image_original_shape = tf.shape(images_original)
+      image_gamma_shape = tf.shape(images_gamma)
+      return [image_original_shape, image_gamma_shape]
+
+    (image_original_shape_, image_gamma_shape_) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(image_original_shape_, image_gamma_shape_)
+
 
 if __name__ == '__main__':
   tf.test.main()

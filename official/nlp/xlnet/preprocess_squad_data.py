@@ -14,9 +14,6 @@
 # limitations under the License.
 # ==============================================================================
 """Script to pre-process SQUAD data into tfrecords."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import random

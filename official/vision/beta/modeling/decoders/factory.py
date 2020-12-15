@@ -52,6 +52,31 @@ def build_decoder(input_specs,
         norm_momentum=norm_activation_config.norm_momentum,
         norm_epsilon=norm_activation_config.norm_epsilon,
         kernel_regularizer=l2_regularizer)
+  elif decoder_type == 'nasfpn':
+    decoder = decoders.NASFPN(
+        input_specs=input_specs,
+        min_level=model_config.min_level,
+        max_level=model_config.max_level,
+        num_filters=decoder_cfg.num_filters,
+        num_repeats=decoder_cfg.num_repeats,
+        use_separable_conv=decoder_cfg.use_separable_conv,
+        activation=norm_activation_config.activation,
+        use_sync_bn=norm_activation_config.use_sync_bn,
+        norm_momentum=norm_activation_config.norm_momentum,
+        norm_epsilon=norm_activation_config.norm_epsilon,
+        kernel_regularizer=l2_regularizer)
+  elif decoder_type == 'aspp':
+    decoder = decoders.ASPP(
+        level=decoder_cfg.level,
+        dilation_rates=decoder_cfg.dilation_rates,
+        num_filters=decoder_cfg.num_filters,
+        pool_kernel_size=decoder_cfg.pool_kernel_size,
+        dropout_rate=decoder_cfg.dropout_rate,
+        use_sync_bn=norm_activation_config.use_sync_bn,
+        norm_momentum=norm_activation_config.norm_momentum,
+        norm_epsilon=norm_activation_config.norm_epsilon,
+        activation=norm_activation_config.activation,
+        kernel_regularizer=l2_regularizer)
   else:
     raise ValueError('Decoder {!r} not implement'.format(decoder_type))
 

@@ -40,9 +40,12 @@ message TrainConfig {
   // extractor variables trained outside of object detection.
   optional string fine_tune_checkpoint = 7 [default=""];
 
-  // Type of checkpoint to restore variables from, e.g. 'classification' or
-  // 'detection'. Provides extensibility to from_detection_checkpoint.
-  // Typically used to load feature extractor variables from trained models.
+  // Type of checkpoint to restore variables from, e.g. 'classification'
+  // 'detection', `fine_tune`, `full`. Controls which variables are restored
+  // from the pre-trained checkpoint. For meta architecture specific valid
+  // values of this parameter, see the restore_map (TF1) or
+  // restore_from_object (TF2) function documentation in the
+  // /meta_architectures/*meta_arch.py files
   optional string fine_tune_checkpoint_type = 22 [default=""];
 
   // Either "v1" or "v2". If v1, restores the checkpoint using the tensorflow
@@ -60,7 +63,7 @@ message TrainConfig {
   // Whether to load all checkpoint vars that match model variable names and
   // sizes. This option is only available if `from_detection_checkpoint` is
   // True.  This option is *not* supported for TF2 --- setting it to true
-  // will raise an error.
+  // will raise an error. Instead, set fine_tune_checkpoint_type: 'full'.
   optional bool load_all_detection_checkpoint_vars = 19 [default = false];
 
   // Number of steps to train the DetectionModel for. If 0, will train the model

@@ -14,6 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Image classification task definition."""
+from absl import logging
 import tensorflow as tf
 from official.core import base_task
 from official.core import input_reader
@@ -46,6 +47,30 @@ class ImageClassificationTask(base_task.Task):
         l2_regularizer=l2_regularizer)
     return model
 
+  def initialize(self, model: tf.keras.Model):
+    """Loading pretrained checkpoint."""
+    if not self.task_config.init_checkpoint:
+      return
+
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+
+    # Restoring checkpoint.
+    if self.task_config.init_checkpoint_modules == 'all':
+      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.assert_consumed()
+    elif self.task_config.init_checkpoint_modules == 'backbone':
+      ckpt = tf.train.Checkpoint(backbone=model.backbone)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
+    else:
+      assert "Only 'all' or 'backbone' can be used to initialize the model."
+
+    logging.info('Finished loading pretrained checkpoint from %s',
+                 ckpt_dir_or_file)
+
   def build_inputs(self, params, input_context=None):
     """Builds classification input."""
 
@@ -56,6 +81,7 @@ class ImageClassificationTask(base_task.Task):
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,
+        aug_policy=params.aug_policy,
         dtype=params.dtype)
 
     reader = input_reader.InputReader(
@@ -98,15 +124,17 @@ class ImageClassificationTask(base_task.Task):
 
   def build_metrics(self, training=True):
     """Gets streaming metrics for training/validation."""
+    k = self.task_config.evaluation.top_k
     if self.task_config.losses.one_hot:
       metrics = [
           tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
-          tf.keras.metrics.TopKCategoricalAccuracy(k=5, name='top_5_accuracy')]
+          tf.keras.metrics.TopKCategoricalAccuracy(
+              k=k, name='top_{}_accuracy'.format(k))]
     else:
       metrics = [
           tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
           tf.keras.metrics.SparseTopKCategoricalAccuracy(
-              k=5, name='top_5_accuracy')]
+              k=k, name='top_{}_accuracy'.format(k))]
     return metrics
 
   def train_step(self, inputs, model, optimizer, metrics=None):
@@ -143,7 +171,7 @@ class ImageClassificationTask(base_task.Task):
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
       if isinstance(
-          optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+          optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
@@ -151,13 +179,8 @@ class ImageClassificationTask(base_task.Task):
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
     if isinstance(
-        optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+        optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
-
-    # Apply gradient clipping.
-    if self.task_config.gradient_clip_norm > 0:
-      grads, _ = tf.clip_by_global_norm(
-          grads, self.task_config.gradient_clip_norm)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
     logs = {self.loss: loss}

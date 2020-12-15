@@ -13,10 +13,6 @@
 # limitations under the License.
 # ==============================================================================
 """Functions and classes related to optimization (weight updates)."""
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 from absl import logging
 import tensorflow as tf

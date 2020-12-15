@@ -9,6 +9,7 @@ import "object_detection/protos/losses.proto";
 // Points" paper [1]
 // [1]: https://arxiv.org/abs/1904.07850
 
+// Next Id = 16
 message CenterNet {
   // Number of classes to predict.
   optional int32 num_classes = 1;
@@ -21,6 +22,12 @@ message CenterNet {
 
   // If set, all task heads will be constructed with separable convolutions.
   optional bool use_depthwise = 13 [default = false];
+
+  // Indicates whether or not to use the sparse version of the Op that computes
+  // the center heatmaps. The sparse version scales better with number of
+  // channels in the heatmap, but in some cases is known to cause an OOM error.
+  // TODO(b/170989061) When bug is fixed, make this the default behavior.
+  optional bool compute_heatmap_sparse = 15 [default = false];
 
   // Parameters which are related to object detection task.
   message ObjectDetection {

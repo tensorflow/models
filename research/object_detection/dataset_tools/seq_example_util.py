@@ -171,7 +171,10 @@ def make_sequence_example(dataset_name,
                           detection_bboxes=None,
                           detection_classes=None,
                           detection_scores=None,
-                          use_strs_for_source_id=False):
+                          use_strs_for_source_id=False,
+                          context_features=None,
+                          context_feature_length=None,
+                          context_features_image_id_list=None):
   """Constructs tf.SequenceExamples.
 
   Args:
@@ -203,6 +206,12 @@ def make_sequence_example(dataset_name,
       each frame.
     use_strs_for_source_id: (Optional) Whether to write the source IDs as
       strings rather than byte lists of characters.
+    context_features: (Optional) A list or numpy array of features to use in
+      Context R-CNN, of length num_context_features * context_feature_length.
+    context_feature_length: (Optional) The length of each context feature, used
+      for reshaping.
+    context_features_image_id_list: (Optional) A list of image ids of length
+      num_context_features corresponding to the context features.
 
   Returns:
     A tf.train.SequenceExample.
@@ -272,6 +281,16 @@ def make_sequence_example(dataset_name,
   if detection_scores is not None:
     feature_list['predicted/region/label/confidence'] = sequence_float_feature(
         detection_scores)
+
+  if context_features is not None:
+    context_dict['image/context_features'] = context_float_feature(
+        context_features)
+  if context_feature_length is not None:
+    context_dict['image/context_feature_length'] = context_int64_feature(
+        context_feature_length)
+  if context_features_image_id_list is not None:
+    context_dict['image/context_features_image_id_list'] = (
+        context_bytes_feature(context_features_image_id_list))
 
   context = tf.train.Features(feature=context_dict)
   feature_lists = tf.train.FeatureLists(feature_list=feature_list)

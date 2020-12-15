@@ -14,9 +14,6 @@
 # limitations under the License.
 # ==============================================================================
 """Utilities for pre-processing."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 import unicodedata
 
 import six

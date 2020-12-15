@@ -68,8 +68,24 @@ def _multiclass_scores_or_one_hot_labels(multiclass_scores,
   return tf.cond(tf.size(multiclass_scores) > 0, true_fn, false_fn)
 
 
-def _convert_labeled_classes_to_k_hot(groundtruth_labeled_classes, num_classes):
-  """Returns k-hot encoding of the labeled classes."""
+def _convert_labeled_classes_to_k_hot(groundtruth_labeled_classes, num_classes,
+                                      map_empty_to_ones=False):
+  """Returns k-hot encoding of the labeled classes.
+
+  If map_empty_to_ones is enabled and the input labeled_classes is empty,
+  this function assumes all classes are exhaustively labeled, thus returning
+  an all-one encoding.
+
+  Args:
+    groundtruth_labeled_classes: a Tensor holding a sparse representation of
+      labeled classes.
+    num_classes: an integer representing the number of classes
+    map_empty_to_ones: boolean (default: False).  Set this to be True to default
+    to an all-ones result if given an empty `groundtruth_labeled_classes`.
+  Returns:
+    A k-hot (and 0-indexed) tensor representation of
+    `groundtruth_labeled_classes`.
+  """
 
   # If the input labeled_classes is empty, it assumes all classes are
   # exhaustively labeled, thus returning an all-one encoding.
@@ -82,13 +98,16 @@ def _convert_labeled_classes_to_k_hot(groundtruth_labeled_classes, num_classes):
   def false_fn():
     return tf.ones(num_classes, dtype=tf.float32)
 
-  return tf.cond(tf.size(groundtruth_labeled_classes) > 0, true_fn, false_fn)
+  if map_empty_to_ones:
+    return tf.cond(tf.size(groundtruth_labeled_classes) > 0, true_fn, false_fn)
+  return true_fn()
 
 
 def _remove_unrecognized_classes(class_ids, unrecognized_label):
   """Returns class ids with unrecognized classes filtered out."""
 
-  recognized_indices = tf.where(tf.greater(class_ids, unrecognized_label))
+  recognized_indices = tf.squeeze(
+      tf.where(tf.greater(class_ids, unrecognized_label)), -1)
   return tf.gather(class_ids, recognized_indices)
 
 
@@ -197,51 +216,54 @@ def transform_input_data(tensor_dict,
   """
   out_tensor_dict = tensor_dict.copy()
 
-  labeled_classes_field = fields.InputDataFields.groundtruth_labeled_classes
-  image_classes_field = fields.InputDataFields.groundtruth_image_classes
+  input_fields = fields.InputDataFields
+  labeled_classes_field = input_fields.groundtruth_labeled_classes
+  image_classes_field = input_fields.groundtruth_image_classes
+  verified_neg_classes_field = input_fields.groundtruth_verified_neg_classes
+  not_exhaustive_field = input_fields.groundtruth_not_exhaustive_classes
+
   if (labeled_classes_field in out_tensor_dict and
       image_classes_field in out_tensor_dict):
     raise KeyError('groundtruth_labeled_classes and groundtruth_image_classes'
                    'are provided by the decoder, but only one should be set.')
 
-  if labeled_classes_field in out_tensor_dict:
-    # tf_example_decoder casts unrecognized labels to -1. Remove these
-    # unrecognized labels before converting labeled_classes to k-hot vector.
-    out_tensor_dict[labeled_classes_field] = _remove_unrecognized_classes(
-        out_tensor_dict[labeled_classes_field], unrecognized_label=-1)
-    out_tensor_dict[labeled_classes_field] = _convert_labeled_classes_to_k_hot(
-        out_tensor_dict[labeled_classes_field], num_classes)
+  for field, map_empty_to_ones in [
+      (labeled_classes_field, True),
+      (image_classes_field, True),
+      (verified_neg_classes_field, False),
+      (not_exhaustive_field, False)]:
+    if field in out_tensor_dict:
+      out_tensor_dict[field] = _remove_unrecognized_classes(
+          out_tensor_dict[field], unrecognized_label=-1)
+      out_tensor_dict[field] = _convert_labeled_classes_to_k_hot(
+          out_tensor_dict[field], num_classes, map_empty_to_ones)
 
-  if image_classes_field in out_tensor_dict:
-    out_tensor_dict[labeled_classes_field] = _convert_labeled_classes_to_k_hot(
-        out_tensor_dict[image_classes_field], num_classes)
-
-  if fields.InputDataFields.multiclass_scores in out_tensor_dict:
+  if input_fields.multiclass_scores in out_tensor_dict:
     out_tensor_dict[
-        fields.InputDataFields
+        input_fields
         .multiclass_scores] = _multiclass_scores_or_one_hot_labels(
-            out_tensor_dict[fields.InputDataFields.multiclass_scores],
-            out_tensor_dict[fields.InputDataFields.groundtruth_boxes],
-            out_tensor_dict[fields.InputDataFields.groundtruth_classes],
+            out_tensor_dict[input_fields.multiclass_scores],
+            out_tensor_dict[input_fields.groundtruth_boxes],
+            out_tensor_dict[input_fields.groundtruth_classes],
             num_classes)
 
-  if fields.InputDataFields.groundtruth_boxes in out_tensor_dict:
+  if input_fields.groundtruth_boxes in out_tensor_dict:
     out_tensor_dict = util_ops.filter_groundtruth_with_nan_box_coordinates(
         out_tensor_dict)
     out_tensor_dict = util_ops.filter_unrecognized_classes(out_tensor_dict)
 
   if retain_original_image:
-    out_tensor_dict[fields.InputDataFields.original_image] = tf.cast(
-        image_resizer_fn(out_tensor_dict[fields.InputDataFields.image],
+    out_tensor_dict[input_fields.original_image] = tf.cast(
+        image_resizer_fn(out_tensor_dict[input_fields.image],
                          None)[0], tf.uint8)
 
-  if fields.InputDataFields.image_additional_channels in out_tensor_dict:
-    channels = out_tensor_dict[fields.InputDataFields.image_additional_channels]
-    out_tensor_dict[fields.InputDataFields.image] = tf.concat(
-        [out_tensor_dict[fields.InputDataFields.image], channels], axis=2)
+  if input_fields.image_additional_channels in out_tensor_dict:
+    channels = out_tensor_dict[input_fields.image_additional_channels]
+    out_tensor_dict[input_fields.image] = tf.concat(
+        [out_tensor_dict[input_fields.image], channels], axis=2)
     if retain_original_image_additional_channels:
       out_tensor_dict[
-          fields.InputDataFields.image_additional_channels] = tf.cast(
+          input_fields.image_additional_channels] = tf.cast(
               image_resizer_fn(channels, None)[0], tf.uint8)
 
   # Apply data augmentation ops.
@@ -249,7 +271,7 @@ def transform_input_data(tensor_dict,
     out_tensor_dict = data_augmentation_fn(out_tensor_dict)
 
   # Apply model preprocessing ops and resize instance masks.
-  image = out_tensor_dict[fields.InputDataFields.image]
+  image = out_tensor_dict[input_fields.image]
   preprocessed_resized_image, true_image_shape = model_preprocess_fn(
       tf.expand_dims(tf.cast(image, dtype=tf.float32), axis=0))
 
@@ -262,25 +284,25 @@ def transform_input_data(tensor_dict,
       tf.to_float(new_width) / tf.to_float(true_image_shape[0, 1])
   ])
 
-  if fields.InputDataFields.groundtruth_boxes in tensor_dict:
-    bboxes = out_tensor_dict[fields.InputDataFields.groundtruth_boxes]
+  if input_fields.groundtruth_boxes in tensor_dict:
+    bboxes = out_tensor_dict[input_fields.groundtruth_boxes]
     boxlist = box_list.BoxList(bboxes)
     realigned_bboxes = box_list_ops.change_coordinate_frame(boxlist, im_box)
 
     realigned_boxes_tensor = realigned_bboxes.get()
     valid_boxes_tensor = assert_or_prune_invalid_boxes(realigned_boxes_tensor)
     out_tensor_dict[
-        fields.InputDataFields.groundtruth_boxes] = valid_boxes_tensor
+        input_fields.groundtruth_boxes] = valid_boxes_tensor
 
-  if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
-    keypoints = out_tensor_dict[fields.InputDataFields.groundtruth_keypoints]
+  if input_fields.groundtruth_keypoints in tensor_dict:
+    keypoints = out_tensor_dict[input_fields.groundtruth_keypoints]
     realigned_keypoints = keypoint_ops.change_coordinate_frame(keypoints,
                                                                im_box)
     out_tensor_dict[
-        fields.InputDataFields.groundtruth_keypoints] = realigned_keypoints
-    flds_gt_kpt = fields.InputDataFields.groundtruth_keypoints
-    flds_gt_kpt_vis = fields.InputDataFields.groundtruth_keypoint_visibilities
-    flds_gt_kpt_weights = fields.InputDataFields.groundtruth_keypoint_weights
+        input_fields.groundtruth_keypoints] = realigned_keypoints
+    flds_gt_kpt = input_fields.groundtruth_keypoints
+    flds_gt_kpt_vis = input_fields.groundtruth_keypoint_visibilities
+    flds_gt_kpt_weights = input_fields.groundtruth_keypoint_weights
     if flds_gt_kpt_vis not in out_tensor_dict:
       out_tensor_dict[flds_gt_kpt_vis] = tf.ones_like(
           out_tensor_dict[flds_gt_kpt][:, :, 0],
@@ -290,7 +312,7 @@ def transform_input_data(tensor_dict,
             out_tensor_dict[flds_gt_kpt_vis],
             keypoint_type_weight))
 
-  dp_surface_coords_fld = fields.InputDataFields.groundtruth_dp_surface_coords
+  dp_surface_coords_fld = input_fields.groundtruth_dp_surface_coords
   if dp_surface_coords_fld in tensor_dict:
     dp_surface_coords = out_tensor_dict[dp_surface_coords_fld]
     realigned_dp_surface_coords = densepose_ops.change_coordinate_frame(
@@ -300,60 +322,60 @@ def transform_input_data(tensor_dict,
   if use_bfloat16:
     preprocessed_resized_image = tf.cast(
         preprocessed_resized_image, tf.bfloat16)
-    if fields.InputDataFields.context_features in out_tensor_dict:
-      out_tensor_dict[fields.InputDataFields.context_features] = tf.cast(
-          out_tensor_dict[fields.InputDataFields.context_features], tf.bfloat16)
-  out_tensor_dict[fields.InputDataFields.image] = tf.squeeze(
+    if input_fields.context_features in out_tensor_dict:
+      out_tensor_dict[input_fields.context_features] = tf.cast(
+          out_tensor_dict[input_fields.context_features], tf.bfloat16)
+  out_tensor_dict[input_fields.image] = tf.squeeze(
       preprocessed_resized_image, axis=0)
-  out_tensor_dict[fields.InputDataFields.true_image_shape] = tf.squeeze(
+  out_tensor_dict[input_fields.true_image_shape] = tf.squeeze(
       true_image_shape, axis=0)
-  if fields.InputDataFields.groundtruth_instance_masks in out_tensor_dict:
-    masks = out_tensor_dict[fields.InputDataFields.groundtruth_instance_masks]
+  if input_fields.groundtruth_instance_masks in out_tensor_dict:
+    masks = out_tensor_dict[input_fields.groundtruth_instance_masks]
     _, resized_masks, _ = image_resizer_fn(image, masks)
     if use_bfloat16:
       resized_masks = tf.cast(resized_masks, tf.bfloat16)
     out_tensor_dict[
-        fields.InputDataFields.groundtruth_instance_masks] = resized_masks
+        input_fields.groundtruth_instance_masks] = resized_masks
 
   zero_indexed_groundtruth_classes = out_tensor_dict[
-      fields.InputDataFields.groundtruth_classes] - _LABEL_OFFSET
+      input_fields.groundtruth_classes] - _LABEL_OFFSET
   if use_multiclass_scores:
     out_tensor_dict[
-        fields.InputDataFields.groundtruth_classes] = out_tensor_dict[
-            fields.InputDataFields.multiclass_scores]
+        input_fields.groundtruth_classes] = out_tensor_dict[
+            input_fields.multiclass_scores]
   else:
-    out_tensor_dict[fields.InputDataFields.groundtruth_classes] = tf.one_hot(
+    out_tensor_dict[input_fields.groundtruth_classes] = tf.one_hot(
         zero_indexed_groundtruth_classes, num_classes)
-  out_tensor_dict.pop(fields.InputDataFields.multiclass_scores, None)
+  out_tensor_dict.pop(input_fields.multiclass_scores, None)
 
-  if fields.InputDataFields.groundtruth_confidences in out_tensor_dict:
+  if input_fields.groundtruth_confidences in out_tensor_dict:
     groundtruth_confidences = out_tensor_dict[
-        fields.InputDataFields.groundtruth_confidences]
+        input_fields.groundtruth_confidences]
     # Map the confidences to the one-hot encoding of classes
-    out_tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
+    out_tensor_dict[input_fields.groundtruth_confidences] = (
         tf.reshape(groundtruth_confidences, [-1, 1]) *
-        out_tensor_dict[fields.InputDataFields.groundtruth_classes])
+        out_tensor_dict[input_fields.groundtruth_classes])
   else:
     groundtruth_confidences = tf.ones_like(
         zero_indexed_groundtruth_classes, dtype=tf.float32)
-    out_tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
-        out_tensor_dict[fields.InputDataFields.groundtruth_classes])
+    out_tensor_dict[input_fields.groundtruth_confidences] = (
+        out_tensor_dict[input_fields.groundtruth_classes])
 
   if merge_multiple_boxes:
     merged_boxes, merged_classes, merged_confidences, _ = (
         util_ops.merge_boxes_with_multiple_labels(
-            out_tensor_dict[fields.InputDataFields.groundtruth_boxes],
+            out_tensor_dict[input_fields.groundtruth_boxes],
             zero_indexed_groundtruth_classes,
             groundtruth_confidences,
             num_classes))
     merged_classes = tf.cast(merged_classes, tf.float32)
-    out_tensor_dict[fields.InputDataFields.groundtruth_boxes] = merged_boxes
-    out_tensor_dict[fields.InputDataFields.groundtruth_classes] = merged_classes
-    out_tensor_dict[fields.InputDataFields.groundtruth_confidences] = (
+    out_tensor_dict[input_fields.groundtruth_boxes] = merged_boxes
+    out_tensor_dict[input_fields.groundtruth_classes] = merged_classes
+    out_tensor_dict[input_fields.groundtruth_confidences] = (
         merged_confidences)
-  if fields.InputDataFields.groundtruth_boxes in out_tensor_dict:
-    out_tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = tf.shape(
-        out_tensor_dict[fields.InputDataFields.groundtruth_boxes])[0]
+  if input_fields.groundtruth_boxes in out_tensor_dict:
+    out_tensor_dict[input_fields.num_groundtruth_boxes] = tf.shape(
+        out_tensor_dict[input_fields.groundtruth_boxes])[0]
 
   return out_tensor_dict
 
@@ -397,116 +419,123 @@ def pad_input_data_to_static_shapes(tensor_dict,
       max_num_context_features is not specified and context_features is in the
       tensor dict.
   """
-
   if not spatial_image_shape or spatial_image_shape == [-1, -1]:
     height, width = None, None
   else:
     height, width = spatial_image_shape  # pylint: disable=unpacking-non-sequence
 
+  input_fields = fields.InputDataFields
   num_additional_channels = 0
-  if fields.InputDataFields.image_additional_channels in tensor_dict:
+  if input_fields.image_additional_channels in tensor_dict:
     num_additional_channels = shape_utils.get_dim_as_int(tensor_dict[
-        fields.InputDataFields.image_additional_channels].shape[2])
+        input_fields.image_additional_channels].shape[2])
 
   # We assume that if num_additional_channels > 0, then it has already been
   # concatenated to the base image (but not the ground truth).
   num_channels = 3
-  if fields.InputDataFields.image in tensor_dict:
+  if input_fields.image in tensor_dict:
     num_channels = shape_utils.get_dim_as_int(
-        tensor_dict[fields.InputDataFields.image].shape[2])
+        tensor_dict[input_fields.image].shape[2])
 
   if num_additional_channels:
     if num_additional_channels >= num_channels:
       raise ValueError(
           'Image must be already concatenated with additional channels.')
 
-    if (fields.InputDataFields.original_image in tensor_dict and
+    if (input_fields.original_image in tensor_dict and
         shape_utils.get_dim_as_int(
-            tensor_dict[fields.InputDataFields.original_image].shape[2]) ==
+            tensor_dict[input_fields.original_image].shape[2]) ==
         num_channels):
       raise ValueError(
           'Image must be already concatenated with additional channels.')
 
-  if fields.InputDataFields.context_features in tensor_dict and (
+  if input_fields.context_features in tensor_dict and (
       max_num_context_features is None):
     raise ValueError('max_num_context_features must be specified in the model '
                      'config if include_context is specified in the input '
                      'config')
 
   padding_shapes = {
-      fields.InputDataFields.image: [height, width, num_channels],
-      fields.InputDataFields.original_image_spatial_shape: [2],
-      fields.InputDataFields.image_additional_channels: [
+      input_fields.image: [height, width, num_channels],
+      input_fields.original_image_spatial_shape: [2],
+      input_fields.image_additional_channels: [
           height, width, num_additional_channels
       ],
-      fields.InputDataFields.source_id: [],
-      fields.InputDataFields.filename: [],
-      fields.InputDataFields.key: [],
-      fields.InputDataFields.groundtruth_difficult: [max_num_boxes],
-      fields.InputDataFields.groundtruth_boxes: [max_num_boxes, 4],
-      fields.InputDataFields.groundtruth_classes: [max_num_boxes, num_classes],
-      fields.InputDataFields.groundtruth_instance_masks: [
+      input_fields.source_id: [],
+      input_fields.filename: [],
+      input_fields.key: [],
+      input_fields.groundtruth_difficult: [max_num_boxes],
+      input_fields.groundtruth_boxes: [max_num_boxes, 4],
+      input_fields.groundtruth_classes: [max_num_boxes, num_classes],
+      input_fields.groundtruth_instance_masks: [
           max_num_boxes, height, width
       ],
-      fields.InputDataFields.groundtruth_is_crowd: [max_num_boxes],
-      fields.InputDataFields.groundtruth_group_of: [max_num_boxes],
-      fields.InputDataFields.groundtruth_area: [max_num_boxes],
-      fields.InputDataFields.groundtruth_weights: [max_num_boxes],
-      fields.InputDataFields.groundtruth_confidences: [
+      input_fields.groundtruth_is_crowd: [max_num_boxes],
+      input_fields.groundtruth_group_of: [max_num_boxes],
+      input_fields.groundtruth_area: [max_num_boxes],
+      input_fields.groundtruth_weights: [max_num_boxes],
+      input_fields.groundtruth_confidences: [
           max_num_boxes, num_classes
       ],
-      fields.InputDataFields.num_groundtruth_boxes: [],
-      fields.InputDataFields.groundtruth_label_types: [max_num_boxes],
-      fields.InputDataFields.groundtruth_label_weights: [max_num_boxes],
-      fields.InputDataFields.true_image_shape: [3],
-      fields.InputDataFields.groundtruth_image_classes: [num_classes],
-      fields.InputDataFields.groundtruth_image_confidences: [num_classes],
-      fields.InputDataFields.groundtruth_labeled_classes: [num_classes],
+      input_fields.num_groundtruth_boxes: [],
+      input_fields.groundtruth_label_types: [max_num_boxes],
+      input_fields.groundtruth_label_weights: [max_num_boxes],
+      input_fields.true_image_shape: [3],
+      input_fields.groundtruth_image_classes: [num_classes],
+      input_fields.groundtruth_image_confidences: [num_classes],
+      input_fields.groundtruth_labeled_classes: [num_classes],
   }
 
-  if fields.InputDataFields.original_image in tensor_dict:
-    padding_shapes[fields.InputDataFields.original_image] = [
+  if input_fields.original_image in tensor_dict:
+    padding_shapes[input_fields.original_image] = [
         height, width,
-        shape_utils.get_dim_as_int(tensor_dict[fields.InputDataFields.
+        shape_utils.get_dim_as_int(tensor_dict[input_fields.
                                                original_image].shape[2])
     ]
-  if fields.InputDataFields.groundtruth_keypoints in tensor_dict:
+  if input_fields.groundtruth_keypoints in tensor_dict:
     tensor_shape = (
-        tensor_dict[fields.InputDataFields.groundtruth_keypoints].shape)
+        tensor_dict[input_fields.groundtruth_keypoints].shape)
     padding_shape = [max_num_boxes,
                      shape_utils.get_dim_as_int(tensor_shape[1]),
                      shape_utils.get_dim_as_int(tensor_shape[2])]
-    padding_shapes[fields.InputDataFields.groundtruth_keypoints] = padding_shape
-  if fields.InputDataFields.groundtruth_keypoint_visibilities in tensor_dict:
-    tensor_shape = tensor_dict[fields.InputDataFields.
+    padding_shapes[input_fields.groundtruth_keypoints] = padding_shape
+  if input_fields.groundtruth_keypoint_visibilities in tensor_dict:
+    tensor_shape = tensor_dict[input_fields.
                                groundtruth_keypoint_visibilities].shape
     padding_shape = [max_num_boxes, shape_utils.get_dim_as_int(tensor_shape[1])]
-    padding_shapes[fields.InputDataFields.
+    padding_shapes[input_fields.
                    groundtruth_keypoint_visibilities] = padding_shape
 
-  if fields.InputDataFields.groundtruth_keypoint_weights in tensor_dict:
+  if input_fields.groundtruth_keypoint_weights in tensor_dict:
     tensor_shape = (
-        tensor_dict[fields.InputDataFields.groundtruth_keypoint_weights].shape)
+        tensor_dict[input_fields.groundtruth_keypoint_weights].shape)
     padding_shape = [max_num_boxes, shape_utils.get_dim_as_int(tensor_shape[1])]
-    padding_shapes[fields.InputDataFields.
+    padding_shapes[input_fields.
                    groundtruth_keypoint_weights] = padding_shape
-  if fields.InputDataFields.groundtruth_dp_num_points in tensor_dict:
+  if input_fields.groundtruth_dp_num_points in tensor_dict:
     padding_shapes[
-        fields.InputDataFields.groundtruth_dp_num_points] = [max_num_boxes]
+        input_fields.groundtruth_dp_num_points] = [max_num_boxes]
     padding_shapes[
-        fields.InputDataFields.groundtruth_dp_part_ids] = [
+        input_fields.groundtruth_dp_part_ids] = [
             max_num_boxes, max_dp_points]
     padding_shapes[
-        fields.InputDataFields.groundtruth_dp_surface_coords] = [
+        input_fields.groundtruth_dp_surface_coords] = [
             max_num_boxes, max_dp_points, 4]
-  if fields.InputDataFields.groundtruth_track_ids in tensor_dict:
+  if input_fields.groundtruth_track_ids in tensor_dict:
     padding_shapes[
-        fields.InputDataFields.groundtruth_track_ids] = [max_num_boxes]
+        input_fields.groundtruth_track_ids] = [max_num_boxes]
+
+  if input_fields.groundtruth_verified_neg_classes in tensor_dict:
+    padding_shapes[
+        input_fields.groundtruth_verified_neg_classes] = [num_classes]
+  if input_fields.groundtruth_not_exhaustive_classes in tensor_dict:
+    padding_shapes[
+        input_fields.groundtruth_not_exhaustive_classes] = [num_classes]
 
   # Prepare for ContextRCNN related fields.
-  if fields.InputDataFields.context_features in tensor_dict:
+  if input_fields.context_features in tensor_dict:
     padding_shape = [max_num_context_features, context_feature_length]
-    padding_shapes[fields.InputDataFields.context_features] = padding_shape
+    padding_shapes[input_fields.context_features] = padding_shape
 
     tensor_shape = tf.shape(
         tensor_dict[fields.InputDataFields.context_features])
@@ -514,9 +543,12 @@ def pad_input_data_to_static_shapes(tensor_dict,
     padding_shapes[fields.InputDataFields.valid_context_size] = []
   if fields.InputDataFields.context_feature_length in tensor_dict:
     padding_shapes[fields.InputDataFields.context_feature_length] = []
+  if fields.InputDataFields.context_features_image_id_list in tensor_dict:
+    padding_shapes[fields.InputDataFields.context_features_image_id_list] = [
+        max_num_context_features]
 
-  if fields.InputDataFields.is_annotated in tensor_dict:
-    padding_shapes[fields.InputDataFields.is_annotated] = []
+  if input_fields.is_annotated in tensor_dict:
+    padding_shapes[input_fields.is_annotated] = []
 
   padded_tensor_dict = {}
   for tensor_name in tensor_dict:
@@ -525,10 +557,10 @@ def pad_input_data_to_static_shapes(tensor_dict,
 
   # Make sure that the number of groundtruth boxes now reflects the
   # padded/clipped tensors.
-  if fields.InputDataFields.num_groundtruth_boxes in padded_tensor_dict:
-    padded_tensor_dict[fields.InputDataFields.num_groundtruth_boxes] = (
+  if input_fields.num_groundtruth_boxes in padded_tensor_dict:
+    padded_tensor_dict[input_fields.num_groundtruth_boxes] = (
         tf.minimum(
-            padded_tensor_dict[fields.InputDataFields.num_groundtruth_boxes],
+            padded_tensor_dict[input_fields.num_groundtruth_boxes],
             max_num_boxes))
   return padded_tensor_dict
 
@@ -606,7 +638,9 @@ def _get_labels_dict(input_dict):
       fields.InputDataFields.groundtruth_dp_num_points,
       fields.InputDataFields.groundtruth_dp_part_ids,
       fields.InputDataFields.groundtruth_dp_surface_coords,
-      fields.InputDataFields.groundtruth_track_ids
+      fields.InputDataFields.groundtruth_track_ids,
+      fields.InputDataFields.groundtruth_verified_neg_classes,
+      fields.InputDataFields.groundtruth_not_exhaustive_classes
   ]
 
   for key in optional_label_keys:
@@ -677,6 +711,9 @@ def _get_features_dict(input_dict, include_source_id=False):
   if fields.InputDataFields.valid_context_size in input_dict:
     features[fields.InputDataFields.valid_context_size] = input_dict[
         fields.InputDataFields.valid_context_size]
+  if fields.InputDataFields.context_features_image_id_list in input_dict:
+    features[fields.InputDataFields.context_features_image_id_list] = (
+        input_dict[fields.InputDataFields.context_features_image_id_list])
   return features
 
 
@@ -859,7 +896,7 @@ def create_eval_input_fn(eval_config, eval_input_config, model_config):
 
 
 def eval_input(eval_config, eval_input_config, model_config,
-               model=None, params=None):
+               model=None, params=None, input_context=None):
   """Returns `features` and `labels` tensor dictionaries for evaluation.
 
   Args:
@@ -869,6 +906,9 @@ def eval_input(eval_config, eval_input_config, model_config,
     model: A pre-constructed Detection Model.
       If None, one will be created from the config.
     params: Parameter dictionary passed from the estimator.
+    input_context: optional, A tf.distribute.InputContext object used to
+      shard filenames and compute per-replica batch_size when this function
+      is being called per-replica.
 
   Returns:
     A tf.data.Dataset that holds (features, labels) tuple.
@@ -989,6 +1029,7 @@ def eval_input(eval_config, eval_input_config, model_config,
       eval_input_config,
       batch_size=params['batch_size'] if params else eval_config.batch_size,
       transform_input_data_fn=transform_and_pad_input_data_fn,
+      input_context=input_context,
       reduce_to_frame_fn=reduce_to_frame_fn)
   return dataset
 

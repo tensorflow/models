@@ -16,4 +16,5 @@
 # pylint: disable=wildcard-import
 from official.vision.keras_cv import layers
 from official.vision.keras_cv import losses
+from official.vision.keras_cv import metrics
 from official.vision.keras_cv import ops

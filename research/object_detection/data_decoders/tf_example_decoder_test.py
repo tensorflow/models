@@ -841,6 +841,61 @@ class TfExampleDecoderTest(test_case.TestCase):
     self.assertAllEqual(object_area,
                         tensor_dict[fields.InputDataFields.groundtruth_area])
 
+  def testDecodeVerifiedNegClasses(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    neg_category_ids = [0, 5, 8]
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/neg_category_ids':
+                      dataset_util.int64_list_feature(neg_category_ids),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder()
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+      return output
+
+    tensor_dict = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(
+        neg_category_ids,
+        tensor_dict[fields.InputDataFields.groundtruth_verified_neg_classes])
+
+  def testDecodeNotExhaustiveClasses(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    not_exhaustive_category_ids = [0, 5, 8]
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/not_exhaustive_category_ids':
+                      dataset_util.int64_list_feature(
+                          not_exhaustive_category_ids),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder()
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+      return output
+
+    tensor_dict = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(
+        not_exhaustive_category_ids,
+        tensor_dict[fields.InputDataFields.groundtruth_not_exhaustive_classes])
+
   def testDecodeObjectIsCrowd(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg, _ = self._create_encoded_and_decoded_data(

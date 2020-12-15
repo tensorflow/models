@@ -16,10 +16,10 @@
 """Video classification configuration definition."""
 from typing import Optional, Tuple
 import dataclasses
+from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.modeling.hyperparams import config_definitions as cfg
 from official.vision.beta.configs import backbones_3d
 from official.vision.beta.configs import common
 
@@ -47,7 +47,24 @@ class DataConfig(cfg.DataConfig):
   input_path: str = ''
   is_training: bool = True
   cycle_length: int = 10
+  drop_remainder: bool = True
   min_image_size: int = 256
+  is_multilabel: bool = False
+  output_audio: bool = False
+  audio_feature: str = ''
+  audio_feature_shape: Tuple[int, ...] = (-1,)
+
+
+def kinetics400(is_training):
+  """Generated Kinectics 400 dataset configs."""
+  return DataConfig(
+      name='kinetics400',
+      num_classes=400,
+      is_training=is_training,
+      split='train' if is_training else 'valid',
+      drop_remainder=is_training,
+      num_examples=215570 if is_training else 17706,
+      feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
 
 
 def kinetics600(is_training):
@@ -57,6 +74,7 @@ def kinetics600(is_training):
       num_classes=600,
       is_training=is_training,
       split='train' if is_training else 'valid',
+      drop_remainder=is_training,
       num_examples=366016 if is_training else 27780,
       feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
 
@@ -69,7 +87,7 @@ class VideoClassificationModel(hyperparams.Config):
       type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50())
   norm_activation: common.NormActivation = common.NormActivation()
   dropout_rate: float = 0.2
-  add_head_batch_norm: bool = False
+  aggregate_endpoints: bool = False
 
 
 @dataclasses.dataclass
@@ -83,10 +101,10 @@ class Losses(hyperparams.Config):
 class VideoClassificationTask(cfg.TaskConfig):
   """The task config."""
   model: VideoClassificationModel = VideoClassificationModel()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
+  train_data: DataConfig = DataConfig(is_training=True, drop_remainder=True)
+  validation_data: DataConfig = DataConfig(
+      is_training=False, drop_remainder=False)
   losses: Losses = Losses()
-  gradient_clip_norm: float = -1.0
 
 
 def add_trainer(experiment: cfg.ExperimentConfig,
@@ -153,9 +171,35 @@ def video_classification() -> cfg.ExperimentConfig:
       ])
 
 
+@exp_factory.register_config_factory('video_classification_kinetics400')
+def video_classification_kinetics400() -> cfg.ExperimentConfig:
+  """Video classification on Kinectics 400 with resnet."""
+  train_dataset = kinetics400(is_training=True)
+  validation_dataset = kinetics400(is_training=False)
+  task = VideoClassificationTask(
+      model=VideoClassificationModel(
+          backbone=backbones_3d.Backbone3D(
+              type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
+          norm_activation=common.NormActivation(
+              norm_momentum=0.9, norm_epsilon=1e-5)),
+      losses=Losses(l2_weight_decay=1e-4),
+      train_data=train_dataset,
+      validation_data=validation_dataset)
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      task=task,
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None',
+          'task.train_data.num_classes == task.validation_data.num_classes',
+      ])
+  add_trainer(config, train_batch_size=1024, eval_batch_size=64)
+  return config
+
+
 @exp_factory.register_config_factory('video_classification_kinetics600')
 def video_classification_kinetics600() -> cfg.ExperimentConfig:
-  """Video classification on Videonet with resnet."""
+  """Video classification on Kinectics 600 with resnet."""
   train_dataset = kinetics600(is_training=True)
   validation_dataset = kinetics600(is_training=False)
   task = VideoClassificationTask(
@@ -176,5 +220,4 @@ def video_classification_kinetics600() -> cfg.ExperimentConfig:
           'task.train_data.num_classes == task.validation_data.num_classes',
       ])
   add_trainer(config, train_batch_size=1024, eval_batch_size=64)
-
   return config

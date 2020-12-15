@@ -147,6 +147,27 @@ class DirectPowerLrConfig(base_config.Config):
 
 
 @dataclasses.dataclass
+class PowerAndLinearDecayLrConfig(base_config.Config):
+  """Configuration for DirectPower learning rate decay.
+
+  This class configures a schedule following follows lr * (step)^power for the
+  first total_decay_steps * (1 - linear_decay_fraction) steps, and follows
+  lr * (step)^power * (total_decay_steps - step) / (total_decay_steps *
+  linear_decay_fraction) for the rest of the steps.
+
+  Attributes:
+    name: The name of the learning rate schedule. Defaults to DirectPowerDecay.
+    initial_learning_rate: A float. The initial learning rate. Defaults to None.
+    power: A float. Defaults to -0.5, for sqrt decay.
+  """
+  name: str = 'PowerAndLinearDecay'
+  initial_learning_rate: Optional[float] = None
+  total_decay_steps: Optional[int] = None
+  power: float = -0.5
+  linear_decay_fraction: float = 0.1
+
+
+@dataclasses.dataclass
 class LinearWarmupConfig(base_config.Config):
   """Configuration for linear warmup schedule config.
 

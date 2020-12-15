@@ -101,6 +101,10 @@ class MockKerasBoxPredictor(box_predictor.KerasBoxPredictor):
         is_training, num_classes, False, False)
     self._add_background_class = add_background_class
 
+    # Dummy variable so that box predictor registers some variables.
+    self._dummy_var = tf.Variable(0.0, trainable=True,
+                                  name='box_predictor_var')
+
   def _predict(self, image_features, **kwargs):
     image_feature = image_features[0]
     combined_feature_shape = shape_utils.combined_static_and_dynamic_shape(

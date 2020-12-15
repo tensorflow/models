@@ -49,6 +49,12 @@ message DelfLocalFeatureConfig {
   // PCA parameters for DELF local feature. This is used only if use_pca is
   // true.
   optional DelfPcaParameters pca_parameters = 6;
+
+  // If true, the returned keypoint locations are grounded to coordinates of the
+  // resized image used for extraction. If false (default), the returned
+  // keypoint locations are grounded to coordinates of the original image that
+  // is fed into feature extraction.
+  optional bool use_resized_coordinates = 7 [default = false];
 }
 
 message DelfGlobalFeatureConfig {

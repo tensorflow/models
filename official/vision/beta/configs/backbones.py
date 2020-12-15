@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Backbones configurations."""
-from typing import Optional
+from typing import Optional, List
 
 # Import libraries
 import dataclasses
@@ -26,20 +26,45 @@ from official.modeling import hyperparams
 class ResNet(hyperparams.Config):
   """ResNet config."""
   model_id: int = 50
+  depth_multiplier: float = 1.0
+  stem_type: str = 'v0'
+  se_ratio: float = 0.0
+  stochastic_depth_drop_rate: float = 0.0
+
+
+@dataclasses.dataclass
+class DilatedResNet(hyperparams.Config):
+  """DilatedResNet config."""
+  model_id: int = 50
+  output_stride: int = 16
+  multigrid: Optional[List[int]] = None
+  stem_type: str = 'v0'
+  last_stage_repeats: int = 1
+  se_ratio: float = 0.0
+  stochastic_depth_drop_rate: float = 0.0
 
 
 @dataclasses.dataclass
 class EfficientNet(hyperparams.Config):
   """EfficientNet config."""
   model_id: str = 'b0'
-  stochastic_depth_drop_rate: float = 0.0
   se_ratio: float = 0.0
+  stochastic_depth_drop_rate: float = 0.0
+
+
+@dataclasses.dataclass
+class MobileNet(hyperparams.Config):
+  """Mobilenet config."""
+  model_id: str = 'MobileNetV2'
+  filter_size_scale: float = 1.0
+  stochastic_depth_drop_rate: float = 0.0
 
 
 @dataclasses.dataclass
 class SpineNet(hyperparams.Config):
   """SpineNet config."""
   model_id: str = '49'
+  stochastic_depth_drop_rate: float = 0.0
 
 
 @dataclasses.dataclass
@@ -56,12 +81,16 @@ class Backbone(hyperparams.OneOfConfig):
   Attributes:
     type: 'str', type of backbone be used, one the of fields below.
     resnet: resnet backbone config.
+    dilated_resnet: dilated resnet backbone for semantic segmentation config.
     revnet: revnet backbone config.
     efficientnet: efficientnet backbone config.
     spinenet: spinenet backbone config.
+    mobilenet: mobilenet backbone config.
   """
   type: Optional[str] = None
   resnet: ResNet = ResNet()
+  dilated_resnet: DilatedResNet = DilatedResNet()
   revnet: RevNet = RevNet()
   efficientnet: EfficientNet = EfficientNet()
   spinenet: SpineNet = SpineNet()
+  mobilenet: MobileNet = MobileNet()

@@ -18,6 +18,7 @@ import "object_detection/protos/fpn.proto";
 // (or RPN) and a second stage box classifier.  We thus use the prefixes
 // `first_stage_` and `second_stage_` to indicate the stage to which each
 // parameter pertains when relevant.
+
 message FasterRcnn {
   // Whether to construct only the Region Proposal Network (RPN).
   optional int32 number_of_stages = 1 [default = 2];
@@ -176,17 +177,30 @@ message FasterRcnn {
   // Whether to use tf.image.combined_non_max_suppression.
   optional bool use_combined_nms_in_first_stage = 40 [default = false];
 
-  // Whether to output final box feature. If true, it will crop the feature map
-  // in the postprocess() method based on the final predictions.
+  // Whether to output final box feature. If true, it will crop the rpn feature
+  // map based on the final prediction boxes, then pass the crops through the
+  // box_classifier to compute the final features in the postprocess() method.
   optional bool output_final_box_features = 42 [default = false];
+
+  // Whether to output final box rpn features. If true, it will crop the rpn
+  // feature map in the postprocess() method based on the final prediction
+  // boxes.
+  optional bool output_final_box_rpn_features = 43 [default = false];
 
   // Configs for context model.
   optional Context context_config = 41;
 }
 
+// Input type format: whether inputs are TfExamples or TfSequenceExamples.
+enum AttentionPosition {
+  ATTENTION_DEFAULT = 0;        // Default, currently post box classifier
+  POST_BOX_CLASSIFIER = 1;      // Post box classifier
+  POST_RPN = 2;                 // Post RPN, pre box classifier
+}
+
 message Context {
-  // Configuration proto for Context .
-  // Next id: 4
+  // Configuration proto for Context R-CNN.
+  // Next id: 12
 
   // The maximum number of contextual features per-image, used for padding
   optional int32 max_num_context_features = 1 [default = 2000];
@@ -199,6 +213,30 @@ message Context {
 
   // The context feature length.
   optional int32 context_feature_length = 4 [default = 2057];
+
+  // Whether to use self-attention from box proposals to themselves, TF1 only.
+  optional bool use_self_attention = 6 [default = false];
+
+  // Whether to use attention into context features, setting to false is only
+  // implemented in TF1.
+  optional bool use_long_term_attention = 7 [default = true];
+
+  // Whether the self-attention block and the long term attention block should
+  // be in sequence or parallel, ie whether the outputs of the self-attention
+  // block should be the inputs into the long term attention block (sequence)
+  // or whether the self attention block and long term attention block should
+  // happen in parallel, with outputs summed.
+  optional bool self_attention_in_sequence = 8 [default = false];
+
+  // Number of attention heads
+  optional int32 num_attention_heads = 9 [default = 1];
+
+  // Number of attention layers
+  optional int32 num_attention_layers = 11 [default = 1];
+
+  // Where the attention goes, 0 is pre-second-stage, 1 is post-second-stage
+  optional AttentionPosition attention_position = 10 [
+    default = POST_BOX_CLASSIFIER];
 }
 
 message FasterRcnnFeatureExtractor {

@@ -84,7 +84,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                resize_masks=False,
                freeze_batchnorm=False,
                return_raw_detections_during_predict=False,
-               output_final_box_features=False):
+               output_final_box_features=False,
+               output_final_box_rpn_features=False):
     """RFCNMetaArch Constructor.
 
     Args:
@@ -194,8 +195,11 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         boxes in the predict() method. These are decoded boxes that have not
         been through postprocessing (i.e. NMS). Default False.
       output_final_box_features: Whether to output final box features. If true,
-        it crops the feauture map based on the final box prediction and returns
-        in the dict as detection_features.
+        it crops the feature map based on the final box prediction and returns
+        it in the dict as detection_features.
+      output_final_box_rpn_features: Whether to output rpn box features. If
+        true, it crops the rpn feature map based on the final box prediction and
+        returns it in the dict as detection_features.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals`
@@ -245,7 +249,8 @@ class RFCNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         freeze_batchnorm=freeze_batchnorm,
         return_raw_detections_during_predict=(
             return_raw_detections_during_predict),
-        output_final_box_features=output_final_box_features)
+        output_final_box_features=output_final_box_features,
+        output_final_box_rpn_features=output_final_box_rpn_features)
 
     self._rfcn_box_predictor = second_stage_rfcn_box_predictor
 

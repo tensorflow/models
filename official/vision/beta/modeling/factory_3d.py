@@ -19,8 +19,8 @@ import tensorflow as tf
 
 from official.core import registry
 from official.vision.beta.configs import video_classification as video_classification_cfg
-from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling import video_classification_model
+from official.vision.beta.modeling import backbones
 
 _REGISTERED_MODEL_CLS = {}
 
@@ -88,15 +88,11 @@ def build_video_classification_model(
       model_config=model_config,
       l2_regularizer=l2_regularizer)
 
-  norm_activation_config = model_config.norm_activation
   model = video_classification_model.VideoClassificationModel(
       backbone=backbone,
       num_classes=num_classes,
       input_specs=input_specs,
       dropout_rate=model_config.dropout_rate,
-      kernel_regularizer=l2_regularizer,
-      add_head_batch_norm=model_config.add_head_batch_norm,
-      use_sync_bn=norm_activation_config.use_sync_bn,
-      norm_momentum=norm_activation_config.norm_momentum,
-      norm_epsilon=norm_activation_config.norm_epsilon)
+      aggregate_endpoints=model_config.aggregate_endpoints,
+      kernel_regularizer=l2_regularizer)
   return model

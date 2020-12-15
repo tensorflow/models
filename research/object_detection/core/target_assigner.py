@@ -840,17 +840,22 @@ def _compute_std_dev_from_box_size(boxes_height, boxes_width, min_overlap):
 class CenterNetCenterHeatmapTargetAssigner(object):
   """Wrapper to compute the object center heatmap."""
 
-  def __init__(self, stride, min_overlap=0.7):
+  def __init__(self, stride, min_overlap=0.7, compute_heatmap_sparse=False):
     """Initializes the target assigner.
 
     Args:
       stride: int, the stride of the network in output pixels.
       min_overlap: The minimum IOU overlap that boxes need to have to not be
         penalized.
+      compute_heatmap_sparse: bool, indicating whether or not to use the sparse
+        version of the Op that computes the heatmap. The sparse version scales
+        better with number of classes, but in some cases is known to cause
+        OOM error. See (b/170989061).
     """
 
     self._stride = stride
     self._min_overlap = min_overlap
+    self._compute_heatmap_sparse = compute_heatmap_sparse
 
   def assign_center_targets_from_boxes(self,
                                        height,
@@ -915,7 +920,8 @@ class CenterNetCenterHeatmapTargetAssigner(object):
           x_coordinates=x_center,
           sigma=sigma,
           channel_onehot=class_targets,
-          channel_weights=weights)
+          channel_weights=weights,
+          sparse=self._compute_heatmap_sparse)
       heatmaps.append(heatmap)
 
     # Return the stacked heatmaps over the batch.
@@ -1073,7 +1079,8 @@ class CenterNetKeypointTargetAssigner(object):
                keypoint_indices,
                keypoint_std_dev=None,
                per_keypoint_offset=False,
-               peak_radius=0):
+               peak_radius=0,
+               compute_heatmap_sparse=False):
     """Initializes a CenterNet keypoints target assigner.
 
     Args:
@@ -1100,6 +1107,10 @@ class CenterNetKeypointTargetAssigner(object):
         out_width, 2 * num_keypoints].
       peak_radius: int, the radius (in the unit of output pixel) around heatmap
         peak to assign the offset targets.
+      compute_heatmap_sparse: bool, indicating whether or not to use the sparse
+        version of the Op that computes the heatmap. The sparse version scales
+        better with number of keypoint types, but in some cases is known to
+        cause an OOM error. See (b/170989061).
     """
 
     self._stride = stride
@@ -1107,6 +1118,7 @@ class CenterNetKeypointTargetAssigner(object):
     self._keypoint_indices = keypoint_indices
     self._per_keypoint_offset = per_keypoint_offset
     self._peak_radius = peak_radius
+    self._compute_heatmap_sparse = compute_heatmap_sparse
     if keypoint_std_dev is None:
       self._keypoint_std_dev = ([_DEFAULT_KEYPOINT_OFFSET_STD_DEV] *
                                 len(keypoint_indices))

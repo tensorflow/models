@@ -25,6 +25,11 @@ from object_detection.data_decoders import tf_example_decoder
 from object_detection.utils import config_util
 
 
+INPUT_BUILDER_UTIL_MAP = {
+    'model_build': model_builder.build,
+}
+
+
 def _decode_image(encoded_image_string_tensor):
   image_tensor = tf.image.decode_image(encoded_image_string_tensor,
                                        channels=3)
@@ -230,8 +235,8 @@ def export_inference_graph(input_type,
   output_checkpoint_directory = os.path.join(output_directory, 'checkpoint')
   output_saved_model_directory = os.path.join(output_directory, 'saved_model')
 
-  detection_model = model_builder.build(pipeline_config.model,
-                                        is_training=False)
+  detection_model = INPUT_BUILDER_UTIL_MAP['model_build'](
+      pipeline_config.model, is_training=False)
 
   ckpt = tf.train.Checkpoint(
       model=detection_model)

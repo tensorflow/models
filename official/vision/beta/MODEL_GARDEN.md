@@ -49,12 +49,15 @@ TF Vision model garden provides a large collection of baselines and checkpoints 
 | R50-FPN      | 640x640       |    12    | 97.0 | 34.0 | 34.3 | config|
 | R50-FPN      | 640x640       |    36    | 97.0 | 34.0 | 37.3 | config|
 
-#### RetinaNet (Trained from scratch)
+#### RetinaNet (Trained from scratch) with training features including:
+* Stochastic depth with drop rate 0.2.
+* Swish activation.
+
 | backbone        | resolution    | epochs  | FLOPs (B)     | params (M) |  box AP |   download |
 | ------------ |:-------------:| ---------:|-----------:|--------:|---------:|-----------:|
-| SpineNet-49  | 640x640       |    350    | 85.4| 28.5 | 42.4| config|
-| SpineNet-96  | 1024x1024     |    350    | 265.4 | 43.0 | 46.0 |  config |
-| SpineNet-143 | 1280x1280     |    350    | 524.0 | 67.0 | 46.8 |config|
+| SpineNet-49  | 640x640       |    500    | 85.4| 28.5 | 44.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet49_tpu.yaml)|
+| SpineNet-96  | 1024x1024     |    500    | 265.4 | 43.0 | 48.5 |  [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet96_tpu.yaml) |
+| SpineNet-143 | 1280x1280     |    500    | 524.0 | 67.0 | 50.0 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet143_tpu.yaml)|
 
 
 ### Instance Segmentation Baselines

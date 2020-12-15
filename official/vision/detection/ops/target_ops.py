@@ -342,6 +342,180 @@ class ROISampler(object):
             sampled_gt_indices)
 
 
+class ROIScoreSampler(ROISampler):
+  """Samples RoIs, RoI-scores and creates training targets."""
+
+  def __call__(self, rois, roi_scores, gt_boxes, gt_classes):
+    """Sample and assign RoIs for training.
+
+    Args:
+      rois: a tensor of shape of [batch_size, N, 4]. N is the number of
+        proposals before groundtruth assignment. The last dimension is the box
+        coordinates w.r.t. the scaled images in [ymin, xmin, ymax, xmax] format.
+      roi_scores:
+      gt_boxes: a tensor of shape of [batch_size, MAX_NUM_INSTANCES, 4]. The
+        coordinates of gt_boxes are in the pixel coordinates of the scaled
+        image. This tensor might have padding of values -1 indicating the
+        invalid box coordinates.
+      gt_classes: a tensor with a shape of [batch_size, MAX_NUM_INSTANCES]. This
+        tensor might have paddings with values of -1 indicating the invalid
+        classes.
+
+    Returns:
+      sampled_rois: a tensor of shape of [batch_size, K, 4], representing the
+        coordinates of the sampled RoIs, where K is the number of the sampled
+        RoIs, i.e. K = num_samples_per_image.
+      sampled_roi_scores:
+      sampled_gt_boxes: a tensor of shape of [batch_size, K, 4], storing the
+        box coordinates of the matched groundtruth boxes of the samples RoIs.
+      sampled_gt_classes: a tensor of shape of [batch_size, K], storing the
+        classes of the matched groundtruth boxes of the sampled RoIs.
+    """
+    (sampled_rois, sampled_roi_scores, sampled_gt_boxes, sampled_gt_classes,
+     sampled_gt_indices) = (
+         self.assign_and_sample_proposals_and_scores(
+             rois,
+             roi_scores,
+             gt_boxes,
+             gt_classes,
+             num_samples_per_image=self._num_samples_per_image,
+             mix_gt_boxes=self._mix_gt_boxes,
+             fg_fraction=self._fg_fraction,
+             fg_iou_thresh=self._fg_iou_thresh,
+             bg_iou_thresh_hi=self._bg_iou_thresh_hi,
+             bg_iou_thresh_lo=self._bg_iou_thresh_lo))
+    return (sampled_rois, sampled_roi_scores, sampled_gt_boxes,
+            sampled_gt_classes, sampled_gt_indices)
+
+  def assign_and_sample_proposals_and_scores(self,
+                                             proposed_boxes,
+                                             proposed_scores,
+                                             gt_boxes,
+                                             gt_classes,
+                                             num_samples_per_image=512,
+                                             mix_gt_boxes=True,
+                                             fg_fraction=0.25,
+                                             fg_iou_thresh=0.5,
+                                             bg_iou_thresh_hi=0.5,
+                                             bg_iou_thresh_lo=0.0):
+    """Assigns the proposals with groundtruth classes and performs subsmpling.
+
+    Given `proposed_boxes`, `gt_boxes`, and `gt_classes`, the function uses the
+    following algorithm to generate the final `num_samples_per_image` RoIs.
+      1. Calculates the IoU between each proposal box and each gt_boxes.
+      2. Assigns each proposed box with a groundtruth class and box by choosing
+         the largest IoU overlap.
+      3. Samples `num_samples_per_image` boxes from all proposed boxes, and
+         returns box_targets, class_targets, and RoIs.
+
+    Args:
+      proposed_boxes: a tensor of shape of [batch_size, N, 4]. N is the number
+        of proposals before groundtruth assignment. The last dimension is the
+        box coordinates w.r.t. the scaled images in [ymin, xmin, ymax, xmax]
+        format.
+      proposed_scores: a tensor of shape of [batch_size, N]. N is the number of
+        proposals before groundtruth assignment. It is the rpn scores for all
+        proposed boxes which can be either their classification or centerness
+        scores.
+      gt_boxes: a tensor of shape of [batch_size, MAX_NUM_INSTANCES, 4]. The
+        coordinates of gt_boxes are in the pixel coordinates of the scaled
+        image. This tensor might have padding of values -1 indicating the
+        invalid box coordinates.
+      gt_classes: a tensor with a shape of [batch_size, MAX_NUM_INSTANCES]. This
+        tensor might have paddings with values of -1 indicating the invalid
+        classes.
+      num_samples_per_image: a integer represents RoI minibatch size per image.
+      mix_gt_boxes: a bool indicating whether to mix the groundtruth boxes
+      before sampling proposals.
+      fg_fraction: a float represents the target fraction of RoI minibatch that
+        is labeled foreground (i.e., class > 0).
+      fg_iou_thresh: a float represents the IoU overlap threshold for an RoI to
+        be considered foreground (if >= fg_iou_thresh).
+      bg_iou_thresh_hi: a float represents the IoU overlap threshold for an RoI
+        to be considered background (class = 0 if overlap in [LO, HI)).
+      bg_iou_thresh_lo: a float represents the IoU overlap threshold for an RoI
+        to be considered background (class = 0 if overlap in [LO, HI)).
+
+    Returns:
+      sampled_rois: a tensor of shape of [batch_size, K, 4], representing the
+        coordinates of the sampled RoIs, where K is the number of the sampled
+        RoIs, i.e. K = num_samples_per_image.
+      sampled_scores: a tensor of shape of [batch_size, K], representing the
+        confidence score of the sampled RoIs, where K is the number of the
+        sampled RoIs, i.e. K = num_samples_per_image.
+      sampled_gt_boxes: a tensor of shape of [batch_size, K, 4], storing the
+        box coordinates of the matched groundtruth boxes of the samples RoIs.
+      sampled_gt_classes: a tensor of shape of [batch_size, K], storing the
+        classes of the matched groundtruth boxes of the sampled RoIs.
+      sampled_gt_indices: a tensor of shape of [batch_size, K], storing the
+        indices of the sampled groudntruth boxes in the original `gt_boxes`
+        tensor, i.e. gt_boxes[sampled_gt_indices[:, i]] =
+        sampled_gt_boxes[:, i].
+    """
+
+    with tf.name_scope('sample_proposals_and_scores'):
+      if mix_gt_boxes:
+        boxes = tf.concat([proposed_boxes, gt_boxes], axis=1)
+        gt_scores = tf.ones_like(gt_boxes[:, :, 0])
+        scores = tf.concat([proposed_scores, gt_scores], axis=1)
+      else:
+        boxes = proposed_boxes
+        scores = proposed_scores
+
+      (matched_gt_boxes, matched_gt_classes, matched_gt_indices, matched_iou,
+       _) = box_matching(boxes, gt_boxes, gt_classes)
+
+      positive_match = tf.greater(matched_iou, fg_iou_thresh)
+      negative_match = tf.logical_and(
+          tf.greater_equal(matched_iou, bg_iou_thresh_lo),
+          tf.less(matched_iou, bg_iou_thresh_hi))
+      ignored_match = tf.less(matched_iou, 0.0)
+
+      # re-assign negatively matched boxes to the background class.
+      matched_gt_classes = tf.where(negative_match,
+                                    tf.zeros_like(matched_gt_classes),
+                                    matched_gt_classes)
+      matched_gt_indices = tf.where(negative_match,
+                                    tf.zeros_like(matched_gt_indices),
+                                    matched_gt_indices)
+
+      sample_candidates = tf.logical_and(
+          tf.logical_or(positive_match, negative_match),
+          tf.logical_not(ignored_match))
+
+      sampler = (
+          balanced_positive_negative_sampler.BalancedPositiveNegativeSampler(
+              positive_fraction=fg_fraction, is_static=True))
+
+      batch_size, _ = sample_candidates.get_shape().as_list()
+      sampled_indicators = []
+      for i in range(batch_size):
+        sampled_indicator = sampler.subsample(sample_candidates[i],
+                                              num_samples_per_image,
+                                              positive_match[i])
+        sampled_indicators.append(sampled_indicator)
+      sampled_indicators = tf.stack(sampled_indicators)
+      _, sampled_indices = tf.nn.top_k(
+          tf.cast(sampled_indicators, dtype=tf.int32),
+          k=num_samples_per_image,
+          sorted=True)
+
+      sampled_indices_shape = tf.shape(sampled_indices)
+      batch_indices = (
+          tf.expand_dims(tf.range(sampled_indices_shape[0]), axis=-1) *
+          tf.ones([1, sampled_indices_shape[-1]], dtype=tf.int32))
+      gather_nd_indices = tf.stack([batch_indices, sampled_indices], axis=-1)
+
+      sampled_rois = tf.gather_nd(boxes, gather_nd_indices)
+      sampled_roi_scores = tf.gather_nd(scores, gather_nd_indices)
+      sampled_gt_boxes = tf.gather_nd(matched_gt_boxes, gather_nd_indices)
+      sampled_gt_classes = tf.gather_nd(matched_gt_classes, gather_nd_indices)
+      sampled_gt_indices = tf.gather_nd(matched_gt_indices, gather_nd_indices)
+
+      return (sampled_rois, sampled_roi_scores, sampled_gt_boxes,
+              sampled_gt_classes, sampled_gt_indices)
+
+
 class MaskSampler(object):
   """Samples and creates mask training targets."""
 

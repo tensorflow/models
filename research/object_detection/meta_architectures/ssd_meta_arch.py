@@ -1308,10 +1308,17 @@ class SSDMetaArch(model.DetectionModel):
     to be used to restore Slim-based models when running Tensorflow 1.x.
 
     Args:
-      fine_tune_checkpoint_type: whether to restore from a full detection
-        checkpoint (with compatible variable names) or to restore from a
-        classification checkpoint for initialization prior to training.
-        Valid values: `detection`, `classification`. Default 'detection'.
+      fine_tune_checkpoint_type: A string inidicating the subset of variables
+        to load. Valid values: `detection`, `classification`, `full`. Default
+        `detection`.
+        An SSD checkpoint has three parts:
+        1) Classification Network (like ResNet)
+        2) DeConv layers (for FPN)
+        3) Box/Class prediction parameters
+        The parameters will be loaded using the following strategy:
+          `classification` - will load #1
+          `detection` - will load #1, #2
+          `full` - will load #1, #2, #3
 
     Returns:
       A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
@@ -1325,6 +1332,10 @@ class SSDMetaArch(model.DetectionModel):
       fake_model = tf.train.Checkpoint(
           _feature_extractor=self._feature_extractor)
       return {'model': fake_model}
+
+    elif fine_tune_checkpoint_type == 'full':
+      return {'model': self}
+
     else:
       raise ValueError('Not supported fine_tune_checkpoint_type: {}'.format(
           fine_tune_checkpoint_type))

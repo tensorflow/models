@@ -135,7 +135,7 @@ def get_v1_distribution_strategy(params):
     }
     os.environ["TF_CONFIG"] = json.dumps(tf_config_env)
 
-    distribution = tf.distribute.experimental.TPUStrategy(
+    distribution = tf.distribute.TPUStrategy(
         tpu_cluster_resolver, steps_per_run=100)
 
   else:

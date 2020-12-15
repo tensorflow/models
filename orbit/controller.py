@@ -74,10 +74,11 @@ class Controller:
 
   def __init__(
       self,
-      strategy: Optional[tf.distribute.Strategy] = None,
+      *,  # Makes all args keyword only.
+      global_step: tf.Variable,
       trainer: Optional[runner.AbstractTrainer] = None,
       evaluator: Optional[runner.AbstractEvaluator] = None,
-      global_step: Optional[tf.Variable] = None,
+      strategy: Optional[tf.distribute.Strategy] = None,
       # Train related
       steps_per_loop: Optional[int] = None,
       checkpoint_manager: Optional[tf.train.CheckpointManager] = None,
@@ -93,13 +94,6 @@ class Controller:
     recent checkpoint during this `__init__` method.
 
     Args:
-      strategy: An instance of `tf.distribute.Strategy`. If not provided, the
-        strategy will be initialized from the current in-scope strategy using
-        `tf.distribute.get_strategy()`.
-      trainer: An instance of `orbit.AbstractTrainer`, which implements the
-        inner training loop.
-      evaluator: An instance of `orbit.AbstractEvaluator`, which implements
-        evaluation.
       global_step: An integer `tf.Variable` storing the global training step
         number. Usually this can be obtained from the `iterations` property of
         the model's optimizer (e.g. `trainer.optimizer.iterations`). In cases
@@ -109,6 +103,13 @@ class Controller:
         recommended to create the `tf.Variable` inside the distribution strategy
         scope, with `aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA` (see
         also `orbit.utils.create_global_step()`).
+      trainer: An instance of `orbit.AbstractTrainer`, which implements the
+        inner training loop.
+      evaluator: An instance of `orbit.AbstractEvaluator`, which implements
+        evaluation.
+      strategy: An instance of `tf.distribute.Strategy`. If not provided, the
+        strategy will be initialized from the current in-scope strategy using
+        `tf.distribute.get_strategy()`.
       steps_per_loop: The number of steps to run in each inner loop of training
         (passed as the `num_steps` parameter of `trainer.train`).
       checkpoint_manager: An instance of `tf.train.CheckpointManager`. If
@@ -137,7 +138,6 @@ class Controller:
     """
     if trainer is None and evaluator is None:
       raise ValueError("`trainer` and `evaluator` should not both be `None`.")
-
     if trainer is not None:
       if steps_per_loop is None:
         raise ValueError(
@@ -155,9 +155,7 @@ class Controller:
               f"`summary interval` ({summary_interval}) must be a multiple "
               f"of `steps_per_loop` ({steps_per_loop}).")
 
-    if global_step is None:
-      raise ValueError("`global_step` is required.")
-    elif not isinstance(global_step, tf.Variable):
+    if not isinstance(global_step, tf.Variable):
       raise ValueError("`global_step` must be a `tf.Variable`.")
 
     self.trainer = trainer
@@ -185,11 +183,9 @@ class Controller:
         self.eval_summary_manager = utils.SummaryManager(
             eval_summary_dir, tf.summary.scalar, global_step=self.global_step)
 
-    if self.global_step is not None:
-      tf.summary.experimental.set_step(self.global_step)
+    tf.summary.experimental.set_step(self.global_step)
 
     # Restores the model if needed.
-    # TODO(momernick): We probably only want to do this on certain occasions?
     if self.checkpoint_manager is not None:
       restored_path = self.restore_checkpoint()
       if restored_path:
@@ -272,9 +268,9 @@ class Controller:
     return eval_output
 
   def train_and_evaluate(self,
-                         train_steps: int = None,
-                         eval_steps: int = None,
-                         eval_interval: int = None):
+                         train_steps: int,
+                         eval_steps: int = -1,
+                         eval_interval: Optional[int] = None) -> None:
     """Runs interleaved training and evaluation.
 
     This method interleaves calls to `self.train()` and `self.evaluate()`,
@@ -285,7 +281,7 @@ class Controller:
 
     Args:
       train_steps: The global step count to train up to.
-      eval_steps: The number of steps to run during an evaluation. If None, this
+      eval_steps: The number of steps to run during an evaluation. If -1, this
         method will evaluate over the entire evaluation dataset.
       eval_interval: The number of training steps to run between evaluations. If
         set, training will always stop every `eval_interval` steps, even if this
@@ -310,7 +306,7 @@ class Controller:
     self._maybe_save_checkpoint(check_interval=False)
 
   def evaluate_continuously(self,
-                            steps: int = None,
+                            steps: int = -1,
                             timeout: Optional[Union[int, float]] = None,
                             timeout_fn: Optional[Callable[[], bool]] = None):
     """Continuously monitors a directory and evaluates new checkpoints in it.
@@ -320,7 +316,8 @@ class Controller:
     checkpoints found there.
 
     Args:
-      steps: The number of steps to run when evaluating.
+      steps: The number of steps to run when evaluating. If -1, this method will
+        evaluate over the entire evaluation dataset.
       timeout: The maximum number of seconds to wait between checkpoints. See
         tf.train.checkpoints_iterator documentation.
       timeout_fn: Optional callable to call after a timeout. If the function
@@ -416,12 +413,14 @@ class Controller:
     # Verify that global_step was updated properly, then update current_step.
     expected_step = current_step + num_steps
     if self.global_step.numpy() != expected_step:
-      raise RuntimeError(
+      message = (
           f"`trainer.train({num_steps})` did not update `global_step` by "
           f"{num_steps}. Old value was {current_step}, expected updated value "
           f"to be {expected_step}, but it was {self.global_step.numpy()}.")
-    current_step = expected_step
+      logging.warning(message)
+      return
 
+    current_step = expected_step
     steps_per_second = self.step_timer.steps_per_second()
     _log(f"train | step: {current_step: 6d} | "
          f"steps/sec: {steps_per_second: 6.1f} | "

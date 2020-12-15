@@ -61,6 +61,8 @@ class LrConfig(oneof.OneOfConfig):
     polynomial: polynomial learning rate config.
     cosine: cosine learning rate config.
     power: step^power learning rate config.
+    power_linear: learning rate config of step^power followed by
+      step^power*linear.
   """
   type: Optional[str] = None
   constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
@@ -69,6 +71,8 @@ class LrConfig(oneof.OneOfConfig):
   polynomial: lr_cfg.PolynomialLrConfig = lr_cfg.PolynomialLrConfig()
   cosine: lr_cfg.CosineLrConfig = lr_cfg.CosineLrConfig()
   power: lr_cfg.DirectPowerLrConfig = lr_cfg.DirectPowerLrConfig()
+  power_linear: lr_cfg.PowerAndLinearDecayLrConfig = (
+      lr_cfg.PowerAndLinearDecayLrConfig())
 
 
 @dataclasses.dataclass

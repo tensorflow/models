@@ -18,4 +18,5 @@
 from official.vision.beta.configs import image_classification
 from official.vision.beta.configs import maskrcnn
 from official.vision.beta.configs import retinanet
+from official.vision.beta.configs import semantic_segmentation
 from official.vision.beta.configs import video_classification

@@ -80,4 +80,4 @@ class ClassificationModule(export_base.ExportModule):
 
     logits = self._model(images, training=False)
 
-    return logits
+    return dict(outputs=logits)

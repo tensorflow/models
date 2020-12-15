@@ -120,6 +120,16 @@ class MaskHeadTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(
         mask_head.get_config(), new_mask_head.get_config())
 
+  def test_forward_class_agnostic(self):
+    mask_head = instance_heads.MaskHead(
+        num_classes=3,
+        class_agnostic=True
+    )
+    roi_features = np.random.rand(2, 10, 14, 14, 16)
+    roi_classes = np.zeros((2, 10))
+    masks = mask_head([roi_features, roi_classes])
+    self.assertAllEqual(masks.numpy().shape, [2, 10, 28, 28])
+
 
 if __name__ == '__main__':
   tf.test.main()
