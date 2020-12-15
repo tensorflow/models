@@ -46,7 +46,7 @@ class YT8MModel(hyperparams.Config):
   cluster_size : int = 8192
   hidden_size : int = 1024
   add_batch_norm : bool = True
-  sample_random_frame : bool = True
+  sample_random_frames : bool = True
   is_training : bool = True
   activation : str = "sigmoid"
   pooling_method : str = "max"

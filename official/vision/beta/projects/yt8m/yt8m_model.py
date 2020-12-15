@@ -16,7 +16,7 @@ class YT8MModel(tf.keras.Model):
                  input_params: yt8m_cfg.YT8MModel,
                  num_frames=32,
                  num_classes=3862,
-                 input_specs=layers.InputSpec(shape=[None, None, None]),
+                 input_specs=layers.InputSpec(shape=[32, 1152]),
                  **kwargs):
         """YT8M initialization function.
           Args:
@@ -31,25 +31,16 @@ class YT8MModel(tf.keras.Model):
             'input_specs': input_specs,
             'num_classes': num_classes,
             'num_frames': num_frames,
-            'iterations': input_params.iterations,
-            'cluster_size': input_params.cluster_size,
-            'hidden_size': input_params.hidden_size,
-            'add_batch_norm': input_params.add_batch_norm,
-            # 'sample_random_frames' : input_params.sample_random_frames,
-            'is_training': input_params.is_training,
-            'activation': input_params.activation,
-            'pooling_method': input_params.pooling_method,
-            'yt8m_agg_classifier_model': input_params.yt8m_agg_classifier_model
+            'input_params': input_params
         }
         self._num_classes = num_classes
         self._num_frames = num_frames
         self._input_specs = input_specs
         self._act_fn = self.ACT_FN_MAP.get(input_params.activation)
 
-        print(self._input_specs)
-        inputs = tf.keras.Input(shape=self._input_specs, batch_size=2)
+        inputs = tf.keras.Input(shape=self._input_specs.shape, batch_size=2)
 
-        num_frames = tf.cast(tf.expand_dims(self._num_frames, 1), tf.float32)
+        num_frames = tf.cast(tf.expand_dims([self._num_frames], 1), tf.float32)
         if input_params.sample_random_frames:
             model_input = utils.SampleRandomFrames(inputs, num_frames, input_params.iterations)
         else:
@@ -64,9 +55,9 @@ class YT8MModel(tf.keras.Model):
             reshaped_input = layers.BatchNormalization(name="input_bn",
                                                        scale=True,
                                                        center=True,
-                                                       is_training=input_params.is_training)(reshaped_input)
+                                                       trainable=input_params.is_training)(reshaped_input)
 
-        cluster_weights = tf.Variable(tf.random_normal_initializer(stddev=1 / tf.math.sqrt(feature_size))(
+        cluster_weights = tf.Variable(tf.random_normal_initializer(stddev=1 / tf.sqrt(tf.cast(feature_size, tf.float32)))(
             shape=[feature_size, input_params.cluster_size]),
             name="cluster_weights")
 
@@ -77,7 +68,7 @@ class YT8MModel(tf.keras.Model):
             activation = layers.BatchNormalization(name="cluster_bn",
                                                    scale=True,
                                                    center=True,
-                                                   is_training=input_params.is_training)(activation)
+                                                   trainable=input_params.is_training)(activation)
 
         else:
             cluster_biases = tf.Variable(
@@ -92,7 +83,7 @@ class YT8MModel(tf.keras.Model):
         activation = tf.reshape(activation, [-1, max_frames, input_params.cluster_size])
         activation = utils.FramePooling(activation, input_params.pooling_method)
 
-        hidden1_weights = tf.Variable(tf.random_normal_initializer(stddev=1 / tf.math.sqrt(input_params.cluster_size))(
+        hidden1_weights = tf.Variable(tf.random_normal_initializer(stddev=1 / tf.sqrt(tf.cast(input_params.cluster_size, tf.float32)))(
             shape=[input_params.cluster_size, input_params.hidden_size]),
             name="hidden1_weights")
 
@@ -103,7 +94,7 @@ class YT8MModel(tf.keras.Model):
             activation = layers.BatchNormalization(name="hidden1_bn",
                                                    scale=True,
                                                    center=True,
-                                                   is_training=input_params.is_training)(activation)
+                                                   trainable=input_params.is_training)(activation)
 
 
         else:

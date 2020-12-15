@@ -51,7 +51,7 @@ def SampleRandomFrames(model_input, num_frames, num_samples):
   """
   batch_size = tf.shape(model_input)[0]
   frame_index = tf.cast(
-      tf.multiply(tf.random_uniform([batch_size, num_samples]),
+      tf.multiply(tf.random.uniform([batch_size, num_samples]),
                   tf.tile(tf.cast(num_frames, tf.float32), [1, num_samples])),
       tf.int32)
   batch_index = tf.tile(tf.expand_dims(tf.range(batch_size), 1),

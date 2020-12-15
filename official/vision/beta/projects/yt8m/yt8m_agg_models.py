@@ -46,10 +46,10 @@ class LogisticModel(BaseModel):
       batch_size x num_classes.
     """
     output = layers.Dense(
-        model_input,
+        # model_input,
         vocab_size,
-        activation_fn=tf.nn.sigmoid,
-        weights_regularizer=regularizers.L2(l2_penalty))
+        activation=tf.nn.sigmoid,
+        kernel_regularizer=regularizers.l2(l2_penalty))
     return {"predictions": output}
 
 
@@ -84,18 +84,14 @@ class MoeModel(BaseModel):
     num_mixtures = num_mixtures or moe_num_mixtures
 
     gate_activations = layers.Dense(
-        model_input,
         vocab_size * (num_mixtures + 1),
-        activation_fn=None,
-        biases_initializer=None,
-        weights_regularizer=regularizers.L2(l2_penalty),
-        scope="gates")
+        activation=None,
+        bias_initializer=None,
+        kernel_regularizer=regularizers.l2(l2_penalty))(model_input)
     expert_activations = layers.Dense(
-        model_input,
         vocab_size * num_mixtures,
-        activation_fn=None,
-        weights_regularizer=regularizers.L2(l2_penalty),
-        scope="experts")
+        activation=None,
+        kernel_regularizer=regularizers.l2(l2_penalty))(model_input)
 
     gating_distribution = tf.nn.softmax(
         tf.reshape(
