@@ -40,6 +40,7 @@ LR_CLS = {
     'exponential': tf.keras.optimizers.schedules.ExponentialDecay,
     'cosine': tf.keras.experimental.CosineDecay,
     'power': lr_schedule.DirectPowerDecay,
+    'power_linear': lr_schedule.PowerAndLinearDecay,
 }
 
 WARMUP_CLS = {
