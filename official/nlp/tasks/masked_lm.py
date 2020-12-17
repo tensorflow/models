@@ -47,10 +47,13 @@ class MaskedLMConfig(cfg.TaskConfig):
 class MaskedLMTask(base_task.Task):
   """Task object for Mask language modeling."""
 
+  def _build_encoder(self, encoder_cfg):
+    return encoders.build_encoder(encoder_cfg)
+
   def build_model(self, params=None):
     config = params or self.task_config.model
     encoder_cfg = config.encoder
-    encoder_network = encoders.build_encoder(encoder_cfg)
+    encoder_network = self._build_encoder(encoder_cfg)
     cls_heads = [
         layers.ClassificationHead(**cfg.as_dict()) for cfg in config.cls_heads
     ] if config.cls_heads else []
