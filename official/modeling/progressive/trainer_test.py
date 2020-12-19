@@ -37,9 +37,7 @@ def all_strategy_combinations():
           strategy_combinations.default_strategy,
           strategy_combinations.cloud_tpu_strategy,
           strategy_combinations.one_device_strategy_gpu,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def get_exp_config():

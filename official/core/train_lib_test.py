@@ -68,7 +68,6 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
               strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
-          mode='eager',
           flag_mode=['train', 'eval', 'train_and_eval'],
           run_post_eval=[True, False]))
   def test_end_to_end(self, distribution_strategy, flag_mode, run_post_eval):

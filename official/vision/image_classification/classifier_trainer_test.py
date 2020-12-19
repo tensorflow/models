@@ -54,7 +54,6 @@ def distribution_strategy_combinations() -> Iterable[Tuple[Any, ...]]:
           'efficientnet',
           'resnet',
       ],
-      mode='eager',
       dataset=[
           'imagenet',
       ],
@@ -151,7 +150,6 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
               'efficientnet',
               'resnet',
           ],
-          mode='eager',
           dataset='imagenet',
           dtype='float16',
       ))
@@ -196,7 +194,6 @@ class ClassifierTest(tf.test.TestCase, parameterized.TestCase):
               'efficientnet',
               'resnet',
           ],
-          mode='eager',
           dataset='imagenet',
           dtype='bfloat16',
       ))

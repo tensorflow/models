@@ -40,9 +40,7 @@ def eager_strategy_combinations():
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.mirrored_strategy_with_two_gpus,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def eager_gpu_strategy_combinations():
@@ -52,9 +50,7 @@ def eager_gpu_strategy_combinations():
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.mirrored_strategy_with_two_gpus,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def create_fake_data_input_fn(batch_size, features_shape, num_classes):
@@ -290,9 +286,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
       combinations.combine(
           distribution=[
               strategy_combinations.one_device_strategy_gpu,
-          ],
-          mode='eager',
-      ))
+          ],))
   def test_train_check_artifacts_non_chief(self, distribution):
     # We shouldn't export artifacts on non-chief workers. Since there's no easy
     # way to test with real MultiWorkerMirroredStrategy, we patch the strategy
