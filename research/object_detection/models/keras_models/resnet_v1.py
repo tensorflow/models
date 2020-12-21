@@ -408,7 +408,7 @@ def block_basic(x,
                 name=None):
   """A residual block for ResNet18/34.
 
-  Arguments:
+  Args:
       x: input tensor.
       filters: integer, filters of the bottleneck layer.
       kernel_size: default 3, kernel size of the bottleneck layer.
@@ -465,7 +465,7 @@ def block_basic(x,
 def stack_basic(x, filters, blocks, stride1=2, name=None):
   """A set of stacked residual blocks for ResNet18/34.
 
-  Arguments:
+  Args:
       x: input tensor.
       filters: integer, filters of the bottleneck layer in a block.
       blocks: integer, blocks in the stacked blocks.
