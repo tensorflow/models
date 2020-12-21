@@ -77,6 +77,9 @@ class QuestionAnsweringTask(base_task.Task):
   def __init__(self, params: cfg.TaskConfig, logging_dir=None, name=None):
     super().__init__(params, logging_dir, name=name)
 
+    if params.validation_data is None:
+      return
+
     if params.validation_data.tokenization == 'WordPiece':
       self.squad_lib = squad_lib_wp
     elif params.validation_data.tokenization == 'SentencePiece':
