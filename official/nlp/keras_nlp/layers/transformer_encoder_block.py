@@ -20,12 +20,10 @@ import tensorflow as tf
 @tf.keras.utils.register_keras_serializable(package="keras_nlp")
 class TransformerEncoderBlock(tf.keras.layers.Layer):
   """TransformerEncoderBlock layer.
-
   This layer implements the Transformer Encoder from
   "Attention Is All You Need". (https://arxiv.org/abs/1706.03762),
   which combines a `tf.keras.layers.MultiHeadAttention` layer with a
   two-layer feedforward network.
-
   References:
     [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
     [BERT: Pre-training of Deep Bidirectional Transformers for Language
@@ -53,7 +51,6 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
                attention_initializer=None,
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
-
     Arguments:
       num_attention_heads: Number of attention heads.
       inner_dim: The output dimension of the first Dense layer in a two-layer
@@ -148,7 +145,6 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         kernel_initializer=self._attention_initializer,
         name="self_attention",
         **common_kwargs)
-    self._attention_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
     # It is probably safe in mixed_float16, but we haven't validated this yet.
     self._attention_layer_norm = (
@@ -181,7 +177,8 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         name="output",
         kernel_initializer=self._kernel_initializer,
         **common_kwargs)
-    self._output_dropout = tf.keras.layers.Dropout(rate=self._output_dropout)
+    self._output_dropout_layer = tf.keras.layers.Dropout(
+      rate=self._output_dropout)
     # Use float32 in layernorm for numeric stability.
     self._output_layer_norm = tf.keras.layers.LayerNormalization(
         name="output_layer_norm",
@@ -254,7 +251,6 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
 
     attention_output = self._attention_layer(
         query=target_tensor, value=input_tensor, attention_mask=attention_mask)
-    attention_output = self._attention_dropout(attention_output)
     if self._norm_first:
       attention_output = source_tensor + attention_output
     else:
@@ -267,7 +263,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     inner_output = self._intermediate_activation_layer(inner_output)
     inner_output = self._inner_dropout_layer(inner_output)
     layer_output = self._output_dense(inner_output)
-    layer_output = self._output_dropout(layer_output)
+    layer_output = self._output_dropout_layer(layer_output)
 
     if self._norm_first:
       return source_attention_output + layer_output
