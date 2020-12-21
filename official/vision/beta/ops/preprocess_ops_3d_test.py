@@ -119,6 +119,20 @@ class ParserUtilsTest(tf.test.TestCase):
     self.assertAllEqual(resized_frames_3.shape, (6, 90, 120, 3))
     self.assertAllEqual(resized_frames_4.shape, (6, 60, 45, 3))
 
+  def test_random_crop_resize(self):
+    resized_frames_1 = preprocess_ops_3d.random_crop_resize(
+        self._frames, 256, 256, 6, 3, (0.5, 2), (0.3, 1))
+    resized_frames_2 = preprocess_ops_3d.random_crop_resize(
+        self._frames, 224, 224, 6, 3, (0.5, 2), (0.3, 1))
+    resized_frames_3 = preprocess_ops_3d.random_crop_resize(
+        self._frames, 256, 256, 6, 3, (0.8, 1.2), (0.3, 1))
+    resized_frames_4 = preprocess_ops_3d.random_crop_resize(
+        self._frames, 256, 256, 6, 3, (0.5, 2), (0.1, 1))
+    self.assertAllEqual(resized_frames_1.shape, (6, 256, 256, 3))
+    self.assertAllEqual(resized_frames_2.shape, (6, 224, 224, 3))
+    self.assertAllEqual(resized_frames_3.shape, (6, 256, 256, 3))
+    self.assertAllEqual(resized_frames_4.shape, (6, 256, 256, 3))
+
   def test_random_flip_left_right(self):
     flipped_frames = preprocess_ops_3d.random_flip_left_right(self._frames)
 
