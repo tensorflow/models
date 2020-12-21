@@ -27,7 +27,7 @@ def export_bert_model(model_export_path: typing.Text,
                       restore_model_using_load_weights: bool = False) -> None:
   """Export BERT model for serving which does not include the optimizer.
 
-  Arguments:
+  Args:
       model_export_path: Path to which exported model will be saved.
       model: Keras model object to export.
       checkpoint_dir: Path from which model weights will be loaded, if

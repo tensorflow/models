@@ -29,7 +29,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
   The residual connection implements the ReZero method.
   (https://arxiv.org/abs/2003.04887)
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.

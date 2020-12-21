@@ -132,7 +132,7 @@ def run_customized_training_loop(
     allreduce_bytes_per_pack=0):
   """Run BERT pretrain model training using low-level API.
 
-  Arguments:
+  Args:
       _sentinel: Used to prevent positional parameters. Internal, do not use.
       strategy: Distribution strategy on which to run low level training loop.
       model_fn: Function that returns a tuple (model, sub_model). Caller of this

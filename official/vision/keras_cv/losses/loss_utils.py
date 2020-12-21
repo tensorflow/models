@@ -20,7 +20,7 @@ import tensorflow as tf
 def multi_level_flatten(multi_level_inputs, last_dim=None):
   """Flattens a multi-level input.
 
-  Arguments:
+  Args:
     multi_level_inputs: Ordered Dict with level to [batch, d1, ..., dm].
     last_dim: Whether the output should be [batch_size, None], or [batch_size,
       None, last_dim]. Defaults to `None`.
