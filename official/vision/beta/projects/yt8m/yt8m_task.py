@@ -54,7 +54,7 @@ class YT8MTask(base_task.Task):
   def build_inputs(self, params: yt8m_cfg.DataConfig, input_context=None):
     """Builds classification input."""
 
-    decoder = yt8m_input.Decoder()
+    decoder = yt8m_input.Decoder(input_params=params)
     decoder_fn = decoder.decode
     parser = yt8m_input.Parser(input_params=params)
 

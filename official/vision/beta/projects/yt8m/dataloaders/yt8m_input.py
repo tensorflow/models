@@ -11,7 +11,9 @@
 from typing import Dict, Optional, Tuple
 from absl import logging
 import tensorflow as tf
-import utils
+# import utils
+from random import seed
+from official.vision.beta.projects.yt8m import utils
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
@@ -275,7 +277,7 @@ class Decoder(decoder.Decoder):
       context_features=self._context_features,
       sequence_features=self._sequence_features)
 
-    return contexts, features
+    return {'contexts':contexts, 'features':features}
 
 
 class Parser(parser.Parser):
@@ -286,8 +288,6 @@ class Parser(parser.Parser):
   """
 
   def __init__(self,
-               contexts,
-               features,
                input_params: exp_cfg.DataConfig,
                max_quantized_value=2,
                min_quantized_value=-2,
@@ -301,25 +301,49 @@ class Parser(parser.Parser):
     self._max_frames = input_params.max_frames
     self._max_quantized_value = max_quantized_value
     self._min_quantized_value = min_quantized_value
-    self.features = features
-    self.contexts = contexts
+    self.seed = seed
 
+
+  def _parse_train_data(self, decoded_tensors):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
+    """Parses data for training."""
     # loads (potentially) different types of features and concatenates them
-    self.video_matrix, self.num_frames = _concat_features(self.features, self._feature_names, self._feature_sizes,
+    self.video_matrix, self.num_frames = _concat_features(decoded_tensors["features"], self._feature_names, self._feature_sizes,
                                                           self._max_frames, self._max_quantized_value,
                                                           self._min_quantized_value)
-
-  def _parse_train_data(self):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
-    """Parses data for training."""
     # call sampler
     self.video_matrix = sampler(self.video_matrix, self.num_frames, self.stride, self.seed)
-    output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, self.contexts, self._segment_labels,
+    output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, decoded_tensors["contexts"], self._segment_labels,
                                              self._segment_size, self._num_classes)
     return output_dict
 
-  def _parse_eval_data(self):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
+  def _parse_eval_data(self, decoded_tensors):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
     """Parses data for training."""
-    output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, self.contexts, self._segment_labels,
+    # loads (potentially) different types of features and concatenates them
+    self.video_matrix, self.num_frames = _concat_features(decoded_tensors["features"], self._feature_names, self._feature_sizes,
+                                                          self._max_frames, self._max_quantized_value,
+                                                          self._min_quantized_value)
+    output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, decoded_tensors["contexts"], self._segment_labels,
                                                self._segment_size, self._num_classes)
 
     return output_dict  # batched
+
+
+  def parse_fn(self, is_training):
+    """Returns a parse fn that reads and parses raw tensors from the decoder.
+
+    Args:
+      is_training: a `bool` to indicate whether it is in training mode.
+
+    Returns:
+      parse: a `callable` that takes the serialized example and generate the
+        images, labels tuple where labels is a dict of Tensors that contains
+        labels.
+    """
+    def parse(decoded_tensors):
+      """Parses the serialized example data."""
+      if is_training:
+        return self._parse_train_data(decoded_tensors)
+      else:
+        return self._parse_eval_data(decoded_tensors)
+
+    return parse
