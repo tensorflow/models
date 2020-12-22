@@ -1,13 +1,14 @@
 # BERT (Bidirectional Encoder Representations from Transformers)
 
+**WARNING**: We are on the way to deprecate most of the code in this directory.
+Please see
+[this link](https://github.com/tensorflow/models/blob/master/official/nlp/train.md)
+for the new tutorial.
+
 The academic paper which describes BERT in detail and provides full results on a
 number of tasks can be found here: https://arxiv.org/abs/1810.04805.
 
 This repository contains TensorFlow 2.x implementation for BERT.
-
-**Note: We are in the progress to update the documentation to use
-official/nlp/train.py as the central place for the training driver.
-Internal users please refer to the g3doc for documentation.**
 
 ## Contents
   * [Contents](#contents)
