@@ -127,7 +127,7 @@ class NoOpScope(object):
 def safe_arg_scope(funcs, **kwargs):
   """Returns `slim.arg_scope` with all None arguments removed.
 
-  Arguments:
+  Args:
     funcs: Functions to pass to `arg_scope`.
     **kwargs: Arguments to pass to `arg_scope`.
 
