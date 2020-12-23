@@ -91,6 +91,8 @@ class ParserUtilsTest(tf.test.TestCase):
     cropped_image_1 = preprocess_ops_3d.crop_image(self._frames, 50, 70)
     cropped_image_2 = preprocess_ops_3d.crop_image(self._frames, 200, 200)
     cropped_image_3 = preprocess_ops_3d.crop_image(self._frames, 50, 70, True)
+    cropped_image_4 = preprocess_ops_3d.crop_image(
+        self._frames, 90, 90, False, 3)
 
     self.assertAllEqual(cropped_image_1.shape, (6, 50, 70, 3))
     self.assertAllEqual(cropped_image_1, self._np_frames[:, 20:70, 25:95, :])
@@ -106,6 +108,7 @@ class ParserUtilsTest(tf.test.TestCase):
     expected = expected[np.newaxis, :, :, np.newaxis]
     expected = np.broadcast_to(expected, (6, 50, 70, 3))
     self.assertAllEqual(cropped_image_3, expected)
+    self.assertAllEqual(cropped_image_4.shape, (18, 90, 90, 3))
 
   def test_resize_smallest(self):
     resized_frames_1 = preprocess_ops_3d.resize_smallest(self._frames, 180)
