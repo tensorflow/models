@@ -26,7 +26,7 @@ from official.modeling import tf_utils
 class MatMulWithMargin(tf.keras.layers.Layer):
   """This layer computs a dot product matrix given two encoded inputs.
 
-  Arguments:
+  Args:
     logit_scale: The scaling factor of dot products when doing training.
     logit_margin: The margin value between the positive and negative examples
       when doing training.

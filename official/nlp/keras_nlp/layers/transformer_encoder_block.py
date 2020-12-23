@@ -54,7 +54,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
                **kwargs):
     """Initializes `TransformerEncoderBlock`.
 
-    Arguments:
+    Args:
       num_attention_heads: Number of attention heads.
       inner_dim: The output dimension of the first Dense layer in a two-layer
         feedforward network.

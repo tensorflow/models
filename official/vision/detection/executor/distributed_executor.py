@@ -108,7 +108,7 @@ class SummaryWriter(object):
   def __init__(self, model_dir: Text, name: Text):
     """Inits SummaryWriter with paths.
 
-    Arguments:
+    Args:
       model_dir: the model folder path.
       name: the summary subfolder name.
     """

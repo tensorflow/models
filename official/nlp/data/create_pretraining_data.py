@@ -390,7 +390,7 @@ def _window(iterable, size):
     _window(input, 4) => [1, 2, 3, 4]
     _window(input, 5) => None
 
-  Arguments:
+  Args:
     iterable: elements to iterate over.
     size: size of the window.
 
@@ -414,7 +414,7 @@ def _window(iterable, size):
 def _contiguous(sorted_grams):
   """Test whether a sequence of grams is contiguous.
 
-  Arguments:
+  Args:
     sorted_grams: _Grams which are sorted in increasing order.
   Returns:
     True if `sorted_grams` are touching each other.
@@ -454,7 +454,7 @@ def _masking_ngrams(grams, max_ngram_size, max_masked_tokens, rng):
   The length of the selected n-gram follows a zipf weighting to
   favor shorter n-gram sizes (weight(1)=1, weight(2)=1/2, weight(3)=1/3, ...).
 
-  Arguments:
+  Args:
     grams: List of one-grams.
     max_ngram_size: Maximum number of contiguous one-grams combined to create
       an n-gram.
@@ -542,7 +542,7 @@ def _wordpieces_to_grams(tokens):
      tokens: ['[CLS]', 'That', 'lit', '##tle', 'blue', 'tru', '##ck', '[SEP]']
       grams: [          [1,2), [2,         4),  [4,5) , [5,       6)]
 
-  Arguments:
+  Args:
     tokens: list of wordpieces
   Returns:
     List of _Grams representing spans of whole words

@@ -39,7 +39,7 @@ class BertPretrainer(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output.
     num_classes: Number of classes to predict from the classification network.
@@ -165,7 +165,7 @@ class BertPretrainerV2(tf.keras.Model):
   Adds the masked language model head and optional classification heads upon the
   transformer encoder.
 
-  Arguments:
+  Args:
     encoder_network: A transformer network. This network should output a
       sequence output and a classification output.
     mlm_activation: The activation (if any) to use in the masked LM network. If

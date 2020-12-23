@@ -114,7 +114,7 @@ class RelativePositionEncoding(tf.keras.layers.Layer):
   def call(self, pos_seq, batch_size=None):
     """Implements call() for the layer.
 
-    Arguments:
+    Args:
       pos_seq: A 1-D `Tensor`
       batch_size: The optionally provided batch size that tiles the relative
         positional encoding.

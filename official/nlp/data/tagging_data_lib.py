@@ -96,7 +96,7 @@ class PanxProcessor(classifier_data_lib.DataProcessor):
                only_use_en_dev=True):
     """See base class.
 
-    Arguments:
+    Args:
       process_text_fn: See base class.
       only_use_en_train: If True, only use english training data. Otherwise, use
         training data from all languages.
@@ -162,7 +162,7 @@ class UdposProcessor(classifier_data_lib.DataProcessor):
                only_use_en_dev=True):
     """See base class.
 
-    Arguments:
+    Args:
       process_text_fn: See base class.
       only_use_en_train: If True, only use english training data. Otherwise, use
         training data from all languages.
