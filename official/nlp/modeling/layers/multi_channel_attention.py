@@ -26,7 +26,7 @@ from official.nlp.modeling.layers import masked_softmax
 class VotingAttention(tf.keras.layers.Layer):
   """Voting Attention layer.
 
-  Arguments:
+  Args:
     num_heads: the number of attention heads.
     head_size: per-head hidden size.
     kernel_initializer: Initializer for dense layer kernels.

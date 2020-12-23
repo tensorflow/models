@@ -35,7 +35,7 @@ class TalkingHeadsAttention(tf.keras.layers.MultiHeadAttention):
 
   See the base class `MultiHeadAttention` for more details.
 
-  Arguments:
+  Args:
     num_heads: Number of attention heads.
     key_dim: Size of each attention head for query and key.
     value_dim:  Size of each attention head for value.

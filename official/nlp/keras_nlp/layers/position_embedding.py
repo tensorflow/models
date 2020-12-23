@@ -29,7 +29,7 @@ class PositionEmbedding(tf.keras.layers.Layer):
   ```
 
 
-  Arguments:
+  Args:
     max_length: The maximum size of the dynamic sequence.
     initializer: The initializer to use for the embedding weights. Defaults to
       "glorot_uniform".

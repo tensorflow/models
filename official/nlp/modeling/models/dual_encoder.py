@@ -31,7 +31,7 @@ class DualEncoder(tf.keras.Model):
   The DualEncoder allows a user to pass in a transformer stack, and build a dual
   encoder model based on the transformer stack.
 
-  Arguments:
+  Args:
     network: A transformer network which should output an encoding output.
     max_seq_length: The maximum allowed sequence length for transformer.
     normalize: If set to True, normalize the encoding produced by transfomer.

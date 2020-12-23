@@ -28,7 +28,7 @@ class DenseEinsum(tf.keras.layers.Layer):
 
   This layer can perform einsum calculations of arbitrary dimensionality.
 
-  Arguments:
+  Args:
     output_shape: Positive integer or tuple, dimensionality of the output space.
     num_summed_dimensions: The number of dimensions to sum over. Standard 2D
       matmul should use 1, 3D matmul should use 2, and so forth.

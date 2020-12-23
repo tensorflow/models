@@ -32,7 +32,7 @@ class SpanLabeling(tf.keras.Model):
   *Note* that the network is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     input_width: The innermost dimension of the input tensor to this network.
     activation: The activation, if any, for the dense layer in this network.
     initializer: The initializer for the dense layer in this network. Defaults
@@ -123,7 +123,7 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
   **Note: `compute_with_beam_search` will not work with the Functional API
   (https://www.tensorflow.org/guide/keras/functional).
 
-  Arguments:
+  Args:
     input_width: The innermost dimension of the input tensor to this network.
     start_n_top: Beam size for span start.
     end_n_top: Beam size for span end.

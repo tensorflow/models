@@ -25,7 +25,7 @@ class OnDeviceEmbedding(tf.keras.layers.Layer):
   This layer uses either tf.gather or tf.one_hot to translate integer indices to
   float embeddings.
 
-  Arguments:
+  Args:
     vocab_size: Number of elements in the vocabulary.
     embedding_width: Output size of the embedding layer.
     initializer: The initializer to use for the embedding weights. Defaults to
