@@ -20,3 +20,4 @@ from official.vision.beta.configs import maskrcnn
 from official.vision.beta.configs import retinanet
 from official.vision.beta.configs import semantic_segmentation
 from official.vision.beta.configs import video_classification
+from official.vision.beta.projects.yt8m.configs import yt8m

@@ -6,7 +6,7 @@ from absl import flags
 def define_flags():
   """Defines flags."""
   flags.DEFINE_string(
-      'experiment', default=None, help='The experiment type registered.')
+      'experiment', default='yt8m_experiment', help='The experiment type registered.')
 
   flags.DEFINE_enum(
       'mode',
@@ -69,7 +69,7 @@ def define_flags():
   flags.DEFINE_string("train_dir", "/tmp/yt8m_model/",
                       "The directory to save the model files in.")
   flags.DEFINE_string(
-      "train_data_pattern", "",
+      "input_path", "",
       "File glob for the training dataset. If the files refer to Frame Level "
       "features (i.e. tensorflow.SequenceExample), then set --reader_type "
       "format. The (Sequence)Examples are expected to have 'rgb' byte array "
@@ -81,14 +81,14 @@ def define_flags():
   # Model flags.
   flags.DEFINE_bool(
       "frame_features", False,
-      "If set, then --train_data_pattern must be frame-level features. "
-      "Otherwise, --train_data_pattern must be aggregated video-level "
+      "If set, then --train_input_path must be frame-level features. "
+      "Otherwise, --train_input_path must be aggregated video-level "
       "features. The model must also be set appropriately (i.e. to read 3D "
       "batches VS 4D batches.")
   flags.DEFINE_bool(
       "segment_labels", False,
-      "If set, then --train_data_pattern must be frame-level features (but with"
-      " segment_labels). Otherwise, --train_data_pattern must be aggregated "
+      "If set, then --train_input_path must be frame-level features (but with"
+      " segment_labels). Otherwise, --train_input_path must be aggregated "
       "video-level features. The model must also be set appropriately (i.e. to "
       "read 3D batches VS 4D batches.")
   flags.DEFINE_string(
@@ -140,6 +140,17 @@ def define_flags():
                       "What optimizer class to use.")
   flags.DEFINE_float("clip_gradient_norm", 1.0, "Norm to clip gradients to.")
   flags.DEFINE_bool(
-      "log_device_placement", False,
-      "Whether to write the device on which every op will run into the "
-      "logs on startup.")
+    "log_device_placement", False,
+    "Whether to write the device on which every op will run into the "
+    "logs on startup.")
+
+
+  # Eval flags
+  # flags.DEFINE_string(
+  #   "eval_input_path", "",
+  #   "File glob defining the evaluation dataset in tensorflow.SequenceExample "
+  #   "format. The SequenceExamples are expected to have an 'rgb' byte array "
+  #   "sequence feature as well as a 'labels' int64 context feature.")
+  flags.DEFINE_boolean("run_once", False, "Whether to run eval only once.")
+  flags.DEFINE_integer("top_k", 20, "How many predictions to output per video.")
+

@@ -35,8 +35,8 @@ class YT8MTask(base_task.Task):
     """Builds video classification model."""
     common_input_shape = [
         d1 if d1 == d2 else None
-        for d1, d2 in zip(self.task_config.train_data.feature_shape,
-                          self.task_config.validation_data.feature_shape)
+        for d1, d2 in zip(self.task_config.train_data.feature_sizes,
+                          self.task_config.validation_data.feature_sizes)
     ]
     input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
     logging.info('Build model input %r', common_input_shape)
@@ -92,7 +92,8 @@ class YT8MTask(base_task.Task):
 
     return total_loss
 
-  def build_metrics(self, num_classes, top_k=20, top_n=None, training=True):
+
+  def build_metrics(self, num_classes: int=3862, top_k=20, top_n=None, training=True):
     """Gets streaming metrics for training/validation.
        metric: mAP/gAP
       Args:
@@ -103,7 +104,8 @@ class YT8MTask(base_task.Task):
         to use all provided data points.
     """
     metrics = eval_util.EvaluationMetrics(num_classes, top_k=top_k, top_n=top_n)
-    return metrics
+    return [metrics.map_calculator, metrics.global_ap_calculator]
+
 
   def process_metrics(self, metrics, labels, outputs, loss):
     '''Processes metrics'''
