@@ -46,5 +46,6 @@ def main(_):
       model_dir=model_dir)
 
 if __name__ == '__main__':
+
   tfm_flags.define_flags()
   app.run(main)

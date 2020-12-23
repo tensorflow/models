@@ -167,6 +167,7 @@ class EvaluationMetrics(object):
     self.top_k = top_k
     self.num_examples = 0
 
+
   def accumulate(self, predictions, labels, loss):
     """Accumulate the metrics calculated locally for this mini-batch.
 
