@@ -39,6 +39,7 @@ The research models are maintained by their respective authors.
 | [lstm_object_detection](lstm_object_detection) | [Mobile Video Object Detection with Temporally-Aware Feature Maps](https://arxiv.org/abs/1711.06368) | CVPR 2018 | yinxiaoli, yongzhe2160, lzyuan |
 | [marco](marco) | MARCO: [Classification of crystallization outcomes using deep convolutional neural networks](https://arxiv.org/abs/1803.10342) | | vincentvanhoucke |
 | [vid2depth](vid2depth) | [Unsupervised Learning of Depth and Ego-Motion from Monocular Video Using 3D Geometric Constraints](https://arxiv.org/abs/1802.05522) | CVPR 2018 | rezama |
+| [adversarial_image](adversarial_image) | [Unpaired Image-to-Image Translation using Cycle-Consistent Adversarial Networks](https://arxiv.org/abs/1703.10593) | ICCV 2017 | agnim25 |
 
 ### Natural Language Processing
 
