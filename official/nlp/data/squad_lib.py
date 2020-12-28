@@ -619,6 +619,9 @@ def postprocess_output(all_examples,
     null_start_logit = 0  # the start logit at the slice with min null score
     null_end_logit = 0  # the end logit at the slice with min null score
     for (feature_index, feature) in enumerate(features):
+      if feature.unique_id not in unique_id_to_result:
+        logging.info("Skip eval example %s, not in pred.", feature.unique_id)
+        continue
       result = unique_id_to_result[feature.unique_id]
 
       # if we could have irrelevant answers, get the min score of irrelevant
