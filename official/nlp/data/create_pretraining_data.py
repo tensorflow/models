@@ -110,8 +110,8 @@ class TrainingInstance(object):
 
 def write_instance_to_example_files(instances, tokenizer, max_seq_length,
                                     max_predictions_per_seq, output_files,
-                                    gzip_compress):
-  """Create TF example files from `TrainingInstance`s."""
+                                    gzip_compress, use_v2_feature_names):
+  """Creates TF example files from `TrainingInstance`s."""
   writers = []
   for output_file in output_files:
     writers.append(
@@ -148,7 +148,7 @@ def write_instance_to_example_files(instances, tokenizer, max_seq_length,
     next_sentence_label = 1 if instance.is_random_next else 0
 
     features = collections.OrderedDict()
-    if FLAGS.use_v2_feature_names:
+    if use_v2_feature_names:
       features["input_word_ids"] = create_int_feature(input_ids)
       features["input_type_ids"] = create_int_feature(segment_ids)
     else:
@@ -658,7 +658,8 @@ def main(_):
 
   write_instance_to_example_files(instances, tokenizer, FLAGS.max_seq_length,
                                   FLAGS.max_predictions_per_seq, output_files,
-                                  FLAGS.gzip_compress)
+                                  FLAGS.gzip_compress,
+                                  FLAGS.use_v2_feature_names)
 
 
 if __name__ == "__main__":
