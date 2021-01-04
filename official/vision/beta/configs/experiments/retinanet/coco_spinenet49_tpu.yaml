@@ -3,7 +3,7 @@ runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
 task:
-  annotation_file: '/readahead/200M/placer/prod/home/snaggletooth/test/data/coco/instances_val2017.json'
+  annotation_file: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/instances_val2017.json'
   losses:
     l2_weight_decay: 4.0e-05
   model:
@@ -32,7 +32,7 @@ task:
   train_data:
     dtype: 'bfloat16'
     global_batch_size: 256
-    input_path: '/readahead/200M/placer/prod/home/snaggletooth/test/data/coco/train*'
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/train*'
     is_training: true
     parser:
       aug_rand_hflip: true
@@ -41,7 +41,7 @@ task:
   validation_data:
     dtype: 'bfloat16'
     global_batch_size: 8
-    input_path: '/readahead/200M/placer/prod/home/snaggletooth/test/data/coco/val*'
+    input_path: '/readahead/200M/placer/prod/home/tensorflow-performance-data/datasets/coco/val*'
     is_training: false
 trainer:
   checkpoint_interval: 462
