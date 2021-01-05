@@ -55,18 +55,6 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     # The default output of a transformer layer should be the same as the input.
     self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
 
-  def test_layer_creation_with_incorrect_mask_fails(self, transformer_cls):
-    test_layer = transformer_cls(
-        num_attention_heads=10, inner_dim=2048, inner_activation='relu')
-    sequence_length = 21
-    width = 80
-    # Create a 3-dimensional input (the first dimension is implicit).
-    data_tensor = tf.keras.Input(shape=(sequence_length, width))
-    # Create a 2-dimensional input (the first dimension is implicit).
-    mask_tensor = tf.keras.Input(shape=(sequence_length, sequence_length - 3))
-    with self.assertRaisesRegex(ValueError, 'When passing a mask tensor.*'):
-      _ = test_layer([data_tensor, mask_tensor])
-
   def test_layer_invocation(self, transformer_cls):
     test_layer = transformer_cls(
         num_attention_heads=10, inner_dim=2048, inner_activation='relu')
@@ -248,6 +236,20 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
     output_data = model.predict(input_data)
 
     self.assertAllEqual([1, input_length, width], output_data.shape)
+
+  def test_separate_qkv(self, transformer_cls):
+    test_layer = transformer_cls(
+        num_attention_heads=2,
+        inner_dim=128,
+        inner_activation='relu',
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02))
+    # Forward path.
+    q_tensor = tf.zeros([2, 4, 16], dtype=tf.float32)
+    kv_tensor = tf.zeros([2, 8, 16], dtype=tf.float32)
+    dummy_mask = tf.zeros([2, 4, 8], dtype=tf.float32)
+    inputs = [q_tensor, kv_tensor, dummy_mask]
+    output = test_layer(inputs)
+    self.assertEqual(output.shape, q_tensor.shape)
 
 
 @keras_parameterized.run_all_keras_modes
