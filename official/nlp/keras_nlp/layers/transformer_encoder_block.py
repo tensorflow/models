@@ -85,7 +85,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         kernel.
       **kwargs: keyword arguments/
     """
-    super(TransformerEncoderBlock, self).__init__(**kwargs)
+    super().__init__(**kwargs)
 
     self._num_heads = num_attention_heads
     self._inner_dim = inner_dim
@@ -111,23 +111,18 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       self._attention_initializer = self._kernel_initializer
 
   def build(self, input_shape):
-    input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
-    input_tensor_shape = tf.TensorShape(input_tensor)
+    if isinstance(input_shape, tf.TensorShape):
+      input_tensor_shape = input_shape
+    elif isinstance(input_shape, (list, tuple)):
+      input_tensor_shape = tf.TensorShape(input_shape[0])
+    else:
+      raise ValueError(
+          "The type of input shape argument is not supported, got: %s" %
+          type(input_shape))
     if len(input_tensor_shape.as_list()) != 3:
       raise ValueError("TransformerEncoderBlock expects a three-dimensional "
                        "input of shape [batch, sequence, width].")
-    batch_size, sequence_length, hidden_size = input_tensor_shape
-
-    if len(input_shape) == 2:
-      mask_tensor_shape = tf.TensorShape(input_shape[1])
-      expected_mask_tensor_shape = tf.TensorShape(
-          [batch_size, sequence_length, sequence_length])
-      if not expected_mask_tensor_shape.is_compatible_with(mask_tensor_shape):
-        raise ValueError("When passing a mask tensor to "
-                         "TransformerEncoderBlock, the mask tensor must be of "
-                         "shape [batch, sequence_length, sequence_length] "
-                         "(here %s). Got a mask tensor of shape %s." %
-                         (expected_mask_tensor_shape, mask_tensor_shape))
+    hidden_size = input_tensor_shape[-1]
     if hidden_size % self._num_heads != 0:
       raise ValueError(
           "The input size (%d) is not a multiple of the number of attention "
@@ -234,15 +229,38 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     return dict(list(base_config.items()) + list(config.items()))
 
   def call(self, inputs):
-    if isinstance(inputs, (list, tuple)) and len(inputs) == 2:
-      input_tensor, attention_mask = inputs
+    """Transformer self-attention encoder block call.
+
+    Args:
+      inputs: a single tensor or a list of tensors.
+        `input tensor` as the single sequence of embeddings.
+        [`input tensor`, `attention mask`] to have the additional attention
+          mask.
+        [`query tensor`, `key value tensor`, `attention mask`] to have separate
+          input streams for the query, and key/value to the multi-head
+          attention.
+
+    Returns:
+      An ouput tensor with the same dimensions as input/query tensor.
+    """
+    if isinstance(inputs, (list, tuple)):
+      if len(inputs) == 2:
+        input_tensor, attention_mask = inputs
+        key_value = None
+      elif len(inputs) == 3:
+        input_tensor, key_value, attention_mask = inputs
+      else:
+        raise ValueError("Unexpected inputs to %s with length at %d" %
+                         (self.__class__, len(inputs)))
     else:
-      input_tensor, attention_mask = (inputs, None)
+      input_tensor, key_value, attention_mask = (inputs, None, None)
 
     if self._output_range:
       if self._norm_first:
         source_tensor = input_tensor[:, 0:self._output_range, :]
         input_tensor = self._attention_layer_norm(input_tensor)
+        if key_value is not None:
+          key_value = self._attention_layer_norm(key_value)
       target_tensor = input_tensor[:, 0:self._output_range, :]
       if attention_mask is not None:
         attention_mask = attention_mask[:, 0:self._output_range, :]
@@ -250,10 +268,14 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
       if self._norm_first:
         source_tensor = input_tensor
         input_tensor = self._attention_layer_norm(input_tensor)
+        if key_value is not None:
+          key_value = self._attention_layer_norm(key_value)
       target_tensor = input_tensor
 
+    if key_value is None:
+      key_value = input_tensor
     attention_output = self._attention_layer(
-        query=target_tensor, value=input_tensor, attention_mask=attention_mask)
+        query=target_tensor, value=key_value, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     if self._norm_first:
       attention_output = source_tensor + attention_output
