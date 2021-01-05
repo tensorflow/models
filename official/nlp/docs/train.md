@@ -1,21 +1,21 @@
 # Model Garden NLP Common Training Driver
 
-[train.py](train.py) is the common training driver that supports multiple
+[train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py) is the common training driver that supports multiple
 NLP tasks (e.g., pre-training, GLUE and SQuAD fine-tuning etc) and multiple
 models (e.g., BERT, ALBERT, MobileBERT etc).
 
 ## Experiment Configuration
 
-[train.py] is driven by configs defined by the [ExperimentConfig](../core/config_definitions.py)
+[train.py] is driven by configs defined by the [ExperimentConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py)
 including configurations for `task`, `trainer` and `runtime`. The pre-defined
-NLP related [ExperimentConfig](../core/config_definitions.py) can be found in
-[configs/experiment_configs.py](configs/experiment_configs.py).
+NLP related [ExperimentConfig](https://github.com/tensorflow/models/blob/master/official/core/config_definitions.py) can be found in
+[configs/experiment_configs.py](https://github.com/tensorflow/models/blob/master/official/nlp/configs/experiment_configs.py).
 
 ## Experiment Registry
 
-We use an [experiment registry](../core/exp_factory.py) to build a mapping
+We use an [experiment registry](https://github.com/tensorflow/models/blob/master/official/core/exp_factory.py) to build a mapping
 between experiment type to experiment configuration instance. For example,
-[configs/finetuning_experiments.py](configs/finetuning_experiments.py)
+[configs/finetuning_experiments.py](https://github.com/tensorflow/models/blob/master/official/nlp/configs/finetuning_experiments.py)
 registers `bert/sentence_prediction` and `bert/squad` experiments. User can use
 `--experiment` FLAG to invoke a registered experiment configuration,
 e.g., `--experiment=bert/sentence_prediction`.
@@ -39,7 +39,7 @@ In addition, experiment configuration can be further overriden by
 
 ## Run on Cloud TPUs
 
-Next, we will describe how to run the [train.py](train.py) on Cloud TPUs.
+Next, we will describe how to run the [train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py) on Cloud TPUs.
 
 ### Setup
 First, you need to create a `tf-nightly` TPU with
@@ -64,9 +64,9 @@ This example fine-tunes BERT-base from TF-Hub on the the Multi-Genre Natural
 Language Inference (MultiNLI) corpus using TPUs.
 
 Firstly, you can prepare the fine-tuning data using
-[`data/create_finetuning_data.py`](data/create_finetuning_data.py) script.
+[`data/create_finetuning_data.py`](https://github.com/tensorflow/models/blob/master/official/nlp/data/create_finetuning_data.py) script.
 Resulting training and evaluation datasets in `tf_record` format will be later
-passed to [train.py](train.py).
+passed to [train.py](https://github.com/tensorflow/models/blob/master/official/nlp/train.py).
 
 Then you can execute the following commands to start the training and evaluation
 job.
