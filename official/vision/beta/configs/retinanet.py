@@ -143,7 +143,7 @@ def retinanet() -> cfg.ExperimentConfig:
 
 
 COCO_INPUT_PATH_BASE = 'coco'
-COCO_TRIAN_EXAMPLES = 118287
+COCO_TRAIN_EXAMPLES = 118287
 COCO_VAL_EXAMPLES = 5000
 
 
@@ -152,7 +152,7 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
   """COCO object detection with RetinaNet."""
   train_batch_size = 256
   eval_batch_size = 8
-  steps_per_epoch = COCO_TRIAN_EXAMPLES // train_batch_size
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
 
   config = cfg.ExperimentConfig(
       runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
@@ -225,7 +225,7 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
   """COCO object detection with RetinaNet using SpineNet backbone."""
   train_batch_size = 256
   eval_batch_size = 8
-  steps_per_epoch = COCO_TRIAN_EXAMPLES // train_batch_size
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
   input_size = 640
 
   config = cfg.ExperimentConfig(
