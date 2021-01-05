@@ -17,7 +17,7 @@ def resize_crop_filter(image, boxes, default_width, default_height,
         Returns:
             images: a `Tensor` representing the augmented image.
             boxes: a `Tensor` representing the augmented boxes.
-        """                      
+        """
   with tf.name_scope("resize_crop_filter"):
     image = tf.image.resize(image, (target_width, target_height))
     image = tf.image.resize_with_crop_or_pad(image,
@@ -42,15 +42,15 @@ def resize_crop_filter(image, boxes, default_width, default_height,
 
 
 def random_translate(image, box, t):
-   """Randomly translate the image and boxes.
-        Args:
-            image: a `Tensor` representing the image.
-            box: a `Tensor` represeting the boxes.
-            t: an `int` representing the translation factor
-        Returns:
-            image: a `Tensor` representing the augmented image.
-            box: a `Tensor` representing the augmented boxes.
-        """   
+  """Randomly translate the image and boxes.
+  Args:
+      image: a `Tensor` representing the image.
+      box: a `Tensor` represeting the boxes.
+      t: an `int` representing the translation factor
+  Returns:
+      image: a `Tensor` representing the augmented image.
+      box: a `Tensor` representing the augmented boxes.
+  """
   t_x = tf.random.uniform(minval=-t, maxval=t, shape=(), dtype=tf.float32)
   t_y = tf.random.uniform(minval=-t, maxval=t, shape=(), dtype=tf.float32)
   box = translate_boxes(box, t_x, t_y)
@@ -60,13 +60,13 @@ def random_translate(image, box, t):
 
 def translate_boxes(box, translate_x, translate_y):
   """Randomly translate the boxes.
-        Args:
-            boxes: a `Tensor` represeitng the boxes.
-            translate_x: a `Tensor` represting the translation on the x-axis.
-            translate_y: a `Tensor` represting the translation on the y-axis.
-        Returns:
-            box: a `Tensor` representing the augmented boxes.
-        """   
+  Args:
+    boxes: a `Tensor` represeitng the boxes.
+    translate_x: a `Tensor` represting the translation on the x-axis.
+    translate_y: a `Tensor` represting the translation on the y-axis.
+  Returns:
+    box: a `Tensor` representing the augmented boxes.
+  """
   with tf.name_scope("translate_boxs"):
     x = box[..., 0] + translate_x
     y = box[..., 1] + translate_y
@@ -83,7 +83,7 @@ def translate_image(image, translate_x, translate_y):
             translate_y: a `Tensor` represting the translation on the y-axis.
         Returns:
             box: a `Tensor` representing the augmented boxes.
-        """   
+        """
   with tf.name_scope("translate_image"):
     if (translate_x != 0 and translate_y != 0):
       image_jitter = tf.convert_to_tensor([translate_x, translate_y])

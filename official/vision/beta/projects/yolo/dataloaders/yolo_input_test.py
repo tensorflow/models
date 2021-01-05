@@ -84,6 +84,5 @@ if __name__ == "__main__":
     i = tf.image.draw_bounding_boxes(i, boxes, [[1.0, 0.0, 1.0]])
     plt.imshow(i[0].numpy())
     plt.show()
-
     if l > 10:
       break
