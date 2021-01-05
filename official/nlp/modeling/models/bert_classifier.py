@@ -36,7 +36,7 @@ class BertClassifier(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.

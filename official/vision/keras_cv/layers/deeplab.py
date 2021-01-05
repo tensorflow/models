@@ -42,7 +42,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       **kwargs):
     """Initializes `SpatialPyramidPooling`.
 
-    Arguments:
+    Args:
       output_channels: Number of channels produced by SpatialPyramidPooling.
       dilation_rates: A list of integers for parallel dilated conv.
       pool_kernel_size: A list of integers or None. If None, global average

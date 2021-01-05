@@ -48,7 +48,7 @@ class PerClassIoU(tf.keras.metrics.Metric):
   def __init__(self, num_classes, name=None, dtype=None):
     """Initializes `PerClassIoU`.
 
-    Arguments:
+    Args:
       num_classes: The possible number of labels the prediction task can have.
         This value must be provided, since a confusion matrix of dimension =
         [num_classes, num_classes] will be allocated.

@@ -31,7 +31,7 @@ class TNTransformerExpandCondense(tf.keras.layers.Layer):
   tensor network layer replacing the usual intermediate and output Dense
   layers.
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.

@@ -19,7 +19,6 @@ The base trainer implements the Orbit `StandardTrainable` and
 `StandardEvaluable` interfaces. Trainers inside this project should be
 interchangable and independent on model architectures and tasks.
 """
-from typing import Optional
 
 from absl import logging
 import gin
@@ -28,35 +27,9 @@ import tensorflow as tf
 
 from official.core import base_task
 from official.core import config_definitions
-from official.modeling import optimization
-from official.modeling import performance
 
 ExperimentConfig = config_definitions.ExperimentConfig
 TrainerConfig = config_definitions.TrainerConfig
-RuntimeConfig = config_definitions.RuntimeConfig
-
-
-def create_optimizer(trainer_config: TrainerConfig,
-                     runtime_config: Optional[RuntimeConfig] = None):
-  """Creates an TF optimizer from configurations.
-
-  Args:
-    trainer_config: the parameters of the trainer.
-    runtime_config: the parameters of the runtime.
-
-  Returns:
-    A tf.optimizers.Optimizer object.
-  """
-  opt_factory = optimization.OptimizerFactory(trainer_config.optimizer_config)
-  optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
-  # Configuring optimizer when loss_scale is set in runtime config. This helps
-  # avoiding overflow/underflow for float16 computations.
-  if runtime_config and runtime_config.loss_scale:
-    optimizer = performance.configure_optimizer(
-        optimizer,
-        use_float16=runtime_config.mixed_precision_dtype == "float16",
-        loss_scale=runtime_config.loss_scale)
-  return optimizer
 
 
 class Recovery:
@@ -328,7 +301,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     def step_fn(inputs):
       logs = self.task.validation_step(
           inputs, model=self.model, metrics=self.validation_metrics)
-      self._validation_loss.update_state(logs[self.task.loss])
+      if self.task.loss in logs:
+        self._validation_loss.update_state(logs[self.task.loss])
       return logs
 
     distributed_outputs = self.strategy.run(step_fn, args=(next(iterator),))
@@ -338,8 +312,14 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
   def eval_end(self, aggregated_logs=None):
     """Processes evaluation results."""
     logs = {}
-    for metric in self.validation_metrics + [self.validation_loss]:
+    for metric in self.validation_metrics:
       logs[metric.name] = metric.result()
+    if self.validation_loss.count.numpy() != 0:
+      logs[self.validation_loss.name] = self.validation_loss.result()
+    else:
+      # `self.validation_loss` metric was not updated, because the validation
+      # loss was not returned from the task's `validation_step` method.
+      logging.info("The task did not report validation loss.")
     if aggregated_logs:
       metrics = self.task.reduce_aggregated_logs(aggregated_logs)
       logs.update(metrics)

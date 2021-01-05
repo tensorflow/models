@@ -40,6 +40,8 @@ class DilatedResNet(hyperparams.Config):
   multigrid: Optional[List[int]] = None
   stem_type: str = 'v0'
   last_stage_repeats: int = 1
+  se_ratio: float = 0.0
+  stochastic_depth_drop_rate: float = 0.0
 
 
 @dataclasses.dataclass

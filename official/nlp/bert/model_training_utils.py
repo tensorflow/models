@@ -132,7 +132,7 @@ def run_customized_training_loop(
     allreduce_bytes_per_pack=0):
   """Run BERT pretrain model training using low-level API.
 
-  Arguments:
+  Args:
       _sentinel: Used to prevent positional parameters. Internal, do not use.
       strategy: Distribution strategy on which to run low level training loop.
       model_fn: Function that returns a tuple (model, sub_model). Caller of this
@@ -283,8 +283,8 @@ def run_customized_training_loop(
       logging.info(
           'Checkpoint file %s found and restoring from '
           'initial checkpoint for core model.', init_checkpoint)
-      checkpoint = tf.train.Checkpoint(model=sub_model)
-      checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
+      checkpoint = tf.train.Checkpoint(model=sub_model, encoder=sub_model)
+      checkpoint.read(init_checkpoint).assert_existing_objects_matched()
       logging.info('Loading from checkpoint file completed')
 
     train_loss_metric = tf.keras.metrics.Mean('training_loss', dtype=tf.float32)

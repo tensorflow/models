@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """AbstractTrainer/Evaluator subclasses with added functionality.
 
 The classes in this module provide some additional structure to the bare
@@ -50,12 +50,12 @@ class StandardTrainerOptions:
   """Advanced options for `orbit.StandardTrainer`.
 
   Attributes:
-    use_tf_while_loop: A boolean indicating whether to run the training loop
-      using a `tf.while_loop`. If `True`, `use_tf_function` must also be `True`.
     use_tf_function: A boolean indicating whether to apply `tf.function` to the
       training loop. This will only affect the body of the loop (involving
       `train_step`); `train_loop_begin` and `train_loop_end` will always be run
       in eager mode.
+    use_tf_while_loop: A boolean indicating whether to run the training loop
+      using a `tf.while_loop`. If `True`, `use_tf_function` must also be `True`.
     use_tpu_summary_optimization: A boolean indicating whether to enable a
       performance optimization for summaries in TPUs. Writing summaries
       conditionally with outside compilation on TPUs can be extremely slow. If
@@ -63,8 +63,8 @@ class StandardTrainerOptions:
       (one with summary calls, and one without). The program with summaries runs
       only for one step when summaries should be recorded.
   """
-  use_tf_while_loop: bool = True
   use_tf_function: bool = True
+  use_tf_while_loop: bool = True
   use_tpu_summary_optimization: bool = False
 
 
@@ -215,14 +215,30 @@ class StandardEvaluatorOptions:
       training loop. This will only affect the body of the loop (involving
       `train_step`); `train_loop_begin` and `train_loop_end` will always be run
       in eager mode.
+    use_tf_while_loop: A boolean indicating whether to run the training loop
+      using a `tf.while_loop`. If `True`, `use_tf_function` must also be `True`.
   """
   use_tf_function: bool = True
+  use_tf_while_loop: bool = False
 
 
-def _create_eval_loop_fn(eval_step_fn, options: StandardEvaluatorOptions):
-  if options.use_tf_function:
-    eval_step_fn = tf.function(eval_step_fn)
-  return loop_fns.create_loop_fn(eval_step_fn)
+def _create_eval_loop_fn(eval_step_fn, has_state: bool,
+                         options: StandardEvaluatorOptions):
+  """Create evaluation loop function."""
+  if options.use_tf_while_loop:
+    # TODO(b/176126742): tf.while_loop doesn't support `None` as a loop input
+    # even when it is not used inside the loop. To workaround this limitation,
+    # we have to build two tf.functions for it.
+    if has_state:
+      loop_fn = loop_fns.create_tf_while_loop_fn_with_state(eval_step_fn)
+    else:
+      loop_fn = loop_fns.create_tf_while_loop_fn(eval_step_fn)
+    loop_fn = tf.function(loop_fn)
+  else:
+    if options.use_tf_function:
+      eval_step_fn = tf.function(eval_step_fn)
+    loop_fn = loop_fns.create_loop_fn(eval_step_fn)
+  return loop_fn
 
 
 class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
@@ -254,7 +270,12 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
         `DistributedDataset`.
       options: An `orbit.StandardEvaluatorOptions` instance.
     """
-    self._eval_options = options or StandardEvaluatorOptions()
+    options = options or StandardEvaluatorOptions()
+    if options.use_tf_while_loop and not options.use_tf_function:
+      raise ValueError("`use_tf_while_loop=True` and `use_tf_function=False` "
+                       "is not supported")
+
+    self._eval_options = options
     self._eval_dataset = eval_dataset
     self._eval_loop_fn = None
 
@@ -268,16 +289,28 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
 
     Returns:
       The output of `self.eval_end()`.
+
+    Raises:
+      ValueError: If `options.use_tf_while_loop` is `True` and `num_steps` is
+        unspecified.
     """
+    if self._eval_options.use_tf_while_loop and num_steps == -1:
+      raise ValueError("Looping until exhausted is not supported if "
+                       "`options.use_tf_while_loop` is `True`")
+
     outputs = self.eval_begin()  # pylint: disable=assignment-from-no-return
 
+    has_state = outputs is not None
     if self._eval_loop_fn is None:
       self._eval_loop_fn = _create_eval_loop_fn(
-          self.eval_step, options=self._eval_options)
+          self.eval_step, has_state=has_state, options=self._eval_options)
 
     eval_iter = tf.nest.map_structure(iter, self.eval_dataset)
-    outputs = self._eval_loop_fn(
-        eval_iter, num_steps, state=outputs, reduce_fn=self.eval_reduce)
+    if self._eval_options.use_tf_while_loop and not has_state:
+      self._eval_loop_fn(eval_iter, num_steps)
+    else:
+      outputs = self._eval_loop_fn(
+          eval_iter, num_steps, state=outputs, reduce_fn=self.eval_reduce)
 
     if outputs is None:
       return self.eval_end()

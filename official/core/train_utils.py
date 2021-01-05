@@ -43,7 +43,7 @@ class BestCheckpointExporter:
   def __init__(self, export_dir: str, metric_name: str, metric_comp: str):
     """Initialization.
 
-    Arguments:
+    Args:
       export_dir: The directory that will contain exported checkpoints.
       metric_name: Indicates which metric to look at, when determining which
         result is better.
@@ -134,7 +134,7 @@ def create_trainer(params: config_definitions.ExperimentConfig,
   """Create trainer."""
   logging.info('Running default trainer.')
   model = task.build_model()
-  optimizer = base_trainer.create_optimizer(params.trainer, params.runtime)
+  optimizer = task.create_optimizer(params.trainer, params.runtime)
   return trainer_cls(
       params,
       task,

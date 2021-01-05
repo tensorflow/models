@@ -220,8 +220,8 @@ def run_keras_compile_fit(model_dir,
     optimizer = bert_model.optimizer
 
     if init_checkpoint:
-      checkpoint = tf.train.Checkpoint(model=sub_model)
-      checkpoint.restore(init_checkpoint).assert_existing_objects_matched()
+      checkpoint = tf.train.Checkpoint(model=sub_model, encoder=sub_model)
+      checkpoint.read(init_checkpoint).assert_existing_objects_matched()
 
     if not isinstance(metric_fn, (list, tuple)):
       metric_fn = [metric_fn]
