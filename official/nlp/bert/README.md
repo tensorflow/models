@@ -2,7 +2,7 @@
 
 **WARNING**: We are on the way to deprecate most of the code in this directory.
 Please see
-[this link](https://github.com/tensorflow/models/blob/master/official/nlp/train.md)
+[this link](https://github.com/tensorflow/models/blob/master/official/nlp/docs/train.md)
 for the new tutorial.
 
 The academic paper which describes BERT in detail and provides full results on a
