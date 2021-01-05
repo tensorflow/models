@@ -7,7 +7,7 @@ into (image, labels) tuple for RetinaNet.
 import tensorflow as tf
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import box_ops, preprocess_ops
-from official.vision.beta.projects.yolo.dataloaders import preprocessing_ops
+from official.vision.beta.ops import preprocessing_ops
 from official.vision.beta.projects.yolo.utils import box_ops as box_utils
 
 
