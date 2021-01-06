@@ -53,6 +53,13 @@ task:
     shuffle_buffer_size: 1024
   validation_data:
     name: kinetics400
+    feature_shape: !!python/tuple
+    - 8
+    - 256
+    - 256
+    - 3
+    temporal_stride: 8
+    num_test_clips: 1
     global_batch_size: 32
     dtype: 'bfloat16'
     drop_remainder: false
