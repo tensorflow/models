@@ -33,6 +33,8 @@ from official.vision.beta.configs import decoders
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
   output_size: List[int] = dataclasses.field(default_factory=list)
+  # If train_on_crops is set to True, a patch of size output_size is cropped
+  # from the input image.
   train_on_crops: bool = False
   input_path: str = ''
   global_batch_size: int = 0
@@ -40,12 +42,16 @@ class DataConfig(cfg.DataConfig):
   dtype: str = 'float32'
   shuffle_buffer_size: int = 1000
   cycle_length: int = 10
+  # If resize_eval_groundtruth is set to False, original image sizes are used
+  # for eval. In that case, groundtruth_padded_size has to be specified too to
+  # allow for batching the variable input sizes of images.
   resize_eval_groundtruth: bool = True
   groundtruth_padded_size: List[int] = dataclasses.field(default_factory=list)
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
   aug_rand_hflip: bool = True
   drop_remainder: bool = True
+  file_type: str = 'tfrecod'  # tfrecord, or sstable
 
 
 @dataclasses.dataclass

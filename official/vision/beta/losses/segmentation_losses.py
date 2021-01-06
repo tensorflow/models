@@ -83,7 +83,7 @@ class SegmentationLoss:
       top_k_losses, _ = tf.math.top_k(
           cross_entropy_loss, k=top_k_pixels, sorted=True)
       normalizer = tf.reduce_sum(
-          tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32) + EPSILON)
+          tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32)) + EPSILON
       loss = tf.reduce_sum(top_k_losses) / normalizer
 
     return loss

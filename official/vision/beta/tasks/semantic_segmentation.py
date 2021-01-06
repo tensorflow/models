@@ -23,6 +23,7 @@ from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.configs import semantic_segmentation as exp_cfg
 from official.vision.beta.dataloaders import segmentation_input
+from official.vision.beta.dataloaders import dataset_fn
 from official.vision.beta.evaluation import segmentation_metrics
 from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.modeling import factory
@@ -97,7 +98,7 @@ class SemanticSegmentationTask(base_task.Task):
 
     reader = input_reader.InputReader(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
 
