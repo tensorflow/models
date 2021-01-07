@@ -94,13 +94,19 @@ flags.DEFINE_string('output_directory', None, 'Path to write outputs.')
 flags.DEFINE_string(
     'config_override', '', 'pipeline_pb2.TrainEvalPipelineConfig '
     'text proto to override pipeline_config_path.')
-# SSD-specific flags
-flags.DEFINE_integer('ssd_max_detections', 10,
+flags.DEFINE_integer('max_detections', 10,
                      'Maximum number of detections (boxes) to return.')
+# SSD-specific flags
 flags.DEFINE_bool(
     'ssd_use_regular_nms', False,
     'Flag to set postprocessing op to use Regular NMS instead of Fast NMS '
     '(Default false).')
+# CenterNet-specific flags
+flags.DEFINE_bool(
+    'centernet_include_keypoints', False,
+    'Whether to export the predicted keypoint tensors. Only CenterNet model'
+    ' supports this flag.'
+)
 
 
 def main(argv):
@@ -115,11 +121,10 @@ def main(argv):
     text_format.Parse(f.read(), pipeline_config)
   text_format.Parse(FLAGS.config_override, pipeline_config)
 
-  export_tflite_graph_lib_tf2.export_tflite_model(pipeline_config,
-                                                  FLAGS.trained_checkpoint_dir,
-                                                  FLAGS.output_directory,
-                                                  FLAGS.ssd_max_detections,
-                                                  FLAGS.ssd_use_regular_nms)
+  export_tflite_graph_lib_tf2.export_tflite_model(
+      pipeline_config, FLAGS.trained_checkpoint_dir, FLAGS.output_directory,
+      FLAGS.max_detections, FLAGS.ssd_use_regular_nms,
+      FLAGS.centernet_include_keypoints)
 
 
 if __name__ == '__main__':
