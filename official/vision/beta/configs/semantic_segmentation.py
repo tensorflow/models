@@ -407,7 +407,8 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
               decoder=decoders.Decoder(
                   type='aspp',
                   aspp=decoders.ASPP(
-                      level=level, dilation_rates=aspp_dilation_rates)),
+                      level=level, dilation_rates=aspp_dilation_rates,
+                      pool_kernel_size=[512, 1024])),
               head=SegmentationHead(
                   level=level,
                   num_convs=2,
@@ -423,7 +424,7 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
           train_data=DataConfig(
               input_path=os.path.join(CITYSCAPES_INPUT_PATH_BASE,
                                       'train_fine**'),
-              output_size=[1024, 2048],
+              output_size=[512, 1024],
               train_on_crops=True,
               is_training=True,
               global_batch_size=train_batch_size,
