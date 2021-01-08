@@ -192,6 +192,7 @@ class TrainerConfig(base_config.Config):
   train_tf_while_loop: bool = True
   train_tf_function: bool = True
   eval_tf_function: bool = True
+  eval_tf_while_loop: bool = False
   allow_tpu_summary: bool = False
   # Trainer intervals.
   steps_per_loop: int = 1000

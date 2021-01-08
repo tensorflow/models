@@ -161,7 +161,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
           self,
           eval_dataset,
           options=orbit.StandardEvaluatorOptions(
-              use_tf_function=config.trainer.eval_tf_function))
+              use_tf_function=config.trainer.eval_tf_function,
+              use_tf_while_loop=config.trainer.eval_tf_while_loop))
 
   def _validate_params(self, config):
     r"""Validates if the configuration object passed to the Trainer.
