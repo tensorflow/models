@@ -4,6 +4,9 @@ runtime:
   mixed_precision_dtype: 'bfloat16'
 task:
   model:
+    dropout_rate: 0.5
+    norm_activation:
+      use_sync_bn: false
     backbone:
       resnet_3d:
         block_specs: !!python/tuple
@@ -39,7 +42,6 @@ task:
         stem_conv_temporal_kernel_size: 1
         stem_conv_temporal_stride: 1
         stem_pool_temporal_stride: 1
-    dropout_rate: 0.5
   train_data:
     name: kinetics400
     feature_shape: !!python/tuple

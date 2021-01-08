@@ -85,7 +85,8 @@ class VideoClassificationModel(hyperparams.Config):
   model_type: str = 'video_classification'
   backbone: backbones_3d.Backbone3D = backbones_3d.Backbone3D(
       type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50())
-  norm_activation: common.NormActivation = common.NormActivation()
+  norm_activation: common.NormActivation = common.NormActivation(
+      use_sync_bn=False)
   dropout_rate: float = 0.2
   aggregate_endpoints: bool = False
 
@@ -181,7 +182,7 @@ def video_classification_kinetics400() -> cfg.ExperimentConfig:
           backbone=backbones_3d.Backbone3D(
               type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
           norm_activation=common.NormActivation(
-              norm_momentum=0.9, norm_epsilon=1e-5)),
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
       losses=Losses(l2_weight_decay=1e-4),
       train_data=train_dataset,
       validation_data=validation_dataset)
@@ -207,7 +208,7 @@ def video_classification_kinetics600() -> cfg.ExperimentConfig:
           backbone=backbones_3d.Backbone3D(
               type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
           norm_activation=common.NormActivation(
-              norm_momentum=0.9, norm_epsilon=1e-5)),
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
       losses=Losses(l2_weight_decay=1e-4),
       train_data=train_dataset,
       validation_data=validation_dataset)
