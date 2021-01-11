@@ -36,11 +36,12 @@ from delf.python.training.model import export_model_utils
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('ckpt_path', '/tmp/delf-logdir/delf-weights',
-                    'Path to saved checkpoint.')
+flags.DEFINE_string(
+    'ckpt_path', '/tmp/delf-logdir/delf-weights', 'Path to saved checkpoint.')
 flags.DEFINE_string('export_path', None, 'Path where model will be exported.')
-flags.DEFINE_boolean('delg_global_features', True,
-                     'Whether the model uses a DELG-like global feature head.')
+flags.DEFINE_boolean(
+    'delg_global_features', True,
+    'Whether the model uses a DELG-like global feature head.')
 flags.DEFINE_float(
     'delg_gem_power', 3.0,
     'Power for Generalized Mean pooling. Used only if --delg_global_features'
@@ -52,8 +53,20 @@ flags.DEFINE_integer(
 flags.DEFINE_boolean(
     'block3_strides', True,
     'Whether to apply strides after block3, used for local feature head.')
-flags.DEFINE_float('iou', 1.0,
-                   'IOU for non-max suppression used in local feature head.')
+flags.DEFINE_float(
+    'iou', 1.0, 'IOU for non-max suppression used in local feature head.')
+flags.DEFINE_boolean(
+    'use_autoencoder', True,
+    'Whether the exported model should use an autoencoder.')
+flags.DEFINE_float(
+    'autoencoder_dimensions', 128,
+    'Number of dimensions of the autoencoder. Used only if'
+    'use_autoencoder=True.')
+flags.DEFINE_float(
+    'local_feature_map_channels', 1024,
+    'Number of channels at backbone layer used for local feature extraction. '
+    'Default value 1024 is the number of channels of block3. Used only if'
+    'use_autoencoder=True.')
 
 
 class _ExtractModule(tf.Module):
@@ -86,9 +99,17 @@ class _ExtractModule(tf.Module):
           block3_strides=block3_strides,
           name='DELG',
           gem_power=delg_gem_power,
-          embedding_layer_dim=delg_embedding_layer_dim)
+          embedding_layer_dim=delg_embedding_layer_dim,
+          use_dim_reduction=FLAGS.use_autoencoder,
+          reduced_dimension=FLAGS.autoencoder_dimensions,
+          dim_expand_channels=FLAGS.local_feature_map_channels)
     else:
-      self._model = delf_model.Delf(block3_strides=block3_strides, name='DELF')
+      self._model = delf_model.Delf(
+          block3_strides=block3_strides,
+          name='DELF',
+          use_dim_reduction=FLAGS.use_autoencoder,
+          reduced_dimension=FLAGS.autoencoder_dimensions,
+          dim_expand_channels=FLAGS.local_feature_map_channels)
 
   def LoadWeights(self, checkpoint_path):
     self._model.load_weights(checkpoint_path)

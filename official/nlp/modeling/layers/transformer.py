@@ -31,7 +31,7 @@ class Transformer(keras_nlp.layers.TransformerEncoderBlock):
   This layer implements the Transformer from "Attention Is All You Need".
   (https://arxiv.org/abs/1706.03762).
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
@@ -77,7 +77,7 @@ class Transformer(keras_nlp.layers.TransformerEncoderBlock):
                intermediate_dropout=0.0,
                attention_initializer=None,
                **kwargs):
-    super(Transformer, self).__init__(
+    super().__init__(
         num_attention_heads=num_attention_heads,
         inner_dim=intermediate_size,
         inner_activation=intermediate_activation,
@@ -105,7 +105,7 @@ class CompiledTransformer(Transformer):
 
   @tf_function_if_eager(experimental_compile=True)
   def call(self, inputs):
-    return super(CompiledTransformer, self).call(inputs)
+    return super().call(inputs)
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -117,7 +117,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
   (2) a encoder-decoder attention.
   (3) a positionwise fully connected feed-forward network.
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.

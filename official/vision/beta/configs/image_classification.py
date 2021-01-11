@@ -15,7 +15,7 @@
 # ==============================================================================
 """Image classification configuration definition."""
 import os
-from typing import List
+from typing import List, Optional
 import dataclasses
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -34,16 +34,19 @@ class DataConfig(cfg.DataConfig):
   dtype: str = 'float32'
   shuffle_buffer_size: int = 10000
   cycle_length: int = 10
+  aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
 
 
 @dataclasses.dataclass
 class ImageClassificationModel(hyperparams.Config):
+  """The model config."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
   backbone: backbones.Backbone = backbones.Backbone(
       type='resnet', resnet=backbones.ResNet())
   dropout_rate: float = 0.0
-  norm_activation: common.NormActivation = common.NormActivation()
+  norm_activation: common.NormActivation = common.NormActivation(
+      use_sync_bn=False)
   # Adds a BatchNormalization layer pre-GlobalAveragePooling in classification
   add_head_batch_norm: bool = False
 
@@ -56,13 +59,20 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Evaluation(hyperparams.Config):
+  top_k: int = 5
+
+
+@dataclasses.dataclass
 class ImageClassificationTask(cfg.TaskConfig):
-  """The model config."""
+  """The task config."""
   model: ImageClassificationModel = ImageClassificationModel()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
-  gradient_clip_norm: float = 0.0
+  evaluation: Evaluation = Evaluation()
+  init_checkpoint: Optional[str] = None
+  init_checkpoint_modules: str = 'all'  # all or backbone
 
 
 @exp_factory.register_config_factory('image_classification')
@@ -96,7 +106,7 @@ def image_classification_imagenet() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='resnet', resnet=backbones.ResNet(model_id=50)),
               norm_activation=common.NormActivation(
-                  norm_momentum=0.9, norm_epsilon=1e-5)),
+                  norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
           losses=Losses(l2_weight_decay=1e-4),
           train_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
@@ -166,7 +176,7 @@ def image_classification_imagenet_revnet() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='revnet', revnet=backbones.RevNet(model_id=56)),
               norm_activation=common.NormActivation(
-                  norm_momentum=0.9, norm_epsilon=1e-5),
+                  norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False),
               add_head_batch_norm=True),
           losses=Losses(l2_weight_decay=1e-4),
           train_data=DataConfig(
@@ -234,7 +244,7 @@ def image_classification_imagenet_mobilenet() -> cfg.ExperimentConfig:
                   mobilenet=backbones.MobileNet(
                       model_id='MobileNetV2', filter_size_scale=1.0)),
               norm_activation=common.NormActivation(
-                  norm_momentum=0.997, norm_epsilon=1e-3)),
+                  norm_momentum=0.997, norm_epsilon=1e-3, use_sync_bn=False)),
           losses=Losses(l2_weight_decay=1e-5, label_smoothing=0.1),
           train_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),

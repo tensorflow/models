@@ -15,6 +15,7 @@
 
 """Tests for object_detection.predictors.heads.class_head."""
 import unittest
+import numpy as np
 import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
@@ -193,6 +194,37 @@ class WeightSharedConvolutionalClassPredictorTest(test_case.TestCase):
           var.op.name for var in g.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
       ])
       self.assertSetEqual(expected_var_names, actual_variable_set)
+
+  def test_softmax_score_converter(self):
+    num_class_slots = 10
+    batch_size = 2
+    height = 17
+    width = 19
+    num_predictions_per_location = 2
+    assert num_predictions_per_location != 1
+
+    def graph_fn():
+      class_prediction_head = (
+          class_head.WeightSharedConvolutionalClassHead(
+              num_class_slots=num_class_slots,
+              score_converter_fn=tf.nn.softmax))
+      image_feature = tf.random_uniform([batch_size, height, width, 1024],
+                                        minval=-10.0,
+                                        maxval=10.0,
+                                        dtype=tf.float32)
+      class_predictions = class_prediction_head.predict(
+          features=image_feature,
+          num_predictions_per_location=num_predictions_per_location)
+      return class_predictions
+
+    class_predictions_out = self.execute(graph_fn, [])
+    class_predictions_sum = np.sum(class_predictions_out, axis=-1)
+    num_anchors = height * width * num_predictions_per_location
+    exp_class_predictions_sum = np.ones((batch_size, num_anchors),
+                                        dtype=np.float32)
+    self.assertAllEqual((batch_size, num_anchors, num_class_slots),
+                        class_predictions_out.shape)
+    self.assertAllClose(class_predictions_sum, exp_class_predictions_sum)
 
 
 if __name__ == '__main__':

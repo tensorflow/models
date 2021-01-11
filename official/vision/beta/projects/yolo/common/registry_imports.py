@@ -16,11 +16,6 @@
 
 # pylint: disable=unused-import
 from official.common import registry_imports
-
-from official.vision.beta.projects import yolo
-from official.vision.beta.projects.yolo.modeling.backbones import darknet
 from official.vision.beta.projects.yolo.configs import darknet_classification
-from official.vision.beta.projects.yolo.configs.darknet_classification import image_classification
-from official.vision.beta.projects.yolo.configs.darknet_classification import ImageClassificationTask
-
-from official.vision.beta.projects.yolo.tasks.image_classification import ImageClassificationTask
+from official.vision.beta.projects.yolo.modeling.backbones import darknet
+from official.vision.beta.projects.yolo.tasks import image_classification

@@ -577,6 +577,28 @@ class ReadDatasetTest(test_case.TestCase):
     self._assert_item_count(data, 2, 0.25)
     self._assert_item_count(data, 20, 0.25)
 
+  def test_read_dataset_sample_from_datasets_weights_non_normalized(self):
+    """Ensure that the values are equally-weighted when not normalized."""
+    config = input_reader_pb2.InputReader()
+    config.num_readers = 2
+    config.shuffle = False
+    # Values are not normalized to sum to 1. In this case, it's a 50/50 split
+    # with each dataset having weight of 1.
+    config.sample_from_datasets_weights.extend([1, 1])
+
+    def graph_fn():
+      return self._get_dataset_next(
+          [self._path_template % '0', self._path_template % '1'],
+          config,
+          batch_size=1000)
+
+    data = list(self.execute(graph_fn, []))
+    self.assertEqual(len(data), 1000)
+    self._assert_item_count(data, 1, 0.25)
+    self._assert_item_count(data, 10, 0.25)
+    self._assert_item_count(data, 2, 0.25)
+    self._assert_item_count(data, 20, 0.25)
+
   def test_read_dataset_sample_from_datasets_weights_zero_weight(self):
     """Ensure that the files' values are equally-weighted."""
     config = input_reader_pb2.InputReader()

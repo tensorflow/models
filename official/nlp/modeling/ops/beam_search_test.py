@@ -24,7 +24,7 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
 
   def test_expand_to_beam_size(self):
     x = tf.ones([7, 4, 2, 5])
-    x = beam_search._expand_to_beam_size(x, 3)
+    x = beam_search.expand_to_beam_size(x, 3)
     shape = tf.shape(x)
     self.assertAllEqual([7, 3, 4, 2, 5], shape)
 
@@ -36,7 +36,7 @@ class BeamSearchTests(tf.test.TestCase, parameterized.TestCase):
 
   def test_flatten_beam_dim(self):
     x = tf.ones([7, 4, 2, 5])
-    x = beam_search._flatten_beam_dim(x)
+    x = beam_search.flatten_beam_dim(x)
     self.assertAllEqual([28, 2, 5], tf.shape(x))
 
   def test_unflatten_beam_dim(self):

@@ -54,23 +54,6 @@ def _get_output_shape(output_rank, known_last_dims):
   return [None] * (output_rank - len(known_last_dims)) + list(known_last_dims)
 
 
-def _large_compatible_negative(tensor_type):
-  """Large negative number as Tensor.
-
-  This function is necessary because the standard value for epsilon
-  in this module (-1e9) cannot be represented using tf.float16
-
-  Args:
-    tensor_type: a dtype to determine the type.
-
-  Returns:
-    a large negative number.
-  """
-  if tensor_type == tf.float16:
-    return tf.float16.min
-  return -1e9
-
-
 def _rel_shift(x, klen=-1):
   """Performs relative shift to form the relative attention score."""
 
@@ -101,13 +84,8 @@ class MultiHeadRelativeAttention(tf.keras.layers.MultiHeadAttention):
   **Note: This layer is currently experimental.
 
   Attributes:
-    num_heads: The number of attention heads.
-    key_dim: Size of each attention head for query and key.
-    value_dim: Size of attention head for value.
-    dropout: Dropout probability for attention.
-    use_bias: Boolean, whether the dense layers use bias vectors/matrices.
-    kernel_initializer: Initializer for dense layer kernels.
-    bias_initializer: Initializer for dense layer biases.
+    kernel_initializer: The kernel initializer. Defaults to variance_scaling.
+
   Call args:
     query: Query `Tensor` of shape `[B, T, dim]`.
     value: Value `Tensor` of shape `[B, S, dim]`.
@@ -242,12 +220,8 @@ class MultiHeadRelativeAttention(tf.keras.layers.MultiHeadAttention):
     attention_scores = tf.multiply(
         attention_sum, 1.0 / math.sqrt(float(self._key_dim)))
 
-    # `attention_scores`: `[B, N, S, S + M]`
-    if attention_mask is not None:
-      attention_scores += (_large_compatible_negative(attention_scores.dtype)
-                           * attention_mask)
+    attention_scores = self._masked_softmax(attention_scores, attention_mask)
 
-    attention_scores = tf.nn.softmax(attention_scores, 3)
     attention_output = self._dropout_layer(attention_scores)
 
     attention_output = tf.einsum(self._combine_equation,

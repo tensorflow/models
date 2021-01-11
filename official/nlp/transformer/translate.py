@@ -14,10 +14,6 @@
 # ==============================================================================
 """Translate text or files using trained transformer model."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 # Import libraries
 from absl import logging
 import numpy as np

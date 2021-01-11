@@ -21,6 +21,7 @@ from __future__ import print_function
 import copy
 import os
 import time
+import numpy as np
 
 import tensorflow.compat.v1 as tf
 import tensorflow.compat.v2 as tf2
@@ -36,13 +37,6 @@ from object_detection.utils import label_map_util
 from object_detection.utils import ops
 from object_detection.utils import visualization_utils as vutils
 
-# pylint: disable=g-import-not-at-top
-try:
-  from tensorflow.contrib import tpu as contrib_tpu
-except ImportError:
-  # TF 2.0 doesn't ship with contrib.
-  pass
-# pylint: enable=g-import-not-at-top
 
 MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
 
@@ -426,6 +420,7 @@ def train_loop(
     checkpoint_every_n=1000,
     checkpoint_max_to_keep=7,
     record_summaries=True,
+    performance_summary_exporter=None,
     **kwargs):
   """Trains a model using eager + functions.
 
@@ -456,6 +451,7 @@ def train_loop(
     checkpoint_max_to_keep:
       int, the number of most recent checkpoints to keep in the model directory.
     record_summaries: Boolean, whether or not to record summaries.
+    performance_summary_exporter: function for exporting performance metrics.
     **kwargs: Additional keyword arguments for configuration override.
   """
   ## Parse the configs
@@ -465,6 +461,7 @@ def train_loop(
       'merge_external_params_with_configs']
   create_pipeline_proto_from_configs = MODEL_BUILD_UTIL_MAP[
       'create_pipeline_proto_from_configs']
+  steps_per_sec_list = []
 
   configs = get_configs_from_pipeline_file(
       pipeline_config_path, config_override=config_override)
@@ -640,10 +637,12 @@ def train_loop(
 
           time_taken = time.time() - last_step_time
           last_step_time = time.time()
+          steps_per_sec = num_steps_per_iteration * 1.0 / time_taken
 
           tf.compat.v2.summary.scalar(
-              'steps_per_sec', num_steps_per_iteration * 1.0 / time_taken,
-              step=global_step)
+              'steps_per_sec', steps_per_sec, step=global_step)
+
+          steps_per_sec_list.append(steps_per_sec)
 
           if global_step.value() - logged_step >= 100:
             tf.logging.info(
@@ -662,6 +661,115 @@ def train_loop(
   # training.
   clean_temporary_directories(strategy, manager_dir)
   clean_temporary_directories(strategy, summary_writer_filepath)
+  # TODO(pkanwar): add accuracy metrics.
+  if performance_summary_exporter is not None:
+    metrics = {
+        'steps_per_sec': np.mean(steps_per_sec_list),
+        'steps_per_sec_p50': np.median(steps_per_sec_list),
+        'steps_per_sec_max': max(steps_per_sec_list),
+    }
+    mixed_precision = 'bf16' if kwargs['use_bfloat16'] else 'fp32'
+    performance_summary_exporter(metrics, mixed_precision)
+
+
+def prepare_eval_dict(detections, groundtruth, features):
+  """Prepares eval dictionary containing detections and groundtruth.
+
+  Takes in `detections` from the model, `groundtruth` and `features` returned
+  from the eval tf.data.dataset and creates a dictionary of tensors suitable
+  for detection eval modules.
+
+  Args:
+    detections: A dictionary of tensors returned by `model.postprocess`.
+    groundtruth: `inputs.eval_input` returns an eval dataset of (features,
+      labels) tuple. `groundtruth` must be set to `labels`.
+      Please note that:
+        * fields.InputDataFields.groundtruth_classes must be 0-indexed and
+          in its 1-hot representation.
+        * fields.InputDataFields.groundtruth_verified_neg_classes must be
+          0-indexed and in its multi-hot repesentation.
+        * fields.InputDataFields.groundtruth_not_exhaustive_classes must be
+          0-indexed and in its multi-hot repesentation.
+        * fields.InputDataFields.groundtruth_labeled_classes must be
+          0-indexed and in its multi-hot repesentation.
+    features: `inputs.eval_input` returns an eval dataset of (features, labels)
+      tuple. This argument must be set to a dictionary containing the following
+      keys and their corresponding values from `features` --
+        * fields.InputDataFields.image
+        * fields.InputDataFields.original_image
+        * fields.InputDataFields.original_image_spatial_shape
+        * fields.InputDataFields.true_image_shape
+        * inputs.HASH_KEY
+
+  Returns:
+    eval_dict: A dictionary of tensors to pass to eval module.
+    class_agnostic: Whether to evaluate detection in class agnostic mode.
+  """
+
+  groundtruth_boxes = groundtruth[fields.InputDataFields.groundtruth_boxes]
+  groundtruth_boxes_shape = tf.shape(groundtruth_boxes)
+  # For class-agnostic models, groundtruth one-hot encodings collapse to all
+  # ones.
+  class_agnostic = (
+      fields.DetectionResultFields.detection_classes not in detections)
+  if class_agnostic:
+    groundtruth_classes_one_hot = tf.ones(
+        [groundtruth_boxes_shape[0], groundtruth_boxes_shape[1], 1])
+  else:
+    groundtruth_classes_one_hot = groundtruth[
+        fields.InputDataFields.groundtruth_classes]
+  label_id_offset = 1  # Applying label id offset (b/63711816)
+  groundtruth_classes = (
+      tf.argmax(groundtruth_classes_one_hot, axis=2) + label_id_offset)
+  groundtruth[fields.InputDataFields.groundtruth_classes] = groundtruth_classes
+
+  label_id_offset_paddings = tf.constant([[0, 0], [1, 0]])
+  if fields.InputDataFields.groundtruth_verified_neg_classes in groundtruth:
+    groundtruth[
+        fields.InputDataFields.groundtruth_verified_neg_classes] = tf.pad(
+            groundtruth[
+                fields.InputDataFields.groundtruth_verified_neg_classes],
+            label_id_offset_paddings)
+  if fields.InputDataFields.groundtruth_not_exhaustive_classes in groundtruth:
+    groundtruth[
+        fields.InputDataFields.groundtruth_not_exhaustive_classes] = tf.pad(
+            groundtruth[
+                fields.InputDataFields.groundtruth_not_exhaustive_classes],
+            label_id_offset_paddings)
+  if fields.InputDataFields.groundtruth_labeled_classes in groundtruth:
+    groundtruth[fields.InputDataFields.groundtruth_labeled_classes] = tf.pad(
+        groundtruth[fields.InputDataFields.groundtruth_labeled_classes],
+        label_id_offset_paddings)
+
+  use_original_images = fields.InputDataFields.original_image in features
+  if use_original_images:
+    eval_images = features[fields.InputDataFields.original_image]
+    true_image_shapes = features[fields.InputDataFields.true_image_shape][:, :3]
+    original_image_spatial_shapes = features[
+        fields.InputDataFields.original_image_spatial_shape]
+  else:
+    eval_images = features[fields.InputDataFields.image]
+    true_image_shapes = None
+    original_image_spatial_shapes = None
+
+  eval_dict = eval_util.result_dict_for_batched_example(
+      eval_images,
+      features[inputs.HASH_KEY],
+      detections,
+      groundtruth,
+      class_agnostic=class_agnostic,
+      scale_to_absolute=True,
+      original_image_spatial_shapes=original_image_spatial_shapes,
+      true_image_shapes=true_image_shapes)
+
+  return eval_dict, class_agnostic
+
+
+def concat_replica_results(tensor_dict):
+  new_tensor_dict = {}
+  for key, values in tensor_dict.items():
+    new_tensor_dict[key] = tf.concat(values, axis=0)
+  return new_tensor_dict
 
 
 def eager_eval_loop(
@@ -692,6 +800,7 @@ def eager_eval_loop(
   Returns:
     A dict of evaluation metrics representing the results of this evaluation.
   """
+  del postprocess_on_cpu
   train_config = configs['train_config']
   eval_input_config = configs['eval_input_config']
   eval_config = configs['eval_config']
@@ -703,6 +812,7 @@ def eager_eval_loop(
 
   evaluator_options = eval_util.evaluator_options_from_eval_config(
       eval_config)
+  batch_size = eval_config.batch_size
 
   class_agnostic_category_index = (
       label_map_util.create_class_agnostic_category_index())
@@ -731,55 +841,29 @@ def eager_eval_loop(
     # must be unpadded.
     boxes_shape = (
         labels[fields.InputDataFields.groundtruth_boxes].get_shape().as_list())
-    unpad_groundtruth_tensors = boxes_shape[1] is not None and not use_tpu
+    unpad_groundtruth_tensors = (boxes_shape[1] is not None
+                                 and not use_tpu
+                                 and batch_size == 1)
+    groundtruth_dict = labels
     labels = model_lib.unstack_batch(
         labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
     losses_dict, prediction_dict = _compute_losses_and_predictions_dicts(
         detection_model, features, labels, add_regularization_loss)
-
-    def postprocess_wrapper(args):
-      return detection_model.postprocess(args[0], args[1])
-
-    # TODO(kaftan): Depending on how postprocessing will work for TPUS w/
-    ## TPUStrategy, may be good to move wrapping to a utility method
-    if use_tpu and postprocess_on_cpu:
-      detections = contrib_tpu.outside_compilation(
-          postprocess_wrapper,
-          (prediction_dict, features[fields.InputDataFields.true_image_shape]))
-    else:
-      detections = postprocess_wrapper(
-          (prediction_dict, features[fields.InputDataFields.true_image_shape]))
-
-    class_agnostic = (
-        fields.DetectionResultFields.detection_classes not in detections)
-    # TODO(kaftan) (or anyone): move `_prepare_groundtruth_for_eval to eval_util
-    ## and call this from there.
-    groundtruth = model_lib._prepare_groundtruth_for_eval(  # pylint: disable=protected-access
-        detection_model, class_agnostic, eval_input_config.max_number_of_boxes)
-    use_original_images = fields.InputDataFields.original_image in features
-    if use_original_images:
-      eval_images = features[fields.InputDataFields.original_image]
-      true_image_shapes = tf.slice(
-          features[fields.InputDataFields.true_image_shape], [0, 0], [-1, 3])
-      original_image_spatial_shapes = features[
-          fields.InputDataFields.original_image_spatial_shape]
-    else:
-      eval_images = features[fields.InputDataFields.image]
-      true_image_shapes = None
-      original_image_spatial_shapes = None
-
-    eval_dict = eval_util.result_dict_for_batched_example(
-        eval_images,
-        features[inputs.HASH_KEY],
-        detections,
-        groundtruth,
-        class_agnostic=class_agnostic,
-        scale_to_absolute=True,
-        original_image_spatial_shapes=original_image_spatial_shapes,
-        true_image_shapes=true_image_shapes)
-
-    return eval_dict, losses_dict, class_agnostic
+    prediction_dict = detection_model.postprocess(
+        prediction_dict, features[fields.InputDataFields.true_image_shape])
+    eval_features = {
+        fields.InputDataFields.image:
+            features[fields.InputDataFields.image],
+        fields.InputDataFields.original_image:
+            features[fields.InputDataFields.original_image],
+        fields.InputDataFields.original_image_spatial_shape:
+            features[fields.InputDataFields.original_image_spatial_shape],
+        fields.InputDataFields.true_image_shape:
+            features[fields.InputDataFields.true_image_shape],
+        inputs.HASH_KEY: features[inputs.HASH_KEY],
+    }
+    return losses_dict, prediction_dict, groundtruth_dict, eval_features
 
   agnostic_categories = label_map_util.create_class_agnostic_category_index()
   per_class_categories = label_map_util.create_category_index_from_labelmap(
@@ -787,9 +871,31 @@ def eager_eval_loop(
   keypoint_edges = [
       (kp.start, kp.end) for kp in eval_config.keypoint_edge]
 
-  for i, (features, labels) in enumerate(eval_dataset):
-    eval_dict, losses_dict, class_agnostic = compute_eval_dict(features, labels)
+  strategy = tf.compat.v2.distribute.get_strategy()
 
+  for i, (features, labels) in enumerate(eval_dataset):
+    try:
+      (losses_dict, prediction_dict, groundtruth_dict,
+       eval_features) = strategy.run(
+           compute_eval_dict, args=(features, labels))
+    except:  # pylint:disable=bare-except
+      tf.logging.info('A replica probably exhausted all examples. Skipping '
+                      'pending examples on other replicas.')
+      break
+    (local_prediction_dict, local_groundtruth_dict,
+     local_eval_features) = tf.nest.map_structure(
+         strategy.experimental_local_results,
+         [prediction_dict, groundtruth_dict, eval_features])
+    local_prediction_dict = concat_replica_results(local_prediction_dict)
+    local_groundtruth_dict = concat_replica_results(local_groundtruth_dict)
+    local_eval_features = concat_replica_results(local_eval_features)
+
+    eval_dict, class_agnostic = prepare_eval_dict(local_prediction_dict,
+                                                  local_groundtruth_dict,
+                                                  local_eval_features)
+    for loss_key, loss_tensor in iter(losses_dict.items()):
+      losses_dict[loss_key] = strategy.reduce(tf.distribute.ReduceOp.MEAN,
+                                              loss_tensor, None)
     if class_agnostic:
       category_index = agnostic_categories
     else:
@@ -799,7 +905,7 @@ def eager_eval_loop(
       tf.logging.info('Finished eval step %d', i)
 
     use_original_images = fields.InputDataFields.original_image in features
-    if use_original_images and i < eval_config.num_visualizations:
+    if (use_original_images and i < eval_config.num_visualizations):
       sbys_image_list = vutils.draw_side_by_side_evaluation_image(
           eval_dict,
           category_index=category_index,
@@ -807,21 +913,21 @@ def eager_eval_loop(
           min_score_thresh=eval_config.min_score_threshold,
           use_normalized_coordinates=False,
           keypoint_edges=keypoint_edges or None)
-      sbys_images = tf.concat(sbys_image_list, axis=0)
-      tf.compat.v2.summary.image(
-          name='eval_side_by_side_' + str(i),
-          step=global_step,
-          data=sbys_images,
-          max_outputs=eval_config.num_visualizations)
+      for j, sbys_image in enumerate(sbys_image_list):
+        tf.compat.v2.summary.image(
+            name='eval_side_by_side_{}_{}'.format(i, j),
+            step=global_step,
+            data=sbys_image,
+            max_outputs=eval_config.num_visualizations)
       if eval_util.has_densepose(eval_dict):
         dp_image_list = vutils.draw_densepose_visualizations(
             eval_dict)
-        dp_images = tf.concat(dp_image_list, axis=0)
-        tf.compat.v2.summary.image(
-            name='densepose_detections_' + str(i),
-            step=global_step,
-            data=dp_images,
-            max_outputs=eval_config.num_visualizations)
+        for j, dp_image in enumerate(dp_image_list):
+          tf.compat.v2.summary.image(
+              name='densepose_detections_{}_{}'.format(i, j),
+              step=global_step,
+              data=dp_image,
+              max_outputs=eval_config.num_visualizations)
 
     if evaluators is None:
       if class_agnostic:
@@ -834,20 +940,15 @@ def eager_eval_loop(
 
     for loss_key, loss_tensor in iter(losses_dict.items()):
       if loss_key not in loss_metrics:
-        loss_metrics[loss_key] = tf.keras.metrics.Mean()
-      # Skip the loss with value equal or lower than 0.0 when calculating the
-      # average loss since they don't usually reflect the normal loss values
-      # causing spurious average loss value.
-      if loss_tensor <= 0.0:
-        continue
-      loss_metrics[loss_key].update_state(loss_tensor)
+        loss_metrics[loss_key] = []
+      loss_metrics[loss_key].append(loss_tensor)
 
   eval_metrics = {}
 
   for evaluator in evaluators:
     eval_metrics.update(evaluator.evaluate())
   for loss_key in loss_metrics:
-    eval_metrics[loss_key] = loss_metrics[loss_key].result()
+    eval_metrics[loss_key] = tf.reduce_mean(loss_metrics[loss_key])
 
   eval_metrics = {str(k): v for k, v in eval_metrics.items()}
   tf.logging.info('Eval metrics at step %d', global_step)
@@ -871,7 +972,7 @@ def eval_continuously(
     checkpoint_dir=None,
     wait_interval=180,
     timeout=3600,
-    eval_index=None,
+    eval_index=0,
     **kwargs):
   """Run continuous evaluation of a detection model eagerly.
 
@@ -901,8 +1002,8 @@ def eval_continuously(
       new checkpoint.
     timeout: The maximum number of seconds to wait for a checkpoint. Execution
       will terminate if no new checkpoints are found after these many seconds.
-    eval_index: int, optional If give, only evaluate the dataset at the given
-      index.
+    eval_index: int, If given, only evaluate the dataset at the given
+      index. By default, evaluates dataset at 0'th index.
 
     **kwargs: Additional keyword arguments for configuration override.
   """
@@ -943,21 +1044,18 @@ def eval_continuously(
   if kwargs['use_bfloat16']:
     tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
 
-  detection_model = MODEL_BUILD_UTIL_MAP['detection_model_fn_base'](
-      model_config=model_config, is_training=True)
+  eval_input_config = eval_input_configs[eval_index]
+  strategy = tf.compat.v2.distribute.get_strategy()
+  with strategy.scope():
+    detection_model = MODEL_BUILD_UTIL_MAP['detection_model_fn_base'](
+        model_config=model_config, is_training=True)
 
-  # Create the inputs.
-  eval_inputs = []
-  for eval_input_config in eval_input_configs:
-    next_eval_input = inputs.eval_input(
-        eval_config=eval_config,
-        eval_input_config=eval_input_config,
-        model_config=model_config,
-        model=detection_model)
-    eval_inputs.append((eval_input_config.name, next_eval_input))
-
-  if eval_index is not None:
-    eval_inputs = [eval_inputs[eval_index]]
+  eval_input = strategy.experimental_distribute_dataset(
+      inputs.eval_input(
+          eval_config=eval_config,
+          eval_input_config=eval_input_config,
+          model_config=model_config,
+          model=detection_model))
 
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)
@@ -969,14 +1067,13 @@ def eval_continuously(
 
     ckpt.restore(latest_checkpoint).expect_partial()
 
-    for eval_name, eval_input in eval_inputs:
-      summary_writer = tf.compat.v2.summary.create_file_writer(
-          os.path.join(model_dir, 'eval', eval_name))
-      with summary_writer.as_default():
-        eager_eval_loop(
-            detection_model,
-            configs,
-            eval_input,
-            use_tpu=use_tpu,
-            postprocess_on_cpu=postprocess_on_cpu,
-            global_step=global_step)
+    summary_writer = tf.compat.v2.summary.create_file_writer(
+        os.path.join(model_dir, 'eval', eval_input_config.name))
+    with summary_writer.as_default():
+      eager_eval_loop(
+          detection_model,
+          configs,
+          eval_input,
+          use_tpu=use_tpu,
+          postprocess_on_cpu=postprocess_on_cpu,
+          global_step=global_step)

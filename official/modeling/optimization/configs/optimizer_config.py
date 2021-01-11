@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Dataclasses for optimizer configs."""
 from typing import List, Optional
 
@@ -29,9 +28,12 @@ class BaseOptimizerConfig(base_config.Config):
       their L2 norm exceeds this value.
     clipvalue: float >= 0 or None. If not None, Gradients will be clipped when
       their absolute value exceeds this value.
+    global_clipnorm: float >= 0 or None. If not None, gradient of all weights is
+        clipped so that their global norm is no higher than this value
   """
   clipnorm: Optional[float] = None
   clipvalue: Optional[float] = None
+  global_clipnorm: Optional[float] = None
 
 
 @dataclasses.dataclass
@@ -109,8 +111,10 @@ class AdamWeightDecayConfig(BaseOptimizerConfig):
     weight_decay_rate: float. Weight decay rate. Default to 0.
     include_in_weight_decay: list[str], or None. List of weight names to include
       in weight decay.
-    include_in_weight_decay: list[str], or None. List of weight names to not
+    exclude_from_weight_decay: list[str], or None. List of weight names to not
       include in weight decay.
+    gradient_clip_norm: A positive float. Clips the gradients to this maximum
+      L2-norm. Default to 1.0.
   """
   name: str = "AdamWeightDecay"
   beta_1: float = 0.9

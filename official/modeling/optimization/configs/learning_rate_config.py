@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Dataclasses for learning rate schedule config."""
 from typing import List, Optional
 
@@ -144,6 +143,27 @@ class DirectPowerLrConfig(base_config.Config):
   name: str = 'DirectPowerDecay'
   initial_learning_rate: Optional[float] = None
   power: float = -0.5
+
+
+@dataclasses.dataclass
+class PowerAndLinearDecayLrConfig(base_config.Config):
+  """Configuration for DirectPower learning rate decay.
+
+  This class configures a schedule following follows lr * (step)^power for the
+  first total_decay_steps * (1 - linear_decay_fraction) steps, and follows
+  lr * (step)^power * (total_decay_steps - step) / (total_decay_steps *
+  linear_decay_fraction) for the rest of the steps.
+
+  Attributes:
+    name: The name of the learning rate schedule. Defaults to DirectPowerDecay.
+    initial_learning_rate: A float. The initial learning rate. Defaults to None.
+    power: A float. Defaults to -0.5, for sqrt decay.
+  """
+  name: str = 'PowerAndLinearDecay'
+  initial_learning_rate: Optional[float] = None
+  total_decay_steps: Optional[int] = None
+  power: float = -0.5
+  linear_decay_fraction: float = 0.1
 
 
 @dataclasses.dataclass

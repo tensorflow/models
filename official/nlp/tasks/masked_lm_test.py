@@ -28,6 +28,7 @@ class MLMTaskTest(tf.test.TestCase):
   def test_task(self):
     config = masked_lm.MaskedLMConfig(
         init_checkpoint=self.get_temp_dir(),
+        scale_loss=True,
         model=bert.PretrainerConfig(
             encoder=encoders.EncoderConfig(
                 bert=encoders.BertEncoderConfig(vocab_size=30522,

@@ -1,5 +1,10 @@
 # BERT (Bidirectional Encoder Representations from Transformers)
 
+**WARNING**: We are on the way to deprecate most of the code in this directory.
+Please see
+[this link](https://github.com/tensorflow/models/blob/master/official/nlp/docs/train.md)
+for the new tutorial.
+
 The academic paper which describes BERT in detail and provides full results on a
 number of tasks can be found here: https://arxiv.org/abs/1810.04805.
 
@@ -72,21 +77,21 @@ Checkpoints featuring native serialized Keras models
 Pretrained tf.hub modules in TF 2.x SavedModel format can be found in the
 following links:
 
-*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_uncased_L-24_H-1024_A-16/1)**:
+*   **[`BERT-Large, Uncased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_uncased_L-24_H-1024_A-16/)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Large, Cased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_cased_L-24_H-1024_A-16/1)**:
+*   **[`BERT-Large, Cased (Whole Word Masking)`](https://tfhub.dev/tensorflow/bert_en_wwm_cased_L-24_H-1024_A-16/)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Base, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/1)**:
+*   **[`BERT-Base, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-12_H-768_A-12/)**:
     12-layer, 768-hidden, 12-heads, 110M parameters
-*   **[`BERT-Large, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-24_H-1024_A-16/1)**:
+*   **[`BERT-Large, Uncased`](https://tfhub.dev/tensorflow/bert_en_uncased_L-24_H-1024_A-16/)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Base, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/1)**:
+*   **[`BERT-Base, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-12_H-768_A-12/)**:
     12-layer, 768-hidden, 12-heads , 110M parameters
-*   **[`BERT-Large, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-24_H-1024_A-16/1)**:
+*   **[`BERT-Large, Cased`](https://tfhub.dev/tensorflow/bert_en_cased_L-24_H-1024_A-16/)**:
     24-layer, 1024-hidden, 16-heads, 340M parameters
-*   **[`BERT-Base, Multilingual Cased`](https://tfhub.dev/tensorflow/bert_multi_cased_L-12_H-768_A-12/1)**:
+*   **[`BERT-Base, Multilingual Cased`](https://tfhub.dev/tensorflow/bert_multi_cased_L-12_H-768_A-12/)**:
     104 languages, 12-layer, 768-hidden, 12-heads, 110M parameters
-*   **[`BERT-Base, Chinese`](https://tfhub.dev/tensorflow/bert_zh_L-12_H-768_A-12/1)**:
+*   **[`BERT-Base, Chinese`](https://tfhub.dev/tensorflow/bert_zh_L-12_H-768_A-12/)**:
     Chinese Simplified and Traditional, 12-layer, 768-hidden, 12-heads,
     110M parameters
 
@@ -125,6 +130,23 @@ which is essentially branched from [BERT research repo](https://github.com/googl
 to get processed pre-training data and it adapts to TF2 symbols and python3
 compatibility.
 
+Running the pre-training script requires an input and output directory, as well as a vocab file.  Note that max_seq_length will need to match the sequence length parameter you specify when you run pre-training.
+
+Example shell script to call create_pretraining_data.py
+```
+export WORKING_DIR='local disk or cloud location'
+export BERT_DIR='local disk or cloud location'
+python models/official/nlp/data/create_pretraining_data.py \
+  --input_file=$WORKING_DIR/input/input.txt \
+  --output_file=$WORKING_DIR/output/tf_examples.tfrecord \
+  --vocab_file=$BERT_DIR/wwm_uncased_L-24_H-1024_A-16/vocab.txt \
+  --do_lower_case=True \
+  --max_seq_length=512 \
+  --max_predictions_per_seq=76 \
+  --masked_lm_prob=0.15 \
+  --random_seed=12345 \
+  --dupe_factor=5
+```
 
 ### Fine-tuning
 

@@ -14,7 +14,7 @@
 # ==============================================================================
 """Transformer-based text encoder network."""
 # pylint: disable=g-classes-have-attributes
-
+import collections
 import tensorflow as tf
 
 from official.modeling import activations
@@ -41,7 +41,7 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
   *Note* that the network is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     vocab_size: The size of the token vocabulary.
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.
@@ -99,9 +99,13 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
                dict_outputs=False,
                **kwargs):
 
-    self._self_setattr_tracking = False
-    self._embedding_layer_instance = embedding_layer
-
+    # b/164516224
+    # Once we've created the network using the Functional API, we call
+    # super().__init__ as though we were invoking the Functional API Model
+    # constructor, resulting in this object having all the properties of a model
+    # created using the Functional API. Once super().__init__ is called, we
+    # can assign attributes to `self` - note that all `self` assignments are
+    # below this line.
     super(BertEncoder, self).__init__(
         vocab_size=vocab_size,
         hidden_size=hidden_size,
@@ -115,16 +119,21 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
         attention_dropout=attention_dropout_rate,
         initializer=initializer,
         output_range=output_range,
-        embedding_width=embedding_width)
+        embedding_width=embedding_width,
+        embedding_layer=embedding_layer)
+
+    self._embedding_layer_instance = embedding_layer
 
     # Replace arguments from keras_nlp.encoders.BertEncoder.
-    self._config_dict['activation'] = self._config_dict.pop('inner_activation')
-    self._config_dict['intermediate_size'] = self._config_dict.pop('inner_dim')
-    self._config_dict['dropout_rate'] = self._config_dict.pop('output_dropout')
-    self._config_dict['attention_dropout_rate'] = self._config_dict.pop(
-        'attention_dropout')
-    self._config_dict['dict_outputs'] = dict_outputs
-    self._config_dict['return_all_encoder_outputs'] = return_all_encoder_outputs
+    config_dict = self._config._asdict()
+    config_dict['activation'] = config_dict.pop('inner_activation')
+    config_dict['intermediate_size'] = config_dict.pop('inner_dim')
+    config_dict['dropout_rate'] = config_dict.pop('output_dropout')
+    config_dict['attention_dropout_rate'] = config_dict.pop('attention_dropout')
+    config_dict['dict_outputs'] = dict_outputs
+    config_dict['return_all_encoder_outputs'] = return_all_encoder_outputs
+    config_cls = collections.namedtuple('Config', config_dict.keys())
+    self._config = config_cls(**config_dict)
 
     if dict_outputs:
       return
@@ -139,10 +148,3 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
         outputs = [sequence_output, cls_output]
     super(keras_nlp.encoders.BertEncoder, self).__init__(
         inputs=self.inputs, outputs=outputs, **kwargs)
-
-  # Override method for shared embedding use case.
-  def _build_embedding_layer(self):
-    if self._embedding_layer_instance is None:
-      return super(BertEncoder, self)._build_embedding_layer()
-    else:
-      return self._embedding_layer_instance

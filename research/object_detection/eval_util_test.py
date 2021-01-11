@@ -85,6 +85,8 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
     groundtruth_boxes = tf.constant([[0., 0., 1., 1.]])
     groundtruth_classes = tf.constant([1])
     groundtruth_instance_masks = tf.ones(shape=[1, 20, 20], dtype=tf.uint8)
+    original_image_spatial_shapes = tf.constant([[20, 20]], dtype=tf.int32)
+
     groundtruth_keypoints = tf.constant([[0.0, 0.0], [0.5, 0.5], [1.0, 1.0]])
     if resized_groundtruth_masks:
       groundtruth_instance_masks = tf.ones(shape=[1, 10, 10], dtype=tf.uint8)
@@ -100,6 +102,8 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
       groundtruth_keypoints = tf.tile(
           tf.expand_dims(groundtruth_keypoints, 0),
           multiples=[batch_size, 1, 1])
+      original_image_spatial_shapes = tf.tile(original_image_spatial_shapes,
+                                              multiples=[batch_size, 1])
 
     detections = {
         detection_fields.detection_boxes: detection_boxes,
@@ -112,7 +116,10 @@ class EvalUtilTest(test_case.TestCase, parameterized.TestCase):
         input_data_fields.groundtruth_boxes: groundtruth_boxes,
         input_data_fields.groundtruth_classes: groundtruth_classes,
         input_data_fields.groundtruth_keypoints: groundtruth_keypoints,
-        input_data_fields.groundtruth_instance_masks: groundtruth_instance_masks
+        input_data_fields.groundtruth_instance_masks:
+            groundtruth_instance_masks,
+        input_data_fields.original_image_spatial_shape:
+            original_image_spatial_shapes
     }
     if batch_size > 1:
       return eval_util.result_dict_for_batched_example(

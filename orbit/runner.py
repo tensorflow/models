@@ -1,4 +1,4 @@
-# Copyright 2020 The Orbit Authors. All Rights Reserved.
+# Copyright 2021 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Provides AbstractTrainer/Evaluator base classes, defining train/eval APIs."""
 
 import abc
@@ -32,14 +32,14 @@ class AbstractTrainer(tf.Module, metaclass=abc.ABCMeta):
   def train(self, num_steps: tf.Tensor) -> Optional[Output]:
     """Implements `num_steps` steps of training.
 
-    This method will by called the `Controller` to perform the "inner loop" of
-    training. This inner loop amortizes the cost of bookkeeping associated with
-    checkpointing, evaluation, and writing summaries. Additionally, the inner
-    loop can be implemented (if desired) using TensorFlow's looping constructs
-    (e.g. a `for` loop over a `tf.range` inside a `tf.function`), which can be
-    necessary for getting optimal performance when running on TPU. For cases
-    that don't require peak performance, a simple Python loop can be used
-    instead for simplicity.
+    This method will be called by the `Controller` to perform the "inner loop"
+    of training. This inner loop amortizes the cost of bookkeeping associated
+    with checkpointing, evaluation, and writing summaries. Additionally, the
+    inner loop can be implemented (if desired) using TensorFlow's looping
+    constructs (e.g. a `for` loop over a `tf.range` inside a `tf.function`),
+    which can be necessary for getting optimal performance when running on TPU.
+    For cases that don't require peak performance, a simple Python loop can be
+    used instead for simplicity.
 
     Args:
       num_steps: The number of training steps to run. Note that it is up to the

@@ -15,7 +15,6 @@
 # ==============================================================================
 """Tests for resnet."""
 
-# Import libraries
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -26,6 +25,7 @@ from official.vision.beta.projects.yolo.modeling.backbones import darknet
 
 
 class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
+
   @parameterized.parameters(
       (224, "darknet53", 2, 1),
       (224, "darknettiny", 1, 2),
@@ -35,7 +35,7 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
   def test_network_creation(self, input_size, model_id,
                             endpoint_filter_scale, scale_final):
     """Test creation of ResNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf.keras.backend.set_image_data_format("channels_last")
 
     network = darknet.Darknet(model_id=model_id, min_level=3, max_level=5)
     self.assertEqual(network.model_id, model_id)
@@ -43,21 +43,21 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
-
     self.assertAllEqual(
         [1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale],
-        endpoints['3'].shape.as_list())
+        endpoints["3"].shape.as_list())
     self.assertAllEqual(
         [1, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale],
-        endpoints['4'].shape.as_list())
-    self.assertAllEqual(
-        [1, input_size / 2**5, input_size / 2**5, 512 * endpoint_filter_scale * scale_final],
-        endpoints['5'].shape.as_list())
+        endpoints["4"].shape.as_list())
+    self.assertAllEqual([
+        1, input_size / 2**5, input_size / 2**5,
+        512 * endpoint_filter_scale * scale_final
+    ], endpoints["5"].shape.as_list())
 
   @combinations.generate(
       combinations.combine(
           strategy=[
-              strategy_combinations.tpu_strategy,
+              strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
           use_sync_bn=[False, True],
@@ -66,7 +66,7 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     """Test for sync bn on TPU and GPU devices."""
     inputs = np.random.rand(1, 224, 224, 3)
 
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf.keras.backend.set_image_data_format("channels_last")
 
     with strategy.scope():
       network = darknet.Darknet(model_id="darknet53", min_size=3, max_size=5)
@@ -75,10 +75,11 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
   @parameterized.parameters(1, 3, 4)
   def test_input_specs(self, input_dim):
     """Test different input feature dimensions."""
-    tf.keras.backend.set_image_data_format('channels_last')
+    tf.keras.backend.set_image_data_format("channels_last")
 
     input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, input_dim])
-    network = darknet.Darknet(model_id="darknet53", min_level=3, max_level=5, input_specs=input_specs)
+    network = darknet.Darknet(
+        model_id="darknet53", min_level=3, max_level=5, input_specs=input_specs)
 
     inputs = tf.keras.Input(shape=(224, 224, input_dim), batch_size=1)
     _ = network(inputs)
@@ -87,13 +88,13 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     # Create a network object that sets all of its config options.
     kwargs = dict(
         model_id="darknet53",
-        min_level = 3,
-        max_level = 5,
+        min_level=3,
+        max_level=5,
         use_sync_bn=False,
-        activation='relu',
+        activation="relu",
         norm_momentum=0.99,
         norm_epsilon=0.001,
-        kernel_initializer='VarianceScaling',
+        kernel_initializer="VarianceScaling",
         kernel_regularizer=None,
         bias_regularizer=None,
     )
@@ -112,5 +113,5 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(network.get_config(), new_network.get_config())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
   tf.test.main()

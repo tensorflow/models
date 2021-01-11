@@ -14,6 +14,7 @@
 # ==============================================================================
 """Tests for utils.target_assigner_utils."""
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v1 as tf
 
@@ -21,7 +22,7 @@ from object_detection.utils import target_assigner_utils as ta_utils
 from object_detection.utils import test_case
 
 
-class TargetUtilTest(test_case.TestCase):
+class TargetUtilTest(parameterized.TestCase, test_case.TestCase):
 
   def test_image_shape_to_grids(self):
     def graph_fn():
@@ -36,7 +37,11 @@ class TargetUtilTest(test_case.TestCase):
     np.testing.assert_array_equal(y_grid, expected_y_grid)
     np.testing.assert_array_equal(x_grid, expected_x_grid)
 
-  def test_coordinates_to_heatmap(self):
+  @parameterized.parameters((False,), (True,))
+  def test_coordinates_to_heatmap(self, sparse):
+    if not hasattr(tf, 'tensor_scatter_nd_max'):
+      self.skipTest('Cannot test function due to old TF version.')
+
     def graph_fn():
       (y_grid, x_grid) = ta_utils.image_shape_to_grids(height=3, width=5)
       y_coordinates = tf.constant([1.5, 0.5], dtype=tf.float32)
@@ -46,7 +51,8 @@ class TargetUtilTest(test_case.TestCase):
       channel_weights = tf.constant([1, 1], dtype=tf.float32)
       heatmap = ta_utils.coordinates_to_heatmap(y_grid, x_grid, y_coordinates,
                                                 x_coordinates, sigma,
-                                                channel_onehot, channel_weights)
+                                                channel_onehot,
+                                                channel_weights, sparse=sparse)
       return heatmap
 
     heatmap = self.execute(graph_fn, [])

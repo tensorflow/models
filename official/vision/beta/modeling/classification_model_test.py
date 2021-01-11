@@ -84,7 +84,9 @@ class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
               'MobileNetV2',
               'MobileNetV3Large',
               'MobileNetV3Small',
-              'MobileNetV3EdgeTPU'
+              'MobileNetV3EdgeTPU',
+              'MobileNetMultiAVG',
+              'MobileNetMultiMAX',
           ],
           filter_size_scale=[1.0, 0.75],
       ))
@@ -102,6 +104,10 @@ class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
         ('MobileNetV3Small', 0.75): 2052577,
         ('MobileNetV3EdgeTPU', 1.0): 4131593,
         ('MobileNetV3EdgeTPU', 0.75): 3019569,
+        ('MobileNetMultiAVG', 1.0): 4982857,
+        ('MobileNetMultiAVG', 0.75): 3628145,
+        ('MobileNetMultiMAX', 1.0): 4453001,
+        ('MobileNetMultiMAX', 0.75): 3324257,
     }
 
     inputs = np.random.rand(2, 224, 224, 3)
@@ -126,7 +132,7 @@ class ClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
   @combinations.generate(
       combinations.combine(
           strategy=[
-              strategy_combinations.tpu_strategy,
+              strategy_combinations.cloud_tpu_strategy,
               strategy_combinations.one_device_strategy_gpu,
           ],
           use_sync_bn=[False, True],

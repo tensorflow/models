@@ -207,6 +207,7 @@ def bigbird_block_sparse_attention(
   n = to_seq_length
   wm = from_block_size
   wn = to_block_size
+  dtype = query_layer.dtype
   query_layer = tf.transpose(query_layer, perm=[0, 2, 1, 3])
   key_layer = tf.transpose(key_layer, perm=[0, 2, 1, 3])
   value_layer = tf.transpose(value_layer, perm=[0, 2, 1, 3])
@@ -224,7 +225,7 @@ def bigbird_block_sparse_attention(
       "BHQD,BHKD->BHQK", blocked_query_matrix[:, :, 0],
       key_layer)  # [b, h, wm, -1] x [b, h, n, -1] ==> [b, h, wm, n]
   first_product = tf.multiply(first_product, 1.0 / np.sqrt(d))
-  first_product += (1.0 - tf.cast(to_mask, dtype=tf.float32)) * -10000.0
+  first_product += (1.0 - tf.cast(to_mask, dtype=dtype)) * -10000.0
   first_attn_weights = tf.nn.softmax(first_product)  # [b, h, wm, n]
   first_context_layer = tf.einsum(
       "BHQK,BHKD->BHQD", first_attn_weights,
@@ -246,10 +247,11 @@ def bigbird_block_sparse_attention(
   )  # [b, h, wm, -1] x [b, h, (4+r)*wn, -1] ==> [b, h, wm, (4+r)*wn]
   second_seq_pad = tf.concat([
       to_mask[:, :, :, :3 * wn], to_mask[:, :, :, -wn:],
-      tf.ones([b, 1, 1, r * wn], dtype=tf.float32)
+      tf.ones([b, 1, 1, r * wn], dtype=dtype)
   ], 3)
-  second_rand_pad = tf.concat(
-      [tf.ones([b, h, wm, 4 * wn], dtype=tf.float32), rand_mask[:, :, 0]], 3)
+  second_rand_pad = tf.concat([
+      tf.ones([b, h, wm, 4 * wn], dtype=dtype), rand_mask[:, :, 0]
+  ], 3)
   second_product = tf.multiply(second_product, 1.0 / np.sqrt(d))
   second_product += (1.0 -
                      tf.minimum(second_seq_pad, second_rand_pad)) * -10000.0
@@ -332,10 +334,10 @@ def bigbird_block_sparse_attention(
   )  # [b, h, wm, -1] x [b, h, (4+r)*wn, -1] ==> [b, h, wm, (4+r)*wn]
   second_last_seq_pad = tf.concat([
       to_mask[:, :, :, :wn], to_mask[:, :, :, -3 * wn:],
-      tf.ones([b, 1, 1, r * wn], dtype=tf.float32)
+      tf.ones([b, 1, 1, r * wn], dtype=dtype)
   ], 3)
   second_last_rand_pad = tf.concat(
-      [tf.ones([b, h, wm, 4 * wn], dtype=tf.float32), rand_mask[:, :, -1]], 3)
+      [tf.ones([b, h, wm, 4 * wn], dtype=dtype), rand_mask[:, :, -1]], 3)
   second_last_product = tf.multiply(second_last_product, 1.0 / np.sqrt(d))
   second_last_product += (
       1.0 - tf.minimum(second_last_seq_pad, second_last_rand_pad)) * -10000.0
@@ -376,8 +378,7 @@ class BigBirdMasks(tf.keras.layers.Layer):
   def call(self, inputs):
     encoder_shape = tf.shape(inputs)
     batch_size, seq_length = encoder_shape[0], encoder_shape[1]
-    # reshape and cast for blocking
-    inputs = tf.cast(inputs, dtype=tf.float32)
+    # reshape for blocking
     blocked_encoder_mask = tf.reshape(
         inputs, (batch_size, seq_length // self._block_size, self._block_size))
     encoder_from_mask = tf.reshape(inputs, (batch_size, 1, seq_length, 1))
@@ -475,7 +476,7 @@ class BigBirdAttention(tf.keras.layers.MultiHeadAttention):
 
     attention_output = self._compute_attention(query, key, value,
                                                attention_mask)
-    attention_output.set_shape([None, None, self._num_heads, self._key_dim])
+    attention_output.set_shape([None, None, self._num_heads, self._value_dim])
     attention_output = self._output_dense(attention_output)
     return attention_output
 

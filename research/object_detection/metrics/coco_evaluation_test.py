@@ -390,7 +390,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
                   np.array([1]),
               # Only class 1 is exhaustively labeled for image1.
               groundtruth_labeled_classes:
-                  np.array([1]),
+                  np.array([0., 1., 0., 0.]),
               detection_boxes:
                   np.array([[100., 100., 200., 200.], [100., 100., 200.,
                                                        200.]]),
@@ -405,7 +405,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
               image_id: 'image2',
               groundtruth_boxes: np.array([[50., 50., 100., 100.]]),
               groundtruth_classes: np.array([3]),
-              groundtruth_labeled_classes: np.array([3]),
+              groundtruth_labeled_classes: np.array([0., 0., 0., 1.]),
               detection_boxes: np.array([[50., 50., 100., 100.]]),
               detection_scores: np.array([.7]),
               detection_classes: np.array([3])
@@ -416,7 +416,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
               image_id: 'image3',
               groundtruth_boxes: np.array([[25., 25., 50., 50.]]),
               groundtruth_classes: np.array([2]),
-              groundtruth_labeled_classes: np.array([2]),
+              groundtruth_labeled_classes: np.array([0., 0., 1., 0.]),
               detection_boxes: np.array([[25., 25., 50., 50.]]),
               detection_scores: np.array([.9]),
               detection_classes: np.array([2])
@@ -1601,6 +1601,7 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
     groundtruth_boxes = tf.placeholder(tf.float32, shape=(None, 4))
     groundtruth_classes = tf.placeholder(tf.float32, shape=(None))
     groundtruth_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
+    original_image_spatial_shape = tf.placeholder(tf.int32, shape=(None, 2))
     detection_scores = tf.placeholder(tf.float32, shape=(None))
     detection_classes = tf.placeholder(tf.float32, shape=(None))
     detection_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
@@ -1612,6 +1613,8 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
         input_data_fields.groundtruth_boxes: groundtruth_boxes,
         input_data_fields.groundtruth_classes: groundtruth_classes,
         input_data_fields.groundtruth_instance_masks: groundtruth_masks,
+        input_data_fields.original_image_spatial_shape:
+            original_image_spatial_shape,
         detection_fields.detection_scores: detection_scores,
         detection_fields.detection_classes: detection_classes,
         detection_fields.detection_masks: detection_masks,
@@ -1637,6 +1640,7 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
                           np.ones([50, 50], dtype=np.uint8), ((0, 70), (0, 70)),
                           mode='constant')
                   ]),
+              original_image_spatial_shape: np.array([[120, 120]]),
               detection_scores:
                   np.array([.9, .8]),
               detection_classes:
@@ -1661,6 +1665,7 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
     groundtruth_boxes = tf.placeholder(tf.float32, shape=(None, 4))
     groundtruth_classes = tf.placeholder(tf.float32, shape=(None))
     groundtruth_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
+    original_image_spatial_shape = tf.placeholder(tf.int32, shape=(None, 2))
     detection_scores = tf.placeholder(tf.float32, shape=(None))
     detection_classes = tf.placeholder(tf.float32, shape=(None))
     detection_masks = tf.placeholder(tf.uint8, shape=(None, None, None))
@@ -1672,6 +1677,8 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
         input_data_fields.groundtruth_boxes: groundtruth_boxes,
         input_data_fields.groundtruth_classes: groundtruth_classes,
         input_data_fields.groundtruth_instance_masks: groundtruth_masks,
+        input_data_fields.original_image_spatial_shape:
+            original_image_spatial_shape,
         detection_fields.detection_scores: detection_scores,
         detection_fields.detection_classes: detection_classes,
         detection_fields.detection_masks: detection_masks,
@@ -1701,6 +1708,7 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
                           np.ones([50, 50], dtype=np.uint8), ((0, 70), (0, 70)),
                           mode='constant')
                   ]),
+              original_image_spatial_shape: np.array([[120, 120], [120, 120]]),
               detection_scores:
                   np.array([.9, .8]),
               detection_classes:
@@ -1725,6 +1733,7 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
                                                      dtype=np.uint8),
                                              ((0, 0), (10, 10), (10, 10)),
                                              mode='constant'),
+                   original_image_spatial_shape: np.array([[70, 70]]),
                    detection_scores: np.array([.8]),
                    detection_classes: np.array([1]),
                    detection_masks: np.pad(np.ones([1, 50, 50], dtype=np.uint8),
@@ -1740,6 +1749,7 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
                                                      dtype=np.uint8),
                                              ((0, 0), (10, 10), (10, 10)),
                                              mode='constant'),
+                   original_image_spatial_shape: np.array([[45, 45]]),
                    detection_scores: np.array([.8]),
                    detection_classes: np.array([1]),
                    detection_masks: np.pad(np.ones([1, 25, 25],
@@ -1778,6 +1788,7 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
     groundtruth_classes = tf.placeholder(tf.float32, shape=(batch_size, None))
     groundtruth_masks = tf.placeholder(
         tf.uint8, shape=(batch_size, None, None, None))
+    original_image_spatial_shape = tf.placeholder(tf.int32, shape=(None, 2))
     detection_scores = tf.placeholder(tf.float32, shape=(batch_size, None))
     detection_classes = tf.placeholder(tf.float32, shape=(batch_size, None))
     detection_masks = tf.placeholder(
@@ -1790,6 +1801,8 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
         input_data_fields.groundtruth_boxes: groundtruth_boxes,
         input_data_fields.groundtruth_classes: groundtruth_classes,
         input_data_fields.groundtruth_instance_masks: groundtruth_masks,
+        input_data_fields.original_image_spatial_shape:
+            original_image_spatial_shape,
         detection_fields.detection_scores: detection_scores,
         detection_fields.detection_classes: detection_classes,
         detection_fields.detection_masks: detection_masks,
@@ -1826,6 +1839,8 @@ class CocoMaskEvaluationPyFuncTest(tf.test.TestCase):
                           mode='constant')
                   ],
                            axis=0),
+              original_image_spatial_shape: np.array(
+                  [[100, 100], [100, 100], [100, 100]]),
               detection_scores:
                   np.array([[.8], [.8], [.8]]),
               detection_classes:

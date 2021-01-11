@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for params_dict.py."""
 
 import os
@@ -155,6 +155,7 @@ class ParamsDictTest(tf.test.TestCase):
     # Raise error due to the unknown parameter.
     with self.assertRaises(KeyError):
       params = params_dict.ParamsDict({'a': 1, 'b': {'a': 11}}, ['a == c'])
+      params.validate()
 
     # OK to check equality of two nested dicts.
     params = params_dict.ParamsDict({
@@ -170,6 +171,7 @@ class ParamsDictTest(tf.test.TestCase):
     # Raise error due to inconsistency
     with self.assertRaises(KeyError):
       params = params_dict.ParamsDict({'a': 1, 'c': {'a': 10}}, ['a == c.a'])
+      params.validate()
 
     # Valid rule.
     params = params_dict.ParamsDict({'a': 1, 'c': {'a': 1}}, ['a == c.a'])
@@ -194,6 +196,7 @@ class ParamsDictTest(tf.test.TestCase):
               'a': 1
           }
       }, ['a == None', 'c.a == 1'])
+      params.validate()
 
 
 class ParamsDictIOTest(tf.test.TestCase):

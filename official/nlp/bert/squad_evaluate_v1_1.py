@@ -22,10 +22,6 @@ Pranav Rajpurkar, Jian Zhang, Konstantin Lopyrev, Percy Liang
 https://nlp.stanford.edu/pubs/rajpurkar2016squad.pdf
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import re
 import string

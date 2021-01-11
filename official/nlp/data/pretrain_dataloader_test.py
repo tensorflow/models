@@ -24,18 +24,20 @@ import tensorflow as tf
 from official.nlp.data import pretrain_dataloader
 
 
-def _create_fake_dataset(output_path,
-                         seq_length,
-                         max_predictions_per_seq,
-                         use_position_id,
-                         use_next_sentence_label,
-                         use_v2_feature_names=False):
+def create_int_feature(values):
+  f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
+  return f
+
+
+def _create_fake_bert_dataset(
+    output_path,
+    seq_length,
+    max_predictions_per_seq,
+    use_position_id,
+    use_next_sentence_label,
+    use_v2_feature_names=False):
   """Creates a fake dataset."""
   writer = tf.io.TFRecordWriter(output_path)
-
-  def create_int_feature(values):
-    f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
-    return f
 
   def create_float_feature(values):
     f = tf.train.Feature(float_list=tf.train.FloatList(value=list(values)))
@@ -70,6 +72,34 @@ def _create_fake_dataset(output_path,
   writer.close()
 
 
+def _create_fake_xlnet_dataset(
+    output_path, seq_length, max_predictions_per_seq):
+  """Creates a fake dataset."""
+  writer = tf.io.TFRecordWriter(output_path)
+  for _ in range(100):
+    features = {}
+    input_ids = np.random.randint(100, size=(seq_length))
+    num_boundary_indices = np.random.randint(1, seq_length)
+
+    if max_predictions_per_seq is not None:
+      input_mask = np.zeros_like(input_ids)
+      input_mask[:max_predictions_per_seq] = 1
+      np.random.shuffle(input_mask)
+    else:
+      input_mask = np.ones_like(input_ids)
+
+    features["input_mask"] = create_int_feature(input_mask)
+    features["input_word_ids"] = create_int_feature(input_ids)
+    features["input_type_ids"] = create_int_feature(np.ones_like(input_ids))
+    features["boundary_indices"] = create_int_feature(
+        sorted(np.random.randint(seq_length, size=(num_boundary_indices))))
+    features["target"] = create_int_feature(input_ids + 1)
+    features["label"] = create_int_feature([1])
+    tf_example = tf.train.Example(features=tf.train.Features(feature=features))
+    writer.write(tf_example.SerializeToString())
+  writer.close()
+
+
 class BertPretrainDataTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(itertools.product(
@@ -80,7 +110,7 @@ class BertPretrainDataTest(tf.test.TestCase, parameterized.TestCase):
     train_data_path = os.path.join(self.get_temp_dir(), "train.tf_record")
     seq_length = 128
     max_predictions_per_seq = 20
-    _create_fake_dataset(
+    _create_fake_bert_dataset(
         train_data_path,
         seq_length,
         max_predictions_per_seq,
@@ -114,7 +144,7 @@ class BertPretrainDataTest(tf.test.TestCase, parameterized.TestCase):
     train_data_path = os.path.join(self.get_temp_dir(), "train.tf_record")
     seq_length = 128
     max_predictions_per_seq = 20
-    _create_fake_dataset(
+    _create_fake_bert_dataset(
         train_data_path,
         seq_length,
         max_predictions_per_seq,
@@ -139,6 +169,74 @@ class BertPretrainDataTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIn("masked_lm_positions", features)
     self.assertIn("masked_lm_ids", features)
     self.assertIn("masked_lm_weights", features)
+
+
+class XLNetPretrainDataTest(parameterized.TestCase, tf.test.TestCase):
+
+  @parameterized.parameters(itertools.product(
+      ("single_token", "whole_word", "token_span"),
+      (0, 64),
+      (20, None),
+      ))
+  def test_load_data(
+      self, sample_strategy, reuse_length, max_predictions_per_seq):
+    train_data_path = os.path.join(self.get_temp_dir(), "train.tf_record")
+    seq_length = 128
+    batch_size = 5
+
+    _create_fake_xlnet_dataset(
+        train_data_path, seq_length, max_predictions_per_seq)
+
+    data_config = pretrain_dataloader.XLNetPretrainDataConfig(
+        input_path=train_data_path,
+        max_predictions_per_seq=max_predictions_per_seq,
+        seq_length=seq_length,
+        global_batch_size=batch_size,
+        is_training=True,
+        reuse_length=reuse_length,
+        sample_strategy=sample_strategy,
+        min_num_tokens=1,
+        max_num_tokens=2,
+        permutation_size=seq_length // 2,
+        leak_ratio=0.1)
+
+    if max_predictions_per_seq is None:
+      with self.assertRaises(ValueError):
+        dataset = pretrain_dataloader.XLNetPretrainDataLoader(
+            data_config).load()
+        features = next(iter(dataset))
+    else:
+      dataset = pretrain_dataloader.XLNetPretrainDataLoader(data_config).load()
+      features = next(iter(dataset))
+
+      self.assertIn("input_word_ids", features)
+      self.assertIn("input_type_ids", features)
+      self.assertIn("permutation_mask", features)
+      self.assertIn("masked_tokens", features)
+      self.assertIn("target", features)
+      self.assertIn("target_mask", features)
+
+      self.assertAllClose(features["input_word_ids"].shape,
+                          (batch_size, seq_length))
+      self.assertAllClose(features["input_type_ids"].shape,
+                          (batch_size, seq_length))
+      self.assertAllClose(features["permutation_mask"].shape,
+                          (batch_size, seq_length, seq_length))
+      self.assertAllClose(features["masked_tokens"].shape,
+                          (batch_size, seq_length,))
+      if max_predictions_per_seq is not None:
+        self.assertIn("target_mapping", features)
+        self.assertAllClose(features["target_mapping"].shape,
+                            (batch_size, max_predictions_per_seq, seq_length))
+        self.assertAllClose(features["target_mask"].shape,
+                            (batch_size, max_predictions_per_seq))
+        self.assertAllClose(features["target"].shape,
+                            (batch_size, max_predictions_per_seq))
+      else:
+        self.assertAllClose(features["target_mask"].shape,
+                            (batch_size, seq_length))
+        self.assertAllClose(features["target"].shape,
+                            (batch_size, seq_length))
 
 
 if __name__ == "__main__":

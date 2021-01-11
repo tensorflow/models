@@ -14,7 +14,7 @@
 # ==============================================================================
 """BERT cls-token classifier."""
 # pylint: disable=g-classes-have-attributes
-
+import collections
 import tensorflow as tf
 
 from official.nlp.modeling import layers
@@ -36,7 +36,7 @@ class BertClassifier(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.
@@ -55,14 +55,6 @@ class BertClassifier(tf.keras.Model):
                dropout_rate=0.1,
                use_encoder_pooler=True,
                **kwargs):
-    self._self_setattr_tracking = False
-    self._network = network
-    self._config = {
-        'network': network,
-        'num_classes': num_classes,
-        'initializer': initializer,
-        'use_encoder_pooler': use_encoder_pooler,
-    }
 
     # We want to use the inputs of the passed network as the inputs to this
     # Model. To do this, we need to keep a handle to the network inputs for use
@@ -79,29 +71,52 @@ class BertClassifier(tf.keras.Model):
         cls_output = outputs['pooled_output']
       cls_output = tf.keras.layers.Dropout(rate=dropout_rate)(cls_output)
 
-      self.classifier = networks.Classification(
+      classifier = networks.Classification(
           input_width=cls_output.shape[-1],
           num_classes=num_classes,
           initializer=initializer,
           output='logits',
           name='sentence_prediction')
-      predictions = self.classifier(cls_output)
+      predictions = classifier(cls_output)
     else:
       outputs = network(inputs)
       if isinstance(outputs, list):
         sequence_output = outputs[0]
       else:
         sequence_output = outputs['sequence_output']
-      self.classifier = layers.ClassificationHead(
+      classifier = layers.ClassificationHead(
           inner_dim=sequence_output.shape[-1],
           num_classes=num_classes,
           initializer=initializer,
           dropout_rate=dropout_rate,
           name='sentence_prediction')
-      predictions = self.classifier(sequence_output)
+      predictions = classifier(sequence_output)
 
+    # b/164516224
+    # Once we've created the network using the Functional API, we call
+    # super().__init__ as though we were invoking the Functional API Model
+    # constructor, resulting in this object having all the properties of a model
+    # created using the Functional API. Once super().__init__ is called, we
+    # can assign attributes to `self` - note that all `self` assignments are
+    # below this line.
     super(BertClassifier, self).__init__(
         inputs=inputs, outputs=predictions, **kwargs)
+    self._network = network
+    config_dict = {
+        'network': network,
+        'num_classes': num_classes,
+        'initializer': initializer,
+        'use_encoder_pooler': use_encoder_pooler,
+    }
+
+    # We are storing the config dict as a namedtuple here to ensure checkpoint
+    # compatibility with an earlier version of this model which did not track
+    # the config dict attribute. TF does not track immutable attrs which
+    # do not contain Trackables, so by creating a config namedtuple instead of
+    # a dict we avoid tracking it.
+    config_cls = collections.namedtuple('Config', config_dict.keys())
+    self._config = config_cls(**config_dict)
+    self.classifier = classifier
 
   @property
   def checkpoint_items(self):
@@ -112,7 +127,7 @@ class BertClassifier(tf.keras.Model):
     return items
 
   def get_config(self):
-    return self._config
+    return dict(self._config._asdict())
 
   @classmethod
   def from_config(cls, config, custom_objects=None):

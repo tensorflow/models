@@ -49,6 +49,7 @@ class ResNet3D(tf.keras.Model):
                temporal_kernel_sizes: List[Tuple[int]],
                use_self_gating: List[int] = None,
                input_specs=layers.InputSpec(shape=[None, None, None, None, 3]),
+               stem_conv_temporal_kernel_size=5,
                stem_conv_temporal_stride=2,
                stem_pool_temporal_stride=2,
                activation='relu',
@@ -70,6 +71,8 @@ class ResNet3D(tf.keras.Model):
       use_self_gating: a list of booleans to specify applying self-gating module
         or not in each block group. If None, self-gating is not applied.
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+      stem_conv_temporal_kernel_size: `int` temporal kernel size for the first
+        conv layer.
       stem_conv_temporal_stride: `int` temporal stride for the first conv layer.
       stem_pool_temporal_stride: `int` temporal stride for the first pool layer.
       activation: `str` name of the activation function.
@@ -88,6 +91,7 @@ class ResNet3D(tf.keras.Model):
     self._temporal_strides = temporal_strides
     self._temporal_kernel_sizes = temporal_kernel_sizes
     self._input_specs = input_specs
+    self._stem_conv_temporal_kernel_size = stem_conv_temporal_kernel_size
     self._stem_conv_temporal_stride = stem_conv_temporal_stride
     self._stem_pool_temporal_stride = stem_pool_temporal_stride
     self._use_self_gating = use_self_gating
@@ -113,7 +117,7 @@ class ResNet3D(tf.keras.Model):
     # Build stem.
     x = layers.Conv3D(
         filters=64,
-        kernel_size=[5, 7, 7],
+        kernel_size=[stem_conv_temporal_kernel_size, 7, 7],
         strides=[stem_conv_temporal_stride, 2, 2],
         use_bias=False,
         padding='same',
@@ -239,6 +243,7 @@ class ResNet3D(tf.keras.Model):
         'model_id': self._model_id,
         'temporal_strides': self._temporal_strides,
         'temporal_kernel_sizes': self._temporal_kernel_sizes,
+        'stem_conv_temporal_kernel_size': self._stem_conv_temporal_kernel_size,
         'stem_conv_temporal_stride': self._stem_conv_temporal_stride,
         'stem_pool_temporal_stride': self._stem_pool_temporal_stride,
         'use_self_gating': self._use_self_gating,
@@ -289,6 +294,10 @@ def build_resnet3d(
       temporal_kernel_sizes=temporal_kernel_sizes,
       use_self_gating=use_self_gating,
       input_specs=input_specs,
+      stem_conv_temporal_kernel_size=backbone_cfg
+      .stem_conv_temporal_kernel_size,
+      stem_conv_temporal_stride=backbone_cfg.stem_conv_temporal_stride,
+      stem_pool_temporal_stride=backbone_cfg.stem_pool_temporal_stride,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,

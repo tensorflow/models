@@ -14,8 +14,6 @@ repository.
 
 ## Description
 
-> * need to add run code for demos  
-
 Yolo v1 the original implementation was released in 2015 providing a ground
 breaking algorithm that would quickly process images, and locate objects in a
 single pass through the detector. The original implementation based used a

@@ -14,13 +14,10 @@
 # ==============================================================================
 """Tests for official.modeling.training.model_training_utils."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
 from absl import logging
+from absl.testing import flagsaver
 from absl.testing import parameterized
 from absl.testing.absltest import mock
 import numpy as np
@@ -28,20 +25,22 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
+from official.nlp.bert import common_flags
 from official.nlp.bert import model_training_utils
+
+
+common_flags.define_common_bert_flags()
 
 
 def eager_strategy_combinations():
   return combinations.combine(
       distribution=[
           strategy_combinations.default_strategy,
-          strategy_combinations.tpu_strategy,
+          strategy_combinations.cloud_tpu_strategy,
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.mirrored_strategy_with_two_gpus,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def eager_gpu_strategy_combinations():
@@ -51,9 +50,7 @@ def eager_gpu_strategy_combinations():
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.mirrored_strategy_with_two_gpus,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def create_fake_data_input_fn(batch_size, features_shape, num_classes):
@@ -106,9 +103,8 @@ def create_model_fn(input_shape, num_classes, use_float16=False):
         tf.reduce_mean(input_layer), name='mean_input', aggregation='mean')
     model.optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
     if use_float16:
-      model.optimizer = (
-          tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-              model.optimizer, loss_scale='dynamic'))
+      model.optimizer = tf.keras.mixed_precision.LossScaleOptimizer(
+          model.optimizer)
     return model, sub_model
 
   return _model_fn
@@ -162,6 +158,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
     super(ModelTrainingUtilsTest, self).setUp()
     self._model_fn = create_model_fn(input_shape=[128], num_classes=3)
 
+  @flagsaver.flagsaver
   def run_training(self, strategy, model_dir, steps_per_loop, run_eagerly):
     input_fn = create_fake_data_input_fn(
         batch_size=8, features_shape=[128], num_classes=3)
@@ -184,8 +181,10 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(eager_strategy_combinations())
   def test_train_eager_single_step(self, distribution):
-    model_dir = self.get_temp_dir()
-    if isinstance(distribution, tf.distribute.experimental.TPUStrategy):
+    model_dir = self.create_tempdir().full_path
+    if isinstance(
+        distribution,
+        (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy)):
       with self.assertRaises(ValueError):
         self.run_training(
             distribution, model_dir, steps_per_loop=1, run_eagerly=True)
@@ -195,9 +194,8 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(eager_gpu_strategy_combinations())
   def test_train_eager_mixed_precision(self, distribution):
-    model_dir = self.get_temp_dir()
-    policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    model_dir = self.create_tempdir().full_path
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
     self._model_fn = create_model_fn(
         input_shape=[128], num_classes=3, use_float16=True)
     self.run_training(
@@ -205,7 +203,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(eager_strategy_combinations())
   def test_train_check_artifacts(self, distribution):
-    model_dir = self.get_temp_dir()
+    model_dir = self.create_tempdir().full_path
     self.run_training(
         distribution, model_dir, steps_per_loop=10, run_eagerly=False)
 
@@ -249,7 +247,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @combinations.generate(eager_strategy_combinations())
   def test_train_check_callbacks(self, distribution):
-    model_dir = self.get_temp_dir()
+    model_dir = self.create_tempdir().full_path
     callback = RecordingCallback()
     callbacks = [callback]
     input_fn = create_fake_data_input_fn(
@@ -288,9 +286,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
       combinations.combine(
           distribution=[
               strategy_combinations.one_device_strategy_gpu,
-          ],
-          mode='eager',
-      ))
+          ],))
   def test_train_check_artifacts_non_chief(self, distribution):
     # We shouldn't export artifacts on non-chief workers. Since there's no easy
     # way to test with real MultiWorkerMirroredStrategy, we patch the strategy
@@ -300,7 +296,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
                            new_callable=mock.PropertyMock, return_value=False), \
          mock.patch.object(extended.__class__, 'should_save_summary',
                            new_callable=mock.PropertyMock, return_value=False):
-      model_dir = self.get_temp_dir()
+      model_dir = self.create_tempdir().full_path
       self.run_training(
           distribution, model_dir, steps_per_loop=10, run_eagerly=False)
       self.assertEmpty(tf.io.gfile.listdir(model_dir))

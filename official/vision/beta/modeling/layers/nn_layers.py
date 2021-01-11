@@ -167,6 +167,26 @@ class SqueezeExcitation(tf.keras.layers.Layer):
     return x * inputs
 
 
+def get_stochastic_depth_rate(init_rate, i, n):
+  """Get drop connect rate for the ith block.
+
+  Args:
+    init_rate: `float` initial drop rate.
+    i: `int` order of the current block.
+    n: `int` total number of blocks.
+
+  Returns:
+    Drop rate of the ith block.
+  """
+  if init_rate is not None:
+    if init_rate < 0 or init_rate > 1:
+      raise ValueError('Initial drop rate must be within 0 and 1.')
+    rate = init_rate * float(i) / n
+  else:
+    rate = None
+  return rate
+
+
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class StochasticDepth(tf.keras.layers.Layer):
   """Stochastic depth layer."""
@@ -203,3 +223,41 @@ class StochasticDepth(tf.keras.layers.Layer):
     binary_tensor = tf.floor(random_tensor)
     output = tf.math.divide(inputs, keep_prob) * binary_tensor
     return output
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+def pyramid_feature_fusion(inputs, target_level):
+  """Fuse all feature maps in the feature pyramid at the target level.
+
+  Args:
+    inputs: a dictionary containing the feature pyramid. The size of the input
+      tensor needs to be fixed.
+    target_level: `int` the target feature level for feature fusion.
+
+  Returns:
+    A float Tensor of shape [batch_size, feature_height, feature_width,
+      feature_channel].
+  """
+  # Convert keys to int.
+  pyramid_feats = {int(k): v for k, v in inputs.items()}
+  min_level = min(pyramid_feats.keys())
+  max_level = max(pyramid_feats.keys())
+  resampled_feats = []
+
+  for l in range(min_level, max_level + 1):
+    if l == target_level:
+      resampled_feats.append(pyramid_feats[l])
+    else:
+      feat = pyramid_feats[l]
+      target_size = list(feat.shape[1:3])
+      target_size[0] *= 2**(l - target_level)
+      target_size[1] *= 2**(l - target_level)
+      # Casts feat to float32 so the resize op can be run on TPU.
+      feat = tf.cast(feat, tf.float32)
+      feat = tf.image.resize(
+          feat, size=target_size, method=tf.image.ResizeMethod.BILINEAR)
+      # Casts it back to be compatible with the rest opetations.
+      feat = tf.cast(feat, pyramid_feats[l].dtype)
+      resampled_feats.append(feat)
+
+  return tf.math.add_n(resampled_feats)

@@ -14,11 +14,6 @@
 # ==============================================================================
 """Transformer decoder that mimics a BERT encoder, to load BERT checkpoints."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.nlp.modeling import layers

@@ -70,6 +70,9 @@ class InputDataFields(object):
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
     groundtruth_keypoint_weights: groundtruth weight factor for keypoints.
     groundtruth_label_weights: groundtruth label weights.
+    groundtruth_verified_negative_classes: groundtruth verified negative classes
+    groundtruth_not_exhaustive_classes: groundtruth not-exhaustively labeled
+      classes.
     groundtruth_weights: groundtruth weight factor for bounding boxes.
     groundtruth_dp_num_points: The number of DensePose sampled points for each
       instance.
@@ -86,6 +89,8 @@ class InputDataFields(object):
       context_features, used for reshaping.
     valid_context_size: the valid context size, used in filtering the padded
       context features.
+    context_features_image_id_list: the list of image source ids corresponding
+      to the features in context_features
     image_format: format for the images, used to decode
     image_height: height of images, used to decode
     image_width: width of images, used to decode
@@ -120,6 +125,8 @@ class InputDataFields(object):
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
   groundtruth_keypoint_weights = 'groundtruth_keypoint_weights'
   groundtruth_label_weights = 'groundtruth_label_weights'
+  groundtruth_verified_neg_classes = 'groundtruth_verified_neg_classes'
+  groundtruth_not_exhaustive_classes = 'groundtruth_not_exhaustive_classes'
   groundtruth_weights = 'groundtruth_weights'
   groundtruth_dp_num_points = 'groundtruth_dp_num_points'
   groundtruth_dp_part_ids = 'groundtruth_dp_part_ids'
@@ -131,6 +138,7 @@ class InputDataFields(object):
   context_features = 'context_features'
   context_feature_length = 'context_feature_length'
   valid_context_size = 'valid_context_size'
+  context_features_image_id_list = 'context_features_image_id_list'
   image_timestamps = 'image_timestamps'
   image_format = 'image_format'
   image_height = 'image_height'

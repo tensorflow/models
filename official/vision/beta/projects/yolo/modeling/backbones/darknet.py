@@ -1,4 +1,21 @@
+# Lint as: python3
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
 """Contains definitions of Darknet Backbone Networks.
+
    The models are inspired by ResNet, and CSPNet
 
 Residual networks (ResNets) were proposed in:
@@ -6,8 +23,10 @@ Residual networks (ResNets) were proposed in:
     Deep Residual Learning for Image Recognition. arXiv:1512.03385
 
 Cross Stage Partial networks (CSPNets) were proposed in:
-[1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu, Ping-Yang Chen, Jun-Wei Hsieh
-    CSPNet: A New Backbone that can Enhance Learning Capability of CNN. arXiv:1911.11929
+[1] Chien-Yao Wang, Hong-Yuan Mark Liao, I-Hau Yeh, Yueh-Hua Wu, Ping-Yang Chen,
+    Jun-Wei Hsieh
+    CSPNet: A New Backbone that can Enhance Learning Capability of CNN.
+    arXiv:1911.11929
 
 
 DarkNets Are used mainly for Object detection in:
@@ -17,19 +36,16 @@ DarkNets Are used mainly for Object detection in:
 [2] Alexey Bochkovskiy, Chien-Yao Wang, Hong-Yuan Mark Liao
     YOLOv4: Optimal Speed and Accuracy of Object Detection. arXiv:2004.10934
 """
+import collections
 
 import tensorflow as tf
-import tensorflow.keras as ks
-import collections
 
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
-# builder required classes
 class BlockConfig(object):
-  '''
-    get layer config to make code more readable
+  """Get layer config to make code more readable.
 
     Args:
         layer: string layer name
@@ -45,9 +61,11 @@ class BlockConfig(object):
         route: integer for what level to route from to get the next input
         output_name: the name to use for this output
         is_output: is this layer an output in the default model
-  '''
-  def __init__(self, layer, stack, reps, bottleneck, filters, pool_size, kernel_size,
-               strides, padding, activation, route, output_name, is_output):
+  """
+
+  def __init__(self, layer, stack, reps, bottleneck, filters, pool_size,
+               kernel_size, strides, padding, activation, route, output_name,
+               is_output):
     self.layer = layer
     self.stack = stack
     self.repetitions = reps
@@ -69,19 +87,22 @@ def build_block_specs(config):
     specs.append(BlockConfig(*layer))
   return specs
 
-class layer_factory(object):
+
+class LayerFactory(object):
+  """Class for quick look up of default layers.
+
+  Used by darknet to connect, introduce or exit a level. Used in place of an if
+  condition or switch to make adding new layers easier and to reduce redundant
+  code.
   """
-  class for quick look up of default layers used by darknet to
-  connect, introduce or exit a level. Used in place of an if condition
-  or switch to make adding new layers easier and to reduce redundant code
-  """
+
   def __init__(self):
     self._layer_dict = {
-        "ConvBN": (nn_blocks.ConvBN, self.ConvBN_config_todict),
+        "ConvBN": (nn_blocks.ConvBN, self.conv_bn_config_todict),
         "MaxPool": (tf.keras.layers.MaxPool2D, self.maxpool_config_todict)
     }
 
-  def ConvBN_config_todict(self, config, kwargs):
+  def conv_bn_config_todict(self, config, kwargs):
     dictvals = {
         "filters": config.filters,
         "kernel_size": config.kernel_size,
@@ -91,12 +112,10 @@ class layer_factory(object):
     dictvals.update(kwargs)
     return dictvals
 
-
   def darktiny_config_todict(self, config, kwargs):
     dictvals = {"filters": config.filters, "strides": config.strides}
     dictvals.update(kwargs)
     return dictvals
-
 
   def maxpool_config_todict(self, config, kwargs):
     return {
@@ -119,6 +138,7 @@ LISTNAMES = [
     "default_activation", "route", "level/name", "is_output"
 ]
 
+# pylint: disable=line-too-long
 CSPDARKNET53 = {
     "list_names": LISTNAMES,
     "splits": {"backbone_split": 106,
@@ -172,6 +192,7 @@ DARKNETTINY = {
         ["DarkTiny", "tiny", 1, False, 1024, None, 3, 1, "same", "leaky", -1, 5, True],
     ]
 }
+# pylint: enable=line-too-long
 
 BACKBONES = {
     "darknettiny": DARKNETTINY,
@@ -181,8 +202,9 @@ BACKBONES = {
 }
 
 
-@ks.utils.register_keras_serializable(package='yolo')
-class Darknet(ks.Model):
+@tf.keras.utils.register_keras_serializable(package="yolo")
+class Darknet(tf.keras.Model):
+  """Darknet backbone."""
 
   def __init__(
       self,
@@ -194,7 +216,7 @@ class Darknet(ks.Model):
       use_sync_bn=False,
       norm_momentum=0.99,
       norm_epsilon=0.001,
-      kernel_initializer='glorot_uniform',
+      kernel_initializer="glorot_uniform",
       kernel_regularizer=None,
       bias_regularizer=None,
       **kwargs):
@@ -204,7 +226,7 @@ class Darknet(ks.Model):
     self._model_name = model_id
     self._splits = splits
     self._input_shape = input_specs
-    self._registry = layer_factory()
+    self._registry = LayerFactory()
 
     # default layer look up
     self._min_size = min_level
@@ -230,7 +252,7 @@ class Darknet(ks.Model):
         "name": None
     }
 
-    inputs = ks.layers.Input(shape=self._input_shape.shape[1:])
+    inputs = tf.keras.layers.Input(shape=self._input_shape.shape[1:])
     output = self._build_struct(layer_specs, inputs)
     super().__init__(inputs=inputs, outputs=output, name=self._model_name)
 
@@ -250,7 +272,7 @@ class Darknet(ks.Model):
     endpoints = collections.OrderedDict()
     stack_outputs = [inputs]
     for i, config in enumerate(net):
-      if config.stack == None:
+      if config.stack is None:
         x = self._build_block(stack_outputs[config.route],
                               config,
                               name=f"{config.layer}_{i}")
@@ -267,25 +289,23 @@ class Darknet(ks.Model):
         stack_outputs.append(x)
       elif config.stack == "csp_tiny":
         x_pass, x = self._csp_tiny_stack(stack_outputs[config.route],
-                                     config,
-                                     name=f"{config.layer}_{i}")
+                                         config, name=f"{config.layer}_{i}")
         stack_outputs.append(x_pass)
       elif config.stack == "tiny":
         x = self._tiny_stack(stack_outputs[config.route],
                              config,
                              name=f"{config.layer}_{i}")
         stack_outputs.append(x)
-      if (config.is_output and
-          self._min_size == None):
+      if (config.is_output and self._min_size is None):
         endpoints[str(config.output_name)] = x
-      elif self._min_size != None and config.output_name >= self._min_size and config.output_name <= self._max_size:
+      elif self._min_size is not None and config.output_name >= self._min_size and config.output_name <= self._max_size:
         endpoints[str(config.output_name)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints.keys()}
     return endpoints
 
   def _get_activation(self, activation):
-    if self._activation == None:
+    if self._activation is None:
       return activation
     else:
       return self._activation
@@ -336,11 +356,13 @@ class Darknet(ks.Model):
                                   name=f"{name}_tiny/pool")(inputs)
     self._default_dict["activation"] = self._get_activation(config.activation)
     self._default_dict["name"] = f"{name}_tiny/conv"
-    x = nn_blocks.ConvBN(filters=config.filters,
-                           kernel_size=(3, 3),
-                           strides=(1, 1),
-                           padding='same',
-                           **self._default_dict)(x)
+    x = nn_blocks.ConvBN(
+        filters=config.filters,
+        kernel_size=(3, 3),
+        strides=(1, 1),
+        padding="same",
+        **self._default_dict)(
+            x)
     self._default_dict["activation"] = self._activation
     self._default_dict["name"] = None
     return x
@@ -402,21 +424,22 @@ class Darknet(ks.Model):
     }
     return layer_config
 
-@factory.register_backbone_builder('darknet')
+
+@factory.register_backbone_builder("darknet")
 def build_darknet(
     input_specs: tf.keras.layers.InputSpec,
     model_config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+  """Builds darknet backbone."""
 
-  backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
   norm_activation_config = model_config.norm_activation
-  model = Darknet(model_id=backbone_cfg.model_id,
-                 input_shape=input_specs,
-                 activation=norm_activation_config.activation,
-                 use_sync_bn=norm_activation_config.use_sync_bn,
-                 norm_momentum=norm_activation_config.norm_momentum,
-                 norm_epsilon=norm_activation_config.norm_epsilon,
-                 kernel_regularizer=l2_regularizer)
-  model.summary()
+  model = Darknet(
+      model_id=backbone_cfg.model_id,
+      input_shape=input_specs,
+      activation=norm_activation_config.activation,
+      use_sync_bn=norm_activation_config.use_sync_bn,
+      norm_momentum=norm_activation_config.norm_momentum,
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      kernel_regularizer=l2_regularizer)
   return model

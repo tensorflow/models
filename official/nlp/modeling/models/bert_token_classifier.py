@@ -14,7 +14,7 @@
 # ==============================================================================
 """BERT token classifier."""
 # pylint: disable=g-classes-have-attributes
-
+import collections
 import tensorflow as tf
 
 
@@ -33,7 +33,7 @@ class BertTokenClassifier(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.
@@ -51,14 +51,6 @@ class BertTokenClassifier(tf.keras.Model):
                output='logits',
                dropout_rate=0.1,
                **kwargs):
-    self._self_setattr_tracking = False
-    self._network = network
-    self._config = {
-        'network': network,
-        'num_classes': num_classes,
-        'initializer': initializer,
-        'output': output,
-    }
 
     # We want to use the inputs of the passed network as the inputs to this
     # Model. To do this, we need to keep a handle to the network inputs for use
@@ -75,30 +67,56 @@ class BertTokenClassifier(tf.keras.Model):
     sequence_output = tf.keras.layers.Dropout(rate=dropout_rate)(
         sequence_output)
 
-    self.classifier = tf.keras.layers.Dense(
+    classifier = tf.keras.layers.Dense(
         num_classes,
         activation=None,
         kernel_initializer=initializer,
         name='predictions/transform/logits')
-    self.logits = self.classifier(sequence_output)
+    logits = classifier(sequence_output)
     if output == 'logits':
-      output_tensors = self.logits
+      output_tensors = logits
     elif output == 'predictions':
-      output_tensors = tf.keras.layers.Activation(tf.nn.log_softmax)(
-          self.logits)
+      output_tensors = tf.keras.layers.Activation(tf.nn.log_softmax)(logits)
     else:
       raise ValueError(
           ('Unknown `output` value "%s". `output` can be either "logits" or '
            '"predictions"') % output)
+
+    # b/164516224
+    # Once we've created the network using the Functional API, we call
+    # super().__init__ as though we were invoking the Functional API Model
+    # constructor, resulting in this object having all the properties of a model
+    # created using the Functional API. Once super().__init__ is called, we
+    # can assign attributes to `self` - note that all `self` assignments are
+    # below this line.
     super(BertTokenClassifier, self).__init__(
         inputs=inputs, outputs=output_tensors, **kwargs)
+
+    self._network = network
+    config_dict = {
+        'network': network,
+        'num_classes': num_classes,
+        'initializer': initializer,
+        'output': output,
+    }
+
+    # We are storing the config dict as a namedtuple here to ensure checkpoint
+    # compatibility with an earlier version of this model which did not track
+    # the config dict attribute. TF does not track immutable attrs which
+    # do not contain Trackables, so by creating a config namedtuple instead of
+    # a dict we avoid tracking it.
+    config_cls = collections.namedtuple('Config', config_dict.keys())
+    self._config = config_cls(**config_dict)
+
+    self.classifier = classifier
+    self.logits = logits
 
   @property
   def checkpoint_items(self):
     return dict(encoder=self._network)
 
   def get_config(self):
-    return self._config
+    return dict(self._config._asdict())
 
   @classmethod
   def from_config(cls, config, custom_objects=None):

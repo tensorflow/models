@@ -120,6 +120,7 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
+      exporter_lib_v2.INPUT_BUILDER_UTIL_MAP['model_build'] = mock_builder
       output_directory = os.path.join(tmp_dir, 'output')
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter_lib_v2.export_inference_graph(
@@ -181,6 +182,7 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
+      exporter_lib_v2.INPUT_BUILDER_UTIL_MAP['model_build'] = mock_builder
       output_directory = os.path.join(tmp_dir, 'output')
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter_lib_v2.export_inference_graph(
@@ -217,6 +219,7 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
+      exporter_lib_v2.INPUT_BUILDER_UTIL_MAP['model_build'] = mock_builder
       output_directory = os.path.join(tmp_dir, 'output')
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter_lib_v2.export_inference_graph(
@@ -262,6 +265,7 @@ class ExportInferenceGraphTest(tf.test.TestCase, parameterized.TestCase):
     with mock.patch.object(
         model_builder, 'build', autospec=True) as mock_builder:
       mock_builder.return_value = FakeModel()
+      exporter_lib_v2.INPUT_BUILDER_UTIL_MAP['model_build'] = mock_builder
       output_directory = os.path.join(tmp_dir, 'output')
       pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
       exporter_lib_v2.export_inference_graph(

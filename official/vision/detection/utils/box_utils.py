@@ -366,6 +366,156 @@ def decode_boxes(encoded_boxes, anchors, weights=None):
     return decoded_boxes
 
 
+def encode_boxes_lrtb(boxes, anchors, weights=None):
+  """Encode boxes to targets on lrtb (=left,right,top,bottom) format.
+
+  Args:
+    boxes: a tensor whose last dimension is 4 representing the coordinates
+      of boxes in ymin, xmin, ymax, xmax order.
+    anchors: a tensor whose shape is the same as, or `broadcastable` to `boxes`,
+      representing the coordinates of anchors in ymin, xmin, ymax, xmax order.
+    weights: None or a list of four float numbers used to scale coordinates.
+
+  Returns:
+    encoded_boxes_lrtb: a tensor whose shape is the same as `boxes` representing
+      the encoded box targets. The box targets encode the left, right, top,
+      bottom distances from an anchor location to the four borders of the
+      matched groundtruth bounding box.
+    center_targets: centerness targets defined by the left, right, top, and
+      bottom distance targets. The centerness is defined as the deviation of the
+      anchor location from the groundtruth object center. Formally, centerness =
+      sqrt(min(left, right)/max(left, right)*min(top, bottom)/max(top, bottom)).
+
+  Raises:
+    ValueError: If the last dimension of boxes is not 4.
+  """
+  if boxes.shape[-1] != 4:
+    raise ValueError(
+        'boxes.shape[-1] is {:d}, but must be 4.'.format(boxes.shape[-1]))
+
+  with tf.name_scope('encode_boxes_lrtb'):
+    boxes = tf.cast(boxes, dtype=anchors.dtype)
+    ymin = boxes[..., 0:1]
+    xmin = boxes[..., 1:2]
+    ymax = boxes[..., 2:3]
+    xmax = boxes[..., 3:4]
+    # box_h = ymax - ymin + 1.0
+    # box_w = xmax - xmin + 1.0
+    box_h = ymax - ymin
+    box_w = xmax - xmin
+
+    anchor_ymin = anchors[..., 0:1]
+    anchor_xmin = anchors[..., 1:2]
+    anchor_ymax = anchors[..., 2:3]
+    anchor_xmax = anchors[..., 3:4]
+    # anchor_h = anchor_ymax - anchor_ymin + 1.0
+    # anchor_w = anchor_xmax - anchor_xmin + 1.0
+    anchor_h = anchor_ymax - anchor_ymin
+    anchor_w = anchor_xmax - anchor_xmin
+    anchor_yc = anchor_ymin + 0.5 * anchor_h
+    anchor_xc = anchor_xmin + 0.5 * anchor_w
+
+    box_h += EPSILON
+    box_w += EPSILON
+    anchor_h += EPSILON
+    anchor_w += EPSILON
+
+    left = (anchor_xc - xmin) / anchor_w
+    right = (xmax - anchor_xc) / anchor_w
+    top = (anchor_yc - ymin) / anchor_h
+    bottom = (ymax - anchor_yc) / anchor_h
+
+    # Create centerness target. {
+    lrtb_targets = tf.concat([left, right, top, bottom], axis=-1)
+    valid_match = tf.greater(tf.reduce_min(lrtb_targets, -1), 0.0)
+
+    # Centerness score.
+    left_right = tf.concat([left, right], axis=-1)
+
+    left_right = tf.where(tf.stack([valid_match, valid_match], -1),
+                          left_right, tf.zeros_like(left_right))
+    top_bottom = tf.concat([top, bottom], axis=-1)
+    top_bottom = tf.where(tf.stack([valid_match, valid_match], -1),
+                          top_bottom, tf.zeros_like(top_bottom))
+    center_targets = tf.sqrt(
+        (tf.reduce_min(left_right, -1) /
+         (tf.reduce_max(left_right, -1) + EPSILON)) *
+        (tf.reduce_min(top_bottom, -1) /
+         (tf.reduce_max(top_bottom, -1) + EPSILON)))
+    center_targets = tf.where(valid_match,
+                              center_targets,
+                              tf.zeros_like(center_targets))
+    if weights:
+      left *= weights[0]
+      right *= weights[1]
+      top *= weights[2]
+      bottom *= weights[3]
+
+    encoded_boxes_lrtb = tf.concat(
+        [left, right, top, bottom],
+        axis=-1)
+
+    return encoded_boxes_lrtb, center_targets
+
+
+def decode_boxes_lrtb(encoded_boxes_lrtb, anchors, weights=None):
+  """Decode boxes.
+
+  Args:
+    encoded_boxes_lrtb: a tensor whose last dimension is 4 representing the
+      coordinates of encoded boxes in left, right, top, bottom order.
+    anchors: a tensor whose shape is the same as, or `broadcastable` to `boxes`,
+      representing the coordinates of anchors in ymin, xmin, ymax, xmax order.
+    weights: None or a list of four float numbers used to scale coordinates.
+
+  Returns:
+    decoded_boxes_lrtb: a tensor whose shape is the same as `boxes` representing
+      the decoded box targets in lrtb (=left,right,top,bottom) format. The box
+      decoded box coordinates represent the left, right, top, and bottom
+      distances from an anchor location to the four borders of the matched
+      groundtruth bounding box.
+  """
+  if encoded_boxes_lrtb.shape[-1] != 4:
+    raise ValueError(
+        'encoded_boxes_lrtb.shape[-1] is {:d}, but must be 4.'
+        .format(encoded_boxes_lrtb.shape[-1]))
+
+  with tf.name_scope('decode_boxes_lrtb'):
+    encoded_boxes_lrtb = tf.cast(encoded_boxes_lrtb, dtype=anchors.dtype)
+    left = encoded_boxes_lrtb[..., 0:1]
+    right = encoded_boxes_lrtb[..., 1:2]
+    top = encoded_boxes_lrtb[..., 2:3]
+    bottom = encoded_boxes_lrtb[..., 3:4]
+    if weights:
+      left /= weights[0]
+      right /= weights[1]
+      top /= weights[2]
+      bottom /= weights[3]
+
+    anchor_ymin = anchors[..., 0:1]
+    anchor_xmin = anchors[..., 1:2]
+    anchor_ymax = anchors[..., 2:3]
+    anchor_xmax = anchors[..., 3:4]
+
+    anchor_h = anchor_ymax - anchor_ymin
+    anchor_w = anchor_xmax - anchor_xmin
+    anchor_yc = anchor_ymin + 0.5 * anchor_h
+    anchor_xc = anchor_xmin + 0.5 * anchor_w
+    anchor_h += EPSILON
+    anchor_w += EPSILON
+
+    decoded_boxes_ymin = anchor_yc - top * anchor_h
+    decoded_boxes_xmin = anchor_xc - left * anchor_w
+    decoded_boxes_ymax = anchor_yc + bottom * anchor_h
+    decoded_boxes_xmax = anchor_xc + right * anchor_w
+
+    decoded_boxes_lrtb = tf.concat(
+        [decoded_boxes_ymin, decoded_boxes_xmin,
+         decoded_boxes_ymax, decoded_boxes_xmax],
+        axis=-1)
+    return decoded_boxes_lrtb
+
+
 def filter_boxes(boxes, scores, image_shape, min_size_threshold):
   """Filter and remove boxes that are too small or fall outside the image.
 

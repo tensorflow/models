@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""TFDS Classification decoder and parser."""
-# Import libraries
+"""TFDS Classification decoder."""
+
 import tensorflow as tf
 from official.vision.beta.dataloaders import decoder
 
 
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for classification task."""
+
   def __init__(self):
     return
 
   def decode(self, serialized_example):
+<<<<<<< HEAD
     # this is not the best solution, but we encode the image because the
     # parser only works with string encoded jpegs.the simple solution is to
     # decode the image to a tensor in the deccoder and to have the parser
@@ -34,5 +36,11 @@ class Decoder(decoder.Decoder):
         tf.io.encode_jpeg(serialized_example["image"], quality=100),
         "image/class/label":
         serialized_example["label"],
+=======
+    sample_dict = {
+        'image/encoded': tf.io.encode_jpeg(
+            serialized_example['image'], quality=100),
+        'image/class/label': serialized_example['label'],
+>>>>>>> master
     }
     return sample_dict

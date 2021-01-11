@@ -14,10 +14,6 @@
 # ==============================================================================
 """BERT library to process data for classification task."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import collections
 import csv
 import importlib
@@ -215,6 +211,44 @@ class ColaProcessor(DataProcessor):
         label = self.process_text_fn(line[1])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=None, label=label))
+    return examples
+
+
+class ImdbProcessor(DataProcessor):
+  """Processor for the IMDb dataset."""
+
+  def get_labels(self):
+    return ["neg", "pos"]
+
+  def get_train_examples(self, data_dir):
+    return self._create_examples(os.path.join(data_dir, "train"))
+
+  def get_dev_examples(self, data_dir):
+    return self._create_examples(os.path.join(data_dir, "test"))
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "IMDB"
+
+  def _create_examples(self, data_dir):
+    """Creates examples."""
+    examples = []
+    for label in ["neg", "pos"]:
+      cur_dir = os.path.join(data_dir, label)
+      for filename in tf.io.gfile.listdir(cur_dir):
+        if not filename.endswith("txt"):
+          continue
+
+        if len(examples) % 1000 == 0:
+          logging.info("Loading dev example %d", len(examples))
+
+        path = os.path.join(cur_dir, filename)
+        with tf.io.gfile.GFile(path, "r") as f:
+          text = f.read().strip().replace("<br />", " ")
+        examples.append(
+            InputExample(
+                guid="unused_id", text_a=text, text_b=None, label=label))
     return examples
 
 
@@ -904,45 +938,104 @@ class XtremePawsxProcessor(DataProcessor):
   """Processor for the XTREME PAWS-X data set."""
   supported_languages = ["de", "en", "es", "fr", "ja", "ko", "zh"]
 
+  def __init__(self,
+               process_text_fn=tokenization.convert_to_unicode,
+               translated_data_dir=None,
+               only_use_en_dev=True):
+    """See base class.
+
+    Args:
+      process_text_fn: See base class.
+      translated_data_dir: If specified, will also include translated data in
+        the training and testing data.
+      only_use_en_dev: If True, only use english dev data. Otherwise, use dev
+        data from all languages.
+    """
+    super(XtremePawsxProcessor, self).__init__(process_text_fn)
+    self.translated_data_dir = translated_data_dir
+    self.only_use_en_dev = only_use_en_dev
+
   def get_train_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
     examples = []
-    for i, line in enumerate(lines):
-      guid = "train-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.translated_data_dir is None:
+      lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
+      for i, line in enumerate(lines):
+        guid = "train-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = self.process_text_fn(line[2])
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    else:
+      for lang in self.supported_languages:
+        lines = self._read_tsv(
+            os.path.join(self.translated_data_dir, "translate-train",
+                         f"en-{lang}-translated.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"train-{lang}-{i}"
+          text_a = self.process_text_fn(line[2])
+          text_b = self.process_text_fn(line[3])
+          label = self.process_text_fn(line[4])
+          examples.append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
-
     examples = []
-    for i, line in enumerate(lines):
-      guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.only_use_en_dev:
+      lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
+      for i, line in enumerate(lines):
+        guid = "dev-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = self.process_text_fn(line[2])
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    else:
+      for lang in self.supported_languages:
+        lines = self._read_tsv(os.path.join(data_dir, f"dev-{lang}.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"dev-{lang}-{i}"
+          text_a = self.process_text_fn(line[0])
+          text_b = self.process_text_fn(line[1])
+          label = self.process_text_fn(line[2])
+          examples.append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    examples_by_lang = {k: [] for k in self.supported_languages}
+    examples_by_lang = {}
     for lang in self.supported_languages:
+      examples_by_lang[lang] = []
       lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
       for i, line in enumerate(lines):
-        guid = "test-%d" % i
+        guid = f"test-{lang}-{i}"
         text_a = self.process_text_fn(line[0])
         text_b = self.process_text_fn(line[1])
         label = "0"
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.translated_data_dir is not None:
+      for lang in self.supported_languages:
+        if lang == "en":
+          continue
+        examples_by_lang[f"{lang}-en"] = []
+        lines = self._read_tsv(
+            os.path.join(self.translated_data_dir, "translate-test",
+                         f"test-{lang}-en-translated.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"test-{lang}-en-{i}"
+          text_a = self.process_text_fn(line[2])
+          text_b = self.process_text_fn(line[3])
+          label = "0"
+          examples_by_lang[f"{lang}-en"].append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
 
   def get_labels(self):
@@ -962,45 +1055,111 @@ class XtremeXnliProcessor(DataProcessor):
       "ur", "vi", "zh"
   ]
 
+  def __init__(self,
+               process_text_fn=tokenization.convert_to_unicode,
+               translated_data_dir=None,
+               only_use_en_dev=True):
+    """See base class.
+
+    Args:
+      process_text_fn: See base class.
+      translated_data_dir: If specified, will also include translated data in
+        the training data.
+      only_use_en_dev: If True, only use english dev data. Otherwise, use dev
+        data from all languages.
+    """
+    super(XtremeXnliProcessor, self).__init__(process_text_fn)
+    self.translated_data_dir = translated_data_dir
+    self.only_use_en_dev = only_use_en_dev
+
   def get_train_examples(self, data_dir):
     """See base class."""
     lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
 
     examples = []
-    for i, line in enumerate(lines):
-      guid = "train-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.translated_data_dir is None:
+      for i, line in enumerate(lines):
+        guid = "train-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = self.process_text_fn(line[2])
+        if label == self.process_text_fn("contradictory"):
+          label = self.process_text_fn("contradiction")
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    else:
+      for lang in self.supported_languages:
+        lines = self._read_tsv(
+            os.path.join(self.translated_data_dir, "translate-train",
+                         f"en-{lang}-translated.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"train-{lang}-{i}"
+          text_a = self.process_text_fn(line[2])
+          text_b = self.process_text_fn(line[3])
+          label = self.process_text_fn(line[4])
+          if label == self.process_text_fn("contradictory"):
+            label = self.process_text_fn("contradiction")
+          examples.append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
     examples = []
-    for i, line in enumerate(lines):
-      guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.only_use_en_dev:
+      lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
+      for i, line in enumerate(lines):
+        guid = "dev-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = self.process_text_fn(line[2])
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    else:
+      for lang in self.supported_languages:
+        lines = self._read_tsv(os.path.join(data_dir, f"dev-{lang}.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"dev-{lang}-{i}"
+          text_a = self.process_text_fn(line[0])
+          text_b = self.process_text_fn(line[1])
+          label = self.process_text_fn(line[2])
+          if label == self.process_text_fn("contradictory"):
+            label = self.process_text_fn("contradiction")
+          examples.append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    examples_by_lang = {k: [] for k in self.supported_languages}
+    examples_by_lang = {}
     for lang in self.supported_languages:
+      examples_by_lang[lang] = []
       lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
       for i, line in enumerate(lines):
-        guid = f"test-{i}"
+        guid = f"test-{lang}-{i}"
         text_a = self.process_text_fn(line[0])
         text_b = self.process_text_fn(line[1])
         label = "contradiction"
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.translated_data_dir is not None:
+      for lang in self.supported_languages:
+        if lang == "en":
+          continue
+        examples_by_lang[f"{lang}-en"] = []
+        lines = self._read_tsv(
+            os.path.join(self.translated_data_dir, "translate-test",
+                         f"test-{lang}-en-translated.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"test-{lang}-en-{i}"
+          text_a = self.process_text_fn(line[2])
+          text_b = self.process_text_fn(line[3])
+          label = "contradiction"
+          examples_by_lang[f"{lang}-en"].append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
 
   def get_labels(self):
@@ -1036,6 +1195,11 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     if len(tokens_a) > max_seq_length - 2:
       tokens_a = tokens_a[0:(max_seq_length - 2)]
 
+  seg_id_a = 0
+  seg_id_b = 1
+  seg_id_cls = 0
+  seg_id_pad = 0
+
   # The convention in BERT is:
   # (a) For sequence pairs:
   #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
@@ -1057,19 +1221,19 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   tokens = []
   segment_ids = []
   tokens.append("[CLS]")
-  segment_ids.append(0)
+  segment_ids.append(seg_id_cls)
   for token in tokens_a:
     tokens.append(token)
-    segment_ids.append(0)
+    segment_ids.append(seg_id_a)
   tokens.append("[SEP]")
-  segment_ids.append(0)
+  segment_ids.append(seg_id_a)
 
   if tokens_b:
     for token in tokens_b:
       tokens.append(token)
-      segment_ids.append(1)
+      segment_ids.append(seg_id_b)
     tokens.append("[SEP]")
-    segment_ids.append(1)
+    segment_ids.append(seg_id_b)
 
   input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
@@ -1081,7 +1245,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   while len(input_ids) < max_seq_length:
     input_ids.append(0)
     input_mask.append(0)
-    segment_ids.append(0)
+    segment_ids.append(seg_id_pad)
 
   assert len(input_ids) == max_seq_length
   assert len(input_mask) == max_seq_length
@@ -1186,7 +1350,7 @@ def generate_tf_record_from_data_file(processor,
                                       max_seq_length=128):
   """Generates and saves training data into a tf record file.
 
-  Arguments:
+  Args:
       processor: Input processor object to be used for generating data. Subclass
         of `DataProcessor`.
       data_dir: Directory that contains train/eval/test data to process.

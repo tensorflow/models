@@ -27,6 +27,7 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
+from official.vision.beta.modeling.layers import nn_layers
 from official.vision.beta.ops import spatial_transform_ops
 
 layers = tf.keras.layers
@@ -114,17 +115,6 @@ def build_block_specs(block_specs=None):
   return [BlockSpec(*b) for b in block_specs]
 
 
-def get_stochastic_depth_rate(init_rate, i, n):
-  """Get drop connect rate for the ith block."""
-  if init_rate is not None:
-    if init_rate < 0 or init_rate > 1:
-      raise ValueError('Initial drop rate must be within 0 and 1.')
-    dc_rate = init_rate * float(i + 1) / n
-  else:
-    dc_rate = None
-  return dc_rate
-
-
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class SpineNet(tf.keras.Model):
   """Class to build SpineNet models."""
@@ -188,7 +178,7 @@ class SpineNet(tf.keras.Model):
 
     net = self._build_stem(inputs=inputs)
     net = self._build_scale_permuted_network(
-        net=net, input_width=input_specs.shape[1])
+        net=net, input_width=input_specs.shape[2])
     endpoints = self._build_endpoints(net=net)
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
@@ -350,8 +340,8 @@ class SpineNet(tf.keras.Model):
           strides=1,
           block_fn_cand=target_block_fn,
           block_repeats=self._block_repeats,
-          stochastic_depth_drop_rate=get_stochastic_depth_rate(
-              self._init_stochastic_depth_rate, i, len(self._block_specs)),
+          stochastic_depth_drop_rate=nn_layers.get_stochastic_depth_rate(
+              self._init_stochastic_depth_rate, i + 1, len(self._block_specs)),
           name='scale_permuted_block_{}'.format(i + 1))
 
       net.append(x)

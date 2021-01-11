@@ -142,13 +142,14 @@ class GenerateEmbeddingDataFn(beam.DoFn):
   session_lock = threading.Lock()
 
   def __init__(self, model_dir, top_k_embedding_count,
-               bottom_k_embedding_count):
+               bottom_k_embedding_count, embedding_type='final_box_features'):
     """Initialization function.
 
     Args:
       model_dir: A directory containing saved model.
       top_k_embedding_count: the number of high-confidence embeddings to store
       bottom_k_embedding_count: the number of low-confidence embeddings to store
+      embedding_type: One of 'final_box_features', 'rpn_box_features'
     """
     self._model_dir = model_dir
     self._session = None
@@ -156,6 +157,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
         'embedding_data_generation', 'num_tf_examples_processed')
     self._top_k_embedding_count = top_k_embedding_count
     self._bottom_k_embedding_count = bottom_k_embedding_count
+    self._embedding_type = embedding_type
 
   def setup(self):
     self._load_inference_model()
@@ -188,7 +190,12 @@ class GenerateEmbeddingDataFn(beam.DoFn):
 
     detections = self._detect_fn.signatures['serving_default'](
         (tf.expand_dims(tf.convert_to_tensor(tfexample), 0)))
-    detection_features = detections['detection_features']
+    if self._embedding_type == 'final_box_features':
+      detection_features = detections['detection_features']
+    elif self._embedding_type == 'rpn_box_features':
+      detection_features = detections['cropped_rpn_box_features']
+    else:
+      raise ValueError('embedding type not supported')
     detection_boxes = detections['detection_boxes']
     num_detections = detections['num_detections']
     detection_scores = detections['detection_scores']
@@ -245,7 +252,7 @@ class GenerateEmbeddingDataFn(beam.DoFn):
 
 def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
                        top_k_embedding_count, bottom_k_embedding_count,
-                       num_shards):
+                       num_shards, embedding_type):
   """Returns a beam pipeline to run object detection inference.
 
   Args:
@@ -257,6 +264,7 @@ def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
     top_k_embedding_count: The number of high-confidence embeddings to store.
     bottom_k_embedding_count: The number of low-confidence embeddings to store.
     num_shards: The number of output shards.
+    embedding_type: Which features to embed.
   """
   input_collection = (
       pipeline | 'ReadInputTFRecord' >> beam.io.tfrecordio.ReadFromTFRecord(
@@ -264,7 +272,7 @@ def construct_pipeline(pipeline, input_tfrecord, output_tfrecord, model_dir,
       | 'AddKeys' >> beam.Map(add_keys))
   output_collection = input_collection | 'ExtractEmbedding' >> beam.ParDo(
       GenerateEmbeddingDataFn(model_dir, top_k_embedding_count,
-                              bottom_k_embedding_count))
+                              bottom_k_embedding_count, embedding_type))
   output_collection = output_collection | 'Reshuffle' >> beam.Reshuffle()
   _ = output_collection | 'DropKeys' >> beam.Map(
       drop_keys) | 'WritetoDisk' >> beam.io.tfrecordio.WriteToTFRecord(
@@ -315,6 +323,12 @@ def parse_args(argv):
       dest='num_shards',
       default=0,
       help='Number of output shards.')
+  parser.add_argument(
+      '--embedding_type',
+      dest='embedding_type',
+      default='final_box_features',
+      help='What features to embed, supports `final_box_features`, '
+      '`rpn_box_features`.')
   beam_args, pipeline_args = parser.parse_known_args(argv)
   return beam_args, pipeline_args
 
@@ -346,7 +360,8 @@ def main(argv=None, save_main_session=True):
       args.embedding_model_dir,
       args.top_k_embedding_count,
       args.bottom_k_embedding_count,
-      args.num_shards)
+      args.num_shards,
+      args.embedding_type)
 
   p.run()
 

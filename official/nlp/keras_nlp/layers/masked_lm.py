@@ -31,7 +31,7 @@ class MaskedLM(tf.keras.layers.Layer):
   lm_layer=MaskedLM(embedding_table=encoder.get_embedding_table())
   ```
 
-  Arguments:
+  Args:
     embedding_table: The embedding table from encoder network.
     activation: The activation, if any, for the dense layer.
     initializer: The initializer for the dense layer. Defaults to a Glorot

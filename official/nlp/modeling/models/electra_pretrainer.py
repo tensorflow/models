@@ -39,7 +39,7 @@ class ElectraPretrainer(tf.keras.Model):
   *Note* that the model is constructed by Keras Subclass API, where layers are
   defined inside __init__ and call() implements the computation.
 
-  Arguments:
+  Args:
     generator_network: A transformer network for generator, this network should
       output a sequence output and an optional classification output.
     discriminator_network: A transformer network for discriminator, this network
@@ -100,12 +100,12 @@ class ElectraPretrainer(tf.keras.Model):
         output=output_type,
         name='generator_masked_lm')
     self.classification = layers.ClassificationHead(
-        inner_dim=generator_network._config_dict['hidden_size'],
+        inner_dim=generator_network.get_config()['hidden_size'],
         num_classes=num_classes,
         initializer=mlm_initializer,
         name='generator_classification_head')
     self.discriminator_projection = tf.keras.layers.Dense(
-        units=discriminator_network._config_dict['hidden_size'],
+        units=discriminator_network.get_config()['hidden_size'],
         activation=mlm_activation,
         kernel_initializer=mlm_initializer,
         name='discriminator_projection_head')
