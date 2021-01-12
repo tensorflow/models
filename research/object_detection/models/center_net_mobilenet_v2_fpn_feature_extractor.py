@@ -38,7 +38,8 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
                mobilenet_v2_net,
                channel_means=(0., 0., 0.),
                channel_stds=(1., 1., 1.),
-               bgr_ordering=False):
+               bgr_ordering=False,
+               fpn_separable_conv=False):
     """Intializes the feature extractor.
 
     Args:
@@ -49,6 +50,8 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
         channel. Each channel will be divided by its standard deviation value.
       bgr_ordering: bool, if set will change the channel ordering to be in the
         [blue, red, green] order.
+      fpn_separable_conv: If set to True, all convolutional layers in the FPN
+        network will be replaced by separable convolutions.
     """
 
     super(CenterNetMobileNetV2FPNFeatureExtractor, self).__init__(
@@ -72,6 +75,7 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
     # 7x7x1280, which we continually upsample, apply a residual on and merge.
     # This results in a 56x56x24 output volume.
     top_layer = fpn_outputs[-1]
+    # Use normal convolutional layer since the kernel_size is 1.
     residual_op = tf.keras.layers.Conv2D(
         filters=64, kernel_size=1, strides=1, padding='same')
     top_down = residual_op(top_layer)
@@ -84,6 +88,7 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
       top_down = upsample_op(top_down)
 
       # Residual (skip-connection) from bottom-up pathway.
+      # Use normal convolutional layer since the kernel_size is 1.
       residual_op = tf.keras.layers.Conv2D(
           filters=num_filters, kernel_size=1, strides=1, padding='same')
       residual = residual_op(fpn_outputs[level_ind])
@@ -91,8 +96,12 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
       # Merge.
       top_down = top_down + residual
       next_num_filters = num_filters_list[i + 1] if i + 1 <= 2 else 24
-      conv = tf.keras.layers.Conv2D(
-          filters=next_num_filters, kernel_size=3, strides=1, padding='same')
+      if fpn_separable_conv:
+        conv = tf.keras.layers.SeparableConv2D(
+            filters=next_num_filters, kernel_size=3, strides=1, padding='same')
+      else:
+        conv = tf.keras.layers.Conv2D(
+            filters=next_num_filters, kernel_size=3, strides=1, padding='same')
       top_down = conv(top_down)
       top_down = tf.keras.layers.BatchNormalization()(top_down)
       top_down = tf.keras.layers.ReLU()(top_down)
@@ -133,10 +142,27 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
 def mobilenet_v2_fpn(channel_means, channel_stds, bgr_ordering):
   """The MobileNetV2+FPN backbone for CenterNet."""
 
-  # Set to is_training to True for now.
-  network = mobilenetv2.mobilenet_v2(True, include_top=False)
+  # Set to batchnorm_training to True for now.
+  network = mobilenetv2.mobilenet_v2(batchnorm_training=True, include_top=False)
   return CenterNetMobileNetV2FPNFeatureExtractor(
       network,
       channel_means=channel_means,
       channel_stds=channel_stds,
-      bgr_ordering=bgr_ordering)
+      bgr_ordering=bgr_ordering,
+      fpn_separable_conv=False)
+
+
+def mobilenet_v2_fpn_sep_conv(channel_means, channel_stds, bgr_ordering):
+  """Same as mobilenet_v2_fpn except with separable convolution in FPN."""
+
+  # Setting batchnorm_training to True, which will use the correct
+  # BatchNormalization layer strategy based on the current Keras learning phase.
+  # TODO(yuhuic): expriment with True vs. False to understand it's effect in
+  # practice.
+  network = mobilenetv2.mobilenet_v2(batchnorm_training=True, include_top=False)
+  return CenterNetMobileNetV2FPNFeatureExtractor(
+      network,
+      channel_means=channel_means,
+      channel_stds=channel_stds,
+      bgr_ordering=bgr_ordering,
+      fpn_separable_conv=True)

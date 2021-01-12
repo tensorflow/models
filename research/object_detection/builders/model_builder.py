@@ -159,6 +159,9 @@ if tf_version.is_tf2():
           center_net_mobilenet_v2_feature_extractor.mobilenet_v2,
       'mobilenet_v2_fpn':
           center_net_mobilenet_v2_fpn_feature_extractor.mobilenet_v2_fpn,
+      'mobilenet_v2_fpn_sep_conv':
+          center_net_mobilenet_v2_fpn_feature_extractor
+          .mobilenet_v2_fpn_sep_conv,
   }
 
   FEATURE_EXTRACTOR_MAPS = [
