@@ -244,9 +244,11 @@ class BertPretrainerV2(tf.keras.Model):
       raise ValueError('encoder_network\'s output should be either a list '
                        'or a dict, but got %s' % encoder_network_outputs)
     sequence_output = outputs['sequence_output']
-    masked_lm_positions = inputs['masked_lm_positions']
-    outputs['mlm_logits'] = self.masked_lm(
-        sequence_output, masked_positions=masked_lm_positions)
+    # Inference may not have masked_lm_positions and mlm_logits is not needed.
+    if 'masked_lm_positions' in inputs:
+      masked_lm_positions = inputs['masked_lm_positions']
+      outputs['mlm_logits'] = self.masked_lm(
+          sequence_output, masked_positions=masked_lm_positions)
     for cls_head in self.classification_heads:
       cls_outputs = cls_head(sequence_output)
       if isinstance(cls_outputs, dict):
