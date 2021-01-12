@@ -19,7 +19,7 @@ TN-BERT achieves the following improvements:
 *   15% less energy consumption by accellerators
 
 For more information go to the TF Hub model page
-[here](https://tfhub.dev/tensorflow/tn_bert/1)
+[here](https://tfhub.dev/google/tn_bert/1)
 
 ### Implementation
 
