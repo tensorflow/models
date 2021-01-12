@@ -158,6 +158,9 @@ python3 train.py \
   --logdir=gldv2_training/
 ```
 
+*NOTE: The `--use_autoencoder` parameter is set by default to `True`, therefore
+the model will be by default trained with the autoencoder.*
+
 ### Training with Local and Global Features
 
 It is also possible to train the model with an improved global features head as
@@ -173,36 +176,6 @@ python3 train.py \
   --dataset_version=gld_v2_clean \
   --logdir=gldv2_training/ \
   --delg_global_features
-```
-
-### Training with the Autoencoder
-
-In order to train with the autoencoder described in the DELG paper you can add
-the `--use_autoencoder` parameter for both training with local and local and
-global features:
-
-* Training with local features and the autoencoder:
-
-```
-python3 train.py \
-  --train_file_pattern=gldv2_dataset/tfrecord/train* \
-  --validation_file_pattern=gldv2_dataset/tfrecord/validation* \
-  --imagenet_checkpoint=resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5 \
-  --dataset_version=gld_v2_clean \
-  --logdir=gldv2_training/ \
-  --use_autoencoder
-````
-* Training with local and global features and the autoencoder:
-
-```
-python3 train.py \
-  --train_file_pattern=gldv2_dataset/tfrecord/train* \
-  --validation_file_pattern=gldv2_dataset/tfrecord/validation* \
-  --imagenet_checkpoint=resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5 \
-  --dataset_version=gld_v2_clean \
-  --logdir=gldv2_training/ \
-  --delg_global_features \
-  --use_autoencoder
 ```
 
 *NOTE: The `--use_autoencoder` parameter is set by default to `True`, therefore
@@ -233,16 +206,6 @@ python3 model/export_local_model.py \
   --export_path=gldv2_model_local
 ```
 
-If the model was trained with the autoencoder described in the DELG paper, use
-the following export command instead:
-
-```
-python3 model/export_local_model.py \
-  --ckpt_path=gldv2_training/delf_weights \
-  --export_path=gldv2_model_local \
-  --use_autoencoder
-```
-
 ### DELG global feature-only model
 
 This should be used when you are only interested in having a global feature
@@ -265,17 +228,6 @@ python3 model/export_local_and_global_model.py \
   --ckpt_path=gldv2_training/delf_weights \
   --export_path=gldv2_model_local_and_global \
   --delg_global_features
-```
-
-If the model was trained with the autoencoder described in the DELG paper, use
-the following export command instead:
-
-```
-python3 model/export_global_model.py \
-  --ckpt_path=gldv2_training/delf_weights \
-  --export_path=gldv2_model_global \
-  --delg_global_features \
-  --use_autoencoder
 ```
 
 ### Kaggle-compatible global feature model
