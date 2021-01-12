@@ -105,6 +105,12 @@ pip will install all models and dependencies automatically.
 pip install tf-models-official
 ```
 
+If you are using nlp packages, please also install **tensorflow-text**:
+
+```shell
+pip install tensorflow-text
+```
+
 Please check out our [example](colab/fine_tuning_bert.ipynb)
 to learn how to use a PIP package.
 
@@ -141,6 +147,13 @@ os.environ['PYTHONPATH'] += ":/path/to/models"
 
 ```shell
 pip3 install --user -r official/requirements.txt
+```
+
+Finally, if you are using nlp packages, please also install
+**tensorflow-text-nightly**:
+
+```shell
+pip3 install tensorflow-text-nightly
 ```
 
 ## Contributions
