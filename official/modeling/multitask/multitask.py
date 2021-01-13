@@ -21,10 +21,9 @@ from official.core import base_task
 from official.core import config_definitions
 from official.core import task_factory
 from official.modeling import optimization
-from official.modeling import performance
 from official.modeling.multitask import configs
 
-TrainerConfig = config_definitions.TrainerConfig
+OptimizationConfig = optimization.OptimizationConfig
 RuntimeConfig = config_definitions.RuntimeConfig
 
 
@@ -105,28 +104,11 @@ class MultiTask(tf.Module, metaclass=abc.ABCMeta):
     return self._task_weights[task_name]
 
   @classmethod
-  def create_optimizer(cls, trainer_config: TrainerConfig,
+  def create_optimizer(cls,
+                       optimizer_config: OptimizationConfig,
                        runtime_config: Optional[RuntimeConfig] = None):
-    """Creates an TF optimizer from configurations.
-
-    Args:
-      trainer_config: the parameters of the trainer.
-      runtime_config: the parameters of the runtime.
-
-    Returns:
-      A tf.optimizers.Optimizer object.
-    """
-    opt_factory = optimization.OptimizerFactory(trainer_config.optimizer_config)
-    optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
-    # Configuring optimizer when loss_scale is set in runtime config. This helps
-    # avoiding overflow/underflow for float16 computations.
-    if runtime_config and runtime_config.loss_scale:
-      optimizer = performance.configure_optimizer(
-          optimizer,
-          use_float16=runtime_config.mixed_precision_dtype == "float16",
-          loss_scale=runtime_config.loss_scale)
-
-    return optimizer
+    return base_task.Task.create_optimizer(
+        optimizer_config=optimizer_config, runtime_config=runtime_config)
 
   def joint_train_step(self, task_inputs, multi_task_model, optimizer,
                        task_metrics):

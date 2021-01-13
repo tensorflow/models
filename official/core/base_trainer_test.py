@@ -59,7 +59,8 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
         config,
         task,
         model=task.build_model(),
-        optimizer=task.create_optimizer(config.trainer, config.runtime),
+        optimizer=task.create_optimizer(config.trainer.optimizer_config,
+                                        config.runtime),
         checkpoint_exporter=ckpt_exporter)
     return trainer
 
@@ -189,15 +190,18 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 }
             })))
     task = mock_task.MockTask(config.task, logging_dir=model_dir)
+
     def build_losses(labels, model_outputs, aux_losses=None):
       del labels, model_outputs
       return tf.constant([np.nan], tf.float32) + aux_losses
+
     task.build_losses = build_losses
     trainer = trainer_lib.Trainer(
         config,
         task,
         model=task.build_model(),
-        optimizer=task.create_optimizer(config.trainer, config.runtime))
+        optimizer=task.create_optimizer(config.trainer.optimizer_config,
+                                        config.runtime))
     trainer.add_recovery(config.trainer, checkpoint_manager=checkpoint_manager)
     with self.assertRaises(RuntimeError):
       _ = trainer.train(tf.convert_to_tensor(2, dtype=tf.int32))
