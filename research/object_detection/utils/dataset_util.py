@@ -38,6 +38,10 @@ def bytes_list_feature(value):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
 
 
+def float_feature(value):
+  return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+
+
 def float_list_feature(value):
   return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
