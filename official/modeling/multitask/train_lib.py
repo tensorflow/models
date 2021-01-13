@@ -49,7 +49,8 @@ def run_experiment_wtih_multitask_eval(
   is_training = 'train' in mode
   is_eval = 'eval' in mode
   with distribution_strategy.scope():
-    optimizer = train_task.create_optimizer(params.trainer, params.runtime)
+    optimizer = train_task.create_optimizer(params.trainer.optimizer_config,
+                                            params.runtime)
     model = train_task.build_model()
     if is_training:
       trainer = core_lib.Trainer(

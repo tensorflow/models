@@ -24,7 +24,7 @@ from official.core import config_definitions
 from official.modeling import optimization
 from official.modeling import performance
 
-TrainerConfig = config_definitions.TrainerConfig
+OptimizationConfig = optimization.OptimizationConfig
 RuntimeConfig = config_definitions.RuntimeConfig
 
 
@@ -62,18 +62,18 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     return self._logging_dir
 
   @classmethod
-  def create_optimizer(cls, trainer_config: TrainerConfig,
+  def create_optimizer(cls, optimizer_config: OptimizationConfig,
                        runtime_config: Optional[RuntimeConfig] = None):
     """Creates an TF optimizer from configurations.
 
     Args:
-      trainer_config: the parameters of the trainer.
+      optimizer_config: the parameters of the Optimization settings.
       runtime_config: the parameters of the runtime.
 
     Returns:
       A tf.optimizers.Optimizer object.
     """
-    opt_factory = optimization.OptimizerFactory(trainer_config.optimizer_config)
+    opt_factory = optimization.OptimizerFactory(optimizer_config)
     optimizer = opt_factory.build_optimizer(opt_factory.build_learning_rate())
     # Configuring optimizer when loss_scale is set in runtime config. This helps
     # avoiding overflow/underflow for float16 computations.
