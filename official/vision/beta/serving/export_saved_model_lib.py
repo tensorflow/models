@@ -86,7 +86,7 @@ def export_inference_graph(input_type, batch_size, input_image_size, params,
 
   if input_type == 'image_tensor':
     input_signature = tf.TensorSpec(
-        shape=[batch_size, input_image_size[0], input_image_size[1], 3],
+        shape=[batch_size, None, None, 3],
         dtype=tf.uint8)
     signatures = {
         'serving_default':
