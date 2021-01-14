@@ -34,7 +34,8 @@ class TfExampleDecoder(decoder.Decoder):
 
   def __init__(self,
                include_mask=False,
-               regenerate_source_id=False):
+               regenerate_source_id=False,
+               mask_binarize_threshold=None):
     self._include_mask = include_mask
     self._regenerate_source_id = regenerate_source_id
     self._keys_to_features = {
@@ -50,6 +51,7 @@ class TfExampleDecoder(decoder.Decoder):
         'image/object/area': tf.io.VarLenFeature(tf.float32),
         'image/object/is_crowd': tf.io.VarLenFeature(tf.int64),
     }
+    self._mask_binarize_threshold = mask_binarize_threshold
     if include_mask:
       self._keys_to_features.update({
           'image/object/mask': tf.io.VarLenFeature(tf.string),
@@ -150,6 +152,9 @@ class TfExampleDecoder(decoder.Decoder):
         lambda: tf.zeros_like(classes, dtype=tf.bool))
     if self._include_mask:
       masks = self._decode_masks(parsed_tensors)
+
+      if self._mask_binarize_threshold is not None:
+        masks = tf.cast(masks > self._mask_binarize_threshold, tf.float32)
 
     decoded_tensors = {
         'source_id': source_id,
