@@ -221,6 +221,7 @@ class BertTokenizer(tf.keras.layers.Layer):
         * end_of_segment_id: looked up from "[SEP]"
         * padding_id: looked up form "[PAD]"
         * mask_id: looked up from "[MASK]"
+        * vocab_size: one past the largest token id used
     """
     return self._special_tokens_dict
 
@@ -233,6 +234,7 @@ class BertTokenizer(tf.keras.layers.Layer):
       if tf.executing_eagerly():
         special_token_ids = vocab_table.lookup(
             tf.constant(list(special_tokens.values()), tf.string))
+        vocab_size = vocab_table.size()
       else:
         # A blast from the past: non-eager init context while building Model.
         # This can happen with Estimator or tf.compat.v1.disable_v2_behavior().
@@ -244,13 +246,17 @@ class BertTokenizer(tf.keras.layers.Layer):
               vocab_file)
           special_token_ids_tensor = local_vocab_table.lookup(
               tf.constant(list(special_tokens.values()), tf.string))
+          vocab_size_tensor = local_vocab_table.size()
           init_ops = [tf.compat.v1.initialize_all_tables()]
           with tf.compat.v1.Session() as sess:
             sess.run(init_ops)
-            special_token_ids = sess.run(special_token_ids_tensor)
-      result = dict()
+            special_token_ids, vocab_size = sess.run(
+                [special_token_ids_tensor, vocab_size_tensor])
+      result = dict(
+          vocab_size=int(vocab_size)  # Numpy to Python.
+      )
       for k, v in zip(special_tokens, special_token_ids):
-        v = int(v)  # Numpy to Python.
+        v = int(v)
         if v >= 0:
           result[k] = v
         else:
@@ -425,6 +431,7 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
         * end_of_segment_id: looked up from "[SEP]"
         * padding_id: looked up from "<pad>"
         * mask_id: looked up from "[MASK]"
+        * vocab_size: one past the largest token id used
     """
     return self._special_tokens_dict
 
@@ -439,6 +446,7 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
         special_token_ids = self._tokenizer.string_to_id(
             tf.constant(list(special_tokens.values()), tf.string))
         inverse_tokens = self._tokenizer.id_to_string(special_token_ids)
+        vocab_size = self._tokenizer.vocab_size()
       else:
         # A blast from the past: non-eager init context while building Model.
         # This can happen with Estimator or tf.compat.v1.disable_v2_behavior().
@@ -451,15 +459,19 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
               tf.constant(list(special_tokens.values()), tf.string))
           inverse_tokens_tensor = local_tokenizer.id_to_string(
               special_token_ids_tensor)
+          vocab_size_tensor = local_tokenizer.vocab_size()
           with tf.compat.v1.Session() as sess:
-            special_token_ids, inverse_tokens = sess.run(
-                [special_token_ids_tensor, inverse_tokens_tensor])
-      result = dict()
+            special_token_ids, inverse_tokens, vocab_size = sess.run(
+                [special_token_ids_tensor, inverse_tokens_tensor,
+                 vocab_size_tensor])
+      result = dict(
+          vocab_size=int(vocab_size)  # Numpy to Python.
+      )
       for name, token_id, inverse_token in zip(special_tokens,
                                                special_token_ids,
                                                inverse_tokens):
         if special_tokens[name] == inverse_token:
-          result[name] = int(token_id)  # Numpy to Python.
+          result[name] = int(token_id)
         else:
           logging.warning(
               "Could not find %s as token \"%s\" in sentencepiece model, "
