@@ -35,6 +35,7 @@ class DataConfig(cfg.DataConfig):
   shuffle_buffer_size: int = 10000
   cycle_length: int = 10
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
+  file_type: str = 'tfrecord'  # tfrecord, or sstable
 
 
 @dataclasses.dataclass

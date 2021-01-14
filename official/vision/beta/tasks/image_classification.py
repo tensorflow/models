@@ -22,6 +22,7 @@ from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.configs import image_classification as exp_cfg
 from official.vision.beta.dataloaders import classification_input
+from official.vision.beta.dataloaders import dataset_fn
 from official.vision.beta.modeling import factory
 
 
@@ -86,7 +87,7 @@ class ImageClassificationTask(base_task.Task):
 
     reader = input_reader.InputReader(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
 
