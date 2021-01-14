@@ -31,11 +31,13 @@ from official.vision.beta.configs import decoders
 @dataclasses.dataclass
 class TfExampleDecoder(hyperparams.Config):
   regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
 
 
 @dataclasses.dataclass
 class TfExampleDecoderLabelMap(hyperparams.Config):
   regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
   label_map: str = ''
 
 
