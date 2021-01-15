@@ -51,7 +51,7 @@ class DataConfig(cfg.DataConfig):
   aug_scale_max: float = 1.0
   aug_rand_hflip: bool = True
   drop_remainder: bool = True
-  file_type: str = 'tfrecord'  # tfrecord, or sstable
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass
