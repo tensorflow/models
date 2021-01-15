@@ -65,15 +65,6 @@ You will need to register in order to download the data.  Download the following
 * leftImg8bit_sequence_trainvaltest.zip
 * camera_trainvaltest.zip
 
-### Download Bike dataset (17GB) (optional)
-
-```shell
-mkdir -p ~/vid2depth/bike-uncompressed
-cd ~/vid2depth/bike-uncompressed
-wget https://storage.googleapis.com/brain-robotics-data/bike/BikeVideoDataset.tar
-tar xvf BikeVideoDataset.tar
-```
-
 ## 3. Inference
 
 ### Download trained model
@@ -119,18 +110,6 @@ python dataset/gen_data.py \
   --dataset_name cityscapes \
   --dataset_dir ~/vid2depth/cityscapes-uncompressed \
   --data_dir ~/vid2depth/data/cityscapes \
-  --seq_length 3
-```
-
-### Prepare Bike training sequences (optional)
-
-```shell
-# Prepare training sequences.
-cd tensorflow/models/research/vid2depth
-python dataset/gen_data.py \
-  --dataset_name bike \
-  --dataset_dir ~/vid2depth/bike-uncompressed \
-  --data_dir ~/vid2depth/data/bike \
   --seq_length 3
 ```
 
