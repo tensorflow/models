@@ -68,6 +68,7 @@ class DataConfig(cfg.DataConfig):
   decoder: DataDecoder = DataDecoder()
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass
