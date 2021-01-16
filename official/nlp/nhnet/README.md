@@ -82,7 +82,7 @@ Next, we can run the following data preprocess script which may take a few hours
 
 ```shell
 # Recall that we use DATA_FOLDER=/path/to/downloaded_dataset.
-$ python3 raw_data_preprocess.py \
+$ python3 raw_data_process.py \
     -crawled_articles=/tmp/nhnet \
     -vocab=/path/to/bert_checkpoint/vocab.txt \
     -do_lower_case=True \
