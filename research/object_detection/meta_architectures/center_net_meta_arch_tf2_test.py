@@ -734,6 +734,75 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     np.testing.assert_array_equal(expected_num_keypoint_candidates,
                                   num_keypoint_candidates)
 
+  def test_prediction_to_single_instance_keypoints(self):
+    image_size = (9, 9)
+    object_heatmap_np = np.zeros((1, image_size[0], image_size[1], 1),
+                                 dtype=np.float32)
+    # This should be picked.
+    object_heatmap_np[0, 4, 4, 0] = 0.9
+    # This shouldn't be picked since it's farther away from the center.
+    object_heatmap_np[0, 2, 2, 0] = 1.0
+
+    keypoint_heatmap_np = np.zeros((1, image_size[0], image_size[1], 4),
+                                   dtype=np.float32)
+    # Top-left corner should be picked.
+    keypoint_heatmap_np[0, 1, 1, 0] = 0.9
+    keypoint_heatmap_np[0, 4, 4, 0] = 1.0
+    # Top-right corner should be picked.
+    keypoint_heatmap_np[0, 1, 7, 1] = 0.9
+    keypoint_heatmap_np[0, 4, 4, 1] = 1.0
+    # Bottom-left corner should be picked.
+    keypoint_heatmap_np[0, 7, 1, 2] = 0.9
+    keypoint_heatmap_np[0, 4, 4, 2] = 1.0
+    # Bottom-right corner should be picked.
+    keypoint_heatmap_np[0, 7, 7, 3] = 0.9
+    keypoint_heatmap_np[0, 4, 4, 3] = 1.0
+
+    keypoint_offset_np = np.zeros((1, image_size[0], image_size[1], 2),
+                                  dtype=np.float32)
+    keypoint_offset_np[0, 1, 1] = [0.5, 0.5]
+    keypoint_offset_np[0, 1, 7] = [0.5, -0.5]
+    keypoint_offset_np[0, 7, 1] = [-0.5, 0.5]
+    keypoint_offset_np[0, 7, 7] = [-0.5, -0.5]
+
+    keypoint_regression_np = np.zeros((1, image_size[0], image_size[1], 8),
+                                      dtype=np.float32)
+    keypoint_regression_np[0, 4, 4] = [-3, -3, -3, 3, 3, -3, 3, 3]
+
+    kp_params = get_fake_kp_params(num_candidates_per_keypoint=1)
+
+    def graph_fn():
+      object_heatmap = tf.constant(object_heatmap_np, dtype=tf.float32)
+      keypoint_heatmap = tf.constant(keypoint_heatmap_np, dtype=tf.float32)
+      keypoint_offset = tf.constant(keypoint_offset_np, dtype=tf.float32)
+      keypoint_regression = tf.constant(
+          keypoint_regression_np, dtype=tf.float32)
+
+      (keypoint_cands, keypoint_scores) = (
+          cnma.prediction_to_single_instance_keypoints(
+              object_heatmap,
+              keypoint_heatmap,
+              keypoint_offset,
+              keypoint_regression,
+              stride=4,
+              object_center_std_dev=image_size[0] / 2,
+              keypoint_std_dev=[image_size[0] / 10],
+              kp_params=kp_params))
+
+      return keypoint_cands, keypoint_scores
+
+    (keypoint_cands, keypoint_scores) = self.execute(graph_fn, [])
+
+    expected_keypoint_candidates = [[[
+        [1.5, 1.5],  # top-left
+        [1.5, 6.5],  # top-right
+        [6.5, 1.5],  # bottom-left
+        [6.5, 6.5],  # bottom-right
+    ]]]
+    expected_keypoint_scores = [[[0.9, 0.9, 0.9, 0.9]]]
+    np.testing.assert_allclose(expected_keypoint_candidates, keypoint_cands)
+    np.testing.assert_allclose(expected_keypoint_scores, keypoint_scores)
+
   def test_keypoint_candidate_prediction_per_keypoints(self):
     keypoint_heatmap_np = np.zeros((2, 3, 3, 2), dtype=np.float32)
     keypoint_heatmap_np[0, 0, 0, 0] = 1.0
@@ -1796,6 +1865,59 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllEqual([1, max_detection, num_keypoints, 2],
                         detections['detection_keypoints'].shape)
     self.assertAllEqual([1, max_detection, num_keypoints],
+                        detections['detection_keypoint_scores'].shape)
+
+  def test_postprocess_single_instance(self):
+    """Test the postprocess single instance function."""
+    model = build_center_net_meta_arch(num_classes=1)
+    num_keypoints = len(model._kp_params_dict[_TASK_NAME].keypoint_indices)
+
+    class_center = np.zeros((1, 32, 32, 1), dtype=np.float32)
+    keypoint_heatmaps = np.zeros((1, 32, 32, num_keypoints), dtype=np.float32)
+    keypoint_offsets = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    keypoint_regression = np.random.randn(1, 32, 32, num_keypoints * 2)
+
+    class_probs = np.zeros(1)
+    class_probs[0] = _logit(0.75)
+    class_center[0, 16, 16] = class_probs
+    keypoint_regression[0, 16, 16] = [
+        -1., -1.,
+        -1., 1.,
+        1., -1.,
+        1., 1.]
+    keypoint_heatmaps[0, 14, 14, 0] = _logit(0.9)
+    keypoint_heatmaps[0, 14, 18, 1] = _logit(0.9)
+    keypoint_heatmaps[0, 18, 14, 2] = _logit(0.9)
+    keypoint_heatmaps[0, 18, 18, 3] = _logit(0.05)  # Note the low score.
+
+    class_center = tf.constant(class_center)
+    keypoint_heatmaps = tf.constant(keypoint_heatmaps, dtype=tf.float32)
+    keypoint_offsets = tf.constant(keypoint_offsets, dtype=tf.float32)
+    keypoint_regression = tf.constant(keypoint_regression, dtype=tf.float32)
+
+    prediction_dict = {
+        cnma.OBJECT_CENTER: [class_center],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_HEATMAP):
+            [keypoint_heatmaps],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_OFFSET):
+            [keypoint_offsets],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_REGRESSION):
+            [keypoint_regression],
+    }
+
+    def graph_fn():
+      detections = model.postprocess_single_instance_keypoints(
+          prediction_dict,
+          tf.constant([[128, 128, 3]]),
+          object_center_std_dev=32,
+          keypoint_std_dev=[32])
+      return detections
+
+    detections = self.execute_cpu(graph_fn, [])
+
+    self.assertAllEqual([1, 1, num_keypoints, 2],
+                        detections['detection_keypoints'].shape)
+    self.assertAllEqual([1, 1, num_keypoints],
                         detections['detection_keypoint_scores'].shape)
 
   def test_get_instance_indices(self):
