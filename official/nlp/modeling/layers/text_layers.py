@@ -134,7 +134,7 @@ class BertTokenizer(tf.keras.layers.Layer):
 
     self.tokenize_with_offsets = tokenize_with_offsets
     # TODO(b/177326279): Stop storing the vocab table initializer as an
-    # attribute when https://github.com/tensorflow/tensorflow/issues/46293
+    # attribute when https://github.com/tensorflow/tensorflow/issues/46456
     # has been fixed in the TensorFlow versions of the TF Hub users that load
     # a SavedModel created from this layer. Due to that issue, loading such a
     # SavedModel forgets to add .vocab_table._initializer as a trackable
