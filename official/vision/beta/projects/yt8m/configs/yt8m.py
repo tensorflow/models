@@ -7,6 +7,7 @@ from official.modeling import hyperparams
 from official.modeling import optimization
 from official.vision.beta.configs import common
 from absl import flags
+FLAGS = flags.FLAGS
 
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
@@ -42,8 +43,8 @@ def yt8m(is_training):
     split='train' if is_training else 'valid',
   )
 
-YT8M_TRAIN_EXAMPLES = 4880000
-YT8M_VAL_EXAMPLES = 1220000
+YT8M_TRAIN_EXAMPLES = 48800 #TODO: get actual numbers
+YT8M_VAL_EXAMPLES = 12200
 
 @dataclasses.dataclass
 class YT8MModel(hyperparams.Config):
@@ -57,6 +58,9 @@ class YT8MModel(hyperparams.Config):
   activation : str = "sigmoid"
   pooling_method : str = "max"
   yt8m_agg_classifier_model : str = "MoeModel"
+  frame_features : bool = False
+  segment_labels : bool = False
+  start_new_model : bool = True
 
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
@@ -70,14 +74,18 @@ class YT8MTask(cfg.TaskConfig):
   model: YT8MModel = YT8MModel()
   train_data: DataConfig = yt8m(is_training=True)
   validation_data: DataConfig = yt8m(is_training=False)
+  gradient_clip_norm: float = 1.0
   losses: Losses = Losses()
+  num_readers: int = 8
+  top_k: int = 20
+  top_n: int = None
 
 def add_trainer(experiment: cfg.ExperimentConfig,
                 train_batch_size: int,
                 eval_batch_size: int,
-                learning_rate: float = 1.6,
+                learning_rate: float = 0.01,
                 train_epochs: int = 44,
-                warmup_epochs: int = 5):
+                ):
   """Add and config a trainer to the experiment config."""
   if YT8M_TRAIN_EXAMPLES <= 0:
     raise ValueError('Wrong train dataset size {!r}'.format(
@@ -88,6 +96,8 @@ def add_trainer(experiment: cfg.ExperimentConfig,
   experiment.task.train_data.global_batch_size = train_batch_size
   experiment.task.validation_data.global_batch_size = eval_batch_size
   steps_per_epoch = YT8M_TRAIN_EXAMPLES // train_batch_size
+  print("STEPS PER EPOCH: ", steps_per_epoch) #47
+  print("TRAIN EPOCHS", train_epochs) #44
   experiment.trainer = cfg.TrainerConfig(
     steps_per_loop=steps_per_epoch,
     summary_interval=steps_per_epoch,
@@ -98,26 +108,18 @@ def add_trainer(experiment: cfg.ExperimentConfig,
     validation_interval=steps_per_epoch,
     optimizer_config=optimization.OptimizationConfig({
       'optimizer': {
-        'type': 'sgd',
-        'sgd': {
-          'momentum': 0.9,
-          'nesterov': True,
+        'type': 'adam',
+        'adam': {
         }
       },
       'learning_rate': {
-        'type': 'cosine',
-        'cosine': {
+        'type': 'exponential',
+        'exponential': {
           'initial_learning_rate': learning_rate,
-          'decay_steps': train_epochs * steps_per_epoch,
+          'decay_rate': 0.95,
+          'decay_steps': 4000000,
         }
       },
-      'warmup': {
-        'type': 'linear',
-        'linear': {
-          'warmup_steps': warmup_epochs * steps_per_epoch,
-          'warmup_learning_rate': 0
-        }
-      }
     }))
   return experiment
 

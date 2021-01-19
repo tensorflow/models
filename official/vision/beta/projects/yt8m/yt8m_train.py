@@ -6,17 +6,26 @@ import gin
 
 from official.core import train_utils
 from official.common import distribute_utils
-from official.vision.beta.projects.yt8m import yt8m_flags as tfm_flags
+from official.common import flags as tfm_flags
 from official.core import task_factory
 from official.core import train_lib
 from official.modeling import performance
+from official.vision.beta.projects.yt8m.configs import yt8m
+from official.vision.beta.projects.yt8m.tasks import yt8m_task
 
 FLAGS = flags.FLAGS
-
+flags.DEFINE_string(
+  'train_dir',
+  default=None,
+  help='The directory where the training checkpoints'
+       'are stored.')
 
 def main(_):
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_params)
+  print(FLAGS.flag_values_dict()) #TODO: remove (for debug)
   params = train_utils.parse_configuration(FLAGS)
+  params.task.train_data.input_path='gs://youtube8m-ml/2/frame/train/train*.tfrecord'
+  params.task.validation_data.input_path='gs://youtube8m-ml/2/frame/test/test*.tfrecord'
   model_dir = FLAGS.model_dir
   if 'train' in FLAGS.mode:
     # Pure eval modes do not output yaml files. Otherwise continuous eval job
@@ -46,6 +55,5 @@ def main(_):
       model_dir=model_dir)
 
 if __name__ == '__main__':
-
   tfm_flags.define_flags()
   app.run(main)

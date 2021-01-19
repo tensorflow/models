@@ -20,7 +20,7 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from official.vision.beta.projects.yt8m import yt8m_model
+from official.vision.beta.projects.yt8m.modeling import yt8m_model
 from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
 
 

@@ -8,17 +8,15 @@
   link for details: https://research.google.com/youtube8m/download.html
   '''
 
-from typing import Dict, Optional, Tuple
-from absl import logging
+from typing import Dict, Optional
 import tensorflow as tf
-# import utils
-from random import seed
-from official.vision.beta.projects.yt8m import utils
+from official.vision.beta.projects.yt8m.dataloaders import utils
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import preprocess_ops_3d
 
+SEED_VALUE = 123
 
 def resize_axis(tensor, axis, new_size, fill_value=0):
   """Truncates or pads a tensor to new_size on on a given axis.
@@ -123,7 +121,7 @@ def _process_segment_and_label(video_matrix,
     batch_frames = tf.reshape(tf.tile([segment_size], [num_segment]),
                               (num_segment,))
 
-    # For segment labels, all labels are not exhausively rated. So we only
+    # For segment labels, all labels are not exhaustively rated. So we only
     # evaluate the rated labels.
 
     # Label indices for each segment, shape: [num_segment, 2].
@@ -189,7 +187,7 @@ def _get_video_matrix(features, feature_size, max_frames,
     tf.cast(tf.io.decode_raw(features, tf.uint8), tf.float32),  # tf.decode_raw -> tf.io.decode_raw
     [-1, feature_size])
 
-  num_frames = tf.minimum(tf.shape(decoded_features)[0], max_frames)
+  num_frames = tf.math.minimum(tf.shape(decoded_features)[0], max_frames)
   feature_matrix = utils.Dequantize(decoded_features, max_quantized_value,
                                     min_quantized_value)
   feature_matrix = resize_axis(feature_matrix, 0, max_frames)
@@ -301,7 +299,7 @@ class Parser(parser.Parser):
     self._max_frames = input_params.max_frames
     self._max_quantized_value = max_quantized_value
     self._min_quantized_value = min_quantized_value
-    self.seed = seed
+    self.seed = SEED_VALUE
 
 
   def _parse_train_data(self, decoded_tensors):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
@@ -311,7 +309,7 @@ class Parser(parser.Parser):
                                                           self._max_frames, self._max_quantized_value,
                                                           self._min_quantized_value)
     # call sampler
-    self.video_matrix = sampler(self.video_matrix, self.num_frames, self.stride, self.seed)
+    # self.video_matrix = sampler(self.video_matrix, self.num_frames, self.stride, self.seed) #TODO: sampler revive
     output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, decoded_tensors["contexts"], self._segment_labels,
                                              self._segment_size, self._num_classes)
     return output_dict

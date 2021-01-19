@@ -1,17 +1,12 @@
 import tensorflow as tf
-from official.vision.beta.projects.yt8m import yt8m_model_utils as utils
 from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
-from official.vision.beta.projects.yt8m import yt8m_agg_models
+from official.vision.beta.projects.yt8m.modeling import yt8m_agg_models, yt8m_model_utils as utils
+from official.modeling import tf_utils
 
 layers = tf.keras.layers
 
 
 class YT8MModel(tf.keras.Model):
-    ACT_FN_MAP = {
-        "sigmoid": tf.math.sigmoid,
-        "relu6": tf.nn.relu6,
-    }
-
     def __init__(self,
                  input_params: yt8m_cfg.YT8MModel,
                  num_frames=32,
@@ -36,9 +31,9 @@ class YT8MModel(tf.keras.Model):
         self._num_classes = num_classes
         self._num_frames = num_frames
         self._input_specs = input_specs
-        self._act_fn = self.ACT_FN_MAP.get(input_params.activation)
+        self._act_fn = tf_utils.get_activation(input_params.activation)
 
-        inputs = tf.keras.Input(shape=self._input_specs.shape, batch_size=2)
+        inputs = tf.keras.Input(shape=self._input_specs.shape)
 
         num_frames = tf.cast(tf.expand_dims([self._num_frames], 1), tf.float32)
         if input_params.sample_random_frames:
@@ -48,7 +43,7 @@ class YT8MModel(tf.keras.Model):
 
         max_frames = model_input.shape.as_list()[1]
         feature_size = model_input.shape.as_list()[2]
-        reshaped_input = tf.reshape(model_input, [-1, feature_size])
+        reshaped_input = tf.reshape(model_input, shape=[-1, feature_size])
         tf.summary.histogram("input_hist", reshaped_input)
 
         if input_params.add_batch_norm:
