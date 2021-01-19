@@ -203,7 +203,8 @@ class RpnAnchorLabeler(AnchorLabeler):
                unmatched_threshold=0.3,
                rpn_batch_size_per_im=256,
                rpn_fg_fraction=0.5):
-    AnchorLabeler.__init__(self, match_threshold=0.7, unmatched_threshold=0.3)
+    AnchorLabeler.__init__(self, match_threshold=match_threshold,
+                           unmatched_threshold=unmatched_threshold)
     self._rpn_batch_size_per_im = rpn_batch_size_per_im
     self._rpn_fg_fraction = rpn_fg_fraction
 
