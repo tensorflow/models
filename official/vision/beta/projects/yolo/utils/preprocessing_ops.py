@@ -1,7 +1,6 @@
 import tensorflow as tf
-import tensorflow.keras.backend as K
 import tensorflow_addons as tfa
-from official.vision.beta.projects.yolo.utils.iou_ops import *
+from official.vision.beta.projects.yolo.utils import box_ops
 
 
 def resize_crop_filter(image, boxes, default_width, default_height,
@@ -129,7 +128,7 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
 
     # stack the xy so, each anchor is asscoaited once with each center from
     # the ground truth input
-    anchors = K.concatenate([anchor_xy, anchors], axis=1)
+    anchors = tf.keras.layers.concatenate([anchor_xy, anchors], axis=1)
     anchors = tf.transpose(anchors, perm=[2, 0, 1])
 
     # copy the gt n times so that each anchor from above can be compared to
@@ -141,7 +140,7 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
     # compute intersection over union of the boxes, and take the argmax of
     # comuted iou for each box. thus each box is associated with the largest
     # interection over union
-    iou_raw = compute_iou(truth_comp, anchors)
+    iou_raw = box_ops.compute_iou(truth_comp, anchors)
 
     gt_mask = tf.cast(iou_raw > 0.213, dtype=iou_raw.dtype)
 
@@ -155,7 +154,7 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
                                     sorted=True)
     ind_mask = tf.cast(values > 0.213, dtype=indexes.dtype)
     iou_index = tf.concat([
-        K.expand_dims(indexes[..., 0], axis=-1),
+        tf.expand_dims(indexes[..., 0], axis=-1),
         ((indexes[..., 1:] + 1) * ind_mask[..., 1:]) - 1
     ],
                           axis=-1)
@@ -170,7 +169,7 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
     iou_index = iou_index[..., :5]
 
     values = tf.concat([
-        K.expand_dims(values[..., 0], axis=-1),
+        tf.expand_dims(values[..., 0], axis=-1),
         ((values[..., 1:]) * tf.cast(ind_mask[..., 1:], dtype=tf.float32))
     ],
                        axis=-1)

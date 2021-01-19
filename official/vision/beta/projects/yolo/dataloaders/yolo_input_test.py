@@ -5,7 +5,7 @@ import tensorflow as tf
 from official.core import config_definitions as cfg
 from official.core import input_reader
 from official.modeling import hyperparams
-from official.vision.beta.projects.yolo.dataloaders import YOLO_Detection_Input
+from official.vision.beta.projects.yolo.dataloaders import yolo_detection_input
 from official.vision.beta.projects.yolo.dataloaders.decoders import \
     tfds_coco_decoder
 from official.vision.beta.projects.yolo.utils import box_ops
@@ -52,7 +52,7 @@ def test_yolo_input():
                [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0],
                [348.0, 340.0]]
 
-    parser = YOLO_Detection_Input.Parser(
+    parser = yolo_detection_input.Parser(
         image_w=params.parser.image_w,
         fixed_size=params.parser.fixed_size,
         jitter_im=params.parser.jitter_im,
