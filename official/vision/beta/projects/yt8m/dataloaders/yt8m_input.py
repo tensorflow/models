@@ -321,7 +321,7 @@ class Parser(parser.Parser):
                                                           self._max_frames, self._max_quantized_value,
                                                           self._min_quantized_value)
     output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, decoded_tensors["contexts"], self._segment_labels,
-                                               self._segment_size, self._num_classes)
+                                             self._segment_size, self._num_classes)
 
     return output_dict  # batched
 

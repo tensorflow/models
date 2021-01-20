@@ -110,4 +110,4 @@ class MeanAveragePrecisionCalculator(object):
           self._ap_calculators[i].num_accumulated_positives > 0):
         ap = self._ap_calculators[i].peek_ap_at_n()
         aps.append(ap)
-    return aps
+    return sum(aps) / self._num_class

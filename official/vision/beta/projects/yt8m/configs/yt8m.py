@@ -96,8 +96,6 @@ def add_trainer(experiment: cfg.ExperimentConfig,
   experiment.task.train_data.global_batch_size = train_batch_size
   experiment.task.validation_data.global_batch_size = eval_batch_size
   steps_per_epoch = YT8M_TRAIN_EXAMPLES // train_batch_size
-  print("STEPS PER EPOCH: ", steps_per_epoch) #47
-  print("TRAIN EPOCHS", train_epochs) #44
   experiment.trainer = cfg.TrainerConfig(
     steps_per_loop=steps_per_epoch,
     summary_interval=steps_per_epoch,

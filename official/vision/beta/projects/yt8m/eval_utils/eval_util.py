@@ -14,9 +14,9 @@
 """Provides functions to help with evaluating models."""
 from official.vision.beta.projects.yt8m.eval_utils import average_precision_calculator as ap_calculator
 from official.vision.beta.projects.yt8m.eval_utils import mean_average_precision_calculator as map_calculator
-import numpy
+import tensorflow as tf
+import numpy as np
 from tensorflow.python.platform import gfile
-
 
 def flatten(l):
   """Merges a list of lists into a single list. """
@@ -35,9 +35,9 @@ def calculate_hit_at_one(predictions, actuals):
   Returns:
     float: The average hit at one across the entire batch.
   """
-  top_prediction = numpy.argmax(predictions, 1)
-  hits = actuals[numpy.arange(actuals.shape[0]), top_prediction]
-  return numpy.average(hits)
+  top_prediction = np.argmax(predictions, 1)
+  hits = actuals[np.arange(actuals.shape[0]), top_prediction] #(0,...,1023),(x,x,x,...x)
+  return np.average(hits)
 
 
 def calculate_precision_at_equal_recall_rate(predictions, actuals):
@@ -54,9 +54,9 @@ def calculate_precision_at_equal_recall_rate(predictions, actuals):
   """
   aggregated_precision = 0.0
   num_videos = actuals.shape[0]
-  for row in numpy.arange(num_videos):
-    num_labels = int(numpy.sum(actuals[row]))
-    top_indices = numpy.argpartition(predictions[row],
+  for row in np.arange(num_videos):
+    num_labels = int(np.sum(actuals[row]))
+    top_indices = np.argpartition(predictions[row],
                                      -num_labels)[-num_labels:]
     item_precision = 0.0
     for label_index in top_indices:
@@ -124,7 +124,7 @@ def top_k_by_class(predictions, labels, k=20):
   for triplet in prediction_triplets:
     out_predictions[triplet[0]].append(triplet[1])
     out_labels[triplet[0]].append(triplet[2])
-  out_true_positives = [numpy.sum(labels[:, i]) for i in range(num_classes)]
+  out_true_positives = [np.sum(labels[:, i]) for i in range(num_classes)]
 
   return out_predictions, out_labels, out_true_positives
 
@@ -137,7 +137,7 @@ def top_k_triplets(predictions, labels, k=20):
   """
   m = len(predictions)
   k = min(k, m)
-  indices = numpy.argpartition(predictions, -k)[-k:]
+  indices = np.argpartition(predictions, -k)[-k:]
   return [(index, predictions[index], labels[index]) for index in indices]
 
 
@@ -168,7 +168,8 @@ class EvaluationMetrics(object):
     self.num_examples = 0
 
 
-  def accumulate(self, predictions, labels, loss):
+  def accumulate(self, predictions, labels):
+
     """Accumulate the metrics calculated locally for this mini-batch.
 
     Args:
@@ -176,7 +177,6 @@ class EvaluationMetrics(object):
         Dimensions are 'batch' x 'num_classes'.
       labels: A numpy matrix containing the ground truth labels. Dimensions are
         'batch' x 'num_classes'.
-      loss: A numpy array containing the loss for each sample.
 
     Returns:
       dictionary: A dictionary storing the metrics for the mini-batch.
@@ -185,10 +185,13 @@ class EvaluationMetrics(object):
       ValueError: An error occurred when the shape of predictions and actuals
         does not match.
     """
+    predictions, labels = self._convert_to_numpy(
+      predictions=predictions[0],
+      groundtruths=labels[0])
     batch_size = labels.shape[0]
     mean_hit_at_one = calculate_hit_at_one(predictions, labels)
     mean_perr = calculate_precision_at_equal_recall_rate(predictions, labels)
-    mean_loss = numpy.mean(loss)
+    # mean_loss = numpy.mean(loss)
 
     # Take the top 20 predictions.
     sparse_predictions, sparse_labels, num_positives = top_k_by_class(
@@ -202,9 +205,9 @@ class EvaluationMetrics(object):
     self.num_examples += batch_size
     self.sum_hit_at_one += mean_hit_at_one * batch_size
     self.sum_perr += mean_perr * batch_size
-    self.sum_loss += mean_loss * batch_size
+    # self.sum_loss += mean_loss * batch_size
 
-    return {"hit_at_one": mean_hit_at_one, "perr": mean_perr, "loss": mean_loss}
+    return {"hit_at_one": mean_hit_at_one, "perr": mean_perr}
 
   def get(self):
     """Calculate the evaluation metrics for the whole epoch.
@@ -243,3 +246,22 @@ class EvaluationMetrics(object):
     self.map_calculator.clear()
     self.global_ap_calculator.clear()
     self.num_examples = 0
+
+  @property
+  def name(self):
+    return 'avg_prec_metric'
+
+  def _convert_to_numpy(self, groundtruths, predictions):
+    """Converts tesnors to numpy arrays."""
+    if groundtruths is not None:
+      labels = tf.nest.map_structure(lambda x: x.numpy(), groundtruths)
+    else:
+      labels = groundtruths
+
+    if predictions is not None:
+      outputs = tf.nest.map_structure(lambda x: x.numpy(), predictions)
+    else:
+      outputs = predictions
+
+    labels = labels * 1
+    return outputs, labels
