@@ -971,12 +971,12 @@ def _evaluate_checkpoint(estimator,
         raise e
 
 
-def continuous_eval(estimator,
-                    model_dir,
-                    input_fn,
-                    train_steps,
-                    name,
-                    max_retries=0):
+def continuous_eval_generator(estimator,
+                              model_dir,
+                              input_fn,
+                              train_steps,
+                              name,
+                              max_retries=0):
   """Perform continuous evaluation on checkpoints written to a model directory.
 
   Args:
@@ -989,6 +989,9 @@ def continuous_eval(estimator,
     max_retries: Maximum number of times to retry the evaluation on encountering
       a tf.errors.InvalidArgumentError. If negative, will always retry the
       evaluation.
+
+  Yields:
+    Pair of current step and eval_results.
   """
 
   def terminate_eval():
@@ -1011,6 +1014,7 @@ def continuous_eval(estimator,
 
       # Terminate eval job when final checkpoint is reached
       current_step = int(os.path.basename(ckpt).split('-')[1])
+      yield (current_step, eval_results)
       if current_step >= train_steps:
         tf.logging.info(
             'Evaluation finished after training step %d' % current_step)
@@ -1019,6 +1023,30 @@ def continuous_eval(estimator,
     except tf.errors.NotFoundError:
       tf.logging.info(
           'Checkpoint %s no longer exists, skipping checkpoint' % ckpt)
+
+
+def continuous_eval(estimator,
+                    model_dir,
+                    input_fn,
+                    train_steps,
+                    name,
+                    max_retries=0):
+  """Performs continuous evaluation on checkpoints written to a model directory.
+
+  Args:
+    estimator: Estimator object to use for evaluation.
+    model_dir: Model directory to read checkpoints for continuous evaluation.
+    input_fn: Input function to use for evaluation.
+    train_steps: Number of training steps. This is used to infer the last
+      checkpoint and stop evaluation loop.
+    name: Namescope for eval summary.
+    max_retries: Maximum number of times to retry the evaluation on encountering
+      a tf.errors.InvalidArgumentError. If negative, will always retry the
+      evaluation.
+  """
+  for current_step, eval_results in continuous_eval_generator(
+      estimator, model_dir, input_fn, train_steps, name, max_retries):
+    tf.logging.info('Step %s, Eval results: %s', current_step, eval_results)
 
 
 def populate_experiment(run_config,
