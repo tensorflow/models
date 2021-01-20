@@ -1,7 +1,7 @@
 # SlowOnly video classification on Kinetics-400. Expected performance to be updated.
 #
 # --experiment_type=video_classification_kinetics400
-# Expected accuracy: 71.5% top-1, 89.5% top-5.
+# Expected accuracy: 74.1% top-1, 91.4% top-5.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'

@@ -86,15 +86,14 @@ def _process_image(image: tf.Tensor,
   # Decode JPEG string to tf.uint8.
   image = preprocess_ops_3d.decode_jpeg(image, 3)
 
-  # Resize images (resize happens only if necessary to save compute).
-  image = preprocess_ops_3d.resize_smallest(image, min_resize)
-
   if is_training:
-    # Standard image data augmentation: random crop and random flip.
-    image = preprocess_ops_3d.crop_image(image, crop_size, crop_size, True,
-                                         seed)
+    # Standard image data augmentation: random resized crop and random flip.
+    image = preprocess_ops_3d.random_crop_resize(
+        image, crop_size, crop_size, num_frames, 3, (0.5, 2), (0.08, 1))
     image = preprocess_ops_3d.random_flip_left_right(image, seed)
   else:
+    # Resize images (resize happens only if necessary to save compute).
+    image = preprocess_ops_3d.resize_smallest(image, min_resize)
     # Crop of the frames.
     image = preprocess_ops_3d.crop_image(image, crop_size, crop_size, False,
                                          num_crops)
