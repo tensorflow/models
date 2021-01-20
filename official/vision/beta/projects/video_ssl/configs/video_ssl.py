@@ -57,6 +57,7 @@ def video_ssl_linear_eval_kinetics400() -> cfg.ExperimentConfig:
                                         **exp.task.validation_data.as_dict())
   exp.task.validation_data.min_image_size = 256
   exp.task.validation_data.num_test_clips = 10
+  exp.task.validation_data.num_test_crops = 3
   return exp
 
 
@@ -84,4 +85,5 @@ def video_ssl_linear_eval_kinetics600() -> cfg.ExperimentConfig:
   exp.task.validation_data.temporal_stride = 2
   exp.task.validation_data.min_image_size = 256
   exp.task.validation_data.num_test_clips = 10
+  exp.task.validation_data.num_test_crops = 3
   return exp

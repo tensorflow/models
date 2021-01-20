@@ -36,8 +36,9 @@ def _process_image(image: tf.Tensor,
                    num_frames: int = 32,
                    stride: int = 1,
                    num_test_clips: int = 1,
-                   min_resize: int = 224,
-                   crop_size: int = 200,
+                   min_resize: int = 256,
+                   crop_size: int = 224,
+                   num_crops: int = 1,
                    zero_centering_image: bool = False,
                    seed: Optional[int] = None) -> tf.Tensor:
   """Processes a serialized image tensor.
@@ -57,6 +58,7 @@ def _process_image(image: tf.Tensor,
     min_resize: Frames are resized so that min(height, width) is min_resize.
     crop_size: Final size of the frame after cropping the resized frames. Both
       height and width are the same.
+    num_crops: Number of crops to perform on the resized frames.
     zero_centering_image: If True, frames are normalized to values in [-1, 1].
       If False, values in [0, 1].
     seed: A deterministic seed to use when sampling.
@@ -115,8 +117,8 @@ def _process_image(image: tf.Tensor,
     # Resize images (resize happens only if necessary to save compute).
     image = preprocess_ops_3d.resize_smallest(image, min_resize)
     # Three-crop of the frames.
-    image = preprocess_ops_3d.crop_image(image, min_resize, min_resize, False,
-                                         3)
+    image = preprocess_ops_3d.crop_image(image, crop_size, crop_size, False,
+                                         num_crops)
 
   # Cast the frames in float32, normalizing according to zero_centering_image.
   if is_training and is_ssl:
@@ -145,7 +147,8 @@ def _postprocess_image(image: tf.Tensor,
                        is_training: bool = True,
                        is_ssl: bool = False,
                        num_frames: int = 32,
-                       num_test_clips: int = 1) -> tf.Tensor:
+                       num_test_clips: int = 1,
+                       num_test_crops: int = 1) -> tf.Tensor:
   """Processes a batched Tensor of frames.
 
   The same parameters used in process should be used here.
@@ -160,20 +163,24 @@ def _postprocess_image(image: tf.Tensor,
       will sample multiple linearly spaced clips within each video at test time.
       If 1, then a single clip in the middle of the video is sampled. The clips
       are aggreagated in the batch dimension.
+    num_test_crops: Number of test crops (1 by default). If more than 1, there
+      are multiple crops for each clip at test time. If 1, there is a single
+      central crop. The crops are aggreagated in the batch dimension.
 
   Returns:
     Processed frames. Tensor of shape
-      [batch * num_test_clips, num_frames, height, width, 3].
+      [batch * num_test_clips * num_test_crops, num_frames, height, width, 3].
   """
   if is_ssl and is_training:
     # In this case, two clips of self-supervised pre-training are merged
     # together in batch dimenstion which will be 2 * batch.
     image = tf.concat(tf.split(image, num_or_size_splits=2, axis=1), axis=0)
 
-  if num_test_clips > 1 and not is_training:
-    # In this case, multiple clips are merged together in batch dimenstion which
-    # will be B * num_test_clips.
-    image = tf.reshape(image, (-1, num_frames) + image.shape[2:])
+  num_views = num_test_clips * num_test_crops
+  if num_views > 1 and not is_training:
+    # In this case, multiple views are merged together in batch dimenstion which
+    # will be batch * num_views.
+    image = tf.reshape(image, [-1, num_frames] + image.shape[2:].as_list())
 
   return image
 
@@ -247,7 +254,8 @@ class Parser(video_input.Parser):
         stride=self._stride,
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
-        crop_size=self._crop_size)
+        crop_size=self._crop_size,
+        num_crops=self._num_crops)
     image = tf.cast(image, dtype=self._dtype)
     features = {'image': image}
 
@@ -293,6 +301,7 @@ class PostBatchProcessor(object):
     self._is_ssl = input_params.is_ssl
     self._num_frames = input_params.feature_shape[0]
     self._num_test_clips = input_params.num_test_clips
+    self._num_test_crops = input_params.num_test_crops
 
   def __call__(self, features: Dict[str, tf.Tensor],
                label: tf.Tensor) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
@@ -304,6 +313,7 @@ class PostBatchProcessor(object):
             is_training=self._is_training,
             is_ssl=self._is_ssl,
             num_frames=self._num_frames,
-            num_test_clips=self._num_test_clips)
+            num_test_clips=self._num_test_clips,
+            num_test_crops=self._num_test_crops)
 
     return features, label
