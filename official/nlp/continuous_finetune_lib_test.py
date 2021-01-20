@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,11 +18,15 @@ from absl import flags
 from absl.testing import flagsaver
 from absl.testing import parameterized
 import tensorflow as tf
+
+# pylint: disable=unused-import
+from official.common import registry_imports
+# pylint: enable=unused-import
 from official.common import flags as tfm_flags
 from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
-from official.nlp import train_ctl_continuous_finetune
+from official.nlp import continuous_finetune_lib
 
 FLAGS = flags.FLAGS
 
@@ -36,8 +39,8 @@ class ContinuousFinetuneTest(tf.test.TestCase, parameterized.TestCase):
     super().setUp()
     self._model_dir = os.path.join(self.get_temp_dir(), 'model_dir')
 
-  @parameterized.parameters(None, 1)
-  def testTrainCtl(self, pretrain_steps):
+  def testContinuousFinetune(self):
+    pretrain_steps = 1
     src_model_dir = self.get_temp_dir()
     flags_dict = dict(
         experiment='mock',
@@ -79,7 +82,7 @@ class ContinuousFinetuneTest(tf.test.TestCase, parameterized.TestCase):
           model_dir=src_model_dir)
 
       params = train_utils.parse_configuration(FLAGS)
-      eval_metrics = train_ctl_continuous_finetune.run_continuous_finetune(
+      eval_metrics = continuous_finetune_lib.run_continuous_finetune(
           FLAGS.mode,
           params,
           FLAGS.model_dir,
