@@ -8,7 +8,7 @@ import tensorflow as tf
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import box_ops, preprocess_ops
 from official.vision.beta.projects.yolo.ops import preprocessing_ops
-from official.vision.beta.projects.yolo.ops import box_ops as box_utils
+from official.vision.beta.projects.yolo.ops import box_ops as yolo_box_ops
 
 
 class Parser(parser.Parser):
@@ -46,8 +46,8 @@ class Parser(parser.Parser):
         data augmentation during training.
       jitter_boxes: a `float` that is the maximum jitter applied to the bounding
         box for data augmentation during training.
-      net_down_scale: an `int` that down scales the image width and height to the
-        closest multiple of net_down_scale.
+      net_down_scale: an `int` that down scales the image width and height to
+        the closest multiple of net_down_scale.
       max_process_size: an `int` for maximum image width and height.
       min_process_size: an `int` for minimum image width and height ,
       max_num_instances: an `int` number of maximum number of instances in an image.
@@ -164,7 +164,7 @@ class Parser(parser.Parser):
       boxes = box_ops.jitter_boxes(boxes, 0.025)
       boxes = box_ops.normalize_boxes(boxes, image_shape)
 
-    boxes = box_utils.yxyx_to_xcycwh(boxes)
+    boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
     if self._jitter_im != 0.0:
       image, boxes = preprocessing_ops.random_translate(
@@ -243,7 +243,7 @@ class Parser(parser.Parser):
 
     image, boxes = preprocessing_ops.fit_preserve_aspect_ratio(
         image, boxes, width=width, height=height, target_dim=self._image_w)
-    boxes = box_utils.yxyx_to_xcycwh(boxes)
+    boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
     best_anchors = preprocessing_ops.get_best_anchor(
         boxes, self._anchors, width=self._image_w, height=self._image_h)

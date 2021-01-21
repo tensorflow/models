@@ -9,11 +9,17 @@ from typing import Union, Tuple
 def yxyx_to_xcycwh(box: tf.Tensor):
   """Converts boxes from ymin, xmin, ymax, xmax to x_center, y_center, width,
       height.
+
     Args:
-        box: a `Tensor` whose shape is [4,] and represents the coordinates of
-            boxes in ymin, xmin, ymax, xmax.
+      box: a `Tensor` whose shape is [..., 4] and represents the coordinates
+        of boxes in ymin, xmin, ymax, xmax.
+
     Returns:
-        box: a `Tensor` whose shape is [4,] and contains the new format.
+      a `Tensor` whose shape is [..., 4] and contains the new format.
+
+    Raises:
+      ValueError: If the last dimension of box is not 4 or if box's dtype isn't
+        a floating point type.
     """
   with tf.name_scope('yxyx_to_xcycwh'):
     ymin, xmin, ymax, xmax = tf.split(box, 4, axis=-1)
@@ -28,11 +34,17 @@ def yxyx_to_xcycwh(box: tf.Tensor):
 def xcycwh_to_yxyx(box: tf.Tensor, split_min_max: bool = False):
   """Converts boxes from x_center, y_center, width, height to ymin, xmin, ymax,
       xmax.
+
     Args:
-        box: a `Tensor` whose shape is [4,] and represents the coordinates of
-            boxes in x_center, y_center, width, height.
+      box: a `Tensor` whose shape is [..., 4] and represents the coordinates
+        of boxes in x_center, y_center, width, height.
+
     Returns:
-        box: a `Tensor` whose shape is [4,] and contains the new format.
+      box: a `Tensor` whose shape is [..., 4] and contains the new format.
+
+    Raises:
+      ValueError: If the last dimension of box is not 4 or if box's dtype isn't
+        a floating point type.
     """
   with tf.name_scope('xcycwh_to_yxyx'):
     xy, wh = tf.split(box, 2, axis=-1)
@@ -49,11 +61,17 @@ def xcycwh_to_yxyx(box: tf.Tensor, split_min_max: bool = False):
 def xcycwh_to_xyxy(box: tf.Tensor, split_min_max: bool = False):
   """Converts boxes from x_center, y_center, width, height to xmin, ymin, xmax,
       ymax.
+
     Args:
-        box: box: a `Tensor` whose shape is [4,] and represents the coordinates
-            of boxes in x_center, y_center, width, height.
+      box: box: a `Tensor` whose shape is [..., 4] and represents the
+        coordinates of boxes in x_center, y_center, width, height.
+
     Returns:
-        box: a `Tensor` whose shape is [4,] and contains the new format.
+      box: a `Tensor` whose shape is [..., 4] and contains the new format.
+
+    Raises:
+      ValueError: If the last dimension of box is not 4 or if box's dtype isn't
+        a floating point type.
     """
   with tf.name_scope('xcycwh_to_yxyx'):
     xy, wh = tf.split(box, 2, axis=-1)
@@ -67,16 +85,22 @@ def xcycwh_to_xyxy(box: tf.Tensor, split_min_max: bool = False):
 
 def intersection_and_union(box1: tf.Tensor, box2: tf.Tensor):
   """Calculates the intersection and union between between box1 and box2.
+
     Args:
-        box1: a `Tensor` with a shape of [batch_size, N, 4]. N is the number of
-            proposals before groundtruth assignment. The last dimension is the
-            pixel coordinates in [ymin, xmin, ymax, xmax].
-        box2: a `Tensor` with a shape of [batch_size, N, 4]. N is the number of
-            proposals before groundtruth assignment. The last dimension is the
-            pixel coordinates in [ymin, xmin, ymax, xmax].
+      box1: a `Tensor` with a shape of [batch_size, N, 4]. N is the number of
+        proposals before groundtruth assignment. The last dimension is the
+        pixel coordinates in [ymin, xmin, ymax, xmax].
+      box2: a `Tensor` with a shape of [batch_size, N, 4]. N is the number of
+        proposals before groundtruth assignment. The last dimension is the
+        pixel coordinates in [ymin, xmin, ymax, xmax].
+
     Returns:
+      a 2-tuple with the following components
         intersection: a `Tensor` whose shape is [batch_size, N].
         union: a `Tensor` whose shape is [batch_size, N].
+
+    Raises:
+      ValueError: If the last dimension of either box1 or box2 is not 4.
     """
   with tf.name_scope('intersection_and_union'):
     intersect_mins = tf.math.maximum(box1[..., 0:2], box2[..., 0:2])
@@ -95,13 +119,18 @@ def get_area(box: Union[tf.Tensor, Tuple],
              xywh: bool = False,
              use_tuple: bool = False):
   """Calculates the area of the box.
+
     Args:
-        box: box: a `Tensor` whose shape is [4,].
-        xywh: a `bool` who flags the format of the box.
-        use_tuple: a `bool` that flags the type of box.
+      box: box: a `Tensor` whose shape is [..., 4].
+      xywh: a `bool` who flags the format of the box.
+      use_tuple: a `bool` that flags the type of box.
+
     Returns:
-        area: a `Tensor` whose shape is [] and value represents the area of the
-            box.
+      area: a `Tensor` whose shape is [...] and value represents the area of
+        the box.
+
+    Raises:
+      ValueError: If the last dimension of box is not 4.
     """
   with tf.name_scope('box_area'):
     if use_tuple:
@@ -113,12 +142,17 @@ def get_area(box: Union[tf.Tensor, Tuple],
 
 def get_area_tensor(box: tf.Tensor, xywh: bool = False):
   """Calculates the area of the box.
+
     Args:
-        box: a `Tensor` whose shape is [4,].
-        xywh: a `bool` who flags the format of the box.
+      box: a `Tensor` whose shape is [..., 4].
+      xywh: a `bool` who flags the format of the box.
+
     Returns:
-        area: a `Tensor` whose shape is [] and value represents the area of the
-            box.
+      area: a `Tensor` whose shape is [...] and value represents the area of
+        the box.
+
+    Raises:
+      ValueError: If the last dimension of box is not 4.
     """
   with tf.name_scope('tensor_area'):
     if xywh:
@@ -130,12 +164,17 @@ def get_area_tensor(box: tf.Tensor, xywh: bool = False):
 
 def get_area_tuple(box: Tuple, xywh: bool = False):
   """Calculates the area of the box.
+
     Args:
-        box: box: a `Tuple` whose shape is [4,].
-        xywh: a `bool` who flags the format of the box.
+      box: box: a `Tuple` whose shape is [..., 4].
+      xywh: a `bool` who flags the format of the box.
+
     Returns:
-        area: a `Tensor` whose shape is [] and value represents the area of the
-            box.
+      area: a `Tensor` whose shape is [...] and value represents the area of
+        the box.
+
+    Raises:
+      ValueError: If the last dimension of box is not 4.
     """
   with tf.name_scope('tuple_area'):
     if xywh:
@@ -147,12 +186,21 @@ def get_area_tuple(box: Tuple, xywh: bool = False):
 
 def center_distance(center_1: tf.Tensor, center_2: tf.Tensor):
   """Calculates the squared distance between two points.
+  This function is mathematically equivalent to the following code, but has
+  smaller rounding errors.
+
+  tf.norm(center_1 - center_2, axis=-1)**2
+
     Args:
-        center_1: a `Tensor` whose shape is [2,] and represents a point.
-        center_2: a `Tensor` whose shape is [2,] and represents a point.
+      center_1: a `Tensor` whose shape is [..., 2] and represents a point.
+      center_2: a `Tensor` whose shape is [..., 2] and represents a point.
+
     Returns:
-        dist: a `Tensor` whose shape is [] and value represents the squared
-            distance between center_1 and center_2.
+      dist: a `Tensor` whose shape is [...] and value represents the squared
+        distance between center_1 and center_2.
+
+    Raises:
+      ValueError: If the last dimension of either center_1 or center_2 is not 2.
     """
   with tf.name_scope('center_distance'):
     dist = (center_1[..., 0] - center_2[..., 0])**2 + (center_1[..., 1] -
@@ -163,18 +211,20 @@ def center_distance(center_1: tf.Tensor, center_2: tf.Tensor):
 def aspect_ratio_consistancy(w_gt: tf.Tensor, h_gt: tf.Tensor, w: tf.Tensor,
                              h: tf.Tensor):
   """Calculates the consistency aspect ratio.
+
     Args:
-        w_gt: a `Tensor` whose shape is [] and value represents the width of the ground
-            truth box.
-        h_gt: a `Tensor` whose shape is [] and value represents the height of the ground
-            truth box.
-        w_gt: a `Tensor` whose shape is [] and value represents the width of the proposed
-            box.
-        h_gt: a `Tensor` whose shape is [] and value represents the height of the proposed
-            box.
+      w_gt: a `Tensor` whose shape is [] and value represents the width of the ground
+        truth box.
+      h_gt: a `Tensor` whose shape is [] and value represents the height of the ground
+        truth box.
+      w_gt: a `Tensor` whose shape is [] and value represents the width of the proposed
+        box.
+      h_gt: a `Tensor` whose shape is [] and value represents the height of the proposed
+        box.
+
     Returns:
-        consistency: a `Tensor` whose shape is [] and value represents the consistency of
-            aspect ratio
+      consistency: a `Tensor` whose shape is [] and value represents the consistency of
+          aspect ratio
     """
   arcterm = (tf.math.atan(tf.math.divide_no_nan(w_gt, h_gt)) -
              tf.math.atan(tf.math.divide_no_nan(w, h)))**2
@@ -184,13 +234,18 @@ def aspect_ratio_consistancy(w_gt: tf.Tensor, h_gt: tf.Tensor, w: tf.Tensor,
 
 def compute_iou(box1, box2):
   """Calculates the intersection of union between box1 and box2.
+
     Args:
-        box1: a `Tensor` whose shape is [4,] and represents the coordinates of boxes in
-            x_center, y_center, width, height.
-        box2: a `Tensor` whose shape is [4,] and represents the coordinates of boxes in
-            x_center, y_center, width, height.
+      box1: a `Tensor` whose shape is [..., 4] and represents the coordinates of boxes in
+        x_center, y_center, width, height.
+      box2: a `Tensor` whose shape is [..., 4] and represents the coordinates of boxes in
+        x_center, y_center, width, height.
+
     Returns:
-        iou: a `Tensor` whose shape is [] and value represents the intersection over union.
+        iou: a `Tensor` whose shape is [...] and value represents the intersection over union.
+
+    Raises:
+      ValueError: If the last dimension of either box1 or box2 is not 4.
     """
   # get box corners
   with tf.name_scope('iou'):
@@ -205,13 +260,18 @@ def compute_iou(box1, box2):
 
 def compute_giou(box1, box2):
   """Calculates the generalized intersection of union between box1 and box2.
+
     Args:
-        box1: a `Tensor` whose shape is [4,] and represents the coordinates of boxes in
-            x_center, y_center, width, height.
-        box2: a `Tensor` whose shape is [4,] and represents the coordinates of boxes in
-            x_center, y_center, width, height.
+      box1: a `Tensor` whose shape is [..., 4] and represents the coordinates of boxes in
+        x_center, y_center, width, height.
+      box2: a `Tensor` whose shape is [..., 4] and represents the coordinates of boxes in
+        x_center, y_center, width, height.
+
     Returns:
-        iou: a `Tensor` whose shape is [] and value represents the generalized intersection over union.
+      iou: a `Tensor` whose shape is [...] and value represents the generalized intersection over union.
+
+    Raises:
+      ValueError: If the last dimension of either box1 or box2 is not 4.
     """
   with tf.name_scope('giou'):
     # get box corners
@@ -235,13 +295,18 @@ def compute_giou(box1, box2):
 
 def compute_diou(box1, box2):
   """Calculates the distance intersection of union between box1 and box2.
+
     Args:
-        box1: a `Tensor` whose shape is [4,] and represents the coordinates of boxes in
-            x_center, y_center, width, height.
-        box2: a `Tensor` whose shape is [4,] and represents the coordinates of boxes in
-            x_center, y_center, width, height.
+      box1: a `Tensor` whose shape is [..., 4] and represents the coordinates of boxes in
+        x_center, y_center, width, height.
+      box2: a `Tensor` whose shape is [..., 4] and represents the coordinates of boxes in
+        x_center, y_center, width, height.
+
     Returns:
-        iou: a `Tensor` whose shape is [] and value represents the distance intersection over union.
+      iou: a `Tensor` whose shape is [...] and value represents the distance intersection over union.
+
+    Raises:
+      ValueError: If the last dimension of either box1 or box2 is not 4.
     """
   with tf.name_scope('diou'):
     # compute center distance
@@ -268,13 +333,18 @@ def compute_diou(box1, box2):
 
 def compute_ciou(box1, box2):
   """Calculates the complete intersection of union between box1 and box2.
+
     Args:
-        box1: a `Tensor` whose shape is [4,] and represents the coordinates of boxes in
-            x_center, y_center, width, height.
-        box2: a `Tensor` whose shape is [4,] and represents the coordinates of boxes in
-            x_center, y_center, width, height.
+      box1: a `Tensor` whose shape is [..., 4] and represents the coordinates of boxes in
+        x_center, y_center, width, height.
+      box2: a `Tensor` whose shape is [..., 4] and represents the coordinates of boxes in
+        x_center, y_center, width, height.
+
     Returns:
-        iou: a `Tensor` whose shape is [] and value represents the complete intersection over union.
+      iou: a `Tensor` whose shape is [...] and value represents the complete intersection over union.
+
+    Raises:
+      ValueError: If the last dimension of either box1 or box2 is not 4.
     """
   with tf.name_scope('ciou'):
     # compute DIOU and IOU
