@@ -25,7 +25,7 @@ def main(_):
   print(FLAGS.flag_values_dict()) #TODO: remove (for debug)
   params = train_utils.parse_configuration(FLAGS)
   params.task.train_data.input_path='gs://youtube8m-ml/2/frame/train/train*.tfrecord'
-  params.task.validation_data.input_path='gs://youtube8m-ml/3/frame/test/test*.tfrecord'
+  params.task.validation_data.input_path='gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
   model_dir = FLAGS.model_dir
   if 'train' in FLAGS.mode:
     # Pure eval modes do not output yaml files. Otherwise continuous eval job
