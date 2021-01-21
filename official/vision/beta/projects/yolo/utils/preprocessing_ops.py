@@ -39,18 +39,21 @@ def resize_crop_filter(image, boxes, default_width, default_height,
   return image, boxes
 
 
-def random_translate(image, box, t):
+def random_translate(image, box, t, seed=None):
   """Randomly translate the image and boxes.
   Args:
       image: a `Tensor` representing the image.
       box: a `Tensor` represeting the boxes.
       t: an `int` representing the translation factor
+      seed: an optional seed for tf.random operations
   Returns:
       image: a `Tensor` representing the augmented image.
       box: a `Tensor` representing the augmented boxes.
   """
-  t_x = tf.random.uniform(minval=-t, maxval=t, shape=(), dtype=tf.float32)
-  t_y = tf.random.uniform(minval=-t, maxval=t, shape=(), dtype=tf.float32)
+  t_x = tf.random.uniform(
+      minval=-t, maxval=t, shape=(), dtype=tf.float32, seed=seed)
+  t_y = tf.random.uniform(
+      minval=-t, maxval=t, shape=(), dtype=tf.float32, seed=seed)
   box = translate_boxes(box, t_x, t_y)
   image = translate_image(image, t_x, t_y)
   return image, box
@@ -114,7 +117,7 @@ def fit_preserve_aspect_ratio(image,
   image = tf.image.pad_to_bounding_box(image, pad_width // 2, pad_height // 2,
                                        clipper, clipper)
 
-  boxes = box_utils.yxyx_to_xcycwh(boxes)
+  boxes = box_ops.yxyx_to_xcycwh(boxes)
   x, y, w, h = tf.split(boxes, 4, axis=-1)
 
   y *= tf.cast(width / clipper, tf.float32)
@@ -128,7 +131,7 @@ def fit_preserve_aspect_ratio(image,
 
   boxes = tf.concat([x, y, w, h], axis=-1)
 
-  boxes = box_utils.xcycwh_to_yxyx(boxes)
+  boxes = box_ops.xcycwh_to_yxyx(boxes)
   image = tf.image.resize(image, (target_dim, target_dim))
   return image, boxes
 

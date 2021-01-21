@@ -16,7 +16,6 @@ class Parser(hyperparams.Config):
   fixed_size: bool = True
   jitter_im: float = 0.1
   jitter_boxes: float = 0.005
-  net_down_scale: int = 32
   min_process_size: int = 320
   max_process_size: int = 608
   max_num_instances: int = 200
@@ -59,7 +58,6 @@ class yoloDetectionInputTest(tf.test.TestCase):
           fixed_size=params.parser.fixed_size,
           jitter_im=params.parser.jitter_im,
           jitter_boxes=params.parser.jitter_boxes,
-          net_down_scale=params.parser.net_down_scale,
           min_process_size=params.parser.min_process_size,
           max_process_size=params.parser.max_process_size,
           max_num_instances=params.parser.max_num_instances,
