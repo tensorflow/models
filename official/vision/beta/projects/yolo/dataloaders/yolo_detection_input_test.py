@@ -52,7 +52,7 @@ class yoloDetectionInputTest(tf.test.TestCase):
       anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0],
                  [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0],
                  [348.0, 340.0]]
-      masks = {'3': {0, 1, 2}, '4': {3, 4, 5}, '5': {6, 7, 8}}
+      masks = {'3': [0, 1, 2], '4': [3, 4, 5], '5': [6, 7, 8]}
 
       parser = yolo_detection_input.Parser(
           image_w=params.parser.image_w,
