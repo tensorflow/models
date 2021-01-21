@@ -15,7 +15,7 @@ def yxyx_to_xcycwh(box: tf.Tensor):
     Returns:
         box: a `Tensor` whose shape is [4,] and contains the new format.
     """
-  with tf.name_scope("yxyx_to_xcycwh"):
+  with tf.name_scope('yxyx_to_xcycwh'):
     ymin, xmin, ymax, xmax = tf.split(box, 4, axis=-1)
     x_center = (xmax + xmin) / 2
     y_center = (ymax + ymin) / 2
@@ -34,7 +34,7 @@ def xcycwh_to_yxyx(box: tf.Tensor, split_min_max: bool = False):
     Returns:
         box: a `Tensor` whose shape is [4,] and contains the new format.
     """
-  with tf.name_scope("xcycwh_to_yxyx"):
+  with tf.name_scope('xcycwh_to_yxyx'):
     xy, wh = tf.split(box, 2, axis=-1)
     xy_min = xy - wh / 2
     xy_max = xy + wh / 2
@@ -55,7 +55,7 @@ def xcycwh_to_xyxy(box: tf.Tensor, split_min_max: bool = False):
     Returns:
         box: a `Tensor` whose shape is [4,] and contains the new format.
     """
-  with tf.name_scope("xcycwh_to_yxyx"):
+  with tf.name_scope('xcycwh_to_yxyx'):
     xy, wh = tf.split(box, 2, axis=-1)
     xy_min = xy - wh / 2
     xy_max = xy + wh / 2
@@ -78,7 +78,7 @@ def intersection_and_union(box1: tf.Tensor, box2: tf.Tensor):
         intersection: a `Tensor` whose shape is [batch_size, N].
         union: a `Tensor` whose shape is [batch_size, N].
     """
-  with tf.name_scope("intersection_and_union"):
+  with tf.name_scope('intersection_and_union'):
     intersect_mins = tf.math.maximum(box1[..., 0:2], box2[..., 0:2])
     intersect_maxes = tf.math.minimum(box1[..., 2:4], box2[..., 2:4])
     intersect_wh = tf.math.maximum(intersect_maxes - intersect_mins,
@@ -103,7 +103,7 @@ def get_area(box: Union[tf.Tensor, Tuple],
         area: a `Tensor` whose shape is [] and value represents the area of the
             box.
     """
-  with tf.name_scope("box_area"):
+  with tf.name_scope('box_area'):
     if use_tuple:
       area = get_area_tuple(box=box, xywh=xywh)
     else:
@@ -120,12 +120,11 @@ def get_area_tensor(box: tf.Tensor, xywh: bool = False):
         area: a `Tensor` whose shape is [] and value represents the area of the
             box.
     """
-  with tf.name_scope("tensor_area"):
+  with tf.name_scope('tensor_area'):
     if xywh:
       area = tf.reduce_prod(box[..., 2:4], axis=-1)
     else:
-      area = tf.math.abs(tf.reduce_prod(box[..., 2:4] - box[..., 0:2],
-                                        axis=-1))
+      area = tf.math.abs(tf.reduce_prod(box[..., 2:4] - box[..., 0:2], axis=-1))
   return area
 
 
@@ -138,7 +137,7 @@ def get_area_tuple(box: Tuple, xywh: bool = False):
         area: a `Tensor` whose shape is [] and value represents the area of the
             box.
     """
-  with tf.name_scope("tuple_area"):
+  with tf.name_scope('tuple_area'):
     if xywh:
       area = tf.reduce_prod(box[1], axis=-1)
     else:
@@ -155,7 +154,7 @@ def center_distance(center_1: tf.Tensor, center_2: tf.Tensor):
         dist: a `Tensor` whose shape is [] and value represents the squared
             distance between center_1 and center_2.
     """
-  with tf.name_scope("center_distance"):
+  with tf.name_scope('center_distance'):
     dist = (center_1[..., 0] - center_2[..., 0])**2 + (center_1[..., 1] -
                                                        center_2[..., 1])**2
   return dist
@@ -194,7 +193,7 @@ def compute_iou(box1, box2):
         iou: a `Tensor` whose shape is [] and value represents the intersection over union.
     """
   # get box corners
-  with tf.name_scope("iou"):
+  with tf.name_scope('iou'):
     box1 = xcycwh_to_yxyx(box1)
     box2 = xcycwh_to_yxyx(box2)
     intersection, union = intersection_and_union(box1, box2)
@@ -214,7 +213,7 @@ def compute_giou(box1, box2):
     Returns:
         iou: a `Tensor` whose shape is [] and value represents the generalized intersection over union.
     """
-  with tf.name_scope("giou"):
+  with tf.name_scope('giou'):
     # get box corners
     box1 = xcycwh_to_yxyx(box1)
     box2 = xcycwh_to_yxyx(box2)
@@ -244,7 +243,7 @@ def compute_diou(box1, box2):
     Returns:
         iou: a `Tensor` whose shape is [] and value represents the distance intersection over union.
     """
-  with tf.name_scope("diou"):
+  with tf.name_scope('diou'):
     # compute center distance
     dist = center_distance(box1[..., 0:2], box2[..., 0:2])
 
@@ -277,8 +276,8 @@ def compute_ciou(box1, box2):
     Returns:
         iou: a `Tensor` whose shape is [] and value represents the complete intersection over union.
     """
-  with tf.name_scope("ciou"):
-    #compute DIOU and IOU
+  with tf.name_scope('ciou'):
+    # compute DIOU and IOU
     iou, diou = compute_diou(box1, box2)
 
     # computer aspect ratio consistency

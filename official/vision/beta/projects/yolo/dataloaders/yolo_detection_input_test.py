@@ -29,12 +29,12 @@ class Parser(hyperparams.Config):
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
-  input_path: str = ""
-  tfds_name: str = "coco/2017"
-  tfds_split: str = "train"
+  input_path: str = ''
+  tfds_name: str = 'coco/2017'
+  tfds_split: str = 'train'
   global_batch_size: int = 10
   is_training: bool = True
-  dtype: str = "float16"
+  dtype: str = 'float16'
   decoder = None
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
@@ -42,8 +42,9 @@ class DataConfig(cfg.DataConfig):
 
 
 class yoloDetectionInputTest(tf.test.TestCase):
+
   def test_yolo_input(self):
-    with tf.device("/CPU:0"):
+    with tf.device('/CPU:0'):
       params = DataConfig(is_training=True)
       num_boxes = 9
 
@@ -66,22 +67,22 @@ class yoloDetectionInputTest(tf.test.TestCase):
           seed=params.parser.seed,
           anchors=anchors)
 
-      reader = input_reader.InputReader(params,
-                                        dataset_fn=tf.data.TFRecordDataset,
-                                        decoder_fn=decoder.decode,
-                                        parser_fn=parser.parse_fn(
-                                            params.is_training))
+      reader = input_reader.InputReader(
+          params,
+          dataset_fn=tf.data.TFRecordDataset,
+          decoder_fn=decoder.decode,
+          parser_fn=parser.parse_fn(params.is_training))
       dataset = reader.read(input_context=None)
       for one_batch in dataset.batch(1):
         self.assertAllEqual(one_batch[0].shape, (1, 10, 416, 416, 3))
         break
 
       for l, (i, j) in enumerate(dataset):
-        boxes = box_ops.xcycwh_to_yxyx(j["bbox"])
+        boxes = box_ops.xcycwh_to_yxyx(j['bbox'])
         self.assertTrue(tf.reduce_all(tf.math.logical_and(i >= 0, i <= 1)))
         if l > 10:
           break
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   tf.test.main()

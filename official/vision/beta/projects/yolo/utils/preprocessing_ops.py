@@ -17,11 +17,10 @@ def resize_crop_filter(image, boxes, default_width, default_height,
             images: a `Tensor` representing the augmented image.
             boxes: a `Tensor` representing the augmented boxes.
         """
-  with tf.name_scope("resize_crop_filter"):
+  with tf.name_scope('resize_crop_filter'):
     image = tf.image.resize(image, (target_width, target_height))
-    image = tf.image.resize_with_crop_or_pad(image,
-                                             target_height=default_height,
-                                             target_width=default_width)
+    image = tf.image.resize_with_crop_or_pad(
+        image, target_height=default_height, target_width=default_width)
 
     default_width = tf.cast(default_width, boxes.dtype)
     default_height = tf.cast(default_height, boxes.dtype)
@@ -66,7 +65,7 @@ def translate_boxes(box, translate_x, translate_y):
   Returns:
     box: a `Tensor` representing the augmented boxes.
   """
-  with tf.name_scope("translate_boxs"):
+  with tf.name_scope('translate_boxs'):
     x = box[..., 0] + translate_x
     y = box[..., 1] + translate_y
     box = tf.stack([x, y, box[..., 2], box[..., 3]], axis=-1)
@@ -83,7 +82,7 @@ def translate_image(image, translate_x, translate_y):
         Returns:
             box: a `Tensor` representing the augmented boxes.
         """
-  with tf.name_scope("translate_image"):
+  with tf.name_scope('translate_image'):
     if (translate_x != 0 and translate_y != 0):
       image_jitter = tf.convert_to_tensor([translate_x, translate_y])
       image_jitter.set_shape([2])
@@ -98,7 +97,7 @@ def fit_preserve_aspect_ratio(image,
                               height=None,
                               target_dim=None):
   if width is None or height is None:
-    shape = tf.shape(data["image"])
+    shape = tf.shape(data['image'])
     if tf.shape(shape)[0] == 4:
       width = shape[1]
       height = shape[2]
@@ -148,7 +147,7 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
         tf.Tensor: y_true with the anchor associated with each ground truth box
             known
     """
-  with tf.name_scope("get_anchor"):
+  with tf.name_scope('get_anchor'):
     width = tf.cast(width, dtype=tf.float32)
     height = tf.cast(height, dtype=tf.float32)
 
@@ -163,10 +162,10 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
 
     # build a matrix of anchor boxes
     anchors = tf.transpose(anchors, perm=[1, 0])
-    anchor_xy = tf.tile(tf.expand_dims(anchor_xy, axis=-1),
-                        [1, 1, tf.shape(anchors)[-1]])
-    anchors = tf.tile(tf.expand_dims(anchors, axis=0),
-                      [tf.shape(anchor_xy)[0], 1, 1])
+    anchor_xy = tf.tile(
+        tf.expand_dims(anchor_xy, axis=-1), [1, 1, tf.shape(anchors)[-1]])
+    anchors = tf.tile(
+        tf.expand_dims(anchors, axis=0), [tf.shape(anchor_xy)[0], 1, 1])
 
     # stack the xy so, each anchor is asscoaited once with each center from
     # the ground truth input
@@ -175,8 +174,9 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
 
     # copy the gt n times so that each anchor from above can be compared to
     # input ground truth
-    truth_comp = tf.tile(tf.expand_dims(y_true[..., 0:4], axis=-1),
-                         [1, 1, tf.shape(anchors)[0]])
+    truth_comp = tf.tile(
+        tf.expand_dims(y_true[..., 0:4], axis=-1),
+        [1, 1, tf.shape(anchors)[0]])
     truth_comp = tf.transpose(truth_comp, perm=[2, 0, 1])
 
     # compute intersection over union of the boxes, and take the argmax of
@@ -191,9 +191,10 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
     if num_k <= 0:
       num_k = 1.0
 
-    values, indexes = tf.math.top_k(tf.transpose(iou_raw, perm=[1, 0]),
-                                    k=tf.cast(num_k, dtype=tf.int32),
-                                    sorted=True)
+    values, indexes = tf.math.top_k(
+        tf.transpose(iou_raw, perm=[1, 0]),
+        k=tf.cast(num_k, dtype=tf.int32),
+        sorted=True)
     ind_mask = tf.cast(values > 0.213, dtype=indexes.dtype)
     iou_index = tf.concat([
         tf.expand_dims(indexes[..., 0], axis=-1),
