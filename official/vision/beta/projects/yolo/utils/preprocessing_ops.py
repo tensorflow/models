@@ -217,3 +217,203 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
     ],
                        axis=-1)
   return tf.cast(iou_index, dtype=tf.float32)
+
+
+def build_grided_gt(y_true, mask, size, num_classes, dtype, use_tie_breaker):
+  """
+    convert ground truth for use in loss functions
+    Args:
+        y_true: tf.Tensor[] ground truth
+          [box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box]
+        mask: list of the anchor boxes choresponding to the output,
+          ex. [1, 2, 3] tells this layer to predict only the first 3 anchors
+          in the total.
+        size: the dimensions of this output, for regular, it progresses from
+          13, to 26, to 52
+
+    Return:
+        tf.Tensor[] of shape [size, size, #of_anchors, 4, 1, num_classes]
+    """
+  boxes = tf.cast(y_true['bbox'], dtype)
+  classes = tf.one_hot(
+      tf.cast(y_true['classes'], dtype=tf.int32),
+      depth=num_classes,
+      dtype=dtype)
+  anchors = tf.cast(y_true['best_anchors'], dtype)
+
+  num_boxes = tf.shape(boxes)[0]
+  len_masks = tf.shape(mask)[0]
+
+  full = tf.zeros([size, size, len_masks, num_classes + 4 + 1], dtype=dtype)
+  depth_track = tf.zeros((size, size, len_masks), dtype=tf.int32)
+
+  x = tf.cast(boxes[..., 0] * tf.cast(size, dtype=dtype), dtype=tf.int32)
+  y = tf.cast(boxes[..., 1] * tf.cast(size, dtype=dtype), dtype=tf.int32)
+
+  anchors = tf.repeat(tf.expand_dims(anchors, axis=-1), len_masks, axis=-1)
+
+  update_index = tf.TensorArray(tf.int32, size=0, dynamic_size=True)
+  update = tf.TensorArray(dtype, size=0, dynamic_size=True)
+  const = tf.cast(tf.convert_to_tensor([1.]), dtype=dtype)
+  mask = tf.cast(mask, dtype=dtype)
+
+  i = 0
+  anchor_id = 0
+  for box_id in range(num_boxes):
+    if tf.keras.backend.all(tf.math.equal(boxes[box_id, 2:4], 0)):
+      continue
+    if tf.keras.backend.any(tf.math.less(
+        boxes[box_id, 0:2], 0.0)) or tf.keras.backend.any(
+            tf.math.greater_equal(boxes[box_id, 0:2], 1.0)):
+      continue
+    if use_tie_breaker:
+      for anchor_id in range(tf.shape(anchors)[-1]):
+        index = tf.math.equal(anchors[box_id, anchor_id], mask)
+        if tf.keras.backend.any(index):
+          p = tf.cast(
+              tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
+              dtype=tf.int32)
+          uid = 1
+          used = depth_track[y[box_id], x[box_id], p]
+
+          if anchor_id == 0:
+            # write the box to the update list
+            update_index = update_index.write(i, [y[box_id], x[box_id], p])
+            value = tf.keras.backend.concatenate(
+                [boxes[box_id], const, classes[box_id]])
+            update = update.write(i, value)
+          elif tf.math.equal(used, 2) or tf.math.equal(used, 0):
+            # write the box to the update list
+            uid = 2
+            update_index = update_index.write(i, [y[box_id], x[box_id], p])
+            value = tf.keras.backend.concatenate(
+                [boxes[box_id], const, classes[box_id]])
+            update = update.write(i, value)
+
+          depth_track = tf.tensor_scatter_nd_update(depth_track,
+                                                    [(y[box_id], x[box_id], p)],
+                                                    [uid])
+          i += 1
+    else:
+      index = tf.math.equal(anchors[box_id, 0], mask)
+      if tf.keras.backend.any(index):
+        p = tf.cast(
+            tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
+            dtype=tf.int32)
+        update_index = update_index.write(i, [y[box_id], x[box_id], p])
+        value = tf.keras.backend.concatenate(
+            [boxes[box_id], const, classes[box_id]])
+        update = update.write(i, value)
+        i += 1
+
+  # if the size of the update list is not 0, do an update, other wise, no boxes
+  # and pass an empty grid
+  if tf.math.greater(update_index.size(), 0):
+    update_index = update_index.stack()
+    update = update.stack()
+    full = tf.tensor_scatter_nd_add(full, update_index, update)
+  return full
+
+
+def build_batch_grided_gt(y_true, mask, size, num_classes, dtype,
+                          use_tie_breaker):
+  """
+    convert ground truth for use in loss functions
+    Args:
+        y_true: tf.Tensor[] ground truth
+          [box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box]
+        mask: list of the anchor boxes choresponding to the output,
+          ex. [1, 2, 3] tells this layer to predict only the first 3 anchors in
+          the total.
+        size: the dimensions of this output, for regular, it progresses from
+          13, to 26, to 52
+
+    Return:
+        tf.Tensor[] of shape [batch, size, size, #of_anchors, 4, 1, num_classes]
+    """
+  boxes = tf.cast(y_true['bbox'], dtype)
+  classes = tf.one_hot(
+      tf.cast(y_true['classes'], dtype=tf.int32),
+      depth=num_classes,
+      dtype=dtype)
+  anchors = tf.cast(y_true['best_anchors'], dtype)
+
+  batches = tf.shape(boxes)[0]
+  num_boxes = tf.shape(boxes)[1]
+  len_masks = tf.shape(mask)[0]
+
+  full = tf.zeros([batches, size, size, len_masks, num_classes + 4 + 1],
+                  dtype=dtype)
+  depth_track = tf.zeros((batches, size, size, len_masks), dtype=tf.int32)
+
+  x = tf.cast(boxes[..., 0] * tf.cast(size, dtype=dtype), dtype=tf.int32)
+  y = tf.cast(boxes[..., 1] * tf.cast(size, dtype=dtype), dtype=tf.int32)
+
+  anchors = tf.repeat(tf.expand_dims(anchors, axis=-1), len_masks, axis=-1)
+
+  update_index = tf.TensorArray(tf.int32, size=0, dynamic_size=True)
+  update = tf.TensorArray(dtype, size=0, dynamic_size=True)
+  const = tf.cast(tf.convert_to_tensor([1.]), dtype=dtype)
+  mask = tf.cast(mask, dtype=dtype)
+
+  i = 0
+  anchor_id = 0
+  for batch in range(batches):
+    for box_id in range(num_boxes):
+      if tf.keras.backend.all(tf.math.equal(boxes[batch, box_id, 2:4], 0)):
+        continue
+      if tf.keras.backend.any(tf.math.less(
+          boxes[batch, box_id, 0:2], 0.0)) or tf.keras.backend.any(
+              tf.math.greater_equal(boxes[batch, box_id, 0:2], 1.0)):
+        continue
+      if use_tie_breaker:
+        for anchor_id in range(tf.shape(anchors)[-1]):
+          index = tf.math.equal(anchors[batch, box_id, anchor_id], mask)
+          if tf.keras.backend.any(index):
+            #tf.print(anchor_id, anchors[batch, box_id, anchor_id])
+            p = tf.cast(
+                tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
+                dtype=tf.int32)
+            uid = 1
+
+            used = depth_track[batch, y[batch, box_id], x[batch, box_id], p]
+            if anchor_id == 0:
+              # write the box to the update list
+              update_index = update_index.write(
+                  i, [batch, y[batch, box_id], x[batch, box_id], p])
+              value = tf.keras.backend.concatenate(
+                  [boxes[batch, box_id], const, classes[batch, box_id]])
+              update = update.write(i, value)
+            elif tf.math.equal(used, 2) or tf.math.equal(used, 0):
+              uid = 2
+              # write the box to the update list
+              update_index = update_index.write(
+                  i, [batch, y[batch, box_id], x[batch, box_id], p])
+              value = tf.keras.backend.concatenate(
+                  [boxes[batch, box_id], const, classes[batch, box_id]])
+              update = update.write(i, value)
+
+            depth_track = tf.tensor_scatter_nd_update(
+                depth_track, [(batch, y[batch, box_id], x[batch, box_id], p)],
+                [uid])
+            i += 1
+      else:
+        index = tf.math.equal(anchors[batch, box_id, 0], mask)
+        if tf.keras.backend.any(index):
+          p = tf.cast(
+              tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
+              dtype=tf.int32)
+          update_index = update_index.write(
+              i, [batch, y[batch, box_id], x[batch, box_id], p])
+          value = tf.keras.backend.concatenate(
+              [boxes[batch, box_id], const, classes[batch, box_id]])
+          update = update.write(i, value)
+          i += 1
+
+  # if the size of the update list is not 0, do an update, other wise, no boxes
+  # and pass an empty grid
+  if tf.math.greater(update_index.size(), 0):
+    update_index = update_index.stack()
+    update = update.stack()
+    full = tf.tensor_scatter_nd_add(full, update_index, update)
+  return full
