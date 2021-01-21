@@ -8,6 +8,7 @@ from official.vision.beta.projects.yolo.dataloaders import yolo_detection_input
 from official.vision.beta.projects.yolo.dataloaders.decoders import \
     tfds_coco_decoder
 from official.vision.beta.projects.yolo.utils import box_ops
+from absl.testing import parameterized
 
 
 @dataclasses.dataclass
@@ -40,11 +41,12 @@ class DataConfig(cfg.DataConfig):
   tfds_download: bool = True
 
 
-class yoloDetectionInputTest(tf.test.TestCase):
+class yoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_yolo_input(self):
+  @parameterized.named_parameters(('training', True), ('testing', False))
+  def test_yolo_input(self, is_training):
     with tf.device('/CPU:0'):
-      params = DataConfig(is_training=True)
+      params = DataConfig(is_training=is_training)
       num_boxes = 9
 
       decoder = tfds_coco_decoder.MSCOCODecoder()
@@ -66,6 +68,7 @@ class yoloDetectionInputTest(tf.test.TestCase):
           seed=params.parser.seed,
           anchors=anchors,
           masks=masks)
+      postprocess_fn = parser.postprocess_fn(is_training=is_training)
 
       reader = input_reader.InputReader(
           params,
@@ -78,6 +81,8 @@ class yoloDetectionInputTest(tf.test.TestCase):
         break
 
       for l, (i, j) in enumerate(dataset):
+        if postprocess_fn:
+          i, j = postprocess_fn(i, j)
         boxes = box_ops.xcycwh_to_yxyx(j['bbox'])
         self.assertTrue(tf.reduce_all(tf.math.logical_and(i >= 0, i <= 1)))
         if l > 10:

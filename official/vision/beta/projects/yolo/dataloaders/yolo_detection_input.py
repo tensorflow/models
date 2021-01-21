@@ -303,5 +303,5 @@ class Parser(parser.Parser):
     label.update({'grid_form': grid})
     return image, label
 
-  def postprocess_fn(self):
-    return self._postprocess_fn if not self._fixed_size else None
+  def postprocess_fn(self, is_training=True):
+    return self._postprocess_fn if not self._fixed_size and is_training else None

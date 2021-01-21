@@ -94,6 +94,19 @@ def translate_image(image, translate_x, translate_y):
   return image
 
 
+def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
+  shape = tf.shape(value)
+  dim1 = shape[pad_axis]
+  take = tf.math.reduce_min([instances, dim1])
+  value, _ = tf.split(
+      value, [take, -1], axis=pad_axis)  # value[:instances, ...]
+  pad = tf.convert_to_tensor([tf.math.reduce_max([instances - dim1, 0])])
+  nshape = tf.concat([shape[:pad_axis], pad, shape[(pad_axis + 1):]], axis=0)
+  pad_tensor = tf.fill(nshape, tf.cast(pad_value, dtype=value.dtype))
+  value = tf.concat([value, pad_tensor], axis=pad_axis)
+  return value
+
+
 def fit_preserve_aspect_ratio(image,
                               boxes,
                               width=None,
