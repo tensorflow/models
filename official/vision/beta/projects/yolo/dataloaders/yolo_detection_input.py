@@ -29,7 +29,6 @@ class Parser(parser.Parser):
                min_process_size=320,
                max_num_instances=200,
                random_flip=True,
-               pct_rand=0.5,
                aug_rand_saturation=True,
                aug_rand_brightness=True,
                aug_rand_zoom=True,
@@ -53,7 +52,6 @@ class Parser(parser.Parser):
       min_process_size: an `int` for minimum image width and height ,
       max_num_instances: an `int` number of maximum number of instances in an image.
       random_flip: a `bool` if True, augment training with random horizontal flip.
-      pct_rand: an `int` that prevents do_scale from becoming larger than 1-pct_rand.
       masks: a `Tensor`, `List` or `numpy.ndarrray` for anchor masks.
       aug_rand_saturation: `bool`, if True, augment training with random
         saturation.
@@ -85,7 +83,6 @@ class Parser(parser.Parser):
 
     self._jitter_im = 0.0 if jitter_im is None else jitter_im
     self._jitter_boxes = 0.0 if jitter_boxes is None else jitter_boxes
-    self._pct_rand = pct_rand
     self._max_num_instances = max_num_instances
     self._random_flip = random_flip
 
@@ -154,8 +151,7 @@ class Parser(parser.Parser):
 
     if not self._fixed_size:
       do_scale = tf.greater(
-          tf.random.uniform([], minval=0, maxval=1, seed=self._seed),
-          1 - self._pct_rand)
+          tf.random.uniform([], minval=0, maxval=1, seed=self._seed), 0.5)
       if do_scale:
         randscale = tf.random.uniform([],
                                       minval=10,
@@ -288,8 +284,7 @@ class Parser(parser.Parser):
     randscale = self._image_w // self._net_down_scale
     if not self._fixed_size:
       do_scale = tf.greater(
-          tf.random.uniform([], minval=0, maxval=1, seed=self._seed),
-          1 - self._pct_rand)
+          tf.random.uniform([], minval=0, maxval=1, seed=self._seed), 0.5)
       if do_scale:
         randscale = tf.random.uniform([],
                                       minval=10,

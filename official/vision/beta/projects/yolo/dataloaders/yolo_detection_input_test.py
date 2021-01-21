@@ -1,3 +1,4 @@
+"""Test case for YOLO detection dataloader configuration definition."""
 import dataclasses
 
 import tensorflow as tf
@@ -13,6 +14,7 @@ from absl.testing import parameterized
 
 @dataclasses.dataclass
 class Parser(hyperparams.Config):
+  """Dummy configuration for parser"""
   image_w: int = 416
   fixed_size: bool = True
   jitter_im: float = 0.1
@@ -41,13 +43,12 @@ class DataConfig(cfg.DataConfig):
   tfds_download: bool = True
 
 
-class yoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
+class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(('training', True), ('testing', False))
   def test_yolo_input(self, is_training):
     with tf.device('/CPU:0'):
       params = DataConfig(is_training=is_training)
-      num_boxes = 9
 
       decoder = tfds_coco_decoder.MSCOCODecoder()
       anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0],
