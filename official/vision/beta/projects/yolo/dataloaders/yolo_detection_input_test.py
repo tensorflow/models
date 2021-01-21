@@ -13,7 +13,7 @@ from official.vision.beta.projects.yolo.utils import box_ops
 @dataclasses.dataclass
 class Parser(hyperparams.Config):
   image_w: int = 416
-  fixed_size: bool = False
+  fixed_size: bool = True
   jitter_im: float = 0.1
   jitter_boxes: float = 0.005
   net_down_scale: int = 32
@@ -52,6 +52,7 @@ class yoloDetectionInputTest(tf.test.TestCase):
       anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0],
                  [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0],
                  [348.0, 340.0]]
+      masks = {'3': {0, 1, 2}, '4': {3, 4, 5}, '5': {6, 7, 8}}
 
       parser = yolo_detection_input.Parser(
           image_w=params.parser.image_w,
@@ -65,7 +66,8 @@ class yoloDetectionInputTest(tf.test.TestCase):
           random_flip=params.parser.random_flip,
           pct_rand=params.parser.pct_rand,
           seed=params.parser.seed,
-          anchors=anchors)
+          anchors=anchors,
+          masks=masks)
 
       reader = input_reader.InputReader(
           params,

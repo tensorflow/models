@@ -18,7 +18,7 @@ class Parser(parser.Parser):
                image_w=416,
                image_h=416,
                num_classes=80,
-               fixed_size=False,
+               fixed_size=True,
                jitter_im=0.1,
                jitter_boxes=0.005,
                use_tie_breaker=True,
@@ -283,3 +283,25 @@ class Parser(parser.Parser):
         use_tie_breaker=self._use_tie_breaker)
     labels.update({'grid_form': grid})
     return image, labels
+
+  def _postprocess_fn(self, image, label):
+    randscale = self._image_w // self._net_down_scale
+    if not self._fixed_size:
+      do_scale = tf.greater(
+          tf.random.uniform([], minval=0, maxval=1, seed=self._seed),
+          1 - self._pct_rand)
+      if do_scale:
+        randscale = tf.random.uniform([],
+                                      minval=10,
+                                      maxval=20,
+                                      seed=self._seed,
+                                      dtype=tf.int32)
+    width = randscale * self._net_down_scale
+    image = tf.image.resize(image, (width, width))
+    grid = self._build_grid(
+        label, width, batch=True, use_tie_breaker=self._use_tie_breaker)
+    label.update({'grid_form': grid})
+    return image, label
+
+  def postprocess_fn(self):
+    return self._postprocess_fn if not self._fixed_size else None
