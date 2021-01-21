@@ -42,47 +42,48 @@ class DataConfig(cfg.DataConfig):
   tfds_download: bool = True
 
 
-def test_yolo_input():
-  with tf.device("/CPU:0"):
-    params = DataConfig(is_training=True)
-    num_boxes = 9
+class yoloDetectionInputTest(tf.test.TestCase):
+  def test_yolo_input(self):
+    with tf.device("/CPU:0"):
+      params = DataConfig(is_training=True)
+      num_boxes = 9
 
-    decoder = tfds_coco_decoder.MSCOCODecoder()
-    anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0],
-               [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0],
-               [348.0, 340.0]]
+      decoder = tfds_coco_decoder.MSCOCODecoder()
+      anchors = [[12.0, 19.0], [31.0, 46.0], [96.0, 54.0], [46.0, 114.0],
+                 [133.0, 127.0], [79.0, 225.0], [301.0, 150.0], [172.0, 286.0],
+                 [348.0, 340.0]]
 
-    parser = yolo_detection_input.Parser(
-        image_w=params.parser.image_w,
-        fixed_size=params.parser.fixed_size,
-        jitter_im=params.parser.jitter_im,
-        jitter_boxes=params.parser.jitter_boxes,
-        net_down_scale=params.parser.net_down_scale,
-        min_process_size=params.parser.min_process_size,
-        max_process_size=params.parser.max_process_size,
-        max_num_instances=params.parser.max_num_instances,
-        random_flip=params.parser.random_flip,
-        pct_rand=params.parser.pct_rand,
-        seed=params.parser.seed,
-        anchors=anchors)
+      parser = yolo_detection_input.Parser(
+          image_w=params.parser.image_w,
+          fixed_size=params.parser.fixed_size,
+          jitter_im=params.parser.jitter_im,
+          jitter_boxes=params.parser.jitter_boxes,
+          net_down_scale=params.parser.net_down_scale,
+          min_process_size=params.parser.min_process_size,
+          max_process_size=params.parser.max_process_size,
+          max_num_instances=params.parser.max_num_instances,
+          random_flip=params.parser.random_flip,
+          pct_rand=params.parser.pct_rand,
+          seed=params.parser.seed,
+          anchors=anchors)
 
-    reader = input_reader.InputReader(params,
-                                      dataset_fn=tf.data.TFRecordDataset,
-                                      decoder_fn=decoder.decode,
-                                      parser_fn=parser.parse_fn(
-                                          params.is_training))
-    dataset = reader.read(input_context=None)
-  return dataset
+      reader = input_reader.InputReader(params,
+                                        dataset_fn=tf.data.TFRecordDataset,
+                                        decoder_fn=decoder.decode,
+                                        parser_fn=parser.parse_fn(
+                                            params.is_training))
+      dataset = reader.read(input_context=None)
+      for one_batch in dataset.batch(1):
+        self.assertAllEqual(one_batch[0].shape, (1, 10, 416, 416, 3))
+        break
+
+      for l, (i, j) in enumerate(dataset):
+        boxes = box_ops.xcycwh_to_yxyx(j["bbox"])
+        assert tf.reduce_all(tf.math.logical_and(i >= 0, i <= 1))
+        if l > 10:
+          self.assertAllEqual(True, True)
+          break
 
 
 if __name__ == "__main__":
-
-  dataset = test_yolo_input()
-
-  for l, (i, j) in enumerate(dataset):
-    boxes = box_ops.xcycwh_to_yxyx(j["bbox"])
-    i = tf.image.draw_bounding_boxes(i, boxes, [[1.0, 0.0, 1.0]])
-    plt.imshow(i[0].numpy())
-    plt.show()
-    if l > 10:
-      break
+  tf.test.main()
