@@ -7,7 +7,7 @@ from official.modeling import hyperparams
 from official.vision.beta.projects.yolo.dataloaders import yolo_detection_input
 from official.vision.beta.projects.yolo.dataloaders.decoders import \
     tfds_coco_decoder
-from official.vision.beta.projects.yolo.utils import box_ops
+from official.vision.beta.projects.yolo.ops import box_ops
 from absl.testing import parameterized
 
 
