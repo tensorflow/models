@@ -92,6 +92,48 @@ def translate_image(image, translate_x, translate_y):
   return image
 
 
+def fit_preserve_aspect_ratio(image,
+                              boxes,
+                              width=None,
+                              height=None,
+                              target_dim=None):
+  if width is None or height is None:
+    shape = tf.shape(data["image"])
+    if tf.shape(shape)[0] == 4:
+      width = shape[1]
+      height = shape[2]
+    else:
+      width = shape[0]
+      height = shape[1]
+
+  clipper = tf.math.maximum(width, height)
+  if target_dim is None:
+    target_dim = clipper
+
+  pad_width = clipper - width
+  pad_height = clipper - height
+  image = tf.image.pad_to_bounding_box(image, pad_width // 2, pad_height // 2,
+                                       clipper, clipper)
+
+  boxes = box_utils.yxyx_to_xcycwh(boxes)
+  x, y, w, h = tf.split(boxes, 4, axis=-1)
+
+  y *= tf.cast(width / clipper, tf.float32)
+  x *= tf.cast(height / clipper, tf.float32)
+
+  y += tf.cast((pad_width / clipper) / 2, tf.float32)
+  x += tf.cast((pad_height / clipper) / 2, tf.float32)
+
+  h *= tf.cast(width / clipper, tf.float32)
+  w *= tf.cast(height / clipper, tf.float32)
+
+  boxes = tf.concat([x, y, w, h], axis=-1)
+
+  boxes = box_utils.xcycwh_to_yxyx(boxes)
+  image = tf.image.resize(image, (target_dim, target_dim))
+  return image, boxes
+
+
 def get_best_anchor(y_true, anchors, width=1, height=1):
   """
     get the correct anchor that is assoiciated with each box using IOU betwenn
