@@ -215,8 +215,7 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
     iou_index = tf.concat([
         tf.expand_dims(indexes[..., 0], axis=-1),
         ((indexes[..., 1:] + 1) * ind_mask[..., 1:]) - 1
-    ],
-                          axis=-1)
+    ], axis=-1)
 
     stack = tf.zeros(
         [tf.shape(iou_index)[0],
