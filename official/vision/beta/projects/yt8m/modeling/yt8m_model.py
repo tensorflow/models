@@ -52,12 +52,8 @@ class YT8MModel(tf.keras.Model):
                                                        center=True,
                                                        trainable=input_params.is_training)(reshaped_input)
 
-        cluster_weights = tf.Variable(tf.random_normal_initializer(stddev=1 / tf.sqrt(tf.cast(feature_size, tf.float32)))(
-            shape=[feature_size, input_params.cluster_size]),
-            name="cluster_weights")
-
-        tf.summary.histogram("cluster_weights", cluster_weights)
-        activation = tf.linalg.matmul(reshaped_input, cluster_weights)
+        # activation = reshaped input * cluster weights
+        activation = layers.Dense(input_params.cluster_size, kernel_initializer=tf.random_normal_initializer(stddev=1 / tf.sqrt(tf.cast(feature_size, tf.float32))))(reshaped_input)
 
         if input_params.add_batch_norm:
             activation = layers.BatchNormalization(name="cluster_bn",
@@ -78,12 +74,8 @@ class YT8MModel(tf.keras.Model):
         activation = tf.reshape(activation, [-1, max_frames, input_params.cluster_size])
         activation = utils.FramePooling(activation, input_params.pooling_method)
 
-        hidden1_weights = tf.Variable(tf.random_normal_initializer(stddev=1 / tf.sqrt(tf.cast(input_params.cluster_size, tf.float32)))(
-            shape=[input_params.cluster_size, input_params.hidden_size]),
-            name="hidden1_weights")
-
-        tf.summary.histogram("hidden1_weights", hidden1_weights)
-        activation = tf.linalg.matmul(activation, hidden1_weights)
+        # activation = activation * hidden1_weights
+        activation = layers.Dense(input_params.hidden_size, kernel_initializer=tf.random_normal_initializer(stddev=1 / tf.sqrt(tf.cast(input_params.cluster_size, tf.float32))))(activation)
 
         if input_params.add_batch_norm:
             activation = layers.BatchNormalization(name="hidden1_bn",
