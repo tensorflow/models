@@ -30,7 +30,7 @@ enum InputType {
   TF_SEQUENCE_EXAMPLE = 2;  // TfSequenceExample Input
 }
 
-// Next id: 37
+// Next id: 38
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -133,6 +133,9 @@ message InputReader {
 
   // Whether to load track information.
   optional bool load_track_id = 33 [default = false];
+
+  // Whether to load keypoint depth features.
+  optional bool load_keypoint_depth_features = 37 [default = false];
 
   // Whether to use the display name when decoding examples. This is only used
   // when mapping class text strings to integers.

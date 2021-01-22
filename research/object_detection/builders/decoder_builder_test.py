@@ -65,6 +65,8 @@ class DecoderBuilderTest(test_case.TestCase):
         'image/object/bbox/ymax': dataset_util.float_list_feature([1.0]),
         'image/object/class/label': dataset_util.int64_list_feature([2]),
         'image/object/mask': dataset_util.float_list_feature(flat_mask),
+        'image/object/keypoint/x': dataset_util.float_list_feature([1.0, 1.0]),
+        'image/object/keypoint/y': dataset_util.float_list_feature([1.0, 1.0])
     }
     if has_additional_channels:
       additional_channels_key = 'image/additional_channels/encoded'
@@ -187,6 +189,28 @@ class DecoderBuilderTest(test_case.TestCase):
       return tensor_dict[fields.InputDataFields.groundtruth_instance_masks]
     masks = self.execute_cpu(graph_fn, [])
     self.assertAllEqual((1, 4, 5), masks.shape)
+
+  def test_build_tf_record_input_reader_and_load_keypoint_depth(self):
+    input_reader_text_proto = """
+      load_keypoint_depth_features: true
+      num_keypoints: 2
+      tf_record_input_reader {}
+    """
+    input_reader_proto = input_reader_pb2.InputReader()
+    text_format.Parse(input_reader_text_proto, input_reader_proto)
+
+    decoder = decoder_builder.build(input_reader_proto)
+    serialized_example = self._make_serialized_tf_example()
+
+    def graph_fn():
+      tensor_dict = decoder.decode(serialized_example)
+      return (tensor_dict[fields.InputDataFields.groundtruth_keypoint_depths],
+              tensor_dict[
+                  fields.InputDataFields.groundtruth_keypoint_depth_weights])
+
+    (kpts_depths, kpts_depth_weights) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual((1, 2), kpts_depths.shape)
+    self.assertAllEqual((1, 2), kpts_depth_weights.shape)
 
 
 if __name__ == '__main__':
