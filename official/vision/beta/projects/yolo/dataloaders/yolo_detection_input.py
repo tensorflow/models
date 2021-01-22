@@ -153,6 +153,8 @@ class Parser(parser.Parser):
       do_scale = tf.greater(
           tf.random.uniform([], minval=0, maxval=1, seed=self._seed), 0.5)
       if do_scale:
+        # This scales the image to a random multiple of net_down_scale
+        # between 320 to 608
         randscale = tf.random.uniform([],
                                       minval=10,
                                       maxval=21,
@@ -164,6 +166,7 @@ class Parser(parser.Parser):
       boxes = box_ops.jitter_boxes(boxes, 0.025)
       boxes = box_ops.normalize_boxes(boxes, image_shape)
 
+    # YOLO loss function uses x-center, y-center format
     boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
     if self._jitter_im != 0.0:
@@ -189,6 +192,7 @@ class Parser(parser.Parser):
     if self._aug_rand_hue:
       image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
     image = tf.clip_by_value(image, 0.0, 1.0)
+    # find the best anchor for the ground truth labels to maximize the iou
     best_anchors = preprocessing_ops.get_best_anchor(
         boxes, self._anchors, width=self._image_w, height=self._image_h)
 
@@ -245,6 +249,7 @@ class Parser(parser.Parser):
         image, boxes, width=width, height=height, target_dim=self._image_w)
     boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
+    # find the best anchor for the ground truth labels to maximize the iou
     best_anchors = preprocessing_ops.get_best_anchor(
         boxes, self._anchors, width=self._image_w, height=self._image_h)
     boxes = preprocessing_ops.pad_max_instances(boxes, self._max_num_instances,
@@ -286,6 +291,8 @@ class Parser(parser.Parser):
       do_scale = tf.greater(
           tf.random.uniform([], minval=0, maxval=1, seed=self._seed), 0.5)
       if do_scale:
+        # This scales the image to a random multiple of net_down_scale
+        # between 320 to 608
         randscale = tf.random.uniform([],
                                       minval=10,
                                       maxval=20,

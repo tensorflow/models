@@ -113,7 +113,7 @@ def fit_preserve_aspect_ratio(image,
                               height=None,
                               target_dim=None):
   if width is None or height is None:
-    shape = tf.shape(data['image'])
+    shape = tf.shape(image)
     if tf.shape(shape)[0] == 4:
       width = shape[1]
       height = shape[2]
