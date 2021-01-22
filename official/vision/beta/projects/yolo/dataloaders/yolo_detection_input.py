@@ -156,10 +156,10 @@ class Parser(parser.Parser):
         # This scales the image to a random multiple of net_down_scale
         # between 320 to 608
         randscale = tf.random.uniform([],
-                                      minval=10,
-                                      maxval=21,
+                                      minval=320 // self._net_down_scale,
+                                      maxval=608 // self._net_down_scale,
                                       seed=self._seed,
-                                      dtype=tf.int32)
+                                      dtype=tf.int32) * self._net_down_scale
 
     if self._jitter_boxes != 0.0:
       boxes = box_ops.denormalize_boxes(boxes, image_shape)
@@ -179,8 +179,8 @@ class Parser(parser.Parser):
           boxes,
           default_width=self._image_w,
           default_height=self._image_h,
-          target_width=randscale * self._net_down_scale,
-          target_height=randscale * self._net_down_scale)
+          target_width=randscale,
+          target_height=randscale)
     image = tf.image.resize(image, (416, 416), preserve_aspect_ratio=False)
 
     if self._aug_rand_brightness:
@@ -294,11 +294,11 @@ class Parser(parser.Parser):
         # This scales the image to a random multiple of net_down_scale
         # between 320 to 608
         randscale = tf.random.uniform([],
-                                      minval=10,
-                                      maxval=20,
+                                      minval=320 // self._net_down_scale,
+                                      maxval=608 // self._net_down_scale,
                                       seed=self._seed,
-                                      dtype=tf.int32)
-    width = randscale * self._net_down_scale
+                                      dtype=tf.int32) * self._net_down_scale
+    width = randscale
     image = tf.image.resize(image, (width, width))
     grid = self._build_grid(
         label, width, batch=True, use_tie_breaker=self._use_tie_breaker)
