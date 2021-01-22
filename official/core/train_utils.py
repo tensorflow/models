@@ -217,6 +217,16 @@ def serialize_config(params: config_definitions.ExperimentConfig,
   hyperparams.save_params_dict_to_yaml(params, params_save_path)
 
 
+def save_gin_config(filename_surfix: str, model_dir: str):
+  """Serializes and saves the experiment config."""
+  gin_save_path = os.path.join(
+      model_dir, 'operative_config.{}.gin'.format(filename_surfix))
+  logging.info('Saving gin configurations to %s', gin_save_path)
+  tf.io.gfile.makedirs(model_dir)
+  with tf.io.gfile.GFile(gin_save_path, 'w') as f:
+    f.write(gin.operative_config_str())
+
+
 def read_global_step_from_checkpoint(ckpt_file_path):
   """Read global step from checkpoint, or get global step from its filename."""
   global_step = tf.Variable(-1, dtype=tf.int64)

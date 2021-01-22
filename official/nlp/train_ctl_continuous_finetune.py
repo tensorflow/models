@@ -41,6 +41,7 @@ def main(_):
   train_utils.serialize_config(params, model_dir)
   continuous_finetune_lib.run_continuous_finetune(FLAGS.mode, params, model_dir,
                                                   FLAGS.pretrain_steps)
+  train_utils.save_gin_config(FLAGS.mode, model_dir)
 
 
 if __name__ == '__main__':
