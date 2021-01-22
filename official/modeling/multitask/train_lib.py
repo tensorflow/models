@@ -25,7 +25,7 @@ from official.modeling.multitask import evaluator as evaluator_lib
 from official.modeling.multitask import multitask
 
 
-def run_experiment_wtih_multitask_eval(
+def run_experiment_with_multitask_eval(
     *,
     distribution_strategy: tf.distribute.Strategy,
     train_task: base_task.Task,

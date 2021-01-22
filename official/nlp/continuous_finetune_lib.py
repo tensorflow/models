@@ -165,7 +165,7 @@ def run_continuous_finetune(
         task = task_factory.get_task(params_replaced.task)
         eval_tasks = multitask.MultiTask.from_config(params_replaced.eval_tasks)
         (_,
-         eval_metrics) = multitask_train_lib.run_experiment_wtih_multitask_eval(
+         eval_metrics) = multitask_train_lib.run_experiment_with_multitask_eval(
              distribution_strategy=distribution_strategy,
              train_task=task,
              eval_tasks=eval_tasks,
