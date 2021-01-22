@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
-from official.vision.beta.projects.yolo.utils import box_ops
+from official.vision.beta.projects.yolo.ops import box_ops
 
 
 def resize_crop_filter(image, boxes, default_width, default_height,
