@@ -2,9 +2,8 @@
 
 # import libraries
 import tensorflow as tf
+from typing import Tuple, Union
 import math
-from typing import Union, Tuple
-
 
 def yxyx_to_xcycwh(box: tf.Tensor):
   """Converts boxes from ymin, xmin, ymax, xmax to x_center, y_center, width,
@@ -50,9 +49,9 @@ def xcycwh_to_yxyx(box: tf.Tensor, split_min_max: bool = False):
     xy, wh = tf.split(box, 2, axis=-1)
     xy_min = xy - wh / 2
     xy_max = xy + wh / 2
-    box = tf.stack(
-        [xy_min[..., 1], xy_min[..., 0], xy_max[..., 1], xy_max[..., 0]],
-        axis=-1)
+    x_min, y_min = tf.split(xy_min, 2, axis=-1)
+    x_max, y_max = tf.split(xy_max, 2, axis=-1)
+    box = tf.concat([y_min, x_min, y_max, x_max], axis=-1)
     if split_min_max:
       box = tf.split(box, 2, axis=-1)
   return box
@@ -83,107 +82,6 @@ def xcycwh_to_xyxy(box: tf.Tensor, split_min_max: bool = False):
   return box
 
 
-def intersection_and_union(box1: tf.Tensor, box2: tf.Tensor):
-  """Calculates the intersection and union between between box1 and box2.
-
-    Args:
-      box1: a `Tensor` with a shape of [batch_size, N, 4]. N is the number of
-        proposals before groundtruth assignment. The last dimension is the
-        pixel coordinates in [ymin, xmin, ymax, xmax].
-      box2: a `Tensor` with a shape of [batch_size, N, 4]. N is the number of
-        proposals before groundtruth assignment. The last dimension is the
-        pixel coordinates in [ymin, xmin, ymax, xmax].
-
-    Returns:
-      a 2-tuple with the following components
-        intersection: a `Tensor` whose shape is [batch_size, N].
-        union: a `Tensor` whose shape is [batch_size, N].
-
-    Raises:
-      ValueError: If the last dimension of either box1 or box2 is not 4.
-    """
-  with tf.name_scope('intersection_and_union'):
-    intersect_mins = tf.math.maximum(box1[..., 0:2], box2[..., 0:2])
-    intersect_maxes = tf.math.minimum(box1[..., 2:4], box2[..., 2:4])
-    intersect_wh = tf.math.maximum(intersect_maxes - intersect_mins,
-                                   tf.zeros_like(intersect_mins))
-    intersection = intersect_wh[..., 0] * intersect_wh[..., 1]
-
-    box1_area = get_area(box1)
-    box2_area = get_area(box2)
-    union = box1_area + box2_area - intersection
-  return intersection, union
-
-
-def get_area(box: Union[tf.Tensor, Tuple],
-             xywh: bool = False,
-             use_tuple: bool = False):
-  """Calculates the area of the box.
-
-    Args:
-      box: box: a `Tensor` whose shape is [..., 4].
-      xywh: a `bool` who flags the format of the box.
-      use_tuple: a `bool` that flags the type of box.
-
-    Returns:
-      area: a `Tensor` whose shape is [...] and value represents the area of
-        the box.
-
-    Raises:
-      ValueError: If the last dimension of box is not 4.
-    """
-  with tf.name_scope('box_area'):
-    if use_tuple:
-      area = get_area_tuple(box=box, xywh=xywh)
-    else:
-      area = get_area_tensor(box=box, xywh=xywh)
-  return area
-
-
-def get_area_tensor(box: tf.Tensor, xywh: bool = False):
-  """Calculates the area of the box.
-
-    Args:
-      box: a `Tensor` whose shape is [..., 4].
-      xywh: a `bool` who flags the format of the box.
-
-    Returns:
-      area: a `Tensor` whose shape is [...] and value represents the area of
-        the box.
-
-    Raises:
-      ValueError: If the last dimension of box is not 4.
-    """
-  with tf.name_scope('tensor_area'):
-    if xywh:
-      area = tf.reduce_prod(box[..., 2:4], axis=-1)
-    else:
-      area = tf.math.abs(tf.reduce_prod(box[..., 2:4] - box[..., 0:2], axis=-1))
-  return area
-
-
-def get_area_tuple(box: Tuple, xywh: bool = False):
-  """Calculates the area of the box.
-
-    Args:
-      box: box: a `Tuple` whose shape is [..., 4].
-      xywh: a `bool` who flags the format of the box.
-
-    Returns:
-      area: a `Tensor` whose shape is [...] and value represents the area of
-        the box.
-
-    Raises:
-      ValueError: If the last dimension of box is not 4.
-    """
-  with tf.name_scope('tuple_area'):
-    if xywh:
-      area = tf.reduce_prod(box[1], axis=-1)
-    else:
-      area = tf.math.abs(tf.reduce_prod(box[1] - box[0], axis=-1))
-  return area
-
-
 def center_distance(center_1: tf.Tensor, center_2: tf.Tensor):
   """Calculates the squared distance between two points.
   This function is mathematically equivalent to the following code, but has
@@ -208,31 +106,9 @@ def center_distance(center_1: tf.Tensor, center_2: tf.Tensor):
   return dist
 
 
-def aspect_ratio_consistancy(w_gt: tf.Tensor, h_gt: tf.Tensor, w: tf.Tensor,
-                             h: tf.Tensor):
-  """Calculates the consistency aspect ratio.
 
-    Args:
-      w_gt: a `Tensor` whose shape is [] and value represents the width of the ground
-        truth box.
-      h_gt: a `Tensor` whose shape is [] and value represents the height of the ground
-        truth box.
-      w_gt: a `Tensor` whose shape is [] and value represents the width of the proposed
-        box.
-      h_gt: a `Tensor` whose shape is [] and value represents the height of the proposed
-        box.
-
-    Returns:
-      consistency: a `Tensor` whose shape is [] and value represents the consistency of
-          aspect ratio
-    """
-  arcterm = (tf.math.atan(tf.math.divide_no_nan(w_gt, h_gt)) -
-             tf.math.atan(tf.math.divide_no_nan(w, h)))**2
-  consistency = 4 * arcterm / (math.pi)**2
-  return consistency
-
-
-def compute_iou(box1, box2):
+#IOU
+def compute_iou(box1, box2, yxyx=False):
   """Calculates the intersection of union between box1 and box2.
 
     Args:
@@ -249,11 +125,25 @@ def compute_iou(box1, box2):
     """
   # get box corners
   with tf.name_scope('iou'):
-    box1 = xcycwh_to_yxyx(box1)
-    box2 = xcycwh_to_yxyx(box2)
-    intersection, union = intersection_and_union(box1, box2)
+    if not yxyx:
+      box1 = xcycwh_to_yxyx(box1)
+      box2 = xcycwh_to_yxyx(box2)
 
-    iou = tf.math.divide_no_nan(intersection, union)
+    b1mi, b1ma = tf.split(box1, 2, axis=-1)
+    b2mi, b2ma = tf.split(box2, 2, axis=-1)
+    intersect_mins = tf.math.maximum(b1mi, b2mi)
+    intersect_maxes = tf.math.minimum(b1ma, b2ma)
+    intersect_wh = tf.math.maximum(intersect_maxes - intersect_mins,
+                                   tf.zeros_like(intersect_mins))
+    intersection = tf.reduce_prod(
+        intersect_wh, axis=-1)  # intersect_wh[..., 0] * intersect_wh[..., 1]
+
+    box1_area = tf.math.abs(tf.reduce_prod(b1ma - b1mi, axis=-1))
+    box2_area = tf.math.abs(tf.reduce_prod(b2ma - b2mi, axis=-1))
+    union = box1_area + box2_area - intersection
+
+    iou = intersection / (union + 1e-7
+                         )  # tf.math.divide_no_nan(intersection, union)
     iou = tf.clip_by_value(iou, clip_value_min=0.0, clip_value_max=1.0)
   return iou
 
@@ -279,14 +169,25 @@ def compute_giou(box1, box2):
     box2 = xcycwh_to_yxyx(box2)
 
     # compute IOU
-    intersection, union = intersection_and_union(box1, box2)
+    intersect_mins = tf.math.maximum(box1[..., 0:2], box2[..., 0:2])
+    intersect_maxes = tf.math.minimum(box1[..., 2:4], box2[..., 2:4])
+    intersect_wh = tf.math.maximum(intersect_maxes - intersect_mins,
+                                   tf.zeros_like(intersect_mins))
+    intersection = intersect_wh[..., 0] * intersect_wh[..., 1]
+
+    box1_area = tf.math.abs(
+        tf.reduce_prod(box1[..., 2:4] - box1[..., 0:2], axis=-1))
+    box2_area = tf.math.abs(
+        tf.reduce_prod(box2[..., 2:4] - box2[..., 0:2], axis=-1))
+    union = box1_area + box2_area - intersection
+
     iou = tf.math.divide_no_nan(intersection, union)
     iou = tf.clip_by_value(iou, clip_value_min=0.0, clip_value_max=1.0)
 
     # find the smallest box to encompase both box1 and box2
     c_mins = tf.math.minimum(box1[..., 0:2], box2[..., 0:2])
     c_maxes = tf.math.maximum(box1[..., 2:4], box2[..., 2:4])
-    c = get_area((c_mins, c_maxes), use_tuple=True)
+    c = tf.math.abs(tf.reduce_prod(c_mins - c_maxes, axis=-1))
 
     # compute giou
     giou = iou - tf.math.divide_no_nan((c - union), c)
@@ -317,14 +218,26 @@ def compute_diou(box1, box2):
     box2 = xcycwh_to_yxyx(box2)
 
     # compute IOU
-    intersection, union = intersection_and_union(box1, box2)
+    intersect_mins = tf.math.maximum(box1[..., 0:2], box2[..., 0:2])
+    intersect_maxes = tf.math.minimum(box1[..., 2:4], box2[..., 2:4])
+    intersect_wh = tf.math.maximum(intersect_maxes - intersect_mins,
+                                   tf.zeros_like(intersect_mins))
+    intersection = intersect_wh[..., 0] * intersect_wh[..., 1]
+
+    box1_area = tf.math.abs(
+        tf.reduce_prod(box1[..., 2:4] - box1[..., 0:2], axis=-1))
+    box2_area = tf.math.abs(
+        tf.reduce_prod(box2[..., 2:4] - box2[..., 0:2], axis=-1))
+    union = box1_area + box2_area - intersection
+
     iou = tf.math.divide_no_nan(intersection, union)
     iou = tf.clip_by_value(iou, clip_value_min=0.0, clip_value_max=1.0)
 
     # compute max diagnal of the smallest enclosing box
     c_mins = tf.math.minimum(box1[..., 0:2], box2[..., 0:2])
     c_maxes = tf.math.maximum(box1[..., 2:4], box2[..., 2:4])
-    diag_dist = center_distance(c_mins, c_maxes)
+
+    diag_dist = tf.reduce_sum((c_maxes - c_mins)**2, axis=-1)
 
     regularization = tf.math.divide_no_nan(dist, diag_dist)
     diou = iou + regularization
@@ -351,8 +264,10 @@ def compute_ciou(box1, box2):
     iou, diou = compute_diou(box1, box2)
 
     # computer aspect ratio consistency
-    v = aspect_ratio_consistancy(box1[..., 2], box1[..., 3], box2[..., 2],
-                                 box2[..., 3])
+    arcterm = (
+        tf.math.atan(tf.math.divide_no_nan(box1[..., 2], box1[..., 3])) -
+        tf.math.atan(tf.math.divide_no_nan(box2[..., 2], box2[..., 3])))**2
+    v = 4 * arcterm / (math.pi)**2
 
     # compute IOU regularization
     a = tf.math.divide_no_nan(v, ((1 - iou) + v))
