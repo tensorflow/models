@@ -150,7 +150,6 @@ class SqueezeExcitation(tf.keras.layers.Layer):
         'out_filters': self._out_filters,
         'se_ratio': self._se_ratio,
         'divisible_by': self._divisible_by,
-        'strides': self._strides,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
