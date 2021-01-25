@@ -224,10 +224,10 @@ def _tokenize_example(example, max_length, tokenizer, text_preprocessing=None):
   max_length = max_length - 2
   new_examples = []
   new_example = InputExample(sentence_id=example.sentence_id, sub_sentence_id=0)
-  for i, word in enumerate(example.words):
-    if any([x < 0 for x in example.label_ids]):
-      raise ValueError("Unexpected negative label_id: %s" % example.label_ids)
+  if any([x < 0 for x in example.label_ids]):
+    raise ValueError("Unexpected negative label_id: %s" % example.label_ids)
 
+  for i, word in enumerate(example.words):
     if text_preprocessing:
       word = text_preprocessing(word)
     subwords = tokenizer.tokenize(word)
