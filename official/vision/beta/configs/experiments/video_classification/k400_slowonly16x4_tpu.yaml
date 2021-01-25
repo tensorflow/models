@@ -1,7 +1,7 @@
-# SlowOnly 8x8 video classification on Kinetics-400.
+# SlowOnly 16x4 video classification on Kinetics-400.
 #
 # --experiment_type=video_classification_kinetics400
-# Expected accuracy: 74.1% top-1, 91.4% top-5.
+# Expected accuracy: 75.6% top-1, 92.1% top-5.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -48,22 +48,22 @@ task:
   train_data:
     name: kinetics400
     feature_shape: !!python/tuple
-    - 8
+    - 16
     - 224
     - 224
     - 3
-    temporal_stride: 8
+    temporal_stride: 4
     global_batch_size: 1024
     dtype: 'bfloat16'
     shuffle_buffer_size: 1024
   validation_data:
     name: kinetics400
     feature_shape: !!python/tuple
-    - 8
+    - 16
     - 256
     - 256
     - 3
-    temporal_stride: 8
+    temporal_stride: 4
     num_test_clips: 10
     num_test_crops: 3
     global_batch_size: 64
