@@ -312,7 +312,7 @@ class ParamsDict(object):
 def read_yaml_to_params_dict(file_path):
   """Reads a YAML file to a ParamsDict."""
   with tf.io.gfile.GFile(file_path, 'r') as f:
-    params_dict = yaml.load(f, Loader=yaml.FullLoader)
+    params_dict = yaml.load(f, Loader=yaml.SafeLoader)
     return ParamsDict(params_dict)
 
 
