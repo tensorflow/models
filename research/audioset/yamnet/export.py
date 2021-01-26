@@ -23,6 +23,7 @@ Assumes that it will be run in the yamnet source directory from where it loads
 the class map. Skips an export if the corresponding directory already exists.
 """
 
+import distutils.version
 import os
 import sys
 import tempfile
@@ -30,8 +31,9 @@ import time
 
 import numpy as np
 import tensorflow as tf
-assert tf.version.VERSION >= '2.0.0', (
-    'Need at least TF 2.0, you have TF v{}'.format(tf.version.VERSION))
+assert distutils.version.LooseVersion(tf.__version__) >= '2.0.0', (
+    f'Need at least TF 2.0, you have TF v{tf.__version__}')
+
 import tensorflow_hub as tfhub
 from tensorflowjs.converters import tf_saved_model_conversion_v2 as tfjs_saved_model_converter
 
@@ -55,7 +57,7 @@ class YAMNet(tf.Module):
   def class_map_path(self):
     return self._class_map_asset.asset_path
 
-  @tf.function(input_signature=(tf.TensorSpec(shape=[None], dtype=tf.float32),))
+  @tf.function
   def __call__(self, waveform):
     return self._yamnet(waveform)
 
@@ -101,6 +103,12 @@ def make_tf2_export(weights_path, export_dir):
   log('Building and checking TF2 Module ...')
   params = yamnet_params.Params()
   yamnet = YAMNet(weights_path, params)
+  # Single waveform
+  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None],
+                                                      dtype=tf.float32))
+  # Batch of waveforms
+  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None, None],
+                                                      dtype=tf.float32))
   check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
 
@@ -136,6 +144,12 @@ def make_tflite_export(weights_path, export_dir):
   log('Building and checking TF-Lite Module ...')
   params = yamnet_params.Params(tflite_compatible=True)
   yamnet = YAMNet(weights_path, params)
+  # Single waveform
+  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None],
+                                                      dtype=tf.float32))
+  # Batch of waveforms
+  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None, None],
+                                                      dtype=tf.float32))
   check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
 

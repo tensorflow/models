@@ -73,7 +73,7 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
         signal=log_mel_spectrogram,
         frame_length=patch_window_length_samples,
         frame_step=patch_hop_length_samples,
-        axis=0)
+        axis=-2)
     # features has shape [<# patches>, <# STFT frames in an patch>, params.mel_bands]
 
     return log_mel_spectrogram, features
@@ -88,7 +88,7 @@ def pad_waveform(waveform, params):
       params.patch_window_seconds +
       params.stft_window_seconds - params.stft_hop_seconds)
   min_num_samples = tf.cast(min_waveform_seconds * params.sample_rate, tf.int32)
-  num_samples = tf.shape(waveform)[0]
+  num_samples = tf.shape(waveform)[-1]
   num_padding_samples = tf.maximum(0, min_num_samples - num_samples)
 
   # In addition, there might be enough waveform for one or more additional
@@ -103,7 +103,9 @@ def pad_waveform(waveform, params):
   num_padding_samples += (
       hop_samples * num_hops_after_first_patch - num_samples_after_first_patch)
 
-  padded_waveform = tf.pad(waveform, [[0, num_padding_samples]],
+  pads = [[0,0] for n in range(len(waveform.shape))]
+  pads[-1][-1] =  num_padding_samples
+  padded_waveform = tf.pad(waveform, pads,
                            mode='CONSTANT', constant_values=0.0)
   return padded_waveform
 
