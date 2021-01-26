@@ -161,12 +161,17 @@ message InputReader {
   //
   // The number of weights must match the number of input files configured.
   //
-  // When set, shuffling, shuffle buffer size, and num_readers settings are
+  // The number of input readers per dataset is num_readers, scaled relative to
+  // the dataset weight.
+  //
+  // When set, shuffling and shuffle buffer size, settings are
   // applied individually to each dataset.
   //
   // Implementation follows tf.data.experimental.sample_from_datasets sampling
   // strategy. Weights may take any value - only relative weights matter.
-  // Zero weights will result in a dataset not being sampled.
+  //
+  // Zero weights will result in a dataset not being sampled and no input
+  // readers spawned.
   //
   // Examples, assuming two input files configured:
   //
