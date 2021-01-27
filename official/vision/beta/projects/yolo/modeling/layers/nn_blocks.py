@@ -19,6 +19,7 @@
 from typing import Callable, List
 import tensorflow as tf
 from official.modeling import tf_utils
+from absl.testing import parameterized
 
 
 @tf.keras.utils.register_keras_serializable(package="yolo")
@@ -819,3 +820,435 @@ class CSPStack(tf.keras.layers.Layer):
       x = layer(x)
     x = self._connect([x, x_route])
     return x
+
+@tf.keras.utils.register_keras_serializable(package='yolo')
+class RouteMerge(tf.keras.layers.Layer):
+  """xor upsample rotuingblock. if downsample = false it will upsample"""
+
+  def __init__(
+      self,
+      filters=1,
+      kernel_initializer='glorot_uniform',
+      bias_initializer='zeros',
+      bias_regularizer=None,
+      kernel_regularizer=None,  # default find where is it is stated
+      use_bn=True,
+      use_sync_bn=False,
+      norm_momentum=0.99,
+      norm_epsilon=0.001,
+      activation='leaky',
+      leaky_alpha=0.1,
+      downsample=False,
+      upsample=False,
+      upsample_size=2,
+      **kwargs):
+
+    # darkconv params
+    self._filters = filters
+    self._kernel_initializer = kernel_initializer
+    self._bias_initializer = bias_initializer
+    self._bias_regularizer = bias_regularizer
+    self._kernel_regularizer = kernel_regularizer
+    self._use_bn = use_bn
+    self._use_sync_bn = use_sync_bn
+
+    # normal params
+    self._norm_moment = norm_momentum
+    self._norm_epsilon = norm_epsilon
+
+    # activation params
+    self._conv_activation = activation
+    self._leaky_alpha = leaky_alpha
+    self._downsample = downsample
+    self._upsample = upsample
+    self._upsample_size = upsample_size
+
+    super().__init__(**kwargs)
+
+  def build(self, input_shape):
+    _dark_conv_args = {
+        'kernel_initializer': self._kernel_initializer,
+        'bias_initializer': self._bias_initializer,
+        'bias_regularizer': self._bias_regularizer,
+        'use_bn': self._use_bn,
+        'use_sync_bn': self._use_sync_bn,
+        'norm_momentum': self._norm_moment,
+        'norm_epsilon': self._norm_epsilon,
+        'activation': self._conv_activation,
+        'kernel_regularizer': self._kernel_regularizer,
+        'leaky_alpha': self._leaky_alpha,
+    }
+    if self._downsample:
+      self._conv = ConvBN(
+          filters=self._filters,
+          kernel_size=(3, 3),
+          strides=(2, 2),
+          padding='same',
+          **_dark_conv_args)
+    else:
+      self._conv = ConvBN(
+          filters=self._filters,
+          kernel_size=(1, 1),
+          strides=(1, 1),
+          padding='same',
+          **_dark_conv_args)
+    if self._upsample:
+      self._upsample = tf.keras.layers.UpSampling2D(size=self._upsample_size)
+    self._concat = tf.keras.layers.Concatenate()
+    super().build(input_shape)
+    return
+
+  def call(self, inputs):
+    # done this way to prevent confusion in the auto graph
+    inputToConvolve, inputToConcat = inputs
+    x = self._conv(inputToConvolve)
+    if self._upsample:
+      x = self._upsample(x)
+    x = self._concat([x, inputToConcat])
+    return x
+
+
+@tf.keras.utils.register_keras_serializable(package='yolo')
+class SPP(tf.keras.layers.Layer):
+  """
+    a non-agregated SPP layer that uses Pooling to gain more performance
+    """
+
+  def __init__(self, sizes, **kwargs):
+    self._sizes = list(reversed(sizes))
+    # print(self._sizes)
+    if len(sizes) == 0:
+      raise ValueError('More than one maxpool should be specified in SSP block')
+    super().__init__(**kwargs)
+    return
+
+  def build(self, input_shape):
+    maxpools = []
+    for size in self._sizes:
+      maxpools.append(
+          tf.keras.layers.MaxPool2D(
+              pool_size=(size, size),
+              strides=(1, 1),
+              padding='same',
+              data_format=None))
+    self._maxpools = maxpools
+    super().build(input_shape)
+    return
+
+  def call(self, inputs):
+    outputs = []
+    for maxpool in self._maxpools:
+      outputs.append(maxpool(inputs))
+    outputs.append(inputs)
+    concat_output = tf.keras.layers.concatenate(outputs)
+    return concat_output
+
+  def get_config(self):
+    layer_config = {'sizes': self._sizes}
+    layer_config.update(super().get_config())
+    return layer_config
+
+
+@tf.keras.utils.register_keras_serializable(package='yolo')
+class DarkRouteProcess(tf.keras.layers.Layer):
+
+  def __init__(
+      self,
+      filters=2,
+      mod=1,
+      repetitions=2,
+      insert_spp=False,
+      kernel_initializer='glorot_uniform',
+      bias_initializer='zeros',
+      bias_regularizer=None,
+      use_sync_bn=False,
+      kernel_regularizer=None,  # default find where is it is stated
+      norm_momentum=0.99,
+      norm_epsilon=0.001,
+      activation='leaky',
+      leaky_alpha=0.1,
+      spp_keys=None,
+      **kwargs):
+    """
+        process darknet outputs and connect back bone to head more generalizably
+        Abstracts repetition of DarkConv objects that is common in YOLO.
+
+        It is used like the following:
+
+        x = ConvBN(1024, (3, 3), (1, 1))(x)
+        proc = DarkRouteProcess(filters = 1024, repetitions = 3, insert_spp = False)(x)
+
+        Args:
+          filters: the number of filters to be used in all subsequent layers
+            filters should be the depth of the tensor input into this layer, as no 
+            downsampling can be done within this layer object
+          repetitions: number of times to repeat the processign nodes
+            for tiny: 1 repition, no spp allowed
+            for spp: insert_spp = True, and allow for 3+ repetitions
+            for regular: insert_spp = False, and allow for 3+ repetitions
+          insert_spp: bool if true add the spatial pyramid pooling layer
+          kernel_initializer: method to use to initializa kernel weights
+          bias_initializer: method to use to initialize the bias of the conv layers
+          norm_moment: batch norm parameter see Tensorflow documentation
+          norm_epsilon: batch norm parameter see Tensorflow documentation
+          activation: activation function to use in processing
+          leaky_alpha: if leaky acitivation function, the alpha to use in processing the 
+            relu input
+
+        Returns:
+          callable tensorflow layer
+
+        Raises:
+          None
+        """
+
+    # darkconv params
+    self._filters = filters // mod
+    self._use_sync_bn = use_sync_bn
+    self._kernel_initializer = kernel_initializer
+    self._bias_initializer = bias_initializer
+    self._bias_regularizer = bias_regularizer
+    self._kernel_regularizer = kernel_regularizer
+
+    # normal params
+    self._norm_moment = norm_momentum
+    self._norm_epsilon = norm_epsilon
+
+    # activation params
+    self._activation = activation
+    self._leaky_alpha = leaky_alpha
+
+    # layer configs
+    if repetitions % 2 == 1:
+      self._append_conv = True
+    else:
+      self._append_conv = False
+    self._repetitions = repetitions // 2
+    self._lim = repetitions
+    self._insert_spp = insert_spp
+    self._spp_keys = spp_keys if spp_keys is not None else [5, 9, 13]
+
+    self.layer_list = self._get_layer_list()
+    # print(self.layer_list)
+    super().__init__(**kwargs)
+    return
+
+  def _get_layer_list(self):
+    layer_config = []
+    if self._repetitions > 0:
+      layers = ['block'] * self._repetitions
+      if self._repetitions > 2 and self._insert_spp:
+        layers[1] = 'spp'
+      layer_config.extend(layers)
+    if self._append_conv:
+      layer_config.append('mono_conv')
+    return layer_config
+
+  def _block(self, filters, kwargs):
+    x1 = ConvBN(
+        filters=filters // 2,
+        kernel_size=(1, 1),
+        strides=(1, 1),
+        padding='same',
+        use_bn=True,
+        **kwargs)
+    x2 = ConvBN(
+        filters=filters,
+        kernel_size=(3, 3),
+        strides=(1, 1),
+        padding='same',
+        use_bn=True,
+        **kwargs)
+    return [x1, x2]
+
+  def _spp(self, filters, kwargs):
+    x1 = ConvBN(
+        filters=filters // 2,
+        kernel_size=(1, 1),
+        strides=(1, 1),
+        padding='same',
+        use_bn=True,
+        **kwargs)
+    # repalce with spp
+    x2 = SPP(self._spp_keys)
+    return [x1, x2]
+
+  def build(self, input_shape):
+    _dark_conv_args = {
+        'kernel_initializer': self._kernel_initializer,
+        'bias_initializer': self._bias_initializer,
+        'bias_regularizer': self._bias_regularizer,
+        'use_sync_bn': self._use_sync_bn,
+        'norm_momentum': self._norm_moment,
+        'norm_epsilon': self._norm_epsilon,
+        'activation': self._activation,
+        'kernel_regularizer': self._kernel_regularizer,
+        'leaky_alpha': self._leaky_alpha,
+    }
+    self.layers = []
+    for layer in self.layer_list:
+      if layer == 'block':
+        self.layers.extend(self._block(self._filters, _dark_conv_args))
+      elif layer == 'spp':
+        self.layers.extend(self._spp(self._filters, _dark_conv_args))
+      elif layer == 'mono_conv':
+        self.layers.append(
+            ConvBN(
+                filters=self._filters,
+                kernel_size=(3, 3),
+                strides=(1, 1),
+                padding='same',
+                use_bn=True,
+                **_dark_conv_args))
+    super().build(input_shape)
+    return
+
+  def call(self, inputs):
+    # check efficiency
+    x = inputs
+    x_prev = x
+    i = 0
+    while i < self._lim:
+      layer = self.layers[i]
+      x_prev = x
+      x = layer(x)
+      i += 1
+    return x_prev, x
+
+
+class DarkSppTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(("RouteProcessSpp", 224, 224, 3, [5, 9, 13]),
+                                  ("test1", 300, 300, 10, [2, 3, 4, 5]),
+                                  ("test2", 256, 256, 5, [10]))
+  def test_pass_through(self, width, height, channels, sizes):
+    x = ks.Input(shape=(width, height, channels))
+    test_layer = nn_blocks.SPP(sizes=sizes)
+    outx = test_layer(x)
+    self.assertAllEqual(outx.shape.as_list(),
+                        [None, width, height, channels * (len(sizes) + 1)])
+    return
+
+  @parameterized.named_parameters(("RouteProcessSpp", 224, 224, 3, [5, 9, 13]),
+                                  ("test1", 300, 300, 10, [2, 3, 4, 5]),
+                                  ("test2", 256, 256, 5, [10]))
+  def test_gradient_pass_though(self, width, height, channels, sizes):
+    loss = ks.losses.MeanSquaredError()
+    optimizer = ks.optimizers.SGD()
+    test_layer = nn_blocks.SPP(sizes=sizes)
+
+    init = tf.random_normal_initializer()
+    x = tf.Variable(
+        initial_value=init(
+            shape=(1, width, height, channels), dtype=tf.float32))
+    y = tf.Variable(
+        initial_value=init(
+            shape=(1, width, height, channels * (len(sizes) + 1)),
+            dtype=tf.float32))
+
+    with tf.GradientTape() as tape:
+      x_hat = test_layer(x)
+      grad_loss = loss(x_hat, y)
+    grad = tape.gradient(grad_loss, test_layer.trainable_variables)
+    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+
+    self.assertNotIn(None, grad)
+    return
+
+
+class DarkUpsampleRouteTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(("test1", 224, 224, 64, (3, 3)),
+                                  ("test2", 223, 223, 32, (2, 2)),
+                                  ("test3", 255, 255, 16, (4, 4)))
+  def test_pass_through(self, width, height, filters, upsampling_size):
+    x_conv = ks.Input(shape=(width, height, filters))
+    x_route = ks.Input(
+        shape=(width * upsampling_size[0], height * upsampling_size[1],
+               filters))
+    test_layer = nn_blocks.RouteMerge(
+        filters=filters, upsample=True, upsample_size=upsampling_size)
+    outx = test_layer([x_conv, x_route])
+    self.assertAllEqual(outx.shape.as_list(), [
+        None, width * upsampling_size[0], height * upsampling_size[1],
+        filters * 2
+    ])
+
+  @parameterized.named_parameters(("test1", 224, 224, 64, (3, 3)),
+                                  ("test2", 223, 223, 32, (2, 2)),
+                                  ("test3", 255, 255, 16, (4, 4)))
+  def test_gradient_pass_though(self, width, height, filters, upsampling_size):
+    loss = ks.losses.MeanSquaredError()
+    optimizer = ks.optimizers.SGD()
+    test_layer = nn_blocks.RouteMerge(
+        filters=filters, upsample=True, upsample_size=upsampling_size)
+
+    init = tf.random_normal_initializer()
+    x_conv = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+    x_route = tf.Variable(
+        initial_value=init(
+            shape=(1, width * upsampling_size[0], height * upsampling_size[1],
+                   filters),
+            dtype=tf.float32))
+    y = tf.Variable(
+        initial_value=init(
+            shape=(1, width * upsampling_size[0], height * upsampling_size[1],
+                   filters * 2),
+            dtype=tf.float32))
+
+    with tf.GradientTape() as tape:
+      x_hat = test_layer([x_conv, x_route])
+      grad_loss = loss(x_hat, y)
+    grad = tape.gradient(grad_loss, test_layer.trainable_variables)
+    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+
+    self.assertNotIn(None, grad)
+    return
+
+
+class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ("test1", 224, 224, 64, 7, False), ("test2", 223, 223, 32, 3, False),
+      ("tiny", 223, 223, 16, 1, False), ("spp", 224, 224, 64, 7, False))
+  def test_pass_through(self, width, height, filters, repetitions, spp):
+    x = ks.Input(shape=(width, height, filters))
+    test_layer = nn_blocks.DarkRouteProcess(
+        filters=filters, repetitions=repetitions, insert_spp=spp)
+    outx = test_layer(x)
+    self.assertEqual(len(outx), 2, msg="len(outx) != 2")
+    self.assertAllEqual(outx[1].shape.as_list(), [None, width, height, filters])
+    self.assertAllEqual(
+        filters % 2,
+        0,
+        msg="Output of a DarkRouteProcess layer has an odd number of filters")
+    self.assertAllEqual(outx[0].shape.as_list(), [None, width, height, filters])
+
+  @parameterized.named_parameters(
+      ("test1", 224, 224, 64, 7, False), ("test2", 223, 223, 32, 3, False),
+      ("tiny", 223, 223, 16, 1, False), ("spp", 224, 224, 64, 7, False))
+  def test_gradient_pass_though(self, width, height, filters, repetitions, spp):
+    loss = ks.losses.MeanSquaredError()
+    optimizer = ks.optimizers.SGD()
+    test_layer = nn_blocks.DarkRouteProcess(
+        filters=filters, repetitions=repetitions, insert_spp=spp)
+
+    init = tf.random_normal_initializer()
+    x = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+    y_0 = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+    y_1 = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+
+    with tf.GradientTape() as tape:
+      x_hat_0, x_hat_1 = test_layer(x)
+      grad_loss_0 = loss(x_hat_0, y_0)
+      grad_loss_1 = loss(x_hat_1, y_1)
+    grad = tape.gradient([grad_loss_0, grad_loss_1],
+                         test_layer.trainable_variables)
+    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+
+    self.assertNotIn(None, grad)
+    return
