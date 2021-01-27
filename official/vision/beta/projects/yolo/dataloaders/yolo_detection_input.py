@@ -12,6 +12,7 @@ from official.vision.beta.projects.yolo.ops import box_ops as yolo_box_ops
 
 class Parser(parser.Parser):
   """Parser to parse an image and its annotations into a dictionary of tensors."""
+
   def __init__(self,
                output_size,
                num_classes,
@@ -77,8 +78,7 @@ class Parser(parser.Parser):
 
     self._anchors = anchors
     self._masks = {
-        key: tf.convert_to_tensor(value)
-        for key, value in masks.items()
+        key: tf.convert_to_tensor(value) for key, value in masks.items()
     }
     self._use_tie_breaker = use_tie_breaker
 
@@ -100,12 +100,12 @@ class Parser(parser.Parser):
     for key in self._masks.keys():
       if not batch:
         mask[key] = preprocessing_ops.build_grided_gt(
-            raw_true, self._masks[key], width // 2**int(key),
-            self._num_classes, raw_true['bbox'].dtype, use_tie_breaker)
+            raw_true, self._masks[key], width // 2**int(key), self._num_classes,
+            raw_true['bbox'].dtype, use_tie_breaker)
       else:
         mask[key] = preprocessing_ops.build_batch_grided_gt(
-            raw_true, self._masks[key], width // 2**int(key),
-            self._num_classes, raw_true['bbox'].dtype, use_tie_breaker)
+            raw_true, self._masks[key], width // 2**int(key), self._num_classes,
+            raw_true['bbox'].dtype, use_tie_breaker)
     return mask
 
   def _parse_train_data(self, data):
@@ -133,9 +133,8 @@ class Parser(parser.Parser):
     image_shape = tf.shape(image)[:2]
 
     if self._random_flip:
-      image, boxes, _ = preprocess_ops.random_horizontal_flip(image,
-                                                              boxes,
-                                                              seed=self._seed)
+      image, boxes, _ = preprocess_ops.random_horizontal_flip(
+          image, boxes, seed=self._seed)
 
     randscale = self._image_w // self._net_down_scale
 
@@ -161,10 +160,8 @@ class Parser(parser.Parser):
     boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
     if self._jitter_im != 0.0:
-      image, boxes = preprocessing_ops.random_translate(image,
-                                                        boxes,
-                                                        self._jitter_im,
-                                                        seed=self._seed)
+      image, boxes = preprocessing_ops.random_translate(
+          image, boxes, self._jitter_im, seed=self._seed)
 
     if self._aug_rand_zoom:
       image, boxes = preprocessing_ops.resize_crop_filter(
@@ -177,24 +174,21 @@ class Parser(parser.Parser):
     image = tf.image.resize(image, (416, 416), preserve_aspect_ratio=False)
 
     if self._aug_rand_brightness:
-      image = tf.image.random_brightness(image=image,
-                                         max_delta=.1)  # Brightness
+      image = tf.image.random_brightness(
+          image=image, max_delta=.1)  # Brightness
     if self._aug_rand_saturation:
-      image = tf.image.random_saturation(image=image, lower=0.75,
-                                         upper=1.25)  # Saturation
+      image = tf.image.random_saturation(
+          image=image, lower=0.75, upper=1.25)  # Saturation
     if self._aug_rand_hue:
       image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
     image = tf.clip_by_value(image, 0.0, 1.0)
     # find the best anchor for the ground truth labels to maximize the iou
-    best_anchors = preprocessing_ops.get_best_anchor(boxes,
-                                                     self._anchors,
-                                                     width=self._image_w,
-                                                     height=self._image_h)
+    best_anchors = preprocessing_ops.get_best_anchor(
+        boxes, self._anchors, width=self._image_w, height=self._image_h)
 
     # padding
     boxes = preprocess_ops.clip_or_pad_to_fixed_size(boxes,
-                                                     self._max_num_instances,
-                                                     0)
+                                                     self._max_num_instances, 0)
     classes = preprocess_ops.clip_or_pad_to_fixed_size(
         data['groundtruth_classes'], self._max_num_instances, -1)
     best_anchors = preprocess_ops.clip_or_pad_to_fixed_size(
@@ -218,9 +212,8 @@ class Parser(parser.Parser):
     }
 
     if self._fixed_size:
-      grid = self._build_grid(labels,
-                              self._image_w,
-                              use_tie_breaker=self._use_tie_breaker)
+      grid = self._build_grid(
+          labels, self._image_w, use_tie_breaker=self._use_tie_breaker)
       labels.update({'grid_form': grid})
 
     return image, labels
@@ -247,10 +240,8 @@ class Parser(parser.Parser):
     boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
     # find the best anchor for the ground truth labels to maximize the iou
-    best_anchors = preprocessing_ops.get_best_anchor(boxes,
-                                                     self._anchors,
-                                                     width=self._image_w,
-                                                     height=self._image_h)
+    best_anchors = preprocessing_ops.get_best_anchor(
+        boxes, self._anchors, width=self._image_w, height=self._image_h)
     boxes = preprocessing_ops.pad_max_instances(boxes, self._max_num_instances,
                                                 0)
     classes = preprocessing_ops.pad_max_instances(data['groundtruth_classes'],
@@ -276,10 +267,11 @@ class Parser(parser.Parser):
         'num_detections': tf.shape(data['groundtruth_classes'])[0],
     }
 
-    grid = self._build_grid(labels,
-                            self._image_w,
-                            batch=False,
-                            use_tie_breaker=self._use_tie_breaker)
+    grid = self._build_grid(
+        labels,
+        self._image_w,
+        batch=False,
+        use_tie_breaker=self._use_tie_breaker)
     labels.update({'grid_form': grid})
     return image, labels
 
@@ -299,10 +291,8 @@ class Parser(parser.Parser):
             dtype=tf.int32) * self._net_down_scale
     width = randscale
     image = tf.image.resize(image, (width, width))
-    grid = self._build_grid(label,
-                            width,
-                            batch=True,
-                            use_tie_breaker=self._use_tie_breaker)
+    grid = self._build_grid(
+        label, width, batch=True, use_tie_breaker=self._use_tie_breaker)
     label.update({'grid_form': grid})
     return image, label
 

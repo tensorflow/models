@@ -44,6 +44,7 @@ class DataConfig(cfg.DataConfig):
 
 
 class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
+
   @parameterized.named_parameters(('training', True), ('testing', False))
   def test_yolo_input(self, is_training):
     with tf.device('/CPU:0'):
@@ -70,11 +71,11 @@ class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
           masks=masks)
       postprocess_fn = parser.postprocess_fn(is_training=is_training)
 
-      reader = input_reader.InputReader(params,
-                                        dataset_fn=tf.data.TFRecordDataset,
-                                        decoder_fn=decoder.decode,
-                                        parser_fn=parser.parse_fn(
-                                            params.is_training))
+      reader = input_reader.InputReader(
+          params,
+          dataset_fn=tf.data.TFRecordDataset,
+          decoder_fn=decoder.decode,
+          parser_fn=parser.parse_fn(params.is_training))
       dataset = reader.read(input_context=None)
       for one_batch in dataset.batch(1):
         self.assertAllEqual(one_batch[0].shape, (1, 10, 416, 416, 3))

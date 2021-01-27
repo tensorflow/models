@@ -106,7 +106,7 @@ def center_distance(center_1: tf.Tensor, center_2: tf.Tensor):
   return dist
 
 
-#IOU
+# IOU
 def compute_iou(box1, box2, yxyx=False):
   """Calculates the intersection of union between box1 and box2.
 
@@ -142,7 +142,7 @@ def compute_iou(box1, box2, yxyx=False):
     union = box1_area + box2_area - intersection
 
     iou = intersection / (union + 1e-7
-                          )  # tf.math.divide_no_nan(intersection, union)
+                         )  # tf.math.divide_no_nan(intersection, union)
     iou = tf.clip_by_value(iou, clip_value_min=0.0, clip_value_max=1.0)
   return iou
 
