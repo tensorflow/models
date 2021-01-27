@@ -128,3 +128,5 @@ def build_yolo_decoder(input_specs, type):
   model.build(input_specs)
   return model
 
+if __name__ == "__main__":
+  tf.test.main()
