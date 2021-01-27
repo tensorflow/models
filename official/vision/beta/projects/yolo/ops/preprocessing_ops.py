@@ -119,13 +119,13 @@ def fit_preserve_aspect_ratio(image,
                               width=None,
                               height=None,
                               target_dim=None):
-  """Randomly translate the image.
+  """Resizes the image while peserving the image aspect ratio.
   Args:
       image: a `Tensor` representing the image.
-      translate_x: a `Tensor` represting the translation on the x-axis.
-      translate_y: a `Tensor` represting the translation on the y-axis.
+      box: a `Tensor` representing the boxes.
   Returns:
-      box: a `Tensor` representing the augmented boxes.
+      image: a `Tensor` representing the image.
+      box: a `Tensor` representing the boxes.
   """
   if width is None or height is None:
     shape = tf.shape(image)
