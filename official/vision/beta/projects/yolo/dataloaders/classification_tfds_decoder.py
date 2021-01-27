@@ -20,15 +20,14 @@ from official.vision.beta.dataloaders import decoder
 
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for classification task."""
-
   def __init__(self):
     return
 
   def decode(self, serialized_example):
     sample_dict = {
         'image/encoded':
-            tf.io.encode_jpeg(serialized_example['image'], quality=100),
+        tf.io.encode_jpeg(serialized_example['image'], quality=100),
         'image/class/label':
-            serialized_example['label'],
+        serialized_example['label'],
     }
     return sample_dict

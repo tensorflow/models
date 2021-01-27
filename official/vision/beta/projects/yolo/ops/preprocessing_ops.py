@@ -6,21 +6,22 @@ from official.vision.beta.projects.yolo.ops import box_ops
 def resize_crop_filter(image, boxes, default_width, default_height,
                        target_width, target_height):
   """Apply zooming to the image and boxes.
-        Args:
-            image: a `Tensor` representing the image.
-            boxes: a `Tensor` represeting the boxes.
-            default_width: a `Tensor` representing the width of the image.
-            default_height: a `Tensor` representing the height of the image.
-            target_width: a `Tensor` representing the desired width of the image.
-            target_height: a `Tensor` representing the desired height of the image.
-        Returns:
-            images: a `Tensor` representing the augmented image.
-            boxes: a `Tensor` representing the augmented boxes.
-        """
+  Args:
+      image: a `Tensor` representing the image.
+      boxes: a `Tensor` represeting the boxes.
+      default_width: a `Tensor` representing the width of the image.
+      default_height: a `Tensor` representing the height of the image.
+      target_width: a `Tensor` representing the desired width of the image.
+      target_height: a `Tensor` representing the desired height of the image.
+  Returns:
+      images: a `Tensor` representing the augmented image.
+      boxes: a `Tensor` representing the augmented boxes.
+  """
   with tf.name_scope('resize_crop_filter'):
     image = tf.image.resize(image, (target_width, target_height))
-    image = tf.image.resize_with_crop_or_pad(
-        image, target_height=default_height, target_width=default_width)
+    image = tf.image.resize_with_crop_or_pad(image,
+                                             target_height=default_height,
+                                             target_width=default_width)
 
     default_width = tf.cast(default_width, boxes.dtype)
     default_height = tf.cast(default_height, boxes.dtype)
@@ -50,10 +51,16 @@ def random_translate(image, box, t, seed=None):
       image: a `Tensor` representing the augmented image.
       box: a `Tensor` representing the augmented boxes.
   """
-  t_x = tf.random.uniform(
-      minval=-t, maxval=t, shape=(), dtype=tf.float32, seed=seed)
-  t_y = tf.random.uniform(
-      minval=-t, maxval=t, shape=(), dtype=tf.float32, seed=seed)
+  t_x = tf.random.uniform(minval=-t,
+                          maxval=t,
+                          shape=(),
+                          dtype=tf.float32,
+                          seed=seed)
+  t_y = tf.random.uniform(minval=-t,
+                          maxval=t,
+                          shape=(),
+                          dtype=tf.float32,
+                          seed=seed)
   box = translate_boxes(box, t_x, t_y)
   image = translate_image(image, t_x, t_y)
   return image, box
@@ -62,11 +69,11 @@ def random_translate(image, box, t, seed=None):
 def translate_boxes(box, translate_x, translate_y):
   """Randomly translate the boxes.
   Args:
-    boxes: a `Tensor` represeitng the boxes.
-    translate_x: a `Tensor` represting the translation on the x-axis.
-    translate_y: a `Tensor` represting the translation on the y-axis.
+      boxes: a `Tensor` represeitng the boxes.
+      translate_x: a `Tensor` represting the translation on the x-axis.
+      translate_y: a `Tensor` represting the translation on the y-axis.
   Returns:
-    box: a `Tensor` representing the augmented boxes.
+      box: a `Tensor` representing the augmented boxes.
   """
   with tf.name_scope('translate_boxs'):
     x = box[..., 0] + translate_x
@@ -78,13 +85,13 @@ def translate_boxes(box, translate_x, translate_y):
 
 def translate_image(image, translate_x, translate_y):
   """Randomly translate the image.
-        Args:
-            image: a `Tensor` representing the image.
-            translate_x: a `Tensor` represting the translation on the x-axis.
-            translate_y: a `Tensor` represting the translation on the y-axis.
-        Returns:
-            box: a `Tensor` representing the augmented boxes.
-        """
+  Args:
+      image: a `Tensor` representing the image.
+      translate_x: a `Tensor` represting the translation on the x-axis.
+      translate_y: a `Tensor` represting the translation on the y-axis.
+  Returns:
+      box: a `Tensor` representing the augmented boxes.
+  """
   with tf.name_scope('translate_image'):
     if (translate_x != 0 and translate_y != 0):
       image_jitter = tf.convert_to_tensor([translate_x, translate_y])
@@ -98,8 +105,8 @@ def pad_max_instances(value, instances, pad_value=0, pad_axis=0):
   shape = tf.shape(value)
   dim1 = shape[pad_axis]
   take = tf.math.reduce_min([instances, dim1])
-  value, _ = tf.split(
-      value, [take, -1], axis=pad_axis)  # value[:instances, ...]
+  value, _ = tf.split(value, [take, -1],
+                      axis=pad_axis)  # value[:instances, ...]
   pad = tf.convert_to_tensor([tf.math.reduce_max([instances - dim1, 0])])
   nshape = tf.concat([shape[:pad_axis], pad, shape[(pad_axis + 1):]], axis=0)
   pad_tensor = tf.fill(nshape, tf.cast(pad_value, dtype=value.dtype))
@@ -112,6 +119,14 @@ def fit_preserve_aspect_ratio(image,
                               width=None,
                               height=None,
                               target_dim=None):
+  """Randomly translate the image.
+  Args:
+      image: a `Tensor` representing the image.
+      translate_x: a `Tensor` represting the translation on the x-axis.
+      translate_y: a `Tensor` represting the translation on the y-axis.
+  Returns:
+      box: a `Tensor` representing the augmented boxes.
+  """
   if width is None or height is None:
     shape = tf.shape(image)
     if tf.shape(shape)[0] == 4:
@@ -150,19 +165,18 @@ def fit_preserve_aspect_ratio(image,
 
 
 def get_best_anchor(y_true, anchors, width=1, height=1):
+  """Gets the correct anchor that is assoiciated with each box using IOU between
+     input anchors and ground truth.
+  Args:
+      y_true: tf.Tensor[] for the list of bounding boxes in the yolo format
+      anchors: list or tensor for the anchor boxes to be used in prediction
+          found via Kmeans
+      size: size of the image that the bounding boxes were selected at 416 is
+          the default for the original YOLO model
+  return:
+      tf.Tensor: y_true with the anchor associated with each ground truth box
+          known
   """
-    get the correct anchor that is assoiciated with each box using IOU betwenn
-    input anchors and gt
-    Args:
-        y_true: tf.Tensor[] for the list of bounding boxes in the yolo format
-        anchors: list or tensor for the anchor boxes to be used in prediction
-            found via Kmeans
-        size: size of the image that the bounding boxes were selected at 416 is
-            the default for the original YOLO model
-    return:
-        tf.Tensor: y_true with the anchor associated with each ground truth box
-            known
-    """
   with tf.name_scope('get_anchor'):
     width = tf.cast(width, dtype=tf.float32)
     height = tf.cast(height, dtype=tf.float32)
@@ -178,10 +192,10 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
 
     # build a matrix of anchor boxes
     anchors = tf.transpose(anchors, perm=[1, 0])
-    anchor_xy = tf.tile(
-        tf.expand_dims(anchor_xy, axis=-1), [1, 1, tf.shape(anchors)[-1]])
-    anchors = tf.tile(
-        tf.expand_dims(anchors, axis=0), [tf.shape(anchor_xy)[0], 1, 1])
+    anchor_xy = tf.tile(tf.expand_dims(anchor_xy, axis=-1),
+                        [1, 1, tf.shape(anchors)[-1]])
+    anchors = tf.tile(tf.expand_dims(anchors, axis=0),
+                      [tf.shape(anchor_xy)[0], 1, 1])
 
     # stack the xy so, each anchor is asscoaited once with each center from
     # the ground truth input
@@ -190,9 +204,8 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
 
     # copy the gt n times so that each anchor from above can be compared to
     # input ground truth
-    truth_comp = tf.tile(
-        tf.expand_dims(y_true[..., 0:4], axis=-1),
-        [1, 1, tf.shape(anchors)[0]])
+    truth_comp = tf.tile(tf.expand_dims(y_true[..., 0:4], axis=-1),
+                         [1, 1, tf.shape(anchors)[0]])
     truth_comp = tf.transpose(truth_comp, perm=[2, 0, 1])
 
     # compute intersection over union of the boxes, and take the argmax of
@@ -207,15 +220,15 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
     if num_k <= 0:
       num_k = 1.0
 
-    values, indexes = tf.math.top_k(
-        tf.transpose(iou_raw, perm=[1, 0]),
-        k=tf.cast(num_k, dtype=tf.int32),
-        sorted=True)
+    values, indexes = tf.math.top_k(tf.transpose(iou_raw, perm=[1, 0]),
+                                    k=tf.cast(num_k, dtype=tf.int32),
+                                    sorted=True)
     ind_mask = tf.cast(values > 0.213, dtype=indexes.dtype)
     iou_index = tf.concat([
         tf.expand_dims(indexes[..., 0], axis=-1),
         ((indexes[..., 1:] + 1) * ind_mask[..., 1:]) - 1
-    ], axis=-1)
+    ],
+                          axis=-1)
 
     stack = tf.zeros(
         [tf.shape(iou_index)[0],
@@ -235,25 +248,23 @@ def get_best_anchor(y_true, anchors, width=1, height=1):
 
 
 def build_grided_gt(y_true, mask, size, num_classes, dtype, use_tie_breaker):
-  """
-    convert ground truth for use in loss functions
-    Args:
-        y_true: tf.Tensor[] ground truth
-          [box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box]
-        mask: list of the anchor boxes choresponding to the output,
-          ex. [1, 2, 3] tells this layer to predict only the first 3 anchors
-          in the total.
-        size: the dimensions of this output, for regular, it progresses from
-          13, to 26, to 52
+  """convert ground truth for use in loss functions
+  Args:
+      y_true: tf.Tensor[] ground truth
+        [box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box]
+      mask: list of the anchor boxes choresponding to the output,
+        ex. [1, 2, 3] tells this layer to predict only the first 3 anchors
+        in the total.
+      size: the dimensions of this output, for regular, it progresses from
+        13, to 26, to 52
 
-    Return:
-        tf.Tensor[] of shape [size, size, #of_anchors, 4, 1, num_classes]
-    """
+  Return:
+      tf.Tensor[] of shape [size, size, #of_anchors, 4, 1, num_classes]
+  """
   boxes = tf.cast(y_true['bbox'], dtype)
-  classes = tf.one_hot(
-      tf.cast(y_true['classes'], dtype=tf.int32),
-      depth=num_classes,
-      dtype=dtype)
+  classes = tf.one_hot(tf.cast(y_true['classes'], dtype=tf.int32),
+                       depth=num_classes,
+                       dtype=dtype)
   anchors = tf.cast(y_true['best_anchors'], dtype)
 
   num_boxes = tf.shape(boxes)[0]
@@ -285,9 +296,8 @@ def build_grided_gt(y_true, mask, size, num_classes, dtype, use_tie_breaker):
       for anchor_id in range(tf.shape(anchors)[-1]):
         index = tf.math.equal(anchors[box_id, anchor_id], mask)
         if tf.keras.backend.any(index):
-          p = tf.cast(
-              tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
-              dtype=tf.int32)
+          p = tf.cast(tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
+                      dtype=tf.int32)
           uid = 1
           used = depth_track[y[box_id], x[box_id], p]
 
@@ -305,16 +315,14 @@ def build_grided_gt(y_true, mask, size, num_classes, dtype, use_tie_breaker):
                 [boxes[box_id], const, classes[box_id]])
             update = update.write(i, value)
 
-          depth_track = tf.tensor_scatter_nd_update(depth_track,
-                                                    [(y[box_id], x[box_id], p)],
-                                                    [uid])
+          depth_track = tf.tensor_scatter_nd_update(
+              depth_track, [(y[box_id], x[box_id], p)], [uid])
           i += 1
     else:
       index = tf.math.equal(anchors[box_id, 0], mask)
       if tf.keras.backend.any(index):
-        p = tf.cast(
-            tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
-            dtype=tf.int32)
+        p = tf.cast(tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
+                    dtype=tf.int32)
         update_index = update_index.write(i, [y[box_id], x[box_id], p])
         value = tf.keras.backend.concatenate(
             [boxes[box_id], const, classes[box_id]])
@@ -332,25 +340,23 @@ def build_grided_gt(y_true, mask, size, num_classes, dtype, use_tie_breaker):
 
 def build_batch_grided_gt(y_true, mask, size, num_classes, dtype,
                           use_tie_breaker):
-  """
-    convert ground truth for use in loss functions
-    Args:
-        y_true: tf.Tensor[] ground truth
+  """convert ground truth for use in loss functions
+  Args:
+      y_true: tf.Tensor[] ground truth
           [box coords[0:4], classes_onehot[0:-1], best_fit_anchor_box]
-        mask: list of the anchor boxes choresponding to the output,
+      mask: list of the anchor boxes choresponding to the output,
           ex. [1, 2, 3] tells this layer to predict only the first 3 anchors in
           the total.
-        size: the dimensions of this output, for regular, it progresses from
+      size: the dimensions of this output, for regular, it progresses from
           13, to 26, to 52
 
-    Return:
-        tf.Tensor[] of shape [batch, size, size, #of_anchors, 4, 1, num_classes]
+  Return:
+      tf.Tensor[] of shape [batch, size, size, #of_anchors, 4, 1, num_classes]
     """
   boxes = tf.cast(y_true['bbox'], dtype)
-  classes = tf.one_hot(
-      tf.cast(y_true['classes'], dtype=tf.int32),
-      depth=num_classes,
-      dtype=dtype)
+  classes = tf.one_hot(tf.cast(y_true['classes'], dtype=tf.int32),
+                       depth=num_classes,
+                       dtype=dtype)
   anchors = tf.cast(y_true['best_anchors'], dtype)
 
   batches = tf.shape(boxes)[0]
@@ -386,9 +392,9 @@ def build_batch_grided_gt(y_true, mask, size, num_classes, dtype,
           index = tf.math.equal(anchors[batch, box_id, anchor_id], mask)
           if tf.keras.backend.any(index):
             #tf.print(anchor_id, anchors[batch, box_id, anchor_id])
-            p = tf.cast(
-                tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
-                dtype=tf.int32)
+            p = tf.cast(tf.keras.backend.argmax(tf.cast(index,
+                                                        dtype=tf.int32)),
+                        dtype=tf.int32)
             uid = 1
 
             used = depth_track[batch, y[batch, box_id], x[batch, box_id], p]
@@ -415,9 +421,8 @@ def build_batch_grided_gt(y_true, mask, size, num_classes, dtype,
       else:
         index = tf.math.equal(anchors[batch, box_id, 0], mask)
         if tf.keras.backend.any(index):
-          p = tf.cast(
-              tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
-              dtype=tf.int32)
+          p = tf.cast(tf.keras.backend.argmax(tf.cast(index, dtype=tf.int32)),
+                      dtype=tf.int32)
           update_index = update_index.write(
               i, [batch, y[batch, box_id], x[batch, box_id], p])
           value = tf.keras.backend.concatenate(

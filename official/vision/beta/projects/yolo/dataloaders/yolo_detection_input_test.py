@@ -15,7 +15,8 @@ from absl.testing import parameterized
 @dataclasses.dataclass
 class Parser(hyperparams.Config):
   """Dummy configuration for parser"""
-  image_w: int = 416
+  output_size: int = (416, 416)
+  num_classes: int = 80
   fixed_size: bool = True
   jitter_im: float = 0.1
   jitter_boxes: float = 0.005
@@ -23,7 +24,6 @@ class Parser(hyperparams.Config):
   max_process_size: int = 608
   max_num_instances: int = 200
   random_flip: bool = True
-  pct_rand: float = 1.0
   seed: int = 10
   shuffle_buffer_size: int = 10000
 
@@ -44,7 +44,6 @@ class DataConfig(cfg.DataConfig):
 
 
 class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
-
   @parameterized.named_parameters(('training', True), ('testing', False))
   def test_yolo_input(self, is_training):
     with tf.device('/CPU:0'):
@@ -57,7 +56,8 @@ class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
       masks = {'3': [0, 1, 2], '4': [3, 4, 5], '5': [6, 7, 8]}
 
       parser = yolo_detection_input.Parser(
-          image_w=params.parser.image_w,
+          output_size=params.parser.output_size,
+          num_classes=params.parser.num_classes,
           fixed_size=params.parser.fixed_size,
           jitter_im=params.parser.jitter_im,
           jitter_boxes=params.parser.jitter_boxes,
@@ -65,17 +65,16 @@ class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):
           max_process_size=params.parser.max_process_size,
           max_num_instances=params.parser.max_num_instances,
           random_flip=params.parser.random_flip,
-          pct_rand=params.parser.pct_rand,
           seed=params.parser.seed,
           anchors=anchors,
           masks=masks)
       postprocess_fn = parser.postprocess_fn(is_training=is_training)
 
-      reader = input_reader.InputReader(
-          params,
-          dataset_fn=tf.data.TFRecordDataset,
-          decoder_fn=decoder.decode,
-          parser_fn=parser.parse_fn(params.is_training))
+      reader = input_reader.InputReader(params,
+                                        dataset_fn=tf.data.TFRecordDataset,
+                                        decoder_fn=decoder.decode,
+                                        parser_fn=parser.parse_fn(
+                                            params.is_training))
       dataset = reader.read(input_context=None)
       for one_batch in dataset.batch(1):
         self.assertAllEqual(one_batch[0].shape, (1, 10, 416, 416, 3))

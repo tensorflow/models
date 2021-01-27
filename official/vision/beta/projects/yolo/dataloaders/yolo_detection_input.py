@@ -3,7 +3,6 @@ Parse image and ground truths in a dataset to training targets and package them
 into (image, labels) tuple for RetinaNet.
 """
 
-# Import libraries
 import tensorflow as tf
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import box_ops, preprocess_ops
@@ -13,11 +12,9 @@ from official.vision.beta.projects.yolo.ops import box_ops as yolo_box_ops
 
 class Parser(parser.Parser):
   """Parser to parse an image and its annotations into a dictionary of tensors."""
-
   def __init__(self,
-               image_w=416,
-               image_h=416,
-               num_classes=80,
+               output_size,
+               num_classes,
                fixed_size=True,
                jitter_im=0.1,
                jitter_boxes=0.005,
@@ -35,24 +32,23 @@ class Parser(parser.Parser):
                aug_rand_hue=True,
                anchors=None,
                seed=10,
-               dtype='float16'):
+               dtype=tf.float32):
     """Initializes parameters for parsing annotations in the dataset.
     Args:
-      image_w: a `Tensor` or `int` for width of input image.
-      image_h: a `Tensor` or `int` for height of input image.
+      output_size: a `Tuple` for (width, height) of input image.
       num_classes: a `Tensor` or `int` for the number of classes.
       fixed_size: a `bool` if True all output images have the same size.
-      jitter_im: a `float` that is the maximum jitter applied to the image for
-        data augmentation during training.
-      jitter_boxes: a `float` that is the maximum jitter applied to the bounding
-        box for data augmentation during training.
+      jitter_im: a `float` representing a pixel value that is the maximum jitter
+        applied to the image for data augmentation during training.
+      jitter_boxes: a `float` representing a pixel value that is the maximum
+        jitter applied to the bounding box for data augmentation during training.
       net_down_scale: an `int` that down scales the image width and height to
         the closest multiple of net_down_scale.
       max_process_size: an `int` for maximum image width and height.
       min_process_size: an `int` for minimum image width and height ,
       max_num_instances: an `int` number of maximum number of instances in an image.
       random_flip: a `bool` if True, augment training with random horizontal flip.
-      masks: a `Tensor`, `List` or `numpy.ndarrray` for anchor masks.
+      masks: a `Tensor`, `List` or `numpy.ndarray` for anchor masks.
       aug_rand_saturation: `bool`, if True, augment training with random
         saturation.
       aug_rand_brightness: `bool`, if True, augment training with random
@@ -63,13 +59,17 @@ class Parser(parser.Parser):
         hue.
       anchors: a `Tensor`, `List` or `numpy.ndarrray` for bounding box priors.
       seed: an `int` for the seed used by tf.random
+      dtype: a `tf.dtypes.DType` object that represents the dtype the outputs will
+        be casted to. The available types are tf.float32, tf.float16, or
+        tf.bfloat16.
     """
     self._net_down_scale = 2**max_level
 
     self._num_classes = num_classes
-    self._image_w = (image_w // self._net_down_scale) * self._net_down_scale
-    self._image_h = self._image_w if image_h is None else (
-        image_h // self._net_down_scale) * self._net_down_scale
+    self._image_w = (output_size[0] //
+                     self._net_down_scale) * self._net_down_scale
+    self._image_h = (output_size[1] //
+                     self._net_down_scale) * self._net_down_scale
 
     self._max_process_size = max_process_size
     self._min_process_size = min_process_size
@@ -77,7 +77,8 @@ class Parser(parser.Parser):
 
     self._anchors = anchors
     self._masks = {
-        key: tf.convert_to_tensor(value) for key, value in masks.items()
+        key: tf.convert_to_tensor(value)
+        for key, value in masks.items()
     }
     self._use_tie_breaker = use_tie_breaker
 
@@ -92,31 +93,19 @@ class Parser(parser.Parser):
     self._aug_rand_hue = aug_rand_hue
 
     self._seed = seed
-
-    if dtype == 'float16':
-      self._dtype = tf.float16
-    elif dtype == 'bfloat16':
-      self._dtype = tf.bfloat16
-    elif dtype == 'float32':
-      self._dtype = tf.float32
-    else:
-      raise Exception(
-          'Unsupported datatype used in parser only {float16, bfloat16, or float32}'
-      )
+    self._dtype = dtype
 
   def _build_grid(self, raw_true, width, batch=False, use_tie_breaker=False):
     mask = self._masks
     for key in self._masks.keys():
       if not batch:
         mask[key] = preprocessing_ops.build_grided_gt(
-            raw_true, self._masks[key], width // 2**int(key), self._num_classes,
-            raw_true['bbox'].dtype, use_tie_breaker)
+            raw_true, self._masks[key], width // 2**int(key),
+            self._num_classes, raw_true['bbox'].dtype, use_tie_breaker)
       else:
         mask[key] = preprocessing_ops.build_batch_grided_gt(
-            raw_true, self._masks[key], width // 2**int(key), self._num_classes,
-            raw_true['bbox'].dtype, use_tie_breaker)
-
-      mask[key] = tf.cast(mask[key], self._dtype)
+            raw_true, self._masks[key], width // 2**int(key),
+            self._num_classes, raw_true['bbox'].dtype, use_tie_breaker)
     return mask
 
   def _parse_train_data(self, data):
@@ -144,8 +133,9 @@ class Parser(parser.Parser):
     image_shape = tf.shape(image)[:2]
 
     if self._random_flip:
-      image, boxes, _ = preprocess_ops.random_horizontal_flip(
-          image, boxes, seed=self._seed)
+      image, boxes, _ = preprocess_ops.random_horizontal_flip(image,
+                                                              boxes,
+                                                              seed=self._seed)
 
     randscale = self._image_w // self._net_down_scale
 
@@ -155,11 +145,12 @@ class Parser(parser.Parser):
       if do_scale:
         # This scales the image to a random multiple of net_down_scale
         # between 320 to 608
-        randscale = tf.random.uniform([],
-                                      minval=320 // self._net_down_scale,
-                                      maxval=608 // self._net_down_scale,
-                                      seed=self._seed,
-                                      dtype=tf.int32) * self._net_down_scale
+        randscale = tf.random.uniform(
+            [],
+            minval=self._min_process_size // self._net_down_scale,
+            maxval=self._max_process_size // self._net_down_scale,
+            seed=self._seed,
+            dtype=tf.int32) * self._net_down_scale
 
     if self._jitter_boxes != 0.0:
       boxes = box_ops.denormalize_boxes(boxes, image_shape)
@@ -170,8 +161,10 @@ class Parser(parser.Parser):
     boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
     if self._jitter_im != 0.0:
-      image, boxes = preprocessing_ops.random_translate(
-          image, boxes, self._jitter_im, seed=self._seed)
+      image, boxes = preprocessing_ops.random_translate(image,
+                                                        boxes,
+                                                        self._jitter_im,
+                                                        seed=self._seed)
 
     if self._aug_rand_zoom:
       image, boxes = preprocessing_ops.resize_crop_filter(
@@ -184,21 +177,24 @@ class Parser(parser.Parser):
     image = tf.image.resize(image, (416, 416), preserve_aspect_ratio=False)
 
     if self._aug_rand_brightness:
-      image = tf.image.random_brightness(
-          image=image, max_delta=.1)  # Brightness
+      image = tf.image.random_brightness(image=image,
+                                         max_delta=.1)  # Brightness
     if self._aug_rand_saturation:
-      image = tf.image.random_saturation(
-          image=image, lower=0.75, upper=1.25)  # Saturation
+      image = tf.image.random_saturation(image=image, lower=0.75,
+                                         upper=1.25)  # Saturation
     if self._aug_rand_hue:
       image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
     image = tf.clip_by_value(image, 0.0, 1.0)
     # find the best anchor for the ground truth labels to maximize the iou
-    best_anchors = preprocessing_ops.get_best_anchor(
-        boxes, self._anchors, width=self._image_w, height=self._image_h)
+    best_anchors = preprocessing_ops.get_best_anchor(boxes,
+                                                     self._anchors,
+                                                     width=self._image_w,
+                                                     height=self._image_h)
 
     # padding
     boxes = preprocess_ops.clip_or_pad_to_fixed_size(boxes,
-                                                     self._max_num_instances, 0)
+                                                     self._max_num_instances,
+                                                     0)
     classes = preprocess_ops.clip_or_pad_to_fixed_size(
         data['groundtruth_classes'], self._max_num_instances, -1)
     best_anchors = preprocess_ops.clip_or_pad_to_fixed_size(
@@ -222,8 +218,9 @@ class Parser(parser.Parser):
     }
 
     if self._fixed_size:
-      grid = self._build_grid(
-          labels, self._image_w, use_tie_breaker=self._use_tie_breaker)
+      grid = self._build_grid(labels,
+                              self._image_w,
+                              use_tie_breaker=self._use_tie_breaker)
       labels.update({'grid_form': grid})
 
     return image, labels
@@ -250,8 +247,10 @@ class Parser(parser.Parser):
     boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
     # find the best anchor for the ground truth labels to maximize the iou
-    best_anchors = preprocessing_ops.get_best_anchor(
-        boxes, self._anchors, width=self._image_w, height=self._image_h)
+    best_anchors = preprocessing_ops.get_best_anchor(boxes,
+                                                     self._anchors,
+                                                     width=self._image_w,
+                                                     height=self._image_h)
     boxes = preprocessing_ops.pad_max_instances(boxes, self._max_num_instances,
                                                 0)
     classes = preprocessing_ops.pad_max_instances(data['groundtruth_classes'],
@@ -277,11 +276,10 @@ class Parser(parser.Parser):
         'num_detections': tf.shape(data['groundtruth_classes'])[0],
     }
 
-    grid = self._build_grid(
-        labels,
-        self._image_w,
-        batch=False,
-        use_tie_breaker=self._use_tie_breaker)
+    grid = self._build_grid(labels,
+                            self._image_w,
+                            batch=False,
+                            use_tie_breaker=self._use_tie_breaker)
     labels.update({'grid_form': grid})
     return image, labels
 
@@ -293,15 +291,18 @@ class Parser(parser.Parser):
       if do_scale:
         # This scales the image to a random multiple of net_down_scale
         # between 320 to 608
-        randscale = tf.random.uniform([],
-                                      minval=320 // self._net_down_scale,
-                                      maxval=608 // self._net_down_scale,
-                                      seed=self._seed,
-                                      dtype=tf.int32) * self._net_down_scale
+        randscale = tf.random.uniform(
+            [],
+            minval=self._min_process_size // self._net_down_scale,
+            maxval=self._max_process_size // self._net_down_scale,
+            seed=self._seed,
+            dtype=tf.int32) * self._net_down_scale
     width = randscale
     image = tf.image.resize(image, (width, width))
-    grid = self._build_grid(
-        label, width, batch=True, use_tie_breaker=self._use_tie_breaker)
+    grid = self._build_grid(label,
+                            width,
+                            batch=True,
+                            use_tie_breaker=self._use_tie_breaker)
     label.update({'grid_form': grid})
     return image, label
 
