@@ -105,8 +105,9 @@ def make_tf2_export(weights_path, export_dir):
   log('Building and checking TF2 Module ...')
   params = yamnet_params.Params()
   yamnet = YAMNet(params)
-  print("layers:", yamnet._yamnet.layers)
 
+  yamnet(tf.zeros([100000]))
+  yamnet(tf.zeros([10, 100000]))
 
   # Single waveform
   yamnet.__call__.get_concrete_function(
@@ -114,6 +115,7 @@ def make_tf2_export(weights_path, export_dir):
   # Batch of waveforms
   yamnet.__call__.get_concrete_function(
       tf.TensorSpec(shape=[None, None], dtype=tf.float32))
+
 
   yamnet.load_weights(weights_path)
 

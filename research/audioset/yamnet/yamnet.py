@@ -98,10 +98,7 @@ class YAMNetBase(tf.keras.Model):
     super().__init__()
     self._params = params
 
-    #self.reshape = layers.Lambda(lambda x: x[..., tf.newaxis])
-    self.reshape = layers.Reshape(
-      (params.patch_frames, params.patch_bands, 1),
-      input_shape=(params.patch_frames, params.patch_bands))
+    self.reshape = layers.Lambda(lambda x: x[..., tf.newaxis])
 
     self.stack = []
     for (i, (layer_fun, kernel, stride,
@@ -120,20 +117,35 @@ class YAMNetBase(tf.keras.Model):
     net = self.reshape(features)
     print('net', net.shape)
 
-#    shape = tf.shape(net)
-#    batch_shape = shape[:-3]
-#    item_shape = shape[-3:]
-#    flattened_batch_shape = tf.concat([[-1], item_shape], axis=-1)
-#    net = tf.reshape(net, flattened_batch_shape)
+    # The inner 3-axes are the items. Any outer axes are the batch. Flatten the
+    # iuter batch axes.
+    shape = tf.shape(net)
+    batch_shape = shape[:-3]
+    num_items = tf.reduce_prod(batch_shape)
+    item_shape = shape[-3:]
+    flattened_batch_shape = tf.concat([[num_items], item_shape], axis=-1)
+    net = tf.reshape(net, flattened_batch_shape)
 
     print('net', net.shape)
 
     for layer in self.stack:
       net = layer(net)
 
+    # Unflatten the batch axes back to its shape from earlier.
+    def fold_batch(arg):
+      item_shape = tf.shape(arg)[1:]
+      new_shape = tf.concat([batch_shape, item_shape], axis=-1)
+      return tf.reshape(arg, new_shape)
+
     embeddings = self.pool(net)
+    embeddings = fold_batch(embeddings)
+    print("embeddings", embeddings.shape)
+
     logits = self.logits_from_embedding(embeddings)
+    print("logits", logits.shape)
+
     predictions = self.predictions_from_logits(logits)
+    print("predictions", predictions.shape)
 
     return predictions, embeddings
 
@@ -155,28 +167,6 @@ class YAMNetFrames(tf.keras.Model):
     super().__init__()
     self._params = params
     self._yamnet_base = YAMNetBase(params)
-    self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
-
-  @tf.function(input_signature=[])
-  def class_map_path(self):
-    return self._class_map_asset.asset_path
-
-  def to_keras(self, ndims=1):
-    """Returns a keras model, wrapping this model."""
-    waveform = layers.Input(batch_shape=[None,]*ndims, dtype=tf.float32)
-    predictions, embeddings, log_mel_spectrogram = self.call(waveform)
-    frames_model = Model(
-        name='yamnet_frames', inputs=waveform,
-        outputs=[predictions, embeddings, log_mel_spectrogram])
-    return frames_model
-
-  def load_weights(self, weights_path):
-    super().load_weights(weights_path)
-    # To preserve checkpoint compatibility, wrap this implementation in a
-    # keras-functional model. That model will share the layers with this one.
-    # so restoring its layer weights loads the weights for this model.
-#    wrapper = self.to_keras(ndims=1)
-#    wrapper.load_weights(weights_path)
 
   @property
   def layers(self):
