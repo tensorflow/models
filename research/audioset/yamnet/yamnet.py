@@ -171,15 +171,16 @@ class YAMNetFrames(tf.keras.Model):
     return frames_model
 
   def load_weights(self, weights_path):
+    super().load_weights(weights_path)
     # To preserve checkpoint compatibility, wrap this implementation in a
     # keras-functional model. That model will share the layers with this one.
     # so restoring its layer weights loads the weights for this model.
-    wrapper = self.to_keras(ndims=1)
-    wrapper.load_weights(weights_path)
+#    wrapper = self.to_keras(ndims=1)
+#    wrapper.load_weights(weights_path)
 
-  @tf.function
-  def __call__(self, waveforms):
-    return self.call(waveforms)
+  @property
+  def layers(self):
+    return self._yamnet_base.layers
 
   def call(self, waveforms):
     """Runs the waveform-to-class-scores model.

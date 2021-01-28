@@ -47,7 +47,7 @@ def log(msg):
 
 class YAMNet(tf.Module):
   "''A TF2 Module wrapper around YAMNet."""
-  def __init__(self, weights_path, params):
+  def __init__(self, params):
     super().__init__()
     self._yamnet = yamnet_lib.YAMNetFrames(params)
     self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
@@ -104,8 +104,9 @@ def make_tf2_export(weights_path, export_dir):
   # Create a TF2 Module wrapper around YAMNet.
   log('Building and checking TF2 Module ...')
   params = yamnet_params.Params()
-  yamnet = yamnet_lib.YAMNetFrames(params)
-  yamnet.load_weights(weights_path)
+  yamnet = YAMNet(params)
+  print("layers:", yamnet._yamnet.layers)
+
 
   # Single waveform
   yamnet.__call__.get_concrete_function(
@@ -113,6 +114,8 @@ def make_tf2_export(weights_path, export_dir):
   # Batch of waveforms
   yamnet.__call__.get_concrete_function(
       tf.TensorSpec(shape=[None, None], dtype=tf.float32))
+
+  yamnet.load_weights(weights_path)
 
   check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
@@ -228,10 +231,6 @@ def main(args):
 
   tf2_export_dir = os.path.join(output_dir, 'tf2')
   yamnet = make_tf2_export(weights_path, tf2_export_dir)
-
-  yamnet.save_weights('new_yamnet.h5')
-  cp  = tf.train.Checkpoint(root=yamnet)
-  cp.save("new_yamnet")
 
 #  tflite_export_dir = os.path.join(output_dir, 'tflite')
 #  tflite_saved_model_dir = make_tflite_export(weights_path, tflite_export_dir)
