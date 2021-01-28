@@ -27,9 +27,9 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
     # Convert waveform into spectrogram using a Short-Time Fourier Transform.
     # Note that tf.signal.stft() uses a periodic Hann window by default.
     window_length_samples = int(
-        round(params.sample_rate * params.stft_window_seconds))
+          round(params.sample_rate * params.stft_window_seconds))
     hop_length_samples = int(
-        round(params.sample_rate * params.stft_hop_seconds))
+          round(params.sample_rate * params.stft_hop_seconds))
     fft_length = 2 ** int(np.ceil(np.log(window_length_samples) / np.log(2.0)))
     num_spectrogram_bins = fft_length // 2 + 1
     if params.tflite_compatible:
@@ -39,12 +39,11 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
           frame_step=hop_length_samples,
           fft_length=fft_length)
     else:
-      magnitude_spectrogram = tf.abs(
-          tf.signal.stft(
-              signals=waveform,
-              frame_length=window_length_samples,
-              frame_step=hop_length_samples,
-              fft_length=fft_length))
+      magnitude_spectrogram = tf.abs(tf.signal.stft(
+          signals=waveform,
+          frame_length=window_length_samples,
+          frame_step=hop_length_samples,
+          fft_length=fft_length))
     # magnitude_spectrogram has shape [<# STFT frames>, num_spectrogram_bins]
 
     # Convert spectrogram into log mel spectrogram.
@@ -64,12 +63,12 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
     # less than params.patch_window_seconds of waveform then nothing is emitted
     # (to avoid this, zero-pad before processing).
     spectrogram_hop_length_samples = int(
-        round(params.sample_rate * params.stft_hop_seconds))
+          round(params.sample_rate * params.stft_hop_seconds))
     spectrogram_sample_rate = params.sample_rate / spectrogram_hop_length_samples
     patch_window_length_samples = int(
-        round(spectrogram_sample_rate * params.patch_window_seconds))
+          round(spectrogram_sample_rate * params.patch_window_seconds))
     patch_hop_length_samples = int(
-        round(spectrogram_sample_rate * params.patch_hop_seconds))
+          round(spectrogram_sample_rate * params.patch_hop_seconds))
     features = tf.signal.frame(
         signal=log_mel_spectrogram,
         frame_length=patch_window_length_samples,
@@ -86,8 +85,8 @@ def pad_waveform(waveform, params):
   # need at least one patch window length of waveform plus enough extra samples
   # to complete the final STFT analysis window.
   min_waveform_seconds = (
-      params.patch_window_seconds + params.stft_window_seconds -
-      params.stft_hop_seconds)
+      params.patch_window_seconds +
+      params.stft_window_seconds - params.stft_hop_seconds)
   min_num_samples = tf.cast(min_waveform_seconds * params.sample_rate, tf.int32)
   num_samples = tf.shape(waveform)[-1]
   num_padding_samples = tf.maximum(0, min_num_samples - num_samples)
@@ -98,8 +97,7 @@ def pad_waveform(waveform, params):
   num_samples = tf.maximum(num_samples, min_num_samples)
   num_samples_after_first_patch = num_samples - min_num_samples
   hop_samples = tf.cast(params.patch_hop_seconds * params.sample_rate, tf.int32)
-  num_hops_after_first_patch = tf.cast(
-      tf.math.ceil(
+  num_hops_after_first_patch = tf.cast(tf.math.ceil(
           tf.cast(num_samples_after_first_patch, tf.float32) /
           tf.cast(hop_samples, tf.float32)), tf.int32)
   num_padding_samples += (
@@ -113,13 +111,11 @@ def pad_waveform(waveform, params):
 
 def _tflite_stft_magnitude(signal, frame_length, frame_step, fft_length):
   """TF-Lite-compatible version of tf.abs(tf.signal.stft())."""
-
   def _hann_window():
     return tf.reshape(
         tf.constant(
-            (0.5 - 0.5 *
-             np.cos(2 * np.pi * np.arange(0, 1.0, 1.0 / frame_length))).astype(
-                 np.float32),
+            (0.5 - 0.5 * np.cos(2 * np.pi * np.arange(0, 1.0, 1.0 / frame_length))
+            ).astype(np.float32),
             name='hann_window'), [1, frame_length])
 
   def _dft_matrix(dft_length):
@@ -127,8 +123,7 @@ def _tflite_stft_magnitude(signal, frame_length, frame_step, fft_length):
     # See https://en.wikipedia.org/wiki/DFT_matrix
     omega = (0 + 1j) * 2.0 * np.pi / float(dft_length)
     # Don't include 1/sqrt(N) scaling, tf.signal.rfft doesn't apply it.
-    return np.exp(omega *
-                  np.outer(np.arange(dft_length), np.arange(dft_length)))
+    return np.exp(omega * np.outer(np.arange(dft_length), np.arange(dft_length)))
 
   def _rdft(framed_signal, fft_length):
     """Implement real-input Discrete Fourier Transform by matmul."""

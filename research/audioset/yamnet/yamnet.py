@@ -34,14 +34,13 @@ def _batch_norm(name, params):
 
 def _conv(name, kernel, stride, filters, params):
   return [
-      layers.Conv2D(
-          name='{}/conv'.format(name),
-          filters=filters,
-          kernel_size=kernel,
-          strides=stride,
-          padding=params.conv_padding,
-          use_bias=False,
-          activation=None),
+      layers.Conv2D(name='{}/conv'.format(name),
+                    filters=filters,
+                    kernel_size=kernel,
+                    strides=stride,
+                    padding=params.conv_padding,
+                    use_bias=False,
+                    activation=None),
       _batch_norm('{}/conv/bn'.format(name), params),
       layers.ReLU(name='{}/relu'.format(name)),
   ]

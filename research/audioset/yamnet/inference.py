@@ -55,10 +55,9 @@ def main(argv):
     prediction = np.mean(scores, axis=0)
     # Report the highest-scoring classes and their scores.
     top5_i = np.argsort(prediction)[::-1][:5]
-    print(
-        file_name, ':\n' +
-        '\n'.join('  {:12s}: {:.3f}'.format(yamnet_classes[i], prediction[i])
-                  for i in top5_i))
+    print(file_name, ':\n' +
+          '\n'.join('  {:12s}: {:.3f}'.format(yamnet_classes[i], prediction[i])
+                    for i in top5_i))
 
 
 if __name__ == '__main__':

@@ -44,10 +44,9 @@ class YAMNetTest(tf.test.TestCase):
     top_n_scores = clip_predictions[top_n_indices]
     top_n_class_names = YAMNetTest._yamnet_classes[top_n_indices]
     top_n_predictions = list(zip(top_n_class_names, top_n_scores))
-    self.assertIn(
-        expected_class_name, top_n_class_names,
-        'Did not find expected class {} in top {} predictions: {}'.format(
-            expected_class_name, top_n, top_n_predictions))
+    self.assertIn(expected_class_name, top_n_class_names,
+                  'Did not find expected class {} in top {} predictions: {}'.format(
+                  expected_class_name, top_n, top_n_predictions))
 
   def testZeros(self):
     self.clip_test(
