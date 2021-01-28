@@ -18,6 +18,7 @@ task:
     num_channels: 3
     num_devices: 1
     input_path: 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
+    num_examples: 3888919
     random_sample: true
     random_seed: 123
   validation_data:
@@ -28,6 +29,7 @@ task:
     num_channels: 3
     num_devices: 1
     input_path: 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
+    num_examples: 1112356
   losses:
     name: 'binary_crossentropy'
     from_logits: false

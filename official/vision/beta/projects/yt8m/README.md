@@ -48,51 +48,76 @@ coreClock: 1.3285GHz coreCount: 56 deviceMemorySize: 15.90GiB deviceMemoryBandwi
 
 ### Train video-level model on frame-level features and inference at segment-level.
 
+#### Train using the config file.
+Create a YAML or JSON file for specifying the parameters to be overridden.
+Working examples can be found in yt8m/experiments directory.
+```sh
+task:
+  model:
+    iterations: 30
+    cluster_size: 8192
+    hidden_size: 1024
+    add_batch_norm: true
+    sample_random_frames: true
+    is_training: true
+    activation: "sigmoid"
+    pooling_method: "max"
+    yt8m_agg_classifier_model: "MoeModel"
+  train_data:
+    segment_size: 1
+    segment_labels: false
+    temporal_stride: 1
+    max_frames: 300
+    num_frames: 300
+    num_channels: 3
+    num_devices: 1
+    input_path: 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
+    num_examples: 3888919
+    random_sample: true
+    random_seed: 123
+  valid_data:
+ ...
+```
+
 The code can be run in three different modes: `train / train_and_eval / eval`.   
 Run `yt8m_train.py` and specify which mode you wish to execute. Training is done
 using frame-level features, while inference is done at segment-level.
-
 
 The following commands will train a model on Google Cloud over frame-level
 features.
 
 ```bash
-python3 yt8m_train.py --mode='train' 
-     --experiment='yt8m_experiment' 
-     --train_data_pattern='gs://youtube8m-ml/2/frame/train/train*.tfrecord' 
-     --model_dir=$MODEL_DIR
-     --train_dir=$TRAIN_DIR
-     --config_file=[].yaml
-     --start_new_model
+python3 yt8m_train.py --mode='train' \
+    --experiment='yt8m_experiment' \
+    --model_dir=$MODEL_DIR \
+    --train_dir=$TRAIN_DIR \
+    --config_file=$CONFIG_FILE
 ```
 
-In order to run evaluation after each training epoch, set the mode to 'train_and_eval'
+In order to run evaluation after each training epoch, set the mode to `train_and_eval`.
+Paths to both train and validation dataset on Google Cloud are set as    
+train: `input_path=gs://youtube8m-ml/2/frame/train/train*.tfrecord`   
+validation:`input_path=gs://youtube8m-ml/3/frame/validate/validate*.tfrecord`
+as default. 
 
 ```bash
-python3 yt8m_train.py --mode='train_and_eval' 
-     --experiment='yt8m_experiment' 
-     --train_data_pattern='gs://youtube8m-ml/2/frame/train/train*.tfrecord' 
-     --eval_data_pattern='gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
-     --model_dir=$MODEL_DIR
-     --train_dir=$TRAIN_DIR
-     --config_file=[].yaml
-     --start_new_model
+python3 yt8m_train.py --mode='train_and_eval' \
+     --experiment='yt8m_experiment' \
+     --model_dir=$MODEL_DIR \
+     --train_dir=$TRAIN_DIR \
+     --config_file=$CONFIG_FILE \
 ```
 
-Running on evaluation mode loads saved checkpoint and runs inference 
+Running on evaluation mode loads saved checkpoint and runs inference using test dataset. 
+In your configuration file, 
+set `input_path=gs://youtube8m-ml/3/frame/test/test*.tfrecord`.
 
 ```bash
-python3 yt8m_train.py --mode='eval' 
-     --experiment='yt8m_experiment' 
-     --eval_data_pattern='gs://youtube8m-ml/3/frame/test/test*.tfrecord' 
-     --model_dir=$MODEL_DIR
-     --train_dir=$TRAIN_DIR
-     --config_file=[].yaml
-```
-#### Tensorboard
-
-```sh
-
+python3 yt8m_train.py --mode='eval' \
+     --experiment='yt8m_experiment' \
+     --model_dir=$MODEL_DIR \
+     --train_dir=$TRAIN_DIR \
+     --config_file=$CONFIG_FILE
 ```
 
 
@@ -111,7 +136,7 @@ and the following for evaluation:
 ```
 eval | step:    188 | running 11 steps of evaluation...
 eval | step:    188 | eval time:   48.1 | output:            
-    {'aps': 0.0011551170885774754,                         
+    {'map': 0.0011551170885774754,                         
      'avg_hit_at_one': 0.16844223484848486,  
      'avg_perr': 0.08853457752011464,    
      'gap': 0.02865141526257211, 

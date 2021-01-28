@@ -12,6 +12,9 @@ FLAGS = flags.FLAGS
 # Default values
 YT8M_TRAIN_EXAMPLES = 7890
 YT8M_VAL_EXAMPLES = 1530
+YT8M_TRAIN_PATH = 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
+YT8M_VAL_PATH = 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
+YT8M_TEST_PATH = 'gs://youtube8m-ml/3/frame/test/test*.tfrecord'
 
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
@@ -51,7 +54,10 @@ def yt8m(is_training):
     random_sample=False,
     random_seed=123,
     num_examples=YT8M_TRAIN_EXAMPLES if is_training
-    else YT8M_VAL_EXAMPLES
+    else YT8M_VAL_EXAMPLES,
+    input_path=YT8M_TRAIN_PATH if is_training
+    else YT8M_VAL_PATH
+
   )
 
 
