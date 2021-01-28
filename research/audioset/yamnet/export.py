@@ -18,7 +18,8 @@ Requires pip-installing tensorflow_hub and tensorflowjs.
 
 Usage:
   export.py <path/to/YAMNet/weights-hdf-file> <path/to/output/directory>
-and the various exports will be created in subdirectories of the output directory.
+and the various exports will be created in subdirectories of the output
+directory.
 Assumes that it will be run in the yamnet source directory from where it loads
 the class map. Skips an export if the corresponding directory already exists.
 """
@@ -38,34 +39,34 @@ import tensorflow_hub as tfhub
 from tensorflowjs.converters import tf_saved_model_conversion_v2 as tfjs_saved_model_converter
 
 import params as yamnet_params
-import yamnet
+import yamnet as yamnet_lib
 
 
 def log(msg):
   print('\n=====\n{} | {}\n=====\n'.format(time.asctime(), msg), flush=True)
 
-
 class YAMNet(tf.Module):
   "''A TF2 Module wrapper around YAMNet."""
   def __init__(self, weights_path, params):
     super().__init__()
-    self._yamnet = yamnet.yamnet_frames_model(params)
-    self._yamnet.load_weights(weights_path)
+    self._yamnet = yamnet_lib.YAMNetFrames(params)
     self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
 
-  @tf.function
+  @tf.function(input_signature=[])
   def class_map_path(self):
     return self._class_map_asset.asset_path
+
+  def load_weights(self, weights_path):
+    self._yamnet.load_weights(weights_path)
 
   @tf.function
   def __call__(self, waveform):
     return self._yamnet(waveform)
 
-
 def check_model(model_fn, class_map_path, params):
-  yamnet_classes = yamnet.class_names(class_map_path)
-
+  yamnet_classes = yamnet_lib.class_names(class_map_path)
   """Applies yamnet_test's sanity checks to an instance of YAMNet."""
+
   def clip_test(waveform, expected_class_name, top_n=10):
     predictions, embeddings, log_mel_spectrogram = model_fn(waveform)
     clip_predictions = np.mean(predictions, axis=0)
@@ -83,13 +84,14 @@ def check_model(model_fn, class_map_path, params):
 
   np.random.seed(51773)  # Ensure repeatability.
   clip_test(
-      waveform=np.random.uniform(-1.0, +1.0,
-                                 (int(3 * params.sample_rate),)).astype(np.float32),
+      waveform=np.random.uniform(
+          -1.0, +1.0, (int(3 * params.sample_rate),)).astype(np.float32),
       expected_class_name='White noise')
 
   clip_test(
-      waveform=np.sin(2 * np.pi * 440 *
-                      np.arange(0, 3, 1 / params.sample_rate), dtype=np.float32),
+      waveform=np.sin(
+          2 * np.pi * 440 * np.arange(0, 3, 1 / params.sample_rate),
+          dtype=np.float32),
       expected_class_name='Sine wave')
 
 
@@ -102,13 +104,16 @@ def make_tf2_export(weights_path, export_dir):
   # Create a TF2 Module wrapper around YAMNet.
   log('Building and checking TF2 Module ...')
   params = yamnet_params.Params()
-  yamnet = YAMNet(weights_path, params)
+  yamnet = yamnet_lib.YAMNetFrames(params)
+  yamnet.load_weights(weights_path)
+
   # Single waveform
-  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None],
-                                                      dtype=tf.float32))
+  yamnet.__call__.get_concrete_function(
+      tf.TensorSpec(shape=[None], dtype=tf.float32))
   # Batch of waveforms
-  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None, None],
-                                                      dtype=tf.float32))
+  yamnet.__call__.get_concrete_function(
+      tf.TensorSpec(shape=[None, None], dtype=tf.float32))
+
   check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
 
@@ -128,10 +133,13 @@ def make_tf2_export(weights_path, export_dir):
   with tf.compat.v1.Graph().as_default(), tf.compat.v1.Session() as sess:
     model = tfhub.load(export_dir)
     sess.run(tf.compat.v1.global_variables_initializer())
+
     def run_model(waveform):
       return sess.run(model(waveform))
+
     check_model(run_model, model.class_map_path().eval(), params)
   log('Done')
+  return yamnet
 
 
 def make_tflite_export(weights_path, export_dir):
@@ -143,13 +151,14 @@ def make_tflite_export(weights_path, export_dir):
   # Create a TF-Lite compatible Module wrapper around YAMNet.
   log('Building and checking TF-Lite Module ...')
   params = yamnet_params.Params(tflite_compatible=True)
-  yamnet = YAMNet(weights_path, params)
+  yamnet = yamnet_lib.YAMNetFrames(params)
+  yamnet.load_weights(weights_path)
   # Single waveform
-  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None],
-                                                      dtype=tf.float32))
+  #yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None],
+  #                                                    dtype=tf.float32))
   # Batch of waveforms
-  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None, None],
-                                                      dtype=tf.float32))
+  #yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None, None],
+  #                                                    dtype=tf.float32))
   check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
 
@@ -182,14 +191,17 @@ def make_tflite_export(weights_path, export_dir):
   scores_output_index = interpreter.get_output_details()[0]['index']
   embeddings_output_index = interpreter.get_output_details()[1]['index']
   spectrogram_output_index = interpreter.get_output_details()[2]['index']
+
   def run_model(waveform):
-    interpreter.resize_tensor_input(audio_input_index, [len(waveform)], strict=True)
+    interpreter.resize_tensor_input(
+        audio_input_index, [len(waveform)], strict=True)
     interpreter.allocate_tensors()
     interpreter.set_tensor(audio_input_index, waveform)
     interpreter.invoke()
     return (interpreter.get_tensor(scores_output_index),
             interpreter.get_tensor(embeddings_output_index),
             interpreter.get_tensor(spectrogram_output_index))
+
   check_model(run_model, 'yamnet_class_map.csv', params)
   log('Done')
 
@@ -205,8 +217,8 @@ def make_tfjs_export(tflite_saved_model_dir, export_dir):
   # Make a TF-JS model from the TF-Lite SavedModel export.
   log('Making TF-JS model ...')
   os.makedirs(export_dir)
-  tfjs_saved_model_converter.convert_tf_saved_model(
-      tflite_saved_model_dir, export_dir)
+  tfjs_saved_model_converter.convert_tf_saved_model(tflite_saved_model_dir,
+                                                    export_dir)
   log('Done')
 
 
@@ -215,13 +227,17 @@ def main(args):
   output_dir = args[1]
 
   tf2_export_dir = os.path.join(output_dir, 'tf2')
-  make_tf2_export(weights_path, tf2_export_dir)
+  yamnet = make_tf2_export(weights_path, tf2_export_dir)
 
-  tflite_export_dir = os.path.join(output_dir, 'tflite')
-  tflite_saved_model_dir = make_tflite_export(weights_path, tflite_export_dir)
+  yamnet.save_weights('new_yamnet.h5')
+  cp  = tf.train.Checkpoint(root=yamnet)
+  cp.save("new_yamnet")
 
-  tfjs_export_dir = os.path.join(output_dir, 'tfjs')
-  make_tfjs_export(tflite_saved_model_dir, tfjs_export_dir)
+#  tflite_export_dir = os.path.join(output_dir, 'tflite')
+#  tflite_saved_model_dir = make_tflite_export(weights_path, tflite_export_dir)
+
+#  tfjs_export_dir = os.path.join(output_dir, 'tfjs')
+#  make_tfjs_export(tflite_saved_model_dir, tfjs_export_dir)
 
 if __name__ == '__main__':
   main(sys.argv[1:])

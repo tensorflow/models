@@ -25,57 +25,56 @@ import features as features_lib
 
 
 def _batch_norm(name, params):
-  def _bn_layer(layer_input):
-    return layers.BatchNormalization(
+  return layers.BatchNormalization(
       name=name,
       center=params.batchnorm_center,
       scale=params.batchnorm_scale,
-      epsilon=params.batchnorm_epsilon)(layer_input)
-  return _bn_layer
+      epsilon=params.batchnorm_epsilon)
 
 
 def _conv(name, kernel, stride, filters, params):
-  def _conv_layer(layer_input):
-    output = layers.Conv2D(name='{}/conv'.format(name),
-                           filters=filters,
-                           kernel_size=kernel,
-                           strides=stride,
-                           padding=params.conv_padding,
-                           use_bias=False,
-                           activation=None)(layer_input)
-    output = _batch_norm('{}/conv/bn'.format(name), params)(output)
-    output = layers.ReLU(name='{}/relu'.format(name))(output)
-    return output
-  return _conv_layer
+  return [
+      layers.Conv2D(
+          name='{}/conv'.format(name),
+          filters=filters,
+          kernel_size=kernel,
+          strides=stride,
+          padding=params.conv_padding,
+          use_bias=False,
+          activation=None),
+      _batch_norm('{}/conv/bn'.format(name), params),
+      layers.ReLU(name='{}/relu'.format(name)),
+  ]
 
 
 def _separable_conv(name, kernel, stride, filters, params):
-  def _separable_conv_layer(layer_input):
-    output = layers.DepthwiseConv2D(name='{}/depthwise_conv'.format(name),
-                                    kernel_size=kernel,
-                                    strides=stride,
-                                    depth_multiplier=1,
-                                    padding=params.conv_padding,
-                                    use_bias=False,
-                                    activation=None)(layer_input)
-    output = _batch_norm('{}/depthwise_conv/bn'.format(name), params)(output)
-    output = layers.ReLU(name='{}/depthwise_conv/relu'.format(name))(output)
-    output = layers.Conv2D(name='{}/pointwise_conv'.format(name),
-                           filters=filters,
-                           kernel_size=(1, 1),
-                           strides=1,
-                           padding=params.conv_padding,
-                           use_bias=False,
-                           activation=None)(output)
-    output = _batch_norm('{}/pointwise_conv/bn'.format(name), params)(output)
-    output = layers.ReLU(name='{}/pointwise_conv/relu'.format(name))(output)
-    return output
-  return _separable_conv_layer
+  return [
+      layers.DepthwiseConv2D(
+          name='{}/depthwise_conv'.format(name),
+          kernel_size=kernel,
+          strides=stride,
+          depth_multiplier=1,
+          padding=params.conv_padding,
+          use_bias=False,
+          activation=None),
+      _batch_norm('{}/depthwise_conv/bn'.format(name), params),
+      layers.ReLU(name='{}/depthwise_conv/relu'.format(name)),
+      layers.Conv2D(
+          name='{}/pointwise_conv'.format(name),
+          filters=filters,
+          kernel_size=(1, 1),
+          strides=1,
+          padding=params.conv_padding,
+          use_bias=False,
+          activation=None),
+      _batch_norm('{}/pointwise_conv/bn'.format(name), params),
+      layers.ReLU(name='{}/pointwise_conv/relu'.format(name)),
+  ]
 
 
 _YAMNET_LAYER_DEFS = [
     # (layer_function, kernel, stride, num_filters)
-    (_conv,          [3, 3], 2,   32),
+    (_conv,           [3, 3], 2,   32),
     (_separable_conv, [3, 3], 1,   64),
     (_separable_conv, [3, 3], 2,  128),
     (_separable_conv, [3, 3], 1,  128),
@@ -88,21 +87,146 @@ _YAMNET_LAYER_DEFS = [
     (_separable_conv, [3, 3], 1,  512),
     (_separable_conv, [3, 3], 1,  512),
     (_separable_conv, [3, 3], 2, 1024),
-    (_separable_conv, [3, 3], 1, 1024)
+    (_separable_conv, [3, 3], 1, 1024),
 ]
+
+
+class YAMNetBase(tf.keras.Model):
+  """Define the core YAMNet mode in Keras."""
+
+  def __init__(self, params):
+    super().__init__()
+    self._params = params
+
+    #self.reshape = layers.Lambda(lambda x: x[..., tf.newaxis])
+    self.reshape = layers.Reshape(
+      (params.patch_frames, params.patch_bands, 1),
+      input_shape=(params.patch_frames, params.patch_bands))
+
+    self.stack = []
+    for (i, (layer_fun, kernel, stride,
+             filters)) in enumerate(_YAMNET_LAYER_DEFS):
+      new_layers = layer_fun('layer{}'.format(i + 1), kernel, stride, filters,
+                             params)
+      self.stack.extend(new_layers)
+    self.pool = layers.GlobalAveragePooling2D()
+    self.logits_from_embedding = layers.Dense(
+        units=params.num_classes, use_bias=True)
+    self.predictions_from_logits = layers.Activation(
+        activation=params.classifier_activation)
+
+  def call(self, features):
+    print('features', features.shape)
+    net = self.reshape(features)
+    print('net', net.shape)
+
+#    shape = tf.shape(net)
+#    batch_shape = shape[:-3]
+#    item_shape = shape[-3:]
+#    flattened_batch_shape = tf.concat([[-1], item_shape], axis=-1)
+#    net = tf.reshape(net, flattened_batch_shape)
+
+    print('net', net.shape)
+
+    for layer in self.stack:
+      net = layer(net)
+
+    embeddings = self.pool(net)
+    logits = self.logits_from_embedding(embeddings)
+    predictions = self.predictions_from_logits(logits)
+
+    return predictions, embeddings
 
 
 def yamnet(features, params):
   """Define the core YAMNet mode in Keras."""
-  net = layers.Reshape(
-      (params.patch_frames, params.patch_bands, 1),
-      input_shape=(params.patch_frames, params.patch_bands))(features)
-  for (i, (layer_fun, kernel, stride, filters)) in enumerate(_YAMNET_LAYER_DEFS):
-    net = layer_fun('layer{}'.format(i + 1), kernel, stride, filters, params)(net)
-  embeddings = layers.GlobalAveragePooling2D()(net)
-  logits = layers.Dense(units=params.num_classes, use_bias=True)(embeddings)
-  predictions = layers.Activation(activation=params.classifier_activation)(logits)
-  return predictions, embeddings
+  model = YAMNetBase.call(params)
+  return model(features)
+
+
+class YAMNetFrames(tf.keras.Model):
+  """Defines the YAMNet waveform-to-class-scores model.
+
+  Args:
+    params: An instance of `params.Params` containing hyperparameters.
+  """
+
+  def __init__(self, params):
+    super().__init__()
+    self._params = params
+    self._yamnet_base = YAMNetBase(params)
+    self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
+
+  @tf.function(input_signature=[])
+  def class_map_path(self):
+    return self._class_map_asset.asset_path
+
+  def to_keras(self, ndims=1):
+    """Returns a keras model, wrapping this model."""
+    waveform = layers.Input(batch_shape=[None,]*ndims, dtype=tf.float32)
+    predictions, embeddings, log_mel_spectrogram = self.call(waveform)
+    frames_model = Model(
+        name='yamnet_frames', inputs=waveform,
+        outputs=[predictions, embeddings, log_mel_spectrogram])
+    return frames_model
+
+  def load_weights(self, weights_path):
+    # To preserve checkpoint compatibility, wrap this implementation in a
+    # keras-functional model. That model will share the layers with this one.
+    # so restoring its layer weights loads the weights for this model.
+    wrapper = self.to_keras(ndims=1)
+    wrapper.load_weights(weights_path)
+
+  @tf.function
+  def __call__(self, waveforms):
+    return self.call(waveforms)
+
+  def call(self, waveforms):
+    """Runs the waveform-to-class-scores model.
+
+    Args:
+      waveforms: A tensor containing the input waverform(s) with shape
+        `(samples,)` or `(batch, samples)`.
+
+    Returns:
+      A tuple of results (predictions, embeddings, log_mel_spectrograms). The
+      results will have an outer `batch` axis if the `waveforms` input has
+      a `batch` axis.
+
+      predictions: (batch?, num_patches, num_classes) matrix of class scores per
+        time frame
+      embeddings: (batch?, num_patches, embedding size) matrix of embeddings per
+        time frame
+      log_mel_spectrogram: (batch?, num_spectrogram_frames, num_mel_bins)
+        spectrogram feature matrix
+    """
+    # Fix shapes
+    """if len(waveforms.shape) == 1:
+
+      # A single waveform, add the batch axis.
+      waveforms = waveforms[tf.newaxis, :]
+      squeeze = True
+    else:
+      squeeze = False
+    """
+    squeeze = False
+    print()
+    print('waveforms', waveforms.shape)
+    waveform_padded = features_lib.pad_waveform(waveforms, self._params)
+    print('waveform_padded', waveform_padded.shape)
+    log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
+        waveform_padded, self._params)
+    print('log_mel_spectrogram', log_mel_spectrogram.shape)
+
+    predictions, embeddings = self._yamnet_base.call(features)
+    """
+    if squeeze:
+      predictions = tf.squeeze(predictions, axis=0)
+      embeddings = tf.squeeze(embeddings, axis=0)
+      log_mel_spectrogram = tf.squeeze(log_mel_spectrogram, axis=0)
+    """
+
+    return predictions, embeddings, log_mel_spectrogram
 
 
 def yamnet_frames_model(params):
@@ -117,14 +241,7 @@ def yamnet_frames_model(params):
     - embeddings: (num_patches, embedding size) matrix of embeddings per time frame
     - log_mel_spectrogram: (num_spectrogram_frames, num_mel_bins) spectrogram feature matrix
   """
-  waveform = layers.Input(batch_shape=(None,), dtype=tf.float32)
-  waveform_padded = features_lib.pad_waveform(waveform, params)
-  log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
-      waveform_padded, params)
-  predictions, embeddings = yamnet(features, params)
-  frames_model = Model(
-      name='yamnet_frames', inputs=waveform,
-      outputs=[predictions, embeddings, log_mel_spectrogram])
+  frames_model = YAMNetFrames(params).to_keras()
   return frames_model
 
 
