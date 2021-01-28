@@ -24,8 +24,6 @@ def main(_):
   gin.parse_config_files_and_bindings(FLAGS.gin_file, FLAGS.gin_params)
   print(FLAGS.flag_values_dict()) #TODO: remove (for debug)
   params = train_utils.parse_configuration(FLAGS)
-  params.task.train_data.input_path='gs://youtube8m-ml/2/frame/train/train*.tfrecord'
-  params.task.validation_data.input_path='gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
   model_dir = FLAGS.model_dir
   if 'train' in FLAGS.mode:
     # Pure eval modes do not output yaml files. Otherwise continuous eval job

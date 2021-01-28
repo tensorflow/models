@@ -233,7 +233,7 @@ class EvaluationMetrics(object):
         "avg_hit_at_one": avg_hit_at_one,
         "avg_perr": avg_perr,
         "avg_loss": avg_loss,
-        "aps": aps,
+        "map": aps,
         "gap": gap
     }
     return epoch_info_dict

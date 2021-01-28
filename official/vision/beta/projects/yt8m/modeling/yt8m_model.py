@@ -29,19 +29,13 @@ class YT8MModel(tf.keras.Model):
             'input_params': input_params
         }
         self._num_classes = num_classes
-        self._num_frames = num_frames
         self._input_specs = input_specs
         self._act_fn = tf_utils.get_activation(input_params.activation)
 
-        inputs = tf.keras.Input(shape=self._input_specs.shape)
+        model_input = tf.keras.Input(shape=self._input_specs.shape)
 
-        num_frames = tf.cast(tf.expand_dims([self._num_frames], 1), tf.float32)
-        if input_params.sample_random_frames:
-            model_input = utils.SampleRandomFrames(inputs, num_frames, input_params.iterations)
-        else:
-            model_input = utils.SampleRandomSequence(inputs, num_frames, input_params.iterations)
-
-        max_frames = model_input.shape.as_list()[1]
+        # model input will be reshaped as the same in train_step()
+        max_frames = input_params.iterations
         feature_size = model_input.shape.as_list()[2]
         reshaped_input = tf.reshape(model_input, shape=[-1, feature_size])
         tf.summary.histogram("input_hist", reshaped_input)
@@ -99,7 +93,7 @@ class YT8MModel(tf.keras.Model):
         output = aggregated_model().create_model(model_input=activation,
                                                  vocab_size=self._num_classes)
 
-        super(YT8MModel, self).__init__(inputs=inputs, outputs=output.get("predictions"), **kwargs)
+        super(YT8MModel, self).__init__(inputs=model_input, outputs=output.get("predictions"), **kwargs)
 
     @property
     def checkpoint_items(self):
