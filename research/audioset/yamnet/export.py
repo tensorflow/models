@@ -25,7 +25,6 @@ the class map. Skips an export if the corresponding directory already exists.
 
 import distutils.version
 import os
-import pprint
 import sys
 import tempfile
 import time
@@ -44,6 +43,7 @@ import yamnet as yamnet_lib
 
 def log(msg):
   print('\n=====\n{} | {}\n=====\n'.format(time.asctime(), msg), flush=True)
+
 
 class YAMNet(tf.Module):
   "''A TF2 Module wrapper around YAMNet."""
@@ -192,7 +192,6 @@ def make_tflite_export(weights_path, export_dir):
   # Check the TF-Lite export.
   log('Checking TF-Lite model ...')
   interpreter = tf.lite.Interpreter(tflite_model_path)
-
   audio_input_index = interpreter.get_input_details()[0]['index']
   scores_output_index = interpreter.get_output_details()[0]['index']
   embeddings_output_index = interpreter.get_output_details()[1]['index']

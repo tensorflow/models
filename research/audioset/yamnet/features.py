@@ -113,10 +113,10 @@ def _tflite_stft_magnitude(signal, frame_length, frame_step, fft_length):
   """TF-Lite-compatible version of tf.abs(tf.signal.stft())."""
   def _hann_window():
     return tf.reshape(
-        tf.constant(
-            (0.5 - 0.5 * np.cos(2 * np.pi * np.arange(0, 1.0, 1.0 / frame_length))
-            ).astype(np.float32),
-            name='hann_window'), [1, frame_length])
+      tf.constant(
+          (0.5 - 0.5 * np.cos(2 * np.pi * np.arange(0, 1.0, 1.0 / frame_length))
+          ).astype(np.float32),
+          name='hann_window'), [1, frame_length])
 
   def _dft_matrix(dft_length):
     """Calculate the full DFT matrix in NumPy."""
@@ -142,7 +142,6 @@ def _tflite_stft_magnitude(signal, frame_length, frame_step, fft_length):
         name='imaginary_dft_matrix')
     signal_frame_length = tf.shape(framed_signal)[-1]
     half_pad = (fft_length - signal_frame_length) // 2
-    print('lite framed_signal:', framed_signal.shape)
 
     # Don't add any padding in the batch or frame dimensions.
     pads = [[0, 0] for n in range(len(framed_signal.shape))]

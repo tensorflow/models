@@ -112,9 +112,7 @@ class YAMNetBase(tf.keras.Model):
         activation=params.classifier_activation)
 
   def call(self, features):
-    print('features', features.shape)
     net = self.reshape(features)
-    print('net', net.shape)
 
     # The inner 3-axes are the items. Any outer axes are the batch. Flatten the
     # iuter batch axes.
@@ -124,8 +122,6 @@ class YAMNetBase(tf.keras.Model):
     item_shape = shape[-3:]
     flattened_batch_shape = tf.concat([[num_items], item_shape], axis=-1)
     net = tf.reshape(net, flattened_batch_shape)
-
-    print('net', net.shape)
 
     for layer in self.stack:
       net = layer(net)
@@ -138,13 +134,10 @@ class YAMNetBase(tf.keras.Model):
 
     embeddings = self.pool(net)
     embeddings = fold_batch(embeddings)
-    print("embeddings", embeddings.shape)
 
     logits = self.logits_from_embedding(embeddings)
-    print("logits", logits.shape)
 
     predictions = self.predictions_from_logits(logits)
-    print("predictions", predictions.shape)
 
     return predictions, embeddings
 
@@ -200,13 +193,9 @@ class YAMNetFrames(tf.keras.Model):
       squeeze = False
     """
     squeeze = False
-    print()
-    print('waveforms', waveforms.shape)
     waveform_padded = features_lib.pad_waveform(waveforms, self._params)
-    print('waveform_padded', waveform_padded.shape)
     log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
         waveform_padded, self._params)
-    print('log_mel_spectrogram', log_mel_spectrogram.shape)
 
     predictions, embeddings = self._yamnet_base.call(features)
     """
