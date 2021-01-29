@@ -48,24 +48,22 @@ def _conv(name, kernel, stride, filters, params):
 
 def _separable_conv(name, kernel, stride, filters, params):
   return [
-      layers.DepthwiseConv2D(
-          name='{}/depthwise_conv'.format(name),
-          kernel_size=kernel,
-          strides=stride,
-          depth_multiplier=1,
-          padding=params.conv_padding,
-          use_bias=False,
-          activation=None),
+      layers.DepthwiseConv2D(name='{}/depthwise_conv'.format(name),
+                             kernel_size=kernel,
+                             strides=stride,
+                             depth_multiplier=1,
+                             padding=params.conv_padding,
+                             use_bias=False,
+                             activation=None),
       _batch_norm('{}/depthwise_conv/bn'.format(name), params),
       layers.ReLU(name='{}/depthwise_conv/relu'.format(name)),
-      layers.Conv2D(
-          name='{}/pointwise_conv'.format(name),
-          filters=filters,
-          kernel_size=(1, 1),
-          strides=1,
-          padding=params.conv_padding,
-          use_bias=False,
-          activation=None),
+      layers.Conv2D(name='{}/pointwise_conv'.format(name),
+                    filters=filters,
+                    kernel_size=(1, 1),
+                    strides=1,
+                    padding=params.conv_padding,
+                    use_bias=False,
+                    activation=None),
       _batch_norm('{}/pointwise_conv/bn'.format(name), params),
       layers.ReLU(name='{}/pointwise_conv/relu'.format(name)),
   ]
@@ -115,7 +113,7 @@ class YAMNetBase(tf.keras.Model):
     net = self.reshape(features)
 
     # The inner 3-axes are the items. Any outer axes are the batch. Flatten the
-    # iuter batch axes.
+    # outer batch axes.
     shape = tf.shape(net)
     batch_shape = shape[:-3]
     num_items = tf.reduce_prod(batch_shape)
@@ -183,27 +181,11 @@ class YAMNetFrames(tf.keras.Model):
       log_mel_spectrogram: (batch?, num_spectrogram_frames, num_mel_bins)
         spectrogram feature matrix
     """
-    # Fix shapes
-    """if len(waveforms.shape) == 1:
-
-      # A single waveform, add the batch axis.
-      waveforms = waveforms[tf.newaxis, :]
-      squeeze = True
-    else:
-      squeeze = False
-    """
-    squeeze = False
     waveform_padded = features_lib.pad_waveform(waveforms, self._params)
     log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
         waveform_padded, self._params)
 
     predictions, embeddings = self._yamnet_base.call(features)
-    """
-    if squeeze:
-      predictions = tf.squeeze(predictions, axis=0)
-      embeddings = tf.squeeze(embeddings, axis=0)
-      log_mel_spectrogram = tf.squeeze(log_mel_spectrogram, axis=0)
-    """
 
     return predictions, embeddings, log_mel_spectrogram
 
