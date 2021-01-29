@@ -14,15 +14,10 @@
 # ==============================================================================
 """NCF model input pipeline."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import functools
 
 # pylint: disable=g-bad-import-order
-
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.recommendation import constants as rconst

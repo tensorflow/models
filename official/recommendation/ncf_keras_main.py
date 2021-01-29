@@ -18,10 +18,6 @@ The NeuMF model assembles both MF and MLP models under the NCF framework. Check
 `neumf_model.py` for more details about the models.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import json
 import os
 
@@ -30,7 +26,7 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 # pylint: enable=g-bad-import-order
 
 from official.common import distribute_utils
