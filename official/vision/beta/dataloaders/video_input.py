@@ -38,6 +38,10 @@ def _process_image(image: tf.Tensor,
                    crop_size: int = 224,
                    num_crops: int = 1,
                    zero_centering_image: bool = False,
+                   min_aspect_ratio: float = 0.5,
+                   max_aspect_ratio: float = 2,
+                   min_area_ratio: float = 0.49,
+                   max_area_ratio: float = 1.0,
                    seed: Optional[int] = None) -> tf.Tensor:
   """Processes a serialized image tensor.
 
@@ -58,6 +62,10 @@ def _process_image(image: tf.Tensor,
     num_crops: Number of crops to perform on the resized frames.
     zero_centering_image: If True, frames are normalized to values in [-1, 1].
       If False, values in [0, 1].
+    min_aspect_ratio: The minimum aspect range for cropping.
+    max_aspect_ratio: The maximum aspect range for cropping.
+    min_area_ratio: The minimum area range for cropping.
+    max_area_ratio: The maximum area range for cropping.
     seed: A deterministic seed to use when sampling.
 
   Returns:
@@ -89,7 +97,9 @@ def _process_image(image: tf.Tensor,
   if is_training:
     # Standard image data augmentation: random resized crop and random flip.
     image = preprocess_ops_3d.random_crop_resize(
-        image, crop_size, crop_size, num_frames, 3, (0.5, 2), (0.08, 1))
+        image, crop_size, crop_size, num_frames, 3,
+        (min_aspect_ratio, max_aspect_ratio),
+        (min_area_ratio, max_area_ratio))
     image = preprocess_ops_3d.random_flip_left_right(image, seed)
   else:
     # Resize images (resize happens only if necessary to save compute).
@@ -221,6 +231,10 @@ class Parser(parser.Parser):
     self._label_key = label_key
     self._dtype = tf.dtypes.as_dtype(input_params.dtype)
     self._output_audio = input_params.output_audio
+    self._min_aspect_ratio = input_params.aug_min_aspect_ratio
+    self._max_aspect_ratio = input_params.aug_max_aspect_ratio
+    self._min_area_ratio = input_params.aug_min_area_ratio
+    self._max_area_ratio = input_params.aug_max_area_ratio
     if self._output_audio:
       self._audio_feature = input_params.audio_feature
       self._audio_shape = input_params.audio_feature_shape
@@ -238,7 +252,11 @@ class Parser(parser.Parser):
         stride=self._stride,
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
-        crop_size=self._crop_size)
+        crop_size=self._crop_size,
+        min_aspect_ratio=self._min_aspect_ratio,
+        max_aspect_ratio=self._max_aspect_ratio,
+        min_area_ratio=self._min_area_ratio,
+        max_area_ratio=self._max_area_ratio)
     image = tf.cast(image, dtype=self._dtype)
     features = {'image': image}
 

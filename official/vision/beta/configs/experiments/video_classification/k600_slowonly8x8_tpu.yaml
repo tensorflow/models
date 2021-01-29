@@ -56,6 +56,10 @@ task:
     global_batch_size: 1024
     dtype: 'bfloat16'
     shuffle_buffer_size: 1024
+    aug_max_area_ratio: 1.0
+    aug_max_aspect_ratio: 2.0
+    aug_min_area_ratio: 0.08
+    aug_min_aspect_ratio: 0.5
   validation_data:
     name: kinetics600
     feature_shape: !!python/tuple
