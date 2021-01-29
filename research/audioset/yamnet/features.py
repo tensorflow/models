@@ -27,9 +27,9 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
     # Convert waveform into spectrogram using a Short-Time Fourier Transform.
     # Note that tf.signal.stft() uses a periodic Hann window by default.
     window_length_samples = int(
-          round(params.sample_rate * params.stft_window_seconds))
+      round(params.sample_rate * params.stft_window_seconds))
     hop_length_samples = int(
-          round(params.sample_rate * params.stft_hop_seconds))
+      round(params.sample_rate * params.stft_hop_seconds))
     fft_length = 2 ** int(np.ceil(np.log(window_length_samples) / np.log(2.0)))
     num_spectrogram_bins = fft_length // 2 + 1
     if params.tflite_compatible:
@@ -63,12 +63,12 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
     # less than params.patch_window_seconds of waveform then nothing is emitted
     # (to avoid this, zero-pad before processing).
     spectrogram_hop_length_samples = int(
-          round(params.sample_rate * params.stft_hop_seconds))
+      round(params.sample_rate * params.stft_hop_seconds))
     spectrogram_sample_rate = params.sample_rate / spectrogram_hop_length_samples
     patch_window_length_samples = int(
-          round(spectrogram_sample_rate * params.patch_window_seconds))
+      round(spectrogram_sample_rate * params.patch_window_seconds))
     patch_hop_length_samples = int(
-          round(spectrogram_sample_rate * params.patch_hop_seconds))
+      round(spectrogram_sample_rate * params.patch_hop_seconds))
     features = tf.signal.frame(
         signal=log_mel_spectrogram,
         frame_length=patch_window_length_samples,
@@ -142,14 +142,15 @@ def _tflite_stft_magnitude(signal, frame_length, frame_step, fft_length):
         name='imaginary_dft_matrix')
     signal_frame_length = tf.shape(framed_signal)[-1]
     half_pad = (fft_length - signal_frame_length) // 2
+    print('lite framed_signal:', framed_signal.shape)
+
+    # Don't add any padding in the batch or frame dimensions.
+    pads = [[0, 0] for n in range(len(framed_signal.shape))]
+    # Pad before and after the signal within each frame.
+    pads[-1] = [half_pad, fft_length - signal_frame_length - half_pad]
     padded_frames = tf.pad(
         framed_signal,
-        [
-            # Don't add any padding in the frame dimension.
-            [0, 0],
-            # Pad before and after the signal within each frame.
-            [half_pad, fft_length - signal_frame_length - half_pad]
-        ],
+        pads,
         mode='CONSTANT',
         constant_values=0.0)
     real_stft = tf.matmul(padded_frames, real_dft_matrix)

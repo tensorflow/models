@@ -97,7 +97,7 @@ class YAMNetBase(tf.keras.Model):
     super().__init__()
     self._params = params
 
-    self.reshape = layers.Lambda(lambda x: x[..., tf.newaxis])
+    self.reshape = layers.Lambda(lambda x: tf.expand_dims(x, axis=-1))
 
     self.stack = []
     for (i, (layer_fun, kernel, stride,

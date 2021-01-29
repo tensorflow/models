@@ -25,6 +25,7 @@ the class map. Skips an export if the corresponding directory already exists.
 
 import distutils.version
 import os
+import pprint
 import sys
 import tempfile
 import time
@@ -51,6 +52,15 @@ class YAMNet(tf.Module):
     self._yamnet = yamnet_lib.YAMNetFrames(params)
     self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
 
+    # Single waveform
+    self.single = self.__call__.get_concrete_function(
+      tf.TensorSpec(shape=[None], dtype=tf.float32))
+
+    if not params.tflite_compatible:
+      # Batch of waveforms
+      self.batched = self.__call__.get_concrete_function(
+        tf.TensorSpec(shape=[None, None], dtype=tf.float32))
+
   @tf.function(input_signature=[])
   def class_map_path(self):
     return self._class_map_asset.asset_path
@@ -67,7 +77,6 @@ def check_model(model_fn, class_map_path, params):
   yamnet_classes = yamnet_lib.class_names(class_map_path)
 
   """Applies yamnet_test's sanity checks to an instance of YAMNet."""
-
   def clip_test(waveform, expected_class_name, top_n=10):
     predictions, embeddings, log_mel_spectrogram = model_fn(waveform)
     clip_predictions = np.mean(predictions, axis=0)
@@ -91,8 +100,7 @@ def check_model(model_fn, class_map_path, params):
 
   clip_test(
       waveform=np.sin(2 * np.pi * 440 *
-                      np.arange(0, 3, 1 / params.sample_rate),
-          dtype=np.float32),
+                      np.arange(0, 3, 1 / params.sample_rate), dtype=np.float32),
       expected_class_name='Sine wave')
 
 
@@ -106,26 +114,21 @@ def make_tf2_export(weights_path, export_dir):
   log('Building and checking TF2 Module ...')
   params = yamnet_params.Params()
   yamnet = YAMNet(params)
-
-  yamnet(tf.zeros([100000]))
-  yamnet(tf.zeros([10, 100000]))
-
-  # Single waveform
-  yamnet.__call__.get_concrete_function(
-      tf.TensorSpec(shape=[None], dtype=tf.float32))
-  # Batch of waveforms
-  yamnet.__call__.get_concrete_function(
-      tf.TensorSpec(shape=[None, None], dtype=tf.float32))
-
-
   yamnet.load_weights(weights_path)
 
+  # Smoke test
+  yamnet(tf.zeros([100000]))
+  yamnet(tf.zeros([10, 100000]))
   check_model(yamnet, yamnet.class_map_path(), params)
+
   log('Done')
 
   # Make TF2 SavedModel export.
   log('Making TF2 SavedModel export ...')
-  tf.saved_model.save(yamnet, export_dir)
+  # Rebuild the model to drop the extra signatures added by the tests.
+  yamnet = YAMNet(params)
+  yamnet.load_weights(weights_path)
+  tf.saved_model.save(yamnet, export_dir, signatures=yamnet.single)
   log('Done')
 
   # Check export with TF-Hub in TF2.
@@ -156,19 +159,19 @@ def make_tflite_export(weights_path, export_dir):
   params = yamnet_params.Params(tflite_compatible=True)
   yamnet = YAMNet(params)
 
-  # Single waveform
-  yamnet.__call__.get_concrete_function(tf.TensorSpec(shape=[None],
-                                                      dtype=tf.float32))
-
   yamnet.load_weights(weights_path)
   check_model(yamnet, yamnet.class_map_path(), params)
   log('Done')
+
+  # Rebuild the model to drop the extra signatures added by the tests.
+  yamnet = YAMNet(params)
+  yamnet.load_weights(weights_path)
 
   # Make TF-Lite SavedModel export.
   log('Making TF-Lite SavedModel export ...')
   saved_model_dir = os.path.join(export_dir, 'saved_model')
   os.makedirs(saved_model_dir)
-  tf.saved_model.save(yamnet, saved_model_dir)
+  tf.saved_model.save(yamnet, saved_model_dir, signatures=yamnet.single)
   log('Done')
 
   # Check that the export can be loaded and works.
@@ -189,6 +192,7 @@ def make_tflite_export(weights_path, export_dir):
   # Check the TF-Lite export.
   log('Checking TF-Lite model ...')
   interpreter = tf.lite.Interpreter(tflite_model_path)
+
   audio_input_index = interpreter.get_input_details()[0]['index']
   scores_output_index = interpreter.get_output_details()[0]['index']
   embeddings_output_index = interpreter.get_output_details()[1]['index']
