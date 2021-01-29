@@ -17,7 +17,7 @@ r"""Vision models export utility function for serving/inference."""
 
 import os
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 from official.core import train_utils
 from official.vision.beta import configs
