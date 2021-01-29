@@ -1039,7 +1039,10 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
   if center_net_config.HasField('temporal_offset_task'):
     temporal_offset_params = temporal_offset_proto_to_params(
         center_net_config.temporal_offset_task)
-
+  non_max_suppression_fn = None
+  if center_net_config.HasField('post_processing'):
+    non_max_suppression_fn, _ = post_processing_builder.build(
+        center_net_config.post_processing)
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
@@ -1054,7 +1057,8 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       track_params=track_params,
       temporal_offset_params=temporal_offset_params,
       use_depthwise=center_net_config.use_depthwise,
-      compute_heatmap_sparse=center_net_config.compute_heatmap_sparse)
+      compute_heatmap_sparse=center_net_config.compute_heatmap_sparse,
+      non_max_suppression_fn=non_max_suppression_fn)
 
 
 def _build_center_net_feature_extractor(

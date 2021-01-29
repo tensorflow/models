@@ -1896,7 +1896,8 @@ class CenterNetMetaArch(model.DetectionModel):
                track_params=None,
                temporal_offset_params=None,
                use_depthwise=False,
-               compute_heatmap_sparse=False):
+               compute_heatmap_sparse=False,
+               non_max_suppression_fn=None):
     """Initializes a CenterNet model.
 
     Args:
@@ -1939,6 +1940,7 @@ class CenterNetMetaArch(model.DetectionModel):
         the Op that computes the center heatmaps. The sparse version scales
         better with number of channels in the heatmap, but in some cases is
         known to cause an OOM error. See b/170989061.
+      non_max_suppression_fn: Optional Non Max Suppression function to apply.
     """
     assert object_detection_params or keypoint_params_dict
     # Shorten the name for convenience and better formatting.
@@ -1977,6 +1979,7 @@ class CenterNetMetaArch(model.DetectionModel):
 
     # Will be used in VOD single_frame_meta_arch for tensor reshape.
     self._batched_prediction_tensor_names = []
+    self._non_max_suppression_fn = non_max_suppression_fn
 
     super(CenterNetMetaArch, self).__init__(num_classes)
 
@@ -3108,6 +3111,34 @@ class CenterNetMetaArch(model.DetectionModel):
           prediction_dict[TEMPORAL_OFFSET][-1])
       postprocess_dict[fields.DetectionResultFields.detection_offsets] = offsets
 
+    if self._non_max_suppression_fn:
+      boxes = tf.expand_dims(
+          postprocess_dict.pop(fields.DetectionResultFields.detection_boxes),
+          axis=-2)
+      multiclass_scores = postprocess_dict[
+          fields.DetectionResultFields.detection_multiclass_scores]
+      num_valid_boxes = postprocess_dict.pop(
+          fields.DetectionResultFields.num_detections)
+      # Remove scores and classes as NMS will compute these form multiclass
+      # scores.
+      postprocess_dict.pop(fields.DetectionResultFields.detection_scores)
+      postprocess_dict.pop(fields.DetectionResultFields.detection_classes)
+      (nmsed_boxes, nmsed_scores, nmsed_classes, _, nmsed_additional_fields,
+       num_detections) = self._non_max_suppression_fn(
+           boxes,
+           multiclass_scores,
+           additional_fields=postprocess_dict,
+           num_valid_boxes=num_valid_boxes)
+      postprocess_dict = nmsed_additional_fields
+      postprocess_dict[
+          fields.DetectionResultFields.detection_boxes] = nmsed_boxes
+      postprocess_dict[
+          fields.DetectionResultFields.detection_scores] = nmsed_scores
+      postprocess_dict[
+          fields.DetectionResultFields.detection_classes] = nmsed_classes
+      postprocess_dict[
+          fields.DetectionResultFields.num_detections] = num_detections
+      postprocess_dict.update(nmsed_additional_fields)
     return postprocess_dict
 
   def postprocess_single_instance_keypoints(self, prediction_dict,
