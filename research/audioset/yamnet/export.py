@@ -192,18 +192,14 @@ def make_tflite_export(weights_path, export_dir):
   # Check the TF-Lite export.
   log('Checking TF-Lite model ...')
   interpreter = tf.lite.Interpreter(tflite_model_path)
-  audio_input_index = interpreter.get_input_details()[0]['index']
-  scores_output_index = interpreter.get_output_details()[0]['index']
-  embeddings_output_index = interpreter.get_output_details()[1]['index']
-  spectrogram_output_index = interpreter.get_output_details()[2]['index']
+  runner = interpreter.get_signature_runner('serving_default')
   def run_model(waveform):
-    interpreter.resize_tensor_input(audio_input_index, [len(waveform)], strict=True)
-    interpreter.allocate_tensors()
-    interpreter.set_tensor(audio_input_index, waveform)
-    interpreter.invoke()
-    return (interpreter.get_tensor(scores_output_index),
-            interpreter.get_tensor(embeddings_output_index),
-            interpreter.get_tensor(spectrogram_output_index))
+    results = runner(waveform=waveform)
+    predictions = results['output_0']
+    embeddings = results['output_1']
+    log_mel_spectrogram =results['output_2']
+    return predictions, embeddings, log_mel_spectrogram
+
   check_model(run_model, 'yamnet_class_map.csv', params)
   log('Done')
 
