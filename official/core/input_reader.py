@@ -174,7 +174,8 @@ class InputReader:
         map_func=self._dataset_fn,
         cycle_length=self._cycle_length,
         block_length=self._block_length,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        num_parallel_calls=(self._cycle_length if self._cycle_length else
+                            tf.data.experimental.AUTOTUNE),
         deterministic=self._deterministic)
     return dataset
 
