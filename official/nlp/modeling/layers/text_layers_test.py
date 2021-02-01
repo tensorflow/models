@@ -130,7 +130,8 @@ class BertTokenizerTest(tf.test.TestCase):
                          dict(padding_id=1,
                               start_of_sequence_id=3,
                               end_of_segment_id=4,
-                              mask_id=5))
+                              mask_id=5,
+                              vocab_size=7))
 
   def test_special_tokens_partial(self):
     vocab_file = self._make_vocab_file(
@@ -140,7 +141,8 @@ class BertTokenizerTest(tf.test.TestCase):
     self.assertDictEqual(bert_tokenize.get_special_tokens_dict(),
                          dict(padding_id=0,
                               start_of_sequence_id=1,
-                              end_of_segment_id=2))  # No mask_id,
+                              end_of_segment_id=2,
+                              vocab_size=3))  # No mask_id,
 
   def test_special_tokens_in_estimator(self):
     """Tests getting special tokens without an Eager init context."""
@@ -252,7 +254,8 @@ class SentencepieceTokenizerTest(tf.test.TestCase):
                          dict(padding_id=0,
                               start_of_sequence_id=2,
                               end_of_segment_id=3,
-                              mask_id=4))
+                              mask_id=4,
+                              vocab_size=16))
 
   def test_special_tokens_in_estimator(self):
     """Tests getting special tokens without an Eager init context."""

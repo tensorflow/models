@@ -63,6 +63,8 @@ def main(_):
       params=params,
       model_dir=model_dir)
 
+  train_utils.save_gin_config(FLAGS.mode, model_dir)
+
 if __name__ == '__main__':
   tfm_flags.define_flags()
   app.run(main)

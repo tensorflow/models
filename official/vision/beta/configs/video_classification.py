@@ -34,6 +34,7 @@ class DataConfig(cfg.DataConfig):
   feature_shape: Tuple[int, ...] = (64, 224, 224, 3)
   temporal_stride: int = 1
   num_test_clips: int = 1
+  num_test_crops: int = 1
   num_classes: int = -1
   num_channels: int = 3
   num_examples: int = -1
@@ -53,6 +54,10 @@ class DataConfig(cfg.DataConfig):
   output_audio: bool = False
   audio_feature: str = ''
   audio_feature_shape: Tuple[int, ...] = (-1,)
+  aug_min_aspect_ratio: float = 0.5
+  aug_max_aspect_ratio: float = 2.0
+  aug_min_area_ratio: float = 0.49
+  aug_max_area_ratio: float = 1.0
 
 
 def kinetics400(is_training):

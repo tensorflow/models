@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """A common dataset reader."""
 import random
 from typing import Any, Callable, Optional
@@ -30,6 +29,10 @@ def _get_random_integer():
 
 class InputReader:
   """Input reader that returns a tf.data.Dataset instance."""
+
+  # A static random number which is the same across different InputReader
+  # instances.
+  static_randnum = _get_random_integer()
 
   def __init__(self,
                params: cfg.DataConfig,
@@ -137,7 +140,13 @@ class InputReader:
     self._enable_tf_data_service = (
         params.enable_tf_data_service and params.tf_data_service_address)
     self._tf_data_service_address = params.tf_data_service_address
-    self._tf_data_service_job_name = params.tf_data_service_job_name
+    if self._enable_tf_data_service:
+      # Add a random seed as the tf.data service job name suffix, so tf.data
+      # service doesn't reuse the previous state if TPU worker gets preempted.
+      self._tf_data_service_job_name = (
+          params.tf_data_service_job_name + str(self.static_randnum))
+      self._enable_round_robin_tf_data_service = params.get(
+          'enable_round_robin_tf_data_service', False)
 
   def _shard_files_then_read(
       self, input_context: Optional[tf.distribute.InputContext] = None):
@@ -165,7 +174,8 @@ class InputReader:
         map_func=self._dataset_fn,
         cycle_length=self._cycle_length,
         block_length=self._block_length,
-        num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        num_parallel_calls=(self._cycle_length if self._cycle_length else
+                            tf.data.experimental.AUTOTUNE),
         deterministic=self._deterministic)
     return dataset
 
@@ -277,12 +287,35 @@ class InputReader:
 
     dataset = maybe_map_fn(dataset, self._postprocess_fn)
 
-    if self._enable_tf_data_service:
-      dataset = dataset.apply(
-          tf.data.experimental.service.distribute(
-              processing_mode='parallel_epochs',
-              service=self._tf_data_service_address,
-              job_name=self._tf_data_service_job_name))
+    if self._enable_tf_data_service and input_context:
+      if self._enable_round_robin_tf_data_service:
+        replicas_per_input_pipeline = input_context.num_replicas_in_sync // (
+            input_context.num_input_pipelines)
+        base_consumer_index = input_context.input_pipeline_id * (
+            replicas_per_input_pipeline)
+        num_consumers = input_context.num_input_pipelines * (
+            replicas_per_input_pipeline)
+        range_dataset = tf.data.Dataset.range(replicas_per_input_pipeline)
+        dataset = range_dataset.map(lambda i: dataset.apply(  # pylint: disable=g-long-lambda
+            tf.data.experimental.service.distribute(
+                processing_mode='parallel_epochs',
+                service=self._tf_data_service_address,
+                job_name=self._tf_data_service_job_name,
+                consumer_index=base_consumer_index + i,
+                num_consumers=num_consumers)))
+        # Use parallel interleave to read multiple batches from a tf.data
+        # service worker in parallel.
+        dataset = dataset.interleave(
+            lambda x: x,
+            cycle_length=replicas_per_input_pipeline,
+            num_parallel_calls=replicas_per_input_pipeline,
+            deterministic=True)
+      else:
+        dataset = dataset.apply(
+            tf.data.experimental.service.distribute(
+                processing_mode='parallel_epochs',
+                service=self._tf_data_service_address,
+                job_name=self._tf_data_service_job_name))
 
     if self._deterministic is not None:
       options = tf.data.Options()

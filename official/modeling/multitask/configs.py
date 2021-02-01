@@ -18,27 +18,26 @@ from typing import Optional, Tuple
 import dataclasses
 
 from official.core import config_definitions as cfg
-from official.modeling.hyperparams import base_config
+from official.modeling import hyperparams
 
 
 @dataclasses.dataclass
-class TaskRoutine(base_config.Config):
+class TaskRoutine(hyperparams.Config):
   task_name: str = ""
   task_config: cfg.TaskConfig = None
-  mixing_steps: int = 1
   eval_steps: Optional[int] = None
-  task_weight: Optional[float] = None
+  task_weight: Optional[float] = 1.0
 
 
 @dataclasses.dataclass
-class MultiTaskConfig(base_config.Config):
+class MultiTaskConfig(hyperparams.Config):
   init_checkpoint: str = ""
-  model: base_config.Config = None
+  model: hyperparams.Config = None
   task_routines: Tuple[TaskRoutine, ...] = ()
 
 
 @dataclasses.dataclass
-class MultiEvalExperimentConfig(base_config.Config):
+class MultiEvalExperimentConfig(hyperparams.Config):
   """An experiment config for single-task training and multi-task evaluation.
 
   Attributes:

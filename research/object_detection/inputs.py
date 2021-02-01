@@ -307,6 +307,14 @@ def transform_input_data(tensor_dict,
       out_tensor_dict[flds_gt_kpt_vis] = tf.ones_like(
           out_tensor_dict[flds_gt_kpt][:, :, 0],
           dtype=tf.bool)
+    flds_gt_kpt_depth = fields.InputDataFields.groundtruth_keypoint_depths
+    flds_gt_kpt_depth_weight = (
+        fields.InputDataFields.groundtruth_keypoint_depth_weights)
+    if flds_gt_kpt_depth in out_tensor_dict:
+      out_tensor_dict[flds_gt_kpt_depth] = out_tensor_dict[flds_gt_kpt_depth]
+      out_tensor_dict[flds_gt_kpt_depth_weight] = out_tensor_dict[
+          flds_gt_kpt_depth_weight]
+
     out_tensor_dict[flds_gt_kpt_weights] = (
         keypoint_ops.keypoint_weights_from_visibilities(
             out_tensor_dict[flds_gt_kpt_vis],
@@ -506,6 +514,15 @@ def pad_input_data_to_static_shapes(tensor_dict,
     padding_shapes[input_fields.
                    groundtruth_keypoint_visibilities] = padding_shape
 
+  if fields.InputDataFields.groundtruth_keypoint_depths in tensor_dict:
+    tensor_shape = tensor_dict[fields.InputDataFields.
+                               groundtruth_keypoint_depths].shape
+    padding_shape = [max_num_boxes, shape_utils.get_dim_as_int(tensor_shape[1])]
+    padding_shapes[fields.InputDataFields.
+                   groundtruth_keypoint_depths] = padding_shape
+    padding_shapes[fields.InputDataFields.
+                   groundtruth_keypoint_depth_weights] = padding_shape
+
   if input_fields.groundtruth_keypoint_weights in tensor_dict:
     tensor_shape = (
         tensor_dict[input_fields.groundtruth_keypoint_weights].shape)
@@ -587,6 +604,8 @@ def augment_input_data(tensor_dict, data_augmentation_options):
                        in tensor_dict)
   include_keypoint_visibilities = (
       fields.InputDataFields.groundtruth_keypoint_visibilities in tensor_dict)
+  include_keypoint_depths = (
+      fields.InputDataFields.groundtruth_keypoint_depths in tensor_dict)
   include_label_weights = (fields.InputDataFields.groundtruth_weights
                            in tensor_dict)
   include_label_confidences = (fields.InputDataFields.groundtruth_confidences
@@ -606,7 +625,8 @@ def augment_input_data(tensor_dict, data_augmentation_options):
           include_instance_masks=include_instance_masks,
           include_keypoints=include_keypoints,
           include_keypoint_visibilities=include_keypoint_visibilities,
-          include_dense_pose=include_dense_pose))
+          include_dense_pose=include_dense_pose,
+          include_keypoint_depths=include_keypoint_depths))
   tensor_dict[fields.InputDataFields.image] = tf.squeeze(
       tensor_dict[fields.InputDataFields.image], axis=0)
   return tensor_dict
@@ -628,6 +648,8 @@ def _get_labels_dict(input_dict):
       fields.InputDataFields.groundtruth_confidences,
       fields.InputDataFields.groundtruth_labeled_classes,
       fields.InputDataFields.groundtruth_keypoints,
+      fields.InputDataFields.groundtruth_keypoint_depths,
+      fields.InputDataFields.groundtruth_keypoint_depth_weights,
       fields.InputDataFields.groundtruth_instance_masks,
       fields.InputDataFields.groundtruth_area,
       fields.InputDataFields.groundtruth_is_crowd,

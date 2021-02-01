@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Training utils."""
 import copy
 import json
@@ -109,7 +108,7 @@ class BestCheckpointExporter:
     # Saving the best checkpoint might be interrupted if the job got killed.
     for file_to_remove in tf.io.gfile.glob(self.best_ckpt_path + '*'):
       tf.io.gfile.remove(file_to_remove)
-    checkpoint.save(self.best_ckpt_path)
+    checkpoint.write(self.best_ckpt_path)
 
   @property
   def best_ckpt_logs(self):
@@ -216,6 +215,16 @@ def serialize_config(params: config_definitions.ExperimentConfig,
   logging.info('Saving experiment configuration to %s', params_save_path)
   tf.io.gfile.makedirs(model_dir)
   hyperparams.save_params_dict_to_yaml(params, params_save_path)
+
+
+def save_gin_config(filename_surfix: str, model_dir: str):
+  """Serializes and saves the experiment config."""
+  gin_save_path = os.path.join(
+      model_dir, 'operative_config.{}.gin'.format(filename_surfix))
+  logging.info('Saving gin configurations to %s', gin_save_path)
+  tf.io.gfile.makedirs(model_dir)
+  with tf.io.gfile.GFile(gin_save_path, 'w') as f:
+    f.write(gin.operative_config_str())
 
 
 def read_global_step_from_checkpoint(ckpt_file_path):

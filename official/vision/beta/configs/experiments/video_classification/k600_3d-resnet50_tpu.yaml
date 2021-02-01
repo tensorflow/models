@@ -1,0 +1,88 @@
+# 3D ResNet-50 video classification on Kinetics-600.
+#
+# --experiment_type=video_classification_kinetics600
+# Expected accuracy: 79.5% top-1, 94.8% top-5.
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    dropout_rate: 0.5
+    norm_activation:
+      use_sync_bn: false
+    backbone:
+      resnet_3d:
+        block_specs: !!python/tuple
+        - temporal_kernel_sizes: !!python/tuple
+          - 1
+          - 1
+          - 1
+          temporal_strides: 1
+          use_self_gating: false
+        - temporal_kernel_sizes: !!python/tuple
+          - 1
+          - 1
+          - 1
+          - 1
+          temporal_strides: 1
+          use_self_gating: false
+        - temporal_kernel_sizes: !!python/tuple
+          - 3
+          - 3
+          - 3
+          - 3
+          - 3
+          - 3
+          temporal_strides: 1
+          use_self_gating: false
+        - temporal_kernel_sizes: !!python/tuple
+          - 3
+          - 3
+          - 3
+          temporal_strides: 1
+          use_self_gating: false
+        model_id: 50
+        stem_conv_temporal_kernel_size: 5
+        stem_conv_temporal_stride: 2
+        stem_pool_temporal_stride: 1
+  train_data:
+    name: kinetics600
+    feature_shape: !!python/tuple
+    - 32
+    - 224
+    - 224
+    - 3
+    temporal_stride: 2
+    global_batch_size: 1024
+    dtype: 'bfloat16'
+    shuffle_buffer_size: 1024
+    aug_max_area_ratio: 1.0
+    aug_max_aspect_ratio: 2.0
+    aug_min_area_ratio: 0.08
+    aug_min_aspect_ratio: 0.5
+  validation_data:
+    name: kinetics600
+    feature_shape: !!python/tuple
+    - 32
+    - 256
+    - 256
+    - 3
+    temporal_stride: 2
+    num_test_clips: 10
+    num_test_crops: 3
+    global_batch_size: 64
+    dtype: 'bfloat16'
+    drop_remainder: false
+trainer:
+  optimizer_config:
+    learning_rate:
+      cosine:
+        initial_learning_rate: 0.8
+        decay_steps: 71488
+    warmup:
+      linear:
+        warmup_steps: 1787
+  train_steps: 71488
+  steps_per_loop: 500
+  summary_interval: 500
+  validation_interval: 500

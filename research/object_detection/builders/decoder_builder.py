@@ -60,7 +60,9 @@ def build(input_reader_config):
           num_keypoints=input_reader_config.num_keypoints,
           expand_hierarchy_labels=input_reader_config.expand_labels_hierarchy,
           load_dense_pose=input_reader_config.load_dense_pose,
-          load_track_id=input_reader_config.load_track_id)
+          load_track_id=input_reader_config.load_track_id,
+          load_keypoint_depth_features=input_reader_config
+          .load_keypoint_depth_features)
       return decoder
     elif input_type == input_reader_pb2.InputType.Value('TF_SEQUENCE_EXAMPLE'):
       decoder = tf_sequence_example_decoder.TfSequenceExampleDecoder(

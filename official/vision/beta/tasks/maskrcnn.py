@@ -23,6 +23,7 @@ from official.core import task_factory
 from official.vision.beta.configs import maskrcnn as exp_cfg
 from official.vision.beta.dataloaders import maskrcnn_input
 from official.vision.beta.dataloaders import tf_example_decoder
+from official.vision.beta.dataloaders import dataset_fn
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
 from official.vision.beta.losses import maskrcnn_losses
@@ -110,12 +111,14 @@ class MaskRCNNTask(base_task.Task):
     if params.decoder.type == 'simple_decoder':
       decoder = tf_example_decoder.TfExampleDecoder(
           include_mask=self._task_config.model.include_mask,
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
+          regenerate_source_id=decoder_cfg.regenerate_source_id,
+          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold)
     elif params.decoder.type == 'label_map_decoder':
       decoder = tf_example_label_map_decoder.TfExampleDecoderLabelMap(
           label_map=decoder_cfg.label_map,
           include_mask=self._task_config.model.include_mask,
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
+          regenerate_source_id=decoder_cfg.regenerate_source_id,
+          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold)
     else:
       raise ValueError('Unknown decoder type: {}!'.format(params.decoder.type))
 
@@ -141,7 +144,7 @@ class MaskRCNNTask(base_task.Task):
 
     reader = input_reader.InputReader(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
     dataset = reader.read(input_context=input_context)

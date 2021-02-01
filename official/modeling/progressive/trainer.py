@@ -267,7 +267,8 @@ class ProgressiveTrainer(trainer_lib.Trainer):
       step_interval = self.config.trainer.checkpoint_interval
     else:
       step_interval = self.config.trainer.export_checkpoint_interval
-    if global_step_np % step_interval != 0:
+    if global_step_np % step_interval != 0 and (
+        global_step_np < self._config.trainer.train_steps):
       logging.info('Not exporting checkpoints in global step: %d.',
                    global_step_np)
       return

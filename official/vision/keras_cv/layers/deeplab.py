@@ -142,7 +142,10 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
                 epsilon=self.batchnorm_epsilon),
             tf.keras.layers.Activation(self.activation),
             tf.keras.layers.experimental.preprocessing.Resizing(
-                height, width, interpolation=self.interpolation)
+                height,
+                width,
+                interpolation=self.interpolation,
+                dtype=tf.float32)
         ]))
 
     self.aspp_layers.append(pool_sequential)
@@ -165,7 +168,7 @@ class SpatialPyramidPooling(tf.keras.layers.Layer):
       training = tf.keras.backend.learning_phase()
     result = []
     for layer in self.aspp_layers:
-      result.append(layer(inputs, training=training))
+      result.append(tf.cast(layer(inputs, training=training), inputs.dtype))
     result = tf.concat(result, axis=-1)
     result = self.projection(result, training=training)
     return result

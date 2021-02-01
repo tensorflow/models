@@ -133,7 +133,16 @@ class BertTokenizer(tf.keras.layers.Layer):
     _check_if_tf_text_installed()
 
     self.tokenize_with_offsets = tokenize_with_offsets
-    self._vocab_table = self._create_vocab_table(vocab_file)
+    # TODO(b/177326279): Stop storing the vocab table initializer as an
+    # attribute when https://github.com/tensorflow/tensorflow/issues/46456
+    # has been fixed in the TensorFlow versions of the TF Hub users that load
+    # a SavedModel created from this layer. Due to that issue, loading such a
+    # SavedModel forgets to add .vocab_table._initializer as a trackable
+    # dependency of .vocab_table, so that saving it again to a second SavedModel
+    # (e.g., the final model built using TF Hub) does not properly track
+    # the ._vocab_table._initializer._filename as an Asset.
+    self._vocab_table, self._vocab_initializer_donotuse = (
+        self._create_vocab_table_and_initializer(vocab_file))
     self._special_tokens_dict = self._create_special_tokens_dict(
         self._vocab_table, vocab_file)
     super().__init__(**kwargs)
@@ -144,12 +153,13 @@ class BertTokenizer(tf.keras.layers.Layer):
   def vocab_size(self):
     return self._vocab_table.size()
 
-  def _create_vocab_table(self, vocab_file):
+  def _create_vocab_table_and_initializer(self, vocab_file):
     vocab_initializer = tf.lookup.TextFileInitializer(
         vocab_file,
         key_dtype=tf.string, key_index=tf.lookup.TextFileIndex.WHOLE_LINE,
         value_dtype=tf.int64, value_index=tf.lookup.TextFileIndex.LINE_NUMBER)
-    return tf.lookup.StaticHashTable(vocab_initializer, default_value=-1)
+    vocab_table = tf.lookup.StaticHashTable(vocab_initializer, default_value=-1)
+    return vocab_table, vocab_initializer
 
   def call(self, inputs: tf.Tensor):
     """Calls text.BertTokenizer on inputs.
@@ -211,6 +221,7 @@ class BertTokenizer(tf.keras.layers.Layer):
         * end_of_segment_id: looked up from "[SEP]"
         * padding_id: looked up form "[PAD]"
         * mask_id: looked up from "[MASK]"
+        * vocab_size: one past the largest token id used
     """
     return self._special_tokens_dict
 
@@ -223,6 +234,7 @@ class BertTokenizer(tf.keras.layers.Layer):
       if tf.executing_eagerly():
         special_token_ids = vocab_table.lookup(
             tf.constant(list(special_tokens.values()), tf.string))
+        vocab_size = vocab_table.size()
       else:
         # A blast from the past: non-eager init context while building Model.
         # This can happen with Estimator or tf.compat.v1.disable_v2_behavior().
@@ -230,16 +242,21 @@ class BertTokenizer(tf.keras.layers.Layer):
             "Non-eager init context; computing "
             "BertTokenizer's special_tokens_dict in tf.compat.v1.Session")
         with tf.Graph().as_default():
-          local_vocab_table = self._create_vocab_table(vocab_file)
+          local_vocab_table, _ = self._create_vocab_table_and_initializer(
+              vocab_file)
           special_token_ids_tensor = local_vocab_table.lookup(
               tf.constant(list(special_tokens.values()), tf.string))
+          vocab_size_tensor = local_vocab_table.size()
           init_ops = [tf.compat.v1.initialize_all_tables()]
           with tf.compat.v1.Session() as sess:
             sess.run(init_ops)
-            special_token_ids = sess.run(special_token_ids_tensor)
-      result = dict()
+            special_token_ids, vocab_size = sess.run(
+                [special_token_ids_tensor, vocab_size_tensor])
+      result = dict(
+          vocab_size=int(vocab_size)  # Numpy to Python.
+      )
       for k, v in zip(special_tokens, special_token_ids):
-        v = int(v)  # Numpy to Python.
+        v = int(v)
         if v >= 0:
           result[k] = v
         else:
@@ -414,6 +431,7 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
         * end_of_segment_id: looked up from "[SEP]"
         * padding_id: looked up from "<pad>"
         * mask_id: looked up from "[MASK]"
+        * vocab_size: one past the largest token id used
     """
     return self._special_tokens_dict
 
@@ -428,6 +446,7 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
         special_token_ids = self._tokenizer.string_to_id(
             tf.constant(list(special_tokens.values()), tf.string))
         inverse_tokens = self._tokenizer.id_to_string(special_token_ids)
+        vocab_size = self._tokenizer.vocab_size()
       else:
         # A blast from the past: non-eager init context while building Model.
         # This can happen with Estimator or tf.compat.v1.disable_v2_behavior().
@@ -440,15 +459,19 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
               tf.constant(list(special_tokens.values()), tf.string))
           inverse_tokens_tensor = local_tokenizer.id_to_string(
               special_token_ids_tensor)
+          vocab_size_tensor = local_tokenizer.vocab_size()
           with tf.compat.v1.Session() as sess:
-            special_token_ids, inverse_tokens = sess.run(
-                [special_token_ids_tensor, inverse_tokens_tensor])
-      result = dict()
+            special_token_ids, inverse_tokens, vocab_size = sess.run(
+                [special_token_ids_tensor, inverse_tokens_tensor,
+                 vocab_size_tensor])
+      result = dict(
+          vocab_size=int(vocab_size)  # Numpy to Python.
+      )
       for name, token_id, inverse_token in zip(special_tokens,
                                                special_token_ids,
                                                inverse_tokens):
         if special_tokens[name] == inverse_token:
-          result[name] = int(token_id)  # Numpy to Python.
+          result[name] = int(token_id)
         else:
           logging.warning(
               "Could not find %s as token \"%s\" in sentencepiece model, "

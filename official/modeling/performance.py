@@ -40,7 +40,7 @@ def configure_optimizer(optimizer,
           optimizer, dynamic=False, initial_scale=loss_scale)
   if use_graph_rewrite:
     # Note: the model dtype must be 'float32', which will ensure
-    # tf.ckeras.mixed_precision and
+    # tf.keras.mixed_precision and
     # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
     # up.
     optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(

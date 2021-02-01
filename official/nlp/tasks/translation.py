@@ -28,8 +28,8 @@ from official.core import config_definitions as cfg
 from official.core import task_factory
 from official.modeling.hyperparams import base_config
 from official.nlp.data import data_loader_factory
+from official.nlp.metrics import bleu
 from official.nlp.modeling import models
-from official.nlp.transformer import compute_bleu
 
 
 def _pad_tensors_to_same_length(x, y):
@@ -364,6 +364,6 @@ class TranslationTask(base_task.Task):
                      src, translation, self._references[u_id])
     sacrebleu_score = sacrebleu.corpus_bleu(
         translations, [self._references]).score
-    bleu_score = compute_bleu.bleu_on_list(self._references, translations)
+    bleu_score = bleu.bleu_on_list(self._references, translations)
     return {"sacrebleu_score": sacrebleu_score,
             "bleu_score": bleu_score}

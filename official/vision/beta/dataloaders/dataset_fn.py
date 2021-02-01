@@ -22,7 +22,7 @@ PossibleDatasetType = Union[Type[tf.data.Dataset], Callable[[tf.Tensor], Any]]
 
 
 def pick_dataset_fn(file_type: str) -> PossibleDatasetType:
-  if file_type == 'tf_record':
+  if file_type == 'tfrecord':
     return tf.data.TFRecordDataset
 
   raise ValueError('Unrecognized file_type: {}'.format(file_type))

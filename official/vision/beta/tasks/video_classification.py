@@ -275,4 +275,11 @@ class VideoClassificationTask(base_task.Task):
       outputs = tf.math.sigmoid(outputs)
     else:
       outputs = tf.math.softmax(outputs)
+    num_test_clips = self.task_config.validation_data.num_test_clips
+    num_test_crops = self.task_config.validation_data.num_test_crops
+    num_test_views = num_test_clips * num_test_crops
+    if num_test_views > 1:
+      # Averaging output probabilities across multiples views.
+      outputs = tf.reshape(outputs, [-1, num_test_views, outputs.shape[-1]])
+      outputs = tf.reduce_mean(outputs, axis=1)
     return outputs

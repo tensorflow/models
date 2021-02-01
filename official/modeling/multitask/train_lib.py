@@ -25,12 +25,16 @@ from official.modeling.multitask import evaluator as evaluator_lib
 from official.modeling.multitask import multitask
 
 
-def run_experiment_wtih_multitask_eval(
+def run_experiment_with_multitask_eval(
     *,
-    distribution_strategy: tf.distribute.Strategy, train_task: base_task.Task,
-    eval_tasks: multitask.MultiTask, mode: str,
+    distribution_strategy: tf.distribute.Strategy,
+    train_task: base_task.Task,
+    eval_tasks: multitask.MultiTask,
+    mode: str,
     params: configs.MultiEvalExperimentConfig,
-    model_dir: str) -> tf.keras.Model:
+    model_dir: str,
+    run_post_eval: bool = False,
+    save_summary: bool = True) -> tf.keras.Model:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -41,6 +45,9 @@ def run_experiment_wtih_multitask_eval(
       or 'continuous_eval'.
     params: MultiEvalExperimentConfig instance.
     model_dir: A 'str', a path to store model checkpoints and summaries.
+    run_post_eval: Whether to run post eval once after training, metrics logs
+      are returned.
+    save_summary: Whether to save train and validation summary.
 
   Returns:
       model: `tf.keras.Model` instance.
@@ -92,9 +99,11 @@ def run_experiment_wtih_multitask_eval(
       global_step=global_step,
       steps_per_loop=params.trainer.steps_per_loop,
       checkpoint_manager=checkpoint_manager,
-      summary_dir=os.path.join(model_dir, 'train'),
-      eval_summary_dir=os.path.join(model_dir, 'validation'),
-      summary_interval=params.trainer.summary_interval)
+      summary_dir=os.path.join(model_dir, 'train') if save_summary else None,
+      eval_summary_dir=os.path.join(model_dir, 'validation') if
+      (save_summary) else None,
+      summary_interval=params.trainer.summary_interval if
+      (save_summary) else None)
 
   logging.info('Starts to execute mode: %s', mode)
   with distribution_strategy.scope():
@@ -121,4 +130,8 @@ def run_experiment_wtih_multitask_eval(
     else:
       raise NotImplementedError('The mode is not implemented: %s' % mode)
 
-    return model
+    if run_post_eval:
+      return model, evaluator.evaluate(
+          tf.convert_to_tensor(params.trainer.validation_steps))
+    else:
+      return model, {}
