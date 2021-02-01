@@ -240,7 +240,7 @@ def generate_classifier_dataset():
                 translated_data_dir=FLAGS.translated_input_data_dir,
                 only_use_en_dev=FLAGS.only_use_en_dev),
         "ax-g":
-          classifier_data_lib.AXgProcessor
+            classifier_data_lib.AXgProcessor
 
     }
     task_name = FLAGS.classification_task_name.lower()

@@ -1419,9 +1419,10 @@ def generate_tf_record_from_data_file(processor,
   num_training_data = 0
   if train_data_output_path:
     train_input_data_examples = processor.get_train_examples(data_dir)
-    file_based_convert_examples_to_features(train_input_data_examples, label_list,
-                                            max_seq_length, tokenizer,
-                                            train_data_output_path, label_type)
+    file_based_convert_examples_to_features(train_input_data_examples,
+                                            label_list, max_seq_length,
+                                            tokenizer, train_data_output_path,
+                                            label_type)
     num_training_data = len(train_input_data_examples)
 
   if eval_data_output_path:
