@@ -1277,12 +1277,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   return feature
 
 class AXgProcessor(DataProcessor):
-  """Processor for the AX dataset (GLUE diagnostics dataset)."""
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "dev.jsonl")), "dev")
+  """Processor for the AXg dataset (GLUE diagnostics dataset)."""
 
   def get_test_examples(self, data_dir):
     """See base class."""
@@ -1309,6 +1304,7 @@ class AXgProcessor(DataProcessor):
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
+
   def _read_jsonl(self, input_path):
     with tf.io.gfile.GFile(input_path, "r") as f:
       lines = []
