@@ -320,12 +320,9 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
       # `self.validation_loss` metric was not updated, because the validation
       # loss was not returned from the task's `validation_step` method.
       logging.info("The task did not report validation loss.")
-
-    # Merges additional metrics from `reduce_aggregated_logs` method.
-    # By default, the method in `base_task.Task` returns an empty dict, while
-    # the subclass may override it to return metrics computed on host.
-    metrics = self.task.reduce_aggregated_logs(aggregated_logs)
-    logs.update(metrics)
+    if aggregated_logs:
+      metrics = self.task.reduce_aggregated_logs(aggregated_logs)
+      logs.update(metrics)
 
     if self._checkpoint_exporter:
       self._checkpoint_exporter.maybe_export_checkpoint(
