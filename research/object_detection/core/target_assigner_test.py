@@ -1683,6 +1683,121 @@ class CenterNetKeypointTargetAssignerTest(test_case.TestCase):
     np.testing.assert_array_equal([0, 3, 2], indices[7, :])
     np.testing.assert_array_almost_equal([0.6, 0.4], offsets[7, :])
 
+  def test_assign_keypoint_depths_target(self):
+    def graph_fn():
+      gt_classes_list = [
+          tf.one_hot([0, 1, 0, 1], depth=4),
+      ]
+      coordinates = tf.expand_dims(
+          tf.constant(
+              np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                        [float('nan'), 0.7, 0.7, 0.9, 0.4],
+                        [0.4, 0.1, 0.4, 0.2, 0.0],
+                        [float('nan'), 0.0, 0.12, 0.7, 0.4]]),
+              dtype=tf.float32),
+          axis=2)
+      gt_keypoints_list = [tf.concat([coordinates, coordinates], axis=2)]
+      depths = tf.constant(
+          np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                    [float('nan'), 0.7, float('nan'), 0.9, 0.4],
+                    [0.4, 0.1, 0.4, 0.2, 0.0],
+                    [0.5, 0.0, 7.0, 0.7, 0.4]]),
+          dtype=tf.float32)
+      gt_keypoint_depths_list = [depths]
+
+      gt_keypoint_depth_weights = tf.constant(
+          np.array([[1.0, 1.0, 1.0, 1.0, 1.0],
+                    [float('nan'), 0.0, 1.0, 0.0, 0.0],
+                    [1.0, 1.0, 1.0, 1.0, 1.0],
+                    [1.0, 1.0, 0.5, 1.0, 1.0]]),
+          dtype=tf.float32)
+      gt_keypoint_depth_weights_list = [gt_keypoint_depth_weights]
+
+      cn_assigner = targetassigner.CenterNetKeypointTargetAssigner(
+          stride=4,
+          class_id=1,
+          keypoint_indices=[0, 2],
+          peak_radius=1)
+      (indices, depths, weights) = cn_assigner.assign_keypoints_depth_targets(
+          height=120,
+          width=80,
+          gt_keypoints_list=gt_keypoints_list,
+          gt_classes_list=gt_classes_list,
+          gt_keypoint_depths_list=gt_keypoint_depths_list,
+          gt_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
+      return indices, depths, weights
+    indices, depths, weights = self.execute(graph_fn, [])
+
+    # Only the last 5 elements has positive weight.
+    np.testing.assert_array_almost_equal([
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5
+    ], weights)
+    # Validate the last 5 elements' depth value.
+    np.testing.assert_array_almost_equal(
+        [7.0, 7.0, 7.0, 7.0, 7.0], depths[35:, 0])
+    self.assertEqual((40, 3), indices.shape)
+    np.testing.assert_array_equal([0, 2, 2], indices[35, :])
+
+  def test_assign_keypoint_depths_per_keypoints(self):
+    def graph_fn():
+      gt_classes_list = [
+          tf.one_hot([0, 1, 0, 1], depth=4),
+      ]
+      coordinates = tf.expand_dims(
+          tf.constant(
+              np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                        [float('nan'), 0.7, 0.7, 0.9, 0.4],
+                        [0.4, 0.1, 0.4, 0.2, 0.0],
+                        [float('nan'), 0.0, 0.12, 0.7, 0.4]]),
+              dtype=tf.float32),
+          axis=2)
+      gt_keypoints_list = [tf.concat([coordinates, coordinates], axis=2)]
+      depths = tf.constant(
+          np.array([[0.1, 0.2, 0.3, 0.4, 0.5],
+                    [float('nan'), 0.7, float('nan'), 0.9, 0.4],
+                    [0.4, 0.1, 0.4, 0.2, 0.0],
+                    [0.5, 0.0, 7.0, 0.7, 0.4]]),
+          dtype=tf.float32)
+      gt_keypoint_depths_list = [depths]
+
+      gt_keypoint_depth_weights = tf.constant(
+          np.array([[1.0, 1.0, 1.0, 1.0, 1.0],
+                    [float('nan'), 0.0, 1.0, 0.0, 0.0],
+                    [1.0, 1.0, 1.0, 1.0, 1.0],
+                    [1.0, 1.0, 0.5, 1.0, 1.0]]),
+          dtype=tf.float32)
+      gt_keypoint_depth_weights_list = [gt_keypoint_depth_weights]
+
+      cn_assigner = targetassigner.CenterNetKeypointTargetAssigner(
+          stride=4,
+          class_id=1,
+          keypoint_indices=[0, 2],
+          peak_radius=1,
+          per_keypoint_offset=True)
+      (indices, depths, weights) = cn_assigner.assign_keypoints_depth_targets(
+          height=120,
+          width=80,
+          gt_keypoints_list=gt_keypoints_list,
+          gt_classes_list=gt_classes_list,
+          gt_keypoint_depths_list=gt_keypoint_depths_list,
+          gt_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
+      return indices, depths, weights
+    indices, depths, weights = self.execute(graph_fn, [])
+
+    # Only the last 5 elements has positive weight.
+    np.testing.assert_array_almost_equal([
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5
+    ], weights)
+    # Validate the last 5 elements' depth value.
+    np.testing.assert_array_almost_equal(
+        [7.0, 7.0, 7.0, 7.0, 7.0], depths[35:, 0])
+    self.assertEqual((40, 4), indices.shape)
+    np.testing.assert_array_equal([0, 2, 2, 1], indices[35, :])
+
   def test_assign_keypoints_offset_targets_radius(self):
     def graph_fn():
       gt_classes_list = [

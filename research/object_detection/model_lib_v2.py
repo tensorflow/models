@@ -99,6 +99,10 @@ def _compute_losses_and_predictions_dicts(
           k-hot tensor of classes.
         labels[fields.InputDataFields.groundtruth_track_ids] is a int32
           tensor of track IDs.
+        labels[fields.InputDataFields.groundtruth_keypoint_depths] is a
+          float32 tensor containing keypoint depths information.
+        labels[fields.InputDataFields.groundtruth_keypoint_depth_weights] is a
+          float32 tensor containing the weights of the keypoint depth feature.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
 
@@ -213,6 +217,10 @@ def eager_train_step(detection_model,
           k-hot tensor of classes.
         labels[fields.InputDataFields.groundtruth_track_ids] is a int32
           tensor of track IDs.
+        labels[fields.InputDataFields.groundtruth_keypoint_depths] is a
+          float32 tensor containing keypoint depths information.
+        labels[fields.InputDataFields.groundtruth_keypoint_depth_weights] is a
+          float32 tensor containing the weights of the keypoint depth feature.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
     learning_rate: The learning rate tensor for the current training step.

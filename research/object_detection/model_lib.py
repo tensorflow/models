@@ -153,6 +153,15 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
         detection_model.groundtruth_lists(fields.BoxListFields.keypoints))
 
   if detection_model.groundtruth_has_field(
+      fields.BoxListFields.keypoint_depths):
+    groundtruth[input_data_fields.groundtruth_keypoint_depths] = tf.stack(
+        detection_model.groundtruth_lists(fields.BoxListFields.keypoint_depths))
+    groundtruth[
+        input_data_fields.groundtruth_keypoint_depth_weights] = tf.stack(
+            detection_model.groundtruth_lists(
+                fields.BoxListFields.keypoint_depth_weights))
+
+  if detection_model.groundtruth_has_field(
       fields.BoxListFields.keypoint_visibilities):
     groundtruth[input_data_fields.groundtruth_keypoint_visibilities] = tf.stack(
         detection_model.groundtruth_lists(
@@ -260,6 +269,8 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
         fields.InputDataFields.groundtruth_classes,
         fields.InputDataFields.groundtruth_boxes,
         fields.InputDataFields.groundtruth_keypoints,
+        fields.InputDataFields.groundtruth_keypoint_depths,
+        fields.InputDataFields.groundtruth_keypoint_depth_weights,
         fields.InputDataFields.groundtruth_keypoint_visibilities,
         fields.InputDataFields.groundtruth_dp_num_points,
         fields.InputDataFields.groundtruth_dp_part_ids,
@@ -311,6 +322,13 @@ def provide_groundtruth(model, labels):
   gt_keypoints_list = None
   if fields.InputDataFields.groundtruth_keypoints in labels:
     gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
+  gt_keypoint_depths_list = None
+  gt_keypoint_depth_weights_list = None
+  if fields.InputDataFields.groundtruth_keypoint_depths in labels:
+    gt_keypoint_depths_list = (
+        labels[fields.InputDataFields.groundtruth_keypoint_depths])
+    gt_keypoint_depth_weights_list = (
+        labels[fields.InputDataFields.groundtruth_keypoint_depth_weights])
   gt_keypoint_visibilities_list = None
   if fields.InputDataFields.groundtruth_keypoint_visibilities in labels:
     gt_keypoint_visibilities_list = labels[
@@ -376,7 +394,9 @@ def provide_groundtruth(model, labels):
       groundtruth_area_list=gt_area_list,
       groundtruth_track_ids_list=gt_track_ids_list,
       groundtruth_verified_neg_classes=gt_verified_neg_classes,
-      groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes)
+      groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes,
+      groundtruth_keypoint_depths_list=gt_keypoint_depths_list,
+      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
 
 
 def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
