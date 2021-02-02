@@ -55,7 +55,7 @@ class DetectionModule(export_base.ExportModule):
     return self._model
 
   def _build_inputs(self, image):
-    """Builds classification model inputs for serving."""
+    """Builds detection model inputs for serving."""
     model_params = self._params.task.model
     # Normalizes image with mean and std pixel values.
     image = preprocess_ops.normalize_image(image,
@@ -89,7 +89,7 @@ class DetectionModule(export_base.ExportModule):
     Args:
       images: uint8 Tensor of shape [batch_size, None, None, 3]
     Returns:
-      Tensor holding classification output logits.
+      Tensor holding detection output logits.
     """
     model_params = self._params.task.model
     with tf.device('cpu:0'):

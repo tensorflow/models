@@ -73,7 +73,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
               _decode_image,
               elems=input_tensor,
               fn_output_signature=tf.TensorSpec(
-                  shape=self._input_image_size + [3], dtype=tf.uint8),
+                  shape=[None, None, 3], dtype=tf.uint8),
               parallel_iterations=32))
       images = tf.stack(images)
     return self._run_inference_on_image_tensors(images)
