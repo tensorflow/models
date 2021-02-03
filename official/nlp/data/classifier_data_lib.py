@@ -1282,7 +1282,7 @@ class AXgProcessor(DataProcessor):
   def get_test_examples(self, data_dir):
     """See base class."""
     return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "test.jsonl")), "test")
+        self._read_jsonl(os.path.join(data_dir, "AX-g.jsonl")), "test")
 
   def get_labels(self):
     """See base class."""
