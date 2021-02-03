@@ -16,13 +16,13 @@
 """Image classification task definition."""
 from absl import logging
 import tensorflow as tf
+from official.common import dataset_fn
 from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.configs import image_classification as exp_cfg
 from official.vision.beta.dataloaders import classification_input
-from official.vision.beta.dataloaders import dataset_fn
 from official.vision.beta.modeling import factory
 
 

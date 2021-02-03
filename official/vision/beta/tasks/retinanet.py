@@ -17,6 +17,7 @@
 
 from absl import logging
 import tensorflow as tf
+from official.common import dataset_fn
 from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
@@ -24,7 +25,6 @@ from official.vision import keras_cv
 from official.vision.beta.configs import retinanet as exp_cfg
 from official.vision.beta.dataloaders import retinanet_input
 from official.vision.beta.dataloaders import tf_example_decoder
-from official.vision.beta.dataloaders import dataset_fn
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
 from official.vision.beta.modeling import factory
