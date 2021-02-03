@@ -356,7 +356,7 @@ class ShapeMaskBenchmarkReal(DetectionBenchmarkReal):
 
   def __init__(self, **kwargs):
     super(ShapeMaskBenchmarkReal, self).__init__(model='shapemask',
-                                                 per_gpu_batch_size=2,
+                                                 per_gpu_batch_size=4,
                                                  **kwargs)
 
 
