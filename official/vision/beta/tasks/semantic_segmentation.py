@@ -17,13 +17,12 @@
 
 from absl import logging
 import tensorflow as tf
-
+from official.common import dataset_fn
 from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.configs import semantic_segmentation as exp_cfg
 from official.vision.beta.dataloaders import segmentation_input
-from official.vision.beta.dataloaders import dataset_fn
 from official.vision.beta.evaluation import segmentation_metrics
 from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.modeling import factory
