@@ -283,11 +283,11 @@ def generate_annotations(images, image_dir,
   """Generator for COCO annotations."""
 
   for image in images:
-    if img_to_obj_annotation:
-      object_annotation = img_to_obj_annotation.get(image['id'], None)
+    object_annotation = (img_to_obj_annotation.get(image['id'], None) if
+                         img_to_obj_annotation else None)
 
-    if img_to_caption_annotation:
-      caption_annotaion = img_to_caption_annotation.get(image['id'], None)
+    caption_annotaion = (img_to_caption_annotation.get(image['id'], None) if
+                         img_to_caption_annotation else None)
 
     yield (image, image_dir, object_annotation, id_to_name_map,
            caption_annotaion, include_masks)
