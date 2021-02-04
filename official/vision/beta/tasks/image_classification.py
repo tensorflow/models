@@ -23,6 +23,7 @@ from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.configs import image_classification as exp_cfg
 from official.vision.beta.dataloaders import classification_input
+from official.vision.beta.dataloaders import tfds_classification_decoders
 from official.vision.beta.modeling import factory
 
 
@@ -78,7 +79,15 @@ class ImageClassificationTask(base_task.Task):
     num_classes = self.task_config.model.num_classes
     input_size = self.task_config.model.input_size
 
-    decoder = classification_input.Decoder()
+    if params.tfds_name:
+      if params.tfds_name in tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP:
+        decoder = tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP[
+            params.tfds_name]()
+      else:
+        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+    else:
+      decoder = classification_input.Decoder()
+
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,
