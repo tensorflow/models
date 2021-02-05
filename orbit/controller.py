@@ -259,7 +259,7 @@ class Controller:
     elapsed = time.time() - start
 
     _log(f" eval | step: {current_step: 6d} | "
-         f"eval time: {elapsed: 6.1f} | "
+         f"eval time: {elapsed: 6.1f} sec | "
          f"output: {_format_output(eval_output)}")
 
     self.eval_summary_manager.write_summaries(eval_output)
