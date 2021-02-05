@@ -44,7 +44,7 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
         num_classes=num_classes, name=name, dtype=dtype)
 
   def update_state(self, y_true, y_pred):
-    """Updates metic state.
+    """Updates metric state.
 
     Args:
       y_true: `dict`, dictionary with the following name, and key values.
@@ -122,4 +122,3 @@ class MeanIoU(tf.keras.metrics.MeanIoU):
     super(MeanIoU, self).update_state(
         flatten_masks, flatten_predictions,
         tf.cast(flatten_valid_masks, tf.float32))
-
