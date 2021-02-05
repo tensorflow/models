@@ -68,8 +68,9 @@ def _multiclass_scores_or_one_hot_labels(multiclass_scores,
   return tf.cond(tf.size(multiclass_scores) > 0, true_fn, false_fn)
 
 
-def _convert_labeled_classes_to_k_hot(groundtruth_labeled_classes, num_classes,
-                                      map_empty_to_ones=False):
+def convert_labeled_classes_to_k_hot(groundtruth_labeled_classes,
+                                     num_classes,
+                                     map_empty_to_ones=False):
   """Returns k-hot encoding of the labeled classes.
 
   If map_empty_to_ones is enabled and the input labeled_classes is empty,
@@ -235,7 +236,7 @@ def transform_input_data(tensor_dict,
     if field in out_tensor_dict:
       out_tensor_dict[field] = _remove_unrecognized_classes(
           out_tensor_dict[field], unrecognized_label=-1)
-      out_tensor_dict[field] = _convert_labeled_classes_to_k_hot(
+      out_tensor_dict[field] = convert_labeled_classes_to_k_hot(
           out_tensor_dict[field], num_classes, map_empty_to_ones)
 
   if input_fields.multiclass_scores in out_tensor_dict:
