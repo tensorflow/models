@@ -51,7 +51,7 @@ class WarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
       return tf.cond(
           global_step_float < warmup_steps_float,
           lambda: warmup_learning_rate,
-          lambda: self.decay_schedule_fn(step),
+          lambda: self.decay_schedule_fn(step - self.warmup_steps),
           name=name)
 
   def get_config(self):
@@ -74,7 +74,7 @@ def create_optimizer(init_lr,
   # Implements linear decay of the learning rate.
   lr_schedule = tf.keras.optimizers.schedules.PolynomialDecay(
       initial_learning_rate=init_lr,
-      decay_steps=num_train_steps,
+      decay_steps=num_train_steps - num_warmup_steps,
       end_learning_rate=end_lr)
   if num_warmup_steps:
     lr_schedule = WarmUp(
