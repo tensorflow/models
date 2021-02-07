@@ -32,6 +32,7 @@ from official.core import base_task
 from official.core import base_trainer as trainer_lib
 from official.core import config_definitions
 from official.modeling.progressive import policies
+from official.modeling.progressive import utils
 
 ExperimentConfig = config_definitions.ExperimentConfig
 
@@ -59,26 +60,6 @@ class ProgressiveTrainerConfig(config_definitions.TrainerConfig):
   export_checkpoint: bool = True
   export_checkpoint_interval: Optional[int] = None
   export_only_final_stage_ckpt: bool = True
-
-
-class CheckpointWithHooks(tf.train.Checkpoint):
-  """Same as tf.train.Checkpoint but supports hooks.
-
-  When running continuous_eval jobs, when a new checkpoint arrives, we have to
-  update our model and optimizer etc. to match the stage_id of the checkpoint.
-  However, when orbit loads a checkpoint, it does not inform us. So we  use this
-  class to update our model to the correct stage before checkpoint restore.
-  """
-
-  def __init__(self, before_load_hook, **kwargs):
-    self._before_load_hook = before_load_hook
-    super(CheckpointWithHooks, self).__init__(**kwargs)
-
-  # override
-  def read(self, save_path, options=None):
-    self._before_load_hook(save_path)
-    logging.info('Ran before_load_hook.')
-    super(CheckpointWithHooks, self).read(save_path=save_path, options=options)
 
 
 @gin.configurable
@@ -124,7 +105,7 @@ class ProgressiveTrainer(trainer_lib.Trainer):
 
     self._global_step = orbit.utils.create_global_step()
 
-    self._checkpoint = CheckpointWithHooks(
+    self._checkpoint = utils.CheckpointWithHooks(
         before_load_hook=self._update_pt_stage_from_ckpt,
         global_step=self.global_step,
         **self._task.cur_checkpoint_items)
