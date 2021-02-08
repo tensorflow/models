@@ -17,6 +17,7 @@
 import collections
 import csv
 import importlib
+import json
 import os
 
 from absl import logging
@@ -1276,6 +1277,43 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   return feature
 
 
+class AXgProcessor(DataProcessor):
+  """Processor for the AXg dataset (GLUE diagnostics dataset)."""
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_jsonl(os.path.join(data_dir, "AX-g.jsonl")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    return ["entailment", "not_entailment"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "AXg"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    examples = []
+    for line in lines:
+      guid = "%s-%s" % (set_type, self.process_text_fn(str(line["idx"])))
+      text_a = self.process_text_fn(line["hypothesis"])
+      text_b = self.process_text_fn(line["premise"])
+      label = self.process_text_fn(line["label"])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+  def _read_jsonl(self, input_path):
+    with tf.io.gfile.GFile(input_path, "r") as f:
+      lines = []
+      for json_str in f:
+        lines.append(json.loads(json_str))
+    return lines
+
+
 def file_based_convert_examples_to_features(examples,
                                             label_list,
                                             max_seq_length,
@@ -1374,13 +1412,15 @@ def generate_tf_record_from_data_file(processor,
   label_type = getattr(processor, "label_type", None)
   is_regression = getattr(processor, "is_regression", False)
   has_sample_weights = getattr(processor, "weight_key", False)
-  assert train_data_output_path
 
-  train_input_data_examples = processor.get_train_examples(data_dir)
-  file_based_convert_examples_to_features(train_input_data_examples, label_list,
-                                          max_seq_length, tokenizer,
-                                          train_data_output_path, label_type)
-  num_training_data = len(train_input_data_examples)
+  num_training_data = 0
+  if train_data_output_path:
+    train_input_data_examples = processor.get_train_examples(data_dir)
+    file_based_convert_examples_to_features(train_input_data_examples,
+                                            label_list, max_seq_length,
+                                            tokenizer, train_data_output_path,
+                                            label_type)
+    num_training_data = len(train_input_data_examples)
 
   if eval_data_output_path:
     eval_input_data_examples = processor.get_dev_examples(data_dir)
