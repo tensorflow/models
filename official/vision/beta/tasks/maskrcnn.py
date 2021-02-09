@@ -100,7 +100,8 @@ class MaskRCNNTask(base_task.Task):
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      assert "Only 'all' or 'backbone' can be used to initialize the model."
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
