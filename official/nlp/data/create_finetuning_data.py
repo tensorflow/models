@@ -49,7 +49,8 @@ flags.DEFINE_string(
 flags.DEFINE_enum(
     "classification_task_name", "MNLI", [
         "AX", "COLA", "IMDB", "MNLI", "MRPC", "PAWS-X", "QNLI", "QQP", "RTE",
-        "SST-2", "STS-B", "WNLI", "XNLI", "XTREME-XNLI", "XTREME-PAWS-X", "AX-g"
+        "SST-2", "STS-B", "WNLI", "XNLI", "XTREME-XNLI", "XTREME-PAWS-X", "AX-g", 
+        "RTE-SuperGLUE"
     ], "The name of the task to train BERT classifier. The "
     "difference between XTREME-XNLI and XNLI is: 1. the format "
     "of input tsv files; 2. the dev set for XTREME is english "
@@ -240,7 +241,9 @@ def generate_classifier_dataset():
                 translated_data_dir=FLAGS.translated_input_data_dir,
                 only_use_en_dev=FLAGS.only_use_en_dev),
         "ax-g":
-            classifier_data_lib.AXgProcessor
+            classifier_data_lib.AXgProcessor,
+        "rte-superglue":
+            classifier_data_lib.RTESuperGLUEProcessor
 
     }
     task_name = FLAGS.classification_task_name.lower()
