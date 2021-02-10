@@ -17,8 +17,8 @@
 import collections
 import csv
 import importlib
-import os
 import json
+import os
 
 from absl import logging
 import tensorflow as tf
@@ -1284,6 +1284,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
       example_id=example.example_id)
 
   return feature
+
 
 class AXgProcessor(DataProcessor):
   """Processor for the AXg dataset (SuperGLUE diagnostics dataset)."""

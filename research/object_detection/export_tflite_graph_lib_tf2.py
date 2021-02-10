@@ -145,7 +145,7 @@ class SSDModule(tf.Module):
       scores = tf.constant(0.0, dtype=tf.float32, name='scores')
       classes = tf.constant(0.0, dtype=tf.float32, name='classes')
       num_detections = tf.constant(0.0, dtype=tf.float32, name='num_detections')
-      return boxes, scores, classes, num_detections
+      return boxes, classes, scores, num_detections
 
     return dummy_post_processing
 

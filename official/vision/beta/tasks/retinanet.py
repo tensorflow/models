@@ -17,6 +17,7 @@
 
 from absl import logging
 import tensorflow as tf
+from official.common import dataset_fn
 from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
@@ -24,7 +25,7 @@ from official.vision import keras_cv
 from official.vision.beta.configs import retinanet as exp_cfg
 from official.vision.beta.dataloaders import retinanet_input
 from official.vision.beta.dataloaders import tf_example_decoder
-from official.vision.beta.dataloaders import dataset_fn
+from official.vision.beta.dataloaders import tfds_detection_decoders
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
 from official.vision.beta.evaluation import coco_evaluator
 from official.vision.beta.modeling import factory
@@ -77,23 +78,33 @@ class RetinaNetTask(base_task.Task):
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      assert "Only 'all' or 'backbone' can be used to initialize the model."
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
   def build_inputs(self, params, input_context=None):
     """Build input dataset."""
-    decoder_cfg = params.decoder.get()
-    if params.decoder.type == 'simple_decoder':
-      decoder = tf_example_decoder.TfExampleDecoder(
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
-    elif params.decoder.type == 'label_map_decoder':
-      decoder = tf_example_label_map_decoder.TfExampleDecoderLabelMap(
-          label_map=decoder_cfg.label_map,
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
+
+    if params.tfds_name:
+      if params.tfds_name in tfds_detection_decoders.TFDS_ID_TO_DECODER_MAP:
+        decoder = tfds_detection_decoders.TFDS_ID_TO_DECODER_MAP[
+            params.tfds_name]()
+      else:
+        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
     else:
-      raise ValueError('Unknown decoder type: {}!'.format(params.decoder.type))
+      decoder_cfg = params.decoder.get()
+      if params.decoder.type == 'simple_decoder':
+        decoder = tf_example_decoder.TfExampleDecoder(
+            regenerate_source_id=decoder_cfg.regenerate_source_id)
+      elif params.decoder.type == 'label_map_decoder':
+        decoder = tf_example_label_map_decoder.TfExampleDecoderLabelMap(
+            label_map=decoder_cfg.label_map,
+            regenerate_source_id=decoder_cfg.regenerate_source_id)
+      else:
+        raise ValueError('Unknown decoder type: {}!'.format(
+            params.decoder.type))
 
     parser = retinanet_input.Parser(
         output_size=self.task_config.model.input_size[:2],
@@ -169,10 +180,13 @@ class RetinaNetTask(base_task.Task):
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training:
+      if self.task_config.validation_data.tfds_name and self.task_config.annotation_file:
+        raise ValueError(
+            "Can't evaluate using annotation file when TFDS is used.")
       self.coco_metric = coco_evaluator.COCOEvaluator(
-          annotation_file=self._task_config.annotation_file,
+          annotation_file=self.task_config.annotation_file,
           include_mask=False,
-          per_category_metrics=self._task_config.per_category_metrics)
+          per_category_metrics=self.task_config.per_category_metrics)
 
     return metrics
 

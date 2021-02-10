@@ -12,17 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utility library for picking an appropriate dataset function."""
-
-from typing import Any, Callable, Union, Type
+"""TFDS Classification decoders."""
 
 import tensorflow as tf
+from official.vision.beta.dataloaders import decoder
 
-PossibleDatasetType = Union[Type[tf.data.Dataset], Callable[[tf.Tensor], Any]]
+
+class ClassificationDecorder(decoder.Decoder):
+  """A tf.Example decoder for tfds classification datasets."""
+
+  def decode(self, serialized_example):
+    sample_dict = {
+        'image/encoded':
+            tf.io.encode_jpeg(serialized_example['image'], quality=100),
+        'image/class/label':
+            serialized_example['label'],
+    }
+    return sample_dict
 
 
-def pick_dataset_fn(file_type: str) -> PossibleDatasetType:
-  if file_type == 'tfrecord':
-    return tf.data.TFRecordDataset
-
-  raise ValueError('Unrecognized file_type: {}'.format(file_type))
+TFDS_ID_TO_DECODER_MAP = {
+    'cifar10': ClassificationDecorder,
+    'cifar100': ClassificationDecorder,
+    'imagenet2012': ClassificationDecorder,
+}

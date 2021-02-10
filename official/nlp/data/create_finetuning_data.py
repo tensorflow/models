@@ -244,7 +244,6 @@ def generate_classifier_dataset():
             classifier_data_lib.AXgProcessor,
         "rte-superglue":
             classifier_data_lib.RTESuperGLUEProcessor
-
     }
     task_name = FLAGS.classification_task_name.lower()
     if task_name not in processors:

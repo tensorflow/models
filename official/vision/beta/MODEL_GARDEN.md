@@ -68,3 +68,25 @@ TF Vision model garden provides a large collection of baselines and checkpoints 
 | backbone        | resolution    | epochs  | FLOPs (B)  | params (M)  |  box AP |  mask AP  |   download |
 | ------------ |:-------------:| ---------:|-----------:|--------:|--------:|-----------:|-----------:|
 | SpineNet-49  | 640x640       |    350    | 215.7 | 40.8 | 42.6 | 37.9 | config |
+
+
+## Video Classification
+### Common Settings and Notes
+* We provide models for video classification with two backbones: [SlowOnly](https://arxiv.org/abs/1812.03982) and 3D-ResNet (R3D) used in [Spatiotemporal Contrastive Video Representation Learning](https://arxiv.org/abs/2008.03800).
+* Training and evaluation details:
+  * All models are trained from scratch with vision modality (RGB) for 200 epochs.
+  * We use batch size of 1024 and cosine learning rate decay with linear warmup in first 5 epochs.
+  * We follow [SlowFast](https://arxiv.org/abs/1812.03982) to perform 30-view evaluation.
+
+### Kinetics-400 Action Recognition Baselines
+| model    | input (frame x stride) |  Top-1  |  Top-5  | download |
+| -------- |:----------------------:|--------:|--------:|---------:|
+| SlowOnly | 8 x 8                  |  74.1   |  91.4   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_slowonly8x8_tpu.yaml) |
+| SlowOnly | 16 x 4                 |  75.6   |  92.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_slowonly16x4_tpu.yaml) |
+| R3D-50   | 32 x 2                 |  77.0   |  93.0   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k400_3d-resnet50_tpu.yaml) |
+
+### Kinetics-600 Action Recognition Baselines
+| model    | input (frame x stride) |  Top-1  |  Top-5  | download |
+| -------- |:----------------------:|--------:|--------:|---------:|
+| SlowOnly | 8 x 8                  |  77.3   |  93.6   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k600_slowonly8x8_tpu.yaml) |
+| R3D-50   | 32 x 2                 |  79.5   |  94.8   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/video_classification/k600_3d-resnet50_tpu.yaml) |

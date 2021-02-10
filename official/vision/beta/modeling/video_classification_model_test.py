@@ -53,7 +53,7 @@ class VideoClassificationNetworkTest(parameterized.TestCase, tf.test.TestCase):
     model = video_classification_model.VideoClassificationModel(
         backbone=backbone,
         num_classes=num_classes,
-        input_specs=input_specs,
+        input_specs={'image': input_specs},
         dropout_rate=0.2,
         aggregate_endpoints=aggregate_endpoints,
     )
