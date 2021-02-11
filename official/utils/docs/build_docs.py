@@ -17,7 +17,8 @@ r"""Tool to generate api_docs for tensorflow_models/official library.
 
 Example:
 
-python build_docs \
+$> pip install -U git+https://github.com/tensorflow/docs
+$> python build_docs \
  --output_dir=/tmp/api_docs \
  --project_short_name=tf_nlp.modeling \
  --project_full_name="TensorFlow Official Models - NLP Modeling Library"
