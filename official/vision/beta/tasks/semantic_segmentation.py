@@ -143,15 +143,15 @@ class SemanticSegmentationTask(base_task.Task):
   def build_metrics(self, training=True):
     """Gets streaming metrics for training/validation."""
     metrics = []
-    if training:
+    if training and self.task_config.evaluation.report_train_mean_iou:
       metrics.append(segmentation_metrics.MeanIoU(
           name='mean_iou',
           num_classes=self.task_config.model.num_classes,
           rescale_predictions=False,
           dtype=tf.float32))
     else:
-      self.miou_metric = segmentation_metrics.MeanIoU(
-          name='val_mean_iou',
+      self.iou_metric = segmentation_metrics.PerClassIoU(
+          name='per_class_iou',
           num_classes=self.task_config.model.num_classes,
           rescale_predictions=not self.task_config.validation_data
           .resize_eval_groundtruth,
@@ -243,7 +243,7 @@ class SemanticSegmentationTask(base_task.Task):
       loss = 0
 
     logs = {self.loss: loss}
-    logs.update({self.miou_metric.name: (labels, outputs)})
+    logs.update({self.iou_metric.name: (labels, outputs)})
 
     if metrics:
       self.process_metrics(metrics, labels, outputs)
@@ -257,11 +257,19 @@ class SemanticSegmentationTask(base_task.Task):
 
   def aggregate_logs(self, state=None, step_outputs=None):
     if state is None:
-      self.miou_metric.reset_states()
-      state = self.miou_metric
-    self.miou_metric.update_state(step_outputs[self.miou_metric.name][0],
-                                  step_outputs[self.miou_metric.name][1])
+      self.iou_metric.reset_states()
+      state = self.iou_metric
+    self.iou_metric.update_state(step_outputs[self.iou_metric.name][0],
+                                 step_outputs[self.iou_metric.name][1])
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs):
-    return {self.miou_metric.name: self.miou_metric.result().numpy()}
+    result = {}
+    ious = self.iou_metric.result()
+    # TODO(arashwan): support loading class name from a label map file.
+    if self.task_config.evaluation.report_per_class_iou:
+      for i, value in enumerate(ious.numpy()):
+        result.update({'iou/{}'.format(i): value})
+    # Computes mean IoU
+    result.update({'mean_iou': tf.reduce_mean(ious).numpy()})
+    return result

@@ -91,12 +91,19 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Evaluation(hyperparams.Config):
+  report_per_class_iou: bool = True
+  report_train_mean_iou: bool = True  # Turning this off can speed up training.
+
+
+@dataclasses.dataclass
 class SemanticSegmentationTask(cfg.TaskConfig):
   """The model config."""
   model: SemanticSegmentationModel = SemanticSegmentationModel()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
+  evaluation: Evaluation = Evaluation()
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(
