@@ -90,6 +90,9 @@ class ContinuousFinetuneTest(tf.test.TestCase, parameterized.TestCase):
           pretrain_steps=pretrain_steps)
       self.assertIn('best_acc', eval_metrics)
 
+      self.assertFalse(
+          tf.io.gfile.exists(os.path.join(FLAGS.model_dir, 'checkpoint')))
+
 
 if __name__ == '__main__':
   tf.test.main()
