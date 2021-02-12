@@ -120,6 +120,15 @@ class DataProcessor(object):
         lines.append(line)
       return lines
 
+  @classmethod
+  def _read_jsonl(cls, input_file):
+    """Reads a json line file."""
+    with tf.io.gfile.GFile(input_file, "r") as f:
+      lines = []
+      for json_str in f:
+        lines.append(json.loads(json_str))
+    return lines
+
 
 class AxProcessor(DataProcessor):
   """Processor for the AX dataset (GLUE diagnostics dataset)."""
@@ -1278,7 +1287,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
 
 
 class AXgProcessor(DataProcessor):
-  """Processor for the AXg dataset (GLUE diagnostics dataset)."""
+  """Processor for the AXg dataset (SuperGLUE diagnostics dataset)."""
 
   def get_test_examples(self, data_dir):
     """See base class."""
@@ -1299,19 +1308,57 @@ class AXgProcessor(DataProcessor):
     examples = []
     for line in lines:
       guid = "%s-%s" % (set_type, self.process_text_fn(str(line["idx"])))
-      text_a = self.process_text_fn(line["hypothesis"])
-      text_b = self.process_text_fn(line["premise"])
+      text_a = self.process_text_fn(line["premise"])
+      text_b = self.process_text_fn(line["hypothesis"])
       label = self.process_text_fn(line["label"])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
-  def _read_jsonl(self, input_path):
-    with tf.io.gfile.GFile(input_path, "r") as f:
-      lines = []
-      for json_str in f:
-        lines.append(json.loads(json_str))
-    return lines
+
+class SuperGLUERTEProcessor(DataProcessor):
+  """Processor for the RTE dataset (SuperGLUE version)."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_jsonl(os.path.join(data_dir, "train.jsonl")), "train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_jsonl(os.path.join(data_dir, "val.jsonl")), "dev")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_jsonl(os.path.join(data_dir, "test.jsonl")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    # All datasets are converted to 2-class split, where for 3-class datasets we
+    # collapse neutral and contradiction into not_entailment.
+    return ["entailment", "not_entailment"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "RTESuperGLUE"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    examples = []
+    for i, line in enumerate(lines):
+      guid = "%s-%s" % (set_type, i)
+      text_a = self.process_text_fn(line["premise"])
+      text_b = self.process_text_fn(line["hypothesis"])
+      if set_type == "test":
+        label = "entailment"
+      else:
+        label = self.process_text_fn(line["label"])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
 
 
 def file_based_convert_examples_to_features(examples,
