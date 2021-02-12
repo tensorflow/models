@@ -29,6 +29,7 @@ from absl import logging
 import h5py
 import tensorflow as tf
 
+from delf.python.pooling_layers import pooling
 
 layers = tf.keras.layers
 
@@ -54,23 +55,23 @@ class _IdentityBlock(tf.keras.Model):
     bn_axis = 1 if data_format == 'channels_first' else 3
 
     self.conv2a = layers.Conv2D(
-        filters1, (1, 1), name=conv_name_base + '2a', data_format=data_format)
+      filters1, (1, 1), name=conv_name_base + '2a', data_format=data_format)
     self.bn2a = layers.BatchNormalization(
-        axis=bn_axis, name=bn_name_base + '2a')
+      axis=bn_axis, name=bn_name_base + '2a')
 
     self.conv2b = layers.Conv2D(
-        filters2,
-        kernel_size,
-        padding='same',
-        data_format=data_format,
-        name=conv_name_base + '2b')
+      filters2,
+      kernel_size,
+      padding='same',
+      data_format=data_format,
+      name=conv_name_base + '2b')
     self.bn2b = layers.BatchNormalization(
-        axis=bn_axis, name=bn_name_base + '2b')
+      axis=bn_axis, name=bn_name_base + '2b')
 
     self.conv2c = layers.Conv2D(
-        filters3, (1, 1), name=conv_name_base + '2c', data_format=data_format)
+      filters3, (1, 1), name=conv_name_base + '2c', data_format=data_format)
     self.bn2c = layers.BatchNormalization(
-        axis=bn_axis, name=bn_name_base + '2c')
+      axis=bn_axis, name=bn_name_base + '2c')
 
   def call(self, input_tensor, training=False):
     x = self.conv2a(input_tensor)
@@ -118,34 +119,34 @@ class _ConvBlock(tf.keras.Model):
     bn_axis = 1 if data_format == 'channels_first' else 3
 
     self.conv2a = layers.Conv2D(
-        filters1, (1, 1),
-        strides=strides,
-        name=conv_name_base + '2a',
-        data_format=data_format)
+      filters1, (1, 1),
+      strides=strides,
+      name=conv_name_base + '2a',
+      data_format=data_format)
     self.bn2a = layers.BatchNormalization(
-        axis=bn_axis, name=bn_name_base + '2a')
+      axis=bn_axis, name=bn_name_base + '2a')
 
     self.conv2b = layers.Conv2D(
-        filters2,
-        kernel_size,
-        padding='same',
-        name=conv_name_base + '2b',
-        data_format=data_format)
+      filters2,
+      kernel_size,
+      padding='same',
+      name=conv_name_base + '2b',
+      data_format=data_format)
     self.bn2b = layers.BatchNormalization(
-        axis=bn_axis, name=bn_name_base + '2b')
+      axis=bn_axis, name=bn_name_base + '2b')
 
     self.conv2c = layers.Conv2D(
-        filters3, (1, 1), name=conv_name_base + '2c', data_format=data_format)
+      filters3, (1, 1), name=conv_name_base + '2c', data_format=data_format)
     self.bn2c = layers.BatchNormalization(
-        axis=bn_axis, name=bn_name_base + '2c')
+      axis=bn_axis, name=bn_name_base + '2c')
 
     self.conv_shortcut = layers.Conv2D(
-        filters3, (1, 1),
-        strides=strides,
-        name=conv_name_base + '1',
-        data_format=data_format)
+      filters3, (1, 1),
+      strides=strides,
+      name=conv_name_base + '1',
+      data_format=data_format)
     self.bn_shortcut = layers.BatchNormalization(
-        axis=bn_axis, name=bn_name_base + '1')
+      axis=bn_axis, name=bn_name_base + '1')
 
   def call(self, input_tensor, training=False):
     x = self.conv2a(input_tensor)
@@ -222,23 +223,23 @@ class ResNet50(tf.keras.Model):
 
     def conv_block(filters, stage, block, strides=(2, 2)):
       return _ConvBlock(
-          3,
-          filters,
-          stage=stage,
-          block=block,
-          data_format=data_format,
-          strides=strides)
+        3,
+        filters,
+        stage=stage,
+        block=block,
+        data_format=data_format,
+        strides=strides)
 
     def id_block(filters, stage, block):
       return _IdentityBlock(
-          3, filters, stage=stage, block=block, data_format=data_format)
+        3, filters, stage=stage, block=block, data_format=data_format)
 
     self.conv1 = layers.Conv2D(
-        64, (7, 7),
-        strides=(2, 2),
-        data_format=data_format,
-        padding='same',
-        name='conv1')
+      64, (7, 7),
+      strides=(2, 2),
+      data_format=data_format,
+      padding='same',
+      name='conv1')
     bn_axis = 1 if data_format == 'channels_first' else 3
     self.bn_conv1 = layers.BatchNormalization(axis=bn_axis, name='bn_conv1')
     self.max_pool = layers.MaxPooling2D((3, 3),
@@ -288,14 +289,14 @@ class ResNet50(tf.keras.Model):
       reduction_indices = tf.constant(reduction_indices)
       if pooling == 'avg':
         self.global_pooling = functools.partial(
-            tf.reduce_mean, axis=reduction_indices, keepdims=False)
+          tf.reduce_mean, axis=reduction_indices, keepdims=False)
       elif pooling == 'max':
         self.global_pooling = functools.partial(
-            tf.reduce_max, axis=reduction_indices, keepdims=False)
+          tf.reduce_max, axis=reduction_indices, keepdims=False)
       elif pooling == 'gem':
         logging.info('Adding GeMPooling layer with power %f', gem_power)
         self.global_pooling = functools.partial(
-            gem_pooling, axis=reduction_indices, power=gem_power)
+          pooling.gem, axis=reduction_indices, power=gem_power)
       else:
         self.global_pooling = None
       if embedding_layer:
@@ -457,26 +458,3 @@ class ResNet50(tf.keras.Model):
       else:
         logging.info('Layer %s does not have inner layers.',
                      layer.name)
-
-
-def gem_pooling(feature_map, axis, power, threshold=1e-6):
-  """Performs GeM (Generalized Mean) pooling.
-
-  See https://arxiv.org/abs/1711.02512 for a reference.
-
-  Args:
-    feature_map: Tensor of shape [batch, height, width, channels] for
-      the "channels_last" format or [batch, channels, height, width] for the
-      "channels_first" format.
-    axis: Dimensions to reduce.
-    power: Float, GeM power parameter.
-    threshold: Optional float, threshold to use for activations.
-
-  Returns:
-    pooled_feature_map: Tensor of shape [batch, channels].
-  """
-  return tf.pow(
-      tf.reduce_mean(tf.pow(tf.maximum(feature_map, threshold), power),
-                     axis=axis,
-                     keepdims=False),
-      1.0 / power)
