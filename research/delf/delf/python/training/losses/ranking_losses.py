@@ -86,54 +86,6 @@ class TripletLoss(tf.keras.losses.Loss):
     return triplet_loss(queries, positives, negatives, margin=self.margin)
 
 
-# def contrastive_loss(queries, positives, negatives, margin=0.7,
-#                      eps=1e-6):
-#   """Calculates Contrastive Loss.
-#
-#   We expect the `queries`, `positives` and `negatives` to be normalized with
-#   unit length for training stability. The contrastive loss directly
-#   optimizes this distance by encouraging all positive distances to
-#   approach 0, while keeping negative distances above a certain threshold.
-#
-#   Args:
-#     queries: [D, N] Anchor input tensor.
-#     positives: [D, N] Positive sample input tensor.
-#     negatives: [D, N * Nneg] Negative sample input tensor.
-#     margin: Float contrastive loss loss margin.
-#     eps: Float parameter for numerical stability.
-#
-#   Returns:
-#     loss: Scalar tensor.
-#   """
-#   D = tf.shape(queries)[0]
-#   # Number of `queries`.
-#   B = tf.shape(queries)[1]
-#   # Number of `positives`.
-#   np = tf.shape(positives)[1]
-#   # Number of `negatives`.
-#   nn = tf.shape(negatives)[1]
-#   # Overall number of images including query per one anchor.
-#   S = (B + np + nn) // B
-#
-#   # Preparing queries for further loss calculation.
-#   stacked_queries = tf.concat([queries, tf.repeat(queries, (S - 2), 1)], 1)
-#
-#   positives_and_negatives = tf.concat([positives, negatives], axis=1)
-#
-#   # Calculate an Euclidean norm for each pair of points. For any positive
-#   # pair of data points this distance should be small, and for
-#   # negative pair it should be large.
-#   D = tf.norm(stacked_queries - positives_and_negatives + eps, axis=0)
-#
-#   # Label for positives and negatives: 1 - positives, 0 - negatives.
-#   positives_part = 0.5 * tf.pow(D[:np], 2.0)
-#   negatives_part = 0.5 * tf.pow(tf.math.maximum(margin - D[np:], 0), 2.0)
-#
-#   # Final contrastive loss calculation.
-#   loss = tf.reduce_sum(tf.concat([positives_part, negatives_part], 0))
-#   return loss
-
-
 def contrastive_loss(queries, positives, negatives, margin=0.7,
                      eps=1e-6):
   """Calculates Contrastive Loss.
@@ -180,52 +132,6 @@ def contrastive_loss(queries, positives, negatives, margin=0.7,
   # Final contrastive loss calculation.
   loss = tf.reduce_sum(tf.concat([positives_part, negatives_part], 0))
   return loss
-
-
-# def triplet_loss(queries, positives, negatives, margin=0.1):
-#   """Calculates Triplet Loss.
-#
-#   Triplet loss tries to keep all queries closer to positives than to any
-#   negatives.
-#
-#   Args:
-#     queries: [D, N] Anchor input tensor.
-#     positives: [D, N] Positive sample input tensor.
-#     negatives: [D, N * Nneg] Negative sample input tensor.
-#     margin: Float triplet loss loss margin.
-#
-#   Returns:
-#     loss: Scalar tensor.
-#   """
-#   D = tf.shape(queries)[0]
-#   # Number of `queries`.
-#   B = tf.shape(queries)[1]
-#   # Number of `positives`.
-#   np = tf.shape(positives)[1]
-#   # Number of `negatives`.
-#   nn = tf.shape(negatives)[1]
-#   # Overall number of images including query per one anchor.
-#   S = (B + np + nn) // B
-#
-#   # Preparing queries for further loss calculation.
-#   stacked_queries = tf.tile(tf.transpose(queries, perm=[1, 0]), [1, S - 2])
-#   stacked_queries = tf.reshape(stacked_queries, [(S - 2) * B, D])
-#   stacked_queries = tf.transpose(stacked_queries, perm=[1, 0])
-#
-#   # Preparing positives for further loss calculation.
-#   stacked_positives = tf.tile(tf.transpose(positives, perm=[1, 0]), [1,
-#                                                                      S - 2])
-#   stacked_positives = tf.reshape(stacked_positives, [(S - 2) * B, D])
-#   stacked_positives = tf.transpose(stacked_positives, perm=[1, 0])
-#
-#   distance_positives = tf.reduce_sum(
-#     tf.pow(stacked_queries - stacked_positives, 2.0), axis=0)
-#   distance_negatives = tf.reduce_sum(tf.pow(stacked_queries - negatives, 2.0),
-#                                      axis=0)
-#   # Final triplet loss calculation.
-#   loss = tf.reduce_sum(tf.math.maximum(distance_positives -
-#                                        distance_negatives + margin, 0.0))
-#   return loss
 
 
 def triplet_loss(queries, positives, negatives, margin=0.1):
