@@ -145,6 +145,11 @@ def run_continuous_finetune(
       min_interval_secs=10,
       timeout=params.trainer.continuous_eval_timeout,
       timeout_fn=timeout_fn):
+
+    # If there are checkpoints, they might be the finetune checkpoint of a
+    # different pretrained checkpoint. So we just remove all checkpoints.
+    train_utils.remove_ckpts(model_dir)
+
     with distribution_strategy.scope():
       global_step = train_utils.read_global_step_from_checkpoint(pretrain_ckpt)
     # Replaces params.task.init_checkpoint to make sure that we load
