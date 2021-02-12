@@ -123,7 +123,7 @@ class DataProcessor(object):
   @classmethod
   def _read_jsonl(cls, input_file):
     """Reads a json line file."""
-    with tf.io.gfile.GFile(input_path, "r") as f:
+    with tf.io.gfile.GFile(input_file, "r") as f:
       lines = []
       for json_str in f:
         lines.append(json.loads(json_str))
