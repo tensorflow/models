@@ -69,16 +69,22 @@ RESNET_SPECS = {
         ('bottleneck', 256, 36),
         ('bottleneck', 512, 3),
     ],
-    300: [
+    270: [
         ('bottleneck', 64, 4),
-        ('bottleneck', 128, 36),
-        ('bottleneck', 256, 54),
+        ('bottleneck', 128, 29),
+        ('bottleneck', 256, 53),
         ('bottleneck', 512, 4),
     ],
     350: [
         ('bottleneck', 64, 4),
         ('bottleneck', 128, 36),
         ('bottleneck', 256, 72),
+        ('bottleneck', 512, 4),
+    ],
+    420: [
+        ('bottleneck', 64, 4),
+        ('bottleneck', 128, 44),
+        ('bottleneck', 256, 87),
         ('bottleneck', 512, 4),
     ],
 }
@@ -93,6 +99,8 @@ class ResNet(tf.keras.Model):
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
                depth_multiplier=1.0,
                stem_type='v0',
+               resnetd_shortcut=False,
+               replace_stem_max_pool=False,
                se_ratio=None,
                init_stochastic_depth_rate=0.0,
                activation='relu',
@@ -111,7 +119,11 @@ class ResNet(tf.keras.Model):
       depth_multiplier: `float` a depth multiplier to uniformaly scale up all
         layers in channel size in ResNet.
       stem_type: `str` stem type of ResNet. Default to `v0`. If set to `v1`,
-        use ResNet-C type stem (https://arxiv.org/abs/1812.01187).
+        use ResNet-D type stem (https://arxiv.org/abs/1812.01187).
+      resnetd_shortcut: `bool` whether to use ResNet-D shortcut in downsampling
+        blocks.
+      replace_stem_max_pool: `bool` if True, replace the max pool in stem with
+        a stride-2 conv,
       se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
       init_stochastic_depth_rate: `float` initial stochastic depth rate.
       activation: `str` name of the activation function.
@@ -130,6 +142,8 @@ class ResNet(tf.keras.Model):
     self._input_specs = input_specs
     self._depth_multiplier = depth_multiplier
     self._stem_type = stem_type
+    self._resnetd_shortcut = resnetd_shortcut
+    self._replace_stem_max_pool = replace_stem_max_pool
     self._se_ratio = se_ratio
     self._init_stochastic_depth_rate = init_stochastic_depth_rate
     self._use_sync_bn = use_sync_bn
@@ -213,7 +227,23 @@ class ResNet(tf.keras.Model):
     else:
       raise ValueError('Stem type {} not supported.'.format(stem_type))
 
-    x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
+    if replace_stem_max_pool:
+      x = layers.Conv2D(
+          filters=int(64 * self._depth_multiplier),
+          kernel_size=3,
+          strides=2,
+          use_bias=False,
+          padding='same',
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)(
+              x)
+      x = self._norm(
+          axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
+              x)
+      x = tf_utils.get_activation(activation)(x)
+    else:
+      x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 
     endpoints = {}
     for i, spec in enumerate(RESNET_SPECS[model_id]):
@@ -267,6 +297,7 @@ class ResNet(tf.keras.Model):
         use_projection=True,
         stochastic_depth_drop_rate=stochastic_depth_drop_rate,
         se_ratio=self._se_ratio,
+        resnetd_shortcut=self._resnetd_shortcut,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
@@ -283,6 +314,7 @@ class ResNet(tf.keras.Model):
           use_projection=False,
           stochastic_depth_drop_rate=stochastic_depth_drop_rate,
           se_ratio=self._se_ratio,
+          resnetd_shortcut=self._resnetd_shortcut,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
@@ -299,6 +331,8 @@ class ResNet(tf.keras.Model):
         'model_id': self._model_id,
         'depth_multiplier': self._depth_multiplier,
         'stem_type': self._stem_type,
+        'resnetd_shortcut': self._resnetd_shortcut,
+        'replace_stem_max_pool': self._replace_stem_max_pool,
         'activation': self._activation,
         'se_ratio': self._se_ratio,
         'init_stochastic_depth_rate': self._init_stochastic_depth_rate,
@@ -338,6 +372,8 @@ def build_resnet(
       input_specs=input_specs,
       depth_multiplier=backbone_cfg.depth_multiplier,
       stem_type=backbone_cfg.stem_type,
+      resnetd_shortcut=backbone_cfg.resnetd_shortcut,
+      replace_stem_max_pool=backbone_cfg.replace_stem_max_pool,
       se_ratio=backbone_cfg.se_ratio,
       init_stochastic_depth_rate=backbone_cfg.stochastic_depth_drop_rate,
       activation=norm_activation_config.activation,

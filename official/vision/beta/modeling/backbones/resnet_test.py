@@ -84,20 +84,22 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
       _ = network(inputs)
 
   @parameterized.parameters(
-      (128, 34, 1, 'v0', None, 0.0, 1.0),
-      (128, 34, 1, 'v1', 0.25, 0.2, 1.25),
-      (128, 50, 4, 'v0', None, 0.0, 1.5),
-      (128, 50, 4, 'v1', 0.25, 0.2, 2.0),
+      (128, 34, 1, 'v0', None, 0.0, 1.0, False, False),
+      (128, 34, 1, 'v1', 0.25, 0.2, 1.25, True, True),
+      (128, 50, 4, 'v0', None, 0.0, 1.5, False, False),
+      (128, 50, 4, 'v1', 0.25, 0.2, 2.0, True, True),
   )
-  def test_resnet_addons(self, input_size, model_id, endpoint_filter_scale,
-                         stem_type, se_ratio, init_stochastic_depth_rate,
-                         depth_multiplier):
+  def test_resnet_rs(self, input_size, model_id, endpoint_filter_scale,
+                     stem_type, se_ratio, init_stochastic_depth_rate,
+                     depth_multiplier, resnetd_shortcut, replace_stem_max_pool):
     """Test creation of ResNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
     network = resnet.ResNet(
         model_id=model_id,
         depth_multiplier=depth_multiplier,
         stem_type=stem_type,
+        resnetd_shortcut=resnetd_shortcut,
+        replace_stem_max_pool=replace_stem_max_pool,
         se_ratio=se_ratio,
         init_stochastic_depth_rate=init_stochastic_depth_rate)
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
@@ -121,6 +123,8 @@ class ResNetTest(parameterized.TestCase, tf.test.TestCase):
         depth_multiplier=1.0,
         stem_type='v0',
         se_ratio=None,
+        resnetd_shortcut=False,
+        replace_stem_max_pool=False,
         init_stochastic_depth_rate=0.0,
         use_sync_bn=False,
         activation='relu',
