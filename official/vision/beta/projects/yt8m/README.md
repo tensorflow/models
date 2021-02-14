@@ -90,7 +90,6 @@ features.
 python3 yt8m_train.py --mode='train' \
     --experiment='yt8m_experiment' \
     --model_dir=$MODEL_DIR \
-    --train_dir=$TRAIN_DIR \
     --config_file=$CONFIG_FILE
 ```
 
@@ -104,7 +103,6 @@ as default.
 python3 yt8m_train.py --mode='train_and_eval' \
      --experiment='yt8m_experiment' \
      --model_dir=$MODEL_DIR \
-     --train_dir=$TRAIN_DIR \
      --config_file=$CONFIG_FILE \
 ```
 
@@ -116,7 +114,6 @@ set `input_path=gs://youtube8m-ml/3/frame/test/test*.tfrecord`.
 python3 yt8m_train.py --mode='eval' \
      --experiment='yt8m_experiment' \
      --model_dir=$MODEL_DIR \
-     --train_dir=$TRAIN_DIR \
      --config_file=$CONFIG_FILE
 ```
 

@@ -9,9 +9,10 @@ from official.vision.beta.configs import common
 from absl import flags
 FLAGS = flags.FLAGS
 
-# Default values
-YT8M_TRAIN_EXAMPLES = 7890
-YT8M_VAL_EXAMPLES = 1530
+YT8M_TRAIN_EXAMPLES = 3888919
+YT8M_VAL_EXAMPLES = 1112356
+# 2/frame -> frame level
+# 3/frame -> segment level
 YT8M_TRAIN_PATH = 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
 YT8M_VAL_PATH = 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
 YT8M_TEST_PATH = 'gs://youtube8m-ml/3/frame/test/test*.tfrecord'
@@ -19,59 +20,49 @@ YT8M_TEST_PATH = 'gs://youtube8m-ml/3/frame/test/test*.tfrecord'
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """The base configuration for building datasets."""
-  name: Optional[str] = None
-  split: str = 'train'
-  feature_sizes: Tuple[int, ...] = None
-  feature_names: Tuple[str, ...] = None
+  name: Optional[str] = 'yt8m'
+  split: str = None
+  feature_sizes: Tuple[int, ...] = (1024, 128)
+  feature_names: Tuple[str, ...] = ("rgb", "audio")
   segment_size: int = 1
   segment_labels: bool = False
   temporal_stride: int = 1
-  max_frames: int = -1
-  num_frames: int = -1
-  num_classes: int = -1
-  num_channels: int = 3
+  max_frames: int = 300
+  num_frames: int = 300 # set smaller to allow random sample (Parser)
+  num_classes: int = 3862
   num_devices: int = 1
   input_path: str = ''
   is_training: bool = True
-  random_sample: bool = False
-  random_seed: int = -1
+  random_seed: int = 123
   num_examples: int = -1
 
 
 def yt8m(is_training):
   """ YT8M dataset configs. """
   return DataConfig(
-    name='yt8m',
-    num_classes=3862,
-    feature_sizes=[1024, 128],
-    feature_names=["rgb", "audio"],
-    max_frames=300,
-    num_frames=300,   # set smaller to allow random sample (Parser)
+    num_frames=30,
+    temporal_stride=1,
     segment_labels=False,
     segment_size=5,
     is_training=is_training,
     split='train' if is_training else 'valid',
-    random_sample=False,
-    random_seed=123,
     num_examples=YT8M_TRAIN_EXAMPLES if is_training
     else YT8M_VAL_EXAMPLES,
     input_path=YT8M_TRAIN_PATH if is_training
     else YT8M_VAL_PATH
-
   )
 
 
 @dataclasses.dataclass
 class YT8MModel(hyperparams.Config):
   """The model config."""
-  iterations : int = 30     # Number of frames per batch
-  cluster_size : int = 8192
-  hidden_size : int = 1024
+  cluster_size : int = 2048
+  hidden_size : int = 2048
   add_batch_norm : bool = True
   sample_random_frames : bool = True
   is_training : bool = True
-  activation : str = "sigmoid"
-  pooling_method : str = "max"
+  activation : str = "relu6"
+  pooling_method : str = "average"
   yt8m_agg_classifier_model : str = "MoeModel"
 
 @dataclasses.dataclass
@@ -95,7 +86,7 @@ class YT8MTask(cfg.TaskConfig):
 def add_trainer(experiment: cfg.ExperimentConfig,
                 train_batch_size: int,
                 eval_batch_size: int,
-                learning_rate: float = 0.01,
+                learning_rate: float = 0.005,
                 train_epochs: int = 44,
                 ):
   """Add and config a trainer to the experiment config."""
@@ -127,7 +118,7 @@ def add_trainer(experiment: cfg.ExperimentConfig,
         'exponential': {
           'initial_learning_rate': learning_rate,
           'decay_rate': 0.95,
-          'decay_steps': 4000000,
+          'decay_steps': 1500000,
         }
       },
     }))
@@ -145,9 +136,9 @@ def yt8m_experiment() -> cfg.ExperimentConfig:
       'task.validation_data.is_training != None',
       'task.train_data.num_classes == task.validation_data.num_classes',
       'task.train_data.feature_sizes != None',
-      'task.train_data.feature_names != None'
+      'task.train_data.feature_names != None',
     ])
 
-  return add_trainer(exp_config, train_batch_size=1024, eval_batch_size=1024)
+  return add_trainer(exp_config, train_batch_size=512,eval_batch_size=512)
 
 

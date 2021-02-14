@@ -7,16 +7,21 @@ layers = tf.keras.layers
 
 
 class YT8MModel(tf.keras.Model):
+    """A YT8M model class builder."""
+
     def __init__(self,
                  input_params: yt8m_cfg.YT8MModel,
-                 num_frames=32,
+                 num_frames=30,
                  num_classes=3862,
-                 input_specs=layers.InputSpec(shape=[32, 1152]),
+                 input_specs=layers.InputSpec(shape=[None, None, 1152]),
                  **kwargs):
         """YT8M initialization function.
           Args:
             input_params: model configuration parameters
-            input_specs: Specifies the rank, dtype and shape of every input to a layer.
+            num_frames: `int` number of frames in a single input.
+            num_classes: `int` number of classes in dataset.
+            input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
+                        [batch_size x num_frames x num_features]
             **kwargs: keyword arguments to be passed.
 
         """
@@ -32,14 +37,14 @@ class YT8MModel(tf.keras.Model):
         self._input_specs = input_specs
         self._act_fn = tf_utils.get_activation(input_params.activation)
 
-        model_input = tf.keras.Input(shape=self._input_specs.shape)
+        # [batch_size x num_frames x num_features]
+        feature_size = input_specs.shape[-1]
+        model_input = tf.keras.Input(shape=self._input_specs.shape[1:]) #shape 'excluding' batch_size
+        reshaped_input = tf.reshape(model_input, [-1, feature_size])
+        tf.summary.histogram("input_hist", model_input)
 
-        # model input will be reshaped as the same in train_step()
-        max_frames = input_params.iterations
-        feature_size = model_input.shape.as_list()[2]
-        reshaped_input = tf.reshape(model_input, shape=[-1, feature_size])
-        tf.summary.histogram("input_hist", reshaped_input)
 
+        # configure model
         if input_params.add_batch_norm:
             reshaped_input = layers.BatchNormalization(name="input_bn",
                                                        scale=True,
@@ -65,7 +70,7 @@ class YT8MModel(tf.keras.Model):
         activation = self._act_fn(activation)
         tf.summary.histogram("cluster_output", activation)
 
-        activation = tf.reshape(activation, [-1, max_frames, input_params.cluster_size])
+        activation = tf.reshape(activation, [-1, num_frames, input_params.cluster_size])
         activation = utils.FramePooling(activation, input_params.pooling_method)
 
         # activation = activation * hidden1_weights
@@ -98,7 +103,7 @@ class YT8MModel(tf.keras.Model):
     @property
     def checkpoint_items(self):
         """Returns a dictionary of items to be additionally checkpointed."""
-        return dict(backbone=self.backbone)
+        return dict()
 
     def get_config(self):
         return self._config_dict

@@ -25,41 +25,48 @@ from official.vision.beta.projects.yt8m.modeling.yt8m_model import YT8MModel
 from official.vision.beta.projects.yt8m.eval_utils import eval_util
 from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
 from official.vision.beta.projects.yt8m.modeling import yt8m_model_utils as utils
-
+import numpy
 
 @task_factory.register_task_cls(yt8m_cfg.YT8MTask)
 class YT8MTask(base_task.Task):
   """A task for video classification."""
 
-  def build_model(self, num_frames: int=32):
-    """Builds video classification model."""
-    data_cfg = self.task_config.train_data
-    common_input_shape = [sum(data_cfg.feature_sizes)] #TODO: revise
-    input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
-    logging.info('Build model input %r', common_input_shape) # (None, 1152)
+  def build_model(self):
+    """Builds model for YT8M Task."""
+    train_cfg = self.task_config.train_data  #todo: train_data?
+    common_input_shape = [None, sum(train_cfg.feature_sizes)]
+    input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape) # [batch_size x num_frames x num_features]
+    logging.info('Build model input %r', common_input_shape)
 
     #model configuration
     model_config = self.task_config.model
     model = YT8MModel(
               input_params=model_config,
               input_specs=input_specs,
-              num_frames=num_frames,
-              num_classes=data_cfg.num_classes
+              num_frames=train_cfg.num_frames,
+              num_classes=train_cfg.num_classes
               )
     return model
 
   def build_inputs(self, params: yt8m_cfg.DataConfig, input_context=None):
-    """Builds classification input."""
+    """Builds input."""
 
     decoder = yt8m_input.Decoder(input_params=params)
     decoder_fn = decoder.decode
     parser = yt8m_input.Parser(input_params=params)
+    parser_fn = parser.parse_fn(params.is_training)
+    postprocess = yt8m_input.PostBatchProcessor(input_params=params)
+    postprocess_fn = postprocess.post_fn
+    transform_batch = yt8m_input.TransformBatcher(input_params=params)
+    batch_fn = transform_batch.batch_fn
 
     reader = input_reader.InputReader(
         params,
         dataset_fn=tf.data.TFRecordDataset,
         decoder_fn=decoder_fn,
-        parser_fn=parser.parse_fn(params.is_training)
+        parser_fn=parser_fn,
+        postprocess_fn=postprocess_fn,
+        transform_and_batch_fn=batch_fn
     )
 
     dataset = reader.read(input_context=input_context)
@@ -67,7 +74,7 @@ class YT8MTask(base_task.Task):
     return dataset
 
   def build_losses(self, labels, model_outputs, aux_losses=None):
-    """Sigmoid Cross Entropy (should be replaced by Keras implementation)
+    """Sigmoid Cross Entropy
     Args:
       labels: labels.
       model_outputs: Output logits of the classifier.
@@ -133,20 +140,25 @@ class YT8MTask(base_task.Task):
     Returns:
       A dictionary of logs.
     """
-    features, labels, num_frames = inputs['video_matrix'], inputs['labels'], inputs['num_frames']
-    features = tf.squeeze(features) #(batch, 1, classes) -> (batch, classes)
-    labels = tf.squeeze(labels)
-    num_frames = tf.cast(num_frames, tf.float32)
+    features, labels = inputs['video_matrix'], inputs['labels']
+    num_frames = inputs['num_frames']
 
-    # randomly sample either frames or sequences of frames during training to speed up convergence.
+    # Normalize input features.
+    feature_dim = len(features.shape) - 1
+    features = tf.nn.l2_normalize(features, feature_dim)
+
+    # sample random frames / random sequence
+    num_frames = tf.cast(num_frames, tf.float32)
+    sample_frames = self.task_config.train_data.num_frames
     if self.task_config.model.sample_random_frames:
-      model_input = utils.SampleRandomFrames(features, num_frames, self.task_config.model.iterations)
+      features = utils.SampleRandomFrames(features, num_frames, sample_frames)
     else:
-      model_input = utils.SampleRandomSequence(features, num_frames, self.task_config.model.iterations)
+      features = utils.SampleRandomSequence(features, num_frames, sample_frames)
+
 
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
-      outputs = model(model_input, training=True)
+      outputs = model(features, training=True)
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
@@ -213,16 +225,24 @@ class YT8MTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs['video_matrix'], inputs['labels']
-    if self.task_config.validation_data.segment_labels:
-      feature_dim = features.shape[-1]
-      segment_size = features.shape[-2]
-      features = tf.reshape(features, shape=[-1,segment_size, feature_dim])
+    num_frames = inputs['num_frames']
+
+    # Normalize input features.
+    feature_dim = len(features.shape) - 1
+    features = tf.nn.l2_normalize(features, feature_dim)
+
+    # sample random frames (None, 5, 1152) -> (None, 30, 1152)
+    sample_frames = self.task_config.validation_data.num_frames
+    if self.task_config.model.sample_random_frames:
+      features = utils.SampleRandomFrames(features, num_frames, sample_frames)
     else:
-      features = tf.squeeze(features)  # (batch, 1, classes) -> (batch, classes)
-      labels = tf.squeeze(labels)
+      features = utils.SampleRandomSequence(features, num_frames, sample_frames)
 
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
+    if self.task_config.validation_data.segment_labels:
+      # workaround to ignore the unrated labels.
+      outputs *= inputs["label_weights"]
     loss, model_loss = self.build_losses(model_outputs=outputs, labels=labels,
                              aux_losses=model.losses)
 
@@ -253,4 +273,6 @@ class YT8MTask(base_task.Task):
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs):
-    return self.avg_prec_metric.get()
+    avg_prec_metrics = self.avg_prec_metric.get()
+    self.avg_prec_metric.clear()
+    return avg_prec_metrics

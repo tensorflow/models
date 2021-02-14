@@ -36,7 +36,7 @@ def calculate_hit_at_one(predictions, actuals):
     float: The average hit at one across the entire batch.
   """
   top_prediction = np.argmax(predictions, 1)
-  hits = actuals[np.arange(actuals.shape[0]), top_prediction] #(0,...,1023),(x,x,x,...x)
+  hits = actuals[np.arange(actuals.shape[0]), top_prediction]
   return np.average(hits)
 
 
@@ -160,12 +160,12 @@ class EvaluationMetrics(object):
     """
     self.sum_hit_at_one = 0.0
     self.sum_perr = 0.0
-    self.sum_loss = 0.0
     self.map_calculator = map_calculator.MeanAveragePrecisionCalculator(
         num_class, top_n=top_n)
     self.global_ap_calculator = ap_calculator.AveragePrecisionCalculator()
     self.top_k = top_k
     self.num_examples = 0
+    self.num_class = num_class
 
 
   def accumulate(self, predictions, labels):
@@ -191,7 +191,6 @@ class EvaluationMetrics(object):
     batch_size = labels.shape[0]
     mean_hit_at_one = calculate_hit_at_one(predictions, labels)
     mean_perr = calculate_precision_at_equal_recall_rate(predictions, labels)
-    # mean_loss = numpy.mean(loss)
 
     # Take the top 20 predictions.
     sparse_predictions, sparse_labels, num_positives = top_k_by_class(
@@ -205,7 +204,6 @@ class EvaluationMetrics(object):
     self.num_examples += batch_size
     self.sum_hit_at_one += mean_hit_at_one * batch_size
     self.sum_perr += mean_perr * batch_size
-    # self.sum_loss += mean_loss * batch_size
 
     return {"hit_at_one": mean_hit_at_one, "perr": mean_perr}
 
@@ -217,23 +215,22 @@ class EvaluationMetrics(object):
 
     Returns:
       dictionary: a dictionary storing the evaluation metrics for the epoch. The
-        dictionary has the fields: avg_hit_at_one, avg_perr, avg_loss, and
+        dictionary has the fields: avg_hit_at_one, avg_perr, and
         aps (default nan).
     """
     if self.num_examples <= 0:
       raise ValueError("total_sample must be positive.")
     avg_hit_at_one = self.sum_hit_at_one / self.num_examples
     avg_perr = self.sum_perr / self.num_examples
-    avg_loss = self.sum_loss / self.num_examples
 
     aps = self.map_calculator.peek_map_at_n()
+    map = sum(aps) / self.num_class
     gap = self.global_ap_calculator.peek_ap_at_n()
 
     epoch_info_dict = {
         "avg_hit_at_one": avg_hit_at_one,
         "avg_perr": avg_perr,
-        "avg_loss": avg_loss,
-        "map": aps,
+        "map": map,
         "gap": gap
     }
     return epoch_info_dict
@@ -242,7 +239,6 @@ class EvaluationMetrics(object):
     """Clear the evaluation metrics and reset the EvaluationMetrics object."""
     self.sum_hit_at_one = 0.0
     self.sum_perr = 0.0
-    self.sum_loss = 0.0
     self.map_calculator.clear()
     self.global_ap_calculator.clear()
     self.num_examples = 0
