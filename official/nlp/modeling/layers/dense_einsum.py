@@ -24,7 +24,7 @@ _CHR_IDX = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"]
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 class DenseEinsum(tf.keras.layers.Layer):
-  """A densely connected layer that uses tf.einsum as the backing computation.
+  """A densely connected layer that uses `tf.einsum` as the backing computation.
 
   This layer can perform einsum calculations of arbitrary dimensionality.
 
