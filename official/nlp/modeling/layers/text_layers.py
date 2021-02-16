@@ -97,8 +97,9 @@ class BertTokenizer(tf.keras.layers.Layer):
   """Wraps BertTokenizer with pre-defined vocab as a Keras Layer.
 
   Attributes:
-    tokenize_with_offsets: If true, calls BertTokenizer.tokenize_with_offsets()
-      instead of plain .tokenize() and outputs a triple of
+    tokenize_with_offsets: If true, calls
+      `text.BertTokenizer.tokenize_with_offsets()` instead of plain
+      `text.BertTokenizer.tokenize()` and outputs a triple of
       (tokens, start_offsets, limit_offsets).
     raw_table_access: An object with methods .lookup(keys) and .size()
       that operate on the raw lookup table of tokens. It can be used to
@@ -110,25 +111,26 @@ class BertTokenizer(tf.keras.layers.Layer):
                lower_case: bool,
                tokenize_with_offsets: bool = False,
                **kwargs):
-    """Initialize a BertTokenizer layer.
+    """Initialize a `BertTokenizer` layer.
 
     Args:
       vocab_file: A Python string with the path of the vocabulary file.
         This is a text file with newline-separated wordpiece tokens.
         This layer initializes a lookup table from it that gets used with
-        text.BertTokenizer.
-      lower_case: A Python boolean forwarded to text.BertTokenizer.
+        `text.BertTokenizer`.
+      lower_case: A Python boolean forwarded to `text.BertTokenizer`.
         If true, input text is converted to lower case (where applicable)
         before tokenization. This must be set to match the way in which
         the vocab_file was created.
       tokenize_with_offsets: A Python boolean. If true, this layer calls
-         BertTokenizer.tokenize_with_offsets() instead of plain .tokenize()
-         and outputs a triple of (tokens, start_offsets, limit_offsets)
+         `text.BertTokenizer.tokenize_with_offsets()` instead of plain
+         `text.BertTokenizer.tokenize()` and outputs a triple of
+         (tokens, start_offsets, limit_offsets)
          insead of just tokens.
       **kwargs: standard arguments to Layer().
 
     Raises:
-      ImportError: if importing tensorflow_text failed.
+      ImportError: if importing `tensorflow_text` failed.
     """
     _check_if_tf_text_installed()
 
@@ -162,18 +164,18 @@ class BertTokenizer(tf.keras.layers.Layer):
     return vocab_table, vocab_initializer
 
   def call(self, inputs: tf.Tensor):
-    """Calls text.BertTokenizer on inputs.
+    """Calls `text.BertTokenizer` on inputs.
 
     Args:
       inputs: A string Tensor of shape [batch_size].
 
     Returns:
-      One or three of RaggedTensors if tokenize_with_offsets is False or True,
-      respectively. These are
-      tokens: A RaggedTensor of shape [batch_size, (words), (pieces_per_word)]
+      One or three of `RaggedTensors` if `tokenize_with_offsets` is False or
+      True, respectively. These are
+      tokens: A `RaggedTensor` of shape [batch_size, (words), (pieces_per_word)]
         and type int32. tokens[i,j,k] contains the k-th wordpiece of the
         j-th word in the i-th input.
-      start_offsets, limit_offsets: If tokenize_with_offsets is True,
+      start_offsets, limit_offsets: If `tokenize_with_offsets` is True,
         RaggedTensors of type int64 with the same indices as tokens.
         Element [i,j,k] contains the byte offset at the start, or past the
         end, resp., for the k-th wordpiece of the j-th word in the i-th input.

@@ -37,7 +37,7 @@ class ElectraPretrainer(tf.keras.Model):
   that are used to create the training objectives.
 
   *Note* that the model is constructed by Keras Subclass API, where layers are
-  defined inside __init__ and call() implements the computation.
+  defined inside `__init__` and `call()` implements the computation.
 
   Args:
     generator_network: A transformer network for generator, this network should
