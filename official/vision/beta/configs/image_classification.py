@@ -35,6 +35,7 @@ class DataConfig(cfg.DataConfig):
   shuffle_buffer_size: int = 10000
   cycle_length: int = 10
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
+  randaug_magnitude: Optional[int] = 10
   file_type: str = 'tfrecord'
 
 
@@ -184,13 +185,17 @@ def image_classification_imagenet_resnetrs() -> cfg.ExperimentConfig:
                       stochastic_depth_drop_rate=0.0)),
               dropout_rate=0.25,
               norm_activation=common.NormActivation(
-                  norm_momentum=0.0, norm_epsilon=1e-5, use_sync_bn=False)),
+                  norm_momentum=0.0,
+                  norm_epsilon=1e-5,
+                  use_sync_bn=False,
+                  activation='swish')),
           losses=Losses(l2_weight_decay=4e-5, label_smoothing=0.1),
           train_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
-              aug_policy='randaug'),
+              aug_policy='randaug',
+              randaug_magnitude=10),
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,
@@ -199,7 +204,7 @@ def image_classification_imagenet_resnetrs() -> cfg.ExperimentConfig:
           steps_per_loop=steps_per_epoch,
           summary_interval=steps_per_epoch,
           checkpoint_interval=steps_per_epoch,
-          train_steps=360 * steps_per_epoch,
+          train_steps=350 * steps_per_epoch,
           validation_steps=IMAGENET_VAL_EXAMPLES // eval_batch_size,
           validation_interval=steps_per_epoch,
           optimizer_config=optimization.OptimizationConfig({
@@ -215,8 +220,8 @@ def image_classification_imagenet_resnetrs() -> cfg.ExperimentConfig:
               'learning_rate': {
                   'type': 'cosine',
                   'cosine': {
-                      'initial_learning_rate': 0.1,
-                      'decay_steps': 360 * steps_per_epoch
+                      'initial_learning_rate': 1.6,
+                      'decay_steps': 350 * steps_per_epoch
                   }
               },
               'warmup': {

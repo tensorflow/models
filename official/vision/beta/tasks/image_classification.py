@@ -93,6 +93,7 @@ class ImageClassificationTask(base_task.Task):
         output_size=input_size[:2],
         num_classes=num_classes,
         aug_policy=params.aug_policy,
+        randaug_magnitude=params.randaug_magnitude,
         dtype=params.dtype)
 
     reader = input_reader.InputReader(
