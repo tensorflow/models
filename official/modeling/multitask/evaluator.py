@@ -52,19 +52,9 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
     self._model = model
     self._global_step = global_step or orbit.utils.create_global_step()
     self._checkpoint_exporter = checkpoint_exporter
-    # TODO(hongkuny): Define a more robust way to handle the training/eval
-    # checkpoint loading.
-    if hasattr(self.model, "checkpoint_items"):
-      # Each evaluation task can have different models and load a subset of
-      # components from the training checkpoint. This is assuming the
-      # checkpoint items are able to load the weights of the evaluation model.
-      checkpoint_items = self.model.checkpoint_items
-    else:
-      # This is assuming the evaluation model is exactly the training model.
-      checkpoint_items = dict(model=self.model)
     self._checkpoint = tf.train.Checkpoint(
         global_step=self.global_step,
-        **checkpoint_items)
+        model=self.model)
 
     self._validation_losses = None
     self._validation_metrics = None
