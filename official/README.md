@@ -19,7 +19,7 @@ In the near future, we will add:
 
 * State-of-the-art language understanding models.
 * State-of-the-art image classification models.
-* State-of-the-art objection detection and instance segmentation models.
+* State-of-the-art object detection and instance segmentation models.
 
 ## Table of Contents
 
