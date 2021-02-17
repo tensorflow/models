@@ -37,10 +37,10 @@ message ClientOptions {
   // The threshold on intersection-over-union used by non-maxima suppression.
   optional float iou_threshold = 5 [default = 0.3];
 
-  // Optional whitelist of class names. If non-empty, detections whose class
+  // Optional allowlist of class names. If non-empty, detections whose class
   // name is not in this set will be filtered out. Duplicate or unknown class
   // names are ignored.
-  repeated string class_name_whitelist = 6;
+  repeated string class_name_allowlist = 6;
 
   // SSD in single class agnostic model.
   optional bool agnostic_mode = 7 [default = false];
