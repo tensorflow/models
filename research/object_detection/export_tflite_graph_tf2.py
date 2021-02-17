@@ -118,8 +118,8 @@ def main(argv):
   pipeline_config = pipeline_pb2.TrainEvalPipelineConfig()
 
   with tf.io.gfile.GFile(FLAGS.pipeline_config_path, 'r') as f:
-    text_format.Parse(f.read(), pipeline_config)
-  text_format.Parse(FLAGS.config_override, pipeline_config)
+    text_format.Merge(f.read(), pipeline_config)
+  text_format.Merge(FLAGS.config_override, pipeline_config)
 
   export_tflite_graph_lib_tf2.export_tflite_model(
       pipeline_config, FLAGS.trained_checkpoint_dir, FLAGS.output_directory,
