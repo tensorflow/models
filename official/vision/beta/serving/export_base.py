@@ -53,7 +53,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
     self._model = model
 
   @abc.abstractmethod
-  def build_model(self):
+  def build_model(self, **kwargs):
     """Builds model and sets self._model."""
 
   @abc.abstractmethod

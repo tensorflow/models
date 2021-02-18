@@ -41,7 +41,8 @@ from official.vision.beta.modeling.layers import roi_sampler
 def build_classification_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: classification_cfg.ImageClassificationModel,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+    l2_regularizer: tf.keras.regularizers.Regularizer = None,
+    skip_logits_layer: bool = False):
   """Builds the classification model."""
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
@@ -58,7 +59,8 @@ def build_classification_model(
       add_head_batch_norm=model_config.add_head_batch_norm,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
-      norm_epsilon=norm_activation_config.norm_epsilon)
+      norm_epsilon=norm_activation_config.norm_epsilon,
+      skip_logits_layer=skip_logits_layer)
   return model
 
 

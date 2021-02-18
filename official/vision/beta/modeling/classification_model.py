@@ -36,6 +36,7 @@ class ClassificationModel(tf.keras.Model):
                use_sync_bn: bool = False,
                norm_momentum: float = 0.99,
                norm_epsilon: float = 0.001,
+               skip_logits_layer: bool = False,
                **kwargs):
     """Classification initialization function.
 
@@ -55,6 +56,7 @@ class ClassificationModel(tf.keras.Model):
       norm_momentum: `float` normalization momentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
+      skip_logits_layer: `bool`, whether to skip the prediction layer.
       **kwargs: keyword arguments to be passed.
     """
     self._self_setattr_tracking = False
@@ -88,12 +90,13 @@ class ClassificationModel(tf.keras.Model):
     if add_head_batch_norm:
       x = self._norm(axis=axis, momentum=norm_momentum, epsilon=norm_epsilon)(x)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
-    x = tf.keras.layers.Dropout(dropout_rate)(x)
-    x = tf.keras.layers.Dense(
-        num_classes, kernel_initializer=kernel_initializer,
-        kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)(
-            x)
+    if not skip_logits_layer:
+      x = tf.keras.layers.Dropout(dropout_rate)(x)
+      x = tf.keras.layers.Dense(
+          num_classes, kernel_initializer=kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)(
+              x)
 
     super(ClassificationModel, self).__init__(
         inputs=inputs, outputs=x, **kwargs)
