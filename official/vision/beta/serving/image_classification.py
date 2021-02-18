@@ -29,14 +29,15 @@ STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 class ClassificationModule(export_base.ExportModule):
   """classification Module."""
 
-  def build_model(self):
+  def build_model(self, skip_logits_layer=False):
     input_specs = tf.keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [3])
 
     self._model = factory.build_classification_model(
         input_specs=input_specs,
         model_config=self._params.task.model,
-        l2_regularizer=None)
+        l2_regularizer=None,
+        skip_logits_layer=skip_logits_layer)
 
     return self._model
 
