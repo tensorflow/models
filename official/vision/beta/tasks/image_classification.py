@@ -16,13 +16,14 @@
 """Image classification task definition."""
 from absl import logging
 import tensorflow as tf
+
 from official.common import dataset_fn
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.configs import image_classification as exp_cfg
 from official.vision.beta.dataloaders import classification_input
+from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import tfds_classification_decoders
 from official.vision.beta.modeling import factory
 
@@ -96,7 +97,7 @@ class ImageClassificationTask(base_task.Task):
         randaug_magnitude=params.randaug_magnitude,
         dtype=params.dtype)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,

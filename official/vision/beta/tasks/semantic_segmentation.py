@@ -19,9 +19,9 @@ from absl import logging
 import tensorflow as tf
 from official.common import dataset_fn
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.configs import semantic_segmentation as exp_cfg
+from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import segmentation_input
 from official.vision.beta.dataloaders import tfds_segmentation_decoders
 from official.vision.beta.evaluation import segmentation_metrics
@@ -104,7 +104,7 @@ class SemanticSegmentationTask(base_task.Task):
         aug_rand_hflip=params.aug_rand_hflip,
         dtype=params.dtype)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
