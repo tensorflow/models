@@ -111,7 +111,10 @@ class InputReader:
     self._parser_fn = parser_fn
     self._transform_and_batch_fn = transform_and_batch_fn
     self._postprocess_fn = postprocess_fn
-    self._seed = _get_random_integer()
+    # When tf.data service is enabled, each data service worker should get
+    # different random seeds. Thus, we set `seed` to None.
+    self._seed = (None
+                  if params.enable_tf_data_service else _get_random_integer())
 
     self._enable_tf_data_service = (
         params.enable_tf_data_service and params.tf_data_service_address)
