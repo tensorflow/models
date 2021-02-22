@@ -19,9 +19,9 @@ from absl import logging
 import tensorflow as tf
 from official.common import dataset_fn
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.configs import maskrcnn as exp_cfg
+from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import maskrcnn_input
 from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
@@ -143,7 +143,7 @@ class MaskRCNNTask(base_task.Task):
         include_mask=self._task_config.model.include_mask,
         mask_crop_size=params.parser.mask_crop_size)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
