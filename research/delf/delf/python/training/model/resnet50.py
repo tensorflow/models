@@ -29,7 +29,7 @@ from absl import logging
 import h5py
 import tensorflow as tf
 
-from delf.python.pooling_layers import pooling
+from delf.python.pooling_layers import pooling as pooling_layers
 
 layers = tf.keras.layers
 
@@ -296,7 +296,7 @@ class ResNet50(tf.keras.Model):
       elif pooling == 'gem':
         logging.info('Adding GeMPooling layer with power %f', gem_power)
         self.global_pooling = functools.partial(
-            pooling.gem, axis=reduction_indices, power=gem_power)
+            pooling_layers.gem, axis=reduction_indices, power=gem_power)
       else:
         self.global_pooling = None
       if embedding_layer:

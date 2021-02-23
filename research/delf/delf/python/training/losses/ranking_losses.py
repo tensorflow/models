@@ -40,15 +40,15 @@ class ContrastiveLoss(tf.keras.losses.Loss):
     """Invokes the Contrastive Loss instance.
 
     Args:
-      queries: [B, D] Anchor input tensor.
-      positives: [B, D] Positive sample input tensor.
-      negatives: [B, Nneg, D] Negative sample input tensor.
+      queries: [batch_size, dim] Anchor input tensor.
+      positives: [batch_size, dim] Positive sample input tensor.
+      negatives: [batch_size, num_neg, dim] Negative sample input tensor.
 
     Returns:
       loss: Scalar tensor.
     """
-    return contrastive_loss(queries, positives, negatives,
-                            margin=self.margin, eps=self.eps)
+    return contrastive_loss(
+        queries, positives, negatives, margin=self.margin, eps=self.eps)
 
 
 class TripletLoss(tf.keras.losses.Loss):
@@ -76,9 +76,9 @@ class TripletLoss(tf.keras.losses.Loss):
     """Invokes the Triplet Loss instance.
 
     Args:
-      queries: [B, D] Anchor input tensor.
-      positives: [B, D] Positive sample input tensor.
-      negatives: [B, Nneg, D] Negative sample input tensor.
+      queries: [batch_size, dim] Anchor input tensor.
+      positives: [batch_size, dim] Positive sample input tensor.
+      negatives: [batch_size, num_neg, dim] Negative sample input tensor.
 
     Returns:
       loss: Scalar tensor.
@@ -86,8 +86,7 @@ class TripletLoss(tf.keras.losses.Loss):
     return triplet_loss(queries, positives, negatives, margin=self.margin)
 
 
-def contrastive_loss(queries, positives, negatives, margin=0.7,
-                     eps=1e-6):
+def contrastive_loss(queries, positives, negatives, margin=0.7, eps=1e-6):
   """Calculates Contrastive Loss.
 
   We expect the `queries`, `positives` and `negatives` to be normalized with
@@ -96,28 +95,28 @@ def contrastive_loss(queries, positives, negatives, margin=0.7,
   approach 0, while keeping negative distances above a certain threshold.
 
   Args:
-    queries: [B, D] Anchor input tensor.
-    positives: [B, D] Positive sample input tensor.
-    negatives: [B, Nneg, D] Negative sample input tensor.
+    queries: [batch_size, dim] Anchor input tensor.
+    positives: [batch_size, dim] Positive sample input tensor.
+    negatives: [batch_size, num_neg, dim] Negative sample input tensor.
     margin: Float contrastive loss loss margin.
     eps: Float parameter for numerical stability.
 
   Returns:
     loss: Scalar tensor.
   """
-  D = tf.shape(queries)[1]
+  dim = tf.shape(queries)[1]
   # Number of `queries`.
-  B = tf.shape(queries)[0]
+  batch_size = tf.shape(queries)[0]
   # Number of `positives`.
   np = tf.shape(positives)[0]
   # Number of `negatives`.
-  Nneg = tf.shape(negatives)[1]
+  num_neg = tf.shape(negatives)[1]
 
   # Preparing negatives.
-  stacked_negatives = tf.reshape(negatives, [Nneg * B, D])
+  stacked_negatives = tf.reshape(negatives, [num_neg * batch_size, dim])
 
   # Preparing queries for further loss calculation.
-  stacked_queries = tf.repeat(queries, Nneg + 1, axis=0)
+  stacked_queries = tf.repeat(queries, num_neg + 1, axis=0)
   positives_and_negatives = tf.concat([positives, stacked_negatives], axis=0)
 
   # Calculate an Euclidean norm for each pair of points. For any positive
@@ -126,8 +125,8 @@ def contrastive_loss(queries, positives, negatives, margin=0.7,
   distances = tf.norm(stacked_queries - positives_and_negatives + eps, axis=1)
 
   positives_part = 0.5 * tf.pow(distances[:np], 2.0)
-  negatives_part = 0.5 * tf.pow(tf.math.maximum(margin - distances[np:], 0),
-                                2.0)
+  negatives_part = 0.5 * tf.pow(
+      tf.math.maximum(margin - distances[np:], 0), 2.0)
 
   # Final contrastive loss calculation.
   loss = tf.reduce_sum(tf.concat([positives_part, negatives_part], 0))
@@ -142,35 +141,35 @@ def triplet_loss(queries, positives, negatives, margin=0.1):
   distances when computing the loss.
 
   Args:
-    queries: [B, D] Anchor input tensor.
-    positives: [B, D] Positive sample input tensor.
-    negatives: [B, Nneg, D] Negative sample input tensor.
+    queries: [batch_size, dim] Anchor input tensor.
+    positives: [batch_size, dim] Positive sample input tensor.
+    negatives: [batch_size, num_neg, dim] Negative sample input tensor.
     margin: Float triplet loss loss margin.
 
   Returns:
     loss: Scalar tensor.
   """
-  D = tf.shape(queries)[1]
+  dim = tf.shape(queries)[1]
   # Number of `queries`.
-  B = tf.shape(queries)[0]
+  batch_size = tf.shape(queries)[0]
   # Number of `negatives`.
-  Nneg = tf.shape(negatives)[1]
+  num_neg = tf.shape(negatives)[1]
 
   # Preparing negatives.
-  stacked_negatives = tf.reshape(negatives, [Nneg * B, D])
+  stacked_negatives = tf.reshape(negatives, [num_neg * batch_size, dim])
 
   # Preparing queries for further loss calculation.
-  stacked_queries = tf.repeat(queries, Nneg, axis=0)
+  stacked_queries = tf.repeat(queries, num_neg, axis=0)
 
   # Preparing positives for further loss calculation.
-  stacked_positives = tf.repeat(positives, Nneg, axis=0)
+  stacked_positives = tf.repeat(positives, num_neg, axis=0)
 
   # Computes *squared* distances.
   distance_positives = tf.reduce_sum(
-    tf.square(stacked_queries - stacked_positives), axis=1)
-  distance_negatives = tf.reduce_sum(tf.square(stacked_queries -
-                                               stacked_negatives), axis=1)
+      tf.square(stacked_queries - stacked_positives), axis=1)
+  distance_negatives = tf.reduce_sum(
+      tf.square(stacked_queries - stacked_negatives), axis=1)
   # Final triplet loss calculation.
-  loss = tf.reduce_sum(tf.maximum(distance_positives -
-                                  distance_negatives + margin, 0.0))
+  loss = tf.reduce_sum(
+      tf.maximum(distance_positives - distance_negatives + margin, 0.0))
   return loss
