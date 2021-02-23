@@ -99,6 +99,10 @@ def _compute_losses_and_predictions_dicts(
           k-hot tensor of classes.
         labels[fields.InputDataFields.groundtruth_track_ids] is a int32
           tensor of track IDs.
+        labels[fields.InputDataFields.groundtruth_keypoint_depths] is a
+          float32 tensor containing keypoint depths information.
+        labels[fields.InputDataFields.groundtruth_keypoint_depth_weights] is a
+          float32 tensor containing the weights of the keypoint depth feature.
     add_regularization_loss: Whether or not to include the model's
       regularization loss in the losses dictionary.
 
@@ -213,6 +217,10 @@ def eager_train_step(detection_model,
           k-hot tensor of classes.
         labels[fields.InputDataFields.groundtruth_track_ids] is a int32
           tensor of track IDs.
+        labels[fields.InputDataFields.groundtruth_keypoint_depths] is a
+          float32 tensor containing keypoint depths information.
+        labels[fields.InputDataFields.groundtruth_keypoint_depth_weights] is a
+          float32 tensor containing the weights of the keypoint depth feature.
     unpad_groundtruth_tensors: A parameter passed to unstack_batch.
     optimizer: The training optimizer that will update the variables.
     learning_rate: The learning rate tensor for the current training step.
@@ -506,6 +514,13 @@ def train_loop(
   with strategy.scope():
     detection_model = MODEL_BUILD_UTIL_MAP['detection_model_fn_base'](
         model_config=model_config, is_training=True)
+    # We run the detection_model on dummy inputs in order to ensure that the
+    # model and all its variables have been properly constructed. Specifically,
+    # this is currently necessary prior to (potentially) creating shadow copies
+    # of the model variables for the EMA optimizer.
+    dummy_image, dummy_shapes = detection_model.preprocess(
+        tf.zeros([1, 512, 512, 3], dtype=tf.float32))
+    dummy_prediction_dict = detection_model.predict(dummy_image, dummy_shapes)
 
     def train_dataset_fn(input_context):
       """Callable to create train input."""
@@ -528,6 +543,8 @@ def train_loop(
         aggregation=tf.compat.v2.VariableAggregation.ONLY_FIRST_REPLICA)
     optimizer, (learning_rate,) = optimizer_builder.build(
         train_config.optimizer, global_step=global_step)
+    if train_config.optimizer.use_moving_average:
+      optimizer.shadow_copy(detection_model)
 
     if callable(learning_rate):
       learning_rate_fn = learning_rate
@@ -1049,6 +1066,13 @@ def eval_continuously(
   with strategy.scope():
     detection_model = MODEL_BUILD_UTIL_MAP['detection_model_fn_base'](
         model_config=model_config, is_training=True)
+    # We run the detection_model on dummy inputs in order to ensure that the
+    # model and all its variables have been properly constructed. Specifically,
+    # this is currently necessary prior to (potentially) creating shadow copies
+    # of the model variables for the EMA optimizer.
+    dummy_image, dummy_shapes = detection_model.preprocess(
+        tf.zeros([1, 512, 512, 3], dtype=tf.float32))
+    dummy_prediction_dict = detection_model.predict(dummy_image, dummy_shapes)
 
   eval_input = strategy.experimental_distribute_dataset(
       inputs.eval_input(
@@ -1060,12 +1084,21 @@ def eval_continuously(
   global_step = tf.compat.v2.Variable(
       0, trainable=False, dtype=tf.compat.v2.dtypes.int64)
 
+  optimizer, _ = optimizer_builder.build(
+      configs['train_config'].optimizer, global_step=global_step)
+
   for latest_checkpoint in tf.train.checkpoints_iterator(
       checkpoint_dir, timeout=timeout, min_interval_secs=wait_interval):
     ckpt = tf.compat.v2.train.Checkpoint(
-        step=global_step, model=detection_model)
+        step=global_step, model=detection_model, optimizer=optimizer)
+
+    if eval_config.use_moving_averages:
+      optimizer.shadow_copy(detection_model)
 
     ckpt.restore(latest_checkpoint).expect_partial()
+
+    if eval_config.use_moving_averages:
+      optimizer.swap_weights()
 
     summary_writer = tf.compat.v2.summary.create_file_writer(
         os.path.join(model_dir, 'eval', eval_input_config.name))

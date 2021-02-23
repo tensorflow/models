@@ -26,6 +26,7 @@ import tensorflow.compat.v1 as tf
 
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
+from object_detection.core import keypoint_ops
 from object_detection.core import standard_fields as fields
 from object_detection.utils import shape_utils
 
@@ -379,6 +380,11 @@ def _clip_window_prune_boxes(sorted_boxes, clip_window, pad_to_max_output_size,
   if change_coordinate_frame:
     sorted_boxes = box_list_ops.change_coordinate_frame(sorted_boxes,
                                                         clip_window)
+    if sorted_boxes.has_field(fields.BoxListFields.keypoints):
+      sorted_keypoints = sorted_boxes.get_field(fields.BoxListFields.keypoints)
+      sorted_keypoints = keypoint_ops.change_coordinate_frame(sorted_keypoints,
+                                                              clip_window)
+      sorted_boxes.set_field(fields.BoxListFields.keypoints, sorted_keypoints)
   return sorted_boxes, num_valid_nms_boxes_cumulative
 
 

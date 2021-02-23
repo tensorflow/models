@@ -109,8 +109,8 @@ class Transformer(tf.keras.Model):
       sequence. float tensor with shape [batch_size, target_length, vocab_size]
       If target is none, then generate output sequence one token at a time.
         returns a dictionary {
-          outputs: [batch_size, decoded length]
-          scores: [batch_size, float]}
+          outputs: int tensor with shape [batch_size, decoded_length]
+          scores: float tensor with shape [batch_size]}
       Even when float16 is used, the output tensor(s) are always float32.
 
     Raises:

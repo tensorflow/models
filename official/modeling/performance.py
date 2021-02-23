@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Functions and classes related to training performance."""
 
 import tensorflow as tf
@@ -41,7 +40,7 @@ def configure_optimizer(optimizer,
           optimizer, dynamic=False, initial_scale=loss_scale)
   if use_graph_rewrite:
     # Note: the model dtype must be 'float32', which will ensure
-    # tf.ckeras.mixed_precision and
+    # tf.keras.mixed_precision and
     # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
     # up.
     optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(

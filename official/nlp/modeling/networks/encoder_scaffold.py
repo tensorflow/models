@@ -49,7 +49,7 @@ class EncoderScaffold(tf.keras.Model):
   *Note* that the network is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     pooled_output_dim: The dimension of pooled output.
     pooler_layer_initializer: The initializer for the classification layer.
     embedding_cls: The class or instance to use to embed the input data. This
@@ -243,7 +243,6 @@ class EncoderScaffold(tf.keras.Model):
     self._position_embedding_layer = position_embedding_layer
     self._type_embedding_layer = type_embedding_layer
     self._embedding_norm_layer = embedding_norm_layer
-    self._embedding_network = embedding_network
     self._hidden_layers = hidden_layers
     if self._layer_norm_before_pooling:
       self._output_layer_norm = output_layer_norm

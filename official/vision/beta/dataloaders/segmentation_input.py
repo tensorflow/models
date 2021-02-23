@@ -111,10 +111,6 @@ class Parser(parser.Parser):
     image, label = self._prepare_image_and_label(data)
 
     if self._train_on_crops:
-      if data['image/height'] < self._output_size[0] or data[
-          'image/width'] < self._output_size[1]:
-        raise ValueError(
-            'Image size has to be larger than crop size (output_size)')
       label = tf.reshape(label, [data['image/height'], data['image/width'], 1])
       image_mask = tf.concat([image, label], axis=2)
       image_mask_crop = tf.image.random_crop(image_mask,

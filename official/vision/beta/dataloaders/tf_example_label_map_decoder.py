@@ -27,9 +27,11 @@ from official.vision.beta.dataloaders import tf_example_decoder
 class TfExampleDecoderLabelMap(tf_example_decoder.TfExampleDecoder):
   """Tensorflow Example proto decoder."""
 
-  def __init__(self, label_map, include_mask=False, regenerate_source_id=False):
+  def __init__(self, label_map, include_mask=False, regenerate_source_id=False,
+               mask_binarize_threshold=None):
     super(TfExampleDecoderLabelMap, self).__init__(
-        include_mask=include_mask, regenerate_source_id=regenerate_source_id)
+        include_mask=include_mask, regenerate_source_id=regenerate_source_id,
+        mask_binarize_threshold=mask_binarize_threshold)
     self._keys_to_features.update({
         'image/object/class/text': tf.io.VarLenFeature(tf.string),
     })

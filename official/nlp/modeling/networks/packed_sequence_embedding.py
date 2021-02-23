@@ -33,7 +33,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
   to (1) pack multiple sequences into one sequence and (2) allow additional
   "position_ids" as input.
 
-  Arguments:
+  Args:
     vocab_size: The size of the token vocabulary.
     type_vocab_size: The size of the type vocabulary.
     embedding_width: Width of token embeddings.
@@ -207,7 +207,7 @@ class PositionEmbeddingWithSubSeqMask(tf.keras.layers.Layer):
   can have a dynamic 1st dimension, while if `use_dynamic_slicing` is False the
   input size must be fixed.
 
-  Arguments:
+  Args:
     initializer: The initializer to use for the embedding weights. Defaults to
       "glorot_uniform".
     use_dynamic_slicing: Whether to use the dynamic slicing path.

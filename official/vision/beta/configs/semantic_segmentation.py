@@ -33,6 +33,8 @@ from official.vision.beta.configs import decoders
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
   output_size: List[int] = dataclasses.field(default_factory=list)
+  # If train_on_crops is set to True, a patch of size output_size is cropped
+  # from the input image.
   train_on_crops: bool = False
   input_path: str = ''
   global_batch_size: int = 0
@@ -40,12 +42,16 @@ class DataConfig(cfg.DataConfig):
   dtype: str = 'float32'
   shuffle_buffer_size: int = 1000
   cycle_length: int = 10
+  # If resize_eval_groundtruth is set to False, original image sizes are used
+  # for eval. In that case, groundtruth_padded_size has to be specified too to
+  # allow for batching the variable input sizes of images.
   resize_eval_groundtruth: bool = True
   groundtruth_padded_size: List[int] = dataclasses.field(default_factory=list)
   aug_scale_min: float = 1.0
   aug_scale_max: float = 1.0
   aug_rand_hflip: bool = True
   drop_remainder: bool = True
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass
@@ -85,12 +91,19 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Evaluation(hyperparams.Config):
+  report_per_class_iou: bool = True
+  report_train_mean_iou: bool = True  # Turning this off can speed up training.
+
+
+@dataclasses.dataclass
 class SemanticSegmentationTask(cfg.TaskConfig):
   """The model config."""
   model: SemanticSegmentationModel = SemanticSegmentationModel()
   train_data: DataConfig = DataConfig(is_training=True)
   validation_data: DataConfig = DataConfig(is_training=False)
   losses: Losses = Losses()
+  evaluation: Evaluation = Evaluation()
   train_input_partition_dims: List[int] = dataclasses.field(
       default_factory=list)
   eval_input_partition_dims: List[int] = dataclasses.field(
@@ -401,7 +414,8 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
               decoder=decoders.Decoder(
                   type='aspp',
                   aspp=decoders.ASPP(
-                      level=level, dilation_rates=aspp_dilation_rates)),
+                      level=level, dilation_rates=aspp_dilation_rates,
+                      pool_kernel_size=[512, 1024])),
               head=SegmentationHead(
                   level=level,
                   num_convs=2,
@@ -417,7 +431,7 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
           train_data=DataConfig(
               input_path=os.path.join(CITYSCAPES_INPUT_PATH_BASE,
                                       'train_fine**'),
-              output_size=[1024, 2048],
+              output_size=[512, 1024],
               train_on_crops=True,
               is_training=True,
               global_batch_size=train_batch_size,

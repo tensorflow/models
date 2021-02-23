@@ -1,4 +1,4 @@
-# Copyright 2020 The Orbit Authors. All Rights Reserved.
+# Copyright 2021 The Orbit Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Provides a `Controller` class for managing the outer training loop."""
 
 import pprint
@@ -259,7 +259,7 @@ class Controller:
     elapsed = time.time() - start
 
     _log(f" eval | step: {current_step: 6d} | "
-         f"eval time: {elapsed: 6.1f} | "
+         f"eval time: {elapsed: 6.1f} sec | "
          f"output: {_format_output(eval_output)}")
 
     self.eval_summary_manager.write_summaries(eval_output)

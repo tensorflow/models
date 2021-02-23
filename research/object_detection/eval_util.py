@@ -570,15 +570,17 @@ def _resize_detection_masks(arg_tuple):
 
   Returns:
   """
+
   detection_boxes, detection_masks, image_shape, pad_shape = arg_tuple
+
   detection_masks_reframed = ops.reframe_box_masks_to_image_masks(
       detection_masks, detection_boxes, image_shape[0], image_shape[1])
-  paddings = tf.concat(
-      [tf.zeros([3, 1], dtype=tf.int32),
-       tf.expand_dims(
-           tf.concat([tf.zeros([1], dtype=tf.int32),
-                      pad_shape-image_shape], axis=0),
-           1)], axis=1)
+
+  pad_instance_dim = tf.zeros([3, 1], dtype=tf.int32)
+  pad_hw_dim = tf.concat([tf.zeros([1], dtype=tf.int32),
+                          pad_shape - image_shape], axis=0)
+  pad_hw_dim = tf.expand_dims(pad_hw_dim, 1)
+  paddings = tf.concat([pad_instance_dim, pad_hw_dim], axis=1)
   detection_masks_reframed = tf.pad(detection_masks_reframed, paddings)
 
   # If the masks are currently float, binarize them. Otherwise keep them as

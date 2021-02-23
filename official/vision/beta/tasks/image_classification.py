@@ -16,12 +16,15 @@
 """Image classification task definition."""
 from absl import logging
 import tensorflow as tf
+
+from official.common import dataset_fn
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.modeling import tf_utils
 from official.vision.beta.configs import image_classification as exp_cfg
 from official.vision.beta.dataloaders import classification_input
+from official.vision.beta.dataloaders import input_reader_factory
+from official.vision.beta.dataloaders import tfds_classification_decoders
 from official.vision.beta.modeling import factory
 
 
@@ -66,7 +69,8 @@ class ImageClassificationTask(base_task.Task):
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      assert "Only 'all' or 'backbone' can be used to initialize the model."
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
@@ -77,16 +81,25 @@ class ImageClassificationTask(base_task.Task):
     num_classes = self.task_config.model.num_classes
     input_size = self.task_config.model.input_size
 
-    decoder = classification_input.Decoder()
+    if params.tfds_name:
+      if params.tfds_name in tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP:
+        decoder = tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP[
+            params.tfds_name]()
+      else:
+        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+    else:
+      decoder = classification_input.Decoder()
+
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,
         aug_policy=params.aug_policy,
+        randaug_magnitude=params.randaug_magnitude,
         dtype=params.dtype)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
 

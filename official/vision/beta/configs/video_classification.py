@@ -34,6 +34,7 @@ class DataConfig(cfg.DataConfig):
   feature_shape: Tuple[int, ...] = (64, 224, 224, 3)
   temporal_stride: int = 1
   num_test_clips: int = 1
+  num_test_crops: int = 1
   num_classes: int = -1
   num_channels: int = 3
   num_examples: int = -1
@@ -53,6 +54,10 @@ class DataConfig(cfg.DataConfig):
   output_audio: bool = False
   audio_feature: str = ''
   audio_feature_shape: Tuple[int, ...] = (-1,)
+  aug_min_aspect_ratio: float = 0.5
+  aug_max_aspect_ratio: float = 2.0
+  aug_min_area_ratio: float = 0.49
+  aug_max_area_ratio: float = 1.0
 
 
 def kinetics400(is_training):
@@ -85,7 +90,8 @@ class VideoClassificationModel(hyperparams.Config):
   model_type: str = 'video_classification'
   backbone: backbones_3d.Backbone3D = backbones_3d.Backbone3D(
       type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50())
-  norm_activation: common.NormActivation = common.NormActivation()
+  norm_activation: common.NormActivation = common.NormActivation(
+      use_sync_bn=False)
   dropout_rate: float = 0.2
   aggregate_endpoints: bool = False
 
@@ -181,7 +187,7 @@ def video_classification_kinetics400() -> cfg.ExperimentConfig:
           backbone=backbones_3d.Backbone3D(
               type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
           norm_activation=common.NormActivation(
-              norm_momentum=0.9, norm_epsilon=1e-5)),
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
       losses=Losses(l2_weight_decay=1e-4),
       train_data=train_dataset,
       validation_data=validation_dataset)
@@ -207,7 +213,7 @@ def video_classification_kinetics600() -> cfg.ExperimentConfig:
           backbone=backbones_3d.Backbone3D(
               type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
           norm_activation=common.NormActivation(
-              norm_momentum=0.9, norm_epsilon=1e-5)),
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
       losses=Losses(l2_weight_decay=1e-4),
       train_data=train_dataset,
       validation_data=validation_dataset)

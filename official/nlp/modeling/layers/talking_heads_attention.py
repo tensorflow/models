@@ -33,9 +33,9 @@ class TalkingHeadsAttention(tf.keras.layers.MultiHeadAttention):
   multi-head attention by including linearprojections across the attention-heads
   dimension, immediately before and after the softmax operation.
 
-  See the base class `MultiHeadAttention` for more details.
+  See the base class `tf.keras.layers.MultiHeadAttention` for more details.
 
-  Arguments:
+  Args:
     num_heads: Number of attention heads.
     key_dim: Size of each attention head for query and key.
     value_dim:  Size of each attention head for value.

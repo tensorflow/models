@@ -89,3 +89,8 @@ assemble new layers, networks, or models.
     [MobileBertTransformer](mobile_bert_layers.py) implement the embedding layer
     and also transformer layer proposed in the
     [MobileBERT paper](https://arxiv.org/pdf/2004.02984.pdf).
+
+*   [BertPackInputs](text_layers.py) and
+    [BertTokenizer](text_layers.py) and [SentencepieceTokenizer](text_layers.py)
+    implements the layer to tokenize raw text and pack them into the inputs for
+    BERT models.

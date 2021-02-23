@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Common configuration settings."""
 
 from typing import Optional, Sequence, Union
@@ -192,6 +191,7 @@ class TrainerConfig(base_config.Config):
   train_tf_while_loop: bool = True
   train_tf_function: bool = True
   eval_tf_function: bool = True
+  eval_tf_while_loop: bool = False
   allow_tpu_summary: bool = False
   # Trainer intervals.
   steps_per_loop: int = 1000

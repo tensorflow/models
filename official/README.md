@@ -19,7 +19,7 @@ In the near future, we will add:
 
 * State-of-the-art language understanding models.
 * State-of-the-art image classification models.
-* State-of-the-art objection detection and instance segmentation models.
+* State-of-the-art object detection and instance segmentation models.
 
 ## Table of Contents
 
@@ -105,6 +105,12 @@ pip will install all models and dependencies automatically.
 pip install tf-models-official
 ```
 
+If you are using nlp packages, please also install **tensorflow-text**:
+
+```shell
+pip install tensorflow-text
+```
+
 Please check out our [example](colab/fine_tuning_bert.ipynb)
 to learn how to use a PIP package.
 
@@ -141,6 +147,13 @@ os.environ['PYTHONPATH'] += ":/path/to/models"
 
 ```shell
 pip3 install --user -r official/requirements.txt
+```
+
+Finally, if you are using nlp packages, please also install
+**tensorflow-text-nightly**:
+
+```shell
+pip3 install tensorflow-text-nightly
 ```
 
 ## Contributions

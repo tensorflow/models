@@ -59,7 +59,7 @@ def record(episode,
            num_steps):
   """Helper function to store score and print statistics.
 
-  Arguments:
+  Args:
     episode: Current episode
     episode_reward: Reward accumulated over the current episode
     worker_idx: Which thread (worker)
@@ -87,7 +87,7 @@ def record(episode,
 class RandomAgent:
   """Random Agent that will play the specified game
 
-    Arguments:
+    Args:
       env_name: Name of the environment to be played
       max_eps: Maximum number of episodes to run agent for.
   """

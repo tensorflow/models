@@ -30,7 +30,7 @@ enum InputType {
   TF_SEQUENCE_EXAMPLE = 2;  // TfSequenceExample Input
 }
 
-// Next id: 37
+// Next id: 38
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -134,6 +134,9 @@ message InputReader {
   // Whether to load track information.
   optional bool load_track_id = 33 [default = false];
 
+  // Whether to load keypoint depth features.
+  optional bool load_keypoint_depth_features = 37 [default = false];
+
   // Whether to use the display name when decoding examples. This is only used
   // when mapping class text strings to integers.
   optional bool use_display_name = 17 [default = false];
@@ -158,12 +161,17 @@ message InputReader {
   //
   // The number of weights must match the number of input files configured.
   //
-  // When set, shuffling, shuffle buffer size, and num_readers settings are
+  // The number of input readers per dataset is num_readers, scaled relative to
+  // the dataset weight.
+  //
+  // When set, shuffling and shuffle buffer size, settings are
   // applied individually to each dataset.
   //
   // Implementation follows tf.data.experimental.sample_from_datasets sampling
   // strategy. Weights may take any value - only relative weights matter.
-  // Zero weights will result in a dataset not being sampled.
+  //
+  // Zero weights will result in a dataset not being sampled and no input
+  // readers spawned.
   //
   // Examples, assuming two input files configured:
   //

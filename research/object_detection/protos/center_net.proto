@@ -4,6 +4,7 @@ package object_detection.protos;
 
 import "object_detection/protos/image_resizer.proto";
 import "object_detection/protos/losses.proto";
+import "object_detection/protos/post_processing.proto";
 
 // Configuration for the CenterNet meta architecture from the "Objects as
 // Points" paper [1]
@@ -270,6 +271,13 @@ message CenterNet {
   }
   optional TemporalOffsetEstimation temporal_offset_task = 12;
 
+
+  // CenterNet does not apply conventional post processing operations such as
+  // non max suppression as it applies a max-pool operator on box centers.
+  // However, in some cases we observe the need to remove duplicate predictions
+  // from CenterNet. Use this optional parameter to apply traditional non max
+  // suppression and score thresholding.
+  optional PostProcessing post_processing = 24;
 
 }
 

@@ -1,4 +1,4 @@
-# ResNet-200 ImageNet classification. 79.9% top-1 and 94.8% top-5 accuracy.
+# ResNet-50 ImageNet classification. 78.1% top-1 and 93.9% top-5 accuracy.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -9,7 +9,7 @@ task:
     backbone:
       type: 'resnet'
       resnet:
-        model_id: 200
+        model_id: 50
     norm_activation:
       activation: 'swish'
   losses:
@@ -17,12 +17,18 @@ task:
     one_hot: true
     label_smoothing: 0.1
   train_data:
-    input_path: 'imagenet-2012-tfrecord/train*'
+    input_path: ''
+    tfds_name: 'imagenet2012'
+    tfds_split: 'train'
+    sharding: true
     is_training: true
     global_batch_size: 4096
     dtype: 'bfloat16'
   validation_data:
-    input_path: 'imagenet-2012-tfrecord/valid*'
+    input_path: ''
+    tfds_name: 'imagenet2012'
+    tfds_split: 'validation'
+    sharding: true
     is_training: false
     global_batch_size: 4096
     dtype: 'bfloat16'

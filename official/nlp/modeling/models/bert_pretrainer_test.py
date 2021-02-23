@@ -117,9 +117,10 @@ class BertPretrainerV2Test(keras_parameterized.TestCase):
       (False, True),
       (False, True),
       (False, True),
+      (False, True),
   ))
   def test_bert_pretrainerv2(self, dict_outputs, return_all_encoder_outputs,
-                             use_customized_masked_lm):
+                             use_customized_masked_lm, has_masked_lm_positions):
     """Validate that the Keras object can be created."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
@@ -148,27 +149,27 @@ class BertPretrainerV2Test(keras_parameterized.TestCase):
     inputs = dict(
         input_word_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
         input_mask=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
-        input_type_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32),
-        masked_lm_positions=tf.keras.Input(
-            shape=(num_token_predictions,), dtype=tf.int32))
+        input_type_ids=tf.keras.Input(shape=(sequence_length,), dtype=tf.int32))
+    if has_masked_lm_positions:
+      inputs['masked_lm_positions'] = tf.keras.Input(
+          shape=(num_token_predictions,), dtype=tf.int32)
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.
     outputs = bert_trainer_model(inputs)
 
     has_encoder_outputs = dict_outputs or return_all_encoder_outputs
+    expected_keys = ['sequence_output', 'pooled_output']
     if has_encoder_outputs:
-      self.assertSameElements(
-          outputs.keys(),
-          ['sequence_output', 'pooled_output', 'mlm_logits', 'encoder_outputs'])
-      self.assertLen(outputs['encoder_outputs'], num_layers)
-    else:
-      self.assertSameElements(
-          outputs.keys(), ['sequence_output', 'pooled_output', 'mlm_logits'])
+      expected_keys.append('encoder_outputs')
+    if has_masked_lm_positions:
+      expected_keys.append('mlm_logits')
 
+    self.assertSameElements(outputs.keys(), expected_keys)
     # Validate that the outputs are of the expected shape.
     expected_lm_shape = [None, num_token_predictions, vocab_size]
-    self.assertAllEqual(expected_lm_shape,
-                        outputs['mlm_logits'].shape.as_list())
+    if has_masked_lm_positions:
+      self.assertAllEqual(expected_lm_shape,
+                          outputs['mlm_logits'].shape.as_list())
 
     expected_sequence_output_shape = [None, sequence_length, hidden_size]
     self.assertAllEqual(expected_sequence_output_shape,

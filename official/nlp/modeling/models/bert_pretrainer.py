@@ -30,7 +30,7 @@ from official.nlp.modeling import networks
 class BertPretrainer(tf.keras.Model):
   """BERT pretraining model.
 
-  [Note] Please use the new BertPretrainerV2 for your projects.
+  [Note] Please use the new `BertPretrainerV2` for your projects.
 
   The BertPretrainer allows a user to pass in a transformer stack, and
   instantiates the masked language model and classification networks that are
@@ -39,7 +39,7 @@ class BertPretrainer(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output.
     num_classes: Number of classes to predict from the classification network.
@@ -165,7 +165,7 @@ class BertPretrainerV2(tf.keras.Model):
   Adds the masked language model head and optional classification heads upon the
   transformer encoder.
 
-  Arguments:
+  Args:
     encoder_network: A transformer network. This network should output a
       sequence output and a classification output.
     mlm_activation: The activation (if any) to use in the masked LM network. If
@@ -244,9 +244,11 @@ class BertPretrainerV2(tf.keras.Model):
       raise ValueError('encoder_network\'s output should be either a list '
                        'or a dict, but got %s' % encoder_network_outputs)
     sequence_output = outputs['sequence_output']
-    masked_lm_positions = inputs['masked_lm_positions']
-    outputs['mlm_logits'] = self.masked_lm(
-        sequence_output, masked_positions=masked_lm_positions)
+    # Inference may not have masked_lm_positions and mlm_logits is not needed.
+    if 'masked_lm_positions' in inputs:
+      masked_lm_positions = inputs['masked_lm_positions']
+      outputs['mlm_logits'] = self.masked_lm(
+          sequence_output, masked_positions=masked_lm_positions)
     for cls_head in self.classification_heads:
       cls_outputs = cls_head(sequence_output)
       if isinstance(cls_outputs, dict):

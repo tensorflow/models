@@ -31,11 +31,13 @@ from official.vision.beta.configs import decoders
 @dataclasses.dataclass
 class TfExampleDecoder(hyperparams.Config):
   regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
 
 
 @dataclasses.dataclass
 class TfExampleDecoderLabelMap(hyperparams.Config):
   regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
   label_map: str = ''
 
 
@@ -73,6 +75,7 @@ class DataConfig(cfg.DataConfig):
   decoder: DataDecoder = DataDecoder()
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass

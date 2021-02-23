@@ -13,7 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Build video classification models."""
-# Import libraries
+from typing import Mapping
 import tensorflow as tf
 
 layers = tf.keras.layers
@@ -24,11 +24,11 @@ class VideoClassificationModel(tf.keras.Model):
   """A video classification class builder."""
 
   def __init__(self,
-               backbone,
-               num_classes,
-               input_specs=layers.InputSpec(shape=[None, None, None, None, 3]),
-               dropout_rate=0.0,
-               aggregate_endpoints=False,
+               backbone: tf.keras.Model,
+               num_classes: int,
+               input_specs: Mapping[str, tf.keras.layers.InputSpec] = None,
+               dropout_rate: float = 0.0,
+               aggregate_endpoints: bool = False,
                kernel_initializer='random_uniform',
                kernel_regularizer=None,
                bias_regularizer=None,
@@ -49,6 +49,10 @@ class VideoClassificationModel(tf.keras.Model):
         None.
       **kwargs: keyword arguments to be passed.
     """
+    if not input_specs:
+      input_specs = {
+          'image': layers.InputSpec(shape=[None, None, None, None, 3])
+      }
     self._self_setattr_tracking = False
     self._config_dict = {
         'backbone': backbone,
@@ -65,8 +69,10 @@ class VideoClassificationModel(tf.keras.Model):
     self._bias_regularizer = bias_regularizer
     self._backbone = backbone
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
-    endpoints = backbone(inputs)
+    inputs = {
+        k: tf.keras.Input(shape=v.shape[1:]) for k, v in input_specs.items()
+    }
+    endpoints = backbone(inputs['image'])
 
     if aggregate_endpoints:
       pooled_feats = []

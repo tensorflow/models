@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Standard Trainer implementation.
 
 The base trainer implements the Orbit `StandardTrainable` and
@@ -27,6 +26,8 @@ import tensorflow as tf
 
 from official.core import base_task
 from official.core import config_definitions
+from official.modeling import optimization
+
 
 ExperimentConfig = config_definitions.ExperimentConfig
 TrainerConfig = config_definitions.TrainerConfig
@@ -120,6 +121,10 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     self._checkpoint_exporter = checkpoint_exporter
     self._recovery = None
 
+    # Creates a shadow copy of the weights to store weights moving average.
+    if isinstance(self._optimizer, optimization.ExponentialMovingAverage):
+      self._optimizer.shadow_copy(self._model)
+
     # global_step increases by 1 after each training iteration.
     # We should have global_step.numpy() == self.optimizer.iterations.numpy()
     # when there is only 1 optimizer.
@@ -161,7 +166,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
           self,
           eval_dataset,
           options=orbit.StandardEvaluatorOptions(
-              use_tf_function=config.trainer.eval_tf_function))
+              use_tf_function=config.trainer.eval_tf_function,
+              use_tf_while_loop=config.trainer.eval_tf_while_loop))
 
   def _validate_params(self, config):
     r"""Validates if the configuration object passed to the Trainer.
@@ -209,7 +215,10 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
 
   @property
   def optimizer(self):
-    return self._optimizer
+    if hasattr(self, "_optimizer"):
+      return self._optimizer
+    else:
+      return None
 
   @property
   def global_step(self):
@@ -294,6 +303,10 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     """Sets up metrics."""
     for metric in self.validation_metrics + [self.validation_loss]:
       metric.reset_states()
+    # Swaps weights to test on weights moving average.
+    if self.optimizer and isinstance(
+        self.optimizer, optimization.ExponentialMovingAverage):
+      self.optimizer.swap_weights()
 
   def eval_step(self, iterator):
     """See base class."""
@@ -331,6 +344,12 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
       logs["best_" +
            metric_name] = self._checkpoint_exporter.best_ckpt_logs[metric_name]
 
+    # Swaps back weights after testing when EMA is used.
+    # This happens after best checkpoint export so that average weights used for
+    # eval are exported instead of regular weights.
+    if self.optimizer and isinstance(
+        self.optimizer, optimization.ExponentialMovingAverage):
+      self.optimizer.swap_weights()
     return logs
 
   def eval_reduce(self, state=None, step_outputs=None):

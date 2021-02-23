@@ -53,7 +53,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
     self._model = model
 
   @abc.abstractmethod
-  def build_model(self):
+  def build_model(self, **kwargs):
     """Builds model and sets self._model."""
 
   @abc.abstractmethod
@@ -73,7 +73,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
               _decode_image,
               elems=input_tensor,
               fn_output_signature=tf.TensorSpec(
-                  shape=self._input_image_size + [3], dtype=tf.uint8),
+                  shape=[None, None, 3], dtype=tf.uint8),
               parallel_iterations=32))
       images = tf.stack(images)
     return self._run_inference_on_image_tensors(images)
@@ -86,8 +86,12 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
           tf.map_fn(
               _decode_tf_example,
               elems=input_tensor,
+              # Height/width of the shape of input images is unspecified (None)
+              # at the time of decoding the example, but the shape will
+              # be adjusted to conform to the input layer of the model,
+              # by _run_inference_on_image_tensors() below.
               fn_output_signature=tf.TensorSpec(
-                  shape=self._input_image_size + [3], dtype=tf.uint8),
+                  shape=[None, None, 3], dtype=tf.uint8),
               dtype=tf.uint8,
               parallel_iterations=32))
       images = tf.stack(images)
