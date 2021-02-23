@@ -45,8 +45,9 @@ class MAC(tf.keras.layers.Layer):
 class SPoC(tf.keras.layers.Layer):
   """Average pooling (SPoC) layer.
 
-  Sum-pooled convolutional features (SPoC) is based on the sum pooling of the 
-  deep features. See https://arxiv.org/pdf/1510.07493.pdf for a reference."""
+  Sum-pooled convolutional features (SPoC) is based on the sum pooling of the
+  deep features. See https://arxiv.org/pdf/1510.07493.pdf for a reference.
+  """
 
   def __init__(self):
     """Initialization of the SPoC layer."""
@@ -76,12 +77,12 @@ class GeM(tf.keras.layers.Layer):
     """Initialization of the generalized mean pooling (GeM) layer.
 
     Args:
-      power:  Float power > 0 is an inverse exponent parameter, used during
-        the generalized mean pooling computation. Setting this exponent as power
-        > 1 increases the contrast of the pooled feature map and focuses on
-        the salient features of the image. GeM is a generalization of the
-        average pooling commonly used in classification networks (power = 1) and
-        of spatial max-pooling layer (power = inf).
+      power:  Float power > 0 is an inverse exponent parameter, used during the
+        generalized mean pooling computation. Setting this exponent as power > 1
+        increases the contrast of the pooled feature map and focuses on the
+        salient features of the image. GeM is a generalization of the average
+        pooling commonly used in classification networks (power = 1) and of
+        spatial max-pooling layer (power = inf).
     """
     super(GeM, self).__init__()
     self.power = power

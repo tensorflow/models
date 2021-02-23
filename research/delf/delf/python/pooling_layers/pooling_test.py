@@ -22,8 +22,7 @@ from delf.python.pooling_layers import pooling
 class PoolingsTest(tf.test.TestCase):
 
   def testMac(self):
-    x = tf.constant([[[[0., 1.], [2., 3.]],
-                     [[4., 5.], [6., 7.]]]])
+    x = tf.constant([[[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]]]])
     # Run tested function.
     result = pooling.mac(x)
     # Define expected result.
@@ -32,8 +31,7 @@ class PoolingsTest(tf.test.TestCase):
     self.assertAllClose(exp_output, result)
 
   def testSpoc(self):
-    x = tf.constant([[[[0., 1.], [2., 3.]],
-                     [[4., 5.], [6., 7.]]]])
+    x = tf.constant([[[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]]]])
     # Run tested function.
     result = pooling.spoc(x)
     # Define expected result.
@@ -42,8 +40,7 @@ class PoolingsTest(tf.test.TestCase):
     self.assertAllClose(exp_output, result)
 
   def testGem(self):
-    x = tf.constant([[[[0., 1.], [2., 3.]],
-                     [[4., 5.], [6., 7.]]]])
+    x = tf.constant([[[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]]]])
     # Run tested function.
     result = pooling.gem(x, power=3., eps=1e-6)
     # Define expected result.

@@ -27,7 +27,7 @@ class NormalizationsTest(tf.test.TestCase):
     # Run tested function.
     result = layer(x, axis=0)
     # Define expected result.
-    exp_output = [-0.70710677, 0.0,  0.70710677]
+    exp_output = [-0.70710677, 0.0, 0.70710677]
     # Compare actual and expected.
     self.assertAllClose(exp_output, result)
 
