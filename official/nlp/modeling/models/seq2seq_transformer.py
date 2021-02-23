@@ -591,5 +591,6 @@ class TransformerDecoder(tf.keras.layers.Layer):
 
 def attention_initializer(hidden_size):
   """Initializer for attention layers in Seq2SeqTransformer."""
+  hidden_size = int(hidden_size)
   limit = math.sqrt(6.0 / (hidden_size + hidden_size))
   return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)
