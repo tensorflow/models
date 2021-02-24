@@ -868,7 +868,10 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
       candidate_search_scale=kp_config.candidate_search_scale,
       candidate_ranking_mode=kp_config.candidate_ranking_mode,
       offset_peak_radius=kp_config.offset_peak_radius,
-      per_keypoint_offset=kp_config.per_keypoint_offset)
+      per_keypoint_offset=kp_config.per_keypoint_offset,
+      predict_depth=kp_config.predict_depth,
+      per_keypoint_depth=kp_config.per_keypoint_depth,
+      keypoint_depth_loss_weight=kp_config.keypoint_depth_loss_weight)
 
 
 def object_detection_proto_to_params(od_config):

@@ -423,12 +423,12 @@ def prediction_tensors_to_temporal_offsets(
   return offsets
 
 
-def prediction_tensors_to_keypoint_candidates(
-    keypoint_heatmap_predictions,
-    keypoint_heatmap_offsets,
-    keypoint_score_threshold=0.1,
-    max_pool_kernel_size=1,
-    max_candidates=20):
+def prediction_tensors_to_keypoint_candidates(keypoint_heatmap_predictions,
+                                              keypoint_heatmap_offsets,
+                                              keypoint_score_threshold=0.1,
+                                              max_pool_kernel_size=1,
+                                              max_candidates=20,
+                                              keypoint_depths=None):
   """Convert keypoint heatmap predictions and offsets to keypoint candidates.
 
   Args:
@@ -437,14 +437,17 @@ def prediction_tensors_to_keypoint_candidates(
     keypoint_heatmap_offsets: A float tensor of shape [batch_size, height,
       width, 2] (or [batch_size, height, width, 2 * num_keypoints] if
       'per_keypoint_offset' is set True) representing the per-keypoint offsets.
-    keypoint_score_threshold: float, the threshold for considering a keypoint
-      a candidate.
+    keypoint_score_threshold: float, the threshold for considering a keypoint a
+      candidate.
     max_pool_kernel_size: integer, the max pool kernel size to use to pull off
       peak score locations in a neighborhood. For example, to make sure no two
       neighboring values for the same keypoint are returned, set
       max_pool_kernel_size=3. If None or 1, will not apply any local filtering.
-    max_candidates: integer, maximum number of keypoint candidates per
-      keypoint type.
+    max_candidates: integer, maximum number of keypoint candidates per keypoint
+      type.
+    keypoint_depths: (optional) A float tensor of shape [batch_size, height,
+      width, 1] (or [batch_size, height, width, num_keypoints] if
+      'per_keypoint_depth' is set True) representing the per-keypoint depths.
 
   Returns:
     keypoint_candidates: A tensor of shape
@@ -458,6 +461,9 @@ def prediction_tensors_to_keypoint_candidates(
       [batch_size, num_keypoints] with the number of candidates for each
       keypoint type, as it's possible to filter some candidates due to the score
       threshold.
+    depth_candidates: A tensor of shape [batch_size, max_candidates,
+      num_keypoints] representing the estimated depth of each keypoint
+      candidate. Return None if the input keypoint_depths is None.
   """
   batch_size, _, _, num_keypoints = _get_shape(keypoint_heatmap_predictions, 4)
   # Get x, y and channel indices corresponding to the top indices in the
@@ -499,13 +505,13 @@ def prediction_tensors_to_keypoint_candidates(
     # TF Lite does not support tf.gather with batch_dims > 0, so we need to use
     # tf_gather_nd instead and here we prepare the indices for that. In this
     # case, channel_indices indicates which keypoint to use the offset from.
-    combined_indices = tf.stack([
+    channel_combined_indices = tf.stack([
         _multi_range(batch_size, value_repetitions=num_indices),
         _multi_range(num_indices, range_repetitions=batch_size),
         tf.reshape(channel_indices, [-1])
     ], axis=1)
 
-    offsets = tf.gather_nd(reshaped_offsets, combined_indices)
+    offsets = tf.gather_nd(reshaped_offsets, channel_combined_indices)
     offsets = tf.reshape(offsets, [batch_size, num_indices, -1])
   else:
     offsets = selected_offsets
@@ -524,14 +530,38 @@ def prediction_tensors_to_keypoint_candidates(
   num_candidates = tf.reduce_sum(
       tf.to_int32(keypoint_scores >= keypoint_score_threshold), axis=1)
 
-  return keypoint_candidates, keypoint_scores, num_candidates
+  depth_candidates = None
+  if keypoint_depths is not None:
+    selected_depth_flat = tf.gather_nd(keypoint_depths, combined_indices)
+    selected_depth = tf.reshape(selected_depth_flat,
+                                [batch_size, num_indices, -1])
+    _, _, num_depth_channels = _get_shape(selected_depth, 3)
+    if num_depth_channels > 1:
+      combined_indices = tf.stack([
+          _multi_range(batch_size, value_repetitions=num_indices),
+          _multi_range(num_indices, range_repetitions=batch_size),
+          tf.reshape(channel_indices, [-1])
+      ], axis=1)
+      depth = tf.gather_nd(selected_depth, combined_indices)
+      depth = tf.reshape(depth, [batch_size, num_indices, -1])
+    else:
+      depth = selected_depth
+    depth_candidates = tf.reshape(depth,
+                                  [batch_size, num_keypoints, max_candidates])
+    depth_candidates = tf.transpose(depth_candidates, [0, 2, 1])
+
+  return keypoint_candidates, keypoint_scores, num_candidates, depth_candidates
 
 
-def prediction_to_single_instance_keypoints(object_heatmap, keypoint_heatmap,
+def prediction_to_single_instance_keypoints(object_heatmap,
+                                            keypoint_heatmap,
                                             keypoint_offset,
-                                            keypoint_regression, stride,
+                                            keypoint_regression,
+                                            stride,
                                             object_center_std_dev,
-                                            keypoint_std_dev, kp_params):
+                                            keypoint_std_dev,
+                                            kp_params,
+                                            keypoint_depths=None):
   """Postprocess function to predict single instance keypoints.
 
   This is a simplified postprocessing function based on the assumption that
@@ -569,6 +599,9 @@ def prediction_to_single_instance_keypoints(object_heatmap, keypoint_heatmap,
       representing the standard deviation corresponding to each joint.
     kp_params: A `KeypointEstimationParams` object with parameters for a single
       keypoint class.
+    keypoint_depths: (optional) A float tensor of shape [batch_size, height,
+      width, 1] (or [batch_size, height, width, num_keypoints] if
+      'per_keypoint_depth' is set True) representing the per-keypoint depths.
 
   Returns:
     A tuple of two tensors:
@@ -577,6 +610,9 @@ def prediction_to_single_instance_keypoints(object_heatmap, keypoint_heatmap,
         map space.
       keypoint_scores: A float tensor with shape [1, 1, num_keypoints]
         representing the keypoint prediction scores.
+      keypoint_depths: A float tensor with shape [1, 1, num_keypoints]
+        representing the estimated keypoint depths. Return None if the input
+        keypoint_depths is None.
 
   Raises:
     ValueError: if the input keypoint_std_dev doesn't have valid number of
@@ -636,14 +672,16 @@ def prediction_to_single_instance_keypoints(object_heatmap, keypoint_heatmap,
   # Get the keypoint locations/scores:
   #   keypoint_candidates: [1, 1, num_keypoints, 2]
   #   keypoint_scores: [1, 1, num_keypoints]
-  (keypoint_candidates, keypoint_scores,
-   _) = prediction_tensors_to_keypoint_candidates(
+  #   depth_candidates: [1, 1, num_keypoints]
+  (keypoint_candidates, keypoint_scores, _,
+   depth_candidates) = prediction_tensors_to_keypoint_candidates(
        keypoint_predictions,
        keypoint_offset,
        keypoint_score_threshold=kp_params.keypoint_candidate_score_threshold,
        max_pool_kernel_size=kp_params.peak_max_pool_kernel_size,
-       max_candidates=1)
-  return keypoint_candidates, keypoint_scores
+       max_candidates=1,
+       keypoint_depths=keypoint_depths)
+  return keypoint_candidates, keypoint_scores, depth_candidates
 
 
 def regressed_keypoints_at_object_centers(regressed_keypoint_predictions,
@@ -697,11 +735,16 @@ def regressed_keypoints_at_object_centers(regressed_keypoint_predictions,
                     [batch_size, num_instances, -1])
 
 
-def refine_keypoints(regressed_keypoints, keypoint_candidates, keypoint_scores,
-                     num_keypoint_candidates, bboxes=None,
-                     unmatched_keypoint_score=0.1, box_scale=1.2,
+def refine_keypoints(regressed_keypoints,
+                     keypoint_candidates,
+                     keypoint_scores,
+                     num_keypoint_candidates,
+                     bboxes=None,
+                     unmatched_keypoint_score=0.1,
+                     box_scale=1.2,
                      candidate_search_scale=0.3,
-                     candidate_ranking_mode='min_distance'):
+                     candidate_ranking_mode='min_distance',
+                     keypoint_depth_candidates=None):
   """Refines regressed keypoints by snapping to the nearest candidate keypoints.
 
   The initial regressed keypoints represent a full set of keypoints regressed
@@ -757,6 +800,9 @@ def refine_keypoints(regressed_keypoints, keypoint_candidates, keypoint_scores,
     candidate_ranking_mode: A string as one of ['min_distance',
      'score_distance_ratio'] indicating how to select the candidate. If invalid
       value is provided, an ValueError will be raised.
+    keypoint_depth_candidates: (optional) A float tensor of shape
+      [batch_size, max_candidates, num_keypoints] indicating the depths for
+      keypoint candidates.
 
   Returns:
     A tuple with:
@@ -836,9 +882,11 @@ def refine_keypoints(regressed_keypoints, keypoint_candidates, keypoint_scores,
   # Gather the coordinates and scores corresponding to the closest candidates.
   # Shape of tensors are [batch_size, num_instances, num_keypoints, 2] and
   # [batch_size, num_instances, num_keypoints], respectively.
-  nearby_candidate_coords, nearby_candidate_scores = (
-      _gather_candidates_at_indices(keypoint_candidates, keypoint_scores,
-                                    nearby_candidate_inds))
+  (nearby_candidate_coords, nearby_candidate_scores,
+   nearby_candidate_depths) = (
+       _gather_candidates_at_indices(keypoint_candidates, keypoint_scores,
+                                     nearby_candidate_inds,
+                                     keypoint_depth_candidates))
 
   if bboxes is None:
     # Create bboxes from regressed keypoints.
@@ -895,7 +943,12 @@ def refine_keypoints(regressed_keypoints, keypoint_candidates, keypoint_scores,
       unmatched_keypoint_score * tf.ones_like(nearby_candidate_scores),
       nearby_candidate_scores)
 
-  return refined_keypoints, refined_scores
+  refined_depths = None
+  if nearby_candidate_depths is not None:
+    refined_depths = tf.where(mask, tf.zeros_like(nearby_candidate_depths),
+                              nearby_candidate_depths)
+
+  return refined_keypoints, refined_scores, refined_depths
 
 
 def _pad_to_full_keypoint_dim(keypoint_coords, keypoint_scores, keypoint_inds,
@@ -976,8 +1029,10 @@ def _pad_to_full_instance_dim(keypoint_coords, keypoint_scores, instance_inds,
   return keypoint_coords_padded, keypoint_scores_padded
 
 
-def _gather_candidates_at_indices(keypoint_candidates, keypoint_scores,
-                                  indices):
+def _gather_candidates_at_indices(keypoint_candidates,
+                                  keypoint_scores,
+                                  indices,
+                                  keypoint_depth_candidates=None):
   """Gathers keypoint candidate coordinates and scores at indices.
 
   Args:
@@ -987,13 +1042,18 @@ def _gather_candidates_at_indices(keypoint_candidates, keypoint_scores,
       num_keypoints] with keypoint scores.
     indices: an integer tensor of shape [batch_size, num_indices, num_keypoints]
       with indices.
+    keypoint_depth_candidates: (optional) a float tensor of shape [batch_size,
+      max_candidates, num_keypoints] with keypoint depths.
 
   Returns:
     A tuple with
     gathered_keypoint_candidates: a float tensor of shape [batch_size,
       num_indices, num_keypoints, 2] with gathered coordinates.
     gathered_keypoint_scores: a float tensor of shape [batch_size,
-      num_indices, num_keypoints, 2].
+      num_indices, num_keypoints].
+    gathered_keypoint_depths: a float tensor of shape [batch_size,
+      num_indices, num_keypoints]. Return None if the input
+      keypoint_depth_candidates is None.
   """
   batch_size, num_indices, num_keypoints = _get_shape(indices, 3)
 
@@ -1035,7 +1095,19 @@ def _gather_candidates_at_indices(keypoint_candidates, keypoint_scores,
   gathered_keypoint_scores = tf.transpose(nearby_candidate_scores_transposed,
                                           [0, 2, 1])
 
-  return gathered_keypoint_candidates, gathered_keypoint_scores
+  gathered_keypoint_depths = None
+  if keypoint_depth_candidates is not None:
+    keypoint_depths_transposed = tf.transpose(keypoint_depth_candidates,
+                                              [0, 2, 1])
+    nearby_candidate_depths_transposed = tf.gather_nd(
+        keypoint_depths_transposed, combined_indices)
+    nearby_candidate_depths_transposed = tf.reshape(
+        nearby_candidate_depths_transposed,
+        [batch_size, num_keypoints, num_indices])
+    gathered_keypoint_depths = tf.transpose(nearby_candidate_depths_transposed,
+                                            [0, 2, 1])
+  return (gathered_keypoint_candidates, gathered_keypoint_scores,
+          gathered_keypoint_depths)
 
 
 def flattened_indices_from_row_col_indices(row_indices, col_indices, num_cols):
@@ -1517,7 +1589,8 @@ class KeypointEstimationParams(
         'heatmap_bias_init', 'num_candidates_per_keypoint', 'task_loss_weight',
         'peak_max_pool_kernel_size', 'unmatched_keypoint_score', 'box_scale',
         'candidate_search_scale', 'candidate_ranking_mode',
-        'offset_peak_radius', 'per_keypoint_offset'
+        'offset_peak_radius', 'per_keypoint_offset', 'predict_depth',
+        'per_keypoint_depth', 'keypoint_depth_loss_weight'
     ])):
   """Namedtuple to host object detection related parameters.
 
@@ -1550,7 +1623,10 @@ class KeypointEstimationParams(
               candidate_search_scale=0.3,
               candidate_ranking_mode='min_distance',
               offset_peak_radius=0,
-              per_keypoint_offset=False):
+              per_keypoint_offset=False,
+              predict_depth=False,
+              per_keypoint_depth=False,
+              keypoint_depth_loss_weight=1.0):
     """Constructor with default values for KeypointEstimationParams.
 
     Args:
@@ -1614,6 +1690,12 @@ class KeypointEstimationParams(
         original paper). If set True, the output offset target has the shape
         [batch_size, out_height, out_width, 2 * num_keypoints] (recommended when
         the offset_peak_radius is not zero).
+      predict_depth: A bool indicates whether to predict the depth of each
+        keypoints.
+      per_keypoint_depth: A bool indicates whether the model predicts the depth
+        of each keypoints in independent channels. Similar to
+        per_keypoint_offset but for the keypoint depth.
+      keypoint_depth_loss_weight: The weight of the keypoint depth loss.
 
     Returns:
       An initialized KeypointEstimationParams namedtuple.
@@ -1626,7 +1708,8 @@ class KeypointEstimationParams(
         heatmap_bias_init, num_candidates_per_keypoint, task_loss_weight,
         peak_max_pool_kernel_size, unmatched_keypoint_score, box_scale,
         candidate_search_scale, candidate_ranking_mode, offset_peak_radius,
-        per_keypoint_offset)
+        per_keypoint_offset, predict_depth, per_keypoint_depth,
+        keypoint_depth_loss_weight)
 
 
 class ObjectCenterParams(
@@ -1839,6 +1922,7 @@ BOX_OFFSET = 'box/offset'
 KEYPOINT_REGRESSION = 'keypoint/regression'
 KEYPOINT_HEATMAP = 'keypoint/heatmap'
 KEYPOINT_OFFSET = 'keypoint/offset'
+KEYPOINT_DEPTH = 'keypoint/depth'
 SEGMENTATION_TASK = 'segmentation_task'
 SEGMENTATION_HEATMAP = 'segmentation/heatmap'
 DENSEPOSE_TASK = 'densepose_task'
@@ -2053,6 +2137,15 @@ class CenterNetMetaArch(model.DetectionModel):
           prediction_heads[get_keypoint_name(task_name, KEYPOINT_OFFSET)] = [
               make_prediction_net(NUM_OFFSET_CHANNELS,
                                   use_depthwise=self._use_depthwise)
+              for _ in range(num_feature_outputs)
+          ]
+
+        if kp_params.predict_depth:
+          num_depth_channel = (
+              num_keypoints if kp_params.per_keypoint_depth else 1)
+          prediction_heads[get_keypoint_name(task_name, KEYPOINT_DEPTH)] = [
+              make_prediction_net(
+                  num_depth_channel, use_depthwise=self._use_depthwise)
               for _ in range(num_feature_outputs)
           ]
     # pylint: disable=g-complex-comprehension
@@ -2305,6 +2398,7 @@ class CenterNetMetaArch(model.DetectionModel):
     heatmap_key = get_keypoint_name(task_name, KEYPOINT_HEATMAP)
     offset_key = get_keypoint_name(task_name, KEYPOINT_OFFSET)
     regression_key = get_keypoint_name(task_name, KEYPOINT_REGRESSION)
+    depth_key = get_keypoint_name(task_name, KEYPOINT_DEPTH)
     heatmap_loss = self._compute_kp_heatmap_loss(
         input_height=input_height,
         input_width=input_width,
@@ -2332,6 +2426,14 @@ class CenterNetMetaArch(model.DetectionModel):
         kp_params.keypoint_offset_loss_weight * offset_loss)
     loss_dict[regression_key] = (
         kp_params.keypoint_regression_loss_weight * reg_loss)
+    if kp_params.predict_depth:
+      depth_loss = self._compute_kp_depth_loss(
+          input_height=input_height,
+          input_width=input_width,
+          task_name=task_name,
+          depth_predictions=prediction_dict[depth_key],
+          localization_loss_fn=kp_params.localization_loss)
+      loss_dict[depth_key] = kp_params.keypoint_depth_loss_weight * depth_loss
     return loss_dict
 
   def _compute_kp_heatmap_loss(self, input_height, input_width, task_name,
@@ -2498,6 +2600,68 @@ class CenterNetMetaArch(model.DetectionModel):
 
     loss = tf.reduce_sum(loss) / (
         float(len(regression_predictions)) *
+        tf.maximum(tf.reduce_sum(batch_weights), 1.0))
+    return loss
+
+  def _compute_kp_depth_loss(self, input_height, input_width, task_name,
+                             depth_predictions, localization_loss_fn):
+    """Computes the loss of the keypoint depth estimation.
+
+    Args:
+      input_height: An integer scalar tensor representing input image height.
+      input_width: An integer scalar tensor representing input image width.
+      task_name: A string representing the name of the keypoint task.
+      depth_predictions: A list of float tensors of shape [batch_size,
+        out_height, out_width, 1 (or num_keypoints)] representing the prediction
+        heads of the model for keypoint depth.
+      localization_loss_fn: An object_detection.core.losses.Loss object to
+        compute the loss for the keypoint offset predictions in CenterNet.
+
+    Returns:
+      loss: A float scalar tensor representing the keypoint depth loss
+        normalized by number of total keypoints.
+    """
+    kp_params = self._kp_params_dict[task_name]
+    gt_keypoints_list = self.groundtruth_lists(fields.BoxListFields.keypoints)
+    gt_classes_list = self.groundtruth_lists(fields.BoxListFields.classes)
+    gt_weights_list = self.groundtruth_lists(fields.BoxListFields.weights)
+    gt_keypoint_depths_list = self.groundtruth_lists(
+        fields.BoxListFields.keypoint_depths)
+    gt_keypoint_depth_weights_list = self.groundtruth_lists(
+        fields.BoxListFields.keypoint_depth_weights)
+
+    assigner = self._target_assigner_dict[task_name]
+    (batch_indices, batch_depths,
+     batch_weights) = assigner.assign_keypoints_depth_targets(
+         height=input_height,
+         width=input_width,
+         gt_keypoints_list=gt_keypoints_list,
+         gt_weights_list=gt_weights_list,
+         gt_classes_list=gt_classes_list,
+         gt_keypoint_depths_list=gt_keypoint_depths_list,
+         gt_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
+
+    if kp_params.per_keypoint_offset and not kp_params.per_keypoint_depth:
+      batch_indices = batch_indices[:, 0:3]
+
+    # Keypoint offset loss.
+    loss = 0.0
+    for prediction in depth_predictions:
+      selected_depths = cn_assigner.get_batch_predictions_from_indices(
+          prediction, batch_indices)
+      if kp_params.per_keypoint_offset and kp_params.per_keypoint_depth:
+        selected_depths = tf.expand_dims(selected_depths, axis=-1)
+      # The dimensions passed are not as per the doc string but the loss
+      # still computes the correct value.
+      unweighted_loss = localization_loss_fn(
+          selected_depths,
+          batch_depths,
+          weights=tf.expand_dims(tf.ones_like(batch_weights), -1))
+      # Apply the weights after the loss function to have full control over it.
+      loss += batch_weights * tf.squeeze(unweighted_loss, axis=1)
+
+    loss = tf.reduce_sum(loss) / (
+        float(len(depth_predictions)) *
         tf.maximum(tf.reduce_sum(batch_weights), 1.0))
     return loss
 
@@ -3051,9 +3215,10 @@ class CenterNetMetaArch(model.DetectionModel):
       # keypoint, we fall back to a simpler postprocessing function which uses
       # the ops that are supported by tf.lite on GPU.
       if len(self._kp_params_dict) == 1 and self._num_classes == 1:
-        keypoints, keypoint_scores = self._postprocess_keypoints_single_class(
-            prediction_dict, classes, y_indices, x_indices,
-            boxes_strided, num_detections)
+        (keypoints, keypoint_scores,
+         keypoint_depths) = self._postprocess_keypoints_single_class(
+             prediction_dict, classes, y_indices, x_indices, boxes_strided,
+             num_detections)
         # The map_fn used to clip out of frame keypoints creates issues when
         # converting to tf.lite model so we disable it and let the users to
         # handle those out of frame keypoints.
@@ -3061,7 +3226,18 @@ class CenterNetMetaArch(model.DetectionModel):
             convert_strided_predictions_to_normalized_keypoints(
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
                 clip_out_of_frame_keypoints=False))
+        if keypoint_depths is not None:
+          postprocess_dict.update({
+              fields.DetectionResultFields.detection_keypoint_depths:
+                  keypoint_depths
+          })
       else:
+        # Multi-class keypoint estimation task does not support depth
+        # estimation.
+        assert all([
+            not kp_dict.predict_depth
+            for kp_dict in self._kp_params_dict.values()
+        ])
         keypoints, keypoint_scores = self._postprocess_keypoints_multi_class(
             prediction_dict, classes, y_indices, x_indices,
             boxes_strided, num_detections)
@@ -3200,7 +3376,11 @@ class CenterNetMetaArch(model.DetectionModel):
         task_name, KEYPOINT_REGRESSION)][-1]
     object_heatmap = tf.nn.sigmoid(prediction_dict[OBJECT_CENTER][-1])
 
-    keypoints, keypoint_scores = (
+    keypoint_depths = None
+    if kp_params.predict_depth:
+      keypoint_depths = prediction_dict[get_keypoint_name(
+          task_name, KEYPOINT_DEPTH)][-1]
+    keypoints, keypoint_scores, keypoint_depths = (
         prediction_to_single_instance_keypoints(
             object_heatmap=object_heatmap,
             keypoint_heatmap=keypoint_heatmap,
@@ -3209,7 +3389,8 @@ class CenterNetMetaArch(model.DetectionModel):
             stride=self._stride,
             object_center_std_dev=object_center_std_dev,
             keypoint_std_dev=keypoint_std_dev,
-            kp_params=kp_params))
+            kp_params=kp_params,
+            keypoint_depths=keypoint_depths))
 
     keypoints, keypoint_scores = (
         convert_strided_predictions_to_normalized_keypoints(
@@ -3222,6 +3403,12 @@ class CenterNetMetaArch(model.DetectionModel):
         fields.DetectionResultFields.detection_keypoints: keypoints,
         fields.DetectionResultFields.detection_keypoint_scores: keypoint_scores
     }
+
+    if kp_params.predict_depth:
+      postprocess_dict.update({
+          fields.DetectionResultFields.detection_keypoint_depths:
+              keypoint_depths
+      })
     return postprocess_dict
 
   def _postprocess_embeddings(self, prediction_dict, y_indices, x_indices):
@@ -3316,7 +3503,7 @@ class CenterNetMetaArch(model.DetectionModel):
           # [1, num_instances_i, num_keypoints_i], respectively. Note that
           # num_instances_i and num_keypoints_i refers to the number of
           # instances and keypoints for class i, respectively.
-          kpt_coords_for_class, kpt_scores_for_class = (
+          (kpt_coords_for_class, kpt_scores_for_class, _) = (
               self._postprocess_keypoints_for_class_and_image(
                   keypoint_heatmap, keypoint_offsets, keypoint_regression,
                   classes, y_indices_for_kpt_class, x_indices_for_kpt_class,
@@ -3426,21 +3613,35 @@ class CenterNetMetaArch(model.DetectionModel):
         get_keypoint_name(task_name, KEYPOINT_OFFSET)][-1]
     keypoint_regression = prediction_dict[
         get_keypoint_name(task_name, KEYPOINT_REGRESSION)][-1]
+    keypoint_depth_predictions = None
+    if kp_params.predict_depth:
+      keypoint_depth_predictions = prediction_dict[get_keypoint_name(
+          task_name, KEYPOINT_DEPTH)][-1]
 
     batch_size, _, _ = _get_shape(boxes, 3)
     kpt_coords_for_example_list = []
     kpt_scores_for_example_list = []
+    kpt_depths_for_example_list = []
     for ex_ind in range(batch_size):
       # Postprocess keypoints and scores for class and single image. Shapes
       # are [1, max_detections, num_keypoints, 2] and
       # [1, max_detections, num_keypoints], respectively.
-      kpt_coords_for_class, kpt_scores_for_class = (
+      (kpt_coords_for_class, kpt_scores_for_class, kpt_depths_for_class) = (
           self._postprocess_keypoints_for_class_and_image(
-              keypoint_heatmap, keypoint_offsets, keypoint_regression, classes,
-              y_indices, x_indices, boxes, ex_ind, kp_params))
+              keypoint_heatmap,
+              keypoint_offsets,
+              keypoint_regression,
+              classes,
+              y_indices,
+              x_indices,
+              boxes,
+              ex_ind,
+              kp_params,
+              keypoint_depth_predictions=keypoint_depth_predictions))
 
       kpt_coords_for_example_list.append(kpt_coords_for_class)
       kpt_scores_for_example_list.append(kpt_scores_for_class)
+      kpt_depths_for_example_list.append(kpt_depths_for_class)
 
     # Concatenate all keypoints and scores from all examples in the batch.
     # Shapes are [batch_size, max_detections, num_keypoints, 2] and
@@ -3448,7 +3649,11 @@ class CenterNetMetaArch(model.DetectionModel):
     keypoints = tf.concat(kpt_coords_for_example_list, axis=0)
     keypoint_scores = tf.concat(kpt_scores_for_example_list, axis=0)
 
-    return keypoints, keypoint_scores
+    keypoint_depths = None
+    if kp_params.predict_depth:
+      keypoint_depths = tf.concat(kpt_depths_for_example_list, axis=0)
+
+    return keypoints, keypoint_scores, keypoint_depths
 
   def _get_instance_indices(self, classes, num_detections, batch_index,
                             class_id):
@@ -3482,8 +3687,17 @@ class CenterNetMetaArch(model.DetectionModel):
     return tf.cast(instance_inds, tf.int32)
 
   def _postprocess_keypoints_for_class_and_image(
-      self, keypoint_heatmap, keypoint_offsets, keypoint_regression, classes,
-      y_indices, x_indices, boxes, batch_index, kp_params):
+      self,
+      keypoint_heatmap,
+      keypoint_offsets,
+      keypoint_regression,
+      classes,
+      y_indices,
+      x_indices,
+      boxes,
+      batch_index,
+      kp_params,
+      keypoint_depth_predictions=None):
     """Postprocess keypoints for a single image and class.
 
     Args:
@@ -3504,6 +3718,8 @@ class CenterNetMetaArch(model.DetectionModel):
       batch_index: An integer specifying the index for an example in the batch.
       kp_params: A `KeypointEstimationParams` object with parameters for a
         single keypoint class.
+      keypoint_depth_predictions: (optional) A [batch_size, height, width, 1]
+        float32 tensor representing the keypoint depth prediction.
 
     Returns:
       A tuple of
@@ -3514,6 +3730,9 @@ class CenterNetMetaArch(model.DetectionModel):
         for the specific class.
       refined_scores: A [1, num_instances, num_keypoints] float32 tensor with
         keypoint scores.
+      refined_depths: A [1, num_instances, num_keypoints] float32 tensor with
+        keypoint depths. Return None if the input keypoint_depth_predictions is
+        None.
     """
     num_keypoints = len(kp_params.keypoint_indices)
 
@@ -3521,6 +3740,10 @@ class CenterNetMetaArch(model.DetectionModel):
         keypoint_heatmap[batch_index:batch_index+1, ...])
     keypoint_offsets = keypoint_offsets[batch_index:batch_index+1, ...]
     keypoint_regression = keypoint_regression[batch_index:batch_index+1, ...]
+    keypoint_depths = None
+    if keypoint_depth_predictions is not None:
+      keypoint_depths = keypoint_depth_predictions[batch_index:batch_index + 1,
+                                                   ...]
     y_indices = y_indices[batch_index:batch_index+1, ...]
     x_indices = x_indices[batch_index:batch_index+1, ...]
     boxes_slice = boxes[batch_index:batch_index+1, ...]
@@ -3536,26 +3759,33 @@ class CenterNetMetaArch(model.DetectionModel):
     # The shape of keypoint_candidates and keypoint_scores is:
     # [1, num_candidates_per_keypoint, num_keypoints, 2] and
     #  [1, num_candidates_per_keypoint, num_keypoints], respectively.
-    keypoint_candidates, keypoint_scores, num_keypoint_candidates = (
-        prediction_tensors_to_keypoint_candidates(
-            keypoint_heatmap, keypoint_offsets,
-            keypoint_score_threshold=(
-                kp_params.keypoint_candidate_score_threshold),
-            max_pool_kernel_size=kp_params.peak_max_pool_kernel_size,
-            max_candidates=kp_params.num_candidates_per_keypoint))
+    (keypoint_candidates, keypoint_scores, num_keypoint_candidates,
+     keypoint_depth_candidates) = (
+         prediction_tensors_to_keypoint_candidates(
+             keypoint_heatmap,
+             keypoint_offsets,
+             keypoint_score_threshold=(
+                 kp_params.keypoint_candidate_score_threshold),
+             max_pool_kernel_size=kp_params.peak_max_pool_kernel_size,
+             max_candidates=kp_params.num_candidates_per_keypoint,
+             keypoint_depths=keypoint_depths))
 
     # Get the refined keypoints and scores, of shape
     # [1, num_instances, num_keypoints, 2] and
     # [1, num_instances, num_keypoints], respectively.
-    refined_keypoints, refined_scores = refine_keypoints(
-        regressed_keypoints_for_objects, keypoint_candidates, keypoint_scores,
-        num_keypoint_candidates, bboxes=boxes_slice,
+    (refined_keypoints, refined_scores, refined_depths) = refine_keypoints(
+        regressed_keypoints_for_objects,
+        keypoint_candidates,
+        keypoint_scores,
+        num_keypoint_candidates,
+        bboxes=boxes_slice,
         unmatched_keypoint_score=kp_params.unmatched_keypoint_score,
         box_scale=kp_params.box_scale,
         candidate_search_scale=kp_params.candidate_search_scale,
-        candidate_ranking_mode=kp_params.candidate_ranking_mode)
+        candidate_ranking_mode=kp_params.candidate_ranking_mode,
+        keypoint_depth_candidates=keypoint_depth_candidates)
 
-    return refined_keypoints, refined_scores
+    return refined_keypoints, refined_scores, refined_depths
 
   def regularization_losses(self):
     return []

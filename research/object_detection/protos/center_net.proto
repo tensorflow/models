@@ -165,6 +165,21 @@ message CenterNet {
     // out_height, out_width, 2 * num_keypoints] (recommended when the
     // offset_peak_radius is not zero).
     optional bool per_keypoint_offset = 18 [default = false];
+
+    // Indicates whether to predict the depth of each keypoints. Note that this
+    // is only supported in the single class keypoint task.
+    optional bool predict_depth = 19 [default = false];
+
+    // Indicates whether to predict depths for each keypoint channel
+    // separately. If set False, the output depth target has the shape
+    // [batch_size, out_height, out_width, 1]. If set True, the output depth
+    // target has the shape [batch_size, out_height, out_width,
+    // num_keypoints]. Recommend to set this value and "per_keypoint_offset" to
+    // both be True at the same time.
+    optional bool per_keypoint_depth = 20 [default = false];
+
+    // The weight of the keypoint depth loss.
+    optional float keypoint_depth_loss_weight = 21 [default = 1.0];
   }
   repeated KeypointEstimation keypoint_estimation_task = 7;
 
@@ -278,7 +293,6 @@ message CenterNet {
   // from CenterNet. Use this optional parameter to apply traditional non max
   // suppression and score thresholding.
   optional PostProcessing post_processing = 24;
-
 }
 
 message CenterNetFeatureExtractor {
