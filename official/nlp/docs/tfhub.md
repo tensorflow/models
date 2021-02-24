@@ -1,7 +1,5 @@
 # Exporting a pre-trained Encoder to TF Hub
 
-[TOC]
-
 ## Overview
 
 This doc explains how to use TF-NLP's
@@ -265,7 +263,7 @@ Transformer encoders from TF Hub's
 [Common APIs for text](https://www.tensorflow.org/hub/common_saved_model_apis/text).
 
 Please see
-[tfhub.dev/ensorflow/bert_en_uncased_preprocess](https://tfhub.dev/tensorflow/bert_en_uncased_preprocess)
+[tfhub.dev/tensorflow/bert_en_uncased_preprocess](https://tfhub.dev/tensorflow/bert_en_uncased_preprocess)
 for the full documentation of one preprocessing model exported with this tool,
 especially how custom trimming of inputs can happen between `.tokenize` and
 `.bert_pack_inputs`.
