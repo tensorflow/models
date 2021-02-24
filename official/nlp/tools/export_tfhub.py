@@ -18,6 +18,9 @@ This tool creates preprocessor and encoder SavedModels suitable for uploading
 to https://tfhub.dev that implement the preprocessor and encoder APIs defined
 at https://www.tensorflow.org/hub/common_saved_model_apis/text.
 
+For a full usage guide, see
+https://github.com/tensorflow/models/blob/master/official/nlp/docs/tfhub.md
+
 Minimal usage examples:
 
 1) Exporting an Encoder from checkpoint and config.
