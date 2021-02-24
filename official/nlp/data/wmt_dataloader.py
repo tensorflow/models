@@ -14,7 +14,7 @@
 # ==============================================================================
 """Input pipeline for the transformer model to read, filter, and batch examples.
 
-1. Batching scheme
+Batching scheme
 
    Prior to batching, elements in the dataset are grouped by length (max between
    'inputs' and 'targets' length). Each group is then batched such that:
@@ -60,8 +60,8 @@ def _create_min_max_boundaries(max_length,
 
   For example, when max_length=24, min_boundary=4 and boundary_scale=2, the
   returned values will be:
-    buckets_min = [0, 4, 8, 16, 24]
-    buckets_max = [4, 8, 16, 24, 25]
+    buckets_min = [0, 4, 8, 16]
+    buckets_max = [4, 8, 16, 25]
 
   Args:
     max_length: The maximum length of example in dataset.
