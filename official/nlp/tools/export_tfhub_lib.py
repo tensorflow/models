@@ -218,11 +218,9 @@ def export_model(export_path: Text,
                                            encoder_config=encoder_config,
                                            with_mlm=with_mlm)
     encoder = pretrainer.encoder_network
-    # Support the official way to checkpoint a pretrainer.
+    # It supports both the new pretrainer checkpoint produced by TF-NLP and
+    # the checkpoint converted from TF1 (original BERT, SmallBERTs).
     checkpoint_items = pretrainer.checkpoint_items
-    # Keep supporting the ad-hoc way from Oct 2020 that is used
-    # in several important converted checkpoints (original BERT, SmallBERTs).
-    checkpoint_items["pretrainer"] = pretrainer
     checkpoint = tf.train.Checkpoint(**checkpoint_items)
   else:
     core_model, encoder = _create_model(bert_config=bert_config,
