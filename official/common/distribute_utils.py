@@ -127,6 +127,15 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   if num_gpus < 0:
     raise ValueError("`num_gpus` can not be negative.")
 
+  if not isinstance(distribution_strategy, str):
+    msg = ("distribution_strategy must be a string but got: %s." %
+           (distribution_strategy,))
+    if distribution_strategy == False:  # pylint: disable=singleton-comparison,g-explicit-bool-comparison
+      msg += (" If you meant to pass the string 'off', make sure you add "
+              "quotes around 'off' so that yaml interprets it as a string "
+              "instead of a bool.")
+    raise ValueError(msg)
+
   distribution_strategy = distribution_strategy.lower()
   if distribution_strategy == "off":
     if num_gpus > 1:
