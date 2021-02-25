@@ -744,6 +744,7 @@ def refine_keypoints(regressed_keypoints,
                      box_scale=1.2,
                      candidate_search_scale=0.3,
                      candidate_ranking_mode='min_distance',
+                     score_distance_offset=1e-6,
                      keypoint_depth_candidates=None):
   """Refines regressed keypoints by snapping to the nearest candidate keypoints.
 
@@ -800,6 +801,11 @@ def refine_keypoints(regressed_keypoints,
     candidate_ranking_mode: A string as one of ['min_distance',
      'score_distance_ratio'] indicating how to select the candidate. If invalid
       value is provided, an ValueError will be raised.
+    score_distance_offset: The distance offset to apply in the denominator when
+      candidate_ranking_mode is 'score_distance_ratio'. The metric to maximize
+      in this scenario is score / (distance + score_distance_offset). Larger
+      values of score_distance_offset make the keypoint score gain more relative
+      importance.
     keypoint_depth_candidates: (optional) A float tensor of shape
       [batch_size, max_candidates, num_keypoints] indicating the depths for
       keypoint candidates.
@@ -873,7 +879,7 @@ def refine_keypoints(regressed_keypoints,
     tiled_keypoint_scores = tf.tile(
         tf.expand_dims(keypoint_scores, axis=1),
         multiples=[1, num_instances, 1, 1])
-    ranking_scores = tiled_keypoint_scores / (distances + 1e-6)
+    ranking_scores = tiled_keypoint_scores / (distances + score_distance_offset)
     nearby_candidate_inds = tf.math.argmax(ranking_scores, axis=2)
   else:
     raise ValueError('Not recognized candidate_ranking_mode: %s' %
@@ -1590,7 +1596,9 @@ class KeypointEstimationParams(
         'peak_max_pool_kernel_size', 'unmatched_keypoint_score', 'box_scale',
         'candidate_search_scale', 'candidate_ranking_mode',
         'offset_peak_radius', 'per_keypoint_offset', 'predict_depth',
-        'per_keypoint_depth', 'keypoint_depth_loss_weight'
+        'per_keypoint_depth', 'keypoint_depth_loss_weight',
+        'score_distance_offset', 'clip_out_of_frame_keypoints',
+        'rescore_instances'
     ])):
   """Namedtuple to host object detection related parameters.
 
@@ -1626,7 +1634,10 @@ class KeypointEstimationParams(
               per_keypoint_offset=False,
               predict_depth=False,
               per_keypoint_depth=False,
-              keypoint_depth_loss_weight=1.0):
+              keypoint_depth_loss_weight=1.0,
+              score_distance_offset=1e-6,
+              clip_out_of_frame_keypoints=False,
+              rescore_instances=False):
     """Constructor with default values for KeypointEstimationParams.
 
     Args:
@@ -1696,6 +1707,16 @@ class KeypointEstimationParams(
         of each keypoints in independent channels. Similar to
         per_keypoint_offset but for the keypoint depth.
       keypoint_depth_loss_weight: The weight of the keypoint depth loss.
+      score_distance_offset: The distance offset to apply in the denominator
+        when candidate_ranking_mode is 'score_distance_ratio'. The metric to
+        maximize in this scenario is score / (distance + score_distance_offset).
+        Larger values of score_distance_offset make the keypoint score gain more
+        relative importance.
+      clip_out_of_frame_keypoints: Whether keypoints outside the image frame
+        should be clipped back to the image boundary. If True, the keypoints
+        that are clipped have scores set to 0.0.
+      rescore_instances: Whether to rescore instances based on a combination of
+        detection score and keypoint scores.
 
     Returns:
       An initialized KeypointEstimationParams namedtuple.
@@ -1709,7 +1730,8 @@ class KeypointEstimationParams(
         peak_max_pool_kernel_size, unmatched_keypoint_score, box_scale,
         candidate_search_scale, candidate_ranking_mode, offset_peak_radius,
         per_keypoint_offset, predict_depth, per_keypoint_depth,
-        keypoint_depth_loss_weight)
+        keypoint_depth_loss_weight, score_distance_offset,
+        clip_out_of_frame_keypoints, rescore_instances)
 
 
 class ObjectCenterParams(
@@ -2949,6 +2971,71 @@ class CenterNetMetaArch(model.DetectionModel):
     loss_dict[TEMPORAL_OFFSET] = offset_loss
     return loss_dict
 
+  def _should_clip_keypoints(self):
+    """Returns a boolean indicating whether keypoint clipping should occur.
+
+    If there is only one keypoint task, clipping is controlled by the field
+    `clip_out_of_frame_keypoints`. If there are multiple keypoint tasks,
+    clipping logic is defined based on unanimous agreement of keypoint
+    parameters. If there is any ambiguity, clip_out_of_frame_keypoints is set
+    to False (default).
+    """
+    kp_params_iterator = iter(self._kp_params_dict.values())
+    if len(self._kp_params_dict) == 1:
+      kp_params = next(kp_params_iterator)
+      return kp_params.clip_out_of_frame_keypoints
+
+    # Multi-task setting.
+    kp_params = next(kp_params_iterator)
+    should_clip = kp_params.clip_out_of_frame_keypoints
+    for kp_params in kp_params_iterator:
+      if kp_params.clip_out_of_frame_keypoints != should_clip:
+        return False
+    return should_clip
+
+  def _rescore_instances(self, classes, scores, keypoint_scores):
+    """Rescores instances based on detection and keypoint scores.
+
+    Args:
+      classes: A [batch, max_detections] int32 tensor with detection classes.
+      scores: A [batch, max_detections] float32 tensor with detection scores.
+      keypoint_scores: A [batch, max_detections, total_num_keypoints] float32
+        tensor with keypoint scores.
+
+    Returns:
+      A [batch, max_detections] float32 tensor with possibly altered detection
+      scores.
+    """
+    batch, max_detections, total_num_keypoints = (
+        shape_utils.combined_static_and_dynamic_shape(keypoint_scores))
+    classes_tiled = tf.tile(classes[:, :, tf.newaxis],
+                            multiples=[1, 1, total_num_keypoints])
+    # TODO(yuhuic): Investigate whether this function will reate subgraphs in
+    # tflite that will cause the model to run slower at inference.
+    for kp_params in self._kp_params_dict.values():
+      if not kp_params.rescore_instances:
+        continue
+      class_id = kp_params.class_id
+      keypoint_indices = kp_params.keypoint_indices
+      num_keypoints = len(keypoint_indices)
+      kpt_mask = tf.reduce_sum(
+          tf.one_hot(keypoint_indices, depth=total_num_keypoints), axis=0)
+      kpt_mask_tiled = tf.tile(kpt_mask[tf.newaxis, tf.newaxis, :],
+                               multiples=[batch, max_detections, 1])
+      class_and_keypoint_mask = tf.math.logical_and(
+          classes_tiled == class_id,
+          kpt_mask_tiled == 1.0)
+      class_and_keypoint_mask_float = tf.cast(class_and_keypoint_mask,
+                                              dtype=tf.float32)
+      scores_for_class = (1./num_keypoints) * (
+          tf.reduce_sum(class_and_keypoint_mask_float *
+                        scores[:, :, tf.newaxis] *
+                        keypoint_scores, axis=-1))
+      scores = tf.where(classes == class_id,
+                        scores_for_class,
+                        scores)
+    return scores
+
   def preprocess(self, inputs):
     outputs = shape_utils.resize_images_and_return_shapes(
         inputs, self._image_resizer_fn)
@@ -3214,18 +3301,16 @@ class CenterNetMetaArch(model.DetectionModel):
       # If the model is trained to predict only one class of object and its
       # keypoint, we fall back to a simpler postprocessing function which uses
       # the ops that are supported by tf.lite on GPU.
+      clip_keypoints = self._should_clip_keypoints()
       if len(self._kp_params_dict) == 1 and self._num_classes == 1:
         (keypoints, keypoint_scores,
          keypoint_depths) = self._postprocess_keypoints_single_class(
              prediction_dict, classes, y_indices, x_indices, boxes_strided,
              num_detections)
-        # The map_fn used to clip out of frame keypoints creates issues when
-        # converting to tf.lite model so we disable it and let the users to
-        # handle those out of frame keypoints.
         keypoints, keypoint_scores = (
             convert_strided_predictions_to_normalized_keypoints(
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
-                clip_out_of_frame_keypoints=False))
+                clip_out_of_frame_keypoints=clip_keypoints))
         if keypoint_depths is not None:
           postprocess_dict.update({
               fields.DetectionResultFields.detection_keypoint_depths:
@@ -3244,8 +3329,12 @@ class CenterNetMetaArch(model.DetectionModel):
         keypoints, keypoint_scores = (
             convert_strided_predictions_to_normalized_keypoints(
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
-                clip_out_of_frame_keypoints=True))
+                clip_out_of_frame_keypoints=clip_keypoints))
+
+      # Update instance scores based on keypoints.
+      scores = self._rescore_instances(classes, scores, keypoint_scores)
       postprocess_dict.update({
+          fields.DetectionResultFields.detection_scores: scores,
           fields.DetectionResultFields.detection_keypoints: keypoints,
           fields.DetectionResultFields.detection_keypoint_scores:
               keypoint_scores
@@ -3783,6 +3872,7 @@ class CenterNetMetaArch(model.DetectionModel):
         box_scale=kp_params.box_scale,
         candidate_search_scale=kp_params.candidate_search_scale,
         candidate_ranking_mode=kp_params.candidate_ranking_mode,
+        score_distance_offset=kp_params.score_distance_offset,
         keypoint_depth_candidates=keypoint_depth_candidates)
 
     return refined_keypoints, refined_scores, refined_depths

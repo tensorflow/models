@@ -871,7 +871,10 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
       per_keypoint_offset=kp_config.per_keypoint_offset,
       predict_depth=kp_config.predict_depth,
       per_keypoint_depth=kp_config.per_keypoint_depth,
-      keypoint_depth_loss_weight=kp_config.keypoint_depth_loss_weight)
+      keypoint_depth_loss_weight=kp_config.keypoint_depth_loss_weight,
+      score_distance_offset=kp_config.score_distance_offset,
+      clip_out_of_frame_keypoints=kp_config.clip_out_of_frame_keypoints,
+      rescore_instances=kp_config.rescore_instances)
 
 
 def object_detection_proto_to_params(od_config):

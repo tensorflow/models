@@ -2218,6 +2218,67 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
         classes, num_detections, batch_index, class_id)
     self.assertAllEqual(valid_indices.numpy(), [0, 2])
 
+  def test_rescore_instances(self):
+    feature_extractor = DummyFeatureExtractor(
+        channel_means=(1.0, 2.0, 3.0),
+        channel_stds=(10., 20., 30.),
+        bgr_ordering=False,
+        num_feature_outputs=2,
+        stride=4)
+    image_resizer_fn = functools.partial(
+        preprocessor.resize_to_range,
+        min_dimension=128,
+        max_dimension=128,
+        pad_to_max_dimesnion=True)
+
+    kp_params_1 = cnma.KeypointEstimationParams(
+        task_name='kpt_task_1',
+        class_id=0,
+        keypoint_indices=[0, 1, 2],
+        keypoint_std_dev=[0.00001] * 3,
+        classification_loss=losses.WeightedSigmoidClassificationLoss(),
+        localization_loss=losses.L1LocalizationLoss(),
+        keypoint_candidate_score_threshold=0.1,
+        rescore_instances=True)  # Note rescoring for class_id = 0.
+    kp_params_2 = cnma.KeypointEstimationParams(
+        task_name='kpt_task_2',
+        class_id=1,
+        keypoint_indices=[3, 4],
+        keypoint_std_dev=[0.00001] * 2,
+        classification_loss=losses.WeightedSigmoidClassificationLoss(),
+        localization_loss=losses.L1LocalizationLoss(),
+        keypoint_candidate_score_threshold=0.1,
+        rescore_instances=False)
+    model = cnma.CenterNetMetaArch(
+        is_training=True,
+        add_summaries=False,
+        num_classes=2,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=image_resizer_fn,
+        object_center_params=get_fake_center_params(),
+        object_detection_params=get_fake_od_params(),
+        keypoint_params_dict={
+            'kpt_task_1': kp_params_1,
+            'kpt_task_2': kp_params_2,
+        })
+
+    def graph_fn():
+      classes = tf.constant([[1, 0]], dtype=tf.int32)
+      scores = tf.constant([[0.5, 0.75]], dtype=tf.float32)
+      keypoint_scores = tf.constant(
+          [
+              [[0.1, 0.2, 0.3, 0.4, 0.5],
+               [0.1, 0.2, 0.3, 0.4, 0.5]],
+          ])
+      new_scores = model._rescore_instances(classes, scores, keypoint_scores)
+      return new_scores
+
+    new_scores = self.execute_cpu(graph_fn, [])
+    expected_scores = np.array(
+        [[0.5, 0.75 * (0.1 + 0.2 + 0.3)/3]]
+        )
+    self.assertAllClose(expected_scores, new_scores)
+
 
 def get_fake_prediction_dict(input_height,
                              input_width,
