@@ -279,12 +279,10 @@ class ExportModelWithMLMTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotAllClose(hub_pooled_output, encoder_pooled_output)
 
   @parameterized.named_parameters(
-      ("Bert", True, False),
-      ("BertLegacyCheckpoint", True, True),
-      ("Albert", False, False),
-      ("AlbertLegacyCheckpoint", False, True),
+      ("Bert", True),
+      ("Albert", False),
   )
-  def test_export_model_with_mlm(self, use_bert, legacy_checkpoint):
+  def test_export_model_with_mlm(self, use_bert):
     # Create the encoder and export it.
     hidden_size = 16
     num_hidden_layers = 2
@@ -298,10 +296,7 @@ class ExportModelWithMLMTest(tf.test.TestCase, parameterized.TestCase):
     bert_model_with_mlm = bert_model.mlm
     model_checkpoint_dir = os.path.join(self.get_temp_dir(), "checkpoint")
 
-    if legacy_checkpoint:
-      checkpoint = tf.train.Checkpoint(pretrainer=pretrainer)
-    else:
-      checkpoint = tf.train.Checkpoint(**pretrainer.checkpoint_items)
+    checkpoint = tf.train.Checkpoint(**pretrainer.checkpoint_items)
 
     checkpoint.save(os.path.join(model_checkpoint_dir, "test"))
     model_checkpoint_path = tf.train.latest_checkpoint(model_checkpoint_dir)
