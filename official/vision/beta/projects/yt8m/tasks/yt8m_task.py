@@ -243,6 +243,9 @@ class YT8MTask(base_task.Task):
     if self.task_config.validation_data.segment_labels:
       # workaround to ignore the unrated labels.
       outputs *= inputs["label_weights"]
+      # remove padding
+      outputs = outputs[~tf.reduce_all(labels == -1, axis=1)]
+      labels = labels[~tf.reduce_all(labels == -1, axis=1)]
     loss, model_loss = self.build_losses(model_outputs=outputs, labels=labels,
                              aux_losses=model.losses)
 

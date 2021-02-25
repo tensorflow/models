@@ -379,6 +379,10 @@ class TransformBatcher():
                       "labels":[None, None],
                       "num_frames":[None, None],
                       "label_weights":[None,None]}
-        dataset = dataset.padded_batch(per_replica_batch_size, padded_shapes=pad_shapes, drop_remainder=True)
-    
+        pad_values = {"video_ids":None,
+                      "video_matrix":0.0,
+                      "labels":-1.0,
+                      "num_frames":0.0,
+                      "label_weights":0.0}
+        dataset = dataset.padded_batch(per_replica_batch_size, padded_shapes=pad_shapes, drop_remainder=True, padding_values=pad_values)
     return dataset
