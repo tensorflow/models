@@ -19,6 +19,7 @@ task:
       activation: 'swish'
       norm_momentum: 0.0
       use_sync_bn: false
+    dropout_rate: 0.4
   losses:
     l2_weight_decay: 0.00004
     one_hot: true
