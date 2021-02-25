@@ -37,6 +37,7 @@ def export_inference_graph(
     params: cfg.ExperimentConfig,
     checkpoint_path: str,
     export_dir: str,
+    num_channels: Optional[int] = 3,
     export_module: Optional[export_base.ExportModule] = None,
     export_checkpoint_subdir: Optional[str] = None,
     export_saved_model_subdir: Optional[str] = None):
@@ -52,6 +53,7 @@ def export_inference_graph(
     params: Experiment params.
     checkpoint_path: Trained checkpoint path or directory.
     export_dir: Export directory path.
+    num_channels: The number of input image channels.
     export_module: Optional export module to be used instead of using params
       to create one. If None, the params will be used to create an export
       module.
@@ -79,19 +81,22 @@ def export_inference_graph(
       export_module = image_classification.ClassificationModule(
           params=params,
           batch_size=batch_size,
-          input_image_size=input_image_size)
+          input_image_size=input_image_size,
+          num_channels=num_channels)
     elif isinstance(params.task, configs.retinanet.RetinaNetTask) or isinstance(
         params.task, configs.maskrcnn.MaskRCNNTask):
       export_module = detection.DetectionModule(
           params=params,
           batch_size=batch_size,
-          input_image_size=input_image_size)
+          input_image_size=input_image_size,
+          num_channels=num_channels)
     elif isinstance(params.task,
                     configs.semantic_segmentation.SemanticSegmentationTask):
       export_module = semantic_segmentation.SegmentationModule(
           params=params,
           batch_size=batch_size,
-          input_image_size=input_image_size)
+          input_image_size=input_image_size,
+          num_channels=num_channels)
     else:
       raise ValueError('Export module not implemented for {} task.'.format(
           type(params.task)))
@@ -107,7 +112,7 @@ def export_inference_graph(
 
   if input_type == 'image_tensor':
     input_signature = tf.TensorSpec(
-        shape=[batch_size, None, None, 3],
+        shape=[batch_size] + [None] * len(input_image_size) + [num_channels],
         dtype=tf.uint8)
     signatures = {
         'serving_default':
