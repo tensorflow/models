@@ -13,10 +13,10 @@ TF Vision model garden provides a large collection of baselines and checkpoints 
 
 | model        | resolution    | epochs  |  Top-1  |  Top-5  | download |
 | ------------ |:-------------:|--------:|--------:|---------:|---------:|
-| ResNet-50    | 224x224       |    90    | 76.1 | 92.9 | config |
-| ResNet-50    | 224x224       |    200   | 77.1 | 93.5 | config |
-| ResNet-101   | 224x224       |    200   | 78.3 | 94.2 | config |
-| ResNet-152   | 224x224       |    200   | 78.7 | 94.3 | config |
+| ResNet-50    | 224x224       |    90    | 76.1 | 92.9 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) |
+| ResNet-50    | 224x224       |    200   | 77.1 | 93.5 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet50_tpu.yaml) |
+| ResNet-101   | 224x224       |    200   | 78.3 | 94.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet101_tpu.yaml) |
+| ResNet-152   | 224x224       |    200   | 78.7 | 94.3 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnet152_tpu.yaml) |
 
 
 #### ResNet-RS models trained with settings including:
@@ -25,20 +25,20 @@ TF Vision model garden provides a large collection of baselines and checkpoints 
 *   Regularization methods including Random Augment, 4e-5 weight decay, stochastic depth, label smoothing and dropout.
 *   New training methods including a 350-epoch schedule, cosine learning rate and
     EMA.
-*   Configs are in this [directory](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification)
+*   Configs are in this [directory](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification).
 
 model     | resolution | params (M) | Top-1 | Top-5 | download
 --------- | :--------: | -----: | ----: | ----: | -------:
-ResNet-RS-50 | 160x160    | 35.7    | 79.1  | 94.5  |
-ResNet-RS-101 | 160x160    | 63.7    | 80.2  | 94.9  |
-ResNet-RS-101 | 192x192    | 63.7    | 81.3  | 95.6  |
-ResNet-RS-152 | 192x192    | 86.8    | 81.9  | 95.8  |
-ResNet-RS-152 | 224x224    | 86.8    | 82.5  | 96.1  |
-ResNet-RS-152 | 256x256    | 86.8    | 83.1  | 96.3  |
-ResNet-RS-200 | 256x256    | 93.4    | 83.5  | 96.6  |
-ResNet-RS-270 | 256x256    | 130.1    | 83.6  | 96.6  |
-ResNet-RS-350 | 256x256    |  164.3   | 83.7  | 96.7  |
-ResNet-RS-350 | 320x320    | 164.3   | 84.2  | 96.9  |
+ResNet-RS-50 | 160x160    | 35.7    | 79.1  | 94.5  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs50_i160.yaml) |
+ResNet-RS-101 | 160x160    | 63.7    | 80.2  | 94.9  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs101_i160.yaml) |
+ResNet-RS-101 | 192x192    | 63.7    | 81.3  | 95.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs101_i192.yaml) |
+ResNet-RS-152 | 192x192    | 86.8    | 81.9  | 95.8  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs152_i192.yaml) |
+ResNet-RS-152 | 224x224    | 86.8    | 82.5  | 96.1  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs152_i224.yaml) |
+ResNet-RS-152 | 256x256    | 86.8    | 83.1  | 96.3  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs152_i256.yaml) |
+ResNet-RS-200 | 256x256    | 93.4    | 83.5  | 96.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs200_i256.yaml) |
+ResNet-RS-270 | 256x256    | 130.1    | 83.6  | 96.6  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs270_i256.yaml) |
+ResNet-RS-350 | 256x256    |  164.3   | 83.7  | 96.7  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs350_i256.yaml) |
+ResNet-RS-350 | 320x320    | 164.3   | 84.2  | 96.9  | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/image_classification/imagenet_resnetrs420_i256.yaml) |
 
 
 ## Object Detection and Instance Segmentation
