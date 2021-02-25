@@ -15,7 +15,6 @@
 """TFDS Classification decoder."""
 
 import tensorflow as tf
-
 from official.vision.beta.dataloaders import decoder
 
 
@@ -27,10 +26,9 @@ class Decoder(decoder.Decoder):
 
   def decode(self, serialized_example):
     sample_dict = {
-        'image/encoded': tf.io.encode_jpeg(
-            serialized_example['image'], quality=100),
-        'image/class/label': serialized_example['label'],
+        'image/encoded':
+            tf.io.encode_jpeg(serialized_example['image'], quality=100),
+        'image/class/label':
+            serialized_example['label'],
     }
     return sample_dict
-
-
