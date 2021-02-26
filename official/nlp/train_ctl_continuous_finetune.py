@@ -39,8 +39,8 @@ def main(_):
   params = train_utils.parse_configuration(FLAGS)
   model_dir = FLAGS.model_dir
   train_utils.serialize_config(params, model_dir)
-  continuous_finetune_lib.run_continuous_finetune(FLAGS.mode, params, model_dir,
-                                                  FLAGS.pretrain_steps)
+  continuous_finetune_lib.run_continuous_finetune(
+      FLAGS.mode, params, model_dir, pretrain_steps=FLAGS.pretrain_steps)
   train_utils.save_gin_config(FLAGS.mode, model_dir)
 
 
