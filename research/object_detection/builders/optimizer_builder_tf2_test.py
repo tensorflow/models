@@ -82,7 +82,7 @@ class OptimizerBuilderV2Test(tf.test.TestCase):
     optimizer, _ = optimizer_builder.build(optimizer_proto)
     self.assertIsInstance(optimizer, tf.keras.optimizers.Adam)
 
-  def testMovingAverageOptimizerUnsupported(self):
+  def testBuildMovingAverageOptimizer(self):
     optimizer_text_proto = """
       adam_optimizer: {
         learning_rate: {
@@ -95,8 +95,8 @@ class OptimizerBuilderV2Test(tf.test.TestCase):
     """
     optimizer_proto = optimizer_pb2.Optimizer()
     text_format.Merge(optimizer_text_proto, optimizer_proto)
-    with self.assertRaises(ValueError):
-      optimizer_builder.build(optimizer_proto)
+    optimizer, _ = optimizer_builder.build(optimizer_proto)
+    self.assertIsInstance(optimizer, tf.keras.optimizers.Optimizer)
 
 
 if __name__ == '__main__':

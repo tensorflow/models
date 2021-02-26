@@ -17,9 +17,10 @@ r"""Tool to generate api_docs for tensorflow_models/official library.
 
 Example:
 
-python build_docs \
+$> pip install -U git+https://github.com/tensorflow/docs
+$> python build_docs \
  --output_dir=/tmp/api_docs \
- --project_short_name=tf_nlp.modeling \
+ --project_short_name=tfnlp \
  --project_full_name="TensorFlow Official Models - NLP Modeling Library"
 """
 
@@ -34,7 +35,7 @@ from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
 
-from official.nlp import modeling as tf_nlp_modeling
+from official.nlp import modeling as tfnlp
 
 FLAGS = flags.FLAGS
 
@@ -47,18 +48,15 @@ flags.DEFINE_string(
 flags.DEFINE_bool('search_hints', True,
                   'Include metadata search hints in the generated files')
 
-flags.DEFINE_string('site_path', 'tf_nlp_modeling/api_docs/python',
+flags.DEFINE_string('site_path', '/api_docs/python',
                     'Path prefix in the _toc.yaml')
 
 flags.DEFINE_bool('gen_report', False,
                   'Generate an API report containing the health of the '
                   'docstrings of the public API.')
-flags.DEFINE_string(
-    'project_short_name', 'tf_nlp.modeling',
-    'The project short name referring to the python module to document.')
-flags.DEFINE_string('project_full_name',
-                    'TensorFlow Official Models - NLP Modeling Library',
-                    'The main title for the project.')
+
+PROJECT_SHORT_NAME = 'tfnlp'
+PROJECT_FULL_NAME = 'TensorFlow Official Models - NLP Modeling Library'
 
 
 def _hide_module_model_and_layer_methods():
@@ -104,8 +102,8 @@ def gen_api_docs(code_url_prefix, site_path, output_dir, gen_report,
 
   doc_generator = generate_lib.DocGenerator(
       root_title=project_full_name,
-      py_modules=[(project_short_name, tf_nlp_modeling)],
-      base_dir=os.path.dirname(tf_nlp_modeling.__file__),
+      py_modules=[(project_short_name, tfnlp)],
+      base_dir=os.path.dirname(tfnlp.__file__),
       code_url_prefix=code_url_prefix,
       search_hints=search_hints,
       site_path=site_path,
@@ -126,8 +124,8 @@ def main(argv):
       site_path=FLAGS.site_path,
       output_dir=FLAGS.output_dir,
       gen_report=FLAGS.gen_report,
-      project_short_name=FLAGS.project_short_name,
-      project_full_name=FLAGS.project_full_name,
+      project_short_name=PROJECT_SHORT_NAME,
+      project_full_name=PROJECT_FULL_NAME,
       search_hints=FLAGS.search_hints)
 
 

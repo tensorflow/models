@@ -37,16 +37,10 @@ class MultiTaskConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class MultiEvalExperimentConfig(hyperparams.Config):
+class MultiEvalExperimentConfig(cfg.ExperimentConfig):
   """An experiment config for single-task training and multi-task evaluation.
 
   Attributes:
-    task: the single-stream training task.
     eval_tasks: individual evaluation tasks.
-    trainer: the trainer configuration.
-    runtime: the runtime configuration.
   """
-  task: cfg.TaskConfig = cfg.TaskConfig()
   eval_tasks: MultiTaskConfig = MultiTaskConfig()
-  trainer: cfg.TrainerConfig = cfg.TrainerConfig()
-  runtime: cfg.RuntimeConfig = cfg.RuntimeConfig()

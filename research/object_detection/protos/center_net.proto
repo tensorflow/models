@@ -153,6 +153,12 @@ message CenterNet {
     // the keypoint candidate.
     optional string candidate_ranking_mode = 16 [default = "min_distance"];
 
+    // The score distance ratio offset, only used if candidate_ranking_mode is
+    // 'score_distance_ratio'. The offset is used in the maximization of score
+    // distance ratio, defined as:
+    // keypoint_score / (distance + score_distance_offset)
+    optional float score_distance_offset = 22 [default = 1.0];
+
     // The radius (in the unit of output pixel) around heatmap peak to assign
     // the offset targets. If set 0, then the offset target will only be
     // assigned to the heatmap peak (same behavior as the original paper).
@@ -165,6 +171,34 @@ message CenterNet {
     // out_height, out_width, 2 * num_keypoints] (recommended when the
     // offset_peak_radius is not zero).
     optional bool per_keypoint_offset = 18 [default = false];
+
+    // Indicates whether to predict the depth of each keypoints. Note that this
+    // is only supported in the single class keypoint task.
+    optional bool predict_depth = 19 [default = false];
+
+    // Indicates whether to predict depths for each keypoint channel
+    // separately. If set False, the output depth target has the shape
+    // [batch_size, out_height, out_width, 1]. If set True, the output depth
+    // target has the shape [batch_size, out_height, out_width,
+    // num_keypoints]. Recommend to set this value and "per_keypoint_offset" to
+    // both be True at the same time.
+    optional bool per_keypoint_depth = 20 [default = false];
+
+    // The weight of the keypoint depth loss.
+    optional float keypoint_depth_loss_weight = 21 [default = 1.0];
+
+    // Whether keypoints outside the image frame should be clipped back to the
+    // image boundary. If true, the keypoints that are clipped have scores set
+    // to 0.0.
+    optional bool clip_out_of_frame_keypoints = 23 [default = false];
+
+    // Whether instances should be rescored based on keypoint confidences. If
+    // False, will use the detection score (from the object center heatmap). If
+    // True, will compute new scores with:
+    // new_score = o * (1/k) sum {s_i}
+    // where o is the object score, s_i is the score for keypoint i, and k is
+    // the number of keypoints for that class.
+    optional bool rescore_instances = 24 [default = false];
   }
   repeated KeypointEstimation keypoint_estimation_task = 7;
 
@@ -278,7 +312,6 @@ message CenterNet {
   // from CenterNet. Use this optional parameter to apply traditional non max
   // suppression and score thresholding.
   optional PostProcessing post_processing = 24;
-
 }
 
 message CenterNetFeatureExtractor {

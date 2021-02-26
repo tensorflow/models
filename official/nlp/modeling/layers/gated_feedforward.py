@@ -33,8 +33,8 @@ class GatedFeedforward(tf.keras.layers.Layer):
     intermediate_activation: Activation for the intermediate layer.
     dropout: Dropout probability for the output dropout.
     use_gate: Whether to use gated linear units. If True, assuming `GELU` as the
-      activation and omitting bias, will apply `GEGLU(x, W, V, W_2) = (GEGLU(xW)
-      * xV)W2`; if False, will follow
+      activation and omitting bias, will apply
+      `GEGLU(x, W, V, W_2) = (GEGLU(xW) * xV)W2`; if False, will follow
       "Attention Is All You Need" (https://arxiv.org/abs/1706.03762) paper and
         apply `FFN(x, W, W_2) = GELU(xW_1)W_2.`
     num_blocks: The number of feedforward blocks to stack. Each block contains a
@@ -43,8 +43,8 @@ class GatedFeedforward(tf.keras.layers.Layer):
     dropout_position: Where to apply the dropout, the value can be either
       `before_residual` or `after_residual`. If `before_residual`, will apply
       `layer_output = layer_norm(dropout(layer_output) + layer_input)`; if
-      `after residual`, will apply `layer_output =
-      dropout(layer_norm(layer_output + layer_input))`.
+      `after residual`, will apply
+      `layer_output = dropout(layer_norm(layer_output + layer_input))`.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.

@@ -29,6 +29,7 @@ from absl import logging
 import h5py
 import tensorflow as tf
 
+from delf.python.pooling_layers import pooling as pooling_layers
 
 layers = tf.keras.layers
 
@@ -295,14 +296,14 @@ class ResNet50(tf.keras.Model):
       elif pooling == 'gem':
         logging.info('Adding GeMPooling layer with power %f', gem_power)
         self.global_pooling = functools.partial(
-            gem_pooling, axis=reduction_indices, power=gem_power)
+            pooling_layers.gem, axis=reduction_indices, power=gem_power)
       else:
         self.global_pooling = None
       if embedding_layer:
         logging.info('Adding embedding layer with dimension %d',
                      embedding_layer_dim)
-        self.embedding_layer = layers.Dense(embedding_layer_dim,
-                                            name='embedding_layer')
+        self.embedding_layer = layers.Dense(
+            embedding_layer_dim, name='embedding_layer')
       else:
         self.embedding_layer = None
 
@@ -404,6 +405,7 @@ class ResNet50(tf.keras.Model):
 
     Args:
       filepath: String, path to the .h5 file
+
     Raises:
       ValueError: if the file referenced by `filepath` does not exist.
     """
@@ -455,28 +457,4 @@ class ResNet50(tf.keras.Model):
           weights = inlayer.get_weights()
           logging.info(weights)
       else:
-        logging.info('Layer %s does not have inner layers.',
-                     layer.name)
-
-
-def gem_pooling(feature_map, axis, power, threshold=1e-6):
-  """Performs GeM (Generalized Mean) pooling.
-
-  See https://arxiv.org/abs/1711.02512 for a reference.
-
-  Args:
-    feature_map: Tensor of shape [batch, height, width, channels] for
-      the "channels_last" format or [batch, channels, height, width] for the
-      "channels_first" format.
-    axis: Dimensions to reduce.
-    power: Float, GeM power parameter.
-    threshold: Optional float, threshold to use for activations.
-
-  Returns:
-    pooled_feature_map: Tensor of shape [batch, channels].
-  """
-  return tf.pow(
-      tf.reduce_mean(tf.pow(tf.maximum(feature_map, threshold), power),
-                     axis=axis,
-                     keepdims=False),
-      1.0 / power)
+        logging.info('Layer %s does not have inner layers.', layer.name)

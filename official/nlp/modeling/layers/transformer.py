@@ -202,7 +202,7 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
       raise ValueError(
           "The hidden size (%d) is not a multiple of the number of attention "
           "heads (%d)" % (hidden_size, self.num_attention_heads))
-    self.attention_head_size = int(hidden_size / self.num_attention_heads)
+    self.attention_head_size = int(hidden_size) // self.num_attention_heads
     common_kwargs = dict(
         bias_initializer=self._bias_initializer,
         kernel_regularizer=self._kernel_regularizer,

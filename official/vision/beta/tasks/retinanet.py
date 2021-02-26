@@ -19,10 +19,10 @@ from absl import logging
 import tensorflow as tf
 from official.common import dataset_fn
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.vision import keras_cv
 from official.vision.beta.configs import retinanet as exp_cfg
+from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import retinanet_input
 from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tfds_detection_decoders
@@ -122,7 +122,7 @@ class RetinaNetTask(base_task.Task):
         skip_crowd_during_training=params.parser.skip_crowd_during_training,
         max_num_instances=params.parser.max_num_instances)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
         dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,

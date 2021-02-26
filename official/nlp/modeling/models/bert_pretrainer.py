@@ -30,7 +30,7 @@ from official.nlp.modeling import networks
 class BertPretrainer(tf.keras.Model):
   """BERT pretraining model.
 
-  [Note] Please use the new BertPretrainerV2 for your projects.
+  [Note] Please use the new `BertPretrainerV2` for your projects.
 
   The BertPretrainer allows a user to pass in a transformer stack, and
   instantiates the masked language model and classification networks that are

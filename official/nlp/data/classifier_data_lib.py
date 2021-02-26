@@ -1307,7 +1307,7 @@ class AXgProcessor(DataProcessor):
     """Creates examples for the training/dev/test sets."""
     examples = []
     for line in lines:
-      guid = "%s-%s" % (set_type, self.process_text_fn(str(line['idx'])))
+      guid = "%s-%s" % (set_type, self.process_text_fn(str(line["idx"])))
       text_a = self.process_text_fn(line["premise"])
       text_b = self.process_text_fn(line["hypothesis"])
       label = self.process_text_fn(line["label"])
@@ -1315,7 +1315,8 @@ class AXgProcessor(DataProcessor):
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
-class RTESuperGLUEProcessor(DataProcessor):
+
+class SuperGLUERTEProcessor(DataProcessor):
   """Processor for the RTE dataset (SuperGLUE version)."""
 
   def get_train_examples(self, data_dir):
@@ -1349,15 +1350,16 @@ class RTESuperGLUEProcessor(DataProcessor):
     examples = []
     for i, line in enumerate(lines):
       guid = "%s-%s" % (set_type, i)
-      text_a = self.process_text_fn(line['premise'])
-      text_b = self.process_text_fn(line['hypothesis'])
+      text_a = self.process_text_fn(line["premise"])
+      text_b = self.process_text_fn(line["hypothesis"])
       if set_type == "test":
         label = "entailment"
       else:
-        label = self.process_text_fn(line['label'])
+        label = self.process_text_fn(line["label"])
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
+
 
 def file_based_convert_examples_to_features(examples,
                                             label_list,

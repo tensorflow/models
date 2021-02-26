@@ -125,10 +125,11 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
     images = self._get_dummy_input(input_type, batch_size, image_size)
 
-    processed_images, anchor_boxes, image_shape = module._build_inputs(
+    processed_images, anchor_boxes, image_info = module._build_inputs(
         tf.zeros((224, 224, 3), dtype=tf.uint8))
-    processed_images = tf.expand_dims(processed_images, 0)
+    image_shape = image_info[1, :]
     image_shape = tf.expand_dims(image_shape, 0)
+    processed_images = tf.expand_dims(processed_images, 0)
     for l, l_boxes in anchor_boxes.items():
       anchor_boxes[l] = tf.expand_dims(l_boxes, 0)
 
