@@ -261,6 +261,7 @@ class ParamsDict(object):
       right_k, right_v = _get_kv(stripped_tokens[1], params_dict)
       return left_k, left_v, right_k, right_v
     params_dict = self.as_dict()
+
     for restriction in self._restrictions:
       if '==' in restriction:
         tokens = restriction.split('==')
