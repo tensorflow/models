@@ -77,7 +77,7 @@ class RoundRobinTruncatorTest(tf.test.TestCase):
 
 # This test covers the in-process behavior of a BertTokenizer layer.
 # For saving, restoring, and the restored behavior (incl. shape inference),
-# see export_tfub_test.py.
+# see nlp/tools/export_tfhub_lib_test.py.
 class BertTokenizerTest(tf.test.TestCase):
 
   def _make_vocab_file(self, vocab, filename="vocab.txt"):
