@@ -8,14 +8,12 @@
   link for details: https://research.google.com/youtube8m/download.html
   '''
 
-from typing import Dict, Optional
+from typing import Dict
 import tensorflow as tf
 from official.vision.beta.projects.yt8m.dataloaders import utils
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
-from official.vision.beta.ops import preprocess_ops_3d
-import tensorflow_datasets as tfds
 
 def resize_axis(tensor, axis, new_size, fill_value=0):
   """Truncates or pads a tensor to new_size on on a given axis.
@@ -92,7 +90,7 @@ def _process_segment_and_label(video_matrix,
                                  (num_segment,))
     batch_frames = tf.reshape(tf.tile([segment_size], [num_segment]),
                               (num_segment,))
-    batch_frames = tf.cast(tf.expand_dims(batch_frames, 1), tf.float32) #avoid dimension error
+    batch_frames = tf.cast(tf.expand_dims(batch_frames, 1), tf.float32)
 
     # For segment labels, all labels are not exhaustively rated. So we only
     # evaluate the rated labels.
@@ -255,7 +253,8 @@ class Decoder(decoder.Decoder):
 class Parser(parser.Parser):
   """Parses a video and label dataset.
     takes the decoded raw tensors dict
-    and parse them into a dictionary of tensors that can be consumed by the model.
+    and parse them into a dictionary of tensors
+    that can be consumed by the model.
     It will be executed after decoder.
   """
 
@@ -277,24 +276,38 @@ class Parser(parser.Parser):
     self._min_quantized_value = min_quantized_value
 
 
-  def _parse_train_data(self, decoded_tensors):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
+  def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
     # loads (potentially) different types of features and concatenates them
-    self.video_matrix, self.num_frames = _concat_features(decoded_tensors["features"], self._feature_names, self._feature_sizes,
-                                                          self._max_frames, self._max_quantized_value,
-                                                          self._min_quantized_value)
-    output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, decoded_tensors["contexts"], self._segment_labels,
-                                             self._segment_size, self._num_classes)
+    self.video_matrix, self.num_frames = _concat_features(
+      decoded_tensors["features"], self._feature_names, self._feature_sizes,
+      self._max_frames, self._max_quantized_value, self._min_quantized_value
+    )
+    output_dict = _process_segment_and_label(
+      self.video_matrix, self.num_frames, decoded_tensors["contexts"],
+      self._segment_labels, self._segment_size, self._num_classes
+    )
     return output_dict
 
-  def _parse_eval_data(self, decoded_tensors):  # -> Tuple[Dict[str, tf.Tensor], tf.Tensor]
+  def _parse_eval_data(self, decoded_tensors):
     """Parses data for evaluation."""
     # loads (potentially) different types of features and concatenates them
-    self.video_matrix, self.num_frames = _concat_features(decoded_tensors["features"], self._feature_names, self._feature_sizes,
-                                                          self._max_frames, self._max_quantized_value,
-                                                          self._min_quantized_value)
-    output_dict = _process_segment_and_label(self.video_matrix, self.num_frames, decoded_tensors["contexts"], self._segment_labels,
-                                             self._segment_size, self._num_classes)
+    self.video_matrix, self.num_frames = _concat_features(
+      decoded_tensors["features"],
+      self._feature_names,
+      self._feature_sizes,
+      self._max_frames,
+      self._max_quantized_value,
+      self._min_quantized_value
+    )
+    output_dict = _process_segment_and_label(
+      self.video_matrix,
+      self.num_frames,
+      decoded_tensors["contexts"],
+      self._segment_labels,
+      self._segment_size,
+      self._num_classes
+    )
     return output_dict  # batched
 
 
@@ -319,7 +332,7 @@ class Parser(parser.Parser):
     return parse
 
 class PostBatchProcessor():
-
+  """ Processes a video and label dataset which is batched. """
   def __init__(self, input_params: exp_cfg.DataConfig):
     self.segment_labels = input_params.segment_labels
     self.num_classes = input_params.num_classes
@@ -336,12 +349,14 @@ class PostBatchProcessor():
     if self.segment_labels:
       # [batch x num_segment x segment_size x num_features]
       # -> [batch * num_segment x segment_size x num_features]
-      video_ids = tf.reshape(video_ids,[-1])
-      video_matrix = tf.reshape(video_matrix,[-1,self.segment_size, 1152])
-      labels = tf.reshape(labels,[-1,self.num_classes])
-      num_frames = tf.reshape(num_frames,[-1,1])
+      video_ids = tf.reshape(video_ids, [-1])
+      video_matrix = tf.reshape(video_matrix, [-1, self.segment_size, 1152])
+      labels = tf.reshape(labels, [-1, self.num_classes])
+      num_frames = tf.reshape(num_frames, [-1, 1])
 
-      label_weights = tf.reshape(batched_tensors['label_weights'], [-1,self.num_classes])
+      label_weights = tf.reshape(
+        batched_tensors['label_weights'], [-1, self.num_classes]
+      )
 
     else:
       video_matrix = tf.squeeze(video_matrix)
@@ -360,13 +375,14 @@ class PostBatchProcessor():
     return batched_tensors
 
 class TransformBatcher():
+  """ Performs manual batching on input dataset """
   def __init__(self,input_params: exp_cfg.DataConfig):
     self._segment_labels = input_params.segment_labels
     self._global_batch_size = input_params.global_batch_size
     self._is_training = input_params.is_training
 
   def batch_fn(self, dataset, input_context):
-    '''manually batch when segment_labels is on'''
+    """Add padding when segment_labels is on"""
     per_replica_batch_size = input_context.get_per_replica_batch_size(
         self._global_batch_size) if input_context else self._global_batch_size
     if not self._segment_labels:
@@ -384,5 +400,10 @@ class TransformBatcher():
                       "labels":-1.0,
                       "num_frames":0.0,
                       "label_weights":0.0}
-        dataset = dataset.padded_batch(per_replica_batch_size, padded_shapes=pad_shapes, drop_remainder=True, padding_values=pad_values)
+        dataset = dataset.padded_batch(
+          per_replica_batch_size,
+          padded_shapes=pad_shapes,
+          drop_remainder=True,
+          padding_values=pad_values
+        )
     return dataset

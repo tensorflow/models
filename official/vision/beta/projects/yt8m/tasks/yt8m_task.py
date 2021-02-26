@@ -92,7 +92,7 @@ class YT8MTask(base_task.Task):
       from_logits=losses_config.from_logits,
       label_smoothing=losses_config.label_smoothing)
 
-    model_loss = tf_utils.safe_mean(model_loss) #TODO: remove?
+    model_loss = tf_utils.safe_mean(model_loss)
     total_loss = model_loss
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
