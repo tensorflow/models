@@ -177,7 +177,9 @@ class DirectPowerDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     with tf.name_scope(self._name or "DirectPowerDecay"):
       step = tf.cast(step, tf.float32)
       learning_rate = self._initial_learning_rate
-      learning_rate *= tf.math.pow(step, self._power)
+      # A zero `step` may cause Inf. So make `step` positive.
+      step_non_zero = tf.math.maximum(step, 1.0)
+      learning_rate *= tf.math.pow(step_non_zero, self._power)
       return learning_rate
 
   def get_config(self):
