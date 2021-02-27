@@ -5,7 +5,7 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 # if it is too large break into 2 files
 class FPNTail(tf.keras.layers.Layer):
   "private layer used in the FPN"
-  
+
   def __init__(self,
                filters=1,
                upsample=True,
@@ -86,7 +86,7 @@ class YoloFPN(tf.keras.Model):
     """
     Yolo FPN initialization function. Yolo V4
     Args:
-      fpn_path_len: `int`, number of layers ot use in each FPN path 
+      fpn_path_len: `int`, number of layers ot use in each FPN path
         if you choose to use an FPN
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float`, normalization omentum for the moving average.
@@ -195,8 +195,8 @@ class YoloRoutedDecoder(tf.keras.Model):
     """
     Yolo Routed Decoder initialization function. Yolo V3
     Args:
-      path_process_len: `int`, number of layers ot use in each Decoder path 
-      max_level_process_len: `int`, number of layers ot use in the largest 
+      path_process_len: `int`, number of layers ot use in each Decoder path
+      max_level_process_len: `int`, number of layers ot use in the largest
         processing path, or the backbones largest output if it is different
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
       use_sync_bn: if True, use synchronized batch normalization.
@@ -299,8 +299,8 @@ class YoloFPNDecoder(tf.keras.Model):
     """
     Yolo FPN Decoder initialization function. Yolo V4
     Args:
-      path_process_len: `int`, number of layers ot use in each Decoder path 
-      max_level_process_len: `int`, number of layers ot use in the largest 
+      path_process_len: `int`, number of layers ot use in each Decoder path
+      max_level_process_len: `int`, number of layers ot use in the largest
         processing path, or the backbones largest output if it is different
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
       use_sync_bn: if True, use synchronized batch normalization.
@@ -406,10 +406,10 @@ class YoloDecoder(tf.keras.Model):
     Yolo Decoder initialization function.
     Args:
       embed_fpn: `bool`, use the FPN found in the YoloV4 model
-      fpn_path_len: `int`, number of layers ot use in each FPN path 
+      fpn_path_len: `int`, number of layers ot use in each FPN path
         if you choose to use an FPN
-      path_process_len: `int`, number of layers ot use in each Decoder path 
-      max_level_process_len: `int`, number of layers ot use in the largest 
+      path_process_len: `int`, number of layers ot use in each Decoder path
+      max_level_process_len: `int`, number of layers ot use in the largest
         processing path, or the backbones largest output if it is different
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
       use_sync_bn: if True, use synchronized batch normalization.

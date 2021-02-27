@@ -980,7 +980,7 @@ class DarkRouteProcess(tf.keras.layers.Layer):
 
         Args:
           filters: the number of filters to be used in all subsequent layers
-            filters should be the depth of the tensor input into this layer, as no 
+            filters should be the depth of the tensor input into this layer, as no
             downsampling can be done within this layer object
           repetitions: number of times to repeat the processign nodes
             for tiny: 1 repition, no spp allowed
@@ -992,7 +992,7 @@ class DarkRouteProcess(tf.keras.layers.Layer):
           norm_moment: batch norm parameter see Tensorflow documentation
           norm_epsilon: batch norm parameter see Tensorflow documentation
           activation: activation function to use in processing
-          leaky_alpha: if leaky acitivation function, the alpha to use in processing the 
+          leaky_alpha: if leaky acitivation function, the alpha to use in processing the
             relu input
 
         Returns:

@@ -30,4 +30,3 @@ from official.vision.beta.projects.yolo.modeling.decoders.yolo_decoder_test impo
 if __name__ == "__main__":
   # prep_gpu()
   tf.test.main()
-

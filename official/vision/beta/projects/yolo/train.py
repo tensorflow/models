@@ -25,13 +25,16 @@ from official.core import task_factory
 from official.core import train_lib
 from official.core import train_utils
 from official.modeling import performance
-from official.vision.beta.projects.yolo.common import registry_imports  # pylint: disable=unused-import
-
+# pylint: disable=unused-import
+from official.vision.beta.projects.yolo.common import registry_imports
+# pylint: enable=unused-import
 FLAGS = flags.FLAGS
-
-'''
-python3 -m official.vision.beta.projects.yolo.train --mode=train_and_eval --experiment=darknet_classification --model_dir=training_dir --config_file=official/vision/beta/projects/yolo/configs/experiments/darknet53_tfds.yaml
-'''
+"""
+python3 -m official.vision.beta.projects.yolo.train --mode=train_and_eval
+  --experiment=darknet_classification --model_dir=training_dir
+  --config_file=official/vision/beta/projects/yolo/configs/experiments/\
+    darknet53_tfds.yaml
+"""
 
 
 def main(_):
@@ -68,6 +71,7 @@ def main(_):
       model_dir=model_dir)
 
   train_utils.save_gin_config(FLAGS.mode, model_dir)
+
 
 if __name__ == '__main__':
   tfm_flags.define_flags()

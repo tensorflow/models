@@ -32,19 +32,22 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
   def test_network_creation(self, version):
     """Test creation of ResNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
-    input_shape = {'3': [1, 52, 52, 256], '4': [1, 26, 26, 512], '5': [1, 13, 13, 1024]}
+    input_shape = {
+        '3': [1, 52, 52, 256],
+        '4': [1, 26, 26, 512],
+        '5': [1, 13, 13, 1024]
+    }
     decoder = build_yolo_decoder(input_shape, version)
 
     inputs = {}
     for key in input_shape.keys():
-        inputs[key] = tf.ones(input_shape[key], dtype = tf.float32)
-    
+      inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
+
     endpoints = decoder.call(inputs)
     # print(endpoints)
 
     for key in endpoints.keys():
-        self.assertAllEqual(endpoints[key].shape.as_list(), input_shape[key])
-
+      self.assertAllEqual(endpoints[key].shape.as_list(), input_shape[key])
 
   @combinations.generate(
       combinations.combine(
@@ -60,13 +63,17 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     tf.keras.backend.set_image_data_format('channels_last')
 
     with strategy.scope():
-      input_shape = {'3': [1, 52, 52, 256], '4': [1, 26, 26, 512], '5': [1, 13, 13, 1024]}
+      input_shape = {
+          '3': [1, 52, 52, 256],
+          '4': [1, 26, 26, 512],
+          '5': [1, 13, 13, 1024]
+      }
       decoder = build_yolo_decoder(input_shape, 'c')
 
       inputs = {}
       for key in input_shape.keys():
-        inputs[key] = tf.ones(input_shape[key], dtype = tf.float32)
-    
+        inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
+
       _ = decoder.call(inputs)
 
   @parameterized.parameters(1, 3, 4)
@@ -74,59 +81,68 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     """Test different input feature dimensions."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    input_shape = {'3': [1, 52, 52, 256], '4': [1, 26, 26, 512], '5': [1, 13, 13, 1024]}
+    input_shape = {
+        '3': [1, 52, 52, 256],
+        '4': [1, 26, 26, 512],
+        '5': [1, 13, 13, 1024]
+    }
     decoder = build_yolo_decoder(input_shape, 'c')
 
     inputs = {}
     for key in input_shape.keys():
-      inputs[key] = tf.ones(input_shape[key], dtype = tf.float32)
+      inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
     _ = decoder(inputs)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.
     tf.keras.backend.set_image_data_format('channels_last')
 
-    input_shape = {'3': [1, 52, 52, 256], '4': [1, 26, 26, 512], '5': [1, 13, 13, 1024]}
+    input_shape = {
+        '3': [1, 52, 52, 256],
+        '4': [1, 26, 26, 512],
+        '5': [1, 13, 13, 1024]
+    }
     decoder = build_yolo_decoder(input_shape, 'c')
 
     inputs = {}
     for key in input_shape.keys():
-      inputs[key] = tf.ones(input_shape[key], dtype = tf.float32)
+      inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     _ = decoder(inputs)
 
     a = decoder.get_config()
-
 
     b = decoders.YoloDecoder.from_config(a)
 
     print(a)
     self.assertAllEqual(decoder.get_config(), b.get_config())
 
+
 def build_yolo_decoder(input_specs, type):
-  if type == "a":
+  if type == 'a':
     model = decoders.YoloDecoder(
         embed_spp=False,
         embed_fpn=False,
         max_level_process_len=2,
         path_process_len=1,
-        activation="mish")
-  elif type == "b":
+        activation='mish')
+  elif type == 'b':
     model = decoders.YoloDecoder(
         embed_spp=True,
         embed_fpn=False,
         max_level_process_len=None,
         path_process_len=6,
-        activation="mish")
+        activation='mish')
   else:
     model = decoders.YoloDecoder(
-          embed_spp=False,
-          embed_fpn=False,
-          max_level_process_len=None,
-          path_process_len=6,
-          activation="mish")
+        embed_spp=False,
+        embed_fpn=False,
+        max_level_process_len=None,
+        path_process_len=6,
+        activation='mish')
   model.build(input_specs)
   return model
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
   tf.test.main()
