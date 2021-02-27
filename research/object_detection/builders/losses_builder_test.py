@@ -298,6 +298,45 @@ class ClassificationLossBuilderTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       losses_builder.build(losses_proto)
 
+  def test_build_penalty_reduced_logistic_focal_loss(self):
+    losses_text_proto = """
+      classification_loss {
+        penalty_reduced_logistic_focal_loss {
+          alpha: 2.0
+          beta: 4.0
+        }
+      }
+      localization_loss {
+        l1_localization_loss {
+        }
+      }
+    """
+    losses_proto = losses_pb2.Loss()
+    text_format.Merge(losses_text_proto, losses_proto)
+    classification_loss, _, _, _, _, _, _ = losses_builder.build(losses_proto)
+    self.assertIsInstance(classification_loss,
+                          losses.PenaltyReducedLogisticFocalLoss)
+    self.assertAlmostEqual(classification_loss._alpha, 2.0)
+    self.assertAlmostEqual(classification_loss._beta, 4.0)
+
+  def test_build_dice_loss(self):
+    losses_text_proto = """
+      classification_loss {
+        weighted_dice_classification_loss {
+          squared_normalization: true
+        }
+      }
+      localization_loss {
+        l1_localization_loss {
+        }
+      }
+    """
+    losses_proto = losses_pb2.Loss()
+    text_format.Merge(losses_text_proto, losses_proto)
+    classification_loss, _, _, _, _, _, _ = losses_builder.build(losses_proto)
+    self.assertIsInstance(classification_loss,
+                          losses.WeightedDiceClassificationLoss)
+    assert classification_loss._squared_normalization
 
 
 class HardExampleMinerBuilderTest(tf.test.TestCase):

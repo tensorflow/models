@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """TFM common training driver library."""
 # pytype: disable=attribute-error
 import os
@@ -28,26 +27,7 @@ from official.core import config_definitions
 from official.core import train_utils
 
 BestCheckpointExporter = train_utils.BestCheckpointExporter
-
-
-def maybe_create_best_ckpt_exporter(params: config_definitions.ExperimentConfig,
-                                    data_dir: str) -> Any:
-  """Maybe create a BestCheckpointExporter object, according to the config."""
-  export_subdir = params.trainer.best_checkpoint_export_subdir
-  metric_name = params.trainer.best_checkpoint_eval_metric
-  metric_comp = params.trainer.best_checkpoint_metric_comp
-  if data_dir and export_subdir and metric_name:
-    best_ckpt_dir = os.path.join(data_dir, export_subdir)
-    best_ckpt_exporter = BestCheckpointExporter(
-        best_ckpt_dir, metric_name, metric_comp)
-    logging.info(
-        'Created the best checkpoint exporter. '
-        'data_dir: %s, export_subdir: %s, metric_name: %s', data_dir,
-        export_subdir, metric_name)
-  else:
-    best_ckpt_exporter = None
-
-  return best_ckpt_exporter
+maybe_create_best_ckpt_exporter = train_utils.maybe_create_best_ckpt_exporter
 
 
 def run_experiment(distribution_strategy: tf.distribute.Strategy,
@@ -84,7 +64,8 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
         task,
         train='train' in mode,
         evaluate=('eval' in mode) or run_post_eval,
-        checkpoint_exporter=maybe_create_best_ckpt_exporter(params, model_dir))
+        checkpoint_exporter=maybe_create_best_ckpt_exporter(
+            params, model_dir))
 
   if trainer.checkpoint:
     checkpoint_manager = tf.train.CheckpointManager(

@@ -49,6 +49,7 @@ class Parser(parser.Parser):
                num_classes: float,
                aug_rand_hflip: bool = True,
                aug_policy: Optional[str] = None,
+               randaug_magnitude: Optional[int] = 10,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
@@ -59,6 +60,7 @@ class Parser(parser.Parser):
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
       aug_policy: `str`, augmentation policies. None, 'autoaug', or 'randaug'.
+      randaug_magnitude: `int`, magnitude of the randaugment policy.
       dtype: `str`, cast output image in dtype. It can be 'float32', 'float16',
         or 'bfloat16'.
     """
@@ -77,7 +79,8 @@ class Parser(parser.Parser):
       if aug_policy == 'autoaug':
         self._augmenter = augment.AutoAugment()
       elif aug_policy == 'randaug':
-        self._augmenter = augment.RandAugment(num_layers=2, magnitude=20)
+        self._augmenter = augment.RandAugment(
+            num_layers=2, magnitude=randaug_magnitude)
       else:
         raise ValueError(
             'Augmentation policy {} not supported.'.format(aug_policy))

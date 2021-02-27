@@ -151,19 +151,19 @@ def crop_image(frames: tf.Tensor,
                target_height: int,
                target_width: int,
                random: bool = False,
-               num_views: int = 1,
+               num_crops: int = 1,
                seed: Optional[int] = None) -> tf.Tensor:
   """Crops the image sequence of images.
 
   If requested size is bigger than image size, image is padded with 0. If not
-  random cropping, a central crop is performed.
+  random cropping, a central crop is performed if num_crops is 1.
 
   Args:
     frames: A Tensor of dimension [timesteps, in_height, in_width, channels].
     target_height: Target cropped image height.
     target_width: Target cropped image width.
     random: A boolean indicating if crop should be randomized.
-    num_views: Number of views to crop in evaluation.
+    num_crops: Number of crops (support 1 for central crop and 3 for 3-crop).
     seed: A deterministic seed to use when random cropping.
 
   Returns:
@@ -181,13 +181,13 @@ def crop_image(frames: tf.Tensor,
     frames = tf.image.random_crop(
         frames, (seq_len, target_height, target_width, channels), seed)
   else:
-    if num_views == 1:
+    if num_crops == 1:
       # Central crop or pad.
       frames = tf.image.resize_with_crop_or_pad(frames, target_height,
                                                 target_width)
 
-    elif num_views == 3:
-      # Three-view evaluation.
+    elif num_crops == 3:
+      # Three-crop evaluation.
       shape = tf.shape(frames)
       static_shape = frames.shape.as_list()
       seq_len = shape[0] if static_shape[0] is None else static_shape[0]
@@ -224,7 +224,7 @@ def crop_image(frames: tf.Tensor,
 
     else:
       raise NotImplementedError(
-          f"Only 1 crop and 3 crop are supported. Found {num_views!r}.")
+          f"Only 1-crop and 3-crop are supported. Found {num_crops!r}.")
 
   return frames
 

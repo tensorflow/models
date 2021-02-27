@@ -23,7 +23,7 @@ from official.nlp.keras_nlp import layers
 class SelfAttentionMask(layers.SelfAttentionMask):
   """Create 3D attention mask from a 2D tensor mask.
 
-    **Warning: Please use the keras_nlp.layers.SelfAttentionMask.**
+    **Warning: Please use the `keras_nlp.layers.SelfAttentionMask`.**
     inputs[0]: from_tensor: 2D or 3D Tensor of shape
       [batch_size, from_seq_length, ...].
     inputs[1]: to_mask: int32 Tensor of shape [batch_size, to_seq_length].

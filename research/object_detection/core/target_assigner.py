@@ -1468,6 +1468,175 @@ class CenterNetKeypointTargetAssigner(object):
     batch_offsets = tf.concat(batch_offsets, axis=0)
     return (batch_indices, batch_offsets, batch_weights)
 
+  def assign_keypoints_depth_targets(self,
+                                     height,
+                                     width,
+                                     gt_keypoints_list,
+                                     gt_classes_list,
+                                     gt_keypoint_depths_list,
+                                     gt_keypoint_depth_weights_list,
+                                     gt_keypoints_weights_list=None,
+                                     gt_weights_list=None):
+    """Returns the target depths of the keypoints.
+
+    The returned values are the relative depth information of each keypoints.
+
+    Args:
+      height: int, height of input to the CenterNet model. This is used to
+        determine the height of the output.
+      width: int, width of the input to the CenterNet model. This is used to
+        determine the width of the output.
+      gt_keypoints_list: A list of tensors with shape [num_instances,
+        num_total_keypoints, 2]. See class-level description for more detail.
+      gt_classes_list: A list of tensors with shape [num_instances,
+        num_classes]. See class-level description for more detail.
+      gt_keypoint_depths_list: A list of tensors with shape [num_instances,
+        num_total_keypoints] corresponding to the relative depth of the
+        keypoints.
+      gt_keypoint_depth_weights_list: A list of tensors with shape
+        [num_instances, num_total_keypoints] corresponding to the weights of
+        the relative depth.
+      gt_keypoints_weights_list: A list of tensors with shape [num_instances,
+        num_total_keypoints] corresponding to the weight of each keypoint.
+      gt_weights_list: A list of float tensors with shape [num_instances]. See
+        class-level description for more detail.
+
+    Returns:
+      batch_indices: an integer tensor of shape [num_total_instances, 3] (or
+        [num_total_instances, 4] if 'per_keypoint_offset' is set True) holding
+        the indices inside the predicted tensor which should be penalized. The
+        first column indicates the index along the batch dimension and the
+        second and third columns indicate the index along the y and x
+        dimensions respectively. The fourth column corresponds to the channel
+        dimension (if 'per_keypoint_offset' is set True).
+      batch_depths: a float tensor of shape [num_total_instances, 1] indicating
+        the target depth of each keypoint.
+      batch_weights: a float tensor of shape [num_total_instances] indicating
+        the weight of each prediction.
+      Note that num_total_instances = batch_size * num_instances *
+                                      num_keypoints * num_neighbors
+    """
+
+    batch_indices = []
+    batch_weights = []
+    batch_depths = []
+
+    if gt_keypoints_weights_list is None:
+      gt_keypoints_weights_list = [None] * len(gt_keypoints_list)
+    if gt_weights_list is None:
+      gt_weights_list = [None] * len(gt_classes_list)
+    if gt_keypoint_depths_list is None:
+      gt_keypoint_depths_list = [None] * len(gt_classes_list)
+    for i, (keypoints, classes, kp_weights, weights,
+            keypoint_depths, keypoint_depth_weights) in enumerate(
+                zip(gt_keypoints_list, gt_classes_list,
+                    gt_keypoints_weights_list, gt_weights_list,
+                    gt_keypoint_depths_list, gt_keypoint_depth_weights_list)):
+      keypoints_absolute, kp_weights = self._preprocess_keypoints_and_weights(
+          out_height=height // self._stride,
+          out_width=width // self._stride,
+          keypoints=keypoints,
+          class_onehot=classes,
+          class_weights=weights,
+          keypoint_weights=kp_weights)
+      num_instances, num_keypoints, _ = (
+          shape_utils.combined_static_and_dynamic_shape(keypoints_absolute))
+
+      # [num_instances * num_keypoints]
+      y_source = tf.keras.backend.flatten(keypoints_absolute[:, :, 0])
+      x_source = tf.keras.backend.flatten(keypoints_absolute[:, :, 1])
+
+      # All keypoint coordinates and their neighbors:
+      # [num_instance * num_keypoints, num_neighbors]
+      (y_source_neighbors, x_source_neighbors,
+       valid_sources) = ta_utils.get_surrounding_grids(height // self._stride,
+                                                       width // self._stride,
+                                                       y_source, x_source,
+                                                       self._peak_radius)
+      _, num_neighbors = shape_utils.combined_static_and_dynamic_shape(
+          y_source_neighbors)
+
+      # Update the valid keypoint weights.
+      # [num_instance * num_keypoints, num_neighbors]
+      valid_keypoints = tf.cast(
+          valid_sources, dtype=tf.float32) * tf.stack(
+              [tf.keras.backend.flatten(kp_weights)] * num_neighbors, axis=-1)
+
+      # Compute the offsets and indices of the box centers. Shape:
+      #   indices: [num_instances * num_keypoints, num_neighbors, 2]
+      _, indices = ta_utils.compute_floor_offsets_with_indices(
+          y_source=y_source_neighbors,
+          x_source=x_source_neighbors,
+          y_target=y_source,
+          x_target=x_source)
+      # Reshape to:
+      #   indices: [num_instances * num_keypoints * num_neighbors, 2]
+      indices = tf.reshape(indices, [-1, 2])
+
+      # Gather the keypoint depth from corresponding keypoint indices:
+      #   [num_instances, num_keypoints]
+      keypoint_depths = tf.gather(
+          keypoint_depths, self._keypoint_indices, axis=1)
+      # Tile the depth target to surrounding pixels.
+      #   [num_instances, num_keypoints, num_neighbors]
+      tiled_keypoint_depths = tf.tile(
+          tf.expand_dims(keypoint_depths, axis=-1),
+          multiples=[1, 1, num_neighbors])
+
+      # [num_instances, num_keypoints]
+      keypoint_depth_weights = tf.gather(
+          keypoint_depth_weights, self._keypoint_indices, axis=1)
+      # [num_instances, num_keypoints, num_neighbors]
+      keypoint_depth_weights = tf.tile(
+          tf.expand_dims(keypoint_depth_weights, axis=-1),
+          multiples=[1, 1, num_neighbors])
+      # Update the weights of keypoint depth by the weights of the keypoints.
+      # A keypoint depth target is valid only if its corresponding keypoint
+      # target is also valid.
+      # [num_instances, num_keypoints, num_neighbors]
+      tiled_depth_weights = (
+          tf.reshape(valid_keypoints,
+                     [num_instances, num_keypoints, num_neighbors]) *
+          keypoint_depth_weights)
+      invalid_depths = tf.logical_or(
+          tf.math.is_nan(tiled_depth_weights),
+          tf.math.is_nan(tiled_keypoint_depths))
+      # Assign zero values and weights to NaN values.
+      final_keypoint_depths = tf.where(invalid_depths,
+                                       tf.zeros_like(tiled_keypoint_depths),
+                                       tiled_keypoint_depths)
+      final_keypoint_depth_weights = tf.where(
+          invalid_depths,
+          tf.zeros_like(tiled_depth_weights),
+          tiled_depth_weights)
+      # [num_instances * num_keypoints * num_neighbors, 1]
+      batch_depths.append(tf.reshape(final_keypoint_depths, [-1, 1]))
+
+      # Prepare the batch indices to be prepended.
+      batch_index = tf.fill(
+          [num_instances * num_keypoints * num_neighbors, 1], i)
+      if self._per_keypoint_offset:
+        tiled_keypoint_types = self._get_keypoint_types(
+            num_instances, num_keypoints, num_neighbors)
+        batch_indices.append(
+            tf.concat([batch_index, indices,
+                       tf.reshape(tiled_keypoint_types, [-1, 1])], axis=1))
+      else:
+        batch_indices.append(tf.concat([batch_index, indices], axis=1))
+      batch_weights.append(
+          tf.keras.backend.flatten(final_keypoint_depth_weights))
+
+    # Concatenate the tensors in the batch in the first dimension:
+    # shape: [batch_size * num_instances * num_keypoints * num_neighbors, 3] or
+    # [batch_size * num_instances * num_keypoints * num_neighbors, 4] if
+    # 'per_keypoint_offset' is set to True.
+    batch_indices = tf.concat(batch_indices, axis=0)
+    # shape: [batch_size * num_instances * num_keypoints * num_neighbors]
+    batch_weights = tf.concat(batch_weights, axis=0)
+    # shape: [batch_size * num_instances * num_keypoints * num_neighbors, 1]
+    batch_depths = tf.concat(batch_depths, axis=0)
+    return (batch_indices, batch_depths, batch_weights)
+
   def assign_joint_regression_targets(self,
                                       height,
                                       width,

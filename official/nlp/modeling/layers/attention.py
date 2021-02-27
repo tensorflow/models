@@ -27,7 +27,7 @@ MultiHeadAttention = tf.keras.layers.MultiHeadAttention
 class CachedAttention(tf.keras.layers.MultiHeadAttention):
   """Attention layer with cache used for auto-agressive decoding.
 
-  Arguments are the same as `MultiHeadAttention` layer.
+  Arguments are the same as `tf.keras.layers.MultiHeadAttention` layer.
   """
 
   def _update_cache(self, key, value, cache, decode_loop_step):

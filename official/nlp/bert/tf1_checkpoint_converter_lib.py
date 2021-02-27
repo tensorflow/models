@@ -116,7 +116,13 @@ def create_v2_checkpoint(model,
   """Converts a name-based matched TF V1 checkpoint to TF V2 checkpoint."""
   # Uses streaming-restore in eager model to read V1 name-based checkpoints.
   model.load_weights(src_checkpoint).assert_existing_objects_matched()
-  checkpoint = tf.train.Checkpoint(**{checkpoint_model_name: model})
+  if hasattr(model, "checkpoint_items"):
+    checkpoint_items = model.checkpoint_items
+  else:
+    checkpoint_items = {}
+
+  checkpoint_items[checkpoint_model_name] = model
+  checkpoint = tf.train.Checkpoint(**checkpoint_items)
   checkpoint.save(output_path)
 
 

@@ -27,3 +27,11 @@ class NormActivation(hyperparams.Config):
   use_sync_bn: bool = True
   norm_momentum: float = 0.99
   norm_epsilon: float = 0.001
+
+
+@dataclasses.dataclass
+class PseudoLabelDataConfig(hyperparams.Config):
+  """Psuedo Label input config for training."""
+  input_path: str = ''
+  data_ratio: float = 1.0  # Per-batch ratio of pseudo-labeled to labeled data
+  file_type: str = 'tfrecord'

@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for tensorflow_models.core.trainers.trainer."""
 # pylint: disable=g-direct-tensorflow-import
 import os
@@ -59,7 +58,8 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
         config,
         task,
         model=task.build_model(),
-        optimizer=task.create_optimizer(config.trainer, config.runtime),
+        optimizer=task.create_optimizer(config.trainer.optimizer_config,
+                                        config.runtime),
         checkpoint_exporter=ckpt_exporter)
     return trainer
 
@@ -189,15 +189,18 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 }
             })))
     task = mock_task.MockTask(config.task, logging_dir=model_dir)
+
     def build_losses(labels, model_outputs, aux_losses=None):
       del labels, model_outputs
       return tf.constant([np.nan], tf.float32) + aux_losses
+
     task.build_losses = build_losses
     trainer = trainer_lib.Trainer(
         config,
         task,
         model=task.build_model(),
-        optimizer=task.create_optimizer(config.trainer, config.runtime))
+        optimizer=task.create_optimizer(config.trainer.optimizer_config,
+                                        config.runtime))
     trainer.add_recovery(config.trainer, checkpoint_manager=checkpoint_manager)
     with self.assertRaises(RuntimeError):
       _ = trainer.train(tf.convert_to_tensor(2, dtype=tf.int32))

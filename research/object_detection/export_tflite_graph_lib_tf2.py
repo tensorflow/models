@@ -145,7 +145,7 @@ class SSDModule(tf.Module):
       scores = tf.constant(0.0, dtype=tf.float32, name='scores')
       classes = tf.constant(0.0, dtype=tf.float32, name='classes')
       num_detections = tf.constant(0.0, dtype=tf.float32, name='num_detections')
-      return boxes, scores, classes, num_detections
+      return boxes, classes, scores, num_detections
 
     return dummy_post_processing
 
@@ -207,7 +207,8 @@ class CenterNetModule(tf.Module):
   both object detection and keypoint estimation task.
   """
 
-  def __init__(self, pipeline_config, max_detections, include_keypoints):
+  def __init__(self, pipeline_config, max_detections, include_keypoints,
+               label_map_path=''):
     """Initialization.
 
     Args:
@@ -215,10 +216,15 @@ class CenterNetModule(tf.Module):
       max_detections: Max detections desired from the TFLite model.
       include_keypoints: If set true, the output dictionary will include the
         keypoint coordinates and keypoint confidence scores.
+      label_map_path: Path to the label map which is used by CenterNet keypoint
+        estimation task. If provided, the label_map_path in the configuration
+        will be replaced by this one.
     """
     self._max_detections = max_detections
     self._include_keypoints = include_keypoints
     self._process_config(pipeline_config)
+    if include_keypoints and label_map_path:
+      pipeline_config.model.center_net.keypoint_label_map_path = label_map_path
     self._pipeline_config = pipeline_config
     self._model = model_builder.build(
         self._pipeline_config.model, is_training=False)
@@ -303,7 +309,7 @@ class CenterNetModule(tf.Module):
 
 def export_tflite_model(pipeline_config, trained_checkpoint_dir,
                         output_directory, max_detections, use_regular_nms,
-                        include_keypoints=False):
+                        include_keypoints=False, label_map_path=''):
   """Exports inference SavedModel for TFLite conversion.
 
   NOTE: Only supports SSD meta-architectures for now, and the output model will
@@ -322,6 +328,9 @@ def export_tflite_model(pipeline_config, trained_checkpoint_dir,
       Note that this argument is only used by the SSD model.
     include_keypoints: Decides whether to also output the keypoint predictions.
       Note that this argument is only used by the CenterNet model.
+    label_map_path: Path to the label map which is used by CenterNet keypoint
+      estimation task. If provided, the label_map_path in the configuration will
+      be replaced by this one.
 
   Raises:
     ValueError: if pipeline is invalid.
@@ -339,7 +348,8 @@ def export_tflite_model(pipeline_config, trained_checkpoint_dir,
                                  max_detections, use_regular_nms)
   elif pipeline_config.model.WhichOneof('model') == 'center_net':
     detection_module = CenterNetModule(
-        pipeline_config, max_detections, include_keypoints)
+        pipeline_config, max_detections, include_keypoints,
+        label_map_path=label_map_path)
     ckpt = tf.train.Checkpoint(model=detection_module.get_model())
   else:
     raise ValueError('Only ssd or center_net models are supported in tflite. '

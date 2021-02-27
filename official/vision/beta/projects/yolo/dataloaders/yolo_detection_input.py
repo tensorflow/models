@@ -1,13 +1,30 @@
-""" Detection Data parser and processing for YOLO.
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""Detection Data parser and processing for YOLO.
+
 Parse image and ground truths in a dataset to training targets and package them
 into (image, labels) tuple for RetinaNet.
 """
 
 import tensorflow as tf
+
 from official.vision.beta.dataloaders import parser
-from official.vision.beta.ops import box_ops, preprocess_ops
-from official.vision.beta.projects.yolo.ops import preprocessing_ops
+from official.vision.beta.ops import box_ops
+from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.projects.yolo.ops import box_ops as yolo_box_ops
+from official.vision.beta.projects.yolo.ops import preprocess_ops as yolo_preprocess_ops
 
 
 class Parser(parser.Parser):
@@ -35,6 +52,7 @@ class Parser(parser.Parser):
                seed=10,
                dtype=tf.float32):
     """Initializes parameters for parsing annotations in the dataset.
+
     Args:
       output_size: a `Tuple` for (width, height) of input image.
       num_classes: a `Tensor` or `int` for the number of classes.
@@ -42,26 +60,28 @@ class Parser(parser.Parser):
       jitter_im: a `float` representing a pixel value that is the maximum jitter
         applied to the image for data augmentation during training.
       jitter_boxes: a `float` representing a pixel value that is the maximum
-        jitter applied to the bounding box for data augmentation during training.
-      net_down_scale: an `int` that down scales the image width and height to
-        the closest multiple of net_down_scale.
+        jitter applied to the bounding box for data augmentation during
+        training.
+      use_tie_breaker: boolean value for wether or not to use the tie_breaker.
+      min_level: `int` number of minimum level of the output feature pyramid.
+      max_level: `int` number of maximum level of the output feature pyramid.
+      masks: a `Tensor`, `List` or `numpy.ndarray` for anchor masks.
       max_process_size: an `int` for maximum image width and height.
       min_process_size: an `int` for minimum image width and height ,
-      max_num_instances: an `int` number of maximum number of instances in an image.
-      random_flip: a `bool` if True, augment training with random horizontal flip.
-      masks: a `Tensor`, `List` or `numpy.ndarray` for anchor masks.
+      max_num_instances: an `int` number of maximum number of instances in an
+        image.
+      random_flip: a `bool` if True, augment training with random horizontal
+        flip.
       aug_rand_saturation: `bool`, if True, augment training with random
         saturation.
       aug_rand_brightness: `bool`, if True, augment training with random
         brightness.
-      aug_rand_zoom: `bool`, if True, augment training with random
-        zoom.
-      aug_rand_hue: `bool`, if True, augment training with random
-        hue.
+      aug_rand_zoom: `bool`, if True, augment training with random zoom.
+      aug_rand_hue: `bool`, if True, augment training with random hue.
       anchors: a `Tensor`, `List` or `numpy.ndarrray` for bounding box priors.
       seed: an `int` for the seed used by tf.random
-      dtype: a `tf.dtypes.DType` object that represents the dtype the outputs will
-        be casted to. The available types are tf.float32, tf.float16, or
+      dtype: a `tf.dtypes.DType` object that represents the dtype the outputs
+        will be casted to. The available types are tf.float32, tf.float16, or
         tf.bfloat16.
     """
     self._net_down_scale = 2**max_level
@@ -99,17 +119,18 @@ class Parser(parser.Parser):
     mask = self._masks
     for key in self._masks.keys():
       if not batch:
-        mask[key] = preprocessing_ops.build_grided_gt(
-            raw_true, self._masks[key], width // 2**int(key), self._num_classes,
+        mask[key] = yolo_preprocess_ops.build_grided_gt(
+            raw_true, self._masks[key], width // 2**int(key),
             raw_true['bbox'].dtype, use_tie_breaker)
       else:
-        mask[key] = preprocessing_ops.build_batch_grided_gt(
-            raw_true, self._masks[key], width // 2**int(key), self._num_classes,
+        mask[key] = yolo_preprocess_ops.build_batch_grided_gt(
+            raw_true, self._masks[key], width // 2**int(key),
             raw_true['bbox'].dtype, use_tie_breaker)
     return mask
 
   def _parse_train_data(self, data):
     """Generates images and labels that are usable for model training.
+
     Args:
       data: a dict of Tensors produced by the decoder.
     Returns:
@@ -123,7 +144,7 @@ class Parser(parser.Parser):
     width = shape[0]
     height = shape[1]
 
-    image, boxes = preprocessing_ops.fit_preserve_aspect_ratio(
+    image, boxes = yolo_preprocess_ops.fit_preserve_aspect_ratio(
         image,
         boxes,
         width=width,
@@ -160,11 +181,11 @@ class Parser(parser.Parser):
     boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
     if self._jitter_im != 0.0:
-      image, boxes = preprocessing_ops.random_translate(
+      image, boxes = yolo_preprocess_ops.random_translate(
           image, boxes, self._jitter_im, seed=self._seed)
 
     if self._aug_rand_zoom:
-      image, boxes = preprocessing_ops.resize_crop_filter(
+      image, boxes = yolo_preprocess_ops.resize_crop_filter(
           image,
           boxes,
           default_width=self._image_w,
@@ -182,11 +203,11 @@ class Parser(parser.Parser):
     if self._aug_rand_hue:
       image = tf.image.random_hue(image=image, max_delta=.3)  # Hue
     image = tf.clip_by_value(image, 0.0, 1.0)
-    # find the best anchor for the ground truth labels to maximize the iou
-    best_anchors = preprocessing_ops.get_best_anchor(
+    # Find the best anchor for the ground truth labels to maximize the iou
+    best_anchors = yolo_preprocess_ops.get_best_anchor(
         boxes, self._anchors, width=self._image_w, height=self._image_h)
 
-    # padding
+    # Padding
     boxes = preprocess_ops.clip_or_pad_to_fixed_size(boxes,
                                                      self._max_num_instances, 0)
     classes = preprocess_ops.clip_or_pad_to_fixed_size(
@@ -218,10 +239,9 @@ class Parser(parser.Parser):
 
     return image, labels
 
-  # broken for some reason in task, i think dictionary to coco evaluator has
-  # issues
   def _parse_eval_data(self, data):
     """Generates images and labels that are usable for model training.
+
     Args:
       data: a dict of Tensors produced by the decoder.
     Returns:
@@ -235,23 +255,22 @@ class Parser(parser.Parser):
     width = shape[0]
     height = shape[1]
 
-    image, boxes = preprocessing_ops.fit_preserve_aspect_ratio(
+    image, boxes = yolo_preprocess_ops.fit_preserve_aspect_ratio(
         image, boxes, width=width, height=height, target_dim=self._image_w)
     boxes = yolo_box_ops.yxyx_to_xcycwh(boxes)
 
-    # find the best anchor for the ground truth labels to maximize the iou
-    best_anchors = preprocessing_ops.get_best_anchor(
+    # Find the best anchor for the ground truth labels to maximize the iou
+    best_anchors = yolo_preprocess_ops.get_best_anchor(
         boxes, self._anchors, width=self._image_w, height=self._image_h)
-    boxes = preprocessing_ops.pad_max_instances(boxes, self._max_num_instances,
-                                                0)
-    classes = preprocessing_ops.pad_max_instances(data['groundtruth_classes'],
+    boxes = yolo_preprocess_ops.pad_max_instances(boxes,
                                                   self._max_num_instances, 0)
-    best_anchors = preprocessing_ops.pad_max_instances(best_anchors,
-                                                       self._max_num_instances,
-                                                       0)
-    area = preprocessing_ops.pad_max_instances(data['groundtruth_area'],
-                                               self._max_num_instances, 0)
-    is_crowd = preprocessing_ops.pad_max_instances(
+    classes = yolo_preprocess_ops.pad_max_instances(data['groundtruth_classes'],
+                                                    self._max_num_instances, 0)
+    best_anchors = yolo_preprocess_ops.pad_max_instances(
+        best_anchors, self._max_num_instances, 0)
+    area = yolo_preprocess_ops.pad_max_instances(data['groundtruth_area'],
+                                                 self._max_num_instances, 0)
+    is_crowd = yolo_preprocess_ops.pad_max_instances(
         tf.cast(data['groundtruth_is_crowd'], tf.int32),
         self._max_num_instances, 0)
 

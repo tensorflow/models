@@ -116,6 +116,9 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
       candidate_ranking_mode: "score_distance_ratio"
       offset_peak_radius: 3
       per_keypoint_offset: true
+      predict_depth: true
+      per_keypoint_depth: true
+      keypoint_depth_loss_weight: 0.3
     """
     config = text_format.Merge(task_proto_txt,
                                center_net_pb2.CenterNet.KeypointEstimation())
@@ -264,6 +267,9 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     self.assertEqual(kp_params.candidate_ranking_mode, 'score_distance_ratio')
     self.assertEqual(kp_params.offset_peak_radius, 3)
     self.assertEqual(kp_params.per_keypoint_offset, True)
+    self.assertEqual(kp_params.predict_depth, True)
+    self.assertEqual(kp_params.per_keypoint_depth, True)
+    self.assertAlmostEqual(kp_params.keypoint_depth_loss_weight, 0.3)
 
     # Check mask related parameters.
     self.assertAlmostEqual(model._mask_params.task_loss_weight, 0.7)

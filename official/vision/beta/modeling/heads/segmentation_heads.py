@@ -182,6 +182,7 @@ class SegmentationHead(tf.keras.layers.Layer):
 
       x = tf.image.resize(
           x, tf.shape(y)[1:3], method=tf.image.ResizeMethod.BILINEAR)
+      x = tf.cast(x, dtype=y.dtype)
       x = tf.concat([x, y], axis=self._bn_axis)
     elif self._config_dict['feature_fusion'] == 'pyramid_fusion':
       x = nn_layers.pyramid_feature_fusion(decoder_output,

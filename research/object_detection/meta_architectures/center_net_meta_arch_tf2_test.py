@@ -24,12 +24,14 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v1 as tf
 
+from object_detection.builders import post_processing_builder
 from object_detection.core import losses
 from object_detection.core import preprocessor
 from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner as cn_assigner
 from object_detection.meta_architectures import center_net_meta_arch as cnma
 from object_detection.models import center_net_resnet_feature_extractor
+from object_detection.protos import post_processing_pb2
 from object_detection.utils import test_case
 from object_detection.utils import tf_version
 
@@ -693,7 +695,7 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
       keypoint_heatmap_offsets = tf.constant(
           keypoint_heatmap_offsets_np, dtype=tf.float32)
 
-      keypoint_cands, keypoint_scores, num_keypoint_candidates = (
+      (keypoint_cands, keypoint_scores, num_keypoint_candidates, _) = (
           cnma.prediction_tensors_to_keypoint_candidates(
               keypoint_heatmap,
               keypoint_heatmap_offsets,
@@ -734,6 +736,75 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     np.testing.assert_array_equal(expected_num_keypoint_candidates,
                                   num_keypoint_candidates)
 
+  def test_prediction_to_single_instance_keypoints(self):
+    image_size = (9, 9)
+    object_heatmap_np = np.zeros((1, image_size[0], image_size[1], 1),
+                                 dtype=np.float32)
+    # This should be picked.
+    object_heatmap_np[0, 4, 4, 0] = 0.9
+    # This shouldn't be picked since it's farther away from the center.
+    object_heatmap_np[0, 2, 2, 0] = 1.0
+
+    keypoint_heatmap_np = np.zeros((1, image_size[0], image_size[1], 4),
+                                   dtype=np.float32)
+    # Top-left corner should be picked.
+    keypoint_heatmap_np[0, 1, 1, 0] = 0.9
+    keypoint_heatmap_np[0, 4, 4, 0] = 1.0
+    # Top-right corner should be picked.
+    keypoint_heatmap_np[0, 1, 7, 1] = 0.9
+    keypoint_heatmap_np[0, 4, 4, 1] = 1.0
+    # Bottom-left corner should be picked.
+    keypoint_heatmap_np[0, 7, 1, 2] = 0.9
+    keypoint_heatmap_np[0, 4, 4, 2] = 1.0
+    # Bottom-right corner should be picked.
+    keypoint_heatmap_np[0, 7, 7, 3] = 0.9
+    keypoint_heatmap_np[0, 4, 4, 3] = 1.0
+
+    keypoint_offset_np = np.zeros((1, image_size[0], image_size[1], 2),
+                                  dtype=np.float32)
+    keypoint_offset_np[0, 1, 1] = [0.5, 0.5]
+    keypoint_offset_np[0, 1, 7] = [0.5, -0.5]
+    keypoint_offset_np[0, 7, 1] = [-0.5, 0.5]
+    keypoint_offset_np[0, 7, 7] = [-0.5, -0.5]
+
+    keypoint_regression_np = np.zeros((1, image_size[0], image_size[1], 8),
+                                      dtype=np.float32)
+    keypoint_regression_np[0, 4, 4] = [-3, -3, -3, 3, 3, -3, 3, 3]
+
+    kp_params = get_fake_kp_params(num_candidates_per_keypoint=1)
+
+    def graph_fn():
+      object_heatmap = tf.constant(object_heatmap_np, dtype=tf.float32)
+      keypoint_heatmap = tf.constant(keypoint_heatmap_np, dtype=tf.float32)
+      keypoint_offset = tf.constant(keypoint_offset_np, dtype=tf.float32)
+      keypoint_regression = tf.constant(
+          keypoint_regression_np, dtype=tf.float32)
+
+      (keypoint_cands, keypoint_scores, _) = (
+          cnma.prediction_to_single_instance_keypoints(
+              object_heatmap,
+              keypoint_heatmap,
+              keypoint_offset,
+              keypoint_regression,
+              stride=4,
+              object_center_std_dev=image_size[0] / 2,
+              keypoint_std_dev=[image_size[0] / 10],
+              kp_params=kp_params))
+
+      return keypoint_cands, keypoint_scores
+
+    (keypoint_cands, keypoint_scores) = self.execute(graph_fn, [])
+
+    expected_keypoint_candidates = [[[
+        [1.5, 1.5],  # top-left
+        [1.5, 6.5],  # top-right
+        [6.5, 1.5],  # bottom-left
+        [6.5, 6.5],  # bottom-right
+    ]]]
+    expected_keypoint_scores = [[[0.9, 0.9, 0.9, 0.9]]]
+    np.testing.assert_allclose(expected_keypoint_candidates, keypoint_cands)
+    np.testing.assert_allclose(expected_keypoint_scores, keypoint_scores)
+
   def test_keypoint_candidate_prediction_per_keypoints(self):
     keypoint_heatmap_np = np.zeros((2, 3, 3, 2), dtype=np.float32)
     keypoint_heatmap_np[0, 0, 0, 0] = 1.0
@@ -768,7 +839,7 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
       keypoint_heatmap_offsets = tf.constant(
           keypoint_heatmap_offsets_np, dtype=tf.float32)
 
-      keypoint_cands, keypoint_scores, num_keypoint_candidates = (
+      (keypoint_cands, keypoint_scores, num_keypoint_candidates, _) = (
           cnma.prediction_tensors_to_keypoint_candidates(
               keypoint_heatmap,
               keypoint_heatmap_offsets,
@@ -808,6 +879,89 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     np.testing.assert_allclose(expected_keypoint_scores, keypoint_scores)
     np.testing.assert_array_equal(expected_num_keypoint_candidates,
                                   num_keypoint_candidates)
+
+  @parameterized.parameters({'per_keypoint_depth': True},
+                            {'per_keypoint_depth': False})
+  def test_keypoint_candidate_prediction_depth(self, per_keypoint_depth):
+    keypoint_heatmap_np = np.zeros((2, 3, 3, 2), dtype=np.float32)
+    keypoint_heatmap_np[0, 0, 0, 0] = 1.0
+    keypoint_heatmap_np[0, 2, 1, 0] = 0.7
+    keypoint_heatmap_np[0, 1, 1, 0] = 0.6
+    keypoint_heatmap_np[0, 0, 2, 1] = 0.7
+    keypoint_heatmap_np[0, 1, 1, 1] = 0.3  # Filtered by low score.
+    keypoint_heatmap_np[0, 2, 2, 1] = 0.2
+    keypoint_heatmap_np[1, 1, 0, 0] = 0.6
+    keypoint_heatmap_np[1, 2, 1, 0] = 0.5
+    keypoint_heatmap_np[1, 0, 0, 0] = 0.4
+    keypoint_heatmap_np[1, 0, 0, 1] = 1.0
+    keypoint_heatmap_np[1, 0, 1, 1] = 0.9
+    keypoint_heatmap_np[1, 2, 0, 1] = 0.8
+
+    if per_keypoint_depth:
+      keypoint_depths_np = np.zeros((2, 3, 3, 2), dtype=np.float32)
+      keypoint_depths_np[0, 0, 0, 0] = -1.5
+      keypoint_depths_np[0, 2, 1, 0] = -1.0
+      keypoint_depths_np[0, 0, 2, 1] = 1.5
+    else:
+      keypoint_depths_np = np.zeros((2, 3, 3, 1), dtype=np.float32)
+      keypoint_depths_np[0, 0, 0, 0] = -1.5
+      keypoint_depths_np[0, 2, 1, 0] = -1.0
+      keypoint_depths_np[0, 0, 2, 0] = 1.5
+
+    keypoint_heatmap_offsets_np = np.zeros((2, 3, 3, 2), dtype=np.float32)
+    keypoint_heatmap_offsets_np[0, 0, 0] = [0.5, 0.25]
+    keypoint_heatmap_offsets_np[0, 2, 1] = [-0.25, 0.5]
+    keypoint_heatmap_offsets_np[0, 1, 1] = [0.0, 0.0]
+    keypoint_heatmap_offsets_np[0, 0, 2] = [1.0, 0.0]
+    keypoint_heatmap_offsets_np[0, 2, 2] = [1.0, 1.0]
+    keypoint_heatmap_offsets_np[1, 1, 0] = [0.25, 0.5]
+    keypoint_heatmap_offsets_np[1, 2, 1] = [0.5, 0.0]
+    keypoint_heatmap_offsets_np[1, 0, 0] = [0.0, -0.5]
+    keypoint_heatmap_offsets_np[1, 0, 1] = [0.5, -0.5]
+    keypoint_heatmap_offsets_np[1, 2, 0] = [-1.0, -0.5]
+
+    def graph_fn():
+      keypoint_heatmap = tf.constant(keypoint_heatmap_np, dtype=tf.float32)
+      keypoint_heatmap_offsets = tf.constant(
+          keypoint_heatmap_offsets_np, dtype=tf.float32)
+
+      keypoint_depths = tf.constant(keypoint_depths_np, dtype=tf.float32)
+      (keypoint_cands, keypoint_scores, num_keypoint_candidates,
+       keypoint_depths) = (
+           cnma.prediction_tensors_to_keypoint_candidates(
+               keypoint_heatmap,
+               keypoint_heatmap_offsets,
+               keypoint_score_threshold=0.5,
+               max_pool_kernel_size=1,
+               max_candidates=2,
+               keypoint_depths=keypoint_depths))
+      return (keypoint_cands, keypoint_scores, num_keypoint_candidates,
+              keypoint_depths)
+
+    (_, keypoint_scores, _, keypoint_depths) = self.execute(graph_fn, [])
+
+    expected_keypoint_scores = [
+        [  # Example 0.
+            [1.0, 0.7],  # Keypoint 1.
+            [0.7, 0.3],  # Keypoint 2.
+        ],
+        [  # Example 1.
+            [0.6, 1.0],  # Keypoint 1.
+            [0.5, 0.9],  # Keypoint 2.
+        ],
+    ]
+    expected_keypoint_depths = [
+        [
+            [-1.5, 1.5],
+            [-1.0, 0.0],
+        ],
+        [
+            [0., 0.],
+            [0., 0.],
+        ],
+    ]
+    np.testing.assert_allclose(expected_keypoint_scores, keypoint_scores)
+    np.testing.assert_allclose(expected_keypoint_depths, keypoint_depths)
 
   def test_regressed_keypoints_at_object_centers(self):
     batch_size = 2
@@ -914,11 +1068,15 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
       keypoint_scores = tf.constant(keypoint_scores_np, dtype=tf.float32)
       num_keypoint_candidates = tf.constant(num_keypoints_candidates_np,
                                             dtype=tf.int32)
-      refined_keypoints, refined_scores = cnma.refine_keypoints(
-          regressed_keypoints, keypoint_candidates, keypoint_scores,
-          num_keypoint_candidates, bboxes=None,
+      (refined_keypoints, refined_scores, _) = cnma.refine_keypoints(
+          regressed_keypoints,
+          keypoint_candidates,
+          keypoint_scores,
+          num_keypoint_candidates,
+          bboxes=None,
           unmatched_keypoint_score=unmatched_keypoint_score,
-          box_scale=1.2, candidate_search_scale=0.3,
+          box_scale=1.2,
+          candidate_search_scale=0.3,
           candidate_ranking_mode=candidate_ranking_mode)
       return refined_keypoints, refined_scores
 
@@ -986,7 +1144,8 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     np.testing.assert_allclose(expected_refined_keypoints, refined_keypoints)
     np.testing.assert_allclose(expected_refined_scores, refined_scores)
 
-  def test_refine_keypoints_with_bboxes(self):
+  @parameterized.parameters({'predict_depth': True}, {'predict_depth': False})
+  def test_refine_keypoints_with_bboxes(self, predict_depth):
     regressed_keypoints_np = np.array(
         [
             # Example 0.
@@ -1025,7 +1184,22 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
                 [0.7, 0.4, 0.0],  # Candidate 0.
                 [0.6, 0.1, 0.0],  # Candidate 1.
             ]
-        ], dtype=np.float32)
+        ],
+        dtype=np.float32)
+    keypoint_depths_np = np.array(
+        [
+            # Example 0.
+            [
+                [-0.8, -0.9, -1.0],  # Candidate 0.
+                [-0.6, -0.1, -0.9],  # Candidate 1.
+            ],
+            # Example 1.
+            [
+                [-0.7, -0.4, -0.0],  # Candidate 0.
+                [-0.6, -0.1, -0.0],  # Candidate 1.
+            ]
+        ],
+        dtype=np.float32)
     num_keypoints_candidates_np = np.array(
         [
             # Example 0.
@@ -1054,17 +1228,28 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
       keypoint_candidates = tf.constant(
           keypoint_candidates_np, dtype=tf.float32)
       keypoint_scores = tf.constant(keypoint_scores_np, dtype=tf.float32)
+      if predict_depth:
+        keypoint_depths = tf.constant(keypoint_depths_np, dtype=tf.float32)
+      else:
+        keypoint_depths = None
       num_keypoint_candidates = tf.constant(num_keypoints_candidates_np,
                                             dtype=tf.int32)
       bboxes = tf.constant(bboxes_np, dtype=tf.float32)
-      refined_keypoints, refined_scores = cnma.refine_keypoints(
-          regressed_keypoints, keypoint_candidates, keypoint_scores,
-          num_keypoint_candidates, bboxes=bboxes,
-          unmatched_keypoint_score=unmatched_keypoint_score,
-          box_scale=1.0, candidate_search_scale=0.3)
-      return refined_keypoints, refined_scores
-
-    refined_keypoints, refined_scores = self.execute(graph_fn, [])
+      (refined_keypoints, refined_scores,
+       refined_depths) = cnma.refine_keypoints(
+           regressed_keypoints,
+           keypoint_candidates,
+           keypoint_scores,
+           num_keypoint_candidates,
+           bboxes=bboxes,
+           unmatched_keypoint_score=unmatched_keypoint_score,
+           box_scale=1.0,
+           candidate_search_scale=0.3,
+           keypoint_depth_candidates=keypoint_depths)
+      if predict_depth:
+        return refined_keypoints, refined_scores, refined_depths
+      else:
+        return refined_keypoints, refined_scores
 
     expected_refined_keypoints = np.array(
         [
@@ -1095,8 +1280,17 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
             ],
         ], dtype=np.float32)
 
-    np.testing.assert_allclose(expected_refined_keypoints, refined_keypoints)
-    np.testing.assert_allclose(expected_refined_scores, refined_scores)
+    if predict_depth:
+      refined_keypoints, refined_scores, refined_depths = self.execute(
+          graph_fn, [])
+      expected_refined_depths = np.array([[[-0.8, 0.0, 0.0], [0.0, 0.0, -1.0]],
+                                          [[-0.7, -0.1, 0.0], [-0.7, -0.4,
+                                                               0.0]]])
+      np.testing.assert_allclose(expected_refined_depths, refined_depths)
+    else:
+      refined_keypoints, refined_scores = self.execute(graph_fn, [])
+      np.testing.assert_allclose(expected_refined_keypoints, refined_keypoints)
+      np.testing.assert_allclose(expected_refined_scores, refined_scores)
 
   def test_pad_to_full_keypoint_dim(self):
     batch_size = 4
@@ -1225,7 +1419,11 @@ def get_fake_od_params():
       scale_loss_weight=0.1)
 
 
-def get_fake_kp_params(num_candidates_per_keypoint=100):
+def get_fake_kp_params(num_candidates_per_keypoint=100,
+                       per_keypoint_offset=False,
+                       predict_depth=False,
+                       per_keypoint_depth=False,
+                       peak_radius=0):
   """Returns the fake keypoint estimation parameter namedtuple."""
   return cnma.KeypointEstimationParams(
       task_name=_TASK_NAME,
@@ -1235,7 +1433,11 @@ def get_fake_kp_params(num_candidates_per_keypoint=100):
       classification_loss=losses.WeightedSigmoidClassificationLoss(),
       localization_loss=losses.L1LocalizationLoss(),
       keypoint_candidate_score_threshold=0.1,
-      num_candidates_per_keypoint=num_candidates_per_keypoint)
+      num_candidates_per_keypoint=num_candidates_per_keypoint,
+      per_keypoint_offset=per_keypoint_offset,
+      predict_depth=predict_depth,
+      per_keypoint_depth=per_keypoint_depth,
+      offset_peak_radius=peak_radius)
 
 
 def get_fake_mask_params():
@@ -1280,7 +1482,13 @@ def get_fake_temporal_offset_params():
 
 def build_center_net_meta_arch(build_resnet=False,
                                num_classes=_NUM_CLASSES,
-                               max_box_predictions=5):
+                               max_box_predictions=5,
+                               apply_non_max_suppression=False,
+                               detection_only=False,
+                               per_keypoint_offset=False,
+                               predict_depth=False,
+                               per_keypoint_depth=False,
+                               peak_radius=0):
   """Builds the CenterNet meta architecture."""
   if build_resnet:
     feature_extractor = (
@@ -1299,7 +1507,31 @@ def build_center_net_meta_arch(build_resnet=False,
       max_dimension=128,
       pad_to_max_dimesnion=True)
 
-  if num_classes == 1:
+  non_max_suppression_fn = None
+  if apply_non_max_suppression:
+    post_processing_proto = post_processing_pb2.PostProcessing()
+    post_processing_proto.batch_non_max_suppression.iou_threshold = 1.0
+    post_processing_proto.batch_non_max_suppression.score_threshold = 0.6
+    (post_processing_proto.batch_non_max_suppression.max_total_detections
+    ) = max_box_predictions
+    (post_processing_proto.batch_non_max_suppression.max_detections_per_class
+    ) = max_box_predictions
+    (post_processing_proto.batch_non_max_suppression.change_coordinate_frame
+    ) = False
+    non_max_suppression_fn, _ = post_processing_builder.build(
+        post_processing_proto)
+
+  if detection_only:
+    return cnma.CenterNetMetaArch(
+        is_training=True,
+        add_summaries=False,
+        num_classes=num_classes,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=image_resizer_fn,
+        object_center_params=get_fake_center_params(max_box_predictions),
+        object_detection_params=get_fake_od_params(),
+        non_max_suppression_fn=non_max_suppression_fn)
+  elif num_classes == 1:
     num_candidates_per_keypoint = 100 if max_box_predictions > 1 else 1
     return cnma.CenterNetMetaArch(
         is_training=True,
@@ -1310,8 +1542,12 @@ def build_center_net_meta_arch(build_resnet=False,
         object_center_params=get_fake_center_params(max_box_predictions),
         object_detection_params=get_fake_od_params(),
         keypoint_params_dict={
-            _TASK_NAME: get_fake_kp_params(num_candidates_per_keypoint)
-        })
+            _TASK_NAME:
+                get_fake_kp_params(num_candidates_per_keypoint,
+                                   per_keypoint_offset, predict_depth,
+                                   per_keypoint_depth, peak_radius)
+        },
+        non_max_suppression_fn=non_max_suppression_fn)
   else:
     return cnma.CenterNetMetaArch(
         is_training=True,
@@ -1325,7 +1561,8 @@ def build_center_net_meta_arch(build_resnet=False,
         mask_params=get_fake_mask_params(),
         densepose_params=get_fake_densepose_params(),
         track_params=get_fake_track_params(),
-        temporal_offset_params=get_fake_temporal_offset_params())
+        temporal_offset_params=get_fake_temporal_offset_params(),
+        non_max_suppression_fn=non_max_suppression_fn)
 
 
 def _logit(p):
@@ -1659,7 +1896,6 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
       return detections
 
     detections = self.execute_cpu(graph_fn, [])
-
     self.assertAllClose(detections['detection_boxes'][0, 0],
                         np.array([55, 46, 75, 86]) / 128.0)
     self.assertAllClose(detections['detection_scores'][0],
@@ -1732,6 +1968,49 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
           detections['detection_surface_coords'][0, 0, :, :],
           np.zeros_like(detections['detection_surface_coords'][0, 0, :, :]))
 
+  def test_non_max_suppression(self):
+    """Tests application of NMS on CenterNet detections."""
+    target_class_id = 1
+    model = build_center_net_meta_arch(apply_non_max_suppression=True,
+                                       detection_only=True)
+
+    class_center = np.zeros((1, 32, 32, 10), dtype=np.float32)
+    height_width = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    offset = np.zeros((1, 32, 32, 2), dtype=np.float32)
+
+    class_probs = np.ones(10) * _logit(0.25)
+    class_probs[target_class_id] = _logit(0.75)
+    class_center[0, 16, 16] = class_probs
+    height_width[0, 16, 16] = [5, 10]
+    offset[0, 16, 16] = [.25, .5]
+
+    class_center = tf.constant(class_center)
+    height_width = tf.constant(height_width)
+    offset = tf.constant(offset)
+
+    prediction_dict = {
+        cnma.OBJECT_CENTER: [class_center],
+        cnma.BOX_SCALE: [height_width],
+        cnma.BOX_OFFSET: [offset],
+    }
+
+    def graph_fn():
+      detections = model.postprocess(prediction_dict,
+                                     tf.constant([[128, 128, 3]]))
+      return detections
+
+    detections = self.execute_cpu(graph_fn, [])
+    num_detections = int(detections['num_detections'])
+    self.assertEqual(num_detections, 1)
+    self.assertAllClose(detections['detection_boxes'][0, 0],
+                        np.array([55, 46, 75, 86]) / 128.0)
+    self.assertAllClose(detections['detection_scores'][0][:num_detections],
+                        [.75])
+    expected_multiclass_scores = [.25] * 10
+    expected_multiclass_scores[target_class_id] = .75
+    self.assertAllClose(expected_multiclass_scores,
+                        detections['detection_multiclass_scores'][0][0])
+
   def test_postprocess_single_class(self):
     """Test the postprocess function."""
     model = build_center_net_meta_arch(num_classes=1)
@@ -1798,6 +2077,137 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     self.assertAllEqual([1, max_detection, num_keypoints],
                         detections['detection_keypoint_scores'].shape)
 
+  def test_postprocess_single_instance(self):
+    """Test the postprocess single instance function."""
+    model = build_center_net_meta_arch(num_classes=1)
+    num_keypoints = len(model._kp_params_dict[_TASK_NAME].keypoint_indices)
+
+    class_center = np.zeros((1, 32, 32, 1), dtype=np.float32)
+    keypoint_heatmaps = np.zeros((1, 32, 32, num_keypoints), dtype=np.float32)
+    keypoint_offsets = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    keypoint_regression = np.random.randn(1, 32, 32, num_keypoints * 2)
+
+    class_probs = np.zeros(1)
+    class_probs[0] = _logit(0.75)
+    class_center[0, 16, 16] = class_probs
+    keypoint_regression[0, 16, 16] = [
+        -1., -1.,
+        -1., 1.,
+        1., -1.,
+        1., 1.]
+    keypoint_heatmaps[0, 14, 14, 0] = _logit(0.9)
+    keypoint_heatmaps[0, 14, 18, 1] = _logit(0.9)
+    keypoint_heatmaps[0, 18, 14, 2] = _logit(0.9)
+    keypoint_heatmaps[0, 18, 18, 3] = _logit(0.05)  # Note the low score.
+
+    class_center = tf.constant(class_center)
+    keypoint_heatmaps = tf.constant(keypoint_heatmaps, dtype=tf.float32)
+    keypoint_offsets = tf.constant(keypoint_offsets, dtype=tf.float32)
+    keypoint_regression = tf.constant(keypoint_regression, dtype=tf.float32)
+
+    prediction_dict = {
+        cnma.OBJECT_CENTER: [class_center],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_HEATMAP):
+            [keypoint_heatmaps],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_OFFSET):
+            [keypoint_offsets],
+        cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_REGRESSION):
+            [keypoint_regression],
+    }
+
+    def graph_fn():
+      detections = model.postprocess_single_instance_keypoints(
+          prediction_dict,
+          tf.constant([[128, 128, 3]]),
+          object_center_std_dev=32,
+          keypoint_std_dev=[32])
+      return detections
+
+    detections = self.execute_cpu(graph_fn, [])
+
+    self.assertAllEqual([1, 1, num_keypoints, 2],
+                        detections['detection_keypoints'].shape)
+    self.assertAllEqual([1, 1, num_keypoints],
+                        detections['detection_keypoint_scores'].shape)
+
+  @parameterized.parameters(
+      {'per_keypoint_depth': False},
+      {'per_keypoint_depth': True},
+  )
+  def test_postprocess_single_class_depth(self, per_keypoint_depth):
+    """Test the postprocess function."""
+    model = build_center_net_meta_arch(
+        num_classes=1,
+        per_keypoint_offset=per_keypoint_depth,
+        predict_depth=True,
+        per_keypoint_depth=per_keypoint_depth)
+    num_keypoints = len(model._kp_params_dict[_TASK_NAME].keypoint_indices)
+
+    class_center = np.zeros((1, 32, 32, 1), dtype=np.float32)
+    height_width = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    offset = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    keypoint_heatmaps = np.zeros((1, 32, 32, num_keypoints), dtype=np.float32)
+    keypoint_offsets = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    keypoint_regression = np.random.randn(1, 32, 32, num_keypoints * 2)
+
+    class_probs = np.zeros(1)
+    class_probs[0] = _logit(0.75)
+    class_center[0, 16, 16] = class_probs
+    height_width[0, 16, 16] = [5, 10]
+    offset[0, 16, 16] = [.25, .5]
+    keypoint_regression[0, 16, 16] = [-1., -1., -1., 1., 1., -1., 1., 1.]
+    keypoint_heatmaps[0, 14, 14, 0] = _logit(0.9)
+    keypoint_heatmaps[0, 14, 18, 1] = _logit(0.9)
+    keypoint_heatmaps[0, 18, 14, 2] = _logit(0.9)
+    keypoint_heatmaps[0, 18, 18, 3] = _logit(0.05)  # Note the low score.
+
+    if per_keypoint_depth:
+      keypoint_depth = np.zeros((1, 32, 32, num_keypoints), dtype=np.float32)
+      keypoint_depth[0, 14, 14, 0] = -1.0
+      keypoint_depth[0, 14, 18, 1] = -1.1
+      keypoint_depth[0, 18, 14, 2] = -1.2
+      keypoint_depth[0, 18, 18, 3] = -1.3
+    else:
+      keypoint_depth = np.zeros((1, 32, 32, 1), dtype=np.float32)
+      keypoint_depth[0, 14, 14, 0] = -1.0
+      keypoint_depth[0, 14, 18, 0] = -1.1
+      keypoint_depth[0, 18, 14, 0] = -1.2
+      keypoint_depth[0, 18, 18, 0] = -1.3
+
+    class_center = tf.constant(class_center)
+    height_width = tf.constant(height_width)
+    offset = tf.constant(offset)
+    keypoint_heatmaps = tf.constant(keypoint_heatmaps, dtype=tf.float32)
+    keypoint_offsets = tf.constant(keypoint_offsets, dtype=tf.float32)
+    keypoint_regression = tf.constant(keypoint_regression, dtype=tf.float32)
+    keypoint_depth = tf.constant(keypoint_depth, dtype=tf.float32)
+
+    prediction_dict = {
+        cnma.OBJECT_CENTER: [class_center],
+        cnma.BOX_SCALE: [height_width],
+        cnma.BOX_OFFSET: [offset],
+        cnma.get_keypoint_name(_TASK_NAME,
+                               cnma.KEYPOINT_HEATMAP): [keypoint_heatmaps],
+        cnma.get_keypoint_name(_TASK_NAME,
+                               cnma.KEYPOINT_OFFSET): [keypoint_offsets],
+        cnma.get_keypoint_name(_TASK_NAME,
+                               cnma.KEYPOINT_REGRESSION): [keypoint_regression],
+        cnma.get_keypoint_name(_TASK_NAME,
+                               cnma.KEYPOINT_DEPTH): [keypoint_depth]
+    }
+
+    def graph_fn():
+      detections = model.postprocess(prediction_dict,
+                                     tf.constant([[128, 128, 3]]))
+      return detections
+
+    detections = self.execute_cpu(graph_fn, [])
+
+    self.assertAllClose(detections['detection_keypoint_depths'][0, 0],
+                        np.array([-1.0, -1.1, -1.2, 0.0]))
+    self.assertAllClose(detections['detection_keypoint_scores'][0, 0],
+                        np.array([0.9, 0.9, 0.9, 0.1]))
+
   def test_get_instance_indices(self):
     classes = tf.constant([[0, 1, 2, 0], [2, 1, 2, 2]], dtype=tf.int32)
     num_detections = tf.constant([1, 3], dtype=tf.int32)
@@ -1808,8 +2218,72 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
         classes, num_detections, batch_index, class_id)
     self.assertAllEqual(valid_indices.numpy(), [0, 2])
 
+  def test_rescore_instances(self):
+    feature_extractor = DummyFeatureExtractor(
+        channel_means=(1.0, 2.0, 3.0),
+        channel_stds=(10., 20., 30.),
+        bgr_ordering=False,
+        num_feature_outputs=2,
+        stride=4)
+    image_resizer_fn = functools.partial(
+        preprocessor.resize_to_range,
+        min_dimension=128,
+        max_dimension=128,
+        pad_to_max_dimesnion=True)
 
-def get_fake_prediction_dict(input_height, input_width, stride):
+    kp_params_1 = cnma.KeypointEstimationParams(
+        task_name='kpt_task_1',
+        class_id=0,
+        keypoint_indices=[0, 1, 2],
+        keypoint_std_dev=[0.00001] * 3,
+        classification_loss=losses.WeightedSigmoidClassificationLoss(),
+        localization_loss=losses.L1LocalizationLoss(),
+        keypoint_candidate_score_threshold=0.1,
+        rescore_instances=True)  # Note rescoring for class_id = 0.
+    kp_params_2 = cnma.KeypointEstimationParams(
+        task_name='kpt_task_2',
+        class_id=1,
+        keypoint_indices=[3, 4],
+        keypoint_std_dev=[0.00001] * 2,
+        classification_loss=losses.WeightedSigmoidClassificationLoss(),
+        localization_loss=losses.L1LocalizationLoss(),
+        keypoint_candidate_score_threshold=0.1,
+        rescore_instances=False)
+    model = cnma.CenterNetMetaArch(
+        is_training=True,
+        add_summaries=False,
+        num_classes=2,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=image_resizer_fn,
+        object_center_params=get_fake_center_params(),
+        object_detection_params=get_fake_od_params(),
+        keypoint_params_dict={
+            'kpt_task_1': kp_params_1,
+            'kpt_task_2': kp_params_2,
+        })
+
+    def graph_fn():
+      classes = tf.constant([[1, 0]], dtype=tf.int32)
+      scores = tf.constant([[0.5, 0.75]], dtype=tf.float32)
+      keypoint_scores = tf.constant(
+          [
+              [[0.1, 0.2, 0.3, 0.4, 0.5],
+               [0.1, 0.2, 0.3, 0.4, 0.5]],
+          ])
+      new_scores = model._rescore_instances(classes, scores, keypoint_scores)
+      return new_scores
+
+    new_scores = self.execute_cpu(graph_fn, [])
+    expected_scores = np.array(
+        [[0.5, 0.75 * (0.1 + 0.2 + 0.3)/3]]
+        )
+    self.assertAllClose(expected_scores, new_scores)
+
+
+def get_fake_prediction_dict(input_height,
+                             input_width,
+                             stride,
+                             per_keypoint_depth=False):
   """Prepares the fake prediction dictionary."""
   output_height = input_height // stride
   output_width = input_width // stride
@@ -1843,6 +2317,11 @@ def get_fake_prediction_dict(input_height, input_width, stride):
   keypoint_offset = np.zeros((2, output_height, output_width, 2),
                              dtype=np.float32)
   keypoint_offset[0, 2, 4] = 0.2, 0.4
+
+  keypoint_depth = np.zeros((2, output_height, output_width,
+                             _NUM_KEYPOINTS if per_keypoint_depth else 1),
+                            dtype=np.float32)
+  keypoint_depth[0, 2, 4] = 3.0
 
   keypoint_regression = np.zeros(
       (2, output_height, output_width, 2 * _NUM_KEYPOINTS), dtype=np.float32)
@@ -1879,14 +2358,10 @@ def get_fake_prediction_dict(input_height, input_width, stride):
           tf.constant(object_center),
           tf.constant(object_center)
       ],
-      cnma.BOX_SCALE: [
-          tf.constant(object_scale),
-          tf.constant(object_scale)
-      ],
-      cnma.BOX_OFFSET: [
-          tf.constant(object_offset),
-          tf.constant(object_offset)
-      ],
+      cnma.BOX_SCALE: [tf.constant(object_scale),
+                       tf.constant(object_scale)],
+      cnma.BOX_OFFSET: [tf.constant(object_offset),
+                        tf.constant(object_offset)],
       cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_HEATMAP): [
           tf.constant(keypoint_heatmap),
           tf.constant(keypoint_heatmap)
@@ -1898,6 +2373,10 @@ def get_fake_prediction_dict(input_height, input_width, stride):
       cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_REGRESSION): [
           tf.constant(keypoint_regression),
           tf.constant(keypoint_regression)
+      ],
+      cnma.get_keypoint_name(_TASK_NAME, cnma.KEYPOINT_DEPTH): [
+          tf.constant(keypoint_depth),
+          tf.constant(keypoint_depth)
       ],
       cnma.SEGMENTATION_HEATMAP: [
           tf.constant(mask_heatmap),
@@ -1923,7 +2402,10 @@ def get_fake_prediction_dict(input_height, input_width, stride):
   return prediction_dict
 
 
-def get_fake_groundtruth_dict(input_height, input_width, stride):
+def get_fake_groundtruth_dict(input_height,
+                              input_width,
+                              stride,
+                              has_depth=False):
   """Prepares the fake groundtruth dictionary."""
   # A small box with center at (0.55, 0.55).
   boxes = [
@@ -1952,6 +2434,26 @@ def get_fake_groundtruth_dict(input_height, input_width, stride):
               axis=2),
           multiples=[1, 1, 2]),
   ]
+  if has_depth:
+    keypoint_depths = [
+        tf.constant([[float('nan'), 3.0,
+                      float('nan'), 3.0, 0.55, 0.0]]),
+        tf.constant([[float('nan'), 0.55,
+                      float('nan'), 0.55, 0.55, 0.0]])
+    ]
+    keypoint_depth_weights = [
+        tf.constant([[1.0, 1.0, 1.0, 1.0, 0.0, 0.0]]),
+        tf.constant([[1.0, 1.0, 1.0, 1.0, 0.0, 0.0]])
+    ]
+  else:
+    keypoint_depths = [
+        tf.constant([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]),
+        tf.constant([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
+    ]
+    keypoint_depth_weights = [
+        tf.constant([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]),
+        tf.constant([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
+    ]
   labeled_classes = [
       tf.one_hot([1], depth=_NUM_CLASSES) + tf.one_hot([2], depth=_NUM_CLASSES),
       tf.one_hot([0], depth=_NUM_CLASSES) + tf.one_hot([1], depth=_NUM_CLASSES),
@@ -1993,11 +2495,12 @@ def get_fake_groundtruth_dict(input_height, input_width, stride):
       fields.BoxListFields.weights: weights,
       fields.BoxListFields.classes: classes,
       fields.BoxListFields.keypoints: keypoints,
+      fields.BoxListFields.keypoint_depths: keypoint_depths,
+      fields.BoxListFields.keypoint_depth_weights: keypoint_depth_weights,
       fields.BoxListFields.masks: masks,
       fields.BoxListFields.densepose_num_points: densepose_num_points,
       fields.BoxListFields.densepose_part_ids: densepose_part_ids,
-      fields.BoxListFields.densepose_surface_coords:
-          densepose_surface_coords,
+      fields.BoxListFields.densepose_surface_coords: densepose_surface_coords,
       fields.BoxListFields.track_ids: track_ids,
       fields.BoxListFields.temporal_offsets: temporal_offsets,
       fields.BoxListFields.track_match_flags: track_match_flags,
@@ -2007,7 +2510,7 @@ def get_fake_groundtruth_dict(input_height, input_width, stride):
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class CenterNetMetaComputeLossTest(test_case.TestCase):
+class CenterNetMetaComputeLossTest(test_case.TestCase, parameterized.TestCase):
   """Test for CenterNet loss compuation related functions."""
 
   def setUp(self):
@@ -2133,6 +2636,45 @@ class CenterNetMetaComputeLossTest(test_case.TestCase):
 
     # The prediction and groundtruth are curated to produce very low loss.
     self.assertGreater(0.01, loss)
+
+  @parameterized.parameters(
+      {'per_keypoint_depth': False},
+      {'per_keypoint_depth': True},
+  )
+  def test_compute_kp_depth_loss(self, per_keypoint_depth):
+    prediction_dict = get_fake_prediction_dict(
+        self.input_height,
+        self.input_width,
+        self.stride,
+        per_keypoint_depth=per_keypoint_depth)
+    model = build_center_net_meta_arch(
+        num_classes=1,
+        per_keypoint_offset=per_keypoint_depth,
+        predict_depth=True,
+        per_keypoint_depth=per_keypoint_depth,
+        peak_radius=1 if per_keypoint_depth else 0)
+    model._groundtruth_lists = get_fake_groundtruth_dict(
+        self.input_height, self.input_width, self.stride, has_depth=True)
+
+    def graph_fn():
+      loss = model._compute_kp_depth_loss(
+          input_height=self.input_height,
+          input_width=self.input_width,
+          task_name=_TASK_NAME,
+          depth_predictions=prediction_dict[cnma.get_keypoint_name(
+              _TASK_NAME, cnma.KEYPOINT_DEPTH)],
+          localization_loss_fn=self.localization_loss_fn)
+      return loss
+
+    loss = self.execute(graph_fn, [])
+
+    if per_keypoint_depth:
+      # The loss is computed on a disk with radius 1 but only the center pixel
+      # has the accurate prediction. The final loss is (4 * |3-0|) / 5 = 2.4
+      self.assertAlmostEqual(2.4, loss, delta=1e-4)
+    else:
+      # The prediction and groundtruth are curated to produce very low loss.
+      self.assertGreater(0.01, loss)
 
   def test_compute_track_embedding_loss(self):
     default_fc = self.model.track_reid_classification_net

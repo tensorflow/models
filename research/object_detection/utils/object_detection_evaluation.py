@@ -254,7 +254,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
     """
     for image_id in image_ids:
       if image_id in self._image_ids:
-        raise ValueError('Image with id {} already added.'.format(image_id))
+        logging.warning('Image with id %s already added.', image_id)
 
     self._evaluation.merge_internal_state(state_tuple)
 
@@ -321,7 +321,7 @@ class ObjectDetectionEvaluator(DetectionEvaluator):
         raise error if instance masks are not in groundtruth dictionary.
     """
     if image_id in self._image_ids:
-      raise ValueError('Image with id {} already added.'.format(image_id))
+      logging.warning('Image with id %s already added.', image_id)
 
     groundtruth_classes = (
         groundtruth_dict[standard_fields.InputDataFields.groundtruth_classes] -
@@ -729,7 +729,7 @@ class OpenImagesDetectionEvaluator(ObjectDetectionEvaluator):
       ValueError: On adding groundtruth for an image more than once.
     """
     if image_id in self._image_ids:
-      raise ValueError('Image with id {} already added.'.format(image_id))
+      logging.warning('Image with id %s already added.', image_id)
 
     groundtruth_classes = (
         groundtruth_dict[standard_fields.InputDataFields.groundtruth_classes] -

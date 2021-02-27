@@ -41,6 +41,36 @@ class CenterNetMobileNetV2FPNFeatureExtractorTest(test_case.TestCase):
     outputs = self.execute(graph_fn, [])
     self.assertEqual(outputs.shape, (8, 56, 56, 24))
 
+    # Pull out the FPN network.
+    output = model.get_layer('model_1')
+    for layer in output.layers:
+      # All convolution layers should be normal 2D convolutions.
+      if 'conv' in layer.name:
+        self.assertIsInstance(layer, tf.keras.layers.Conv2D)
+
+  def test_center_net_mobilenet_v2_fpn_feature_extractor_sep_conv(self):
+
+    net = mobilenet_v2.mobilenet_v2(True, include_top=False)
+
+    model = center_net_mobilenet_v2_fpn_feature_extractor.CenterNetMobileNetV2FPNFeatureExtractor(
+        net, fpn_separable_conv=True)
+
+    def graph_fn():
+      img = np.zeros((8, 224, 224, 3), dtype=np.float32)
+      processed_img = model.preprocess(img)
+      return model(processed_img)
+
+    outputs = self.execute(graph_fn, [])
+    self.assertEqual(outputs.shape, (8, 56, 56, 24))
+
+    # Pull out the FPN network.
+    output = model.get_layer('model_1')
+    for layer in output.layers:
+      # Convolution layers with kernel size not equal to (1, 1) should be
+      # separable 2D convolutions.
+      if 'conv' in layer.name and layer.kernel_size != (1, 1):
+        self.assertIsInstance(layer, tf.keras.layers.SeparableConv2D)
+
 
 if __name__ == '__main__':
   tf.test.main()

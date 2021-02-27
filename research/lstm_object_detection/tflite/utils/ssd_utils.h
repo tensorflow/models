@@ -63,7 +63,7 @@ void NonMaxSuppressionMultiClassFast(
 
 // Similar to NonMaxSuppressionMultiClassFast, but restricts the results to
 // the provided list of class indices. This effectively filters out any class
-// whose index is not in this whitelist.
+// whose index is not in this allowlist.
 void NonMaxSuppressionMultiClassRestrict(
     std::vector<int> restricted_class_indices,
     const protos::BoxCornerEncoding& boxes, const std::vector<float>& scores,
