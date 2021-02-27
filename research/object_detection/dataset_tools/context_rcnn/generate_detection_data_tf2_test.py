@@ -56,8 +56,7 @@ class FakeModel(model.DetectionModel):
             value=conv_weight_scalar))
 
   def preprocess(self, inputs):
-    true_image_shapes = []  # Doesn't matter for the fake model.
-    return tf.identity(inputs), true_image_shapes
+    return tf.identity(inputs), exporter_lib_v2.get_true_shapes(inputs)
 
   def predict(self, preprocessed_inputs, true_image_shapes):
     return {'image': self._conv(preprocessed_inputs)}

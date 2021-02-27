@@ -30,7 +30,7 @@ class DeepSpeechDecoder(object):
   def __init__(self, labels, blank_index=28):
     """Decoder initialization.
 
-    Arguments:
+    Args:
       labels: a string specifying the speech labels for the decoder to use.
       blank_index: an integer specifying index for the blank character.
         Defaults to 28.

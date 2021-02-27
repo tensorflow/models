@@ -35,13 +35,13 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
     """Test creation of ResNet models."""
 
     network = backbones.ResNet(
-        model_id=model_id, norm_momentum=0.99, norm_epsilon=1e-5)
+        model_id=model_id, se_ratio=0.0, norm_momentum=0.99, norm_epsilon=1e-5)
 
     backbone_config = backbones_cfg.Backbone(
         type='resnet',
-        resnet=backbones_cfg.ResNet(model_id=model_id))
+        resnet=backbones_cfg.ResNet(model_id=model_id, se_ratio=0.0))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 
@@ -73,7 +73,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         efficientnet=backbones_cfg.EfficientNet(
             model_id=model_id, se_ratio=se_ratio))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 
@@ -107,7 +107,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         mobilenet=backbones_cfg.MobileNet(
             model_id=model_id, filter_size_scale=filter_size_scale))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 
@@ -140,7 +140,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         type='spinenet',
         spinenet=backbones_cfg.SpineNet(model_id=model_id))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 
@@ -165,7 +165,7 @@ class FactoryTest(tf.test.TestCase, parameterized.TestCase):
         type='revnet',
         revnet=backbones_cfg.RevNet(model_id=model_id))
     norm_activation_config = common_cfg.NormActivation(
-        norm_momentum=0.99, norm_epsilon=1e-5)
+        norm_momentum=0.99, norm_epsilon=1e-5, use_sync_bn=False)
     model_config = retinanet_cfg.RetinaNet(
         backbone=backbone_config, norm_activation=norm_activation_config)
 

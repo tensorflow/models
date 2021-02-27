@@ -22,6 +22,7 @@ import tensorflow.compat.v2 as tf
 from object_detection.builders import model_builder
 from object_detection.builders import post_processing_builder
 from object_detection.core import box_list
+from object_detection.core import standard_fields as fields
 
 _DEFAULT_NUM_CHANNELS = 3
 _DEFAULT_NUM_COORD_BOX = 4
@@ -144,7 +145,7 @@ class SSDModule(tf.Module):
       scores = tf.constant(0.0, dtype=tf.float32, name='scores')
       classes = tf.constant(0.0, dtype=tf.float32, name='classes')
       num_detections = tf.constant(0.0, dtype=tf.float32, name='num_detections')
-      return boxes, scores, classes, num_detections
+      return boxes, classes, scores, num_detections
 
     return dummy_post_processing
 
@@ -198,8 +199,117 @@ class SSDModule(tf.Module):
                                                        anchors)[::-1]
 
 
+class CenterNetModule(tf.Module):
+  """Inference Module for TFLite-friendly CenterNet models.
+
+  The exported CenterNet model includes the preprocessing and postprocessing
+  logics so the caller should pass in the raw image pixel values. It supports
+  both object detection and keypoint estimation task.
+  """
+
+  def __init__(self, pipeline_config, max_detections, include_keypoints,
+               label_map_path=''):
+    """Initialization.
+
+    Args:
+      pipeline_config: The original pipeline_pb2.TrainEvalPipelineConfig
+      max_detections: Max detections desired from the TFLite model.
+      include_keypoints: If set true, the output dictionary will include the
+        keypoint coordinates and keypoint confidence scores.
+      label_map_path: Path to the label map which is used by CenterNet keypoint
+        estimation task. If provided, the label_map_path in the configuration
+        will be replaced by this one.
+    """
+    self._max_detections = max_detections
+    self._include_keypoints = include_keypoints
+    self._process_config(pipeline_config)
+    if include_keypoints and label_map_path:
+      pipeline_config.model.center_net.keypoint_label_map_path = label_map_path
+    self._pipeline_config = pipeline_config
+    self._model = model_builder.build(
+        self._pipeline_config.model, is_training=False)
+
+  def get_model(self):
+    return self._model
+
+  def _process_config(self, pipeline_config):
+    self._num_classes = pipeline_config.model.center_net.num_classes
+
+    center_net_config = pipeline_config.model.center_net
+    image_resizer_config = center_net_config.image_resizer
+    image_resizer = image_resizer_config.WhichOneof('image_resizer_oneof')
+    self._num_channels = _DEFAULT_NUM_CHANNELS
+
+    if image_resizer == 'fixed_shape_resizer':
+      self._height = image_resizer_config.fixed_shape_resizer.height
+      self._width = image_resizer_config.fixed_shape_resizer.width
+      if image_resizer_config.fixed_shape_resizer.convert_to_grayscale:
+        self._num_channels = 1
+    else:
+      raise ValueError(
+          'Only fixed_shape_resizer'
+          'is supported with tflite. Found {}'.format(image_resizer))
+
+    center_net_config.object_center_params.max_box_predictions = (
+        self._max_detections)
+
+    if not self._include_keypoints:
+      del center_net_config.keypoint_estimation_task[:]
+
+  def input_shape(self):
+    """Returns shape of TFLite model input."""
+    return [1, self._height, self._width, self._num_channels]
+
+  @tf.function
+  def inference_fn(self, image):
+    """Encapsulates CenterNet inference for TFLite conversion.
+
+    Args:
+      image: a float32 tensor of shape [1, image_height, image_width, channel]
+        denoting the image pixel values.
+
+    Returns:
+      A dictionary of predicted tensors:
+        classes: a float32 tensor with shape [1, max_detections] denoting class
+          ID for each detection.
+        scores: a float32 tensor with shape [1, max_detections] denoting score
+          for each detection.
+        boxes: a float32 tensor with shape [1, max_detections, 4] denoting
+          coordinates of each detected box.
+        keypoints: a float32 with shape [1, max_detections, num_keypoints, 2]
+          denoting the predicted keypoint coordinates (normalized in between
+          0-1). Note that [:, :, :, 0] represents the y coordinates and
+          [:, :, :, 1] represents the x coordinates.
+        keypoint_scores: a float32 with shape [1, max_detections, num_keypoints]
+          denoting keypoint confidence scores.
+    """
+    image = tf.cast(image, tf.float32)
+    image, shapes = self._model.preprocess(image)
+    prediction_dict = self._model.predict(image, None)
+    detections = self._model.postprocess(
+        prediction_dict, true_image_shapes=shapes)
+
+    field_names = fields.DetectionResultFields
+    classes_field = field_names.detection_classes
+    classes = tf.cast(detections[classes_field], tf.float32)
+    num_detections = tf.cast(detections[field_names.num_detections], tf.float32)
+
+    if self._include_keypoints:
+      model_outputs = (detections[field_names.detection_boxes], classes,
+                       detections[field_names.detection_scores], num_detections,
+                       detections[field_names.detection_keypoints],
+                       detections[field_names.detection_keypoint_scores])
+    else:
+      model_outputs = (detections[field_names.detection_boxes], classes,
+                       detections[field_names.detection_scores], num_detections)
+
+    # tf.function@ seems to reverse order of inputs, so reverse them here.
+    return model_outputs[::-1]
+
+
 def export_tflite_model(pipeline_config, trained_checkpoint_dir,
-                        output_directory, max_detections, use_regular_nms):
+                        output_directory, max_detections, use_regular_nms,
+                        include_keypoints=False, label_map_path=''):
   """Exports inference SavedModel for TFLite conversion.
 
   NOTE: Only supports SSD meta-architectures for now, and the output model will
@@ -215,6 +325,12 @@ def export_tflite_model(pipeline_config, trained_checkpoint_dir,
     output_directory: Path to write outputs.
     max_detections: Max detections desired from the TFLite model.
     use_regular_nms: If True, TFLite model uses the (slower) multi-class NMS.
+      Note that this argument is only used by the SSD model.
+    include_keypoints: Decides whether to also output the keypoint predictions.
+      Note that this argument is only used by the CenterNet model.
+    label_map_path: Path to the label map which is used by CenterNet keypoint
+      estimation task. If provided, the label_map_path in the configuration will
+      be replaced by this one.
 
   Raises:
     ValueError: if pipeline is invalid.
@@ -223,21 +339,26 @@ def export_tflite_model(pipeline_config, trained_checkpoint_dir,
 
   # Build the underlying model using pipeline config.
   # TODO(b/162842801): Add support for other architectures.
-  if pipeline_config.model.WhichOneof('model') != 'ssd':
-    raise ValueError('Only ssd models are supported in tflite. '
+  if pipeline_config.model.WhichOneof('model') == 'ssd':
+    detection_model = model_builder.build(
+        pipeline_config.model, is_training=False)
+    ckpt = tf.train.Checkpoint(model=detection_model)
+    # The module helps build a TF SavedModel appropriate for TFLite conversion.
+    detection_module = SSDModule(pipeline_config, detection_model,
+                                 max_detections, use_regular_nms)
+  elif pipeline_config.model.WhichOneof('model') == 'center_net':
+    detection_module = CenterNetModule(
+        pipeline_config, max_detections, include_keypoints,
+        label_map_path=label_map_path)
+    ckpt = tf.train.Checkpoint(model=detection_module.get_model())
+  else:
+    raise ValueError('Only ssd or center_net models are supported in tflite. '
                      'Found {} in config'.format(
                          pipeline_config.model.WhichOneof('model')))
-  detection_model = model_builder.build(
-      pipeline_config.model, is_training=False)
 
-  ckpt = tf.train.Checkpoint(model=detection_model)
   manager = tf.train.CheckpointManager(
       ckpt, trained_checkpoint_dir, max_to_keep=1)
   status = ckpt.restore(manager.latest_checkpoint).expect_partial()
-
-  # The module helps build a TF SavedModel appropriate for TFLite conversion.
-  detection_module = SSDModule(pipeline_config, detection_model, max_detections,
-                               use_regular_nms)
 
   # Getting the concrete function traces the graph and forces variables to
   # be constructed; only after this can we save the saved model.

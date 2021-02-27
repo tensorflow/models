@@ -38,7 +38,8 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
                mobilenet_v2_net,
                channel_means=(0., 0., 0.),
                channel_stds=(1., 1., 1.),
-               bgr_ordering=False):
+               bgr_ordering=False,
+               fpn_separable_conv=False):
     """Intializes the feature extractor.
 
     Args:
@@ -49,29 +50,32 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
         channel. Each channel will be divided by its standard deviation value.
       bgr_ordering: bool, if set will change the channel ordering to be in the
         [blue, red, green] order.
+      fpn_separable_conv: If set to True, all convolutional layers in the FPN
+        network will be replaced by separable convolutions.
     """
 
     super(CenterNetMobileNetV2FPNFeatureExtractor, self).__init__(
         channel_means=channel_means,
         channel_stds=channel_stds,
         bgr_ordering=bgr_ordering)
-    self._network = mobilenet_v2_net
+    self._base_model = mobilenet_v2_net
 
-    output = self._network(self._network.input)
+    output = self._base_model(self._base_model.input)
 
     # Add pyramid feature network on every layer that has stride 2.
     skip_outputs = [
-        self._network.get_layer(skip_layer_name).output
+        self._base_model.get_layer(skip_layer_name).output
         for skip_layer_name in _MOBILENET_V2_FPN_SKIP_LAYERS
     ]
     self._fpn_model = tf.keras.models.Model(
-        inputs=self._network.input, outputs=skip_outputs)
-    fpn_outputs = self._fpn_model(self._network.input)
+        inputs=self._base_model.input, outputs=skip_outputs)
+    fpn_outputs = self._fpn_model(self._base_model.input)
 
     # Construct the top-down feature maps -- we start with an output of
     # 7x7x1280, which we continually upsample, apply a residual on and merge.
     # This results in a 56x56x24 output volume.
     top_layer = fpn_outputs[-1]
+    # Use normal convolutional layer since the kernel_size is 1.
     residual_op = tf.keras.layers.Conv2D(
         filters=64, kernel_size=1, strides=1, padding='same')
     top_down = residual_op(top_layer)
@@ -84,6 +88,7 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
       top_down = upsample_op(top_down)
 
       # Residual (skip-connection) from bottom-up pathway.
+      # Use normal convolutional layer since the kernel_size is 1.
       residual_op = tf.keras.layers.Conv2D(
           filters=num_filters, kernel_size=1, strides=1, padding='same')
       residual = residual_op(fpn_outputs[level_ind])
@@ -91,16 +96,20 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
       # Merge.
       top_down = top_down + residual
       next_num_filters = num_filters_list[i + 1] if i + 1 <= 2 else 24
-      conv = tf.keras.layers.Conv2D(
-          filters=next_num_filters, kernel_size=3, strides=1, padding='same')
+      if fpn_separable_conv:
+        conv = tf.keras.layers.SeparableConv2D(
+            filters=next_num_filters, kernel_size=3, strides=1, padding='same')
+      else:
+        conv = tf.keras.layers.Conv2D(
+            filters=next_num_filters, kernel_size=3, strides=1, padding='same')
       top_down = conv(top_down)
       top_down = tf.keras.layers.BatchNormalization()(top_down)
       top_down = tf.keras.layers.ReLU()(top_down)
 
     output = top_down
 
-    self._network = tf.keras.models.Model(
-        inputs=self._network.input, outputs=output)
+    self._feature_extractor_model = tf.keras.models.Model(
+        inputs=self._base_model.input, outputs=output)
 
   def preprocess(self, resized_inputs):
     resized_inputs = super(CenterNetMobileNetV2FPNFeatureExtractor,
@@ -108,13 +117,20 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
     return tf.keras.applications.mobilenet_v2.preprocess_input(resized_inputs)
 
   def load_feature_extractor_weights(self, path):
-    self._network.load_weights(path)
+    self._base_model.load_weights(path)
 
-  def get_base_model(self):
-    return self._network
+  @property
+  def supported_sub_model_types(self):
+    return ['classification']
+
+  def get_sub_model(self, sub_model_type):
+    if sub_model_type == 'classification':
+      return self._base_model
+    else:
+      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
 
   def call(self, inputs):
-    return [self._network(inputs)]
+    return [self._feature_extractor_model(inputs)]
 
   @property
   def out_stride(self):
@@ -126,17 +142,31 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
     """The number of feature outputs returned by the feature extractor."""
     return 1
 
-  def get_model(self):
-    return self._network
-
 
 def mobilenet_v2_fpn(channel_means, channel_stds, bgr_ordering):
   """The MobileNetV2+FPN backbone for CenterNet."""
 
-  # Set to is_training to True for now.
-  network = mobilenetv2.mobilenet_v2(True, include_top=False)
+  # Set to batchnorm_training to True for now.
+  network = mobilenetv2.mobilenet_v2(batchnorm_training=True, include_top=False)
   return CenterNetMobileNetV2FPNFeatureExtractor(
       network,
       channel_means=channel_means,
       channel_stds=channel_stds,
-      bgr_ordering=bgr_ordering)
+      bgr_ordering=bgr_ordering,
+      fpn_separable_conv=False)
+
+
+def mobilenet_v2_fpn_sep_conv(channel_means, channel_stds, bgr_ordering):
+  """Same as mobilenet_v2_fpn except with separable convolution in FPN."""
+
+  # Setting batchnorm_training to True, which will use the correct
+  # BatchNormalization layer strategy based on the current Keras learning phase.
+  # TODO(yuhuic): expriment with True vs. False to understand it's effect in
+  # practice.
+  network = mobilenetv2.mobilenet_v2(batchnorm_training=True, include_top=False)
+  return CenterNetMobileNetV2FPNFeatureExtractor(
+      network,
+      channel_means=channel_means,
+      channel_stds=channel_stds,
+      bgr_ordering=bgr_ordering,
+      fpn_separable_conv=True)

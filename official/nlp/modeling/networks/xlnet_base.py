@@ -52,7 +52,7 @@ def _create_causal_attention_mask(
   We then flip the matrix values in order to match the representation where
   real values are 1s.
 
-  Arguments:
+  Args:
     seq_length: int, The length of each sequence.
     memory_length: int, The length of memory blocks.
     dtype: dtype of the mask.
@@ -242,7 +242,8 @@ def _compute_segment_matrix(
   if segment_ids is None:
     return None
 
-  memory_padding = tf.zeros([batch_size, memory_length], dtype=tf.int32)
+  memory_padding = tf.zeros([batch_size, memory_length],
+                            dtype=segment_ids.dtype)
   padded_segment_ids = tf.concat([memory_padding, segment_ids], 1)
   # segment_ids: [B, S]
   # padded_segment_ids: [B, S + M]
@@ -391,7 +392,7 @@ class RelativePositionEncoding(tf.keras.layers.Layer):
   def call(self, pos_seq, batch_size=None):
     """Implements call() for the layer.
 
-    Arguments:
+    Args:
       pos_seq: A 1-D `Tensor`
       batch_size: The optionally provided batch size that tiles the relative
         positional encoding.
@@ -629,6 +630,12 @@ class XLNetBase(tf.keras.layers.Layer):
                       "enabled. Please enable `two_stream` to enable two "
                       "stream attention.")
 
+    if input_mask is not None:
+      dtype = input_mask.dtype
+    elif permutation_mask is not None:
+      dtype = permutation_mask.dtype
+    else:
+      dtype = tf.int32
     query_attention_mask, content_attention_mask = _compute_attention_mask(
         input_mask=input_mask,
         permutation_mask=permutation_mask,
@@ -636,7 +643,7 @@ class XLNetBase(tf.keras.layers.Layer):
         seq_length=seq_length,
         memory_length=memory_length,
         batch_size=batch_size,
-        dtype=tf.float32)
+        dtype=dtype)
     relative_position_encoding = _compute_positional_encoding(
         attention_type=self._attention_type,
         position_encoding_layer=self.position_encoding,

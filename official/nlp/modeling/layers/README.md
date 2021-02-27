@@ -84,3 +84,13 @@ assemble new layers, networks, or models.
     block containing either one or two stream relative self-attention as well as
     subsequent feedforward networks. It also contains `TransformerXL`, which
     contains attention biases as well as multiple `TransformerXLBlocks`.
+
+*   [MobileBertEmbedding](mobile_bert_layers.py) and
+    [MobileBertTransformer](mobile_bert_layers.py) implement the embedding layer
+    and also transformer layer proposed in the
+    [MobileBERT paper](https://arxiv.org/pdf/2004.02984.pdf).
+
+*   [BertPackInputs](text_layers.py) and
+    [BertTokenizer](text_layers.py) and [SentencepieceTokenizer](text_layers.py)
+    implements the layer to tokenize raw text and pack them into the inputs for
+    BERT models.

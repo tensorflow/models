@@ -117,13 +117,13 @@ train | step:  22785 | steps/sec:    0.4 | output:
      'model_loss': 0.0012011167,
      'total_loss': 0.0013538885,
      'training_loss': 0.0013538885}
-
+     
 ```
 
 and the following for evaluation:
 
 ```
- eval | step:  22785 | running 2172 steps of evaluation...
+eval | step:  22785 | running 2172 steps of evaluation...
 eval | step:  22785 | eval time:  1663.4 | output:
     {'avg_hit_at_one': 0.5572835238737471,
      'avg_perr': 0.557277077999072,

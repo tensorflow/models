@@ -74,6 +74,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
                out_filters,
                se_ratio,
                divisible_by=1,
+               use_3d_input=False,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
@@ -89,6 +90,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
         excitation layer.
       divisible_by: `int` ensures all inner dimensions are divisible by this
         number.
+      use_3d_input: `bool` 2D image or 3D input type.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
         Default to None.
@@ -105,15 +107,22 @@ class SqueezeExcitation(tf.keras.layers.Layer):
     self._out_filters = out_filters
     self._se_ratio = se_ratio
     self._divisible_by = divisible_by
+    self._use_3d_input = use_3d_input
     self._activation = activation
     self._gating_activation = gating_activation
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     if tf.keras.backend.image_data_format() == 'channels_last':
-      self._spatial_axis = [1, 2]
+      if not use_3d_input:
+        self._spatial_axis = [1, 2]
+      else:
+        self._spatial_axis = [1, 2, 3]
     else:
-      self._spatial_axis = [2, 3]
+      if not use_3d_input:
+        self._spatial_axis = [2, 3]
+      else:
+        self._spatial_axis = [2, 3, 4]
     self._activation_fn = tf_utils.get_activation(activation)
     self._gating_activation_fn = tf_utils.get_activation(gating_activation)
 
@@ -150,7 +159,7 @@ class SqueezeExcitation(tf.keras.layers.Layer):
         'out_filters': self._out_filters,
         'se_ratio': self._se_ratio,
         'divisible_by': self._divisible_by,
-        'strides': self._strides,
+        'use_3d_input': self._use_3d_input,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
@@ -165,6 +174,26 @@ class SqueezeExcitation(tf.keras.layers.Layer):
     x = self._activation_fn(self._se_reduce(x))
     x = self._gating_activation_fn(self._se_expand(x))
     return x * inputs
+
+
+def get_stochastic_depth_rate(init_rate, i, n):
+  """Get drop connect rate for the ith block.
+
+  Args:
+    init_rate: `float` initial drop rate.
+    i: `int` order of the current block.
+    n: `int` total number of blocks.
+
+  Returns:
+    Drop rate of the ith block.
+  """
+  if init_rate is not None:
+    if init_rate < 0 or init_rate > 1:
+      raise ValueError('Initial drop rate must be within 0 and 1.')
+    rate = init_rate * float(i) / n
+  else:
+    rate = None
+  return rate
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -203,3 +232,41 @@ class StochasticDepth(tf.keras.layers.Layer):
     binary_tensor = tf.floor(random_tensor)
     output = tf.math.divide(inputs, keep_prob) * binary_tensor
     return output
+
+
+@tf.keras.utils.register_keras_serializable(package='Vision')
+def pyramid_feature_fusion(inputs, target_level):
+  """Fuse all feature maps in the feature pyramid at the target level.
+
+  Args:
+    inputs: a dictionary containing the feature pyramid. The size of the input
+      tensor needs to be fixed.
+    target_level: `int` the target feature level for feature fusion.
+
+  Returns:
+    A float Tensor of shape [batch_size, feature_height, feature_width,
+      feature_channel].
+  """
+  # Convert keys to int.
+  pyramid_feats = {int(k): v for k, v in inputs.items()}
+  min_level = min(pyramid_feats.keys())
+  max_level = max(pyramid_feats.keys())
+  resampled_feats = []
+
+  for l in range(min_level, max_level + 1):
+    if l == target_level:
+      resampled_feats.append(pyramid_feats[l])
+    else:
+      feat = pyramid_feats[l]
+      target_size = list(feat.shape[1:3])
+      target_size[0] *= 2**(l - target_level)
+      target_size[1] *= 2**(l - target_level)
+      # Casts feat to float32 so the resize op can be run on TPU.
+      feat = tf.cast(feat, tf.float32)
+      feat = tf.image.resize(
+          feat, size=target_size, method=tf.image.ResizeMethod.BILINEAR)
+      # Casts it back to be compatible with the rest opetations.
+      feat = tf.cast(feat, pyramid_feats[l].dtype)
+      resampled_feats.append(feat)
+
+  return tf.math.add_n(resampled_feats)

@@ -28,7 +28,7 @@ class Classification(tf.keras.Model):
   *Note* that the network is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     input_width: The innermost dimension of the input tensor to this network.
     num_classes: The number of classes that this network should classify to. If
       equal to 1, a regression problem is assumed.

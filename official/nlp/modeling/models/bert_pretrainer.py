@@ -18,6 +18,7 @@ import collections
 import copy
 from typing import List, Optional
 
+from absl import logging
 import gin
 import tensorflow as tf
 
@@ -27,11 +28,9 @@ from official.nlp.modeling import networks
 
 @tf.keras.utils.register_keras_serializable(package='Text')
 class BertPretrainer(tf.keras.Model):
-  """BERT network training model.
+  """BERT pretraining model.
 
-  This is an implementation of the network structure surrounding a transformer
-  encoder as described in "BERT: Pre-training of Deep Bidirectional Transformers
-  for Language Understanding" (https://arxiv.org/abs/1810.04805).
+  [Note] Please use the new `BertPretrainerV2` for your projects.
 
   The BertPretrainer allows a user to pass in a transformer stack, and
   instantiates the masked language model and classification networks that are
@@ -40,7 +39,7 @@ class BertPretrainer(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output.
     num_classes: Number of classes to predict from the classification network.
@@ -158,17 +157,15 @@ class BertPretrainer(tf.keras.Model):
     return cls(**config)
 
 
-# TODO(hongkuny): Migrate to BertPretrainerV2 for all usages.
 @tf.keras.utils.register_keras_serializable(package='Text')
 @gin.configurable
 class BertPretrainerV2(tf.keras.Model):
   """BERT pretraining model V2.
 
-  (Experimental).
   Adds the masked language model head and optional classification heads upon the
   transformer encoder.
 
-  Arguments:
+  Args:
     encoder_network: A transformer network. This network should output a
       sequence output and a classification output.
     mlm_activation: The activation (if any) to use in the masked LM network. If
@@ -177,12 +174,16 @@ class BertPretrainerV2(tf.keras.Model):
       to a Glorot uniform initializer.
     classification_heads: A list of optional head layers to transform on encoder
       sequence outputs.
+    customized_masked_lm: A customized masked_lm layer. If None, will create
+      a standard layer from `layers.MaskedLM`; if not None, will use the
+      specified masked_lm layer. Above arguments `mlm_activation` and
+      `mlm_initializer` will be ignored.
     name: The name of the model.
   Inputs: Inputs defined by the encoder network, plus `masked_lm_positions` as a
     dictionary.
   Outputs: A dictionary of `lm_output`, classification head outputs keyed by
     head names, and also outputs from `encoder_network`, keyed by
-    `pooled_output`, `sequence_output` and `encoder_outputs` (if any).
+    `sequence_output` and `encoder_outputs` (if any).
   """
 
   def __init__(
@@ -191,9 +192,10 @@ class BertPretrainerV2(tf.keras.Model):
       mlm_activation=None,
       mlm_initializer='glorot_uniform',
       classification_heads: Optional[List[tf.keras.layers.Layer]] = None,
+      customized_masked_lm: Optional[tf.keras.layers.Layer] = None,
       name: str = 'bert',
       **kwargs):
-    self._self_setattr_tracking = False
+    super().__init__(self, name=name, **kwargs)
     self._config = {
         'encoder_network': encoder_network,
         'mlm_initializer': mlm_initializer,
@@ -202,6 +204,28 @@ class BertPretrainerV2(tf.keras.Model):
     }
     self.encoder_network = encoder_network
     inputs = copy.copy(self.encoder_network.inputs)
+    self.classification_heads = classification_heads or []
+    if len(set([cls.name for cls in self.classification_heads])) != len(
+        self.classification_heads):
+      raise ValueError('Classification heads should have unique names.')
+
+    self.masked_lm = customized_masked_lm or layers.MaskedLM(
+        embedding_table=self.encoder_network.get_embedding_table(),
+        activation=mlm_activation,
+        initializer=mlm_initializer,
+        name='cls/predictions')
+    masked_lm_positions = tf.keras.layers.Input(
+        shape=(None,), name='masked_lm_positions', dtype=tf.int32)
+    inputs.append(masked_lm_positions)
+    self.inputs = inputs
+
+  def call(self, inputs):
+    if isinstance(inputs, list):
+      logging.warning('List inputs to BertPretrainer are discouraged.')
+      inputs = dict([
+          (ref.name, tensor) for ref, tensor in zip(self.inputs, inputs)
+      ])
+
     outputs = dict()
     encoder_network_outputs = self.encoder_network(inputs)
     if isinstance(encoder_network_outputs, list):
@@ -219,28 +243,19 @@ class BertPretrainerV2(tf.keras.Model):
     else:
       raise ValueError('encoder_network\'s output should be either a list '
                        'or a dict, but got %s' % encoder_network_outputs)
-
     sequence_output = outputs['sequence_output']
-    self.classification_heads = classification_heads or []
-    if len(set([cls.name for cls in self.classification_heads])) != len(
-        self.classification_heads):
-      raise ValueError('Classification heads should have unique names.')
-
-    self.masked_lm = layers.MaskedLM(
-        embedding_table=self.encoder_network.get_embedding_table(),
-        activation=mlm_activation,
-        initializer=mlm_initializer,
-        name='cls/predictions')
-    masked_lm_positions = tf.keras.layers.Input(
-        shape=(None,), name='masked_lm_positions', dtype=tf.int32)
-    inputs.append(masked_lm_positions)
-    outputs['mlm_logits'] = self.masked_lm(
-        sequence_output, masked_positions=masked_lm_positions)
+    # Inference may not have masked_lm_positions and mlm_logits is not needed.
+    if 'masked_lm_positions' in inputs:
+      masked_lm_positions = inputs['masked_lm_positions']
+      outputs['mlm_logits'] = self.masked_lm(
+          sequence_output, masked_positions=masked_lm_positions)
     for cls_head in self.classification_heads:
-      outputs[cls_head.name] = cls_head(sequence_output)
-
-    super(BertPretrainerV2, self).__init__(
-        inputs=inputs, outputs=outputs, name=name, **kwargs)
+      cls_outputs = cls_head(sequence_output)
+      if isinstance(cls_outputs, dict):
+        outputs.update(cls_outputs)
+      else:
+        outputs[cls_head.name] = cls_outputs
+    return outputs
 
   @property
   def checkpoint_items(self):

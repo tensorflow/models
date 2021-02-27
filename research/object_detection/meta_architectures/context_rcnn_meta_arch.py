@@ -25,11 +25,18 @@ from __future__ import print_function
 
 import functools
 
+import tensorflow.compat.v1 as tf
+
+from object_detection.core import box_predictor
 from object_detection.core import standard_fields as fields
 from object_detection.meta_architectures import context_rcnn_lib
 from object_detection.meta_architectures import context_rcnn_lib_tf2
 from object_detection.meta_architectures import faster_rcnn_meta_arch
+from object_detection.protos import faster_rcnn_pb2
+from object_detection.utils import ops
 from object_detection.utils import tf_version
+
+_UNINITIALIZED_FEATURE_EXTRACTOR = '__uninitialized__'
 
 
 class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
@@ -76,8 +83,17 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
                freeze_batchnorm=False,
                return_raw_detections_during_predict=False,
                output_final_box_features=False,
+               output_final_box_rpn_features=False,
                attention_bottleneck_dimension=None,
-               attention_temperature=None):
+               attention_temperature=None,
+               use_self_attention=False,
+               use_long_term_attention=True,
+               self_attention_in_sequence=False,
+               num_attention_heads=1,
+               num_attention_layers=1,
+               attention_position=(
+                   faster_rcnn_pb2.AttentionPosition.POST_BOX_CLASSIFIER)
+               ):
     """ContextRCNNMetaArch Constructor.
 
     Args:
@@ -210,11 +226,25 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         boxes in the predict() method. These are decoded boxes that have not
         been through postprocessing (i.e. NMS). Default False.
       output_final_box_features: Whether to output final box features. If true,
-        it crops the feauture map based on the final box prediction and returns
-        in the dict as detection_features.
+        it crops the feature map based on the final box prediction and returns
+        it in the output dict as detection_features.
+      output_final_box_rpn_features: Whether to output rpn box features. If
+        true, it crops the rpn feature map based on the final box prediction and
+        returns it in the output dict as detection_features.
       attention_bottleneck_dimension: A single integer. The bottleneck feature
         dimension of the attention block.
       attention_temperature: A single float. The attention temperature.
+      use_self_attention: Whether to use self-attention within the box features
+        in the current frame.
+      use_long_term_attention: Whether to use attention into the context
+        features.
+      self_attention_in_sequence: Whether self attention and long term attention
+        are in sequence or parallel.
+      num_attention_heads: The number of attention heads to use.
+      num_attention_layers: The number of attention layers to use.
+      attention_position: Whether attention should occur post rpn or post
+      box classifier. Options are specified in the faster rcnn proto,
+        default is post box classifier.
 
     Raises:
       ValueError: If `second_stage_batch_size` > `first_stage_max_proposals` at
@@ -264,19 +294,40 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         freeze_batchnorm=freeze_batchnorm,
         return_raw_detections_during_predict=(
             return_raw_detections_during_predict),
-        output_final_box_features=output_final_box_features)
+        output_final_box_features=output_final_box_features,
+        output_final_box_rpn_features=output_final_box_rpn_features)
+
+    self._attention_position = attention_position
 
     if tf_version.is_tf1():
       self._context_feature_extract_fn = functools.partial(
-          context_rcnn_lib.compute_box_context_attention,
+          context_rcnn_lib._compute_box_context_attention,
           bottleneck_dimension=attention_bottleneck_dimension,
           attention_temperature=attention_temperature,
-          is_training=is_training)
+          is_training=is_training,
+          max_num_proposals=self.max_num_proposals,
+          use_self_attention=use_self_attention,
+          use_long_term_attention=use_long_term_attention,
+          self_attention_in_sequence=self_attention_in_sequence,
+          num_attention_heads=num_attention_heads,
+          num_attention_layers=num_attention_layers)
     else:
+      if use_self_attention:
+        raise NotImplementedError
+      if self_attention_in_sequence:
+        raise NotImplementedError
+      if not use_long_term_attention:
+        raise NotImplementedError
+      if num_attention_heads > 1:
+        raise NotImplementedError
+      if num_attention_layers > 1:
+        raise NotImplementedError
+
       self._context_feature_extract_fn = context_rcnn_lib_tf2.AttentionBlock(
           bottleneck_dimension=attention_bottleneck_dimension,
           attention_temperature=attention_temperature,
-          is_training=is_training)
+          is_training=is_training,
+          max_num_proposals=self.max_num_proposals)
 
   @staticmethod
   def get_side_inputs(features):
@@ -298,8 +349,8 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
     if (fields.InputDataFields.context_features not in features or
         fields.InputDataFields.valid_context_size not in features):
       raise ValueError(
-          "Please make sure context_features and valid_context_size are in the "
-          "features")
+          'Please make sure context_features and valid_context_size are in the '
+          'features')
 
     return {
         fields.InputDataFields.context_features:
@@ -308,9 +359,189 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
             features[fields.InputDataFields.valid_context_size]
     }
 
+  def _predict_second_stage(self, rpn_box_encodings,
+                            rpn_objectness_predictions_with_background,
+                            rpn_features_to_crop, anchors, image_shape,
+                            true_image_shapes, **side_inputs):
+    """Predicts the output tensors from second stage of Faster R-CNN.
+
+    Args:
+      rpn_box_encodings: 3-D float tensor of shape
+        [batch_size, num_valid_anchors, self._box_coder.code_size] containing
+        predicted boxes.
+      rpn_objectness_predictions_with_background: 2-D float tensor of shape
+        [batch_size, num_valid_anchors, 2] containing class
+        predictions (logits) for each of the anchors.  Note that this
+        tensor *includes* background class predictions (at class index 0).
+      rpn_features_to_crop: A list of 4-D float32 or bfloat16 tensor with shape
+        [batch_size, height_i, width_i, depth] representing image features to
+        crop using the proposal boxes predicted by the RPN.
+      anchors: 2-D float tensor of shape
+        [num_anchors, self._box_coder.code_size].
+      image_shape: A 1D int32 tensors of size [4] containing the image shape.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
+      **side_inputs: additional tensors that are required by the network.
+
+    Returns:
+      prediction_dict: a dictionary holding "raw" prediction tensors:
+        1) refined_box_encodings: a 3-D float32 tensor with shape
+          [total_num_proposals, num_classes, self._box_coder.code_size]
+          representing predicted (final) refined box encodings, where
+          total_num_proposals=batch_size*self._max_num_proposals. If using a
+          shared box across classes the shape will instead be
+          [total_num_proposals, 1, self._box_coder.code_size].
+        2) class_predictions_with_background: a 3-D float32 tensor with shape
+          [total_num_proposals, num_classes + 1] containing class
+          predictions (logits) for each of the anchors, where
+          total_num_proposals=batch_size*self._max_num_proposals.
+          Note that this tensor *includes* background class predictions
+          (at class index 0).
+        3) num_proposals: An int32 tensor of shape [batch_size] representing the
+          number of proposals generated by the RPN.  `num_proposals` allows us
+          to keep track of which entries are to be treated as zero paddings and
+          which are not since we always pad the number of proposals to be
+          `self.max_num_proposals` for each image.
+        4) proposal_boxes: A float32 tensor of shape
+          [batch_size, self.max_num_proposals, 4] representing
+          decoded proposal bounding boxes in absolute coordinates.
+        5) proposal_boxes_normalized: A float32 tensor of shape
+          [batch_size, self.max_num_proposals, 4] representing decoded proposal
+          bounding boxes in normalized coordinates. Can be used to override the
+          boxes proposed by the RPN, thus enabling one to extract features and
+          get box classification and prediction for externally selected areas
+          of the image.
+        6) box_classifier_features: a 4-D float32/bfloat16 tensor
+          representing the features for each proposal.
+        If self._return_raw_detections_during_predict is True, the dictionary
+        will also contain:
+        7) raw_detection_boxes: a 4-D float32 tensor with shape
+          [batch_size, self.max_num_proposals, num_classes, 4] in normalized
+          coordinates.
+        8) raw_detection_feature_map_indices: a 3-D int32 tensor with shape
+          [batch_size, self.max_num_proposals, num_classes].
+    """
+    proposal_boxes_normalized, num_proposals = self._proposal_postprocess(
+        rpn_box_encodings, rpn_objectness_predictions_with_background, anchors,
+        image_shape, true_image_shapes)
+
+    prediction_dict = self._box_prediction(rpn_features_to_crop,
+                                           proposal_boxes_normalized,
+                                           image_shape, true_image_shapes,
+                                           num_proposals,
+                                           **side_inputs)
+    prediction_dict['num_proposals'] = num_proposals
+    return prediction_dict
+
+  def _box_prediction(self, rpn_features_to_crop, proposal_boxes_normalized,
+                      image_shape, true_image_shapes, num_proposals,
+                      **side_inputs):
+    """Predicts the output tensors from second stage of Faster R-CNN.
+
+    Args:
+      rpn_features_to_crop: A list 4-D float32 or bfloat16 tensor with shape
+        [batch_size, height_i, width_i, depth] representing image features to
+        crop using the proposal boxes predicted by the RPN.
+      proposal_boxes_normalized: A float tensor with shape [batch_size,
+        max_num_proposals, 4] representing the (potentially zero padded)
+        proposal boxes for all images in the batch.  These boxes are represented
+        as normalized coordinates.
+      image_shape: A 1D int32 tensors of size [4] containing the image shape.
+      true_image_shapes: int32 tensor of shape [batch, 3] where each row is
+        of the form [height, width, channels] indicating the shapes
+        of true images in the resized images, as resized images can be padded
+        with zeros.
+      num_proposals: The number of valid box proposals.
+      **side_inputs: additional tensors that are required by the network.
+
+    Returns:
+      prediction_dict: a dictionary holding "raw" prediction tensors:
+        1) refined_box_encodings: a 3-D float32 tensor with shape
+          [total_num_proposals, num_classes, self._box_coder.code_size]
+          representing predicted (final) refined box encodings, where
+          total_num_proposals=batch_size*self._max_num_proposals. If using a
+          shared box across classes the shape will instead be
+          [total_num_proposals, 1, self._box_coder.code_size].
+        2) class_predictions_with_background: a 3-D float32 tensor with shape
+          [total_num_proposals, num_classes + 1] containing class
+          predictions (logits) for each of the anchors, where
+          total_num_proposals=batch_size*self._max_num_proposals.
+          Note that this tensor *includes* background class predictions
+          (at class index 0).
+        3) proposal_boxes: A float32 tensor of shape
+          [batch_size, self.max_num_proposals, 4] representing
+          decoded proposal bounding boxes in absolute coordinates.
+        4) proposal_boxes_normalized: A float32 tensor of shape
+          [batch_size, self.max_num_proposals, 4] representing decoded proposal
+          bounding boxes in normalized coordinates. Can be used to override the
+          boxes proposed by the RPN, thus enabling one to extract features and
+          get box classification and prediction for externally selected areas
+          of the image.
+        5) box_classifier_features: a 4-D float32/bfloat16 tensor
+          representing the features for each proposal.
+        If self._return_raw_detections_during_predict is True, the dictionary
+        will also contain:
+        6) raw_detection_boxes: a 4-D float32 tensor with shape
+          [batch_size, self.max_num_proposals, num_classes, 4] in normalized
+          coordinates.
+        7) raw_detection_feature_map_indices: a 3-D int32 tensor with shape
+          [batch_size, self.max_num_proposals, num_classes].
+        8) final_anchors: a 3-D float tensor of shape [batch_size,
+          self.max_num_proposals, 4] containing the reference anchors for raw
+          detection boxes in normalized coordinates.
+    """
+    flattened_proposal_feature_maps = (
+        self._compute_second_stage_input_feature_maps(
+            rpn_features_to_crop, proposal_boxes_normalized,
+            image_shape, num_proposals, **side_inputs))
+
+    box_classifier_features = self._extract_box_classifier_features(
+        flattened_proposal_feature_maps, num_proposals, **side_inputs)
+
+    if self._mask_rcnn_box_predictor.is_keras_model:
+      box_predictions = self._mask_rcnn_box_predictor(
+          [box_classifier_features],
+          prediction_stage=2)
+    else:
+      box_predictions = self._mask_rcnn_box_predictor.predict(
+          [box_classifier_features],
+          num_predictions_per_location=[1],
+          scope=self.second_stage_box_predictor_scope,
+          prediction_stage=2)
+
+    refined_box_encodings = tf.squeeze(
+        box_predictions[box_predictor.BOX_ENCODINGS],
+        axis=1, name='all_refined_box_encodings')
+    class_predictions_with_background = tf.squeeze(
+        box_predictions[box_predictor.CLASS_PREDICTIONS_WITH_BACKGROUND],
+        axis=1, name='all_class_predictions_with_background')
+
+    absolute_proposal_boxes = ops.normalized_to_image_coordinates(
+        proposal_boxes_normalized, image_shape, self._parallel_iterations)
+
+    prediction_dict = {
+        'refined_box_encodings': tf.cast(refined_box_encodings,
+                                         dtype=tf.float32),
+        'class_predictions_with_background':
+        tf.cast(class_predictions_with_background, dtype=tf.float32),
+        'proposal_boxes': absolute_proposal_boxes,
+        'box_classifier_features': box_classifier_features,
+        'proposal_boxes_normalized': proposal_boxes_normalized,
+        'final_anchors': proposal_boxes_normalized
+    }
+
+    if self._return_raw_detections_during_predict:
+      prediction_dict.update(self._raw_detections_and_feature_map_inds(
+          refined_box_encodings, absolute_proposal_boxes, true_image_shapes))
+
+    return prediction_dict
+
   def _compute_second_stage_input_feature_maps(self, features_to_crop,
                                                proposal_boxes_normalized,
                                                image_shape,
+                                               num_proposals,
                                                context_features,
                                                valid_context_size):
     """Crops to a set of proposals from the feature map for a batch of images.
@@ -326,6 +557,7 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         num_proposals, box_code_size] containing proposal boxes in normalized
         coordinates.
       image_shape: A 1D int32 tensors of size [4] containing the image shape.
+      num_proposals: The number of valid box proposals.
       context_features: A float Tensor of shape [batch_size, context_size,
         num_context_features].
       valid_context_size: A int32 Tensor of shape [batch_size].
@@ -338,14 +570,55 @@ class ContextRCNNMetaArch(faster_rcnn_meta_arch.FasterRCNNMetaArch):
         features_to_crop, proposal_boxes_normalized, None,
         [self._initial_crop_size, self._initial_crop_size])
 
-    attention_features = self._context_feature_extract_fn(
-        box_features=box_features,
-        context_features=context_features,
-        valid_context_size=valid_context_size)
+    flattened_box_features = self._flatten_first_two_dimensions(box_features)
 
-    # Adds box features with attention features.
-    box_features += attention_features
+    flattened_box_features = self._maxpool_layer(flattened_box_features)
 
-    flattened_feature_maps = self._flatten_first_two_dimensions(box_features)
+    if self._attention_position == (
+        faster_rcnn_pb2.AttentionPosition.POST_RPN):
+      attention_features = self._context_feature_extract_fn(
+          box_features=flattened_box_features,
+          num_proposals=num_proposals,
+          context_features=context_features,
+          valid_context_size=valid_context_size)
 
-    return self._maxpool_layer(flattened_feature_maps)
+      # Adds box features with attention features.
+      flattened_box_features += self._flatten_first_two_dimensions(
+          attention_features)
+
+    return flattened_box_features
+
+  def _extract_box_classifier_features(
+      self, flattened_box_features, num_proposals, context_features,
+      valid_context_size,
+      attention_position=(
+          faster_rcnn_pb2.AttentionPosition.POST_BOX_CLASSIFIER)):
+    if self._feature_extractor_for_box_classifier_features == (
+        _UNINITIALIZED_FEATURE_EXTRACTOR):
+      self._feature_extractor_for_box_classifier_features = (
+          self._feature_extractor.get_box_classifier_feature_extractor_model(
+              name=self.second_stage_feature_extractor_scope))
+
+    if self._feature_extractor_for_box_classifier_features:
+      box_classifier_features = (
+          self._feature_extractor_for_box_classifier_features(
+              flattened_box_features))
+    else:
+      box_classifier_features = (
+          self._feature_extractor.extract_box_classifier_features(
+              flattened_box_features,
+              scope=self.second_stage_feature_extractor_scope))
+
+    if self._attention_position == (
+        faster_rcnn_pb2.AttentionPosition.POST_BOX_CLASSIFIER):
+      attention_features = self._context_feature_extract_fn(
+          box_features=box_classifier_features,
+          num_proposals=num_proposals,
+          context_features=context_features,
+          valid_context_size=valid_context_size)
+
+      # Adds box features with attention features.
+      box_classifier_features += self._flatten_first_two_dimensions(
+          attention_features)
+
+    return box_classifier_features

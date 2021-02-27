@@ -45,10 +45,12 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
     vocab_size = 100
     max_position_embeddings = 32
     type_vocab_size = 2
+    embedding_width = 16
     hidden_size = 32
     embedding_cfg = dict(
         vocab_size=vocab_size,
         type_vocab_size=2,
+        embedding_width=embedding_width,
         hidden_size=hidden_size,
         max_seq_length=max_position_embeddings,
         initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
@@ -103,6 +105,7 @@ class PackedSequenceEmbeddingTest(tf.test.TestCase, parameterized.TestCase):
     embedding_cfg = dict(
         vocab_size=100,
         type_vocab_size=2,
+        embedding_width=64,
         hidden_size=64,
         max_seq_length=32,
         initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),

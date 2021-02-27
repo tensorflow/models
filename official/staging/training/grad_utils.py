@@ -14,14 +14,9 @@
 # ==============================================================================
 """Some gradient util functions to help users writing custom training loop."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
-
 from absl import logging
 
-import tensorflow.compat.v2 as tf
+import tensorflow as tf
 
 
 def _filter_grads(grads_and_vars):
@@ -57,7 +52,7 @@ def _filter_and_allreduce_gradients(grads_and_vars,
   The allreduced gradients are then passed to optimizer.apply_gradients(
   experimental_aggregate_gradients=False).
 
-  Arguments:
+  Args:
       grads_and_vars: gradients and variables pairs.
       allreduce_precision: Whether to allreduce gradients in float32 or float16.
       bytes_per_pack: A non-negative integer. Breaks collective operations into
@@ -101,7 +96,7 @@ def minimize_using_explicit_allreduce(tape,
   For TPU and GPU training using FP32, explicit allreduce will aggregate
   gradients in FP32 format.
 
-  Arguments:
+  Args:
       tape: An instance of `tf.GradientTape`.
       optimizer: An instance of `tf.keras.optimizers.Optimizer`.
       loss: the loss tensor.

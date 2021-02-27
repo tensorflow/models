@@ -294,6 +294,10 @@ def build_resnet3d(
       temporal_kernel_sizes=temporal_kernel_sizes,
       use_self_gating=use_self_gating,
       input_specs=input_specs,
+      stem_conv_temporal_kernel_size=backbone_cfg
+      .stem_conv_temporal_kernel_size,
+      stem_conv_temporal_stride=backbone_cfg.stem_conv_temporal_stride,
+      stem_pool_temporal_stride=backbone_cfg.stem_pool_temporal_stride,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,

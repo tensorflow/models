@@ -19,7 +19,6 @@ from absl import app
 from absl import flags
 import gin
 
-from official.core import train_utils
 from official.common import distribute_utils
 # pylint: disable=unused-import
 from official.common import registry_imports
@@ -27,6 +26,7 @@ from official.common import registry_imports
 from official.common import flags as tfm_flags
 from official.core import task_factory
 from official.core import train_lib
+from official.core import train_utils
 from official.modeling import performance
 
 FLAGS = flags.FLAGS
@@ -63,6 +63,8 @@ def main(_):
       mode=FLAGS.mode,
       params=params,
       model_dir=model_dir)
+
+  train_utils.save_gin_config(FLAGS.mode, model_dir)
 
 if __name__ == '__main__':
   tfm_flags.define_flags()

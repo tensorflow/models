@@ -4,7 +4,7 @@ package object_detection.protos;
 
 // Message for defining a preprocessing operation on input data.
 // See: //third_party/tensorflow_models/object_detection/core/preprocessor.py
-// Next ID: 39
+// Next ID: 40
 message PreprocessingStep {
   oneof preprocessing_step {
     NormalizeImage normalize_image = 1;
@@ -45,6 +45,7 @@ message PreprocessingStep {
     RandomPatchGaussian random_patch_gaussian = 36;
     RandomSquareCropByScale random_square_crop_by_scale = 37;
     RandomScaleCropAndPadToSquare random_scale_crop_and_pad_to_square = 38;
+    AdjustGamma adjust_gamma = 39;
   }
 }
 
@@ -589,4 +590,10 @@ message RandomScaleCropAndPadToSquare {
   // The minimum and maximum values from which to sample the random scale.
   optional float scale_min = 2 [default=0.1];
   optional float scale_max = 3 [default=2.0];
+}
+
+// Adjusts the gamma of the image using the specified gamma and gain values.
+message AdjustGamma {
+  optional float gamma = 1 [default=1.0];
+  optional float gain = 2 [default=1.0];
 }

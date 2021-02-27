@@ -40,9 +40,7 @@ def eager_strategy_combinations():
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.mirrored_strategy_with_two_gpus,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def eager_gpu_strategy_combinations():
@@ -52,9 +50,7 @@ def eager_gpu_strategy_combinations():
           strategy_combinations.one_device_strategy_gpu,
           strategy_combinations.mirrored_strategy_with_gpu_and_cpu,
           strategy_combinations.mirrored_strategy_with_two_gpus,
-      ],
-      mode='eager',
-  )
+      ],)
 
 
 def create_fake_data_input_fn(batch_size, features_shape, num_classes):
@@ -107,9 +103,8 @@ def create_model_fn(input_shape, num_classes, use_float16=False):
         tf.reduce_mean(input_layer), name='mean_input', aggregation='mean')
     model.optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
     if use_float16:
-      model.optimizer = (
-          tf.keras.mixed_precision.experimental.LossScaleOptimizer(
-              model.optimizer, loss_scale='dynamic'))
+      model.optimizer = tf.keras.mixed_precision.LossScaleOptimizer(
+          model.optimizer)
     return model, sub_model
 
   return _model_fn
@@ -187,7 +182,9 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(eager_strategy_combinations())
   def test_train_eager_single_step(self, distribution):
     model_dir = self.create_tempdir().full_path
-    if isinstance(distribution, tf.distribute.experimental.TPUStrategy):
+    if isinstance(
+        distribution,
+        (tf.distribute.TPUStrategy, tf.distribute.experimental.TPUStrategy)):
       with self.assertRaises(ValueError):
         self.run_training(
             distribution, model_dir, steps_per_loop=1, run_eagerly=True)
@@ -198,8 +195,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
   @combinations.generate(eager_gpu_strategy_combinations())
   def test_train_eager_mixed_precision(self, distribution):
     model_dir = self.create_tempdir().full_path
-    policy = tf.keras.mixed_precision.experimental.Policy('mixed_float16')
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
     self._model_fn = create_model_fn(
         input_shape=[128], num_classes=3, use_float16=True)
     self.run_training(
@@ -290,9 +286,7 @@ class ModelTrainingUtilsTest(tf.test.TestCase, parameterized.TestCase):
       combinations.combine(
           distribution=[
               strategy_combinations.one_device_strategy_gpu,
-          ],
-          mode='eager',
-      ))
+          ],))
   def test_train_check_artifacts_non_chief(self, distribution):
     # We shouldn't export artifacts on non-chief workers. Since there's no easy
     # way to test with real MultiWorkerMirroredStrategy, we patch the strategy

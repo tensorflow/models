@@ -19,6 +19,7 @@ import collections
 import tensorflow as tf
 
 from official.modeling import tf_utils
+from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 
 
@@ -32,10 +33,11 @@ class PackedSequenceEmbedding(tf.keras.Model):
   to (1) pack multiple sequences into one sequence and (2) allow additional
   "position_ids" as input.
 
-  Arguments:
+  Args:
     vocab_size: The size of the token vocabulary.
     type_vocab_size: The size of the type vocabulary.
-    hidden_size: The hidden size for this encoder.
+    embedding_width: Width of token embeddings.
+    hidden_size: The output size for this encoder.
     max_seq_length: The maximum sequence length for this encoder.
     initializer: The initializer for the embedding portion of this encoder.
     dropout_rate: The dropout rate to apply before the encoding layers.
@@ -52,6 +54,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
   def __init__(self,
                vocab_size,
                type_vocab_size,
+               embedding_width,
                hidden_size,
                max_seq_length,
                initializer,
@@ -63,6 +66,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
     config_dict = {
         'vocab_size': vocab_size,
         'type_vocab_size': type_vocab_size,
+        'embedding_width': embedding_width,
         'hidden_size': hidden_size,
         'max_seq_length': max_seq_length,
         'initializer': tf.keras.initializers.serialize(initializer),
@@ -96,7 +100,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
 
     embedding_layer = layers.OnDeviceEmbedding(
         vocab_size=vocab_size,
-        embedding_width=hidden_size,
+        embedding_width=embedding_width,
         initializer=initializer,
         name='word_embeddings')
     word_embeddings = embedding_layer(word_ids)
@@ -113,7 +117,7 @@ class PackedSequenceEmbedding(tf.keras.Model):
     type_embeddings = (
         layers.OnDeviceEmbedding(
             vocab_size=type_vocab_size,
-            embedding_width=hidden_size,
+            embedding_width=embedding_width,
             initializer=initializer,
             use_one_hot=True,
             name='type_embeddings')(type_ids))
@@ -127,7 +131,16 @@ class PackedSequenceEmbedding(tf.keras.Model):
         rate=dropout_rate, dtype=tf.float32)(
             embeddings)
 
-    attention_mask = layers.SelfAttentionMask()([embeddings, mask])
+    if embedding_width != hidden_size:
+      embeddings = tf.keras.layers.experimental.EinsumDense(
+          '...x,xy->...y',
+          output_shape=hidden_size,
+          bias_axes=None,
+          kernel_initializer=initializer,
+          name='embedding_projection')(
+              embeddings)
+
+    attention_mask = keras_nlp.layers.SelfAttentionMask()(embeddings, mask)
     if sub_seq_mask is not None:
       attention_mask = tf.keras.layers.Lambda(
           lambda x: x[0] * tf.cast(x[1], x[0].dtype))(
@@ -194,7 +207,7 @@ class PositionEmbeddingWithSubSeqMask(tf.keras.layers.Layer):
   can have a dynamic 1st dimension, while if `use_dynamic_slicing` is False the
   input size must be fixed.
 
-  Arguments:
+  Args:
     initializer: The initializer to use for the embedding weights. Defaults to
       "glorot_uniform".
     use_dynamic_slicing: Whether to use the dynamic slicing path.

@@ -23,8 +23,9 @@ EPSILON = 1e-5
 class SegmentationLoss:
   """Semantic segmentation loss."""
 
-  def __init__(self, label_smoothing, class_weights,
-               ignore_label, use_groundtruth_dimension):
+  def __init__(self, label_smoothing, class_weights, ignore_label,
+               use_groundtruth_dimension, top_k_percent_pixels=1.0):
+    self._top_k_percent_pixels = top_k_percent_pixels
     self._class_weights = class_weights
     self._ignore_label = ignore_label
     self._use_groundtruth_dimension = use_groundtruth_dimension
@@ -71,5 +72,18 @@ class SegmentationLoss:
                             tf.constant(class_weights, tf.float32))
     valid_mask *= weight_mask
     cross_entropy_loss *= tf.cast(valid_mask, tf.float32)
-    loss = tf.reduce_sum(cross_entropy_loss) / normalizer
+
+    if self._top_k_percent_pixels >= 1.0:
+      loss = tf.reduce_sum(cross_entropy_loss) / normalizer
+    else:
+      cross_entropy_loss = tf.reshape(cross_entropy_loss, shape=[-1])
+      top_k_pixels = tf.cast(
+          self._top_k_percent_pixels *
+          tf.cast(tf.size(cross_entropy_loss), tf.float32), tf.int32)
+      top_k_losses, _ = tf.math.top_k(
+          cross_entropy_loss, k=top_k_pixels, sorted=True)
+      normalizer = tf.reduce_sum(
+          tf.cast(tf.not_equal(top_k_losses, 0.0), tf.float32)) + EPSILON
+      loss = tf.reduce_sum(top_k_losses) / normalizer
+
     return loss

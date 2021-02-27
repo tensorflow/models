@@ -38,10 +38,12 @@ class Decoder(decoder.Decoder):
 
 
 class Parser(parser.Parser):
-  """Parser to parse an image and its annotations into a dictionary of tensors."""
+  """Parser to parse an image and its annotations into a dictionary of tensors.
+  """
 
   def __init__(self,
                output_size,
+               train_on_crops=False,
                resize_eval_groundtruth=True,
                groundtruth_padded_size=None,
                ignore_label=255,
@@ -54,6 +56,9 @@ class Parser(parser.Parser):
     Args:
       output_size: `Tensor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
+      train_on_crops: `bool`, if True, a training crop of size output_size
+        is returned. This is useful for cropping original images during training
+        while evaluating on original image sizes.
       resize_eval_groundtruth: `bool`, if True, eval groundtruth masks are
         resized to output_size.
       groundtruth_padded_size: `Tensor` or `list` for [height, width]. When
@@ -70,6 +75,7 @@ class Parser(parser.Parser):
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
     self._output_size = output_size
+    self._train_on_crops = train_on_crops
     self._resize_eval_groundtruth = resize_eval_groundtruth
     if (not resize_eval_groundtruth) and (groundtruth_padded_size is None):
       raise ValueError('groundtruth_padded_size ([height, width]) needs to be'
@@ -104,9 +110,18 @@ class Parser(parser.Parser):
     """Parses data for training and evaluation."""
     image, label = self._prepare_image_and_label(data)
 
+    if self._train_on_crops:
+      label = tf.reshape(label, [data['image/height'], data['image/width'], 1])
+      image_mask = tf.concat([image, label], axis=2)
+      image_mask_crop = tf.image.random_crop(image_mask,
+                                             self._output_size + [4])
+      image = image_mask_crop[:, :, :-1]
+      label = tf.reshape(image_mask_crop[:, :, -1], [1] + self._output_size)
+
     # Flips image randomly during training.
     if self._aug_rand_hflip:
-      image, label = preprocess_ops.random_horizontal_flip(image, masks=label)
+      image, _, label = preprocess_ops.random_horizontal_flip(
+          image, masks=label)
 
     # Resizes and crops image.
     image, image_info = preprocess_ops.resize_and_crop_image(

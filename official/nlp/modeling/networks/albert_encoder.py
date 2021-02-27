@@ -39,7 +39,7 @@ class AlbertEncoder(tf.keras.Model):
 
   *Note* that the network is constructed by Keras Functional API.
 
-  Arguments:
+  Args:
     vocab_size: The size of the token vocabulary.
     embedding_width: The width of the word embeddings. If the embedding width is
       not equal to hidden size, embedding parameters will be factorized into two
@@ -133,7 +133,7 @@ class AlbertEncoder(tf.keras.Model):
               embeddings)
 
     data = embeddings
-    attention_mask = layers.SelfAttentionMask()([data, mask])
+    attention_mask = keras_nlp.layers.SelfAttentionMask()(data, mask)
     shared_layer = keras_nlp.layers.TransformerEncoderBlock(
         num_attention_heads=num_attention_heads,
         inner_dim=intermediate_size,

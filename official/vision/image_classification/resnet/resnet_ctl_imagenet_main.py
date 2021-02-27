@@ -161,9 +161,9 @@ def run(flags_obj):
       checkpoint_interval=checkpoint_interval)
 
   resnet_controller = orbit.Controller(
-      strategy,
-      runnable,
-      runnable if not flags_obj.skip_eval else None,
+      strategy=strategy,
+      trainer=runnable,
+      evaluator=runnable if not flags_obj.skip_eval else None,
       global_step=runnable.global_step,
       steps_per_loop=steps_per_loop,
       checkpoint_manager=checkpoint_manager,

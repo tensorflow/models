@@ -26,7 +26,6 @@ import tensorflow as tf
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
-from official.nlp import keras_nlp
 from official.nlp.modeling import networks
 from official.nlp.projects.bigbird import encoder as bigbird_encoder
 
@@ -71,6 +70,9 @@ class MobileBertEncoderConfig(hyperparams.Config):
     intra_bottleneck_size: the size of bottleneck.
     initializer_range: The stddev of the truncated_normal_initializer for
       initializing all weight matrices.
+    use_bottleneck_attention: Use attention inputs from the bottleneck
+      transformation. If true, the following `key_query_shared_bottleneck`
+      will be ignored.
     key_query_shared_bottleneck: whether to share linear transformation for keys
       and queries.
     num_feedforward_networks: number of stacked feed-forward networks.
@@ -94,6 +96,7 @@ class MobileBertEncoderConfig(hyperparams.Config):
   attention_probs_dropout_prob: float = 0.1
   intra_bottleneck_size: int = 1024
   initializer_range: float = 0.02
+  use_bottleneck_attention: bool = False
   key_query_shared_bottleneck: bool = False
   num_feedforward_networks: int = 1
   normalization_type: str = "layer_norm"
@@ -133,7 +136,7 @@ class BigBirdEncoderConfig(hyperparams.Config):
   block_size: int = 64
   type_vocab_size: int = 16
   initializer_range: float = 0.02
-  embedding_size: Optional[int] = None
+  embedding_width: Optional[int] = None
 
 
 @dataclasses.dataclass
@@ -182,11 +185,10 @@ ENCODER_CLS = {
 
 
 @gin.configurable
-def build_encoder(
-    config: EncoderConfig,
-    embedding_layer: Optional[keras_nlp.layers.OnDeviceEmbedding] = None,
-    encoder_cls=None,
-    bypass_config: bool = False):
+def build_encoder(config: EncoderConfig,
+                  embedding_layer: Optional[tf.keras.layers.Layer] = None,
+                  encoder_cls=None,
+                  bypass_config: bool = False):
   """Instantiate a Transformer encoder network from EncoderConfig.
 
   Args:
@@ -253,6 +255,7 @@ def build_encoder(
         attention_probs_dropout_prob=encoder_cfg.attention_probs_dropout_prob,
         intra_bottleneck_size=encoder_cfg.intra_bottleneck_size,
         initializer_range=encoder_cfg.initializer_range,
+        use_bottleneck_attention=encoder_cfg.use_bottleneck_attention,
         key_query_shared_bottleneck=encoder_cfg.key_query_shared_bottleneck,
         num_feedforward_networks=encoder_cfg.num_feedforward_networks,
         normalization_type=encoder_cfg.normalization_type,
@@ -287,11 +290,11 @@ def build_encoder(
         attention_dropout_rate=encoder_cfg.attention_dropout_rate,
         num_rand_blocks=encoder_cfg.num_rand_blocks,
         block_size=encoder_cfg.block_size,
-        max_sequence_length=encoder_cfg.max_position_embeddings,
+        max_position_embeddings=encoder_cfg.max_position_embeddings,
         type_vocab_size=encoder_cfg.type_vocab_size,
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
-        embedding_width=encoder_cfg.embedding_size)
+        embedding_width=encoder_cfg.embedding_width)
 
   if encoder_type == "xlnet":
     return encoder_cls(

@@ -34,6 +34,7 @@ class DataConfig(cfg.DataConfig):
   feature_shape: Tuple[int, ...] = (64, 224, 224, 3)
   temporal_stride: int = 1
   num_test_clips: int = 1
+  num_test_crops: int = 1
   num_classes: int = -1
   num_channels: int = 3
   num_examples: int = -1
@@ -47,7 +48,16 @@ class DataConfig(cfg.DataConfig):
   input_path: str = ''
   is_training: bool = True
   cycle_length: int = 10
+  drop_remainder: bool = True
   min_image_size: int = 256
+  is_multilabel: bool = False
+  output_audio: bool = False
+  audio_feature: str = ''
+  audio_feature_shape: Tuple[int, ...] = (-1,)
+  aug_min_aspect_ratio: float = 0.5
+  aug_max_aspect_ratio: float = 2.0
+  aug_min_area_ratio: float = 0.49
+  aug_max_area_ratio: float = 1.0
 
 
 def kinetics400(is_training):
@@ -57,6 +67,7 @@ def kinetics400(is_training):
       num_classes=400,
       is_training=is_training,
       split='train' if is_training else 'valid',
+      drop_remainder=is_training,
       num_examples=215570 if is_training else 17706,
       feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
 
@@ -68,6 +79,7 @@ def kinetics600(is_training):
       num_classes=600,
       is_training=is_training,
       split='train' if is_training else 'valid',
+      drop_remainder=is_training,
       num_examples=366016 if is_training else 27780,
       feature_shape=(64, 224, 224, 3) if is_training else (250, 224, 224, 3))
 
@@ -78,7 +90,8 @@ class VideoClassificationModel(hyperparams.Config):
   model_type: str = 'video_classification'
   backbone: backbones_3d.Backbone3D = backbones_3d.Backbone3D(
       type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50())
-  norm_activation: common.NormActivation = common.NormActivation()
+  norm_activation: common.NormActivation = common.NormActivation(
+      use_sync_bn=False)
   dropout_rate: float = 0.2
   aggregate_endpoints: bool = False
 
@@ -94,10 +107,10 @@ class Losses(hyperparams.Config):
 class VideoClassificationTask(cfg.TaskConfig):
   """The task config."""
   model: VideoClassificationModel = VideoClassificationModel()
-  train_data: DataConfig = DataConfig(is_training=True)
-  validation_data: DataConfig = DataConfig(is_training=False)
+  train_data: DataConfig = DataConfig(is_training=True, drop_remainder=True)
+  validation_data: DataConfig = DataConfig(
+      is_training=False, drop_remainder=False)
   losses: Losses = Losses()
-  gradient_clip_norm: float = -1.0
 
 
 def add_trainer(experiment: cfg.ExperimentConfig,
@@ -174,7 +187,7 @@ def video_classification_kinetics400() -> cfg.ExperimentConfig:
           backbone=backbones_3d.Backbone3D(
               type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
           norm_activation=common.NormActivation(
-              norm_momentum=0.9, norm_epsilon=1e-5)),
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
       losses=Losses(l2_weight_decay=1e-4),
       train_data=train_dataset,
       validation_data=validation_dataset)
@@ -200,7 +213,7 @@ def video_classification_kinetics600() -> cfg.ExperimentConfig:
           backbone=backbones_3d.Backbone3D(
               type='resnet_3d', resnet_3d=backbones_3d.ResNet3D50()),
           norm_activation=common.NormActivation(
-              norm_momentum=0.9, norm_epsilon=1e-5)),
+              norm_momentum=0.9, norm_epsilon=1e-5, use_sync_bn=False)),
       losses=Losses(l2_weight_decay=1e-4),
       train_data=train_dataset,
       validation_data=validation_dataset)

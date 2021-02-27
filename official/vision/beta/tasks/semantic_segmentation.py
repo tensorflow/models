@@ -17,12 +17,13 @@
 
 from absl import logging
 import tensorflow as tf
-
+from official.common import dataset_fn
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.configs import semantic_segmentation as exp_cfg
+from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import segmentation_input
+from official.vision.beta.dataloaders import tfds_segmentation_decoders
 from official.vision.beta.evaluation import segmentation_metrics
 from official.vision.beta.losses import segmentation_losses
 from official.vision.beta.modeling import factory
@@ -81,22 +82,31 @@ class SemanticSegmentationTask(base_task.Task):
   def build_inputs(self, params, input_context=None):
     """Builds classification input."""
 
-    input_size = self.task_config.model.input_size
     ignore_label = self.task_config.losses.ignore_label
 
-    decoder = segmentation_input.Decoder()
+    if params.tfds_name:
+      if params.tfds_name in tfds_segmentation_decoders.TFDS_ID_TO_DECODER_MAP:
+        decoder = tfds_segmentation_decoders.TFDS_ID_TO_DECODER_MAP[
+            params.tfds_name]()
+      else:
+        raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
+    else:
+      decoder = segmentation_input.Decoder()
+
     parser = segmentation_input.Parser(
-        output_size=input_size[:2],
+        output_size=params.output_size,
+        train_on_crops=params.train_on_crops,
         ignore_label=ignore_label,
         resize_eval_groundtruth=params.resize_eval_groundtruth,
         groundtruth_padded_size=params.groundtruth_padded_size,
         aug_scale_min=params.aug_scale_min,
         aug_scale_max=params.aug_scale_max,
+        aug_rand_hflip=params.aug_rand_hflip,
         dtype=params.dtype)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
 
@@ -120,7 +130,8 @@ class SemanticSegmentationTask(base_task.Task):
         loss_params.label_smoothing,
         loss_params.class_weights,
         loss_params.ignore_label,
-        use_groundtruth_dimension=loss_params.use_groundtruth_dimension)
+        use_groundtruth_dimension=loss_params.use_groundtruth_dimension,
+        top_k_percent_pixels=loss_params.top_k_percent_pixels)
 
     total_loss = segmentation_loss_fn(model_outputs, labels['masks'])
 
@@ -132,20 +143,19 @@ class SemanticSegmentationTask(base_task.Task):
   def build_metrics(self, training=True):
     """Gets streaming metrics for training/validation."""
     metrics = []
-    if training:
-      # TODO(arashwan): make MeanIoU tpu friendly.
-      if not isinstance(tf.distribute.get_strategy(),
-                        tf.distribute.experimental.TPUStrategy):
-        metrics.append(segmentation_metrics.MeanIoU(
-            name='mean_iou',
-            num_classes=self.task_config.model.num_classes,
-            rescale_predictions=False))
+    if training and self.task_config.evaluation.report_train_mean_iou:
+      metrics.append(segmentation_metrics.MeanIoU(
+          name='mean_iou',
+          num_classes=self.task_config.model.num_classes,
+          rescale_predictions=False,
+          dtype=tf.float32))
     else:
-      self.miou_metric = segmentation_metrics.MeanIoU(
-          name='val_mean_iou',
+      self.iou_metric = segmentation_metrics.PerClassIoU(
+          name='per_class_iou',
           num_classes=self.task_config.model.num_classes,
           rescale_predictions=not self.task_config.validation_data
-          .resize_eval_groundtruth)
+          .resize_eval_groundtruth,
+          dtype=tf.float32)
 
     return metrics
 
@@ -162,6 +172,13 @@ class SemanticSegmentationTask(base_task.Task):
       A dictionary of logs.
     """
     features, labels = inputs
+
+    input_partition_dims = self.task_config.train_input_partition_dims
+    if input_partition_dims:
+      strategy = tf.distribute.get_strategy()
+      features = strategy.experimental_split_to_logical_devices(
+          features, input_partition_dims)
+
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
@@ -188,11 +205,6 @@ class SemanticSegmentationTask(base_task.Task):
     # used.
     if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
-
-    # Apply gradient clipping.
-    if self.task_config.gradient_clip_norm > 0:
-      grads, _ = tf.clip_by_global_norm(
-          grads, self.task_config.gradient_clip_norm)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
     logs = {self.loss: loss}
@@ -215,6 +227,12 @@ class SemanticSegmentationTask(base_task.Task):
     """
     features, labels = inputs
 
+    input_partition_dims = self.task_config.eval_input_partition_dims
+    if input_partition_dims:
+      strategy = tf.distribute.get_strategy()
+      features = strategy.experimental_split_to_logical_devices(
+          features, input_partition_dims)
+
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
 
@@ -225,7 +243,7 @@ class SemanticSegmentationTask(base_task.Task):
       loss = 0
 
     logs = {self.loss: loss}
-    logs.update({self.miou_metric.name: (labels, outputs)})
+    logs.update({self.iou_metric.name: (labels, outputs)})
 
     if metrics:
       self.process_metrics(metrics, labels, outputs)
@@ -239,11 +257,19 @@ class SemanticSegmentationTask(base_task.Task):
 
   def aggregate_logs(self, state=None, step_outputs=None):
     if state is None:
-      self.miou_metric.reset_states()
-      state = self.miou_metric
-    self.miou_metric.update_state(step_outputs[self.miou_metric.name][0],
-                                  step_outputs[self.miou_metric.name][1])
+      self.iou_metric.reset_states()
+      state = self.iou_metric
+    self.iou_metric.update_state(step_outputs[self.iou_metric.name][0],
+                                 step_outputs[self.iou_metric.name][1])
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs):
-    return {self.miou_metric.name: self.miou_metric.result().numpy()}
+    result = {}
+    ious = self.iou_metric.result()
+    # TODO(arashwan): support loading class name from a label map file.
+    if self.task_config.evaluation.report_per_class_iou:
+      for i, value in enumerate(ious.numpy()):
+        result.update({'iou/{}'.format(i): value})
+    # Computes mean IoU
+    result.update({'mean_iou': tf.reduce_mean(ious).numpy()})
+    return result

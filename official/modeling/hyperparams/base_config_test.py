@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 import pprint
 from typing import List, Tuple
@@ -346,6 +345,15 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
     self.assertIsInstance(config.y[0], DumpConfig2)
     self.assertIsInstance(config.y[1], DumpConfig4)
     self.assertSameElements(config.z, ['a', 'b', 'c'])
+
+  def test_override_by_empty_sequence(self):
+    config = DummyConfig5()
+    config.override({
+        'y': [],
+        'z': (),
+    }, is_strict=True)
+    self.assertEmpty(config.y)
+    self.assertEmpty(config.z)
 
 
 if __name__ == '__main__':

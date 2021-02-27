@@ -1,4 +1,9 @@
 # Adding Abseil (absl) flags quickstart
+
+**WARNING** This module is deprecated. We no long use it in new models and
+your projects should not depend on it. We will remove this module when
+all models using it are deprecated which may take time.
+
 ## Defining a flag
 absl flag definitions are similar to argparse, although they are defined on a global namespace.
 

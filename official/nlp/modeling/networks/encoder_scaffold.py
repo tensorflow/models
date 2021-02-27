@@ -49,7 +49,7 @@ class EncoderScaffold(tf.keras.Model):
   *Note* that the network is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     pooled_output_dim: The dimension of pooled output.
     pooler_layer_initializer: The initializer for the classification layer.
     embedding_cls: The class or instance to use to embed the input data. This
@@ -86,6 +86,9 @@ class EncoderScaffold(tf.keras.Model):
         "dropout_rate": The overall dropout rate for the transformer layers.
         "attention_dropout_rate": The dropout rate for the attention layers.
         "kernel_initializer": The initializer for the transformer layers.
+    layer_norm_before_pooling: Whether to add a layer norm before the pooling
+      layer. You probably want to turn this on if you set norm_first=True in
+      transformer layers.
     return_all_layer_outputs: Whether to output sequence embedding outputs of
       all encoder transformer layers.
     dict_outputs: Whether to use a dictionary as the model outputs.
@@ -101,6 +104,7 @@ class EncoderScaffold(tf.keras.Model):
                num_hidden_instances=1,
                hidden_cls=layers.Transformer,
                hidden_cfg=None,
+               layer_norm_before_pooling=False,
                return_all_layer_outputs=False,
                dict_outputs=False,
                **kwargs):
@@ -165,7 +169,7 @@ class EncoderScaffold(tf.keras.Model):
           tf.keras.layers.Dropout(
               rate=embedding_cfg['dropout_rate'])(embeddings))
 
-      attention_mask = layers.SelfAttentionMask()([embeddings, mask])
+      attention_mask = keras_nlp.layers.SelfAttentionMask()(embeddings, mask)
 
     data = embeddings
 
@@ -179,6 +183,14 @@ class EncoderScaffold(tf.keras.Model):
       data = layer([data, attention_mask])
       layer_output_data.append(data)
       hidden_layers.append(layer)
+
+    if layer_norm_before_pooling:
+      # Normalize the final output.
+      output_layer_norm = tf.keras.layers.LayerNormalization(
+          name='final_layer_norm',
+          axis=-1,
+          epsilon=1e-12)
+      layer_output_data[-1] = output_layer_norm(layer_output_data[-1])
 
     last_layer_output = layer_output_data[-1]
     # Applying a tf.slice op (through subscript notation) to a Keras tensor
@@ -221,6 +233,7 @@ class EncoderScaffold(tf.keras.Model):
     self._embedding_cls = embedding_cls
     self._embedding_cfg = embedding_cfg
     self._embedding_data = embedding_data
+    self._layer_norm_before_pooling = layer_norm_before_pooling
     self._return_all_layer_outputs = return_all_layer_outputs
     self._dict_outputs = dict_outputs
     self._kwargs = kwargs
@@ -230,8 +243,9 @@ class EncoderScaffold(tf.keras.Model):
     self._position_embedding_layer = position_embedding_layer
     self._type_embedding_layer = type_embedding_layer
     self._embedding_norm_layer = embedding_norm_layer
-    self._embedding_network = embedding_network
     self._hidden_layers = hidden_layers
+    if self._layer_norm_before_pooling:
+      self._output_layer_norm = output_layer_norm
     self._pooler_layer = pooler_layer
 
     logging.info('EncoderScaffold configs: %s', self.get_config())
@@ -244,6 +258,7 @@ class EncoderScaffold(tf.keras.Model):
         'embedding_cls': self._embedding_network,
         'embedding_cfg': self._embedding_cfg,
         'hidden_cfg': self._hidden_cfg,
+        'layer_norm_before_pooling': self._layer_norm_before_pooling,
         'return_all_layer_outputs': self._return_all_layer_outputs,
         'dict_outputs': self._dict_outputs,
     }

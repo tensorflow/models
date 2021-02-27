@@ -34,7 +34,7 @@ class BertSpanLabeler(tf.keras.Model):
   *Note* that the model is constructed by
   [Keras Functional API](https://keras.io/guides/functional_api/).
 
-  Arguments:
+  Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
       table via a "get_embedding_table" method.
@@ -62,6 +62,11 @@ class BertSpanLabeler(tf.keras.Model):
       sequence_output = outputs[0]
     else:
       sequence_output = outputs['sequence_output']
+
+    # The input network (typically a transformer model) may get outputs from all
+    # layers. When this case happens, we retrieve the last layer output.
+    if isinstance(sequence_output, list):
+      sequence_output = sequence_output[-1]
 
     # This is an instance variable for ease of access to the underlying task
     # network.

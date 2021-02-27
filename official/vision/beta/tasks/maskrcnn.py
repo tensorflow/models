@@ -17,10 +17,11 @@
 
 from absl import logging
 import tensorflow as tf
+from official.common import dataset_fn
 from official.core import base_task
-from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.configs import maskrcnn as exp_cfg
+from official.vision.beta.dataloaders import input_reader_factory
 from official.vision.beta.dataloaders import maskrcnn_input
 from official.vision.beta.dataloaders import tf_example_decoder
 from official.vision.beta.dataloaders import tf_example_label_map_decoder
@@ -99,7 +100,8 @@ class MaskRCNNTask(base_task.Task):
       status = ckpt.restore(ckpt_dir_or_file)
       status.expect_partial().assert_existing_objects_matched()
     else:
-      assert "Only 'all' or 'backbone' can be used to initialize the model."
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
 
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
@@ -110,12 +112,14 @@ class MaskRCNNTask(base_task.Task):
     if params.decoder.type == 'simple_decoder':
       decoder = tf_example_decoder.TfExampleDecoder(
           include_mask=self._task_config.model.include_mask,
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
+          regenerate_source_id=decoder_cfg.regenerate_source_id,
+          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold)
     elif params.decoder.type == 'label_map_decoder':
       decoder = tf_example_label_map_decoder.TfExampleDecoderLabelMap(
           label_map=decoder_cfg.label_map,
           include_mask=self._task_config.model.include_mask,
-          regenerate_source_id=decoder_cfg.regenerate_source_id)
+          regenerate_source_id=decoder_cfg.regenerate_source_id,
+          mask_binarize_threshold=decoder_cfg.mask_binarize_threshold)
     else:
       raise ValueError('Unknown decoder type: {}!'.format(params.decoder.type))
 
@@ -139,9 +143,9 @@ class MaskRCNNTask(base_task.Task):
         include_mask=self._task_config.model.include_mask,
         mask_crop_size=params.parser.mask_crop_size)
 
-    reader = input_reader.InputReader(
+    reader = input_reader_factory.input_reader_generator(
         params,
-        dataset_fn=tf.data.TFRecordDataset,
+        dataset_fn=dataset_fn.pick_dataset_fn(params.file_type),
         decoder_fn=decoder.decode,
         parser_fn=parser.parse_fn(params.is_training))
     dataset = reader.read(input_context=input_context)
@@ -280,11 +284,6 @@ class MaskRCNNTask(base_task.Task):
     # Scales back gradient when LossScaleOptimizer is used.
     if isinstance(optimizer, tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
-
-    # Apply gradient clipping.
-    if self.task_config.gradient_clip_norm > 0:
-      grads, _ = tf.clip_by_global_norm(
-          grads, self.task_config.gradient_clip_norm)
     optimizer.apply_gradients(list(zip(grads, tvars)))
 
     logs = {self.loss: losses['total_loss']}

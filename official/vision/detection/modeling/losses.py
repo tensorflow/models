@@ -195,6 +195,149 @@ class RpnBoxLoss(object):
       return box_loss
 
 
+class OlnRpnCenterLoss(object):
+  """Object Localization Network RPN centerness regression loss function."""
+
+  def __init__(self):
+    self._l1_loss = tf.keras.losses.MeanAbsoluteError(
+        reduction=tf.keras.losses.Reduction.SUM)
+
+  def __call__(self, center_outputs, labels):
+    """Computes total RPN centerness regression loss.
+
+    Computes total RPN centerness score regression loss from all levels.
+
+    Args:
+      center_outputs: an OrderDict with keys representing levels and values
+        representing anchor centerness regression targets in
+        [batch_size, height, width, num_anchors * 4].
+      labels: the dictionary that returned from dataloader that includes
+        groundturth targets.
+
+    Returns:
+      rpn_center_loss: a scalar tensor representing total centerness regression
+        loss.
+    """
+    with tf.name_scope('rpn_loss'):
+      # Normalizer.
+      levels = sorted(center_outputs.keys())
+      num_valid = 0
+      # 0<pos<1, neg=0, ign=-1
+      for level in levels:
+        num_valid += tf.reduce_sum(tf.cast(
+            tf.greater(labels[level], -1.0), tf.float32))  # in and out of box
+      num_valid += 1e-12
+
+      # Centerness loss over multi levels.
+      center_losses = []
+      for level in levels:
+        center_losses.append(
+            self._rpn_center_l1_loss(
+                center_outputs[level], labels[level],
+                normalizer=num_valid))
+
+      # Sum per level losses to total loss.
+      return tf.add_n(center_losses)
+
+  def _rpn_center_l1_loss(self, center_outputs, center_targets,
+                          normalizer=1.0):
+    """Computes centerness regression loss."""
+    # for instances, the regression targets of 512x512 input with 6 anchors on
+    # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
+    with tf.name_scope('rpn_center_loss'):
+
+      # mask = tf.greater(center_targets, 0.0)  # inside box only.
+      mask = tf.greater(center_targets, -1.0)  # in and out of box.
+      center_targets = tf.maximum(center_targets, tf.zeros_like(center_targets))
+      center_outputs = tf.sigmoid(center_outputs)
+      center_targets = tf.expand_dims(center_targets, -1)
+      center_outputs = tf.expand_dims(center_outputs, -1)
+      mask = tf.cast(mask, dtype=tf.float32)
+      center_loss = self._l1_loss(center_targets, center_outputs,
+                                  sample_weight=mask)
+      center_loss /= normalizer
+      return center_loss
+
+
+class OlnRpnIoULoss(object):
+  """Object Localization Network RPN box-lrtb regression iou loss function."""
+
+  def __call__(self, box_outputs, labels, center_targets):
+    """Computes total RPN detection loss.
+
+    Computes total RPN box regression loss from all levels.
+
+    Args:
+      box_outputs: an OrderDict with keys representing levels and values
+        representing box regression targets in
+        [batch_size, height, width, num_anchors * 4].
+        last channel: (left, right, top, bottom).
+      labels: the dictionary that returned from dataloader that includes
+        groundturth targets (left, right, top, bottom).
+      center_targets: valid_target mask.
+
+    Returns:
+      rpn_iou_loss: a scalar tensor representing total box regression loss.
+    """
+    with tf.name_scope('rpn_loss'):
+      # Normalizer.
+      levels = sorted(box_outputs.keys())
+      normalizer = 0.
+      for level in levels:
+        # center_targets pos>0, neg=0, ign=-1.
+        mask_ = tf.cast(tf.logical_and(
+            tf.greater(center_targets[level][..., 0], 0.0),
+            tf.greater(tf.reduce_min(labels[level], -1), 0.0)), tf.float32)
+        normalizer += tf.reduce_sum(mask_)
+      normalizer += 1e-8
+      # iou_loss over multi levels.
+      iou_losses = []
+      for level in levels:
+        iou_losses.append(
+            self._rpn_iou_loss(
+                box_outputs[level], labels[level],
+                center_weight=center_targets[level][..., 0],
+                normalizer=normalizer))
+      # Sum per level losses to total loss.
+      return tf.add_n(iou_losses)
+
+  def _rpn_iou_loss(self, box_outputs, box_targets,
+                    center_weight=None, normalizer=1.0):
+    """Computes box regression loss."""
+    # for instances, the regression targets of 512x512 input with 6 anchors on
+    # P2-P6 pyramid is about [0.1, 0.1, 0.2, 0.2].
+    with tf.name_scope('rpn_iou_loss'):
+      mask = tf.logical_and(
+          tf.greater(center_weight, 0.0),
+          tf.greater(tf.reduce_min(box_targets, -1), 0.0))
+
+      pred_left = box_outputs[..., 0]
+      pred_right = box_outputs[..., 1]
+      pred_top = box_outputs[..., 2]
+      pred_bottom = box_outputs[..., 3]
+
+      gt_left = box_targets[..., 0]
+      gt_right = box_targets[..., 1]
+      gt_top = box_targets[..., 2]
+      gt_bottom = box_targets[..., 3]
+
+      inter_width = (tf.minimum(pred_left, gt_left) +
+                     tf.minimum(pred_right, gt_right))
+      inter_height = (tf.minimum(pred_top, gt_top) +
+                      tf.minimum(pred_bottom, gt_bottom))
+      inter_area = inter_width * inter_height
+      union_area = ((pred_left + pred_right) * (pred_top + pred_bottom) +
+                    (gt_left + gt_right) * (gt_top + gt_bottom) -
+                    inter_area)
+      iou = inter_area / (union_area + 1e-8)
+      mask_ = tf.cast(mask, tf.float32)
+      iou = tf.clip_by_value(iou, clip_value_min=1e-8, clip_value_max=1.0)
+      neg_log_iou = -tf.math.log(iou)
+      iou_loss = tf.reduce_sum(neg_log_iou * mask_)
+      iou_loss /= normalizer
+      return iou_loss
+
+
 class FastrcnnClassLoss(object):
   """Fast R-CNN classification loss function."""
 
@@ -315,6 +458,47 @@ class FastrcnnBoxLoss(object):
       # division by 0.
       box_loss /= normalizer * (tf.reduce_sum(mask) + 0.01)
       return box_loss
+
+
+class OlnBoxScoreLoss(object):
+  """Object Localization Network Box-Iou scoring function."""
+
+  def __init__(self, params):
+    self._ignore_threshold = params.ignore_threshold
+    self._l1_loss = tf.keras.losses.MeanAbsoluteError(
+        reduction=tf.keras.losses.Reduction.SUM)
+
+  def __call__(self, score_outputs, score_targets):
+    """Computes the class loss (Fast-RCNN branch) of Mask-RCNN.
+
+    This function implements the classification loss of the Fast-RCNN.
+
+    The classification loss is softmax on all RoIs.
+    Reference: https://github.com/facebookresearch/Detectron/blob/master/detectron/modeling/fast_rcnn_heads.py  # pylint: disable=line-too-long
+
+    Args:
+      score_outputs: a float tensor representing the class prediction for each box
+        with a shape of [batch_size, num_boxes, num_classes].
+      score_targets: a float tensor representing the class label for each box
+        with a shape of [batch_size, num_boxes].
+
+    Returns:
+      a scalar tensor representing total score loss.
+    """
+    with tf.name_scope('fast_rcnn_loss'):
+      score_outputs = tf.squeeze(score_outputs, -1)
+
+      mask = tf.greater(score_targets, self._ignore_threshold)
+      num_valid = tf.reduce_sum(tf.cast(mask, tf.float32))
+      score_targets = tf.maximum(score_targets, tf.zeros_like(score_targets))
+      score_outputs = tf.sigmoid(score_outputs)
+      score_targets = tf.expand_dims(score_targets, -1)
+      score_outputs = tf.expand_dims(score_outputs, -1)
+      mask = tf.cast(mask, dtype=tf.float32)
+      score_loss = self._l1_loss(score_targets, score_outputs,
+                                 sample_weight=mask)
+      score_loss /= (num_valid + 1e-10)
+      return score_loss
 
 
 class MaskrcnnLoss(object):

@@ -153,6 +153,15 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
         detection_model.groundtruth_lists(fields.BoxListFields.keypoints))
 
   if detection_model.groundtruth_has_field(
+      fields.BoxListFields.keypoint_depths):
+    groundtruth[input_data_fields.groundtruth_keypoint_depths] = tf.stack(
+        detection_model.groundtruth_lists(fields.BoxListFields.keypoint_depths))
+    groundtruth[
+        input_data_fields.groundtruth_keypoint_depth_weights] = tf.stack(
+            detection_model.groundtruth_lists(
+                fields.BoxListFields.keypoint_depth_weights))
+
+  if detection_model.groundtruth_has_field(
       fields.BoxListFields.keypoint_visibilities):
     groundtruth[input_data_fields.groundtruth_keypoint_visibilities] = tf.stack(
         detection_model.groundtruth_lists(
@@ -200,22 +209,11 @@ def _prepare_groundtruth_for_eval(detection_model, class_agnostic,
 
   if detection_model.groundtruth_has_field(
       input_data_fields.groundtruth_labeled_classes):
-    labeled_classes_list = detection_model.groundtruth_lists(
-        input_data_fields.groundtruth_labeled_classes)
-    labeled_classes = [
-        tf.where(x)[:, 0] + label_id_offset for x in labeled_classes_list
-    ]
-    if len(labeled_classes) > 1:
-      num_classes = labeled_classes_list[0].shape[0]
-      padded_labeled_classes = []
-      for x in labeled_classes:
-        padding = num_classes - tf.shape(x)[0]
-        padded_labeled_classes.append(tf.pad(x, [[0, padding]]))
-      groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.stack(
-          padded_labeled_classes)
-    else:
-      groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.stack(
-          labeled_classes)
+    groundtruth[input_data_fields.groundtruth_labeled_classes] = tf.pad(
+        tf.stack(
+            detection_model.groundtruth_lists(
+                input_data_fields.groundtruth_labeled_classes)),
+        label_id_offset_paddings)
 
   groundtruth[input_data_fields.num_groundtruth_boxes] = (
       tf.tile([max_number_of_boxes], multiples=[groundtruth_boxes_shape[0]]))
@@ -271,6 +269,8 @@ def unstack_batch(tensor_dict, unpad_groundtruth_tensors=True):
         fields.InputDataFields.groundtruth_classes,
         fields.InputDataFields.groundtruth_boxes,
         fields.InputDataFields.groundtruth_keypoints,
+        fields.InputDataFields.groundtruth_keypoint_depths,
+        fields.InputDataFields.groundtruth_keypoint_depth_weights,
         fields.InputDataFields.groundtruth_keypoint_visibilities,
         fields.InputDataFields.groundtruth_dp_num_points,
         fields.InputDataFields.groundtruth_dp_part_ids,
@@ -322,6 +322,13 @@ def provide_groundtruth(model, labels):
   gt_keypoints_list = None
   if fields.InputDataFields.groundtruth_keypoints in labels:
     gt_keypoints_list = labels[fields.InputDataFields.groundtruth_keypoints]
+  gt_keypoint_depths_list = None
+  gt_keypoint_depth_weights_list = None
+  if fields.InputDataFields.groundtruth_keypoint_depths in labels:
+    gt_keypoint_depths_list = (
+        labels[fields.InputDataFields.groundtruth_keypoint_depths])
+    gt_keypoint_depth_weights_list = (
+        labels[fields.InputDataFields.groundtruth_keypoint_depth_weights])
   gt_keypoint_visibilities_list = None
   if fields.InputDataFields.groundtruth_keypoint_visibilities in labels:
     gt_keypoint_visibilities_list = labels[
@@ -387,7 +394,9 @@ def provide_groundtruth(model, labels):
       groundtruth_area_list=gt_area_list,
       groundtruth_track_ids_list=gt_track_ids_list,
       groundtruth_verified_neg_classes=gt_verified_neg_classes,
-      groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes)
+      groundtruth_not_exhaustive_classes=gt_not_exhaustive_classes,
+      groundtruth_keypoint_depths_list=gt_keypoint_depths_list,
+      groundtruth_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
 
 
 def create_model_fn(detection_model_fn, configs, hparams=None, use_tpu=False,
@@ -832,12 +841,14 @@ def create_estimator_and_inputs(run_config,
       train_config=train_config,
       train_input_config=train_input_config,
       model_config=model_config)
-  eval_input_fns = [
-      create_eval_input_fn(
-          eval_config=eval_config,
-          eval_input_config=eval_input_config,
-          model_config=model_config) for eval_input_config in eval_input_configs
-  ]
+  eval_input_fns = []
+  for eval_input_config in eval_input_configs:
+    eval_input_fns.append(
+        create_eval_input_fn(
+            eval_config=eval_config,
+            eval_input_config=eval_input_config,
+            model_config=model_config))
+
   eval_input_names = [
       eval_input_config.name for eval_input_config in eval_input_configs
   ]
@@ -980,12 +991,12 @@ def _evaluate_checkpoint(estimator,
         raise e
 
 
-def continuous_eval(estimator,
-                    model_dir,
-                    input_fn,
-                    train_steps,
-                    name,
-                    max_retries=0):
+def continuous_eval_generator(estimator,
+                              model_dir,
+                              input_fn,
+                              train_steps,
+                              name,
+                              max_retries=0):
   """Perform continuous evaluation on checkpoints written to a model directory.
 
   Args:
@@ -998,6 +1009,9 @@ def continuous_eval(estimator,
     max_retries: Maximum number of times to retry the evaluation on encountering
       a tf.errors.InvalidArgumentError. If negative, will always retry the
       evaluation.
+
+  Yields:
+    Pair of current step and eval_results.
   """
 
   def terminate_eval():
@@ -1020,6 +1034,7 @@ def continuous_eval(estimator,
 
       # Terminate eval job when final checkpoint is reached
       current_step = int(os.path.basename(ckpt).split('-')[1])
+      yield (current_step, eval_results)
       if current_step >= train_steps:
         tf.logging.info(
             'Evaluation finished after training step %d' % current_step)
@@ -1028,6 +1043,30 @@ def continuous_eval(estimator,
     except tf.errors.NotFoundError:
       tf.logging.info(
           'Checkpoint %s no longer exists, skipping checkpoint' % ckpt)
+
+
+def continuous_eval(estimator,
+                    model_dir,
+                    input_fn,
+                    train_steps,
+                    name,
+                    max_retries=0):
+  """Performs continuous evaluation on checkpoints written to a model directory.
+
+  Args:
+    estimator: Estimator object to use for evaluation.
+    model_dir: Model directory to read checkpoints for continuous evaluation.
+    input_fn: Input function to use for evaluation.
+    train_steps: Number of training steps. This is used to infer the last
+      checkpoint and stop evaluation loop.
+    name: Namescope for eval summary.
+    max_retries: Maximum number of times to retry the evaluation on encountering
+      a tf.errors.InvalidArgumentError. If negative, will always retry the
+      evaluation.
+  """
+  for current_step, eval_results in continuous_eval_generator(
+      estimator, model_dir, input_fn, train_steps, name, max_retries):
+    tf.logging.info('Step %s, Eval results: %s', current_step, eval_results)
 
 
 def populate_experiment(run_config,

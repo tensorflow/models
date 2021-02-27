@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Helper functions for running models in a distributed setting."""
 
 import json
@@ -127,6 +127,15 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   if num_gpus < 0:
     raise ValueError("`num_gpus` can not be negative.")
 
+  if not isinstance(distribution_strategy, str):
+    msg = ("distribution_strategy must be a string but got: %s." %
+           (distribution_strategy,))
+    if distribution_strategy == False:  # pylint: disable=singleton-comparison,g-explicit-bool-comparison
+      msg += (" If you meant to pass the string 'off', make sure you add "
+              "quotes around 'off' so that yaml interprets it as a string "
+              "instead of a bool.")
+    raise ValueError(msg)
+
   distribution_strategy = distribution_strategy.lower()
   if distribution_strategy == "off":
     if num_gpus > 1:
@@ -137,7 +146,7 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   if distribution_strategy == "tpu":
     # When tpu_address is an empty string, we communicate with local TPUs.
     cluster_resolver = tpu_initialize(tpu_address)
-    return tf.distribute.experimental.TPUStrategy(cluster_resolver)
+    return tf.distribute.TPUStrategy(cluster_resolver)
 
   if distribution_strategy == "multi_worker_mirrored":
     return tf.distribute.experimental.MultiWorkerMirroredStrategy(

@@ -1,7 +1,7 @@
 # Object Detection Models on TensorFlow 2
 
-**Note**: This repository is still under construction.
-More features and instructions will be added soon.
+**WARNING**: This repository will be deprecated and replaced by the solid
+implementations inside vision/beta/.
 
 ## Prerequsite
 To get started, download the code from TensorFlow models GitHub repository or

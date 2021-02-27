@@ -28,6 +28,7 @@ class ASPP(tf.keras.layers.Layer):
                level,
                dilation_rates,
                num_filters=256,
+               pool_kernel_size=None,
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
@@ -43,6 +44,9 @@ class ASPP(tf.keras.layers.Layer):
       level: `int` level to apply ASPP.
       dilation_rates: `list` of dilation rates.
       num_filters: `int` number of output filters in ASPP.
+      pool_kernel_size: `list` of [height, width] of pooling kernel size or
+        None. Pooling size is with respect to original image size, it will be
+        scaled down by 2**level. If None, global average pooling is used.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float` normalization omentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
@@ -60,6 +64,7 @@ class ASPP(tf.keras.layers.Layer):
         'level': level,
         'dilation_rates': dilation_rates,
         'num_filters': num_filters,
+        'pool_kernel_size': pool_kernel_size,
         'use_sync_bn': use_sync_bn,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
@@ -71,9 +76,16 @@ class ASPP(tf.keras.layers.Layer):
     }
 
   def build(self, input_shape):
+    pool_kernel_size = None
+    if self._config_dict['pool_kernel_size']:
+      pool_kernel_size = [
+          int(p_size // 2**self._config_dict['level'])
+          for p_size in self._config_dict['pool_kernel_size']
+      ]
     self.aspp = keras_cv.layers.SpatialPyramidPooling(
         output_channels=self._config_dict['num_filters'],
         dilation_rates=self._config_dict['dilation_rates'],
+        pool_kernel_size=pool_kernel_size,
         use_sync_bn=self._config_dict['use_sync_bn'],
         batchnorm_momentum=self._config_dict['norm_momentum'],
         batchnorm_epsilon=self._config_dict['norm_epsilon'],

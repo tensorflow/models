@@ -407,3 +407,89 @@ class GenericDetectionGenerator(object):
     nmsed_classes += 1
 
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
+
+
+class OlnDetectionGenerator(GenericDetectionGenerator):
+  """Generates the final detected boxes with scores and classes."""
+
+  def __call__(self, box_outputs, class_outputs, anchor_boxes, image_shape,
+               is_single_fg_score=False, keep_nms=True):
+    """Generate final detections for Object Localization Network (OLN).
+
+    Args:
+      box_outputs: a tensor of shape of [batch_size, K, num_classes * 4]
+        representing the class-specific box coordinates relative to anchors.
+      class_outputs: a tensor of shape of [batch_size, K, num_classes]
+        representing the class logits before applying score activiation.
+      anchor_boxes: a tensor of shape of [batch_size, K, 4] representing the
+        corresponding anchor boxes w.r.t `box_outputs`.
+      image_shape: a tensor of shape of [batch_size, 2] storing the image height
+        and width w.r.t. the scaled image, i.e. the same image space as
+        `box_outputs` and `anchor_boxes`.
+      is_single_fg_score: a Bool indicator of whether class_outputs includes the
+        background scores concatenated or not. By default, class_outputs is a
+        concatenation of both scores for the foreground and background. That is,
+        scores_without_bg=False.
+      keep_nms: a Bool indicator of whether to perform NMS or not.
+
+    Returns:
+      nms_boxes: `float` Tensor of shape [batch_size, max_total_size, 4]
+        representing top detected boxes in [y1, x1, y2, x2].
+      nms_scores: `float` Tensor of shape [batch_size, max_total_size]
+        representing sorted confidence scores for detected boxes. The values are
+        between [0, 1].
+      nms_classes: `int` Tensor of shape [batch_size, max_total_size]
+        representing classes for detected boxes.
+      valid_detections: `int` Tensor of shape [batch_size] only the top
+        `valid_detections` boxes are valid detections.
+    """
+    if is_single_fg_score:
+      # Concatenates dummy background scores.
+      dummy_bg_scores = tf.zeros_like(class_outputs)
+      class_outputs = tf.stack([dummy_bg_scores, class_outputs], -1)
+    else:
+      class_outputs = tf.nn.softmax(class_outputs, axis=-1)
+
+    # Removes the background class.
+    class_outputs_shape = tf.shape(class_outputs)
+    batch_size = class_outputs_shape[0]
+    num_locations = class_outputs_shape[1]
+    num_classes = class_outputs_shape[-1]
+    num_detections = num_locations * (num_classes - 1)
+
+    class_outputs = tf.slice(class_outputs, [0, 0, 1], [-1, -1, -1])
+    box_outputs = tf.reshape(
+        box_outputs,
+        tf.stack([batch_size, num_locations, num_classes, 4], axis=-1))
+    box_outputs = tf.slice(box_outputs, [0, 0, 1, 0], [-1, -1, -1, -1])
+    anchor_boxes = tf.tile(
+        tf.expand_dims(anchor_boxes, axis=2), [1, 1, num_classes - 1, 1])
+    box_outputs = tf.reshape(box_outputs,
+                             tf.stack([batch_size, num_detections, 4], axis=-1))
+    anchor_boxes = tf.reshape(
+        anchor_boxes, tf.stack([batch_size, num_detections, 4], axis=-1))
+
+    # Box decoding. For RPN outputs, box_outputs are all zeros.
+    decoded_boxes = box_utils.decode_boxes(
+        box_outputs, anchor_boxes, weights=[10.0, 10.0, 5.0, 5.0])
+
+    # Box clipping
+    decoded_boxes = box_utils.clip_boxes(decoded_boxes, image_shape)
+
+    decoded_boxes = tf.reshape(
+        decoded_boxes,
+        tf.stack([batch_size, num_locations, num_classes - 1, 4], axis=-1))
+
+    if keep_nms:
+      nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections = (
+          self._generate_detections(decoded_boxes, class_outputs))
+      # Adds 1 to offset the background class which has index 0.
+      nmsed_classes += 1
+    else:
+      nmsed_boxes = decoded_boxes[:, :, 0, :]
+      nmsed_scores = class_outputs[:, :, 0]
+      nmsed_classes = tf.cast(tf.ones_like(nmsed_scores), tf.int32)
+      valid_detections = tf.cast(
+          tf.reduce_sum(tf.ones_like(nmsed_scores), axis=-1), tf.int32)
+
+    return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections

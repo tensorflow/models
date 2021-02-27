@@ -26,9 +26,15 @@ from official.vision.beta.modeling.backbones import mobilenet
 
 class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.parameters('MobileNetV1', 'MobileNetV2',
-                            'MobileNetV3Large', 'MobileNetV3Small',
-                            'MobileNetV3EdgeTPU')
+  @parameterized.parameters(
+      'MobileNetV1',
+      'MobileNetV2',
+      'MobileNetV3Large',
+      'MobileNetV3Small',
+      'MobileNetV3EdgeTPU',
+      'MobileNetMultiAVG',
+      'MobileNetMultiMAX',
+  )
   def test_serialize_deserialize(self, model_id):
     # Create a network object that sets all of its config options.
     kwargs = dict(
@@ -62,9 +68,18 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(network.get_config(), new_network.get_config())
 
   @parameterized.parameters(
-      itertools.product((1, 3),
-                        ('MobileNetV1', 'MobileNetV2', 'MobileNetV3Large',
-                         'MobileNetV3Small', 'MobileNetV3EdgeTPU')))
+      itertools.product(
+          [1, 3],
+          [
+              'MobileNetV1',
+              'MobileNetV2',
+              'MobileNetV3Large',
+              'MobileNetV3Small',
+              'MobileNetV3EdgeTPU',
+              'MobileNetMultiAVG',
+              'MobileNetMultiMAX',
+          ],
+      ))
   def test_input_specs(self, input_dim, model_id):
     """Test different input feature dimensions."""
     tf.keras.backend.set_image_data_format('channels_last')
@@ -75,182 +90,88 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     inputs = tf.keras.Input(shape=(128, 128, input_dim), batch_size=1)
     _ = network(inputs)
 
-  @parameterized.parameters(32, 224)
-  def test_mobilenet_v1_creation(self, input_size):
-    """Test creation of EfficientNet family models."""
+  @parameterized.parameters(
+      itertools.product(
+          [
+              'MobileNetV1',
+              'MobileNetV2',
+              'MobileNetV3Large',
+              'MobileNetV3Small',
+              'MobileNetV3EdgeTPU',
+              'MobileNetMultiAVG',
+              'MobileNetMultiMAX',
+          ],
+          [32, 224],
+      ))
+  def test_mobilenet_creation(self, model_id,
+                              input_size):
+    """Test creation of MobileNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
 
-    network = mobilenet.MobileNet(model_id='MobileNetV1',
+    mobilenet_layers = {
+        # The stride (relative to input) and number of filters
+        # of first few layers for filter_size_scale = 0.75
+        'MobileNetV1': [(1, 24), (1, 48), (2, 96), (2, 96)],
+        'MobileNetV2': [(1, 24), (1, 16), (2, 24), (2, 24)],
+        'MobileNetV3Small': [(1, 16), (2, 16), (3, 24), (3, 24)],
+        'MobileNetV3Large': [(1, 16), (1, 16), (2, 24), (2, 24)],
+        'MobileNetV3EdgeTPU': [(1, 24), (1, 16), (2, 24), (2, 24)],
+        'MobileNetMultiMAX': [(1, 24), (2, 24), (3, 48), (3, 48)],
+        'MobileNetMultiAVG': [(1, 24), (2, 24), (2, 24), (3, 48)],
+    }
+
+    network = mobilenet.MobileNet(model_id=model_id,
                                   filter_size_scale=0.75)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 24],
-                        endpoints[1].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 48],
-                        endpoints[2].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 96],
-                        endpoints[3].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 96],
-                        endpoints[4].shape.as_list())
+    for idx, (stride, num_filter) in enumerate(mobilenet_layers[model_id]):
+      self.assertAllEqual(
+          [1, input_size / 2 ** stride, input_size / 2 ** stride, num_filter],
+          endpoints[idx+1].shape.as_list())
 
-  @parameterized.parameters(32, 224)
-  def test_mobilenet_v2_creation(self, input_size):
-    """Test creation of EfficientNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
-
-    network = mobilenet.MobileNet(model_id='MobileNetV2',
-                                  filter_size_scale=1.0)
-
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
-    endpoints = network(inputs)
-
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 32],
-                        endpoints[1].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 16],
-                        endpoints[2].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 24],
-                        endpoints[3].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 24],
-                        endpoints[4].shape.as_list())
-
-  @parameterized.parameters(32, 224)
-  def test_mobilenet_v3_small_creation(self, input_size):
-    """Test creation of EfficientNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
-
-    network = mobilenet.MobileNet(model_id='MobileNetV3Small',
-                                  filter_size_scale=0.75)
-
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
-    endpoints = network(inputs)
-
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 16],
-                        endpoints[1].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 16],
-                        endpoints[2].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 3, input_size / 2 ** 3, 24],
-                        endpoints[3].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 3, input_size / 2 ** 3, 24],
-                        endpoints[4].shape.as_list())
-
-  @parameterized.parameters(32, 224)
-  def test_mobilenet_v3_large_creation(self, input_size):
-    """Test creation of EfficientNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
-
-    network = mobilenet.MobileNet(model_id='MobileNetV3Large',
-                                  filter_size_scale=0.75)
-
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
-    endpoints = network(inputs)
-
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 16],
-                        endpoints[1].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 16],
-                        endpoints[2].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 24],
-                        endpoints[3].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 24],
-                        endpoints[4].shape.as_list())
-
-  @parameterized.parameters(32, 224)
-  def test_mobilenet_v3_edgetpu_creation(self, input_size):
-    """Test creation of EfficientNet family models."""
-    tf.keras.backend.set_image_data_format('channels_last')
-
-    network = mobilenet.MobileNet(model_id='MobileNetV3EdgeTPU',
-                                  filter_size_scale=0.75)
-
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
-    endpoints = network(inputs)
-
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 24],
-                        endpoints[1].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 1, input_size / 2 ** 1, 16],
-                        endpoints[2].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 24],
-                        endpoints[3].shape.as_list())
-    self.assertAllEqual([1, input_size / 2 ** 2, input_size / 2 ** 2, 24],
-                        endpoints[4].shape.as_list())
-
-  @parameterized.parameters(1.0, 0.75)
-  def test_mobilenet_v1_scaling(self, filter_size_scale):
-    mobilenet_v1_params = {
-        1.0: 3228864,
-        0.75: 1832976
+  @parameterized.parameters(
+      itertools.product(
+          [
+              'MobileNetV1',
+              'MobileNetV2',
+              'MobileNetV3Large',
+              'MobileNetV3Small',
+              'MobileNetV3EdgeTPU',
+              'MobileNetMultiAVG',
+              'MobileNetMultiMAX',
+          ],
+          [1.0, 0.75],
+      ))
+  def test_mobilenet_scaling(self, model_id,
+                             filter_size_scale):
+    """Test for creation of a MobileNet classifier."""
+    mobilenet_params = {
+        ('MobileNetV1', 1.0): 3228864,
+        ('MobileNetV1', 0.75): 1832976,
+        ('MobileNetV2', 1.0): 2257984,
+        ('MobileNetV2', 0.75): 1382064,
+        ('MobileNetV3Large', 1.0): 4226432,
+        ('MobileNetV3Large', 0.75): 2731616,
+        ('MobileNetV3Small', 1.0): 1529968,
+        ('MobileNetV3Small', 0.75): 1026552,
+        ('MobileNetV3EdgeTPU', 1.0): 2849312,
+        ('MobileNetV3EdgeTPU', 0.75): 1737288,
+        ('MobileNetMultiAVG', 1.0): 3700576,
+        ('MobileNetMultiAVG', 0.75): 2345864,
+        ('MobileNetMultiMAX', 1.0): 3170720,
+        ('MobileNetMultiMAX', 0.75): 2041976,
     }
 
     input_size = 224
-    network = mobilenet.MobileNet(model_id='MobileNetV1',
+    network = mobilenet.MobileNet(model_id=model_id,
                                   filter_size_scale=filter_size_scale)
     self.assertEqual(network.count_params(),
-                     mobilenet_v1_params[filter_size_scale])
+                     mobilenet_params[(model_id, filter_size_scale)])
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     _ = network(inputs)
 
-  @parameterized.parameters(1.0, 0.75)
-  def test_mobilenet_v2_scaling(self, filter_size_scale):
-    mobilenet_v2_params = {
-        1.0: 2257984,
-        0.75: 1382064
-    }
-
-    input_size = 224
-    network = mobilenet.MobileNet(model_id='MobileNetV2',
-                                  filter_size_scale=filter_size_scale)
-    self.assertEqual(network.count_params(),
-                     mobilenet_v2_params[filter_size_scale])
-
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
-    _ = network(inputs)
-
-  @parameterized.parameters(1.0, 0.75)
-  def test_mobilenet_v3_large_scaling(self, filter_size_scale):
-    mobilenet_v3_large_params = {
-        1.0: 4226432,
-        0.75: 2731616
-    }
-
-    input_size = 224
-    network = mobilenet.MobileNet(model_id='MobileNetV3Large',
-                                  filter_size_scale=filter_size_scale)
-    self.assertEqual(network.count_params(),
-                     mobilenet_v3_large_params[filter_size_scale])
-
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
-    _ = network(inputs)
-
-  @parameterized.parameters(1.0, 0.75)
-  def test_mobilenet_v3_small_scaling(self, filter_size_scale):
-    mobilenet_v3_small_params = {
-        1.0: 1529968,
-        0.75: 1026552
-    }
-
-    input_size = 224
-    network = mobilenet.MobileNet(model_id='MobileNetV3Small',
-                                  filter_size_scale=filter_size_scale)
-    self.assertEqual(network.count_params(),
-                     mobilenet_v3_small_params[filter_size_scale])
-
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
-    _ = network(inputs)
-
-  @parameterized.parameters(1.0, 0.75)
-  def test_mobilenet_v3_edgetpu_scaling(self, filter_size_scale):
-    mobilenet_v3_edgetpu_params = {
-        1.0: 2849312,
-        0.75: 1737288
-    }
-
-    input_size = 224
-    network = mobilenet.MobileNet(model_id='MobileNetV3EdgeTPU',
-                                  filter_size_scale=filter_size_scale)
-    self.assertEqual(network.count_params(),
-                     mobilenet_v3_edgetpu_params[filter_size_scale])
-
-    inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
-    _ = network(inputs)
+if __name__ == '__main__':
+  tf.test.main()

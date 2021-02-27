@@ -570,15 +570,17 @@ def _resize_detection_masks(arg_tuple):
 
   Returns:
   """
+
   detection_boxes, detection_masks, image_shape, pad_shape = arg_tuple
+
   detection_masks_reframed = ops.reframe_box_masks_to_image_masks(
       detection_masks, detection_boxes, image_shape[0], image_shape[1])
-  paddings = tf.concat(
-      [tf.zeros([3, 1], dtype=tf.int32),
-       tf.expand_dims(
-           tf.concat([tf.zeros([1], dtype=tf.int32),
-                      pad_shape-image_shape], axis=0),
-           1)], axis=1)
+
+  pad_instance_dim = tf.zeros([3, 1], dtype=tf.int32)
+  pad_hw_dim = tf.concat([tf.zeros([1], dtype=tf.int32),
+                          pad_shape - image_shape], axis=0)
+  pad_hw_dim = tf.expand_dims(pad_hw_dim, 1)
+  paddings = tf.concat([pad_instance_dim, pad_hw_dim], axis=1)
   detection_masks_reframed = tf.pad(detection_masks_reframed, paddings)
 
   # If the masks are currently float, binarize them. Otherwise keep them as
@@ -770,7 +772,8 @@ def result_dict_for_batched_example(images,
                                     scale_to_absolute=False,
                                     original_image_spatial_shapes=None,
                                     true_image_shapes=None,
-                                    max_gt_boxes=None):
+                                    max_gt_boxes=None,
+                                    label_id_offset=1):
   """Merges all detection and groundtruth information for a single example.
 
   Note that evaluation tools require classes that are 1-indexed, and so this
@@ -825,6 +828,7 @@ def result_dict_for_batched_example(images,
       containing the size of the unpadded original_image.
     max_gt_boxes: [batch_size] tensor representing the maximum number of
       groundtruth boxes to pad.
+    label_id_offset: offset for class ids.
 
   Returns:
     A dictionary with:
@@ -879,8 +883,6 @@ def result_dict_for_batched_example(images,
     ValueError: if true_image_shapes is not 2D int32 tensor of shape
       [3].
   """
-  label_id_offset = 1  # Applying label id offset (b/63711816)
-
   input_data_fields = fields.InputDataFields
   if original_image_spatial_shapes is None:
     original_image_spatial_shapes = tf.tile(
@@ -1177,6 +1179,12 @@ def evaluator_options_from_eval_config(eval_config):
           'include_metrics_per_category': (
               eval_config.include_metrics_per_category)
       }
+
+      if (hasattr(eval_config, 'all_metrics_per_category') and
+          eval_config.all_metrics_per_category):
+        evaluator_options[eval_metric_fn_key].update({
+            'all_metrics_per_category': eval_config.all_metrics_per_category
+        })
       # For coco detection eval, if the eval_config proto contains the
       # "skip_predictions_for_unlabeled_class" field, include this field in
       # evaluator_options.

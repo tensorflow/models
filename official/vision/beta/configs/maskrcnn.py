@@ -31,11 +31,13 @@ from official.vision.beta.configs import decoders
 @dataclasses.dataclass
 class TfExampleDecoder(hyperparams.Config):
   regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
 
 
 @dataclasses.dataclass
 class TfExampleDecoderLabelMap(hyperparams.Config):
   regenerate_source_id: bool = False
+  mask_binarize_threshold: Optional[float] = None
   label_map: str = ''
 
 
@@ -73,6 +75,7 @@ class DataConfig(cfg.DataConfig):
   decoder: DataDecoder = DataDecoder()
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10000
+  file_type: str = 'tfrecord'
 
 
 @dataclasses.dataclass
@@ -207,7 +210,6 @@ class MaskRCNNTask(cfg.TaskConfig):
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
   annotation_file: Optional[str] = None
-  gradient_clip_norm: float = 0.0
   per_category_metrics: bool = False
   # If set, we only use masks for the specified class IDs.
   allowed_mask_class_ids: Optional[List[int]] = None

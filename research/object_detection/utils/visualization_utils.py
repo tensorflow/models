@@ -664,6 +664,10 @@ def draw_side_by_side_evaluation_image(eval_dict,
           key != input_data_fields.image_additional_channels):
         eval_dict[key] = tf.expand_dims(eval_dict[key], 0)
 
+  num_gt_boxes = [-1] * eval_dict[input_data_fields.original_image].shape[0]
+  if input_data_fields.num_groundtruth_boxes in eval_dict:
+    num_gt_boxes = tf.cast(eval_dict[input_data_fields.num_groundtruth_boxes],
+                           tf.int32)
   for indx in range(eval_dict[input_data_fields.original_image].shape[0]):
     instance_masks = None
     if detection_fields.detection_masks in eval_dict:
@@ -702,7 +706,6 @@ def draw_side_by_side_evaluation_image(eval_dict,
         groundtruth_keypoint_scores = tf.cast(
             keypoint_ops.set_keypoint_visibilities(
                 groundtruth_keypoints), dtype=tf.float32)
-
     images_with_detections = draw_bounding_boxes_on_image_tensors(
         tf.expand_dims(
             eval_dict[input_data_fields.original_image][indx], axis=0),
@@ -725,16 +728,23 @@ def draw_side_by_side_evaluation_image(eval_dict,
         max_boxes_to_draw=max_boxes_to_draw,
         min_score_thresh=min_score_thresh,
         use_normalized_coordinates=use_normalized_coordinates)
+    num_gt_boxes_i = num_gt_boxes[indx]
     images_with_groundtruth = draw_bounding_boxes_on_image_tensors(
         tf.expand_dims(
-            eval_dict[input_data_fields.original_image][indx], axis=0),
+            eval_dict[input_data_fields.original_image][indx],
+            axis=0),
         tf.expand_dims(
-            eval_dict[input_data_fields.groundtruth_boxes][indx], axis=0),
+            eval_dict[input_data_fields.groundtruth_boxes][indx]
+            [:num_gt_boxes_i],
+            axis=0),
         tf.expand_dims(
-            eval_dict[input_data_fields.groundtruth_classes][indx], axis=0),
+            eval_dict[input_data_fields.groundtruth_classes][indx]
+            [:num_gt_boxes_i],
+            axis=0),
         tf.expand_dims(
             tf.ones_like(
-                eval_dict[input_data_fields.groundtruth_classes][indx],
+                eval_dict[input_data_fields.groundtruth_classes][indx]
+                [:num_gt_boxes_i],
                 dtype=tf.float32),
             axis=0),
         category_index,
@@ -760,13 +770,17 @@ def draw_side_by_side_evaluation_image(eval_dict,
                   eval_dict[input_data_fields.image_additional_channels][indx],
                   axis=0),
               tf.expand_dims(
-                  eval_dict[input_data_fields.groundtruth_boxes][indx], axis=0),
+                  eval_dict[input_data_fields.groundtruth_boxes][indx]
+                  [:num_gt_boxes_i],
+                  axis=0),
               tf.expand_dims(
-                  eval_dict[input_data_fields.groundtruth_classes][indx],
+                  eval_dict[input_data_fields.groundtruth_classes][indx]
+                  [:num_gt_boxes_i],
                   axis=0),
               tf.expand_dims(
                   tf.ones_like(
-                      eval_dict[input_data_fields.groundtruth_classes][indx],
+                      eval_dict[input_data_fields.groundtruth_classes][indx]
+                      [num_gt_boxes_i],
                       dtype=tf.float32),
                   axis=0),
               category_index,
@@ -1098,6 +1112,7 @@ def visualize_boxes_and_labels_on_image_array(
     min_score_thresh=.5,
     agnostic_mode=False,
     line_thickness=4,
+    mask_alpha=.4,
     groundtruth_box_visualization_color='black',
     skip_boxes=False,
     skip_scores=False,
@@ -1143,6 +1158,7 @@ def visualize_boxes_and_labels_on_image_array(
       class-agnostic mode or not.  This mode will display scores but ignore
       classes.
     line_thickness: integer (default: 4) controlling line width of the boxes.
+    mask_alpha: transparency value between 0 and 1 (default: 0.4).
     groundtruth_box_visualization_color: box color for visualizing groundtruth
       boxes
     skip_boxes: whether to skip the drawing of bounding boxes.
@@ -1218,7 +1234,8 @@ def visualize_boxes_and_labels_on_image_array(
       draw_mask_on_image_array(
           image,
           box_to_instance_masks_map[box],
-          color=color
+          color=color,
+          alpha=mask_alpha
       )
     if instance_boundaries is not None:
       draw_mask_on_image_array(

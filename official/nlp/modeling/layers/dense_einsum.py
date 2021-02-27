@@ -24,11 +24,11 @@ _CHR_IDX = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"]
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 class DenseEinsum(tf.keras.layers.Layer):
-  """A densely connected layer that uses tf.einsum as the backing computation.
+  """A densely connected layer that uses `tf.einsum` as the backing computation.
 
   This layer can perform einsum calculations of arbitrary dimensionality.
 
-  Arguments:
+  Args:
     output_shape: Positive integer or tuple, dimensionality of the output space.
     num_summed_dimensions: The number of dimensions to sum over. Standard 2D
       matmul should use 1, 3D matmul should use 2, and so forth.

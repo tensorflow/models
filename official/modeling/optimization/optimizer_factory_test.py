@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for optimizer_factory.py."""
 from absl.testing import parameterized
 import numpy as np
@@ -44,7 +43,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()
-    optimizer = opt_factory.build_optimizer(lr)
+    optimizer = opt_factory.build_optimizer(lr, postprocessor=lambda x: x)
 
     self.assertIsInstance(optimizer, optimizer_cls)
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
@@ -333,6 +332,32 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
         }
     }
     expected_lr_step_values = [[1, 1.0], [250, 1. / 250.]]
+    opt_config = optimization_config.OptimizationConfig(params)
+    opt_factory = optimizer_factory.OptimizerFactory(opt_config)
+    lr = opt_factory.build_learning_rate()
+
+    for step, value in expected_lr_step_values:
+      self.assertAlmostEqual(lr(step).numpy(), value)
+
+  def test_power_linear_lr_schedule(self):
+    params = {
+        'optimizer': {
+            'type': 'sgd',
+            'sgd': {
+                'momentum': 0.9
+            }
+        },
+        'learning_rate': {
+            'type': 'power_linear',
+            'power_linear': {
+                'initial_learning_rate': 1.0,
+                'power': -1.0,
+                'linear_decay_fraction': 0.5,
+                'total_decay_steps': 100,
+            }
+        }
+    }
+    expected_lr_step_values = [[1, 1.0], [40, 1. / 40.], [60, 1. / 60. * 0.8]]
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()

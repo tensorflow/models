@@ -53,10 +53,11 @@ class Seq2SeqTransformer(tf.keras.Model):
                encoder_layer=None,
                decoder_layer=None,
                dtype=tf.float32,
+               eos_id=EOS_ID,
                **kwargs):
     """Initialize layers to build Transformer model.
 
-    Arguments:
+    Args:
       vocab_size: Size of vocabulary.
       embedding_width: Size of hidden layer for embedding.
       dropout_rate: Dropout probability.
@@ -69,6 +70,7 @@ class Seq2SeqTransformer(tf.keras.Model):
       encoder_layer: An initialized encoder layer.
       decoder_layer: An initialized decoder layer.
       dtype: float dtype.
+      eos_id: Id of end of sentence token.
       **kwargs: other keyword arguments.
     """
     super(Seq2SeqTransformer, self).__init__(**kwargs)
@@ -81,6 +83,7 @@ class Seq2SeqTransformer(tf.keras.Model):
     self._beam_size = beam_size
     self._alpha = alpha
     self._dtype = dtype
+    self._eos_id = eos_id
     self.embedding_lookup = keras_nlp.layers.OnDeviceEmbedding(
         vocab_size=self._vocab_size,
         embedding_width=self._embedding_width,
@@ -102,6 +105,7 @@ class Seq2SeqTransformer(tf.keras.Model):
         "padded_decode": self._padded_decode,
         "decode_max_length": self._decode_max_length,
         "dtype": self._dtype,
+        "eos_id": self._eos_id,
         "extra_decode_length": self._extra_decode_length,
         "beam_size": self._beam_size,
         "alpha": self._alpha,
@@ -156,8 +160,8 @@ class Seq2SeqTransformer(tf.keras.Model):
     embedded_inputs = self.embedding_lookup(sources)
     embedding_mask = tf.cast(
         tf.not_equal(sources, 0), self.embedding_lookup.embeddings.dtype)
-    embedded_inputs *= tf.expand_dims(embedding_mask, -1)
     embedded_inputs = tf.cast(embedded_inputs, self._dtype)
+    embedded_inputs *= tf.expand_dims(embedding_mask, -1)
     # Attention_mask generation.
     input_shape = tf_utils.get_shape_list(sources, expected_rank=2)
     attention_mask = tf.cast(
@@ -226,7 +230,7 @@ class Seq2SeqTransformer(tf.keras.Model):
           beam_size=self._beam_size,
           alpha=self._alpha,
           max_decode_length=max_decode_length,
-          eos_id=EOS_ID,
+          eos_id=self._eos_id,
           padded_decode=self._padded_decode,
           dtype=self._dtype)
 
@@ -239,8 +243,8 @@ class Seq2SeqTransformer(tf.keras.Model):
     decoder_inputs = self.embedding_lookup(targets)
     embedding_mask = tf.cast(
         tf.not_equal(targets, 0), self.embedding_lookup.embeddings.dtype)
-    decoder_inputs *= tf.expand_dims(embedding_mask, -1)
     decoder_inputs = tf.cast(decoder_inputs, self._dtype)
+    decoder_inputs *= tf.expand_dims(embedding_mask, -1)
     # Shift targets to the right, and remove the last element
     decoder_inputs = tf.pad(decoder_inputs, [[0, 0], [1, 0], [0, 0]])[:, :-1, :]
     length = tf.shape(decoder_inputs)[1]
@@ -355,7 +359,7 @@ class TransformerEncoder(tf.keras.layers.Layer):
     1. Self-attention layer
     2. Feedforward network (which is 2 fully-connected layers)
 
-  Arguments:
+  Args:
     num_layers: Number of layers.
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate (Feedforward) layer.
@@ -464,7 +468,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
        the previous self-attention layer.
     3. Feedforward network (2 fully-connected layers)
 
-  Arguments:
+  Args:
     num_layers: Number of layers.
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate (Feedforward) layer.
@@ -587,5 +591,6 @@ class TransformerDecoder(tf.keras.layers.Layer):
 
 def attention_initializer(hidden_size):
   """Initializer for attention layers in Seq2SeqTransformer."""
+  hidden_size = int(hidden_size)
   limit = math.sqrt(6.0 / (hidden_size + hidden_size))
   return tf.keras.initializers.RandomUniform(minval=-limit, maxval=limit)

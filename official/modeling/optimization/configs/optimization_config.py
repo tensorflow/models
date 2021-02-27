@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Dataclasses for optimization configs.
 
 This file define the dataclass for optimization configs (OptimizationConfig).
@@ -61,6 +60,8 @@ class LrConfig(oneof.OneOfConfig):
     polynomial: polynomial learning rate config.
     cosine: cosine learning rate config.
     power: step^power learning rate config.
+    power_linear: learning rate config of step^power followed by
+      step^power*linear.
   """
   type: Optional[str] = None
   constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
@@ -69,6 +70,8 @@ class LrConfig(oneof.OneOfConfig):
   polynomial: lr_cfg.PolynomialLrConfig = lr_cfg.PolynomialLrConfig()
   cosine: lr_cfg.CosineLrConfig = lr_cfg.CosineLrConfig()
   power: lr_cfg.DirectPowerLrConfig = lr_cfg.DirectPowerLrConfig()
+  power_linear: lr_cfg.PowerAndLinearDecayLrConfig = (
+      lr_cfg.PowerAndLinearDecayLrConfig())
 
 
 @dataclasses.dataclass

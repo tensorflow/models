@@ -67,6 +67,9 @@ class InputDataFields(object):
     groundtruth_instance_boundaries: ground truth instance boundaries.
     groundtruth_instance_classes: instance mask-level class labels.
     groundtruth_keypoints: ground truth keypoints.
+    groundtruth_keypoint_depths: Relative depth of the keypoints.
+    groundtruth_keypoint_depth_weights: Weights of the relative depth of the
+      keypoints.
     groundtruth_keypoint_visibilities: ground truth keypoint visibilities.
     groundtruth_keypoint_weights: groundtruth weight factor for keypoints.
     groundtruth_label_weights: groundtruth label weights.
@@ -89,6 +92,8 @@ class InputDataFields(object):
       context_features, used for reshaping.
     valid_context_size: the valid context size, used in filtering the padded
       context features.
+    context_features_image_id_list: the list of image source ids corresponding
+      to the features in context_features
     image_format: format for the images, used to decode
     image_height: height of images, used to decode
     image_width: width of images, used to decode
@@ -120,6 +125,8 @@ class InputDataFields(object):
   groundtruth_instance_boundaries = 'groundtruth_instance_boundaries'
   groundtruth_instance_classes = 'groundtruth_instance_classes'
   groundtruth_keypoints = 'groundtruth_keypoints'
+  groundtruth_keypoint_depths = 'groundtruth_keypoint_depths'
+  groundtruth_keypoint_depth_weights = 'groundtruth_keypoint_depth_weights'
   groundtruth_keypoint_visibilities = 'groundtruth_keypoint_visibilities'
   groundtruth_keypoint_weights = 'groundtruth_keypoint_weights'
   groundtruth_label_weights = 'groundtruth_label_weights'
@@ -136,6 +143,7 @@ class InputDataFields(object):
   context_features = 'context_features'
   context_feature_length = 'context_feature_length'
   valid_context_size = 'valid_context_size'
+  context_features_image_id_list = 'context_features_image_id_list'
   image_timestamps = 'image_timestamps'
   image_format = 'image_format'
   image_height = 'image_height'
@@ -159,6 +167,7 @@ class DetectionResultFields(object):
     detection_boundaries: contains an object boundary for each detection box.
     detection_keypoints: contains detection keypoints for each detection box.
     detection_keypoint_scores: contains detection keypoint scores.
+    detection_keypoint_depths: contains detection keypoint depths.
     num_detections: number of detections in the batch.
     raw_detection_boxes: contains decoded detection boxes without Non-Max
       suppression.
@@ -180,6 +189,7 @@ class DetectionResultFields(object):
   detection_boundaries = 'detection_boundaries'
   detection_keypoints = 'detection_keypoints'
   detection_keypoint_scores = 'detection_keypoint_scores'
+  detection_keypoint_depths = 'detection_keypoint_depths'
   detection_embeddings = 'detection_embeddings'
   detection_offsets = 'detection_temporal_offsets'
   num_detections = 'num_detections'
@@ -202,6 +212,8 @@ class BoxListFields(object):
     keypoints: keypoints per bounding box.
     keypoint_visibilities: keypoint visibilities per bounding box.
     keypoint_heatmaps: keypoint heatmaps per bounding box.
+    keypoint_depths: keypoint depths per bounding box.
+    keypoint_depth_weights: keypoint depth weights per bounding box.
     densepose_num_points: number of DensePose points per bounding box.
     densepose_part_ids: DensePose part ids per bounding box.
     densepose_surface_coords: DensePose surface coordinates per bounding box.
@@ -220,6 +232,8 @@ class BoxListFields(object):
   keypoints = 'keypoints'
   keypoint_visibilities = 'keypoint_visibilities'
   keypoint_heatmaps = 'keypoint_heatmaps'
+  keypoint_depths = 'keypoint_depths'
+  keypoint_depth_weights = 'keypoint_depth_weights'
   densepose_num_points = 'densepose_num_points'
   densepose_part_ids = 'densepose_part_ids'
   densepose_surface_coords = 'densepose_surface_coords'

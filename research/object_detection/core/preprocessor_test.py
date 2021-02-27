@@ -105,6 +105,17 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
         ])
     return keypoints, keypoint_visibilities
 
+  def createTestKeypointDepths(self):
+    keypoint_depths = tf.constant([
+        [1.0, 0.9, 0.8],
+        [0.7, 0.6, 0.5]
+    ], dtype=tf.float32)
+    keypoint_depth_weights = tf.constant([
+        [0.5, 0.6, 0.7],
+        [0.8, 0.9, 1.0]
+    ], dtype=tf.float32)
+    return keypoint_depths, keypoint_depth_weights
+
   def createTestKeypointsInsideCrop(self):
     keypoints = np.array([
         [[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]],
@@ -712,6 +723,59 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
                                 test_masks=True,
                                 test_keypoints=True)
 
+
+  def testRunRandomHorizontalFlipWithKeypointDepth(self):
+
+    def graph_fn():
+      preprocess_options = [(preprocessor.random_horizontal_flip, {})]
+      image_height = 3
+      image_width = 3
+      images = tf.random_uniform([1, image_height, image_width, 3])
+      boxes = self.createTestBoxes()
+      masks = self.createTestMasks()
+      keypoints, keypoint_visibilities = self.createTestKeypoints()
+      keypoint_depths, keypoint_depth_weights = self.createTestKeypointDepths()
+      keypoint_flip_permutation = self.createKeypointFlipPermutation()
+      tensor_dict = {
+          fields.InputDataFields.image:
+              images,
+          fields.InputDataFields.groundtruth_boxes:
+              boxes,
+          fields.InputDataFields.groundtruth_instance_masks:
+              masks,
+          fields.InputDataFields.groundtruth_keypoints:
+              keypoints,
+          fields.InputDataFields.groundtruth_keypoint_visibilities:
+              keypoint_visibilities,
+          fields.InputDataFields.groundtruth_keypoint_depths:
+              keypoint_depths,
+          fields.InputDataFields.groundtruth_keypoint_depth_weights:
+              keypoint_depth_weights,
+      }
+      preprocess_options = [(preprocessor.random_horizontal_flip, {
+          'keypoint_flip_permutation': keypoint_flip_permutation,
+          'probability': 1.0
+      })]
+      preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+          include_instance_masks=True,
+          include_keypoints=True,
+          include_keypoint_visibilities=True,
+          include_dense_pose=False,
+          include_keypoint_depths=True)
+      tensor_dict = preprocessor.preprocess(
+          tensor_dict, preprocess_options, func_arg_map=preprocessor_arg_map)
+      keypoint_depths = tensor_dict[
+          fields.InputDataFields.groundtruth_keypoint_depths]
+      keypoint_depth_weights = tensor_dict[
+          fields.InputDataFields.groundtruth_keypoint_depth_weights]
+      output_tensors = [keypoint_depths, keypoint_depth_weights]
+      return output_tensors
+
+    output_tensors = self.execute_cpu(graph_fn, [])
+    expected_keypoint_depths = [[1.0, 0.8, 0.9], [0.7, 0.5, 0.6]]
+    expected_keypoint_depth_weights = [[0.5, 0.7, 0.6], [0.8, 1.0, 0.9]]
+    self.assertAllClose(expected_keypoint_depths, output_tensors[0])
+    self.assertAllClose(expected_keypoint_depth_weights, output_tensors[1])
 
   def testRandomVerticalFlip(self):
 
@@ -3956,6 +4020,28 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
 
     self.assertLen(boxes, 2)
     self.assertAllEqual(confidences, [-1.0, 1.0])
+
+  def testAdjustGamma(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.normalize_image, {
+          'original_minval': 0,
+          'original_maxval': 255,
+          'target_minval': 0,
+          'target_maxval': 1
+      }))
+      preprocessing_options.append((preprocessor.adjust_gamma, {}))
+      images_original = self.createTestImages()
+      tensor_dict = {fields.InputDataFields.image: images_original}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      images_gamma = tensor_dict[fields.InputDataFields.image]
+      image_original_shape = tf.shape(images_original)
+      image_gamma_shape = tf.shape(images_gamma)
+      return [image_original_shape, image_gamma_shape]
+
+    (image_original_shape_, image_gamma_shape_) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(image_original_shape_, image_gamma_shape_)
 
 
 if __name__ == '__main__':

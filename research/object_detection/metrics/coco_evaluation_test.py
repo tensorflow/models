@@ -390,7 +390,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
                   np.array([1]),
               # Only class 1 is exhaustively labeled for image1.
               groundtruth_labeled_classes:
-                  np.array([1]),
+                  np.array([0., 1., 0., 0.]),
               detection_boxes:
                   np.array([[100., 100., 200., 200.], [100., 100., 200.,
                                                        200.]]),
@@ -405,7 +405,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
               image_id: 'image2',
               groundtruth_boxes: np.array([[50., 50., 100., 100.]]),
               groundtruth_classes: np.array([3]),
-              groundtruth_labeled_classes: np.array([3]),
+              groundtruth_labeled_classes: np.array([0., 0., 0., 1.]),
               detection_boxes: np.array([[50., 50., 100., 100.]]),
               detection_scores: np.array([.7]),
               detection_classes: np.array([3])
@@ -416,7 +416,7 @@ class CocoEvaluationPyFuncTest(tf.test.TestCase):
               image_id: 'image3',
               groundtruth_boxes: np.array([[25., 25., 50., 50.]]),
               groundtruth_classes: np.array([2]),
-              groundtruth_labeled_classes: np.array([2]),
+              groundtruth_labeled_classes: np.array([0., 0., 1., 0.]),
               detection_boxes: np.array([[25., 25., 50., 50.]]),
               detection_scores: np.array([.9]),
               detection_classes: np.array([2])

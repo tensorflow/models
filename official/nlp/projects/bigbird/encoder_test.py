@@ -27,7 +27,7 @@ class BigBirdEncoderTest(tf.test.TestCase):
     batch_size = 2
     vocab_size = 1024
     network = encoder.BigBirdEncoder(
-        num_layers=1, vocab_size=1024, max_sequence_length=4096)
+        num_layers=1, vocab_size=1024, max_position_embeddings=4096)
     word_id_data = np.random.randint(
         vocab_size, size=(batch_size, sequence_length))
     mask_data = np.random.randint(2, size=(batch_size, sequence_length))
@@ -41,7 +41,7 @@ class BigBirdEncoderTest(tf.test.TestCase):
     batch_size = 2
     vocab_size = 1024
     network = encoder.BigBirdEncoder(
-        num_layers=1, vocab_size=1024, max_sequence_length=4096)
+        num_layers=1, vocab_size=1024, max_position_embeddings=4096)
     word_id_data = np.random.randint(
         vocab_size, size=(batch_size, sequence_length))
     mask_data = np.random.randint(2, size=(batch_size, sequence_length))

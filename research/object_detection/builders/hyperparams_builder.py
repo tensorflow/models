@@ -20,7 +20,11 @@ import tf_slim as slim
 from object_detection.core import freezable_batch_norm
 from object_detection.protos import hyperparams_pb2
 from object_detection.utils import context_manager
+from object_detection.utils import tf_version
 
+# pylint: disable=g-import-not-at-top
+if tf_version.is_tf2():
+  from object_detection.core import freezable_sync_batch_norm
 # pylint: enable=g-import-not-at-top
 
 
@@ -60,9 +64,14 @@ class KerasLayerHyperparams(object):
                        'hyperparams_pb.Hyperparams.')
 
     self._batch_norm_params = None
+    self._use_sync_batch_norm = False
     if hyperparams_config.HasField('batch_norm'):
       self._batch_norm_params = _build_keras_batch_norm_params(
           hyperparams_config.batch_norm)
+    elif hyperparams_config.HasField('sync_batch_norm'):
+      self._use_sync_batch_norm = True
+      self._batch_norm_params = _build_keras_batch_norm_params(
+          hyperparams_config.sync_batch_norm)
 
     self._force_use_bias = hyperparams_config.force_use_bias
     self._activation_fn = _build_activation_fn(hyperparams_config.activation)
@@ -133,10 +142,12 @@ class KerasLayerHyperparams(object):
       is False)
     """
     if self.use_batch_norm():
-      return freezable_batch_norm.FreezableBatchNorm(
-          training=training,
-          **self.batch_norm_params(**overrides)
-      )
+      if self._use_sync_batch_norm:
+        return freezable_sync_batch_norm.FreezableSyncBatchNorm(
+            training=training, **self.batch_norm_params(**overrides))
+      else:
+        return freezable_batch_norm.FreezableBatchNorm(
+            training=training, **self.batch_norm_params(**overrides))
     else:
       return tf.keras.layers.Lambda(tf.identity)
 
@@ -217,6 +228,10 @@ def build(hyperparams_config, is_training):
 
   if hyperparams_config.force_use_bias:
     raise ValueError('Hyperparams force_use_bias only supported by '
+                     'KerasLayerHyperparams.')
+
+  if hyperparams_config.HasField('sync_batch_norm'):
+    raise ValueError('Hyperparams sync_batch_norm only supported by '
                      'KerasLayerHyperparams.')
 
   normalizer_fn = None

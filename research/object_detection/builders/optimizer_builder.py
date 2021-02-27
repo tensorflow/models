@@ -18,6 +18,12 @@
 import tensorflow.compat.v1 as tf
 
 from object_detection.utils import learning_schedules
+from object_detection.utils import tf_version
+
+# pylint: disable=g-import-not-at-top
+if tf_version.is_tf2():
+  from official.modeling.optimization import ema_optimizer
+# pylint: enable=g-import-not-at-top
 
 try:
   from tensorflow.contrib import opt as tf_opt  # pylint: disable=g-import-not-at-top
@@ -130,7 +136,9 @@ def build_optimizers_tf_v2(optimizer_config, global_step=None):
     raise ValueError('Optimizer %s not supported.' % optimizer_type)
 
   if optimizer_config.use_moving_average:
-    raise ValueError('Moving average not supported in eager mode.')
+    optimizer = ema_optimizer.ExponentialMovingAverage(
+        optimizer=optimizer,
+        average_decay=optimizer_config.moving_average_decay)
 
   return optimizer, summary_vars
 
