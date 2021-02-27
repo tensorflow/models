@@ -3,7 +3,8 @@ This is an implementation of the Transformer translation model as described in
 the [Attention is All You Need](https://arxiv.org/abs/1706.03762) paper. The
 implementation leverages tf.keras and makes sure it is compatible with TF 2.x.
 
-**Warning: this transformer features has been fully intergrated in nlp/modeling.
+**Warning: the features in the `transformer/` folder have been fully intergrated
+into nlp/modeling.
 Due to its dependencies, we will remove this folder after the model
 garden 2.5 release. The model in `nlp/modeling/models/seq2seq_transformer.py` is
 identical to the model in this folder.**
