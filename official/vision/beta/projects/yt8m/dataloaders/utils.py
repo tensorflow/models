@@ -17,7 +17,7 @@ import numpy
 import tensorflow as tf
 from absl import logging
 # from tensorflow import logging
-xrange = range  # Python 3
+Xrange = range  # Python 3
 
 
 def Dequantize(feat_vector, max_quantized_value=2, min_quantized_value=-2):
@@ -165,7 +165,7 @@ def GetListOfFeatureNamesAndSizes(feature_names, feature_sizes):
   return list_of_feature_names, list_of_feature_sizes
 
 
-def clip_gradient_norms(gradients_to_variables, max_norm):
+def ClipGradientNorms(gradients_to_variables, max_norm):
   """Clips the gradients by the given value.
 
   Args:
@@ -187,7 +187,7 @@ def clip_gradient_norms(gradients_to_variables, max_norm):
   return clipped_grads_and_vars
 
 
-def combine_gradients(tower_grads):
+def CombineGradients(tower_grads):
   """Calculate the combined gradient for each shared variable across all towers.
 
   Note that this function provides a synchronization point across all towers.
@@ -205,8 +205,8 @@ def combine_gradients(tower_grads):
       [x for x in grad_list if x[0] is not None] for grad_list in tower_grads
   ]
   final_grads = []
-  for i in xrange(len(filtered_grads[0])):
-    grads = [filtered_grads[t][i] for t in xrange(len(filtered_grads))]
+  for i in Xrange(len(filtered_grads[0])):
+    grads = [filtered_grads[t][i] for t in Xrange(len(filtered_grads))]
     grad = tf.stack([x[0] for x in grads], 0)
     grad = tf.reduce_sum(grad, 0)
     final_grads.append((

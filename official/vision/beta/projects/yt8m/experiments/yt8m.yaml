@@ -1,3 +1,4 @@
+# yt8m config file
 task:
   model:
     cluster_size: 8192
