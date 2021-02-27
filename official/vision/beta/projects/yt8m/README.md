@@ -54,34 +54,28 @@ Working examples can be found in yt8m/experiments directory.
 ```sh
 task:
   model:
-    iterations: 30
-    cluster_size: 8192
-    hidden_size: 1024
+    cluster_size: 2048
+    hidden_size: 2048
     add_batch_norm: true
     sample_random_frames: true
     is_training: true
-    activation: "sigmoid"
-    pooling_method: "max"
+    activation: "relu6"
+    pooling_method: "average"
     yt8m_agg_classifier_model: "MoeModel"
   train_data:
-    segment_size: 1
     segment_labels: false
     temporal_stride: 1
-    max_frames: 300
-    num_frames: 300
-    num_channels: 3
     num_devices: 1
     input_path: 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
     num_examples: 3888919
-    random_sample: true
-    random_seed: 123
-  valid_data:
  ...
 ```
 
-The code can be run in three different modes: `train / train_and_eval / eval`.   
-Run `yt8m_train.py` and specify which mode you wish to execute. Training is done
-using frame-level features, while inference is done at segment-level.
+The code can be run in different modes: `train / train_and_eval / eval`.   
+Run `yt8m_train.py` and specify which mode you wish to execute. 
+Training is done using frame-level features with video-level labels, while inference can be done at segment-level.
+Setting `segment_labels=True` in your configuration forces the segment level labels 
+to be used in the evaluation/validation phrase. If set to `False`, video level labels are used for inference.
 
 The following commands will train a model on Google Cloud over frame-level
 features.
@@ -106,10 +100,7 @@ python3 yt8m_train.py --mode='train_and_eval' \
      --config_file=$CONFIG_FILE \
 ```
 
-Running on evaluation mode loads saved checkpoint and runs inference using test dataset. 
-In your configuration file, 
-set `input_path=gs://youtube8m-ml/3/frame/test/test*.tfrecord`.
-
+Running on evaluation mode loads saved checkpoint from specified path and runs inference task. 
 ```bash
 python3 yt8m_train.py --mode='eval' \
      --experiment='yt8m_experiment' \
@@ -120,24 +111,25 @@ python3 yt8m_train.py --mode='eval' \
 
 Once these job starts executing you will see outputs similar to the following:
 ```
-train | step:    141 | training until step 188... 
-train | step:    188 | steps/sec:    0.1 | output:       
-    {'learning_rate': 0.009999976,                                         
-     'model_loss': 0.009135981,   
-     'total_loss': 0.009622246,                                      
-     'training_loss': 0.009622246} 
+train | step:  15190 | training until step 22785...
+train | step:  22785 | steps/sec:    0.4 | output:
+    {'learning_rate': 0.0049961056,
+     'model_loss': 0.0012011167,
+     'total_loss': 0.0013538885,
+     'training_loss': 0.0013538885}
+     
 ```
 
 and the following for evaluation:
 
 ```
-eval | step:    188 | running 11 steps of evaluation...
-eval | step:    188 | eval time:   48.1 | output:            
-    {'map': 0.0011551170885774754,                         
-     'avg_hit_at_one': 0.16844223484848486,  
-     'avg_perr': 0.08853457752011464,    
-     'gap': 0.02865141526257211, 
-     'model_loss': 0.015846167,             
-     'total_loss': 0.01632894,                                            
-     'validation_loss': 0.01632894}
+eval | step:  22785 | running 2172 steps of evaluation...
+eval | step:  22785 | eval time:  1663.4 | output:
+    {'avg_hit_at_one': 0.5572835238737471,
+     'avg_perr': 0.557277077999072,
+     'gap': 0.768825760186494,
+     'map': 0.19354554465020685,
+     'model_loss': 0.0005052475,
+     'total_loss': 0.0006564412,
+     'validation_loss': 0.0006564412}
 ```

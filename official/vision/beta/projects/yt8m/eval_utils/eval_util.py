@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Provides functions to help with evaluating models."""
-from official.vision.beta.projects.yt8m.eval_utils import average_precision_calculator as ap_calculator
-from official.vision.beta.projects.yt8m.eval_utils import mean_average_precision_calculator as map_calculator
 import tensorflow as tf
 import numpy as np
 from tensorflow.python.platform import gfile
+from official.vision.beta.projects.yt8m.eval_utils import (
+  average_precision_calculator as ap_calculator,
+  mean_average_precision_calculator as map_calculator
+)
 
 def flatten(l):
   """Merges a list of lists into a single list. """
@@ -56,8 +58,9 @@ def calculate_precision_at_equal_recall_rate(predictions, actuals):
   num_videos = actuals.shape[0]
   for row in np.arange(num_videos):
     num_labels = int(np.sum(actuals[row]))
-    top_indices = np.argpartition(predictions[row],
-                                     -num_labels)[-num_labels:]
+    top_indices = np.argpartition(
+      predictions[row], -num_labels
+    )[-num_labels:]
     item_precision = 0.0
     for label_index in top_indices:
       if predictions[row][label_index] > 0:

@@ -24,8 +24,8 @@ from official.vision.beta.projects.yt8m.dataloaders import yt8m_input
 from official.vision.beta.projects.yt8m.modeling.yt8m_model import YT8MModel
 from official.vision.beta.projects.yt8m.eval_utils import eval_util
 from official.vision.beta.projects.yt8m.configs import yt8m as yt8m_cfg
-from official.vision.beta.projects.yt8m.modeling import yt8m_model_utils as utils
-import numpy
+from official.vision.beta.projects.yt8m.modeling import (
+  yt8m_model_utils as utils)
 
 @task_factory.register_task_cls(yt8m_cfg.YT8MTask)
 class YT8MTask(base_task.Task):
@@ -33,9 +33,11 @@ class YT8MTask(base_task.Task):
 
   def build_model(self):
     """Builds model for YT8M Task."""
-    train_cfg = self.task_config.train_data  #todo: train_data?
+    train_cfg = self.task_config.train_data
     common_input_shape = [None, sum(train_cfg.feature_sizes)]
-    input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape) # [batch_size x num_frames x num_features]
+
+    # [batch_size x num_frames x num_features]
+    input_specs = tf.keras.layers.InputSpec(shape=[None] + common_input_shape)
     logging.info('Build model input %r', common_input_shape)
 
     #model configuration
@@ -90,7 +92,7 @@ class YT8MTask(base_task.Task):
       from_logits=losses_config.from_logits,
       label_smoothing=losses_config.label_smoothing)
 
-    model_loss = tf_utils.safe_mean(model_loss) #TODO: remove?
+    model_loss = tf_utils.safe_mean(model_loss)
     total_loss = model_loss
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
@@ -175,7 +177,8 @@ class YT8MTask(base_task.Task):
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
       if isinstance(
-              optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+              optimizer,
+              tf.keras.mixed_precision.experimental.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
 
@@ -184,7 +187,8 @@ class YT8MTask(base_task.Task):
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
     if isinstance(
-            optimizer, tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+            optimizer,
+            tf.keras.mixed_precision.experimental.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
 
     # Apply gradient clipping.
@@ -271,8 +275,10 @@ class YT8MTask(base_task.Task):
   def aggregate_logs(self, state=None, step_outputs=None):
     if state is None:
       state = self.avg_prec_metric
-    self.avg_prec_metric.accumulate(labels=step_outputs[self.avg_prec_metric.name][0],
-                                    predictions=step_outputs[self.avg_prec_metric.name][1])
+    self.avg_prec_metric.accumulate(
+      labels=step_outputs[self.avg_prec_metric.name][0],
+      predictions=step_outputs[self.avg_prec_metric.name][1]
+    )
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs):

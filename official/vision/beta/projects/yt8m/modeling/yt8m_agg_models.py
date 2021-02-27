@@ -17,7 +17,8 @@ import tensorflow as tf
 
 layers = tf.keras.layers
 regularizers = tf.keras.regularizers
-moe_num_mixtures = 2 #The number of mixtures (excluding the dummy 'expert') used for MoeModel.
+#The number of mixtures (excluding the dummy 'expert') used for MoeModel.
+moe_num_mixtures = 2
 
 class BaseModel(object):
   """Inherit from this class when implementing new models."""
@@ -87,11 +88,13 @@ class MoeModel(BaseModel):
         vocab_size * (num_mixtures + 1),
         activation=None,
         bias_initializer=None,
-        kernel_regularizer=regularizers.l2(l2_penalty))(model_input)
+        kernel_regularizer=regularizers.l2(l2_penalty)
+    )(model_input)
     expert_activations = layers.Dense(
         vocab_size * num_mixtures,
         activation=None,
-        kernel_regularizer=regularizers.l2(l2_penalty))(model_input)
+        kernel_regularizer=regularizers.l2(l2_penalty)
+    )(model_input)
 
     gating_distribution = tf.nn.softmax(
         tf.reshape(

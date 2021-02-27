@@ -1,12 +1,13 @@
 """Video classification configuration definition."""
 from typing import Optional, Tuple
 import dataclasses
+from absl import flags
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
 from official.vision.beta.configs import common
-from absl import flags
+
 FLAGS = flags.FLAGS
 
 YT8M_TRAIN_EXAMPLES = 3888919
@@ -15,7 +16,6 @@ YT8M_VAL_EXAMPLES = 1112356
 # 3/frame -> segment level
 YT8M_TRAIN_PATH = 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
 YT8M_VAL_PATH = 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
-YT8M_TEST_PATH = 'gs://youtube8m-ml/3/frame/test/test*.tfrecord'
 
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
