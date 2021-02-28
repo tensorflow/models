@@ -3,74 +3,10 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
 # if it is too large break into 2 files
-class FPNTail(tf.keras.layers.Layer):
-  "private layer used in the FPN"
-
-  def __init__(self,
-               filters=1,
-               upsample=True,
-               upsample_size=2,
-               activation="leaky",
-               use_sync_bn=False,
-               kernel_regularizer=None,
-               kernel_initializer="glorot_uniform",
-               bias_regularizer=None,
-               norm_epsilon=0.001,
-               norm_momentum=0.99,
-               **kwargs):
-
-    self._filters = filters
-    self._upsample = upsample
-    self._upsample_size = upsample_size
-
-    self._activation = "leaky" if activation is None else activation
-    self._use_sync_bn = use_sync_bn
-    self._norm_momentum = norm_momentum
-    self._norm_epsilon = norm_epsilon
-    self._kernel_initializer = kernel_initializer
-    self._kernel_regularizer = kernel_regularizer
-    self._bias_regularizer = bias_regularizer
-
-    self._base_config = dict(
-        activation=self._activation,
-        use_sync_bn=self._use_sync_bn,
-        kernel_regularizer=self._kernel_regularizer,
-        kernel_initializer=self._kernel_initializer,
-        bias_regularizer=self._bias_regularizer,
-        norm_epsilon=self._norm_epsilon,
-        norm_momentum=self._norm_momentum)
-
-    super().__init__(**kwargs)
-
-  def build(self, input_shape):
-    self._route_conv = nn_blocks.ConvBN(
-        filters=self._filters // 2,
-        kernel_size=(1, 1),
-        strides=(1, 1),
-        padding="same",
-        **self._base_config)
-    if self._upsample:
-      self._process_conv = nn_blocks.ConvBN(
-          filters=self._filters // 4,
-          kernel_size=(1, 1),
-          strides=(1, 1),
-          padding="same",
-          **self._base_config)
-      self._upsampling_block = tf.keras.layers.UpSampling2D(
-          size=self._upsample_size)
-
-  def call(self, inputs):
-    x_route = self._route_conv(inputs)
-    if self._upsample:
-      x = self._process_conv(x_route)
-      x = self._upsampling_block(x)
-      return x_route, x
-    else:
-      return x_route
 
 
 @tf.keras.utils.register_keras_serializable(package="yolo")
-class YoloFPN(tf.keras.Model):
+class YoloFPN(tf.keras.layers.Layer):
   """YOLO Feature pyramid network."""
 
   def __init__(self,
@@ -82,6 +18,7 @@ class YoloFPN(tf.keras.Model):
                kernel_initializer="glorot_uniform",
                kernel_regularizer=None,
                bias_regularizer=None,
+               subdivisions = 8,
                **kwargs):
     """
     Yolo FPN initialization function. Yolo V4
@@ -96,6 +33,7 @@ class YoloFPN(tf.keras.Model):
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      subdivisions: `int`, number of minibatches to create for each batch
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -108,10 +46,12 @@ class YoloFPN(tf.keras.Model):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._subdivisions = subdivisions
 
     self._base_config = dict(
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        subdivisions = self._subdivisions,
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
@@ -154,10 +94,10 @@ class YoloFPN(tf.keras.Model):
             insert_spp=True,
             **self._base_config)
       if level == self._min_level:
-        self.tails[str(level)] = FPNTail(
+        self.tails[str(level)] = nn_blocks.FPNTail(
             filters=depth, upsample=False, **self._base_config)
       else:
-        self.tails[str(level)] = FPNTail(
+        self.tails[str(level)] = nn_blocks.FPNTail(
             filters=depth, upsample=True, **self._base_config)
     return
 
@@ -177,7 +117,7 @@ class YoloFPN(tf.keras.Model):
 
 
 @tf.keras.utils.register_keras_serializable(package="yolo")
-class YoloRoutedDecoder(tf.keras.Model):
+class YoloRoutedDecoder(tf.keras.layers.Layer):
   """YOLO Routed Decoder, connect directly to backbone"""
 
   def __init__(self,
@@ -191,6 +131,7 @@ class YoloRoutedDecoder(tf.keras.Model):
                kernel_initializer="glorot_uniform",
                kernel_regularizer=None,
                bias_regularizer=None,
+               subdivisions = 8,
                **kwargs):
     """
     Yolo Routed Decoder initialization function. Yolo V3
@@ -207,6 +148,7 @@ class YoloRoutedDecoder(tf.keras.Model):
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      subdivisions: `int`, number of minibatches to create for each batch
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -221,6 +163,7 @@ class YoloRoutedDecoder(tf.keras.Model):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._subdivisions = subdivisions
 
     self._base_config = dict(
         activation=self._activation,
@@ -228,6 +171,7 @@ class YoloRoutedDecoder(tf.keras.Model):
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
+        subdivisions = self._subdivisions,
         norm_epsilon=self._norm_epsilon,
         norm_momentum=self._norm_momentum)
 
@@ -259,6 +203,7 @@ class YoloRoutedDecoder(tf.keras.Model):
             repetitions=self._path_process_len,
             insert_spp=False,
             **self._base_config)
+
     return
 
   def get_raw_depths(self, minimum_depth):
@@ -281,8 +226,7 @@ class YoloRoutedDecoder(tf.keras.Model):
 
 
 @tf.keras.utils.register_keras_serializable(package="yolo")
-class YoloFPNDecoder(tf.keras.Model):
-  """YOLO FPN Decoder, connect directly to FPN"""
+class YoloFPNDecoder(tf.keras.layers.Layer):
 
   def __init__(self,
                path_process_len=6,
@@ -295,6 +239,7 @@ class YoloFPNDecoder(tf.keras.Model):
                kernel_initializer="glorot_uniform",
                kernel_regularizer=None,
                bias_regularizer=None,
+               subdivisions = 8,
                **kwargs):
     """
     Yolo FPN Decoder initialization function. Yolo V4
@@ -311,6 +256,7 @@ class YoloFPNDecoder(tf.keras.Model):
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      subdivisions: `int`, number of minibatches to create for each batch
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -326,10 +272,12 @@ class YoloFPNDecoder(tf.keras.Model):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._subdivisions = subdivisions
 
     self._base_config = dict(
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        subdivisions=self._subdivisions,
         kernel_regularizer=self._kernel_regularizer,
         kernel_initializer=self._kernel_initializer,
         bias_regularizer=self._bias_regularizer,
@@ -389,6 +337,7 @@ class YoloDecoder(tf.keras.Model):
   """Darknet Backbone Decoder"""
 
   def __init__(self,
+               input_specs,
                embed_fpn=False,
                fpn_path_len=4,
                path_process_len=6,
@@ -401,10 +350,12 @@ class YoloDecoder(tf.keras.Model):
                kernel_initializer="glorot_uniform",
                kernel_regularizer=None,
                bias_regularizer=None,
+               subdivisions = 8,
                **kwargs):
     """
     Yolo Decoder initialization function.
     Args:
+      input_specs:
       embed_fpn: `bool`, use the FPN found in the YoloV4 model
       fpn_path_len: `int`, number of layers ot use in each FPN path
         if you choose to use an FPN
@@ -420,6 +371,7 @@ class YoloDecoder(tf.keras.Model):
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      subdivisions: `int`, number of minibatches to create for each batch
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -436,6 +388,7 @@ class YoloDecoder(tf.keras.Model):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
+    self._subdivisions = subdivisions
 
     self._base_config = dict(
         activation=self._activation,
@@ -444,7 +397,8 @@ class YoloDecoder(tf.keras.Model):
         norm_epsilon=self._norm_epsilon,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
-        bias_regularizer=self._bias_regularizer)
+        bias_regularizer=self._bias_regularizer,
+        subdivisions = self._subdivisions)
 
     self._decoder_config = dict(
         path_process_len=self._path_process_len,
@@ -452,28 +406,23 @@ class YoloDecoder(tf.keras.Model):
         embed_spp=self._embed_spp,
         **self._base_config)
 
-  def build(self, inputs):
+    inputs = {key: tf.keras.layers.Input(shape = value[1:]) for key, value in input_specs.items()}
     if self._embed_fpn:
-      self._fpn = YoloFPN(fpn_path_len=self._fpn_path_len, **self._base_config)
-      self._decoder = YoloFPNDecoder(**self._decoder_config)
+      inter_outs = YoloFPN(fpn_path_len=self._fpn_path_len, **self._base_config)(inputs)
+      outputs = YoloFPNDecoder(**self._decoder_config)(inter_outs)
     else:
-      self._fpn = None
-      self._decoder = YoloRoutedDecoder(**self._decoder_config)
-    return
+      outputs = YoloRoutedDecoder(**self._decoder_config)(inputs)
 
-  def call(self, inputs, training=False):
-    if self._embed_fpn:
-      inputs = self._fpn(inputs)
-    return self._decoder(inputs)
+    self._output_specs = {key: value.shape for key, value in outputs.items()}
+    super().__init__(inputs=inputs, outputs=outputs, name='YoloDecoder')
 
   @property
-  def neck(self):
-    return self._fpn
+  def embed_fpn(self):
+    return self._embed_fpn
 
   @property
-  def head(self):
-    return self._decoder
-
+  def output_specs(self):
+    return self._output_specs
 
   def get_config(self):
     config = dict(
@@ -483,7 +432,7 @@ class YoloDecoder(tf.keras.Model):
     )
 
     return config
-  
+
   @classmethod
   def from_config(cls, config, custom_objects=None):
     return cls(**config)

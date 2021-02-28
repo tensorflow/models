@@ -30,7 +30,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters('a', 'b', 'c')
   def test_network_creation(self, version):
-    """Test creation of ResNet family models."""
+    """Test creation of YOLO family models."""
     tf.keras.backend.set_image_data_format('channels_last')
     input_shape = {
         '3': [1, 52, 52, 256],
@@ -121,6 +121,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 def build_yolo_decoder(input_specs, type):
   if type == 'a':
     model = decoders.YoloDecoder(
+        input_specs=input_specs,
         embed_spp=False,
         embed_fpn=False,
         max_level_process_len=2,
@@ -128,6 +129,7 @@ def build_yolo_decoder(input_specs, type):
         activation='mish')
   elif type == 'b':
     model = decoders.YoloDecoder(
+        input_specs=input_specs,
         embed_spp=True,
         embed_fpn=False,
         max_level_process_len=None,
@@ -135,6 +137,7 @@ def build_yolo_decoder(input_specs, type):
         activation='mish')
   else:
     model = decoders.YoloDecoder(
+        input_specs=input_specs,
         embed_spp=False,
         embed_fpn=False,
         max_level_process_len=None,

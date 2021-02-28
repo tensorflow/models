@@ -19,7 +19,6 @@
 from typing import Callable, List
 import tensorflow as tf
 from official.modeling import tf_utils
-from absl.testing import parameterized
 
 
 @tf.keras.utils.register_keras_serializable(package="yolo")
@@ -1029,7 +1028,6 @@ class DarkRouteProcess(tf.keras.layers.Layer):
     self._spp_keys = spp_keys if spp_keys is not None else [5, 9, 13]
 
     self.layer_list = self._get_layer_list()
-    # print(self.layer_list)
     super().__init__(**kwargs)
     return
 
@@ -1116,139 +1114,67 @@ class DarkRouteProcess(tf.keras.layers.Layer):
     return x_prev, x
 
 
-class DarkSppTest(tf.test.TestCase, parameterized.TestCase):
+class FPNTail(tf.keras.layers.Layer):
+  "private layer used in the FPN"
 
-  @parameterized.named_parameters(("RouteProcessSpp", 224, 224, 3, [5, 9, 13]),
-                                  ("test1", 300, 300, 10, [2, 3, 4, 5]),
-                                  ("test2", 256, 256, 5, [10]))
-  def test_pass_through(self, width, height, channels, sizes):
-    x = ks.Input(shape=(width, height, channels))
-    test_layer = nn_blocks.SPP(sizes=sizes)
-    outx = test_layer(x)
-    self.assertAllEqual(outx.shape.as_list(),
-                        [None, width, height, channels * (len(sizes) + 1)])
-    return
+  def __init__(self,
+               filters=1,
+               upsample=True,
+               upsample_size=2,
+               activation="leaky",
+               use_sync_bn=False,
+               kernel_regularizer=None,
+               kernel_initializer="glorot_uniform",
+               bias_regularizer=None,
+               norm_epsilon=0.001,
+               norm_momentum=0.99,
+               **kwargs):
 
-  @parameterized.named_parameters(("RouteProcessSpp", 224, 224, 3, [5, 9, 13]),
-                                  ("test1", 300, 300, 10, [2, 3, 4, 5]),
-                                  ("test2", 256, 256, 5, [10]))
-  def test_gradient_pass_though(self, width, height, channels, sizes):
-    loss = ks.losses.MeanSquaredError()
-    optimizer = ks.optimizers.SGD()
-    test_layer = nn_blocks.SPP(sizes=sizes)
+    self._filters = filters
+    self._upsample = upsample
+    self._upsample_size = upsample_size
 
-    init = tf.random_normal_initializer()
-    x = tf.Variable(
-        initial_value=init(
-            shape=(1, width, height, channels), dtype=tf.float32))
-    y = tf.Variable(
-        initial_value=init(
-            shape=(1, width, height, channels * (len(sizes) + 1)),
-            dtype=tf.float32))
+    self._activation = "leaky" if activation is None else activation
+    self._use_sync_bn = use_sync_bn
+    self._norm_momentum = norm_momentum
+    self._norm_epsilon = norm_epsilon
+    self._kernel_initializer = kernel_initializer
+    self._kernel_regularizer = kernel_regularizer
+    self._bias_regularizer = bias_regularizer
 
-    with tf.GradientTape() as tape:
-      x_hat = test_layer(x)
-      grad_loss = loss(x_hat, y)
-    grad = tape.gradient(grad_loss, test_layer.trainable_variables)
-    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+    self._base_config = dict(
+        activation=self._activation,
+        use_sync_bn=self._use_sync_bn,
+        kernel_regularizer=self._kernel_regularizer,
+        kernel_initializer=self._kernel_initializer,
+        bias_regularizer=self._bias_regularizer,
+        norm_epsilon=self._norm_epsilon,
+        norm_momentum=self._norm_momentum)
 
-    self.assertNotIn(None, grad)
-    return
+    super().__init__(**kwargs)
 
+  def build(self, input_shape):
+    self._route_conv = nn_blocks.ConvBN(
+        filters=self._filters // 2,
+        kernel_size=(1, 1),
+        strides=(1, 1),
+        padding="same",
+        **self._base_config)
+    if self._upsample:
+      self._process_conv = nn_blocks.ConvBN(
+          filters=self._filters // 4,
+          kernel_size=(1, 1),
+          strides=(1, 1),
+          padding="same",
+          **self._base_config)
+      self._upsampling_block = tf.keras.layers.UpSampling2D(
+          size=self._upsample_size)
 
-class DarkUpsampleRouteTest(tf.test.TestCase, parameterized.TestCase):
-
-  @parameterized.named_parameters(("test1", 224, 224, 64, (3, 3)),
-                                  ("test2", 223, 223, 32, (2, 2)),
-                                  ("test3", 255, 255, 16, (4, 4)))
-  def test_pass_through(self, width, height, filters, upsampling_size):
-    x_conv = ks.Input(shape=(width, height, filters))
-    x_route = ks.Input(
-        shape=(width * upsampling_size[0], height * upsampling_size[1],
-               filters))
-    test_layer = nn_blocks.RouteMerge(
-        filters=filters, upsample=True, upsample_size=upsampling_size)
-    outx = test_layer([x_conv, x_route])
-    self.assertAllEqual(outx.shape.as_list(), [
-        None, width * upsampling_size[0], height * upsampling_size[1],
-        filters * 2
-    ])
-
-  @parameterized.named_parameters(("test1", 224, 224, 64, (3, 3)),
-                                  ("test2", 223, 223, 32, (2, 2)),
-                                  ("test3", 255, 255, 16, (4, 4)))
-  def test_gradient_pass_though(self, width, height, filters, upsampling_size):
-    loss = ks.losses.MeanSquaredError()
-    optimizer = ks.optimizers.SGD()
-    test_layer = nn_blocks.RouteMerge(
-        filters=filters, upsample=True, upsample_size=upsampling_size)
-
-    init = tf.random_normal_initializer()
-    x_conv = tf.Variable(
-        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
-    x_route = tf.Variable(
-        initial_value=init(
-            shape=(1, width * upsampling_size[0], height * upsampling_size[1],
-                   filters),
-            dtype=tf.float32))
-    y = tf.Variable(
-        initial_value=init(
-            shape=(1, width * upsampling_size[0], height * upsampling_size[1],
-                   filters * 2),
-            dtype=tf.float32))
-
-    with tf.GradientTape() as tape:
-      x_hat = test_layer([x_conv, x_route])
-      grad_loss = loss(x_hat, y)
-    grad = tape.gradient(grad_loss, test_layer.trainable_variables)
-    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
-
-    self.assertNotIn(None, grad)
-    return
-
-
-class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
-
-  @parameterized.named_parameters(
-      ("test1", 224, 224, 64, 7, False), ("test2", 223, 223, 32, 3, False),
-      ("tiny", 223, 223, 16, 1, False), ("spp", 224, 224, 64, 7, False))
-  def test_pass_through(self, width, height, filters, repetitions, spp):
-    x = ks.Input(shape=(width, height, filters))
-    test_layer = nn_blocks.DarkRouteProcess(
-        filters=filters, repetitions=repetitions, insert_spp=spp)
-    outx = test_layer(x)
-    self.assertEqual(len(outx), 2, msg="len(outx) != 2")
-    self.assertAllEqual(outx[1].shape.as_list(), [None, width, height, filters])
-    self.assertAllEqual(
-        filters % 2,
-        0,
-        msg="Output of a DarkRouteProcess layer has an odd number of filters")
-    self.assertAllEqual(outx[0].shape.as_list(), [None, width, height, filters])
-
-  @parameterized.named_parameters(
-      ("test1", 224, 224, 64, 7, False), ("test2", 223, 223, 32, 3, False),
-      ("tiny", 223, 223, 16, 1, False), ("spp", 224, 224, 64, 7, False))
-  def test_gradient_pass_though(self, width, height, filters, repetitions, spp):
-    loss = ks.losses.MeanSquaredError()
-    optimizer = ks.optimizers.SGD()
-    test_layer = nn_blocks.DarkRouteProcess(
-        filters=filters, repetitions=repetitions, insert_spp=spp)
-
-    init = tf.random_normal_initializer()
-    x = tf.Variable(
-        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
-    y_0 = tf.Variable(
-        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
-    y_1 = tf.Variable(
-        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
-
-    with tf.GradientTape() as tape:
-      x_hat_0, x_hat_1 = test_layer(x)
-      grad_loss_0 = loss(x_hat_0, y_0)
-      grad_loss_1 = loss(x_hat_1, y_1)
-    grad = tape.gradient([grad_loss_0, grad_loss_1],
-                         test_layer.trainable_variables)
-    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
-
-    self.assertNotIn(None, grad)
-    return
+  def call(self, inputs):
+    x_route = self._route_conv(inputs)
+    if self._upsample:
+      x = self._process_conv(x_route)
+      x = self._upsampling_block(x)
+      return x_route, x
+    else:
+      return x_route

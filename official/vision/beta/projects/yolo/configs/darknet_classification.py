@@ -42,20 +42,13 @@ class ImageClassificationModel(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class Losses(hyperparams.Config):
-  one_hot: bool = True
-  label_smoothing: float = 0.0
-  l2_weight_decay: float = 0.0
-
-
-@dataclasses.dataclass
 class ImageClassificationTask(cfg.TaskConfig):
   """The model config."""
   model: ImageClassificationModel = ImageClassificationModel()
   train_data: imc.DataConfig = imc.DataConfig(is_training=True)
   validation_data: imc.DataConfig = imc.DataConfig(is_training=False)
   evaluation: imc.Evaluation = imc.Evaluation()
-  losses: Losses = Losses()
+  losses: imc.Losses = imc.Losses()
   gradient_clip_norm: float = 0.0
   logging_dir: Optional[str] = None
 
