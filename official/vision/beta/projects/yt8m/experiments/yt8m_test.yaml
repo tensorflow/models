@@ -1,0 +1,31 @@
+# yt8m test config file
+task:
+  model:
+    cluster_size: 2048
+    hidden_size: 2048
+    add_batch_norm: true
+    sample_random_frames: true
+    is_training: true
+    activation: "relu6"
+    pooling_method: "average"
+    yt8m_agg_classifier_model: "MoeModel"
+  train_data:
+    segment_labels: false
+    temporal_stride: 1
+    num_devices: 1
+    input_path: 'gs://youtube8m-ml/2/frame/train/train*.tfrecord'
+    num_examples: 8000
+  validation_data:
+    segment_size: 5
+    segment_labels: true
+    temporal_stride: 1
+    num_devices: 1
+    input_path: 'gs://youtube8m-ml/3/frame/validate/validate*.tfrecord'
+    num_examples: 2000
+  losses:
+    name: 'binary_crossentropy'
+    from_logits: false
+    label_smoothing: 0.0
+  gradient_clip_norm: 1.0
+  num_readers: 8
+  top_k: 20
