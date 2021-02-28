@@ -50,7 +50,15 @@ class YT8MTask(base_task.Task):
     return model
 
   def build_inputs(self, params: yt8m_cfg.DataConfig, input_context=None):
-    """Builds input."""
+    """Builds input.
+    Args:
+      params (Dataconfig): configuration for input data
+      input_context (tf.distribute.InputContext): input_context
+        indicating information about the compute replicas and input pipelines
+
+    Returns:
+      dataset: dataset fetched from reader
+    """
 
     decoder = yt8m_input.Decoder(input_params=params)
     decoder_fn = decoder.decode
@@ -77,12 +85,13 @@ class YT8MTask(base_task.Task):
   def build_losses(self, labels, model_outputs, aux_losses=None):
     """Sigmoid Cross Entropy
     Args:
-      labels: labels.
-      model_outputs: Output logits of the classifier.
-      aux_losses: auxiliarly loss tensors, i.e. `losses` in keras.Model.
+      labels (Tensor): Truth labels.
+      model_outputs (Tensor): Output logits of the classifier.
+      aux_losses (Tensor): auxiliarly loss tensors,
+        i.e. `losses` in keras.Model.
 
     Returns:
-      The total loss, model loss tensors.
+      Tensors: The total loss, model loss tensors.
     """
     losses_config = self.task_config.losses
     model_loss = tf.keras.losses.binary_crossentropy(
@@ -99,16 +108,19 @@ class YT8MTask(base_task.Task):
     return total_loss, model_loss
 
 
-  def build_metrics(self, num_classes: int=3862, training=True):
+  def build_metrics(self, training=True):
     """Gets streaming metrics for training/validation.
        metric: mAP/gAP
-      Args:
-      num_class: A positive integer specifying the number of classes.
-
-      top_k: A positive integer specifying how many predictions are considered
+       top_k: A positive integer specifying how many predictions are considered
         per video.
-      top_n: A positive Integer specifying the average precision at n, or None
+       top_n: A positive Integer specifying the average precision at n, or None
         to use all provided data points.
+    Args:
+      training (bool): true for training mode,
+          false for eval/validation.
+
+    Returns:
+      list: strings that indicate metrics to be used
     """
     metrics = []
     metric_names = ['total_loss', 'model_loss']
@@ -116,6 +128,7 @@ class YT8MTask(base_task.Task):
       metrics.append(tf.keras.metrics.Mean(name, dtype=tf.float32))
 
     if not training: #cannot run in train step
+      num_classes = self.task_config.validation_data.num_classes
       top_k = self.task_config.top_k
       top_n = self.task_config.top_n
       self.avg_prec_metric = eval_util.EvaluationMetrics(
@@ -127,19 +140,20 @@ class YT8MTask(base_task.Task):
   def train_step(self, inputs, model, optimizer, metrics=None):
     """Does forward and backward.
     Args:
-      inputs: a dictionary of input tensors.
+      inputs (Tensor):
+          a dictionary of input tensors.
             output_dict = {
           "video_ids": batch_video_ids,
           "video_matrix": batch_video_matrix,
           "labels": batch_labels,
           "num_frames": batch_frames,
           }
-      model: the model, forward pass definition.
-      optimizer: the optimizer for this training step.
-      metrics: a nested structure of metrics objects.
+      model (keras.Model): the model, forward pass definition.
+      optimizer (keras.optimizers): the optimizer for this training step.
+      metrics (keras.metrics): a nested structure of metrics objects.
 
     Returns:
-      A dictionary of logs.
+      Dictionary: A dictionary of logs.
     """
     features, labels = inputs['video_matrix'], inputs['labels']
     num_frames = inputs['num_frames']
@@ -214,18 +228,19 @@ class YT8MTask(base_task.Task):
     """Validatation step.
 
     Args:
-      inputs: a dictionary of input tensors.
-              output_dict = {
-            "video_ids": batch_video_ids,
-            "video_matrix": batch_video_matrix,
-            "labels": batch_labels,
-            "num_frames": batch_frames,
-            }
-      model: the keras.Model.
-      metrics: a nested structure of metrics objects.
+      inputs (Tensor):
+        a dictionary of input tensors.
+          output_dict = {
+        "video_ids": batch_video_ids,
+        "video_matrix": batch_video_matrix,
+        "labels": batch_labels,
+        "num_frames": batch_frames,
+        }
+      model (keras.Model): the model, forward definition
+      metrics (keras.metrics): a nested structure of metrics objects.
 
     Returns:
-      A dictionary of logs.
+      Dictionary: A dictionary of logs.
     """
     features, labels = inputs['video_matrix'], inputs['labels']
     num_frames = inputs['num_frames']
@@ -271,12 +286,12 @@ class YT8MTask(base_task.Task):
     """Performs the forward step."""
     return model(inputs, training=False)
 
-  def aggregate_logs(self, state=None, step_outputs=None):
+  def aggregate_logs(self, state=None, step_logs=None):
     if state is None:
       state = self.avg_prec_metric
     self.avg_prec_metric.accumulate(
-      labels=step_outputs[self.avg_prec_metric.name][0],
-      predictions=step_outputs[self.avg_prec_metric.name][1]
+      labels=step_logs[self.avg_prec_metric.name][0],
+      predictions=step_logs[self.avg_prec_metric.name][1]
     )
     return state
 

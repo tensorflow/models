@@ -18,11 +18,11 @@ import tensorflow as tf
 def SampleRandomSequence(model_input, num_frames, num_samples):
   """Samples a random sequence of frames of size num_samples.
   Args:
-    model_input: A tensor of size batch_size x max_frames x feature_size
-    num_frames: A tensor of size batch_size x 1
-    num_samples: A scalar
+    model_input (Tensor) : [batch_size x max_frames x feature_size]
+    num_frames (Tensor): [batch_size x 1]
+    num_samples (int): a scalar indicating the number of samples
   Returns:
-    `model_input`: A tensor of size batch_size x num_samples x feature_size
+    Tensor: model_input in size [batch_size x 'num_samples' x feature_size]
   """
 
   batch_size = tf.shape(model_input)[0]
@@ -43,11 +43,11 @@ def SampleRandomSequence(model_input, num_frames, num_samples):
 def SampleRandomFrames(model_input, num_frames, num_samples):
   """Samples a random set of frames of size num_samples.
   Args:
-    model_input: A tensor of size batch_size x max_frames x feature_size
-    num_frames: A tensor of size batch_size x 1
-    num_samples: A scalar
+    model_input (Tensor): [batch_size x max_frames x feature_size]
+    num_frames (Tensor): [batch_size x 1]
+    num_samples (int): a scalar indicating the number of samples
   Returns:
-    `model_input`: A tensor of size batch_size x num_samples x feature_size
+    Tensor: model_input in size [batch_size x 'num_samples' x feature_size]
   """
   batch_size = tf.shape(model_input)[0]
   frame_index = tf.cast(
@@ -60,25 +60,27 @@ def SampleRandomFrames(model_input, num_frames, num_samples):
   return tf.gather_nd(model_input, index)
 
 
-def FramePooling(frames, method, **unused_params):
+def FramePooling(frames, method):
   """Pools over the frames of a video.
   Args:
-    frames: A tensor with shape [batch_size, num_frames, feature_size].
-    method: "average", "max", "attention", or "none".
+    frames (Tensor): [batch_size, num_frames, feature_size].
+    method (string): "average", "max", "attention", or "none".
   Returns:
-    A tensor with shape [batch_size, feature_size] for average, max, or
-    attention pooling. A tensor with shape [batch_size*num_frames, feature_size]
+    Tensor: shape [batch_size, feature_size] for average, max, or
+    attention pooling, and shape [batch_size*num_frames, feature_size]
     for none pooling.
   Raises:
     ValueError: if method is other than "average", "max", "attention", or
     "none".
   """
   if method == "average":
-    return tf.reduce_mean(frames, 1)
+    reduced = tf.reduce_mean(frames, 1)
   elif method == "max":
-    return tf.reduce_max(frames, 1)
+    reduced = tf.reduce_max(frames, 1)
   elif method == "none":
     feature_size = frames.shape_as_list()[2]
-    return tf.reshape(frames, [-1, feature_size])
+    reduced = tf.reshape(frames, [-1, feature_size])
   else:
     raise ValueError("Unrecognized pooling method: %s" % method)
+
+  return reduced

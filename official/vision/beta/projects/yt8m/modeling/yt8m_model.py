@@ -126,9 +126,9 @@ class YT8MModel(tf.keras.Model):
     output = aggregated_model().create_model(model_input=activation,
                                              vocab_size=self._num_classes)
 
-    super(YT8MModel, self).__init__(
-      inputs=model_input, outputs=output.get("predictions"), **kwargs
-    )
+    super().__init__(inputs=model_input,
+                     outputs=output.get("predictions"),
+                     **kwargs)
 
   @property
   def checkpoint_items(self):
@@ -139,5 +139,5 @@ class YT8MModel(tf.keras.Model):
     return self._config_dict
 
   @classmethod
-  def from_config(cls, config, custom_objects=None):
+  def from_config(cls, config):
     return cls(**config)

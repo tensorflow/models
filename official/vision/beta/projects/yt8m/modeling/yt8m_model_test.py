@@ -30,7 +30,11 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     (32, 1152)
   ) #1152 = 1024 + 128
   def test_yt8m_network_creation(self, num_frames, feature_dims):
-    """Test for creation of a YT8M Model."""
+    """Test for creation of a YT8M Model.
+    Args:
+      num_frames (int): indicating number of frames.
+      feature_dims (int): indicating total dimension size of the features.
+    """
 
     # None part : batch
     input_specs = tf.keras.layers.InputSpec(
