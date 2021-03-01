@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for resnet."""
+"""Tests for darknet."""
 
 from absl.testing import parameterized
 import numpy as np
@@ -113,3 +113,5 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(network.get_config(), new_network.get_config())
 
 
+if __name__ == "__main__":
+  tf.test.main()

@@ -1115,7 +1115,10 @@ class DarkRouteProcess(tf.keras.layers.Layer):
 
 
 class FPNTail(tf.keras.layers.Layer):
-  "private layer used in the FPN"
+  """
+  Tail layer used in the FPN of the decoder to produce the final outputs of the
+  model
+  """
 
   def __init__(self,
                filters=1,
@@ -1129,6 +1132,30 @@ class FPNTail(tf.keras.layers.Layer):
                norm_epsilon=0.001,
                norm_momentum=0.99,
                **kwargs):
+    """Initializes FPNTail layer.
+
+    Args:
+      filters: `int`, output depth, or the number of features to learn
+      upsample: `bool`, Determines whether to upsample the output of the current
+        tailto be used by a subsequent tail later in the YOLO decoder. Setting
+        upsample to True returns the current tail's output as well as an
+        upsampled version of this output to be used by the next tail. Setting it
+        to False returns only the current tail's output
+      upsample_size: `int` or `tuple[int, int]`, Upsampling factors for rows and
+        columns in the upsampling block. Ignored if `upsample` is False
+      activation: `Optional[str]`, activation function to use in layer, None is
+        replaced by leaky
+      use_sync_bn: `bool`, whether sync batch normalization
+      kernel_regularizer: `str`, indicate which function to use to regularizer
+        weights.
+      kernel_initializer: `str`, indicate which function to use to initialize
+        weights.
+      bias_regularizer: `str`, indicate which function to use to regularizer
+        bias.
+      norm_momentum: float for moment to use for batch normalization
+      norm_epsilon: float for batch normalization epsilon
+      **kwargs: Keyword Arguments
+    """
 
     self._filters = filters
     self._upsample = upsample

@@ -15,7 +15,7 @@
 """Detection Data parser and processing for YOLO.
 
 Parse image and ground truths in a dataset to training targets and package them
-into (image, labels) tuple for RetinaNet.
+into (image, labels) tuple for YOLO.
 """
 
 import tensorflow as tf
