@@ -19,8 +19,8 @@ import tensorflow as tf
 from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.dataloaders import classification_input
+from official.vision.beta.dataloaders import tfds_classification_decoders
 from official.vision.beta.projects.yolo.configs import darknet_classification as exp_cfg
-from official.vision.beta.projects.yolo.dataloaders import classification_tfds_decoder as cli
 from official.vision.beta.tasks import image_classification
 
 
@@ -35,7 +35,7 @@ class ImageClassificationTask(image_classification.ImageClassificationTask):
     input_size = self.task_config.model.input_size
 
     if params.tfds_name:
-      decoder = cli.Decoder()
+      decoder = tfds_classification_decoders.ClassificationDecorder()
     else:
       decoder = classification_input.Decoder()
 
