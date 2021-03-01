@@ -20,7 +20,6 @@ task:
     tfds_name: 'imagenet2012'
     tfds_split: 'train'
     tfds_data_dir: '~/tensorflow_datasets/'
-    tfds_download: true
     is_training: true
     global_batch_size: 16  # default = 128
     dtype: 'float16'
@@ -29,7 +28,6 @@ task:
     tfds_name: 'imagenet2012'
     tfds_split: 'validation'
     tfds_data_dir: '~/tensorflow_datasets/'
-    tfds_download: true
     is_training: true
     global_batch_size: 16  # default = 128
     dtype: 'float16'

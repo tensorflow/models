@@ -101,7 +101,6 @@ class InputReader:
     self._deterministic = params.deterministic
     self._sharding = params.sharding
     self._tfds_split = params.tfds_split
-    self._tfds_download = params.tfds_download
     self._tfds_as_supervised = params.tfds_as_supervised
     self._tfds_skip_decoding_feature = params.tfds_skip_decoding_feature
 
@@ -232,8 +231,8 @@ class InputReader:
       input_context: Optional[tf.distribute.InputContext] = None
   ) -> tf.data.Dataset:
     """Reads a dataset from tfds."""
-    if self._tfds_download:
-      self._tfds_builder.download_and_prepare()
+    # No op if exist.
+    self._tfds_builder.download_and_prepare()
 
     read_config = tfds.ReadConfig(
         interleave_cycle_length=self._cycle_length,
