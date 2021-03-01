@@ -183,7 +183,7 @@ class SentencePredictionTask(base_task.Task):
         np.concatenate([v.numpy() for v in step_outputs['labels']], axis=0))
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     if self.metric_type == 'accuracy':
       return None
     elif self.metric_type == 'matthews_corrcoef':

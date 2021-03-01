@@ -277,7 +277,7 @@ class QuestionAnsweringTask(base_task.Task):
             end_logits=values[2]))
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     all_predictions, _, scores_diff = (
         self.squad_lib.postprocess_output(
             self._eval_examples,

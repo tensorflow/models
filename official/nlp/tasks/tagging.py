@@ -189,7 +189,7 @@ class TaggingTask(base_task.Task):
     state['label_class'].extend(id_to_class_name(step_outputs['label_ids']))
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     """Reduces aggregated logs over validation steps."""
     label_class = aggregated_logs['label_class']
     predict_class = aggregated_logs['predict_class']

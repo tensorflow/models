@@ -338,7 +338,7 @@ class TranslationTask(base_task.Task):
         state[u_id] = (in_ids, out_ids)
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
 
     def _decode(ids):
       return self._sp_tokenizer.detokenize(ids).numpy().decode()
