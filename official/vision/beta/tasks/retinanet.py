@@ -292,5 +292,5 @@ class RetinaNetTask(base_task.Task):
                                   step_outputs[self.coco_metric.name][1])
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     return self.coco_metric.result()
