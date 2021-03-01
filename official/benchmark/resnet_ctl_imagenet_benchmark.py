@@ -16,7 +16,6 @@
 # pylint: disable=line-too-long,g-bad-import-order
 from __future__ import print_function
 
-import os
 import time
 
 from absl import flags
@@ -433,6 +432,24 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.batch_size = 4096
     FLAGS.dtype = 'bf16'
     FLAGS.model_dir = self._get_model_dir('benchmark_4x4_tpu_bf16_mlir')
+    tf.config.experimental.enable_mlir_bridge()
+    self._run_and_report_benchmark()
+
+  def benchmark_8x8_tpu_bf16(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 8192
+    FLAGS.dtype = 'bf16'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8x8_tpu_bf16')
+    self._run_and_report_benchmark()
+
+  @owner_utils.Owner('tf-graph-compiler')
+  def benchmark_8x8_tpu_bf16_mlir(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 8192
+    FLAGS.dtype = 'bf16'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8x8_tpu_bf16_mlir')
     tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
