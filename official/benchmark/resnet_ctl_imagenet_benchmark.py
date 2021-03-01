@@ -453,6 +453,22 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     tf.config.experimental.enable_mlir_bridge()
     self._run_and_report_benchmark()
 
+  def benchmark_8x8_tpu(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 8192
+    FLAGS.model_dir = self._get_model_dir('benchmark_8x8_tpu')
+    self._run_and_report_benchmark()
+
+  @owner_utils.Owner('tf-graph-compiler')
+  def benchmark_8x8_tpu_mlir(self):
+    self._setup()
+    self._set_df_common()
+    FLAGS.batch_size = 8192
+    FLAGS.model_dir = self._get_model_dir('benchmark_8x8_tpu_mlir')
+    tf.config.experimental.enable_mlir_bridge()
+    self._run_and_report_benchmark()
+
   def benchmark_8x16_tpu_bf16(self):
     self._setup()
     self._set_df_common()
