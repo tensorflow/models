@@ -263,7 +263,7 @@ class SemanticSegmentationTask(base_task.Task):
                                  step_outputs[self.iou_metric.name][1])
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     result = {}
     ious = self.iou_metric.result()
     # TODO(arashwan): support loading class name from a label map file.

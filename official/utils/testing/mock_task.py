@@ -88,7 +88,7 @@ class MockTask(base_task.Task):
           np.concatenate([np.expand_dims(v.numpy(), axis=0) for v in value]))
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     for k, v in aggregated_logs.items():
       aggregated_logs[k] = np.sum(np.stack(v, axis=0))
     return aggregated_logs

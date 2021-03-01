@@ -291,6 +291,8 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
     """Optional aggregation over logs returned from a validation step."""
     pass
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self,
+                             aggregated_logs,
+                             global_step: Optional[tf.Tensor] = None):
     """Optional reduce of aggregated logs over validation steps."""
     return {}
