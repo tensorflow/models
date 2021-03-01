@@ -17,7 +17,6 @@
 
 # Import libraries
 from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
@@ -40,14 +39,14 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     decoder = build_yolo_decoder(input_shape, version)
 
     inputs = {}
-    for key in input_shape.keys():
-      inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
+    for key, input_shape_val in input_shape.items():
+      inputs[key] = tf.ones(input_shape_val, dtype=tf.float32)
 
     endpoints = decoder.call(inputs)
     # print(endpoints)
 
-    for key in endpoints.keys():
-      self.assertAllEqual(endpoints[key].shape.as_list(), input_shape[key])
+    for key, endpoint in endpoints.items():
+      self.assertAllEqual(endpoint.shape.as_list(), input_shape[key])
 
   @combinations.generate(
       combinations.combine(
@@ -68,11 +67,11 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
           '4': [1, 26, 26, 512],
           '5': [1, 13, 13, 1024]
       }
-      decoder = build_yolo_decoder(input_shape, 'c')
+      decoder = build_yolo_decoder(input_shape, 'c', use_sync_bn=use_sync_bn)
 
       inputs = {}
-      for key in input_shape.keys():
-        inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
+      for key, input_shape_val in input_shape.items():
+        inputs[key] = tf.ones(input_shape_val, dtype=tf.float32)
 
       _ = decoder.call(inputs)
 
@@ -89,8 +88,8 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     decoder = build_yolo_decoder(input_shape, 'c')
 
     inputs = {}
-    for key in input_shape.keys():
-      inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
+    for key, input_shape_val in input_shape.items():
+      inputs[key] = tf.ones(input_shape_val, dtype=tf.float32)
     _ = decoder(inputs)
 
   def test_serialize_deserialize(self):
@@ -105,8 +104,8 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     decoder = build_yolo_decoder(input_shape, 'c')
 
     inputs = {}
-    for key in input_shape.keys():
-      inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
+    for key, input_shape_val in input_shape.items():
+      inputs[key] = tf.ones(input_shape_val, dtype=tf.float32)
 
     _ = decoder(inputs)
 
@@ -118,23 +117,25 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(decoder.get_config(), b.get_config())
 
 
-def build_yolo_decoder(input_specs, type):
-  if type == 'a':
+def build_yolo_decoder(input_specs, version, use_sync_bn=False):
+  if version == 'a':
     model = decoders.YoloDecoder(
         input_specs=input_specs,
         embed_spp=False,
         embed_fpn=False,
         max_level_process_len=2,
         path_process_len=1,
-        activation='mish')
-  elif type == 'b':
+        activation='mish',
+        use_sync_bn=use_sync_bn)
+  elif version == 'b':
     model = decoders.YoloDecoder(
         input_specs=input_specs,
         embed_spp=True,
         embed_fpn=False,
         max_level_process_len=None,
         path_process_len=6,
-        activation='mish')
+        activation='mish',
+        use_sync_bn=use_sync_bn)
   else:
     model = decoders.YoloDecoder(
         input_specs=input_specs,
@@ -142,7 +143,8 @@ def build_yolo_decoder(input_specs, type):
         embed_fpn=False,
         max_level_process_len=None,
         path_process_len=6,
-        activation='mish')
+        activation='mish',
+        use_sync_bn=use_sync_bn)
   model.build(input_specs)
   return model
 

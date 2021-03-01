@@ -18,17 +18,17 @@ import tensorflow as tf
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
-@tf.keras.utils.register_keras_serializable(package="yolo")
+@tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloFPN(tf.keras.layers.Layer):
   """YOLO Feature pyramid network."""
 
   def __init__(self,
                fpn_path_len=4,
-               activation="leaky",
+               activation='leaky',
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer="glorot_uniform",
+               kernel_initializer='glorot_uniform',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
@@ -50,7 +50,7 @@ class YoloFPN(tf.keras.layers.Layer):
     super().__init__(**kwargs)
     self._fpn_path_len = fpn_path_len
 
-    self._activation = "leaky" if activation is None else activation
+    self._activation = 'leaky' if activation is None else activation
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -75,7 +75,10 @@ class YoloFPN(tf.keras.layers.Layer):
     return list(reversed(depths))
 
   def build(self, inputs):
-    """ use config dictionary to generate all important attributes for head construction """
+    """
+    use config dictionary to generate all important attributes for head
+    construction
+    """
     keys = [int(key) for key in inputs.keys()]
     self._min_level = min(keys)
     self._max_level = max(keys)
@@ -108,9 +111,8 @@ class YoloFPN(tf.keras.layers.Layer):
       else:
         self.tails[str(level)] = nn_blocks.FPNTail(
             filters=depth, upsample=True, **self._base_config)
-    return
 
-  def call(self, inputs, training=False):
+  def call(self, inputs, training=False): # pylint: disable=unused-argument
     outputs = {}
     layer_in = inputs[str(self._max_level)]
     for level in reversed(range(self._min_level, self._max_level + 1)):
@@ -125,7 +127,7 @@ class YoloFPN(tf.keras.layers.Layer):
     return outputs
 
 
-@tf.keras.utils.register_keras_serializable(package="yolo")
+@tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloRoutedDecoder(tf.keras.layers.Layer):
   """YOLO Routed Decoder, connect directly to backbone"""
 
@@ -133,11 +135,11 @@ class YoloRoutedDecoder(tf.keras.layers.Layer):
                path_process_len=6,
                max_level_process_len=None,
                embed_spp=False,
-               activation="leaky",
+               activation='leaky',
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer="glorot_uniform",
+               kernel_initializer='glorot_uniform',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
@@ -159,11 +161,12 @@ class YoloRoutedDecoder(tf.keras.layers.Layer):
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
-    self._max_level_process_len = path_process_len if max_level_process_len is None else max_level_process_len
+    self._max_level_process_len = (path_process_len
+        if max_level_process_len is None else max_level_process_len)
     self._path_process_len = path_process_len
     self._embed_spp = embed_spp
 
-    self._activation = "leaky" if activation is None else activation
+    self._activation = 'leaky' if activation is None else activation
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -209,8 +212,6 @@ class YoloRoutedDecoder(tf.keras.layers.Layer):
             insert_spp=False,
             **self._base_config)
 
-    return
-
   def get_raw_depths(self, minimum_depth):
     depths = []
     for _ in range(self._min_level, self._max_level + 1):
@@ -218,7 +219,7 @@ class YoloRoutedDecoder(tf.keras.layers.Layer):
       minimum_depth *= 2
     return list(reversed(depths))
 
-  def call(self, inputs, training=False):
+  def call(self, inputs, training=False): # pylint: disable=unused-argument
     outputs = dict()
     layer_in = inputs[str(self._max_level)]
     for level in reversed(range(self._min_level, self._max_level + 1)):
@@ -230,18 +231,19 @@ class YoloRoutedDecoder(tf.keras.layers.Layer):
     return outputs
 
 
-@tf.keras.utils.register_keras_serializable(package="yolo")
+@tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloFPNDecoder(tf.keras.layers.Layer):
+  """YOLO V4 decoder"""
 
   def __init__(self,
                path_process_len=6,
                max_level_process_len=None,
                embed_spp=False,
-               activation="leaky",
+               activation='leaky',
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer="glorot_uniform",
+               kernel_initializer='glorot_uniform',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
@@ -264,11 +266,12 @@ class YoloFPNDecoder(tf.keras.layers.Layer):
     """
     super().__init__(**kwargs)
     self._path_process_len = path_process_len
-    self._max_level_process_len = 1 if max_level_process_len is None else max_level_process_len
+    self._max_level_process_len = (1 if max_level_process_len is None else
+        max_level_process_len)
 
     self._embed_spp = embed_spp
 
-    self._activation = "leaky" if activation is None else activation
+    self._activation = 'leaky' if activation is None else activation
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -321,7 +324,7 @@ class YoloFPNDecoder(tf.keras.layers.Layer):
             insert_spp=False,
             **self._base_config)
 
-  def call(self, inputs, training=False):
+  def call(self, inputs, training=False): # pylint: disable=unused-argument
     outputs = dict()
     layer_in = inputs[str(self._min_level)]
     for level in range(self._min_level, self._max_level + 1):
@@ -333,7 +336,7 @@ class YoloFPNDecoder(tf.keras.layers.Layer):
     return outputs
 
 
-@tf.keras.utils.register_keras_serializable(package="yolo")
+@tf.keras.utils.register_keras_serializable(package='yolo')
 class YoloDecoder(tf.keras.Model):
   """Darknet Backbone Decoder"""
 
@@ -344,11 +347,11 @@ class YoloDecoder(tf.keras.Model):
                path_process_len=6,
                max_level_process_len=None,
                embed_spp=False,
-               activation="leaky",
+               activation='leaky',
                use_sync_bn=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer="glorot_uniform",
+               kernel_initializer='glorot_uniform',
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
@@ -380,7 +383,7 @@ class YoloDecoder(tf.keras.Model):
     self._max_level_process_len = max_level_process_len
     self._embed_spp = embed_spp
 
-    self._activation = "leaky" if activation is None else activation
+    self._activation = 'leaky' if activation is None else activation
     self._use_sync_bn = use_sync_bn
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -403,9 +406,14 @@ class YoloDecoder(tf.keras.Model):
         embed_spp=self._embed_spp,
         **self._base_config)
 
-    inputs = {key: tf.keras.layers.Input(shape = value[1:]) for key, value in input_specs.items()}
+    inputs = {
+        key: tf.keras.layers.Input(shape=value[1:])
+        for key, value in input_specs.items()
+    }
     if self._embed_fpn:
-      inter_outs = YoloFPN(fpn_path_len=self._fpn_path_len, **self._base_config)(inputs)
+      inter_outs = YoloFPN(
+          fpn_path_len=self._fpn_path_len, **self._base_config)(
+              inputs)
       outputs = YoloFPNDecoder(**self._decoder_config)(inter_outs)
     else:
       outputs = YoloRoutedDecoder(**self._decoder_config)(inputs)
@@ -424,11 +432,10 @@ class YoloDecoder(tf.keras.Model):
 
   def get_config(self):
     config = dict(
-      input_specs=self._input_specs,
-      embed_fpn=self._embed_fpn,
-      fpn_path_len=self._fpn_path_len,
-      **self._decoder_config
-    )
+        input_specs=self._input_specs,
+        embed_fpn=self._embed_fpn,
+        fpn_path_len=self._fpn_path_len,
+        **self._decoder_config)
 
     return config
 

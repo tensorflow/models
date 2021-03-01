@@ -29,6 +29,7 @@ from official.vision.beta.projects.yolo.configs import backbones
 
 @dataclasses.dataclass
 class ImageClassificationModel(hyperparams.Config):
+  """The model config."""
   num_classes: int = 0
   input_size: List[int] = dataclasses.field(default_factory=list)
   backbone: backbones.Backbone = backbones.Backbone(
@@ -43,7 +44,7 @@ class ImageClassificationModel(hyperparams.Config):
 
 @dataclasses.dataclass
 class ImageClassificationTask(cfg.TaskConfig):
-  """The model config."""
+  """The task config."""
   model: ImageClassificationModel = ImageClassificationModel()
   train_data: imc.DataConfig = imc.DataConfig(is_training=True)
   validation_data: imc.DataConfig = imc.DataConfig(is_training=False)
