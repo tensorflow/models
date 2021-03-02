@@ -45,6 +45,7 @@ class BertEncoderConfig(hyperparams.Config):
   type_vocab_size: int = 2
   initializer_range: float = 0.02
   embedding_size: Optional[int] = None
+  output_range: Optional[int] = None
   return_all_encoder_outputs: bool = False
 
 
@@ -334,6 +335,7 @@ def build_encoder(config: EncoderConfig,
       type_vocab_size=encoder_cfg.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=encoder_cfg.initializer_range),
+      output_range=encoder_cfg.output_range,
       embedding_width=encoder_cfg.embedding_size,
       embedding_layer=embedding_layer,
       return_all_encoder_outputs=encoder_cfg.return_all_encoder_outputs,
