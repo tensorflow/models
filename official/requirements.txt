@@ -13,7 +13,7 @@ tensorflow-datasets
 tensorflow-addons==0.8.3
 tensorflow-hub>=0.6.0
 tensorflow-model-optimization>=0.2.1
-dataclasses
+dataclasses;python_version<"3.7"
 gin-config
 typing==3.7.4.1
 sentencepiece
