@@ -14,6 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Loads dataset for the sentence prediction (classification) task."""
+import functools
 from typing import List, Mapping, Optional
 
 import dataclasses
@@ -137,20 +138,9 @@ class TextProcessor(tf.Module):
     if preprocessing_hub_module_url:
       self._preprocessing_hub_module = hub.load(preprocessing_hub_module_url)
       self._tokenizer = self._preprocessing_hub_module.tokenize
-      def set_shape(t):
-        # Before TF2.4, the sequence length dimension loaded from the
-        # preprocessing hub module is None, so we recover the shape here.
-        # TODO(b/157636658): Remove once TF2.4 is released and being used.
-        t.set_shape([None, seq_length])
-        return t
-
-      def pack_inputs_fn(inputs):
-        result = self._preprocessing_hub_module.bert_pack_inputs(
-            inputs, seq_length=seq_length)
-        result = tf.nest.map_structure(set_shape, result)
-        return result
-
-      self._pack_inputs = pack_inputs_fn
+      self._pack_inputs = functools.partial(
+          self._preprocessing_hub_module.bert_pack_inputs,
+          seq_length=seq_length)
       return
 
     if tokenization == 'WordPiece':
