@@ -60,7 +60,7 @@ class BertEncoder(tf.keras.Model):
     initializer: The initialzer to use for all weights in this encoder.
     output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
-      target sequence will attend to the source sequence, which yeilds the full
+      target sequence will attend to the source sequence, which yields the full
       output.
     embedding_width: The width of the word embeddings. If the embedding width is
       not equal to hidden size, embedding parameters will be factorized into two
