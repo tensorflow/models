@@ -21,7 +21,7 @@ from official.nlp.modeling.networks import mobile_bert_encoder
 
 
 def generate_fake_input(batch_size=1, seq_len=5, vocab_size=10000, seed=0):
-  """Generate consisitant fake integer input sequences."""
+  """Generate consistent fake integer input sequences."""
   np.random.seed(seed)
   fake_input = []
   for _ in range(batch_size):
