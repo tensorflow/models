@@ -40,9 +40,8 @@ class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
     Args:
       after_warmup_lr_sched: tf.keras.optimizers.schedules
                                 .LearningRateSchedule or a constant.
-      warmup_steps: int. number of the warmup steps.
-      warmup_learning_rate: floating point number. Initial learning rate for the
-                      warmup.
+      warmup_steps: Number of the warmup steps.
+      warmup_learning_rate: Initial learning rate for the warmup.
       name: Optional, name of warmup schedule.
     """
     super(LinearWarmup, self).__init__()
@@ -164,8 +163,8 @@ class DirectPowerDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     """Initialize configuration of the learning rate schedule.
 
     Args:
-      initial_learning_rate: A float, the initial learning rate.
-      power: A float, the number of steps required for linear warmup.
+      initial_learning_rate: The initial learning rate.
+      power: The order of the polynomial.
       name: Optional, name of warmup schedule.
     """
     super(DirectPowerDecay, self).__init__()
@@ -209,10 +208,10 @@ class PowerAndLinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     """Initialize configuration of the learning rate schedule.
 
     Args:
-      initial_learning_rate: A float, the initial learning rate.
+      initial_learning_rate: The initial learning rate.
       total_decay_steps: The total number of steps for power + linear decay.
-      power: A float, the number of steps required for linear warmup.
-      linear_decay_fraction: A float, in the last `linear_decay_fraction` steps,
+      power: The order of the polynomial.
+      linear_decay_fraction: In the last `linear_decay_fraction` steps,
         the learning rate will be multiplied by a linear decay.
       name: Optional, name of warmup schedule.
     """
@@ -242,5 +241,57 @@ class PowerAndLinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
         "total_decay_steps": self._total_decay_steps,
         "power": self._power,
         "linear_decay_fraction": self._linear_decay_fraction,
+        "name": self._name,
+    }
+
+
+class PowerDecayWithOffset(tf.keras.optimizers.schedules.LearningRateSchedule):
+  """Power learning rate decay with offset.
+
+  Learning rate equals to `pre_offset_learning_rate` if `step` < `offset`.
+  Otherwise, learning rate equals to lr * (step - offset)^power.
+  """
+
+  def __init__(self,
+               initial_learning_rate: float,
+               power: float = 1.0,
+               offset: int = 0,
+               pre_offset_learning_rate: float = 1.0e6,
+               name: str = "PowerDecayWithOffset"):
+    """Initialize configuration of the learning rate schedule.
+
+    Args:
+      initial_learning_rate: The initial learning rate.
+      power: The order of the polynomial.
+      offset: The offset when computing the power decay.
+      pre_offset_learning_rate: The maximum learning rate we'll use.
+      name: Optional, name of warmup schedule.
+    """
+    super(PowerDecayWithOffset, self).__init__()
+    self._initial_learning_rate = initial_learning_rate
+    self._power = power
+    self._offset = offset
+    self._pre_offset_lr = pre_offset_learning_rate
+    self._name = name
+
+  def __call__(self, step):
+    with tf.name_scope(self._name or "PowerDecayWithOffset"):
+      step = tf.cast(step, tf.float32)
+      lr_after_offset = tf.math.pow(
+          tf.math.maximum(step - self._offset, 1.0), self._power) * (
+              self._initial_learning_rate)
+
+      sign = tf.cast(step > self._offset, tf.float32)
+      lr_combined = (1.0 - sign) * self._pre_offset_lr + sign * lr_after_offset
+      # Power may give infinitely large LR. So cap it with pre_offset_lr.
+      return tf.math.minimum(lr_combined, self._pre_offset_lr)
+
+  def get_config(self):
+    """Get the configuration of the learning rate schedule."""
+    return {
+        "initial_learning_rate": self._initial_learning_rate,
+        "power": self._power,
+        "offset": self._offset,
+        "pre_offset_learning_rate": self._pre_offset_lr,
         "name": self._name,
     }
