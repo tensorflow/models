@@ -17,10 +17,8 @@ r"""Tool to generate api_docs for tensorflow_models/official library.
 Example:
 
 $> pip install -U git+https://github.com/tensorflow/docs
-$> python build_docs \
- --output_dir=/tmp/api_docs \
- --project_short_name=tfnlp \
- --project_full_name="TensorFlow Official Models - NLP Modeling Library"
+$> python build_vision_api_docs \
+ --output_dir=/tmp/api_docs
 """
 
 import os
@@ -28,81 +26,43 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
-
-import tensorflow as tf
-from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
 
-from official.nlp import modeling as tfnlp
+import build_api_docs_lib
+from official.vision.beta import modeling as tfvision
 
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('output_dir', None, 'Where to write the resulting docs to.')
 flags.DEFINE_string(
     'code_url_prefix',
-    'https://github.com/tensorflow/models/blob/master/official/nlp/modeling/',
+    'https://github.com/tensorflow/models/blob/master/official/vision/beta/modeling/',
     'The url prefix for links to code.')
 
 flags.DEFINE_bool('search_hints', True,
                   'Include metadata search hints in the generated files')
 
-flags.DEFINE_string('site_path', '/api_docs/python',
+flags.DEFINE_string('site_path', 'tfvision/api_docs/python',
                     'Path prefix in the _toc.yaml')
 
 flags.DEFINE_bool('gen_report', False,
                   'Generate an API report containing the health of the '
                   'docstrings of the public API.')
 
-PROJECT_SHORT_NAME = 'tfnlp'
-PROJECT_FULL_NAME = 'TensorFlow Official Models - NLP Modeling Library'
-
-
-def _hide_module_model_and_layer_methods():
-  """Hide methods and properties defined in the base classes of Keras layers.
-
-  We hide all methods and properties of the base classes, except:
-  - `__init__` is always documented.
-  - `call` is always documented, as it can carry important information for
-    complex layers.
-  """
-  module_contents = list(tf.Module.__dict__.items())
-  model_contents = list(tf.keras.Model.__dict__.items())
-  layer_contents = list(tf.keras.layers.Layer.__dict__.items())
-
-  for name, obj in module_contents + layer_contents + model_contents:
-    if name == '__init__':
-      # Always document __init__.
-      continue
-
-    if name == 'call':
-      # Always document `call`.
-      if hasattr(obj, doc_controls._FOR_SUBCLASS_IMPLEMENTERS):  # pylint: disable=protected-access
-        delattr(obj, doc_controls._FOR_SUBCLASS_IMPLEMENTERS)  # pylint: disable=protected-access
-      continue
-
-    # Otherwise, exclude from documentation.
-    if isinstance(obj, property):
-      obj = obj.fget
-
-    if isinstance(obj, (staticmethod, classmethod)):
-      obj = obj.__func__
-
-    try:
-      doc_controls.do_not_doc_in_subclasses(obj)
-    except AttributeError:
-      pass
+PROJECT_SHORT_NAME = 'tfvision'
+PROJECT_FULL_NAME = 'TensorFlow Official Models - Vision Modeling Library'
 
 
 def gen_api_docs(code_url_prefix, site_path, output_dir, gen_report,
                  project_short_name, project_full_name, search_hints):
   """Generates api docs for the tensorflow docs package."""
-  _hide_module_model_and_layer_methods()
+  build_api_docs_lib.hide_module_model_and_layer_methods()
 
   doc_generator = generate_lib.DocGenerator(
       root_title=project_full_name,
-      py_modules=[(project_short_name, tfnlp)],
-      base_dir=os.path.dirname(tfnlp.__file__),
+      py_modules=[(project_short_name, tfvision)],
+      base_dir=os.path.dirname(tfvision.__file__),
       code_url_prefix=code_url_prefix,
       search_hints=search_hints,
       site_path=site_path,
