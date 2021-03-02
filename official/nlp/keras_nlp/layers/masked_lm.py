@@ -76,15 +76,11 @@ class MaskedLM(tf.keras.layers.Layer):
     super(MaskedLM, self).build(input_shape)
 
   def call(self, sequence_data, masked_positions):
-    masked_lm_input = self._gather_indexes(sequence_data, masked_positions)
+    masked_lm_input = tf.gather(sequence_data, masked_positions, batch_dims=1)
     lm_data = self.dense(masked_lm_input)
     lm_data = self.layer_norm(lm_data)
     lm_data = tf.matmul(lm_data, self.embedding_table, transpose_b=True)
     logits = tf.nn.bias_add(lm_data, self.bias)
-    masked_positions_length = masked_positions.shape.as_list()[1] or tf.shape(
-        masked_positions)[1]
-    logits = tf.reshape(logits,
-                        [-1, masked_positions_length, self._vocab_size])
     if self._output_type == 'logits':
       return logits
     return tf.nn.log_softmax(logits)
@@ -92,32 +88,3 @@ class MaskedLM(tf.keras.layers.Layer):
   def get_config(self):
     raise NotImplementedError('MaskedLM cannot be directly serialized because '
                               'it has variable sharing logic.')
-
-  def _gather_indexes(self, sequence_tensor, positions):
-    """Gathers the vectors at the specific positions.
-
-    Args:
-        sequence_tensor: Sequence output of `BertModel` layer of shape
-          (`batch_size`, `seq_length`, num_hidden) where num_hidden is number of
-          hidden units of `BertModel` layer.
-        positions: Positions ids of tokens in sequence to mask for pretraining
-          of with dimension (batch_size, num_predictions) where
-          `num_predictions` is maximum number of tokens to mask out and predict
-          per each sequence.
-
-    Returns:
-        Masked out sequence tensor of shape (batch_size * num_predictions,
-        num_hidden).
-    """
-    sequence_shape = tf.shape(sequence_tensor)
-    batch_size, seq_length = sequence_shape[0], sequence_shape[1]
-    width = sequence_tensor.shape.as_list()[2] or sequence_shape[2]
-
-    flat_offsets = tf.reshape(
-        tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])
-    flat_positions = tf.reshape(positions + flat_offsets, [-1])
-    flat_sequence_tensor = tf.reshape(sequence_tensor,
-                                      [batch_size * seq_length, width])
-    output_tensor = tf.gather(flat_sequence_tensor, flat_positions)
-
-    return output_tensor
