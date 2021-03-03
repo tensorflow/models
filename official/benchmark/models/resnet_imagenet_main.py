@@ -92,7 +92,8 @@ def run(flags_obj):
   dtype = flags_core.get_tf_dtype(flags_obj)
   performance.set_mixed_precision_policy(
       flags_core.get_tf_dtype(flags_obj),
-      flags_core.get_loss_scale(flags_obj, default_for_fp16=128))
+      flags_core.get_loss_scale(flags_obj, default_for_fp16=128),
+      use_experimental_api=True)
 
   data_format = flags_obj.data_format
   if data_format is None:
