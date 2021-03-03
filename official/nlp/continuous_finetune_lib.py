@@ -108,7 +108,8 @@ def run_continuous_finetune(
   # dtype is float16
   if params.runtime.mixed_precision_dtype:
     performance.set_mixed_precision_policy(params.runtime.mixed_precision_dtype,
-                                           params.runtime.loss_scale)
+                                           params.runtime.loss_scale,
+                                           use_experimental_api=True)
   distribution_strategy = distribute_utils.get_distribution_strategy(
       distribution_strategy=params.runtime.distribution_strategy,
       all_reduce_alg=params.runtime.all_reduce_alg,
