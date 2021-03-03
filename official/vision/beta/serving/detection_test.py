@@ -38,35 +38,10 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
         params, batch_size=1, input_image_size=[640, 640])
     return detection_module
 
-  def _export_from_module(self, module, input_type, batch_size, save_directory):
-    if input_type == 'image_tensor':
-      input_signature = tf.TensorSpec(
-          shape=[batch_size, None, None, 3], dtype=tf.uint8)
-      signatures = {
-          'serving_default':
-              module.inference_from_image_tensors.get_concrete_function(
-                  input_signature)
-      }
-    elif input_type == 'image_bytes':
-      input_signature = tf.TensorSpec(shape=[batch_size], dtype=tf.string)
-      signatures = {
-          'serving_default':
-              module.inference_from_image_bytes.get_concrete_function(
-                  input_signature)
-      }
-    elif input_type == 'tf_example':
-      input_signature = tf.TensorSpec(shape=[batch_size], dtype=tf.string)
-      signatures = {
-          'serving_default':
-              module.inference_from_tf_example.get_concrete_function(
-                  input_signature)
-      }
-    else:
-      raise ValueError('Unrecognized `input_type`')
-
-    tf.saved_model.save(module,
-                        save_directory,
-                        signatures=signatures)
+  def _export_from_module(self, module, input_type, save_directory):
+    signatures = module.get_inference_signatures(
+        {input_type: 'serving_default'})
+    tf.saved_model.save(module, save_directory, signatures=signatures)
 
   def _get_dummy_input(self, input_type, batch_size, image_size):
     """Get dummy input for the given input type."""
@@ -107,23 +82,23 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_export(self, input_type, experiment_name, image_size):
     tmp_dir = self.get_temp_dir()
-    batch_size = 1
-
     module = self._get_detection_module(experiment_name)
-    model = module.build_model()
 
-    self._export_from_module(module, input_type, batch_size, tmp_dir)
+    self._export_from_module(module, input_type, tmp_dir)
 
     self.assertTrue(os.path.exists(os.path.join(tmp_dir, 'saved_model.pb')))
-    self.assertTrue(os.path.exists(
-        os.path.join(tmp_dir, 'variables', 'variables.index')))
-    self.assertTrue(os.path.exists(
-        os.path.join(tmp_dir, 'variables', 'variables.data-00000-of-00001')))
+    self.assertTrue(
+        os.path.exists(os.path.join(tmp_dir, 'variables', 'variables.index')))
+    self.assertTrue(
+        os.path.exists(
+            os.path.join(tmp_dir, 'variables',
+                         'variables.data-00000-of-00001')))
 
     imported = tf.saved_model.load(tmp_dir)
     detection_fn = imported.signatures['serving_default']
 
-    images = self._get_dummy_input(input_type, batch_size, image_size)
+    images = self._get_dummy_input(
+        input_type, batch_size=1, image_size=image_size)
 
     processed_images, anchor_boxes, image_info = module._build_inputs(
         tf.zeros((224, 224, 3), dtype=tf.uint8))
@@ -133,7 +108,7 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
     for l, l_boxes in anchor_boxes.items():
       anchor_boxes[l] = tf.expand_dims(l_boxes, 0)
 
-    expected_outputs = model(
+    expected_outputs = module.model(
         images=processed_images,
         image_shape=image_shape,
         anchor_boxes=anchor_boxes,
@@ -142,6 +117,7 @@ class DetectionExportTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertAllClose(outputs['num_detections'].numpy(),
                         expected_outputs['num_detections'].numpy())
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -16,17 +16,26 @@
 
 import abc
 import functools
-from typing import Any, Dict, List, Optional, Text, Union
+from typing import Any, Callable, Dict, Mapping, List, Optional, Text, Union
 
 import tensorflow as tf
 from tensorflow.python.saved_model.model_utils import export_utils
 
 
-# TODO(hongkuny): add unit tests.
 class ExportModule(tf.Module, metaclass=abc.ABCMeta):
   """Base Export Module."""
 
-  def __init__(self, params, model: tf.keras.Model, inference_step=None):
+  def __init__(self,
+               params,
+               model: Union[tf.Module, tf.keras.Model],
+               inference_step: Optional[Callable[..., Any]] = None):
+    """Instantiates an ExportModel.
+
+    Args:
+      params: A dataclass for parameters to the module.
+      model: A model instance which contains weights and forward computation.
+      inference_step: An optional callable to define how the model is called.
+    """
     super().__init__(name=None)
     self.model = model
     self.params = params
@@ -38,7 +47,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
           self.model.__call__, training=False)
 
   @abc.abstractmethod
-  def serve(self) -> Dict[str, tf.Tensor]:
+  def serve(self) -> Mapping[Text, tf.Tensor]:
     """The bare inference function which should run on all devices.
 
     Expecting tensors are passed in through keyword arguments. Returns a
@@ -47,7 +56,7 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def get_inference_signatures(
-      self, function_keys: Dict[Text, Text]) -> Dict[str, Any]:
+      self, function_keys: Dict[Text, Text]) -> Mapping[Text, Any]:
     """Get defined function signatures."""
 
 
