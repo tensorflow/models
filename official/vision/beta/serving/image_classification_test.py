@@ -38,30 +38,8 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
     return classification_module
 
   def _export_from_module(self, module, input_type, save_directory):
-    if input_type == 'image_tensor':
-      input_signature = tf.TensorSpec(shape=[None, 224, 224, 3], dtype=tf.uint8)
-      signatures = {
-          'serving_default':
-              module.inference_from_image_tensors.get_concrete_function(
-                  input_signature)
-      }
-    elif input_type == 'image_bytes':
-      input_signature = tf.TensorSpec(shape=[None], dtype=tf.string)
-      signatures = {
-          'serving_default':
-              module.inference_from_image_bytes.get_concrete_function(
-                  input_signature)
-      }
-    elif input_type == 'tf_example':
-      input_signature = tf.TensorSpec(shape=[None], dtype=tf.string)
-      signatures = {
-          'serving_default':
-              module.inference_from_tf_example.get_concrete_function(
-                  input_signature)
-      }
-    else:
-      raise ValueError('Unrecognized `input_type`')
-
+    signatures = module.get_inference_signatures(
+        {input_type: 'serving_default'})
     tf.saved_model.save(module,
                         save_directory,
                         signatures=signatures)
@@ -95,9 +73,7 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_export(self, input_type='image_tensor'):
     tmp_dir = self.get_temp_dir()
-
     module = self._get_classification_module()
-    model = module.build_model()
 
     self._export_from_module(module, input_type, tmp_dir)
 
@@ -118,7 +94,7 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
             elems=tf.zeros((1, 224, 224, 3), dtype=tf.uint8),
             fn_output_signature=tf.TensorSpec(
                 shape=[224, 224, 3], dtype=tf.float32)))
-    expected_output = model(processed_images, training=False)
+    expected_output = module.model(processed_images, training=False)
     out = classification_fn(tf.constant(images))
     self.assertAllClose(out['outputs'].numpy(), expected_output.numpy())
 
