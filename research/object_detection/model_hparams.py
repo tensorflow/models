@@ -23,12 +23,23 @@ from __future__ import print_function
 
 # pylint: disable=g-import-not-at-top
 try:
-  from tensorflow.contrib import training as contrib_training
+  from tensorboard.plugins.hparams import api as hp
 except ImportError:
   # TF 2.0 doesn't ship with contrib.
   pass
 # pylint: enable=g-import-not-at-top
 
+class HParams():
+    def __init__(self,*args,**kwargs):
+        self.params = {key:value for key,value in kwargs.items()}
+        if 'load_pretrained' not in self.params:
+            self.params['load_pretrained'] = True
+        for (key, value) in self.params.items():
+            self.__dict__[key] = value
+    def values(self):
+        return self.params
+    def get(self,key,default):
+        return self.params.get(key,default)
 
 def create_hparams(hparams_overrides=None):
   """Returns hyperparameters, including any flag value overrides.
@@ -40,11 +51,14 @@ def create_hparams(hparams_overrides=None):
   Returns:
     The hyperparameters as a tf.HParams object.
   """
-  hparams = contrib_training.HParams(
+  #hparams = contrib_training.HParams(
       # Whether a fine tuning checkpoint (provided in the pipeline config)
       # should be loaded for training.
-      load_pretrained=True)
+  #    load_pretrained=True)
   # Override any of the preceding hyperparameter values.
   if hparams_overrides:
-    hparams = hparams.parse(hparams_overrides)
+    #  hparams = hparams.parse(hparams_overrides)
+    return hparams_overrides
+  #hp.HParam('load_pretrained', hp.Discrete([True]))
+  hparams = HParams(load_pretrained = True)
   return hparams
