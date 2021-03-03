@@ -120,7 +120,14 @@ class PolynomialWarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
       # learning rate will be `global_step/num_warmup_steps * init_lr`.
       global_step_float = tf.cast(step, tf.float32)
       warmup_steps_float = tf.cast(self._warmup_steps, tf.float32)
-      warmup_percent_done = global_step_float / warmup_steps_float
+
+      if self._warmup_steps <= 0:
+        warmup_percent_done = 1.0
+      else:
+        # A zero `step` may cause Inf. So make `step` positive.
+        step_non_zero = tf.math.maximum(global_step_float, 1.0)
+        warmup_percent_done = step_non_zero / warmup_steps_float
+
       warmup_learning_rate = (
           self._initial_learning_rate *
           tf.math.pow(warmup_percent_done, self._power))
@@ -226,8 +233,10 @@ class PowerAndLinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
     with tf.name_scope(self._name or "PowerAndLinearDecay"):
       step = tf.cast(step, tf.float32)
       learning_rate = self._initial_learning_rate
-      learning_rate *= tf.math.pow(step, self._power)
-      if self._linear_decay_fraction > 0:
+      # A zero `step` may cause Inf. So make `step` positive.
+      step_non_zero = tf.math.maximum(step, 1.0)
+      learning_rate *= tf.math.pow(step_non_zero, self._power)
+      if self._total_decay_steps * self._linear_decay_fraction > 0:
         learning_rate *= tf.minimum(
             1.0, (self._total_decay_steps - step) /
             (self._total_decay_steps * self._linear_decay_fraction))
