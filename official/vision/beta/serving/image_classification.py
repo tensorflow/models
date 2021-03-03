@@ -29,17 +29,14 @@ STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 class ClassificationModule(export_base.ExportModule):
   """classification Module."""
 
-  def build_model(self, skip_logits_layer=False):
+  def _build_model(self):
     input_specs = tf.keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [3])
 
-    self._model = factory.build_classification_model(
+    return factory.build_classification_model(
         input_specs=input_specs,
-        model_config=self._params.task.model,
-        l2_regularizer=None,
-        skip_logits_layer=skip_logits_layer)
-
-    return self._model
+        model_config=self.params.task.model,
+        l2_regularizer=None)
 
   def _build_inputs(self, image):
     """Builds classification model inputs for serving."""
@@ -58,7 +55,7 @@ class ClassificationModule(export_base.ExportModule):
                                            scale=STDDEV_RGB)
     return image
 
-  def _run_inference_on_image_tensors(self, images):
+  def serve(self, images):
     """Cast image to float and run inference.
 
     Args:
@@ -79,6 +76,6 @@ class ClassificationModule(export_base.ExportModule):
               )
           )
 
-    logits = self._model(images, training=False)
+    logits = self.inference_step(images)
 
     return dict(outputs=logits)

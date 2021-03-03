@@ -16,20 +16,22 @@
 """Base class for model export."""
 
 import abc
-from typing import Optional, Sequence, Mapping
+from typing import Dict, List, Mapping, Optional, Text
 
 import tensorflow as tf
 
+from official.core import export_base
 from official.modeling.hyperparams import config_definitions as cfg
 
 
-class ExportModule(tf.Module, metaclass=abc.ABCMeta):
+class ExportModule(export_base.ExportModule, metaclass=abc.ABCMeta):
   """Base Export Module."""
 
   def __init__(self,
                params: cfg.ExperimentConfig,
+               *,
                batch_size: int,
-               input_image_size: Sequence[int],
+               input_image_size: List[int],
                num_channels: int = 3,
                model: Optional[tf.keras.Model] = None):
     """Initializes a module for export.
@@ -42,13 +44,13 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
       num_channels: The number of the image channels.
       model: A tf.keras.Model instance to be exported.
     """
-
-    super(ExportModule, self).__init__()
-    self._params = params
+    self.params = params
     self._batch_size = batch_size
     self._input_image_size = input_image_size
     self._num_channels = num_channels
-    self._model = model
+    if model is None:
+      model = self._build_model()  # pylint: disable=assignment-from-none
+    super().__init__(params=params, model=model)
 
   def _decode_image(self, encoded_image_bytes: str) -> tf.Tensor:
     """Decodes an image bytes to an image tensor.
@@ -92,45 +94,40 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
     image_tensor = self._decode_image(parsed_tensors['image/encoded'])
     return image_tensor
 
-  @abc.abstractmethod
-  def build_model(self, **kwargs):
-    """Builds model and sets self._model."""
-
-  @abc.abstractmethod
-  def _run_inference_on_image_tensors(
-      self, images: tf.Tensor) -> Mapping[str, tf.Tensor]:
-    """Runs inference on images."""
+  def _build_model(self, **kwargs):
+    """Returns a model built from the params."""
+    return None
 
   @tf.function
   def inference_from_image_tensors(
-      self, input_tensor: tf.Tensor) -> Mapping[str, tf.Tensor]:
-    return self._run_inference_on_image_tensors(input_tensor)
+      self, inputs: tf.Tensor) -> Mapping[str, tf.Tensor]:
+    return self.serve(inputs)
 
   @tf.function
-  def inference_from_image_bytes(self, input_tensor: str):
+  def inference_from_image_bytes(self, inputs: tf.Tensor):
     with tf.device('cpu:0'):
       images = tf.nest.map_structure(
           tf.identity,
           tf.map_fn(
               self._decode_image,
-              elems=input_tensor,
+              elems=inputs,
               fn_output_signature=tf.TensorSpec(
                   shape=[None] * len(self._input_image_size) +
                   [self._num_channels],
                   dtype=tf.uint8),
               parallel_iterations=32))
       images = tf.stack(images)
-    return self._run_inference_on_image_tensors(images)
+    return self.serve(images)
 
   @tf.function
-  def inference_from_tf_example(
-      self, input_tensor: tf.train.Example) -> Mapping[str, tf.Tensor]:
+  def inference_from_tf_example(self,
+                                inputs: tf.Tensor) -> Mapping[str, tf.Tensor]:
     with tf.device('cpu:0'):
       images = tf.nest.map_structure(
           tf.identity,
           tf.map_fn(
               self._decode_tf_example,
-              elems=input_tensor,
+              elems=inputs,
               # Height/width of the shape of input images is unspecified (None)
               # at the time of decoding the example, but the shape will
               # be adjusted to conform to the input layer of the model,
@@ -142,4 +139,41 @@ class ExportModule(tf.Module, metaclass=abc.ABCMeta):
               dtype=tf.uint8,
               parallel_iterations=32))
       images = tf.stack(images)
-    return self._run_inference_on_image_tensors(images)
+    return self.serve(images)
+
+  def get_inference_signatures(self, function_keys: Dict[Text, Text]):
+    """Gets defined function signatures.
+
+    Args:
+      function_keys: A dictionary with keys as the function to create signature
+        for and values as the signature keys when returns.
+
+    Returns:
+      A dictionary with key as signature key and value as concrete functions
+        that can be used for tf.saved_model.save.
+    """
+    signatures = {}
+    for key, def_name in function_keys.items():
+      if key == 'image_tensor':
+        input_signature = tf.TensorSpec(
+            shape=[self._batch_size] + [None] * len(self._input_image_size) +
+            [self._num_channels],
+            dtype=tf.uint8)
+        signatures[
+            def_name] = self.inference_from_image_tensors.get_concrete_function(
+                input_signature)
+      elif key == 'image_bytes':
+        input_signature = tf.TensorSpec(
+            shape=[self._batch_size], dtype=tf.string)
+        signatures[
+            def_name] = self.inference_from_image_bytes.get_concrete_function(
+                input_signature)
+      elif key == 'serve_examples' or key == 'tf_example':
+        input_signature = tf.TensorSpec(
+            shape=[self._batch_size], dtype=tf.string)
+        signatures[
+            def_name] = self.inference_from_tf_example.get_concrete_function(
+                input_signature)
+      else:
+        raise ValueError('Unrecognized `input_type`')
+    return signatures
