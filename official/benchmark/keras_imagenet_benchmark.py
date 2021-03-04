@@ -635,12 +635,30 @@ class KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
         distribution_strategy='tpu',
         per_replica_batch_size=128)
 
+  def benchmark_2x2_tpu(self):
+    """Test Keras model with 2x2 TPU."""
+    self._setup()
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_2x2_tpu',
+        num_tpus=8,
+        distribution_strategy='tpu',
+        per_replica_batch_size=128)
+
   def benchmark_4x4_tpu_bf16(self):
     """Test Keras model with 4x4 TPU, bf16."""
     self._setup()
     self._run_and_report_benchmark(
         experiment_name='benchmark_4x4_tpu_bf16',
         dtype='bfloat16',
+        num_tpus=32,
+        distribution_strategy='tpu',
+        per_replica_batch_size=128)
+
+  def benchmark_4x4_tpu(self):
+    """Test Keras model with 4x4 TPU."""
+    self._setup()
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_4x4_tpu',
         num_tpus=32,
         distribution_strategy='tpu',
         per_replica_batch_size=128)
@@ -673,6 +691,15 @@ class KerasClassifierBenchmarkBase(keras_benchmark.KerasBenchmark):
     self._run_and_report_benchmark(
         experiment_name='benchmark_8x8_tpu_bf16',
         dtype='bfloat16',
+        num_tpus=128,
+        distribution_strategy='tpu',
+        per_replica_batch_size=64)
+
+  def benchmark_8x8_tpu(self):
+    """Test Keras model with 8x8 TPU."""
+    self._setup()
+    self._run_and_report_benchmark(
+        experiment_name='benchmark_8x8_tpu',
         num_tpus=128,
         distribution_strategy='tpu',
         per_replica_batch_size=64)
