@@ -330,8 +330,7 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
     if bool(model_file_path) == bool(model_serialized_proto):
       raise ValueError("Exact one of `model_file_path` and "
                        "`model_serialized_proto` can be specified.")
-    # TODO(chendouble): After b/149576200 is resolved, support
-    # tokenize_with_offsets when strip_diacritics is True,
+    # TODO(b/181866850): Support tokenize_with_offsets for strip_diacritics=True
     if tokenize_with_offsets and strip_diacritics:
       raise ValueError("`tokenize_with_offsets` is not supported when "
                        "`strip_diacritics` is set to True.")
@@ -378,8 +377,8 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
     """
     if self._strip_diacritics:
       if self.tokenize_with_offsets:
-        raise ValueError("`tokenize_with_offsets` is not supported yet due to "
-                         "b/149576200, when `strip_diacritics` is set to True.")
+        raise ValueError("`tokenize_with_offsets` is not supported yet when "
+                         "`strip_diacritics` is set to True (b/181866850).")
       inputs = text.normalize_utf8(inputs, "NFD")
       inputs = tf.strings.regex_replace(inputs, r"\p{Mn}", "")
 
