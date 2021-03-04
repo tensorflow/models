@@ -145,7 +145,7 @@ flags.DEFINE_integer(
     "sequence length for the bert_pack_inputs subobject."
     "Needed for --export_type preprocessing.")
 flags.DEFINE_bool(
-    "tokenize_with_offsets", False,  # Broken by b/149576200.
+    "tokenize_with_offsets", False,  # TODO(b/181866850)
     "Whether to export a .tokenize_with_offsets subobject for "
     "--export_type preprocessing.")
 flags.DEFINE_multi_string(

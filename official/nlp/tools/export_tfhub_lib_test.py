@@ -564,7 +564,7 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
   def test_exported_callables(self, use_sp_model):
     preprocess = tf.saved_model.load(self._do_export(
         ["d", "ef", "abc", "xy"], do_lower_case=True,
-        tokenize_with_offsets=not use_sp_model,  # TODO(b/149576200): drop this.
+        tokenize_with_offsets=not use_sp_model,  # TODO(b/181866850): drop this.
         experimental_disable_assert=True,  # TODO(b/175369555): drop this.
         use_sp_model=use_sp_model))
 
@@ -590,7 +590,7 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
 
     # .tokenize_with_offsets()
     if use_sp_model:
-      # TODO(b/149576200): Enable tokenize_with_offsets when it works and test.
+      # TODO(b/181866850): Enable tokenize_with_offsets when it works and test.
       self.assertFalse(hasattr(preprocess, "tokenize_with_offsets"))
     else:
       token_ids, start_offsets, limit_offsets = (
@@ -691,7 +691,7 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
   def test_shapes(self, use_sp_model):
     preprocess = tf.saved_model.load(self._do_export(
         ["abc", "def"], do_lower_case=True,
-        tokenize_with_offsets=not use_sp_model,  # TODO(b/149576200): drop this.
+        tokenize_with_offsets=not use_sp_model,  # TODO(b/181866850): drop this.
         experimental_disable_assert=True,  # TODO(b/175369555): drop this.
         use_sp_model=use_sp_model))
 
@@ -711,7 +711,7 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
               tf.TensorSpec([batch_size], tf.string)),
           token_out_shape,
           "with batch_size=%s" % batch_size)
-      # TODO(b/149576200): Enable tokenize_with_offsets when it works and test.
+      # TODO(b/181866850): Enable tokenize_with_offsets when it works and test.
       if use_sp_model:
         self.assertFalse(hasattr(preprocess, "tokenize_with_offsets"))
       else:
@@ -771,7 +771,7 @@ class ExportPreprocessingTest(tf.test.TestCase, parameterized.TestCase):
                           "quick", "fox", "lazy", "dog"]
     preprocess = tf.saved_model.load(self._do_export(
         non_special_tokens, do_lower_case=True,
-        tokenize_with_offsets=use_bert,  # TODO(b/149576200): drop this.
+        tokenize_with_offsets=use_bert,  # TODO(b/181866850): drop this.
         experimental_disable_assert=True,  # TODO(b/175369555): drop this.
         add_mask_token=True, use_sp_model=not use_bert))
     vocab_size = len(non_special_tokens) + (5 if use_bert else 7)
