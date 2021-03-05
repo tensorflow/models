@@ -13,12 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # =============================================================================="""
-"""RevNet Implementation.
-
-[1] Aidan N. Gomez, Mengye Ren, Raquel Urtasun, Roger B. Grosse
-    The Reversible Residual Network: Backpropagation Without Storing Activations
-    https://arxiv.org/pdf/1707.04585.pdf
-"""
+"""Contains definitions of RevNet."""
 
 from typing import Any, Callable, Dict, Optional
 # Import libraries
@@ -55,7 +50,14 @@ REVNET_SPECS = {
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class RevNet(tf.keras.Model):
-  """Reversible ResNet, RevNet implementation."""
+  """Creates a Reversible ResNet (RevNet) family model.
+
+  This implements:
+    Aidan N. Gomez, Mengye Ren, Raquel Urtasun, Roger B. Grosse.
+    The Reversible Residual Network: Backpropagation Without Storing
+    Activations.
+    (https://arxiv.org/pdf/1707.04585.pdf)
+  """
 
   def __init__(self,
                model_id: int,
@@ -68,19 +70,19 @@ class RevNet(tf.keras.Model):
                kernel_initializer: str = 'VarianceScaling',
                kernel_regularizer: tf.keras.regularizers.Regularizer = None,
                **kwargs):
-    """RevNet initialization function.
+    """Initializes a RevNet model.
 
     Args:
-      model_id: `int` depth/id of ResNet backbone model.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
-      activation: `str` name of the activation function.
-      use_sync_bn: `bool` if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      kernel_initializer: `str` kernel_initializer for convolutional layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` for Conv2D.
-      **kwargs: additional keyword arguments to be passed.
+      model_id: An `int` of depth/id of ResNet backbone model.
+      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      activation: A `str` name of the activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_initializer: A str for kernel initializer of convolutional layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      **kwargs: Additional keyword arguments to be passed.
     """
     self._model_id = model_id
     self._input_specs = input_specs
@@ -148,19 +150,21 @@ class RevNet(tf.keras.Model):
     """Creates one reversible block for RevNet model.
 
     Args:
-      inputs: `Tensor` of size `[batch, channels, height, width]`.
-      filters: `int` number of filters for the first convolution of the layer.
-      strides: `int` stride to use for the first convolution of the layer. If
+      inputs: A `tf.Tensor` of size `[batch, channels, height, width]`.
+      filters: An `int` number of filters for the first convolution of the
+        layer.
+      strides: An `int` stride to use for the first convolution of the layer. If
         greater than 1, this block group will downsample the input.
       inner_block_fn: Either `nn_blocks.ResidualInner` or
         `nn_blocks.BottleneckResidualInner`.
-      block_repeats: `int` number of blocks contained in this block group.
-      batch_norm_first: `bool` whether to apply BatchNormalization and
-        activation layer before feeding into convolution layers.
-      name: `str`name for the block.
+      block_repeats: An `int` number of blocks contained in this block group.
+      batch_norm_first: A `bool` that specifies whether to apply
+        BatchNormalization and activation layer before feeding into convolution
+        layers.
+      name: A `str` name for the block.
 
     Returns:
-      The output `Tensor` of the block layer.
+      The output `tf.Tensor` of the block layer.
     """
     x = inputs
     for i in range(block_repeats):
@@ -210,7 +214,7 @@ def build_revnet(
     input_specs: tf.keras.layers.InputSpec,
     model_config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
-  """Builds ResNet 3d backbone from a config."""
+  """Builds RevNet backbone from a config."""
   backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
   norm_activation_config = model_config.norm_activation

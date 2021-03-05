@@ -70,10 +70,10 @@ def register_backbone_builder(key: str):
   ```
 
   Args:
-    key: the key to look up the builder.
+    key: A `str` of key to look up the builder.
 
   Returns:
-    A callable for use as class decorator that registers the decorated class
+    A callable for using as class decorator that registers the decorated class
     for creation from an instance of task_config_cls.
   """
   return registry.register(_REGISTERED_BACKBONE_CLS, key)
@@ -85,12 +85,13 @@ def build_backbone(input_specs: tf.keras.layers.InputSpec,
   """Builds backbone from a config.
 
   Args:
-    input_specs: tf.keras.layers.InputSpec.
-    model_config: a OneOfConfig. Model config.
-    l2_regularizer: tf.keras.regularizers.Regularizer instance. Default to None.
+    input_specs: A `tf.keras.layers.InputSpec` of input.
+    model_config: A `OneOfConfig` of model config.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` object. Default to
+      None.
 
   Returns:
-    tf.keras.Model instance of the backbone.
+    A `tf.keras.Model` instance of the backbone.
   """
   backbone_builder = registry.lookup(_REGISTERED_BACKBONE_CLS,
                                      model_config.backbone.type)
