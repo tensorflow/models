@@ -41,7 +41,7 @@ RESNET_SPECS = {
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class ResNet3D(tf.keras.Model):
-  """Class to build 3D ResNet family model."""
+  """Creates a 3D ResNet family model."""
 
   def __init__(self,
                model_id: int,
@@ -60,32 +60,33 @@ class ResNet3D(tf.keras.Model):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """ResNet3D initialization function.
+    """Initializes a 3D ResNet model.
 
     Args:
-      model_id: `int` depth of ResNet backbone model.
-      temporal_strides: a list of integers that specifies the temporal strides
+      model_id: An `int` of depth of ResNet backbone model.
+      temporal_strides: A list of integers that specifies the temporal strides
         for all 3d blocks.
-      temporal_kernel_sizes: a list of tuples that specifies the temporal kernel
+      temporal_kernel_sizes: A list of tuples that specifies the temporal kernel
         sizes for all 3d blocks in different block groups.
-      use_self_gating: a list of booleans to specify applying self-gating module
+      use_self_gating: A list of booleans to specify applying self-gating module
         or not in each block group. If None, self-gating is not applied.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
-      stem_conv_temporal_kernel_size: `int` temporal kernel size for the first
-        conv layer.
-      stem_conv_temporal_stride: `int` temporal stride for the first conv layer.
-      stem_pool_temporal_stride: `int` temporal stride for the first pool layer.
-      activation: `str` name of the activation function.
-      use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      stem_conv_temporal_kernel_size: An `int` of temporal kernel size for the
+        first conv layer.
+      stem_conv_temporal_stride: An `int` of temporal stride for the first conv
+        layer.
+      stem_pool_temporal_stride: An `int` of temporal stride for the first pool
+        layer.
+      activation: A `str` of name of the activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_initializer: A str for kernel initializer of convolutional layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-        Default to None.
-      **kwargs: keyword arguments to be passed.
+      **kwargs: Additional keyword arguments to be passed.
     """
     self._model_id = model_id
     self._temporal_strides = temporal_strides
@@ -181,21 +182,23 @@ class ResNet3D(tf.keras.Model):
     """Creates one group of blocks for the ResNet3D model.
 
     Args:
-      inputs: `Tensor` of size `[batch, channels, height, width]`.
-      filters: `int` number of filters for the first convolution of the layer.
-      temporal_kernel_sizes: a tuple that specifies the temporal kernel sizes
+      inputs: A `tf.Tensor` of size `[batch, channels, height, width]`.
+      filters: An `int` of number of filters for the first convolution of the
+        layer.
+      temporal_kernel_sizes: A tuple that specifies the temporal kernel sizes
         for each block in the current group.
-      temporal_strides: `int` temporal strides for the first convolution in this
-        group.
-      spatial_strides: `int` stride to use for the first convolution of the
+      temporal_strides: An `int` of temporal strides for the first convolution
+        in this group.
+      spatial_strides: An `int` stride to use for the first convolution of the
         layer. If greater than 1, this layer will downsample the input.
       block_fn: Either `nn_blocks.ResidualBlock` or `nn_blocks.BottleneckBlock`.
-      block_repeats: `int` number of blocks contained in the layer.
-      use_self_gating: `bool` apply self-gating module or not.
-      name: `str`name for the block.
+      block_repeats: An `int` of number of blocks contained in the layer.
+      use_self_gating: A `bool` that specifies whether to apply self-gating
+        module or not.
+      name: A `str` name for the block.
 
     Returns:
-      The output `Tensor` of the block layer.
+      The output `tf.Tensor` of the block layer.
     """
     if len(temporal_kernel_sizes) != block_repeats:
       raise ValueError(

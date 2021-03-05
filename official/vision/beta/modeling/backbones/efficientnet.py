@@ -51,14 +51,14 @@ SCALING_MAP = {
 
 
 def round_repeats(repeats, multiplier, skip=False):
-  """Round number of filters based on depth multiplier."""
+  """Returns rounded number of filters based on depth multiplier."""
   if skip or not multiplier:
     return repeats
   return int(math.ceil(multiplier * repeats))
 
 
 def block_spec_decoder(specs, width_scale, depth_scale):
-  """Decode specs for a block."""
+  """Decodes and returns specs for a block."""
   decoded_specs = []
   for s in specs:
     s = s + (
@@ -87,7 +87,13 @@ class BlockSpec(object):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class EfficientNet(tf.keras.Model):
-  """Class to build EfficientNet family model."""
+  """Creates an EfficientNet family model.
+
+  This implements the EfficientNet model from:
+    Mingxing Tan, Quoc V. Le.
+    EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.
+    (https://arxiv.org/pdf/1905.11946)
+  """
 
   def __init__(self,
                model_id,
@@ -102,25 +108,25 @@ class EfficientNet(tf.keras.Model):
                norm_momentum=0.99,
                norm_epsilon=0.001,
                **kwargs):
-    """EfficientNet initialization function.
+    """Initializes an EfficientNet model.
 
     Args:
-      model_id: `str` model id of EfficientNet.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
-      se_ratio: `float` squeeze and excitation ratio for inverted bottleneck
-        blocks.
-      stochastic_depth_drop_rate: `float` drop rate for drop connect layer.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      model_id: A `str` of model ID of EfficientNet.
+      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      se_ratio: A `float` of squeeze and excitation ratio for inverted
+        bottleneck blocks.
+      stochastic_depth_drop_rate: A `float` of drop rate for drop connect layer.
+      kernel_initializer: A `str` for kernel initializer of convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-        Default to None.
-      activation: `str` name of the activation function.
-      use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      **kwargs: keyword arguments to be passed.
+      activation: A `str` of name of the activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      **kwargs: Additional keyword arguments to be passed.
     """
     self._model_id = model_id
     self._input_specs = input_specs
@@ -203,12 +209,12 @@ class EfficientNet(tf.keras.Model):
     """Creates one group of blocks for the EfficientNet model.
 
     Args:
-      inputs: `Tensor` of size `[batch, channels, height, width]`.
-      specs: specifications for one inverted bottleneck block group.
-      name: `str`name for the block.
+      inputs: A `tf.Tensor` of size `[batch, channels, height, width]`.
+      specs: The specifications for one inverted bottleneck block group.
+      name: A `str` name for the block.
 
     Returns:
-      The output `Tensor` of the block layer.
+      The output `tf.Tensor` of the block layer.
     """
     if specs.block_fn == 'mbconv':
       block_fn = nn_blocks.InvertedBottleneckBlock
@@ -282,7 +288,7 @@ def build_efficientnet(
     input_specs: tf.keras.layers.InputSpec,
     model_config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
-  """Builds ResNet 3d backbone from a config."""
+  """Builds EfficientNet backbone from a config."""
   backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
   norm_activation_config = model_config.norm_activation
