@@ -51,12 +51,15 @@ def _build_assignment_map(keras_model,
   """
   assignment_map = {}
 
-  checkpoint_names = None
+  checkpoint_names = []
   if var_to_shape_map:
     checkpoint_names = list(
         filter(
             lambda x: not x.endswith('Momentum') and not x.endswith(
                 'global_step'), var_to_shape_map.keys()))
+
+  logging.info('Number of variables in the checkpoint %d',
+               len(checkpoint_names))
 
   for var in keras_model.variables:
     var_name = var.name
@@ -87,7 +90,7 @@ def _build_assignment_map(keras_model,
       logging.info('Error removing the match_name: %s', match_names)
       logging.info('Exception: %s', e)
       raise
-  logging.info('Found variable in checkpoint: %d', len(assignment_map))
+  logging.info('Found matching variable in checkpoint: %d', len(assignment_map))
   return assignment_map
 
 

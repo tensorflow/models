@@ -26,7 +26,6 @@ from official.vision.detection.evaluation import factory as eval_factory
 from official.vision.detection.modeling import base_model
 from official.vision.detection.modeling import losses
 from official.vision.detection.modeling.architecture import factory
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.ops import postprocess_ops
 from official.vision.detection.ops import roi_ops
 from official.vision.detection.ops import spatial_transform_ops
@@ -293,14 +292,13 @@ class MaskrcnnModel(base_model.Model):
   def build_model(self, params, mode):
     if self._keras_model is None:
       input_layers = self.build_input_layers(self._params, mode)
-      with keras_utils.maybe_enter_backend_graph():
-        outputs = self.model_outputs(input_layers, mode)
+      outputs = self.model_outputs(input_layers, mode)
 
-        model = tf.keras.models.Model(
-            inputs=input_layers, outputs=outputs, name='maskrcnn')
-        assert model is not None, 'Fail to build tf.keras.Model.'
-        model.optimizer = self.build_optimizer()
-        self._keras_model = model
+      model = tf.keras.models.Model(
+          inputs=input_layers, outputs=outputs, name='maskrcnn')
+      assert model is not None, 'Fail to build tf.keras.Model.'
+      model.optimizer = self.build_optimizer()
+      self._keras_model = model
 
     return self._keras_model
 
