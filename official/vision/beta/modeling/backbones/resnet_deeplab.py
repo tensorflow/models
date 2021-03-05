@@ -45,12 +45,12 @@ RESNET_SPECS = {
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class DilatedResNet(tf.keras.Model):
-  """Class to build ResNet model with Deeplabv3 modifications.
+  """Creates a ResNet model with Deeplabv3 modifications.
 
-  This backbone is suitable for semantic segmentation. It was proposed in:
-  [1] Liang-Chieh Chen, George Papandreou, Florian Schroff, Hartwig Adam
+  This backbone is suitable for semantic segmentation. This implements
+    Liang-Chieh Chen, George Papandreou, Florian Schroff, Hartwig Adam.
     Rethinking Atrous Convolution for Semantic Image Segmentation.
-    arXiv:1706.05587
+    (https://arxiv.org/pdf/1706.05587)
   """
 
   def __init__(self,
@@ -70,30 +70,31 @@ class DilatedResNet(tf.keras.Model):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """ResNet with DeepLab modification initialization function.
+    """Initializes a ResNet model with DeepLab modification.
 
     Args:
-      model_id: `int` depth of ResNet backbone model.
-      output_stride: `int` output stride, ratio of input to output resolution.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
-      stem_type: `standard` or `deeplab`, deeplab replaces 7x7 conv by 3 3x3
-        convs.
-      se_ratio: `float` or None. Ratio of the Squeeze-and-Excitation layer.
-      init_stochastic_depth_rate: `float` initial stochastic depth rate.
-      multigrid: `Tuple` of the same length as the number of blocks in the last
+      model_id: An `int` specifies depth of ResNet backbone model.
+      output_stride: An `int` of output stride, ratio of input to output
+        resolution.
+      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      stem_type: A `str` of stem type. Can be `standard` or `deeplab`. `deeplab`
+        replaces 7x7 conv by 3 3x3 convs.
+      se_ratio: A `float` or None. Ratio of the Squeeze-and-Excitation layer.
+      init_stochastic_depth_rate: A `float` of initial stochastic depth rate.
+      multigrid: A tuple of the same length as the number of blocks in the last
         resnet stage.
-      last_stage_repeats: `int`, how many times last stage is repeated.
-      activation: `str` name of the activation function.
-      use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-                          Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-                        Default to None.
-      **kwargs: keyword arguments to be passed.
+      last_stage_repeats: An `int` that specifies how many times last stage is
+        repeated.
+      activation: A `str` name of the activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_initializer: A str for kernel initializer of convolutional layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+        Default to None.
+      **kwargs: Additional keyword arguments to be passed.
     """
     self._model_id = model_id
     self._output_stride = output_stride
@@ -247,20 +248,22 @@ class DilatedResNet(tf.keras.Model):
     Deeplab applies strides at the last block.
 
     Args:
-      inputs: `Tensor` of size `[batch, channels, height, width]`.
-      filters: `int` number of filters for the first convolution of the layer.
-      strides: `int` stride to use for the first convolution of the layer. If
-        greater than 1, this layer will downsample the input.
-      dilation_rate: `int`, diluted convolution rates.
+      inputs: A `tf.Tensor` of size `[batch, channels, height, width]`.
+      filters: An `int` off number of filters for the first convolution of the
+        layer.
+      strides: An `int` of stride to use for the first convolution of the layer.
+        If greater than 1, this layer will downsample the input.
+      dilation_rate: An `int` of diluted convolution rates.
       block_fn: Either `nn_blocks.ResidualBlock` or `nn_blocks.BottleneckBlock`.
-      block_repeats: `int` number of blocks contained in the layer.
-      stochastic_depth_drop_rate: `float` drop rate of the current block group.
-      multigrid: List of ints or None, if specified, dilation rates for each
+      block_repeats: An `int` of number of blocks contained in the layer.
+      stochastic_depth_drop_rate: A `float` of drop rate of the current block
+        group.
+      multigrid: A list of `int` or None. If specified, dilation rates for each
         block is scaled up by its corresponding factor in the multigrid.
-      name: `str`name for the block.
+      name: A `str` name for the block.
 
     Returns:
-      The output `Tensor` of the block layer.
+      The output `tf.Tensor` of the block layer.
     """
     if multigrid is not None and len(multigrid) != block_repeats:
       raise ValueError('multigrid has to match number of block_repeats')
