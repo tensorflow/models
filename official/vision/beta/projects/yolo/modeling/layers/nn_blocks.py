@@ -822,7 +822,7 @@ class CSPStack(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class RouteMerge(tf.keras.layers.Layer):
-  """xor upsample rotuingblock. if downsample = false it will upsample"""
+  """xor upsample routingblock. if downsample = false it will upsample"""
 
   def __init__(
       self,
@@ -841,6 +841,31 @@ class RouteMerge(tf.keras.layers.Layer):
       upsample=False,
       upsample_size=2,
       **kwargs):
+    """
+    Args:
+      filters: integer for output depth, or the number of features to learn
+      kernel_initializer: string to indicate which function to use to initialize
+        weights
+      bias_initializer: string to indicate which function to use to initialize
+        bias
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights
+      bias_regularizer: string to indicate which function to use to regularizer
+        bias
+      use_bn: boolean for whether to use batch normalization
+      use_sync_bn: boolean for whether sync batch normalization statistics
+        of all batch norm layers to the models global statistics
+        (across all input batches)
+      norm_moment: float for moment to use for batch normalization
+      norm_epsilon: float for batch normalization epsilon
+      activation: string or None for activation function to use in layer,
+        if None activation is replaced by linear
+      leaky_alpha: float to use as alpha if activation function is leaky
+      downsample: `bool` for whehter to downwample and merge
+      upsample: `bool` for whehter to upsample and merge
+      upsample_size: `int` how much to upsample in order to match shapes
+      **kwargs: Keyword Arguments
+    """
 
     # darkconv params
     self._filters = filters
@@ -910,8 +935,8 @@ class RouteMerge(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class SPP(tf.keras.layers.Layer):
   """
-    a non-agregated SPP layer that uses Pooling to gain more performance
-    """
+  a non-aggregated SPP layer that uses Pooling to gain more performance
+  """
 
   def __init__(self, sizes, **kwargs):
     self._sizes = list(reversed(sizes))

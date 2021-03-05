@@ -37,11 +37,11 @@ class YoloFPN(tf.keras.layers.Layer):
     Args:
       fpn_path_len: `int`, number of layers ot use in each FPN path
         if you choose to use an FPN
+      activation: `str`, the activation function to use typically leaky or mish
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
-      activation: `str`, the activation function to use typically leaky or mish
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
@@ -150,14 +150,17 @@ class YoloRoutedDecoder(tf.keras.layers.Layer):
       max_level_process_len: `int`, number of layers ot use in the largest
         processing path, or the backbones largest output if it is different
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
+      activation: `str`, the activation function to use typically leaky
+        or mish
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float`, normalization omentum for the moving average.
-      norm_epsilon: `float`, small float added to variance to avoid dividing by
-        zero.
-      activation: `str`, the activation function to use typically leaky or mish
+      norm_epsilon: `float`, small float added to variance to avoid dividing
+        by zero.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      fpn_input: `bool`, for whether the input into this fucntion is an FPN or
+        a backbone.
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -255,10 +258,10 @@ class YoloFPNDecoder(tf.keras.layers.Layer):
         processing path, or the backbones largest output if it is different
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
       use_sync_bn: if True, use synchronized batch normalization.
+      activation: `str`, the activation function to use typically leaky or mish
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
-      activation: `str`, the activation function to use typically leaky or mish
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
