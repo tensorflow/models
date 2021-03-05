@@ -23,9 +23,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import logging
 import tensorflow as tf
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 
 
@@ -112,9 +110,8 @@ class Resnet(object):
       The values are corresponding feature hierarchy in ResNet with shape
       [batch_size, height_l, width_l, num_filters].
     """
-    with keras_utils.maybe_enter_backend_graph():
-      with tf.name_scope('resnet%s' % self._resnet_depth):
-        return self._resnet_fn(inputs, is_training)
+    with tf.name_scope('resnet%s' % self._resnet_depth):
+      return self._resnet_fn(inputs, is_training)
 
   def fixed_padding(self, inputs, kernel_size):
     """Pads the input along the spatial dimensions independently of input size.

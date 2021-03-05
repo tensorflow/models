@@ -28,7 +28,6 @@ import functools
 
 import tensorflow as tf
 
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 from official.vision.detection.ops import spatial_transform_ops
 
@@ -120,7 +119,7 @@ class Fpn(object):
           'The minimum backbone level %d should be '%(min(input_levels)) +
           'less or equal to FPN minimum level %d.:'%(self._min_level))
     backbone_max_level = min(max(input_levels), self._max_level)
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('fpn'):
+    with tf.name_scope('fpn'):
       # Adds lateral connections.
       feats_lateral = {}
       for level in range(self._min_level, backbone_max_level + 1):
