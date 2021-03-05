@@ -94,23 +94,21 @@ class YoloFPN(tf.keras.layers.Layer):
       if level != self._max_level:
         self.resamples[str(level)] = nn_blocks.RouteMerge(
             filters=depth // 2, **self._base_config)
-        self.preprocessors[str(level)] = nn_blocks.DarkRouteProcess(
-            filters=depth,
-            repetitions=self._fpn_path_len,
-            insert_spp=False,
-            **self._base_config)
+        use_spp = False
+        repetitions = self._fpn_path_len
       else:
-        self.preprocessors[str(level)] = nn_blocks.DarkRouteProcess(
-            filters=depth,
-            repetitions=self._fpn_path_len + 2,
-            insert_spp=True,
-            **self._base_config)
-      if level == self._min_level:
-        self.tails[str(level)] = nn_blocks.FPNTail(
-            filters=depth, upsample=False, **self._base_config)
-      else:
-        self.tails[str(level)] = nn_blocks.FPNTail(
-            filters=depth, upsample=True, **self._base_config)
+        use_spp = True
+        repetitions = self._fpn_path_len + 2
+
+      self.preprocessors[str(level)] = nn_blocks.DarkRouteProcess(
+          filters=depth,
+          repetitions=repetitions,
+          insert_spp=use_spp,
+          **self._base_config)
+
+      upsample = (level != self._min_level)
+      self.tails[str(level)] = nn_blocks.FPNTail(
+          filters=depth, upsample=upsample, **self._base_config)
 
   def call(self, inputs, training=False): # pylint: disable=unused-argument
     outputs = {}
