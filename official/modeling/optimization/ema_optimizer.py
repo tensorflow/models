@@ -70,7 +70,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
       **kwargs: keyword arguments. Allowed to be {`clipnorm`,
         `clipvalue`, `lr`, `decay`}.
     """
-    super(ExponentialMovingAverage, self).__init__(name, **kwargs)
+    super().__init__(name, **kwargs)
     self._average_decay = average_decay
     self._start_step = tf.constant(start_step, tf.float32)
     self._dynamic_decay = dynamic_decay
