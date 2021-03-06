@@ -49,7 +49,7 @@ WARMUP_CLS = {
 }
 
 
-class OptimizerFactory(object):
+class OptimizerFactory:
   """Optimizer factory class.
 
   This class builds learning rate and optimizer based on an optimization config.

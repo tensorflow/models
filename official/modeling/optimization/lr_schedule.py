@@ -44,7 +44,7 @@ class LinearWarmup(tf.keras.optimizers.schedules.LearningRateSchedule):
       warmup_learning_rate: Initial learning rate for the warmup.
       name: Optional, name of warmup schedule.
     """
-    super(LinearWarmup, self).__init__()
+    super().__init__()
     self._name = name
     self._after_warmup_lr_sched = after_warmup_lr_sched
     self._warmup_steps = warmup_steps
@@ -101,7 +101,7 @@ class PolynomialWarmUp(tf.keras.optimizers.schedules.LearningRateSchedule):
                warmup_steps: int,
                power: float = 1.0,
                name: str = "PolynomialWarmup"):
-    super(PolynomialWarmUp, self).__init__()
+    super().__init__()
     if isinstance(after_warmup_lr_sched,
                   tf.keras.optimizers.schedules.LearningRateSchedule):
       self._initial_learning_rate = after_warmup_lr_sched(warmup_steps)
@@ -174,7 +174,7 @@ class DirectPowerDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
       power: The order of the polynomial.
       name: Optional, name of warmup schedule.
     """
-    super(DirectPowerDecay, self).__init__()
+    super().__init__()
     self._initial_learning_rate = initial_learning_rate
     self._power = power
     self._name = name
@@ -222,7 +222,7 @@ class PowerAndLinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
         the learning rate will be multiplied by a linear decay.
       name: Optional, name of warmup schedule.
     """
-    super(PowerAndLinearDecay, self).__init__()
+    super().__init__()
     self._initial_learning_rate = initial_learning_rate
     self._total_decay_steps = total_decay_steps
     self._power = power
@@ -276,7 +276,7 @@ class PowerDecayWithOffset(tf.keras.optimizers.schedules.LearningRateSchedule):
       pre_offset_learning_rate: The maximum learning rate we'll use.
       name: Optional, name of warmup schedule.
     """
-    super(PowerDecayWithOffset, self).__init__()
+    super().__init__()
     self._initial_learning_rate = initial_learning_rate
     self._power = power
     self._offset = offset
