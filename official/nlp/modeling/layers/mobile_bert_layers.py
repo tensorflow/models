@@ -113,7 +113,6 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
     self.type_embedding = keras_nlp.layers.OnDeviceEmbedding(
         self.type_vocab_size,
         self.output_embed_size,
-        use_one_hot=True,
         initializer=initializer,
         name='type_embedding')
     self.pos_embedding = keras_nlp.layers.PositionEmbedding(
