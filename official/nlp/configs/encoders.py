@@ -102,6 +102,7 @@ class MobileBertEncoderConfig(hyperparams.Config):
   num_feedforward_networks: int = 1
   normalization_type: str = "layer_norm"
   classifier_activation: bool = True
+  input_mask_dtype: str = "int32"
 
 
 @dataclasses.dataclass
@@ -260,7 +261,8 @@ def build_encoder(config: EncoderConfig,
         key_query_shared_bottleneck=encoder_cfg.key_query_shared_bottleneck,
         num_feedforward_networks=encoder_cfg.num_feedforward_networks,
         normalization_type=encoder_cfg.normalization_type,
-        classifier_activation=encoder_cfg.classifier_activation)
+        classifier_activation=encoder_cfg.classifier_activation,
+        input_mask_dtype=encoder_cfg.input_mask_dtype)
 
   if encoder_type == "albert":
     return encoder_cls(
