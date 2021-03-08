@@ -89,7 +89,8 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertIsInstance(all_layer_output, list)
     self.assertLen(all_layer_output, num_blocks + 1)
 
-  def test_mobilebert_encoder_invocation(self):
+  @parameterized.parameters('int32', 'float32')
+  def test_mobilebert_encoder_invocation(self, input_mask_dtype):
     vocab_size = 100
     hidden_size = 32
     sequence_length = 16
@@ -97,10 +98,11 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     test_network = mobile_bert_encoder.MobileBERTEncoder(
         word_vocab_size=vocab_size,
         hidden_size=hidden_size,
-        num_blocks=num_blocks)
+        num_blocks=num_blocks,
+        input_mask_dtype=input_mask_dtype)
 
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
-    mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
+    mask = tf.keras.Input(shape=(sequence_length,), dtype=input_mask_dtype)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     outputs = test_network([word_ids, mask, type_ids])
     model = tf.keras.Model([word_ids, mask, type_ids], outputs)
