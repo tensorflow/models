@@ -170,7 +170,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
         cross_device_ops=_mirrored_cross_device_ops(all_reduce_alg, num_packs))
 
   if distribution_strategy == "parameter_server":
-    return tf.compat.v1.distribute.experimental.ParameterServerStrategy()
+    cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver()
+    return tf.distribute.experimental.ParameterServerStrategy(cluster_resolver)
 
   raise ValueError("Unrecognized Distribution Strategy: %r" %
                    distribution_strategy)
@@ -181,6 +182,7 @@ def configure_cluster(worker_hosts=None, task_index=-1):
 
   Args:
     worker_hosts: comma-separated list of worker ip:port pairs.
+    task_index: index of the worker.
 
   Returns:
     Number of workers in the cluster.
