@@ -14,7 +14,7 @@
 # ==============================================================================
 """Contains common building blocks for neural networks."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
@@ -509,7 +509,8 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
   def call(self,
            inputs: tf.Tensor,
            states: Optional[States] = None,
-           output_states: bool = True) -> Union[Any, Tuple[Any, States]]:
+           output_states: bool = True
+           ) -> Union[tf.Tensor, Tuple[tf.Tensor, States]]:
     """Calls the layer with the given inputs.
 
     Args:
@@ -589,6 +590,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
     return (x, states) if output_states else x
 
 
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class SpatialAveragePool3D(tf.keras.layers.Layer):
   """Global average pooling layer pooling across spatial dimentions.
   """
@@ -704,6 +706,7 @@ class CausalConvMixin:
     return spatial_output_shape
 
 
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class Conv2D(tf.keras.layers.Conv2D, CausalConvMixin):
   """Conv2D layer supporting CausalConv.
 
@@ -751,6 +754,7 @@ class Conv2D(tf.keras.layers.Conv2D, CausalConvMixin):
     return self._buffered_spatial_output_shape(shape)
 
 
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class DepthwiseConv2D(tf.keras.layers.DepthwiseConv2D, CausalConvMixin):
   """DepthwiseConv2D layer supporting CausalConv.
 
@@ -812,6 +816,7 @@ class DepthwiseConv2D(tf.keras.layers.DepthwiseConv2D, CausalConvMixin):
     return self._buffered_spatial_output_shape(shape)
 
 
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class Conv3D(tf.keras.layers.Conv3D, CausalConvMixin):
   """Conv3D layer supporting CausalConv.
 
