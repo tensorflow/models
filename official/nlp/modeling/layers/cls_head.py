@@ -158,5 +158,6 @@ class MultiClsHeads(tf.keras.layers.Layer):
 
   @property
   def checkpoint_items(self):
-    # TODO(hongkuny): add output projects to the checkpoint items.
-    return {self.dense.name: self.dense}
+    items = {self.dense.name: self.dense}
+    items.update({v.name: v for v in self.out_projs})
+    return items
