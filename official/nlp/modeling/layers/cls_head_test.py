@@ -48,7 +48,7 @@ class MultiClsHeadsTest(tf.test.TestCase):
     self.assertAllClose(outputs["foo"], [[0., 0.], [0., 0.]])
     self.assertAllClose(outputs["bar"], [[0., 0., 0.], [0., 0., 0.]])
     self.assertSameElements(test_layer.checkpoint_items.keys(),
-                            ["pooler_dense"])
+                            ["pooler_dense", "foo", "bar"])
 
   def test_layer_serialization(self):
     cls_list = [("foo", 2), ("bar", 3)]
