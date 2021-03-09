@@ -334,4 +334,6 @@ message CenterNetFeatureExtractor {
   // separable convolutions. This is typically applied to feature pyramid
   // network if any.
   optional bool use_depthwise = 5 [default = false];
+
 }
+
