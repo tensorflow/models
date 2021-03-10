@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Pretraining experiment configurations."""
 # pylint: disable=g-doc-return-or-yield,line-too-long
 from official.core import config_definitions as cfg

@@ -1,5 +1,4 @@
-# -*- coding: utf-8 -*-
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# -*- coding: utf-8 -*-
 """Script to pre-process pre-training data into tfrecords."""
 
 import json
@@ -34,15 +34,15 @@ FLAGS = flags.FLAGS
 
 
 special_symbols = {
-    "<unk>"  : 0,
-    "<s>"    : 1,
-    "</s>"   : 2,
-    "<cls>"  : 3,
-    "<sep>"  : 4,
-    "<pad>"  : 5,
-    "<mask>" : 6,
-    "<eod>"  : 7,
-    "<eop>"  : 8,
+    "<unk>": 0,
+    "<s>": 1,
+    "</s>": 2,
+    "<cls>": 3,
+    "<sep>": 4,
+    "<pad>": 5,
+    "<mask>": 6,
+    "<eod>": 7,
+    "<eop>": 8,
 }
 
 VOCAB_SIZE = 32000
@@ -627,6 +627,7 @@ def _convert_example(example, use_bfloat16):
 def parse_files_to_dataset(parser, file_names, split, num_batch, num_hosts,
                            host_id, num_core_per_host, bsz_per_core):
   """Parses files to a dataset."""
+  del num_batch
   # list of file pathes
   num_files = len(file_names)
   num_files_per_host = num_files // num_hosts
@@ -733,6 +734,8 @@ def get_dataset(params, num_hosts, num_core_per_host, split, file_names,
                 mask_beta, use_bfloat16=False, num_predict=None):
   """Gets the dataset."""
 
+  del mask_alpha
+  del mask_beta
   bsz_per_core = params["batch_size"]
   if num_hosts > 1:
     host_id = params["context"].current_host
