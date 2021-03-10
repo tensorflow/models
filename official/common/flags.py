@@ -61,13 +61,21 @@ def define_flags():
       '--> params in params_override. See also the help message of '
       '`--config_file`.')
 
-  flags.DEFINE_multi_string(
-      'gin_file', default=None, help='List of paths to the config files.')
+  # The libraries rely on gin often make mistakes that include flags inside
+  # the library files which causes conflicts.
+  try:
+    flags.DEFINE_multi_string(
+        'gin_file', default=None, help='List of paths to the config files.')
+  except flags.DuplicateFlagError:
+    pass
 
-  flags.DEFINE_multi_string(
-      'gin_params',
-      default=None,
-      help='Newline separated list of Gin parameter bindings.')
+  try:
+    flags.DEFINE_multi_string(
+        'gin_params',
+        default=None,
+        help='Newline separated list of Gin parameter bindings.')
+  except flags.DuplicateFlagError:
+    pass
 
   flags.DEFINE_string(
       'tpu', default=None,
