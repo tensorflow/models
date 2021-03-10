@@ -22,7 +22,7 @@ import tensorflow as tf
 from official.modeling import tf_utils
 
 
-# Type annotations
+# Type annotations.
 States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
 
@@ -34,12 +34,12 @@ def make_divisible(value: float,
   """This is to ensure that all layers have channels that are divisible by 8.
 
   Args:
-    value: `float` original value.
-    divisor: `int` the divisor that need to be checked upon.
-    min_value: `float` minimum value threshold.
+    value: A `float` of original value.
+    divisor: An `int` off the divisor that need to be checked upon.
+    min_value: A `float` of  minimum value threshold.
 
   Returns:
-    The adjusted value in `int` that divisible against divisor.
+    The adjusted value in `int` that is divisible against divisor.
   """
   if min_value is None:
     min_value = divisor
@@ -55,7 +55,7 @@ def round_filters(filters: int,
                   divisor: int = 8,
                   min_depth: Optional[int] = None,
                   skip: bool = False):
-  """Round number of filters based on width multiplier."""
+  """Rounds number of filters based on width multiplier."""
   orig_f = filters
   if skip or not multiplier:
     return filters
@@ -70,7 +70,7 @@ def round_filters(filters: int,
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class SqueezeExcitation(tf.keras.layers.Layer):
-  """Squeeze and excitation layer."""
+  """Creates a squeeze and excitation layer."""
 
   def __init__(self,
                in_filters,
@@ -84,25 +84,26 @@ class SqueezeExcitation(tf.keras.layers.Layer):
                activation='relu',
                gating_activation='sigmoid',
                **kwargs):
-    """Implementation for squeeze and excitation.
+    """Initializes a squeeze and excitation layer.
 
     Args:
-      in_filters: `int` number of filters of the input tensor.
-      out_filters: `int` number of filters of the output tensor.
-      se_ratio: `float` or None. If not None, se ratio for the squeeze and
+      in_filters: An `int` number of filters of the input tensor.
+      out_filters: An `int` number of filters of the output tensor.
+      se_ratio: A `float` or None. If not None, se ratio for the squeeze and
         excitation layer.
-      divisible_by: `int` ensures all inner dimensions are divisible by this
-        number.
-      use_3d_input: `bool` 2D image or 3D input type.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      divisible_by: An `int` that ensures all inner dimensions are divisible by
+        this number.
+      use_3d_input: A `bool` of whether input is 2D or 3D image.
+      kernel_initializer: A `str` of kernel_initializer for convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-        Default to None.
-      activation: `str` name of the activation function.
-      gating_activation: `str` name of the activation function for final gating
-        function.
-      **kwargs: keyword arguments to be passed.
+      activation: A `str` name of the activation function.
+      gating_activation: A `str` name of the activation function for final
+        gating function.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(SqueezeExcitation, self).__init__(**kwargs)
 
@@ -183,9 +184,9 @@ def get_stochastic_depth_rate(init_rate, i, n):
   """Get drop connect rate for the ith block.
 
   Args:
-    init_rate: `float` initial drop rate.
-    i: `int` order of the current block.
-    n: `int` total number of blocks.
+    init_rate: A `float` of initial drop rate.
+    i: An `int` of order of the current block.
+    n: An `int` total number of blocks.
 
   Returns:
     Drop rate of the ith block.
@@ -201,17 +202,17 @@ def get_stochastic_depth_rate(init_rate, i, n):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class StochasticDepth(tf.keras.layers.Layer):
-  """Stochastic depth layer."""
+  """Creates a stochastic depth layer."""
 
   def __init__(self, stochastic_depth_drop_rate, **kwargs):
-    """Initialize stochastic depth.
+    """Initializes a stochastic depth layer.
 
     Args:
-      stochastic_depth_drop_rate: `float` drop rate.
-      **kwargs: keyword arguments to be passed.
+      stochastic_depth_drop_rate: A `float` of drop rate.
+      **kwargs: Additional keyword arguments to be passed.
 
     Returns:
-      A output tensor, which should have the same shape as input.
+      A output `tf.Tensor` of which should have the same shape as input.
     """
     super(StochasticDepth, self).__init__(**kwargs)
     self._drop_rate = stochastic_depth_drop_rate
@@ -239,15 +240,15 @@ class StochasticDepth(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 def pyramid_feature_fusion(inputs, target_level):
-  """Fuse all feature maps in the feature pyramid at the target level.
+  """Fuses all feature maps in the feature pyramid at the target level.
 
   Args:
-    inputs: a dictionary containing the feature pyramid. The size of the input
+    inputs: A dictionary containing the feature pyramid. The size of the input
       tensor needs to be fixed.
-    target_level: `int` the target feature level for feature fusion.
+    target_level: An `int` of the target feature level for feature fusion.
 
   Returns:
-    A float Tensor of shape [batch_size, feature_height, feature_width,
+    A `float` `tf.Tensor` of shape [batch_size, feature_height, feature_width,
       feature_channel].
   """
   # Convert keys to int.
@@ -279,8 +280,13 @@ def pyramid_feature_fusion(inputs, target_level):
 class Scale(tf.keras.layers.Layer):
   """Scales the input by a trainable scalar weight.
 
-  Useful for applying ReZero to layers, which improves convergence speed.
-  Reference: https://arxiv.org/pdf/2003.04887.pdf
+  This is useful for applying ReZero to layers, which improves convergence
+  speed. This implements the paper:
+
+  Thomas Bachlechner, Bodhisattwa Prasad Majumder, Huanru Henry Mao,
+  Garrison W. Cottrell, Julian McAuley.
+  ReZero is All You Need: Fast Convergence at Large Depth.
+  (https://arxiv.org/pdf/2003.04887.pdf).
   """
 
   def __init__(
@@ -288,15 +294,15 @@ class Scale(tf.keras.layers.Layer):
       initializer: tf.keras.initializers.Initializer = 'ones',
       regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       **kwargs):
-    """Initializes scale layer.
+    """Initializes a scale layer.
 
     Args:
-      initializer: initializer for the scalar weight.
-      regularizer: regularizer for the scalar weight.
-      **kwargs: keyword arguments to be passed to this layer.
+      initializer: A `str` of initializer for the scalar weight.
+      regularizer: A `tf.keras.regularizers.Regularizer` for the scalar weight.
+      **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
-      A output tensor, which should have the same shape as input.
+      An `tf.Tensor` of which should have the same shape as input.
     """
     super(Scale, self).__init__(**kwargs)
 
@@ -328,11 +334,15 @@ class Scale(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class TemporalSoftmaxPool(tf.keras.layers.Layer):
-  """Network layer corresponding to temporal softmax pooling.
+  """Creates a network layer corresponding to temporal softmax pooling.
 
-  This is useful for multi-class logits (used in e.g., Charades).
-  Modified from AssembleNet Charades evaluation.
-  Reference: https://arxiv.org/pdf/1905.13209.pdf.
+  This is useful for multi-class logits (used in e.g., Charades). Modified from
+  AssembleNet Charades evaluation from:
+
+  Michael S. Ryoo, AJ Piergiovanni, Mingxing Tan, Anelia Angelova.
+  AssembleNet: Searching for Multi-Stream Neural Connectivity in Video
+  Architectures.
+  (https://arxiv.org/pdf/1905.13209.pdf).
   """
 
   def call(self, inputs):
@@ -347,13 +357,16 @@ class TemporalSoftmaxPool(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class PositionalEncoding(tf.keras.layers.Layer):
-  """Network layer that adds a sinusoidal positional encoding.
+  """Creates a network layer that adds a sinusoidal positional encoding.
 
   Positional encoding is incremented across frames, and is added to the input.
   The positional encoding is first weighted at 0 so that the network can choose
-  to ignore it.
+  to ignore it. This implements:
 
-  Reference: https://arxiv.org/pdf/1706.03762.pdf
+  Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones,
+  Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin.
+  Attention Is All You Need.
+  (https://arxiv.org/pdf/1706.03762.pdf).
   """
 
   def __init__(self,
@@ -363,15 +376,15 @@ class PositionalEncoding(tf.keras.layers.Layer):
     """Initializes positional encoding.
 
     Args:
-      initializer: initializer for weighting the positional encoding.
-      cache_encoding: if True, cache the positional encoding tensor after
-          calling build. Otherwise, rebuild the tensor for every call. Setting
-          this to False can be useful when we want to input a variable number of
-          frames, so the positional encoding tensor can change shape.
-      **kwargs: keyword arguments to be passed to this layer.
+      initializer: A `str` of initializer for weighting the positional encoding.
+      cache_encoding: A `bool`. If True, cache the positional encoding tensor
+        after calling build. Otherwise, rebuild the tensor for every call.
+        Setting this to False can be useful when we want to input a variable
+        number of frames, so the positional encoding tensor can change shape.
+      **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
-      An output tensor, which should have the same shape as input.
+      A `tf.Tensor` of which should have the same shape as input.
     """
     super(PositionalEncoding, self).__init__(**kwargs)
     self._initializer = initializer
@@ -395,9 +408,9 @@ class PositionalEncoding(tf.keras.layers.Layer):
     """Creates a sequence of sinusoidal positional encoding vectors.
 
     Args:
-      num_positions: the number of positions (frames).
-      hidden_size: the number of channels used for the hidden vectors.
-      dtype: the dtype of the output tensor.
+      num_positions: An `int` of number of positions (frames).
+      hidden_size: An `int` of number of channels used for the hidden vectors.
+      dtype: The dtype of the output tensor.
 
     Returns:
       The positional encoding tensor with shape [num_positions, hidden_size].
@@ -430,10 +443,10 @@ class PositionalEncoding(tf.keras.layers.Layer):
     """Builds the layer with the given input shape.
 
     Args:
-      input_shape: the input shape.
+      input_shape: The input shape.
 
     Raises:
-      ValueError: if using 'channels_first' data format.
+      ValueError: If using 'channels_first' data format.
     """
     if tf.keras.backend.image_data_format() == 'channels_first':
       raise ValueError('"channels_first" mode is unsupported.')
@@ -457,7 +470,7 @@ class PositionalEncoding(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class GlobalAveragePool3D(tf.keras.layers.Layer):
-  """Global average pooling layer with causal mode.
+  """Creates a global average pooling layer with causal mode.
 
   Implements causal mode, which runs a cumulative sum (with `tf.cumsum`) across
   frames in the time dimension, allowing the use of a stream buffer. Sums any
@@ -469,15 +482,16 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
                keepdims: bool = False,
                causal: bool = False,
                **kwargs):
-    """Initializes global average pool.
+    """Initializes a global average pool layer.
 
     Args:
-      keepdims: if True, keep the averaged dimensions.
-      causal: run in causal mode with a cumulative sum across frames.
-      **kwargs: keyword arguments to be passed to this layer.
+      keepdims: A `bool`. If True, keep the averaged dimensions.
+      causal: A `bool` of whether to run in causal mode with a cumulative sum
+        across frames.
+      **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
-      An output tensor.
+      An output `tf.Tensor`.
     """
     super(GlobalAveragePool3D, self).__init__(**kwargs)
 
@@ -514,14 +528,14 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
     """Calls the layer with the given inputs.
 
     Args:
-      inputs: the input tensor.
-      states: a dict of states such that, if any of the keys match for this
-          layer, will overwrite the contents of the buffer(s).
-      output_states: if True, returns the output tensor and output states.
-          Returns just the output tensor otherwise.
+      inputs: An input `tf.Tensor`.
+      states: A `dict` of states such that, if any of the keys match for this
+        layer, will overwrite the contents of the buffer(s).
+      output_states: A `bool`. If True, returns the output tensor and output
+        states. Returns just the output tensor otherwise.
 
     Returns:
-      the output tensor (and optionally the states if `output_states=True`).
+      An output `tf.Tensor` (and optionally the states if `output_states=True`).
       If `causal=True`, the output tensor will have shape
       `[batch_size, num_frames, 1, 1, channels]` if `keepdims=True`. We keep
       the frame dimension in this case to simulate a cumulative global average
@@ -531,7 +545,7 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
       buffer stored in `states`).
 
     Raises:
-      ValueError: if using 'channels_first' data format.
+      ValueError: If using 'channels_first' data format.
     """
     states = dict(states) if states is not None else {}
 
@@ -592,18 +606,17 @@ class GlobalAveragePool3D(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class SpatialAveragePool3D(tf.keras.layers.Layer):
-  """Global average pooling layer pooling across spatial dimentions.
-  """
+  """Creates a global average pooling layer pooling across spatial dimentions."""
 
   def __init__(self, keepdims: bool = False, **kwargs):
-    """Initializes global average pool.
+    """Initializes a global average pool layer.
 
     Args:
-      keepdims: if True, keep the averaged dimensions.
-      **kwargs: keyword arguments to be passed to this layer.
+      keepdims: A `bool`. If True, keep the averaged dimensions.
+      **kwargs: Additional keyword arguments to be passed to this layer.
 
     Returns:
-      An output tensor.
+      An output `tf.Tensor`.
     """
     super(SpatialAveragePool3D, self).__init__(**kwargs)
     self._keepdims = keepdims
@@ -650,10 +663,10 @@ class CausalConvMixin:
     """Calculates padding for 'causal' option for conv layers.
 
     Args:
-      inputs: optional input tensor to be padded.
-      use_buffered_input: if True, use 'valid' padding along the time dimension.
-          This should be set when applying the stream buffer.
-      time_axis: the axis of the time dimension
+      inputs: An optional input `tf.Tensor` to be padded.
+      use_buffered_input: A `bool`. If True, use 'valid' padding along the time
+        dimension. This should be set when applying the stream buffer.
+      time_axis: An `int` of the axis of the time dimension.
 
     Returns:
       A list of paddings for `tf.pad`.
@@ -719,14 +732,14 @@ class Conv2D(tf.keras.layers.Conv2D, CausalConvMixin):
     """Initializes conv2d.
 
     Args:
-      *args: arguments to be passed.
-      use_buffered_input: if True, the input is expected to be padded
-          beforehand. In effect, calling this layer will use 'valid' padding on
-          the temporal dimension to simulate 'causal' padding.
-      **kwargs: keyword arguments to be passed.
+      *args: Arguments to be passed.
+      use_buffered_input: A `bool`. If True, the input is expected to be padded
+        beforehand. In effect, calling this layer will use 'valid' padding on
+        the temporal dimension to simulate 'causal' padding.
+      **kwargs: Additional keyword arguments to be passed.
 
     Returns:
-      A output tensor of the Conv2D operation.
+      An output `tf.Tensor` of the Conv2D operation.
     """
     super(Conv2D, self).__init__(*args, **kwargs)
     self._use_buffered_input = use_buffered_input
@@ -767,14 +780,14 @@ class DepthwiseConv2D(tf.keras.layers.DepthwiseConv2D, CausalConvMixin):
     """Initializes depthwise conv2d.
 
     Args:
-      *args: arguments to be passed.
-      use_buffered_input: if True, the input is expected to be padded
-          beforehand. In effect, calling this layer will use 'valid' padding on
-          the temporal dimension to simulate 'causal' padding.
-      **kwargs: keyword arguments to be passed.
+      *args: Arguments to be passed.
+      use_buffered_input: A `bool`. If True, the input is expected to be padded
+        beforehand. In effect, calling this layer will use 'valid' padding on
+        the temporal dimension to simulate 'causal' padding.
+      **kwargs: Additional keyword arguments to be passed.
 
     Returns:
-      A output tensor of the DepthwiseConv2D operation.
+      An output `tf.Tensor` of the DepthwiseConv2D operation.
     """
     super(DepthwiseConv2D, self).__init__(*args, **kwargs)
     self._use_buffered_input = use_buffered_input
@@ -829,14 +842,14 @@ class Conv3D(tf.keras.layers.Conv3D, CausalConvMixin):
     """Initializes conv3d.
 
     Args:
-      *args: arguments to be passed.
-      use_buffered_input: if True, the input is expected to be padded
-          beforehand. In effect, calling this layer will use 'valid' padding on
-          the temporal dimension to simulate 'causal' padding.
-      **kwargs: keyword arguments to be passed.
+      *args: Arguments to be passed.
+      use_buffered_input: A `bool`. If True, the input is expected to be padded
+        beforehand. In effect, calling this layer will use 'valid' padding on
+        the temporal dimension to simulate 'causal' padding.
+      **kwargs: Additional keyword arguments to be passed.
 
     Returns:
-      A output tensor of the Conv3D operation.
+      An output `tf.Tensor` of the Conv3D operation.
     """
     super(Conv3D, self).__init__(*args, **kwargs)
     self._use_buffered_input = use_buffered_input

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Mask sampler."""
+"""Contains definitions of mask sampler."""
 
 # Import libraries
 import tensorflow as tf
@@ -30,34 +30,34 @@ def _sample_and_crop_foreground_masks(candidate_rois,
   """Samples and creates cropped foreground masks for training.
 
   Args:
-    candidate_rois: a tensor of shape of [batch_size, N, 4], where N is the
+    candidate_rois: A `tf.Tensor` of shape of [batch_size, N, 4], where N is the
       number of candidate RoIs to be considered for mask sampling. It includes
       both positive and negative RoIs. The `num_mask_samples_per_image` positive
       RoIs will be sampled to create mask training targets.
-    candidate_gt_boxes: a tensor of shape of [batch_size, N, 4], storing the
-      corresponding groundtruth boxes to the `candidate_rois`.
-    candidate_gt_classes: a tensor of shape of [batch_size, N], storing the
+    candidate_gt_boxes: A `tf.Tensor` of shape of [batch_size, N, 4], storing
+      the corresponding groundtruth boxes to the `candidate_rois`.
+    candidate_gt_classes: A `tf.Tensor` of shape of [batch_size, N], storing the
       corresponding groundtruth classes to the `candidate_rois`. 0 in the tensor
       corresponds to the background class, i.e. negative RoIs.
-    candidate_gt_indices: a tensor of shape [batch_size, N], storing the
+    candidate_gt_indices: A `tf.Tensor` of shape [batch_size, N], storing the
       corresponding groundtruth instance indices to the `candidate_gt_boxes`,
       i.e. gt_boxes[candidate_gt_indices[:, i]] = candidate_gt_boxes[:, i] and
-      gt_boxes which is of shape [batch_size, MAX_INSTANCES, 4], M >= N, is the
-      superset of candidate_gt_boxes.
-    gt_masks: a tensor of [batch_size, MAX_INSTANCES, mask_height, mask_width]
-      containing all the groundtruth masks which sample masks are drawn from.
-    num_sampled_masks: an integer which specifies the number of masks
-      to sample.
-    mask_target_size: an integer which specifies the final cropped mask size
-      after sampling. The output masks are resized w.r.t the sampled RoIs.
+      gt_boxes which is of shape [batch_size, MAX_INSTANCES, 4], M >= N, is
+      the superset of candidate_gt_boxes.
+    gt_masks: A `tf.Tensor` of [batch_size, MAX_INSTANCES, mask_height,
+      mask_width] containing all the groundtruth masks which sample masks are
+      drawn from.
+    num_sampled_masks: An `int` that specifies the number of masks to sample.
+    mask_target_size: An `int` that specifies the final cropped mask size after
+      sampling. The output masks are resized w.r.t the sampled RoIs.
 
   Returns:
-    foreground_rois: a tensor of shape of [batch_size, K, 4] storing the RoI
-      that corresponds to the sampled foreground masks, where
+    foreground_rois: A `tf.Tensor` of shape of [batch_size, K, 4] storing the
+      RoI that corresponds to the sampled foreground masks, where
       K = num_mask_samples_per_image.
-    foreground_classes: a tensor of shape of [batch_size, K] storing the classes
-      corresponding to the sampled foreground masks.
-    cropoped_foreground_masks: a tensor of shape of
+    foreground_classes: A `tf.Tensor` of shape of [batch_size, K] storing the
+      classes corresponding to the sampled foreground masks.
+    cropoped_foreground_masks: A `tf.Tensor` of shape of
       [batch_size, K, mask_target_size, mask_target_size] storing the cropped
       foreground masks used for training.
   """
@@ -120,34 +120,36 @@ class MaskSampler(tf.keras.layers.Layer):
            candidate_gt_classes,
            candidate_gt_indices,
            gt_masks):
-    """Sample and create mask targets for training.
+    """Samples and creates mask targets for training.
 
     Args:
-      candidate_rois: a tensor of shape of [batch_size, N, 4], where N is the
-        number of candidate RoIs to be considered for mask sampling. It includes
-        both positive and negative RoIs. The `num_mask_samples_per_image`
-        positive RoIs will be sampled to create mask training targets.
-      candidate_gt_boxes: a tensor of shape of [batch_size, N, 4], storing the
-        corresponding groundtruth boxes to the `candidate_rois`.
-      candidate_gt_classes: a tensor of shape of [batch_size, N], storing the
-        corresponding groundtruth classes to the `candidate_rois`. 0 in the
+      candidate_rois: A `tf.Tensor` of shape of [batch_size, N, 4], where N is
+        the number of candidate RoIs to be considered for mask sampling. It
+        includes both positive and negative RoIs. The
+        `num_mask_samples_per_image` positive RoIs will be sampled to create
+        mask training targets.
+      candidate_gt_boxes: A `tf.Tensor` of shape of [batch_size, N, 4], storing
+        the corresponding groundtruth boxes to the `candidate_rois`.
+      candidate_gt_classes: A `tf.Tensor` of shape of [batch_size, N], storing
+        the corresponding groundtruth classes to the `candidate_rois`. 0 in the
         tensor corresponds to the background class, i.e. negative RoIs.
-      candidate_gt_indices: a tensor of shape [batch_size, N], storing the
+      candidate_gt_indices: A `tf.Tensor` of shape [batch_size, N], storing the
         corresponding groundtruth instance indices to the `candidate_gt_boxes`,
         i.e. gt_boxes[candidate_gt_indices[:, i]] = candidate_gt_boxes[:, i],
-        where gt_boxes which is of shape [batch_size, MAX_INSTANCES, 4], M >= N,
-        is the superset of candidate_gt_boxes.
-      gt_masks: a tensor of [batch_size, MAX_INSTANCES, mask_height, mask_width]
-        containing all the groundtruth masks which sample masks are drawn from.
-        after sampling. The output masks are resized w.r.t the sampled RoIs.
+          where gt_boxes which is of shape [batch_size, MAX_INSTANCES, 4], M >=
+          N, is the superset of candidate_gt_boxes.
+      gt_masks: A `tf.Tensor` of [batch_size, MAX_INSTANCES, mask_height,
+        mask_width] containing all the groundtruth masks which sample masks are
+        drawn from. after sampling. The output masks are resized w.r.t the
+        sampled RoIs.
 
     Returns:
-      foreground_rois: a tensor of shape of [batch_size, K, 4] storing the RoI
-        that corresponds to the sampled foreground masks, where
+      foreground_rois: A `tf.Tensor` of shape of [batch_size, K, 4] storing the
+        RoI that corresponds to the sampled foreground masks, where
         K = num_mask_samples_per_image.
-      foreground_classes: a tensor of shape of [batch_size, K] storing the
+      foreground_classes: A `tf.Tensor` of shape of [batch_size, K] storing the
         classes corresponding to the sampled foreground masks.
-      cropoped_foreground_masks: a tensor of shape of
+      cropoped_foreground_masks: A `tf.Tensor` of shape of
         [batch_size, K, mask_target_size, mask_target_size] storing the
         cropped foreground masks used for training.
     """
