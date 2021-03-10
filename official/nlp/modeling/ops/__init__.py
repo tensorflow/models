@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Ops package definition."""
 from official.nlp.modeling.ops.beam_search import sequence_beam_search
 from official.nlp.modeling.ops.segment_extractor import get_next_sentence_labels
