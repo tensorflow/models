@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tagging (e.g., NER/POS) task."""
 from typing import List, Optional, Tuple
 
@@ -189,7 +188,7 @@ class TaggingTask(base_task.Task):
     state['label_class'].extend(id_to_class_name(step_outputs['label_ids']))
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     """Reduces aggregated logs over validation steps."""
     label_class = aggregated_logs['label_class']
     predict_class = aggregated_logs['predict_class']

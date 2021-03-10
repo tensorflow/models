@@ -33,6 +33,8 @@ from object_detection.core import standard_fields as fields
 from object_detection.core import target_assigner as cn_assigner
 from object_detection.utils import shape_utils
 from object_detection.utils import target_assigner_utils as ta_utils
+from object_detection.utils import tf_version
+
 
 # Number of channels needed to predict size and offsets.
 NUM_OFFSET_CHANNELS = 2
@@ -166,16 +168,26 @@ def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
   else:
     conv_fn = tf.keras.layers.Conv2D
 
-  out_conv = tf.keras.layers.Conv2D(num_out_channels, kernel_size=1)
+  # We name the convolution operations explicitly because Keras, by default,
+  # uses different names during training and evaluation. By setting the names
+  # here, we avoid unexpected pipeline breakage in TF1.
+  out_conv = tf.keras.layers.Conv2D(
+      num_out_channels,
+      kernel_size=1,
+      name='conv1' if tf_version.is_tf1() else None)
 
   if bias_fill is not None:
     out_conv.bias_initializer = tf.keras.initializers.constant(bias_fill)
 
-  net = tf.keras.Sequential(
-      [conv_fn(num_filters, kernel_size=kernel_size, padding='same'),
-       tf.keras.layers.ReLU(),
-       out_conv],
-      name=name)
+  net = tf.keras.Sequential([
+      conv_fn(
+          num_filters,
+          kernel_size=kernel_size,
+          padding='same',
+          name='conv2' if tf_version.is_tf1() else None),
+      tf.keras.layers.ReLU(), out_conv
+  ],
+                            name=name)
 
   return net
 
@@ -2096,6 +2108,21 @@ class CenterNetMetaArch(model.DetectionModel):
                          'tensor names.')
     return self._batched_prediction_tensor_names
 
+  def _make_prediction_net_list(self, num_feature_outputs, num_out_channels,
+                                kernel_size=3, num_filters=256, bias_fill=None,
+                                name=None):
+    prediction_net_list = []
+    for i in range(num_feature_outputs):
+      prediction_net_list.append(
+          make_prediction_net(
+              num_out_channels,
+              kernel_size=kernel_size,
+              num_filters=num_filters,
+              bias_fill=bias_fill,
+              use_depthwise=self._use_depthwise,
+              name='{}_{}'.format(name, i) if name else name))
+    return prediction_net_list
+
   def _construct_prediction_heads(self, num_classes, num_feature_outputs,
                                   class_prediction_bias_init):
     """Constructs the prediction heads based on the specific parameters.
@@ -2116,86 +2143,72 @@ class CenterNetMetaArch(model.DetectionModel):
       learning the tracking task.
     """
     prediction_heads = {}
-    prediction_heads[OBJECT_CENTER] = [
-        make_prediction_net(num_classes, bias_fill=class_prediction_bias_init,
-                            use_depthwise=self._use_depthwise)
-        for _ in range(num_feature_outputs)
-    ]
+    prediction_heads[OBJECT_CENTER] = self._make_prediction_net_list(
+        num_feature_outputs, num_classes, bias_fill=class_prediction_bias_init,
+        name='center')
+
     if self._od_params is not None:
-      prediction_heads[BOX_SCALE] = [
-          make_prediction_net(
-              NUM_SIZE_CHANNELS, use_depthwise=self._use_depthwise)
-          for _ in range(num_feature_outputs)
-      ]
-      prediction_heads[BOX_OFFSET] = [
-          make_prediction_net(
-              NUM_OFFSET_CHANNELS, use_depthwise=self._use_depthwise)
-          for _ in range(num_feature_outputs)
-      ]
+      prediction_heads[BOX_SCALE] = self._make_prediction_net_list(
+          num_feature_outputs, NUM_SIZE_CHANNELS, name='box_scale')
+      prediction_heads[BOX_OFFSET] = self._make_prediction_net_list(
+          num_feature_outputs, NUM_OFFSET_CHANNELS, name='box_offset')
+
     if self._kp_params_dict is not None:
       for task_name, kp_params in self._kp_params_dict.items():
         num_keypoints = len(kp_params.keypoint_indices)
-        # pylint: disable=g-complex-comprehension
-        prediction_heads[get_keypoint_name(task_name, KEYPOINT_HEATMAP)] = [
-            make_prediction_net(
+        prediction_heads[get_keypoint_name(
+            task_name, KEYPOINT_HEATMAP)] = self._make_prediction_net_list(
+                num_feature_outputs,
                 num_keypoints,
                 bias_fill=kp_params.heatmap_bias_init,
-                use_depthwise=self._use_depthwise)
-            for _ in range(num_feature_outputs)
-        ]
-        # pylint: enable=g-complex-comprehension
-        prediction_heads[get_keypoint_name(task_name, KEYPOINT_REGRESSION)] = [
-            make_prediction_net(NUM_OFFSET_CHANNELS * num_keypoints,
-                                use_depthwise=self._use_depthwise)
-            for _ in range(num_feature_outputs)
-        ]
+                name='kpt_heatmap')
+        prediction_heads[get_keypoint_name(
+            task_name, KEYPOINT_REGRESSION)] = self._make_prediction_net_list(
+                num_feature_outputs,
+                NUM_OFFSET_CHANNELS * num_keypoints,
+                name='kpt_regress')
+
         if kp_params.per_keypoint_offset:
-          prediction_heads[get_keypoint_name(task_name, KEYPOINT_OFFSET)] = [
-              make_prediction_net(NUM_OFFSET_CHANNELS * num_keypoints,
-                                  use_depthwise=self._use_depthwise)
-              for _ in range(num_feature_outputs)
-          ]
+          prediction_heads[get_keypoint_name(
+              task_name, KEYPOINT_OFFSET)] = self._make_prediction_net_list(
+                  num_feature_outputs,
+                  NUM_OFFSET_CHANNELS * num_keypoints,
+                  name='kpt_offset')
         else:
-          prediction_heads[get_keypoint_name(task_name, KEYPOINT_OFFSET)] = [
-              make_prediction_net(NUM_OFFSET_CHANNELS,
-                                  use_depthwise=self._use_depthwise)
-              for _ in range(num_feature_outputs)
-          ]
+          prediction_heads[get_keypoint_name(
+              task_name, KEYPOINT_OFFSET)] = self._make_prediction_net_list(
+                  num_feature_outputs, NUM_OFFSET_CHANNELS, name='kpt_offset')
 
         if kp_params.predict_depth:
           num_depth_channel = (
               num_keypoints if kp_params.per_keypoint_depth else 1)
-          prediction_heads[get_keypoint_name(task_name, KEYPOINT_DEPTH)] = [
-              make_prediction_net(
-                  num_depth_channel, use_depthwise=self._use_depthwise)
-              for _ in range(num_feature_outputs)
-          ]
-    # pylint: disable=g-complex-comprehension
+          prediction_heads[get_keypoint_name(
+              task_name, KEYPOINT_DEPTH)] = self._make_prediction_net_list(
+                  num_feature_outputs, num_depth_channel, name='kpt_depth')
+
     if self._mask_params is not None:
-      prediction_heads[SEGMENTATION_HEATMAP] = [
-          make_prediction_net(
-              num_classes,
-              bias_fill=self._mask_params.heatmap_bias_init,
-              use_depthwise=self._use_depthwise)
-          for _ in range(num_feature_outputs)]
+      prediction_heads[SEGMENTATION_HEATMAP] = self._make_prediction_net_list(
+          num_feature_outputs,
+          num_classes,
+          bias_fill=self._mask_params.heatmap_bias_init,
+          name='seg_heatmap')
+
     if self._densepose_params is not None:
-      prediction_heads[DENSEPOSE_HEATMAP] = [
-          make_prediction_net(
-              self._densepose_params.num_parts,
-              bias_fill=self._densepose_params.heatmap_bias_init,
-              use_depthwise=self._use_depthwise)
-          for _ in range(num_feature_outputs)]
-      prediction_heads[DENSEPOSE_REGRESSION] = [
-          make_prediction_net(2 * self._densepose_params.num_parts,
-                              use_depthwise=self._use_depthwise)
-          for _ in range(num_feature_outputs)
-      ]
-    # pylint: enable=g-complex-comprehension
+      prediction_heads[DENSEPOSE_HEATMAP] = self._make_prediction_net_list(
+          num_feature_outputs,
+          self._densepose_params.num_parts,
+          bias_fill=self._densepose_params.heatmap_bias_init,
+          name='dense_pose_heatmap')
+      prediction_heads[DENSEPOSE_REGRESSION] = self._make_prediction_net_list(
+          num_feature_outputs,
+          2 * self._densepose_params.num_parts,
+          name='dense_pose_regress')
+
     if self._track_params is not None:
-      prediction_heads[TRACK_REID] = [
-          make_prediction_net(self._track_params.reid_embed_size,
-                              use_depthwise=self._use_depthwise)
-          for _ in range(num_feature_outputs)]
+      prediction_heads[TRACK_REID] = self._make_prediction_net_list(
+          num_feature_outputs,
+          self._track_params.reid_embed_size,
+          name='track_reid')
 
       # Creates a classification network to train object embeddings by learning
       # a projection from embedding space to object track ID space.
@@ -2213,11 +2226,8 @@ class CenterNetMetaArch(model.DetectionModel):
                                 input_shape=(
                                     self._track_params.reid_embed_size,)))
     if self._temporal_offset_params is not None:
-      prediction_heads[TEMPORAL_OFFSET] = [
-          make_prediction_net(NUM_OFFSET_CHANNELS,
-                              use_depthwise=self._use_depthwise)
-          for _ in range(num_feature_outputs)
-      ]
+      prediction_heads[TEMPORAL_OFFSET] = self._make_prediction_net_list(
+          num_feature_outputs, NUM_OFFSET_CHANNELS, name='temporal_offset')
     return prediction_heads
 
   def _initialize_target_assigners(self, stride, min_box_overlap_iou):
@@ -3524,6 +3534,37 @@ class CenterNetMetaArch(model.DetectionModel):
 
     return embeddings
 
+  def _scatter_keypoints_to_batch(self, num_ind, kpt_coords_for_example,
+                                  kpt_scores_for_example,
+                                  instance_inds_for_example, max_detections,
+                                  total_num_keypoints):
+    """Helper function to convert scattered keypoints into batch."""
+    def left_fn(kpt_coords_for_example, kpt_scores_for_example,
+                instance_inds_for_example):
+      # Scatter into tensor where instances align with original detection
+      # instances. New shape of keypoint coordinates and scores are
+      # [1, max_detections, num_total_keypoints, 2] and
+      # [1, max_detections, num_total_keypoints], respectively.
+      return _pad_to_full_instance_dim(
+          kpt_coords_for_example, kpt_scores_for_example,
+          instance_inds_for_example,
+          self._center_params.max_box_predictions)
+
+    def right_fn():
+      kpt_coords_for_example_all_det = tf.zeros(
+          [1, max_detections, total_num_keypoints, 2], dtype=tf.float32)
+      kpt_scores_for_example_all_det = tf.zeros(
+          [1, max_detections, total_num_keypoints], dtype=tf.float32)
+      return (kpt_coords_for_example_all_det,
+              kpt_scores_for_example_all_det)
+
+    left_fn = functools.partial(left_fn, kpt_coords_for_example,
+                                kpt_scores_for_example,
+                                instance_inds_for_example)
+
+    # Use dimension values instead of tf.size for tf.lite compatibility.
+    return tf.cond(num_ind[0] > 0, left_fn, right_fn)
+
   def _postprocess_keypoints_multi_class(self, prediction_dict, classes,
                                          y_indices, x_indices, boxes,
                                          num_detections):
@@ -3630,26 +3671,13 @@ class CenterNetMetaArch(model.DetectionModel):
       instance_inds_for_example = tf.concat(instance_inds_for_class_list,
                                             axis=0)
 
-      # Use dimension values instead of tf.size for tf.lite compatibility.
-      num_inds = _get_shape(instance_inds_for_example, 1)
-      if num_inds[0] > 0:
-        # Scatter into tensor where instances align with original detection
-        # instances. New shape of keypoint coordinates and scores are
-        # [1, max_detections, num_total_keypoints, 2] and
-        # [1, max_detections, num_total_keypoints], respectively.
-        kpt_coords_for_example_all_det, kpt_scores_for_example_all_det = (
-            _pad_to_full_instance_dim(
-                kpt_coords_for_example, kpt_scores_for_example,
-                instance_inds_for_example,
-                self._center_params.max_box_predictions))
-      else:
-        kpt_coords_for_example_all_det = tf.zeros(
-            [1, max_detections, total_num_keypoints, 2], dtype=tf.float32)
-        kpt_scores_for_example_all_det = tf.zeros(
-            [1, max_detections, total_num_keypoints], dtype=tf.float32)
+      (kpt_coords_for_example_all_det,
+       kpt_scores_for_example_all_det) = self._scatter_keypoints_to_batch(
+           num_ind, kpt_coords_for_example, kpt_scores_for_example,
+           instance_inds_for_example, max_detections, total_num_keypoints)
 
-      kpt_coords_for_example_list.append(kpt_coords_for_example_all_det)
-      kpt_scores_for_example_list.append(kpt_scores_for_example_all_det)
+    kpt_coords_for_example_list.append(kpt_coords_for_example_all_det)
+    kpt_scores_for_example_list.append(kpt_scores_for_example_all_det)
 
     # Concatenate all keypoints and scores from all examples in the batch.
     # Shapes are [batch_size, max_detections, num_total_keypoints, 2] and
@@ -3951,5 +3979,13 @@ class CenterNetMetaArch(model.DetectionModel):
           fine_tune_checkpoint_type)}
 
   def updates(self):
-    raise RuntimeError('This model is intended to be used with model_lib_v2 '
-                       'which does not support updates()')
+    if tf_version.is_tf2():
+      raise RuntimeError('This model is intended to be used with model_lib_v2 '
+                         'which does not support updates()')
+    else:
+      update_ops = []
+      slim_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+      # Copy the slim ops to avoid modifying the collection
+      if slim_update_ops:
+        update_ops.extend(slim_update_ops)
+      return update_ops

@@ -40,6 +40,7 @@ LR_CLS = {
     'cosine': tf.keras.experimental.CosineDecay,
     'power': lr_schedule.DirectPowerDecay,
     'power_linear': lr_schedule.PowerAndLinearDecay,
+    'power_with_offset': lr_schedule.PowerDecayWithOffset,
 }
 
 WARMUP_CLS = {
@@ -48,7 +49,7 @@ WARMUP_CLS = {
 }
 
 
-class OptimizerFactory(object):
+class OptimizerFactory:
   """Optimizer factory class.
 
   This class builds learning rate and optimizer based on an optimization config.

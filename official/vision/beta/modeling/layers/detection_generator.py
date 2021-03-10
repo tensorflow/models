@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Generators to generate the final detections."""
+"""Contains definitions of generators to generate the final detections."""
 
 # Import libraries
 
@@ -28,39 +28,41 @@ def _generate_detections_v1(boxes,
                             pre_nms_score_threshold=0.05,
                             nms_iou_threshold=0.5,
                             max_num_detections=100):
-  """Generate the final detections given the model outputs.
+  """Generates the final detections given the model outputs.
 
   The implementation unrolls the batch dimension and process images one by one.
   It required the batch dimension to be statically known and it is TPU
   compatible.
 
   Args:
-    boxes: a tensor with shape [batch_size, N, num_classes, 4] or
-      [batch_size, N, 1, 4], which box predictions on all feature levels. The N
-      is the number of total anchors on all levels.
-    scores: a tensor with shape [batch_size, N, num_classes], which
+    boxes: A `tf.Tensor` with shape `[batch_size, N, num_classes, 4]` or
+      `[batch_size, N, 1, 4]`, which box predictions on all feature levels. The
+      N is the number of total anchors on all levels.
+    scores: A `tf.Tensor` with shape `[batch_size, N, num_classes]`, which
       stacks class probability on all feature levels. The N is the number of
       total anchors on all levels. The num_classes is the number of classes
       predicted by the model. Note that the class_outputs here is the raw score.
-    pre_nms_top_k: an int number of top candidate detections per class
-      before NMS.
-    pre_nms_score_threshold: a float representing the threshold for deciding
+    pre_nms_top_k: An `int` number of top candidate detections per class before
+      NMS.
+    pre_nms_score_threshold: A `float` representing the threshold for deciding
       when to remove boxes based on score.
-    nms_iou_threshold: a float representing the threshold for deciding whether
+    nms_iou_threshold: A `float` representing the threshold for deciding whether
       boxes overlap too much with respect to IOU.
-    max_num_detections: a scalar representing maximum number of boxes retained
+    max_num_detections: A scalar representing maximum number of boxes retained
       over all classes.
 
   Returns:
-    nms_boxes: `float` Tensor of shape [batch_size, max_num_detections, 4]
-      representing top detected boxes in [y1, x1, y2, x2].
-    nms_scores: `float` Tensor of shape [batch_size, max_num_detections]
-      representing sorted confidence scores for detected boxes. The values are
-      between [0, 1].
-    nms_classes: `int` Tensor of shape [batch_size, max_num_detections]
-      representing classes for detected boxes.
-    valid_detections: `int` Tensor of shape [batch_size] only the top
-      `valid_detections` boxes are valid detections.
+    nms_boxes: A `float` type `tf.Tensor` of shape
+      `[batch_size, max_num_detections, 4]` representing top detected boxes in
+      `[y1, x1, y2, x2]`.
+    nms_scores: A `float` type `tf.Tensor` of shape
+      `[batch_size, max_num_detections]` representing sorted confidence scores
+      for detected boxes. The values are between `[0, 1]`.
+    nms_classes: An `int` type `tf.Tensor` of shape
+      `[batch_size, max_num_detections]` representing classes for detected
+      boxes.
+    valid_detections: An `int` type `tf.Tensor` of shape `[batch_size]` only the
+       top `valid_detections` boxes are valid detections.
   """
   with tf.name_scope('generate_detections'):
     batch_size = scores.get_shape().as_list()[0]
@@ -94,34 +96,35 @@ def _generate_detections_per_image(boxes,
                                    pre_nms_score_threshold=0.05,
                                    nms_iou_threshold=0.5,
                                    max_num_detections=100):
-  """Generate the final detections per image given the model outputs.
+  """Generates the final detections per image given the model outputs.
 
   Args:
-    boxes: a tensor with shape [N, num_classes, 4] or [N, 1, 4], which box
-      predictions on all feature levels. The N is the number of total anchors on
-      all levels.
-    scores: a tensor with shape [N, num_classes], which stacks class probability
-      on all feature levels. The N is the number of total anchors on all levels.
-      The num_classes is the number of classes predicted by the model. Note that
-      the class_outputs here is the raw score.
-    pre_nms_top_k: an int number of top candidate detections per class
-      before NMS.
-    pre_nms_score_threshold: a float representing the threshold for deciding
+    boxes: A  `tf.Tensor` with shape `[N, num_classes, 4]` or `[N, 1, 4]`, which
+      box predictions on all feature levels. The N is the number of total
+      anchors on all levels.
+    scores: A `tf.Tensor` with shape `[N, num_classes]`, which stacks class
+      probability on all feature levels. The N is the number of total anchors on
+      all levels. The num_classes is the number of classes predicted by the
+      model. Note that the class_outputs here is the raw score.
+    pre_nms_top_k: An `int` number of top candidate detections per class before
+      NMS.
+    pre_nms_score_threshold: A `float` representing the threshold for deciding
       when to remove boxes based on score.
-    nms_iou_threshold: a float representing the threshold for deciding whether
+    nms_iou_threshold: A `float` representing the threshold for deciding whether
       boxes overlap too much with respect to IOU.
-    max_num_detections: a scalar representing maximum number of boxes retained
+    max_num_detections: A `scalar` representing maximum number of boxes retained
       over all classes.
 
   Returns:
-    nms_boxes: `float` Tensor of shape [max_num_detections, 4] representing top
-      detected boxes in [y1, x1, y2, x2].
-    nms_scores: `float` Tensor of shape [max_num_detections] representing sorted
-      confidence scores for detected boxes. The values are between [0, 1].
-    nms_classes: `int` Tensor of shape [max_num_detections] representing classes
-      for detected boxes.
-    valid_detections: `int` Tensor of shape [1] only the top `valid_detections`
-      boxes are valid detections.
+    nms_boxes: A `float` tf.Tensor of shape `[max_num_detections, 4]`
+      representing top detected boxes in `[y1, x1, y2, x2]`.
+    nms_scores: A `float` tf.Tensor of shape `[max_num_detections]` representing
+      sorted confidence scores for detected boxes. The values are between [0,
+      1].
+    nms_classes: An `int` tf.Tensor of shape `[max_num_detections]` representing
+      classes for detected boxes.
+    valid_detections: An `int` tf.Tensor of shape [1] only the top
+      `valid_detections` boxes are valid detections.
   """
   nmsed_boxes = []
   nmsed_scores = []
@@ -171,18 +174,18 @@ def _generate_detections_per_image(boxes,
 
 
 def _select_top_k_scores(scores_in, pre_nms_num_detections):
-  """Select top_k scores and indices for each class.
+  """Selects top_k scores and indices for each class.
 
   Args:
-    scores_in: a Tensor with shape [batch_size, N, num_classes], which stacks
-      class logit outputs on all feature levels. The N is the number of total
-      anchors on all levels. The num_classes is the number of classes predicted
-      by the model.
+    scores_in: A `tf.Tensor` with shape `[batch_size, N, num_classes]`, which
+      stacks class logit outputs on all feature levels. The N is the number of
+      total anchors on all levels. The num_classes is the number of classes
+      predicted by the model.
     pre_nms_num_detections: Number of candidates before NMS.
 
   Returns:
-    scores and indices: Tensors with shape [batch_size, pre_nms_num_detections,
-      num_classes].
+    scores and indices: A `tf.Tensor` with shape
+      `[batch_size, pre_nms_num_detections, num_classes]`.
   """
   batch_size, num_anchors, num_class = scores_in.get_shape().as_list()
   scores_trans = tf.transpose(scores_in, perm=[0, 2, 1])
@@ -206,7 +209,7 @@ def _generate_detections_v2(boxes,
                             pre_nms_score_threshold=0.05,
                             nms_iou_threshold=0.5,
                             max_num_detections=100):
-  """Generate the final detections given the model outputs.
+  """Generates the final detections given the model outputs.
 
   This implementation unrolls classes dimension while using the tf.while_loop
   to implement the batched NMS, so that it can be parallelized at the batch
@@ -214,31 +217,31 @@ def _generate_detections_v2(boxes,
   It is TPU compatible.
 
   Args:
-    boxes: a tensor with shape [batch_size, N, num_classes, 4] or [batch_size,
-      N, 1, 4], which box predictions on all feature levels. The N is the number
-      of total anchors on all levels.
-    scores: a tensor with shape [batch_size, N, num_classes], which stacks class
-      probability on all feature levels. The N is the number of total anchors on
-      all levels. The num_classes is the number of classes predicted by the
-      model. Note that the class_outputs here is the raw score.
-    pre_nms_top_k: an int number of top candidate detections per class
-      before NMS.
-    pre_nms_score_threshold: a float representing the threshold for deciding
+    boxes: A `tf.Tensor` with shape `[batch_size, N, num_classes, 4]` or
+      `[batch_size, N, 1, 4]`, which box predictions on all feature levels. The
+      N is the number of total anchors on all levels.
+    scores: A `tf.Tensor` with shape `[batch_size, N, num_classes]`, which
+      stacks class probability on all feature levels. The N is the number of
+      total anchors on all levels. The num_classes is the number of classes
+      predicted by the model. Note that the class_outputs here is the raw score.
+    pre_nms_top_k: An `int` number of top candidate detections per class before
+      NMS.
+    pre_nms_score_threshold: A `float` representing the threshold for deciding
       when to remove boxes based on score.
-    nms_iou_threshold: a float representing the threshold for deciding whether
+    nms_iou_threshold: A `float` representing the threshold for deciding whether
       boxes overlap too much with respect to IOU.
-    max_num_detections: a scalar representing maximum number of boxes retained
+    max_num_detections: A `scalar` representing maximum number of boxes retained
       over all classes.
 
   Returns:
-    nms_boxes: `float` Tensor of shape [batch_size, max_num_detections, 4]
+    nms_boxes: A `float` tf.Tensor of shape [batch_size, max_num_detections, 4]
       representing top detected boxes in [y1, x1, y2, x2].
-    nms_scores: `float` Tensor of shape [batch_size, max_num_detections]
+    nms_scores: A `float` tf.Tensor of shape [batch_size, max_num_detections]
       representing sorted confidence scores for detected boxes. The values are
       between [0, 1].
-    nms_classes: `int` Tensor of shape [batch_size, max_num_detections]
+    nms_classes: An `int` tf.Tensor of shape [batch_size, max_num_detections]
       representing classes for detected boxes.
-    valid_detections: `int` Tensor of shape [batch_size] only the top
+    valid_detections: An `int` tf.Tensor of shape [batch_size] only the top
       `valid_detections` boxes are valid detections.
   """
   with tf.name_scope('generate_detections'):
@@ -294,29 +297,29 @@ def _generate_detections_batched(boxes,
   supported on TPU currently.
 
   Args:
-    boxes: a tensor with shape [batch_size, N, num_classes, 4] or
-      [batch_size, N, 1, 4], which box predictions on all feature levels. The N
-      is the number of total anchors on all levels.
-    scores: a tensor with shape [batch_size, N, num_classes], which
+    boxes: A `tf.Tensor` with shape `[batch_size, N, num_classes, 4]` or
+      `[batch_size, N, 1, 4]`, which box predictions on all feature levels. The
+      N is the number of total anchors on all levels.
+    scores: A `tf.Tensor` with shape `[batch_size, N, num_classes]`, which
       stacks class probability on all feature levels. The N is the number of
       total anchors on all levels. The num_classes is the number of classes
       predicted by the model. Note that the class_outputs here is the raw score.
-    pre_nms_score_threshold: a float representing the threshold for deciding
+    pre_nms_score_threshold: A `float` representing the threshold for deciding
       when to remove boxes based on score.
-    nms_iou_threshold: a float representing the threshold for deciding whether
+    nms_iou_threshold: A `float` representing the threshold for deciding whether
       boxes overlap too much with respect to IOU.
-    max_num_detections: a scalar representing maximum number of boxes retained
+    max_num_detections: A `scalar` representing maximum number of boxes retained
       over all classes.
 
   Returns:
-    nms_boxes: `float` Tensor of shape [batch_size, max_num_detections, 4]
+    nms_boxes: A `float` tf.Tensor of shape [batch_size, max_num_detections, 4]
       representing top detected boxes in [y1, x1, y2, x2].
-    nms_scores: `float` Tensor of shape [batch_size, max_num_detections]
+    nms_scores: A `float` tf.Tensor of shape [batch_size, max_num_detections]
       representing sorted confidence scores for detected boxes. The values are
       between [0, 1].
-    nms_classes: `int` Tensor of shape [batch_size, max_num_detections]
+    nms_classes: An `int` tf.Tensor of shape [batch_size, max_num_detections]
       representing classes for detected boxes.
-    valid_detections: `int` Tensor of shape [batch_size] only the top
+    valid_detections: An `int` tf.Tensor of shape [batch_size] only the top
       `valid_detections` boxes are valid detections.
   """
   with tf.name_scope('generate_detections'):
@@ -348,18 +351,19 @@ class DetectionGenerator(tf.keras.layers.Layer):
     """Initializes a detection generator.
 
     Args:
-      apply_nms: bool, whether or not apply non maximum suppression. If False,
-        the decoded boxes and their scores are returned.
-      pre_nms_top_k: int, the number of top scores proposals to be kept before
-        applying NMS.
-      pre_nms_score_threshold: float, the score threshold to apply before
+      apply_nms: A `bool` of whether or not apply non maximum suppression.
+        If False, the decoded boxes and their scores are returned.
+      pre_nms_top_k: An `int` of the number of top scores proposals to be kept
+        before applying NMS.
+      pre_nms_score_threshold: A `float` of the score threshold to apply before
         applying  NMS. Proposals whose scores are below this threshold are
         thrown away.
-      nms_iou_threshold: float in [0, 1], the NMS IoU threshold.
-      max_num_detections: int, the final number of total detections to generate.
-      use_batched_nms: bool, whether or not use
+      nms_iou_threshold: A `float` in [0, 1], the NMS IoU threshold.
+      max_num_detections: An `int` of the final number of total detections to
+        generate.
+      use_batched_nms: A `bool` of whether or not use
         `tf.image.combined_non_max_suppression`.
-      **kwargs: other key word arguments passed to Layer.
+      **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
         'apply_nms': apply_nms,
@@ -376,35 +380,36 @@ class DetectionGenerator(tf.keras.layers.Layer):
                raw_scores,
                anchor_boxes,
                image_shape):
-    """Generate final detections.
+    """Generates final detections.
 
     Args:
-      raw_boxes: a tensor of shape of [batch_size, K, num_classes * 4]
+      raw_boxes: A `tf.Tensor` of shape of `[batch_size, K, num_classes * 4]`
         representing the class-specific box coordinates relative to anchors.
-      raw_scores: a tensor of shape of [batch_size, K, num_classes]
+      raw_scores: A `tf.Tensor` of shape of `[batch_size, K, num_classes]`
         representing the class logits before applying score activiation.
-      anchor_boxes: a tensor of shape of [batch_size, K, 4] representing the
-        corresponding anchor boxes w.r.t `box_outputs`.
-      image_shape: a tensor of shape of [batch_size, 2] storing the image height
-        and width w.r.t. the scaled image, i.e. the same image space as
+      anchor_boxes: A `tf.Tensor` of shape of `[batch_size, K, 4]` representing
+        the corresponding anchor boxes w.r.t `box_outputs`.
+      image_shape: A `tf.Tensor` of shape of `[batch_size, 2]` storing the image
+        height and width w.r.t. the scaled image, i.e. the same image space as
         `box_outputs` and `anchor_boxes`.
 
     Returns:
       If `apply_nms` = True, the return is a dictionary with keys:
-        `detection_boxes`: float Tensor of shape [batch, max_num_detections, 4]
-          representing top detected boxes in [y1, x1, y2, x2].
-        `detection_scores`: float Tensor of shape [batch, max_num_detections]
-          representing sorted confidence scores for detected boxes. The values
-          are between [0, 1].
-        `detection_classes`: int Tensor of shape [batch, max_num_detections]
-          representing classes for detected boxes.
-        `num_detections`: int Tensor of shape [batch] only the first
+        `detection_boxes`: A `float` tf.Tensor of shape
+          [batch, max_num_detections, 4] representing top detected boxes in
+          [y1, x1, y2, x2].
+        `detection_scores`: A `float` `tf.Tensor` of shape
+          [batch, max_num_detections] representing sorted confidence scores for
+          detected boxes. The values are between [0, 1].
+        `detection_classes`: An `int` tf.Tensor of shape
+          [batch, max_num_detections] representing classes for detected boxes.
+        `num_detections`: An `int` tf.Tensor of shape [batch] only the first
           `num_detections` boxes are valid detections
       If `apply_nms` = False, the return is a dictionary with keys:
-        `decoded_boxes`: float Tensor of shape [batch, num_raw_boxes, 4]
+        `decoded_boxes`: A `float` tf.Tensor of shape [batch, num_raw_boxes, 4]
           representing all the decoded boxes.
-        `decoded_box_scores`: float Tensor of shape [batch, num_raw_boxes]
-          representing socres of all the decoded boxes.
+        `decoded_box_scores`: A `float` tf.Tensor of shape
+          [batch, num_raw_boxes] representing socres of all the decoded boxes.
     """
     box_scores = tf.nn.softmax(raw_scores, axis=-1)
 
@@ -496,21 +501,22 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                max_num_detections=100,
                use_batched_nms=False,
                **kwargs):
-    """Initializes a detection generator.
+    """Initializes a multi-level detection generator.
 
     Args:
-      apply_nms: bool, whether or not apply non maximum suppression. If False,
-        the decoded boxes and their scores are returned.
-      pre_nms_top_k: int, the number of top scores proposals to be kept before
-        applying NMS.
-      pre_nms_score_threshold: float, the score threshold to apply before
-        applying  NMS. Proposals whose scores are below this threshold are
-        thrown away.
-      nms_iou_threshold: float in [0, 1], the NMS IoU threshold.
-      max_num_detections: int, the final number of total detections to generate.
-      use_batched_nms: bool, whether or not use
+      apply_nms: A `bool` of whether or not apply non maximum suppression. If
+        False, the decoded boxes and their scores are returned.
+      pre_nms_top_k: An `int` of the number of top scores proposals to be kept
+        before applying NMS.
+      pre_nms_score_threshold: A `float` of the score threshold to apply before
+        applying NMS. Proposals whose scores are below this threshold are thrown
+        away.
+      nms_iou_threshold: A `float` in [0, 1], the NMS IoU threshold.
+      max_num_detections: An `int` of the final number of total detections to
+        generate.
+      use_batched_nms: A `bool` of whether or not use
         `tf.image.combined_non_max_suppression`.
-      **kwargs: other key word arguments passed to Layer.
+      **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
         'apply_nms': apply_nms,
@@ -527,37 +533,38 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                raw_scores,
                anchor_boxes,
                image_shape):
-    """Generate final detections.
+    """Generates final detections.
 
     Args:
-      raw_boxes: a dict with keys representing FPN levels and values
-        representing box tenors of shape
-        [batch, feature_h, feature_w, num_anchors * 4].
-      raw_scores: a dict with keys representing FPN levels and values
-        representing logit tensors of shape
-        [batch, feature_h, feature_w, num_anchors].
-      anchor_boxes: a tensor of shape of [batch_size, K, 4] representing the
-        corresponding anchor boxes w.r.t `box_outputs`.
-      image_shape: a tensor of shape of [batch_size, 2] storing the image height
-        and width w.r.t. the scaled image, i.e. the same image space as
+      raw_boxes: A `dict` with keys representing FPN levels and values
+        representing box tenors of shape `[batch, feature_h, feature_w,
+        num_anchors * 4]`.
+      raw_scores: A `dict` with keys representing FPN levels and values
+        representing logit tensors of shape `[batch, feature_h, feature_w,
+        num_anchors]`.
+      anchor_boxes: A `tf.Tensor` of shape of [batch_size, K, 4] representing
+        the corresponding anchor boxes w.r.t `box_outputs`.
+      image_shape: A `tf.Tensor` of shape of [batch_size, 2] storing the image
+        height and width w.r.t. the scaled image, i.e. the same image space as
         `box_outputs` and `anchor_boxes`.
 
     Returns:
       If `apply_nms` = True, the return is a dictionary with keys:
-        `detection_boxes`: float Tensor of shape [batch, max_num_detections, 4]
-          representing top detected boxes in [y1, x1, y2, x2].
-        `detection_scores`: float Tensor of shape [batch, max_num_detections]
-          representing sorted confidence scores for detected boxes. The values
-          are between [0, 1].
-        `detection_classes`: int Tensor of shape [batch, max_num_detections]
-          representing classes for detected boxes.
-        `num_detections`: int Tensor of shape [batch] only the first
+        `detection_boxes`: A `float` tf.Tensor of shape
+          [batch, max_num_detections, 4] representing top detected boxes in
+          [y1, x1, y2, x2].
+        `detection_scores`: A `float` tf.Tensor of shape
+          [batch, max_num_detections] representing sorted confidence scores for
+          detected boxes. The values are between [0, 1].
+        `detection_classes`: An `int` tf.Tensor of shape
+          [batch, max_num_detections] representing classes for detected boxes.
+        `num_detections`: An `int` tf.Tensor of shape [batch] only the first
           `num_detections` boxes are valid detections
       If `apply_nms` = False, the return is a dictionary with keys:
-        `decoded_boxes`: float Tensor of shape [batch, num_raw_boxes, 4]
+        `decoded_boxes`: A `float` tf.Tensor of shape [batch, num_raw_boxes, 4]
           representing all the decoded boxes.
-        `decoded_box_scores`: float Tensor of shape [batch, num_raw_boxes]
-          representing socres of all the decoded boxes.
+        `decoded_box_scores`: A `float` tf.Tensor of shape
+          [batch, num_raw_boxes] representing socres of all the decoded boxes.
     """
     # Collects outputs from all levels into a list.
     boxes = []

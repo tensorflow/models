@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Transformer-based text encoder network."""
 # pylint: disable=g-classes-have-attributes
 import collections
@@ -65,7 +65,7 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
       keyed by `encoder_outputs`.
     output_range: The sequence output range, [0, output_range), by slicing the
       target sequence of the last transformer layer. `None` means the entire
-      target sequence will attend to the source sequence, which yeilds the full
+      target sequence will attend to the source sequence, which yields the full
       output.
     embedding_width: The width of the word embeddings. If the embedding width is
       not equal to hidden size, embedding parameters will be factorized into two

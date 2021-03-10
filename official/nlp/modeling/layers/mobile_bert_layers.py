@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """MobileBERT embedding and transformer layers."""
 import tensorflow as tf
 
@@ -113,7 +113,6 @@ class MobileBertEmbedding(tf.keras.layers.Layer):
     self.type_embedding = keras_nlp.layers.OnDeviceEmbedding(
         self.type_vocab_size,
         self.output_embed_size,
-        use_one_hot=True,
         initializer=initializer,
         name='type_embedding')
     self.pos_embedding = keras_nlp.layers.PositionEmbedding(

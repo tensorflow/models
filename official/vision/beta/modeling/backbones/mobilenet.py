@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Contains definitions of Mobilenet Networks."""
+"""Contains definitions of MobileNet Networks."""
 
-from typing import Text, Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple
 
 # Import libraries
 import dataclasses
@@ -41,8 +41,8 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       kernel_size: int = 3,
       strides: int = 1,
       use_bias: bool = False,
-      activation: Text = 'relu6',
-      kernel_initializer: Text = 'VarianceScaling',
+      activation: str = 'relu6',
+      kernel_initializer: str = 'VarianceScaling',
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       use_normalization: bool = True,
@@ -53,25 +53,25 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     """A convolution block with batch normalization.
 
     Args:
-      filters: `int` number of filters for the first two convolutions. Note that
-        the third and final convolution will use 4 times as many filters.
-      kernel_size: `int` an integer specifying the height and width of the
-        2D convolution window.
-      strides: `int` block stride. If greater than 1, this block will ultimately
-        downsample the input.
-      use_bias: if True, use biase in the convolution layer.
-      activation: `str` name of the activation function.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-                          Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-                        Default to None.
-      use_normalization: if True, use batch normalization.
-      use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization momentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      **kwargs: keyword arguments to be passed.
+      filters: An `int` number of filters for the first two convolutions. Note
+        that the third and final convolution will use 4 times as many filters.
+      kernel_size: An `int` specifying the height and width of the 2D
+        convolution window.
+      strides: An `int` of block stride. If greater than 1, this block will
+        ultimately downsample the input.
+      use_bias: If True, use bias in the convolution layer.
+      activation: A `str` name of the activation function.
+      kernel_initializer: A `str` for kernel initializer of convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+        Default to None.
+      use_normalization: If True, use batch normalization.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(Conv2DBNBlock, self).__init__(**kwargs)
     self._filters = filters
@@ -375,13 +375,13 @@ SUPPORTED_SPECS_MAP = {
 class BlockSpec(hyperparams.Config):
   """A container class that specifies the block configuration for MobileNet."""
 
-  block_fn: Text = 'convbn'
+  block_fn: str = 'convbn'
   kernel_size: int = 3
   strides: int = 1
   filters: int = 32
   use_bias: bool = False
   use_normalization: bool = True
-  activation: Text = 'relu6'
+  activation: str = 'relu6'
   # used for block type InvertedResConv
   expand_ratio: Optional[float] = 6.
   # used for block type InvertedResConv with SE
@@ -395,22 +395,22 @@ def block_spec_decoder(specs: Dict[Any, Any],
                        # set to 1 for mobilenetv1
                        divisible_by: int = 8,
                        finegrain_classification_mode: bool = True):
-  """Decode specs for a block.
+  """Decodes specs for a block.
 
   Args:
-    specs: `dict` specification of block specs of a mobilenet version.
-    filter_size_scale: `float` multiplier for the filter size
-      for all convolution ops. The value must be greater than zero. Typical
-      usage will be to set this value in (0, 1) to reduce the number of
-      parameters or computation cost of the model.
-    divisible_by: `int` ensures all inner dimensions are divisible by
+    specs: A `dict` specification of block specs of a mobilenet version.
+    filter_size_scale: A `float` multiplier for the filter size for all
+      convolution ops. The value must be greater than zero. Typical usage will
+      be to set this value in (0, 1) to reduce the number of parameters or
+      computation cost of the model.
+    divisible_by: An `int` that ensures all inner dimensions are divisible by
       this number.
-    finegrain_classification_mode: if True, the model
-      will keep the last layer large even for small multipliers. Following
-      https://arxiv.org/abs/1801.04381
+    finegrain_classification_mode: If True, the model will keep the last layer
+      large even for small multipliers, following
+      https://arxiv.org/abs/1801.04381.
 
   Returns:
-    List[BlockSpec]` defines structure of the base network.
+    A list of `BlockSpec` that defines structure of the base network.
   """
 
   spec_name = specs['spec_name']
@@ -449,66 +449,68 @@ def block_spec_decoder(specs: Dict[Any, Any],
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class MobileNet(tf.keras.Model):
-  """Class to build MobileNet family model."""
+  """Creates a MobileNet family model."""
 
-  def __init__(self,
-               model_id: Text = 'MobileNetV2',
-               filter_size_scale: float = 1.0,
-               input_specs: layers.InputSpec = layers.InputSpec(
-                   shape=[None, None, None, 3]),
-               # The followings are for hyper-parameter tuning
-               norm_momentum: float = 0.99,
-               norm_epsilon: float = 0.001,
-               kernel_initializer: Text = 'VarianceScaling',
-               kernel_regularizer: Optional[regularizers.Regularizer] = None,
-               bias_regularizer: Optional[regularizers.Regularizer] = None,
-               # The followings should be kept the same most of the times
-               output_stride: int = None,
-               min_depth: int = 8,
-               # divisible is not used in MobileNetV1
-               divisible_by: int = 8,
-               stochastic_depth_drop_rate: float = 0.0,
-               regularize_depthwise: bool = False,
-               use_sync_bn: bool = False,
-               # finegrain is not used in MobileNetV1
-               finegrain_classification_mode: bool = True,
-               **kwargs):
-    """MobileNet initializer.
+  def __init__(
+      self,
+      model_id: str = 'MobileNetV2',
+      filter_size_scale: float = 1.0,
+      input_specs: layers.InputSpec = layers.InputSpec(
+          shape=[None, None, None, 3]),
+      # The followings are for hyper-parameter tuning
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[regularizers.Regularizer] = None,
+      bias_regularizer: Optional[regularizers.Regularizer] = None,
+      # The followings should be kept the same most of the times
+      output_stride: int = None,
+      min_depth: int = 8,
+      # divisible is not used in MobileNetV1
+      divisible_by: int = 8,
+      stochastic_depth_drop_rate: float = 0.0,
+      regularize_depthwise: bool = False,
+      use_sync_bn: bool = False,
+      # finegrain is not used in MobileNetV1
+      finegrain_classification_mode: bool = True,
+      **kwargs):
+    """Initializes a MobileNet model.
 
     Args:
-      model_id: `str` version of MobileNet. The supported values are
-       'MobileNetV1', 'MobileNetV2', 'MobileNetV3Large', 'MobileNetV3Small',
-        and 'MobileNetV3EdgeTPU'.
-      filter_size_scale: `float` multiplier for the filters (number of channels)
-        for all convolution ops. The value must be greater than zero. Typical
-        usage will be to set this value in (0, 1) to reduce the number of
-        parameters or computation cost of the model.
-      input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      kernel_initializer: `str` kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      model_id: A `str` of MobileNet version. The supported values are
+        `MobileNetV1`, `MobileNetV2`, `MobileNetV3Large`, `MobileNetV3Small`,
+        and `MobileNetV3EdgeTPU`.
+      filter_size_scale: A `float` of multiplier for the filters (number of
+        channels) for all convolution ops. The value must be greater than zero.
+        Typical usage will be to set this value in (0, 1) to reduce the number
+        of parameters or computation cost of the model.
+      input_specs: A `tf.keras.layers.InputSpec` of specs of the input tensor.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_initializer: A `str` for kernel initializer of convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-        Default to None.
-      output_stride: `int` specifies the requested ratio of input to output
-        spatial resolution. If not None, then we invoke atrous convolution
-        if necessary to prevent the network from reducing the spatial resolution
-        of activation maps. Allowed values are 8 (accurate fully convolutional
-        mode), 16 (fast fully convolutional mode), 32 (classification mode).
-      min_depth: `int` minimum depth (number of channels) for all conv ops.
-        Enforced when filter_size_scale < 1, and not an active constraint when
-        filter_size_scale >= 1.
-      divisible_by: `int` ensures all inner dimensions are divisible by
+      output_stride: An `int` that specifies the requested ratio of input to
+        output spatial resolution. If not None, then we invoke atrous
+        convolution if necessary to prevent the network from reducing the
+        spatial resolution of activation maps. Allowed values are 8 (accurate
+        fully convolutional mode), 16 (fast fully convolutional mode), 32
+        (classification mode).
+      min_depth: An `int` of minimum depth (number of channels) for all
+        convolution ops. Enforced when filter_size_scale < 1, and not an active
+        constraint when filter_size_scale >= 1.
+      divisible_by: An `int` that ensures all inner dimensions are divisible by
         this number.
-      stochastic_depth_drop_rate: `float` drop rate for drop connect layer.
-      regularize_depthwise: if Ture, apply regularization on depthwise.
-      use_sync_bn: if True, use synchronized batch normalization.
-      finegrain_classification_mode: if True, the model
-        will keep the last layer large even for small multipliers. Following
-        https://arxiv.org/abs/1801.04381
-      **kwargs: keyword arguments to be passed.
+      stochastic_depth_drop_rate: A `float` of drop rate for drop connect layer.
+      regularize_depthwise: If Ture, apply regularization on depthwise.
+      use_sync_bn: If True, use synchronized batch normalization.
+      finegrain_classification_mode: If True, the model will keep the last layer
+        large even for small multipliers, following
+        https://arxiv.org/abs/1801.04381.
+      **kwargs: Additional keyword arguments to be passed.
     """
     if model_id not in SUPPORTED_SPECS_MAP:
       raise ValueError('The MobileNet version {} '
@@ -567,10 +569,10 @@ class MobileNet(tf.keras.Model):
   def _mobilenet_base(self,
                       inputs: tf.Tensor
                       ) -> Tuple[tf.Tensor, Dict[int, tf.Tensor]]:
-    """Build the base MobileNet architecture.
+    """Builds the base MobileNet architecture.
 
     Args:
-      inputs: Input tensor of shape [batch_size, height, width, channels].
+      inputs: A `tf.Tensor` of shape `[batch_size, height, width, channels]`.
 
     Returns:
       A tuple of output Tensor and dictionary that collects endpoints.
@@ -725,7 +727,7 @@ def build_mobilenet(
     input_specs: tf.keras.layers.InputSpec,
     model_config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
-  """Builds MobileNet 3d backbone from a config."""
+  """Builds MobileNet backbone from a config."""
   backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
   norm_activation_config = model_config.norm_activation

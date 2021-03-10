@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Sentence prediction (classification) task."""
 from typing import List, Union, Optional
 
@@ -183,7 +182,7 @@ class SentencePredictionTask(base_task.Task):
         np.concatenate([v.numpy() for v in step_outputs['labels']], axis=0))
     return state
 
-  def reduce_aggregated_logs(self, aggregated_logs):
+  def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     if self.metric_type == 'accuracy':
       return None
     elif self.metric_type == 'matthews_corrcoef':

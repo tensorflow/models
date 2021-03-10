@@ -334,7 +334,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
       # loss was not returned from the task's `validation_step` method.
       logging.info("The task did not report validation loss.")
     if aggregated_logs:
-      metrics = self.task.reduce_aggregated_logs(aggregated_logs)
+      metrics = self.task.reduce_aggregated_logs(
+          aggregated_logs, global_step=self.global_step)
       logs.update(metrics)
 
     if self._checkpoint_exporter:

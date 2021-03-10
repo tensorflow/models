@@ -52,7 +52,6 @@ class DataConfig(cfg.DataConfig):
   decoder = None
   parser: Parser = Parser()
   shuffle_buffer_size: int = 10
-  tfds_download: bool = False
 
 
 class YoloDetectionInputTest(tf.test.TestCase, parameterized.TestCase):

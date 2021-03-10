@@ -1,17 +1,17 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#     https://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# pytype: skip-file
+
 """Input processing for TriviaQA."""
 import os
 from typing import Optional, Text, Union
@@ -402,7 +402,7 @@ def read_batches(data_dir,
   }
   if include_answers:
     features['answers'] = tf.io.RaggedFeature(
-        tf.int64, partitions=(tf.io.RaggedFeature.UniformRowLength(2),))
+        tf.int64, partitions=(tf.io.RaggedFeature.UniformRowLength(2),))  # pytype: disable=attribute-error
 
   dataset_builder = tfds.builder(
       'bigbird_trivia_qa/rc_wiki.preprocessed', data_dir=data_dir)

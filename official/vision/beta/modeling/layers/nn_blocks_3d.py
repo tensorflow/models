@@ -21,14 +21,21 @@ from official.modeling import tf_utils
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class SelfGating(tf.keras.layers.Layer):
-  """Feature gating as used in S3D-G (https://arxiv.org/pdf/1712.04851.pdf)."""
+  """Feature gating as used in S3D-G.
+
+  This implements the S3D-G network from:
+  Saining Xie, Chen Sun, Jonathan Huang, Zhuowen Tu, Kevin Murphy.
+  Rethinking Spatiotemporal Feature Learning: Speed-Accuracy Trade-offs in Video
+  Classification.
+  (https://arxiv.org/pdf/1712.04851.pdf)
+  """
 
   def __init__(self, filters, **kwargs):
-    """Constructor.
+    """Initializes a self-gating layer.
 
     Args:
-      filters: `int` number of filters for the convolutional layer.
-      **kwargs: keyword arguments to be passed.
+      filters: An `int` number of filters for the convolutional layer.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(SelfGating, self).__init__(**kwargs)
     self._filters = filters
@@ -61,7 +68,7 @@ class SelfGating(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class BottleneckBlock3D(tf.keras.layers.Layer):
-  """A 3D bottleneck block."""
+  """Creates a 3D bottleneck block."""
 
   def __init__(self,
                filters,
@@ -77,28 +84,29 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
                norm_momentum=0.99,
                norm_epsilon=0.001,
                **kwargs):
-    """A 3D bottleneck block with BN after convolutions.
+    """Initializes a 3D bottleneck block with BN after convolutions.
 
     Args:
-      filters: `int` number of filters for the first two convolutions. Note that
-        the third and final convolution will use 4 times as many filters.
-      temporal_kernel_size: `int` kernel size for the temporal convolutional
+      filters: An `int` number of filters for the first two convolutions. Note
+        that the third and final convolution will use 4 times as many filters.
+      temporal_kernel_size: An `int` of kernel size for the temporal
+        convolutional layer.
+      temporal_strides: An `int` of ftemporal stride for the temporal
+        convolutional layer.
+      spatial_strides: An `int` of spatial stride for the spatial convolutional
         layer.
-      temporal_strides: `int` temporal stride for the temporal convolutional
-        layer.
-      spatial_strides: `int` spatial stride for the spatial convolutional layer.
-      use_self_gating: `bool` apply self-gating module or not.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
+      use_self_gating: A `bool` of whether to apply self-gating module or not.
+      kernel_initializer: A `str` of kernel_initializer for convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2d.
         Default to None.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-        Default to None.
-      activation: `str` name of the activation function.
-      use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      **kwargs: keyword arguments to be passed.
+      activation: A `str` name of the activation function.
+      use_sync_bn: A `bool`. If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(BottleneckBlock3D, self).__init__(**kwargs)
 
