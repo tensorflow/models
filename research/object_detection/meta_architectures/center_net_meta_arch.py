@@ -43,10 +43,6 @@ NUM_SIZE_CHANNELS = 2
 # Error range for detecting peaks.
 PEAK_EPSILON = 1e-6
 
-# Constants shared between all keypoint tasks.
-UNMATCHED_KEYPOINT_SCORE = 0.1
-KEYPOINT_CANDIDATE_SEARCH_SCALE = 0.3
-
 
 class CenterNetFeatureExtractor(tf.keras.Model):
   """Base class for feature extractors for the CenterNet meta architecture.
@@ -3020,14 +3016,13 @@ class CenterNetMetaArch(model.DetectionModel):
         shape_utils.combined_static_and_dynamic_shape(keypoint_scores))
     classes_tiled = tf.tile(classes[:, :, tf.newaxis],
                             multiples=[1, 1, total_num_keypoints])
-    # TODO(yuhuic): Investigate whether this function will reate subgraphs in
+    # TODO(yuhuic): Investigate whether this function will create subgraphs in
     # tflite that will cause the model to run slower at inference.
     for kp_params in self._kp_params_dict.values():
       if not kp_params.rescore_instances:
         continue
       class_id = kp_params.class_id
       keypoint_indices = kp_params.keypoint_indices
-      num_keypoints = len(keypoint_indices)
       kpt_mask = tf.reduce_sum(
           tf.one_hot(keypoint_indices, depth=total_num_keypoints), axis=0)
       kpt_mask_tiled = tf.tile(kpt_mask[tf.newaxis, tf.newaxis, :],
@@ -3037,7 +3032,12 @@ class CenterNetMetaArch(model.DetectionModel):
           kpt_mask_tiled == 1.0)
       class_and_keypoint_mask_float = tf.cast(class_and_keypoint_mask,
                                               dtype=tf.float32)
-      scores_for_class = (1./num_keypoints) * (
+      visible_keypoints = tf.math.greater(keypoint_scores, 0.0)
+      num_visible_keypoints = tf.reduce_sum(
+          class_and_keypoint_mask_float *
+          tf.cast(visible_keypoints, tf.float32), axis=-1)
+      num_visible_keypoints = tf.math.maximum(num_visible_keypoints, 1.0)
+      scores_for_class = (1./num_visible_keypoints) * (
           tf.reduce_sum(class_and_keypoint_mask_float *
                         scores[:, :, tf.newaxis] *
                         keypoint_scores, axis=-1))
