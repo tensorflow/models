@@ -17,3 +17,5 @@
 
 from official.vision.beta.modeling import backbones
 from official.vision.beta.modeling import decoders
+from official.vision.beta.modeling import heads
+from official.vision.beta.modeling import layers
