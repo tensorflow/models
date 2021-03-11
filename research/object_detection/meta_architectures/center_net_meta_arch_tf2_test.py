@@ -1432,6 +1432,7 @@ def get_fake_kp_params(num_candidates_per_keypoint=100,
       keypoint_std_dev=[0.00001] * len(_KEYPOINT_INDICES),
       classification_loss=losses.WeightedSigmoidClassificationLoss(),
       localization_loss=losses.L1LocalizationLoss(),
+      unmatched_keypoint_score=0.1,
       keypoint_candidate_score_threshold=0.1,
       num_candidates_per_keypoint=num_candidates_per_keypoint,
       per_keypoint_offset=per_keypoint_offset,
@@ -1818,6 +1819,8 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     model = build_center_net_meta_arch()
     max_detection = model._center_params.max_box_predictions
     num_keypoints = len(model._kp_params_dict[_TASK_NAME].keypoint_indices)
+    unmatched_keypoint_score = (
+        model._kp_params_dict[_TASK_NAME].unmatched_keypoint_score)
 
     class_center = np.zeros((1, 32, 32, 10), dtype=np.float32)
     height_width = np.zeros((1, 32, 32, 2), dtype=np.float32)
@@ -1938,7 +1941,7 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
       expected_kpts_for_obj_0 = np.array(
           [[14., 14.], [14., 18.], [18., 14.], [17., 17.]]) / 32.
       expected_kpt_scores_for_obj_0 = np.array(
-          [0.9, 0.9, 0.9, cnma.UNMATCHED_KEYPOINT_SCORE])
+          [0.9, 0.9, 0.9, unmatched_keypoint_score])
       np.testing.assert_allclose(detections['detection_keypoints'][0][0],
                                  expected_kpts_for_obj_0, rtol=1e-6)
       np.testing.assert_allclose(detections['detection_keypoint_scores'][0][0],
@@ -2267,7 +2270,7 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
       scores = tf.constant([[0.5, 0.75]], dtype=tf.float32)
       keypoint_scores = tf.constant(
           [
-              [[0.1, 0.2, 0.3, 0.4, 0.5],
+              [[0.1, 0.0, 0.3, 0.4, 0.5],
                [0.1, 0.2, 0.3, 0.4, 0.5]],
           ])
       new_scores = model._rescore_instances(classes, scores, keypoint_scores)
@@ -2275,7 +2278,7 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
 
     new_scores = self.execute_cpu(graph_fn, [])
     expected_scores = np.array(
-        [[0.5, 0.75 * (0.1 + 0.2 + 0.3)/3]]
+        [[0.5, 0.75 * (0.1 + 0.3)/2]]
         )
     self.assertAllClose(expected_scores, new_scores)
 
