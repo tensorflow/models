@@ -896,7 +896,8 @@ def eager_eval_loop(
       (losses_dict, prediction_dict, groundtruth_dict,
        eval_features) = strategy.run(
            compute_eval_dict, args=(features, labels))
-    except:  # pylint:disable=bare-except
+    except Exception as exc:  # pylint:disable=broad-except
+      tf.logging.info('Encountered %s exception.', exc)
       tf.logging.info('A replica probably exhausted all examples. Skipping '
                       'pending examples on other replicas.')
       break
