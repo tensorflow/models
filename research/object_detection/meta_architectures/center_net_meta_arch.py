@@ -375,10 +375,10 @@ def prediction_tensors_to_boxes(detection_scores, y_indices, x_indices,
       tf.reshape(x_indices, [-1])
   ], axis=1)
   new_height_width = tf.gather_nd(height_width_predictions, combined_indices)
-  new_height_width = tf.reshape(new_height_width, [batch_size, num_boxes, -1])
+  new_height_width = tf.reshape(new_height_width, [batch_size, num_boxes, 2])
 
   new_offsets = tf.gather_nd(offset_predictions, combined_indices)
-  offsets = tf.reshape(new_offsets, [batch_size, num_boxes, -1])
+  offsets = tf.reshape(new_offsets, [batch_size, num_boxes, 2])
 
   y_indices = _to_float32(y_indices)
   x_indices = _to_float32(x_indices)
