@@ -405,7 +405,9 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       task=SemanticSegmentationTask(
           model=SemanticSegmentationModel(
-              num_classes=20,
+              # Cityscapes uses only 19 semantic classes for train/evaluation.
+              # The void (background) class is ignored in train and evaluation.
+              num_classes=19,
               input_size=[None, None, 3],
               backbone=backbones.Backbone(
                   type='dilated_resnet', dilated_resnet=backbones.DilatedResNet(
