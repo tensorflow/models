@@ -12,13 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Feature Pyramid Networks.
-
-Feature Pyramid Networks were proposed in:
-[1] Tsung-Yi Lin, Piotr Dollar, Ross Girshick, Kaiming He, Bharath Hariharan,
-    , and Serge Belongie
-    Feature Pyramid Networks for Object Detection. CVPR 2017.
-"""
+"""Contains the definitions of Feature Pyramid Networks (FPN)."""
 
 # Import libraries
 import tensorflow as tf
@@ -29,7 +23,14 @@ from official.vision.beta.ops import spatial_transform_ops
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class FPN(tf.keras.Model):
-  """Feature pyramid network."""
+  """Creates a Feature Pyramid Network (FPN).
+
+  This implemets the paper:
+  Tsung-Yi Lin, Piotr Dollar, Ross Girshick, Kaiming He, Bharath Hariharan, and
+  Serge Belongie.
+  Feature Pyramid Networks for Object Detection.
+  (https://arxiv.org/pdf/1612.03144)
+  """
 
   def __init__(self,
                input_specs,
@@ -45,25 +46,26 @@ class FPN(tf.keras.Model):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """FPN initialization function.
+    """Initializes a Feature Pyramid Network (FPN).
 
     Args:
-      input_specs: `dict` input specifications. A dictionary consists of
+      input_specs: A `dict` of input specifications. A dictionary consists of
         {level: TensorShape} from a backbone.
-      min_level: `int` minimum level in FPN output feature maps.
-      max_level: `int` maximum level in FPN output feature maps.
-      num_filters: `int` number of filters in FPN layers.
-      use_separable_conv: `bool`, if True use separable convolution for
+      min_level: An `int` of minimum level in FPN output feature maps.
+      max_level: An `int` of maximum level in FPN output feature maps.
+      num_filters: An `int` number of filters in FPN layers.
+      use_separable_conv: A `bool`.  If True use separable convolution for
         convolution in FPN layers.
-      activation: `str` name of the activation function.
-      use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-      **kwargs: keyword arguments to be passed.
+      activation: A `str` name of the activation function.
+      use_sync_bn: A `bool`. If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_initializer: A `str` name of kernel_initializer for convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
     """
     self._config_dict = {
         'input_specs': input_specs,

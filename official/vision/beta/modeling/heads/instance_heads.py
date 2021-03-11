@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Instance prediction heads."""
+"""Contains definitions of instance prediction heads."""
 
 # Import libraries
 import tensorflow as tf
@@ -22,7 +22,7 @@ from official.modeling import tf_utils
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class DetectionHead(tf.keras.layers.Layer):
-  """Detection head."""
+  """Creates a detection head."""
 
   def __init__(self,
                num_classes,
@@ -38,31 +38,30 @@ class DetectionHead(tf.keras.layers.Layer):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """Initialize params to build the detection head.
+    """Initializes a detection head.
 
     Args:
-      num_classes: a integer for the number of classes.
-      num_convs: `int` number that represents the number of the intermediate
-        conv layers before the FC layers.
-      num_filters: `int` number that represents the number of filters of the
-        intermediate conv layers.
-      use_separable_conv: `bool`, indicating whether the separable conv layers
-        is used.
-      num_fcs: `int` number that represents the number of FC layers before the
-        predictions.
-      fc_dims: `int` number that represents the number of dimension of the FC
+      num_classes: An `int` for the number of classes.
+      num_convs: An `int` number that represents the number of the intermediate
+        convolution layers before the FC layers.
+      num_filters: An `int` number that represents the number of filters of the
+        intermediate convolution layers.
+      use_separable_conv: A `bool` that indicates whether the separable
+        convolution layers is used.
+      num_fcs: An `int` number that represents the number of FC layers before
+        the predictions.
+      fc_dims: An `int` number that represents the number of dimension of the FC
         layers.
-      activation: `string`, indicating which activation is used, e.g. 'relu',
+      activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
-      use_sync_bn: `bool`, whether to use synchronized batch normalization
-        across different replicas.
-      norm_momentum: `float`, the momentum parameter of the normalization
-        layers.
-      norm_epsilon: `float`, the epsilon parameter of the normalization layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
-        kernel.
-      bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
-      **kwargs: other keyword arguments passed to Layer.
+      use_sync_bn: A `bool` that indicates whether to use synchronized batch
+        normalization across different replicas.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(DetectionHead, self).__init__(**kwargs)
     self._config_dict = {
@@ -165,18 +164,17 @@ class DetectionHead(tf.keras.layers.Layer):
     super(DetectionHead, self).build(input_shape)
 
   def call(self, inputs, training=None):
-    """Box and class branches for the Mask-RCNN model.
+    """Forward pass of box and class branches for the Mask-RCNN model.
 
     Args:
-      inputs: ROI features, a tensor of shape
-        [batch_size, num_instances, roi_height, roi_width, roi_channels],
-        representing the ROI features.
-      training: a boolean indicating whether it is in `training` mode.
+      inputs: A `tf.Tensor` of the shape [batch_size, num_instances, roi_height,
+        roi_width, roi_channels], representing the ROI features.
+      training: a `bool` indicating whether it is in `training` mode.
 
     Returns:
-      class_outputs: a tensor with a shape of
+      class_outputs: A `tf.Tensor` of the shape
         [batch_size, num_rois, num_classes], representing the class predictions.
-      box_outputs: a tensor with a shape of
+      box_outputs: A `tf.Tensor` of the shape
         [batch_size, num_rois, num_classes * 4], representing the box
         predictions.
     """
@@ -211,7 +209,7 @@ class DetectionHead(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class MaskHead(tf.keras.layers.Layer):
-  """Mask head."""
+  """Creates a mask head."""
 
   def __init__(self,
                num_classes,
@@ -227,31 +225,30 @@ class MaskHead(tf.keras.layers.Layer):
                bias_regularizer=None,
                class_agnostic=False,
                **kwargs):
-    """Initialize params to build the mask head.
+    """Initializes a mask head.
 
     Args:
-      num_classes: `int`, the number of classes.
-      upsample_factor: `int`, >= 1, the upsample factor to generate the
-        final predicted masks.
-      num_convs: `int` number that represents the number of the intermediate
-        conv layers before the mask prediction layers.
-      num_filters: `int` number that represents the number of filters of the
-        intermediate conv layers.
-      use_separable_conv: `bool`, indicating whether the separable conv layers
-        is used.
-      activation: `string`, indicating which activation is used, e.g. 'relu',
+      num_classes: An `int` of the number of classes.
+      upsample_factor: An `int` that indicates the upsample factor to generate
+        the final predicted masks. It should be >= 1.
+      num_convs: An `int` number that represents the number of the intermediate
+        convolution layers before the mask prediction layers.
+      num_filters: An `int` number that represents the number of filters of the
+        intermediate convolution layers.
+      use_separable_conv: A `bool` that indicates whether the separable
+        convolution layers is used.
+      activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
-      use_sync_bn: `bool`, whether to use synchronized batch normalization
-        across different replicas.
-      norm_momentum: `float`, the momentum parameter of the normalization
-        layers.
-      norm_epsilon: `float`, the epsilon parameter of the normalization layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
-        kernel.
-      bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
-      class_agnostic: `bool`, if set, we use a single channel mask head that
+      use_sync_bn: A `bool` that indicates whether to use synchronized batch
+        normalization across different replicas.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      class_agnostic: A `bool`. If set, we use a single channel mask head that
         is shared between all classes.
-      **kwargs: other keyword arguments passed to Layer.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(MaskHead, self).__init__(**kwargs)
     self._config_dict = {
@@ -368,19 +365,18 @@ class MaskHead(tf.keras.layers.Layer):
     super(MaskHead, self).build(input_shape)
 
   def call(self, inputs, training=None):
-    """Mask branch for the Mask-RCNN model.
+    """Forward pass of mask branch for the Mask-RCNN model.
 
     Args:
-      inputs: a list of two tensors
-        inputs[0]: ROI features, a tensor of shape
-          [batch_size, num_instances, roi_height, roi_width, roi_channels],
-          representing the ROI features.
-        inputs[1]: ROI classes, a tensor of shape
-          [batch_size, num_instances], representing the classes of the ROIs.
-      training: a boolean indicating whether it is in `training` mode.
+      inputs: A `list` of two tensors where
+        inputs[0]: A `tf.Tensor` of shape [batch_size, num_instances,
+          roi_height, roi_width, roi_channels], representing the ROI features.
+        inputs[1]: A `tf.Tensor` of shape [batch_size, num_instances],
+          representing the classes of the ROIs.
+      training: A `bool` indicating whether it is in `training` mode.
 
     Returns:
-      mask_outputs: a tensor of shape
+      mask_outputs: A `tf.Tensor` of shape
         [batch_size, num_instances, roi_height * upsample_factor,
          roi_width * upsample_factor], representing the mask predictions.
     """
