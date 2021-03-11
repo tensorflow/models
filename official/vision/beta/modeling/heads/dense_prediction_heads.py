@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Dense prediction heads."""
+"""Contains definitions of dense prediction heads."""
 
 # Import libraries
 import numpy as np
@@ -23,7 +23,7 @@ from official.modeling import tf_utils
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class RetinaNetHead(tf.keras.layers.Layer):
-  """RetinaNet head."""
+  """Creates a RetinaNet head."""
 
   def __init__(self,
                min_level,
@@ -40,31 +40,30 @@ class RetinaNetHead(tf.keras.layers.Layer):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """Initialize params to build RetinaNet head.
+    """Initializes a RetinaNet head.
 
     Args:
-      min_level: `int` number of minimum feature level.
-      max_level: `int` number of maximum feature level.
-      num_classes: `int` number of classes to predict.
-      num_anchors_per_location: `int` number of number of anchors per pixel
+      min_level: An `int` number of minimum feature level.
+      max_level: An `int` number of maximum feature level.
+      num_classes: An `int` number of classes to predict.
+      num_anchors_per_location: An `int` number of number of anchors per pixel
         location.
-      num_convs: `int` number that represents the number of the intermediate
+      num_convs: An `int` number that represents the number of the intermediate
         conv layers before the prediction.
-      num_filters: `int` number that represents the number of filters of the
+      num_filters: An `int` number that represents the number of filters of the
         intermediate conv layers.
-      use_separable_conv: `bool`, indicating whether the separable conv layers
-        is used.
-      activation: `string`, indicating which activation is used, e.g. 'relu',
+      use_separable_conv: A `bool` that indicates whether the separable
+        convolution layers is used.
+      activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
-      use_sync_bn: `bool`, whether to use synchronized batch normalization
-        across different replicas.
-      norm_momentum: `float`, the momentum parameter of the normalization
-        layers.
-      norm_epsilon: `float`, the epsilon parameter of the normalization layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
-        kernal.
-      bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
-      **kwargs: other keyword arguments passed to Layer.
+      use_sync_bn: A `bool` that indicates whether to use synchronized batch
+        normalization across different replicas.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(RetinaNetHead, self).__init__(**kwargs)
     self._config_dict = {
@@ -209,21 +208,22 @@ class RetinaNetHead(tf.keras.layers.Layer):
     """Forward pass of the RetinaNet head.
 
     Args:
-      features: a dict of tensors
-        - key: `str`, the level of the multilevel features.
-        - values: `Tensor`, the feature map tensors, whose shape is
+      features: A `dict` of `tf.Tensor` where
+        - key: A `str` of the level of the multilevel features.
+        - values: A `tf.Tensor`, the feature map tensors, whose shape is
             [batch, height_l, width_l, channels].
 
     Returns:
-      scores: a dict of tensors which includes scores of the predictions.
-        - key: `str`, the level of the multilevel predictions.
-        - values: `Tensor`, the box scores predicted from a particular feature
-            level, whose shape is
+      scores: A `dict` of `tf.Tensor` which includes scores of the predictions.
+        - key: A `str` of the level of the multilevel predictions.
+        - values: A `tf.Tensor` of the box scores predicted from a particular
+            feature level, whose shape is
             [batch, height_l, width_l, num_classes * num_anchors_per_location].
-      boxes: a dict of tensors which includes coordinates of the predictions.
-        - key: `str`, the level of the multilevel predictions.
-        - values: `Tensor`, the box scores predicted from a particular feature
-            level, whose shape is
+      boxes: A `dict` of `tf.Tensor` which includes coordinates of the
+        predictions.
+        - key: A `str` of the level of the multilevel predictions.
+        - values: A `tf.Tensor` of the box scores predicted from a particular
+            feature level, whose shape is
             [batch, height_l, width_l, 4 * num_anchors_per_location].
     """
     scores = {}
@@ -260,7 +260,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class RPNHead(tf.keras.layers.Layer):
-  """Region Proposal Network head."""
+  """Creates a Region Proposal Network (RPN) head."""
 
   def __init__(self,
                min_level,
@@ -276,29 +276,29 @@ class RPNHead(tf.keras.layers.Layer):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """Initialize params to build Region Proposal Network head.
+    """Initializes a Region Proposal Network head.
 
     Args:
-      min_level: `int` number of minimum feature level.
-      max_level: `int` number of maximum feature level.
-      num_anchors_per_location: `int` number of number of anchors per pixel
+      min_level: An `int` number of minimum feature level.
+      max_level: An `int` number of maximum feature level.
+      num_anchors_per_location: An `int` number of number of anchors per pixel
         location.
-      num_convs: `int` number that represents the number of the intermediate
-        conv layers before the prediction.
-      num_filters: `int` number that represents the number of filters of the
-        intermediate conv layers.
-      use_separable_conv: `bool`, indicating whether the separable conv layers
-        is used.
-      activation: `string`, indicating which activation is used, e.g. 'relu',
+      num_convs: An `int` number that represents the number of the intermediate
+        convolution layers before the prediction.
+      num_filters: An `int` number that represents the number of filters of the
+        intermediate convolution layers.
+      use_separable_conv: A `bool` that indicates whether the separable
+        convolution layers is used.
+      activation: A `str` that indicates which activation is used, e.g. 'relu',
         'swish', etc.
-      use_sync_bn: `bool`, whether to use synchronized batch normalization
-        across different replicas.
-      norm_momentum: `float`, the momentum parameter of the normalizaton layers.
-      norm_epsilon: `float`, the epsilon parameter of the normalization layers.
-      kernel_regularizer: `tf.keras.regularizers.Regularizer` object for layer
-        kernel.
-      bias_regularizer: `tf.keras.regularizers.Regularizer` object for bias.
-      **kwargs: other keyword arguments passed to Layer.
+      use_sync_bn: A `bool` that indicates whether to use synchronized batch
+        normalization across different replicas.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
     """
     super(RPNHead, self).__init__(**kwargs)
     self._config_dict = {
@@ -428,6 +428,27 @@ class RPNHead(tf.keras.layers.Layer):
     super(RPNHead, self).build(input_shape)
 
   def call(self, features):
+    """Forward pass of the RPN head.
+
+    Args:
+      features: A `dict` of `tf.Tensor` where
+        - key: A `str` of the level of the multilevel features.
+        - values: A `tf.Tensor`, the feature map tensors, whose shape is [batch,
+          height_l, width_l, channels].
+
+    Returns:
+      scores: A `dict` of `tf.Tensor` which includes scores of the predictions.
+        - key: A `str` of the level of the multilevel predictions.
+        - values: A `tf.Tensor` of the box scores predicted from a particular
+            feature level, whose shape is
+            [batch, height_l, width_l, num_classes * num_anchors_per_location].
+      boxes: A `dict` of `tf.Tensor` which includes coordinates of the
+        predictions.
+        - key: A `str` of the level of the multilevel predictions.
+        - values: A `tf.Tensor` of the box scores predicted from a particular
+            feature level, whose shape is
+            [batch, height_l, width_l, 4 * num_anchors_per_location].
+    """
     scores = {}
     boxes = {}
     for i, level in enumerate(

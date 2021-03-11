@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""NAS-FPN.
-
-Golnaz Ghiasi, Tsung-Yi Lin, Ruoming Pang, Quoc V. Le.
-NAS-FPN: Learning Scalable Feature Pyramid Architecture for Object Detection.
-https://arxiv.org/abs/1904.07392. CVPR 2019.
-"""
+"""Contains definitions of NAS-FPN."""
 
 # Import libraries
 from absl import logging
@@ -60,7 +55,13 @@ def build_block_specs(block_specs=None):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class NASFPN(tf.keras.Model):
-  """NAS-FPN."""
+  """Creates a NAS-FPN model.
+
+  This implements the paper:
+  Golnaz Ghiasi, Tsung-Yi Lin, Ruoming Pang, Quoc V. Le.
+  NAS-FPN: Learning Scalable Feature Pyramid Architecture for Object Detection.
+  (https://arxiv.org/abs/1904.07392)
+  """
 
   def __init__(self,
                input_specs,
@@ -78,29 +79,30 @@ class NASFPN(tf.keras.Model):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """FPN initialization function.
+    """Initializes a NAS-FPN model.
 
     Args:
-      input_specs: `dict` input specifications. A dictionary consists of
+      input_specs: A `dict` of input specifications. A dictionary consists of
         {level: TensorShape} from a backbone.
-      min_level: `int` minimum level in FPN output feature maps.
-      max_level: `int` maximum level in FPN output feature maps.
+      min_level: An `int` of minimum level in FPN output feature maps.
+      max_level: An `int` of maximum level in FPN output feature maps.
       block_specs: a list of BlockSpec objects that specifies the NAS-FPN
         network topology. By default, the previously discovered architecture is
         used.
-      num_filters: `int` number of filters in FPN layers.
+      num_filters: An `int` number of filters in FPN layers.
       num_repeats: number of repeats for feature pyramid network.
-      use_separable_conv: `bool`, if True use separable convolution for
+      use_separable_conv: A `bool`.  If True use separable convolution for
         convolution in FPN layers.
-      activation: `str` name of the activation function.
-      use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float` normalization omentum for the moving average.
-      norm_epsilon: `float` small float added to variance to avoid dividing by
-        zero.
-      kernel_initializer: kernel_initializer for convolutional layers.
-      kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-      **kwargs: keyword arguments to be passed.
+      activation: A `str` name of the activation function.
+      use_sync_bn: A `bool`. If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A `float` added to variance to avoid dividing by zero.
+      kernel_initializer: A `str` name of kernel_initializer for convolutional
+        layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default is None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+      **kwargs: Additional keyword arguments to be passed.
     """
     self._config_dict = {
         'input_specs': input_specs,
