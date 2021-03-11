@@ -153,6 +153,14 @@ if tf_version.is_tf2():
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
       'resnet_v1_101_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_101_fpn,
+      'hourglass_10':
+          center_net_hourglass_feature_extractor.hourglass_10,
+      'hourglass_20':
+          center_net_hourglass_feature_extractor.hourglass_20,
+      'hourglass_32':
+          center_net_hourglass_feature_extractor.hourglass_32,
+      'hourglass_52':
+          center_net_hourglass_feature_extractor.hourglass_52,
       'hourglass_104':
           center_net_hourglass_feature_extractor.hourglass_104,
       'mobilenet_v2':
