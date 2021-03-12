@@ -35,8 +35,8 @@ class Classification(tf.keras.Model):
     activation: The activation, if any, for the dense layer in this network.
     initializer: The initializer for the dense layer in this network. Defaults
       to a Glorot uniform initializer.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'.
+    output: The output style for this network. Can be either `logits` or
+      `predictions`.
   """
 
   def __init__(self,

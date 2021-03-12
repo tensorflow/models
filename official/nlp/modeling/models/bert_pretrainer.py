@@ -50,8 +50,8 @@ class BertPretrainer(tf.keras.Model):
       None, no activation will be used.
     initializer: The initializer (if any) to use in the masked LM and
       classification networks. Defaults to a Glorot uniform initializer.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'.
+    output: The output style for this network. Can be either `logits` or
+      `predictions`.
   """
 
   def __init__(self,

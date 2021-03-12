@@ -26,8 +26,8 @@ class VotingAttention(tf.keras.layers.Layer):
   """Voting Attention layer.
 
   Args:
-    num_heads: the number of attention heads.
-    head_size: per-head hidden size.
+    num_heads: The number of attention heads.
+    head_size: Per-head hidden size.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -115,7 +115,7 @@ class MultiChannelAttention(tf.keras.layers.MultiHeadAttention):
       context tensors according to the distribution among channels.
     key: Optional key `Tensor` of shape `[B, A, S, dim]`. If not given, will use
       `value` for both `key` and `value`, which is the most common case.
-    attention_mask: a boolean mask of shape `[B, T, S]`, that prevents attention
+    attention_mask: A boolean mask of shape `[B, T, S]`, that prevents attention
       to certain positions.
   """
 

@@ -69,9 +69,9 @@ class BertEncoder(keras_nlp.encoders.BertEncoder):
       output.
     embedding_width: The width of the word embeddings. If the embedding width is
       not equal to hidden size, embedding parameters will be factorized into two
-      matrices in the shape of ['vocab_size', 'embedding_width'] and
-      ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
-      smaller than 'hidden_size').
+      matrices in the shape of `(vocab_size, embedding_width)` and
+      `(embedding_width, hidden_size)`, where `embedding_width` is usually much
+      smaller than `hidden_size`.
     embedding_layer: The word embedding layer. `None` means we will create a new
       embedding layer. Otherwise, we will reuse the given embedding layer. This
       parameter is originally added for ELECTRA model which needs to tie the

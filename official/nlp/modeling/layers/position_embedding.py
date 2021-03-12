@@ -77,7 +77,7 @@ class RelativePositionEmbedding(tf.keras.layers.Layer):
         dimension of `inputs`.
 
     Returns:
-      A tensor in shape of [length, hidden_size].
+      A tensor in shape of `(length, hidden_size)`.
     """
     if inputs is None and length is None:
       raise ValueError("If inputs is None, `length` must be set in "
@@ -114,7 +114,7 @@ def _relative_position_bucket(relative_position,
   the distance in tokens from the attending position to the attended-to
   position.
 
-  If bidirectional=False, then positive relative positions are invalid.
+  If `bidirectional=False`, then positive relative positions are invalid.
 
   We use smaller buckets for small absolute relative_position and larger
   buckets for larger absolute relative_positions.
@@ -127,13 +127,13 @@ def _relative_position_bucket(relative_position,
   than the model has been trained on.
 
   Args:
-    relative_position: an int32 Tensor
-    bidirectional: a boolean - whether the attention is bidirectional
-    num_buckets: an integer
-    max_distance: an integer
+    relative_position: An int32 Tensor
+    bidirectional: A boolean - whether the attention is bidirectional
+    num_buckets: An integer
+    max_distance: An integer
 
   Returns:
-    a Tensor with the same shape as relative_position, containing int32
+    A Tensor with the same shape as relative_position, containing int32
     values in the range [0, num_buckets)
   """
   ret = 0
