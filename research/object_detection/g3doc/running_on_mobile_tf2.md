@@ -1,10 +1,11 @@
 # Running TF2 Detection API Models on mobile
 
-[![TensorFlow 2.3](https://img.shields.io/badge/TensorFlow-2.3-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.3.0)
+[![TensorFlow 2.4](https://img.shields.io/badge/TensorFlow-2.4-FF6F00?logo=tensorflow)](https://github.com/tensorflow/tensorflow/releases/tag/v2.4.0)
 [![Python 3.6](https://img.shields.io/badge/Python-3.6-3776AB)](https://www.python.org/downloads/release/python-360/)
 
-**NOTE:** This support was added *after* TF2.3, so please use the latest nightly
-for the TensorFlow Lite Converter for this to work.
+**NOTE:** This document talks about the *SSD* models in the detection zoo. For
+details on our (experimental) CenterNet support, see
+[this notebook](../colab_tutorials/centernet_on_device.ipynb).
 
 [TensorFlow Lite](https://www.tensorflow.org/mobile/tflite/)(TFLite) is
 TensorFlow’s lightweight solution for mobile and embedded devices. It enables
