@@ -98,13 +98,14 @@ class TaggingTask(base_task.Task):
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=self.task_config.model.head_initializer_range),
         dropout_rate=self.task_config.model.head_dropout,
-        output='logits')
+        output='logits',
+        output_encoder_outputs=True)
 
   def build_losses(self, labels, model_outputs, aux_losses=None) -> tf.Tensor:
-    model_outputs = tf.cast(model_outputs, tf.float32)
+    logits = tf.cast(model_outputs['logits'], tf.float32)
     masked_labels, masked_weights = _masked_labels_and_weights(labels)
     loss = tf.keras.losses.sparse_categorical_crossentropy(
-        masked_labels, model_outputs, from_logits=True)
+        masked_labels, logits, from_logits=True)
     numerator_loss = tf.reduce_sum(loss * masked_weights)
     denominator_loss = tf.reduce_sum(masked_weights)
     loss = tf.math.divide_no_nan(numerator_loss, denominator_loss)
@@ -139,7 +140,7 @@ class TaggingTask(base_task.Task):
 
   def inference_step(self, inputs, model: tf.keras.Model):
     """Performs the forward step."""
-    logits = model(inputs, training=False)
+    logits = model(inputs, training=False)['logits']
     return {'logits': logits,
             'predict_ids': tf.argmax(logits, axis=-1, output_type=tf.int32)}
 
@@ -156,7 +157,7 @@ class TaggingTask(base_task.Task):
     """
     features, labels = inputs
     outputs = self.inference_step(features, model)
-    loss = self.build_losses(labels=labels, model_outputs=outputs['logits'])
+    loss = self.build_losses(labels=labels, model_outputs=outputs)
 
     # Negative label ids are padding labels which should be ignored.
     real_label_index = tf.where(tf.greater_equal(labels, 0))
