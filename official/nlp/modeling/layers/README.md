@@ -1,7 +1,7 @@
 # Layers
 
 Layers are the fundamental building blocks for NLP models. They can be used to
-assemble new layers, networks, or models.
+assemble new `tf.keras` layers or models.
 
 *   [MultiHeadAttention](attention.py) implements an optionally masked attention
     between query, key, value tensors as described in
