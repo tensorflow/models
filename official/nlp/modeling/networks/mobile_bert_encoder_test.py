@@ -160,6 +160,8 @@ class MobileBertEncoderTest(parameterized.TestCase, tf.test.TestCase):
     mask = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
     prediction = classifier([word_ids, mask, type_ids])
+    if task == models.BertTokenClassifier:
+      prediction = prediction['logits']
     self.assertAllEqual(prediction.shape.as_list(), prediction_shape)
 
 
