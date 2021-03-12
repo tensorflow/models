@@ -63,7 +63,7 @@ class MobileBERTEncoder(tf.keras.Model):
       attention_probs_dropout_prob: Dropout probability of the attention
         probabilities.
       intra_bottleneck_size: Size of bottleneck.
-      initializer_range: The stddev of the truncated_normal_initializer for
+      initializer_range: The stddev of the `truncated_normal_initializer` for
         initializing all weight matrices.
       use_bottleneck_attention: Use attention inputs from the bottleneck
         transformation. If true, the following `key_query_shared_bottleneck`
@@ -71,17 +71,17 @@ class MobileBERTEncoder(tf.keras.Model):
       key_query_shared_bottleneck: Whether to share linear transformation for
         keys and queries.
       num_feedforward_networks: Number of stacked feed-forward networks.
-      normalization_type: The type of normalization_type, only 'no_norm' and
-        'layer_norm' are supported. 'no_norm' represents the element-wise linear
+      normalization_type: The type of normalization_type, only `no_norm` and
+        `layer_norm` are supported. `no_norm` represents the element-wise linear
         transformation for the student model, as suggested by the original
-        MobileBERT paper. 'layer_norm' is used for the teacher model.
+        MobileBERT paper. `layer_norm` is used for the teacher model.
       classifier_activation: If using the tanh activation for the final
-        representation of the [CLS] token in fine-tuning.
+        representation of the `[CLS]` token in fine-tuning.
       input_mask_dtype: The dtype of `input_mask` tensor, which is one of the
         input tensors of this encoder. Defaults to `int32`. If you want
         to use `tf.lite` quantization, which does not support `Cast` op,
         please set this argument to `tf.float32` and feed `input_mask`
-        tensor with values in float32 to avoid `tf.cast` in the computation.
+        tensor with values in `float32` to avoid `tf.cast` in the computation.
       **kwargs: Other keyworded and arguments.
     """
     self._self_setattr_tracking = False

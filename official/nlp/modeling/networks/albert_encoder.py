@@ -43,9 +43,9 @@ class AlbertEncoder(tf.keras.Model):
     vocab_size: The size of the token vocabulary.
     embedding_width: The width of the word embeddings. If the embedding width is
       not equal to hidden size, embedding parameters will be factorized into two
-      matrices in the shape of ['vocab_size', 'embedding_width'] and
-      ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
-      smaller than 'hidden_size').
+      matrices in the shape of `(vocab_size, embedding_width)` and
+      `(embedding_width, hidden_size)`, where `embedding_width` is usually much
+      smaller than `hidden_size`.
     hidden_size: The size of the transformer hidden layers.
     num_layers: The number of transformer layers.
     num_attention_heads: The number of attention heads for each transformer. The

@@ -135,18 +135,19 @@ class Seq2SeqTransformer(tf.keras.Model):
 
     Args:
       inputs: a dictionary of tensors.
-        Feature `inputs`: int tensor with shape [batch_size, input_length].
+        Feature `inputs`: int tensor with shape `[batch_size, input_length]`.
         Feature `targets` (optional): None or int tensor with shape
-          [batch_size, target_length].
+          `[batch_size, target_length]`.
 
     Returns:
       If targets is defined, then return logits for each word in the target
-      sequence. float tensor with shape [batch_size, target_length, vocab_size]
-      If target is none, then generate output sequence one token at a time.
-        returns a dictionary {
-          outputs: [batch_size, decoded length]
-          scores: [batch_size, float]}
-      Even when float16 is used, the output tensor(s) are always float32.
+      sequence, which is a float tensor with shape
+      `(batch_size, target_length, vocab_size)`. If target is `None`, then
+      generate output sequence one token at a time and
+      returns a dictionary {
+          outputs: `(batch_size, decoded_length)`
+          scores: `(batch_size, 1)`}
+      Even when `float16` is used, the output tensor(s) are always `float32`.
 
     Raises:
       NotImplementedError: If try to use padded decode method on CPU/GPUs.
@@ -288,15 +289,15 @@ class Seq2SeqTransformer(tf.keras.Model):
       """Generate logits for next potential IDs.
 
       Args:
-        ids: Current decoded sequences. int tensor with shape [batch_size *
-          beam_size, i + 1].
+        ids: Current decoded sequences. int tensor with shape
+          `(batch_size * beam_size, i + 1)`.
         i: Loop index.
-        cache: dictionary of values storing the encoder output, encoder-decoder
+        cache: Dictionary of values storing the encoder output, encoder-decoder
           attention bias, and previous decoder attention values.
 
       Returns:
         Tuple of
-          (logits with shape [batch_size * beam_size, vocab_size],
+          (logits with shape `(batch_size * beam_size, vocab_size)`,
            updated cache values)
       """
       # Set decoder input to the last generated IDs
@@ -440,13 +441,14 @@ class TransformerEncoder(tf.keras.layers.Layer):
     """Return the output of the encoder.
 
     Args:
-      encoder_inputs: tensor with shape [batch_size, input_length, hidden_size]
-      attention_mask: mask for the encoder self-attention layer. [batch_size,
-        input_length, input_length]
+      encoder_inputs: A tensor with shape
+        `(batch_size, input_length, hidden_size)`.
+      attention_mask: A mask for the encoder self-attention layer with shape
+        `(batch_size, input_length, input_length)`.
 
     Returns:
-      Output of encoder.
-      float32 tensor with shape [batch_size, input_length, hidden_size]
+      Output of encoder which is a `float32` tensor with shape
+        `(batch_size, input_length, hidden_size)`.
     """
     for layer_idx in range(self.num_layers):
       encoder_inputs = self.encoder_layers[layer_idx](
@@ -475,11 +477,11 @@ class TransformerDecoder(tf.keras.layers.Layer):
     activation: Activation for the intermediate layer.
     dropout_rate: Dropout probability.
     attention_dropout_rate: Dropout probability for attention layers.
-    use_bias: Whether to enable use_bias in attention layer. If set False,
+    use_bias: Whether to enable use_bias in attention layer. If set `False`,
       use_bias in attention layer is disabled.
     norm_first: Whether to normalize inputs to attention and intermediate dense
-      layers. If set False, output of attention and intermediate dense layers is
-      normalized.
+      layers. If set `False`, output of attention and intermediate dense layers
+      is normalized.
     norm_epsilon: Epsilon value to initialize normalization layers.
     intermediate_dropout: Dropout probability for intermediate_dropout_layer.
   """
@@ -555,23 +557,25 @@ class TransformerDecoder(tf.keras.layers.Layer):
     """Return the output of the decoder layer stacks.
 
     Args:
-      target: A tensor with shape [batch_size, target_length, hidden_size].
-      memory: A tensor with shape [batch_size, input_length, hidden_size]
-      memory_mask: A tensor with shape [batch_size, target_len, target_length],
-        the mask for decoder self-attention layer.
-      target_mask: A tensor with shape [batch_size, target_length, input_length]
-        which is the mask for encoder-decoder attention layer.
+      target: A tensor with shape `(batch_size, target_length, hidden_size)`.
+      memory: A tensor with shape `(batch_size, input_length, hidden_size)`.
+      memory_mask: A tensor with shape
+        `(batch_size, target_len, target_length)`, the mask for decoder
+        self-attention layer.
+      target_mask: A tensor with shape
+        `(batch_size, target_length, input_length)` which is the mask for
+        encoder-decoder attention layer.
       cache: (Used for fast decoding) A nested dictionary storing previous
         decoder self-attention values. The items are:
-          {layer_n: {"k": A tensor with shape [batch_size, i, key_channels],
-                     "v": A tensor with shape [batch_size, i, value_channels]},
-                       ...}
+        {layer_n: {"k": A tensor with shape `(batch_size, i, key_channels)`,
+                   "v": A tensor with shape `(batch_size, i, value_channels)`},
+                     ...}
       decode_loop_step: An integer, the step number of the decoding loop. Used
         only for autoregressive inference on TPU.
 
     Returns:
       Output of decoder.
-      float32 tensor with shape [batch_size, target_length, hidden_size]
+      float32 tensor with shape `(batch_size, target_length, hidden_size`).
     """
 
     output_tensor = target
