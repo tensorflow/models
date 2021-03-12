@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Networks package definition."""
+"""Networks are combinations of `tf.keras` layers (and possibly other networks).
+
+They are `tf.keras` models that would not be trained alone. It encapsulates
+common network structures like a transformer encoder into an easily
+handled object with a standardized configuration.
+"""
 from official.nlp.modeling.networks.albert_encoder import AlbertEncoder
 from official.nlp.modeling.networks.bert_encoder import BertEncoder
 from official.nlp.modeling.networks.classification import Classification
