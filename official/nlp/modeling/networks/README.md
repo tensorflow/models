@@ -1,10 +1,9 @@
 # Networks
 
-Networks are combinations of layers (and possibly other networks).
-They are sub-units of models that would not be trained alone. It
-encapsulates common network structures like a classification head
-or a transformer encoder into an easily handled object with a
-standardized configuration.
+Networks are combinations of `tf.keras` layers (and possibly other networks).
+They are `tf.keras` models that would not be trained alone. It encapsulates
+common network structures like a transformer encoder into an easily
+handled object with a standardized configuration.
 
 * [`BertEncoder`](bert_encoder.py) implements a bi-directional
 Transformer-based encoder as described in ["BERT: Pre-training of Deep
