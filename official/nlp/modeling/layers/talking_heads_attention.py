@@ -63,7 +63,7 @@ class TalkingHeadsAttention(tf.keras.layers.MultiHeadAttention):
     that will be applied on attention scores before and after softmax.
 
     Args:
-      qkv_rank: the rank of query, key, value tensors after projection.
+      qkv_rank: The rank of query, key, value tensors after projection.
     """
     super(TalkingHeadsAttention, self)._build_attention(qkv_rank)
 

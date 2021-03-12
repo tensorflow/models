@@ -37,8 +37,8 @@ class SpanLabeling(tf.keras.Model):
     activation: The activation, if any, for the dense layer in this network.
     initializer: The initializer for the dense layer in this network. Defaults
       to a Glorot uniform initializer.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'.
+    output: The output style for this network. Can be either `logits` or
+      `predictions`.
   """
 
   def __init__(self,
@@ -228,20 +228,20 @@ class XLNetSpanLabeling(tf.keras.layers.Layer):
 
     Args:
       sequence_data: The input sequence data of shape
-        (batch_size, seq_length, input_width).
-      class_index: The class indices of the inputs of shape (batch_size,).
+        `(batch_size, seq_length, input_width)`.
+      class_index: The class indices of the inputs of shape `(batch_size,)`.
       paragraph_mask: Invalid position mask such as query and special symbols
-        (e.g. PAD, SEP, CLS) of shape (batch_size,).
+        (e.g. PAD, SEP, CLS) of shape `(batch_size,)`.
       start_positions: The start positions of each example of shape
-        (batch_size,).
+        `(batch_size,)`.
       training: Whether or not this is the training phase.
 
     Returns:
-      A dictionary with the keys 'start_predictions', 'end_predictions',
-      'start_logits', 'end_logits'.
+      A dictionary with the keys `start_predictions`, `end_predictions`,
+      `start_logits`, `end_logits`.
 
-      If inference, then 'start_top_predictions', 'start_top_index',
-      'end_top_predictions', 'end_top_index' are also included.
+      If inference, then `start_top_predictions`, `start_top_index`,
+      `end_top_predictions`, `end_top_index` are also included.
 
     """
     paragraph_mask = tf.cast(paragraph_mask, dtype=sequence_data.dtype)

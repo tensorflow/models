@@ -38,7 +38,7 @@ class EncoderScaffold(tf.keras.Model):
   class (which will replace the Transformer instantiation in the encoder). For
   each of these custom injection points, users can pass either a class or a
   class instance. If a class is passed, that class will be instantiated using
-  the 'embedding_cfg' or 'hidden_cfg' argument, respectively; if an instance
+  the `embedding_cfg` or `hidden_cfg` argument, respectively; if an instance
   is passed, that instance will be invoked. (In the case of hidden_cls, the
   instance will be invoked 'num_hidden_instances' times.
 
@@ -53,40 +53,41 @@ class EncoderScaffold(tf.keras.Model):
     pooler_layer_initializer: The initializer for the classification layer.
     embedding_cls: The class or instance to use to embed the input data. This
       class or instance defines the inputs to this encoder and outputs (1)
-      embeddings tensor with shape [batch_size, seq_length, hidden_size] and (2)
-      attention masking with tensor [batch_size, seq_length, seq_length]. If
-      embedding_cls is not set, a default embedding network (from the original
-      BERT paper) will be created.
+      embeddings tensor with shape `(batch_size, seq_length, hidden_size)` and
+      (2) attention masking with tensor `(batch_size, seq_length, seq_length)`.
+      If `embedding_cls` is not set, a default embedding network (from the
+      original BERT paper) will be created.
     embedding_cfg: A dict of kwargs to pass to the embedding_cls, if it needs to
-      be instantiated. If embedding_cls is not set, a config dict must be
-      passed to 'embedding_cfg' with the following values:
-      "vocab_size": The size of the token vocabulary.
-      "type_vocab_size": The size of the type vocabulary.
-      "hidden_size": The hidden size for this encoder.
-      "max_seq_length": The maximum sequence length for this encoder.
-      "seq_length": The sequence length for this encoder.
-      "initializer": The initializer for the embedding portion of this encoder.
-      "dropout_rate": The dropout rate to apply before the encoding layers.
+      be instantiated. If `embedding_cls` is not set, a config dict must be
+      passed to `embedding_cfg` with the following values:
+      `vocab_size`: The size of the token vocabulary.
+      `type_vocab_size`: The size of the type vocabulary.
+      `hidden_size`: The hidden size for this encoder.
+      `max_seq_length`: The maximum sequence length for this encoder.
+      `seq_length`: The sequence length for this encoder.
+      `initializer`: The initializer for the embedding portion of this encoder.
+      `dropout_rate`: The dropout rate to apply before the encoding layers.
     embedding_data: A reference to the embedding weights that will be used to
       train the masked language model, if necessary. This is optional, and only
-      needed if (1) you are overriding embedding_cls and (2) are doing standard
-      pretraining.
+      needed if (1) you are overriding `embedding_cls` and (2) are doing
+      standard pretraining.
     num_hidden_instances: The number of times to instantiate and/or invoke the
       hidden_cls.
-    hidden_cls: The class or instance to encode the input data. If hidden_cls is
-      not set, a KerasBERT transformer layer will be used as the encoder class.
+    hidden_cls: The class or instance to encode the input data. If `hidden_cls`
+      is not set, a KerasBERT transformer layer will be used as the encoder
+      class.
     hidden_cfg: A dict of kwargs to pass to the hidden_cls, if it needs to be
       instantiated. If hidden_cls is not set, a config dict must be passed to
-      'hidden_cfg' with the following values:
-        "num_attention_heads": The number of attention heads. The hidden size
-          must be divisible by num_attention_heads.
-        "intermediate_size": The intermediate size of the transformer.
-        "intermediate_activation": The activation to apply in the transfomer.
-        "dropout_rate": The overall dropout rate for the transformer layers.
-        "attention_dropout_rate": The dropout rate for the attention layers.
-        "kernel_initializer": The initializer for the transformer layers.
+      `hidden_cfg` with the following values:
+        `num_attention_heads`: The number of attention heads. The hidden size
+          must be divisible by `num_attention_heads`.
+        `intermediate_size`: The intermediate size of the transformer.
+        `intermediate_activation`: The activation to apply in the transfomer.
+        `dropout_rate`: The overall dropout rate for the transformer layers.
+        `attention_dropout_rate`: The dropout rate for the attention layers.
+        `kernel_initializer`: The initializer for the transformer layers.
     layer_norm_before_pooling: Whether to add a layer norm before the pooling
-      layer. You probably want to turn this on if you set norm_first=True in
+      layer. You probably want to turn this on if you set `norm_first=True` in
       transformer layers.
     return_all_layer_outputs: Whether to output sequence embedding outputs of
       all encoder transformer layers.

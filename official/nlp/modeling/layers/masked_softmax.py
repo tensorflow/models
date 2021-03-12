@@ -25,10 +25,10 @@ def _large_compatible_negative(tensor_type):
   in this module (-1e9) cannot be represented using `tf.float16`.
 
   Args:
-    tensor_type: a dtype to determine the type.
+    tensor_type: A dtype to determine the type.
 
   Returns:
-    a large negative number.
+    A large negative number.
   """
   if tensor_type == tf.float16:
     return tf.float16.min

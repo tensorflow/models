@@ -103,10 +103,10 @@ class MultiHeadRelativeAttention(tf.keras.layers.MultiHeadAttention):
     segment_attention_bias: Optional trainable bias parameter added to the
       query had when calculating the segment-based attention score used in
       XLNet of shape `[num_heads, dim]`.
-    state: Optional `Tensor` of shape [B, M, E] where M is the length of the
+    state: Optional `Tensor` of shape `[B, M, E]` where M is the length of the
       state or memory.
       If passed, this is also attended over as in Transformer XL.
-    attention_mask: a boolean mask of shape `[B, T, S]` that prevents attention
+    attention_mask: A boolean mask of shape `[B, T, S]` that prevents attention
       to certain positions.
   """
 

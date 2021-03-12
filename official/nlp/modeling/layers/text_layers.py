@@ -100,10 +100,10 @@ class BertTokenizer(tf.keras.layers.Layer):
     tokenize_with_offsets: If true, calls
       `text.BertTokenizer.tokenize_with_offsets()` instead of plain
       `text.BertTokenizer.tokenize()` and outputs a triple of
-      (tokens, start_offsets, limit_offsets).
-    raw_table_access: An object with methods .lookup(keys) and .size()
+      `(tokens, start_offsets, limit_offsets)`.
+    raw_table_access: An object with methods `.lookup(keys) and `.size()`
       that operate on the raw lookup table of tokens. It can be used to
-      look up special token synbols like [MASK].
+      look up special token synbols like `[MASK]`.
   """
 
   def __init__(self, *,
@@ -121,16 +121,16 @@ class BertTokenizer(tf.keras.layers.Layer):
       lower_case: A Python boolean forwarded to `text.BertTokenizer`.
         If true, input text is converted to lower case (where applicable)
         before tokenization. This must be set to match the way in which
-        the vocab_file was created.
+        the `vocab_file` was created.
       tokenize_with_offsets: A Python boolean. If true, this layer calls
-         `text.BertTokenizer.tokenize_with_offsets()` instead of plain
-         `text.BertTokenizer.tokenize()` and outputs a triple of
-         (tokens, start_offsets, limit_offsets)
-         insead of just tokens.
-      **kwargs: standard arguments to Layer().
+        `text.BertTokenizer.tokenize_with_offsets()` instead of plain
+        `text.BertTokenizer.tokenize()` and outputs a triple of
+        `(tokens, start_offsets, limit_offsets)`
+        insead of just tokens.
+      **kwargs: Standard arguments to `Layer()`.
 
     Raises:
-      ImportError: if importing `tensorflow_text` failed.
+      ImportError: If importing `tensorflow_text` failed.
     """
     _check_if_tf_text_installed()
 
@@ -167,18 +167,19 @@ class BertTokenizer(tf.keras.layers.Layer):
     """Calls `text.BertTokenizer` on inputs.
 
     Args:
-      inputs: A string Tensor of shape [batch_size].
+      inputs: A string Tensor of shape `(batch_size,)`.
 
     Returns:
       One or three of `RaggedTensors` if `tokenize_with_offsets` is False or
       True, respectively. These are
-      tokens: A `RaggedTensor` of shape [batch_size, (words), (pieces_per_word)]
-        and type int32. tokens[i,j,k] contains the k-th wordpiece of the
-        j-th word in the i-th input.
-      start_offsets, limit_offsets: If `tokenize_with_offsets` is True,
-        RaggedTensors of type int64 with the same indices as tokens.
-        Element [i,j,k] contains the byte offset at the start, or past the
-        end, resp., for the k-th wordpiece of the j-th word in the i-th input.
+        tokens: A `RaggedTensor` of shape
+          `[batch_size, (words), (pieces_per_word)]`
+          and type int32. `tokens[i,j,k]` contains the k-th wordpiece of the
+          j-th word in the i-th input.
+        start_offsets, limit_offsets: If `tokenize_with_offsets` is True,
+          RaggedTensors of type int64 with the same indices as tokens.
+          Element `[i,j,k]` contains the byte offset at the start, or past the
+          end, resp., for the k-th wordpiece of the j-th word in the i-th input.
     """
     # Prepare to reshape the result to work around broken shape inference.
     batch_size = tf.shape(inputs)[0]
@@ -268,13 +269,13 @@ class BertTokenizer(tf.keras.layers.Layer):
 
 
 class SentencepieceTokenizer(tf.keras.layers.Layer):
-  """Wraps tf_text.SentencepieceTokenizer as a Keras Layer.
+  """Wraps `tf_text.SentencepieceTokenizer` as a Keras Layer.
 
   Attributes:
     tokenize_with_offsets: If true, calls
-      SentencepieceTokenizer.tokenize_with_offsets()
-      instead of plain .tokenize() and outputs a triple of
-      (tokens, start_offsets, limit_offsets).
+      `SentencepieceTokenizer.tokenize_with_offsets()`
+      instead of plain `.tokenize()` and outputs a triple of
+      `(tokens, start_offsets, limit_offsets)`.
   """
 
   def __init__(self,
@@ -300,9 +301,9 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
         store the actual proto (not a filename passed here).
       model_serialized_proto: The sentencepiece model serialized proto string.
       tokenize_with_offsets: A Python boolean. If true, this layer calls
-        SentencepieceTokenizer.tokenize_with_offsets() instead of
-        plain .tokenize() and outputs a triple of
-        (tokens, start_offsets, limit_offsets) insead of just tokens.
+        `SentencepieceTokenizer.tokenize_with_offsets()` instead of
+        plain `.tokenize()` and outputs a triple of
+        `(tokens, start_offsets, limit_offsets)` insead of just tokens.
         Note that when following `strip_diacritics` is set to True, returning
         offsets is not supported now.
       nbest_size: A scalar for sampling:
@@ -320,7 +321,7 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
         `tokenize_with_offsets`. NOTE: New models are encouraged to put this
         into custom normalization rules for the Sentencepiece model itself to
         avoid this extra step and the limitation regarding offsets.
-      **kwargs: standard arguments to Layer().
+      **kwargs: standard arguments to `Layer()`.
 
     Raises:
       ImportError: if importing tensorflow_text failed.
@@ -360,19 +361,19 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
     return self._tokenizer.vocab_size()
 
   def call(self, inputs: tf.Tensor):
-    """Calls text.SentencepieceTokenizer on inputs.
+    """Calls `text.SentencepieceTokenizer` on inputs.
 
     Args:
-      inputs: A string Tensor of shape [batch_size].
+      inputs: A string Tensor of shape `(batch_size,)`.
 
     Returns:
       One or three of RaggedTensors if tokenize_with_offsets is False or True,
       respectively. These are
-      tokens: A RaggedTensor of shape [batch_size, (pieces)] and type int32.
-        tokens[i,j] contains the j-th piece in the i-th input.
-      start_offsets, limit_offsets: If tokenize_with_offsets is True,
-        RaggedTensors of type int64 with the same indices as tokens.
-        Element [i,j] contains the byte offset at the start, or past the
+      tokens: A RaggedTensor of shape `[batch_size, (pieces)]` and type `int32`.
+        `tokens[i,j]` contains the j-th piece in the i-th input.
+      start_offsets, limit_offsets: If `tokenize_with_offsets` is True,
+        RaggedTensors of type `int64` with the same indices as tokens.
+        Element `[i,j]` contains the byte offset at the start, or past the
         end, resp., for the j-th piece in the i-th input.
     """
     if self._strip_diacritics:
@@ -492,7 +493,7 @@ class BertPackInputs(tf.keras.layers.Layer):
                special_tokens_dict=None,
                truncator="round_robin",
                **kwargs):
-    """Initializes with a target seq_length, relevant token ids and truncator.
+    """Initializes with a target `seq_length`, relevant token ids and truncator.
 
     Args:
       seq_length: The desired output length. Must not exceed the max_seq_length
@@ -505,13 +506,13 @@ class BertPackInputs(tf.keras.layers.Layer):
         unused positions after the last segment in the sequence
         (called "[PAD]" for BERT).
       special_tokens_dict: Optionally, a dict from Python strings to Python
-        integers that contains values for start_of_sequence_id,
-        end_of_segment_id and padding_id. (Further values in the dict are
+        integers that contains values for `start_of_sequence_id`,
+        `end_of_segment_id` and `padding_id`. (Further values in the dict are
         silenty ignored.) If this is passed, separate *_id arguments must be
         omitted.
       truncator: The algorithm to truncate a list of batched segments to fit a
-        per-example length limit. The value can be either "round_robin" or
-        "waterfall":
+        per-example length limit. The value can be either `round_robin` or
+        `waterfall`:
           (1) For "round_robin" algorithm, available space is assigned
           one token at a time in a round-robin fashion to the inputs that still
           need some, until the limit is reached. It currently only supports
@@ -521,10 +522,10 @@ class BertPackInputs(tf.keras.layers.Layer):
             left-to-right manner and fills up the buckets until we run out of
             budget. It support arbitrary number of segments.
 
-      **kwargs: standard arguments to Layer().
+      **kwargs: standard arguments to `Layer()`.
 
     Raises:
-      ImportError: if importing tensorflow_text failed.
+      ImportError: if importing `tensorflow_text` failed.
     """
     _check_if_tf_text_installed()
     super().__init__(**kwargs)

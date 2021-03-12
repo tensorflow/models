@@ -36,12 +36,12 @@ class BertTokenClassifier(tf.keras.Model):
   Args:
     network: A transformer network. This network should output a sequence output
       and a classification output. Furthermore, it should expose its embedding
-      table via a "get_embedding_table" method.
+      table via a `get_embedding_table` method.
     num_classes: Number of classes to predict from the classification network.
     initializer: The initializer (if any) to use in the classification networks.
       Defaults to a Glorot uniform initializer.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'.
+    output: The output style for this network. Can be either `logits` or
+      `predictions`.
   """
 
   def __init__(self,
