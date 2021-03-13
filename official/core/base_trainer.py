@@ -18,7 +18,7 @@ The base trainer implements the Orbit `StandardTrainable` and
 `StandardEvaluable` interfaces. Trainers inside this project should be
 interchangable and independent on model architectures and tasks.
 """
-
+import functools
 from absl import logging
 import gin
 import orbit
@@ -84,10 +84,85 @@ class Recovery:
         "%f at step %d.", checkpoint_path, loss_value, global_step)
 
 
+class _AsyncTrainer(orbit.StandardTrainer, orbit.StandardEvaluator):
+  """Trainer class for both sync and async Strategy."""
+
+  def init_async(self):
+    """Initializes the Async Trainer base class."""
+    assert isinstance(self._strategy, tf.distribute.Strategy)
+    self._is_async = isinstance(
+        self._strategy, tf.distribute.experimental.ParameterServerStrategy)
+    self._coordinator = None
+    if self._is_async:
+      self._coordinator = (
+          tf.distribute.experimental.coordinator.ClusterCoordinator(
+              self._strategy))
+
+  def join(self):
+    """Join all async steps. Only useful in aysnc training."""
+    if getattr(self, "_is_async", False):
+      self._coordinator.join()
+
+  def create_train_loop_fn(self):
+    """Creates a eval loop from the given step function and options."""
+    train_loop_fn = super().create_train_loop_fn()
+    if getattr(self, "_is_async", False):
+
+      def _async_loop_fn(iterator, num_steps):
+        self._coordinator.schedule(train_loop_fn, args=(iterator, num_steps))
+
+      return _async_loop_fn
+    else:
+      return train_loop_fn
+
+  def create_eval_loop_fn(self, has_state: bool):
+    """Creates a training loop from the given step function and options."""
+    eval_loop_fn = super().create_eval_loop_fn(has_state)
+
+    if getattr(self, "_is_async", False):
+      if has_state:
+        raise ValueError(
+            "Stateful eval loop is not supported in async training.")
+
+      def _async_loop_fn(iterator, num_steps, state=None, reduce_fn=None):
+        assert state is None
+        assert reduce_fn is None
+        self._coordinator.schedule(eval_loop_fn, args=(iterator, num_steps))
+
+      return _async_loop_fn
+    else:
+      return eval_loop_fn
+
+  def distribute_dataset(self, dataset_or_fn, *args, **kwargs):
+    """A utility function to help create a `tf.distribute.DistributedDataset`.
+
+    Args:
+      dataset_or_fn: A instance of `tf.data.Dataset`, or a "dataset function"
+        returning a `tf.data.Dataset`. If it is a function, it may optionally
+        have an argument named `input_context` which will be passed a
+        `tf.distribute.InputContext` instance.
+      *args: Any positional arguments to pass through to `dataset_or_fn`.
+      **kwargs: Any keyword arguments to pass through to `dataset_or_fn`.
+    Returns:
+      A distributed Dataset.
+    """
+    if getattr(self, "_is_async", False):
+      per_worker_dataset_fn = functools.partial(
+          orbit.utils.make_distributed_dataset, self._strategy, dataset_or_fn,
+          *args, **kwargs)
+      per_worker_dataset_fn = tf.function(per_worker_dataset_fn)
+
+      return self._coordinator.create_per_worker_dataset(per_worker_dataset_fn)
+    else:
+      return orbit.utils.make_distributed_dataset(self._strategy, dataset_or_fn,
+                                                  *args, **kwargs)
+
+
 @gin.configurable
-class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
+class Trainer(_AsyncTrainer):
   """Implements the common trainer shared for TensorFlow models."""
 
+  # pylint: disable=super-init-not-called
   def __init__(self,
                config: ExperimentConfig,
                task: base_task.Task,
@@ -147,9 +222,11 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
     self._validation_metrics = self.task.build_metrics(
         training=False) + self.model.metrics
 
+    self.init_async()
+
     if train:
-      train_dataset = orbit.utils.make_distributed_dataset(
-          self.strategy, self.task.build_inputs, self.config.task.train_data)
+      train_dataset = self.distribute_dataset(
+          self.task.build_inputs, self.config.task.train_data)
       orbit.StandardTrainer.__init__(
           self,
           train_dataset,
@@ -159,9 +236,8 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
               use_tpu_summary_optimization=config.trainer.allow_tpu_summary))
 
     if evaluate:
-      eval_dataset = orbit.utils.make_distributed_dataset(
-          self.strategy, self.task.build_inputs,
-          self.config.task.validation_data)
+      eval_dataset = self.distribute_dataset(
+          self.task.build_inputs, self.config.task.validation_data)
       orbit.StandardEvaluator.__init__(
           self,
           eval_dataset,
@@ -270,6 +346,7 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
 
   def train_loop_end(self):
     """See base class."""
+    self.join()
     # Checks if the model numeric status is stable and conducts the checkpoint
     # recovery accordingly.
     if self._recovery:
@@ -324,6 +401,7 @@ class Trainer(orbit.StandardTrainer, orbit.StandardEvaluator):
 
   def eval_end(self, aggregated_logs=None):
     """Processes evaluation results."""
+    self.join()
     logs = {}
     for metric in self.validation_metrics:
       logs[metric.name] = metric.result()
