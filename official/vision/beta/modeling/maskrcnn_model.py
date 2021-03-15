@@ -178,6 +178,7 @@ class MaskRCNNModel(tf.keras.Model):
 
     # Mask head.
     raw_masks = self.mask_head([mask_roi_features, roi_classes])
+
     if training:
       model_outputs.update({
           'mask_outputs': raw_masks,
@@ -187,6 +188,20 @@ class MaskRCNNModel(tf.keras.Model):
           'detection_masks': tf.math.sigmoid(raw_masks),
       })
     return model_outputs
+
+  @property
+  def checkpoint_items(self):
+    """Returns a dictionary of items to be additionally checkpointed."""
+    items = dict(
+        backbone=self.backbone,
+        rpn_head=self.rpn_head,
+        detection_head=self.detection_head)
+    if self.decoder is not None:
+      items.update(decoder=self.decoder)
+    if self._include_mask:
+      items.update(mask_head=self.mask_head)
+
+    return items
 
   def get_config(self):
     return self._config_dict
