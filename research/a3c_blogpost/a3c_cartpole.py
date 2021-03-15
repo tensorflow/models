@@ -133,7 +133,7 @@ class MasterAgent():
     env = gym.make(self.game_name)
     self.state_size = env.observation_space.shape[0]
     self.action_size = env.action_space.n
-    self.opt = tf.compat.v1.train.AdamOptimizer(args.lr, use_locking=True)
+    self.opt = tf.keras.optimizers.Adam(args.lr)
     print(self.state_size, self.action_size)
 
     self.global_model = ActorCriticModel(self.state_size, self.action_size)  # global network
