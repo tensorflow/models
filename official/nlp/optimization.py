@@ -171,7 +171,8 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
       # and passed the allreduced grads_and_vars. For now, the
       # clip_by_global_norm will be moved to before the explicit allreduce to
       # keep the math the same as TF 1 and pre TF 2.2 implementation.
-      (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+      (grads, _) = tf.clip_by_global_norm(
+          grads, clip_norm=self.gradient_clip_norm)
     return super(AdamWeightDecay, self).apply_gradients(
         zip(grads, tvars),
         name=name,
