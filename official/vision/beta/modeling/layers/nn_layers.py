@@ -232,7 +232,7 @@ class StochasticDepth(tf.keras.layers.Layer):
     batch_size = tf.shape(inputs)[0]
     random_tensor = keep_prob
     random_tensor += tf.random.uniform(
-        [batch_size, 1, 1, 1], dtype=inputs.dtype)
+        [batch_size] + [1] * (inputs.shape.rank - 1), dtype=inputs.dtype)
     binary_tensor = tf.floor(random_tensor)
     output = tf.math.divide(inputs, keep_prob) * binary_tensor
     return output
