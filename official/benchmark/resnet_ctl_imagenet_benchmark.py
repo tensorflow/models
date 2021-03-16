@@ -475,6 +475,7 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     self._set_df_common()
     FLAGS.batch_size = 8192
     FLAGS.dtype = 'bf16'
+    FLAGS.model_dir = self._get_model_dir('benchmark_8x16_tpu_bf16')
     self._run_and_report_benchmark()
 
   def fill_report_object(self, stats):
