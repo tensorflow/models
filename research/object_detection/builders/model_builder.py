@@ -915,13 +915,17 @@ def object_center_proto_to_params(oc_config):
       losses_pb2.WeightedL2LocalizationLoss())
   loss.classification_loss.CopyFrom(oc_config.classification_loss)
   classification_loss, _, _, _, _, _, _ = (losses_builder.build(loss))
+  keypoint_weights_for_center = []
+  if oc_config.keypoint_weights_for_center:
+    keypoint_weights_for_center = list(oc_config.keypoint_weights_for_center)
   return center_net_meta_arch.ObjectCenterParams(
       classification_loss=classification_loss,
       object_center_loss_weight=oc_config.object_center_loss_weight,
       heatmap_bias_init=oc_config.heatmap_bias_init,
       min_box_overlap_iou=oc_config.min_box_overlap_iou,
       max_box_predictions=oc_config.max_box_predictions,
-      use_labeled_classes=oc_config.use_labeled_classes)
+      use_labeled_classes=oc_config.use_labeled_classes,
+      keypoint_weights_for_center=keypoint_weights_for_center)
 
 
 def mask_proto_to_params(mask_config):

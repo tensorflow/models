@@ -141,6 +141,26 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     return text_format.Merge(proto_txt,
                              center_net_pb2.CenterNet.ObjectCenterParams())
 
+  def get_fake_object_center_from_keypoints_proto(self):
+    proto_txt = """
+      object_center_loss_weight: 0.5
+      heatmap_bias_init: 3.14
+      min_box_overlap_iou: 0.2
+      max_box_predictions: 15
+      classification_loss {
+        penalty_reduced_logistic_focal_loss {
+          alpha: 3.0
+          beta: 4.0
+        }
+      }
+      keypoint_weights_for_center: 1.0
+      keypoint_weights_for_center: 0.0
+      keypoint_weights_for_center: 1.0
+      keypoint_weights_for_center: 0.0
+    """
+    return text_format.Merge(proto_txt,
+                             center_net_pb2.CenterNet.ObjectCenterParams())
+
   def get_fake_object_detection_proto(self):
     proto_txt = """
       task_loss_weight: 0.5
@@ -307,6 +327,50 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     backbone = model._feature_extractor._network
     self.assertIsInstance(backbone, hourglass_network.HourglassNetwork)
     self.assertTrue(backbone.num_hourglasses, 1)
+
+  def test_create_center_net_model_from_keypoints(self):
+    """Test building a CenterNet model from proto txt."""
+    proto_txt = """
+      center_net {
+        num_classes: 10
+        feature_extractor {
+          type: "hourglass_52"
+          channel_stds: [4, 5, 6]
+          bgr_ordering: true
+        }
+        image_resizer {
+          keep_aspect_ratio_resizer {
+            min_dimension: 512
+            max_dimension: 512
+            pad_to_max_dimension: true
+          }
+        }
+      }
+    """
+    # Set up the configuration proto.
+    config = text_format.Merge(proto_txt, model_pb2.DetectionModel())
+    # Only add object center and keypoint estimation configs here.
+    config.center_net.object_center_params.CopyFrom(
+        self.get_fake_object_center_from_keypoints_proto())
+    config.center_net.keypoint_estimation_task.append(
+        self.get_fake_keypoint_proto())
+    config.center_net.keypoint_label_map_path = (
+        self.get_fake_label_map_file_path())
+
+    # Build the model from the configuration.
+    model = model_builder.build(config, is_training=True)
+
+    # Check object center related parameters.
+    self.assertEqual(model._num_classes, 10)
+    self.assertEqual(model._center_params.keypoint_weights_for_center,
+                     [1.0, 0.0, 1.0, 0.0])
+
+    # Check keypoint estimation related parameters.
+    kp_params = model._kp_params_dict['human_pose']
+    self.assertAlmostEqual(kp_params.task_loss_weight, 0.9)
+    self.assertEqual(kp_params.keypoint_indices, [0, 1, 2, 3])
+    self.assertEqual(kp_params.keypoint_labels,
+                     ['nose', 'left_shoulder', 'right_shoulder', 'hip'])
 
 
 if __name__ == '__main__':
