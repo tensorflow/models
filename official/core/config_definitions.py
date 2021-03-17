@@ -44,8 +44,10 @@ class DataConfig(base_config.Config):
     drop_remainder: Whether the last batch should be dropped in the case it has
       fewer than `global_batch_size` elements.
     shuffle_buffer_size: The buffer size used for shuffling training data.
-    cache: Whether to cache dataset examples. Can be used to avoid re-reading
-      from disk on the second epoch. Requires significant memory overhead.
+    cache: Whether to cache dataset examples. If `True`, we will cache the
+      dataset after applying the decode_fn and parse_fn. It can be used to avoid
+      re-reading from disk, re-decoding and re-parsing the example on the
+      second epoch, but it requires significant memory overhead.
     cycle_length: The number of files that will be processed concurrently when
       interleaving files.
     block_length: The number of consecutive elements to produce from each input
