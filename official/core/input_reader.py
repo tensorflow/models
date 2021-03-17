@@ -174,11 +174,13 @@ class InputReader:
     dataset = tf.data.Dataset.from_tensor_slices(matched_files)
 
     # Shuffle and repeat at file level.
+    # If cache is enabled, `reshuffle_each_iteration` is set to False,
+    # because we will read the same cached data in every iteration anyway.
     if self._is_training:
       dataset = dataset.shuffle(
           len(matched_files),
           seed=self._seed,
-          reshuffle_each_iteration=True)
+          reshuffle_each_iteration=True if not self._cache else False)
 
     # Do not enable sharding if tf.data service is enabled, as sharding will be
     # handled inside tf.data service.
@@ -187,7 +189,9 @@ class InputReader:
         not self._enable_tf_data_service):
       dataset = dataset.shard(input_context.num_input_pipelines,
                               input_context.input_pipeline_id)
-    if self._is_training:
+
+    # If cache is enabled, we will call `repeat()` later after `cache()`.
+    if self._is_training and not self._cache:
       dataset = dataset.repeat()
 
     dataset = dataset.interleave(
@@ -222,7 +226,9 @@ class InputReader:
         not self._enable_tf_data_service):
       dataset = dataset.shard(input_context.num_input_pipelines,
                               input_context.input_pipeline_id)
-    if self._is_training:
+
+    # If cache is enabled, we will call `repeat()` later after `cache()`.
+    if self._is_training and not self._cache:
       dataset = dataset.repeat()
     return dataset
 
@@ -249,7 +255,8 @@ class InputReader:
         decoders=decoders,
         read_config=read_config)
 
-    if self._is_training:
+    # If cache is enabled, we will call `repeat()` later after `cache()`.
+    if self._is_training and not self._cache:
       dataset = dataset.repeat()
     return dataset
 
@@ -295,16 +302,20 @@ class InputReader:
       raise ValueError('It is unexpected that `tfds_builder` is None and '
                        'there is also no `matched_files`.')
 
-    if self._cache:
-      dataset = dataset.cache()
-
-    if self._is_training:
+    # If cache is enabled, we will call `shuffle()` later after `cache()`.
+    if self._is_training and not self._cache:
       dataset = dataset.shuffle(self._shuffle_buffer_size)
 
     dataset = _maybe_map_fn(dataset, self._decoder_fn)
     if self._sample_fn is not None:
       dataset = dataset.apply(self._sample_fn)
     dataset = _maybe_map_fn(dataset, self._parser_fn)
+
+    if self._cache:
+      dataset = dataset.cache()
+      if self._is_training:
+        dataset = dataset.repeat()
+        dataset = dataset.shuffle(self._shuffle_buffer_size)
 
     if self._transform_and_batch_fn is not None:
       dataset = self._transform_and_batch_fn(dataset, input_context)
