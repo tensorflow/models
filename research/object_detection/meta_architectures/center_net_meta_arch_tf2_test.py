@@ -2108,7 +2108,7 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     # def graph_fn():
     detections = model.postprocess(prediction_dict,
                                    tf.constant([[128, 128, 3]]))
-      # return detections
+    # return detections
 
     # detections = self.execute_cpu(graph_fn, [])
     self.assertAllClose(detections['detection_scores'][0],
@@ -2716,17 +2716,16 @@ class CenterNetMetaComputeLossTest(test_case.TestCase, parameterized.TestCase):
     # The prediction and groundtruth are curated to produce very low loss.
     self.assertGreater(0.01, loss)
 
-    default_value = self.model._center_params.use_only_known_classes
+    default_value = self.model._center_params.use_labeled_classes
     self.model._center_params = (
-        self.model._center_params._replace(use_only_known_classes=True))
+        self.model._center_params._replace(use_labeled_classes=True))
     loss = self.model._compute_object_center_loss(
         object_center_predictions=self.prediction_dict[cnma.OBJECT_CENTER],
         input_height=self.input_height,
         input_width=self.input_width,
         per_pixel_weights=self.per_pixel_weights)
     self.model._center_params = (
-        self.model._center_params._replace(
-            use_only_known_classes=default_value))
+        self.model._center_params._replace(use_labeled_classes=default_value))
 
     # The prediction and groundtruth are curated to produce very low loss.
     self.assertGreater(0.01, loss)

@@ -1730,7 +1730,8 @@ class KeypointEstimationParams(
 class ObjectCenterParams(
     collections.namedtuple('ObjectCenterParams', [
         'classification_loss', 'object_center_loss_weight', 'heatmap_bias_init',
-        'min_box_overlap_iou', 'max_box_predictions', 'use_only_known_classes'
+        'min_box_overlap_iou', 'max_box_predictions', 'use_labeled_classes',
+        'keypoint_weights_for_center'
     ])):
   """Namedtuple to store object center prediction related parameters."""
 
@@ -1742,7 +1743,8 @@ class ObjectCenterParams(
               heatmap_bias_init=-2.19,
               min_box_overlap_iou=0.7,
               max_box_predictions=100,
-              use_labeled_classes=False):
+              use_labeled_classes=False,
+              keypoint_weights_for_center=None):
     """Constructor with default values for ObjectCenterParams.
 
     Args:
@@ -1757,6 +1759,12 @@ class ObjectCenterParams(
         computing the class specific center heatmaps.
       max_box_predictions: int, the maximum number of boxes to predict.
       use_labeled_classes: boolean, compute the loss only labeled classes.
+      keypoint_weights_for_center: (optional) The keypoint weights used for
+        calculating the location of object center. If provided, the number of
+        weights need to be the same as the number of keypoints. The object
+        center is calculated by the weighted mean of the keypoint locations. If
+        not provided, the object center is determined by the center of the
+        bounding box (default behavior).
 
     Returns:
       An initialized ObjectCenterParams namedtuple.
@@ -1765,7 +1773,7 @@ class ObjectCenterParams(
                  cls).__new__(cls, classification_loss,
                               object_center_loss_weight, heatmap_bias_init,
                               min_box_overlap_iou, max_box_predictions,
-                              use_labeled_classes)
+                              use_labeled_classes, keypoint_weights_for_center)
 
 
 class MaskParams(
@@ -2224,9 +2232,31 @@ class CenterNetMetaArch(model.DetectionModel):
       A dictionary of initialized target assigners for each task.
     """
     target_assigners = {}
-    target_assigners[OBJECT_CENTER] = (
-        cn_assigner.CenterNetCenterHeatmapTargetAssigner(
-            stride, min_box_overlap_iou, self._compute_heatmap_sparse))
+    keypoint_weights_for_center = (
+        self._center_params.keypoint_weights_for_center)
+    if not keypoint_weights_for_center:
+      target_assigners[OBJECT_CENTER] = (
+          cn_assigner.CenterNetCenterHeatmapTargetAssigner(
+              stride, min_box_overlap_iou, self._compute_heatmap_sparse))
+      self._center_from_keypoints = False
+    else:
+      # Determining the object center location by keypoint location is only
+      # supported when there is exactly one keypoint prediction task and no
+      # object detection task is specified.
+      assert len(self._kp_params_dict) == 1 and self._od_params is None
+      kp_params = next(iter(self._kp_params_dict.values()))
+      # The number of keypoint_weights_for_center needs to be the same as the
+      # number of keypoints.
+      assert len(keypoint_weights_for_center) == len(kp_params.keypoint_indices)
+      target_assigners[OBJECT_CENTER] = (
+          cn_assigner.CenterNetCenterHeatmapTargetAssigner(
+              stride,
+              min_box_overlap_iou,
+              self._compute_heatmap_sparse,
+              keypoint_class_id=kp_params.class_id,
+              keypoint_indices=kp_params.keypoint_indices,
+              keypoint_weights_for_center=keypoint_weights_for_center))
+      self._center_from_keypoints = True
     if self._od_params is not None:
       target_assigners[DETECTION_TASK] = (
           cn_assigner.CenterNetBoxTargetAssigner(stride))
@@ -2275,11 +2305,10 @@ class CenterNetMetaArch(model.DetectionModel):
     Returns:
       A float scalar tensor representing the object center loss per instance.
     """
-    gt_boxes_list = self.groundtruth_lists(fields.BoxListFields.boxes)
     gt_classes_list = self.groundtruth_lists(fields.BoxListFields.classes)
     gt_weights_list = self.groundtruth_lists(fields.BoxListFields.weights)
 
-    if self._center_params.use_only_known_classes:
+    if self._center_params.use_labeled_classes:
       gt_labeled_classes_list = self.groundtruth_lists(
           fields.InputDataFields.groundtruth_labeled_classes)
       batch_labeled_classes = tf.stack(gt_labeled_classes_list, axis=0)
@@ -2291,12 +2320,22 @@ class CenterNetMetaArch(model.DetectionModel):
 
     # Convert the groundtruth to targets.
     assigner = self._target_assigner_dict[OBJECT_CENTER]
-    heatmap_targets = assigner.assign_center_targets_from_boxes(
-        height=input_height,
-        width=input_width,
-        gt_boxes_list=gt_boxes_list,
-        gt_classes_list=gt_classes_list,
-        gt_weights_list=gt_weights_list)
+    if self._center_from_keypoints:
+      gt_keypoints_list = self.groundtruth_lists(fields.BoxListFields.keypoints)
+      heatmap_targets = assigner.assign_center_targets_from_keypoints(
+          height=input_height,
+          width=input_width,
+          gt_classes_list=gt_classes_list,
+          gt_keypoints_list=gt_keypoints_list,
+          gt_weights_list=gt_weights_list)
+    else:
+      gt_boxes_list = self.groundtruth_lists(fields.BoxListFields.boxes)
+      heatmap_targets = assigner.assign_center_targets_from_boxes(
+          height=input_height,
+          width=input_width,
+          gt_boxes_list=gt_boxes_list,
+          gt_classes_list=gt_classes_list,
+          gt_weights_list=gt_weights_list)
 
     flattened_heatmap_targets = _flatten_spatial_dimensions(heatmap_targets)
     num_boxes = _to_float32(get_num_instances_from_weights(gt_weights_list))

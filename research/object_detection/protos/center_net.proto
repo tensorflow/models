@@ -73,6 +73,14 @@ message CenterNet {
 
     // If set, loss is only computed for the labeled classes.
     optional bool use_labeled_classes = 6 [default = false];
+
+    // The keypoint weights used for calculating the location of object center.
+    // When the field is provided, the number of weights need to be the same as
+    // the number of keypoints. The object center is calculated by the weighted
+    // mean of the keypoint locations. When the field is not provided, the
+    // object center is determined by the bounding box groundtruth annotations
+    // (default behavior).
+    repeated float keypoint_weights_for_center = 7;
   }
   optional ObjectCenterParams object_center_params = 5;
 
