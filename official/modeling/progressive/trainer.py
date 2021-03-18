@@ -92,6 +92,7 @@ class ProgressiveTrainer(trainer_lib.Trainer):
     # it gets a single-replica no-op strategy.
     self._strategy = tf.distribute.get_strategy()
     self._config = config
+    self._runtime_options = trainer_lib.get_runtime_options(config)
     self._task = prog_task
 
     # Directory for non-progressive checkpoint
