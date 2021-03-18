@@ -210,7 +210,7 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         'temporal_kernel_size': self._temporal_kernel_size,
         'temporal_strides': self._temporal_strides,
         'spatial_strides': self._spatial_strides,
-        'use_projection': self._use_projection,
+        'use_self_gating': self._use_self_gating,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,

@@ -163,7 +163,7 @@ class ResNet3D(tf.keras.Model):
           block_repeats=resnet_spec[2],
           use_self_gating=use_self_gating[i] if use_self_gating else False,
           name='block_group_l{}'.format(i + 2))
-      endpoints[i + 2] = x
+      endpoints[str(i + 2)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
