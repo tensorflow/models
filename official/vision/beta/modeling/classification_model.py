@@ -59,7 +59,30 @@ class ClassificationModel(tf.keras.Model):
       skip_logits_layer: `bool`, whether to skip the prediction layer.
       **kwargs: keyword arguments to be passed.
     """
-    self._self_setattr_tracking = False
+    if use_sync_bn:
+      norm = tf.keras.layers.experimental.SyncBatchNormalization
+    else:
+      norm = tf.keras.layers.BatchNormalization
+    axis = -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
+
+    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    endpoints = backbone(inputs)
+    x = endpoints[max(endpoints.keys())]
+
+    if add_head_batch_norm:
+      x = norm(axis=axis, momentum=norm_momentum, epsilon=norm_epsilon)(x)
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    if not skip_logits_layer:
+      x = tf.keras.layers.Dropout(dropout_rate)(x)
+      x = tf.keras.layers.Dense(
+          num_classes,
+          kernel_initializer=kernel_initializer,
+          kernel_regularizer=kernel_regularizer,
+          bias_regularizer=bias_regularizer)(
+              x)
+
+    super(ClassificationModel, self).__init__(
+        inputs=inputs, outputs=x, **kwargs)
     self._config_dict = {
         'backbone': backbone,
         'num_classes': num_classes,
@@ -77,29 +100,7 @@ class ClassificationModel(tf.keras.Model):
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
     self._backbone = backbone
-    if use_sync_bn:
-      self._norm = tf.keras.layers.experimental.SyncBatchNormalization
-    else:
-      self._norm = tf.keras.layers.BatchNormalization
-    axis = -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
-
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
-    endpoints = backbone(inputs)
-    x = endpoints[max(endpoints.keys())]
-
-    if add_head_batch_norm:
-      x = self._norm(axis=axis, momentum=norm_momentum, epsilon=norm_epsilon)(x)
-    x = tf.keras.layers.GlobalAveragePooling2D()(x)
-    if not skip_logits_layer:
-      x = tf.keras.layers.Dropout(dropout_rate)(x)
-      x = tf.keras.layers.Dense(
-          num_classes, kernel_initializer=kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)(
-              x)
-
-    super(ClassificationModel, self).__init__(
-        inputs=inputs, outputs=x, **kwargs)
+    self._norm = norm
 
   @property
   def checkpoint_items(self):

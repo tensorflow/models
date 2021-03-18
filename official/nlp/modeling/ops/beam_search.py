@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Beam search to find the translated sequence with the highest probability."""
 
 import numpy as np
@@ -514,7 +514,11 @@ class SequenceBeamSearch(tf.Module):
     max_length_norm = _length_normalization(
         self.alpha, self.max_decode_length, dtype=self.dtype)
     # Get the best possible scores from alive sequences.
-    best_alive_scores = alive_log_probs[:, 0] / max_length_norm
+    # This tf.slice/tf.squeeze is equivalent to alive_log_probs[:, 0] which
+    # emits a tf.strided_slice. tf.slice is easier to reason about as we aren't
+    # actually taking a non trivial stride.
+    best_alive_scores = tf.squeeze(tf.slice(alive_log_probs, [0, 0], [-1, 1]),
+                                   axis=1) / max_length_norm
 
     # Compute worst score in finished sequences for each batch element
     finished_scores *= tf.cast(finished_flags,

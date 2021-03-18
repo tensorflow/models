@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """MobileBERT text encoder network."""
 import gin
 import tensorflow as tf
@@ -43,6 +43,7 @@ class MobileBERTEncoder(tf.keras.Model):
                num_feedforward_networks=4,
                normalization_type='no_norm',
                classifier_activation=False,
+               input_mask_dtype='int32',
                **kwargs):
     """Class initialization.
 
@@ -62,7 +63,7 @@ class MobileBERTEncoder(tf.keras.Model):
       attention_probs_dropout_prob: Dropout probability of the attention
         probabilities.
       intra_bottleneck_size: Size of bottleneck.
-      initializer_range: The stddev of the truncated_normal_initializer for
+      initializer_range: The stddev of the `truncated_normal_initializer` for
         initializing all weight matrices.
       use_bottleneck_attention: Use attention inputs from the bottleneck
         transformation. If true, the following `key_query_shared_bottleneck`
@@ -70,12 +71,17 @@ class MobileBERTEncoder(tf.keras.Model):
       key_query_shared_bottleneck: Whether to share linear transformation for
         keys and queries.
       num_feedforward_networks: Number of stacked feed-forward networks.
-      normalization_type: The type of normalization_type, only 'no_norm' and
-        'layer_norm' are supported. 'no_norm' represents the element-wise linear
+      normalization_type: The type of normalization_type, only `no_norm` and
+        `layer_norm` are supported. `no_norm` represents the element-wise linear
         transformation for the student model, as suggested by the original
-        MobileBERT paper. 'layer_norm' is used for the teacher model.
+        MobileBERT paper. `layer_norm` is used for the teacher model.
       classifier_activation: If using the tanh activation for the final
-        representation of the [CLS] token in fine-tuning.
+        representation of the `[CLS]` token in fine-tuning.
+      input_mask_dtype: The dtype of `input_mask` tensor, which is one of the
+        input tensors of this encoder. Defaults to `int32`. If you want
+        to use `tf.lite` quantization, which does not support `Cast` op,
+        please set this argument to `tf.float32` and feed `input_mask`
+        tensor with values in `float32` to avoid `tf.cast` in the computation.
       **kwargs: Other keyworded and arguments.
     """
     self._self_setattr_tracking = False
@@ -115,11 +121,14 @@ class MobileBERTEncoder(tf.keras.Model):
     input_ids = tf.keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_word_ids')
     input_mask = tf.keras.layers.Input(
-        shape=(None,), dtype=tf.int32, name='input_mask')
+        shape=(None,), dtype=input_mask_dtype, name='input_mask')
     type_ids = tf.keras.layers.Input(
         shape=(None,), dtype=tf.int32, name='input_type_ids')
     self.inputs = [input_ids, input_mask, type_ids]
-    attention_mask = keras_nlp.layers.SelfAttentionMask()(input_ids, input_mask)
+
+    # The dtype of `attention_mask` will the same as the dtype of `input_mask`.
+    attention_mask = keras_nlp.layers.SelfAttentionMask()(input_mask,
+                                                          input_mask)
 
     # build the computation graph
     all_layer_outputs = []

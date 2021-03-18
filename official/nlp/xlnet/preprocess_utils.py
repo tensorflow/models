@@ -1,5 +1,4 @@
-# coding=utf-8
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# coding=utf-8
 """Utilities for pre-processing."""
 import unicodedata
 
@@ -36,7 +36,7 @@ def printable_text(text):
   elif six.PY2:
     if isinstance(text, str):
       return text
-    elif isinstance(text, unicode):
+    elif isinstance(text, unicode):  # pylint: disable=undefined-variable
       return text.encode('utf-8')
     else:
       raise ValueError('Unsupported string type: %s' % (type(text)))
@@ -81,7 +81,7 @@ def encode_pieces(sp_model, text, return_unicode=True, sample=False):
   """Encodes pieces."""
   # return_unicode is used only for py2
 
-  if six.PY2 and isinstance(text, unicode):
+  if six.PY2 and isinstance(text, unicode):  # pylint: disable=undefined-variable
     text = text.encode('utf-8')
 
   if not sample:

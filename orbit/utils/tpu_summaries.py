@@ -64,7 +64,7 @@ class OptionalSummariesFunction:
           return TrainFunctionWithSummaries(function, **kwargs)
         return functools.partial(TrainFunctionWithSummaries, **kwargs)
 
-  The director can be applied directly to `train()` methods:
+  The decorator can be applied directly to `train()` methods:
 
       @train_function_with_summaries
       def train(self, num_steps):

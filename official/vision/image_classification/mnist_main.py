@@ -81,6 +81,9 @@ def run(flags_obj, datasets_override=None, strategy_override=None):
   Returns:
     Dictionary of training and eval stats.
   """
+  # Start TF profiler server.
+  tf.profiler.experimental.server.start(flags_obj.profiler_port)
+
   strategy = strategy_override or distribute_utils.get_distribution_strategy(
       distribution_strategy=flags_obj.distribution_strategy,
       num_gpus=flags_obj.num_gpus,
@@ -156,6 +159,8 @@ def define_mnist_flags():
   flags_core.define_distribution()
   flags.DEFINE_bool('download', False,
                     'Whether to download data to `--data_dir`.')
+  flags.DEFINE_integer('profiler_port', 9012,
+                       'Port to start profiler server on.')
   FLAGS.set_default('batch_size', 1024)
 
 

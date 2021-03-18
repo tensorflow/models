@@ -161,7 +161,8 @@ class MultiTaskEvaluator(orbit.AbstractEvaluator):
       for metric in task_metrics + [task_loss]:
         logs[metric.name] = metric.result()
       if outputs:
-        metrics = task.reduce_aggregated_logs(outputs)
+        metrics = task.reduce_aggregated_logs(
+            outputs, global_step=self.global_step)
         logs.update(metrics)
       results[name] = logs
 

@@ -341,7 +341,8 @@ def train_and_eval(
     optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=train_builder.dtype == 'float16',
-        loss_scale=get_loss_scale(params))
+        loss_scale=get_loss_scale(params),
+        use_experimental_api=True)
 
     metrics_map = _get_metrics(one_hot)
     metrics = [metrics_map[metric] for metric in params.train.metrics]

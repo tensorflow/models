@@ -44,8 +44,10 @@ class DataConfig(base_config.Config):
     drop_remainder: Whether the last batch should be dropped in the case it has
       fewer than `global_batch_size` elements.
     shuffle_buffer_size: The buffer size used for shuffling training data.
-    cache: Whether to cache dataset examples. Can be used to avoid re-reading
-      from disk on the second epoch. Requires significant memory overhead.
+    cache: Whether to cache dataset examples. If `True`, we will cache the
+      dataset after applying the decode_fn and parse_fn. It can be used to avoid
+      re-reading from disk, re-decoding and re-parsing the example on the
+      second epoch, but it requires significant memory overhead.
     cycle_length: The number of files that will be processed concurrently when
       interleaving files.
     block_length: The number of consecutive elements to produce from each input
@@ -63,7 +65,6 @@ class DataConfig(base_config.Config):
       The default behavior is that the dataset creates anonymous, exclusively
       owned jobs.
     tfds_data_dir: A str specifying the directory to read/write TFDS data.
-    tfds_download: A bool to indicate whether to download data using TFDS.
     tfds_as_supervised: A bool. When loading dataset from TFDS, if True, the
       returned tf.data.Dataset will have a 2-tuple structure (input, label)
       according to builder.info.supervised_keys; if False, the default, the
@@ -89,7 +90,6 @@ class DataConfig(base_config.Config):
   tf_data_service_address: Optional[str] = None
   tf_data_service_job_name: Optional[str] = None
   tfds_data_dir: str = ""
-  tfds_download: bool = False
   tfds_as_supervised: bool = False
   tfds_skip_decoding_feature: str = ""
 
@@ -139,6 +139,16 @@ class RuntimeConfig(base_config.Config):
   loss_scale: Optional[Union[str, float]] = None
   run_eagerly: bool = False
   batchnorm_spatial_persistent: bool = False
+
+  # XLA runtime
+  # Whether to enable XLA dynamic padder
+  # infrastructure to handle dynamic shapes inputs inside XLA. True by
+  # default. Disabling this may cause correctness issues with dynamic shapes
+  # inputs, as XLA will just assume the inputs are with padded shapes. However
+  # users can optionally set it to False to improve device time if masking is
+  # already handled in the user side.
+  # If None, will respect XLA default.
+  tpu_enable_xla_dynamic_padder: Optional[bool] = None
 
   # Global model parallelism configurations.
   num_cores_per_replica: int = 1

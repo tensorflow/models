@@ -637,6 +637,8 @@ def _maybe_update_config_with_key_value(configs, key, value):
     _update_keypoint_candidate_score_threshold(configs["model"], value)
   elif field_name == "rescore_instances":
     _update_rescore_instances(configs["model"], value)
+  elif field_name == "unmatched_keypoint_score":
+    _update_unmatched_keypoint_score(configs["model"], value)
   else:
     return False
   return True
@@ -1199,3 +1201,16 @@ def _update_rescore_instances(model_config, should_rescore):
       tf.logging.warning("Ignoring config override key for "
                          "rescore_instances since there are multiple keypoint "
                          "estimation tasks")
+
+
+def _update_unmatched_keypoint_score(model_config, score):
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.unmatched_keypoint_score = score
+    else:
+      tf.logging.warning("Ignoring config override key for "
+                         "unmatched_keypoint_score since there are multiple "
+                         "keypoint estimation tasks")
+

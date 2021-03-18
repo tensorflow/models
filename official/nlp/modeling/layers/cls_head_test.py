@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for cls_head."""
 
 import tensorflow as tf
@@ -48,7 +47,7 @@ class MultiClsHeadsTest(tf.test.TestCase):
     self.assertAllClose(outputs["foo"], [[0., 0.], [0., 0.]])
     self.assertAllClose(outputs["bar"], [[0., 0., 0.], [0., 0., 0.]])
     self.assertSameElements(test_layer.checkpoint_items.keys(),
-                            ["pooler_dense"])
+                            ["pooler_dense", "foo", "bar"])
 
   def test_layer_serialization(self):
     cls_list = [("foo", 2), ("bar", 3)]

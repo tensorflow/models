@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for BERT token classifier."""
 
 from absl.testing import parameterized
@@ -27,22 +27,26 @@ from official.nlp.modeling.models import bert_token_classifier
 @keras_parameterized.run_all_keras_modes
 class BertTokenClassifierTest(keras_parameterized.TestCase):
 
-  @parameterized.parameters(True, False)
-  def test_bert_trainer(self, dict_outputs):
+  @parameterized.parameters((True, True), (False, False))
+  def test_bert_trainer(self, dict_outputs, output_encoder_outputs):
     """Validate that the Keras object can be created."""
     # Build a transformer network to use within the BERT trainer.
     vocab_size = 100
     sequence_length = 512
+    hidden_size = 768
     test_network = networks.BertEncoder(
         vocab_size=vocab_size,
         num_layers=2,
         max_sequence_length=sequence_length,
-        dict_outputs=dict_outputs)
+        dict_outputs=dict_outputs,
+        hidden_size=hidden_size)
 
     # Create a BERT trainer with the created network.
     num_classes = 3
     bert_trainer_model = bert_token_classifier.BertTokenClassifier(
-        test_network, num_classes=num_classes)
+        test_network,
+        num_classes=num_classes,
+        output_encoder_outputs=output_encoder_outputs)
 
     # Create a set of 2-dimensional inputs (the first dimension is implicit).
     word_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
@@ -50,12 +54,18 @@ class BertTokenClassifierTest(keras_parameterized.TestCase):
     type_ids = tf.keras.Input(shape=(sequence_length,), dtype=tf.int32)
 
     # Invoke the trainer model on the inputs. This causes the layer to be built.
-    sequence_outs = bert_trainer_model([word_ids, mask, type_ids])
+    outputs = bert_trainer_model([word_ids, mask, type_ids])
+    if output_encoder_outputs:
+      logits = outputs['logits']
+      encoder_outputs = outputs['encoder_outputs']
+      self.assertAllEqual(encoder_outputs.shape.as_list(),
+                          [None, sequence_length, hidden_size])
+    else:
+      logits = outputs['logits']
 
     # Validate that the outputs are of the expected shape.
     expected_classification_shape = [None, sequence_length, num_classes]
-    self.assertAllEqual(expected_classification_shape,
-                        sequence_outs.shape.as_list())
+    self.assertAllEqual(expected_classification_shape, logits.shape.as_list())
 
   def test_bert_trainer_tensor_call(self):
     """Validate that the Keras object can be invoked."""

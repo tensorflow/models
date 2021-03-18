@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Functions and classes related to optimization (weight updates)."""
 
 import re
@@ -113,7 +113,7 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
   correct way of using L2 regularization/weight decay with Adam, since that will
   interact with the m and v parameters in strange ways.
 
-  Instead we want ot decay the weights in a manner that doesn't interact with
+  Instead we want to decay the weights in a manner that doesn't interact with
   the m/v parameters. This is equivalent to adding the square of the weights to
   the loss with plain (non-momentum) SGD.
   """
@@ -171,7 +171,8 @@ class AdamWeightDecay(tf.keras.optimizers.Adam):
       # and passed the allreduced grads_and_vars. For now, the
       # clip_by_global_norm will be moved to before the explicit allreduce to
       # keep the math the same as TF 1 and pre TF 2.2 implementation.
-      (grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
+      (grads, _) = tf.clip_by_global_norm(
+          grads, clip_norm=self.gradient_clip_norm)
     return super(AdamWeightDecay, self).apply_gradients(
         zip(grads, tvars),
         name=name,

@@ -246,7 +246,7 @@ PASCAL VOC 2012 and Cityscapes.
 ### March 5, 2018
 
 * First release of DeepLab in TensorFlow including deeper Xception network
-backbone. Included chekcpoints that have been pretrained on PASCAL VOC 2012
+backbone. Included checkpoints that have been pretrained on PASCAL VOC 2012
 and Cityscapes.
 
 ## References

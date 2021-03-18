@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,22 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """XLNet training utils."""
 
 import os
 import re
+from typing import Any, Callable, Dict, Optional, Text
 
 from absl import logging
-
-# pytype: disable=attribute-error
-# pylint: disable=g-bare-generic,unused-import
 import tensorflow as tf
-from typing import Any, Callable, Dict, Text, Optional
 
 from official.nlp.bert import model_training_utils
 from official.nlp.xlnet import data_utils
-from official.nlp.xlnet import xlnet_modeling as modeling
+
+# pytype: disable=attribute-error
+# pylint: disable=g-bare-generic,unused-import
 
 _MIN_SUMMARY_STEPS = 10
 

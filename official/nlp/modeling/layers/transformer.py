@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based transformer block layer."""
 # pylint: disable=g-classes-have-attributes
 
@@ -232,7 +232,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         tf.keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
             axis=-1,
-            epsilon=self._norm_epsilon))
+            epsilon=self._norm_epsilon,
+            dtype="float32"))
     # Encoder-decoder attention.
     self.encdec_attention = self._cross_attention_cls(
         num_heads=self.num_attention_heads,
@@ -250,7 +251,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         tf.keras.layers.LayerNormalization(
             name="attention/encdec_output_layer_norm",
             axis=-1,
-            epsilon=self._norm_epsilon))
+            epsilon=self._norm_epsilon,
+            dtype="float32"))
 
     # Feed-forward projection.
     self.intermediate_dense = tf.keras.layers.experimental.EinsumDense(
@@ -273,7 +275,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         **common_kwargs)
     self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="output_layer_norm", axis=-1, epsilon=self._norm_epsilon)
+        name="output_layer_norm", axis=-1,
+        epsilon=self._norm_epsilon, dtype="float32")
     super().build(input_shape)
 
   def get_config(self):
