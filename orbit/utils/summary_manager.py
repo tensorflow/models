@@ -71,7 +71,7 @@ class SummaryManager:
     provided in `summary_dict`, yielding a hierarchy of directories which will
     then be reflected in the TensorBoard UI as different colored curves.
 
-    For example, users may evaluate on muliple datasets and return
+    For example, users may evaluate on multiple datasets and return
     `summary_dict` as a nested dictionary:
 
         {
