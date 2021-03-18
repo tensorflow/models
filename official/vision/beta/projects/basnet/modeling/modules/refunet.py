@@ -25,7 +25,7 @@ Boundary-Awar network (BASNet) were proposed in:
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
-from official.vision.beta.projects.basnet.modeling.layers import nn_layers
+#from official.vision.beta.modeling.projects.basnet.layers import nn_layers
 
 layers = tf.keras.layers
 
@@ -36,6 +36,7 @@ class RefUnet(tf.keras.Model):
                input_specs=layers.InputSpec(shape=[None, None, None, 1]),
                activation='relu',
                use_sync_bn=False,
+               use_bias=True,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
@@ -60,6 +61,7 @@ class RefUnet(tf.keras.Model):
     """
     self._input_specs = input_specs
     self._use_sync_bn = use_sync_bn
+    self._use_bias = use_bias
     self._activation = activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -83,7 +85,7 @@ class RefUnet(tf.keras.Model):
     residual = inputs
 
     x = layers.Conv2D(
-        filters=64, kernel_size=3, strides=1, use_bias=True, padding='same',
+        filters=64, kernel_size=3, strides=1, use_bias=self._use_bias, padding='same',
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)(
@@ -92,36 +94,37 @@ class RefUnet(tf.keras.Model):
 
     # Top-down
     for i in range(4):
-      x = nn_layers.ConvBNReLU(
+      x = nn_blocks.ConvBlock(
           filters=64,
           kernel_size=3,
           strides=1,
-          dilation=1,
+          dilation_rate=1,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
           activation='relu',
           use_sync_bn=self._use_sync_bn,
+          use_bias=self._use_bias,
           norm_momentum=0.99,
           norm_epsilon=0.001
           )(x)
         
       endpoints[str(i)] = x
 
-      #x = layers.MaxPool2D(pool_size=2, strides=2, padding='same')(x)
       x = layers.MaxPool2D(pool_size=2, strides=2, padding='valid')(x)
 
     # Bridge
-    x = nn_layers.ConvBNReLU(
+    x = nn_blocks.ConvBlock(
         filters=64,
         kernel_size=3,
         strides=1,
-        dilation=1,
+        dilation_rate=1,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer,
         activation='relu',
         use_sync_bn=self._use_sync_bn,
+        use_bias=self._use_bias,
         norm_momentum=0.99,
         norm_epsilon=0.001
         )(x)
@@ -135,23 +138,24 @@ class RefUnet(tf.keras.Model):
 
     for i in range(4):
       x = layers.Concatenate(axis=-1)([endpoints[str(3-i)], x])
-      x = nn_layers.ConvBNReLU(
+      x = nn_blocks.ConvBlock(
           filters=64,
           kernel_size=3,
           strides=1,
-          dilation=1,
+          dilation_rate=1,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer,
           activation='relu',
           use_sync_bn=self._use_sync_bn,
+          use_bias=self._use_bias,
           norm_momentum=0.99,
           norm_epsilon=0.001
           )(x)
 
       if i == 3:
         x = layers.Conv2D(
-            filters=1, kernel_size=3, strides=1, use_bias=True, padding='same',
+            filters=1, kernel_size=3, strides=1, use_bias=self._use_bias, padding='same',
             kernel_initializer=self._kernel_initializer,
             kernel_regularizer=self._kernel_regularizer,
             bias_regularizer=self._bias_regularizer
@@ -168,7 +172,6 @@ class RefUnet(tf.keras.Model):
         activation='sigmoid'
         )(output)
 
-    #self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
     self._output_specs = output.get_shape()
 
     super(RefUnet, self).__init__(inputs=inputs, outputs=output, **kwargs)

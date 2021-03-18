@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Decoders package definition."""
+"""Utility library for picking an appropriate dataset function."""
 
-from official.vision.beta.projects.basnet.modeling.decoders.basnet_de import BASNet_De
+from typing import Any, Callable, Union, Type
+
+import tensorflow as tf
+
+PossibleDatasetType = Union[Type[tf.data.Dataset], Callable[[tf.Tensor], Any]]
+
+
+def pick_dataset_fn(file_type: str) -> PossibleDatasetType:
+  if file_type == 'tf_record':
+    return tf.data.TFRecordDataset
+
+  raise ValueError('Unrecognized file_type: {}'.format(file_type))

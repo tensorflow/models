@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.vision.beta.modeling.backbones import basnet_en
+from official.vision.beta.projects.basnet.modeling.backbones import basnet_en
 
 
 class ResNetTest(parameterized.TestCase, tf.test.TestCase):

@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Decoders package definition."""
+"""The generic decoder interface."""
 
-from official.vision.beta.projects.basnet.modeling.decoders.basnet_de import BASNet_De
+import abc
+
+
+class Decoder(object):
+  """Decodes the raw data into tensors."""
+
+  __metaclass__ = abc.ABCMeta
+
+  @abc.abstractmethod
+  def decode(self, serialized_example):
+    """Decodes the serialized example into tensors.
+
+    Args:
+      serialized_example: a serialized string tensor that encodes the data.
+
+    Returns:
+      decoded_tensors: a dict of Tensors.
+    """
+    pass
