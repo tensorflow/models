@@ -23,8 +23,8 @@ Boundary-Awar network (BASNet) were proposed in:
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.beta.ops import spatial_transform_ops
-from official.vision.beta.modeling.layers import nn_layers
+#from official.vision.beta.projects.basnet.modeling.layers import nn_layers
+from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 
 layers = tf.keras.layers
 
@@ -49,6 +49,7 @@ class BASNet_De(tf.keras.Model):
                use_separable_conv=False,
                activation='relu',
                use_sync_bn=False,
+               use_bias=True,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
@@ -77,6 +78,7 @@ class BASNet_De(tf.keras.Model):
         'use_separable_conv': use_separable_conv,
         'activation': activation,
         'use_sync_bn': use_sync_bn,
+        'use_bias': use_bias,
         'norm_momentum': norm_momentum,
         'norm_epsilon': norm_epsilon,
         'kernel_initializer': kernel_initializer,
@@ -102,7 +104,6 @@ class BASNet_De(tf.keras.Model):
 
     # Get input feature pyramid from backbone.
     inputs = self._build_input_pyramid(input_specs)
-    #backbone_max_level = min(int(max(inputs.keys())), max_level)
 
 
     sup = {}
@@ -114,22 +115,23 @@ class BASNet_De(tf.keras.Model):
         x = layers.Concatenate(axis=-1)([x, inputs[str(6-i)]])
 
       for j in range(3):
-        x = nn_layers.ConvBNReLU(
+        x = nn_blocks.ConvBlock(
             filters=spec[2*j],
             kernel_size=3,
             strides=1,
-            dilation=spec[2*j+1],
+            dilation_rate=spec[2*j+1],
             kernel_initializer=kernel_initializer,
             kernel_regularizer=kernel_regularizer,
             bias_regularizer=bias_regularizer,
             activation='relu',
             use_sync_bn=use_sync_bn,
+            use_bias=use_bias,
             norm_momentum=0.99,
             norm_epsilon=0.001
             )(x)
 
       output = layers.Conv2D(
-          filters=1, kernel_size=3, strides=1, use_bias=True, padding='same',
+          filters=1, kernel_size=3, strides=1, use_bias=use_bias, padding='same',
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer
@@ -149,7 +151,6 @@ class BASNet_De(tf.keras.Model):
             )(x)
 
     self._output_specs = {
-        #for level in range(0, 6):
         str(order): sup[str(order)].get_shape()
         for order in range(1, 7)
     }
@@ -158,9 +159,6 @@ class BASNet_De(tf.keras.Model):
 
   def _build_input_pyramid(self, input_specs):
     assert isinstance(input_specs, dict)
-    #if min(input_specs.keys()) > str(min_level):
-     # raise ValueError(
-         # 'Backbone min level should be less or equal to FPN min level')
 
     inputs = {}
     for level, spec in input_specs.items():

@@ -13,6 +13,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Decoders package definition."""
+"""Decoders configurations."""
+from typing import Optional, List
 
-from official.vision.beta.projects.basnet.modeling.decoders.basnet_de import BASNet_De
+# Import libraries
+import dataclasses
+
+from official.modeling import hyperparams
+
+
+@dataclasses.dataclass
+class Identity(hyperparams.Config):
+  """Identity config."""
+  pass
+
+
+@dataclasses.dataclass
+class BASNet_De(hyperparams.Config):
+  """BASNet_De config."""
+  use_separable_conv: bool = False
+
+@dataclasses.dataclass
+class Decoder(hyperparams.OneOfConfig):
+  """Configuration for decoders.
+
+  Attributes:
+    type: 'str', type of decoder be used, on the of fields below.
+    fpn: fpn config.
+  """
+  type: Optional[str] = None
+  basnet_de: BASNet_De = BASNet_De()

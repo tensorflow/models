@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2020 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Decoders package definition."""
+"""All necessary imports for registration."""
 
-from official.vision.beta.projects.basnet.modeling.decoders.basnet_de import BASNet_De
+# pylint: disable=unused-import
+from official.common import registry_imports
+from official.vision.beta.projects.basnet.configs import basnet
+from official.vision.beta.projects.basnet.modeling.backbones import basnet_en
+from official.vision.beta.projects.basnet.modeling.decoders import basnet_de
+from official.vision.beta.projects.basnet.modeling.modules import refunet
+from official.vision.beta.projects.basnet.tasks import basnet

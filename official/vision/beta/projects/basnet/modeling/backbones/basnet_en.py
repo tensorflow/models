@@ -23,8 +23,9 @@ Boundary-Awar network (BASNet) were proposed in:
 # Import libraries
 import tensorflow as tf
 from official.modeling import tf_utils
-from official.vision.beta.modeling.backbones import factory
+from official.vision.beta.projects.basnet.modeling.backbones import factory
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
+from official.vision.beta.projects.basnet.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 
@@ -33,12 +34,12 @@ layers = tf.keras.layers
 # (block_fn, num_filters, stride, block_repeats, maxpool)
 
 BASNET_EN_SPECS = [
-        ('residual', 64,  1, 3, 0),   #ResNet-34
-        ('residual', 128, 2, 4, 0),   #ResNet-34
-        ('residual', 256, 2, 6, 0),   #ResNet-34
-        ('residual', 512, 2, 3, 1),   #ResNet-34
-        ('residual', 512, 1, 3, 1),   #Additional block in BASNet
-        ('residual', 512, 1, 3, 0),   #Additional block in BASNet
+        ('residual', 64,  1, 3, 0),   #ResNet-34,
+        ('residual', 128, 2, 4, 0),   #ResNet-34,
+        ('residual', 256, 2, 6, 0),   #ResNet-34,
+        ('residual', 512, 2, 3, 1),   #ResNet-34,
+        ('residual', 512, 1, 3, 1),   #BASNet,   
+        ('residual', 512, 1, 3, 0),   #BASNet,   
     ]
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -92,7 +93,6 @@ class BASNet_En(tf.keras.Model):
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
     x = layers.Conv2D(
-        # (gunho) Change filters for BASNet
         filters=64, kernel_size=3, strides=1, use_bias=True, padding='same',
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
@@ -103,17 +103,12 @@ class BASNet_En(tf.keras.Model):
             x)
     x = tf_utils.get_activation(activation)(x)
     
-    # (gunho) Delete first MaxPool layer for BASNet
-    #x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
-    
 
     endpoints = {}
 
     for i, spec in enumerate(BASNET_EN_SPECS):
       if spec[0] == 'residual':
-        block_fn = nn_blocks.ResidualBlock
-      elif spec[0] == 'bottleneck':
-        block_fn = nn_blocks.BottleneckBlock
+        block_fn = nn_blocks.ResBlock
       else:
         raise ValueError('Block fn `{}` is not supported.'.format(spec[0]))
       x = self._block_group(
@@ -200,7 +195,7 @@ def build_basnet_en(
   """Builds BASNet Encoder backbone from a config."""
   backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation 
+  norm_activation_config = model_config.norm_activation
   assert backbone_type == 'basnet_en', (f'Inconsistent backbone type '
                                              f'{backbone_type}')
 

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Decoders package definition."""
+"""Layers package definition."""
 
-from official.vision.beta.projects.basnet.modeling.decoders.basnet_de import BASNet_De
+from official.vision.beta.projects.basnet.modeling.layers.nn_blocks import ResBlock
+from official.vision.beta.projects.basnet.modeling.layers.nn_blocks import ConvBlock

@@ -13,6 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Decoders package definition."""
+"""Modeling package definition."""
 
-from official.vision.beta.projects.basnet.modeling.decoders.basnet_de import BASNet_De
+from official.vision.beta.projects.basnet.modeling import backbones
+from official.vision.beta.projects.basnet.modeling import decoders
+from official.vision.beta.projects.basnet.modeling import layers
+from official.vision.beta.projects.basnet.modeling import modules

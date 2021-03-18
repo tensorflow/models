@@ -1,0 +1,16 @@
+runtime:
+  distribution_strategy: 'one_device'
+  #distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float32'
+  num_gpus: 1
+task:
+  model:
+    backbone:
+      type: 'basnet_en'
+      basnet_en:
+        model_id: 'BASNet_En'
+    input_size: [256, 256, 3]
+    norm_activation:
+      activation: 'relu'
+  #init_checkpoint: '/home/ghpark/ckpt_basnet/'
+  #init_checkpoint_modules: 'all'
