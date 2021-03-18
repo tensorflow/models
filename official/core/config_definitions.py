@@ -140,6 +140,16 @@ class RuntimeConfig(base_config.Config):
   run_eagerly: bool = False
   batchnorm_spatial_persistent: bool = False
 
+  # XLA runtime
+  # Whether to enable XLA dynamic padder
+  # infrastructure to handle dynamic shapes inputs inside XLA. True by
+  # default. Disabling this may cause correctness issues with dynamic shapes
+  # inputs, as XLA will just assume the inputs are with padded shapes. However
+  # users can optionally set it to False to improve device time if masking is
+  # already handled in the user side.
+  # If None, will respect XLA default.
+  tpu_enable_xla_dynamic_padder: Optional[bool] = None
+
   # Global model parallelism configurations.
   num_cores_per_replica: int = 1
   default_shard_dim: int = -1

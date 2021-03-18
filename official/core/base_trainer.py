@@ -158,6 +158,16 @@ class _AsyncTrainer(orbit.StandardTrainer, orbit.StandardEvaluator):
                                                   *args, **kwargs)
 
 
+def get_runtime_options(config: ExperimentConfig):
+  """Get tf.distribute.RunOptions from config."""
+  xla_options = {}
+  if config.runtime.tpu_enable_xla_dynamic_padder is not None:
+    xla_options["enable_xla_dynamic_padder"] = (
+        config.runtime.enable_xla_dynamic_padder)
+  return tf.distribute.RunOptions(
+      experimental_xla_options=tf.tpu.XLAOptions(**xla_options))
+
+
 @gin.configurable
 class Trainer(_AsyncTrainer):
   """Implements the common trainer shared for TensorFlow models."""
@@ -195,6 +205,7 @@ class Trainer(_AsyncTrainer):
     self._optimizer = optimizer
     self._checkpoint_exporter = checkpoint_exporter
     self._recovery = None
+    self._runtime_options = get_runtime_options(config)
 
     # Creates a shadow copy of the weights to store weights moving average.
     if isinstance(self._optimizer, optimization.ExponentialMovingAverage):
@@ -374,7 +385,8 @@ class Trainer(_AsyncTrainer):
       self._train_loss.update_state(logs[self.task.loss])
       self.global_step.assign_add(1)
 
-    self.strategy.run(step_fn, args=(next(iterator),))
+    self.strategy.run(
+        step_fn, args=(next(iterator),), options=self._runtime_options)
 
   def eval_begin(self):
     """Sets up metrics."""
@@ -395,7 +407,8 @@ class Trainer(_AsyncTrainer):
         self._validation_loss.update_state(logs[self.task.loss])
       return logs
 
-    distributed_outputs = self.strategy.run(step_fn, args=(next(iterator),))
+    distributed_outputs = self.strategy.run(
+        step_fn, args=(next(iterator),), options=self._runtime_options)
     return tf.nest.map_structure(self.strategy.experimental_local_results,
                                  distributed_outputs)
 
