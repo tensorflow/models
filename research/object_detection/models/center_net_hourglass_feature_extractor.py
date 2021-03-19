@@ -76,7 +76,7 @@ class CenterNetHourglassFeatureExtractor(
 def hourglass_10(channel_means, channel_stds, bgr_ordering):
   """The Hourglass-10 backbone for CenterNet."""
 
-  network = hourglass_network.hourglass_10(num_channels=128)
+  network = hourglass_network.hourglass_10(num_channels=32)
   return CenterNetHourglassFeatureExtractor(
       network, channel_means=channel_means, channel_stds=channel_stds,
       bgr_ordering=bgr_ordering)
@@ -85,16 +85,16 @@ def hourglass_10(channel_means, channel_stds, bgr_ordering):
 def hourglass_20(channel_means, channel_stds, bgr_ordering):
   """The Hourglass-20 backbone for CenterNet."""
 
-  network = hourglass_network.hourglass_20(num_channels=128)
+  network = hourglass_network.hourglass_20(num_channels=48)
   return CenterNetHourglassFeatureExtractor(
       network, channel_means=channel_means, channel_stds=channel_stds,
       bgr_ordering=bgr_ordering)
 
 
 def hourglass_32(channel_means, channel_stds, bgr_ordering):
-  """The Hourglass-52 backbone for CenterNet."""
+  """The Hourglass-32 backbone for CenterNet."""
 
-  network = hourglass_network.hourglass_32(num_channels=128)
+  network = hourglass_network.hourglass_32(num_channels=48)
   return CenterNetHourglassFeatureExtractor(
       network, channel_means=channel_means, channel_stds=channel_stds,
       bgr_ordering=bgr_ordering)
@@ -103,7 +103,7 @@ def hourglass_32(channel_means, channel_stds, bgr_ordering):
 def hourglass_52(channel_means, channel_stds, bgr_ordering):
   """The Hourglass-52 backbone for CenterNet."""
 
-  network = hourglass_network.hourglass_52(num_channels=128)
+  network = hourglass_network.hourglass_52(num_channels=64)
   return CenterNetHourglassFeatureExtractor(
       network, channel_means=channel_means, channel_stds=channel_stds,
       bgr_ordering=bgr_ordering)
