@@ -288,3 +288,73 @@ def export_inference_graph(input_type,
                       signatures=concrete_function)
 
   config_util.save_pipeline_config(pipeline_config, output_directory)
+
+
+class DetectionFromImageAndBoxModule(DetectionInferenceModule):
+  """Detection Inference Module for image with bounding box inputs.
+
+  The saved model will require two inputs (image and normalized boxes) and run
+  per-box mask prediction. To be compatible with this exporter, the detection
+  model has to implement a called predict_masks_from_boxes(
+    prediction_dict, true_image_shapes, provided_boxes, **params), where
+    - prediciton_dict is a dict returned by the predict method.
+    - true_image_shapes is a tensor of size [batch_size, 3], containing the
+      true shape of each image in case it is padded.
+    - provided_boxes is a [batch_size, num_boxes, 4] size tensor containing
+      boxes specified in normalized coordinates.
+  """
+
+  def __init__(self,
+               detection_model,
+               use_side_inputs=False,
+               zipped_side_inputs=None):
+    """Initializes a module for detection.
+
+    Args:
+      detection_model: the detection model to use for inference.
+      use_side_inputs: whether to use side inputs.
+      zipped_side_inputs: the zipped side inputs.
+    """
+    assert hasattr(detection_model, 'predict_masks_from_boxes')
+    super(DetectionFromImageAndBoxModule,
+          self).__init__(detection_model, use_side_inputs, zipped_side_inputs)
+
+  def _run_segmentation_on_images(self, image, boxes, **kwargs):
+    """Run segmentation on images with provided boxes.
+
+    Args:
+      image: uint8 Tensor of shape [1, None, None, 3].
+      boxes: float32 tensor of shape [1, None, 4] containing normalized box
+        coordinates.
+      **kwargs: additional keyword arguments.
+
+    Returns:
+      Tensor dictionary holding detections (including masks).
+    """
+    label_id_offset = 1
+
+    image = tf.cast(image, tf.float32)
+    image, shapes = self._model.preprocess(image)
+    prediction_dict = self._model.predict(image, shapes, **kwargs)
+    detections = self._model.predict_masks_from_boxes(prediction_dict, shapes,
+                                                      boxes)
+    classes_field = fields.DetectionResultFields.detection_classes
+    detections[classes_field] = (
+        tf.cast(detections[classes_field], tf.float32) + label_id_offset)
+
+    for key, val in detections.items():
+      detections[key] = tf.cast(val, tf.float32)
+
+    return detections
+
+  @tf.function(input_signature=[
+      tf.TensorSpec(shape=[1, None, None, 3], dtype=tf.uint8),
+      tf.TensorSpec(shape=[1, None, 4], dtype=tf.float32)
+  ])
+  def __call__(self, input_tensor, boxes):
+    return self._run_segmentation_on_images(input_tensor, boxes)
+
+
+DETECTION_MODULE_MAP.update({
+    'image_and_boxes_tensor': DetectionFromImageAndBoxModule,
+})
