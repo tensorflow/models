@@ -140,7 +140,11 @@ class RuntimeConfig(base_config.Config):
   run_eagerly: bool = False
   batchnorm_spatial_persistent: bool = False
 
-  # XLA runtime
+  # XLA runtime params.
+  # XLA params are only applied to the train_step.
+  # These augments can improve training speed. They can also improve eval, but
+  # may reduce usability and users would need to make changes to code.
+
   # Whether to enable XLA dynamic padder
   # infrastructure to handle dynamic shapes inputs inside XLA. True by
   # default. Disabling this may cause correctness issues with dynamic shapes
