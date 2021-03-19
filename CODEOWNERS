@@ -18,6 +18,6 @@
 /research/object_detection/ @jch1 @tombstone @pkulzc
 /research/pcl_rl/ @ofirnachum
 /research/rebar/ @gjtucker
-/research/sequence_projection/ @thunderfyc
+/research/seq_flow_lite/ @thunderfyc
 /research/slim/ @sguada @marksandler2
 /research/vid2depth/ @rezama
