@@ -401,24 +401,24 @@ class TransformBatcher():
     per_replica_batch_size = input_context.get_per_replica_batch_size(
         self._global_batch_size) if input_context else self._global_batch_size
     if not self._segment_labels:
-        dataset = dataset.batch(
-            per_replica_batch_size, drop_remainder=True)
+      dataset = dataset.batch(
+        per_replica_batch_size, drop_remainder=True)
     else:
-        # add padding
-        pad_shapes = {"video_ids":[None],
-                      "video_matrix":[None, None, None],
-                      "labels":[None, None],
-                      "num_frames":[None, None],
-                      "label_weights":[None,None]}
-        pad_values = {"video_ids":None,
-                      "video_matrix":0.0,
-                      "labels":-1.0,
-                      "num_frames":0.0,
-                      "label_weights":0.0}
-        dataset = dataset.padded_batch(
-          per_replica_batch_size,
-          padded_shapes=pad_shapes,
-          drop_remainder=True,
-          padding_values=pad_values
-        )
+      # add padding
+      pad_shapes = {"video_ids":[None],
+                    "video_matrix":[None, None, None],
+                    "labels":[None, None],
+                    "num_frames":[None, None],
+                    "label_weights":[None,None]}
+      pad_values = {"video_ids":None,
+                    "video_matrix":0.0,
+                    "labels":-1.0,
+                    "num_frames":0.0,
+                    "label_weights":0.0}
+      dataset = dataset.padded_batch(
+        per_replica_batch_size,
+        padded_shapes=pad_shapes,
+        drop_remainder=True,
+        padding_values=pad_values
+      )
     return dataset

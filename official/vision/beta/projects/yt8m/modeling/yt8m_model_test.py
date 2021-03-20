@@ -31,8 +31,8 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
   def test_yt8m_network_creation(self, num_frames, feature_dims):
     """Test for creation of a YT8M Model.
     Args:
-      num_frames (int): indicating number of frames.
-      feature_dims (int): indicating total dimension size of the features.
+      num_frames: number of frames.
+      feature_dims: indicates total dimension size of the features.
     """
 
     # None part : batch
@@ -48,9 +48,9 @@ class YT8MNetworkTest(parameterized.TestCase, tf.test.TestCase):
     )
 
     # batch = 2 -> arbitrary value for test
-    inputs = np.random.rand(2, num_frames, feature_dims)
+    inputs = np.random.rand(2*num_frames, feature_dims)
     logits = model(inputs)
-    self.assertAllEqual([2, num_classes], logits.numpy().shape)
+    self.assertAllEqual([2,num_classes], logits.numpy().shape)
 
   def test_serialize_deserialize(self):
     """Validate the classification network

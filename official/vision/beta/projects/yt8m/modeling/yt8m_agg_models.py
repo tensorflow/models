@@ -30,17 +30,12 @@ class LogisticModel():
                    vocab_size,
                    l2_penalty=1e-8):
     """Creates a logistic model.
-
     Args:
-      model_input (Tensor): shape 'batch' x 'num_features',
-              matrix of input features.
-      vocab_size (int): indicates the number of classes in the dataset.
-      l2_penalty (float): indicates how much to penalize
-              the squared magnitudes of parameter values.
-
+      model_input: 'batch' x 'num_features' matrix of input features.
+      vocab_size: The number of classes in the dataset.
     Returns:
-      Dict: contains the probability predictions (Tensor) of the
-      model in the 'predictions' key. The dimensions of the Tensor are
+      A dictionary with a tensor containing the probability predictions of the
+      model in the 'predictions' key. The dimensions of the tensor are
       batch_size x num_classes.
     """
     output = layers.Dense(
@@ -59,25 +54,21 @@ class MoeModel():
                    num_mixtures=None,
                    l2_penalty=1e-8):
     """Creates a Mixture of (Logistic) Experts model.
-
-     The model consists of a per-class softmax distribution over a
-     configurable number of logistic classifiers. One of the classifiers in the
-     mixture is not trained, and always predicts 0.
-
-    Args:
-      model_input (Tensor): shape 'batch' x 'num_features',
-              matrix of input features.
-      vocab_size (int): indicates the number of classes in the dataset.
-      l2_penalty (float): indicates how much to penalize
-              the squared magnitudes of parameter values.
-      num_mixtures (int): The number of mixtures (excluding a dummy 'expert'
-              that always predicts the non-existence of an entity).
-
-    Returns:
-      Dict: contains the probability predictions (Tensor) of the
-      model in the 'predictions' key. The dimensions of the Tensor are
-      batch_size x num_classes.
-    """
+        The model consists of a per-class softmax distribution over a
+        configurable number of logistic classifiers. One of the classifiers
+        in the mixture is not trained, and always predicts 0.
+       Args:
+         model_input: 'batch_size' x 'num_features' matrix of input features.
+         vocab_size: The number of classes in the dataset.
+         num_mixtures: The number of mixtures (excluding a dummy 'expert' that
+           always predicts the non-existence of an entity).
+         l2_penalty: How much to penalize the squared magnitudes of parameter
+           values.
+       Returns:
+         A dictionary with a tensor containing the probability predictions
+         of the model in the 'predictions' key. The dimensions of the tensor
+         are batch_size x num_classes.
+       """
     num_mixtures = num_mixtures or moe_num_mixtures
 
     gate_activations = layers.Dense(

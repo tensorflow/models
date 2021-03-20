@@ -19,11 +19,11 @@ import tensorflow as tf
 def SampleRandomSequence(model_input, num_frames, num_samples):
   """Samples a random sequence of frames of size num_samples.
   Args:
-    model_input (Tensor) : [batch_size x max_frames x feature_size]
-    num_frames (Tensor): [batch_size x 1]
-    num_samples (int): a scalar indicating the number of samples
+    model_input: tensor of shape [batch_size x max_frames x feature_size]
+    num_frames: tensor of shape [batch_size x 1]
+    num_samples: a scalar indicating the number of samples
   Returns:
-    Tensor: model_input in size [batch_size x 'num_samples' x feature_size]
+    reshaped model_input in [batch_size x 'num_samples' x feature_size]
   """
 
   batch_size = tf.shape(model_input)[0]
@@ -44,11 +44,11 @@ def SampleRandomSequence(model_input, num_frames, num_samples):
 def SampleRandomFrames(model_input, num_frames, num_samples):
   """Samples a random set of frames of size num_samples.
   Args:
-    model_input (Tensor): [batch_size x max_frames x feature_size]
-    num_frames (Tensor): [batch_size x 1]
+    model_input: tensor of shape [batch_size x max_frames x feature_size]
+    num_frames: tensor of shape [batch_size x 1]
     num_samples (int): a scalar indicating the number of samples
   Returns:
-    Tensor: model_input in size [batch_size x 'num_samples' x feature_size]
+    reshaped model_input in [batch_size x 'num_samples' x feature_size]
   """
   batch_size = tf.shape(model_input)[0]
   frame_index = tf.cast(
@@ -64,10 +64,11 @@ def SampleRandomFrames(model_input, num_frames, num_samples):
 def FramePooling(frames, method):
   """Pools over the frames of a video.
   Args:
-    frames (Tensor): [batch_size, num_frames, feature_size].
-    method (string): "average", "max", "attention", or "none".
+    frames: tensor of shape [batch_size, num_frames, feature_size].
+    method: string indicating pooling method, one of:
+    "average", "max", "attention", or "none".
   Returns:
-    Tensor: shape [batch_size, feature_size] for average, max, or
+    tensor of shape [batch_size, feature_size] for average, max, or
     attention pooling, and shape [batch_size*num_frames, feature_size]
     for none pooling.
   Raises:

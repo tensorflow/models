@@ -20,8 +20,9 @@ from official.common import distribute_utils
 from official.common import flags as tfm_flags
 from official.core import task_factory, train_lib, train_utils
 from official.modeling import performance
+# pylint: disable=unused-import
 from official.vision.beta.projects.yt8m.configs import yt8m
-from official.vision.beta.projects.yt8m.tasks import yt8m_task #disable=unused-import
+from official.vision.beta.projects.yt8m.tasks import yt8m_task
 
 FLAGS = flags.FLAGS
 

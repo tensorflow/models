@@ -19,7 +19,6 @@ from official.vision.beta.projects.yt8m.eval_utils import \
     average_precision_calculator as ap_calculator
 from official.vision.beta.projects.yt8m.eval_utils import \
     mean_average_precision_calculator as map_calculator
-from tensorflow.python.platform import gfile
 
 
 def flatten(l):
@@ -229,13 +228,13 @@ class EvaluationMetrics(object):
     avg_perr = self.sum_perr / self.num_examples
 
     aps = self.map_calculator.peek_map_at_n()
-    map = sum(aps) / self.num_class
+    mean_ap = sum(aps) / self.num_class
     gap = self.global_ap_calculator.peek_ap_at_n()
 
     epoch_info_dict = {
         "avg_hit_at_one": avg_hit_at_one,
         "avg_perr": avg_perr,
-        "map": map,
+        "map": mean_ap,
         "gap": gap
     }
     return epoch_info_dict

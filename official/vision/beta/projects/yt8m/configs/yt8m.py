@@ -102,19 +102,7 @@ def add_trainer(experiment: cfg.ExperimentConfig,
                 learning_rate: float = 0.005,
                 train_epochs: int = 44,
                 ):
-  """Add and config a trainer to the experiment config.
-  Args:
-    experiment (ExperimentConfig): config specifying
-      which experiment to be run
-    train_batch_size (int): batch size for training data
-    eval_batch_size (int): batchs size for validation data
-    learning_rate (float): initial learning rate
-    train_epochs (int): number of training epochs to run
-  Returns:
-    TrainerConfig: configuration for trainer
-   Raises:
-    ValueError: if the number of examples is invalid
-  """
+  """Add and config a trainer to the experiment config."""
   if YT8M_TRAIN_EXAMPLES <= 0:
     raise ValueError('Wrong train dataset size {!r}'.format(
       experiment.task.train_data))
