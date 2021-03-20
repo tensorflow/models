@@ -199,7 +199,6 @@ class ImageClassificationTask(base_task.Task):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
     elif model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
       logs.update({m.name: m.result() for m in model.metrics})
@@ -228,7 +227,6 @@ class ImageClassificationTask(base_task.Task):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
     elif model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
       logs.update({m.name: m.result() for m in model.metrics})

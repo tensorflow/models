@@ -291,7 +291,6 @@ class MaskRCNNTask(base_task.Task):
     if metrics:
       for m in metrics:
         m.update_state(losses[m.name])
-        logs.update({m.name: m.result()})
 
     return logs
 
