@@ -276,6 +276,27 @@ class BertPretrainAccuracyBenchmark(bert_benchmark_utils.BertBenchmarkBase):
         ds_type=FLAGS.distribution_strategy)
 
   @owner_utils.Owner('tf-model-garden')
+  def benchmark_perf_4x4_tpu_bf16_seq128_1k_steps(self):
+    """Test bert pretraining with 4x4 TPU for 1000 steps."""
+    self._setup()
+    self._specify_common_flags()
+    self._specify_tpu_common_flags()
+    FLAGS.train_batch_size = 512
+    FLAGS.warmup_steps = 0
+    FLAGS.num_steps_per_epoch = 1000
+    FLAGS.num_train_epochs = 1
+    FLAGS.steps_per_loop = 500
+    FLAGS.model_dir = self._get_model_dir(
+        'benchmark_perf_4x4_tpu_bf16_seq128_1k_steps')
+    summary_path = os.path.join(FLAGS.model_dir,
+                                'summaries/training_summary.txt')
+    # Disable accuracy check.
+    self._run_and_report_benchmark(
+        summary_path=summary_path,
+        report_accuracy=False,
+        ds_type=FLAGS.distribution_strategy)
+
+  @owner_utils.Owner('tf-model-garden')
   def benchmark_perf_8x8_tpu_bf16_seq128_10k_steps(self):
     """Test bert pretraining with 8x8 TPU for 10000 steps."""
     self._setup()
