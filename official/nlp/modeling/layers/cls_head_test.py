@@ -58,5 +58,56 @@ class MultiClsHeadsTest(tf.test.TestCase):
     self.assertAllEqual(test_layer.get_config(), new_layer.get_config())
 
 
+class GaussianProcessClassificationHead(tf.test.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.spec_norm_kwargs = dict(norm_multiplier=1.,)
+    self.gp_layer_kwargs = dict(num_inducing=512)
+
+  def test_layer_invocation(self):
+    test_layer = cls_head.GaussianProcessClassificationHead(
+        inner_dim=5,
+        num_classes=2,
+        use_spec_norm=True,
+        use_gp_layer=True,
+        initializer="zeros",
+        **self.spec_norm_kwargs,
+        **self.gp_layer_kwargs)
+    features = tf.zeros(shape=(2, 10, 10), dtype=tf.float32)
+    output, _ = test_layer(features)
+    self.assertAllClose(output, [[0., 0.], [0., 0.]])
+    self.assertSameElements(test_layer.checkpoint_items.keys(),
+                            ["pooler_dense"])
+
+  def test_layer_serialization(self):
+    layer = cls_head.GaussianProcessClassificationHead(
+        inner_dim=5,
+        num_classes=2,
+        use_spec_norm=True,
+        use_gp_layer=True,
+        **self.spec_norm_kwargs,
+        **self.gp_layer_kwargs)
+    new_layer = cls_head.GaussianProcessClassificationHead.from_config(
+        layer.get_config())
+
+    # If the serialization was successful, the new config should match the old.
+    self.assertAllEqual(layer.get_config(), new_layer.get_config())
+
+  def test_sngp_kwargs_serialization(self):
+    """Tests if SNGP-specific kwargs are added during serialization."""
+    layer = cls_head.GaussianProcessClassificationHead(
+        inner_dim=5,
+        num_classes=2,
+        use_spec_norm=True,
+        use_gp_layer=True,
+        **self.spec_norm_kwargs,
+        **self.gp_layer_kwargs)
+    layer_config = layer.get_config()
+
+    # The config value should equal to those defined in setUp().
+    self.assertEqual(layer_config["norm_multiplier"], 1.)
+    self.assertEqual(layer_config["num_inducing"], 512)
+
 if __name__ == "__main__":
   tf.test.main()
