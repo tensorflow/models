@@ -22,3 +22,4 @@ from official.vision.beta.modeling.backbones.resnet_3d import ResNet3D
 from official.vision.beta.modeling.backbones.resnet_deeplab import DilatedResNet
 from official.vision.beta.modeling.backbones.revnet import RevNet
 from official.vision.beta.modeling.backbones.spinenet import SpineNet
+from official.vision.beta.modeling.backbones.spinenet_mobile import SpineNetMobile

@@ -70,6 +70,15 @@ class SpineNet(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class SpineNetMobile(hyperparams.Config):
+  """SpineNet config."""
+  model_id: str = '49'
+  stochastic_depth_drop_rate: float = 0.0
+  se_ratio: float = 0.2
+  expand_ratio: int = 6
+
+
+@dataclasses.dataclass
 class RevNet(hyperparams.Config):
   """RevNet config."""
   # Specifies the depth of RevNet.
@@ -87,6 +96,7 @@ class Backbone(hyperparams.OneOfConfig):
     revnet: revnet backbone config.
     efficientnet: efficientnet backbone config.
     spinenet: spinenet backbone config.
+    spinenet_mobile: mobile spinenet backbone config.
     mobilenet: mobilenet backbone config.
   """
   type: Optional[str] = None
@@ -95,4 +105,5 @@ class Backbone(hyperparams.OneOfConfig):
   revnet: RevNet = RevNet()
   efficientnet: EfficientNet = EfficientNet()
   spinenet: SpineNet = SpineNet()
+  spinenet_mobile: SpineNetMobile = SpineNetMobile()
   mobilenet: MobileNet = MobileNet()
