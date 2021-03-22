@@ -351,32 +351,32 @@ def load_fine_tune_checkpoint(
 
   features, labels = iter(input_dataset).next()
 
-  @tf.function
-  def _dummy_computation_fn(features, labels):
-    model._is_training = False  # pylint: disable=protected-access
-    tf.keras.backend.set_learning_phase(False)
+#   @tf.function
+#   def _dummy_computation_fn(features, labels):
+#     model._is_training = False  # pylint: disable=protected-access
+#     tf.keras.backend.set_learning_phase(False)
 
-    labels = model_lib.unstack_batch(
-        labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
+#     labels = model_lib.unstack_batch(
+#         labels, unpad_groundtruth_tensors=unpad_groundtruth_tensors)
 
-    return _compute_losses_and_predictions_dicts(
-        model,
-        features,
-        labels)
+#     return _compute_losses_and_predictions_dicts(
+#         model,
+#         features,
+#         labels)
 
-  strategy = tf.compat.v2.distribute.get_strategy()
-  if hasattr(tf.distribute.Strategy, 'run'):
-    strategy.run(
-        _dummy_computation_fn, args=(
-            features,
-            labels,
-        ))
-  else:
-    strategy.experimental_run_v2(
-        _dummy_computation_fn, args=(
-            features,
-            labels,
-        ))
+#   strategy = tf.compat.v2.distribute.get_strategy()
+#   if hasattr(tf.distribute.Strategy, 'run'):
+#     strategy.run(
+#         _dummy_computation_fn, args=(
+#             features,
+#             labels,
+#         ))
+#   else:
+#     strategy.experimental_run_v2(
+#         _dummy_computation_fn, args=(
+#             features,
+#             labels,
+#         ))
 
   restore_from_objects_dict = model.restore_from_objects(
       fine_tune_checkpoint_type=checkpoint_type)
@@ -1084,9 +1084,9 @@ def eval_continuously(
     # model and all its variables have been properly constructed. Specifically,
     # this is currently necessary prior to (potentially) creating shadow copies
     # of the model variables for the EMA optimizer.
-    dummy_image, dummy_shapes = detection_model.preprocess(
-        tf.zeros([1, 512, 512, 3], dtype=tf.float32))
-    dummy_prediction_dict = detection_model.predict(dummy_image, dummy_shapes)
+    # dummy_image, dummy_shapes = detection_model.preprocess(
+    #    tf.zeros([1, 512, 512, 3], dtype=tf.float32))
+    # dummy_prediction_dict = detection_model.predict(dummy_image, dummy_shapes)
 
   eval_input = strategy.experimental_distribute_dataset(
       inputs.eval_input(

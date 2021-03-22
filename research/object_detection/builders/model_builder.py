@@ -17,6 +17,9 @@
 
 import functools
 import sys
+
+from absl import logging
+
 from object_detection.builders import anchor_generator_builder
 from object_detection.builders import box_coder_builder
 from object_detection.builders import box_predictor_builder
@@ -1064,6 +1067,7 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
   if center_net_config.HasField('post_processing'):
     non_max_suppression_fn, _ = post_processing_builder.build(
         center_net_config.post_processing)
+
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
