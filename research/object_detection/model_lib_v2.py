@@ -686,7 +686,7 @@ def train_loop(
         'steps_per_sec': np.mean(steps_per_sec_list),
         'steps_per_sec_p50': np.median(steps_per_sec_list),
         'steps_per_sec_max': max(steps_per_sec_list),
-        'last_batch_loss': loss
+        'last_batch_loss': float(loss)
     }
     mixed_precision = 'bf16' if kwargs['use_bfloat16'] else 'fp32'
     performance_summary_exporter(metrics, mixed_precision)
