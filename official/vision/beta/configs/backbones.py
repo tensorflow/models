@@ -90,7 +90,7 @@ class Backbone(hyperparams.OneOfConfig):
   """Configuration for backbones.
 
   Attributes:
-    type: 'str', type of backbone be used, one the of fields below.
+    type: 'str', type of backbone be used, one of the fields below.
     resnet: resnet backbone config.
     dilated_resnet: dilated resnet backbone for semantic segmentation config.
     revnet: revnet backbone config.

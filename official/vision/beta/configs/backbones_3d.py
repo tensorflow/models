@@ -65,7 +65,7 @@ class Backbone3D(hyperparams.OneOfConfig):
   """Configuration for backbones.
 
   Attributes:
-    type: 'str', type of backbone be used, on the of fields below.
+    type: 'str', type of backbone be used, one of the fields below.
     resnet: resnet3d backbone config.
   """
   type: Optional[str] = None
