@@ -322,6 +322,7 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
                       model_id='49', stochastic_depth_drop_rate=0.2)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
+              head=RetinaNetHead(num_filters=48, use_separable_conv=True),
               anchor=Anchor(anchor_size=3),
               norm_activation=common.NormActivation(
                   use_sync_bn=True, activation='swish'),
@@ -329,7 +330,7 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
               input_size=[input_size, input_size, 3],
               min_level=3,
               max_level=7),
-          losses=Losses(l2_weight_decay=4e-5),
+          losses=Losses(l2_weight_decay=3e-5),
           train_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
               is_training=True,
