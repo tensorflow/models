@@ -58,7 +58,7 @@ class Decoder(hyperparams.OneOfConfig):
   """Configuration for decoders.
 
   Attributes:
-    type: 'str', type of decoder be used, on the of fields below.
+    type: 'str', type of decoder be used, one of the fields below.
     fpn: fpn config.
   """
   type: Optional[str] = None
