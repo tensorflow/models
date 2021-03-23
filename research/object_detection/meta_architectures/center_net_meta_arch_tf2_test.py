@@ -750,18 +750,19 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     keypoint_heatmap_np[0, 7, 7, 3] = 0.9
     keypoint_heatmap_np[0, 4, 4, 3] = 1.0
 
-    keypoint_offset_np = np.zeros((1, image_size[0], image_size[1], 2),
+    keypoint_offset_np = np.zeros((1, image_size[0], image_size[1], 8),
                                   dtype=np.float32)
-    keypoint_offset_np[0, 1, 1] = [0.5, 0.5]
-    keypoint_offset_np[0, 1, 7] = [0.5, -0.5]
-    keypoint_offset_np[0, 7, 1] = [-0.5, 0.5]
-    keypoint_offset_np[0, 7, 7] = [-0.5, -0.5]
+    keypoint_offset_np[0, 1, 1] = [0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[0, 1, 7] = [0.0, 0.0, 0.5, -0.5, 0.0, 0.0, 0.0, 0.0]
+    keypoint_offset_np[0, 7, 1] = [0.0, 0.0, 0.0, 0.0, -0.5, 0.5, 0.0, 0.0]
+    keypoint_offset_np[0, 7, 7] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -0.5, -0.5]
 
     keypoint_regression_np = np.zeros((1, image_size[0], image_size[1], 8),
                                       dtype=np.float32)
     keypoint_regression_np[0, 4, 4] = [-3, -3, -3, 3, 3, -3, 3, 3]
 
-    kp_params = get_fake_kp_params(num_candidates_per_keypoint=1)
+    kp_params = get_fake_kp_params(
+        candidate_ranking_mode='score_distance_ratio')
 
     def graph_fn():
       object_heatmap = tf.constant(object_heatmap_np, dtype=tf.float32)
@@ -776,9 +777,6 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
               keypoint_heatmap,
               keypoint_offset,
               keypoint_regression,
-              stride=4,
-              object_center_std_dev=image_size[0] / 2,
-              keypoint_std_dev=[image_size[0] / 10],
               kp_params=kp_params))
 
       return keypoint_cands, keypoint_scores
@@ -1499,7 +1497,8 @@ def get_fake_kp_params(num_candidates_per_keypoint=100,
                        per_keypoint_offset=False,
                        predict_depth=False,
                        per_keypoint_depth=False,
-                       peak_radius=0):
+                       peak_radius=0,
+                       candidate_ranking_mode='min_distance'):
   """Returns the fake keypoint estimation parameter namedtuple."""
   return cnma.KeypointEstimationParams(
       task_name=_TASK_NAME,
@@ -1514,7 +1513,8 @@ def get_fake_kp_params(num_candidates_per_keypoint=100,
       per_keypoint_offset=per_keypoint_offset,
       predict_depth=predict_depth,
       per_keypoint_depth=per_keypoint_depth,
-      offset_peak_radius=peak_radius)
+      offset_peak_radius=peak_radius,
+      candidate_ranking_mode=candidate_ranking_mode)
 
 
 def get_fake_mask_params():
@@ -1566,7 +1566,8 @@ def build_center_net_meta_arch(build_resnet=False,
                                predict_depth=False,
                                per_keypoint_depth=False,
                                peak_radius=0,
-                               keypoint_only=False):
+                               keypoint_only=False,
+                               candidate_ranking_mode='min_distance'):
   """Builds the CenterNet meta architecture."""
   if build_resnet:
     feature_extractor = (
@@ -1612,7 +1613,8 @@ def build_center_net_meta_arch(build_resnet=False,
             _TASK_NAME:
                 get_fake_kp_params(num_candidates_per_keypoint,
                                    per_keypoint_offset, predict_depth,
-                                   per_keypoint_depth, peak_radius)
+                                   per_keypoint_depth, peak_radius,
+                                   candidate_ranking_mode)
         },
         non_max_suppression_fn=non_max_suppression_fn)
   elif detection_only:
@@ -1639,7 +1641,8 @@ def build_center_net_meta_arch(build_resnet=False,
             _TASK_NAME:
                 get_fake_kp_params(num_candidates_per_keypoint,
                                    per_keypoint_offset, predict_depth,
-                                   per_keypoint_depth, peak_radius)
+                                   per_keypoint_depth, peak_radius,
+                                   candidate_ranking_mode)
         },
         non_max_suppression_fn=non_max_suppression_fn)
   else:
@@ -1651,7 +1654,8 @@ def build_center_net_meta_arch(build_resnet=False,
         image_resizer_fn=image_resizer_fn,
         object_center_params=get_fake_center_params(),
         object_detection_params=get_fake_od_params(),
-        keypoint_params_dict={_TASK_NAME: get_fake_kp_params()},
+        keypoint_params_dict={_TASK_NAME: get_fake_kp_params(
+            candidate_ranking_mode=candidate_ranking_mode)},
         mask_params=get_fake_mask_params(),
         densepose_params=get_fake_densepose_params(),
         track_params=get_fake_track_params(),
@@ -2236,12 +2240,14 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
 
   def test_postprocess_single_instance(self):
     """Test the postprocess single instance function."""
-    model = build_center_net_meta_arch(num_classes=1)
+    model = build_center_net_meta_arch(
+        num_classes=1, candidate_ranking_mode='score_distance_ratio')
     num_keypoints = len(model._kp_params_dict[_TASK_NAME].keypoint_indices)
 
     class_center = np.zeros((1, 32, 32, 1), dtype=np.float32)
     keypoint_heatmaps = np.zeros((1, 32, 32, num_keypoints), dtype=np.float32)
-    keypoint_offsets = np.zeros((1, 32, 32, 2), dtype=np.float32)
+    keypoint_offsets = np.zeros(
+        (1, 32, 32, num_keypoints * 2), dtype=np.float32)
     keypoint_regression = np.random.randn(1, 32, 32, num_keypoints * 2)
 
     class_probs = np.zeros(1)
@@ -2275,9 +2281,7 @@ class CenterNetMetaArchTest(test_case.TestCase, parameterized.TestCase):
     def graph_fn():
       detections = model.postprocess_single_instance_keypoints(
           prediction_dict,
-          tf.constant([[128, 128, 3]]),
-          object_center_std_dev=32,
-          keypoint_std_dev=[32])
+          tf.constant([[128, 128, 3]]))
       return detections
 
     detections = self.execute_cpu(graph_fn, [])
