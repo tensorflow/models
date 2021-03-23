@@ -390,7 +390,8 @@ class BigBirdMasks(tf.keras.layers.Layer):
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
-class BigBirdAttention(tf.keras.layers.MultiHeadAttention):
+#class BigBirdAttention(tf.keras.layers.MultiHeadAttention):
+class BigBirdAttention(MultiHeadAttention):
   """BigBird, a sparse attention mechanism.
 
   This layer follows the paper "Big Bird: Transformers for Longer Sequences"
