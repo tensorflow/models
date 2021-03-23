@@ -90,6 +90,9 @@ class KerasLayerHyperparams(object):
   def use_batch_norm(self):
     return self._batch_norm_params is not None
 
+  def use_sync_batch_norm(self):
+    return self._use_sync_batch_norm
+
   def force_use_bias(self):
     return self._force_use_bias
 
@@ -164,6 +167,20 @@ class KerasLayerHyperparams(object):
       return tf.keras.layers.Lambda(self._activation_fn, name=name)
     else:
       return tf.keras.layers.Lambda(tf.identity, name=name)
+
+  def get_regularizer_weight(self):
+    """Returns the l1 or l2 regularizer weight.
+
+    Returns: A float value corresponding to the l1 or l2 regularization weight,
+      or None if neither l1 or l2 regularization is defined.
+    """
+    regularizer = self._op_params['kernel_regularizer']
+    if hasattr(regularizer, 'l1'):
+      return regularizer.l1
+    elif hasattr(regularizer, 'l2'):
+      return regularizer.l2
+    else:
+      return None
 
   def params(self, include_activation=False, **overrides):
     """Returns a dict containing the layer construction hyperparameters to use.

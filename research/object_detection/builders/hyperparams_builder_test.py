@@ -580,6 +580,61 @@ class KerasHyperparamsBuilderTest(tf.test.TestCase):
     result = regularizer(tf.constant(weights)).numpy()
     self.assertAllClose(np.power(weights, 2).sum() / 2.0 * 0.42, result)
 
+  def test_return_l1_regularizer_weight_keras(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l1_regularizer {
+          weight: 0.5
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Parse(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    keras_config = hyperparams_builder.KerasLayerHyperparams(
+        conv_hyperparams_proto)
+
+    regularizer_weight = keras_config.get_regularizer_weight()
+    self.assertAlmostEqual(regularizer_weight, 0.5)
+
+  def test_return_l2_regularizer_weight_keras(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l2_regularizer {
+          weight: 0.5
+        }
+      }
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Parse(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    keras_config = hyperparams_builder.KerasLayerHyperparams(
+        conv_hyperparams_proto)
+
+    regularizer_weight = keras_config.get_regularizer_weight()
+    self.assertAlmostEqual(regularizer_weight, 0.25)
+
+  def test_return_undefined_regularizer_weight_keras(self):
+    conv_hyperparams_text_proto = """
+      initializer {
+        truncated_normal_initializer {
+        }
+      }
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Parse(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    keras_config = hyperparams_builder.KerasLayerHyperparams(
+        conv_hyperparams_proto)
+
+    regularizer_weight = keras_config.get_regularizer_weight()
+    self.assertIsNone(regularizer_weight)
+
   def test_return_non_default_batch_norm_params_keras(
       self):
     conv_hyperparams_text_proto = """
