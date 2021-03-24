@@ -208,14 +208,6 @@ class DetectionFromTFExampleModule(DetectionInferenceModule):
                                                  _decode_tf_example)
     return self._run_inference_on_images(images, true_shapes)
 
-DETECTION_MODULE_MAP = {
-    'image_tensor': DetectionFromImageModule,
-    'encoded_image_string_tensor':
-    DetectionFromEncodedImageModule,
-    'tf_example': DetectionFromTFExampleModule,
-    'float_image_tensor': DetectionFromFloatImageModule
-}
-
 
 def export_inference_graph(input_type,
                            pipeline_config,
@@ -355,6 +347,11 @@ class DetectionFromImageAndBoxModule(DetectionInferenceModule):
     return self._run_segmentation_on_images(input_tensor, boxes)
 
 
-DETECTION_MODULE_MAP.update({
+DETECTION_MODULE_MAP = {
+    'image_tensor': DetectionFromImageModule,
+    'encoded_image_string_tensor':
+    DetectionFromEncodedImageModule,
+    'tf_example': DetectionFromTFExampleModule,
+    'float_image_tensor': DetectionFromFloatImageModule,
     'image_and_boxes_tensor': DetectionFromImageAndBoxModule,
-})
+}
