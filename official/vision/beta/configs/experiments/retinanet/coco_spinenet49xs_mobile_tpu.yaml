@@ -20,7 +20,7 @@ task:
     head:
       num_convs: 4
       num_filters: 24
-      use_separable_conv: false
+      use_separable_conv: true
     input_size: [256, 256, 3]
     max_level: 7
     min_level: 3
