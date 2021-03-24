@@ -73,6 +73,7 @@ class DataConfig(base_config.Config):
       decoding when loading dataset from TFDS. Use comma to separate multiple
       features. The main use case is to skip the image/video decoding for better
       performance.
+    seed: An optional seed to use for deterministic shuffling/preprocessing.
   """
   input_path: Union[Sequence[str], str] = ""
   tfds_name: str = ""
@@ -92,6 +93,7 @@ class DataConfig(base_config.Config):
   tfds_data_dir: str = ""
   tfds_as_supervised: bool = False
   tfds_skip_decoding_feature: str = ""
+  seed: Optional[int] = None
 
 
 @dataclasses.dataclass
