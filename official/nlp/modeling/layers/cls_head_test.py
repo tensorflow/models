@@ -13,13 +13,24 @@
 # limitations under the License.
 
 """Tests for cls_head."""
+from absl.testing import parameterized
 
 import tensorflow as tf
 
 from official.nlp.modeling.layers import cls_head
 
 
-class ClassificationHeadTest(tf.test.TestCase):
+class ClassificationHeadTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(("no_pooler_layer", 0, 2),
+                                  ("has_pooler_layer", 5, 4))
+  def test_pooler_layer(self, inner_dim, num_weights_expected):
+    test_layer = cls_head.ClassificationHead(inner_dim=inner_dim, num_classes=2)
+    features = tf.zeros(shape=(2, 10, 10), dtype=tf.float32)
+    _ = test_layer(features)
+
+    num_weights_observed = len(test_layer.get_weights())
+    self.assertEqual(num_weights_observed, num_weights_expected)
 
   def test_layer_invocation(self):
     test_layer = cls_head.ClassificationHead(inner_dim=5, num_classes=2)
@@ -37,7 +48,18 @@ class ClassificationHeadTest(tf.test.TestCase):
     self.assertAllEqual(layer.get_config(), new_layer.get_config())
 
 
-class MultiClsHeadsTest(tf.test.TestCase):
+class MultiClsHeadsTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(("no_pooler_layer", 0, 4),
+                                  ("has_pooler_layer", 5, 6))
+  def test_pooler_layer(self, inner_dim, num_weights_expected):
+    cls_list = [("foo", 2), ("bar", 3)]
+    test_layer = cls_head.MultiClsHeads(inner_dim=inner_dim, cls_list=cls_list)
+    features = tf.zeros(shape=(2, 10, 10), dtype=tf.float32)
+    _ = test_layer(features)
+
+    num_weights_observed = len(test_layer.get_weights())
+    self.assertEqual(num_weights_observed, num_weights_expected)
 
   def test_layer_invocation(self):
     cls_list = [("foo", 2), ("bar", 3)]
@@ -58,12 +80,30 @@ class MultiClsHeadsTest(tf.test.TestCase):
     self.assertAllEqual(test_layer.get_config(), new_layer.get_config())
 
 
-class GaussianProcessClassificationHead(tf.test.TestCase):
+class GaussianProcessClassificationHead(tf.test.TestCase,
+                                        parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
     self.spec_norm_kwargs = dict(norm_multiplier=1.,)
     self.gp_layer_kwargs = dict(num_inducing=512)
+
+  @parameterized.named_parameters(("no_pooler_layer", 0, 7),
+                                  ("has_pooler_layer", 5, 11))
+  def test_pooler_layer(self, inner_dim, num_weights_expected):
+    test_layer = cls_head.GaussianProcessClassificationHead(
+        inner_dim=inner_dim,
+        num_classes=2,
+        use_spec_norm=True,
+        use_gp_layer=True,
+        initializer="zeros",
+        **self.spec_norm_kwargs,
+        **self.gp_layer_kwargs)
+    features = tf.zeros(shape=(2, 10, 10), dtype=tf.float32)
+    _ = test_layer(features)
+
+    num_weights_observed = len(test_layer.get_weights())
+    self.assertEqual(num_weights_observed, num_weights_expected)
 
   def test_layer_invocation(self):
     test_layer = cls_head.GaussianProcessClassificationHead(
