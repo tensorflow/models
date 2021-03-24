@@ -1482,7 +1482,9 @@ def get_fake_center_params(max_box_predictions=5):
       object_center_loss_weight=1.0,
       min_box_overlap_iou=1.0,
       max_box_predictions=max_box_predictions,
-      use_labeled_classes=False)
+      use_labeled_classes=False,
+      center_head_num_filters=[128],
+      center_head_kernel_sizes=[5])
 
 
 def get_fake_od_params():

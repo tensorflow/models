@@ -860,6 +860,25 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
     for label, value in kp_config.keypoint_label_to_std.items():
       keypoint_std_dev_dict[label] = value
   keypoint_std_dev = [keypoint_std_dev_dict[label] for label in keypoint_labels]
+  if kp_config.HasField('heatmap_head_params'):
+    heatmap_head_num_filters = list(kp_config.heatmap_head_params.num_filters)
+    heatmap_head_kernel_sizes = list(kp_config.heatmap_head_params.kernel_sizes)
+  else:
+    heatmap_head_num_filters = [256]
+    heatmap_head_kernel_sizes = [3]
+  if kp_config.HasField('offset_head_params'):
+    offset_head_num_filters = list(kp_config.offset_head_params.num_filters)
+    offset_head_kernel_sizes = list(kp_config.offset_head_params.kernel_sizes)
+  else:
+    offset_head_num_filters = [256]
+    offset_head_kernel_sizes = [3]
+  if kp_config.HasField('regress_head_params'):
+    regress_head_num_filters = list(kp_config.regress_head_params.num_filters)
+    regress_head_kernel_sizes = list(
+        kp_config.regress_head_params.kernel_sizes)
+  else:
+    regress_head_num_filters = [256]
+    regress_head_kernel_sizes = [3]
   return center_net_meta_arch.KeypointEstimationParams(
       task_name=kp_config.task_name,
       class_id=label_map_item.id - CLASS_ID_OFFSET,
@@ -888,7 +907,13 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
       keypoint_depth_loss_weight=kp_config.keypoint_depth_loss_weight,
       score_distance_offset=kp_config.score_distance_offset,
       clip_out_of_frame_keypoints=kp_config.clip_out_of_frame_keypoints,
-      rescore_instances=kp_config.rescore_instances)
+      rescore_instances=kp_config.rescore_instances,
+      heatmap_head_num_filters=heatmap_head_num_filters,
+      heatmap_head_kernel_sizes=heatmap_head_kernel_sizes,
+      offset_head_num_filters=offset_head_num_filters,
+      offset_head_kernel_sizes=offset_head_kernel_sizes,
+      regress_head_num_filters=regress_head_num_filters,
+      regress_head_kernel_sizes=regress_head_kernel_sizes)
 
 
 def object_detection_proto_to_params(od_config):
@@ -921,6 +946,13 @@ def object_center_proto_to_params(oc_config):
   keypoint_weights_for_center = []
   if oc_config.keypoint_weights_for_center:
     keypoint_weights_for_center = list(oc_config.keypoint_weights_for_center)
+
+  if oc_config.center_head_params:
+    center_head_num_filters = list(oc_config.center_head_params.num_filters)
+    center_head_kernel_sizes = list(oc_config.center_head_params.kernel_sizes)
+  else:
+    center_head_num_filters = [256]
+    center_head_kernel_sizes = [3]
   return center_net_meta_arch.ObjectCenterParams(
       classification_loss=classification_loss,
       object_center_loss_weight=oc_config.object_center_loss_weight,
@@ -928,7 +960,9 @@ def object_center_proto_to_params(oc_config):
       min_box_overlap_iou=oc_config.min_box_overlap_iou,
       max_box_predictions=oc_config.max_box_predictions,
       use_labeled_classes=oc_config.use_labeled_classes,
-      keypoint_weights_for_center=keypoint_weights_for_center)
+      keypoint_weights_for_center=keypoint_weights_for_center,
+      center_head_num_filters=center_head_num_filters,
+      center_head_kernel_sizes=center_head_kernel_sizes)
 
 
 def mask_proto_to_params(mask_config):

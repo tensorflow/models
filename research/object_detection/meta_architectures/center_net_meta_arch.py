@@ -137,7 +137,7 @@ class CenterNetFeatureExtractor(tf.keras.Model):
     pass
 
 
-def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
+def make_prediction_net(num_out_channels, kernel_sizes=(3), num_filters=(256),
                         bias_fill=None, use_depthwise=False, name=None):
   """Creates a network to predict the given number of output channels.
 
@@ -146,8 +146,13 @@ def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
 
   Args:
     num_out_channels: Number of output channels.
-    kernel_size: The size of the conv kernel in the intermediate layer
-    num_filters: The number of filters in the intermediate conv layer.
+    kernel_sizes: A list representing the sizes of the conv kernel in the
+      intermediate layer. Note that the length of the list indicates the number
+      of intermediate conv layers and it must be the same as the length of the
+      num_filters.
+    num_filters: A list representing the number of filters in the intermediate
+      conv layer. Note that the length of the list indicates the number of
+      intermediate conv layers.
     bias_fill: If not None, is used to initialize the bias in the final conv
       layer.
     use_depthwise: If true, use SeparableConv2D to construct the Sequential
@@ -159,6 +164,10 @@ def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
       [batch_size, height, width, num_in_channels] returns an output
       of size [batch_size, height, width, num_out_channels]
   """
+  if isinstance(kernel_sizes, int) and isinstance(num_filters, int):
+    kernel_sizes = [kernel_sizes]
+    num_filters = [num_filters]
+  assert len(kernel_sizes) == len(num_filters)
   if use_depthwise:
     conv_fn = tf.keras.layers.SeparableConv2D
   else:
@@ -175,16 +184,18 @@ def make_prediction_net(num_out_channels, kernel_size=3, num_filters=256,
   if bias_fill is not None:
     out_conv.bias_initializer = tf.keras.initializers.constant(bias_fill)
 
-  net = tf.keras.Sequential([
-      conv_fn(
-          num_filters,
-          kernel_size=kernel_size,
-          padding='same',
-          name='conv2' if tf_version.is_tf1() else None),
-      tf.keras.layers.ReLU(), out_conv
-  ],
-                            name=name)
-
+  layers = []
+  for idx, (kernel_size,
+            num_filter) in enumerate(zip(kernel_sizes, num_filters)):
+    layers.append(
+        conv_fn(
+            num_filter,
+            kernel_size=kernel_size,
+            padding='same',
+            name='conv2_%d' % idx if tf_version.is_tf1() else None))
+    layers.append(tf.keras.layers.ReLU())
+  layers.append(out_conv)
+  net = tf.keras.Sequential(layers, name=name)
   return net
 
 
@@ -1687,7 +1698,10 @@ class KeypointEstimationParams(
         'offset_peak_radius', 'per_keypoint_offset', 'predict_depth',
         'per_keypoint_depth', 'keypoint_depth_loss_weight',
         'score_distance_offset', 'clip_out_of_frame_keypoints',
-        'rescore_instances'
+        'rescore_instances', 'heatmap_head_num_filters',
+        'heatmap_head_kernel_sizes', 'offset_head_num_filters',
+        'offset_head_kernel_sizes', 'regress_head_num_filters',
+        'regress_head_kernel_sizes'
     ])):
   """Namedtuple to host object detection related parameters.
 
@@ -1726,7 +1740,13 @@ class KeypointEstimationParams(
               keypoint_depth_loss_weight=1.0,
               score_distance_offset=1e-6,
               clip_out_of_frame_keypoints=False,
-              rescore_instances=False):
+              rescore_instances=False,
+              heatmap_head_num_filters=(256),
+              heatmap_head_kernel_sizes=(3),
+              offset_head_num_filters=(256),
+              offset_head_kernel_sizes=(3),
+              regress_head_num_filters=(256),
+              regress_head_kernel_sizes=(3)):
     """Constructor with default values for KeypointEstimationParams.
 
     Args:
@@ -1806,6 +1826,18 @@ class KeypointEstimationParams(
         that are clipped have scores set to 0.0.
       rescore_instances: Whether to rescore instances based on a combination of
         detection score and keypoint scores.
+      heatmap_head_num_filters: filter numbers of the convolutional layers used
+        by the keypoint heatmap prediction head.
+      heatmap_head_kernel_sizes: kernel size of the convolutional layers used
+        by the keypoint heatmap prediction head.
+      offset_head_num_filters: filter numbers of the convolutional layers used
+        by the keypoint offset prediction head.
+      offset_head_kernel_sizes: kernel size of the convolutional layers used
+        by the keypoint offset prediction head.
+      regress_head_num_filters: filter numbers of the convolutional layers used
+        by the keypoint regression prediction head.
+      regress_head_kernel_sizes: kernel size of the convolutional layers used
+        by the keypoint regression prediction head.
 
     Returns:
       An initialized KeypointEstimationParams namedtuple.
@@ -1820,14 +1852,18 @@ class KeypointEstimationParams(
         candidate_search_scale, candidate_ranking_mode, offset_peak_radius,
         per_keypoint_offset, predict_depth, per_keypoint_depth,
         keypoint_depth_loss_weight, score_distance_offset,
-        clip_out_of_frame_keypoints, rescore_instances)
+        clip_out_of_frame_keypoints, rescore_instances,
+        heatmap_head_num_filters, heatmap_head_kernel_sizes,
+        offset_head_num_filters, offset_head_kernel_sizes,
+        regress_head_num_filters, regress_head_kernel_sizes)
 
 
 class ObjectCenterParams(
     collections.namedtuple('ObjectCenterParams', [
         'classification_loss', 'object_center_loss_weight', 'heatmap_bias_init',
         'min_box_overlap_iou', 'max_box_predictions', 'use_labeled_classes',
-        'keypoint_weights_for_center'
+        'keypoint_weights_for_center', 'center_head_num_filters',
+        'center_head_kernel_sizes'
     ])):
   """Namedtuple to store object center prediction related parameters."""
 
@@ -1840,7 +1876,9 @@ class ObjectCenterParams(
               min_box_overlap_iou=0.7,
               max_box_predictions=100,
               use_labeled_classes=False,
-              keypoint_weights_for_center=None):
+              keypoint_weights_for_center=None,
+              center_head_num_filters=(256),
+              center_head_kernel_sizes=(3)):
     """Constructor with default values for ObjectCenterParams.
 
     Args:
@@ -1861,7 +1899,10 @@ class ObjectCenterParams(
         center is calculated by the weighted mean of the keypoint locations. If
         not provided, the object center is determined by the center of the
         bounding box (default behavior).
-
+      center_head_num_filters: filter numbers of the convolutional layers used
+        by the object center prediction head.
+      center_head_kernel_sizes: kernel size of the convolutional layers used
+        by the object center prediction head.
     Returns:
       An initialized ObjectCenterParams namedtuple.
     """
@@ -1869,7 +1910,8 @@ class ObjectCenterParams(
                  cls).__new__(cls, classification_loss,
                               object_center_loss_weight, heatmap_bias_init,
                               min_box_overlap_iou, max_box_predictions,
-                              use_labeled_classes, keypoint_weights_for_center)
+                              use_labeled_classes, keypoint_weights_for_center,
+                              center_head_num_filters, center_head_kernel_sizes)
 
 
 class MaskParams(
@@ -2194,14 +2236,14 @@ class CenterNetMetaArch(model.DetectionModel):
     return self._batched_prediction_tensor_names
 
   def _make_prediction_net_list(self, num_feature_outputs, num_out_channels,
-                                kernel_size=3, num_filters=256, bias_fill=None,
-                                name=None):
+                                kernel_sizes=(3), num_filters=(256),
+                                bias_fill=None, name=None):
     prediction_net_list = []
     for i in range(num_feature_outputs):
       prediction_net_list.append(
           make_prediction_net(
               num_out_channels,
-              kernel_size=kernel_size,
+              kernel_sizes=kernel_sizes,
               num_filters=num_filters,
               bias_fill=bias_fill,
               use_depthwise=self._use_depthwise,
@@ -2229,7 +2271,11 @@ class CenterNetMetaArch(model.DetectionModel):
     """
     prediction_heads = {}
     prediction_heads[OBJECT_CENTER] = self._make_prediction_net_list(
-        num_feature_outputs, num_classes, bias_fill=class_prediction_bias_init,
+        num_feature_outputs,
+        num_classes,
+        kernel_sizes=self._center_params.center_head_kernel_sizes,
+        num_filters=self._center_params.center_head_num_filters,
+        bias_fill=class_prediction_bias_init,
         name='center')
 
     if self._od_params is not None:
@@ -2245,12 +2291,16 @@ class CenterNetMetaArch(model.DetectionModel):
             task_name, KEYPOINT_HEATMAP)] = self._make_prediction_net_list(
                 num_feature_outputs,
                 num_keypoints,
+                kernel_sizes=kp_params.heatmap_head_kernel_sizes,
+                num_filters=kp_params.heatmap_head_num_filters,
                 bias_fill=kp_params.heatmap_bias_init,
                 name='kpt_heatmap')
         prediction_heads[get_keypoint_name(
             task_name, KEYPOINT_REGRESSION)] = self._make_prediction_net_list(
                 num_feature_outputs,
                 NUM_OFFSET_CHANNELS * num_keypoints,
+                kernel_sizes=kp_params.regress_head_kernel_sizes,
+                num_filters=kp_params.regress_head_num_filters,
                 name='kpt_regress')
 
         if kp_params.per_keypoint_offset:
@@ -2258,11 +2308,17 @@ class CenterNetMetaArch(model.DetectionModel):
               task_name, KEYPOINT_OFFSET)] = self._make_prediction_net_list(
                   num_feature_outputs,
                   NUM_OFFSET_CHANNELS * num_keypoints,
+                  kernel_sizes=kp_params.offset_head_kernel_sizes,
+                  num_filters=kp_params.offset_head_num_filters,
                   name='kpt_offset')
         else:
           prediction_heads[get_keypoint_name(
               task_name, KEYPOINT_OFFSET)] = self._make_prediction_net_list(
-                  num_feature_outputs, NUM_OFFSET_CHANNELS, name='kpt_offset')
+                  num_feature_outputs,
+                  NUM_OFFSET_CHANNELS,
+                  kernel_sizes=kp_params.offset_head_kernel_sizes,
+                  num_filters=kp_params.offset_head_num_filters,
+                  name='kpt_offset')
 
         if kp_params.predict_depth:
           num_depth_channel = (
