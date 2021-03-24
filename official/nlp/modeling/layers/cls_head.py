@@ -36,7 +36,8 @@ class ClassificationHead(tf.keras.layers.Layer):
     """Initializes the `ClassificationHead`.
 
     Args:
-      inner_dim: The dimensionality of inner projection layer.
+      inner_dim: The dimensionality of inner projection layer. If 0 or `None`
+        then only the output projection layer is created.
       num_classes: Number of output classes.
       cls_token_idx: The index inside the sequence to pool.
       activation: Dense layer activation.
@@ -52,19 +53,25 @@ class ClassificationHead(tf.keras.layers.Layer):
     self.initializer = tf.keras.initializers.get(initializer)
     self.cls_token_idx = cls_token_idx
 
-    self.dense = tf.keras.layers.Dense(
-        units=inner_dim,
-        activation=self.activation,
-        kernel_initializer=self.initializer,
-        name="pooler_dense")
-    self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
+    if self.inner_dim:
+      self.dense = tf.keras.layers.Dense(
+          units=self.inner_dim,
+          activation=self.activation,
+          kernel_initializer=self.initializer,
+          name="pooler_dense")
+      self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
+
     self.out_proj = tf.keras.layers.Dense(
         units=num_classes, kernel_initializer=self.initializer, name="logits")
 
   def call(self, features):
-    x = features[:, self.cls_token_idx, :]  # take <CLS> token.
-    x = self.dense(x)
-    x = self.dropout(x)
+    if not self.inner_dim:
+      x = features
+    else:
+      x = features[:, self.cls_token_idx, :]  # take <CLS> token.
+      x = self.dense(x)
+      x = self.dropout(x)
+
     x = self.out_proj(x)
     return x
 
@@ -103,7 +110,8 @@ class MultiClsHeads(tf.keras.layers.Layer):
     """Initializes the `MultiClsHeads`.
 
     Args:
-      inner_dim: The dimensionality of inner projection layer.
+      inner_dim: The dimensionality of inner projection layer. If 0 or `None`
+        then only the output projection layer is created.
       cls_list: a list of pairs of (classification problem name and the numbers
         of classes.
       cls_token_idx: The index inside the sequence to pool.
@@ -120,12 +128,13 @@ class MultiClsHeads(tf.keras.layers.Layer):
     self.initializer = tf.keras.initializers.get(initializer)
     self.cls_token_idx = cls_token_idx
 
-    self.dense = tf.keras.layers.Dense(
-        units=inner_dim,
-        activation=self.activation,
-        kernel_initializer=self.initializer,
-        name="pooler_dense")
-    self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
+    if self.inner_dim:
+      self.dense = tf.keras.layers.Dense(
+          units=inner_dim,
+          activation=self.activation,
+          kernel_initializer=self.initializer,
+          name="pooler_dense")
+      self.dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     self.out_projs = []
     for name, num_classes in cls_list:
       self.out_projs.append(
@@ -134,9 +143,13 @@ class MultiClsHeads(tf.keras.layers.Layer):
               name=name))
 
   def call(self, features):
-    x = features[:, self.cls_token_idx, :]  # take <CLS> token.
-    x = self.dense(x)
-    x = self.dropout(x)
+    if not self.inner_dim:
+      x = features
+    else:
+      x = features[:, self.cls_token_idx, :]  # take <CLS> token.
+      x = self.dense(x)
+      x = self.dropout(x)
+
     outputs = {}
     for proj_layer in self.out_projs:
       outputs[proj_layer.name] = proj_layer(x)
@@ -195,7 +208,8 @@ class GaussianProcessClassificationHead(ClassificationHead):
     """Initializes the `GaussianProcessClassificationHead`.
 
     Args:
-      inner_dim: The dimensionality of inner projection layer.
+      inner_dim: The dimensionality of inner projection layer. If 0 or `None`
+        then only the output projection layer is created.
       num_classes: Number of output classes.
       cls_token_idx: The index inside the sequence to pool.
       activation: Dense layer activation.
@@ -220,8 +234,8 @@ class GaussianProcessClassificationHead(ClassificationHead):
         initializer=initializer,
         **kwargs)
 
-    # Applies spectral normalization to the pooler layer.
-    if use_spec_norm:
+    # Applies spectral normalization to the dense pooler layer.
+    if self.use_spec_norm and hasattr(self, "dense"):
       self.dense = spectral_normalization.SpectralNormalization(
           self.dense, inhere_layer_name=True, **self.spec_norm_kwargs)
 
