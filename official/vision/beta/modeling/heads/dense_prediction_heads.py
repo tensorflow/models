@@ -100,16 +100,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
         'bias_initializer': tf.zeros_initializer(),
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
-    if self._config_dict['use_separable_conv']:
-      conv_kwargs.update({
-          'depthwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=0.01),
-          'pointwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=0.01),
-          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
-      })
-    else:
+    if not self._config_dict['use_separable_conv']:
       conv_kwargs.update({
           'kernel_initializer': tf.keras.initializers.RandomNormal(
               stddev=0.01),
@@ -147,19 +138,9 @@ class RetinaNetHead(tf.keras.layers.Layer):
         'bias_initializer': tf.constant_initializer(-np.log((1 - 0.01) / 0.01)),
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
-    if self._config_dict['use_separable_conv']:
+    if not self._config_dict['use_separable_conv']:
       classifier_kwargs.update({
-          'depthwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'pointwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
-      })
-    else:
-      classifier_kwargs.update({
-          'kernel_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
+          'kernel_initializer': tf.keras.initializers.RandomNormal(stddev=1e-5),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
       })
     self._classifier = conv_op(name='scores', **classifier_kwargs)
@@ -185,16 +166,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
         'bias_initializer': tf.zeros_initializer(),
         'bias_regularizer': self._config_dict['bias_regularizer'],
     }
-    if self._config_dict['use_separable_conv']:
-      box_regressor_kwargs.update({
-          'depthwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'pointwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
-      })
-    else:
+    if not self._config_dict['use_separable_conv']:
       box_regressor_kwargs.update({
           'kernel_initializer': tf.keras.initializers.RandomNormal(
               stddev=1e-5),
@@ -331,25 +303,14 @@ class RPNHead(tf.keras.layers.Layer):
         'filters': self._config_dict['num_filters'],
         'kernel_size': 3,
         'padding': 'same',
+        'bias_initializer': tf.zeros_initializer(),
+        'bias_regularizer': self._config_dict['bias_regularizer'],
     }
-    if self._config_dict['use_separable_conv']:
-      conv_kwargs.update({
-          'depthwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=0.01),
-          'pointwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=0.01),
-          'bias_initializer': tf.zeros_initializer(),
-          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
-      })
-    else:
+    if not self._config_dict['use_separable_conv']:
       conv_kwargs.update({
           'kernel_initializer': tf.keras.initializers.RandomNormal(
               stddev=0.01),
-          'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
       })
     bn_op = (tf.keras.layers.experimental.SyncBatchNormalization
              if self._config_dict['use_sync_bn']
@@ -377,25 +338,14 @@ class RPNHead(tf.keras.layers.Layer):
         'filters': self._config_dict['num_anchors_per_location'],
         'kernel_size': 1,
         'padding': 'valid',
+        'bias_initializer': tf.zeros_initializer(),
+        'bias_regularizer': self._config_dict['bias_regularizer'],
     }
-    if self._config_dict['use_separable_conv']:
-      classifier_kwargs.update({
-          'depthwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'pointwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'bias_initializer': tf.zeros_initializer(),
-          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
-      })
-    else:
+    if not self._config_dict['use_separable_conv']:
       classifier_kwargs.update({
           'kernel_initializer': tf.keras.initializers.RandomNormal(
               stddev=1e-5),
-          'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
       })
     self._classifier = conv_op(name='rpn-scores', **classifier_kwargs)
 
@@ -403,25 +353,14 @@ class RPNHead(tf.keras.layers.Layer):
         'filters': 4 * self._config_dict['num_anchors_per_location'],
         'kernel_size': 1,
         'padding': 'valid',
+        'bias_initializer': tf.zeros_initializer(),
+        'bias_regularizer': self._config_dict['bias_regularizer'],
     }
-    if self._config_dict['use_separable_conv']:
-      box_regressor_kwargs.update({
-          'depthwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'pointwise_initializer': tf.keras.initializers.RandomNormal(
-              stddev=1e-5),
-          'bias_initializer': tf.zeros_initializer(),
-          'depthwise_regularizer': self._config_dict['kernel_regularizer'],
-          'pointwise_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
-      })
-    else:
+    if not self._config_dict['use_separable_conv']:
       box_regressor_kwargs.update({
           'kernel_initializer': tf.keras.initializers.RandomNormal(
               stddev=1e-5),
-          'bias_initializer': tf.zeros_initializer(),
           'kernel_regularizer': self._config_dict['kernel_regularizer'],
-          'bias_regularizer': self._config_dict['bias_regularizer'],
       })
     self._box_regressor = conv_op(name='rpn-boxes', **box_regressor_kwargs)
 
