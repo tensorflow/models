@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Semantic segmentation configuration definition."""
 import os
 from typing import List, Optional, Union
@@ -405,7 +405,9 @@ def seg_deeplabv3plus_cityscapes() -> cfg.ExperimentConfig:
   config = cfg.ExperimentConfig(
       task=SemanticSegmentationTask(
           model=SemanticSegmentationModel(
-              num_classes=20,
+              # Cityscapes uses only 19 semantic classes for train/evaluation.
+              # The void (background) class is ignored in train and evaluation.
+              num_classes=19,
               input_size=[None, None, 3],
               backbone=backbones.Backbone(
                   type='dilated_resnet', dilated_resnet=backbones.DilatedResNet(

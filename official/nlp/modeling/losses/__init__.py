@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Activations package definition. Subject to change."""
+"""Losses contains common loss computation used in NLP (subject to change)."""
 from official.nlp.modeling.losses.weighted_sparse_categorical_crossentropy import loss as weighted_sparse_categorical_crossentropy_loss

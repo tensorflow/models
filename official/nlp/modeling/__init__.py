@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Modeling package definition."""
+"""NLP Modeling Library.
+
+This library provides a set of Keras primitives (`tf.keras.Layer` and
+`tf.keras.Model`) that can be assembled into transformer-based models.
+They are flexible, validated, interoperable, and both TF1 and TF2 compatible.
+"""
 from official.nlp.modeling import layers
 from official.nlp.modeling import losses
 from official.nlp.modeling import models

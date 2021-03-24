@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Tests for resnet."""
 
 # Import libraries
@@ -47,16 +47,16 @@ class ResNet3DTest(parameterized.TestCase, tf.test.TestCase):
 
     self.assertAllEqual([
         1, 2, input_size / 2**2, input_size / 2**2, 64 * endpoint_filter_scale
-    ], endpoints[2].shape.as_list())
+    ], endpoints['2'].shape.as_list())
     self.assertAllEqual([
         1, 2, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale
-    ], endpoints[3].shape.as_list())
+    ], endpoints['3'].shape.as_list())
     self.assertAllEqual([
         1, 2, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale
-    ], endpoints[4].shape.as_list())
+    ], endpoints['4'].shape.as_list())
     self.assertAllEqual([
         1, 2, input_size / 2**5, input_size / 2**5, 512 * endpoint_filter_scale
-    ], endpoints[5].shape.as_list())
+    ], endpoints['5'].shape.as_list())
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.

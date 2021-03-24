@@ -232,7 +232,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         tf.keras.layers.LayerNormalization(
             name="self_attention_layer_norm",
             axis=-1,
-            epsilon=self._norm_epsilon))
+            epsilon=self._norm_epsilon,
+            dtype="float32"))
     # Encoder-decoder attention.
     self.encdec_attention = self._cross_attention_cls(
         num_heads=self.num_attention_heads,
@@ -250,7 +251,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         tf.keras.layers.LayerNormalization(
             name="attention/encdec_output_layer_norm",
             axis=-1,
-            epsilon=self._norm_epsilon))
+            epsilon=self._norm_epsilon,
+            dtype="float32"))
 
     # Feed-forward projection.
     self.intermediate_dense = tf.keras.layers.experimental.EinsumDense(
@@ -273,7 +275,8 @@ class TransformerDecoderBlock(tf.keras.layers.Layer):
         **common_kwargs)
     self.output_dropout = tf.keras.layers.Dropout(rate=self.dropout_rate)
     self.output_layer_norm = tf.keras.layers.LayerNormalization(
-        name="output_layer_norm", axis=-1, epsilon=self._norm_epsilon)
+        name="output_layer_norm", axis=-1,
+        epsilon=self._norm_epsilon, dtype="float32")
     super().build(input_shape)
 
   def get_config(self):

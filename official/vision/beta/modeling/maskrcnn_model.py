@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Mask R-CNN model."""
 
 # Import libraries
@@ -178,6 +178,7 @@ class MaskRCNNModel(tf.keras.Model):
 
     # Mask head.
     raw_masks = self.mask_head([mask_roi_features, roi_classes])
+
     if training:
       model_outputs.update({
           'mask_outputs': raw_masks,
@@ -187,6 +188,20 @@ class MaskRCNNModel(tf.keras.Model):
           'detection_masks': tf.math.sigmoid(raw_masks),
       })
     return model_outputs
+
+  @property
+  def checkpoint_items(self):
+    """Returns a dictionary of items to be additionally checkpointed."""
+    items = dict(
+        backbone=self.backbone,
+        rpn_head=self.rpn_head,
+        detection_head=self.detection_head)
+    if self.decoder is not None:
+      items.update(decoder=self.decoder)
+    if self._include_mask:
+      items.update(mask_head=self.mask_head)
+
+    return items
 
   def get_config(self):
     return self._config_dict

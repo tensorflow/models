@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Contains definitions of 3D Residual Networks."""
 from typing import List, Tuple
 
@@ -163,7 +163,7 @@ class ResNet3D(tf.keras.Model):
           block_repeats=resnet_spec[2],
           use_self_gating=use_self_gating[i] if use_self_gating else False,
           name='block_group_l{}'.format(i + 2))
-      endpoints[i + 2] = x
+      endpoints[str(i + 2)] = x
 
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 

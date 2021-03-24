@@ -125,22 +125,24 @@ def change_coordinate_frame(keypoints, window, scope=None):
     return new_keypoints
 
 
-def keypoints_to_enclosing_bounding_boxes(keypoints):
+def keypoints_to_enclosing_bounding_boxes(keypoints, keypoints_axis=1):
   """Creates enclosing bounding boxes from keypoints.
 
   Args:
     keypoints: a [num_instances, num_keypoints, 2] float32 tensor with keypoints
       in [y, x] format.
+    keypoints_axis: An integer indicating the axis that correspond to the
+      keypoint dimension.
 
   Returns:
     A [num_instances, 4] float32 tensor that tightly covers all the keypoints
     for each instance.
   """
-  ymin = tf.math.reduce_min(keypoints[:, :, 0], axis=1)
-  xmin = tf.math.reduce_min(keypoints[:, :, 1], axis=1)
-  ymax = tf.math.reduce_max(keypoints[:, :, 0], axis=1)
-  xmax = tf.math.reduce_max(keypoints[:, :, 1], axis=1)
-  return tf.stack([ymin, xmin, ymax, xmax], axis=1)
+  ymin = tf.math.reduce_min(keypoints[..., 0], axis=keypoints_axis)
+  xmin = tf.math.reduce_min(keypoints[..., 1], axis=keypoints_axis)
+  ymax = tf.math.reduce_max(keypoints[..., 0], axis=keypoints_axis)
+  xmax = tf.math.reduce_max(keypoints[..., 1], axis=keypoints_axis)
+  return tf.stack([ymin, xmin, ymax, xmax], axis=keypoints_axis)
 
 
 def to_normalized_coordinates(keypoints, height, width,

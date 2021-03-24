@@ -68,21 +68,6 @@ class StandardTrainerOptions:
   use_tpu_summary_optimization: bool = False
 
 
-def _create_train_loop_fn(train_step_fn, options: StandardTrainerOptions):
-  """Creates a training loop from the given step function and options."""
-  if options.use_tf_while_loop:
-    loop_fn = loop_fns.create_tf_while_loop_fn(train_step_fn)
-    if options.use_tpu_summary_optimization:
-      loop_fn = loop_fns.LoopFnWithSummaries(loop_fn)
-    else:
-      loop_fn = tf.function(loop_fn)
-  else:
-    if options.use_tf_function:
-      train_step_fn = tf.function(train_step_fn)
-    loop_fn = loop_fns.create_loop_fn(train_step_fn)
-  return loop_fn
-
-
 class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
   """Implements standard functionality on top of the AbstractTrainer API.
 
@@ -119,6 +104,25 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
     self._train_iter = None
     self._train_loop_fn = None
 
+  def create_train_loop_fn(self):
+    """Creates a training loop from the current step function and options.
+
+    Returns:
+      The train loop function, i.e. wrapper of multiple train steps.
+    """
+    train_step_fn = self.train_step
+    if self._train_options.use_tf_while_loop:
+      loop_fn = loop_fns.create_tf_while_loop_fn(train_step_fn)
+      if self._train_options.use_tpu_summary_optimization:
+        loop_fn = loop_fns.LoopFnWithSummaries(loop_fn)
+      else:
+        loop_fn = tf.function(loop_fn)
+    else:
+      if self._train_options.use_tf_function:
+        train_step_fn = tf.function(train_step_fn)
+      loop_fn = loop_fns.create_loop_fn(train_step_fn)
+    return loop_fn
+
   def train(self, num_steps: tf.Tensor) -> Optional[runner.Output]:
     """Implements `num_steps` steps of training.
 
@@ -132,8 +136,7 @@ class StandardTrainer(runner.AbstractTrainer, metaclass=abc.ABCMeta):
     self.train_loop_begin()
 
     if self._train_loop_fn is None:
-      self._train_loop_fn = _create_train_loop_fn(
-          self.train_step, options=self._train_options)
+      self._train_loop_fn = self.create_train_loop_fn()
 
     if self._train_iter is None:
       self._train_iter = tf.nest.map_structure(iter, self.train_dataset)
@@ -217,28 +220,17 @@ class StandardEvaluatorOptions:
       in eager mode.
     use_tf_while_loop: A boolean indicating whether to run the training loop
       using a `tf.while_loop`. If `True`, `use_tf_function` must also be `True`.
+    recreate_iterator_for_each_eval: A boolean indicating whether to recreate a
+      new iterator for the evaluation dataset before each round of evaluation,
+      which implies each round of evaluation starts from the beginning of
+      the evaluation dataset. For example, the evaluation dataset is
+      `[1, 2, 3, 4]`, batch size is 1 and evaluation steps is 2. If `True`, the
+      data to be evaluated is [1, 2] every time. If `False`, the iterator
+      state is maintained between calls to `StandardEvaluator.evaluate()`.
   """
   use_tf_function: bool = True
   use_tf_while_loop: bool = False
-
-
-def _create_eval_loop_fn(eval_step_fn, has_state: bool,
-                         options: StandardEvaluatorOptions):
-  """Create evaluation loop function."""
-  if options.use_tf_while_loop:
-    # TODO(b/176126742): tf.while_loop doesn't support `None` as a loop input
-    # even when it is not used inside the loop. To workaround this limitation,
-    # we have to build two tf.functions for it.
-    if has_state:
-      loop_fn = loop_fns.create_tf_while_loop_fn_with_state(eval_step_fn)
-    else:
-      loop_fn = loop_fns.create_tf_while_loop_fn(eval_step_fn)
-    loop_fn = tf.function(loop_fn)
-  else:
-    if options.use_tf_function:
-      eval_step_fn = tf.function(eval_step_fn)
-    loop_fn = loop_fns.create_loop_fn(eval_step_fn)
-  return loop_fn
+  recreate_iterator_for_each_eval: bool = True
 
 
 class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
@@ -277,7 +269,33 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
 
     self._eval_options = options
     self._eval_dataset = eval_dataset
+    self._eval_iter = None
     self._eval_loop_fn = None
+
+  def create_eval_loop_fn(self, has_state: bool):
+    """Creates an eval loop from the current step function and options.
+
+    Args:
+      has_state: If the step function has state, state will be kept in the loop.
+
+    Returns:
+      The eval loop function, i.e. wrapper of multiple eval steps.
+    """
+    eval_step_fn = self.eval_step
+    if self._eval_options.use_tf_while_loop:
+      # TODO(b/176126742): tf.while_loop doesn't support `None` as a loop input
+      # even when it is not used inside the loop. To workaround this limitation,
+      # we have to build two tf.functions for it.
+      if has_state:
+        loop_fn = loop_fns.create_tf_while_loop_fn_with_state(eval_step_fn)
+      else:
+        loop_fn = loop_fns.create_tf_while_loop_fn(eval_step_fn)
+      loop_fn = tf.function(loop_fn)
+    else:
+      if self._eval_options.use_tf_function:
+        eval_step_fn = tf.function(eval_step_fn)
+      loop_fn = loop_fns.create_loop_fn(eval_step_fn)
+    return loop_fn
 
   def evaluate(self, num_steps: tf.Tensor) -> Optional[runner.Output]:
     """Implements `num_steps` steps of evaluation.
@@ -302,10 +320,17 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
 
     has_state = outputs is not None
     if self._eval_loop_fn is None:
-      self._eval_loop_fn = _create_eval_loop_fn(
-          self.eval_step, has_state=has_state, options=self._eval_options)
+      self._eval_loop_fn = self.create_eval_loop_fn(has_state)
 
-    eval_iter = tf.nest.map_structure(iter, self.eval_dataset)
+    # If `recreate_iterator_for_each_eval` is `True`, `self._eval_iter` is
+    # always None.
+    if self._eval_iter is None:
+      eval_iter = tf.nest.map_structure(iter, self.eval_dataset)
+      if not self._eval_options.recreate_iterator_for_each_eval:
+        self._eval_iter = eval_iter
+    else:
+      eval_iter = self._eval_iter
+
     if self._eval_options.use_tf_while_loop and not has_state:
       self._eval_loop_fn(eval_iter, num_steps)
     else:
@@ -413,3 +438,4 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
         `DistributedDataset`.
     """
     self._eval_dataset = eval_dataset
+    self._eval_iter = None

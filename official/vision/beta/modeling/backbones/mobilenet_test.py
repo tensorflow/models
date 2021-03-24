@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Tests for MobileNet."""
 
 import itertools
@@ -109,27 +109,27 @@ class MobileNetTest(parameterized.TestCase, tf.test.TestCase):
     tf.keras.backend.set_image_data_format('channels_last')
 
     mobilenet_layers = {
-        # The stride (relative to input) and number of filters
-        # of first few layers for filter_size_scale = 0.75
-        'MobileNetV1': [(1, 24), (1, 48), (2, 96), (2, 96)],
-        'MobileNetV2': [(1, 24), (1, 16), (2, 24), (2, 24)],
-        'MobileNetV3Small': [(1, 16), (2, 16), (3, 24), (3, 24)],
-        'MobileNetV3Large': [(1, 16), (1, 16), (2, 24), (2, 24)],
-        'MobileNetV3EdgeTPU': [(1, 24), (1, 16), (2, 24), (2, 24)],
-        'MobileNetMultiMAX': [(1, 24), (2, 24), (3, 48), (3, 48)],
-        'MobileNetMultiAVG': [(1, 24), (2, 24), (2, 24), (3, 48)],
+        # The number of filters of layers having outputs been collected
+        # for filter_size_scale = 1.0
+        'MobileNetV1': [128, 256, 512, 1024],
+        'MobileNetV2': [24, 32, 96, 320],
+        'MobileNetV3Small': [16, 24, 48, 96],
+        'MobileNetV3Large': [24, 40, 112, 160],
+        'MobileNetV3EdgeTPU': [32, 48, 96, 192],
+        'MobileNetMultiMAX': [32, 64, 128, 160],
+        'MobileNetMultiAVG': [32, 64, 160, 192],
     }
 
     network = mobilenet.MobileNet(model_id=model_id,
-                                  filter_size_scale=0.75)
+                                  filter_size_scale=1.0)
 
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
-    for idx, (stride, num_filter) in enumerate(mobilenet_layers[model_id]):
+    for idx, num_filter in enumerate(mobilenet_layers[model_id]):
       self.assertAllEqual(
-          [1, input_size / 2 ** stride, input_size / 2 ** stride, num_filter],
-          endpoints[idx+1].shape.as_list())
+          [1, input_size / 2 ** (idx+2), input_size / 2 ** (idx+2), num_filter],
+          endpoints[str(idx+2)].shape.as_list())
 
   @parameterized.parameters(
       itertools.product(

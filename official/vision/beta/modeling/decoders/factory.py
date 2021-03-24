@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""factory method."""
+
+# Lint as: python3
+"""Contains the factory method to create decoders."""
+
 # Import libraries
 import tensorflow as tf
 
@@ -26,13 +27,14 @@ def build_decoder(input_specs,
   """Builds decoder from a config.
 
   Args:
-    input_specs: `dict` input specifications. A dictionary consists of
+    input_specs: A `dict` of input specifications. A dictionary consists of
       {level: TensorShape} from a backbone.
     model_config: A OneOfConfig. Model config.
-    l2_regularizer: tf.keras.regularizers.Regularizer instance. Default to None.
+    l2_regularizer: A `tf.keras.regularizers.Regularizer` instance. Default to
+      None.
 
   Returns:
-    tf.keras.Model instance of the decoder.
+    A `tf.keras.Model` instance of the decoder.
   """
   decoder_type = model_config.decoder.type
   decoder_cfg = model_config.decoder.get()

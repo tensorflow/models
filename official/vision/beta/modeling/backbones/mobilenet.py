@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Contains definitions of MobileNet Networks."""
 
 from typing import Optional, Dict, Any, Tuple
@@ -148,22 +148,23 @@ Weijun Wang, Tobias Weyand, Marco Andreetto, Hartwig Adam
 """
 MNV1_BLOCK_SPECS = {
     'spec_name': 'MobileNetV1',
-    'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters'],
+    'block_spec_schema': ['block_fn', 'kernel_size', 'strides',
+                          'filters', 'is_output'],
     'block_specs': [
-        ('convbn', 3, 2, 32),
-        ('depsepconv', 3, 1, 64),
-        ('depsepconv', 3, 2, 128),
-        ('depsepconv', 3, 1, 128),
-        ('depsepconv', 3, 2, 256),
-        ('depsepconv', 3, 1, 256),
-        ('depsepconv', 3, 2, 512),
-        ('depsepconv', 3, 1, 512),
-        ('depsepconv', 3, 1, 512),
-        ('depsepconv', 3, 1, 512),
-        ('depsepconv', 3, 1, 512),
-        ('depsepconv', 3, 1, 512),
-        ('depsepconv', 3, 2, 1024),
-        ('depsepconv', 3, 1, 1024),
+        ('convbn', 3, 2, 32, False),
+        ('depsepconv', 3, 1, 64, False),
+        ('depsepconv', 3, 2, 128, False),
+        ('depsepconv', 3, 1, 128, True),
+        ('depsepconv', 3, 2, 256, False),
+        ('depsepconv', 3, 1, 256, True),
+        ('depsepconv', 3, 2, 512, False),
+        ('depsepconv', 3, 1, 512, False),
+        ('depsepconv', 3, 1, 512, False),
+        ('depsepconv', 3, 1, 512, False),
+        ('depsepconv', 3, 1, 512, False),
+        ('depsepconv', 3, 1, 512, True),
+        ('depsepconv', 3, 2, 1024, False),
+        ('depsepconv', 3, 1, 1024, True),
     ]
 }
 
@@ -176,27 +177,27 @@ Mark Sandler, Andrew Howard, Menglong Zhu, Andrey Zhmoginov, Liang-Chieh Chen
 MNV2_BLOCK_SPECS = {
     'spec_name': 'MobileNetV2',
     'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
-                          'expand_ratio'],
+                          'expand_ratio', 'is_output'],
     'block_specs': [
-        ('convbn', 3, 2, 32, None),
-        ('invertedbottleneck', 3, 1, 16, 1.),
-        ('invertedbottleneck', 3, 2, 24, 6.),
-        ('invertedbottleneck', 3, 1, 24, 6.),
-        ('invertedbottleneck', 3, 2, 32, 6.),
-        ('invertedbottleneck', 3, 1, 32, 6.),
-        ('invertedbottleneck', 3, 1, 32, 6.),
-        ('invertedbottleneck', 3, 2, 64, 6.),
-        ('invertedbottleneck', 3, 1, 64, 6.),
-        ('invertedbottleneck', 3, 1, 64, 6.),
-        ('invertedbottleneck', 3, 1, 64, 6.),
-        ('invertedbottleneck', 3, 1, 96, 6.),
-        ('invertedbottleneck', 3, 1, 96, 6.),
-        ('invertedbottleneck', 3, 1, 96, 6.),
-        ('invertedbottleneck', 3, 2, 160, 6.),
-        ('invertedbottleneck', 3, 1, 160, 6.),
-        ('invertedbottleneck', 3, 1, 160, 6.),
-        ('invertedbottleneck', 3, 1, 320, 6.),
-        ('convbn', 1, 1, 1280, None),
+        ('convbn', 3, 2, 32, None, False),
+        ('invertedbottleneck', 3, 1, 16, 1., False),
+        ('invertedbottleneck', 3, 2, 24, 6., False),
+        ('invertedbottleneck', 3, 1, 24, 6., True),
+        ('invertedbottleneck', 3, 2, 32, 6., False),
+        ('invertedbottleneck', 3, 1, 32, 6., False),
+        ('invertedbottleneck', 3, 1, 32, 6., True),
+        ('invertedbottleneck', 3, 2, 64, 6., False),
+        ('invertedbottleneck', 3, 1, 64, 6., False),
+        ('invertedbottleneck', 3, 1, 64, 6., False),
+        ('invertedbottleneck', 3, 1, 64, 6., False),
+        ('invertedbottleneck', 3, 1, 96, 6., False),
+        ('invertedbottleneck', 3, 1, 96, 6., False),
+        ('invertedbottleneck', 3, 1, 96, 6., True),
+        ('invertedbottleneck', 3, 2, 160, 6., False),
+        ('invertedbottleneck', 3, 1, 160, 6., False),
+        ('invertedbottleneck', 3, 1, 160, 6., False),
+        ('invertedbottleneck', 3, 1, 320, 6., True),
+        ('convbn', 1, 1, 1280, None, False),
     ]
 }
 
@@ -211,27 +212,46 @@ MNV3Large_BLOCK_SPECS = {
     'spec_name': 'MobileNetV3Large',
     'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
                           'activation', 'se_ratio', 'expand_ratio',
-                          'use_normalization', 'use_bias'],
+                          'use_normalization', 'use_bias', 'is_output'],
     'block_specs': [
-        ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False),
-        ('invertedbottleneck', 3, 1, 16, 'relu', None, 1., None, False),
-        ('invertedbottleneck', 3, 2, 24, 'relu', None, 4., None, False),
-        ('invertedbottleneck', 3, 1, 24, 'relu', None, 3., None, False),
-        ('invertedbottleneck', 5, 2, 40, 'relu', 0.25, 3., None, False),
-        ('invertedbottleneck', 5, 1, 40, 'relu', 0.25, 3., None, False),
-        ('invertedbottleneck', 5, 1, 40, 'relu', 0.25, 3., None, False),
-        ('invertedbottleneck', 3, 2, 80, 'hard_swish', None, 6., None, False),
-        ('invertedbottleneck', 3, 1, 80, 'hard_swish', None, 2.5, None, False),
-        ('invertedbottleneck', 3, 1, 80, 'hard_swish', None, 2.3, None, False),
-        ('invertedbottleneck', 3, 1, 80, 'hard_swish', None, 2.3, None, False),
-        ('invertedbottleneck', 3, 1, 112, 'hard_swish', 0.25, 6., None, False),
-        ('invertedbottleneck', 3, 1, 112, 'hard_swish', 0.25, 6., None, False),
-        ('invertedbottleneck', 5, 2, 160, 'hard_swish', 0.25, 6., None, False),
-        ('invertedbottleneck', 5, 1, 160, 'hard_swish', 0.25, 6., None, False),
-        ('invertedbottleneck', 5, 1, 160, 'hard_swish', 0.25, 6., None, False),
-        ('convbn', 1, 1, 960, 'hard_swish', None, None, True, False),
-        ('gpooling', None, None, None, None, None, None, None, None),
-        ('convbn', 1, 1, 1280, 'hard_swish', None, None, False, True),
+        ('convbn', 3, 2, 16,
+         'hard_swish', None, None, True, False, False),
+        ('invertedbottleneck', 3, 1, 16,
+         'relu', None, 1., None, False, False),
+        ('invertedbottleneck', 3, 2, 24,
+         'relu', None, 4., None, False, False),
+        ('invertedbottleneck', 3, 1, 24,
+         'relu', None, 3., None, False, True),
+        ('invertedbottleneck', 5, 2, 40,
+         'relu', 0.25, 3., None, False, False),
+        ('invertedbottleneck', 5, 1, 40,
+         'relu', 0.25, 3., None, False, False),
+        ('invertedbottleneck', 5, 1, 40,
+         'relu', 0.25, 3., None, False, True),
+        ('invertedbottleneck', 3, 2, 80,
+         'hard_swish', None, 6., None, False, False),
+        ('invertedbottleneck', 3, 1, 80,
+         'hard_swish', None, 2.5, None, False, False),
+        ('invertedbottleneck', 3, 1, 80,
+         'hard_swish', None, 2.3, None, False, False),
+        ('invertedbottleneck', 3, 1, 80,
+         'hard_swish', None, 2.3, None, False, False),
+        ('invertedbottleneck', 3, 1, 112,
+         'hard_swish', 0.25, 6., None, False, False),
+        ('invertedbottleneck', 3, 1, 112,
+         'hard_swish', 0.25, 6., None, False, True),
+        ('invertedbottleneck', 5, 2, 160,
+         'hard_swish', 0.25, 6., None, False, False),
+        ('invertedbottleneck', 5, 1, 160,
+         'hard_swish', 0.25, 6., None, False, False),
+        ('invertedbottleneck', 5, 1, 160,
+         'hard_swish', 0.25, 6., None, False, True),
+        ('convbn', 1, 1, 960,
+         'hard_swish', None, None, True, False, False),
+        ('gpooling', None, None, None,
+         None, None, None, None, None, False),
+        ('convbn', 1, 1, 1280,
+         'hard_swish', None, None, False, True, False),
     ]
 }
 
@@ -239,23 +259,38 @@ MNV3Small_BLOCK_SPECS = {
     'spec_name': 'MobileNetV3Small',
     'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
                           'activation', 'se_ratio', 'expand_ratio',
-                          'use_normalization', 'use_bias'],
+                          'use_normalization', 'use_bias', 'is_output'],
     'block_specs': [
-        ('convbn', 3, 2, 16, 'hard_swish', None, None, True, False),
-        ('invertedbottleneck', 3, 2, 16, 'relu', 0.25, 1, None, False),
-        ('invertedbottleneck', 3, 2, 24, 'relu', None, 72. / 16, None, False),
-        ('invertedbottleneck', 3, 1, 24, 'relu', None, 88. / 24, None, False),
-        ('invertedbottleneck', 5, 2, 40, 'hard_swish', 0.25, 4., None, False),
-        ('invertedbottleneck', 5, 1, 40, 'hard_swish', 0.25, 6., None, False),
-        ('invertedbottleneck', 5, 1, 40, 'hard_swish', 0.25, 6., None, False),
-        ('invertedbottleneck', 5, 1, 48, 'hard_swish', 0.25, 3., None, False),
-        ('invertedbottleneck', 5, 1, 48, 'hard_swish', 0.25, 3., None, False),
-        ('invertedbottleneck', 5, 2, 96, 'hard_swish', 0.25, 6., None, False),
-        ('invertedbottleneck', 5, 1, 96, 'hard_swish', 0.25, 6., None, False),
-        ('invertedbottleneck', 5, 1, 96, 'hard_swish', 0.25, 6., None, False),
-        ('convbn', 1, 1, 576, 'hard_swish', None, None, True, False),
-        ('gpooling', None, None, None, None, None, None, None, None),
-        ('convbn', 1, 1, 1024, 'hard_swish', None, None, False, True),
+        ('convbn', 3, 2, 16,
+         'hard_swish', None, None, True, False, False),
+        ('invertedbottleneck', 3, 2, 16,
+         'relu', 0.25, 1, None, False, True),
+        ('invertedbottleneck', 3, 2, 24,
+         'relu', None, 72. / 16, None, False, False),
+        ('invertedbottleneck', 3, 1, 24,
+         'relu', None, 88. / 24, None, False, True),
+        ('invertedbottleneck', 5, 2, 40,
+         'hard_swish', 0.25, 4., None, False, False),
+        ('invertedbottleneck', 5, 1, 40,
+         'hard_swish', 0.25, 6., None, False, False),
+        ('invertedbottleneck', 5, 1, 40,
+         'hard_swish', 0.25, 6., None, False, False),
+        ('invertedbottleneck', 5, 1, 48,
+         'hard_swish', 0.25, 3., None, False, False),
+        ('invertedbottleneck', 5, 1, 48,
+         'hard_swish', 0.25, 3., None, False, True),
+        ('invertedbottleneck', 5, 2, 96,
+         'hard_swish', 0.25, 6., None, False, False),
+        ('invertedbottleneck', 5, 1, 96,
+         'hard_swish', 0.25, 6., None, False, False),
+        ('invertedbottleneck', 5, 1, 96,
+         'hard_swish', 0.25, 6., None, False, True),
+        ('convbn', 1, 1, 576,
+         'hard_swish', None, None, True, False, False),
+        ('gpooling', None, None, None,
+         None, None, None, None, None, False),
+        ('convbn', 1, 1, 1024,
+         'hard_swish', None, None, False, True, False),
     ]
 }
 
@@ -267,32 +302,32 @@ MNV3EdgeTPU_BLOCK_SPECS = {
     'spec_name': 'MobileNetV3EdgeTPU',
     'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
                           'activation', 'se_ratio', 'expand_ratio',
-                          'use_residual', 'use_depthwise'],
+                          'use_residual', 'use_depthwise', 'is_output'],
     'block_specs': [
-        ('convbn', 3, 2, 32, 'relu', None, None, None, None),
-        ('invertedbottleneck', 3, 1, 16, 'relu', None, 1., True, False),
-        ('invertedbottleneck', 3, 2, 32, 'relu', None, 8., True, False),
-        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False),
-        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False),
-        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False),
-        ('invertedbottleneck', 3, 2, 48, 'relu', None, 8., True, False),
-        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False),
-        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False),
-        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False),
-        ('invertedbottleneck', 3, 2, 96, 'relu', None, 8., True, True),
-        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 3, 1, 96, 'relu', None, 8., False, True),
-        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 5, 2, 160, 'relu', None, 8., True, True),
-        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True),
-        ('invertedbottleneck', 3, 1, 192, 'relu', None, 8., True, True),
-        ('convbn', 1, 1, 1280, 'relu', None, None, None, None),
+        ('convbn', 3, 2, 32, 'relu', None, None, None, None, False),
+        ('invertedbottleneck', 3, 1, 16, 'relu', None, 1., True, False, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', None, 8., True, False, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', None, 4., True, False, True),
+        ('invertedbottleneck', 3, 2, 48, 'relu', None, 8., True, False, False),
+        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False, False),
+        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False, False),
+        ('invertedbottleneck', 3, 1, 48, 'relu', None, 4., True, False, True),
+        ('invertedbottleneck', 3, 2, 96, 'relu', None, 8., True, True, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 8., False, True, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True, False),
+        ('invertedbottleneck', 3, 1, 96, 'relu', None, 4., True, True, True),
+        ('invertedbottleneck', 5, 2, 160, 'relu', None, 8., True, True, False),
+        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True, False),
+        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True, False),
+        ('invertedbottleneck', 5, 1, 160, 'relu', None, 4., True, True, False),
+        ('invertedbottleneck', 3, 1, 192, 'relu', None, 8., True, True, True),
+        ('convbn', 1, 1, 1280, 'relu', None, None, None, None, False),
     ]
 }
 
@@ -308,26 +343,26 @@ MNMultiMAX_BLOCK_SPECS = {
     'spec_name': 'MobileNetMultiMAX',
     'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
                           'activation', 'expand_ratio',
-                          'use_normalization', 'use_bias'],
+                          'use_normalization', 'use_bias', 'is_output'],
     'block_specs': [
-        ('convbn', 3, 2, 32, 'relu', None, True, False),
-        ('invertedbottleneck', 3, 2, 32, 'relu', 3., None, False),
-        ('invertedbottleneck', 5, 2, 64, 'relu', 6., None, False),
-        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False),
-        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False),
-        ('invertedbottleneck', 5, 2, 128, 'relu', 6., None, False),
-        ('invertedbottleneck', 3, 1, 128, 'relu', 4., None, False),
-        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
-        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
-        ('invertedbottleneck', 3, 1, 128, 'relu', 6., None, False),
-        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
-        ('invertedbottleneck', 3, 2, 160, 'relu', 6., None, False),
-        ('invertedbottleneck', 5, 1, 160, 'relu', 4., None, False),
-        ('invertedbottleneck', 3, 1, 160, 'relu', 5., None, False),
-        ('invertedbottleneck', 5, 1, 160, 'relu', 4., None, False),
-        ('convbn', 1, 1, 960, 'relu', None, True, False),
-        ('gpooling', None, None, None, None, None, None, None),
-        ('convbn', 1, 1, 1280, 'relu', None, False, True),
+        ('convbn', 3, 2, 32, 'relu', None, True, False, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', 3., None, False, True),
+        ('invertedbottleneck', 5, 2, 64, 'relu', 6., None, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False, True),
+        ('invertedbottleneck', 5, 2, 128, 'relu', 6., None, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 4., None, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 6., None, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False, True),
+        ('invertedbottleneck', 3, 2, 160, 'relu', 6., None, False, False),
+        ('invertedbottleneck', 5, 1, 160, 'relu', 4., None, False, False),
+        ('invertedbottleneck', 3, 1, 160, 'relu', 5., None, False, False),
+        ('invertedbottleneck', 5, 1, 160, 'relu', 4., None, False, True),
+        ('convbn', 1, 1, 960, 'relu', None, True, False, False),
+        ('gpooling', None, None, None, None, None, None, None, False),
+        ('convbn', 1, 1, 1280, 'relu', None, False, True, False),
     ]
 }
 
@@ -335,28 +370,28 @@ MNMultiAVG_BLOCK_SPECS = {
     'spec_name': 'MobileNetMultiAVG',
     'block_spec_schema': ['block_fn', 'kernel_size', 'strides', 'filters',
                           'activation', 'expand_ratio',
-                          'use_normalization', 'use_bias'],
+                          'use_normalization', 'use_bias', 'is_output'],
     'block_specs': [
-        ('convbn', 3, 2, 32, 'relu', None, True, False),
-        ('invertedbottleneck', 3, 2, 32, 'relu', 3., None, False),
-        ('invertedbottleneck', 3, 1, 32, 'relu', 2., None, False),
-        ('invertedbottleneck', 5, 2, 64, 'relu', 5., None, False),
-        ('invertedbottleneck', 3, 1, 64, 'relu', 3., None, False),
-        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False),
-        ('invertedbottleneck', 3, 1, 64, 'relu', 3., None, False),
-        ('invertedbottleneck', 5, 2, 128, 'relu', 6., None, False),
-        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
-        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
-        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False),
-        ('invertedbottleneck', 3, 1, 160, 'relu', 6., None, False),
-        ('invertedbottleneck', 3, 1, 160, 'relu', 4., None, False),
-        ('invertedbottleneck', 3, 2, 192, 'relu', 6., None, False),
-        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False),
-        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False),
-        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False),
-        ('convbn', 1, 1, 960, 'relu', None, True, False),
-        ('gpooling', None, None, None, None, None, None, None),
-        ('convbn', 1, 1, 1280, 'relu', None, False, True),
+        ('convbn', 3, 2, 32, 'relu', None, True, False, False),
+        ('invertedbottleneck', 3, 2, 32, 'relu', 3., None, False, False),
+        ('invertedbottleneck', 3, 1, 32, 'relu', 2., None, False, True),
+        ('invertedbottleneck', 5, 2, 64, 'relu', 5., None, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 3., None, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 2., None, False, False),
+        ('invertedbottleneck', 3, 1, 64, 'relu', 3., None, False, True),
+        ('invertedbottleneck', 5, 2, 128, 'relu', 6., None, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False, False),
+        ('invertedbottleneck', 3, 1, 128, 'relu', 3., None, False, False),
+        ('invertedbottleneck', 3, 1, 160, 'relu', 6., None, False, False),
+        ('invertedbottleneck', 3, 1, 160, 'relu', 4., None, False, True),
+        ('invertedbottleneck', 3, 2, 192, 'relu', 6., None, False, False),
+        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False, False),
+        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False, False),
+        ('invertedbottleneck', 5, 1, 192, 'relu', 4., None, False, True),
+        ('convbn', 1, 1, 960, 'relu', None, True, False, False),
+        ('gpooling', None, None, None, None, None, None, None, False),
+        ('convbn', 1, 1, 1280, 'relu', None, False, True, False),
     ]
 }
 
@@ -388,6 +423,7 @@ class BlockSpec(hyperparams.Config):
   se_ratio: Optional[float] = None
   use_depthwise: bool = True
   use_residual: bool = True
+  is_output: bool = True
 
 
 def block_spec_decoder(specs: Dict[Any, Any],
@@ -552,9 +588,9 @@ class MobileNet(tf.keras.Model):
         divisible_by=self._get_divisible_by(),
         finegrain_classification_mode=self._finegrain_classification_mode)
 
-    x, endpoints = self._mobilenet_base(inputs=inputs)
+    x, endpoints, next_endpoint_level = self._mobilenet_base(inputs=inputs)
 
-    endpoints[max(endpoints.keys()) + 1] = x
+    endpoints[str(next_endpoint_level)] = x
     self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
     super(MobileNet, self).__init__(
@@ -568,7 +604,7 @@ class MobileNet(tf.keras.Model):
 
   def _mobilenet_base(self,
                       inputs: tf.Tensor
-                      ) -> Tuple[tf.Tensor, Dict[int, tf.Tensor]]:
+                      ) -> Tuple[tf.Tensor, Dict[str, tf.Tensor], int]:
     """Builds the base MobileNet architecture.
 
     Args:
@@ -594,7 +630,7 @@ class MobileNet(tf.keras.Model):
 
     net = inputs
     endpoints = {}
-    endpoint_level = 1
+    endpoint_level = 2
     for i, block_def in enumerate(self._decoded_specs):
       block_name = 'block_group_{}_{}'.format(block_def.block_fn, i)
       # A small catch for gpooling block with None strides
@@ -688,10 +724,13 @@ class MobileNet(tf.keras.Model):
         raise ValueError('Unknown block type {} for layer {}'.format(
             block_def.block_fn, i))
 
-      endpoints[endpoint_level] = net
-      endpoint_level += 1
       net = tf.identity(net, name=block_name)
-    return net, endpoints
+
+      if block_def.is_output:
+        endpoints[str(endpoint_level)] = net
+        endpoint_level += 1
+
+    return net, endpoints, endpoint_level
 
   def get_config(self):
     config_dict = {

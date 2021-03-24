@@ -37,8 +37,8 @@ class DualEncoder(tf.keras.Model):
     normalize: If set to True, normalize the encoding produced by transfomer.
     logit_scale: The scaling factor of dot products when doing training.
     logit_margin: The margin between positive and negative when doing training.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'. If set to 'predictions', it will output the embedding
+    output: The output style for this network. Can be either `logits` or
+      `predictions`. If set to `predictions`, it will output the embedding
       producted by transformer network.
   """
 

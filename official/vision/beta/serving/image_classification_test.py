@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Test for image classification export lib."""
 
 import io
@@ -74,6 +74,9 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
   def test_export(self, input_type='image_tensor'):
     tmp_dir = self.get_temp_dir()
     module = self._get_classification_module()
+    # Test that the model restores any attrs that are trackable objects
+    # (eg: tables, resource variables, keras models/layers, tf.hub modules).
+    module.model.test_trackable = tf.keras.layers.InputLayer(input_shape=(4,))
 
     self._export_from_module(module, input_type, tmp_dir)
 
@@ -96,6 +99,10 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
                 shape=[224, 224, 3], dtype=tf.float32)))
     expected_output = module.model(processed_images, training=False)
     out = classification_fn(tf.constant(images))
+
+    # The imported model should contain any trackable attrs that the original
+    # model had.
+    self.assertTrue(hasattr(imported.model, 'test_trackable'))
     self.assertAllClose(out['outputs'].numpy(), expected_output.numpy())
 
 if __name__ == '__main__':

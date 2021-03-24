@@ -44,8 +44,10 @@ class DataConfig(base_config.Config):
     drop_remainder: Whether the last batch should be dropped in the case it has
       fewer than `global_batch_size` elements.
     shuffle_buffer_size: The buffer size used for shuffling training data.
-    cache: Whether to cache dataset examples. Can be used to avoid re-reading
-      from disk on the second epoch. Requires significant memory overhead.
+    cache: Whether to cache dataset examples. If `True`, we will cache the
+      dataset after applying the decode_fn and parse_fn. It can be used to avoid
+      re-reading from disk, re-decoding and re-parsing the example on the
+      second epoch, but it requires significant memory overhead.
     cycle_length: The number of files that will be processed concurrently when
       interleaving files.
     block_length: The number of consecutive elements to produce from each input
@@ -137,6 +139,20 @@ class RuntimeConfig(base_config.Config):
   loss_scale: Optional[Union[str, float]] = None
   run_eagerly: bool = False
   batchnorm_spatial_persistent: bool = False
+
+  # XLA runtime params.
+  # XLA params are only applied to the train_step.
+  # These augments can improve training speed. They can also improve eval, but
+  # may reduce usability and users would need to make changes to code.
+
+  # Whether to enable XLA dynamic padder
+  # infrastructure to handle dynamic shapes inputs inside XLA. True by
+  # default. Disabling this may cause correctness issues with dynamic shapes
+  # inputs, as XLA will just assume the inputs are with padded shapes. However
+  # users can optionally set it to False to improve device time if masking is
+  # already handled in the user side.
+  # If None, will respect XLA default.
+  tpu_enable_xla_dynamic_padder: Optional[bool] = None
 
   # Global model parallelism configurations.
   num_cores_per_replica: int = 1
