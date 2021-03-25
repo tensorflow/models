@@ -22,5 +22,8 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       
+      - name: Fetch master for diff
+        run: git fetch origin master:master
+       
       - name: Run pylint script
         run: bash ./.github/scripts/pylint.sh --incremental
