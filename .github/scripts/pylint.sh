@@ -41,7 +41,7 @@ num_cpus() {
 }
 
 get_changed_files_in_last_non_merge_git_commit() {
-  git diff master --name-only
+  git diff --name-only $(git merge-base origin/master HEAD)
 }
 
 # List Python files changed in the last non-merge git commit that still exist,
