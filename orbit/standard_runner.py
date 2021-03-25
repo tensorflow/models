@@ -244,9 +244,11 @@ class StandardEvaluator(runner.AbstractEvaluator, metaclass=abc.ABCMeta):
         state = eval_reduce(state, step_outputs)
       return eval_end(state)
 
-  Calls to `eval_begin`, `eval_reduce`, and `eval_end` are always done in eager
+  Calls to `eval_begin` and `eval_end` are always done in eager
   mode, while `eval_step` may be compiled with `tf.function` as determined by
-  the `options` passed to `__init__`.
+  the `options` passed to `__init__`. `eval_reduce` is in eager mode if
+  `use_tf_while_loop=False` in `StandardEvaluatorOptions`, but in graph mode if
+  `use_tf_while_loop=True`.
 
   This class does not support completely evaluating multiple different datasets
   (i.e., where every example of each dataset should be processed, as opposed to
