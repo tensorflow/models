@@ -20,4 +20,4 @@ jobs:
         uses: actions/checkout@v2
        
       - name: Run pylint script
-        run: bash ./.github/scripts/pylint.sh
+        run: bash ./.github/scripts/pylint.sh --incremental
