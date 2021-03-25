@@ -15,14 +15,13 @@
 # ==============================================================================
 #
 # Pylint wrapper extracted from main TensorFlow, sharing same exceptions.
-# As this is meant for smaller repos, drops "modified files" checking in favor
-# of full-repo checking.
+# Specify --incremental to only check files touched since last commit on master,
+# otherwise will recursively check current directory (full repo takes long!).
 
 set -euo pipefail
 
 # Download latest configs from main TensorFlow repo.
 wget -q -O /tmp/pylintrc https://raw.githubusercontent.com/tensorflow/tensorflow/master/tensorflow/tools/ci_build/pylintrc
-wget -q -O /tmp/pylint_allowlist https://raw.githubusercontent.com/tensorflow/tensorflow/master/tensorflow/tools/ci_build/pylint_allowlist
 
 SCRIPT_DIR=/tmp
 
@@ -41,13 +40,48 @@ num_cpus() {
   echo ${N_CPUS}
 }
 
+get_changed_files_in_last_non_merge_git_commit() {
+  git diff --name-only $(git merge-base master $(git branch --show-current))
+}
+
+# List Python files changed in the last non-merge git commit that still exist,
+# i.e., not removed.
+# Usage: get_py_files_to_check [--incremental]
 get_py_files_to_check() {
-  find . -name '*.py'
+  if [[ "$1" == "--incremental" ]]; then
+    CHANGED_PY_FILES=$(get_changed_files_in_last_non_merge_git_commit | \
+                       grep '.*\.py$')
+
+    # Do not include files removed in the last non-merge commit.
+    PY_FILES=""
+    for PY_FILE in ${CHANGED_PY_FILES}; do
+      if [[ -f "${PY_FILE}" ]]; then
+        PY_FILES="${PY_FILES} ${PY_FILE}"
+      fi
+    done
+
+    echo "${PY_FILES}"
+  else
+    find . -name '*.py'
+  fi
 }
 
 do_pylint() {
-  # Get all Python files, regardless of mode.
+  if [[ $# == 1 ]] && [[ "$1" == "--incremental" ]]; then
+    PYTHON_SRC_FILES=$(get_py_files_to_check --incremental)
+
+    if [[ -z "${PYTHON_SRC_FILES}" ]]; then
+      echo "do_pylint will NOT run due to --incremental flag and due to the "\
+"absence of Python code changes in the last commit."
+      return 0
+    fi
+  elif [[ $# != 0 ]]; then
+    echo "Invalid syntax for invoking do_pylint"
+    echo "Usage: do_pylint [--incremental]"
+    return 1
+  else
   PYTHON_SRC_FILES=$(get_py_files_to_check)
+  fi
 
   # Something happened. TF no longer has Python code if this branch is taken
   if [[ -z ${PYTHON_SRC_FILES} ]]; then
@@ -92,13 +126,9 @@ do_pylint() {
   PYLINT_START_TIME=$(date +'%s')
   OUTPUT_FILE="$(mktemp)_pylint_output.log"
   ERRORS_FILE="$(mktemp)_pylint_errors.log"
-  PERMIT_FILE="$(mktemp)_pylint_permit.log"
-  FORBID_FILE="$(mktemp)_pylint_forbid.log"
 
   rm -rf ${OUTPUT_FILE}
   rm -rf ${ERRORS_FILE}
-  rm -rf ${PERMIT_FILE}
-  rm -rf ${FORBID_FILE}
 
   set +e
   # When running, filter to only contain the error code lines. Removes module
@@ -124,48 +154,25 @@ do_pylint() {
   # W0622 redefined-builtin
   grep -E '(\[E|\[W0311|\[W0312|\[C0330|\[C0301|\[C0326|\[W0611|\[W0622)' ${OUTPUT_FILE} > ${ERRORS_FILE}
 
-  # Split the pylint reported errors into permitted ones and those we want to
-  # block submit on until fixed.
-  # We use `${ALLOW_LIST_FILE}` to record the errors we temporarily accept. Goal
-  # is to make that file only contain errors caused by difference between
-  # internal and external versions.
-  ALLOW_LIST_FILE="${SCRIPT_DIR}/pylint_allowlist"
-
-  if [[ ! -f "${ALLOW_LIST_FILE}" ]]; then
-    die "ERROR: Cannot find pylint allowlist file at ${ALLOW_LIST_FILE}"
-  fi
-
-  # We can split with just 2 grep invocations
-  grep    -f ${ALLOW_LIST_FILE} ${ERRORS_FILE} > ${PERMIT_FILE}
-  grep -v -f ${ALLOW_LIST_FILE} ${ERRORS_FILE} > ${FORBID_FILE}
-
   # Determine counts of errors
-  N_PERMIT_ERRORS=$(wc -l ${PERMIT_FILE} | cut -d' ' -f1)
-  N_FORBID_ERRORS=$(wc -l ${FORBID_FILE} | cut -d' ' -f1)
+  N_FORBID_ERRORS=$(wc -l ${ERRORS_FILE} | cut -d' ' -f1)
   set -e
-
-  # First print all allowed errors
-  echo ""
-  if [[ ${N_PERMIT_ERRORS} != 0 ]]; then
-    echo "Found ${N_PERMIT_ERRORS} allowlisted pylint errors:"
-    cat ${PERMIT_FILE}
-  fi
 
   # Now, print the errors we should fix
   echo ""
   if [[ ${N_FORBID_ERRORS} != 0 ]]; then
-    echo "Found ${N_FORBID_ERRORS} non-allowlisted pylint errors:"
-    cat ${FORBID_FILE}
+    echo "Found ${N_FORBID_ERRORS} pylint errors:"
+    cat ${ERRORS_FILE}
   fi
 
   echo ""
   if [[ ${N_FORBID_ERRORS} != 0 ]]; then
-    echo "FAIL: Found ${N_FORBID_ERRORS} non-allowlisted errors and ${N_PERMIT_ERRORS} allowlisted errors"
+    echo "FAIL: Found ${N_FORBID_ERRORS} errors"
     return 1
   else
-    echo "PASS: Found only ${N_PERMIT_ERRORS} allowlisted errors"
+    echo "PASS: Found no errors"
   fi
 }
 
-do_pylint
+do_pylint "$@"
 
