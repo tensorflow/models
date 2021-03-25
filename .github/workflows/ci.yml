@@ -18,6 +18,9 @@ jobs:
         
       - name: Checkout code
         uses: actions/checkout@v2
+      
+      - name: Fetch master for diff
+        run: git fetch --depth=1 origin master:master
        
       - name: Run pylint script
         run: bash ./.github/scripts/pylint.sh --incremental
