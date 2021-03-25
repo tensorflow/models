@@ -216,6 +216,7 @@ class CheckpointV2Test(tf.test.TestCase):
     model_lib_v2.load_fine_tune_checkpoint(
         self._model, self._ckpt_path, checkpoint_type='',
         checkpoint_version=train_pb2.CheckpointVersion.V2,
+        run_model_on_dummy_input=True,
         input_dataset=self._train_input_fn(),
         unpad_groundtruth_tensors=True)
     np.testing.assert_allclose(self._model.weight.numpy(), 42)
@@ -228,6 +229,7 @@ class CheckpointV2Test(tf.test.TestCase):
       model_lib_v2.load_fine_tune_checkpoint(
           IncompatibleModel(), self._ckpt_path, checkpoint_type='',
           checkpoint_version=train_pb2.CheckpointVersion.V2,
+          run_model_on_dummy_input=True,
           input_dataset=self._train_input_fn(),
           unpad_groundtruth_tensors=True)
 
