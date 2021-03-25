@@ -45,8 +45,8 @@ class BertClassifier(tf.keras.Model):
     dropout_rate: The dropout probability of the cls head.
     use_encoder_pooler: Whether to use the pooler layer pre-defined inside the
       encoder.
-    cls_head: (Optional) The layer instance to use for the classifier head
-      . It should take in the output from network and produce the final logits.
+    cls_head: (Optional) The layer instance to use for the classifier head.
+      It should take in the output from network and produce the final logits.
       If set, the arguments ('num_classes', 'initializer', 'dropout_rate',
       'use_encoder_pooler') will be ignored.
   """
@@ -62,7 +62,6 @@ class BertClassifier(tf.keras.Model):
     self.num_classes = num_classes
     self.initializer = initializer
     self.use_encoder_pooler = use_encoder_pooler
-    self.cls_head = cls_head
 
     # We want to use the inputs of the passed network as the inputs to this
     # Model. To do this, we need to keep a handle to the network inputs for use
@@ -107,6 +106,8 @@ class BertClassifier(tf.keras.Model):
     super(BertClassifier, self).__init__(
         inputs=inputs, outputs=predictions, **kwargs)
     self._network = network
+    self._cls_head = cls_head
+
     config_dict = self._make_config_dict()
     # We are storing the config dict as a namedtuple here to ensure checkpoint
     # compatibility with an earlier version of this model which did not track
@@ -138,5 +139,5 @@ class BertClassifier(tf.keras.Model):
         'num_classes': self.num_classes,
         'initializer': self.initializer,
         'use_encoder_pooler': self.use_encoder_pooler,
-        'cls_head': self.cls_head,
+        'cls_head': self._cls_head,
     }
