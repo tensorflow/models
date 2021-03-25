@@ -19,6 +19,7 @@
 # otherwise will recursively check current directory (full repo takes long!).
 
 set -euo pipefail
+set -x
 
 # Download latest configs from main TensorFlow repo.
 wget -q -O /tmp/pylintrc https://raw.githubusercontent.com/tensorflow/tensorflow/master/tensorflow/tools/ci_build/pylintrc
