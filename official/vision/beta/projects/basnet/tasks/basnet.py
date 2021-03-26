@@ -24,6 +24,8 @@ from official.core import task_factory
 from official.vision.beta.projects.basnet.configs import basnet as exp_cfg
 from official.vision.beta.projects.basnet.dataloaders import basnet_input # Prepare input datas
 from official.vision.beta.projects.basnet.evaluation import basnet_evaluator
+from official.vision.beta.projects.basnet.evaluation import f_score
+from official.vision.beta.projects.basnet.evaluation import mae
 from official.vision.beta.projects.basnet.losses import basnet_losses
 from official.vision.beta.projects.basnet.modeling import factory
 
@@ -131,7 +133,8 @@ class BASNetTask(base_task.Task):
     if training:
       metrics = []
     else:
-      self.basnet_metric = basnet_evaluator.BASNetEvaluator()
+      self.mae_metric = mae.MAE()
+      self.fscore_metric = f_score.Fscore()
 
     return metrics
 
@@ -208,7 +211,8 @@ class BASNetTask(base_task.Task):
     logs = {self.loss: loss}
     
 
-    logs.update({self.basnet_metric.name: (labels, outputs['ref'])})
+    logs.update({self.mae_metric.name: (labels, outputs['ref'])})
+    logs.update({self.fscore_metric.name: (labels, outputs['ref'])})
     return logs    
 
   def inference_step(self, inputs, model):
@@ -217,13 +221,20 @@ class BASNetTask(base_task.Task):
 
   def aggregate_logs(self, state=None, step_outputs=None):
     if state is None:
-      self.basnet_metric.reset_states()
-      state = self.basnet_metric
-    self.basnet_metric.update_state(
-        step_outputs[self.basnet_metric.name][0],
-        step_outputs[self.basnet_metric.name][1])
+      self.mae_metric.reset_states()
+      self.fscore_metric.reset_states()
+      state = self.mae_metric
+    self.mae_metric.update_state(
+        step_outputs[self.mae_metric.name][0],
+        step_outputs[self.mae_metric.name][1])
+    self.fscore_metric.update_state(
+        step_outputs[self.fscore_metric.name][0],
+        step_outputs[self.fscore_metric.name][1])
     
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
-    return self.basnet_metric.result()
+    result = {}
+    result['MAE'] = self.mae_metric.result()
+    result['F_max'] = self.fscore_metric.result()
+    return result
