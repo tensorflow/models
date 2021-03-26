@@ -558,7 +558,7 @@ class KerasHyperparamsBuilderTest(tf.test.TestCase):
     result = regularizer(tf.constant(weights)).numpy()
     self.assertAllClose(np.abs(weights).sum() * 0.5, result)
 
-  def test_return_l2_regularizer_weights_keras(self):
+  def test_return_l2_regularized_weights_keras(self):
     conv_hyperparams_text_proto = """
       regularizer {
         l2_regularizer {
@@ -598,6 +598,7 @@ class KerasHyperparamsBuilderTest(tf.test.TestCase):
         conv_hyperparams_proto)
 
     regularizer_weight = keras_config.get_regularizer_weight()
+    self.assertIsInstance(regularizer_weight, float)
     self.assertAlmostEqual(regularizer_weight, 0.5)
 
   def test_return_l2_regularizer_weight_keras(self):
@@ -618,6 +619,7 @@ class KerasHyperparamsBuilderTest(tf.test.TestCase):
         conv_hyperparams_proto)
 
     regularizer_weight = keras_config.get_regularizer_weight()
+    self.assertIsInstance(regularizer_weight, float)
     self.assertAlmostEqual(regularizer_weight, 0.25)
 
   def test_return_undefined_regularizer_weight_keras(self):

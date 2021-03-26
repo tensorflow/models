@@ -176,9 +176,9 @@ class KerasLayerHyperparams(object):
     """
     regularizer = self._op_params['kernel_regularizer']
     if hasattr(regularizer, 'l1'):
-      return regularizer.l1
+      return float(regularizer.l1)
     elif hasattr(regularizer, 'l2'):
-      return regularizer.l2
+      return float(regularizer.l2)
     else:
       return None
 
