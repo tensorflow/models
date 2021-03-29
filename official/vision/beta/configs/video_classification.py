@@ -36,10 +36,8 @@ class DataConfig(cfg.DataConfig):
   num_test_clips: int = 1
   num_test_crops: int = 1
   num_classes: int = -1
-  num_channels: int = 3
   num_examples: int = -1
   global_batch_size: int = 128
-  num_devices: int = 1
   data_format: str = 'channels_last'
   dtype: str = 'float32'
   one_hot: bool = True
