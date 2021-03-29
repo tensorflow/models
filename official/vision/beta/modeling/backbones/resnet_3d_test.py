@@ -25,10 +25,12 @@ from official.vision.beta.modeling.backbones import resnet_3d
 class ResNet3DTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (128, 50, 4),
+      (128, 50, 4, 'v0', False, 0.0),
+      (128, 50, 4, 'v1', False, 0.2),
+      (256, 50, 4, 'v1', True, 0.2),
   )
-  def test_network_creation(self, input_size, model_id,
-                            endpoint_filter_scale):
+  def test_network_creation(self, input_size, model_id, endpoint_filter_scale,
+                            stem_type, se_ratio, init_stochastic_depth_rate):
     """Test creation of ResNet3D family models."""
     tf.keras.backend.set_image_data_format('channels_last')
     temporal_strides = [1, 1, 1, 1]
@@ -41,7 +43,9 @@ class ResNet3DTest(parameterized.TestCase, tf.test.TestCase):
         temporal_strides=temporal_strides,
         temporal_kernel_sizes=temporal_kernel_sizes,
         use_self_gating=use_self_gating,
-    )
+        stem_type=stem_type,
+        se_ratio=se_ratio,
+        init_stochastic_depth_rate=init_stochastic_depth_rate)
     inputs = tf.keras.Input(shape=(8, input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
@@ -65,10 +69,13 @@ class ResNet3DTest(parameterized.TestCase, tf.test.TestCase):
         temporal_strides=[1, 1, 1, 1],
         temporal_kernel_sizes=[(3, 3, 3), (3, 1, 3, 1), (3, 1, 3, 1, 3, 1),
                                (1, 3, 1)],
+        stem_type='v0',
         stem_conv_temporal_kernel_size=5,
         stem_conv_temporal_stride=2,
         stem_pool_temporal_stride=2,
+        se_ratio=0.0,
         use_self_gating=None,
+        init_stochastic_depth_rate=0.0,
         use_sync_bn=False,
         activation='relu',
         norm_momentum=0.99,
