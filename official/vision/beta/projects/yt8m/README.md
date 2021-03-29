@@ -1,5 +1,8 @@
 # YouTube-8M Tensorflow Starter Code
 
+**WARNING**: The project is under construction. You can use it, but you do so
+at your own risk.
+
 This repo contains starter code (written in TensorFlow 2.x) for training and
 evaluating machine learning models over the [YouTube-8M][1] dataset.
 This is the Tensorflow2 version of the original starter code:
@@ -84,7 +87,7 @@ task:
 ```
 
 The code can be run in different modes: `train / train_and_eval / eval`.
-Run `yt8m_train.py` and specify which mode you wish to execute.
+Run `train.py` and specify which mode you wish to execute.
 Training is done using frame-level features with video-level labels,
 while inference can be done at segment-level.
 Setting `segment_labels=True` in your configuration forces
@@ -95,7 +98,7 @@ The following commands will train a model on Google Cloud over frame-level
 features.
 
 ```bash
-python3 yt8m_train.py --mode='train' \
+python3 train.py --mode='train' \
     --experiment='yt8m_experiment' \
     --model_dir=$MODEL_DIR \
     --config_file=$CONFIG_FILE
@@ -109,7 +112,7 @@ validation:`input_path=gs://youtube8m-ml/3/frame/validate/validate*.tfrecord`
 as default.
 
 ```bash
-python3 yt8m_train.py --mode='train_and_eval' \
+python3 train.py --mode='train_and_eval' \
      --experiment='yt8m_experiment' \
      --model_dir=$MODEL_DIR \
      --config_file=$CONFIG_FILE \
@@ -118,7 +121,7 @@ python3 yt8m_train.py --mode='train_and_eval' \
 Running on evaluation mode loads saved checkpoint from specified path
 and runs inference task.
 ```bash
-python3 yt8m_train.py --mode='eval' \
+python3 train.py --mode='eval' \
      --experiment='yt8m_experiment' \
      --model_dir=$MODEL_DIR \
      --config_file=$CONFIG_FILE
