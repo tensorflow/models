@@ -17,7 +17,7 @@
 from official.modeling.hyperparams import params_dict
 from official.vision.detection.configs import base_config
 
-SHAPEMASK_RESNET_FROZEN_VAR_PREFIX = r'(resnet\d+/)conv2d(|_([1-9]|10))\/'
+SHAPEMASK_RESNET_FROZEN_VAR_PREFIX = r'(conv2d(|_([1-9]|10))|batch_normalization(|_([1-9]|10)))\/'
 
 SHAPEMASK_CFG = params_dict.ParamsDict(base_config.BASE_CFG)
 SHAPEMASK_CFG.override({
