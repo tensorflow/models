@@ -20,6 +20,7 @@ from typing import Any, Callable, Dict, Tuple
 import tensorflow as tf
 
 from tensorflow.python.framework import dtypes
+from official.modeling import tf_utils
 
 Output = Tuple[tf.Tensor, tf.Tensor]
 InternalState = Tuple[tf.Tensor, tf.Tensor, tf.Tensor, Dict]
@@ -64,15 +65,7 @@ def log_prob_from_logits(logits):
 
 def shape_list(tensor):
   """Return a list of the tensor's shape, and ensure no None values in list."""
-  # Get statically known shape (may contain None's for unknown dimensions)
-  shape = tensor.get_shape().as_list()
-
-  # Ensure that the shape values are not None
-  dynamic_shape = tf.shape(tensor)
-  for i in range(len(shape)):  # pylint: disable=consider-using-enumerate
-    if shape[i] is None:
-      shape[i] = dynamic_shape[i]
-  return shape
+  return tf_utils.get_shape_list(tensor)
 
 
 def get_shape_keep_last_dim(tensor):

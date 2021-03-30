@@ -166,8 +166,8 @@ To cite this repository:
 
 ```
 @software{tfmodels2020github,
-  author = {Chen Chen and Xianzhi Du and Le Hou and Jaeyoun Kim and Pengchong
-  Jin and Jing Li and Yeqing Li and Abdullah Rashwan and Hongkun Yu},
+  author = {Chen Chen and Xianzhi Du and Le Hou and Jaeyoun Kim and Jing Li and
+  Yeqing Li and Abdullah Rashwan and Fan Yang and Hongkun Yu},
   title = {TensorFlow Official Model Garden},
   url = {https://github.com/tensorflow/models/tree/master/official},
   year = {2020},

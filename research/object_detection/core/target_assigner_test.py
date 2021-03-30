@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """Tests for object_detection.core.target_assigner."""
+from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v1 as tf
 
@@ -1235,7 +1236,8 @@ def _array_argmax(array):
   return np.unravel_index(np.argmax(array), array.shape)
 
 
-class CenterNetCenterHeatmapTargetAssignerTest(test_case.TestCase):
+class CenterNetCenterHeatmapTargetAssignerTest(test_case.TestCase,
+                                               parameterized.TestCase):
 
   def setUp(self):
     super(CenterNetCenterHeatmapTargetAssignerTest, self).setUp()
@@ -1262,6 +1264,66 @@ class CenterNetCenterHeatmapTargetAssignerTest(test_case.TestCase):
     self.assertAlmostEqual(1.0, targets[0, 10, 10, 0])
     self.assertEqual((15, 5), _array_argmax(targets[0, :, :, 1]))
     self.assertAlmostEqual(1.0, targets[0, 15, 5, 1])
+
+  @parameterized.parameters(
+      {'keypoint_weights_for_center': [1.0, 1.0, 1.0, 1.0]},
+      {'keypoint_weights_for_center': [0.0, 0.0, 1.0, 1.0]},
+  )
+  def test_center_location_by_keypoints(self, keypoint_weights_for_center):
+    """Test that the centers are at the correct location."""
+    kpts_y = [[0.1, 0.2, 0.3, 0.4], [0.5, 0.6, 0.7, 0.8], [0.0, 0.0, 0.0, 0.0]]
+    kpts_x = [[0.5, 0.6, 0.7, 0.8], [0.1, 0.2, 0.3, 0.4], [0.0, 0.0, 0.0, 0.0]]
+    gt_keypoints_list = [
+        tf.stack([tf.constant(kpts_y), tf.constant(kpts_x)], axis=2)
+    ]
+    kpts_weight = [[1.0, 1.0, 1.0, 1.0], [1.0, 0.0, 1.0, 0.0],
+                   [1.0, 0.0, 1.0, 0.0]]
+    gt_keypoints_weights_list = [tf.constant(kpts_weight)]
+    gt_classes_list = [
+        tf.one_hot([0, 0, 0], depth=1),
+    ]
+    gt_weights_list = [tf.constant([1.0, 1.0, 0.0])]
+
+    def graph_fn():
+      assigner = targetassigner.CenterNetCenterHeatmapTargetAssigner(
+          4,
+          keypoint_class_id=0,
+          keypoint_indices=[0, 1, 2, 3],
+          keypoint_weights_for_center=keypoint_weights_for_center)
+      targets = assigner.assign_center_targets_from_keypoints(
+          80,
+          80,
+          gt_classes_list=gt_classes_list,
+          gt_keypoints_list=gt_keypoints_list,
+          gt_weights_list=gt_weights_list,
+          gt_keypoints_weights_list=gt_keypoints_weights_list)
+      return targets
+
+    targets = self.execute(graph_fn, [])
+
+    if sum(keypoint_weights_for_center) == 4.0:
+      # There should be two peaks at location (5, 13), and (12, 4).
+      #   (5, 13) = ((0.1 + 0.2 + 0.3 + 0.4) / 4 * 80 / 4,
+      #              (0.5 + 0.6 + 0.7 + 0.8) / 4 * 80 / 4)
+      #   (12, 4) = ((0.5 + 0.7) / 2 * 80 / 4,
+      #              (0.1 + 0.3) / 2 * 80 / 4)
+      self.assertEqual((5, 13), _array_argmax(targets[0, :, :, 0]))
+      self.assertAlmostEqual(1.0, targets[0, 5, 13, 0])
+      self.assertEqual((1, 20, 20, 1), targets.shape)
+      targets[0, 5, 13, 0] = 0.0
+      self.assertEqual((12, 4), _array_argmax(targets[0, :, :, 0]))
+      self.assertAlmostEqual(1.0, targets[0, 12, 4, 0])
+    else:
+      # There should be two peaks at location (5, 13), and (12, 4).
+      #   (7, 15) = ((0.3 + 0.4) / 2 * 80 / 4,
+      #              (0.7 + 0.8) / 2 * 80 / 4)
+      #   (14, 6) = (0.7 * 80 / 4, 0.3 * 80 / 4)
+      self.assertEqual((7, 15), _array_argmax(targets[0, :, :, 0]))
+      self.assertAlmostEqual(1.0, targets[0, 7, 15, 0])
+      self.assertEqual((1, 20, 20, 1), targets.shape)
+      targets[0, 7, 15, 0] = 0.0
+      self.assertEqual((14, 6), _array_argmax(targets[0, :, :, 0]))
+      self.assertAlmostEqual(1.0, targets[0, 14, 6, 0])
 
   def test_center_batch_shape(self):
     """Test that the shape of the target for a batch is correct."""

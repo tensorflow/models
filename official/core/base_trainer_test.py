@@ -14,9 +14,13 @@
 
 """Tests for tensorflow_models.core.trainers.trainer."""
 # pylint: disable=g-direct-tensorflow-import
+import multiprocessing
 import os
+import sys
+
 from absl.testing import parameterized
 import numpy as np
+import portpicker
 import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
@@ -26,6 +30,9 @@ from official.core import config_definitions as cfg
 from official.core import train_lib
 from official.utils.testing import mock_task
 
+TPU_TEST = 'test_tpu' in sys.argv[0]
+GPU_TEST = 'test_gpu' in sys.argv[0]
+
 
 def all_strategy_combinations():
   return combinations.combine(
@@ -34,6 +41,113 @@ def all_strategy_combinations():
           strategy_combinations.cloud_tpu_strategy,
           strategy_combinations.one_device_strategy_gpu,
       ],)
+
+
+def create_in_process_cluster(num_workers, num_ps):
+  """Creates and starts local servers and returns the cluster_resolver."""
+  worker_ports = [portpicker.pick_unused_port() for _ in range(num_workers)]
+  ps_ports = [portpicker.pick_unused_port() for _ in range(num_ps)]
+
+  cluster_dict = {}
+  cluster_dict['worker'] = ['localhost:%s' % port for port in worker_ports]
+  if num_ps > 0:
+    cluster_dict['ps'] = ['localhost:%s' % port for port in ps_ports]
+
+  cluster_spec = tf.train.ClusterSpec(cluster_dict)
+
+  # Workers need some inter_ops threads to work properly.
+  worker_config = tf.compat.v1.ConfigProto()
+  if multiprocessing.cpu_count() < num_workers + 1:
+    worker_config.inter_op_parallelism_threads = num_workers + 1
+
+  for i in range(num_workers):
+    tf.distribute.Server(
+        cluster_spec,
+        job_name='worker',
+        task_index=i,
+        config=worker_config,
+        protocol='grpc')
+
+  for i in range(num_ps):
+    tf.distribute.Server(
+        cluster_spec, job_name='ps', task_index=i, protocol='grpc')
+
+  cluster_resolver = tf.distribute.cluster_resolver.SimpleClusterResolver(
+      cluster_spec, rpc_layer='grpc')
+  return cluster_resolver
+
+
+def dataset_fn(input_context=None):
+  del input_context
+
+  def dummy_data(_):
+    return tf.zeros((1, 1), dtype=tf.float32)
+
+  dataset = tf.data.Dataset.range(1)
+  dataset = dataset.repeat()
+  dataset = dataset.map(
+      dummy_data, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+  return dataset
+
+
+class MockAsyncTrainer(trainer_lib._AsyncTrainer):
+  """Mock AsyncTrainer to test the _AsyncTrainer class."""
+
+  def __init__(self):
+    self._strategy = tf.distribute.get_strategy()
+    self.init_async()
+
+    self.global_step = tf.Variable(
+        0,
+        dtype=tf.int64,
+        name='global_step',
+        trainable=False,
+        aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA)
+    self.eval_global_step = tf.Variable(
+        0,
+        dtype=tf.int64,
+        name='eval_global_step',
+        trainable=False,
+        aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA)
+
+    train_dataset = self.distribute_dataset(dataset_fn)
+    trainer_lib.orbit.StandardTrainer.__init__(
+        self, train_dataset, options=trainer_lib.orbit.StandardTrainerOptions())
+
+    eval_dataset = self.distribute_dataset(dataset_fn)
+    trainer_lib.orbit.StandardEvaluator.__init__(
+        self,
+        eval_dataset,
+        options=trainer_lib.orbit.StandardEvaluatorOptions(
+            use_tf_while_loop=True))
+
+  def train_loop_begin(self):
+    self.global_step.assign(0)
+
+  def train_step(self, iterator):
+
+    def replica_step(_):
+      self.global_step.assign_add(1)
+
+    self._strategy.run(replica_step, args=(next(iterator),))
+
+  def train_loop_end(self):
+    self.join()
+    return self.global_step.numpy()
+
+  def eval_begin(self):
+    self.eval_global_step.assign(0)
+
+  def eval_step(self, iterator):
+
+    def replica_step(_):
+      self.eval_global_step.assign_add(1)
+
+    self._strategy.run(replica_step, args=(next(iterator),))
+
+  def eval_end(self):
+    self.join()
+    return self.eval_global_step.numpy()
 
 
 class TrainerTest(tf.test.TestCase, parameterized.TestCase):
@@ -70,6 +184,55 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
       logs = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
       self.assertIn('training_loss', logs)
       self.assertIn('learning_rate', logs)
+
+  def test_base_async_trainer(self):
+    if TPU_TEST or GPU_TEST:
+      self.skipTest('Aysnc training is not available on GPU/GPU.')
+    num_workers = 3
+    num_ps = 2
+    cluster_resolver = create_in_process_cluster(num_workers, num_ps)
+    distribution = tf.distribute.experimental.ParameterServerStrategy(
+        cluster_resolver)
+    with distribution.scope():
+      trainer = MockAsyncTrainer()
+      trainer.init_async()
+      self.assertIsInstance(
+          trainer._coordinator,
+          tf.distribute.experimental.coordinator.ClusterCoordinator)
+      self.assertEqual(trainer.train(tf.constant(10)), 10)
+      self.assertEqual(trainer.evaluate(tf.constant(11)), 11)
+
+  def test_async_trainer_train(self):
+    if TPU_TEST or GPU_TEST:
+      self.skipTest('Aysnc training is not available on GPU/GPU.')
+    num_workers = 3
+    num_ps = 2
+    cluster_resolver = create_in_process_cluster(num_workers, num_ps)
+    distribution = tf.distribute.experimental.ParameterServerStrategy(
+        cluster_resolver)
+    with distribution.scope():
+      config = cfg.ExperimentConfig(**self._config.as_dict())
+      config.trainer.eval_tf_while_loop = True
+      trainer = self.create_test_trainer(config)
+      logs = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
+      self.assertIn('training_loss', logs)
+      self.assertIn('learning_rate', logs)
+
+  def test_async_trainer_validate(self):
+    if TPU_TEST or GPU_TEST:
+      self.skipTest('Aysnc training is not available on GPU/GPU.')
+    num_workers = 3
+    num_ps = 2
+    cluster_resolver = create_in_process_cluster(num_workers, num_ps)
+    distribution = tf.distribute.experimental.ParameterServerStrategy(
+        cluster_resolver)
+    with distribution.scope():
+      config = cfg.ExperimentConfig(**self._config.as_dict())
+      config.trainer.eval_tf_while_loop = True
+      trainer = self.create_test_trainer(config)
+      logs = trainer.evaluate(tf.convert_to_tensor(5, dtype=tf.int32))
+      self.assertIn('acc', logs)
+      self.assertIn('validation_loss', logs)
 
   @combinations.generate(all_strategy_combinations())
   def test_trainer_validate(self, distribution):

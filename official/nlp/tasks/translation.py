@@ -302,7 +302,6 @@ class TranslationTask(base_task.Task):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, inputs["targets"], outputs)
-      logs.update({m.name: m.result() for m in metrics})
     return logs
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):

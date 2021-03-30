@@ -202,12 +202,7 @@ class BertTokenizer(tf.keras.layers.Layer):
 
   def get_config(self):
     # Skip in tf.saved_model.save(); fail if called direcly.
-    # TODO(arnoegw): Implement when switching to MutableHashTable, which gets
-    # initialized from the checkpoint and not from a vocab file.
-    # We cannot just put the original, user-supplied vocab file name into
-    # the config, because the path has to change as the SavedModel is copied
-    # around.
-    raise NotImplementedError("Not implemented yet.")
+    raise NotImplementedError("TODO(b/170480226): implement")
 
   def get_special_tokens_dict(self):
     """Returns dict of token ids, keyed by standard names for their purpose.
@@ -404,19 +399,8 @@ class SentencepieceTokenizer(tf.keras.layers.Layer):
       return _reshape(tokens)
 
   def get_config(self):
-    raise NotImplementedError("b/170480226")
-    # TODO(b/170480226): Uncomment and improve to fix the bug.
-    # config = {
-    #     "model_serialized_proto": self._model_serialized_proto,
-    #     "lower_case": self._lower_case,
-    #     "tokenize_with_offsets": self.tokenize_with_offsets,
-    #     "nbest_size": self._nbest_size,
-    #     "alpha": self._alpha,
-    #     "strip_diacritics": self._strip_diacritics,
-    # }
-    # base_config = super(SentencepieceTokenizer, self).get_config()
-    # base_config.update(config)
-    # return base_config
+    # Skip in tf.saved_model.save(); fail if called direcly.
+    raise NotImplementedError("TODO(b/170480226): implement")
 
   def get_special_tokens_dict(self):
     """Returns dict of token ids, keyed by standard names for their purpose.

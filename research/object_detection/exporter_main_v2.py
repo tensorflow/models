@@ -31,6 +31,11 @@ specified option.
   * `tf_example`: Accepts a 1-D string tensor of shape [None] containing
     serialized TFExample protos. Image resolutions are expected to be the same
     if more than 1 image is provided.
+  * `image_and_boxes_tensor`: Accepts a 4-D image tensor of size
+    [1, None, None, 3] and a boxes tensor of size [1, None, 4] of normalized
+    bounding boxes. To be able to support this option, the model needs
+    to implement a predict_masks_from_boxes method. See the documentation
+    for DetectionFromImageAndBoxModule for details.
 
 and the following output nodes returned by the model.postprocess(..):
   * `num_detections`: Outputs float32 tensors of the form [batch]
@@ -107,7 +112,8 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('input_type', 'image_tensor', 'Type of input node. Can be '
                     'one of [`image_tensor`, `encoded_image_string_tensor`, '
-                    '`tf_example`, `float_image_tensor`]')
+                    '`tf_example`, `float_image_tensor`, '
+                    '`image_and_boxes_tensor`]')
 flags.DEFINE_string('pipeline_config_path', None,
                     'Path to a pipeline_pb2.TrainEvalPipelineConfig config '
                     'file.')

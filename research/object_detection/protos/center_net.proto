@@ -30,6 +30,23 @@ message CenterNet {
   // TODO(b/170989061) When bug is fixed, make this the default behavior.
   optional bool compute_heatmap_sparse = 15 [default = false];
 
+  // Parameters to determine the model architecture/layers of the prediction
+  // heads.
+  message PredictionHeadParams {
+    // The two fields: num_filters, kernel_sizes correspond to the parameters of
+    // the convolutional layers used by the prediction head. If provided, the
+    // length of the two repeated fields need to be the same and represents the
+    // number of convolutional layers.
+
+    // Corresponds to the "filters" argument in tf.keras.layers.Conv2D. If not
+    // provided, the default value [256] will be used.
+    repeated int32 num_filters = 1;
+
+    // Corresponds to the "kernel_size" argument in tf.keras.layers.Conv2D. If
+    // not provided, the default value [3] will be used.
+    repeated int32 kernel_sizes = 2;
+  }
+
   // Parameters which are related to object detection task.
   message ObjectDetection {
     // The original fields are moved to ObjectCenterParams or deleted.
@@ -73,6 +90,18 @@ message CenterNet {
 
     // If set, loss is only computed for the labeled classes.
     optional bool use_labeled_classes = 6 [default = false];
+
+    // The keypoint weights used for calculating the location of object center.
+    // When the field is provided, the number of weights need to be the same as
+    // the number of keypoints. The object center is calculated by the weighted
+    // mean of the keypoint locations. When the field is not provided, the
+    // object center is determined by the bounding box groundtruth annotations
+    // (default behavior).
+    repeated float keypoint_weights_for_center = 7;
+
+    // Parameters to determine the architecture of the object center prediction
+    // head.
+    optional PredictionHeadParams center_head_params = 8;
   }
   optional ObjectCenterParams object_center_params = 5;
 
@@ -199,6 +228,18 @@ message CenterNet {
     // where o is the object score, s_i is the score for keypoint i, and k is
     // the number of keypoints for that class.
     optional bool rescore_instances = 24 [default = false];
+
+    // Parameters to determine the architecture of the keypoint heatmap
+    // prediction head.
+    optional PredictionHeadParams heatmap_head_params = 25;
+
+    // Parameters to determine the architecture of the keypoint offset
+    // prediction head.
+    optional PredictionHeadParams offset_head_params = 26;
+
+    // Parameters to determine the architecture of the keypoint regression
+    // prediction head.
+    optional PredictionHeadParams regress_head_params = 27;
   }
   repeated KeypointEstimation keypoint_estimation_task = 7;
 

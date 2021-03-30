@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """RetinaNet configuration definition."""
 
 import os
@@ -278,6 +278,88 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
                   'stepwise': {
                       'boundaries': [
                           475 * steps_per_epoch, 490 * steps_per_epoch
+                      ],
+                      'values': [
+                          0.32 * train_batch_size / 256.0,
+                          0.032 * train_batch_size / 256.0,
+                          0.0032 * train_batch_size / 256.0
+                      ],
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 2000,
+                      'warmup_learning_rate': 0.0067
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
+
+  return config
+
+
+@exp_factory.register_config_factory('retinanet_spinenet_mobile_coco')
+def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
+  """COCO object detection with RetinaNet using Mobile SpineNet backbone."""
+  train_batch_size = 256
+  eval_batch_size = 8
+  steps_per_epoch = COCO_TRAIN_EXAMPLES // train_batch_size
+  input_size = 384
+
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='float32'),
+      task=RetinaNetTask(
+          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
+                                       'instances_val2017.json'),
+          model=RetinaNet(
+              backbone=backbones.Backbone(
+                  type='spinenet_mobile',
+                  spinenet_mobile=backbones.SpineNetMobile(
+                      model_id='49', stochastic_depth_drop_rate=0.2)),
+              decoder=decoders.Decoder(
+                  type='identity', identity=decoders.Identity()),
+              head=RetinaNetHead(num_filters=48, use_separable_conv=True),
+              anchor=Anchor(anchor_size=3),
+              norm_activation=common.NormActivation(
+                  use_sync_bn=True, activation='swish'),
+              num_classes=91,
+              input_size=[input_size, input_size, 3],
+              min_level=3,
+              max_level=7),
+          losses=Losses(l2_weight_decay=3e-5),
+          train_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
+              is_training=True,
+              global_batch_size=train_batch_size,
+              parser=Parser(
+                  aug_rand_hflip=True, aug_scale_min=0.1, aug_scale_max=2.0)),
+          validation_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
+              is_training=False,
+              global_batch_size=eval_batch_size)),
+      trainer=cfg.TrainerConfig(
+          train_steps=600 * steps_per_epoch,
+          validation_steps=COCO_VAL_EXAMPLES // eval_batch_size,
+          validation_interval=steps_per_epoch,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'sgd',
+                  'sgd': {
+                      'momentum': 0.9
+                  }
+              },
+              'learning_rate': {
+                  'type': 'stepwise',
+                  'stepwise': {
+                      'boundaries': [
+                          575 * steps_per_epoch, 590 * steps_per_epoch
                       ],
                       'values': [
                           0.32 * train_batch_size / 256.0,

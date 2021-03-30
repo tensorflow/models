@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Contains common building blocks for neural networks."""
 
 from typing import Callable, Dict, List, Optional, Tuple, Union
@@ -232,7 +232,7 @@ class StochasticDepth(tf.keras.layers.Layer):
     batch_size = tf.shape(inputs)[0]
     random_tensor = keep_prob
     random_tensor += tf.random.uniform(
-        [batch_size, 1, 1, 1], dtype=inputs.dtype)
+        [batch_size] + [1] * (inputs.shape.rank - 1), dtype=inputs.dtype)
     binary_tensor = tf.floor(random_tensor)
     output = tf.math.divide(inputs, keep_prob) * binary_tensor
     return output
