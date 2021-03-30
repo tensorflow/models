@@ -248,6 +248,7 @@ class WeightSharedConvolutionalBoxHead(head.KerasHead):
                conv_hyperparams,
                kernel_size=3,
                use_depthwise=False,
+               apply_conv_hyperparams_to_heads=False,
                box_encodings_clip_range=None,
                return_flat_predictions=True,
                name=None):
@@ -262,6 +263,10 @@ class WeightSharedConvolutionalBoxHead(head.KerasHead):
       kernel_size: Size of final convolution kernel.
       use_depthwise: Whether to use depthwise convolutions for prediction steps.
         Default is False.
+      apply_conv_hyperparams_to_heads: Whether to apply conv_hyperparams to
+        depthwise seperable convolution layers in the box and class heads. By
+        default, the conv_hyperparams are only applied to layers in the
+        predictor tower when using depthwise separable convolutions.
       box_encodings_clip_range: Min and max values for clipping box_encodings.
       return_flat_predictions: If true, returns flattened prediction tensor
         of shape [batch, height * width * num_predictions_per_location,
@@ -282,19 +287,26 @@ class WeightSharedConvolutionalBoxHead(head.KerasHead):
     self._kernel_size = kernel_size
     self._num_predictions_per_location = num_predictions_per_location
     self._use_depthwise = use_depthwise
+    self._apply_conv_hyperparams_to_heads = apply_conv_hyperparams_to_heads
     self._box_encodings_clip_range = box_encodings_clip_range
     self._return_flat_predictions = return_flat_predictions
 
     self._box_encoder_layers = []
 
     if self._use_depthwise:
+      kwargs = conv_hyperparams.params(use_bias=True)
+      if self._apply_conv_hyperparams_to_heads:
+        kwargs['depthwise_regularizer'] = kwargs['kernel_regularizer']
+        kwargs['depthwise_initializer'] = kwargs['kernel_initializer']
+        kwargs['pointwise_regularizer'] = kwargs['kernel_regularizer']
+        kwargs['pointwise_initializer'] = kwargs['kernel_initializer']
       self._box_encoder_layers.append(
           tf.keras.layers.SeparableConv2D(
               num_predictions_per_location * self._box_code_size,
               [self._kernel_size, self._kernel_size],
               padding='SAME',
               name='BoxPredictor',
-              **conv_hyperparams.params(use_bias=True)))
+              **kwargs))
     else:
       self._box_encoder_layers.append(
           tf.keras.layers.Conv2D(
