@@ -215,10 +215,10 @@ class StandardEvaluatorOptions:
 
   Attributes:
     use_tf_function: A boolean indicating whether to apply `tf.function` to the
-      training loop. This will only affect the body of the loop (involving
-      `train_step`); `train_loop_begin` and `train_loop_end` will always be run
+      evaluation loop. This will only affect the body of the loop (involving
+      `eval_step`); `eval_loop_begin` and `eval_loop_end` will always be run
       in eager mode.
-    use_tf_while_loop: A boolean indicating whether to run the training loop
+    use_tf_while_loop: A boolean indicating whether to run the evaluation loop
       using a `tf.while_loop`. If `True`, `use_tf_function` must also be `True`.
     recreate_iterator_for_each_eval: A boolean indicating whether to recreate a
       new iterator for the evaluation dataset before each round of evaluation,
