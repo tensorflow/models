@@ -170,3 +170,38 @@ class EMAConfig(BaseOptimizerConfig):
   average_decay: float = 0.99
   start_step: int = 0
   dynamic_decay: bool = True
+
+
+@dataclasses.dataclass
+class LARSConfig(BaseOptimizerConfig):
+  """Layer-wise adaptive rate scaling config.
+
+  Attributes:
+    name: 'str', name of the optimizer.
+    momentum: `float` hyperparameter >= 0 that accelerates gradient descent
+        in the relevant direction and dampens oscillations. Defaults to 0.9.
+    eeta: `float` LARS coefficient as used in the paper. Default set to LARS
+        coefficient from the paper. (eeta / weight_decay) determines the
+        highest scaling factor in LARS..
+    weight_decay_rate: `float` for weight decay.
+    nesterov: 'boolean' for whether to use nesterov momentum.
+    classic_momentum: `boolean` for whether to use classic (or popular)
+        momentum. The learning rate is applied during momentum update in
+        classic momentum, but after momentum for popular momentum.
+    exclude_from_weight_decay: A list of `string` for variable screening, if
+        any of the string appears in a variable's name, the variable will be
+        excluded for computing weight decay. For example, one could specify
+        the list like ['batch_normalization', 'bias'] to exclude BN and bias
+        from weight decay.
+    exclude_from_layer_adaptation: Similar to exclude_from_weight_decay, but
+        for layer adaptation. If it is None, it will be defaulted the same as
+        exclude_from_weight_decay.
+  """
+  name: str = "LARS"
+  momentum: float = 0.9
+  eeta: float = 0.001
+  weight_decay_rate: float = 0.0
+  nesterov: bool = False
+  classic_momentum: bool = True
+  exclude_from_weight_decay: Optional[List[str]] = None
+  exclude_from_layer_adaptation: Optional[List[str]] = None
