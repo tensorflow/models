@@ -1,0 +1,79 @@
+# Cifar classification.
+runtime:
+  distribution_strategy: 'mirrored'
+  mixed_precision_dtype: 'float16'
+  loss_scale: 'dynamic'
+  num_gpus: 16
+task:
+  model:
+    mode: 'pretrain'
+    input_size: [32, 32, 3]
+    backbone:
+      type: 'resnet'
+      resnet:
+        model_id: 50
+    backbone_trainable: true
+    projection_head:
+      proj_output_dim: 64
+      num_proj_layers: 2
+      ft_proj_idx: 1
+    supervised_head:
+      num_classes: 10
+    norm_activation:
+      use_sync_bn: true
+      norm_momentum: 0.9
+      norm_epsilon: 0.00001
+  loss:
+    projection_norm: true
+    temperature: 0.2
+  evaluation:
+    top_k: 5
+    one_hot: true
+  train_data:
+    tfds_name: 'cifar10'
+    tfds_split: 'train'
+    input_path: ''
+    is_training: true
+    global_batch_size: 512
+    dtype: 'float16'
+    parser:
+      mode: 'pretrain'
+      aug_color_jitter_strength: 0.5
+      aug_rand_blur: false
+    decoder:
+      decode_label: true
+  validation_data:
+    tfds_name: 'cifar10'
+    tfds_split: 'test'
+    input_path: ''
+    is_training: false
+    global_batch_size: 512
+    dtype: 'float16'
+    drop_remainder: false
+    parser:
+      mode: 'pretrain'
+    decoder:
+      decode_label: true
+trainer:
+  train_steps: 48000  # 500 epochs
+  validation_steps: 18  # NUM_EXAMPLES (10000) // global_batch_size
+  validation_interval: 96
+  steps_per_loop: 96  # NUM_EXAMPLES (50000) // global_batch_size
+  summary_interval: 96
+  checkpoint_interval: 96
+  optimizer_config:
+    optimizer:
+      type: 'lars'
+      lars:
+        momentum: 0.9
+        weight_decay_rate: 0.000001
+        exclude_from_weight_decay: ['batch_normalization', 'bias']
+    learning_rate:
+      type: 'cosine'
+      cosine:
+        initial_learning_rate: 0.6  #  0.3 × BatchSize / 256
+        decay_steps: 43200  # train_steps - warmup_steps
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 4800  # 10% of total epochs
