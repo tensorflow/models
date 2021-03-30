@@ -359,7 +359,7 @@ def _build_initializer(initializer, build_for_keras=False):
       operators. If false builds for Slim.
 
   Returns:
-    tf initializer.
+    tf initializer or string corresponding to the tf keras initializer name.
 
   Raises:
     ValueError: On unknown initializer.
@@ -415,6 +415,13 @@ def _build_initializer(initializer, build_for_keras=False):
           factor=initializer.variance_scaling_initializer.factor,
           mode=mode,
           uniform=initializer.variance_scaling_initializer.uniform)
+  if initializer_oneof == 'keras_initializer_by_name':
+    if build_for_keras:
+      return initializer.keras_initializer_by_name
+    else:
+      raise ValueError(
+          'Unsupported non-Keras usage of keras_initializer_by_name: {}'.format(
+              initializer.keras_initializer_by_name))
   if initializer_oneof is None:
     return None
   raise ValueError('Unknown initializer function: {}'.format(

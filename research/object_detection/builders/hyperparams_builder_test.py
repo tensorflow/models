@@ -1030,5 +1030,26 @@ class KerasHyperparamsBuilderTest(tf.test.TestCase):
     self._assert_variance_in_range(initializer, shape=[100, 40],
                                    variance=0.64, tol=1e-1)
 
+  def test_keras_initializer_by_name(self):
+    conv_hyperparams_text_proto = """
+      regularizer {
+        l2_regularizer {
+        }
+      }
+      initializer {
+        keras_initializer_by_name: "glorot_uniform"
+      }
+    """
+    conv_hyperparams_proto = hyperparams_pb2.Hyperparams()
+    text_format.Parse(conv_hyperparams_text_proto, conv_hyperparams_proto)
+    keras_config = hyperparams_builder.KerasLayerHyperparams(
+        conv_hyperparams_proto)
+    initializer_arg = keras_config.params()['kernel_initializer']
+    conv_layer = tf.keras.layers.Conv2D(
+        filters=16, kernel_size=3, **keras_config.params())
+    self.assertEqual(initializer_arg, 'glorot_uniform')
+    self.assertIsInstance(conv_layer.kernel_initializer,
+                          type(tf.keras.initializers.get('glorot_uniform')))
+
 if __name__ == '__main__':
   tf.test.main()
