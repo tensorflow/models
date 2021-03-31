@@ -81,31 +81,41 @@ class RetinaNetModel(tf.keras.Model):
         - values: `Tensor`, the box coordinates predicted from a particular
             feature level, whose shape is
             [batch, height_l, width_l, 4 * num_anchors_per_location].
+      attributes: a dict of (attribute_name, attribute_predictions). Each
+        attribute prediction is a dict that includes:
+        - key: `str`, the level of the multilevel predictions.
+        - values: `Tensor`, the attribute predictions from a particular
+            feature level, whose shape is
+            [batch, height_l, width_l, att_size * num_anchors_per_location].
     """
     # Feature extraction.
     features = self.backbone(images)
     if self.decoder:
       features = self.decoder(features)
 
-    # Dense prediction.
-    raw_scores, raw_boxes = self.head(features)
+    # Dense prediction. `raw_attributes` can be empty.
+    raw_scores, raw_boxes, raw_attributes = self.head(features)
 
     if training:
       return {
           'cls_outputs': raw_scores,
           'box_outputs': raw_boxes,
+          'att_outputs': raw_attributes,
       }
     else:
       # Post-processing.
-      final_results = self.detection_generator(
-          raw_boxes, raw_scores, anchor_boxes, image_shape)
+      final_results = self.detection_generator(raw_boxes, raw_scores,
+                                               anchor_boxes, image_shape,
+                                               raw_attributes)
       return {
           'detection_boxes': final_results['detection_boxes'],
           'detection_scores': final_results['detection_scores'],
           'detection_classes': final_results['detection_classes'],
+          'detection_attributes': final_results['detection_attributes'],
           'num_detections': final_results['num_detections'],
           'cls_outputs': raw_scores,
-          'box_outputs': raw_boxes
+          'box_outputs': raw_boxes,
+          'att_outputs': raw_attributes,
       }
 
   @property
