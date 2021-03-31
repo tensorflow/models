@@ -16,7 +16,7 @@
 """RetinaNet configuration definition."""
 
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 import dataclasses
 from official.core import config_definitions as cfg
 from official.core import exp_factory
@@ -93,6 +93,7 @@ class RetinaNetHead(hyperparams.Config):
   num_convs: int = 4
   num_filters: int = 256
   use_separable_conv: bool = False
+  attribute_heads: Optional[Dict[str, Tuple[str, int]]] = None
 
 
 @dataclasses.dataclass
