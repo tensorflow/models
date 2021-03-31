@@ -44,7 +44,7 @@ class UtilsTest(tf.test.TestCase):
     max_img_size = 1024
     # Load the saved dummy image.
     img = image_loading_utils.default_loader(filename, imsize=max_img_size,
-                                     normalize=False)
+                                             preprocess=False)
 
     # Make sure the values are the same before and after loading.
     self.assertAllEqual(np.array(img_out), img)
@@ -62,13 +62,12 @@ class UtilsTest(tf.test.TestCase):
     max_img_size = 1024
     # Load the saved dummy image.
     expected_size = 400
-    img = image_loading_utils.default_loader(filename, imsize=max_img_size,
-                                     bounding_box=[120, 120,
-                                                   120 + expected_size,
-                                                   120 + expected_size],
-                                     normalize=False)
+    img = image_loading_utils.default_loader(
+      filename, imsize=max_img_size,
+      bounding_box=[120, 120, 120 + expected_size, 120 + expected_size],
+      preprocess=False)
 
-    # Check the shape.
+    # Check that the final shape is as expected.
     self.assertAllEqual(tf.shape(img), [expected_size, expected_size, 3])
 
 

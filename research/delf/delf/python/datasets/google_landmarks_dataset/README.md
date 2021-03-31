@@ -18,7 +18,7 @@ For more details on the dataset, please refer to its
 ### Install DELF library
 
 To be able to use this code, please follow
-[these instructions](../../../INSTALL_INSTRUCTIONS.md) to properly install the
+[these instructions](../../../../INSTALL_INSTRUCTIONS.md) to properly install the
 DELF library.
 
 ### Download Revisited Oxford/Paris datasets
@@ -48,7 +48,7 @@ wget http://cmp.felk.cvut.cz/revisitop/data/datasets/rparis6k/gnd_rparis6k.mat
 ### Download model
 
 ```bash
-# From models/research/delf/delf/python/google_landmarks_dataset
+# From models/research/delf/delf/python/datasets/google_landmarks_dataset
 mkdir parameters && cd parameters
 
 # RN101-ArcFace model trained on GLDv2-clean.
@@ -72,7 +72,7 @@ datasets, and not required for the GLDv2 retrieval/recognition datasets.
 Run query feature extraction as follows:
 
 ```bash
-# From models/research/delf/delf/python/google_landmarks_dataset
+# From models/research/delf/delf/python/datasets/google_landmarks_dataset
 python3 ../delg/extract_features.py \
   --delf_config_path rn101_af_gldv2clean_config.pbtxt \
   --dataset_file_path ~/revisitop/data/gnd_roxford5k.mat \
@@ -86,7 +86,7 @@ python3 ../delg/extract_features.py \
 Run index feature extraction as follows:
 
 ```bash
-# From models/research/delf/delf/python/google_landmarks_dataset
+# From models/research/delf/delf/python/datasets/google_landmarks_dataset
 python3 ../delg/extract_features.py \
   --delf_config_path rn101_af_gldv2clean_config.pbtxt \
   --dataset_file_path ~/revisitop/data/gnd_roxford5k.mat \
@@ -100,7 +100,7 @@ python3 ../delg/extract_features.py \
 To run retrieval on `roxford5k`, the following command can be used:
 
 ```bash
-# From models/research/delf/delf/python/google_landmarks_dataset
+# From models/research/delf/delf/python/datasets/google_landmarks_dataset
 python3 ../delg/perform_retrieval.py \
   --dataset_file_path ~/revisitop/data/gnd_roxford5k.mat \
   --query_features_dir ~/revisitop/data/oxford5k_features/query \
