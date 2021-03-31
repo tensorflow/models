@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Module for Detect-to-Retrieve technique."""
+"""Module for revisited Oxford and Paris datasets."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

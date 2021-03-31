@@ -221,3 +221,4 @@ def download_train(data_dir):
                                            dl_eccv2020)
           os.system('wget {} -O {}'.format(eccv2020_src_file,
                                            eccv2020_dst_file))
+          
