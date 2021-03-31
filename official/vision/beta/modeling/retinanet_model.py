@@ -97,26 +97,31 @@ class RetinaNetModel(tf.keras.Model):
     raw_scores, raw_boxes, raw_attributes = self.head(features)
 
     if training:
-      return {
+      outputs = {
           'cls_outputs': raw_scores,
           'box_outputs': raw_boxes,
-          'att_outputs': raw_attributes,
       }
+      if raw_attributes:
+        outputs.update({'att_outputs': raw_attributes})
+      return outputs
     else:
       # Post-processing.
-      final_results = self.detection_generator(raw_boxes, raw_scores,
-                                               anchor_boxes, image_shape,
-                                               raw_attributes)
-      return {
+      final_results = self.detection_generator(
+          raw_boxes, raw_scores, anchor_boxes, image_shape, raw_attributes)
+      outputs = {
           'detection_boxes': final_results['detection_boxes'],
           'detection_scores': final_results['detection_scores'],
           'detection_classes': final_results['detection_classes'],
-          'detection_attributes': final_results['detection_attributes'],
           'num_detections': final_results['num_detections'],
           'cls_outputs': raw_scores,
           'box_outputs': raw_boxes,
-          'att_outputs': raw_attributes,
       }
+      if raw_attributes:
+        outputs.update({
+            'att_outputs': raw_attributes,
+            'detection_attributes': final_results['detection_attributes'],
+        })
+      return outputs
 
   @property
   def checkpoint_items(self):
