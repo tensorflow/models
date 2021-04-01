@@ -1,0 +1,79 @@
+task:
+  train_data:
+    drop_remainder: true
+    global_batch_size: 2048
+    input_path: ""
+    is_training: true
+    max_predictions_per_seq: 20
+    seq_length: 512
+    use_next_sentence_label: true
+    use_position_id: false
+  validation_data:
+    drop_remainder: true
+    global_batch_size: 2048
+    input_path: ""
+    is_training: false
+    max_predictions_per_seq: 20
+    seq_length: 512
+    use_next_sentence_label: true
+    use_position_id: false
+  teacher_model:
+    cls_heads: []
+    mlm_activation: gelu
+    mlm_initializer_range: 0.02
+    encoder:
+      type: mobilebert
+      mobilebert:
+        word_vocab_size: 30522
+        word_embed_size: 128
+        type_vocab_size: 2
+        max_sequence_length: 512
+        num_blocks: 24
+        hidden_size: 512
+        num_attention_heads: 4
+        intermediate_size: 4096
+        hidden_activation: gelu
+        hidden_dropout_prob: 0.1
+        attention_probs_dropout_prob: 0.1
+        intra_bottleneck_size: 1024
+        initializer_range: 0.02
+        key_query_shared_bottleneck: false
+        num_feedforward_networks: 1
+        normalization_type: layer_norm
+        classifier_activation: false
+  student_model:
+    cls_heads: [{activation: tanh, cls_token_idx: 0, dropout_rate: 0.0, inner_dim: 512,
+                 name: next_sentence, num_classes: 2}]
+    mlm_activation: relu
+    mlm_initializer_range: 0.02
+    encoder:
+      type: mobilebert
+      mobilebert:
+        word_vocab_size: 30522
+        word_embed_size: 128
+        type_vocab_size: 2
+        max_sequence_length: 512
+        num_blocks: 24
+        hidden_size: 512
+        num_attention_heads: 4
+        intermediate_size: 512
+        hidden_activation: relu
+        hidden_dropout_prob: 0.0
+        attention_probs_dropout_prob: 0.1
+        intra_bottleneck_size: 128
+        initializer_range: 0.02
+        key_query_shared_bottleneck: true
+        num_feedforward_networks: 4
+        normalization_type: no_norm
+        classifier_activation: false
+  teacher_model_init_checkpoint: ""
+trainer:
+  progressive:
+    if_copy_embeddings: true
+    layer_wise_distill_config:
+      num_steps: 10000
+    pretrain_distill_config:
+      num_steps: 500000
+      decay_steps: 500000
+  train_steps: 740000
+  max_to_keep: 10
