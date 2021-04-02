@@ -22,7 +22,7 @@ segmentation task.
 *   `deepmac_meta_arch.py` implements our main architecture, DeepMAC, on top of
     the CenterNet detection architecture.
 *   The proto message `DeepMACMaskEstimation` in `center_net.proto` controls the
-    configutation of the mask head used.
+    configuration of the mask head used.
 *   The field `allowed_masked_classes_ids` controls which classes recieve mask
     supervision during training.
 *   Mask R-CNN based ablations in the paper are implemented in the
