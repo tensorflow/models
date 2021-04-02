@@ -10,7 +10,7 @@ paper. The figure below shows improved mask predictions for unseen classes as we
 use better mask-head architectures.
 
 <p align="center">
-<img src="./img/mask_improvement.png" style="width:50%;"/>
+<img src="./img/mask_improvement.png" width=50%/>
 </p>
 
 Just by using better mask-head architectures (no extra losses or modules) we
