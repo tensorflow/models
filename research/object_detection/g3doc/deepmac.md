@@ -26,13 +26,14 @@ segmentation task.
 *   The field `allowed_masked_classes_ids` controls which classes recieve mask
     supervision during training.
 *   Mask R-CNN based ablations in the paper are implemented in the
-    [TF model garden]() code base.
+    [TF model garden](../../../official/vision/beta/projects/deepmac_maskrcnn)
+    code base.
 
 ## Prerequisites
 
 1.  Follow [TF2 install instructions](tf2.md) to install Object Detection API.
 2.  Generate COCO dataset by using
-    [create_coco_tf_record.py](../../official/vision/beta/data/create_coco_tf_record.py)
+    [create_coco_tf_record.py](../../../official/vision/beta/data/create_coco_tf_record.py)
 
 ## Configurations
 
