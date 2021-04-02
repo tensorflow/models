@@ -284,7 +284,7 @@ class InputReader:
     """Returns a tf.data.Dataset object after reading, decoding, and parsing."""
     if tfds_builder:
       dataset = self._read_tfds(input_context)
-    elif len(self._matched_files) > 1:
+    elif len(matched_files) > 1:
       if input_context and (len(matched_files) <
                             input_context.num_input_pipelines):
         logging.warn(
