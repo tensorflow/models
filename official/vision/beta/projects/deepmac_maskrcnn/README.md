@@ -19,7 +19,8 @@ for more details.
     agnostic mode and `task.allowed_mask_class_ids` controls which classes are
     allowed to have masks during training.
 *   Majority of experiments and ablations from the paper are perfomed with the
-    [DeepMAC model]() in the Object Detection API code base.
+    [DeepMAC model](../../../../../research/object_detection/g3doc/deepmac.md)
+    in the Object Detection API code base.
 
 ## Prerequisites
 
