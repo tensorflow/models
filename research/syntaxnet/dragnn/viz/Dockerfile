@@ -1,4 +1,4 @@
-FROM node:7
+FROM node:15.12.0
 WORKDIR /code
 COPY package.json /code/
 RUN npm install
