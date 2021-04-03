@@ -102,6 +102,11 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Metrics(hyperparams.Config):
+  use_per_class_recall: bool = False
+
+
+@dataclasses.dataclass
 class VideoClassificationTask(cfg.TaskConfig):
   """The task config."""
   model: VideoClassificationModel = VideoClassificationModel()
@@ -109,6 +114,7 @@ class VideoClassificationTask(cfg.TaskConfig):
   validation_data: DataConfig = DataConfig(
       is_training=False, drop_remainder=False)
   losses: Losses = Losses()
+  metrics: Metrics = Metrics()
 
 
 def add_trainer(experiment: cfg.ExperimentConfig,
