@@ -154,6 +154,10 @@ class VideoClassificationTask(base_task.Task):
                 curve='PR',
                 multi_label=self.task_config.train_data.is_multilabel,
                 name='PR-AUC'))
+        if self.task_config.metrics.use_per_class_recall:
+          for i in range(self.task_config.train_data.num_classes):
+            metrics.append(
+                tf.keras.metrics.Recall(class_id=i, name=f'recall-{i}'))
     else:
       metrics = [
           tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
