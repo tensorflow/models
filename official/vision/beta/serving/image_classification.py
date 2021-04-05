@@ -77,5 +77,6 @@ class ClassificationModule(export_base.ExportModule):
           )
 
     logits = self.inference_step(images)
+    probs = tf.nn.softmax(logits)
 
-    return dict(outputs=logits)
+    return {'logits': logits, 'probs': probs}
