@@ -44,6 +44,13 @@ from official.core import exp_factory
 from official.modeling import hyperparams
 from official.vision.beta.projects.basnet.serving import export_saved_model_lib
 
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="7"
+
+
+
+
 FLAGS = flags.FLAGS
 
 

@@ -24,9 +24,7 @@ from official.core import config_definitions as cfg
 from official.core import export_base
 from official.core import train_utils
 from official.vision.beta.projects.basnet import configs
-from official.vision.beta.projects.basnet.serving import detection
-from official.vision.beta.projects.basnet.serving import image_classification
-from official.vision.beta.projects.basnet.serving import semantic_segmentation
+from official.vision.beta.projects.basnet.serving import basnet
 
 
 def export_inference_graph(
@@ -77,26 +75,11 @@ def export_inference_graph(
   # TODO(arashwan): Offers a direct path to use ExportModule with Task objects.
   if not export_module:
     if isinstance(params.task,
-                  configs.image_classification.ImageClassificationTask):
-      export_module = image_classification.ClassificationModule(
+                  configs.basnet.BASNetTask):
+      export_module = basnet.BASNetModule(
           params=params,
           batch_size=batch_size,
-          input_image_size=input_image_size,
-          num_channels=num_channels)
-    elif isinstance(params.task, configs.retinanet.RetinaNetTask) or isinstance(
-        params.task, configs.maskrcnn.MaskRCNNTask):
-      export_module = detection.DetectionModule(
-          params=params,
-          batch_size=batch_size,
-          input_image_size=input_image_size,
-          num_channels=num_channels)
-    elif isinstance(params.task,
-                    configs.semantic_segmentation.SemanticSegmentationTask):
-      export_module = semantic_segmentation.SegmentationModule(
-          params=params,
-          batch_size=batch_size,
-          input_image_size=input_image_size,
-          num_channels=num_channels)
+          input_image_size=input_image_size)
     else:
       raise ValueError('Export module not implemented for {} task.'.format(
           type(params.task)))
