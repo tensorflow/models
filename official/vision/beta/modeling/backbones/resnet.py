@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Contains definitions of Residual Networks."""
+"""Contains definitions of ResNet and ResNet-RS models."""
 
 # Import libraries
 import tensorflow as tf
@@ -87,12 +87,16 @@ RESNET_SPECS = {
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class ResNet(tf.keras.Model):
-  """Creates a ResNet family model.
+  """Creates ResNet and ResNet-RS family models.
 
   This implements the Deep Residual Network from:
     Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun.
     Deep Residual Learning for Image Recognition.
-    (https://arxiv.org/pdf/1512.03385)
+    (https://arxiv.org/pdf/1512.03385) and
+    Irwan Bello, William Fedus, Xianzhi Du, Ekin D. Cubuk, Aravind Srinivas,
+    Tsung-Yi Lin, Jonathon Shlens, Barret Zoph.
+    Revisiting ResNets: Improved Training and Scaling Strategies.
+    (https://arxiv.org/abs/2103.07579).
   """
 
   def __init__(self,
@@ -118,7 +122,8 @@ class ResNet(tf.keras.Model):
       model_id: An `int` of the depth of ResNet backbone model.
       input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
       depth_multiplier: A `float` of the depth multiplier to uniformaly scale up
-        all layers in channel size in ResNet.
+        all layers in channel size. This argument is also referred to as
+        `width_multiplier` in (https://arxiv.org/abs/2103.07579).
       stem_type: A `str` of stem type of ResNet. Default to `v0`. If set to
         `v1`, use ResNet-D type stem (https://arxiv.org/abs/1812.01187).
       resnetd_shortcut: A `bool` of whether to use ResNet-D shortcut in

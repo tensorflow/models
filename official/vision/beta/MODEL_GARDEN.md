@@ -20,8 +20,10 @@ TF Vision model garden provides a large collection of baselines and checkpoints 
 
 
 #### ResNet-RS models trained with settings including:
+We support state-of-the-art [ResNet-RS](https://arxiv.org/abs/2103.07579) image classification models with features:
 
-*   ResNet-RS architectural changes and Swish activation.
+*   ResNet-RS architectural changes and Swish activation. (Note that ResNet-RS
+    adopts ReLU activation in the paper.)
 *   Regularization methods including Random Augment, 4e-5 weight decay, stochastic depth, label smoothing and dropout.
 *   New training methods including a 350-epoch schedule, cosine learning rate and
     EMA.
