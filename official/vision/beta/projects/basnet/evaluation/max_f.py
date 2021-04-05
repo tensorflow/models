@@ -38,7 +38,7 @@ import six
 import tensorflow as tf
 
 
-class Fscore(object):
+class maxFscore(object):
   """BASNet evaluation metric class."""
 
   def __init__(self):
