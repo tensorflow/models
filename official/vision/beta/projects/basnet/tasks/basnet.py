@@ -23,8 +23,9 @@ from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.projects.basnet.configs import basnet as exp_cfg
 from official.vision.beta.projects.basnet.dataloaders import basnet_input # Prepare input datas
-from official.vision.beta.projects.basnet.evaluation import basnet_evaluator
-from official.vision.beta.projects.basnet.evaluation import f_score
+#from official.vision.beta.projects.basnet.evaluation import basnet_evaluator
+from official.vision.beta.projects.basnet.evaluation import max_f
+from official.vision.beta.projects.basnet.evaluation import relax_f
 from official.vision.beta.projects.basnet.evaluation import mae
 from official.vision.beta.projects.basnet.losses import basnet_losses
 from official.vision.beta.projects.basnet.modeling import factory
@@ -134,7 +135,8 @@ class BASNetTask(base_task.Task):
       metrics = []
     else:
       self.mae_metric = mae.MAE()
-      self.fscore_metric = f_score.Fscore()
+      self.maxf_metric = max_f.maxFscore()
+      self.relaxf_metric = relax_f.relaxedFscore()
 
     return metrics
 
@@ -212,7 +214,8 @@ class BASNetTask(base_task.Task):
     
 
     logs.update({self.mae_metric.name: (labels, outputs['ref'])})
-    logs.update({self.fscore_metric.name: (labels, outputs['ref'])})
+    logs.update({self.maxf_metric.name: (labels, outputs['ref'])})
+    logs.update({self.relaxf_metric.name: (labels, outputs['ref'])})
     return logs    
 
   def inference_step(self, inputs, model):
@@ -222,19 +225,24 @@ class BASNetTask(base_task.Task):
   def aggregate_logs(self, state=None, step_outputs=None):
     if state is None:
       self.mae_metric.reset_states()
-      self.fscore_metric.reset_states()
+      self.maxf_metric.reset_states()
+      self.relaxf_metric.reset_states()
       state = self.mae_metric
     self.mae_metric.update_state(
         step_outputs[self.mae_metric.name][0],
         step_outputs[self.mae_metric.name][1])
-    self.fscore_metric.update_state(
-        step_outputs[self.fscore_metric.name][0],
-        step_outputs[self.fscore_metric.name][1])
+    self.maxf_metric.update_state(
+        step_outputs[self.maxf_metric.name][0],
+        step_outputs[self.maxf_metric.name][1])
+    self.relaxf_metric.update_state(
+        step_outputs[self.relaxf_metric.name][0],
+        step_outputs[self.relaxf_metric.name][1])
     
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):
     result = {}
     result['MAE'] = self.mae_metric.result()
-    result['F_max'] = self.fscore_metric.result()
+    result['maxF'] = self.maxf_metric.result()
+    result['relaxF'] = self.relaxf_metric.result()
     return result
