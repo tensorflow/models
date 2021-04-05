@@ -59,7 +59,8 @@ def get_callbacks(
             log_dir=model_dir,
             track_lr=track_lr,
             initial_step=initial_step,
-            write_images=write_model_weights))
+            write_images=write_model_weights,
+            profile_batch=0))
   if time_history:
     callbacks.append(
         keras_utils.TimeHistory(
