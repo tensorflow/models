@@ -81,7 +81,7 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
           optimizer,
           use_float16=runtime_config.mixed_precision_dtype == "float16",
           loss_scale=runtime_config.loss_scale,
-          use_experimental_api=True)
+          use_experimental_api=False)
 
     return optimizer
 

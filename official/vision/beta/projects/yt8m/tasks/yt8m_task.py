@@ -184,7 +184,7 @@ class YT8MTask(base_task.Task):
       # For mixed_precision policy, when LossScaleOptimizer is used, loss is
       # scaled for numerical stability.
       if isinstance(optimizer,
-                    tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                    tf.keras.mixed_precision.LossScaleOptimizer):
         scaled_loss = optimizer.get_scaled_loss(scaled_loss)
 
     tvars = model.trainable_variables
@@ -192,7 +192,7 @@ class YT8MTask(base_task.Task):
     # Scales back gradient before apply_gradients when LossScaleOptimizer is
     # used.
     if isinstance(optimizer,
-                  tf.keras.mixed_precision.experimental.LossScaleOptimizer):
+                  tf.keras.mixed_precision.LossScaleOptimizer):
       grads = optimizer.get_unscaled_gradients(grads)
 
     # Apply gradient clipping.
