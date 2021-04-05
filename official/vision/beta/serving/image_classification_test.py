@@ -97,13 +97,16 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
             elems=tf.zeros((1, 224, 224, 3), dtype=tf.uint8),
             fn_output_signature=tf.TensorSpec(
                 shape=[224, 224, 3], dtype=tf.float32)))
-    expected_output = module.model(processed_images, training=False)
+    expected_logits = module.model(processed_images, training=False)
+    expected_prob = tf.nn.softmax(expected_logits)
     out = classification_fn(tf.constant(images))
 
     # The imported model should contain any trackable attrs that the original
     # model had.
     self.assertTrue(hasattr(imported.model, 'test_trackable'))
-    self.assertAllClose(out['outputs'].numpy(), expected_output.numpy())
+    self.assertAllClose(out['logits'].numpy(), expected_logits.numpy())
+    self.assertAllClose(out['probs'].numpy(), expected_prob.numpy())
+
 
 if __name__ == '__main__':
   tf.test.main()
