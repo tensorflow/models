@@ -134,7 +134,6 @@ class GaussianProcessClassificationHead(tf.test.TestCase,
         num_classes=num_classes,
         use_spec_norm=True,
         use_gp_layer=use_gp_layer,
-        initializer="zeros",
         **self.spec_norm_kwargs,
         **self.gp_layer_kwargs)
 
@@ -148,6 +147,23 @@ class GaussianProcessClassificationHead(tf.test.TestCase,
     else:
       self.assertIsInstance(outputs, tf.Tensor)
       self.assertEqual(outputs.shape, (batch_size, num_classes))
+
+  def test_sngp_train_logits(self):
+    """Checks if temperature scaling is disabled during training."""
+    features = tf.zeros(shape=(5, 10, 10), dtype=tf.float32)
+
+    gp_layer = cls_head.GaussianProcessClassificationHead(
+        inner_dim=5, num_classes=2)
+
+    # Without temperature.
+    gp_layer.temperature = None
+    outputs_no_temp = gp_layer(features, training=True)
+
+    # With temperature.
+    gp_layer.temperature = 10.
+    outputs_with_temp = gp_layer(features, training=True)
+
+    self.assertAllEqual(outputs_no_temp, outputs_with_temp)
 
   def test_layer_serialization(self):
     layer = cls_head.GaussianProcessClassificationHead(
