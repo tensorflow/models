@@ -12,20 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Metrics for basnet"""
+"""The BASNet-style evaluator.
+
+The following snippet demonstrates the use of interfaces:
+
+  evaluator = BASNetEvaluator(...)
+  for _ in range(num_evals):
+    for _ in range(num_batches_per_eval):
+      predictions, groundtruth = predictor.predict(...)  # pop a batch.
+      evaluator.update_state(groundtruths, predictions)
+    evaluator.result()  # finish one full eval and reset states.
+
+This script is a revised version of Binary-Segmentation-Evaluation-Tool
+(https://github.com/xuebinqin/Binary-Segmentation-Evaluation-Tool)
+measures.py for evaluation in tensorflow model garden.
+
+"""
 
 import atexit
 import tempfile
 # Import libraries
 from absl import logging
 import numpy as np
-from scipy import signal
 import six
 import tensorflow as tf
 
 
 class relaxedFscore(object):
-  """Relaxed F-score metric for basnet."""
+  """BASNet evaluation metric class."""
 
   def __init__(self):
     """Constructs BASNet evaluation class.
@@ -56,7 +70,7 @@ class relaxedFscore(object):
     """Evaluates with masks from all images.
 
     Returns:
-      relax_f: relaxed F-score value.
+      f_max: maximum F-score value.
     """
 
     beta = 0.3
@@ -95,35 +109,66 @@ class relaxedFscore(object):
 
     precisions = np.sum(precisions,0)/(len(self._groundtruths)+1e-8)
     recalls    = np.sum(recalls,0)/(len(self._groundtruths)+1e-8)
-    relax_f    = (1+beta)*precisions*recalls/(beta*precisions+recalls+1e-8)
+    f          = (1+beta)*precisions*recalls/(beta*precisions+recalls+1e-8)
 
-    relax_f = relax_f.astype(np.float32)
+    f = f.astype(np.float32)
 
-    return relax_f
+    return f
 
   def _mask_normalize(self, mask):
     return mask/(np.amax(mask)+1e-8)
 
   def _compute_erosion(self, mask, kernel):
-    mask_erd = signal.convolve2d(mask, kernel, mode='same')
-    mask_erd[mask_erd<9] = 0
-    mask_erd[mask_erd==9] = 1
+    mask_erd = np.zeros_like(mask)
+    mask = np.pad(mask, 1, constant_values=0)
+    shape = mask.shape 
+    
+    for i in range(1, shape[0]-1):
+      for j in range(1, shape[1]-1):
+        count = 0
+        for m in range(-1,2):
+          for n in range(-1,2):
+            if mask[i+m][j+n]:
+              count += 1
+        if count == 9:
+          mask_erd[i-1][j-1] = 1
+        else:
+          mask_erd[i-1][j-1] = 0
+        
     return mask_erd
 
   def _compute_relax_pre_rec(self, true, pred, rho):
-    kernel = np.ones((2*rho-1,2*rho-1))
-    map_zeros = np.zeros_like(pred)
-    map_ones = np.ones_like(pred)
-
-    pred_filtered = signal.convolve2d(pred, kernel, mode='same')
-    # True positive for relaxed precision
-    relax_pre_tp = np.where((true==1) & (pred_filtered>0), map_ones, map_zeros)
+    count_pre = 0
+    count_rec = 0
     
-    true_filtered = signal.convolve2d(true, kernel, mode='same')
-    # True positive for relaxed recall
-    relax_rec_tp = np.where((pred==1) & (true_filtered>0), map_ones, map_zeros)
+    shape = pred.shape 
 
-    return np.sum(relax_pre_tp)/np.sum(pred), np.sum(relax_rec_tp)/np.sum(true) 
+    true_padded = np.pad(true, rho, constant_values=0)
+    pred_padded = np.pad(pred, rho, constant_values=0)
+   
+    for i in range(0, shape[0]):
+      for j in range(0, shape[1]):
+        # count relaxed true positive
+        boundary_rec = False
+        if true[i][j]:
+          for m in range(-rho, rho+1):
+            for n in range(-rho, rho+1):
+              if pred_padded[i+rho+m][j+rho+n]:
+                boundary_rec = True
+        if boundary_rec:
+          count_rec += 1
+        
+        # count relaxed true positive
+        boundary_pre = False
+        if pred[i][j]:
+          for m in range(-rho, rho+1):
+            for n in range(-rho, rho+1):
+              if true_padded[i+rho+m][j+rho+n]:
+                boundary_pre = True
+        if boundary_pre:
+          count_pre += 1
+ 
+    return count_pre/np.sum(pred), count_rec/np.sum(true)
   
   def _convert_to_numpy(self, groundtruths, predictions):
     """Converts tesnors to numpy arrays."""

@@ -12,22 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""The BASNet-style evaluator.
-
-The following snippet demonstrates the use of interfaces:
-
-  evaluator = BASNetEvaluator(...)
-  for _ in range(num_evals):
-    for _ in range(num_batches_per_eval):
-      predictions, groundtruth = predictor.predict(...)  # pop a batch.
-      evaluator.update_state(groundtruths, predictions)
-    evaluator.result()  # finish one full eval and reset states.
-
-This script is a revised version of Binary-Segmentation-Evaluation-Tool
-(https://github.com/xuebinqin/Binary-Segmentation-Evaluation-Tool)
-measures.py for evaluation in tensorflow model garden.
-
-"""
+"""Metrics for basnet"""
 
 import atexit
 import tempfile
@@ -39,15 +24,14 @@ import tensorflow as tf
 
 
 class MAE(object):
-  """BASNet evaluation metric class."""
+  """Mean Absolute Error(MAE) metric for basnet."""
 
   def __init__(self):
-    """Constructs BASNet evaluation class.
-
+    """Constructs MAE metric class.
+    
     Args:
 
     """
-
     self.reset_states()
 
   @property

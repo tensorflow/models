@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Image segmentation task definition."""
+"""BASNet task definition."""
 
 from absl import logging
 import tensorflow as tf
@@ -22,8 +22,7 @@ from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.projects.basnet.configs import basnet as exp_cfg
-from official.vision.beta.projects.basnet.dataloaders import basnet_input # Prepare input datas
-#from official.vision.beta.projects.basnet.dataloaders import segmentation_input
+from official.vision.beta.projects.basnet.dataloaders import basnet_input
 from official.vision.beta.projects.basnet.evaluation import max_f
 from official.vision.beta.projects.basnet.evaluation import relax_f
 from official.vision.beta.projects.basnet.evaluation import mae
@@ -104,7 +103,7 @@ class BASNetTask(base_task.Task):
     return dataset
 
   def build_losses(self, label, model_outputs, aux_losses=None):
-    """Sparse categorical cross entropy loss.
+    """Hybrid loss proposed in BASNet.
 
     Args:
       label: label.
@@ -115,11 +114,7 @@ class BASNetTask(base_task.Task):
       The total loss tensor.
     """
     loss_params = self._task_config.losses
-    basnet_loss_fn = basnet_losses.BASNetLoss(
-        loss_params.label_smoothing,
-        loss_params.class_weights,
-        loss_params.ignore_label,
-        use_groundtruth_dimension=loss_params.use_groundtruth_dimension)
+    basnet_loss_fn = basnet_losses.BASNetLoss()
 
     total_loss = basnet_loss_fn(model_outputs, label)
 
@@ -157,8 +152,6 @@ class BASNetTask(base_task.Task):
     num_replicas = tf.distribute.get_strategy().num_replicas_in_sync
     with tf.GradientTape() as tape:
       outputs = model(features, training=True)
-      #print("outputs")
-      #print(outputs)
       # Casting output layer as float32 is necessary when mixed_precision is
       # mixed_float16 or mixed_bfloat16 to ensure output is casted as float32.
       outputs = tf.nest.map_structure(
@@ -206,13 +199,11 @@ class BASNetTask(base_task.Task):
     """
     features, labels = inputs
 
-
     outputs = self.inference_step(features, model)
     outputs = tf.nest.map_structure(lambda x: tf.cast(x, tf.float32), outputs)
     
     loss = 0
     logs = {self.loss: loss}
-    
 
     logs.update({self.mae_metric.name: (labels, outputs['ref'])})
     logs.update({self.maxf_metric.name: (labels, outputs['ref'])})

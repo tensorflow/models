@@ -49,6 +49,7 @@ class BASNet_En(tf.keras.Model):
                input_specs=layers.InputSpec(shape=[None, None, None, 3]),
                activation='relu',
                use_sync_bn=False,
+               use_bias=True,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                kernel_initializer='VarianceScaling',
@@ -61,6 +62,7 @@ class BASNet_En(tf.keras.Model):
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
+      use_bias: if True, use bias in conv2d.
       norm_momentum: `float` normalization omentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.
@@ -73,6 +75,7 @@ class BASNet_En(tf.keras.Model):
     """
     self._input_specs = input_specs
     self._use_sync_bn = use_sync_bn
+    self._use_bias = use_bias
     self._activation = activation
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -93,7 +96,7 @@ class BASNet_En(tf.keras.Model):
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
     x = layers.Conv2D(
-        filters=64, kernel_size=3, strides=1, use_bias=True, padding='same',
+        filters=64, kernel_size=3, strides=1, use_bias=self._use_bias, padding='same',
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)(
@@ -155,6 +158,7 @@ class BASNet_En(tf.keras.Model):
         bias_regularizer=self._bias_regularizer,
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
+        use_bias=self._use_bias,
         norm_momentum=self._norm_momentum,
         norm_epsilon=self._norm_epsilon)(
             inputs)
@@ -169,6 +173,7 @@ class BASNet_En(tf.keras.Model):
           bias_regularizer=self._bias_regularizer,
           activation=self._activation,
           use_sync_bn=self._use_sync_bn,
+          use_bias=self._use_bias,
           norm_momentum=self._norm_momentum,
           norm_epsilon=self._norm_epsilon)(
               x)

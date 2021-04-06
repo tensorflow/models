@@ -39,7 +39,7 @@ class Decoder(hyperparams.OneOfConfig):
 
   Attributes:
     type: 'str', type of decoder be used, on the of fields below.
-    fpn: fpn config.
+    basnet_de: BASNet decoder config.
   """
   type: Optional[str] = None
   basnet_de: BASNet_De = BASNet_De()

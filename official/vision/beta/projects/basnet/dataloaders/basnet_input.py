@@ -44,45 +44,21 @@ class Parser(parser.Parser):
 
   def __init__(self,
                output_size,
-               resize_eval_groundtruth=None,
-               groundtruth_padded_size=None,
                aug_rand_hflip=False,
-               aug_scale_min=1.0,
-               aug_scale_max=1.0,
                dtype='float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
     Args:
       output_size: `Tensor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
-      resize_eval_groundtruth: `bool`, if True, eval groundtruth masks are
-        resized to output_size.
-      groundtruth_padded_size: `Tensor` or `list` for [height, width]. When
-        resize_eval_groundtruth is set to False, the groundtruth masks are
-        padded to this size.
-      ignore_label: `int` the pixel with ignore label will not used for training
-        and evaluation.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
-      aug_scale_min: `float`, the minimum scale applied to `output_size` for
-        data augmentation during training.
-      aug_scale_max: `float`, the maximum scale applied to `output_size` for
-        data augmentation during training.
       dtype: `str`, data type. One of {`bfloat16`, `float32`, `float16`}.
     """
     self._output_size = output_size
-    self._resize_eval_groundtruth = resize_eval_groundtruth
-    """
-    if groundtruth_padded_size is None:
-      raise ValueError('groundtruth_padded_size ([height, width]) needs to be'
-                       'specified when resize_eval_groundtruth is False.')
-    """
-    self._groundtruth_padded_size = groundtruth_padded_size
 
     # Data augmentation.
     self._aug_rand_hflip = aug_rand_hflip
-    self._aug_scale_min = aug_scale_min
-    self._aug_scale_max = aug_scale_max
 
     # dtype.
     self._dtype = dtype
@@ -116,7 +92,7 @@ class Parser(parser.Parser):
     image = tf.image.resize(image, tf.cast([256, 256], tf.int32))
     label = tf.image.resize(label, tf.cast([256, 256], tf.int32))
 
-    # (gunho) random crop both image and mask
+    # Random crop both image and mask on training.
     image_mask = tf.concat([image, label], axis=2)
     image_mask_crop = tf.image.random_crop(image_mask,
                                            self._output_size + [4])
@@ -140,8 +116,6 @@ class Parser(parser.Parser):
 
     image = tf.image.resize(image, tf.cast([256, 256], tf.int32))
     label = tf.image.resize(label, tf.cast([256, 256], tf.int32))
-
-    # (gunho) No random crop for evaluation
 
     # Cast image as self._dtype
     image = tf.cast(image, dtype=self._dtype)
