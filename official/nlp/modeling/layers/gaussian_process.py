@@ -62,7 +62,7 @@ class RandomFeatureGaussianProcess(tf.keras.layers.Layer):
                gp_kernel_scale_trainable=False,
                gp_output_bias_trainable=False,
                gp_cov_momentum=0.999,
-               gp_cov_ridge_penalty=1e-6,
+               gp_cov_ridge_penalty=1.,
                scale_random_features=True,
                use_custom_random_features=True,
                custom_random_features_initializer=None,
@@ -292,7 +292,7 @@ class LaplaceRandomFeatureCovariance(tf.keras.layers.Layer):
 
   def __init__(self,
                momentum=0.999,
-               ridge_penalty=1e-6,
+               ridge_penalty=1.,
                likelihood='gaussian',
                dtype=None,
                name='laplace_covariance'):

@@ -252,11 +252,15 @@ class GaussianProcessClassificationHead(ClassificationHead):
           name="logits",
           **self.gp_layer_kwargs)
 
-  def call(self, features, return_covmat=False):
+  def call(self, features, training=False, return_covmat=False):
     """Returns model output.
+
+    Dring training, the model returns raw logits. During evaluation, the model
+    returns uncertainty adjusted logits, and (optionally) the covariance matrix.
 
     Arguments:
       features: A tensor of input features, shape (batch_size, feature_dim).
+      training: Whether the model is in training mode.
       return_covmat: Whether the model should also return covariance matrix if
         `use_gp_layer=True`. During training, it is recommended to set
         `return_covmat=False` to be compatible with the standard Keras pipelines
@@ -276,13 +280,13 @@ class GaussianProcessClassificationHead(ClassificationHead):
     else:
       covmat = None
 
-    # Computes the uncertainty-adjusted logits.
-    logits = gaussian_process.mean_field_logits(
-        logits, covmat, mean_field_factor=self.temperature)
+    # Computes the uncertainty-adjusted logits during evaluation.
+    if not training:
+      logits = gaussian_process.mean_field_logits(
+          logits, covmat, mean_field_factor=self.temperature)
 
     if return_covmat and covmat is not None:
       return logits, covmat
-
     return logits
 
   def reset_covariance_matrix(self):
