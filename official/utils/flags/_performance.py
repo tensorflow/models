@@ -213,8 +213,8 @@ def define_performance(num_parallel_calls=False,
               "When --dtype=fp16, how fp16 should be implemented. This has no "
               "impact on correctness. 'keras' uses the "
               "tf.keras.mixed_precision API. 'graph_rewrite' uses the "
-              "tf.train.experimental.enable_mixed_precision_graph_rewrite "
-              "API."))
+              "tf.compat.v1.mixed_precision."
+              "enable_mixed_precision_graph_rewrite API."))
 
       @flags.multi_flags_validator(
           ["fp16_implementation", "dtype", "loss_scale"])
