@@ -17,6 +17,10 @@
 import tensorflow as tf
 
 
+# TODO(b/181616568): Switch default value of `use_experimental_api` in both
+# of these functions to False.
+
+
 def configure_optimizer(optimizer,
                         use_float16=False,
                         use_graph_rewrite=False,
