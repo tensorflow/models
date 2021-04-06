@@ -33,37 +33,79 @@ from official.vision.beta.ops import anchor
 class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (3, 3, 7, 3, [1.0], 50, False, 256, 4, 256, 32244949),
+      {
+          'use_separable_conv': True,
+          'build_anchor_boxes': True,
+          'is_training': False,
+          'has_att_heads': False
+      },
+      {
+          'use_separable_conv': False,
+          'build_anchor_boxes': True,
+          'is_training': False,
+          'has_att_heads': False
+      },
+      {
+          'use_separable_conv': False,
+          'build_anchor_boxes': False,
+          'is_training': False,
+          'has_att_heads': False
+      },
+      {
+          'use_separable_conv': False,
+          'build_anchor_boxes': False,
+          'is_training': True,
+          'has_att_heads': False
+      },
+      {
+          'use_separable_conv': False,
+          'build_anchor_boxes': True,
+          'is_training': True,
+          'has_att_heads': True
+      },
+      {
+          'use_separable_conv': False,
+          'build_anchor_boxes': True,
+          'is_training': False,
+          'has_att_heads': True
+      },
   )
-  def test_num_params(self,
-                      num_classes,
-                      min_level,
-                      max_level,
-                      num_scales,
-                      aspect_ratios,
-                      resnet_model_id,
-                      use_separable_conv,
-                      fpn_num_filters,
-                      head_num_convs,
-                      head_num_filters,
-                      expected_num_params):
+  def test_build_model(self, use_separable_conv, build_anchor_boxes,
+                       is_training, has_att_heads):
+    num_classes = 3
+    min_level = 3
+    max_level = 7
+    num_scales = 3
+    aspect_ratios = [1.0]
+    anchor_size = 3
+    fpn_num_filters = 256
+    head_num_convs = 4
+    head_num_filters = 256
     num_anchors_per_location = num_scales * len(aspect_ratios)
     image_size = 384
     images = np.random.rand(2, image_size, image_size, 3)
     image_shape = np.array([[image_size, image_size], [image_size, image_size]])
 
-    anchor_boxes = anchor.Anchor(
-        min_level=min_level,
-        max_level=max_level,
-        num_scales=num_scales,
-        aspect_ratios=aspect_ratios,
-        anchor_size=3,
-        image_size=(image_size, image_size)).multilevel_boxes
-    for l in anchor_boxes:
-      anchor_boxes[l] = tf.tile(
-          tf.expand_dims(anchor_boxes[l], axis=0), [2, 1, 1, 1])
+    if build_anchor_boxes:
+      anchor_boxes = anchor.Anchor(
+          min_level=min_level,
+          max_level=max_level,
+          num_scales=num_scales,
+          aspect_ratios=aspect_ratios,
+          anchor_size=anchor_size,
+          image_size=(image_size, image_size)).multilevel_boxes
+      for l in anchor_boxes:
+        anchor_boxes[l] = tf.tile(
+            tf.expand_dims(anchor_boxes[l], axis=0), [2, 1, 1, 1])
+    else:
+      anchor_boxes = None
 
-    backbone = resnet.ResNet(model_id=resnet_model_id)
+    if has_att_heads:
+      attribute_heads = {'depth': ('regression', 1)}
+    else:
+      attribute_heads = None
+
+    backbone = resnet.ResNet(model_id=50)
     decoder = fpn.FPN(
         input_specs=backbone.output_specs,
         min_level=min_level,
@@ -74,6 +116,7 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
         min_level=min_level,
         max_level=max_level,
         num_classes=num_classes,
+        attribute_heads=attribute_heads,
         num_anchors_per_location=num_anchors_per_location,
         use_separable_conv=use_separable_conv,
         num_convs=head_num_convs,
@@ -84,10 +127,14 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
         backbone=backbone,
         decoder=decoder,
         head=head,
-        detection_generator=generator)
+        detection_generator=generator,
+        min_level=min_level,
+        max_level=max_level,
+        num_scales=num_scales,
+        aspect_ratios=aspect_ratios,
+        anchor_size=anchor_size)
 
-    _ = model(images, image_shape, anchor_boxes, training=True)
-    self.assertEqual(expected_num_params, model.count_params())
+    _ = model(images, image_shape, anchor_boxes, training=is_training)
 
   @combinations.generate(
       combinations.combine(
@@ -226,7 +273,12 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
         backbone=backbone,
         decoder=decoder,
         head=head,
-        detection_generator=generator)
+        detection_generator=generator,
+        min_level=min_level,
+        max_level=max_level,
+        num_scales=num_scales,
+        aspect_ratios=aspect_ratios,
+        anchor_size=3)
 
     config = model.get_config()
     new_model = retinanet_model.RetinaNetModel.from_config(config)

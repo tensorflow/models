@@ -238,7 +238,15 @@ def build_retinanet(input_specs: tf.keras.layers.InputSpec,
       use_batched_nms=generator_config.use_batched_nms)
 
   model = retinanet_model.RetinaNetModel(
-      backbone, decoder, head, detection_generator_obj)
+      backbone,
+      decoder,
+      head,
+      detection_generator_obj,
+      min_level=model_config.min_level,
+      max_level=model_config.max_level,
+      num_scales=model_config.anchor.num_scales,
+      aspect_ratios=model_config.anchor.aspect_ratios,
+      anchor_size=model_config.anchor.anchor_size)
   return model
 
 
