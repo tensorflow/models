@@ -23,7 +23,7 @@ from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.projects.basnet.configs import basnet as exp_cfg
 from official.vision.beta.projects.basnet.dataloaders import basnet_input # Prepare input datas
-#from official.vision.beta.projects.basnet.evaluation import basnet_evaluator
+#from official.vision.beta.projects.basnet.dataloaders import segmentation_input
 from official.vision.beta.projects.basnet.evaluation import max_f
 from official.vision.beta.projects.basnet.evaluation import relax_f
 from official.vision.beta.projects.basnet.evaluation import mae
@@ -85,6 +85,7 @@ class BASNetTask(base_task.Task):
     """Builds BASNet input."""
 
     input_size = self.task_config.model.input_size
+    ignore_label = self.task_config.losses.ignore_label
 
     decoder = basnet_input.Decoder()
     parser = basnet_input.Parser(
@@ -237,7 +238,6 @@ class BASNetTask(base_task.Task):
     self.relaxf_metric.update_state(
         step_outputs[self.relaxf_metric.name][0],
         step_outputs[self.relaxf_metric.name][1])
-    
     return state
 
   def reduce_aggregated_logs(self, aggregated_logs, global_step=None):

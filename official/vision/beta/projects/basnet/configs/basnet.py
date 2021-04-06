@@ -53,7 +53,7 @@ class BASNetModel(hyperparams.Config):
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
   label_smoothing: float = 0.1
-  ignore_label: int = 255
+  ignore_label: int = 0
   class_weights: List[float] = dataclasses.field(default_factory=list)
   l2_weight_decay: float = 0.0
   use_groundtruth_dimension: bool = True
