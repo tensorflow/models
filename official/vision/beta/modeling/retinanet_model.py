@@ -13,9 +13,12 @@
 # limitations under the License.
 
 """RetinaNet."""
+from typing import List, Optional
 
 # Import libraries
 import tensorflow as tf
+
+from official.vision.beta.ops import anchor
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -27,6 +30,11 @@ class RetinaNetModel(tf.keras.Model):
                decoder,
                head,
                detection_generator,
+               min_level: Optional[int] = None,
+               max_level: Optional[int] = None,
+               num_scales: Optional[int] = None,
+               aspect_ratios: Optional[List[float]] = None,
+               anchor_size: Optional[float] = None,
                **kwargs):
     """Classification initialization function.
 
@@ -35,6 +43,17 @@ class RetinaNetModel(tf.keras.Model):
       decoder: `tf.keras.Model` a decoder network.
       head: `RetinaNetHead`, the RetinaNet head.
       detection_generator: the detection generator.
+      min_level: Minimum level in output feature maps.
+      max_level: Maximum level in output feature maps.
+      num_scales: A number representing intermediate scales added
+        on each level. For instances, num_scales=2 adds one additional
+        intermediate anchor scales [2^0, 2^0.5] on each level.
+      aspect_ratios: A list representing the aspect raito
+        anchors added on each level. The number indicates the ratio of width to
+        height. For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors
+        on each scale level.
+      anchor_size: A number representing the scale of size of the base
+        anchor to the feature stride 2^level.
       **kwargs: keyword arguments to be passed.
     """
     super(RetinaNetModel, self).__init__(**kwargs)
@@ -43,6 +62,11 @@ class RetinaNetModel(tf.keras.Model):
         'decoder': decoder,
         'head': head,
         'detection_generator': detection_generator,
+        'min_level': min_level,
+        'max_level': max_level,
+        'num_scales': num_scales,
+        'aspect_ratios': aspect_ratios,
+        'anchor_size': anchor_size,
     }
     self._backbone = backbone
     self._decoder = decoder
@@ -105,6 +129,21 @@ class RetinaNetModel(tf.keras.Model):
         outputs.update({'att_outputs': raw_attributes})
       return outputs
     else:
+      # Generate anchor boxes for this batch if not provided.
+      if anchor_boxes is None:
+        _, image_height, image_width, _ = images.get_shape().as_list()
+        anchor_boxes = anchor.Anchor(
+            min_level=self._config_dict['min_level'],
+            max_level=self._config_dict['max_level'],
+            num_scales=self._config_dict['num_scales'],
+            aspect_ratios=self._config_dict['aspect_ratios'],
+            anchor_size=self._config_dict['anchor_size'],
+            image_size=(image_height, image_width)).multilevel_boxes
+        for l in anchor_boxes:
+          anchor_boxes[l] = tf.tile(
+              tf.expand_dims(anchor_boxes[l], axis=0),
+              [tf.shape(images)[0], 1, 1, 1])
+
       # Post-processing.
       final_results = self.detection_generator(
           raw_boxes, raw_scores, anchor_boxes, image_shape, raw_attributes)
