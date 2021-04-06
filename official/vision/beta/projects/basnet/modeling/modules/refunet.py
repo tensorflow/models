@@ -25,7 +25,6 @@ Boundary-Awar network (BASNet) were proposed in:
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
-#from official.vision.beta.modeling.projects.basnet.layers import nn_layers
 
 layers = tf.keras.layers
 
@@ -49,6 +48,7 @@ class RefUnet(tf.keras.Model):
       input_specs: `tf.keras.layers.InputSpec` specs of the input tensor.
       activation: `str` name of the activation function.
       use_sync_bn: if True, use synchronized batch normalization.
+      use_bias: if True, use bias in conv2d.
       norm_momentum: `float` normalization omentum for the moving average.
       norm_epsilon: `float` small float added to variance to avoid dividing by
         zero.

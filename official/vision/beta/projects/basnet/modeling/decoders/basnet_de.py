@@ -23,7 +23,6 @@ Boundary-Awar network (BASNet) were proposed in:
 import tensorflow as tf
 
 from official.modeling import tf_utils
-#from official.vision.beta.projects.basnet.modeling.layers import nn_layers
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 
 layers = tf.keras.layers

@@ -175,6 +175,7 @@ class ResBlock(tf.keras.layers.Layer):
                bias_regularizer=None,
                activation='relu',
                use_sync_bn=False,
+               use_bias=False,
                norm_momentum=0.99,
                norm_epsilon=0.001,
                **kwargs):
@@ -202,6 +203,7 @@ class ResBlock(tf.keras.layers.Layer):
         Default to None.
       activation: A `str` name of the activation function.
       use_sync_bn: A `bool`. If True, use synchronized batch normalization.
+      use_bias: A `bool`. If True, use bias in conv2d.
       norm_momentum: A `float` of normalization momentum for the moving average.
       norm_epsilon: A `float` added to variance to avoid dividing by zero.
       **kwargs: Additional keyword arguments to be passed.
@@ -214,6 +216,7 @@ class ResBlock(tf.keras.layers.Layer):
     self._se_ratio = se_ratio
     self._resnetd_shortcut = resnetd_shortcut
     self._use_sync_bn = use_sync_bn
+    self._use_bias = use_bias
     self._activation = activation
     self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._kernel_initializer = kernel_initializer
@@ -238,7 +241,7 @@ class ResBlock(tf.keras.layers.Layer):
           filters=self._filters,
           kernel_size=1,
           strides=self._strides,
-          use_bias=True,
+          use_bias=self._use_bias,
           kernel_initializer=self._kernel_initializer,
           kernel_regularizer=self._kernel_regularizer,
           bias_regularizer=self._bias_regularizer)
@@ -252,7 +255,7 @@ class ResBlock(tf.keras.layers.Layer):
         kernel_size=3,
         strides=self._strides,
         padding='same',
-        use_bias=True,  # (gunho) True
+        use_bias=self._use_bias,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
@@ -266,7 +269,7 @@ class ResBlock(tf.keras.layers.Layer):
         kernel_size=3,
         strides=1,
         padding='same',
-        use_bias=True,  # (gunho) True
+        use_bias=self._use_bias,
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)
@@ -307,6 +310,7 @@ class ResBlock(tf.keras.layers.Layer):
         'bias_regularizer': self._bias_regularizer,
         'activation': self._activation,
         'use_sync_bn': self._use_sync_bn,
+        'use_bias': self._use_bias,
         'norm_momentum': self._norm_momentum,
         'norm_epsilon': self._norm_epsilon
     }
