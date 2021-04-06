@@ -75,7 +75,8 @@ def _run_benchmark():
   with tf.distribute.MirroredStrategy().scope():
     model = tf.keras.applications.ResNet50(weights=None)
     model.compile(
-        optimizer=tf.train.experimental.enable_mixed_precision_graph_rewrite(
+        optimizer=tf.compat.v1.mixed_precision
+        .enable_mixed_precision_graph_rewrite(
             tf.keras.optimizers.Adam(), loss_scale="dynamic"),
         loss="sparse_categorical_crossentropy",
     )

@@ -203,8 +203,9 @@ def run(flags_obj):
       # which will ensure tf.compat.v2.keras.mixed_precision and
       # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
       # up.
-      optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
-          optimizer)
+      optimizer = (
+          tf.compat.v1.mixed_precision.enable_mixed_precision_graph_rewrite(
+              optimizer))
 
     # TODO(hongkuny): Remove trivial model usage and move it to benchmark.
     if flags_obj.use_trivial_model:
