@@ -14,12 +14,19 @@
 # ==============================================================================
 """Utilities for the global model training."""
 
+import os
+
+from absl import flags
 from absl import logging
 
-from tensorboard import program
+import tensorflow as tf
 import numpy as np
 
+from tensorboard import program
+
 from delf.python.datasets.revisited_op import dataset
+
+FLAGS = flags.FLAGS
 
 
 class AverageMeter():
@@ -165,3 +172,41 @@ def launch_tensorboard(log_dir):
   tb.configure(argv=[None, '--logdir', log_dir])
   url = tb.launch()
   debug_and_log("Launching Tensorboard: {}".format(url))
+
+
+def get_standard_keras_models():
+  """Gets the standard keras model names.
+
+  Returns:
+    model_names: List, names of the standard keras models.
+  """
+  model_names = sorted(name for name in tf.keras.applications.__dict__ if not
+  name.startswith("__") and callable(tf.keras.applications.__dict__[name]))
+  return model_names
+
+
+def create_model_directory():
+  """Based on the model parameters, creates the model directory.
+
+  If the model directory does not exist, the directory is created.
+
+  Returns:
+    directory: String, directory name.
+  """
+  directory = '{}_{}_{}'.format(FLAGS.training_dataset, FLAGS.arch, FLAGS.pool)
+  if FLAGS.whitening:
+    directory += '_whiten'
+  if not FLAGS.pretrained:
+    directory += '_notpretrained'
+  directory += '_{}_m{:.2f}_{}_lr{:.1e}_wd{:.1e}_nnum{}_qsize{}_psize{' \
+               '}_bsize{}_uevery{}_imsize{}'.format(
+    FLAGS.loss, FLAGS.loss_margin, FLAGS.optimizer, FLAGS.lr,
+    FLAGS.weight_decay, FLAGS.neg_num, FLAGS.query_size, FLAGS.pool_size,
+    FLAGS.batch_size, FLAGS.update_every, FLAGS.image_size)
+
+  directory = os.path.join(FLAGS.directory, directory)
+  debug_and_log(
+    '>> Creating directory if does not exist:\n>> \'{}\''.format(directory))
+  if not os.path.exists(directory):
+    os.makedirs(directory)
+  return directory

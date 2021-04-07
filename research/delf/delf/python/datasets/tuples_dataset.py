@@ -19,16 +19,17 @@ learns from BoW.
 For more information refer to https://arxiv.org/abs/1604.02426.
 """
 
-from absl import flags
-
 import os
 import pickle
-import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
 
-from delf.python.datasets import utils as image_loading_utils
+from absl import flags
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
 from delf.python.datasets import generic_dataset
+from delf.python.datasets import utils as image_loading_utils
+from delf.python.training import global_features_utilst
 from delf.python.training import global_features_utils
 
 FLAGS = flags.FLAGS
