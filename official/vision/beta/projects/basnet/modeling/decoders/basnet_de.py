@@ -130,7 +130,8 @@ class BASNet_De(tf.keras.Model):
             )(x)
 
       output = layers.Conv2D(
-          filters=1, kernel_size=3, strides=1, use_bias=use_bias, padding='same',
+          filters=1, kernel_size=3, strides=1,
+          use_bias=use_bias, padding='same',
           kernel_initializer=kernel_initializer,
           kernel_regularizer=kernel_regularizer,
           bias_regularizer=bias_regularizer

@@ -14,13 +14,8 @@
 # ==============================================================================
 """Metrics for basnet"""
 
-import atexit
-import tempfile
 # Import libraries
-from absl import logging
 import numpy as np
-import six
-import tensorflow as tf
 
 
 class maxFscore(object):
@@ -63,7 +58,8 @@ class maxFscore(object):
     precisions = np.zeros((len(self._groundtruths), len(mybins)-1))
     recalls = np.zeros((len(self._groundtruths), len(mybins)-1))
 
-    for i, (true, pred) in enumerate(zip(self._groundtruths, self._predictions)):
+    for i, (true, pred) in enumerate(zip(self._groundtruths,
+                                         self._predictions)):
       # Compute F-score
       true = self._mask_normalize(true)*255.0
       pred = self._mask_normalize(pred)*255.0
@@ -85,9 +81,13 @@ class maxFscore(object):
     return mask/(np.amax(mask)+1e-8)
 
   def _compute_pre_rec(self, true, pred, mybins=np.arange(0,256)):
-    gt_num = true[true>128].size # pixel number of ground truth foreground regions
-    pp = pred[true>128] # mask predicted pixel values in the ground truth foreground region
-    nn = pred[true<=128] # mask predicted pixel values in the ground truth bacground region
+    # pixel number of ground truth foreground regions
+    gt_num = true[true>128].size
+    
+    # mask predicted pixel values in the ground truth foreground region
+    pp = pred[true>128]
+    # mask predicted pixel values in the ground truth bacground region
+    nn = pred[true<=128]
 
     pp_hist,pp_edges = np.histogram(pp,bins=mybins)
     nn_hist,nn_edges = np.histogram(nn,bins=mybins)
@@ -104,7 +104,10 @@ class maxFscore(object):
     precision[np.isnan(precision)]= 0.0
     recall[np.isnan(recall)] = 0.0
 
-    return np.reshape(precision,(len(precision))),np.reshape(recall,(len(recall)))
+    pre_len = len(precision)
+    rec_len = len(recall)
+
+    return np.reshape(precision,(pre_len)), np.reshape(recall,(rec_len))
 
   def _convert_to_numpy(self, groundtruths, predictions):
     """Converts tesnors to numpy arrays."""
@@ -117,8 +120,10 @@ class maxFscore(object):
     """Update segmentation results and groundtruth data.
 
     Args:
-      groundtruths : Tensor [batch, width, height, 1], groundtruth masks. range [0, 1]
-      predictions  : Tensor [batch, width, height, 1], predicted masks. range [0, 1]
+      groundtruths : Tensor [batch, width, height, 1],
+                     groundtruth masks. range [0, 1]
+      predictions  : Tensor [batch, width, height, 1],
+                     predicted masks. range [0, 1]
     
     """
     groundtruths, predictions = self._convert_to_numpy(groundtruths[0],

@@ -1,2 +1,0 @@
-
-python3 train.py --experiment=basnet_duts --mode=eval --model_dir=/home/gunho1123/ckpt/ckpt_basnet_wbias01 --config_file=./configs/experiments/basnet/basnet_dut_gpu.yaml --params_override='runtime.num_gpus=1, runtime.distribution_strategy=one_device, task.model.input_size=[256, 256, 3]'

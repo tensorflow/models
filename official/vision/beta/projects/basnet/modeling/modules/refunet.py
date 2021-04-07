@@ -23,7 +23,6 @@ Boundary-Awar network (BASNet) were proposed in:
 
 # Import libraries
 import tensorflow as tf
-from official.modeling import tf_utils
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
 
 layers = tf.keras.layers
@@ -85,7 +84,8 @@ class RefUnet(tf.keras.Model):
     residual = inputs
 
     x = layers.Conv2D(
-        filters=64, kernel_size=3, strides=1, use_bias=self._use_bias, padding='same',
+        filters=64, kernel_size=3, strides=1,
+        use_bias=self._use_bias, padding='same',
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)(
@@ -155,7 +155,8 @@ class RefUnet(tf.keras.Model):
 
       if i == 3:
         x = layers.Conv2D(
-            filters=1, kernel_size=3, strides=1, use_bias=self._use_bias, padding='same',
+            filters=1, kernel_size=3, strides=1,
+            use_bias=self._use_bias, padding='same',
             kernel_initializer=self._kernel_initializer,
             kernel_regularizer=self._kernel_regularizer,
             bias_regularizer=self._bias_regularizer

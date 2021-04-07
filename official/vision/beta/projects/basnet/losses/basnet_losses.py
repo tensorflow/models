@@ -16,8 +16,6 @@
 
 # Import libraries
 import tensorflow as tf
-import numpy as np
-import tensorflow_addons as tfa
 
 EPSILON = 1e-5
 

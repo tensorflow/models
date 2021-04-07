@@ -25,7 +25,6 @@ import tensorflow as tf
 from official.modeling import tf_utils
 from official.vision.beta.projects.basnet.modeling.backbones import factory
 from official.vision.beta.projects.basnet.modeling.layers import nn_blocks
-from official.vision.beta.projects.basnet.modeling.layers import nn_layers
 
 layers = tf.keras.layers
 
@@ -96,7 +95,8 @@ class BASNet_En(tf.keras.Model):
     inputs = tf.keras.Input(shape=input_specs.shape[1:])
 
     x = layers.Conv2D(
-        filters=64, kernel_size=3, strides=1, use_bias=self._use_bias, padding='same',
+        filters=64, kernel_size=3, strides=1,
+        use_bias=self._use_bias, padding='same',
         kernel_initializer=self._kernel_initializer,
         kernel_regularizer=self._kernel_regularizer,
         bias_regularizer=self._bias_regularizer)(
