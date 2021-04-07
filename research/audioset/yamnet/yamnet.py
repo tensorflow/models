@@ -116,9 +116,8 @@ class YAMNetBase(tf.keras.Model):
     # outer batch axes.
     shape = tf.shape(net)
     batch_shape = shape[:-3]
-    num_items = tf.reduce_prod(batch_shape)
     item_shape = shape[-3:]
-    flattened_batch_shape = tf.concat([[num_items], item_shape], axis=-1)
+    flattened_batch_shape = tf.concat([[-1], item_shape], axis=-1)
     net = tf.reshape(net, flattened_batch_shape)
 
     for layer in self.stack:
