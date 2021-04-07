@@ -22,18 +22,17 @@ layers = tf.keras.layers
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class BASNetModel(tf.keras.Model):
-  """A Segmentation class model.
+  """A BASNet model.
 
   Input images are passed through backbone first. Decoder network is then
-  applied, and finally, segmentation head is applied on the output of the
-  decoder network. Layers such as ASPP should be part of decoder.
+  applied, and finally, Refinement module is applied on the output of the
+  decoder network.
   """
 
   def __init__(self,
                backbone,
                decoder,
                refinement,
-               #head,
                **kwargs):
     """BASNet initialization function.
 
@@ -41,7 +40,6 @@ class BASNetModel(tf.keras.Model):
       backbone: a backbone network.
       decoder: a decoder network. E.g. FPN.
       refinement: a module for salient map refinement
-      #head: segmentation head.
       **kwargs: keyword arguments to be passed.
     """
     super(BASNetModel, self).__init__(**kwargs)
@@ -49,13 +47,11 @@ class BASNetModel(tf.keras.Model):
         'backbone': backbone,
         'decoder': decoder,
         'refinement': refinement,
-        #'head': head,
     }
     self.backbone = backbone
     self.decoder = decoder
     self.refinement = refinement
 
-    #self.head = head
 
   def call(self, inputs, training=None):
     features = self.backbone(inputs)
@@ -66,7 +62,6 @@ class BASNetModel(tf.keras.Model):
       features['ref'] = self.refinement(features['7'])
 
     return features
-    #return features['ref']
 
   @property
   def checkpoint_items(self):
