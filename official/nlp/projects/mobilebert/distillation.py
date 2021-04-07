@@ -378,7 +378,6 @@ class BertDistillationTask(policies.ProgressivePolicy, base_task.Task):
       # Shape: [batch, max_predictions_per_seq, vocab_size]
       lm_label = tf.one_hot(indices=lm_label, depth=vocab_size, on_value=1.0,
                             off_value=0.0, axis=-1, dtype=tf.float32)
-      lm_label_weights = labels['masked_lm_weights']
       gt_ratio = distill_config.distill_ground_truth_ratio
       if gt_ratio != 1.0:
         teacher_mlm_logits = outputs['teacher_pretrainer_output']['mlm_logits']
