@@ -64,7 +64,7 @@ class BASNetModule(export_base.ExportModule):
       Tensor holding classification output logits.
     """
     with tf.device('cpu:0'):
-      images = tf.cast(images, dtype=tf.float32)
+      images = tf.cast(images, tf.float32)
       images = tf.nest.map_structure(
           tf.identity,
           tf.map_fn(

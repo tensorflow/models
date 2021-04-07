@@ -14,44 +14,11 @@
 # ==============================================================================
 """Contains common building blocks for neural networks."""
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Text
-
 # Import libraries
-from absl import logging
 import tensorflow as tf
 
 from official.modeling import tf_utils
-from official.vision.beta.projects.basnet.modeling.layers import nn_layers
 
-
-def _pad_strides(strides: int, axis: int) -> Tuple[int, int, int, int]:
-  """Converts int to len 4 strides (`tf.nn.avg_pool` uses length 4)."""
-  if axis == 1:
-    return (1, 1, strides, strides)
-  else:
-    return (1, strides, strides, 1)
-
-
-def _maybe_downsample(x: tf.Tensor,
-                      out_filter: int,
-                      strides: int,
-                      axis: int) -> tf.Tensor:
-  """Downsamples feature map and 0-pads tensor if in_filter != out_filter."""
-  data_format = 'NCHW' if axis == 1 else 'NHWC'
-  strides = _pad_strides(strides, axis=axis)
-
-  x = tf.nn.avg_pool(x, strides, strides, 'VALID', data_format=data_format)
-
-  in_filter = x.shape[axis]
-  if in_filter < out_filter:
-    # Pad on channel dimension with 0s: half on top half on bottom.
-    pad_size = [(out_filter - in_filter) // 2, (out_filter - in_filter) // 2]
-    if axis == 1:
-      x = tf.pad(x, [[0, 0], pad_size, [0, 0], [0, 0]])
-    else:
-      x = tf.pad(x, [[0, 0], [0, 0], [0, 0], pad_size])
-
-  return x + 0.
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class ConvBlock(tf.keras.layers.Layer):
@@ -167,9 +134,6 @@ class ResBlock(tf.keras.layers.Layer):
                filters,
                strides,
                use_projection=False,
-               se_ratio=None,
-               resnetd_shortcut=False,
-               stochastic_depth_drop_rate=None,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
                bias_regularizer=None,
@@ -190,11 +154,6 @@ class ResBlock(tf.keras.layers.Layer):
         shortcut (versus the default identity shortcut). This is usually `True`
         for the first block of a block group, which may change the number of
         filters and the resolution.
-      se_ratio: A `float` or None. Ratio of the Squeeze-and-Excitation layer.
-      resnetd_shortcut: A `bool` if True, apply the resnetd style modification
-        to the shortcut connection. Not implemented in residual blocks.
-      stochastic_depth_drop_rate: A `float` or None. if not None, drop rate for
-        the stochastic depth layer.
       kernel_initializer: A `str` of kernel_initializer for convolutional
         layers.
       kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
@@ -213,12 +172,9 @@ class ResBlock(tf.keras.layers.Layer):
     self._filters = filters
     self._strides = strides
     self._use_projection = use_projection
-    self._se_ratio = se_ratio
-    self._resnetd_shortcut = resnetd_shortcut
     self._use_sync_bn = use_sync_bn
     self._use_bias = use_bias
     self._activation = activation
-    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._kernel_initializer = kernel_initializer
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
@@ -278,23 +234,6 @@ class ResBlock(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
-    if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
-      self._squeeze_excitation = nn_layers.SqueezeExcitation(
-          in_filters=self._filters,
-          out_filters=self._filters,
-          se_ratio=self._se_ratio,
-          kernel_initializer=self._kernel_initializer,
-          kernel_regularizer=self._kernel_regularizer,
-          bias_regularizer=self._bias_regularizer)
-    else:
-      self._squeeze_excitation = None
-
-    if self._stochastic_depth_drop_rate:
-      self._stochastic_depth = nn_layers.StochasticDepth(
-          self._stochastic_depth_drop_rate)
-    else:
-      self._stochastic_depth = None
-
     super(ResBlock, self).build(input_shape)
 
   def get_config(self):
@@ -302,9 +241,6 @@ class ResBlock(tf.keras.layers.Layer):
         'filters': self._filters,
         'strides': self._strides,
         'use_projection': self._use_projection,
-        'se_ratio': self._se_ratio,
-        'resnetd_shortcut': self._resnetd_shortcut,
-        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
@@ -329,11 +265,5 @@ class ResBlock(tf.keras.layers.Layer):
 
     x = self._conv2(x)
     x = self._norm2(x)
-
-    if self._squeeze_excitation:
-      x = self._squeeze_excitation(x)
-
-    if self._stochastic_depth:
-      x = self._stochastic_depth(x, training=training)
 
     return self._activation_fn(x + shortcut)

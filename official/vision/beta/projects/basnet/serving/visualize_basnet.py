@@ -49,9 +49,13 @@ for i, name in enumerate(full_filenames):
   img[:,:,1] = output
   img[:,:,2] = output
   img = tf.image.resize(img, [height, width])
-  new_name = os.path.join(save_dir_path, os.path.basename(name).replace(".jpg", ".png"))
+  new_name = os.path.join(save_dir_path,
+                          os.path.basename(name).replace(".jpg", ".png"))
   #print(new_name)
-  tf.keras.preprocessing.image.save_img(new_name, img, data_format="channels_last", scale=False)
+  tf.keras.preprocessing.image.save_img(new_name,
+                                        img,
+                                        data_format="channels_last",
+                                        scale=False)
   if i%100 == 0:
     print("progress : "+str(i)+" of "+str(len(full_filenames)))
 

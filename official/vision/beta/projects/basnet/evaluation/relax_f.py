@@ -14,14 +14,9 @@
 # ==============================================================================
 """Metrics for basnet"""
 
-import atexit
-import tempfile
 # Import libraries
-from absl import logging
 import numpy as np
 from scipy import signal
-import six
-import tensorflow as tf
 
 
 class relaxedFscore(object):
@@ -66,7 +61,8 @@ class relaxedFscore(object):
 
     erode_kernel = np.ones((3,3))
 
-    for i, (true, pred) in enumerate(zip(self._groundtruths, self._predictions)):
+    for i, (true, pred) in enumerate(zip(self._groundtruths,
+                                         self._predictions)):
       true = self._mask_normalize(true)
       pred = self._mask_normalize(pred)
 
@@ -136,11 +132,14 @@ class relaxedFscore(object):
     """Update segmentation results and groundtruth data.
 
     Args:
-      groundtruths : Tensor [batch, width, height, 1], groundtruth masks. range [0, 1]
-      predictions  : Tensor [batch, width, height, 1], predicted masks. range [0, 1]
+      groundtruths : Tensor [batch, width, height, 1],
+                     groundtruth masks. range [0, 1]
+      predictions  : Tensor [batch, width, height, 1],
+                     predicted masks. range [0, 1]
     
     """
-    groundtruths, predictions = self._convert_to_numpy(groundtruths[0], predictions[0])
+    groundtruths, predictions = self._convert_to_numpy(groundtruths[0],
+                                                       predictions[0])
     for (true, pred) in zip(groundtruths, predictions):
       self._groundtruths.append(true)
       self._predictions.append(pred)

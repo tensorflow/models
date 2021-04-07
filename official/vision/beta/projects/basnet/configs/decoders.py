@@ -14,7 +14,7 @@
 # limitations under the License.
 # ==============================================================================
 """Decoders configurations."""
-from typing import Optional, List
+from typing import Optional
 
 # Import libraries
 import dataclasses

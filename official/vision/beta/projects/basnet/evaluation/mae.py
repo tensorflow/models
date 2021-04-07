@@ -14,14 +14,8 @@
 # ==============================================================================
 """Metrics for basnet"""
 
-import atexit
-import tempfile
 # Import libraries
-from absl import logging
 import numpy as np
-import six
-import tensorflow as tf
-
 
 class MAE(object):
   """Mean Absolute Error(MAE) metric for basnet."""
@@ -59,7 +53,8 @@ class MAE(object):
 
     mae_total = 0.0
 
-    for i, (true, pred) in enumerate(zip(self._groundtruths, self._predictions)):
+    for i, (true, pred) in enumerate(zip(self._groundtruths,
+                                         self._predictions)):
       # Compute MAE
       mae = self._compute_mae(true, pred)
       mae_total += mae
@@ -93,8 +88,10 @@ class MAE(object):
     """Update segmentation results and groundtruth data.
 
     Args:
-      groundtruths : Tensor [batch, width, height, 1], groundtruth masks. range [0, 1]
-      predictions  : Tensor [batch, width, height, 1], predicted masks. range [0, 1]
+      groundtruths : Tensor [batch, width, height, 1],
+                     groundtruth masks. range [0, 1]
+      predictions  : Tensor [batch, width, height, 1],
+                     predicted masks. range [0, 1]
     
     """
     groundtruths, predictions = self._convert_to_numpy(groundtruths[0],

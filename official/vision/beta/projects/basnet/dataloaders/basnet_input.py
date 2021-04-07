@@ -14,7 +14,6 @@
 # ==============================================================================
 """Data parser and processing for segmentation datasets."""
 
-import numpy as np
 import tensorflow as tf
 from official.vision.beta.projects.basnet.dataloaders import decoder
 from official.vision.beta.projects.basnet.dataloaders import parser
@@ -93,7 +92,7 @@ class Parser(parser.Parser):
     label = tf.image.resize(label, tf.cast([256, 256], tf.int32))
 
     # Random crop both image and mask on training.
-    image_mask = tf.concat([image, label], axis=2)
+    image_mask = tf.concat([image, label], 2)
     image_mask_crop = tf.image.random_crop(image_mask,
                                            self._output_size + [4])
     image = image_mask_crop[:, :, :-1]
@@ -101,7 +100,7 @@ class Parser(parser.Parser):
 
 
     # Cast image as self._dtype
-    image = tf.cast(image, dtype=self._dtype)
+    image = tf.cast(image, self._dtype)
 
     return image, label
 
@@ -118,6 +117,6 @@ class Parser(parser.Parser):
     label = tf.image.resize(label, tf.cast([256, 256], tf.int32))
 
     # Cast image as self._dtype
-    image = tf.cast(image, dtype=self._dtype)
+    image = tf.cast(image, self._dtype)
 
     return image, label
