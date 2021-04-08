@@ -201,7 +201,7 @@ def yamnet_frames_model(params):
     - embeddings: (num_patches, embedding size) matrix of embeddings per time frame
     - log_mel_spectrogram: (num_spectrogram_frames, num_mel_bins) spectrogram feature matrix
   """
-  frames_model = YAMNetFrames(params).to_keras()
+  frames_model = YAMNetFrames(params)
   return frames_model
 
 
