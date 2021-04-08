@@ -138,6 +138,7 @@ class BigBirdEncoderConfig(hyperparams.Config):
   type_vocab_size: int = 16
   initializer_range: float = 0.02
   embedding_width: Optional[int] = None
+  use_gradient_checkpointing: bool = False
 
 
 @dataclasses.dataclass
@@ -296,7 +297,8 @@ def build_encoder(config: EncoderConfig,
         type_vocab_size=encoder_cfg.type_vocab_size,
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
-        embedding_width=encoder_cfg.embedding_width)
+        embedding_width=encoder_cfg.embedding_width,
+        use_gradient_checkpointing=encoder_cfg.use_gradient_checkpointing)
 
   if encoder_type == "xlnet":
     return encoder_cls(
