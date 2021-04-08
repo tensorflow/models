@@ -16,8 +16,10 @@
 """Common configurations."""
 
 # Import libraries
+
 import dataclasses
 
+from official.core import config_definitions as cfg
 from official.modeling import hyperparams
 
 
@@ -30,7 +32,7 @@ class NormActivation(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class PseudoLabelDataConfig(hyperparams.Config):
+class PseudoLabelDataConfig(cfg.DataConfig):
   """Psuedo Label input config for training."""
   input_path: str = ''
   data_ratio: float = 1.0  # Per-batch ratio of pseudo-labeled to labeled data
