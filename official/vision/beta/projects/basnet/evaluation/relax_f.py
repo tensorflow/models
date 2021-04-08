@@ -101,9 +101,10 @@ class relaxedFscore(object):
     return mask/(np.amax(mask)+1e-8)
 
   def _compute_erosion(self, mask, kernel):
+    kernel_full = np.sum(kernel)
     mask_erd = signal.convolve2d(mask, kernel, mode='same')
-    mask_erd[mask_erd<9] = 0
-    mask_erd[mask_erd==9] = 1
+    mask_erd[mask_erd<kernel_full] = 0
+    mask_erd[mask_erd==kernel_full] = 1
     return mask_erd
 
   def _compute_relax_pre_rec(self, true, pred, rho):

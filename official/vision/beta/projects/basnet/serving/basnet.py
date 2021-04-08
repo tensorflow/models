@@ -19,7 +19,7 @@ import tensorflow as tf
 
 from official.vision.beta.projects.basnet.modeling import factory
 from official.vision.beta.projects.basnet.ops import preprocess_ops
-from official.vision.beta.projects.basnet.serving import export_base
+from official.vision.beta.serving import export_base
 
 
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
