@@ -47,12 +47,13 @@ def waveform_to_log_mel_spectrogram_patches(waveform, params):
     # magnitude_spectrogram has shape [<# STFT frames>, num_spectrogram_bins]
 
     # Convert spectrogram into log mel spectrogram.
-    linear_to_mel_weight_matrix = tf.signal.linear_to_mel_weight_matrix(
-        num_mel_bins=params.mel_bands,
-        num_spectrogram_bins=num_spectrogram_bins,
-        sample_rate=params.sample_rate,
-        lower_edge_hertz=params.mel_min_hz,
-        upper_edge_hertz=params.mel_max_hz)
+    with tf.init_scope():
+      linear_to_mel_weight_matrix = tf.signal.linear_to_mel_weight_matrix(
+          num_mel_bins=params.mel_bands,
+          num_spectrogram_bins=num_spectrogram_bins,
+          sample_rate=params.sample_rate,
+          lower_edge_hertz=params.mel_min_hz,
+          upper_edge_hertz=params.mel_max_hz)
     mel_spectrogram = tf.matmul(
       magnitude_spectrogram, linear_to_mel_weight_matrix)
     log_mel_spectrogram = tf.math.log(mel_spectrogram + params.log_offset)
