@@ -100,7 +100,6 @@ def define_common_bert_flags():
       synthetic_data=False,
       max_train_steps=False,
       dtype=True,
-      dynamic_loss_scale=True,
       loss_scale=True,
       all_reduce_alg=True,
       num_packs=False,

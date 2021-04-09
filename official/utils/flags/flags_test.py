@@ -32,7 +32,6 @@ def define_flags():
       num_parallel_calls=True,
       inter_op=True,
       intra_op=True,
-      dynamic_loss_scale=True,
       loss_scale=True,
       synthetic_data=True,
       dtype=True)
