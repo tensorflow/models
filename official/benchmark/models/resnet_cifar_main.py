@@ -267,7 +267,7 @@ def run(flags_obj):
 
 
 def define_cifar_flags():
-  common.define_keras_flags(dynamic_loss_scale=False)
+  common.define_keras_flags()
 
   flags_core.set_defaults(data_dir='/tmp/cifar10_data/cifar-10-batches-bin',
                           model_dir='/tmp/cifar10_model',
