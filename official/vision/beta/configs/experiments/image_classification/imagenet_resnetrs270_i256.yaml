@@ -1,4 +1,4 @@
-# ResNet-RS-270 ImageNet classification. 83.6% top-5 accuracy.
+# ResNet-RS-270 ImageNet classification. 83.6% top-1 accuracy.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
