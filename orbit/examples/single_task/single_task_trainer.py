@@ -107,6 +107,10 @@ class SingleTaskTrainer(orbit.StandardTrainer):
         # replicas. This ensures that we don't end up multiplying our loss by
         # the number of workers - gradients are summed, not averaged, across
         # replicas during the apply_gradients call.
+        # Note, the reduction of loss is explicitly handled and scaled by
+        # num_replicas_in_sync. Recommend to use a plain loss function.
+        # If you're using tf.keras.losses.Loss object, you may need to set
+        # reduction argument explicitly.
         loss = tf.reduce_mean(self.loss_fn(target, output))
         scaled_loss = loss / self.strategy.num_replicas_in_sync
 
