@@ -30,14 +30,15 @@ class SingleTaskTrainerTest(tf.test.TestCase):
         tf.keras.Input(shape=(4,), name='features'),
         tf.keras.layers.Dense(10, activation=tf.nn.relu),
         tf.keras.layers.Dense(10, activation=tf.nn.relu),
-        tf.keras.layers.Dense(3)
+        tf.keras.layers.Dense(3),
+        tf.keras.layers.Softmax(),
     ])
 
     trainer = single_task_trainer.SingleTaskTrainer(
         train_ds,
         label_key='label',
         model=model,
-        loss_fn=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        loss_fn=tf.keras.losses.sparse_categorical_crossentropy,
         optimizer=tf.keras.optimizers.SGD(learning_rate=0.01))
 
     controller = orbit.Controller(
