@@ -184,7 +184,7 @@ class EfficientNet(tf.keras.Model):
         endpoint_level += 1
 
     # Build output specs for downstream tasks.
-    self._output_specs = {l: endpoints[l].get_shape for l in endpoints.keys()}
+    self._output_specs = {l: endpoints[l].get_shape() for l in endpoints}
 
     # Build the final conv for classification.
     x = layers.Conv2D(
