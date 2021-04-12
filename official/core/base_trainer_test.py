@@ -277,9 +277,6 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 'learning_rate': {
                     'type': 'constant'
                 },
-                'use_experimental_api': {
-                    'type': False
-                },
             })))
     trainer = self.create_test_trainer(config)
     if mixed_precision_dtype != 'float16':
