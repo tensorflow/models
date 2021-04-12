@@ -65,7 +65,7 @@ class ClassificationModel(tf.keras.Model):
       norm = tf.keras.layers.BatchNormalization
     axis = -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf.keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
     endpoints = backbone(inputs)
     x = endpoints[max(endpoints.keys())]
 
