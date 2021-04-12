@@ -223,5 +223,46 @@ class GaussianProcessTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(gp_covmat, gp_covmat_new, atol=1e-4)
 
 
+class MeanFieldLogitsTest(tf.test.TestCase):
+
+  def testMeanFieldLogitsLikelihood(self):
+    """Tests if scaling is correct under different likelihood."""
+    batch_size = 10
+    num_classes = 12
+    variance = 1.5
+    mean_field_factor = 2.
+
+    rng = np.random.RandomState(0)
+    tf.random.set_seed(1)
+    logits = rng.randn(batch_size, num_classes)
+    covmat = tf.linalg.diag([variance] * batch_size)
+
+    logits_logistic = gaussian_process.mean_field_logits(
+        logits, covmat, mean_field_factor=mean_field_factor)
+
+    self.assertAllClose(logits_logistic, logits / 2., atol=1e-4)
+
+  def testMeanFieldLogitsTemperatureScaling(self):
+    """Tests using mean_field_logits as temperature scaling method."""
+    batch_size = 10
+    num_classes = 12
+
+    rng = np.random.RandomState(0)
+    tf.random.set_seed(1)
+    logits = rng.randn(batch_size, num_classes)
+
+    # Test if there's no change to logits when mean_field_factor < 0.
+    logits_no_change = gaussian_process.mean_field_logits(
+        logits, covariance_matrix=None, mean_field_factor=-1)
+
+    # Test if mean_field_logits functions as a temperature scaling method when
+    # mean_field_factor > 0, with temperature = sqrt(1. + mean_field_factor).
+    logits_scale_by_two = gaussian_process.mean_field_logits(
+        logits, covariance_matrix=None, mean_field_factor=3.)
+
+    self.assertAllClose(logits_no_change, logits, atol=1e-4)
+    self.assertAllClose(logits_scale_by_two, logits / 2., atol=1e-4)
+
+
 if __name__ == '__main__':
   tf.test.main()

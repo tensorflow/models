@@ -329,6 +329,8 @@ def build_weight_shared_convolutional_keras_box_predictor(
     share_prediction_tower=False,
     apply_batch_norm=True,
     use_depthwise=False,
+    apply_conv_hyperparams_to_heads=False,
+    apply_conv_hyperparams_pointwise=False,
     score_converter_fn=tf.identity,
     box_encodings_clip_range=None,
     name='WeightSharedConvolutionalBoxPredictor',
@@ -369,6 +371,14 @@ def build_weight_shared_convolutional_keras_box_predictor(
     apply_batch_norm: Whether to apply batch normalization to conv layers in
       this predictor.
     use_depthwise: Whether to use depthwise separable conv2d instead of conv2d.
+    apply_conv_hyperparams_to_heads: Whether to apply conv_hyperparams to
+      depthwise seperable convolution layers in the box and class heads. By
+      default, the conv_hyperparams are only applied to layers in the predictor
+      tower when using depthwise separable convolutions.
+    apply_conv_hyperparams_pointwise: Whether to apply the conv_hyperparams to
+      the pointwise_initializer and pointwise_regularizer when using depthwise
+      separable convolutions. By default, conv_hyperparams are only applied to
+      the depthwise initializer and regularizer when use_depthwise is true.
     score_converter_fn: Callable score converter to perform elementwise op on
       class scores.
     box_encodings_clip_range: Min and max values for clipping the box_encodings.
@@ -391,6 +401,7 @@ def build_weight_shared_convolutional_keras_box_predictor(
       conv_hyperparams=conv_hyperparams,
       num_predictions_per_location=num_predictions_per_location,
       use_depthwise=use_depthwise,
+      apply_conv_hyperparams_to_heads=apply_conv_hyperparams_to_heads,
       box_encodings_clip_range=box_encodings_clip_range,
       name='WeightSharedConvolutionalBoxHead')
   class_prediction_head = keras_class_head.WeightSharedConvolutionalClassHead(
@@ -403,6 +414,7 @@ def build_weight_shared_convolutional_keras_box_predictor(
       num_predictions_per_location=num_predictions_per_location,
       class_prediction_bias_init=class_prediction_bias_init,
       use_depthwise=use_depthwise,
+      apply_conv_hyperparams_to_heads=apply_conv_hyperparams_to_heads,
       score_converter_fn=score_converter_fn,
       name='WeightSharedConvolutionalClassHead')
   other_heads = {}
@@ -423,6 +435,7 @@ def build_weight_shared_convolutional_keras_box_predictor(
           apply_batch_norm=apply_batch_norm,
           share_prediction_tower=share_prediction_tower,
           use_depthwise=use_depthwise,
+          apply_conv_hyperparams_pointwise=apply_conv_hyperparams_pointwise,
           name=name))
 
 
@@ -920,6 +933,10 @@ def build_keras(hyperparams_fn, freeze_batchnorm, inplace_batchnorm_update,
         share_prediction_tower=config_box_predictor.share_prediction_tower,
         apply_batch_norm=apply_batch_norm,
         use_depthwise=config_box_predictor.use_depthwise,
+        apply_conv_hyperparams_to_heads=(
+            config_box_predictor.apply_conv_hyperparams_to_heads),
+        apply_conv_hyperparams_pointwise=(
+            config_box_predictor.apply_conv_hyperparams_pointwise),
         score_converter_fn=score_converter_fn,
         box_encodings_clip_range=box_encodings_clip_range,
         keyword_args=keyword_args)

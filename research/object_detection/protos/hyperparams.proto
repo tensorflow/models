@@ -88,6 +88,11 @@ message Initializer {
     TruncatedNormalInitializer truncated_normal_initializer = 1;
     VarianceScalingInitializer variance_scaling_initializer = 2;
     RandomNormalInitializer random_normal_initializer = 3;
+    // Allows specifying initializers by name, as a string, which will be passed
+    // directly as an argument during layer construction. Currently, this is
+    // only supported when using KerasLayerHyperparams, and for valid Keras
+    // initializers, e.g. `glorot_uniform`, `variance_scaling`, etc.
+    string keras_initializer_by_name = 4;
   }
 }
 

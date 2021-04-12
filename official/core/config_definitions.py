@@ -201,6 +201,7 @@ class TrainerConfig(base_config.Config):
     best_checkpoint_metric_comp: for exporting the best checkpoint, how the
       trainer should compare the evaluation metrics. This can be either `higher`
       (higher the better) or `lower` (lower the better).
+    validation_summary_subdir: A 'str', sub directory for saving eval summary.
   """
   optimizer_config: OptimizationConfig = OptimizationConfig()
   # Orbit settings.
@@ -232,6 +233,7 @@ class TrainerConfig(base_config.Config):
   # the condition and fail the job if the condition happens; max trials > 0,
   # we will retore the model states.
   recovery_max_trials: int = 0
+  validation_summary_subdir: str = "validation"
 
 
 @dataclasses.dataclass

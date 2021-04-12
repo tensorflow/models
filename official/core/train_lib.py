@@ -88,7 +88,8 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
       steps_per_loop=params.trainer.steps_per_loop,
       checkpoint_manager=checkpoint_manager,
       summary_dir=os.path.join(model_dir, 'train') if (save_summary) else None,
-      eval_summary_dir=os.path.join(model_dir, 'validation') if
+      eval_summary_dir=os.path.join(model_dir,
+                                    params.trainer.validation_summary_subdir) if
       (save_summary) else None,
       summary_interval=params.trainer.summary_interval if
       (save_summary) else None)

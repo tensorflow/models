@@ -221,6 +221,7 @@ def build_retinanet(input_specs: tf.keras.layers.InputSpec,
       num_anchors_per_location=num_anchors_per_location,
       num_convs=head_config.num_convs,
       num_filters=head_config.num_filters,
+      attribute_heads=head_config.attribute_heads,
       use_separable_conv=head_config.use_separable_conv,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
@@ -237,7 +238,15 @@ def build_retinanet(input_specs: tf.keras.layers.InputSpec,
       use_batched_nms=generator_config.use_batched_nms)
 
   model = retinanet_model.RetinaNetModel(
-      backbone, decoder, head, detection_generator_obj)
+      backbone,
+      decoder,
+      head,
+      detection_generator_obj,
+      min_level=model_config.min_level,
+      max_level=model_config.max_level,
+      num_scales=model_config.anchor.num_scales,
+      aspect_ratios=model_config.anchor.aspect_ratios,
+      anchor_size=model_config.anchor.anchor_size)
   return model
 
 

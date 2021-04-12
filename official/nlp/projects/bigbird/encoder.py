@@ -21,6 +21,30 @@ from official.modeling import activations
 from official.nlp import keras_nlp
 from official.nlp.modeling import layers
 from official.nlp.projects.bigbird import attention
+from official.nlp.projects.bigbird import recompute_grad
+from official.nlp.projects.bigbird import recomputing_dropout
+
+
+class RecomputeTransformerLayer(layers.TransformerScaffold):
+  """Transformer layer that recomputes the forward pass during backpropagation."""
+
+  def call(self, inputs):
+    emb, mask = inputs
+    def f(*args):
+      # recompute_grad can only handle tensor inputs. so we enumerate the
+      # nested input [emb, mask] as follows:
+      # args[0]: emb
+      # args[1]: mask[0] = band_mask
+      # args[2]: mask[1] = encoder_from_mask
+      # args[3]: mask[2] = encoder_to_mask
+      # args[4]: mask[3] = blocked_encoder_mask
+      x = super(RecomputeTransformerLayer,
+                self).call([args[0], [args[1], args[2], args[3], args[4]]])
+      return x
+
+    f = recompute_grad.recompute_grad(f)
+
+    return f(emb, *mask)
 
 
 @tf.keras.utils.register_keras_serializable(package='Text')
@@ -52,6 +76,8 @@ class BigBirdEncoder(tf.keras.Model):
       matrices in the shape of ['vocab_size', 'embedding_width'] and
       ['embedding_width', 'hidden_size'] ('embedding_width' is usually much
       smaller than 'hidden_size').
+    use_gradient_checkpointing: Use gradient checkpointing to trade-off compute
+      for memory.
   """
 
   def __init__(self,
@@ -69,9 +95,16 @@ class BigBirdEncoder(tf.keras.Model):
                attention_dropout_rate=0.1,
                initializer=tf.keras.initializers.TruncatedNormal(stddev=0.02),
                embedding_width=None,
+               use_gradient_checkpointing=False,
                **kwargs):
     activation = tf.keras.activations.get(activation)
     initializer = tf.keras.initializers.get(initializer)
+
+    if use_gradient_checkpointing:
+      tf.keras.layers.Dropout = recomputing_dropout.RecomputingDropout
+      layer_cls = RecomputeTransformerLayer
+    else:
+      layer_cls = layers.TransformerScaffold
 
     self._self_setattr_tracking = False
     self._config_dict = {
@@ -148,7 +181,7 @@ class BigBirdEncoder(tf.keras.Model):
     encoder_outputs = []
     attn_head_dim = hidden_size // num_attention_heads
     for i in range(num_layers):
-      layer = layers.TransformerScaffold(
+      layer = layer_cls(
           num_attention_heads,
           intermediate_size,
           activation,

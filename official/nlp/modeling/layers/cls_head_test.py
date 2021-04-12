@@ -115,10 +115,55 @@ class GaussianProcessClassificationHead(tf.test.TestCase,
         **self.spec_norm_kwargs,
         **self.gp_layer_kwargs)
     features = tf.zeros(shape=(2, 10, 10), dtype=tf.float32)
-    output, _ = test_layer(features)
+    output = test_layer(features)
     self.assertAllClose(output, [[0., 0.], [0., 0.]])
     self.assertSameElements(test_layer.checkpoint_items.keys(),
                             ["pooler_dense"])
+
+  @parameterized.named_parameters(
+      ("gp_layer_with_covmat", True, True),
+      ("gp_layer_no_covmat", True, False),
+      ("dense_layer_with_covmat", False, True),
+      ("dense_layer_no_covmat", False, False))
+  def test_sngp_output_shape(self, use_gp_layer, return_covmat):
+    batch_size = 32
+    num_classes = 2
+
+    test_layer = cls_head.GaussianProcessClassificationHead(
+        inner_dim=5,
+        num_classes=num_classes,
+        use_spec_norm=True,
+        use_gp_layer=use_gp_layer,
+        **self.spec_norm_kwargs,
+        **self.gp_layer_kwargs)
+
+    features = tf.zeros(shape=(batch_size, 10, 10), dtype=tf.float32)
+    outputs = test_layer(features, return_covmat=return_covmat)
+
+    if use_gp_layer and return_covmat:
+      self.assertIsInstance(outputs, tuple)
+      self.assertEqual(outputs[0].shape, (batch_size, num_classes))
+      self.assertEqual(outputs[1].shape, (batch_size, batch_size))
+    else:
+      self.assertIsInstance(outputs, tf.Tensor)
+      self.assertEqual(outputs.shape, (batch_size, num_classes))
+
+  def test_sngp_train_logits(self):
+    """Checks if temperature scaling is disabled during training."""
+    features = tf.zeros(shape=(5, 10, 10), dtype=tf.float32)
+
+    gp_layer = cls_head.GaussianProcessClassificationHead(
+        inner_dim=5, num_classes=2)
+
+    # Without temperature.
+    gp_layer.temperature = None
+    outputs_no_temp = gp_layer(features, training=True)
+
+    # With temperature.
+    gp_layer.temperature = 10.
+    outputs_with_temp = gp_layer(features, training=True)
+
+    self.assertAllEqual(outputs_no_temp, outputs_with_temp)
 
   def test_layer_serialization(self):
     layer = cls_head.GaussianProcessClassificationHead(

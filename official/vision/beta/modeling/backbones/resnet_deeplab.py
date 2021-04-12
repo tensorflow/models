@@ -77,8 +77,8 @@ class DilatedResNet(tf.keras.Model):
       output_stride: An `int` of output stride, ratio of input to output
         resolution.
       input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
-      stem_type: A `str` of stem type. Can be `standard` or `deeplab`. `deeplab`
-        replaces 7x7 conv by 3 3x3 convs.
+      stem_type: A `str` of stem type. Can be `v0` or `v1`. `v1` replaces 7x7
+        conv by 3 3x3 convs.
       se_ratio: A `float` or None. Ratio of the Squeeze-and-Excitation layer.
       init_stochastic_depth_rate: A `float` of initial stochastic depth rate.
       multigrid: A tuple of the same length as the number of blocks in the last

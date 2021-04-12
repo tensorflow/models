@@ -204,6 +204,7 @@ class GaussianProcessClassificationHead(ClassificationHead):
                initializer="glorot_uniform",
                use_spec_norm=True,
                use_gp_layer=True,
+               temperature=None,
                **kwargs):
     """Initializes the `GaussianProcessClassificationHead`.
 
@@ -217,6 +218,9 @@ class GaussianProcessClassificationHead(ClassificationHead):
       initializer: Initializer for dense layer kernels.
       use_spec_norm: Whether to apply spectral normalization to pooler layer.
       use_gp_layer: Whether to use Gaussian process as the output layer.
+      temperature: The temperature parameter to be used for mean-field
+        approximation during inference. If None then no mean-field adjustment is
+        applied.
       **kwargs: Additional keyword arguments.
     """
     # Collects spectral normalization and Gaussian process args from kwargs.
@@ -224,6 +228,7 @@ class GaussianProcessClassificationHead(ClassificationHead):
     self.use_gp_layer = use_gp_layer
     self.spec_norm_kwargs = extract_spec_norm_kwargs(kwargs)
     self.gp_layer_kwargs = extract_gp_layer_kwargs(kwargs)
+    self.temperature = temperature
 
     super().__init__(
         inner_dim=inner_dim,
@@ -247,12 +252,55 @@ class GaussianProcessClassificationHead(ClassificationHead):
           name="logits",
           **self.gp_layer_kwargs)
 
+  def call(self, features, training=False, return_covmat=False):
+    """Returns model output.
+
+    Dring training, the model returns raw logits. During evaluation, the model
+    returns uncertainty adjusted logits, and (optionally) the covariance matrix.
+
+    Arguments:
+      features: A tensor of input features, shape (batch_size, feature_dim).
+      training: Whether the model is in training mode.
+      return_covmat: Whether the model should also return covariance matrix if
+        `use_gp_layer=True`. During training, it is recommended to set
+        `return_covmat=False` to be compatible with the standard Keras pipelines
+        (e.g., `model.fit()`).
+
+    Returns:
+      logits: Uncertainty-adjusted predictive logits, shape
+        (batch_size, num_classes).
+      covmat: (Optional) Covariance matrix, shape (batch_size, batch_size).
+        Returned only when return_covmat=True.
+    """
+    logits = super().call(features)
+
+    # Extracts logits and covariance matrix from model output.
+    if self.use_gp_layer:
+      logits, covmat = logits
+    else:
+      covmat = None
+
+    # Computes the uncertainty-adjusted logits during evaluation.
+    if not training:
+      logits = gaussian_process.mean_field_logits(
+          logits, covmat, mean_field_factor=self.temperature)
+
+    if return_covmat and covmat is not None:
+      return logits, covmat
+    return logits
+
+  def reset_covariance_matrix(self):
+    """Resets covariance matrix of the Gaussian process layer."""
+    if hasattr(self.out_proj, "reset_covariance_matrix"):
+      self.out_proj.reset_covariance_matrix()
+
   def get_config(self):
     config = dict(
         use_spec_norm=self.use_spec_norm, use_gp_layer=self.use_gp_layer)
 
     config.update(self.spec_norm_kwargs)
     config.update(self.gp_layer_kwargs)
+    config["temperature"] = self.temperature
 
     config.update(super(GaussianProcessClassificationHead, self).get_config())
     return config
@@ -265,9 +313,9 @@ def extract_gp_layer_kwargs(kwargs):
       num_inducing=kwargs.pop("num_inducing", 1024),
       normalize_input=kwargs.pop("normalize_input", True),
       gp_cov_momentum=kwargs.pop("gp_cov_momentum", 0.999),
-      gp_cov_ridge_penalty=kwargs.pop("gp_cov_ridge_penalty", 1e-6),
+      gp_cov_ridge_penalty=kwargs.pop("gp_cov_ridge_penalty", 1.),
       scale_random_features=kwargs.pop("scale_random_features", False),
-      l2_regularization=kwargs.pop("l2_regularization", 0.),
+      l2_regularization=kwargs.pop("l2_regularization", 1e-6),
       gp_cov_likelihood=kwargs.pop("gp_cov_likelihood", "gaussian"),
       return_gp_cov=kwargs.pop("return_gp_cov", True),
       return_random_features=kwargs.pop("return_random_features", False),

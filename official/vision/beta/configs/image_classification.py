@@ -37,6 +37,8 @@ class DataConfig(cfg.DataConfig):
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
   randaug_magnitude: Optional[int] = 10
   file_type: str = 'tfrecord'
+  image_field_key: str = 'image/encoded'
+  label_field_key: str = 'image/class/label'
 
 
 @dataclasses.dataclass
@@ -75,6 +77,8 @@ class ImageClassificationTask(cfg.TaskConfig):
   evaluation: Evaluation = Evaluation()
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
+  model_output_keys: Optional[List[int]] = dataclasses.field(
+      default_factory=list)
 
 
 @exp_factory.register_config_factory('image_classification')

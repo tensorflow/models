@@ -376,5 +376,12 @@ message CenterNetFeatureExtractor {
   // network if any.
   optional bool use_depthwise = 5 [default = false];
 
+
+  // Depth multiplier. Only valid for specific models (e.g. MobileNet). See subclasses of `CenterNetFeatureExtractor`.
+  optional float depth_multiplier = 9 [default = 1.0];
+
+  // Whether to use separable convolutions. Only valid for specific
+  // models. See subclasses of `CenterNetFeatureExtractor`.
+  optional bool use_separable_conv = 10 [default = false];
 }
 

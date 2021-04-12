@@ -1,0 +1,31 @@
+task:
+  # VOC class taken from
+  # models/official/vision/detection/utils/class_utils.py
+  allowed_mask_class_ids: [1, 2, 3, 4, 5, 6, 7, 9, 16, 17, 18, 19, 20, 21, 44, 62, 63, 64, 67, 72]
+  per_category_metrics: true
+  model:
+    mask_head:
+      class_agnostic: true
+      convnet_variant: 'hourglass52'
+      num_filters: 64
+    mask_roi_aligner:
+      crop_size: 32
+    use_gt_boxes_for_masks: true
+    backbone:
+      type: 'resnet'
+      resnet:
+        model_id: 50
+  init_checkpoint: 'gs://tf_model_garden/official/resnet50_imagenet/ckpt-28080'
+  train_data:
+    global_batch_size: 64
+  validation_data:
+    global_batch_size: 32
+
+trainer:
+  optimizer_config:
+    learning_rate:
+      stepwise:
+        boundaries: [50000, 65000]
+      type: 'stepwise'
+  train_steps: 70000
+  validation_steps: 156  # 5000 / 32

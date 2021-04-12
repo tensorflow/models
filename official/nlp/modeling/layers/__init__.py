@@ -21,6 +21,7 @@ from official.nlp.modeling.layers.attention import *
 from official.nlp.modeling.layers.cls_head import *
 from official.nlp.modeling.layers.dense_einsum import DenseEinsum
 from official.nlp.modeling.layers.gated_feedforward import GatedFeedforward
+from official.nlp.modeling.layers.gaussian_process import RandomFeatureGaussianProcess
 from official.nlp.modeling.layers.masked_lm import MaskedLM
 from official.nlp.modeling.layers.masked_softmax import MaskedSoftmax
 from official.nlp.modeling.layers.mat_mul_with_margin import MatMulWithMargin
@@ -35,6 +36,7 @@ from official.nlp.modeling.layers.relative_attention import MultiHeadRelativeAtt
 from official.nlp.modeling.layers.relative_attention import TwoStreamRelativeAttention
 from official.nlp.modeling.layers.rezero_transformer import ReZeroTransformer
 from official.nlp.modeling.layers.self_attention_mask import SelfAttentionMask
+from official.nlp.modeling.layers.spectral_normalization import *
 from official.nlp.modeling.layers.talking_heads_attention import TalkingHeadsAttention
 from official.nlp.modeling.layers.text_layers import BertPackInputs
 from official.nlp.modeling.layers.text_layers import BertTokenizer

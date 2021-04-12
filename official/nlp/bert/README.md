@@ -3,7 +3,8 @@
 **WARNING**: We are on the way to deprecate most of the code in this directory.
 Please see
 [this link](https://github.com/tensorflow/models/blob/master/official/nlp/docs/train.md)
-for the new tutorial.
+for the new tutorial and use the new code in `nlp/modeling`. This README is
+still correct for this legacy implementation.
 
 The academic paper which describes BERT in detail and provides full results on a
 number of tasks can be found here: https://arxiv.org/abs/1810.04805.
