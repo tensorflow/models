@@ -227,8 +227,7 @@ def initialize(params: base_configs.ExperimentConfig,
                dataset_builder: dataset_factory.DatasetBuilder):
   """Initializes backend related initializations."""
   keras_utils.set_session_config(enable_xla=params.runtime.enable_xla)
-  performance.set_mixed_precision_policy(dataset_builder.dtype,
-                                         use_experimental_api=False)
+  performance.set_mixed_precision_policy(dataset_builder.dtype)
   if tf.config.list_physical_devices('GPU'):
     data_format = 'channels_first'
   else:
@@ -341,8 +340,7 @@ def train_and_eval(
     optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=train_builder.dtype == 'float16',
-        loss_scale=get_loss_scale(params),
-        use_experimental_api=True)
+        loss_scale=get_loss_scale(params))
 
     metrics_map = _get_metrics(one_hot)
     metrics = [metrics_map[metric] for metric in params.train.metrics]

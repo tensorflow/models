@@ -96,9 +96,7 @@ def main(_):
   # GPUs, and bfloat16 in the case of TPUs. loss_scale takes effect only when
   # dtype is float16
   if params.runtime.mixed_precision_dtype:
-    performance.set_mixed_precision_policy(params.runtime.mixed_precision_dtype,
-                                           params.runtime.loss_scale,
-                                           use_experimental_api=True)
+    performance.set_mixed_precision_policy(params.runtime.mixed_precision_dtype)
 
   input_partition_dims = None
   if FLAGS.mode == 'train_and_eval':
