@@ -27,7 +27,7 @@ from delf.python import box_io
 from delf.python import datum_io
 from delf.python import feature_aggregation_extractor
 from delf.python import feature_aggregation_similarity
-from delf.python import feature_extractor
+from delf.python import tfeature_extractor
 from delf.python import feature_io
 from delf.python import utils
 from delf.python.examples import detector

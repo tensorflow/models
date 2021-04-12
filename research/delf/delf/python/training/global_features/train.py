@@ -29,7 +29,7 @@ import tensorflow_addons as tfa
 import pickle
 
 from delf.python.datasets import tuples_dataset
-from delf.python.datasets import testdataset
+from delf.python.datasets.revisited_op import dataset as testdataset
 from delf.python.training.losses import ranking_losses
 from delf.python.training import global_features_utils
 from delf.python.training.model import global_model
