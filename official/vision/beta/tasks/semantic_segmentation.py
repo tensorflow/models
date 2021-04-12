@@ -95,7 +95,7 @@ class SemanticSegmentationTask(base_task.Task):
 
     parser = segmentation_input.Parser(
         output_size=params.output_size,
-        train_on_crops=params.train_on_crops,
+        crop_size=params.crop_size,
         ignore_label=ignore_label,
         resize_eval_groundtruth=params.resize_eval_groundtruth,
         groundtruth_padded_size=params.groundtruth_padded_size,
