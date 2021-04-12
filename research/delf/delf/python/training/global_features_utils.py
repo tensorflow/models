@@ -19,10 +19,9 @@ import os
 from absl import flags
 from absl import logging
 
-import tensorflow as tf
 import numpy as np
-
 from tensorboard import program
+import tensorflow as tf
 
 from delf.python.datasets.revisited_op import dataset
 
@@ -58,8 +57,7 @@ class AverageMeter():
 
 def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
                               desired_pr_ranks=[1, 5, 10], log=True):
-  """Computes and loggs easy/medium/hard ground-truth metrics for Revisited
-  datasets.
+  """Computes and loggs ground-truth metrics for Revisited datasets.
 
   Args:
     dataset_name: String, name of the dataset.
@@ -83,35 +81,39 @@ def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
       (NumPy array of floats, with shape [#queries]), precisions (NumPy array of
       floats, with shape [#queries, len(desired_pr_ranks)]), recalls (NumPy
       array of floats, with shape [#queries, len(desired_pr_ranks)]).
+
+  Raises:
+    ValueError: If an unknown dataset name is provided as an argument.
   """
+  _DATASETS = ['roxford5k', 'rparis6k']
+  if dataset not in _DATASETS:
+    raise ValueError('Unknown dataset: {}!'.format(dataset))
 
-  if dataset_name.startswith('roxford5k') or dataset_name.startswith(
-          'rparis6k'):
-    (easy_ground_truth, medium_ground_truth,
-     hard_ground_truth) = dataset.ParseEasyMediumHardGroundTruth(ground_truth)
+  (easy_ground_truth, medium_ground_truth,
+   hard_ground_truth) = dataset.ParseEasyMediumHardGroundTruth(ground_truth)
 
-    metrics_easy = dataset.ComputeMetrics(sorted_index_ids, easy_ground_truth,
+  metrics_easy = dataset.ComputeMetrics(sorted_index_ids, easy_ground_truth,
+                                        desired_pr_ranks)
+  metrics_medium = dataset.ComputeMetrics(sorted_index_ids,
+                                          medium_ground_truth,
                                           desired_pr_ranks)
-    metrics_medium = dataset.ComputeMetrics(sorted_index_ids,
-                                            medium_ground_truth,
-                                            desired_pr_ranks)
-    metrics_hard = dataset.ComputeMetrics(sorted_index_ids, hard_ground_truth,
-                                          desired_pr_ranks)
+  metrics_hard = dataset.ComputeMetrics(sorted_index_ids, hard_ground_truth,
+                                        desired_pr_ranks)
 
-    debug_and_log(
-      '>> {}: mAP E: {}, M: {}, H: {}'.format(
-        dataset_name, np.around(metrics_easy[0] * 100, decimals=2),
-        np.around(metrics_medium[0] * 100, decimals=2),
-        np.around(metrics_hard[0] * 100, decimals=2)), log=log)
+  debug_and_log(
+    '>> {}: mAP E: {}, M: {}, H: {}'.format(
+      dataset_name, np.around(metrics_easy[0] * 100, decimals=2),
+      np.around(metrics_medium[0] * 100, decimals=2),
+      np.around(metrics_hard[0] * 100, decimals=2)), log=log)
 
-    debug_and_log(
-      '>> {}: mP@k{} E: {}, M: {}, H: {}'.format(
-        dataset_name, desired_pr_ranks,
-        np.around(metrics_easy[1] * 100, decimals=2),
-        np.around(metrics_medium[1] * 100, decimals=2),
-        np.around(metrics_hard[1] * 100, decimals=2)), log=log)
+  debug_and_log(
+    '>> {}: mP@k{} E: {}, M: {}, H: {}'.format(
+      dataset_name, desired_pr_ranks,
+      np.around(metrics_easy[1] * 100, decimals=2),
+      np.around(metrics_medium[1] * 100, decimals=2),
+      np.around(metrics_hard[1] * 100, decimals=2)), log=log)
 
-    return metrics_easy, metrics_medium, metrics_hard
+  return metrics_easy, metrics_medium, metrics_hard
 
 
 def htime(time_difference):
@@ -180,33 +182,56 @@ def get_standard_keras_models():
   Returns:
     model_names: List, names of the standard keras models.
   """
-  model_names = sorted(name for name in tf.keras.applications.__dict__ if not
-  name.startswith("__") and callable(tf.keras.applications.__dict__[name]))
+  model_names = sorted(name for name in tf.keras.applications.__dict__ 
+    if not name.startswith("__") 
+    and callable(tf.keras.applications.__dict__[name]))
   return model_names
 
 
-def create_model_directory():
+def create_model_directory(training_dataset, arch, pool, whitening,
+                           pretrained, loss, loss_margin, optimizer, lr,
+                           weight_decay, neg_num, query_size, pool_size,
+                           batch_size, update_every, image_size, directory):
   """Based on the model parameters, creates the model directory.
 
   If the model directory does not exist, the directory is created.
 
-  Returns:
-    directory: String, directory name.
-  """
-  directory = '{}_{}_{}'.format(FLAGS.training_dataset, FLAGS.arch, FLAGS.pool)
-  if FLAGS.whitening:
-    directory += '_whiten'
-  if not FLAGS.pretrained:
-    directory += '_notpretrained'
-  directory += '_{}_m{:.2f}_{}_lr{:.1e}_wd{:.1e}_nnum{}_qsize{}_psize{' \
-               '}_bsize{}_uevery{}_imsize{}'.format(
-    FLAGS.loss, FLAGS.loss_margin, FLAGS.optimizer, FLAGS.lr,
-    FLAGS.weight_decay, FLAGS.neg_num, FLAGS.query_size, FLAGS.pool_size,
-    FLAGS.batch_size, FLAGS.update_every, FLAGS.image_size)
+  Args:
+    training_dataset: String, training dataset name.
+    arch: String, model architecture.
+    pool: String, pooling option.
+    whitening: Bool, whether the model is trained with global whitening.
+    pretrained: Bool, whether the model is initialized with the precomputed
+      weights.
+    loss: String, training loss type.
+    loss_margin: Float, loss margin.
+    optimizer: Sting, used optimizer.
+    lr: Float, initial learning rate.
+    weight_decay: Float, weight decay.
+    neg_num: Integer, Number of negative images per train/val tuple.
+    query_size: Integer, number of queries per one training epoch.
+    pool_size: Integer, size of the pool for hard negative mining.
+    batch_size: Integer, batch size.
+    update_every: Integer, frequency of the model weights update.
+    image_size: Integer, maximum size of longer image side used for training.
+    directory: String, destination where trained network should be saved.
 
-  directory = os.path.join(FLAGS.directory, directory)
+  Returns:
+    folder: String, path to the model folder.
+  """
+  folder = '{}_{}_{}'.format(training_dataset, arch, pool)
+  if whitening:
+    folder += '_whiten'
+  if not pretrained:
+    folder += '_notpretrained'
+  folder += '_{}_m{:.2f}_{}_lr{:.1e}_wd{:.1e}_nnum{}_qsize{}_psize{' \
+               '}_bsize{}_uevery{}_imsize{}'.format(
+    loss, loss_margin, optimizer, lr, weight_decay, neg_num,
+    query_size, pool_size, batch_size, update_every, image_size)
+
+  folder = os.path.join(directory, folder)
   debug_and_log(
-    '>> Creating directory if does not exist:\n>> \'{}\''.format(directory))
-  if not os.path.exists(directory):
-    os.makedirs(directory)
-  return directory
+    '>> Creating directory if does not exist:\n>> \'{}\''.format(folder))
+  if not os.path.exists(folder):
+    os.makedirs(folder)
+  return folder

@@ -150,8 +150,7 @@ def ComputeAveragePrecision(positive_ranks):
 
   Note that average precision computation here does NOT use the finite sum
   method (see
-  https://en.wikipedia.org/wiki/Evaluation_measures_(
-  information_retrieval)#Average_precision)
+  https://en.wikipedia.org/wiki/Evaluation_measures_(information_retrieval)#Average_precision)
   which is common in information retrieval literature. Instead, the method
   implemented here integrates over the precision-recall curve by averaging two
   adjacent precision points, then multiplying by the recall step. This is the
@@ -473,15 +472,26 @@ def ReadMetricsFile(metrics_path):
   return mean_average_precision, pr_ranks, mean_precisions, mean_recalls
 
 
-def configdataset(dataset, dir_main):
-  """Configures the paths to the test dataset files.
+def create_config_for_test_dataset(dataset, dir_main):
+  """Creates the configuration dictionary for the test dataset.
 
   Args:
     dataset: String, dataset name: either 'roxford5k' or 'rparis6k'.
     dir_main: String, path to the folder containing ground truth files.
 
   Returns:
-    cfg: Dataset configuration.
+    cfg: Dataset configuration in a form of dictionary. The configuration
+      includes:
+      `gnd_fname` - path to the ground truth file for teh dataset,
+      `ext` and `qext` - image extentions for the images in the test dataset
+      and the query images,
+      `dir_data` - path to the folder containing ground truth files,
+      `dir_images` - path to the folder containing images,
+      `n` and `nq` - number of images and query images in the dataset
+      respectively,
+      `im_fname` and `qim_fname` - functions providing paths for the dataset
+      and query images respectively,
+      `dataset` - test dataset name.
 
   Raises:
     ValueError: If an unknown dataset name is provided as an argument.
@@ -489,10 +499,16 @@ def configdataset(dataset, dir_main):
   DATASETS = ['roxford5k', 'rparis6k']
   dataset = dataset.lower()
 
+  def _config_imname(cfg, i):
+    return os.path.join(cfg['dir_images'], cfg['imlist'][i] + cfg['ext'])
+
+  def _config_qimname(cfg, i):
+    return os.path.join(cfg['dir_images'], cfg['qimlist'][i] + cfg['qext'])
+
   if dataset not in DATASETS:
     raise ValueError('Unknown dataset: {}!'.format(dataset))
 
-  # Loading imlist, qimlist, and gnd in configuaration as a dictionary.
+  # Loading imlist, qimlist, and gnd in configuration as a dictionary.
   gnd_fname = os.path.join(dir_main, 'gnd_{}.pkl'.format(dataset))
   with tf.io.gfile.GFile(gnd_fname, 'rb') as f:
     cfg = pickle.load(f)
@@ -510,35 +526,9 @@ def configdataset(dataset, dir_main):
   cfg['n'] = len(cfg['imlist'])
   cfg['nq'] = len(cfg['qimlist'])
 
-  cfg['im_fname'] = config_imname
-  cfg['qim_fname'] = config_qimname
+  cfg['im_fname'] = _config_imname
+  cfg['qim_fname'] = _config_qimname
 
   cfg['dataset'] = dataset
 
   return cfg
-
-
-def config_imname(cfg, i):
-  """Configures the path to the dataset image.
-
-  Args:
-    cfg: Configuration of the test dataset.
-    i: Integer, dataset image index.
-
-  Returns:
-    path: Path to the dataset image with the index `i`.
-  """
-  return os.path.join(cfg['dir_images'], cfg['imlist'][i] + cfg['ext'])
-
-
-def config_qimname(cfg, i):
-  """Configures the path to the query image.
-
-  Args:
-    cfg: Configuration of the test dataset.
-    i: Integer, query image index.
-
-  Returns:
-    path: Path to the query image with the index `i`.
-  """
-  return os.path.join(cfg['dir_images'], cfg['qimlist'][i] + cfg['qext'])

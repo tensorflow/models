@@ -73,7 +73,7 @@ Run query feature extraction as follows:
 
 ```bash
 # From models/research/delf/delf/python/datasets/google_landmarks_dataset
-python3 ../delg/extract_features.py \
+python3 ../../delg/extract_features.py \
   --delf_config_path rn101_af_gldv2clean_config.pbtxt \
   --dataset_file_path ~/revisitop/data/gnd_roxford5k.mat \
   --images_dir ~/revisitop/data/oxford5k_images \
@@ -87,7 +87,7 @@ Run index feature extraction as follows:
 
 ```bash
 # From models/research/delf/delf/python/datasets/google_landmarks_dataset
-python3 ../delg/extract_features.py \
+python3 ../../delg/extract_features.py \
   --delf_config_path rn101_af_gldv2clean_config.pbtxt \
   --dataset_file_path ~/revisitop/data/gnd_roxford5k.mat \
   --images_dir ~/revisitop/data/oxford5k_images \
@@ -101,7 +101,7 @@ To run retrieval on `roxford5k`, the following command can be used:
 
 ```bash
 # From models/research/delf/delf/python/datasets/google_landmarks_dataset
-python3 ../delg/perform_retrieval.py \
+python3 ../../delg/perform_retrieval.py \
   --dataset_file_path ~/revisitop/data/gnd_roxford5k.mat \
   --query_features_dir ~/revisitop/data/oxford5k_features/query \
   --index_features_dir ~/revisitop/data/oxford5k_features/index \

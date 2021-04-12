@@ -103,10 +103,10 @@ flags.DEFINE_integer('image_size', default=1024,
                      help='Maximum size of longer image side used for '
                           'training (default: 1024).')
 flags.DEFINE_integer('neg_num', default=5,
-                     help='Number of negative image per train/val tuple ('
+                     help='Number of negative images per train/val tuple ('
                           'default: 5).')
 flags.DEFINE_integer('query_size', default=2000,
-                     help='Number of queries randomly drawn per one train '
+                     help='Number of queries randomly drawn per one training '
                           'epoch (default: 2000).')
 flags.DEFINE_integer('pool_size', default=20000,
                      help='Size of the pool for hard negative mining ('
@@ -163,7 +163,11 @@ def main(argv):
   sfm120k.download_train(FLAGS.data_root)
 
   # Creating model export directory if it does not exist.
-  model_directory = global_features_utils.create_model_directory()
+  model_directory = global_features_utils.create_model_directory(
+    FLAGS.training_dataset, FLAGS.arch, FLAGS.pool, FLAGS.whitening,
+    FLAGS.pretrained, FLAGS.loss, FLAGS.loss_margin, FLAGS.optimizer, FLAGS.lr,
+    FLAGS.weight_decay, FLAGS.neg_num, FLAGS.query_size, FLAGS.pool_size,
+    FLAGS.batch_size, FLAGS.update_every, FLAGS.image_size, FLAGS.directory)
 
   # Setting up logging directory, same as where the model is stored.
   logging.get_absl_handler().use_absl_log_file('absl_logging', model_directory)
@@ -196,9 +200,8 @@ def main(argv):
         FLAGS.arch))
 
   model_params = {'architecture': FLAGS.arch, 'pooling': FLAGS.pool,
-                  'whitening': FLAGS.whitening,
-                  'pretrained': FLAGS.pretrained}
-
+                  'whitening': FLAGS.whitening, 'pretrained': FLAGS.pretrained,
+                  'data_root': FLAGS.data_root}
   model = global_model.GlobalFeatureNet(**model_params)
   global_features_utils.debug_and_log('>> Network initialized.')
 
@@ -551,6 +554,7 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
     net: Network to evaluate.
     epoch: Integer, epoch number.
     writer: Tensorboard writer.
+    model_directory: String, path to the model directory.
   """
   global_features_utils.debug_and_log(">> Testing step:")
   global_features_utils.debug_and_log(
@@ -633,7 +637,7 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
     start = time.time()
 
     # Prepare config structure for the test dataset.
-    cfg = testdataset.configdataset(dataset, os.path.join(
+    cfg = testdataset.create_config_for_test_dataset(dataset, os.path.join(
       FLAGS.data_root))
     images = [cfg['im_fname'](cfg, i) for i in range(cfg['n'])]
     qimages = [cfg['qim_fname'](cfg, i) for i in range(cfg['nq'])]

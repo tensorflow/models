@@ -16,13 +16,3 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-# pylint: disable=unused-import
-from delf.python.datasets import tuples_dataset
-from delf.python.datasets import testdataset
-from delf.python.training.losses import ranking_losses
-from delf.python.global_features.utils import evaluate
-from delf.python.global_features.utils import whiten
-from delf.python.training.model import global_model
-from delf.python.datasets.sfm120k import sfm120k
-# pylint: enable=unused-import

@@ -19,7 +19,6 @@ import tensorflow as tf
 
 from delf.python.datasets.sfm120k import sfm120k
 
-FLAGS = flags.FLAGS
 
 class Sfm120kTest(tf.test.TestCase):
 

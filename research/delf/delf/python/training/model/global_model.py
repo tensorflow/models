@@ -26,9 +26,6 @@
 
 import os
 
-from absl import flags
-
-import numpy as np
 import pickle
 import tensorflow as tf
 
@@ -36,8 +33,6 @@ from delf.python.pooling_layers import pooling as pooling_layers
 from delf.python.normalization_layers import normalization
 from delf.python.datasets import generic_dataset
 from delf.python.training import global_features_utils
-
-FLAGS = flags.FLAGS
 
 # Pre-computed global whitening, for most commonly used architectures.
 # Using pre-computed whitening improves the speed of the convergence and the
@@ -85,7 +80,7 @@ class GlobalFeatureNet(tf.keras.Model):
   """
 
   def __init__(self, architecture='ResNet101', pooling='gem',
-               whitening=False, pretrained=True):
+               whitening=False, pretrained=True, data_root=''):
     """GlobalFeatureNet network initialization.
 
     Args:
@@ -95,6 +90,8 @@ class GlobalFeatureNet(tf.keras.Model):
       whitening: Bool, whether to use whitening.
       pretrained: Bool, whether to initialize the network with pretrained
         weights.
+      data_root: String, path to the data folder where the precomputed
+        whitening is/will be saved in case is `whitening` is True.
     """
     super(GlobalFeatureNet, self).__init__()
 
@@ -130,7 +127,7 @@ class GlobalFeatureNet(tf.keras.Model):
             .format(os.getcwd(), architecture,
                     os.path.basename(_WHITENING_CONFIG[architecture])))
         # The layer configuration is downloaded to the `data_root` folder.
-        whiten_dir = os.path.join(FLAGS.data_root, architecture)
+        whiten_dir = os.path.join(data_root, architecture)
         path = tf.keras.utils.get_file(fname=whiten_dir,
                                        origin=_WHITENING_CONFIG[architecture])
         # Whitening configuration is loaded.
@@ -144,9 +141,9 @@ class GlobalFeatureNet(tf.keras.Model):
         # with the random weights.
         whiten = tf.keras.layers.Dense(dim, activation=None, use_bias=True)
         global_features_utils.debug_and_log(
-          ">> {}: for '{}' there is either no whitening computed or the "
-          "pretrained is False, random weights are used.".format(
-            os.getcwd(), w))
+          ">> There there is either no whitening computed for the "
+          "used network architecture or the pretrained is False,"
+          " random weights are used.")
     else:
       whiten = None
 

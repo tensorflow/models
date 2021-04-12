@@ -29,17 +29,17 @@ import tensorflow as tf
 
 from delf.python.datasets import generic_dataset
 from delf.python.datasets import utils as image_loading_utils
-from delf.python.training import global_features_utilst
 from delf.python.training import global_features_utils
 
 FLAGS = flags.FLAGS
 
 
 class TuplesDataset():
-  """Data loader that loads training and validation tuples of Radenovic et
-  al. ECCV16: CNN image retrieval learns from BoW.
+  """Data loader that loads training and validation tuples.
 
-  For more information refer to https://arxiv.org/abs/1604.02426.
+  Tuples are based on Radenovic et al. ECCV16 work: CNN image retrieval
+  learns from BoW. For more information refer to 
+  https://arxiv.org/abs/1604.02426.
   """
 
   def __init__(self, name, mode, data_root, imsize=None, nnum=5, qsize=2000,
@@ -119,7 +119,7 @@ class TuplesDataset():
       raise StopIteration
 
   def _img_names_to_full_path(self, image_list):
-    """Converrts list of image names to the list of full paths to the images.
+    """Converts list of image names to the list of full paths to the images.
 
     Args:
       image_list: List of image names.

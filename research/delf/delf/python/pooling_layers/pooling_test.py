@@ -22,36 +22,30 @@ from delf.python.pooling_layers import pooling
 class PoolingsTest(tf.test.TestCase):
 
   def testMac(self):
-    # Define the test input tensor.
-    x = tf.constant([[[[0., 1.], [2., 3.]],
-                      [[4., 5.], [6., 7.]]]])
-    # Run MAC pooling on the input tensor.
+    x = tf.constant([[[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]]]])
+    # Run tested function.
     result = pooling.mac(x)
-    # Define the expected result.
+    # Define expected result.
     exp_output = [[6., 7.]]
-    # Compare the obtained and the expected results.
+    # Compare actual and expected.
     self.assertAllClose(exp_output, result)
 
   def testSpoc(self):
-    # Define the test input tensor.
-    x = tf.constant([[[[0., 1.], [2., 3.]],
-                      [[4., 5.], [6., 7.]]]])
+    x = tf.constant([[[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]]]])
     # Run tested function.
     result = pooling.spoc(x)
-    # Define the expected result.
+    # Define expected result.
     exp_output = [[3., 4.]]
-    # Compare the obtained and the expected results.
+    # Compare actual and expected.
     self.assertAllClose(exp_output, result)
 
   def testGem(self):
-    # Define the test input tensor.
-    x = tf.constant([[[[0., 1.], [2., 3.]],
-                      [[4., 5.], [6., 7.]]]])
+    x = tf.constant([[[[0., 1.], [2., 3.]], [[4., 5.], [6., 7.]]]])
     # Run tested function.
     result = pooling.gem(x, power=3., eps=1e-6)
-    # Define the expected result.
+    # Define expected result.
     exp_output = [[4.1601677, 4.9866314]]
-    # Compare the obtained and the expected results.
+    # Compare actual and expected.
     self.assertAllClose(exp_output, result)
 
   def testGeMPooling2D(self):

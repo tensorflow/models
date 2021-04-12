@@ -73,7 +73,7 @@ class TuplesDatasetTest(tf.test.TestCase):
 
     # Initialize a network for negative re-mining.
     model_params = {'architecture': 'ResNet101', 'pooling': 'gem',
-                    'whitening': True, 'pretrained': True}
+                    'whitening': False, 'pretrained': True}
     model = global_model.GlobalFeatureNet(**model_params)
 
     avg_neg_distance = dataset.create_epoch_tuples(model)
@@ -86,7 +86,7 @@ class TuplesDatasetTest(tf.test.TestCase):
   def testExtractDescriptorsFromImagePaths(self):
     # Initialize a network.
     model_params = {'architecture': 'ResNet101', 'pooling': 'gem',
-                    'whitening': True, 'pretrained': True}
+                    'whitening': False, 'pretrained': True}
     model = global_model.GlobalFeatureNet(**model_params)
 
     # Create `n` dummy images.
