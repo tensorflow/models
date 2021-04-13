@@ -48,6 +48,37 @@ class PoolingsTest(tf.test.TestCase):
     # Compare actual and expected.
     self.assertAllClose(exp_output, result)
 
+  def testGeMPooling2D(self):
+    # Create a testing tensor.
+    x = tf.constant([[[1., 2., 3.],
+                      [4., 5., 6.],
+                      [7., 8., 9.]]])
+    x = tf.reshape(x, [1, 3, 3, 1])
+
+    # Checking GeMPooling2D relation to MaxPooling2D for the large values of
+    # `p`.
+    max_pool_2d = tf.keras.layers.MaxPooling2D(pool_size=(2, 2),
+                                               strides=(1, 1), padding='valid')
+    out_max = max_pool_2d(x)
+    gem_pool_2d = pooling.GeMPooling2D(power=30., pool_size=(2, 2),
+                                       strides=(1, 1), padding='valid')
+    out_gem_max = gem_pool_2d(x)
+
+    # Check that for large `p` GeMPooling2D is close to MaxPooling2D.
+    self.assertAllEqual(out_max, tf.round(out_gem_max))
+
+    # Checking GeMPooling2D relation to AveragePooling2D for the value
+    # of `p` = 1.
+    avg_pool_2d = tf.keras.layers.AveragePooling2D(pool_size=(2, 2),
+                                                   strides=(1, 1),
+                                                   padding='valid')
+    out_avg = avg_pool_2d(x)
+    gem_pool_2d = pooling.GeMPooling2D(power=1., pool_size=(2, 2),
+                                       strides=(1, 1), padding='valid')
+    out_gem_avg = gem_pool_2d(x)
+    # Check that for `p` equals 1., GeMPooling2D becomes AveragePooling2D.
+    self.assertAllEqual(out_avg, out_gem_avg)
+
 
 if __name__ == '__main__':
   tf.test.main()

@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from delf.python.google_landmarks_dataset import metrics
+from delf.python.datasets.google_landmarks_dataset import metrics
 
 
 def _CreateRecognitionSolution():

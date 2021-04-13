@@ -20,9 +20,9 @@ import tensorflow as tf
 class MAC(tf.keras.layers.Layer):
   """Global max pooling (MAC) layer.
 
-   Maximum Activations of Convolutions (MAC) is simply constructed by
-   max-pooling over all dimensions per feature map. See
-   https://arxiv.org/abs/1511.05879 for a reference.
+  Maximum Activations of Convolutions (MAC) is simply constructed by
+  max-pooling over all dimensions per feature map. See
+  https://arxiv.org/abs/1511.05879 for a reference.
   """
 
   def call(self, x, axis=None):
@@ -31,7 +31,6 @@ class MAC(tf.keras.layers.Layer):
     Args:
       x: [B, H, W, D] A float32 Tensor.
       axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
-
     Returns:
       output: [B, D] A float32 Tensor.
     """
@@ -99,6 +98,47 @@ class GeM(tf.keras.layers.Layer):
     return gem(x, power=self.power, eps=self.eps, axis=axis)
 
 
+class GeMPooling2D(tf.keras.layers.Layer):
+
+  def __init__(self, power=20., pool_size=(2, 2), strides=None,
+               padding='valid', data_format='channels_last'):
+    """Generalized mean pooling (GeM) pooling operation for spatial data.
+
+    Args:
+      power: Float, power > 0. is an inverse exponent parameter (GeM power).
+      pool_size: Integer or tuple of 2 integers, factors by which to
+        downscale (vertical, horizontal)
+      strides: Integer, tuple of 2 integers, or None. Strides values.
+        If None, it will default to `pool_size`.
+      padding: One of `valid` or `same`. `valid` means no padding.
+        `same` results in padding evenly to the left/right or up/down of
+        the input such that output has the same height/width dimension as the
+        input.
+      data_format: A string, one of `channels_last` (default) or
+        `channels_first`. The ordering of the dimensions in the inputs.
+        `channels_last` corresponds to inputs with shape `(batch, height,
+        width, channels)` while `channels_first` corresponds to inputs with
+        shape `(batch, channels, height, width)`.
+    """
+    super(GeMPooling2D, self).__init__()
+    self.power = power
+    self.eps = 1e-6
+    self.pool_size = pool_size
+    self.strides = strides
+    self.padding = padding.upper()
+    data_format_conv = {'channels_last': 'NHWC',
+                        'channels_first': 'NCHW',
+                        }
+    self.data_format = data_format_conv[data_format]
+
+  def call(self, x):
+    tmp = tf.pow(x, self.power)
+    tmp = tf.nn.avg_pool(tmp, self.pool_size, self.strides,
+                         self.padding, self.data_format)
+    out = tf.pow(tmp, 1. / self.power)
+    return out
+
+
 def mac(x, axis=None):
   """Performs global max pooling (MAC).
 
@@ -137,7 +177,7 @@ def gem(x, axis=None, power=3., eps=1e-6):
     axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
     power: Float, power > 0 is an inverse exponent parameter (GeM power).
     eps: Float, parameter for numerical stability.
-
+    
   Returns:
     output: [B, D] A float32 Tensor.
   """

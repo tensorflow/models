@@ -23,7 +23,7 @@ import os
 from absl import flags
 import tensorflow as tf
 
-from delf.python.google_landmarks_dataset import dataset_file_io
+from delf.python.datasets.google_landmarks_dataset import dataset_file_io
 
 FLAGS = flags.FLAGS
 

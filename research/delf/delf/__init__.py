@@ -35,5 +35,7 @@ from delf.python.examples import extractor
 from delf.python import detect_to_retrieve
 from delf.python import training
 from delf.python.training import model
-from delf.python.training import datasets
+from delf.python import datasets
+from delf.python.datasets import google_landmarks_dataset
+from delf.python.datasets import revisited_op
 # pylint: enable=unused-import
