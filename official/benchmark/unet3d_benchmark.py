@@ -97,9 +97,8 @@ class Unet3DAccuracyBenchmark(keras_benchmark.KerasBenchmark):
 
     input_dtype = params.dtype
     if input_dtype == 'float16' or input_dtype == 'bfloat16':
-      policy = tf.keras.mixed_precision.experimental.Policy(
+      tf.keras.mixed_precision.set_global_policy(
           'mixed_bfloat16' if input_dtype == 'bfloat16' else 'mixed_float16')
-      tf.keras.mixed_precision.experimental.set_policy(policy)
 
     stats = {}
     start_time_sec = time.time()

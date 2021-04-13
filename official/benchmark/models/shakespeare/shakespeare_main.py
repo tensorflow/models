@@ -57,7 +57,6 @@ def define_flags():
                                 synthetic_data=False,
                                 max_train_steps=False,
                                 dtype=True,
-                                loss_scale=True,
                                 enable_xla=True)
 
   flags_core.set_defaults(train_epochs=43,
@@ -185,8 +184,8 @@ def train_model(flags_obj, dataset, vocab_size, strategy, checkpoint_dir=None):
     model = build_model(vocab_size=vocab_size, batch_size=flags_obj.batch_size,
                         use_cudnn=flags_obj.cudnn)
 
-    # When keras_use_ctl is False, Model.fit() automatically applies
-    # loss scaling so we don't need to create a LossScaleOptimizer.
+    # Model.fit() automatically applies loss scaling so we don't need to create
+    # a LossScaleOptimizer.
     model.compile(
         optimizer=tf.keras.optimizers.Adam(),
         loss=tf.keras.losses.CategoricalCrossentropy(),
@@ -269,11 +268,7 @@ def run(flags_obj):
         'shakespeare.txt')
 
   if flags_obj.dtype == 'fp16':
-    policy = tf.keras.mixed_precision.experimental.Policy(
-        'mixed_float16',
-        loss_scale=flags_core.get_loss_scale(flags_obj,
-                                             default_for_fp16='dynamic'))
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
 
   keras_utils.set_session_config(
       enable_xla=flags_obj.enable_xla)

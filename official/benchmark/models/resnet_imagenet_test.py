@@ -91,13 +91,12 @@ class KerasImagenetTest(tf.test.TestCase):
   def setUp(self):
     super(KerasImagenetTest, self).setUp()
     imagenet_preprocessing.NUM_IMAGES["validation"] = 4
-    self.policy = \
-        tf.keras.mixed_precision.experimental.global_policy()
+    self.policy = tf.keras.mixed_precision.global_policy()
 
   def tearDown(self):
     super(KerasImagenetTest, self).tearDown()
     tf.io.gfile.rmtree(self.get_temp_dir())
-    tf.keras.mixed_precision.experimental.set_policy(self.policy)
+    tf.keras.mixed_precision.set_global_policy(self.policy)
 
   def get_extra_flags_dict(self, flags_key):
     return self._extra_flags_dict[flags_key] + self._default_flags_dict
