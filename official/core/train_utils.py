@@ -234,6 +234,9 @@ class ParseConfigOptions:
   tf_data_service: str = ''
   params_override: str = ''
 
+  def __contains__(self, name):
+    return name in dataclasses.asdict(self)
+
 
 def parse_configuration(flags_obj, lock_return=True, print_return=True):
   """Parses ExperimentConfig from flags."""

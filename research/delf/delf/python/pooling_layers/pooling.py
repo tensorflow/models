@@ -19,9 +19,16 @@ import tensorflow as tf
 
 class MAC(tf.keras.layers.Layer):
   """Global max pooling (MAC) layer.
+<<<<<<< HEAD
    Maximum Activations of Convolutions (MAC) is simply constructed by
    max-pooling over all dimensions per feature map. See
    https://arxiv.org/abs/1511.05879 for a reference.
+=======
+
+  Maximum Activations of Convolutions (MAC) is simply constructed by
+  max-pooling over all dimensions per feature map. See
+  https://arxiv.org/abs/1511.05879 for a reference.
+>>>>>>> upstream/master
   """
 
   def call(self, x, axis=None):
@@ -163,6 +170,10 @@ def gem(x, axis=None, power=3., eps=1e-6):
     axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
     power: Float, power > 0 is an inverse exponent parameter (GeM power).
     eps: Float, parameter for numerical stability.
+<<<<<<< HEAD
+=======
+    
+>>>>>>> upstream/master
   Returns:
     output: [B, D] A float32 Tensor.
   """
