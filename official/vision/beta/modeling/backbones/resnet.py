@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Contains definitions of Residual Networks."""
+
+"""Contains definitions of ResNet and ResNet-RS models."""
+
+from typing import Callable, Optional
 
 # Import libraries
 import tensorflow as tf
+
+from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -87,38 +91,45 @@ RESNET_SPECS = {
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class ResNet(tf.keras.Model):
-  """Creates a ResNet family model.
+  """Creates ResNet and ResNet-RS family models.
 
   This implements the Deep Residual Network from:
     Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun.
     Deep Residual Learning for Image Recognition.
-    (https://arxiv.org/pdf/1512.03385)
+    (https://arxiv.org/pdf/1512.03385) and
+    Irwan Bello, William Fedus, Xianzhi Du, Ekin D. Cubuk, Aravind Srinivas,
+    Tsung-Yi Lin, Jonathon Shlens, Barret Zoph.
+    Revisiting ResNets: Improved Training and Scaling Strategies.
+    (https://arxiv.org/abs/2103.07579).
   """
 
-  def __init__(self,
-               model_id,
-               input_specs=layers.InputSpec(shape=[None, None, None, 3]),
-               depth_multiplier=1.0,
-               stem_type='v0',
-               resnetd_shortcut=False,
-               replace_stem_max_pool=False,
-               se_ratio=None,
-               init_stochastic_depth_rate=0.0,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      model_id: int,
+      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+          shape=[None, None, None, 3]),
+      depth_multiplier: float = 1.0,
+      stem_type: str = 'v0',
+      resnetd_shortcut: bool = False,
+      replace_stem_max_pool: bool = False,
+      se_ratio: Optional[float] = None,
+      init_stochastic_depth_rate: float = 0.0,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a ResNet model.
 
     Args:
       model_id: An `int` of the depth of ResNet backbone model.
       input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
       depth_multiplier: A `float` of the depth multiplier to uniformaly scale up
-        all layers in channel size in ResNet.
+        all layers in channel size. This argument is also referred to as
+        `width_multiplier` in (https://arxiv.org/abs/2103.07579).
       stem_type: A `str` of stem type of ResNet. Default to `v0`. If set to
         `v1`, use ResNet-D type stem (https://arxiv.org/abs/1812.01187).
       resnetd_shortcut: A `bool` of whether to use ResNet-D shortcut in
@@ -269,13 +280,13 @@ class ResNet(tf.keras.Model):
     super(ResNet, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 
   def _block_group(self,
-                   inputs,
-                   filters,
-                   strides,
-                   block_fn,
-                   block_repeats=1,
-                   stochastic_depth_drop_rate=0.0,
-                   name='block_group'):
+                   inputs: tf.Tensor,
+                   filters: int,
+                   strides: int,
+                   block_fn: Callable[..., tf.keras.layers.Layer],
+                   block_repeats: int = 1,
+                   stochastic_depth_drop_rate: float = 0.0,
+                   name: str = 'block_group'):
     """Creates one group of blocks for the ResNet model.
 
     Args:
@@ -361,7 +372,7 @@ class ResNet(tf.keras.Model):
 @factory.register_backbone_builder('resnet')
 def build_resnet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    model_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds ResNet backbone from a config."""
   backbone_type = model_config.backbone.type

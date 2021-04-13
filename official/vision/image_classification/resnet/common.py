@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Common util functions and classes used by both keras cifar and imagenet."""
 from __future__ import absolute_import
 from __future__ import division
@@ -22,7 +22,6 @@ import os
 from absl import flags
 import tensorflow as tf
 
-from tensorflow.python.keras.optimizer_v2 import gradient_descent as gradient_descent_v2
 import tensorflow_model_optimization as tfmot
 from official.utils.flags import core as flags_core
 from official.utils.misc import keras_utils
@@ -109,7 +108,7 @@ class PiecewiseConstantDecayWithWarmup(
 def get_optimizer(learning_rate=0.1):
   """Returns optimizer to use."""
   # The learning_rate is overwritten at the beginning of each step by callback.
-  return gradient_descent_v2.SGD(learning_rate=learning_rate, momentum=0.9)
+  return tf.keras.optimizers.SGD(learning_rate=learning_rate, momentum=0.9)
 
 
 def get_callbacks(pruning_method=None,
@@ -189,8 +188,7 @@ def build_stats(history, eval_output, callbacks):
   return stats
 
 
-def define_keras_flags(dynamic_loss_scale=True,
-                       model=False,
+def define_keras_flags(model=False,
                        optimizer=False,
                        pretrained_filepath=False):
   """Define flags for Keras models."""
@@ -209,7 +207,6 @@ def define_keras_flags(dynamic_loss_scale=True,
       num_packs=True,
       tf_gpu_thread_mode=True,
       datasets_num_private_threads=True,
-      dynamic_loss_scale=dynamic_loss_scale,
       loss_scale=True,
       fp16_implementation=True,
       tf_data_experimental_slack=True,

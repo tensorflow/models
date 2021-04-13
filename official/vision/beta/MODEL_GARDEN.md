@@ -20,8 +20,10 @@ TF Vision model garden provides a large collection of baselines and checkpoints 
 
 
 #### ResNet-RS models trained with settings including:
+We support state-of-the-art [ResNet-RS](https://arxiv.org/abs/2103.07579) image classification models with features:
 
-*   ResNet-RS architectural changes and Swish activation.
+*   ResNet-RS architectural changes and Swish activation. (Note that ResNet-RS
+    adopts ReLU activation in the paper.)
 *   Regularization methods including Random Augment, 4e-5 weight decay, stochastic depth, label smoothing and dropout.
 *   New training methods including a 350-epoch schedule, cosine learning rate and
     EMA.
@@ -65,9 +67,15 @@ ResNet-RS-350 | 320x320    | 164.3   | 84.2  | 96.9  | [config](https://github.c
 
 | backbone        | resolution    | epochs  | FLOPs (B)     | params (M) |  box AP |   download |
 | ------------ |:-------------:| ---------:|-----------:|--------:|---------:|-----------:|
-| SpineNet-49  | 640x640       |    500    | 85.4| 28.5 | 44.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet49_tpu.yaml) [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
-| SpineNet-96  | 1024x1024     |    500    | 265.4 | 43.0 | 48.5 |  [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet96_tpu.yaml) [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
-| SpineNet-143 | 1280x1280     |    500    | 524.0 | 67.0 | 50.0 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet143_tpu.yaml) [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
+| SpineNet-49  | 640x640       |    500    | 85.4| 28.5 | 44.2 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet49_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
+| SpineNet-96  | 1024x1024     |    500    | 265.4 | 43.0 | 48.5 |  [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet96_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
+| SpineNet-143 | 1280x1280     |    500    | 524.0 | 67.0 | 50.0 | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet143_tpu.yaml) \| [TB.dev](https://tensorboard.dev/experiment/n2UN83TkTdyKZn3slCWulg/#scalars&_smoothingWeight=0)|
+
+#### Mobile-size RetinaNet (Trained from scratch):
+
+backbone     | resolution | epochs | FLOPs (B) | params (M) | box AP | download
+------------ | :--------: | -----: | --------: | ---------: | -----: | -------:
+Mobile SpineNet-49  | 384x384    | 600    | 1.0      | 2.32       | 28.1   | [config](https://github.com/tensorflow/models/blob/master/official/vision/beta/configs/experiments/retinanet/coco_spinenet49_mobile_tpu.yaml) |
 
 
 ### Instance Segmentation Baselines

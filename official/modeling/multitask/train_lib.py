@@ -21,9 +21,113 @@ import tensorflow as tf
 from official.core import base_task
 from official.core import base_trainer as core_lib
 from official.core import train_utils
+from official.modeling.multitask import base_model
+from official.modeling.multitask import base_trainer
 from official.modeling.multitask import configs
 from official.modeling.multitask import evaluator as evaluator_lib
+from official.modeling.multitask import interleaving_trainer
 from official.modeling.multitask import multitask
+from official.modeling.multitask import task_sampler
+
+TRAINERS = {
+    'interleaving': interleaving_trainer.MultiTaskInterleavingTrainer,
+    'joint': base_trainer.MultiTaskBaseTrainer
+}
+
+
+def run_experiment(*, distribution_strategy: tf.distribute.Strategy,
+                   task: multitask.MultiTask,
+                   model: base_model.MultiTaskBaseModel, mode: str,
+                   params: configs.MultiTaskExperimentConfig,
+                   model_dir: str) -> base_model.MultiTaskBaseModel:
+  """Runs train/eval configured by the experiment params.
+
+  Args:
+    distribution_strategy: A distribution distribution_strategy.
+    task: A MultiTaskTask instance.
+    model: A MultiTaskBaseModel instance.
+    mode: A 'str', specifying the mode. Can be 'train', 'eval', 'train_and_eval'
+      or 'continuous_eval'.
+    params: ExperimentConfig instance.
+    model_dir: A 'str', a path to store model checkpoints and summaries.
+
+  Returns:
+      model: `base_model.MultiTaskBaseModel` instance.
+  """
+
+  is_training = 'train' in mode
+  is_eval = 'eval' in mode
+  with distribution_strategy.scope():
+    optimizer = task.create_optimizer(params.trainer.optimizer_config,
+                                      params.runtime)
+    kwargs = dict(multi_task=task, multi_task_model=model, optimizer=optimizer)
+    if params.trainer.trainer_type == 'interleaving':
+      sampler = task_sampler.get_task_sampler(params.trainer.task_sampler,
+                                              task.task_weights)
+      kwargs.update(dict(task_sampler=sampler))
+    trainer = TRAINERS[params.trainer.trainer_type](
+        **kwargs) if is_training else None
+    if is_eval:
+      evaluator = evaluator_lib.MultiTaskEvaluator(
+          task=task,
+          model=model,
+          global_step=trainer.global_step if is_training else None)
+    else:
+      evaluator = None
+
+  if trainer:
+    checkpoint = trainer.checkpoint
+    global_step = trainer.global_step
+  else:
+    checkpoint = evaluator.checkpoint
+    global_step = evaluator.global_step
+
+  # TODO(hongkuny,haozhangthu): Revisit initialization method.
+  checkpoint_manager = tf.train.CheckpointManager(
+      checkpoint,
+      directory=model_dir,
+      max_to_keep=params.trainer.max_to_keep,
+      step_counter=global_step,
+      checkpoint_interval=params.trainer.checkpoint_interval,
+      init_fn=model.initialize)
+
+  controller = orbit.Controller(
+      strategy=distribution_strategy,
+      trainer=trainer,
+      evaluator=evaluator,
+      global_step=global_step,
+      steps_per_loop=params.trainer.steps_per_loop,
+      checkpoint_manager=checkpoint_manager,
+      summary_dir=os.path.join(model_dir, 'train'),
+      eval_summary_dir=os.path.join(model_dir, 'validation'),
+      summary_interval=params.trainer.summary_interval)
+
+  logging.info('Starts to execute mode: %s', mode)
+  with distribution_strategy.scope():
+    if mode == 'train':
+      controller.train(steps=params.trainer.train_steps)
+    elif mode == 'train_and_eval':
+      controller.train_and_evaluate(
+          train_steps=params.trainer.train_steps,
+          eval_steps=params.trainer.validation_steps,
+          eval_interval=params.trainer.validation_interval)
+    elif mode == 'eval':
+      controller.evaluate(steps=params.trainer.validation_steps)
+    elif mode == 'continuous_eval':
+
+      def timeout_fn():
+        if evaluator.global_step.numpy() >= params.trainer.train_steps:
+          return True
+        return False
+
+      controller.evaluate_continuously(
+          steps=params.trainer.validation_steps,
+          timeout=params.trainer.continuous_eval_timeout,
+          timeout_fn=timeout_fn)
+    else:
+      raise NotImplementedError('The mode is not implemented: %s' % mode)
+
+    return model
 
 
 def run_experiment_with_multitask_eval(

@@ -33,6 +33,10 @@ assemble new `tf.keras` layers or models.
     of self multi-head attention, cross multi-head attention and feedforward
     network.
 
+*   [RandomFeatureGaussianProcess](gaussian_process.py) implements random
+    feature-based Gaussian process described in ["Random Features for
+     Large-Scale Kernel Machines"](https://people.eecs.berkeley.edu/~brecht/papers/07.rah.rec.nips.pdf).
+
 *   [ReZeroTransformer](rezero_transformer.py) implements Transformer with
     ReZero described in
     ["ReZero is All You Need: Fast Convergence at Large Depth"](https://arxiv.org/abs/2003.04887).
@@ -47,6 +51,11 @@ assemble new `tf.keras` layers or models.
 *   [SelfAttentionMask](self_attention_mask.py) creates a 3D attention mask from
     a 2D tensor mask.
 
+*   [SpectralNormalization](spectral_normalization.py) implements a tf.Wrapper
+    that applies spectral normalization regularization to a given layer. See
+    [Spectral Norm Regularization for Improving the Generalizability of
+     Deep Learning](https://arxiv.org/abs/1705.10941)
+
 *   [MaskedSoftmax](masked_softmax.py) implements a softmax with an optional
     masking input. If no mask is provided to this layer, it performs a standard
     softmax; however, if a mask tensor is applied (which should be 1 in
@@ -59,6 +68,11 @@ assemble new `tf.keras` layers or models.
 
 *   [ClassificationHead](cls_head.py) A pooling head over a sequence of
     embeddings, commonly used by classification tasks.
+
+*   [GaussianProcessClassificationHead](cls_head.py) A spectral-normalized
+    neural Gaussian process (SNGP)-based classification head as described in
+    ["Simple and Principled Uncertainty Estimation with Deterministic Deep
+     Learning via Distance Awareness"](https://arxiv.org/abs/2006.10108).
 
 *   [GatedFeedforward](gated_feedforward.py) implements the gated linear layer
     feedforward as described in

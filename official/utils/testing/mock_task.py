@@ -51,7 +51,7 @@ class MockTask(base_task.Task):
   def build_model(self, *arg, **kwargs):
     inputs = tf.keras.layers.Input(shape=(2,), name="random", dtype=tf.float32)
     outputs = tf.keras.layers.Dense(
-        1, bias_initializer=tf.keras.initializers.Ones())(
+        1, bias_initializer=tf.keras.initializers.Ones(), name="dense_0")(
             inputs)
     network = tf.keras.Model(inputs=inputs, outputs=outputs)
     return MockModel(network)

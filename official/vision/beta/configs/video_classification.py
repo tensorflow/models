@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Video classification configuration definition."""
 from typing import Optional, Tuple
 import dataclasses
@@ -36,10 +36,8 @@ class DataConfig(cfg.DataConfig):
   num_test_clips: int = 1
   num_test_crops: int = 1
   num_classes: int = -1
-  num_channels: int = 3
   num_examples: int = -1
   global_batch_size: int = 128
-  num_devices: int = 1
   data_format: str = 'channels_last'
   dtype: str = 'float32'
   one_hot: bool = True
@@ -104,6 +102,11 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class Metrics(hyperparams.Config):
+  use_per_class_recall: bool = False
+
+
+@dataclasses.dataclass
 class VideoClassificationTask(cfg.TaskConfig):
   """The task config."""
   model: VideoClassificationModel = VideoClassificationModel()
@@ -111,6 +114,7 @@ class VideoClassificationTask(cfg.TaskConfig):
   validation_data: DataConfig = DataConfig(
       is_training=False, drop_remainder=False)
   losses: Losses = Losses()
+  metrics: Metrics = Metrics()
 
 
 def add_trainer(experiment: cfg.ExperimentConfig,

@@ -14,6 +14,7 @@
 
 """Functions and classes related to training performance."""
 
+from absl import logging
 import tensorflow as tf
 
 
@@ -21,8 +22,11 @@ def configure_optimizer(optimizer,
                         use_float16=False,
                         use_graph_rewrite=False,
                         loss_scale='dynamic',
-                        use_experimental_api=True):
+                        use_experimental_api=False):
   """Configures optimizer object with performance options."""
+  if use_experimental_api:
+    logging.warning('Passing use_experimental_api=True is deprecated. The '
+                    'argument will be removed in the future.')
   if use_float16:
     # TODO(b/171936854): Move all methods to non-experimental api.
     if use_experimental_api:
@@ -40,17 +44,20 @@ def configure_optimizer(optimizer,
           optimizer, dynamic=False, initial_scale=loss_scale)
   if use_graph_rewrite:
     # Note: the model dtype must be 'float32', which will ensure
-    # tf.keras.mixed_precision and
-    # tf.train.experimental.enable_mixed_precision_graph_rewrite do not double
-    # up.
-    optimizer = tf.train.experimental.enable_mixed_precision_graph_rewrite(
-        optimizer)
+    # tf.keras.mixed_precision and enable_mixed_precision_graph_rewrite do not
+    # double up.
+    optimizer = (
+        tf.compat.v1.mixed_precision.enable_mixed_precision_graph_rewrite(
+            optimizer))
   return optimizer
 
 
 def set_mixed_precision_policy(dtype, loss_scale=None,
-                               use_experimental_api=True):
+                               use_experimental_api=False):
   """Sets mix precision policy."""
+  if use_experimental_api:
+    logging.warning('Passing use_experimental_api=True is deprecated. The '
+                    'argument will be removed in the future.')
   assert use_experimental_api or loss_scale is None, (
       'loss_scale cannot be specified if use_experimental_api is False. If the '
       'non-experimental API is used, specify the loss scaling configuration '

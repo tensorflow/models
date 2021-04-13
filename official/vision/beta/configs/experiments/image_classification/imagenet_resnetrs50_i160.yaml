@@ -1,4 +1,4 @@
-# ResNet-RS-50 ImageNet classification. 79.1% top-5 accuracy.
+# ResNet-RS-50 ImageNet classification. 79.1% top-1 accuracy.
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'

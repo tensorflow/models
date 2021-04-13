@@ -41,6 +41,7 @@ In the near future, we will add:
 |-------|-------------------|
 | [MNIST](vision/image_classification) | A basic model to classify digits from the [MNIST dataset](http://yann.lecun.com/exdb/mnist/) |
 | [ResNet](vision/image_classification) | [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385) |
+| [ResNet-RS](vision/image_classification) | [Revisiting ResNets: Improved Training and Scaling Strategies](https://arxiv.org/abs/2103.07579) |
 | [EfficientNet](vision/image_classification) | [EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks](https://arxiv.org/abs/1905.11946) |
 
 #### Object Detection and Segmentation
@@ -166,8 +167,8 @@ To cite this repository:
 
 ```
 @software{tfmodels2020github,
-  author = {Chen Chen and Xianzhi Du and Le Hou and Jaeyoun Kim and Pengchong
-  Jin and Jing Li and Yeqing Li and Abdullah Rashwan and Hongkun Yu},
+  author = {Chen Chen and Xianzhi Du and Le Hou and Jaeyoun Kim and Jing Li and
+  Yeqing Li and Abdullah Rashwan and Fan Yang and Hongkun Yu},
   title = {TensorFlow Official Model Garden},
   url = {https://github.com/tensorflow/models/tree/master/official},
   year = {2020},

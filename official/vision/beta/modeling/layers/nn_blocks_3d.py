@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Contains common building blocks for 3D networks."""
 # Import libraries
 import tensorflow as tf
 
 from official.modeling import tf_utils
+from official.vision.beta.modeling.layers import nn_layers
 
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
@@ -75,6 +76,8 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
                temporal_kernel_size,
                temporal_strides,
                spatial_strides,
+               stochastic_depth_drop_rate=0.0,
+               se_ratio=None,
                use_self_gating=False,
                kernel_initializer='VarianceScaling',
                kernel_regularizer=None,
@@ -95,6 +98,9 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         convolutional layer.
       spatial_strides: An `int` of spatial stride for the spatial convolutional
         layer.
+      stochastic_depth_drop_rate: A `float` or None. If not None, drop rate for
+        the stochastic depth layer.
+      se_ratio: A `float` or None. Ratio of the Squeeze-and-Excitation layer.
       use_self_gating: A `bool` of whether to apply self-gating module or not.
       kernel_initializer: A `str` of kernel_initializer for convolutional
         layers.
@@ -114,7 +120,9 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
     self._temporal_kernel_size = temporal_kernel_size
     self._spatial_strides = spatial_strides
     self._temporal_strides = temporal_strides
+    self._stochastic_depth_drop_rate = stochastic_depth_drop_rate
     self._use_self_gating = use_self_gating
+    self._se_ratio = se_ratio
     self._use_sync_bn = use_sync_bn
     self._activation = activation
     self._kernel_initializer = kernel_initializer
@@ -197,6 +205,24 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         momentum=self._norm_momentum,
         epsilon=self._norm_epsilon)
 
+    if self._se_ratio and self._se_ratio > 0 and self._se_ratio <= 1:
+      self._squeeze_excitation = nn_layers.SqueezeExcitation(
+          in_filters=self._filters * 4,
+          out_filters=self._filters * 4,
+          se_ratio=self._se_ratio,
+          use_3d_input=True,
+          kernel_initializer=self._kernel_initializer,
+          kernel_regularizer=self._kernel_regularizer,
+          bias_regularizer=self._bias_regularizer)
+    else:
+      self._squeeze_excitation = None
+
+    if self._stochastic_depth_drop_rate:
+      self._stochastic_depth = nn_layers.StochasticDepth(
+          self._stochastic_depth_drop_rate)
+    else:
+      self._stochastic_depth = None
+
     if self._use_self_gating:
       self._self_gating = SelfGating(filters=4 * self._filters)
     else:
@@ -210,7 +236,9 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
         'temporal_kernel_size': self._temporal_kernel_size,
         'temporal_strides': self._temporal_strides,
         'spatial_strides': self._spatial_strides,
-        'use_projection': self._use_projection,
+        'use_self_gating': self._use_self_gating,
+        'se_ratio': self._se_ratio,
+        'stochastic_depth_drop_rate': self._stochastic_depth_drop_rate,
         'kernel_initializer': self._kernel_initializer,
         'kernel_regularizer': self._kernel_regularizer,
         'bias_regularizer': self._bias_regularizer,
@@ -243,10 +271,16 @@ class BottleneckBlock3D(tf.keras.layers.Layer):
 
     x = self._expand_conv(x)
     x = self._norm3(x)
-    # Apply activation before additional modules.
-    x = self._activation_fn(x + shortcut)
 
+    # Apply self-gating, SE, stochastic depth.
     if self._self_gating:
       x = self._self_gating(x)
+    if self._squeeze_excitation:
+      x = self._squeeze_excitation(x)
+    if self._stochastic_depth:
+      x = self._stochastic_depth(x, training=training)
+
+    # Apply activation before additional modules.
+    x = self._activation_fn(x + shortcut)
 
     return x

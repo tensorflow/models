@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Contains the factory method to create decoders."""
 
+from typing import Mapping, Optional
+
 # Import libraries
+
 import tensorflow as tf
 
+from official.modeling import hyperparams
 from official.vision.beta.modeling import decoders
 
 
-def build_decoder(input_specs,
-                  model_config,
-                  l2_regularizer: tf.keras.regularizers.Regularizer = None):
+def build_decoder(
+    input_specs: Mapping[str, tf.TensorShape],
+    model_config: hyperparams.Config,
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+) -> tf.keras.Model:
   """Builds decoder from a config.
 
   Args:

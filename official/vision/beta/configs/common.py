@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Common configurations."""
 
 # Import libraries
+
 import dataclasses
 
+from official.core import config_definitions as cfg
 from official.modeling import hyperparams
 
 
@@ -30,7 +32,7 @@ class NormActivation(hyperparams.Config):
 
 
 @dataclasses.dataclass
-class PseudoLabelDataConfig(hyperparams.Config):
+class PseudoLabelDataConfig(cfg.DataConfig):
   """Psuedo Label input config for training."""
   input_path: str = ''
   data_ratio: float = 1.0  # Per-batch ratio of pseudo-labeled to labeled data

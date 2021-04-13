@@ -30,7 +30,7 @@ class BertEncoderTest(keras_parameterized.TestCase):
 
   def tearDown(self):
     super(BertEncoderTest, self).tearDown()
-    tf.keras.mixed_precision.experimental.set_policy("float32")
+    tf.keras.mixed_precision.set_global_policy("float32")
 
   def test_network_creation(self):
     hidden_size = 32
@@ -119,7 +119,7 @@ class BertEncoderTest(keras_parameterized.TestCase):
   def test_network_creation_with_float16_dtype(self):
     hidden_size = 32
     sequence_length = 21
-    tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
+    tf.keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a small BertEncoder for testing.
     test_network = bert_encoder.BertEncoder(
         vocab_size=100,

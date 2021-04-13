@@ -162,7 +162,6 @@ def define_ncf_flags():
       dtype=True,
       fp16_implementation=True,
       loss_scale=True,
-      dynamic_loss_scale=True,
       enable_xla=True,
   )
   flags_core.define_device(tpu=True)

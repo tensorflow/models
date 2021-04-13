@@ -45,9 +45,9 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
   def test_layer_creation_with_mixed_precision(self):
     vocab_size = 31
     embedding_width = 27
-    policy = tf.keras.mixed_precision.experimental.Policy("mixed_float16")
     test_layer = on_device_embedding.OnDeviceEmbedding(
-        vocab_size=vocab_size, embedding_width=embedding_width, dtype=policy)
+        vocab_size=vocab_size, embedding_width=embedding_width,
+        dtype="mixed_float16")
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
     input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
@@ -83,9 +83,9 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
   def test_layer_invocation_with_mixed_precision(self):
     vocab_size = 31
     embedding_width = 27
-    policy = tf.keras.mixed_precision.experimental.Policy("mixed_float16")
     test_layer = on_device_embedding.OnDeviceEmbedding(
-        vocab_size=vocab_size, embedding_width=embedding_width, dtype=policy)
+        vocab_size=vocab_size, embedding_width=embedding_width,
+        dtype="mixed_float16")
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
     input_tensor = tf.keras.Input(shape=(sequence_length), dtype=tf.int32)
@@ -123,11 +123,10 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
   def test_one_hot_layer_creation_with_mixed_precision(self):
     vocab_size = 31
     embedding_width = 27
-    policy = tf.keras.mixed_precision.experimental.Policy("mixed_float16")
     test_layer = on_device_embedding.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
-        dtype=policy,
+        dtype="mixed_float16",
         use_one_hot=True)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23
@@ -166,11 +165,10 @@ class OnDeviceEmbeddingTest(keras_parameterized.TestCase):
   def test_one_hot_layer_invocation_with_mixed_precision(self):
     vocab_size = 31
     embedding_width = 27
-    policy = tf.keras.mixed_precision.experimental.Policy("mixed_float16")
     test_layer = on_device_embedding.OnDeviceEmbedding(
         vocab_size=vocab_size,
         embedding_width=embedding_width,
-        dtype=policy,
+        dtype="mixed_float16",
         use_one_hot=True)
     # Create a 2-dimensional input (the first dimension is implicit).
     sequence_length = 23

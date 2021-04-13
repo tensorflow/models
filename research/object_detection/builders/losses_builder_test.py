@@ -97,6 +97,23 @@ class LocalizationLossBuilderTest(tf.test.TestCase):
     self.assertIsInstance(localization_loss,
                           losses.WeightedIOULocalizationLoss)
 
+  def test_build_weighted_giou_localization_loss(self):
+    losses_text_proto = """
+      localization_loss {
+        weighted_giou {
+        }
+      }
+      classification_loss {
+        weighted_softmax {
+        }
+      }
+    """
+    losses_proto = losses_pb2.Loss()
+    text_format.Merge(losses_text_proto, losses_proto)
+    _, localization_loss, _, _, _, _, _ = losses_builder.build(losses_proto)
+    self.assertIsInstance(localization_loss,
+                          losses.WeightedGIOULocalizationLoss)
+
   def test_anchorwise_output(self):
     losses_text_proto = """
       localization_loss {

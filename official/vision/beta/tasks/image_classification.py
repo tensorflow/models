@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Image classification task definition."""
 from absl import logging
 import tensorflow as tf
@@ -80,6 +80,8 @@ class ImageClassificationTask(base_task.Task):
 
     num_classes = self.task_config.model.num_classes
     input_size = self.task_config.model.input_size
+    image_field_key = self.task_config.train_data.image_field_key
+    label_field_key = self.task_config.train_data.label_field_key
 
     if params.tfds_name:
       if params.tfds_name in tfds_classification_decoders.TFDS_ID_TO_DECODER_MAP:
@@ -88,11 +90,14 @@ class ImageClassificationTask(base_task.Task):
       else:
         raise ValueError('TFDS {} is not supported'.format(params.tfds_name))
     else:
-      decoder = classification_input.Decoder()
+      decoder = classification_input.Decoder(
+          image_field_key=image_field_key, label_field_key=label_field_key)
 
     parser = classification_input.Parser(
         output_size=input_size[:2],
         num_classes=num_classes,
+        image_field_key=image_field_key,
+        label_field_key=label_field_key,
         aug_policy=params.aug_policy,
         randaug_magnitude=params.randaug_magnitude,
         dtype=params.dtype)
@@ -199,7 +204,6 @@ class ImageClassificationTask(base_task.Task):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
     elif model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
       logs.update({m.name: m.result() for m in model.metrics})
@@ -228,7 +232,6 @@ class ImageClassificationTask(base_task.Task):
     logs = {self.loss: loss}
     if metrics:
       self.process_metrics(metrics, labels, outputs)
-      logs.update({m.name: m.result() for m in metrics})
     elif model.compiled_metrics:
       self.process_compiled_metrics(model.compiled_metrics, labels, outputs)
       logs.update({m.name: m.result() for m in model.metrics})

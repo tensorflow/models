@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Contains definitions of Residual Networks with Deeplab modifications."""
+
+from typing import Callable, Optional, Tuple, List
 
 import numpy as np
 import tensorflow as tf
@@ -53,23 +55,25 @@ class DilatedResNet(tf.keras.Model):
     (https://arxiv.org/pdf/1706.05587)
   """
 
-  def __init__(self,
-               model_id,
-               output_stride,
-               input_specs=layers.InputSpec(shape=[None, None, None, 3]),
-               stem_type='v0',
-               se_ratio=None,
-               init_stochastic_depth_rate=0.0,
-               multigrid=None,
-               last_stage_repeats=1,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      model_id: int,
+      output_stride: int,
+      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+          shape=[None, None, None, 3]),
+      stem_type: str = 'v0',
+      se_ratio: Optional[float] = None,
+      init_stochastic_depth_rate: float = 0.0,
+      multigrid: Optional[Tuple[int]] = None,
+      last_stage_repeats: int = 1,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a ResNet model with DeepLab modification.
 
     Args:
@@ -77,8 +81,8 @@ class DilatedResNet(tf.keras.Model):
       output_stride: An `int` of output stride, ratio of input to output
         resolution.
       input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
-      stem_type: A `str` of stem type. Can be `standard` or `deeplab`. `deeplab`
-        replaces 7x7 conv by 3 3x3 convs.
+      stem_type: A `str` of stem type. Can be `v0` or `v1`. `v1` replaces 7x7
+        conv by 3 3x3 convs.
       se_ratio: A `float` or None. Ratio of the Squeeze-and-Excitation layer.
       init_stochastic_depth_rate: A `float` of initial stochastic depth rate.
       multigrid: A tuple of the same length as the number of blocks in the last
@@ -234,15 +238,15 @@ class DilatedResNet(tf.keras.Model):
         inputs=inputs, outputs=endpoints, **kwargs)
 
   def _block_group(self,
-                   inputs,
-                   filters,
-                   strides,
-                   dilation_rate,
-                   block_fn,
-                   block_repeats=1,
-                   stochastic_depth_drop_rate=0.0,
-                   multigrid=None,
-                   name='block_group'):
+                   inputs: tf.Tensor,
+                   filters: int,
+                   strides: int,
+                   dilation_rate: int,
+                   block_fn: Callable[..., tf.keras.layers.Layer],
+                   block_repeats: int = 1,
+                   stochastic_depth_drop_rate: float = 0.0,
+                   multigrid: Optional[List[int]] = None,
+                   name: str = 'block_group'):
     """Creates one group of blocks for the ResNet model.
 
     Deeplab applies strides at the last block.

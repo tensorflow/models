@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Contains definitions of segmentation heads."""
 
 import tensorflow as tf
@@ -30,6 +30,7 @@ class SegmentationHead(tf.keras.layers.Layer):
                level,
                num_convs=2,
                num_filters=256,
+               prediction_kernel_size=1,
                upsample_factor=1,
                feature_fusion=None,
                low_level=2,
@@ -51,6 +52,8 @@ class SegmentationHead(tf.keras.layers.Layer):
         prediction layer.
       num_filters: An `int` number to specify the number of filters used.
         Default is 256.
+      prediction_kernel_size: An `int` number to specify the kernel size of the
+      prediction layer.
       upsample_factor: An `int` number to specify the upsampling factor to
         generate finer mask. Default 1 means no upsampling is applied.
       feature_fusion: One of `deeplabv3plus`, `pyramid_fusion`, or None. If
@@ -80,6 +83,7 @@ class SegmentationHead(tf.keras.layers.Layer):
         'level': level,
         'num_convs': num_convs,
         'num_filters': num_filters,
+        'prediction_kernel_size': prediction_kernel_size,
         'upsample_factor': upsample_factor,
         'feature_fusion': feature_fusion,
         'low_level': low_level,
@@ -146,7 +150,7 @@ class SegmentationHead(tf.keras.layers.Layer):
     self._classifier = conv_op(
         name='segmentation_output',
         filters=self._config_dict['num_classes'],
-        kernel_size=1,
+        kernel_size=self._config_dict['prediction_kernel_size'],
         padding='same',
         bias_initializer=tf.zeros_initializer(),
         kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
@@ -193,8 +197,10 @@ class SegmentationHead(tf.keras.layers.Layer):
       x = conv(x)
       x = norm(x)
       x = self._activation(x)
-    x = spatial_transform_ops.nearest_upsampling(
-        x, scale=self._config_dict['upsample_factor'])
+    if self._config_dict['upsample_factor'] > 1:
+      x = spatial_transform_ops.nearest_upsampling(
+          x, scale=self._config_dict['upsample_factor'])
+
     return self._classifier(x)
 
   def get_config(self):

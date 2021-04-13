@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Image classification configuration definition."""
 import os
 from typing import List, Optional
@@ -37,6 +37,8 @@ class DataConfig(cfg.DataConfig):
   aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
   randaug_magnitude: Optional[int] = 10
   file_type: str = 'tfrecord'
+  image_field_key: str = 'image/encoded'
+  label_field_key: str = 'image/class/label'
 
 
 @dataclasses.dataclass
@@ -75,6 +77,8 @@ class ImageClassificationTask(cfg.TaskConfig):
   evaluation: Evaluation = Evaluation()
   init_checkpoint: Optional[str] = None
   init_checkpoint_modules: str = 'all'  # all or backbone
+  model_output_keys: Optional[List[int]] = dataclasses.field(
+      default_factory=list)
 
 
 @exp_factory.register_config_factory('image_classification')

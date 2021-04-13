@@ -110,11 +110,17 @@ class CenterNetMobileNetV2FeatureExtractor(
       ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
 
 
-def mobilenet_v2(channel_means, channel_stds, bgr_ordering):
+def mobilenet_v2(channel_means, channel_stds, bgr_ordering,
+                 depth_multiplier=1.0, **kwargs):
   """The MobileNetV2 backbone for CenterNet."""
+  del kwargs
 
   # We set 'is_training' to True for now.
-  network = mobilenetv2.mobilenet_v2(True, include_top=False)
+  network = mobilenetv2.mobilenet_v2(
+      batchnorm_training=True,
+      alpha=depth_multiplier,
+      include_top=False,
+      weights='imagenet' if depth_multiplier == 1.0 else None)
   return CenterNetMobileNetV2FeatureExtractor(
       network,
       channel_means=channel_means,

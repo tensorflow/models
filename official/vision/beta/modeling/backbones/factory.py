@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Backbone registers and factory method.
 
 One can regitered a new backbone model by the following two steps:
@@ -43,9 +43,11 @@ in place that uses it.
 
 """
 # Import libraries
+
 import tensorflow as tf
 
 from official.core import registry
+from official.modeling import hyperparams
 
 
 _REGISTERED_BACKBONE_CLS = {}
@@ -79,9 +81,10 @@ def register_backbone_builder(key: str):
   return registry.register(_REGISTERED_BACKBONE_CLS, key)
 
 
-def build_backbone(input_specs: tf.keras.layers.InputSpec,
-                   model_config,
-                   l2_regularizer: tf.keras.regularizers.Regularizer = None):
+def build_backbone(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: hyperparams.Config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds backbone from a config.
 
   Args:

@@ -90,6 +90,9 @@ class KerasLayerHyperparams(object):
   def use_batch_norm(self):
     return self._batch_norm_params is not None
 
+  def use_sync_batch_norm(self):
+    return self._use_sync_batch_norm
+
   def force_use_bias(self):
     return self._force_use_bias
 
@@ -164,6 +167,20 @@ class KerasLayerHyperparams(object):
       return tf.keras.layers.Lambda(self._activation_fn, name=name)
     else:
       return tf.keras.layers.Lambda(tf.identity, name=name)
+
+  def get_regularizer_weight(self):
+    """Returns the l1 or l2 regularizer weight.
+
+    Returns: A float value corresponding to the l1 or l2 regularization weight,
+      or None if neither l1 or l2 regularization is defined.
+    """
+    regularizer = self._op_params['kernel_regularizer']
+    if hasattr(regularizer, 'l1'):
+      return float(regularizer.l1)
+    elif hasattr(regularizer, 'l2'):
+      return float(regularizer.l2)
+    else:
+      return None
 
   def params(self, include_activation=False, **overrides):
     """Returns a dict containing the layer construction hyperparameters to use.
@@ -342,7 +359,7 @@ def _build_initializer(initializer, build_for_keras=False):
       operators. If false builds for Slim.
 
   Returns:
-    tf initializer.
+    tf initializer or string corresponding to the tf keras initializer name.
 
   Raises:
     ValueError: On unknown initializer.
@@ -398,6 +415,13 @@ def _build_initializer(initializer, build_for_keras=False):
           factor=initializer.variance_scaling_initializer.factor,
           mode=mode,
           uniform=initializer.variance_scaling_initializer.uniform)
+  if initializer_oneof == 'keras_initializer_by_name':
+    if build_for_keras:
+      return initializer.keras_initializer_by_name
+    else:
+      raise ValueError(
+          'Unsupported non-Keras usage of keras_initializer_by_name: {}'.format(
+              initializer.keras_initializer_by_name))
   if initializer_oneof is None:
     return None
   raise ValueError('Unknown initializer function: {}'.format(

@@ -176,8 +176,7 @@ class TransformerTask(object):
     else:
       logging.info("Not using any distribution strategy.")
 
-    performance.set_mixed_precision_policy(params["dtype"],
-                                           use_experimental_api=False)
+    performance.set_mixed_precision_policy(params["dtype"])
 
   @property
   def use_tpu(self):
@@ -443,8 +442,7 @@ class TransformerTask(object):
         use_float16=params["dtype"] == tf.float16,
         use_graph_rewrite=self.flags_obj.fp16_implementation == "graph_rewrite",
         loss_scale=flags_core.get_loss_scale(
-            self.flags_obj, default_for_fp16="dynamic"),
-        use_experimental_api=False)
+            self.flags_obj, default_for_fp16="dynamic"))
 
     return opt
 

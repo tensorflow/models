@@ -76,14 +76,15 @@ def sample_top_p(logits, top_p):
   """
   sorted_indices = tf.argsort(logits, direction="DESCENDING")
   # Flatten logits as tf.gather on TPU needs axis to be compile time constant.
-  range_for_gather = tf.expand_dims(tf.range(0, logits.shape[0]), axis=1)
-  range_for_gather = tf.tile(range_for_gather * logits.shape[1],
-                             [1, logits.shape[1]]) + sorted_indices
+  logits_shape = decoding_module.shape_list(logits)
+  range_for_gather = tf.expand_dims(tf.range(0, logits_shape[0]), axis=1)
+  range_for_gather = tf.tile(range_for_gather * logits_shape[1],
+                             [1, logits_shape[1]]) + sorted_indices
   flattened_logits = tf.reshape(logits, [-1])
   flattened_sorted_indices = tf.reshape(range_for_gather, [-1])
   sorted_logits = tf.reshape(
       tf.gather(flattened_logits, flattened_sorted_indices),
-      [logits.shape[0], logits.shape[1]])
+      [logits_shape[0], logits_shape[1]])
   cumulative_probs = tf.cumsum(tf.nn.softmax(sorted_logits, axis=-1), axis=-1)
 
   # Remove tokens with cumulative probability above the threshold.

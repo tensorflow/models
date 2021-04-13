@@ -26,9 +26,9 @@ http_archive(
 
 http_archive(
     name = "org_tflite_support",
-    strip_prefix = "tflite-support-9bc45390fc99e627348578ad1f3365f0d555db9a",
-    sha256 = "06df23dbe89f18eb198643c34bc8aa6a0db3e921242e4042452f1fc0a76f4085",
-    urls = ["https://github.com/tensorflow/tflite-support/archive/9bc45390fc99e627348578ad1f3365f0d555db9a.zip"],
+    strip_prefix = "tflite-support-0861599711ef31de58f62ed3ff6bbcc1e4817ef6",
+    sha256 = "ef5e33d00930f3b0bad843d550476049faa3c77ca598dbb94acf81d01ba8badd",
+    urls = ["https://github.com/tensorflow/tflite-support/archive/0861599711ef31de58f62ed3ff6bbcc1e4817ef6.zip"],
 )
 
 http_archive(

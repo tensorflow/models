@@ -31,8 +31,8 @@ task:
   losses:
     top_k_percent_pixels: 1.0  # only backpropagate loss for the topk 100% pixels.
   train_data:
-    output_size: [512, 1024]
-    train_on_crops: true
+    output_size: [1024, 2048]
+    crop_size: [512, 1024]
     input_path: ''
     tfds_name: 'cityscapes/semantic_segmentation'
     tfds_split: 'train'

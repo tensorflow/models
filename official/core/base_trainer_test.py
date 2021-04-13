@@ -277,9 +277,6 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
                 'learning_rate': {
                     'type': 'constant'
                 },
-                'use_experimental_api': {
-                    'type': False
-                },
             })))
     trainer = self.create_test_trainer(config)
     if mixed_precision_dtype != 'float16':
@@ -367,6 +364,18 @@ class TrainerTest(tf.test.TestCase, parameterized.TestCase):
     trainer.add_recovery(config.trainer, checkpoint_manager=checkpoint_manager)
     with self.assertRaises(RuntimeError):
       _ = trainer.train(tf.convert_to_tensor(2, dtype=tf.int32))
+
+  def test_model_with_compiled_loss(self):
+    task = mock_task.MockTask()
+    model = task.build_model()
+    model.compile(loss=tf.keras.losses.CategoricalCrossentropy())
+    trainer = trainer_lib.Trainer(
+        self._config,
+        task,
+        model=model,
+        optimizer=task.create_optimizer(self._config.trainer.optimizer_config))
+    logs = trainer.train(tf.convert_to_tensor(5, dtype=tf.int32))
+    self.assertIn('training_loss', logs)
 
 
 if __name__ == '__main__':

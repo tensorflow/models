@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Video classification task definition."""
 from absl import logging
 import tensorflow as tf
@@ -154,6 +154,10 @@ class VideoClassificationTask(base_task.Task):
                 curve='PR',
                 multi_label=self.task_config.train_data.is_multilabel,
                 name='PR-AUC'))
+        if self.task_config.metrics.use_per_class_recall:
+          for i in range(self.task_config.train_data.num_classes):
+            metrics.append(
+                tf.keras.metrics.Recall(class_id=i, name=f'recall-{i}'))
     else:
       metrics = [
           tf.keras.metrics.SparseCategoricalAccuracy(name='accuracy'),
