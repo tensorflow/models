@@ -18,23 +18,27 @@
 import math
 import os
 import time
+import warnings
 
 from absl import flags
 from absl import app
 from absl import logging
 
 import numpy as np
+import pickle
 import tensorflow as tf
 import tensorflow_addons as tfa
-import pickle
 
+from delf.python import whiten
 from delf.python.datasets import tuples_dataset
 from delf.python.datasets.revisited_op import dataset as testdataset
+from delf.python.datasets.sfm120k import sfm120k
 from delf.python.training.losses import ranking_losses
 from delf.python.training import global_features_utils
 from delf.python.training.model import global_model
-from delf.python.datasets.sfm120k import sfm120k
-from delf.python import whiten
+
+warnings.filterwarnings("ignore", r"^Possibly corrupt EXIF data",
+                        category=UserWarning)
 
 _TRAINING_DATASET_NAMES = ['retrieval-SfM-120k']
 _TEST_DATASET_NAMES = ['roxford5k', 'rparis6k']
