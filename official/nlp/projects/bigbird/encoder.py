@@ -28,7 +28,7 @@ from official.nlp.projects.bigbird import recomputing_dropout
 class RecomputeTransformerLayer(layers.TransformerScaffold):
   """Transformer layer that recomputes the forward pass during backpropagation."""
 
-  def call(self, inputs):
+  def call(self, inputs, training=None):
     emb, mask = inputs
     def f(*args):
       # recompute_grad can only handle tensor inputs. so we enumerate the
@@ -39,7 +39,8 @@ class RecomputeTransformerLayer(layers.TransformerScaffold):
       # args[3]: mask[2] = encoder_to_mask
       # args[4]: mask[3] = blocked_encoder_mask
       x = super(RecomputeTransformerLayer,
-                self).call([args[0], [args[1], args[2], args[3], args[4]]])
+                self).call([args[0], [args[1], args[2], args[3], args[4]]],
+                           training=training)
       return x
 
     f = recompute_grad.recompute_grad(f)
