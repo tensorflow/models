@@ -471,7 +471,7 @@ def block_spec_decoder(
   if (spec_name != 'MobileNetV1'
       and finegrain_classification_mode
       and filter_size_scale < 1.0):
-    decoded_specs[-1].filters /= filter_size_scale
+    decoded_specs[-1].filters /= filter_size_scale  # pytype: disable=annotation-type-mismatch
 
   for ds in decoded_specs:
     if ds.filters:
