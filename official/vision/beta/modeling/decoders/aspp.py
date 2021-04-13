@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of Atrous Spatial Pyramid Pooling (ASPP) decoder."""
+from typing import Any, List, Optional, Mapping
 
 # Import libraries
 import tensorflow as tf
@@ -24,20 +25,21 @@ from official.vision import keras_cv
 class ASPP(tf.keras.layers.Layer):
   """Creates an Atrous Spatial Pyramid Pooling (ASPP) layer."""
 
-  def __init__(self,
-               level,
-               dilation_rates,
-               num_filters=256,
-               pool_kernel_size=None,
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               activation='relu',
-               dropout_rate=0.0,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               interpolation='bilinear',
-               **kwargs):
+  def __init__(
+      self,
+      level: int,
+      dilation_rates: List[int],
+      num_filters: int = 256,
+      pool_kernel_size: Optional[int] = None,
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      activation: str = 'relu',
+      dropout_rate: float = 0.0,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      interpolation: str = 'bilinear',
+      **kwargs):
     """Initializes an Atrous Spatial Pyramid Pooling (ASPP) layer.
 
     Args:
@@ -97,7 +99,7 @@ class ASPP(tf.keras.layers.Layer):
         kernel_regularizer=self._config_dict['kernel_regularizer'],
         interpolation=self._config_dict['interpolation'])
 
-  def call(self, inputs):
+  def call(self, inputs: Mapping[str, tf.Tensor]) -> Mapping[str, tf.Tensor]:
     """Calls the Atrous Spatial Pyramid Pooling (ASPP) layer on an input.
 
     The output of ASPP will be a dict of {`level`, `tf.Tensor`} even if only one
@@ -120,7 +122,7 @@ class ASPP(tf.keras.layers.Layer):
     outputs[level] = self.aspp(inputs[level])
     return outputs
 
-  def get_config(self):
+  def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod

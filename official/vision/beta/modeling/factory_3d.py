@@ -53,11 +53,12 @@ def register_model_builder(key: str):
   return registry.register(_REGISTERED_MODEL_CLS, key)
 
 
-def build_model(model_type: str,
-                input_specs: tf.keras.layers.InputSpec,
-                model_config: video_classification_cfg.hyperparams.Config,
-                num_classes: int,
-                l2_regularizer: tf.keras.regularizers.Regularizer = None):
+def build_model(
+    model_type: str,
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: video_classification_cfg.hyperparams.Config,
+    num_classes: int,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds backbone from a config.
 
   Args:
@@ -81,7 +82,7 @@ def build_video_classification_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: video_classification_cfg.VideoClassificationModel,
     num_classes: int,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds the video classification model."""
   input_specs_dict = {'image': input_specs}
   backbone = backbones.factory.build_backbone(

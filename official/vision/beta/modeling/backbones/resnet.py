@@ -14,8 +14,12 @@
 
 """Contains definitions of ResNet and ResNet-RS models."""
 
+from typing import Callable, Optional
+
 # Import libraries
 import tensorflow as tf
+
+from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -99,23 +103,25 @@ class ResNet(tf.keras.Model):
     (https://arxiv.org/abs/2103.07579).
   """
 
-  def __init__(self,
-               model_id,
-               input_specs=layers.InputSpec(shape=[None, None, None, 3]),
-               depth_multiplier=1.0,
-               stem_type='v0',
-               resnetd_shortcut=False,
-               replace_stem_max_pool=False,
-               se_ratio=None,
-               init_stochastic_depth_rate=0.0,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      model_id: int,
+      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+          shape=[None, None, None, 3]),
+      depth_multiplier: float = 1.0,
+      stem_type: str = 'v0',
+      resnetd_shortcut: bool = False,
+      replace_stem_max_pool: bool = False,
+      se_ratio: Optional[float] = None,
+      init_stochastic_depth_rate: float = 0.0,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a ResNet model.
 
     Args:
@@ -274,13 +280,13 @@ class ResNet(tf.keras.Model):
     super(ResNet, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 
   def _block_group(self,
-                   inputs,
-                   filters,
-                   strides,
-                   block_fn,
-                   block_repeats=1,
-                   stochastic_depth_drop_rate=0.0,
-                   name='block_group'):
+                   inputs: tf.Tensor,
+                   filters: int,
+                   strides: int,
+                   block_fn: Callable[..., tf.keras.layers.Layer],
+                   block_repeats: int = 1,
+                   stochastic_depth_drop_rate: float = 0.0,
+                   name: str = 'block_group'):
     """Creates one group of blocks for the ResNet model.
 
     Args:
@@ -366,7 +372,7 @@ class ResNet(tf.keras.Model):
 @factory.register_backbone_builder('resnet')
 def build_resnet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    model_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds ResNet backbone from a config."""
   backbone_type = model_config.backbone.type
