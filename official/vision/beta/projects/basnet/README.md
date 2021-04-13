@@ -26,7 +26,7 @@ $ python3 train.py \
 ```
 
 ## Results
-Dataset    | maxF<sub>β<\sub> | relaxF<sub>β<\sub>                              | MAE
-:--------- | :----------- | :--------------------------------------- | -------:
-DUTS-TE  | 000      | 000       | 000
+Dataset    | maxF<sub>β</sub> | relaxF<sub>β</sub>   | MAE
+:--------- | :--------------- | :------------------- | -------:
+DUTS-TE    | 0.865            | 0.812                | 0.046
 
