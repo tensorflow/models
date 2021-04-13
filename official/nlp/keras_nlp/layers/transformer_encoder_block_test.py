@@ -29,7 +29,7 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
 
   def tearDown(self):
     super(TransformerEncoderBlockLayerTest, self).tearDown()
-    tf.keras.mixed_precision.experimental.set_policy('float32')
+    tf.keras.mixed_precision.set_global_policy('float32')
 
   def test_layer_creation(self, transformer_cls):
     test_layer = transformer_cls(
@@ -180,7 +180,7 @@ class TransformerEncoderBlockLayerTest(keras_parameterized.TestCase):
         new_output_tensor, output_tensor[:, 0:1, :], atol=5e-5, rtol=0.003)
 
   def test_layer_invocation_with_float16_dtype(self, transformer_cls):
-    tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
     test_layer = transformer_cls(
         num_attention_heads=10, inner_dim=2048, inner_activation='relu')
     sequence_length = 21
