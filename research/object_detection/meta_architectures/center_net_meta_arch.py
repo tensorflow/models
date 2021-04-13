@@ -2859,8 +2859,9 @@ class CenterNetMetaArch(model.DetectionModel):
     # Keypoint offset loss.
     loss = 0.0
     for prediction in depth_predictions:
-      selected_depths = cn_assigner.get_batch_predictions_from_indices(
-          prediction, batch_indices)
+      # TODO(yuhuic): Update this function to use
+      # cn_assigner.get_batch_predictions_from_indices().
+      selected_depths = tf.gather_nd(prediction, batch_indices)
       if kp_params.per_keypoint_offset and kp_params.per_keypoint_depth:
         selected_depths = tf.expand_dims(selected_depths, axis=-1)
       # The dimensions passed are not as per the doc string but the loss
