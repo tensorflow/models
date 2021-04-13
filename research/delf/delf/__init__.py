@@ -27,7 +27,7 @@ from delf.python import box_io
 from delf.python import datum_io
 from delf.python import feature_aggregation_extractor
 from delf.python import feature_aggregation_similarity
-from delf.python import tfeature_extractor
+from delf.python import feature_extractor
 from delf.python import feature_io
 from delf.python import utils
 from delf.python.examples import detector
@@ -35,10 +35,7 @@ from delf.python.examples import extractor
 from delf.python import detect_to_retrieve
 from delf.python import training
 from delf.python.training import model
-<<<<<<< HEAD
-=======
 from delf.python import datasets
 from delf.python.datasets import google_landmarks_dataset
 from delf.python.datasets import revisited_op
->>>>>>> upstream/master
 # pylint: enable=unused-import

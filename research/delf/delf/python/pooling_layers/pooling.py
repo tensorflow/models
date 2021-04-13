@@ -19,20 +19,15 @@ import tensorflow as tf
 
 class MAC(tf.keras.layers.Layer):
   """Global max pooling (MAC) layer.
-<<<<<<< HEAD
-   Maximum Activations of Convolutions (MAC) is simply constructed by
-   max-pooling over all dimensions per feature map. See
-   https://arxiv.org/abs/1511.05879 for a reference.
-=======
 
   Maximum Activations of Convolutions (MAC) is simply constructed by
   max-pooling over all dimensions per feature map. See
   https://arxiv.org/abs/1511.05879 for a reference.
->>>>>>> upstream/master
   """
 
   def call(self, x, axis=None):
     """Invokes the MAC pooling instance.
+
     Args:
       x: [B, H, W, D] A float32 Tensor.
       axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
@@ -46,15 +41,18 @@ class MAC(tf.keras.layers.Layer):
 
 class SPoC(tf.keras.layers.Layer):
   """Average pooling (SPoC) layer.
+
   Sum-pooled convolutional features (SPoC) is based on the sum pooling of the
   deep features. See https://arxiv.org/pdf/1510.07493.pdf for a reference.
   """
 
   def call(self, x, axis=None):
     """Invokes the SPoC instance.
+
     Args:
       x: [B, H, W, D] A float32 Tensor.
       axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
+
     Returns:
       output: [B, D] A float32 Tensor.
     """
@@ -65,12 +63,14 @@ class SPoC(tf.keras.layers.Layer):
 
 class GeM(tf.keras.layers.Layer):
   """Generalized mean pooling (GeM) layer.
+
   Generalized Mean Pooling (GeM) computes the generalized mean of each
   channel in a tensor. See https://arxiv.org/abs/1711.02512 for a reference.
   """
 
   def __init__(self, power=3.):
     """Initialization of the generalized mean pooling (GeM) layer.
+
     Args:
       power:  Float power > 0 is an inverse exponent parameter, used during the
         generalized mean pooling computation. Setting this exponent as power > 1
@@ -85,9 +85,11 @@ class GeM(tf.keras.layers.Layer):
 
   def call(self, x, axis=None):
     """Invokes the GeM instance.
+
     Args:
       x: [B, H, W, D] A float32 Tensor.
       axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
+
     Returns:
       output: [B, D] A float32 Tensor.
     """
@@ -139,9 +141,11 @@ class GeMPooling2D(tf.keras.layers.Layer):
 
 def mac(x, axis=None):
   """Performs global max pooling (MAC).
+
   Args:
     x: [B, H, W, D] A float32 Tensor.
     axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
+
   Returns:
     output: [B, D] A float32 Tensor.
   """
@@ -152,9 +156,11 @@ def mac(x, axis=None):
 
 def spoc(x, axis=None):
   """Performs average pooling (SPoC).
+
   Args:
     x: [B, H, W, D] A float32 Tensor.
     axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
+
   Returns:
     output: [B, D] A float32 Tensor.
   """
@@ -165,15 +171,13 @@ def spoc(x, axis=None):
 
 def gem(x, axis=None, power=3., eps=1e-6):
   """Performs generalized mean pooling (GeM).
+
   Args:
     x: [B, H, W, D] A float32 Tensor.
     axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
     power: Float, power > 0 is an inverse exponent parameter (GeM power).
     eps: Float, parameter for numerical stability.
-<<<<<<< HEAD
-=======
-    
->>>>>>> upstream/master
+
   Returns:
     output: [B, D] A float32 Tensor.
   """
