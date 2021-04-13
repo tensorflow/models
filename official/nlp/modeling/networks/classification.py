@@ -59,7 +59,7 @@ class Classification(tf.keras.Model):
     if output == 'logits':
       output_tensors = logits
     elif output == 'predictions':
-      policy = tf.keras.mixed_precision.experimental.global_policy()
+      policy = tf.keras.mixed_precision.global_policy()
       if policy.name == 'mixed_bfloat16':
         # b/158514794: bf16 is not stable with post-softmax cross-entropy.
         policy = tf.float32

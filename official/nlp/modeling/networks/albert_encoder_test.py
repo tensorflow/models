@@ -33,7 +33,7 @@ class AlbertEncoderTest(keras_parameterized.TestCase):
 
   def tearDown(self):
     super(AlbertEncoderTest, self).tearDown()
-    tf.keras.mixed_precision.experimental.set_policy("float32")
+    tf.keras.mixed_precision.set_global_policy("float32")
 
   @parameterized.named_parameters(
       dict(testcase_name="default", expected_dtype=tf.float32),
@@ -49,7 +49,7 @@ class AlbertEncoderTest(keras_parameterized.TestCase):
         num_attention_heads=2,
         num_layers=3)
     if expected_dtype == tf.float16:
-      tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
+      tf.keras.mixed_precision.set_global_policy("mixed_float16")
 
     # Create a small TransformerEncoder for testing.
     test_network = albert_encoder.AlbertEncoder(**kwargs)
@@ -148,7 +148,7 @@ class AlbertEncoderTest(keras_parameterized.TestCase):
     self.assertLen(dict_outputs["pooled_output"], num_layers)
 
   def test_serialize_deserialize(self):
-    tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
+    tf.keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a network object that sets all of its config options.
     kwargs = dict(
         vocab_size=100,

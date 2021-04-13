@@ -70,9 +70,7 @@ def run_executor(params,
   """Runs the object detection model on distribution strategy defined by the user."""
 
   if params.architecture.use_bfloat16:
-    policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-        'mixed_bfloat16')
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+    tf.compat.v2.keras.mixed_precision.set_global_policy('mixed_bfloat16')
 
   model_builder = model_factory.model_generator(params)
 

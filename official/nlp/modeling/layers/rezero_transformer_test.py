@@ -28,10 +28,10 @@ class TransformerWithReZeroLayerTest(keras_parameterized.TestCase):
 
   def tearDown(self):
     super(TransformerWithReZeroLayerTest, self).tearDown()
-    tf.keras.mixed_precision.experimental.set_policy('float32')
+    tf.keras.mixed_precision.set_global_policy('float32')
 
   def test_layer_invocation_with_float16_dtype(self):
-    tf.keras.mixed_precision.experimental.set_policy('mixed_float16')
+    tf.keras.mixed_precision.set_global_policy('mixed_float16')
     test_layer = rezero_transformer.ReZeroTransformer(
         num_attention_heads=10,
         intermediate_size=2048,
