@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Metrics for basnet"""
+"""
 
+This source code is a modified version of
+https://github.com/xuebinqin/Binary-Segmentation-Evaluation-Tool
+
+"""
 # Import libraries
 import numpy as np
 
@@ -120,9 +124,9 @@ class maxFscore(object):
     """Update segmentation results and groundtruth data.
 
     Args:
-      groundtruths : Tensor [batch, width, height, 1],
+      groundtruths : Tuple of single Tensor [batch, width, height, 1],
                      groundtruth masks. range [0, 1]
-      predictions  : Tensor [batch, width, height, 1],
+      predictions  : Tuple of signle Tensor [batch, width, height, 1],
                      predicted masks. range [0, 1]
     
     """
