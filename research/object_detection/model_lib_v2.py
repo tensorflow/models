@@ -507,7 +507,7 @@ def train_loop(
     train_steps = train_config.num_steps
 
   if kwargs['use_bfloat16']:
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
+    tf.compat.v2.keras.mixed_precision.set_global_policy('mixed_bfloat16')
 
   if train_config.load_all_detection_checkpoint_vars:
     raise ValueError('train_pb2.load_all_detection_checkpoint_vars '
@@ -1085,7 +1085,7 @@ def eval_continuously(
     eval_on_train_input_config.num_epochs = 1
 
   if kwargs['use_bfloat16']:
-    tf.compat.v2.keras.mixed_precision.experimental.set_policy('mixed_bfloat16')
+    tf.compat.v2.keras.mixed_precision.set_global_policy('mixed_bfloat16')
 
   eval_input_config = eval_input_configs[eval_index]
   strategy = tf.compat.v2.distribute.get_strategy()
