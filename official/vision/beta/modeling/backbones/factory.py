@@ -43,9 +43,11 @@ in place that uses it.
 
 """
 # Import libraries
+
 import tensorflow as tf
 
 from official.core import registry
+from official.modeling import hyperparams
 
 
 _REGISTERED_BACKBONE_CLS = {}
@@ -79,9 +81,10 @@ def register_backbone_builder(key: str):
   return registry.register(_REGISTERED_BACKBONE_CLS, key)
 
 
-def build_backbone(input_specs: tf.keras.layers.InputSpec,
-                   model_config,
-                   l2_regularizer: tf.keras.regularizers.Regularizer = None):
+def build_backbone(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: hyperparams.Config,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds backbone from a config.
 
   Args:

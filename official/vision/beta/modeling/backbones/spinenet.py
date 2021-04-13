@@ -12,13 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Contains definitions of SpineNet Networks."""
+
 import math
+from typing import Any, List, Optional, Tuple
 
 # Import libraries
+
 from absl import logging
 import tensorflow as tf
+
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -95,14 +98,16 @@ SCALING_MAP = {
 class BlockSpec(object):
   """A container class that specifies the block configuration for SpineNet."""
 
-  def __init__(self, level, block_fn, input_offsets, is_output):
+  def __init__(self, level: int, block_fn: str, input_offsets: Tuple[int, int],
+               is_output: bool):
     self.level = level
     self.block_fn = block_fn
     self.input_offsets = input_offsets
     self.is_output = is_output
 
 
-def build_block_specs(block_specs=None):
+def build_block_specs(
+    block_specs: Optional[List[Tuple[Any, ...]]] = None) -> List[BlockSpec]:
   """Builds the list of BlockSpec objects for SpineNet."""
   if not block_specs:
     block_specs = SPINENET_BLOCK_SPECS
@@ -121,32 +126,34 @@ class SpineNet(tf.keras.Model):
     (https://arxiv.org/abs/1912.05027)
   """
 
-  def __init__(self,
-               input_specs=tf.keras.layers.InputSpec(shape=[None, 640, 640, 3]),
-               min_level=3,
-               max_level=7,
-               block_specs=build_block_specs(),
-               endpoints_num_filters=256,
-               resample_alpha=0.5,
-               block_repeats=1,
-               filter_size_scale=1.0,
-               init_stochastic_depth_rate=0.0,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               **kwargs):
+  def __init__(
+      self,
+      input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
+          shape=[None, 640, 640, 3]),
+      min_level: int = 3,
+      max_level: int = 7,
+      block_specs: List[BlockSpec] = build_block_specs(),
+      endpoints_num_filters: int = 256,
+      resample_alpha: float = 0.5,
+      block_repeats: int = 1,
+      filter_size_scale: float = 1.0,
+      init_stochastic_depth_rate: float = 0.0,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      **kwargs):
     """Initializes a SpineNet model.
 
     Args:
       input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
       min_level: An `int` of min level for output mutiscale features.
       max_level: An `int` of max level for output mutiscale features.
-      block_specs: The block specifications for the SpineNet model discovered by
-        NAS.
+      block_specs: A list of block specifications for the SpineNet model
+        discovered by NAS.
       endpoints_num_filters: An `int` of feature dimension for the output
         endpoints.
       resample_alpha: A `float` of resampling factor in cross-scale connections.
@@ -214,13 +221,13 @@ class SpineNet(tf.keras.Model):
     super(SpineNet, self).__init__(inputs=inputs, outputs=endpoints)
 
   def _block_group(self,
-                   inputs,
-                   filters,
-                   strides,
-                   block_fn_cand,
-                   block_repeats=1,
-                   stochastic_depth_drop_rate=None,
-                   name='block_group'):
+                   inputs: tf.Tensor,
+                   filters: int,
+                   strides: int,
+                   block_fn_cand: str,
+                   block_repeats: int = 1,
+                   stochastic_depth_drop_rate: Optional[float] = None,
+                   name: str = 'block_group'):
     """Creates one group of blocks for the SpineNet model."""
     block_fn_candidates = {
         'bottleneck': nn_blocks.BottleneckBlock,
