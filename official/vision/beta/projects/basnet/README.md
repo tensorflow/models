@@ -25,3 +25,8 @@ $ python3 train.py \
   --params_override='runtime.num_gpus=1, runtime.distribution_strategy=one_device, task.model.input_size=[256, 256, 3]'
 ```
 
+## Results
+Dataset    | maxF<sub>β<\sub> | relaxF<sub>β<\sub>                              | MAE
+:--------- | :----------- | :--------------------------------------- | -------:
+DUTS-TE  | 000      | 000       | 000
+
