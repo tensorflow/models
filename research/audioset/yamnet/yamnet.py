@@ -119,8 +119,12 @@ class YAMNetBase(tf.keras.Model):
 
     predictions = self.predictions_from_logits(logits)
 
-    return predictions, embeddings
-
+    outputs = {
+      'embeddings': embeddings,
+      'logits': logits,
+      'predictions': predictions,
+    }
+    return outputs
 
 def yamnet(features, params):
   """Define the core YAMNet mode in Keras."""
@@ -170,13 +174,13 @@ class YAMNetFrames(tf.keras.Model):
     # Reshape (a, b, width, height) > (a*b, width, height)
     features, batch_shape = flatten_outer_dims(features, item_dims=2)
 
-    predictions, embeddings = self._yamnet_base.call(features)
+    outputs = self._yamnet_base.call(features, )
 
-    # Reshape (a*b, ...) > (a, b, ...)
-    predictions = fold_batch(predictions, batch_shape)
-    embeddings = fold_batch(embeddings, batch_shape)
+    outputs = {name: fold_batch(out, batch_shape)
+               for name, out in outputs.items()}
+    outputs['log_mel_spectrogram'] = log_mel_spectrogram
 
-    return predictions, embeddings, log_mel_spectrogram
+    return outputs
 
 def flatten_outer_dims(x, item_dims):
   shape = tf.shape(x)

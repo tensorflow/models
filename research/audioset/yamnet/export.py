@@ -69,8 +69,17 @@ class YAMNet(tf.Module):
     self._yamnet.load_weights(weights_path)
 
   @tf.function
-  def __call__(self, waveform):
-    return self._yamnet(waveform)
+  def __call__(self, waveform, as_dict=False,
+               returns=('predictions', 'embeddings', 'log_mel_spectrogram')):
+    outputs = self._yamnet(waveform)
+
+    if as_dict:
+      outputs = {name:outputs[name] for name in returns}
+    else:
+      outputs = [outputs[name] for name in returns]
+
+    return outputs
+
 
 
 def check_model(model_fn, class_map_path, params):
