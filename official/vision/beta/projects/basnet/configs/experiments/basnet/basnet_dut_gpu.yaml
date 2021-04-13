@@ -10,5 +10,5 @@ task:
         model_id: 'BASNet_En'
     norm_activation:
       activation: 'relu'
-  init_checkpoint: '/home/gunho1123/ckpt/ckpt_encoder_wbias01/'
+  init_checkpoint: ''
   init_checkpoint_modules: 'backbone'
