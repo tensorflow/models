@@ -14,6 +14,7 @@
 
 """Build classification models."""
 
+from typing import Any, Mapping, Optional
 # Import libraries
 import tensorflow as tf
 
@@ -24,20 +25,22 @@ layers = tf.keras.layers
 class ClassificationModel(tf.keras.Model):
   """A classification class builder."""
 
-  def __init__(self,
-               backbone,
-               num_classes,
-               input_specs=layers.InputSpec(shape=[None, None, None, 3]),
-               dropout_rate=0.0,
-               kernel_initializer='random_uniform',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               add_head_batch_norm=False,
-               use_sync_bn: bool = False,
-               norm_momentum: float = 0.99,
-               norm_epsilon: float = 0.001,
-               skip_logits_layer: bool = False,
-               **kwargs):
+  def __init__(
+      self,
+      backbone: tf.keras.Model,
+      num_classes: int,
+      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+          shape=[None, None, None, 3]),
+      dropout_rate: float = 0.0,
+      kernel_initializer: str = 'random_uniform',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      add_head_batch_norm: bool = False,
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      skip_logits_layer: bool = False,
+      **kwargs):
     """Classification initialization function.
 
     Args:
@@ -65,7 +68,7 @@ class ClassificationModel(tf.keras.Model):
       norm = tf.keras.layers.BatchNormalization
     axis = -1 if tf.keras.backend.image_data_format() == 'channels_last' else 1
 
-    inputs = tf.keras.Input(shape=input_specs.shape[1:])
+    inputs = tf.keras.Input(shape=input_specs.shape[1:], name=input_specs.name)
     endpoints = backbone(inputs)
     x = endpoints[max(endpoints.keys())]
 
@@ -103,15 +106,15 @@ class ClassificationModel(tf.keras.Model):
     self._norm = norm
 
   @property
-  def checkpoint_items(self):
+  def checkpoint_items(self) -> Mapping[str, tf.keras.Model]:
     """Returns a dictionary of items to be additionally checkpointed."""
     return dict(backbone=self.backbone)
 
   @property
-  def backbone(self):
+  def backbone(self) -> tf.keras.Model:
     return self._backbone
 
-  def get_config(self):
+  def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Contains the definitions of Feature Pyramid Networks (FPN)."""
+from typing import Any, Mapping, Optional
 
 # Import libraries
 import tensorflow as tf
@@ -32,20 +33,21 @@ class FPN(tf.keras.Model):
   (https://arxiv.org/pdf/1612.03144)
   """
 
-  def __init__(self,
-               input_specs,
-               min_level=3,
-               max_level=7,
-               num_filters=256,
-               use_separable_conv=False,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      input_specs: Mapping[str, tf.TensorShape],
+      min_level: int = 3,
+      max_level: int = 7,
+      num_filters: int = 256,
+      use_separable_conv: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a Feature Pyramid Network (FPN).
 
     Args:
@@ -162,7 +164,8 @@ class FPN(tf.keras.Model):
 
     super(FPN, self).__init__(inputs=inputs, outputs=feats, **kwargs)
 
-  def _build_input_pyramid(self, input_specs, min_level):
+  def _build_input_pyramid(self, input_specs: Mapping[str, tf.TensorShape],
+                           min_level: int):
     assert isinstance(input_specs, dict)
     if min(input_specs.keys()) > str(min_level):
       raise ValueError(
@@ -173,7 +176,7 @@ class FPN(tf.keras.Model):
       inputs[level] = tf.keras.Input(shape=spec[1:])
     return inputs
 
-  def get_config(self):
+  def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod
@@ -181,6 +184,6 @@ class FPN(tf.keras.Model):
     return cls(**config)
 
   @property
-  def output_specs(self):
+  def output_specs(self) -> Mapping[str, tf.TensorShape]:
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs

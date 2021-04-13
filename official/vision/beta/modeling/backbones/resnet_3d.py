@@ -13,10 +13,12 @@
 # limitations under the License.
 
 """Contains definitions of 3D Residual Networks."""
-from typing import List, Tuple
+from typing import Callable, List, Tuple, Optional
 
 # Import libraries
 import tensorflow as tf
+
+from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks_3d
@@ -74,26 +76,28 @@ RESNET_SPECS = {
 class ResNet3D(tf.keras.Model):
   """Creates a 3D ResNet family model."""
 
-  def __init__(self,
-               model_id: int,
-               temporal_strides: List[int],
-               temporal_kernel_sizes: List[Tuple[int]],
-               use_self_gating: List[int] = None,
-               input_specs=layers.InputSpec(shape=[None, None, None, None, 3]),
-               stem_type='v0',
-               stem_conv_temporal_kernel_size=5,
-               stem_conv_temporal_stride=2,
-               stem_pool_temporal_stride=2,
-               init_stochastic_depth_rate=0.0,
-               activation='relu',
-               se_ratio=None,
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      model_id: int,
+      temporal_strides: List[int],
+      temporal_kernel_sizes: List[Tuple[int]],
+      use_self_gating: List[int] = None,
+      input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
+          shape=[None, None, None, None, 3]),
+      stem_type: str = 'v0',
+      stem_conv_temporal_kernel_size: int = 5,
+      stem_conv_temporal_stride: int = 2,
+      stem_pool_temporal_stride: int = 2,
+      init_stochastic_depth_rate: float = 0.0,
+      activation: str = 'relu',
+      se_ratio: Optional[float] = None,
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a 3D ResNet model.
 
     Args:
@@ -259,16 +263,18 @@ class ResNet3D(tf.keras.Model):
     super(ResNet3D, self).__init__(inputs=inputs, outputs=endpoints, **kwargs)
 
   def _block_group(self,
-                   inputs,
-                   filters,
-                   temporal_kernel_sizes,
-                   temporal_strides,
-                   spatial_strides,
-                   block_fn=nn_blocks_3d.BottleneckBlock3D,
-                   block_repeats=1,
-                   stochastic_depth_drop_rate=0.0,
-                   use_self_gating=False,
-                   name='block_group'):
+                   inputs: tf.Tensor,
+                   filters: int,
+                   temporal_kernel_sizes: Tuple[int],
+                   temporal_strides: int,
+                   spatial_strides: int,
+                   block_fn: Callable[
+                       ...,
+                       tf.keras.layers.Layer] = nn_blocks_3d.BottleneckBlock3D,
+                   block_repeats: int = 1,
+                   stochastic_depth_drop_rate: float = 0.0,
+                   use_self_gating: bool = False,
+                   name: str = 'block_group'):
     """Creates one group of blocks for the ResNet3D model.
 
     Args:
@@ -410,7 +416,7 @@ def build_resnet3d(
 @factory.register_backbone_builder('resnet_3d_rs')
 def build_resnet3d_rs(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    model_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds ResNet-3D-RS backbone from a config."""
   backbone_cfg = model_config.backbone.get()

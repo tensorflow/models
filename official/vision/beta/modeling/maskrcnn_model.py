@@ -14,6 +14,8 @@
 
 """Mask R-CNN model."""
 
+from typing import Any, Mapping, Optional, Union
+
 # Import libraries
 import tensorflow as tf
 
@@ -25,17 +27,17 @@ class MaskRCNNModel(tf.keras.Model):
   """The Mask R-CNN model."""
 
   def __init__(self,
-               backbone,
-               decoder,
-               rpn_head,
-               detection_head,
-               roi_generator,
-               roi_sampler,
-               roi_aligner,
-               detection_generator,
-               mask_head=None,
-               mask_sampler=None,
-               mask_roi_aligner=None,
+               backbone: tf.keras.Model,
+               decoder: tf.keras.Model,
+               rpn_head: tf.keras.layers.Layer,
+               detection_head: tf.keras.layers.Layer,
+               roi_generator: tf.keras.layers.Layer,
+               roi_sampler: tf.keras.layers.Layer,
+               roi_aligner: tf.keras.layers.Layer,
+               detection_generator: tf.keras.layers.Layer,
+               mask_head: Optional[tf.keras.layers.Layer] = None,
+               mask_sampler: Optional[tf.keras.layers.Layer] = None,
+               mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
                **kwargs):
     """Initializes the Mask R-CNN model.
 
@@ -85,13 +87,13 @@ class MaskRCNNModel(tf.keras.Model):
     self.mask_roi_aligner = mask_roi_aligner
 
   def call(self,
-           images,
-           image_shape,
-           anchor_boxes=None,
-           gt_boxes=None,
-           gt_classes=None,
-           gt_masks=None,
-           training=None):
+           images: tf.Tensor,
+           image_shape: tf.Tensor,
+           anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
+           gt_boxes: tf.Tensor = None,
+           gt_classes: tf.Tensor = None,
+           gt_masks: tf.Tensor = None,
+           training: bool = None) -> Mapping[str, tf.Tensor]:
     model_outputs = {}
 
     # Feature extraction.
@@ -190,7 +192,8 @@ class MaskRCNNModel(tf.keras.Model):
     return model_outputs
 
   @property
-  def checkpoint_items(self):
+  def checkpoint_items(
+      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(
         backbone=self.backbone,
@@ -203,7 +206,7 @@ class MaskRCNNModel(tf.keras.Model):
 
     return items
 
-  def get_config(self):
+  def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod

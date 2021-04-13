@@ -1628,22 +1628,48 @@ class CenterNetBoxTargetAssignerTest(test_case.TestCase):
 
     """
     def graph_fn():
-      box_batch = [
-          tf.constant([self._box_center, self._box_lower_left]),
-          tf.constant([self._box_center_small, self._box_odd_coordinates]),
-      ]
-
       pred_array = np.ones((2, 40, 20, 2), dtype=np.int32) * -1000
       pred_array[0, 20, 10] = [1, 2]
       pred_array[0, 30, 5] = [3, 4]
       pred_array[1, 20, 10] = [5, 6]
       pred_array[1, 14, 11] = [7, 8]
-
       pred_tensor = tf.constant(pred_array)
 
-      cn_assigner = targetassigner.CenterNetBoxTargetAssigner(4)
-      indices, _, _, _ = cn_assigner.assign_size_and_offset_targets(
-          160, 80, box_batch)
+      indices = tf.constant([
+          [0, 20, 10],
+          [0, 30, 5],
+          [1, 20, 10],
+          [1, 14, 11]
+      ], dtype=tf.int32)
+
+      preds = targetassigner.get_batch_predictions_from_indices(
+          pred_tensor, indices)
+      return preds
+    preds = self.execute(graph_fn, [])
+    np.testing.assert_array_equal(preds, [[1, 2], [3, 4], [5, 6], [7, 8]])
+
+  def test_get_batch_predictions_from_indices_with_class(self):
+    """Test the get_batch_predictions_from_indices function with class axis.
+
+    This test verifies that the indices returned by
+    assign_size_and_offset_targets function work as expected with a predicted
+    tensor.
+
+    """
+    def graph_fn():
+      pred_array = np.ones((2, 40, 20, 5, 2), dtype=np.int32) * -1000
+      pred_array[0, 20, 10, 0] = [1, 2]
+      pred_array[0, 30, 5, 2] = [3, 4]
+      pred_array[1, 20, 10, 1] = [5, 6]
+      pred_array[1, 14, 11, 4] = [7, 8]
+      pred_tensor = tf.constant(pred_array)
+
+      indices = tf.constant([
+          [0, 20, 10, 0],
+          [0, 30, 5, 2],
+          [1, 20, 10, 1],
+          [1, 14, 11, 4]
+      ], dtype=tf.int32)
 
       preds = targetassigner.get_batch_predictions_from_indices(
           pred_tensor, indices)

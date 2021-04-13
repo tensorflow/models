@@ -24,7 +24,7 @@ task:
     dtype: 'float16'
   validation_data:
     input_path: 'imagenet-2012-tfrecord/valid*'
-    is_training: true
+    is_training: false
     global_batch_size: 1024  # 128 * 8
     dtype: 'float16'
     drop_remainder: false

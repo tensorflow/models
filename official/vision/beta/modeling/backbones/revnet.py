@@ -59,17 +59,18 @@ class RevNet(tf.keras.Model):
     (https://arxiv.org/pdf/1707.04585.pdf)
   """
 
-  def __init__(self,
-               model_id: int,
-               input_specs: tf.keras.layers.InputSpec
-               = tf.keras.layers.InputSpec(shape=[None, None, None, 3]),
-               activation: str = 'relu',
-               use_sync_bn: bool = False,
-               norm_momentum: float = 0.99,
-               norm_epsilon: float = 0.001,
-               kernel_initializer: str = 'VarianceScaling',
-               kernel_regularizer: tf.keras.regularizers.Regularizer = None,
-               **kwargs):
+  def __init__(
+      self,
+      model_id: int,
+      input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
+          shape=[None, None, None, 3]),
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a RevNet model.
 
     Args:

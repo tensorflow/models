@@ -190,7 +190,7 @@ class TransformerScaffold(tf.keras.layers.Layer):
           bias_axes="d",
           name="intermediate",
           **common_kwargs)
-      policy = tf.keras.mixed_precision.experimental.global_policy()
+      policy = tf.keras.mixed_precision.global_policy()
       if policy.name == "mixed_bfloat16":
         # bfloat16 causes BERT with the LAMB optimizer to not converge
         # as well, so we use float32.

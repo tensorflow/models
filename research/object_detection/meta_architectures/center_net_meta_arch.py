@@ -361,6 +361,8 @@ def prediction_tensors_to_boxes(y_indices, x_indices, height_width_predictions,
       the raw bounding box coordinates of boxes.
   """
   batch_size, num_boxes = _get_shape(y_indices, 2)
+  _, height, width, _ = _get_shape(height_width_predictions, 4)
+  height, width = tf.cast(height, tf.float32), tf.cast(width, tf.float32)
 
   # TF Lite does not support tf.gather with batch_dims > 0, so we need to use
   # tf_gather_nd instead and here we prepare the indices for that.
@@ -382,10 +384,16 @@ def prediction_tensors_to_boxes(y_indices, x_indices, height_width_predictions,
   heights, widths = tf.unstack(height_width, axis=2)
   y_offsets, x_offsets = tf.unstack(offsets, axis=2)
 
-  boxes = tf.stack([y_indices + y_offsets - heights / 2.0,
-                    x_indices + x_offsets - widths / 2.0,
-                    y_indices + y_offsets + heights / 2.0,
-                    x_indices + x_offsets + widths / 2.0], axis=2)
+  ymin = y_indices + y_offsets - heights / 2.0
+  xmin = x_indices + x_offsets - widths / 2.0
+  ymax = y_indices + y_offsets + heights / 2.0
+  xmax = x_indices + x_offsets + widths / 2.0
+
+  ymin = tf.clip_by_value(ymin, 0., height)
+  xmin = tf.clip_by_value(xmin, 0., width)
+  ymax = tf.clip_by_value(ymax, 0., height)
+  xmax = tf.clip_by_value(xmax, 0., width)
+  boxes = tf.stack([ymin, xmin, ymax, xmax], axis=2)
 
   return boxes
 
@@ -2851,8 +2859,9 @@ class CenterNetMetaArch(model.DetectionModel):
     # Keypoint offset loss.
     loss = 0.0
     for prediction in depth_predictions:
-      selected_depths = cn_assigner.get_batch_predictions_from_indices(
-          prediction, batch_indices)
+      # TODO(yuhuic): Update this function to use
+      # cn_assigner.get_batch_predictions_from_indices().
+      selected_depths = tf.gather_nd(prediction, batch_indices)
       if kp_params.per_keypoint_offset and kp_params.per_keypoint_depth:
         selected_depths = tf.expand_dims(selected_depths, axis=-1)
       # The dimensions passed are not as per the doc string but the loss

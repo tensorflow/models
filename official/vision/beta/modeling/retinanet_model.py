@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """RetinaNet."""
-from typing import List, Optional
+from typing import Any, Mapping, List, Optional, Union
 
 # Import libraries
 import tensorflow as tf
@@ -26,10 +26,10 @@ class RetinaNetModel(tf.keras.Model):
   """The RetinaNet model class."""
 
   def __init__(self,
-               backbone,
-               decoder,
-               head,
-               detection_generator,
+               backbone: tf.keras.Model,
+               decoder: tf.keras.Model,
+               head: tf.keras.layers.Layer,
+               detection_generator: tf.keras.layers.Layer,
                min_level: Optional[int] = None,
                max_level: Optional[int] = None,
                num_scales: Optional[int] = None,
@@ -74,10 +74,10 @@ class RetinaNetModel(tf.keras.Model):
     self._detection_generator = detection_generator
 
   def call(self,
-           images,
-           image_shape=None,
-           anchor_boxes=None,
-           training=None):
+           images: tf.Tensor,
+           image_shape: Optional[tf.Tensor] = None,
+           anchor_boxes: Optional[Mapping[str, tf.Tensor]] = None,
+           training: bool = None) -> Mapping[str, tf.Tensor]:
     """Forward pass of the RetinaNet model.
 
     Args:
@@ -163,7 +163,8 @@ class RetinaNetModel(tf.keras.Model):
       return outputs
 
   @property
-  def checkpoint_items(self):
+  def checkpoint_items(
+      self) -> Mapping[str, Union[tf.keras.Model, tf.keras.layers.Layer]]:
     """Returns a dictionary of items to be additionally checkpointed."""
     items = dict(backbone=self.backbone, head=self.head)
     if self.decoder is not None:
@@ -172,22 +173,22 @@ class RetinaNetModel(tf.keras.Model):
     return items
 
   @property
-  def backbone(self):
+  def backbone(self) -> tf.keras.Model:
     return self._backbone
 
   @property
-  def decoder(self):
+  def decoder(self) -> tf.keras.Model:
     return self._decoder
 
   @property
-  def head(self):
+  def head(self) -> tf.keras.layers.Layer:
     return self._head
 
   @property
-  def detection_generator(self):
+  def detection_generator(self) -> tf.keras.layers.Layer:
     return self._detection_generator
 
-  def get_config(self):
+  def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod

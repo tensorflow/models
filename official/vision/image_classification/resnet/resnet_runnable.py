@@ -81,8 +81,7 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
         self.optimizer,
         use_float16=self.dtype == tf.float16,
         use_graph_rewrite=use_graph_rewrite,
-        loss_scale=flags_core.get_loss_scale(flags_obj, default_for_fp16=128),
-        use_experimental_api=False)
+        loss_scale=flags_core.get_loss_scale(flags_obj, default_for_fp16=128))
 
     self.train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     self.train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(

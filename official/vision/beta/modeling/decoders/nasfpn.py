@@ -13,6 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of NAS-FPN."""
+from typing import Any, Mapping, List, Tuple, Optional
 
 # Import libraries
 from absl import logging
@@ -35,17 +36,19 @@ NASFPN_BLOCK_SPECS = [
 ]
 
 
-class BlockSpec(object):
+class BlockSpec():
   """A container class that specifies the block configuration for NAS-FPN."""
 
-  def __init__(self, level, combine_fn, input_offsets, is_output):
+  def __init__(self, level: int, combine_fn: str,
+               input_offsets: Tuple[int, int], is_output: bool):
     self.level = level
     self.combine_fn = combine_fn
     self.input_offsets = input_offsets
     self.is_output = is_output
 
 
-def build_block_specs(block_specs=None):
+def build_block_specs(
+    block_specs: Optional[List[Tuple[Any, ...]]] = None) -> List[BlockSpec]:
   """Builds the list of BlockSpec objects for NAS-FPN."""
   if not block_specs:
     block_specs = NASFPN_BLOCK_SPECS
@@ -63,22 +66,23 @@ class NASFPN(tf.keras.Model):
   (https://arxiv.org/abs/1904.07392)
   """
 
-  def __init__(self,
-               input_specs,
-               min_level=3,
-               max_level=7,
-               block_specs=build_block_specs(),
-               num_filters=256,
-               num_repeats=5,
-               use_separable_conv=False,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      input_specs: Mapping[str, tf.TensorShape],
+      min_level: int = 3,
+      max_level: int = 7,
+      block_specs: List[BlockSpec] = build_block_specs(),
+      num_filters: int = 256,
+      num_repeats: int = 5,
+      use_separable_conv: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a NAS-FPN model.
 
     Args:
@@ -191,7 +195,8 @@ class NASFPN(tf.keras.Model):
                     for level in output_feats.keys()}
     super(NASFPN, self).__init__(inputs=inputs, outputs=output_feats, **kwargs)
 
-  def _build_input_pyramid(self, input_specs, min_level):
+  def _build_input_pyramid(self, input_specs: Mapping[str, tf.TensorShape],
+                           min_level: int):
     assert isinstance(input_specs, dict)
     if min(input_specs.keys()) > str(min_level):
       raise ValueError(
@@ -300,7 +305,7 @@ class NASFPN(tf.keras.Model):
     logging.info('Output feature pyramid: %s', output_feats)
     return output_feats
 
-  def get_config(self):
+  def get_config(self) -> Mapping[str, Any]:
     return self._config_dict
 
   @classmethod
@@ -308,6 +313,6 @@ class NASFPN(tf.keras.Model):
     return cls(**config)
 
   @property
-  def output_specs(self):
+  def output_specs(self) -> Mapping[str, tf.TensorShape]:
     """A dict of {level: TensorShape} pairs for the model output."""
     return self._output_specs

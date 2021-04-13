@@ -42,7 +42,7 @@ def build_classification_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: classification_cfg.ImageClassificationModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None,
-    skip_logits_layer: bool = False):
+    skip_logits_layer: bool = False) -> tf.keras.Model:
   """Builds the classification model."""
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
@@ -64,9 +64,10 @@ def build_classification_model(
   return model
 
 
-def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
-                   model_config: maskrcnn_cfg.MaskRCNN,
-                   l2_regularizer: tf.keras.regularizers.Regularizer = None):
+def build_maskrcnn(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: maskrcnn_cfg.MaskRCNN,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds Mask R-CNN model."""
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
@@ -194,9 +195,10 @@ def build_maskrcnn(input_specs: tf.keras.layers.InputSpec,
   return model
 
 
-def build_retinanet(input_specs: tf.keras.layers.InputSpec,
-                    model_config: retinanet_cfg.RetinaNet,
-                    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+def build_retinanet(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: retinanet_cfg.RetinaNet,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds RetinaNet model."""
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
@@ -253,7 +255,7 @@ def build_retinanet(input_specs: tf.keras.layers.InputSpec,
 def build_segmentation_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: segmentation_cfg.SemanticSegmentationModel,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds Segmentation model."""
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
@@ -272,6 +274,7 @@ def build_segmentation_model(
       num_classes=model_config.num_classes,
       level=head_config.level,
       num_convs=head_config.num_convs,
+      prediction_kernel_size=head_config.prediction_kernel_size,
       num_filters=head_config.num_filters,
       upsample_factor=head_config.upsample_factor,
       feature_fusion=head_config.feature_fusion,

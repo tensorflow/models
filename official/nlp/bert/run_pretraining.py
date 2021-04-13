@@ -126,8 +126,7 @@ def run_customized_training(strategy,
     pretrain_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite(),
-        use_experimental_api=False)
+        use_graph_rewrite=common_flags.use_graph_rewrite())
     return pretrain_model, core_model
 
   trained_model = model_training_utils.run_customized_training_loop(
@@ -163,8 +162,7 @@ def run_bert_pretrain(strategy, custom_callbacks=None):
   logging.info('Training using customized training loop TF 2.0 with distributed'
                'strategy.')
 
-  performance.set_mixed_precision_policy(common_flags.dtype(),
-                                         use_experimental_api=False)
+  performance.set_mixed_precision_policy(common_flags.dtype())
 
   # Only when explicit_allreduce = True, post_allreduce_callbacks and
   # allreduce_bytes_per_pack will take effect. optimizer.apply_gradients() no

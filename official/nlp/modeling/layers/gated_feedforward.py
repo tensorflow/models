@@ -108,7 +108,7 @@ class GatedFeedforward(tf.keras.layers.Layer):
     self._output_dense = []
     self._output_dropout = []
     self._output_layer_norm = []
-    activation_policy = tf.keras.mixed_precision.experimental.global_policy()
+    activation_policy = tf.keras.mixed_precision.global_policy()
     if activation_policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.

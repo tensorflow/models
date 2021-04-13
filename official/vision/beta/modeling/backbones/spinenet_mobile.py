@@ -29,10 +29,13 @@
 # ==============================================================================
 """Contains definitions of Mobile SpineNet Networks."""
 import math
+from typing import Any, List, Optional, Tuple
 
 # Import libraries
+
 from absl import logging
 import tensorflow as tf
+
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -96,14 +99,16 @@ SCALING_MAP = {
 class BlockSpec(object):
   """A container class that specifies the block configuration for SpineNet."""
 
-  def __init__(self, level, block_fn, input_offsets, is_output):
+  def __init__(self, level: int, block_fn: str, input_offsets: Tuple[int, int],
+               is_output: bool):
     self.level = level
     self.block_fn = block_fn
     self.input_offsets = input_offsets
     self.is_output = is_output
 
 
-def build_block_specs(block_specs=None):
+def build_block_specs(
+    block_specs: Optional[List[Tuple[Any, ...]]] = None) -> List[BlockSpec]:
   """Builds the list of BlockSpec objects for SpineNet."""
   if not block_specs:
     block_specs = SPINENET_BLOCK_SPECS
@@ -126,25 +131,27 @@ class SpineNetMobile(tf.keras.Model):
     (https://arxiv.org/abs/2010.11426).
   """
 
-  def __init__(self,
-               input_specs=tf.keras.layers.InputSpec(shape=[None, 512, 512, 3]),
-               min_level=3,
-               max_level=7,
-               block_specs=build_block_specs(),
-               endpoints_num_filters=48,
-               se_ratio=0.2,
-               block_repeats=1,
-               filter_size_scale=1.0,
-               expand_ratio=6,
-               init_stochastic_depth_rate=0.0,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               **kwargs):
+  def __init__(
+      self,
+      input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
+          shape=[None, 512, 512, 3]),
+      min_level: int = 3,
+      max_level: int = 7,
+      block_specs: List[BlockSpec] = build_block_specs(),
+      endpoints_num_filters: int = 256,
+      se_ratio: float = 0.2,
+      block_repeats: int = 1,
+      filter_size_scale: float = 1.0,
+      expand_ratio: int = 6,
+      init_stochastic_depth_rate=0.0,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      **kwargs):
     """Initializes a Mobile SpineNet model.
 
     Args:
@@ -222,15 +229,15 @@ class SpineNetMobile(tf.keras.Model):
     super().__init__(inputs=inputs, outputs=endpoints)
 
   def _block_group(self,
-                   inputs,
-                   in_filters,
-                   out_filters,
-                   strides,
-                   expand_ratio=6,
-                   block_repeats=1,
-                   se_ratio=0.2,
-                   stochastic_depth_drop_rate=None,
-                   name='block_group'):
+                   inputs: tf.Tensor,
+                   in_filters: int,
+                   out_filters: int,
+                   strides: int,
+                   expand_ratio: int = 6,
+                   block_repeats: int = 1,
+                   se_ratio: float = 0.2,
+                   stochastic_depth_drop_rate: Optional[float] = None,
+                   name: str = 'block_group'):
     """Creates one group of blocks for the SpineNet model."""
     x = nn_blocks.InvertedBottleneckBlock(
         in_filters=in_filters,
