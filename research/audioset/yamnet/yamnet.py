@@ -87,15 +87,12 @@ _YAMNET_LAYER_DEFS = [
     (_separable_conv, [3, 3], 1, 1024),
 ]
 
-
 class YAMNetBase(tf.keras.Model):
   """Define the core YAMNet mode in Keras."""
 
   def __init__(self, params):
     super().__init__()
     self._params = params
-
-    self.reshape = layers.Lambda(lambda x: tf.expand_dims(x, axis=-1))
 
     self.stack = []
     for (i, (layer_fun, kernel, stride,
@@ -110,27 +107,13 @@ class YAMNetBase(tf.keras.Model):
         activation=params.classifier_activation)
 
   def call(self, features):
-    net = self.reshape(features)
-
-    # The inner 3-axes are the items. Any outer axes are the batch. Flatten the
-    # outer batch axes.
-    shape = tf.shape(net)
-    batch_shape = shape[:-3]
-    item_shape = shape[-3:]
-    flattened_batch_shape = tf.concat([[-1], item_shape], axis=-1)
-    net = tf.reshape(net, flattened_batch_shape)
+    # Shape: [batch, width, height] > [batch, width, height, 1]
+    net = tf.expand_dims(features, axis=-1)
 
     for layer in self.stack:
       net = layer(net)
 
-    # Unflatten the batch axes back to its shape from earlier.
-    def fold_batch(arg):
-      item_shape = tf.shape(arg)[1:]
-      new_shape = tf.concat([batch_shape, item_shape], axis=-1)
-      return tf.reshape(arg, new_shape)
-
     embeddings = self.pool(net)
-    embeddings = fold_batch(embeddings)
 
     logits = self.logits_from_embedding(embeddings)
 
@@ -184,10 +167,31 @@ class YAMNetFrames(tf.keras.Model):
     log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
         waveform_padded, self._params)
 
+    # Reshape (a, b, width, height) > (a*b, width, height)
+    features, batch_shape = flatten_outer_dims(features, item_dims=2)
+
     predictions, embeddings = self._yamnet_base.call(features)
+
+    # Reshape (a*b, ...) > (a, b, ...)
+    predictions = fold_batch(predictions, batch_shape)
+    embeddings = fold_batch(embeddings, batch_shape)
 
     return predictions, embeddings, log_mel_spectrogram
 
+def flatten_outer_dims(x, item_dims):
+  shape = tf.shape(x)
+  batch_shape = shape[:-item_dims]
+  item_shape = shape[-item_dims:]
+  flattened_batch_shape = tf.concat([[-1], item_shape], axis=-1)
+  x = tf.reshape(x, flattened_batch_shape)
+  return x, batch_shape
+
+def fold_batch(x, batch_shape):
+  # The outputs have a different item_shape, you can't reuse the item_shape.
+  # The first dimension is the batch everything else is the item.
+  item_shape = tf.shape(x)[1:]
+  new_shape = tf.concat([batch_shape, item_shape], axis=-1)
+  return tf.reshape(x, new_shape)
 
 def yamnet_frames_model(params):
   """Defines the YAMNet waveform-to-class-scores model.
