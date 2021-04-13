@@ -65,7 +65,7 @@ class AttentionModel(tf.keras.Model):
         name='attn_conv2')
     self.activation_layer = layers.Activation('softplus')
 
-  def call(self, inputs, training=True):
+  def call(self, inputs, targets=None, training=True):
     x = self.conv1(inputs)
     x = self.bn_conv1(x, training=training)
     x = tf.nn.relu(x)
@@ -74,8 +74,10 @@ class AttentionModel(tf.keras.Model):
     prob = self.activation_layer(score)
 
     # L2-normalize the featuremap before pooling.
-    inputs = tf.nn.l2_normalize(inputs, axis=-1)
-    feat = tf.reduce_mean(tf.multiply(inputs, prob), [1, 2], keepdims=False)
+    if targets is None:
+        targets = inputs
+    targets = tf.nn.l2_normalize(targets, axis=-1)
+    feat = tf.reduce_mean(tf.multiply(targets, prob), [1, 2], keepdims=False)
 
     return feat, prob, score
 
@@ -209,6 +211,7 @@ class Delf(tf.keras.Model):
     if self._use_dim_reduction:
       (dim_expanded_features, dim_reduced_features) = self.autoencoder(block3)
       attn_prelogits, attn_scores, _ = self.attention(dim_expanded_features,
+                                                      targets=block3,
                                                       training=training)
     else:
       attn_prelogits, attn_scores, _ = self.attention(block3, training=training)
