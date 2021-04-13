@@ -56,8 +56,7 @@ class relaxedFscore(object):
 
     beta = 0.3
     rho = 3
-    precisions = np.zeros(len(self._groundtruths))
-    recalls = np.zeros(len(self._groundtruths))
+    relax_fs = np.zeros(len(self._groundtruths))
 
     erode_kernel = np.ones((3,3))
 
@@ -86,13 +85,11 @@ class relaxedFscore(object):
       true_xor = true_xor * 1
  
       pre, rec = self._compute_relax_pre_rec(true_xor, pred_xor, rho)
-      precisions[i] = pre
-      recalls[i] = rec
+      relax_fs[i] = (1+beta)*pre*rec/(beta*pre+rec+1e-8)
+    
 
-    precisions = np.sum(precisions,0)/(len(self._groundtruths)+1e-8)
-    recalls    = np.sum(recalls,0)/(len(self._groundtruths)+1e-8)
-    relax_f    = (1+beta)*precisions*recalls/(beta*precisions+recalls+1e-8)
-
+    relax_f = np.sum(relax_fs,0)/(len(self._groundtruths)+1e-8)
+    
     relax_f = relax_f.astype(np.float32)
 
     return relax_f
@@ -133,12 +130,13 @@ class relaxedFscore(object):
     """Update segmentation results and groundtruth data.
 
     Args:
-      groundtruths : Tensor [batch, width, height, 1],
+      groundtruths : Tuple of single Tensor [batch, width, height, 1],
                      groundtruth masks. range [0, 1]
-      predictions  : Tensor [batch, width, height, 1],
+      predictions  : Tuple of single Tensor [batch, width, height, 1],
                      predicted masks. range [0, 1]
     
     """
+
     groundtruths, predictions = self._convert_to_numpy(groundtruths[0],
                                                        predictions[0])
     for (true, pred) in zip(groundtruths, predictions):
