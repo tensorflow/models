@@ -42,16 +42,13 @@ class YAMNetTest(tf.test.TestCase):
   def setUpClass(cls):
     super().setUpClass()
     cls._params = params.Params()
-    cls._yamnet = export.YAMNet(cls._params)
+    cls._yamnet = yamnet.yamnet_frames_model(cls._params)
     cls._yamnet.load_weights('yamnet.h5')
     cls._yamnet_classes = yamnet.class_names('yamnet_class_map.csv')
 
   def clip_test(self, waveform, expected_class_name, top_n=10):
     """Run the model on the waveform, check that expected class is in top-n."""
-    outputs = YAMNetTest._yamnet(
-        waveform, as_dict=True,
-        returns=('predictions', 'embeddings',
-                 'log_mel_spectrogram', 'logits'))
+    outputs = YAMNetTest._yamnet(waveform)
     clip_predictions = np.mean(outputs['predictions'], axis=0)
     top_n_indices = np.argsort(clip_predictions)[-top_n:]
     top_n_scores = clip_predictions[top_n_indices]

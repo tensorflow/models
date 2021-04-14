@@ -102,7 +102,7 @@ def yamnet(features, params):
   embeddings = layers.GlobalAveragePooling2D()(net)
   logits = layers.Dense(units=params.num_classes, use_bias=True)(embeddings)
   predictions = layers.Activation(activation=params.classifier_activation)(logits)
-  return predictions, embeddings
+  return predictions, embeddings, logits
 
 
 def yamnet_frames_model(params):
@@ -121,10 +121,13 @@ def yamnet_frames_model(params):
   waveform_padded = features_lib.pad_waveform(waveform, params)
   log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
       waveform_padded, params)
-  predictions, embeddings = yamnet(features, params)
+  predictions, embeddings, logits = yamnet(features, params)
   frames_model = Model(
       name='yamnet_frames', inputs=waveform,
-      outputs=[predictions, embeddings, log_mel_spectrogram])
+      outputs={'predictions':predictions,
+               'embeddings':embeddings,
+               'log_mel_spectrogram':log_mel_spectrogram,
+               'logits':logits})
   return frames_model
 
 
