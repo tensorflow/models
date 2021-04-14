@@ -812,7 +812,20 @@ def get_batch_predictions_from_indices(batch_predictions, indices):
     values: A tensor of shape [num_instances, channels] holding the predicted
       values at the given indices.
   """
-  return tf.gather_nd(batch_predictions, indices)
+  # Note, gather_nd (and its gradient scatter_nd) runs significantly slower (on
+  # TPU) than gather with flattened inputs, so reshape the tensor, flatten the
+  # indices, and run gather.
+  shape = shape_utils.combined_static_and_dynamic_shape(batch_predictions)
+
+  # [B, H, W, C] -> [H*W, W, 1] or [B, H, W, N, C] -> [H*W*N, W*N, N, 1]
+  rev_cum_interior_indices = tf.reverse(tf.math.cumprod(shape[-2:0:-1]), [0])
+  rev_cum_interior_indices = tf.concat([rev_cum_interior_indices, [1]], axis=0)
+
+  # Compute flattened indices and gather.
+  flattened_inds = tf.linalg.matmul(
+      indices, rev_cum_interior_indices[:, tf.newaxis])[:, 0]
+  batch_predictions_2d = tf.reshape(batch_predictions, [-1, shape[-1]])
+  return tf.gather(batch_predictions_2d, flattened_inds, axis=0)
 
 
 def _compute_std_dev_from_box_size(boxes_height, boxes_width, min_overlap):

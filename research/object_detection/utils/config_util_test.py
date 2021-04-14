@@ -985,7 +985,7 @@ class ConfigUtilTest(tf.test.TestCase):
 
     self.assertEqual(config_util.get_number_of_classes(configs["model"]), 2)
 
-  def testRemoveUnecessaryEma(self):
+  def testRemoveUnnecessaryEma(self):
     input_dict = {
         "expanded_conv_10/project/act_quant/min":
             1,
@@ -1016,7 +1016,7 @@ class ConfigUtilTest(tf.test.TestCase):
 
     self.assertEqual(
         output_dict,
-        config_util.remove_unecessary_ema(input_dict, no_ema_collection))
+        config_util.remove_unnecessary_ema(input_dict, no_ema_collection))
 
   def testUpdateRescoreInstances(self):
     pipeline_config_path = os.path.join(self.get_temp_dir(), "pipeline.config")

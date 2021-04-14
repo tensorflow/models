@@ -600,7 +600,7 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     boxes = self.execute(graph_fn, [])
 
     np.testing.assert_allclose(
-        [[-9, -8, 31, 52], [25, 35, 75, 85]], boxes[0])
+        [[0, 0, 31, 52], [25, 35, 75, 85]], boxes[0])
     np.testing.assert_allclose(
         [[96, 98, 106, 108], [96, 98, 106, 108]], boxes[1])
     np.testing.assert_allclose(
