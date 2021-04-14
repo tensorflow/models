@@ -19,7 +19,7 @@ import numpy as np
 import PIL.Image
 
 import tensorflow as tf
-from tensorflow.python.platform import flags
+from tensorflow.compat.v1 import flags
 from tensorflow.python.training import monitored_session
 
 import common_flags

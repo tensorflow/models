@@ -19,6 +19,7 @@ import os
 import numpy as np
 from absl.testing import flagsaver
 import tensorflow as tf
+from tensorflow.compat.v1 import flags
 
 import common_flags
 import model_export
@@ -51,9 +52,9 @@ class AttentionOcrExportTest(tf.test.TestCase):
           msg='Missing checkpoint file %s. '
           'Please download and extract it from %s' %
           (filename, _CHECKPOINT_URL))
-    tf.flags.FLAGS.dataset_name = 'fsns'
-    tf.flags.FLAGS.checkpoint = _CHECKPOINT
-    tf.flags.FLAGS.dataset_dir = os.path.join(
+    flags.FLAGS.dataset_name = 'fsns'
+    flags.FLAGS.checkpoint = _CHECKPOINT
+    flags.FLAGS.dataset_dir = os.path.join(
         os.path.dirname(__file__), 'datasets/testdata/fsns')
     tf.test.TestCase.setUp(self)
     _clean_up()
