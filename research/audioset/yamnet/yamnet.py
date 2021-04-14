@@ -95,8 +95,9 @@ class YAMNetBase(tf.keras.Model):
     self._params = params
 
     self.stack = []
-    for (i, (layer_fun, kernel, stride,
-             filters)) in enumerate(_YAMNET_LAYER_DEFS):
+    for (
+          i, (layer_fun, kernel, stride, filters)
+        ) in enumerate(_YAMNET_LAYER_DEFS):
       new_layers = layer_fun('layer{}'.format(i + 1), kernel, stride, filters,
                              params)
       self.stack.extend(new_layers)
