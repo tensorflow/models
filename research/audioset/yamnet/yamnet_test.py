@@ -63,7 +63,7 @@ class YAMNetTest(tf.test.TestCase):
         expected_class_name, top_n, top_n_predictions))
     return outputs
 
-  def check_numpy(self, outputs):
+  def check_close(self, outputs):
     test_id = self.id().replace("_","").replace('.','_')
     file_path = HERE/'npz'/test_id
     file_path = file_path.with_suffix(".npz")
@@ -75,14 +75,14 @@ class YAMNetTest(tf.test.TestCase):
       for key in outputs.keys():
         out_value = outputs[key]
         ref_value = reference[key]
-        self.assertTrue(np.allclose(out_value, ref_value),
-                        f"`{key}` didn't match")
+        self.assertAllClose(out_value, ref_value,
+                            msg=f"`{key}` didn't match")
 
   def testZeros(self):
     outputs = self.clip_test(
         waveform=np.zeros((int(3 * YAMNetTest._params.sample_rate),)),
         expected_class_name='Silence')
-    self.check_numpy(outputs)
+    self.check_close(outputs)
 
   def testRandom(self):
     np.random.seed(51773)  # Ensure repeatability.
@@ -90,15 +90,76 @@ class YAMNetTest(tf.test.TestCase):
         waveform=np.random.uniform(-1.0, +1.0,
                                    (int(3 * YAMNetTest._params.sample_rate),)),
         expected_class_name='White noise')
-    self.check_numpy(outputs)
+    self.check_close(outputs)
 
   def testSine(self):
     outputs = self.clip_test(
         waveform=np.sin(2 * np.pi * 440 *
                         np.arange(0, 3, 1 / YAMNetTest._params.sample_rate)),
         expected_class_name='Sine wave')
-    self.check_numpy(outputs)
+    self.check_close(outputs)
 
+  def testBatchOne(self):
+    sine_wave = np.sin(2 * np.pi * 440 *
+                        np.arange(0, 3, 1 / YAMNetTest._params.sample_rate))
+    sine_outputs = self.clip_test(
+        waveform=sine_wave, expected_class_name='Sine wave')
+
+
+    batch_one = sine_wave[None, ...]
+    batch_one_outputs = YAMNetTest._yamnet(
+        waveform=batch_one, as_dict=True,
+        returns=('predictions', 'embeddings',
+                 'log_mel_spectrogram', 'logits'))
+
+    for name, value in batch_one_outputs.items():
+      self.assertAllClose(value[0], sine_outputs[name],
+                          msg=f"`{name}` didn't match")
+
+  def testBatchReplicate(self):
+    sine_wave = np.sin(2 * np.pi * 440 *
+                        np.arange(0, 3, 1 / YAMNetTest._params.sample_rate))
+    sine_outputs = self.clip_test(
+        waveform=sine_wave, expected_class_name='Sine wave')
+
+
+    batch_one = np.stack([sine_wave, sine_wave, sine_wave])
+    batch_one_outputs = YAMNetTest._yamnet(
+        waveform=batch_one, as_dict=True,
+        returns=('predictions', 'embeddings',
+                 'log_mel_spectrogram', 'logits'))
+
+    for name, value in batch_one_outputs.items():
+      self.assertAllClose(value[0], sine_outputs[name],
+                          msg=f"`{name}[0]` didn't match")
+      self.assertAllClose(value[1], sine_outputs[name],
+                          msg=f"`{name}[1]` didn't match")
+      self.assertAllClose(value[2], sine_outputs[name],
+                          msg=f"`{name}[2]` didn't match")
+
+  def testBatch(self):
+    sine_wave = np.sin(2 * np.pi * 440 *
+                        np.arange(0, 3, 1 / YAMNetTest._params.sample_rate))
+    sine_outputs = self.clip_test(
+        waveform=sine_wave, expected_class_name='Sine wave')
+
+    random_wave = np.random.uniform(-1.0, +1.0,
+                                   (int(3 * YAMNetTest._params.sample_rate),))
+    random_outputs = self.clip_test(
+        waveform=random_wave,
+        expected_class_name='White noise')
+
+    stacked = np.stack([sine_wave, random_wave], axis=0)
+    stacked_output = YAMNetTest._yamnet(
+        waveform=stacked, as_dict=True,
+        returns=('predictions', 'embeddings',
+                 'log_mel_spectrogram', 'logits'))
+
+    for name, value in stacked_output.items():
+      self.assertAllClose(value[0], sine_outputs[name],
+                          msg=f"sine_outputs[{name}] didn't match")
+      self.assertAllClose(value[1], random_outputs[name],
+                          msg=f"random_outputs[{name}] didn't match")
 
 if __name__ == '__main__':
   tf.test.main()
