@@ -22,8 +22,9 @@ from tensorflow.contrib import slim
 
 from datasets import fsns
 from datasets import unittest_utils
+from tensorflow.compat.v1 import flags
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 
 
 def get_test_split():

@@ -17,7 +17,7 @@
 import logging
 import sys
 
-from tensorflow.python.platform import flags
+from tensorflow.compat.v1 import flags
 
 import datasets
 import model
