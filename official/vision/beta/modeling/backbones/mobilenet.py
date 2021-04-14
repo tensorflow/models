@@ -31,6 +31,7 @@ layers = tf.keras.layers
 #  pylint: disable=pointless-string-statement
 
 
+@tf.keras.utils.register_keras_serializable(package='Vision')
 class Conv2DBNBlock(tf.keras.layers.Layer):
   """A convolution block with batch normalization."""
 
@@ -94,7 +95,6 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
       self._bn_axis = -1
     else:
       self._bn_axis = 1
-    self._activation_fn = tf_utils.get_activation(activation)
 
   def get_config(self):
     config = {
@@ -129,6 +129,8 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
           axis=self._bn_axis,
           momentum=self._norm_momentum,
           epsilon=self._norm_epsilon)
+    self._activation_layer = tf_utils.get_activation(
+        self._activation, use_keras_layer=True)
 
     super(Conv2DBNBlock, self).build(input_shape)
 
@@ -136,7 +138,7 @@ class Conv2DBNBlock(tf.keras.layers.Layer):
     x = self._conv0(inputs)
     if self._use_normalization:
       x = self._norm0(x)
-    return self._activation_fn(x)
+    return self._activation_layer(x)
 
 """
 Architecture: https://arxiv.org/abs/1704.04861.
@@ -724,7 +726,7 @@ class MobileNet(tf.keras.Model):
         raise ValueError('Unknown block type {} for layer {}'.format(
             block_def.block_fn, i))
 
-      net = tf.identity(net, name=block_name)
+      net = tf.keras.layers.Activation('linear', name=block_name)(net)
 
       if block_def.is_output:
         endpoints[str(endpoint_level)] = net
