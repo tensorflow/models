@@ -46,7 +46,7 @@ def char_accuracy(predictions, targets, rej_char, streaming=False):
             correct_chars, weights), axis=1),
         tf.reduce_sum(input_tensor=weights, axis=1))
     if streaming:
-      return tf.contrib.metrics.streaming_mean(accuracy_per_example)
+      return tf.metrics.mean(accuracy_per_example)
     else:
       return tf.reduce_mean(input_tensor=accuracy_per_example)
 
@@ -87,6 +87,6 @@ def sequence_accuracy(predictions, targets, rej_char, streaming=False):
     accuracy_per_example = tf.cast(
         tf.equal(correct_chars_counts, target_chars_counts), dtype=tf.float32)
     if streaming:
-      return tf.contrib.metrics.streaming_mean(accuracy_per_example)
+      return tf.metrics.mean(accuracy_per_example)
     else:
       return tf.reduce_mean(input_tensor=accuracy_per_example)
