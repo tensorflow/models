@@ -180,7 +180,7 @@ def make_tflite_export(weights_path, export_dir):
   os.makedirs(saved_model_dir)
   tf.saved_model.save(yamnet, saved_model_dir,
                       signatures={
-                          'serving_default':yamnet.single})
+                          'serving_default': yamnet.single})
   log('Done')
 
   # Check that the export can be loaded and works.

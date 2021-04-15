@@ -127,11 +127,6 @@ class YAMNetBase(tf.keras.Model):
     }
     return outputs
 
-def yamnet(features, params):
-  """Define the core YAMNet mode in Keras."""
-  model = YAMNetBase.call(params)
-  return model(features)
-
 
 class YAMNetFrames(tf.keras.Model):
   """Defines the YAMNet waveform-to-class-scores model.
@@ -197,21 +192,6 @@ def fold_batch(x, batch_shape):
   item_shape = tf.shape(x)[1:]
   new_shape = tf.concat([batch_shape, item_shape], axis=-1)
   return tf.reshape(x, new_shape)
-
-def yamnet_frames_model(params):
-  """Defines the YAMNet waveform-to-class-scores model.
-
-  Args:
-    params: An instance of Params containing hyperparameters.
-
-  Returns:
-    A model accepting (num_samples,) waveform input and emitting:
-    - predictions: (num_patches, num_classes) matrix of class scores per time frame
-    - embeddings: (num_patches, embedding size) matrix of embeddings per time frame
-    - log_mel_spectrogram: (num_spectrogram_frames, num_mel_bins) spectrogram feature matrix
-  """
-  frames_model = YAMNetFrames(params)
-  return frames_model
 
 
 def class_names(class_map_csv):
