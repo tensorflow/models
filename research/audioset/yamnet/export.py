@@ -56,10 +56,8 @@ class YAMNet(tf.Module):
     self.single = self.__call__.get_concrete_function(
       tf.TensorSpec(shape=[None], dtype=tf.float32))
 
-    if not params.tflite_compatible:
-      # Batch of waveforms
-      self.batched = self.__call__.get_concrete_function(
-        tf.TensorSpec(shape=[None, None], dtype=tf.float32))
+    self.batched = self.__call__.get_concrete_function(
+      tf.TensorSpec(shape=[None, None], dtype=tf.float32))
 
   @tf.function(input_signature=[])
   def class_map_path(self):
@@ -180,7 +178,9 @@ def make_tflite_export(weights_path, export_dir):
   log('Making TF-Lite SavedModel export ...')
   saved_model_dir = os.path.join(export_dir, 'saved_model')
   os.makedirs(saved_model_dir)
-  tf.saved_model.save(yamnet, saved_model_dir, signatures=yamnet.single)
+  tf.saved_model.save(yamnet, saved_model_dir,
+                      signatures={
+                          'serving_default':yamnet.single})
   log('Done')
 
   # Check that the export can be loaded and works.
