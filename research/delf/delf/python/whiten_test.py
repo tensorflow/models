@@ -15,60 +15,61 @@
 # ==============================================================================
 """Tests for whitening module."""
 
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 from delf.python import whiten
 
 
 class WhitenTest(tf.test.TestCase):
 
-  def testWhitenapply(self):
+  def testApplyWhitening(self):
     # Testing the application of the learned whitening.
     vectors = np.array([[0.14022471, 0.96360618],
-                         [0.37601032, 0.25528411]])
+                        [0.37601032, 0.25528411]])
     # Learn whitening for the `vectors`. First element in the `vectors` is
     # viewed is the example query and the second element is the corresponding
     # positive.
-    m, P = whiten.whitenlearn(vectors, [0], [1])
+    mean_vector, projection = whiten.learn_whitening(vectors, [0], [1])
     # Apply the computed whitening.
-    whitened_vectors = whiten.whitenapply(vectors, m, P)
+    whitened_vectors = whiten.apply_whitening(vectors, mean_vector, projection)
     expected_whitened_vectors = np.array([[0., 9.99999000e-01],
                                           [0., -2.81240452e-13]])
     # Compare the obtained whitened vectors with the expected result.
     self.assertAllClose(whitened_vectors, expected_whitened_vectors)
 
-  def testWhitenlearn(self):
+  def testLearnWhitening(self):
     # Testing whitening learning function.
-    X = np.array([[0.14022471, 0.96360618],
-                   [0.37601032, 0.25528411]])
-    # Obtain the mean descriptor vector `m` and the projection matrix `P`.
-    m, P = whiten.whitenlearn(X, [0], [1])
-    expected_m = np.array([[0.14022471],
-                           [0.37601032]])
-    expected_P = np.array([[1.18894378e+00, -1.74326044e-01],
-                           [1.45071361e+04, 9.89421193e+04]])
+    input = np.array([[0.14022471, 0.96360618],
+                      [0.37601032, 0.25528411]])
+    # Obtain the mean descriptor vector and the projection matrix.
+    mean_vector, projection = whiten.learn_whitening(input, [0], [1])
+    expected_mean_vector = np.array([[0.14022471],
+                                     [0.37601032]])
+    expected_projection = np.array([[1.18894378e+00, -1.74326044e-01],
+                                    [1.45071361e+04, 9.89421193e+04]])
     # Check that the both calculated values are close to the expected values.
-    self.assertAllClose(m, expected_m)
-    self.assertAllClose(P, expected_P)
+    self.assertAllClose(mean_vector, expected_mean_vector)
+    self.assertAllClose(projection, expected_projection)
 
   def testCholeskyPositiveDefinite(self):
     # Testing the Cholesky decomposition for the positive definite matrix.
-    A = np.array([[1, -2j], [2j, 5]])
-    L = whiten.cholesky(A)
-    expected_L = np.array([[1. + 0.j, 0. + 0.j], [0. + 2.j, 1. + 0.j]])
+    input = np.array([[1, -2j], [2j, 5]])
+    output = whiten.cholesky(input)
+    expected_output = np.array([[1. + 0.j, 0. + 0.j], [0. + 2.j, 1. + 0.j]])
     # Check that the expected output is obtained.
-    self.assertAllClose(L, expected_L)
+    self.assertAllClose(output, expected_output)
     # Check that the properties of the Cholesky decomposition are satisfied.
-    self.assertAllClose(np.matmul(L, L.T.conj()), A)
+    self.assertAllClose(np.matmul(output, output.T.conj()), input)
 
   def testCholeskyNonPositiveDefinite(self):
     # Testing the Cholesky decomposition for a non-positive definite matrix.
-    A = np.array([[1., 2.], [-2., 1.]])
-    L = whiten.cholesky(A)
-    expected_A = np.array([[2., -2.], [-2., 2.]])
+    input_matrix = np.array([[1., 2.], [-2., 1.]])
+    decomposition = whiten.cholesky(input_matrix)
+    expected_output = np.array([[2., -2.], [-2., 2.]])
     # Check that the properties of the Cholesky decomposition are satisfied.
-    self.assertAllClose(np.matmul(L, L.T), expected_A)
+    self.assertAllClose(np.matmul(decomposition, decomposition.T),
+                        expected_output)
 
 
 if __name__ == '__main__':

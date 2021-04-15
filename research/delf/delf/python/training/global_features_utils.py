@@ -16,7 +16,6 @@
 
 import os
 
-from absl import flags
 from absl import logging
 
 import numpy as np
@@ -24,8 +23,6 @@ from tensorboard import program
 import tensorflow as tf
 
 from delf.python.datasets.revisited_op import dataset
-
-FLAGS = flags.FLAGS
 
 
 class AverageMeter():
@@ -56,8 +53,8 @@ class AverageMeter():
 
 
 def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
-                              desired_pr_ranks=[1, 5, 10], log=True):
-  """Computes and loggs ground-truth metrics for Revisited datasets.
+                              desired_pr_ranks=None, log=True):
+  """Computes and logs ground-truth metrics for Revisited datasets.
 
   Args:
     dataset_name: String, name of the dataset.
@@ -70,10 +67,10 @@ def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
     desired_pr_ranks: List of integers containing the desired precision/recall
       ranks to be reported. E.g., if precision@1/recall@1 and
       precision@10/recall@10 are desired, this should be set to [1, 10]. The
-      largest item should be <= #sorted_index_ids.
+      largest item should be <= #sorted_index_ids. Default: [1, 5, 10].
 
   Returns:
-    mAP: [metricsE, metricsM, metricsH] List of the metrics for different
+    mAP: (metricsE, metricsM, metricsH) Tuple of the metrics for different
       levels of complexity. Each metrics is a list containing:
       mean_average_precision (float), mean_precisions (NumPy array of
       floats, with shape [len(desired_pr_ranks)]), mean_recalls (NumPy array
@@ -88,6 +85,9 @@ def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
   _DATASETS = ['roxford5k', 'rparis6k']
   if dataset not in _DATASETS:
     raise ValueError('Unknown dataset: {}!'.format(dataset))
+
+  if desired_pr_ranks is None:
+    desired_pr_ranks = [1, 5, 10]
 
   (easy_ground_truth, medium_ground_truth,
    hard_ground_truth) = dataset.ParseEasyMediumHardGroundTruth(ground_truth)
@@ -164,8 +164,7 @@ def debug_and_log(msg, debug=True, log=True, debug_on_the_same_line=False):
 
 
 def launch_tensorboard(log_dir):
-  """Runs tensorboard with the given `log_dir` and waits for user input to kill
-  the app.
+  """Runs tensorboard with the given `log_dir`.
   
   Args:
     log_dir: String, directory to start tensorboard in.
@@ -182,9 +181,9 @@ def get_standard_keras_models():
   Returns:
     model_names: List, names of the standard keras models.
   """
-  model_names = sorted(name for name in tf.keras.applications.__dict__ 
-    if not name.startswith("__") 
-    and callable(tf.keras.applications.__dict__[name]))
+  model_names = sorted(name for name in tf.keras.applications.__dict__
+                       if not name.startswith("__")
+                       and callable(tf.keras.applications.__dict__[name]))
   return model_names
 
 
@@ -225,7 +224,7 @@ def create_model_directory(training_dataset, arch, pool, whitening,
   if not pretrained:
     folder += '_notpretrained'
   folder += '_{}_m{:.2f}_{}_lr{:.1e}_wd{:.1e}_nnum{}_qsize{}_psize{' \
-               '}_bsize{}_uevery{}_imsize{}'.format(
+            '}_bsize{}_uevery{}_imsize{}'.format(
     loss, loss_margin, optimizer, lr, weight_decay, neg_num,
     query_size, pool_size, batch_size, update_every, image_size)
 

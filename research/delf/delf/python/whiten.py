@@ -19,32 +19,34 @@ import os
 import numpy as np
 
 
-def whitenapply(X, mean_descriptor_vector, projection, dimensions=None):
+def apply_whitening(descriptors, mean_descriptor_vector, projection,
+                    output_dim=None):
   """Applies the whitening to the descriptors as a post-processing step.
 
   Args:
-    X: List of L2-normalized descriptors to be post-processed.
+    descriptors: [N, D] NumPy array of L2-normalized descriptors to be
+      post-processed.
     mean_descriptor_vector: Mean descriptor vector.
     projection: Whitening projection matrix.
-    dimensions: Integer, parameter for the dimensionality reduction.
+    output_dim: Integer, parameter for the dimensionality reduction. If
+      `output_dim` is None, the dimensionality reduction is not performed.
 
   Returns:
-    X_whitened: List of L2-normalized descriptors `X` after whitening
-      application.
+    descriptors_whitened: [N, output_dim] NumPy array of L2-normalized
+      descriptors `descriptors` after whitening application.
   """
   eps = 1e-6
-  # If `dimensions` is not specified, we do not perform dimensionality
-  # reduction.
-  if not dimensions:
-    dimensions = projection.shape[0]
+  if output_dim is None:
+    output_dim = projection.shape[0]
 
-  X = np.dot(projection[:dimensions, :], X - mean_descriptor_vector)
-  X_whitened = X / (np.linalg.norm(X, ord=2, axis=0, keepdims=True) + eps)
+  descriptors = np.dot(projection[:output_dim, :],
+                       descriptors - mean_descriptor_vector)
+  descriptors_whitened = descriptors / (
+            np.linalg.norm(descriptors, ord=2, axis=0, keepdims=True) + eps)
+  return descriptors_whitened
 
-  return X_whitened
 
-
-def whitenlearn(X, qidxs, pidxs):
+def learn_whitening(descriptors, qidxs, pidxs):
   """Learning the post-processing of fine-tuned descriptor vectors.
 
   This method of whitening learning leverages the provided labeled data and
@@ -58,25 +60,25 @@ def whitenlearn(X, qidxs, pidxs):
   of https://arxiv.org/pdf/1711.02512.pdf.
 
   Args:
-    X: List of L2-normalized descriptors.
+    descriptors: [N, D] NumPy array of L2-normalized descriptors.
     qidxs: List of query indexes.
     pidxs: List of positive pairs indexes.
 
   Returns:
-    mean_descriptor_vector: Mean descriptor vector.
-    projection: Whitening projection matrix.
+    mean_descriptor_vector: [N, 1] NumPy array, mean descriptor vector.
+    projection: [N, N] NumPy array, whitening projection matrix.
   """
   # Calculating the mean descriptor vector, which is used to perform centering.
-  mean_descriptor_vector = X[:, qidxs].mean(axis=1, keepdims=True)
+  mean_descriptor_vector = descriptors[:, qidxs].mean(axis=1, keepdims=True)
   # Interclass (matching pairs) difference.
-  interclass_difference = X[:, qidxs] - X[:, pidxs]
+  interclass_difference = descriptors[:, qidxs] - descriptors[:, pidxs]
   covariance_matrix = np.dot(interclass_difference, interclass_difference.T) / \
                       interclass_difference.shape[1]
 
   # Whitening part.
   projection = np.linalg.inv(cholesky(covariance_matrix))
 
-  projected_X = np.dot(projection, X - mean_descriptor_vector)
+  projected_X = np.dot(projection, descriptors - mean_descriptor_vector)
   non_matching_covariance_matrix = np.dot(projected_X, projected_X.T)
   eigval, eigvec = np.linalg.eig(non_matching_covariance_matrix)
   order = eigval.argsort()[::-1]
@@ -95,11 +97,11 @@ def cholesky(matrix):
   becomes positive definite.
 
   Args:
-    matrix: Square matrix.
+    matrix: [K, K] Square matrix to be decomposed.
 
   Returns:
-    L: Upper-triangular Cholesky factor of `matrix`, a matrix with real and
-      positive diagonal entries.
+    decomposition: [K, K] Upper-triangular Cholesky factor of `matrix`,
+      a matrix with real and positive diagonal entries.
   """
   alpha = 0
   while True:
@@ -107,9 +109,9 @@ def cholesky(matrix):
       # If the input parameter matrix is not positive-definite,
       # the decomposition fails and we iteratively add a small value `alpha` on
       # the matrix diagonal.
-      L = np.linalg.cholesky(matrix + alpha * np.eye(*matrix.shape))
-      return L
-    except:
+      decomposition = np.linalg.cholesky(matrix + alpha * np.eye(*matrix.shape))
+      return decomposition
+    except np.linalg.LinAlgError:
       if alpha == 0:
         alpha = 1e-10
       else:
