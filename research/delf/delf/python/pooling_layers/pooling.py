@@ -177,7 +177,7 @@ def gem(x, axis=None, power=3., eps=1e-6):
     axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
     power: Float, power > 0 is an inverse exponent parameter (GeM power).
     eps: Float, parameter for numerical stability.
-    
+
   Returns:
     output: [B, D] A float32 Tensor.
   """
