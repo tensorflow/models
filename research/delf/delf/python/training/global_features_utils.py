@@ -223,10 +223,10 @@ def create_model_directory(training_dataset, arch, pool, whitening,
     folder += '_whiten'
   if not pretrained:
     folder += '_notpretrained'
-  folder += '_{}_m{:.2f}_{}_lr{:.1e}_wd{:.1e}_nnum{}_qsize{}_psize{' \
-            '}_bsize{}_uevery{}_imsize{}'.format(
-    loss, loss_margin, optimizer, lr, weight_decay, neg_num,
-    query_size, pool_size, batch_size, update_every, image_size)
+  folder += ('_{}_m{:.2f}_{}_lr{:.1e}_wd{:.1e}_nnum{}_qsize{}_psize{}_bsize{}'
+             '_uevery{}_imsize{}').format(
+            loss, loss_margin, optimizer, lr, weight_decay, neg_num,
+            query_size, pool_size, batch_size, update_every, image_size)
 
   folder = os.path.join(directory, folder)
   debug_and_log(

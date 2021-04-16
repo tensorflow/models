@@ -72,8 +72,8 @@ def learn_whitening(descriptors, qidxs, pidxs):
   mean_descriptor_vector = descriptors[:, qidxs].mean(axis=1, keepdims=True)
   # Interclass (matching pairs) difference.
   interclass_difference = descriptors[:, qidxs] - descriptors[:, pidxs]
-  covariance_matrix = np.dot(interclass_difference, interclass_difference.T) / \
-                      interclass_difference.shape[1]
+  covariance_matrix = (np.dot(interclass_difference, interclass_difference.T) /
+                      interclass_difference.shape[1])
 
   # Whitening part.
   projection = np.linalg.inv(cholesky(covariance_matrix))
