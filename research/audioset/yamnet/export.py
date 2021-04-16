@@ -25,6 +25,7 @@ the class map. Skips an export if the corresponding directory already exists.
 
 import distutils.version
 import os
+import pathlib
 import sys
 import tempfile
 import time
@@ -40,6 +41,7 @@ from tensorflowjs.converters import tf_saved_model_conversion_v2 as tfjs_saved_m
 import params as yamnet_params
 import yamnet as yamnet_lib
 
+HERE = pathlib.Path(__file__).parent
 
 def log(msg):
   print('\n=====\n{} | {}\n=====\n'.format(time.asctime(), msg), flush=True)
@@ -239,10 +241,7 @@ def make_tfjs_export(tflite_saved_model_dir, export_dir):
   log('Done')
 
 
-def main(args):
-  weights_path = args[0]
-  output_dir = args[1]
-
+def main(weights_path, output_dir):
   tf2_export_dir = os.path.join(output_dir, 'tf2')
   make_tf2_export(weights_path, tf2_export_dir)
 
@@ -252,5 +251,18 @@ def main(args):
   tfjs_export_dir = os.path.join(output_dir, 'tfjs')
   make_tfjs_export(tflite_saved_model_dir, tfjs_export_dir)
 
+
 if __name__ == '__main__':
-  main(sys.argv[1:])
+  args = sys.argv[1:]
+  if len(args) == 1:
+    output_dir = args[0]
+    weights_path = tf.keras.utils.get_file(
+        fname='yamnet.h5',
+        origin='https://storage.googleapis.com/audioset/yamnet.h5',
+        cache_dir=HERE, cache_subdir='.')
+  elif len(args) == 2:
+    output_dir, weight_paths = args
+  else:
+    raise ValueError("Export expects 1 or 2 arguments [output_dir] "
+                     "or [weight_path, output_dir]")
+  main(weights_path, output_dir)

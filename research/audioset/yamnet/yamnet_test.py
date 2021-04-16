@@ -46,6 +46,11 @@ class YAMNetTest(tf.test.TestCase):
   def setUpClass(cls):
     super().setUpClass()
     cls._yamnet = export.YAMNet(cls._params)
+    weights_file = tf.keras.utils.get_file(
+        fname='yamnet.h5',
+        origin='https://storage.googleapis.com/audioset/yamnet.h5',
+        cache_dir=HERE, cache_subdir='.')
+
     cls._yamnet.load_weights('yamnet.h5')
     cls._yamnet_classes = yamnet.class_names('yamnet_class_map.csv')
 
