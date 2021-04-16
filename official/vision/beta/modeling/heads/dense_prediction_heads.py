@@ -14,7 +14,10 @@
 
 """Contains definitions of dense prediction heads."""
 
+from typing import List, Mapping, Optional, Tuple, Union
+
 # Import libraries
+
 import numpy as np
 import tensorflow as tf
 
@@ -25,22 +28,23 @@ from official.modeling import tf_utils
 class RetinaNetHead(tf.keras.layers.Layer):
   """Creates a RetinaNet head."""
 
-  def __init__(self,
-               min_level,
-               max_level,
-               num_classes,
-               num_anchors_per_location,
-               num_convs=4,
-               num_filters=256,
-               attribute_heads=None,
-               use_separable_conv=False,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      min_level: int,
+      max_level: int,
+      num_classes: int,
+      num_anchors_per_location: int,
+      num_convs: int = 4,
+      num_filters: int = 256,
+      attribute_heads: Mapping[str, Tuple[str, int]] = None,
+      use_separable_conv: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a RetinaNet head.
 
     Args:
@@ -93,7 +97,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape):
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
     conv_op = (tf.keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
@@ -239,7 +243,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
 
     super(RetinaNetHead, self).build(input_shape)
 
-  def call(self, features):
+  def call(self, features: Mapping[str, tf.Tensor]):
     """Forward pass of the RetinaNet head.
 
     Args:
@@ -325,20 +329,21 @@ class RetinaNetHead(tf.keras.layers.Layer):
 class RPNHead(tf.keras.layers.Layer):
   """Creates a Region Proposal Network (RPN) head."""
 
-  def __init__(self,
-               min_level,
-               max_level,
-               num_anchors_per_location,
-               num_convs=1,
-               num_filters=256,
-               use_separable_conv=False,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      min_level: int,
+      max_level: int,
+      num_anchors_per_location: int,
+      num_convs: int = 1,
+      num_filters: int = 256,
+      use_separable_conv: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a Region Proposal Network head.
 
     Args:
@@ -457,7 +462,7 @@ class RPNHead(tf.keras.layers.Layer):
 
     super(RPNHead, self).build(input_shape)
 
-  def call(self, features):
+  def call(self, features: Mapping[str, tf.Tensor]):
     """Forward pass of the RPN head.
 
     Args:

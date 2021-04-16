@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of generators to generate the final detections."""
-
+from typing import Optional, Mapping
 # Import libraries
 import tensorflow as tf
 
@@ -21,13 +21,14 @@ from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import nms
 
 
-def _generate_detections_v1(boxes,
-                            scores,
-                            attributes=None,
-                            pre_nms_top_k=5000,
-                            pre_nms_score_threshold=0.05,
-                            nms_iou_threshold=0.5,
-                            max_num_detections=100):
+def _generate_detections_v1(boxes: tf.Tensor,
+                            scores: tf.Tensor,
+                            attributes: Optional[Mapping[str,
+                                                         tf.Tensor]] = None,
+                            pre_nms_top_k: int = 5000,
+                            pre_nms_score_threshold: float = 0.05,
+                            nms_iou_threshold: float = 0.5,
+                            max_num_detections: int = 100):
   """Generates the final detections given the model outputs.
 
   The implementation unrolls the batch dimension and process images one by one.
@@ -117,13 +118,14 @@ def _generate_detections_v1(boxes,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections, nmsed_attributes
 
 
-def _generate_detections_per_image(boxes,
-                                   scores,
-                                   attributes=None,
-                                   pre_nms_top_k=5000,
-                                   pre_nms_score_threshold=0.05,
-                                   nms_iou_threshold=0.5,
-                                   max_num_detections=100):
+def _generate_detections_per_image(
+    boxes: tf.Tensor,
+    scores: tf.Tensor,
+    attributes: Optional[Mapping[str, tf.Tensor]] = None,
+    pre_nms_top_k: int = 5000,
+    pre_nms_score_threshold: float = 0.05,
+    nms_iou_threshold: float = 0.5,
+    max_num_detections: int = 100):
   """Generates the final detections per image given the model outputs.
 
   Args:
@@ -225,7 +227,7 @@ def _generate_detections_per_image(boxes,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections, nmsed_attributes
 
 
-def _select_top_k_scores(scores_in, pre_nms_num_detections):
+def _select_top_k_scores(scores_in: tf.Tensor, pre_nms_num_detections: int):
   """Selects top_k scores and indices for each class.
 
   Args:
@@ -255,12 +257,12 @@ def _select_top_k_scores(scores_in, pre_nms_num_detections):
                       [0, 2, 1]), tf.transpose(top_k_indices, [0, 2, 1])
 
 
-def _generate_detections_v2(boxes,
-                            scores,
-                            pre_nms_top_k=5000,
-                            pre_nms_score_threshold=0.05,
-                            nms_iou_threshold=0.5,
-                            max_num_detections=100):
+def _generate_detections_v2(boxes: tf.Tensor,
+                            scores: tf.Tensor,
+                            pre_nms_top_k: int = 5000,
+                            pre_nms_score_threshold: float = 0.05,
+                            nms_iou_threshold: float = 0.5,
+                            max_num_detections: int = 100):
   """Generates the final detections given the model outputs.
 
   This implementation unrolls classes dimension while using the tf.while_loop
@@ -337,11 +339,10 @@ def _generate_detections_v2(boxes,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-def _generate_detections_batched(boxes,
-                                 scores,
-                                 pre_nms_score_threshold,
-                                 nms_iou_threshold,
-                                 max_num_detections):
+def _generate_detections_batched(boxes: tf.Tensor, scores: tf.Tensor,
+                                 pre_nms_score_threshold: float,
+                                 nms_iou_threshold: float,
+                                 max_num_detections: int):
   """Generates detected boxes with scores and classes for one-stage detector.
 
   The function takes output of multi-level ConvNets and anchor boxes and
@@ -393,12 +394,12 @@ class DetectionGenerator(tf.keras.layers.Layer):
   """Generates the final detected boxes with scores and classes."""
 
   def __init__(self,
-               apply_nms=True,
-               pre_nms_top_k=5000,
-               pre_nms_score_threshold=0.05,
-               nms_iou_threshold=0.5,
-               max_num_detections=100,
-               use_batched_nms=False,
+               apply_nms: bool = True,
+               pre_nms_top_k: int = 5000,
+               pre_nms_score_threshold: float = 0.05,
+               nms_iou_threshold: float = 0.5,
+               max_num_detections: int = 100,
+               use_batched_nms: bool = False,
                **kwargs):
     """Initializes a detection generator.
 
@@ -427,11 +428,8 @@ class DetectionGenerator(tf.keras.layers.Layer):
     }
     super(DetectionGenerator, self).__init__(**kwargs)
 
-  def __call__(self,
-               raw_boxes,
-               raw_scores,
-               anchor_boxes,
-               image_shape):
+  def __call__(self, raw_boxes: tf.Tensor, raw_scores: tf.Tensor,
+               anchor_boxes: tf.Tensor, image_shape: tf.Tensor):
     """Generates final detections.
 
     Args:
@@ -546,12 +544,12 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
   def __init__(self,
-               apply_nms=True,
-               pre_nms_top_k=5000,
-               pre_nms_score_threshold=0.05,
-               nms_iou_threshold=0.5,
-               max_num_detections=100,
-               use_batched_nms=False,
+               apply_nms: bool = True,
+               pre_nms_top_k: int = 5000,
+               pre_nms_score_threshold: float = 0.05,
+               nms_iou_threshold: float = 0.5,
+               max_num_detections: int = 100,
+               use_batched_nms: bool = False,
                **kwargs):
     """Initializes a multi-level detection generator.
 
@@ -581,11 +579,11 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     super(MultilevelDetectionGenerator, self).__init__(**kwargs)
 
   def __call__(self,
-               raw_boxes,
-               raw_scores,
-               anchor_boxes,
-               image_shape,
-               raw_attributes=None):
+               raw_boxes: Mapping[str, tf.Tensor],
+               raw_scores: Mapping[str, tf.Tensor],
+               anchor_boxes: tf.Tensor,
+               image_shape: tf.Tensor,
+               raw_attributes: Mapping[str, tf.Tensor] = None):
     """Generates final detections.
 
     Args:
@@ -600,11 +598,10 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       image_shape: A `tf.Tensor` of shape of [batch_size, 2] storing the image
         height and width w.r.t. the scaled image, i.e. the same image space as
         `box_outputs` and `anchor_boxes`.
-      raw_attributes: If not None, a `dict` of
-        (attribute_name, attribute_prediction) pairs. `attribute_prediction`
-        is a dict that contains keys representing FPN levels and values
-        representing tenors of shape `[batch, feature_h, feature_w,
-        num_anchors * attribute_size]`.
+      raw_attributes: If not None, a `dict` of (attribute_name,
+        attribute_prediction) pairs. `attribute_prediction` is a dict that
+        contains keys representing FPN levels and values representing tenors of
+        shape `[batch, feature_h, feature_w, num_anchors * attribute_size]`.
 
     Returns:
       If `apply_nms` = True, the return is a dictionary with keys:
