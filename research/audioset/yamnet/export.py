@@ -49,7 +49,7 @@ class YAMNet(tf.Module):
   "''A TF2 Module wrapper around YAMNet."""
   def __init__(self, params):
     super().__init__()
-    self._yamnet = yamnet_lib.YAMNetFrames(params)
+    self._yamnet = yamnet_lib.YAMNetWaves(params)
     self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
 
     # Single waveform

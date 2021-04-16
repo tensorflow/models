@@ -128,7 +128,7 @@ class YAMNetBase(tf.keras.Model):
     return outputs
 
 
-class YAMNetFrames(tf.keras.Model):
+class YAMNetWaves(tf.keras.Model):
   """Defines the YAMNet waveform-to-class-scores model.
 
   Args:
