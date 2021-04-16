@@ -107,18 +107,18 @@ class YAMNetBase(tf.keras.Model):
     self.predictions_from_logits = layers.Activation(
         activation=params.classifier_activation)
 
-  def call(self, features):
+  def call(self, features, training=False):
     # Shape: [batch, width, height] > [batch, width, height, 1]
     net = tf.expand_dims(features, axis=-1)
 
     for layer in self.stack:
-      net = layer(net)
+      net = layer(net, training=training)
 
-    embeddings = self.pool(net)
+    embeddings = self.pool(net, training=training)
 
-    logits = self.logits_from_embedding(embeddings)
+    logits = self.logits_from_embedding(embeddings, training=training)
 
-    predictions = self.predictions_from_logits(logits)
+    predictions = self.predictions_from_logits(logits, training=training)
 
     outputs = {
       'embeddings': embeddings,
@@ -144,7 +144,7 @@ class YAMNetWaves(tf.keras.Model):
   def layers(self):
     return self._yamnet_base.layers
 
-  def call(self, waveforms):
+  def call(self, waveforms, training=False):
     """Runs the waveform-to-class-scores model.
 
     Args:

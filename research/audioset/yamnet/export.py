@@ -52,12 +52,20 @@ class YAMNet(tf.Module):
     self._yamnet = yamnet_lib.YAMNetWaves(params)
     self._class_map_asset = tf.saved_model.Asset('yamnet_class_map.csv')
 
-    # Single waveform
+    # Define export signatures
     self.single = self.__call__.get_concrete_function(
-      tf.TensorSpec(shape=[None], dtype=tf.float32))
+        tf.TensorSpec(shape=[None], dtype=tf.float32),
+        training=False)
+    self.__call__.get_concrete_function(
+        tf.TensorSpec(shape=[None], dtype=tf.float32),
+        training=True)
 
     self.batched = self.__call__.get_concrete_function(
-      tf.TensorSpec(shape=[None, None], dtype=tf.float32))
+        tf.TensorSpec(shape=[None, None], dtype=tf.float32),
+        training=False)
+    self.__call__.get_concrete_function(
+        tf.TensorSpec(shape=[None, None], dtype=tf.float32),
+        training=True)
 
   @tf.function(input_signature=[])
   def class_map_path(self):
@@ -67,9 +75,11 @@ class YAMNet(tf.Module):
     self._yamnet.load_weights(weights_path)
 
   @tf.function
-  def __call__(self, waveform, as_dict=False,
-               returns=('predictions', 'embeddings', 'log_mel_spectrogram')):
-    outputs = self._yamnet(waveform)
+  def __call__(self, waveform,
+               as_dict=False,
+               returns=('predictions', 'embeddings', 'log_mel_spectrogram'),
+               training=False):
+    outputs = self._yamnet(waveform, training)
 
     if as_dict:
       outputs = {name:outputs[name] for name in returns}
