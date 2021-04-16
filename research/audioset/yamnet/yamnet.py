@@ -163,14 +163,20 @@ class YAMNetWaves(tf.keras.Model):
       log_mel_spectrogram: (batch?, num_spectrogram_frames, num_mel_bins)
         spectrogram feature matrix
     """
-    waveform_padded = features_lib.pad_waveform(waveforms, self._params)
-    log_mel_spectrogram, features = features_lib.waveform_to_log_mel_spectrogram_patches(
-        waveform_padded, self._params)
+    waveforms_padded = features_lib.pad_waveform(waveforms, self._params)
+
+    log_mel_spectrogram = features_lib.waveform_to_log_mel_spectrogram(waveforms_padded,
+                                                                       self._params)
+
+    patches = features_lib.waveform_to_patches(waveforms_padded, self._params)
+
+    features = features_lib.waveform_to_log_mel_spectrogram(
+        patches, self._params)
 
     # Reshape (a, b, width, height) > (a*b, width, height)
     features, batch_shape = flatten_outer_dims(features, item_dims=2)
 
-    outputs = self._yamnet_base.call(features, )
+    outputs = self._yamnet_base.call(features)
 
     outputs = {name: fold_batch(out, batch_shape)
                for name, out in outputs.items()}

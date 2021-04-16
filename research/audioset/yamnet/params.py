@@ -34,6 +34,20 @@ class Params:
   patch_hop_seconds: float = 0.48
 
   @property
+  def patch_hop_samples(self):
+    return int(self.patch_hop_seconds * self.sample_rate)
+
+  @property
+  def min_waveform_seconds(self):
+    return (
+      self.patch_window_seconds +
+      self.stft_window_seconds - self.stft_hop_seconds)
+
+  @property
+  def min_num_samples(self):
+    return int(self.min_waveform_seconds * self.sample_rate)
+
+  @property
   def patch_frames(self):
     return int(round(self.patch_window_seconds / self.stft_hop_seconds))
 

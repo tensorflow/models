@@ -36,8 +36,11 @@ class YAMNetTest(tf.test.TestCase):
   _params = params.Params()
   _yamnet = None
   _yamnet_classes = None
-  _atol = 1e-6
-  _rtol = 1e-6
+  _atol = 2e-5
+  _rtol = 5e-6
+  _check_outputs = ('log_mel_spectrogram',
+                    'embeddings',
+                    'predictions', 'logits')
 
   @classmethod
   def setUpClass(cls):
@@ -50,8 +53,7 @@ class YAMNetTest(tf.test.TestCase):
     """Run the model on the waveform, check that expected class is in top-n."""
     outputs = self._yamnet(
         waveform, as_dict=True,
-        returns=('predictions', 'embeddings',
-                 'log_mel_spectrogram', 'logits'))
+        returns=self._check_outputs)
     clip_predictions = np.mean(outputs['predictions'], axis=0)
     top_n_indices = np.argsort(clip_predictions)[-top_n:]
     top_n_scores = clip_predictions[top_n_indices]
@@ -75,9 +77,10 @@ class YAMNetTest(tf.test.TestCase):
       np.savez(file=file_path, **outputs)
     else:
       reference = np.load(file_path)
-      for key in outputs.keys():
-        out_value = outputs[key]
+      for key in self._check_outputs:
+        out_value = outputs[key].numpy()
         ref_value = reference[key]
+        self.assertEqual(out_value.shape, ref_value.shape, msg=f"`{key}.shape` didn't match")
         self.assertAllClose(out_value, ref_value,
                             atol=self._atol, rtol=self._rtol,
                             msg=f"`{key}` didn't match")
@@ -114,8 +117,7 @@ class YAMNetTest(tf.test.TestCase):
     batch_one = sine_wave[None, ...]
     batch_one_outputs = self._yamnet(
         waveform=batch_one, as_dict=True,
-        returns=('predictions', 'embeddings',
-                 'log_mel_spectrogram', 'logits'))
+        returns=self._check_outputs)
 
     for name, value in batch_one_outputs.items():
       self.assertAllClose(value[0], sine_outputs[name],
@@ -131,8 +133,7 @@ class YAMNetTest(tf.test.TestCase):
     batch_one = np.stack([sine_wave, sine_wave, sine_wave])
     batch_one_outputs = self._yamnet(
         waveform=batch_one, as_dict=True,
-        returns=('predictions', 'embeddings',
-                 'log_mel_spectrogram', 'logits'))
+        returns=self._check_outputs)
 
     for name, value in batch_one_outputs.items():
       self.assertAllClose(value[0], sine_outputs[name],
@@ -157,8 +158,7 @@ class YAMNetTest(tf.test.TestCase):
     stacked = np.stack([sine_wave, random_wave], axis=0)
     stacked_output = self._yamnet(
         waveform=stacked, as_dict=True,
-        returns=('predictions', 'embeddings',
-                 'log_mel_spectrogram', 'logits'))
+        returns=self._check_outputs)
 
     for name, value in stacked_output.items():
       self.assertAllClose(value[0], sine_outputs[name],
