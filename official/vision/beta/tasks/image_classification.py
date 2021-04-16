@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Image classification task definition."""
+from typing import Any, Optional, List, Tuple
 from absl import logging
 import tensorflow as tf
 
@@ -51,7 +51,7 @@ class ImageClassificationTask(base_task.Task):
     return model
 
   def initialize(self, model: tf.keras.Model):
-    """Loading pretrained checkpoint."""
+    """Loads pretrained checkpoint."""
     if not self.task_config.init_checkpoint:
       return
 
@@ -75,7 +75,9 @@ class ImageClassificationTask(base_task.Task):
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
-  def build_inputs(self, params, input_context=None):
+  def build_inputs(self,
+                   params: exp_cfg.DataConfig,
+                   input_context: Optional[tf.distribute.InputContext] = None):
     """Builds classification input."""
 
     num_classes = self.task_config.model.num_classes
@@ -112,13 +114,16 @@ class ImageClassificationTask(base_task.Task):
 
     return dataset
 
-  def build_losses(self, labels, model_outputs, aux_losses=None):
-    """Sparse categorical cross entropy loss.
+  def build_losses(self,
+                   labels: tf.Tensor,
+                   model_outputs: tf.Tensor,
+                   aux_losses: Optional[Any] = None):
+    """Builds sparse categorical cross entropy loss.
 
     Args:
-      labels: labels.
+      labels: Input groundtruth labels.
       model_outputs: Output logits of the classifier.
-      aux_losses: auxiliarly loss tensors, i.e. `losses` in keras.Model.
+      aux_losses: The auxiliarly loss tensors, i.e. `losses` in tf.keras.Model.
 
     Returns:
       The total loss tensor.
@@ -140,7 +145,7 @@ class ImageClassificationTask(base_task.Task):
 
     return total_loss
 
-  def build_metrics(self, training=True):
+  def build_metrics(self, training: bool = True):
     """Gets streaming metrics for training/validation."""
     k = self.task_config.evaluation.top_k
     if self.task_config.losses.one_hot:
@@ -155,14 +160,18 @@ class ImageClassificationTask(base_task.Task):
               k=k, name='top_{}_accuracy'.format(k))]
     return metrics
 
-  def train_step(self, inputs, model, optimizer, metrics=None):
+  def train_step(self,
+                 inputs: Tuple[Any, Any],
+                 model: tf.keras.Model,
+                 optimizer: tf.keras.optimizers.Optimizer,
+                 metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
     Args:
-      inputs: a dictionary of input tensors.
-      model: the model, forward pass definition.
-      optimizer: the optimizer for this training step.
-      metrics: a nested structure of metrics objects.
+      inputs: A tuple of of input tensors of (features, labels).
+      model: A tf.keras.Model instance.
+      optimizer: The optimizer for this training step.
+      metrics: A nested structure of metrics objects.
 
     Returns:
       A dictionary of logs.
@@ -209,13 +218,16 @@ class ImageClassificationTask(base_task.Task):
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
-  def validation_step(self, inputs, model, metrics=None):
-    """Validatation step.
+  def validation_step(self,
+                      inputs: Tuple[Any, Any],
+                      model: tf.keras.Model,
+                      metrics: Optional[List[Any]] = None):
+    """Runs validatation step.
 
     Args:
-      inputs: a dictionary of input tensors.
-      model: the keras.Model.
-      metrics: a nested structure of metrics objects.
+      inputs: A tuple of of input tensors of (features, labels).
+      model: A tf.keras.Model instance.
+      metrics: A nested structure of metrics objects.
 
     Returns:
       A dictionary of logs.
@@ -237,6 +249,6 @@ class ImageClassificationTask(base_task.Task):
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
-  def inference_step(self, inputs, model):
+  def inference_step(self, inputs: tf.Tensor, model: tf.keras.Model):
     """Performs the forward step."""
     return model(inputs, training=False)
