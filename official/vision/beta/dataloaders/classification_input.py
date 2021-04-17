@@ -17,6 +17,7 @@ from typing import Dict, List, Optional
 # Import libraries
 import tensorflow as tf
 
+from official.vision.beta.configs import common
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import augment
@@ -52,8 +53,7 @@ class Parser(parser.Parser):
                image_field_key: str = 'image/encoded',
                label_field_key: str = 'image/class/label',
                aug_rand_hflip: bool = True,
-               aug_policy: Optional[str] = None,
-               randaug_magnitude: Optional[int] = 10,
+               aug_type: Optional[common.Augmentation] = None,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
@@ -65,8 +65,8 @@ class Parser(parser.Parser):
       label_field_key: A `str` of the key name to label in TFExample.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
-      aug_policy: `str`, augmentation policies. None, 'autoaug', or 'randaug'.
-      randaug_magnitude: `int`, magnitude of the randaugment policy.
+      aug_type: An optional Augmentation object to choose from AutoAugment and
+        RandAugment.
       dtype: `str`, cast output image in dtype. It can be 'float32', 'float16',
         or 'bfloat16'.
     """
@@ -84,15 +84,21 @@ class Parser(parser.Parser):
       self._dtype = tf.bfloat16
     else:
       raise ValueError('dtype {!r} is not supported!'.format(dtype))
-    if aug_policy:
-      if aug_policy == 'autoaug':
-        self._augmenter = augment.AutoAugment()
-      elif aug_policy == 'randaug':
+    if aug_type:
+      if aug_type.type == 'autoaug':
+        self._augmenter = augment.AutoAugment(
+            augmentation_name=aug_type.autoaug.augmentation_name,
+            cutout_const=aug_type.autoaug.cutout_const,
+            translate_const=aug_type.autoaug.translate_const)
+      elif aug_type.type == 'randaug':
         self._augmenter = augment.RandAugment(
-            num_layers=2, magnitude=randaug_magnitude)
+            num_layers=aug_type.randaug.num_layers,
+            magnitude=aug_type.randaug.magnitude,
+            cutout_const=aug_type.randaug.cutout_const,
+            translate_const=aug_type.randaug.translate_const)
       else:
-        raise ValueError(
-            'Augmentation policy {} not supported.'.format(aug_policy))
+        raise ValueError('Augmentation policy {} not supported.'.format(
+            aug_type.type))
     else:
       self._augmenter = None
 

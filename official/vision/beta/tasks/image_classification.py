@@ -100,8 +100,8 @@ class ImageClassificationTask(base_task.Task):
         num_classes=num_classes,
         image_field_key=image_field_key,
         label_field_key=label_field_key,
-        aug_policy=params.aug_policy,
-        randaug_magnitude=params.randaug_magnitude,
+        aug_rand_hflip=params.aug_rand_hflip,
+        aug_type=params.aug_type,
         dtype=params.dtype)
 
     reader = input_reader_factory.input_reader_generator(
