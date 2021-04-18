@@ -13,10 +13,9 @@
 # limitations under the License.
 
 # Lint as: python3
-
-from absl.testing import parameterized
-import numpy as np
 import tensorflow as tf
+import numpy as np
+from absl.testing import parameterized
 
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
@@ -49,10 +48,11 @@ class CSPConnectTest(tf.test.TestCase, parameterized.TestCase):
     init = tf.random_normal_initializer()
     x = tf.Variable(
         initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
-    y = tf.Variable(initial_value=init(shape=(1, int(np.ceil(width // 2)),
-                                              int(np.ceil(height // 2)),
-                                              filters),
-                                       dtype=tf.float32))
+    y = tf.Variable(
+        initial_value=init(
+            shape=(1, int(np.ceil(width // 2)), int(np.ceil(height // 2)),
+                   filters),
+            dtype=tf.float32))
 
     with tf.GradientTape() as tape:
       x_hat, x_prev = test_layer(x)
@@ -71,7 +71,7 @@ class CSPRouteTest(tf.test.TestCase, parameterized.TestCase):
   def test_pass_through(self, width, height, filters, mod):
     x = tf.keras.Input(shape=(width, height, filters))
     test_layer = nn_blocks.CSPRoute(filters=filters, filter_scale=mod)
-    outx, _ = test_layer(x)
+    outx, px = test_layer(x)
     print(outx)
     print(outx.shape.as_list())
     self.assertAllEqual(
@@ -90,10 +90,11 @@ class CSPRouteTest(tf.test.TestCase, parameterized.TestCase):
     init = tf.random_normal_initializer()
     x = tf.Variable(
         initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
-    y = tf.Variable(initial_value=init(shape=(1, int(np.ceil(width // 2)),
-                                              int(np.ceil(height // 2)),
-                                              filters),
-                                       dtype=tf.float32))
+    y = tf.Variable(
+        initial_value=init(
+            shape=(1, int(np.ceil(width // 2)), int(np.ceil(height // 2)),
+                   filters),
+            dtype=tf.float32))
 
     with tf.GradientTape() as tape:
       x_hat, x_prev = test_layer(x)
@@ -107,8 +108,8 @@ class CSPRouteTest(tf.test.TestCase, parameterized.TestCase):
 
 class CSPStackTest(tf.test.TestCase, parameterized.TestCase):
 
-  def build_layer(
-      self, layer_type, filters, filter_scale, count, stack_type, downsample):
+  def build_layer(self, layer_type, filters, filter_scale, count, stack_type,
+                  downsample):
     if stack_type is not None:
       layers = []
       if layer_type == "residual":
@@ -220,8 +221,8 @@ class ConvBNTest(tf.test.TestCase, parameterized.TestCase):
       test_layer = nn_blocks.ConvBN(filters, kernel_size=(3, 3), padding="same")
 
     init = tf.random_normal_initializer()
-    x = tf.Variable(initial_value=init(shape=(1, 224, 224,
-                                              3), dtype=tf.float32))
+    x = tf.Variable(
+        initial_value=init(shape=(1, 224, 224, 3), dtype=tf.float32))
     y = tf.Variable(
         initial_value=init(shape=(1, 224, 224, filters), dtype=tf.float32))
 
@@ -268,10 +269,11 @@ class DarkResidualTest(tf.test.TestCase, parameterized.TestCase):
     init = tf.random_normal_initializer()
     x = tf.Variable(
         initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
-    y = tf.Variable(initial_value=init(shape=(1, int(np.ceil(width / mod)),
-                                              int(np.ceil(height / mod)),
-                                              filters),
-                                       dtype=tf.float32))
+    y = tf.Variable(
+        initial_value=init(
+            shape=(1, int(np.ceil(width / mod)), int(np.ceil(height / mod)),
+                   filters),
+            dtype=tf.float32))
 
     with tf.GradientTape() as tape:
       x_hat = test_layer(x)
@@ -280,6 +282,103 @@ class DarkResidualTest(tf.test.TestCase, parameterized.TestCase):
     optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
 
     self.assertNotIn(None, grad)
+
+
+class DarkSppTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(("RouteProcessSpp", 224, 224, 3, [5, 9, 13]),
+                                  ("test1", 300, 300, 10, [2, 3, 4, 5]),
+                                  ("test2", 256, 256, 5, [10]))
+  def test_pass_through(self, width, height, channels, sizes):
+    x = tf.keras.Input(shape=(width, height, channels))
+    test_layer = nn_blocks.SPP(sizes=sizes)
+    outx = test_layer(x)
+    self.assertAllEqual(outx.shape.as_list(),
+                        [None, width, height, channels * (len(sizes) + 1)])
+    return
+
+  @parameterized.named_parameters(("RouteProcessSpp", 224, 224, 3, [5, 9, 13]),
+                                  ("test1", 300, 300, 10, [2, 3, 4, 5]),
+                                  ("test2", 256, 256, 5, [10]))
+  def test_gradient_pass_though(self, width, height, channels, sizes):
+    loss = tf.keras.losses.MeanSquaredError()
+    optimizer = tf.keras.optimizers.SGD()
+    test_layer = nn_blocks.SPP(sizes=sizes)
+
+    init = tf.random_normal_initializer()
+    x = tf.Variable(
+        initial_value=init(
+            shape=(1, width, height, channels), dtype=tf.float32))
+    y = tf.Variable(
+        initial_value=init(
+            shape=(1, width, height, channels * (len(sizes) + 1)),
+            dtype=tf.float32))
+
+    with tf.GradientTape() as tape:
+      x_hat = test_layer(x)
+      grad_loss = loss(x_hat, y)
+    grad = tape.gradient(grad_loss, test_layer.trainable_variables)
+    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+
+    self.assertNotIn(None, grad)
+    return
+
+
+class DarkRouteProcessTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ("test1", 224, 224, 64, 7, False), ("test2", 223, 223, 32, 3, False),
+      ("tiny", 223, 223, 16, 1, False), ("spp", 224, 224, 64, 7, False))
+  def test_pass_through(self, width, height, filters, repetitions, spp):
+    x = tf.keras.Input(shape=(width, height, filters))
+    test_layer = nn_blocks.DarkRouteProcess(
+        filters=filters, repetitions=repetitions, insert_spp=spp)
+    outx = test_layer(x)
+    self.assertEqual(len(outx), 2, msg="len(outx) != 2")
+    if repetitions == 1:
+      filter_y1 = filters
+    else:
+      filter_y1 = filters // 2
+    self.assertAllEqual(outx[1].shape.as_list(), [None, width, height, filter_y1])
+    self.assertAllEqual(
+        filters % 2,
+        0,
+        msg="Output of a DarkRouteProcess layer has an odd number of filters")
+    self.assertAllEqual(outx[0].shape.as_list(), [None, width, height, filters])
+
+  @parameterized.named_parameters(
+      ("test1", 224, 224, 64, 7, False), ("test2", 223, 223, 32, 3, False),
+      ("tiny", 223, 223, 16, 1, False), ("spp", 224, 224, 64, 7, False))
+  def test_gradient_pass_though(self, width, height, filters, repetitions, spp):
+    loss = tf.keras.losses.MeanSquaredError()
+    optimizer = tf.keras.optimizers.SGD()
+    test_layer = nn_blocks.DarkRouteProcess(
+        filters=filters, repetitions=repetitions, insert_spp=spp)
+
+    if repetitions == 1:
+      filter_y1 = filters
+    else:
+      filter_y1 = filters // 2
+
+    init = tf.random_normal_initializer()
+    x = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+    y_0 = tf.Variable(
+        initial_value=init(shape=(1, width, height, filters), dtype=tf.float32))
+    y_1 = tf.Variable(
+        initial_value=init(shape=(1, width, height, filter_y1), dtype=tf.float32))
+
+    with tf.GradientTape() as tape:
+      x_hat_0, x_hat_1 = test_layer(x)
+      grad_loss_0 = loss(x_hat_0, y_0)
+      grad_loss_1 = loss(x_hat_1, y_1)
+    grad = tape.gradient([grad_loss_0, grad_loss_1],
+                         test_layer.trainable_variables)
+    optimizer.apply_gradients(zip(grad, test_layer.trainable_variables))
+
+    self.assertNotIn(None, grad)
+    return
+
 
 if __name__ == "__main__":
   tf.test.main()
