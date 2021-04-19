@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Contains definitions of ROI sampler."""
-
 # Import libraries
 import tensorflow as tf
 
@@ -26,12 +25,12 @@ class ROISampler(tf.keras.layers.Layer):
   """Samples ROIs and assigns targets to the sampled ROIs."""
 
   def __init__(self,
-               mix_gt_boxes=True,
-               num_sampled_rois=512,
-               foreground_fraction=0.25,
-               foreground_iou_threshold=0.5,
-               background_iou_high_threshold=0.5,
-               background_iou_low_threshold=0,
+               mix_gt_boxes: bool = True,
+               num_sampled_rois: int = 512,
+               foreground_fraction: float = 0.25,
+               foreground_iou_threshold: float = 0.5,
+               background_iou_high_threshold: float = 0.5,
+               background_iou_low_threshold: float = 0,
                **kwargs):
     """Initializes a ROI sampler.
 
@@ -73,7 +72,7 @@ class ROISampler(tf.keras.layers.Layer):
         num_sampled_rois, foreground_fraction)
     super(ROISampler, self).__init__(**kwargs)
 
-  def call(self, boxes, gt_boxes, gt_classes):
+  def call(self, boxes: tf.Tensor, gt_boxes: tf.Tensor, gt_classes: tf.Tensor):
     """Assigns the proposals with groundtruth classes and performs subsmpling.
 
     Given `proposed_boxes`, `gt_boxes`, and `gt_classes`, the function uses the
