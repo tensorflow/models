@@ -100,6 +100,7 @@ class GeM(tf.keras.layers.Layer):
 
 
 class GeMPooling2D(tf.keras.layers.Layer):
+  """Generalized mean pooling (GeM) pooling operation for spatial data."""
 
   def __init__(self,
                power=20.,
@@ -107,7 +108,7 @@ class GeMPooling2D(tf.keras.layers.Layer):
                strides=None,
                padding='valid',
                data_format='channels_last'):
-    """Generalized mean pooling (GeM) pooling operation for spatial data.
+    """Initialization of GeMPooling2D.
 
     Args:
       power: Float, power > 0. is an inverse exponent parameter (GeM power).

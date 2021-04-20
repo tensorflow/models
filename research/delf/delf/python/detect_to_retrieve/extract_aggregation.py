@@ -25,9 +25,9 @@ from __future__ import print_function
 import argparse
 import sys
 
-from tensorflow.python.platform import app
+from absl import app
+from delf.python.datasets.revisited_op import dataset
 from delf.python.detect_to_retrieve import aggregation_extraction
-from delf.python.detect_to_retrieve import dataset
 
 cmd_args = None
 

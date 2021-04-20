@@ -24,7 +24,7 @@ from absl import flags
 import numpy as np
 import tensorflow as tf
 
-from delf.python.detect_to_retrieve import dataset
+from delf.python.datasets.revisited_op import dataset
 
 FLAGS = flags.FLAGS
 
