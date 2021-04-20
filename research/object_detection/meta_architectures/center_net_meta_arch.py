@@ -3484,6 +3484,7 @@ class CenterNetMetaArch(model.DetectionModel):
         fields.DetectionResultFields.num_detections: num_detections,
     }
 
+    boxes_strided = None
     if self._od_params:
       boxes_strided = (
           prediction_tensors_to_boxes(y_indices, x_indices,
@@ -3506,8 +3507,8 @@ class CenterNetMetaArch(model.DetectionModel):
       if len(self._kp_params_dict) == 1 and self._num_classes == 1:
         (keypoints, keypoint_scores,
          keypoint_depths) = self._postprocess_keypoints_single_class(
-             prediction_dict, channel_indices, y_indices, x_indices, None,
-             num_detections)
+             prediction_dict, channel_indices, y_indices, x_indices,
+             boxes_strided, num_detections)
         keypoints, keypoint_scores = (
             convert_strided_predictions_to_normalized_keypoints(
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
