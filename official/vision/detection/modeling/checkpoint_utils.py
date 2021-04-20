@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Util functions for loading checkpoints.
 
 Especially for loading Tensorflow 1.x
@@ -51,12 +51,15 @@ def _build_assignment_map(keras_model,
   """
   assignment_map = {}
 
-  checkpoint_names = None
+  checkpoint_names = []
   if var_to_shape_map:
     checkpoint_names = list(
         filter(
             lambda x: not x.endswith('Momentum') and not x.endswith(
                 'global_step'), var_to_shape_map.keys()))
+
+  logging.info('Number of variables in the checkpoint %d',
+               len(checkpoint_names))
 
   for var in keras_model.variables:
     var_name = var.name
@@ -87,7 +90,7 @@ def _build_assignment_map(keras_model,
       logging.info('Error removing the match_name: %s', match_names)
       logging.info('Exception: %s', e)
       raise
-  logging.info('Found variable in checkpoint: %d', len(assignment_map))
+  logging.info('Found matching variable in checkpoint: %d', len(assignment_map))
   return assignment_map
 
 

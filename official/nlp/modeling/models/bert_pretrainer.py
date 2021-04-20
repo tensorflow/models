@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """BERT Pre-training model."""
 # pylint: disable=g-classes-have-attributes
 import collections
@@ -50,8 +50,8 @@ class BertPretrainer(tf.keras.Model):
       None, no activation will be used.
     initializer: The initializer (if any) to use in the masked LM and
       classification networks. Defaults to a Glorot uniform initializer.
-    output: The output style for this network. Can be either 'logits' or
-      'predictions'.
+    output: The output style for this network. Can be either `logits` or
+      `predictions`.
   """
 
   def __init__(self,

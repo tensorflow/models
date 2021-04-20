@@ -66,10 +66,22 @@ message ConvolutionalBoxPredictor {
 }
 
 // Configuration proto for weight shared convolutional box predictor.
-// Next id: 19
+// Next id: 21
 message WeightSharedConvolutionalBoxPredictor {
   // Hyperparameters for convolution ops used in the box predictor.
   optional Hyperparams conv_hyperparams = 1;
+
+  // Whether the `conv_hyperparams` should apply to depthwise separable
+  // convolution layers in the box and class heads, in addition to the layers in
+  // the predictor tower. By default, the `conv_hyperparams` are only applied to
+  // layers in the predictor tower when use_depthwise is true.
+  optional bool apply_conv_hyperparams_to_heads = 19 [default = false];
+
+  // Whether the `conv_hyperparams` should apply to the `pointwise_initializer`
+  // and `pointwise_regularizer` when using depthwise separable convolutions in
+  // the prediction tower layers. By default, the `conv_hyperparams` only apply
+  // to the `depthwise_initializer` and `depthwise_regularizer`.
+  optional bool apply_conv_hyperparams_pointwise = 20 [default = false];
 
   // Number of the additional conv layers before the predictor.
   optional int32 num_layers_before_predictor = 4 [default = 0];

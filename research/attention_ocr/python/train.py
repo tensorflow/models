@@ -23,7 +23,7 @@ import logging
 import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow import app
-from tensorflow.python.platform import flags
+from tensorflow.compat.v1 import flags
 from tensorflow.contrib.tfprof import model_analyzer
 
 import data_provider

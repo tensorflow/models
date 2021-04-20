@@ -49,6 +49,7 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
             'validation_steps': 5,
             'validation_interval': 10,
             'continuous_eval_timeout': 1,
+            'validation_summary_subdir': 'validation',
             'optimizer_config': {
                 'optimizer': {
                     'type': 'sgd',
@@ -90,6 +91,11 @@ class TrainTest(tf.test.TestCase, parameterized.TestCase):
           model_dir=model_dir,
           run_post_eval=run_post_eval)
 
+    if 'eval' in flag_mode:
+      self.assertTrue(
+          tf.io.gfile.exists(
+              os.path.join(model_dir,
+                           params.trainer.validation_summary_subdir)))
     if run_post_eval:
       self.assertNotEmpty(logs)
     else:

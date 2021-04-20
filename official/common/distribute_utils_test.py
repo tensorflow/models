@@ -41,6 +41,19 @@ class GetDistributionStrategyTest(tf.test.TestCase):
     for device in ds.extended.worker_devices:
       self.assertIn('GPU', device)
 
+  def test_no_strategy(self):
+    ds = distribute_utils.get_distribution_strategy('off')
+    self.assertIsNone(ds)
+
+  def test_invalid_strategy(self):
+    with self.assertRaisesRegexp(
+        ValueError,
+        'distribution_strategy must be a string but got: False. If'):
+      distribute_utils.get_distribution_strategy(False)
+    with self.assertRaisesRegexp(
+        ValueError, 'distribution_strategy must be a string but got: 1'):
+      distribute_utils.get_distribution_strategy(1)
+
 
 if __name__ == '__main__':
   tf.test.main()

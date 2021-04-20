@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based TransformerEncoder block layer."""
 
 import tensorflow as tf
@@ -159,7 +159,7 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         kernel_initializer=self._kernel_initializer,
         name="intermediate",
         **common_kwargs)
-    policy = tf.keras.mixed_precision.experimental.global_policy()
+    policy = tf.keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.

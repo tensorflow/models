@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Input pipeline for the transformer model to read, filter, and batch examples.
 
-1. Batching scheme
+Batching scheme
 
    Prior to batching, elements in the dataset are grouped by length (max between
    'inputs' and 'targets' length). Each group is then batched such that:
@@ -60,8 +60,8 @@ def _create_min_max_boundaries(max_length,
 
   For example, when max_length=24, min_boundary=4 and boundary_scale=2, the
   returned values will be:
-    buckets_min = [0, 4, 8, 16, 24]
-    buckets_max = [4, 8, 16, 24, 25]
+    buckets_min = [0, 4, 8, 16]
+    buckets_max = [4, 8, 16, 25]
 
   Args:
     max_length: The maximum length of example in dataset.

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Library for running BERT family models on SQuAD 1.1/2.0 in TF 2.x."""
 
 import collections
@@ -225,8 +225,7 @@ def train_squad(strategy,
                  ' strategy.')
   # Enables XLA in Session Config. Should not be set for TPU.
   keras_utils.set_session_config(FLAGS.enable_xla)
-  performance.set_mixed_precision_policy(common_flags.dtype(),
-                                         use_experimental_api=False)
+  performance.set_mixed_precision_policy(common_flags.dtype())
 
   epochs = FLAGS.num_train_epochs
   num_train_examples = input_meta_data['train_data_size']
@@ -254,8 +253,7 @@ def train_squad(strategy,
     squad_model.optimizer = performance.configure_optimizer(
         optimizer,
         use_float16=common_flags.use_float16(),
-        use_graph_rewrite=common_flags.use_graph_rewrite(),
-        use_experimental_api=False)
+        use_graph_rewrite=common_flags.use_graph_rewrite())
     return squad_model, core_model
 
   # Only when explicit_allreduce = True, post_allreduce_callbacks and

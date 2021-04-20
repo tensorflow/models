@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Classification decoder and parser."""
-from typing import List, Optional
+from typing import Dict, List, Optional
 # Import libraries
 import tensorflow as tf
 
+from official.vision.beta.configs import common
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import augment
@@ -29,14 +30,16 @@ STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 class Decoder(decoder.Decoder):
   """A tf.Example decoder for classification task."""
 
-  def __init__(self):
+  def __init__(self,
+               image_field_key: str = 'image/encoded',
+               label_field_key: str = 'image/class/label'):
     self._keys_to_features = {
-        'image/encoded': tf.io.FixedLenFeature((), tf.string, default_value=''),
-        'image/class/label': (
-            tf.io.FixedLenFeature((), tf.int64, default_value=-1))
+        image_field_key: tf.io.FixedLenFeature((), tf.string, default_value=''),
+        label_field_key: (tf.io.FixedLenFeature((), tf.int64, default_value=-1))
     }
 
-  def decode(self, serialized_example):
+  def decode(self,
+             serialized_example: tf.train.Example) -> Dict[str, tf.Tensor]:
     return tf.io.parse_single_example(
         serialized_example, self._keys_to_features)
 
@@ -47,9 +50,10 @@ class Parser(parser.Parser):
   def __init__(self,
                output_size: List[int],
                num_classes: float,
+               image_field_key: str = 'image/encoded',
+               label_field_key: str = 'image/class/label',
                aug_rand_hflip: bool = True,
-               aug_policy: Optional[str] = None,
-               randaug_magnitude: Optional[int] = 10,
+               aug_type: Optional[common.Augmentation] = None,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
@@ -57,16 +61,21 @@ class Parser(parser.Parser):
       output_size: `Tensor` or `list` for [height, width] of output image. The
         output_size should be divided by the largest feature stride 2^max_level.
       num_classes: `float`, number of classes.
+      image_field_key: A `str` of the key name to encoded image in TFExample.
+      label_field_key: A `str` of the key name to label in TFExample.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
-      aug_policy: `str`, augmentation policies. None, 'autoaug', or 'randaug'.
-      randaug_magnitude: `int`, magnitude of the randaugment policy.
+      aug_type: An optional Augmentation object to choose from AutoAugment and
+        RandAugment.
       dtype: `str`, cast output image in dtype. It can be 'float32', 'float16',
         or 'bfloat16'.
     """
     self._output_size = output_size
     self._aug_rand_hflip = aug_rand_hflip
     self._num_classes = num_classes
+    self._image_field_key = image_field_key
+    self._label_field_key = label_field_key
+
     if dtype == 'float32':
       self._dtype = tf.float32
     elif dtype == 'float16':
@@ -75,23 +84,28 @@ class Parser(parser.Parser):
       self._dtype = tf.bfloat16
     else:
       raise ValueError('dtype {!r} is not supported!'.format(dtype))
-    if aug_policy:
-      if aug_policy == 'autoaug':
-        self._augmenter = augment.AutoAugment()
-      elif aug_policy == 'randaug':
+    if aug_type:
+      if aug_type.type == 'autoaug':
+        self._augmenter = augment.AutoAugment(
+            augmentation_name=aug_type.autoaug.augmentation_name,
+            cutout_const=aug_type.autoaug.cutout_const,
+            translate_const=aug_type.autoaug.translate_const)
+      elif aug_type.type == 'randaug':
         self._augmenter = augment.RandAugment(
-            num_layers=2, magnitude=randaug_magnitude)
+            num_layers=aug_type.randaug.num_layers,
+            magnitude=aug_type.randaug.magnitude,
+            cutout_const=aug_type.randaug.cutout_const,
+            translate_const=aug_type.randaug.translate_const)
       else:
-        raise ValueError(
-            'Augmentation policy {} not supported.'.format(aug_policy))
+        raise ValueError('Augmentation policy {} not supported.'.format(
+            aug_type.type))
     else:
       self._augmenter = None
 
   def _parse_train_data(self, decoded_tensors):
     """Parses data for training."""
-    label = tf.cast(decoded_tensors['image/class/label'], dtype=tf.int32)
-
-    image_bytes = decoded_tensors['image/encoded']
+    label = tf.cast(decoded_tensors[self._label_field_key], dtype=tf.int32)
+    image_bytes = decoded_tensors[self._image_field_key]
     image_shape = tf.image.extract_jpeg_shape(image_bytes)
 
     # Crops image.
@@ -126,8 +140,8 @@ class Parser(parser.Parser):
 
   def _parse_eval_data(self, decoded_tensors):
     """Parses data for evaluation."""
-    label = tf.cast(decoded_tensors['image/class/label'], dtype=tf.int32)
-    image_bytes = decoded_tensors['image/encoded']
+    label = tf.cast(decoded_tensors[self._label_field_key], dtype=tf.int32)
+    image_bytes = decoded_tensors[self._image_field_key]
     image_shape = tf.image.extract_jpeg_shape(image_bytes)
 
     # Center crops and resizes image.

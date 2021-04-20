@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Post-processing model outputs to generate detection."""
 
 from __future__ import absolute_import
@@ -291,15 +291,16 @@ def _generate_detections_batched(boxes, scores, max_total_size,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-class MultilevelDetectionGenerator(object):
+class MultilevelDetectionGenerator(tf.keras.layers.Layer):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
   def __init__(self, min_level, max_level, params):
     self._min_level = min_level
     self._max_level = max_level
     self._generate_detections = generate_detections_factory(params)
+    super(MultilevelDetectionGenerator, self).__init__(autocast=False)
 
-  def __call__(self, box_outputs, class_outputs, anchor_boxes, image_shape):
+  def call(self, box_outputs, class_outputs, anchor_boxes, image_shape):
     # Collects outputs from all levels into a list.
     boxes = []
     scores = []
@@ -337,13 +338,14 @@ class MultilevelDetectionGenerator(object):
     return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-class GenericDetectionGenerator(object):
+class GenericDetectionGenerator(tf.keras.layers.Layer):
   """Generates the final detected boxes with scores and classes."""
 
   def __init__(self, params):
+    super(GenericDetectionGenerator, self).__init__(autocast=False)
     self._generate_detections = generate_detections_factory(params)
 
-  def __call__(self, box_outputs, class_outputs, anchor_boxes, image_shape):
+  def call(self, box_outputs, class_outputs, anchor_boxes, image_shape):
     """Generate final detections.
 
     Args:

@@ -23,6 +23,7 @@ from six.moves import range
 from six.moves import zip
 import tensorflow.compat.v2 as tf
 
+from tensorflow.python.keras import backend as keras_backend
 from object_detection.meta_architectures import ssd_meta_arch
 from object_detection.models import bidirectional_feature_pyramid_generators as bifpn_generators
 from object_detection.utils import ops
@@ -103,9 +104,10 @@ class SSDEfficientNetBiFPNKerasFeatureExtractor(
       use_depthwise: unsupported by EfficientNetBiFPN, since BiFPN uses regular
         convolutions when inputs to a node have a differing number of channels,
         and use separable convolutions after combine operations.
-      override_base_feature_extractor_hyperparams: unsupported. Whether to
-        override hyperparameters of the base feature extractor with the one from
-        `conv_hyperparams`.
+      override_base_feature_extractor_hyperparams: Whether to override the
+        efficientnet backbone's default weight decay with the weight decay
+        defined by `conv_hyperparams`. Note, only overriding of weight decay is
+        currently supported.
       name: a string name scope to assign to the model. If 'None', Keras will
         auto-generate one from the class name.
     """
@@ -129,9 +131,6 @@ class SSDEfficientNetBiFPNKerasFeatureExtractor(
       raise ValueError('EfficientNetBiFPN does not support explicit padding.')
     if use_depthwise:
       raise ValueError('EfficientNetBiFPN does not support use_depthwise.')
-    if override_base_feature_extractor_hyperparams:
-      raise ValueError('EfficientNetBiFPN does not support '
-                       'override_base_feature_extractor_hyperparams.')
 
     self._bifpn_min_level = bifpn_min_level
     self._bifpn_max_level = bifpn_max_level
@@ -158,9 +157,15 @@ class SSDEfficientNetBiFPNKerasFeatureExtractor(
     # Initialize the EfficientNet backbone.
     # Note, this is currently done in the init method rather than in the build
     # method, since doing so introduces an error which is not well understood.
+    efficientnet_overrides = {'rescale_input': False}
+    if override_base_feature_extractor_hyperparams:
+      efficientnet_overrides[
+          'weight_decay'] = conv_hyperparams.get_regularizer_weight()
+    if (conv_hyperparams.use_sync_batch_norm() and
+        keras_backend.is_tpu_strategy(tf.distribute.get_strategy())):
+      efficientnet_overrides['batch_norm'] = 'tpu'
     efficientnet_base = efficientnet_model.EfficientNet.from_name(
-        model_name=self._efficientnet_version,
-        overrides={'rescale_input': False})
+        model_name=self._efficientnet_version, overrides=efficientnet_overrides)
     outputs = [efficientnet_base.get_layer(output_layer_name).output
                for output_layer_name in self._output_layer_names]
     self._efficientnet = tf.keras.Model(

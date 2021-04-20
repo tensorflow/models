@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """TFDS Classification decoder."""
 
 import tensorflow as tf
-
 from official.vision.beta.dataloaders import decoder
 
 
@@ -27,10 +26,9 @@ class Decoder(decoder.Decoder):
 
   def decode(self, serialized_example):
     sample_dict = {
-        'image/encoded': tf.io.encode_jpeg(
-            serialized_example['image'], quality=100),
-        'image/class/label': serialized_example['label'],
+        'image/encoded':
+            tf.io.encode_jpeg(serialized_example['image'], quality=100),
+        'image/class/label':
+            serialized_example['label'],
     }
     return sample_dict
-
-

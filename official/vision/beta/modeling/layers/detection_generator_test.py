@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for detection_generator.py."""
 # Import libraries
 
@@ -116,10 +116,11 @@ class MultilevelDetectionGeneratorTest(
     parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      (True),
-      (False),
+      (True, False),
+      (False, False),
+      (False, True),
   )
-  def testDetectionsOutputShape(self, use_batched_nms):
+  def testDetectionsOutputShape(self, use_batched_nms, has_att_heads):
     min_level = 4
     max_level = 6
     num_scales = 2
@@ -169,11 +170,34 @@ class MultilevelDetectionGeneratorTest(
         '6': tf.reshape(tf.convert_to_tensor(
             box_outputs_all[80:84], dtype=tf.float32), [1, 2, 2, 4]),
     }
+    if has_att_heads:
+      att_outputs_all = np.random.rand(84, 1)  # random attributes.
+      att_outputs = {
+          'depth': {
+              '4':
+                  tf.reshape(
+                      tf.convert_to_tensor(
+                          att_outputs_all[0:64], dtype=tf.float32),
+                      [1, 8, 8, 1]),
+              '5':
+                  tf.reshape(
+                      tf.convert_to_tensor(
+                          att_outputs_all[64:80], dtype=tf.float32),
+                      [1, 4, 4, 1]),
+              '6':
+                  tf.reshape(
+                      tf.convert_to_tensor(
+                          att_outputs_all[80:84], dtype=tf.float32),
+                      [1, 2, 2, 1]),
+          }
+      }
+    else:
+      att_outputs = None
     image_info = tf.constant([[[1000, 1000], [100, 100], [0.1, 0.1], [0, 0]]],
                              dtype=tf.float32)
     generator = detection_generator.MultilevelDetectionGenerator(**kwargs)
     results = generator(box_outputs, class_outputs, anchor_boxes,
-                        image_info[:, 1, :])
+                        image_info[:, 1, :], att_outputs)
     boxes = results['detection_boxes']
     classes = results['detection_classes']
     scores = results['detection_scores']
@@ -183,6 +207,9 @@ class MultilevelDetectionGeneratorTest(
     self.assertEqual(scores.numpy().shape, (batch_size, max_num_detections,))
     self.assertEqual(classes.numpy().shape, (batch_size, max_num_detections,))
     self.assertEqual(valid_detections.numpy().shape, (batch_size,))
+    if has_att_heads:
+      for att in results['detection_attributes'].values():
+        self.assertEqual(att.numpy().shape, (batch_size, max_num_detections, 1))
 
   def test_serialize_deserialize(self):
     kwargs = {

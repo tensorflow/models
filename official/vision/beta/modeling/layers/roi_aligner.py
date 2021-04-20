@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""ROI align."""
 
+"""Contains definitions of ROI aligner."""
+
+from typing import Mapping
 import tensorflow as tf
 
 from official.vision.beta.ops import spatial_transform_ops
@@ -23,16 +24,13 @@ from official.vision.beta.ops import spatial_transform_ops
 class MultilevelROIAligner(tf.keras.layers.Layer):
   """Performs ROIAlign for the second stage processing."""
 
-  def __init__(self,
-               crop_size=7,
-               sample_offset=0.5,
-               **kwargs):
+  def __init__(self, crop_size: int = 7, sample_offset: float = 0.5, **kwargs):
     """Initializes a ROI aligner.
 
     Args:
-      crop_size: int, the output size of the cropped features.
-      sample_offset: float in [0, 1], the subpixel sample offset.
-      **kwargs: other key word arguments passed to Layer.
+      crop_size: An `int` of the output size of the cropped features.
+      sample_offset: A `float` in [0, 1] of the subpixel sample offset.
+      **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
         'crop_size': crop_size,
@@ -40,20 +38,23 @@ class MultilevelROIAligner(tf.keras.layers.Layer):
     }
     super(MultilevelROIAligner, self).__init__(**kwargs)
 
-  def call(self, features, boxes, training=None):
+  def call(self,
+           features: Mapping[str, tf.Tensor],
+           boxes: tf.Tensor,
+           training: bool = None):
     """Generates ROIs.
 
     Args:
       features: A dictionary with key as pyramid level and value as features.
         The features are in shape of
         [batch_size, height_l, width_l, num_filters].
-      boxes: A 3-D Tensor of shape [batch_size, num_boxes, 4]. Each row
+      boxes: A 3-D `tf.Tensor` of shape [batch_size, num_boxes, 4]. Each row
         represents a box with [y1, x1, y2, x2] in un-normalized coordinates.
         from grid point.
-      training: bool, whether it is in training mode.
+      training: A `bool` of whether it is in training mode.
 
     Returns:
-      roi_features: A 5-D tensor representing feature crop of shape
+      A 5-D `tf.Tensor` representing feature crop of shape
       [batch_size, num_boxes, crop_size, crop_size, num_filters].
     """
     roi_features = spatial_transform_ops.multilevel_crop_and_resize(

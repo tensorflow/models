@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,18 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Implementation of SpineNet model.
 
-X. Du, T-Y. Lin, P. Jin, G. Ghiasi, M. Tan, Y. Cui, Q. V. Le, X. Song
-SpineNet: Learning Scale-Permuted Backbone for Recognition and Localization
-https://arxiv.org/abs/1912.05027
-"""
+"""Contains definitions of SpineNet Networks."""
+
 import math
+from typing import Any, List, Optional, Tuple
 
 # Import libraries
+
 from absl import logging
 import tensorflow as tf
+
 from official.modeling import tf_utils
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.modeling.layers import nn_blocks
@@ -100,14 +98,16 @@ SCALING_MAP = {
 class BlockSpec(object):
   """A container class that specifies the block configuration for SpineNet."""
 
-  def __init__(self, level, block_fn, input_offsets, is_output):
+  def __init__(self, level: int, block_fn: str, input_offsets: Tuple[int, int],
+               is_output: bool):
     self.level = level
     self.block_fn = block_fn
     self.input_offsets = input_offsets
     self.is_output = is_output
 
 
-def build_block_specs(block_specs=None):
+def build_block_specs(
+    block_specs: Optional[List[Tuple[Any, ...]]] = None) -> List[BlockSpec]:
   """Builds the list of BlockSpec objects for SpineNet."""
   if not block_specs:
     block_specs = SPINENET_BLOCK_SPECS
@@ -117,27 +117,63 @@ def build_block_specs(block_specs=None):
 
 @tf.keras.utils.register_keras_serializable(package='Vision')
 class SpineNet(tf.keras.Model):
-  """Class to build SpineNet models."""
+  """Creates a SpineNet family model.
 
-  def __init__(self,
-               input_specs=tf.keras.layers.InputSpec(shape=[None, 640, 640, 3]),
-               min_level=3,
-               max_level=7,
-               block_specs=build_block_specs(),
-               endpoints_num_filters=256,
-               resample_alpha=0.5,
-               block_repeats=1,
-               filter_size_scale=1.0,
-               init_stochastic_depth_rate=0.0,
-               kernel_initializer='VarianceScaling',
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               **kwargs):
-    """SpineNet model."""
+  This implements:
+    Xianzhi Du, Tsung-Yi Lin, Pengchong Jin, Golnaz Ghiasi, Mingxing Tan,
+    Yin Cui, Quoc V. Le, Xiaodan Song.
+    SpineNet: Learning Scale-Permuted Backbone for Recognition and Localization.
+    (https://arxiv.org/abs/1912.05027)
+  """
+
+  def __init__(
+      self,
+      input_specs: tf.keras.layers.InputSpec = tf.keras.layers.InputSpec(
+          shape=[None, 640, 640, 3]),
+      min_level: int = 3,
+      max_level: int = 7,
+      block_specs: List[BlockSpec] = build_block_specs(),
+      endpoints_num_filters: int = 256,
+      resample_alpha: float = 0.5,
+      block_repeats: int = 1,
+      filter_size_scale: float = 1.0,
+      init_stochastic_depth_rate: float = 0.0,
+      kernel_initializer: str = 'VarianceScaling',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      **kwargs):
+    """Initializes a SpineNet model.
+
+    Args:
+      input_specs: A `tf.keras.layers.InputSpec` of the input tensor.
+      min_level: An `int` of min level for output mutiscale features.
+      max_level: An `int` of max level for output mutiscale features.
+      block_specs: A list of block specifications for the SpineNet model
+        discovered by NAS.
+      endpoints_num_filters: An `int` of feature dimension for the output
+        endpoints.
+      resample_alpha: A `float` of resampling factor in cross-scale connections.
+      block_repeats: An `int` of number of blocks contained in the layer.
+      filter_size_scale: A `float` of multiplier for the filters (number of
+        channels) for all convolution ops. The value must be greater than zero.
+        Typical usage will be to set this value in (0, 1) to reduce the number
+        of parameters or computation cost of the model.
+      init_stochastic_depth_rate: A `float` of initial stochastic depth rate.
+      kernel_initializer: A str for kernel initializer of convolutional layers.
+      kernel_regularizer: A `tf.keras.regularizers.Regularizer` object for
+        Conv2D. Default to None.
+      bias_regularizer: A `tf.keras.regularizers.Regularizer` object for Conv2D.
+        Default to None.
+      activation: A `str` name of the activation function.
+      use_sync_bn: If True, use synchronized batch normalization.
+      norm_momentum: A `float` of normalization momentum for the moving average.
+      norm_epsilon: A small `float` added to variance to avoid dividing by zero.
+      **kwargs: Additional keyword arguments to be passed.
+    """
     self._input_specs = input_specs
     self._min_level = min_level
     self._max_level = max_level
@@ -185,13 +221,13 @@ class SpineNet(tf.keras.Model):
     super(SpineNet, self).__init__(inputs=inputs, outputs=endpoints)
 
   def _block_group(self,
-                   inputs,
-                   filters,
-                   strides,
-                   block_fn_cand,
-                   block_repeats=1,
-                   stochastic_depth_drop_rate=None,
-                   name='block_group'):
+                   inputs: tf.Tensor,
+                   filters: int,
+                   strides: int,
+                   block_fn_cand: str,
+                   block_repeats: int = 1,
+                   stochastic_depth_drop_rate: Optional[float] = None,
+                   name: str = 'block_group'):
     """Creates one group of blocks for the SpineNet model."""
     block_fn_candidates = {
         'bottleneck': nn_blocks.BottleneckBlock,
@@ -235,7 +271,7 @@ class SpineNet(tf.keras.Model):
     return tf.identity(x, name=name)
 
   def _build_stem(self, inputs):
-    """Build SpineNet stem."""
+    """Builds SpineNet stem."""
     x = layers.Conv2D(
         filters=64,
         kernel_size=7,
@@ -271,7 +307,7 @@ class SpineNet(tf.keras.Model):
                                     net,
                                     input_width,
                                     weighted_fusion=False):
-    """Build scale-permuted network."""
+    """Builds scale-permuted network."""
     net_sizes = [int(math.ceil(input_width / 2**2))] * len(net)
     net_block_fns = [self._init_block_fn] * len(net)
     num_outgoing_connections = [0] * len(net)
@@ -363,7 +399,7 @@ class SpineNet(tf.keras.Model):
     return endpoints
 
   def _build_endpoints(self, net):
-    """Match filter size for endpoints before sharing conv layers."""
+    """Matches filter size for endpoints before sharing conv layers."""
     endpoints = {}
     for level in range(self._min_level, self._max_level + 1):
       x = layers.Conv2D(
@@ -392,7 +428,7 @@ class SpineNet(tf.keras.Model):
                            target_num_filters,
                            target_block_fn,
                            alpha=0.5):
-    """Match resolution and feature dimension."""
+    """Matches resolution and feature dimension."""
     _, _, _, input_num_filters = inputs.get_shape().as_list()
     if input_block_fn == 'bottleneck':
       input_num_filters /= 4
@@ -493,7 +529,7 @@ def build_spinenet(
     input_specs: tf.keras.layers.InputSpec,
     model_config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
-  """Builds ResNet 3d backbone from a config."""
+  """Builds SpineNet backbone from a config."""
   backbone_type = model_config.backbone.type
   backbone_cfg = model_config.backbone.get()
   norm_activation_config = model_config.norm_activation

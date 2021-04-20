@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Contains definitions for the post-activation form of Residual Networks.
 
 Residual networks (ResNets) were proposed in:
@@ -23,9 +23,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from absl import logging
 import tensorflow as tf
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 
 
@@ -112,9 +110,8 @@ class Resnet(object):
       The values are corresponding feature hierarchy in ResNet with shape
       [batch_size, height_l, width_l, num_filters].
     """
-    with keras_utils.maybe_enter_backend_graph():
-      with tf.name_scope('resnet%s' % self._resnet_depth):
-        return self._resnet_fn(inputs, is_training)
+    with tf.name_scope('resnet%s' % self._resnet_depth):
+      return self._resnet_fn(inputs, is_training)
 
   def fixed_padding(self, inputs, kernel_size):
     """Pads the input along the spatial dimensions independently of input size.

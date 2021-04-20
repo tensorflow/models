@@ -39,6 +39,7 @@ class OptimizerConfig(oneof.OneOfConfig):
     adamw: adam with weight decay.
     lamb: lamb optimizer.
     rmsprop: rmsprop optimizer.
+    lars: lars optimizer.
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = opt_cfg.SGDConfig()
@@ -46,6 +47,7 @@ class OptimizerConfig(oneof.OneOfConfig):
   adamw: opt_cfg.AdamWeightDecayConfig = opt_cfg.AdamWeightDecayConfig()
   lamb: opt_cfg.LAMBConfig = opt_cfg.LAMBConfig()
   rmsprop: opt_cfg.RMSPropConfig = opt_cfg.RMSPropConfig()
+  lars: opt_cfg.LARSConfig = opt_cfg.LARSConfig()
 
 
 @dataclasses.dataclass
@@ -62,6 +64,7 @@ class LrConfig(oneof.OneOfConfig):
     power: step^power learning rate config.
     power_linear: learning rate config of step^power followed by
       step^power*linear.
+    power_with_offset: power decay with a step offset.
   """
   type: Optional[str] = None
   constant: lr_cfg.ConstantLrConfig = lr_cfg.ConstantLrConfig()
@@ -72,6 +75,8 @@ class LrConfig(oneof.OneOfConfig):
   power: lr_cfg.DirectPowerLrConfig = lr_cfg.DirectPowerLrConfig()
   power_linear: lr_cfg.PowerAndLinearDecayLrConfig = (
       lr_cfg.PowerAndLinearDecayLrConfig())
+  power_with_offset: lr_cfg.PowerDecayWithOffsetLrConfig = (
+      lr_cfg.PowerDecayWithOffsetLrConfig())
 
 
 @dataclasses.dataclass

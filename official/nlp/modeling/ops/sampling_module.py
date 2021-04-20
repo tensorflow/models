@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Sampling module for top_k, top_p and greedy decoding."""
 
 import abc
@@ -76,14 +76,15 @@ def sample_top_p(logits, top_p):
   """
   sorted_indices = tf.argsort(logits, direction="DESCENDING")
   # Flatten logits as tf.gather on TPU needs axis to be compile time constant.
-  range_for_gather = tf.expand_dims(tf.range(0, logits.shape[0]), axis=1)
-  range_for_gather = tf.tile(range_for_gather * logits.shape[1],
-                             [1, logits.shape[1]]) + sorted_indices
+  logits_shape = decoding_module.shape_list(logits)
+  range_for_gather = tf.expand_dims(tf.range(0, logits_shape[0]), axis=1)
+  range_for_gather = tf.tile(range_for_gather * logits_shape[1],
+                             [1, logits_shape[1]]) + sorted_indices
   flattened_logits = tf.reshape(logits, [-1])
   flattened_sorted_indices = tf.reshape(range_for_gather, [-1])
   sorted_logits = tf.reshape(
       tf.gather(flattened_logits, flattened_sorted_indices),
-      [logits.shape[0], logits.shape[1]])
+      [logits_shape[0], logits_shape[1]])
   cumulative_probs = tf.cumsum(tf.nn.softmax(sorted_logits, axis=-1), axis=-1)
 
   # Remove tokens with cumulative probability above the threshold.
@@ -145,7 +146,7 @@ def set_tensor_by_indices_to_value(input_tensor, indices, value):
 
 
 class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
-  """Implementation for sampling stratgies (go/decoding-tf-nlp)."""
+  """Implementation for sampling strategies (go/decoding-tf-nlp)."""
 
   def __init__(self,
                symbols_to_logits_fn,
@@ -166,8 +167,7 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
     self.padded_decode = padded_decode
     self.dtype = tf.as_dtype(dtype)
     self.vocab_size = tf.convert_to_tensor(vocab_size, dtype=tf.int32)
-    self.max_decode_length = tf.convert_to_tensor(max_decode_length,
-                                                  dtype=tf.int32)
+    self.max_decode_length = max_decode_length
     self.top_k = tf.convert_to_tensor(top_k, dtype=tf.int32)
     self.top_p = tf.convert_to_tensor(top_p, dtype=tf.float32)
     self.sample_temperature = tf.convert_to_tensor(sample_temperature,
@@ -250,7 +250,7 @@ class SamplingModule(decoding_module.DecodingModule, metaclass=abc.ABCMeta):
         if inner_value.dtype != self.dtype:
           raise TypeError(
               "initial_cache element for key '%s' has dtype %s that does not "
-              "match SequenceBeamSearch's dtype of %s. Value: %s" %
+              "match sampling_module's dtype of %s. Value: %s" %
               (key, value.dtype.name, self.dtype.name, inner_value))
 
     # Current loop index (starts at 0)

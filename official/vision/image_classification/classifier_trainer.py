@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Runs an Image Classification model."""
 
 import os
@@ -227,8 +227,7 @@ def initialize(params: base_configs.ExperimentConfig,
                dataset_builder: dataset_factory.DatasetBuilder):
   """Initializes backend related initializations."""
   keras_utils.set_session_config(enable_xla=params.runtime.enable_xla)
-  performance.set_mixed_precision_policy(dataset_builder.dtype,
-                                         use_experimental_api=False)
+  performance.set_mixed_precision_policy(dataset_builder.dtype)
   if tf.config.list_physical_devices('GPU'):
     data_format = 'channels_first'
   else:

@@ -19,9 +19,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
+import tensorflow.compat.v1 as tf
 
 from tensorflow.python.lib.io import file_io
 
@@ -623,6 +623,22 @@ def _maybe_update_config_with_key_value(configs, key, value):
     _update_num_classes(configs["model"], value)
   elif field_name == "sample_from_datasets_weights":
     _update_sample_from_datasets_weights(configs["train_input_config"], value)
+  elif field_name == "peak_max_pool_kernel_size":
+    _update_peak_max_pool_kernel_size(configs["model"], value)
+  elif field_name == "candidate_search_scale":
+    _update_candidate_search_scale(configs["model"], value)
+  elif field_name == "candidate_ranking_mode":
+    _update_candidate_ranking_mode(configs["model"], value)
+  elif field_name == "score_distance_offset":
+    _update_score_distance_offset(configs["model"], value)
+  elif field_name == "box_scale":
+    _update_box_scale(configs["model"], value)
+  elif field_name == "keypoint_candidate_score_threshold":
+    _update_keypoint_candidate_score_threshold(configs["model"], value)
+  elif field_name == "rescore_instances":
+    _update_rescore_instances(configs["model"], value)
+  elif field_name == "unmatched_keypoint_score":
+    _update_unmatched_keypoint_score(configs["model"], value)
   else:
     return False
   return True
@@ -1026,7 +1042,7 @@ def _update_retain_original_image_additional_channels(
       retain_original_image_additional_channels)
 
 
-def remove_unecessary_ema(variables_to_restore, no_ema_collection=None):
+def remove_unnecessary_ema(variables_to_restore, no_ema_collection=None):
   """Remap and Remove EMA variable that are not created during training.
 
   ExponentialMovingAverage.variables_to_restore() returns a map of EMA names
@@ -1038,9 +1054,8 @@ def remove_unecessary_ema(variables_to_restore, no_ema_collection=None):
   }
   This function takes care of the extra ExponentialMovingAverage variables
   that get created during eval but aren't available in the checkpoint, by
-  remapping the key to the shallow copy of the variable itself, and remove
-  the entry of its EMA from the variables to restore. An example resulting
-  dictionary would look like:
+  remapping the key to the variable itself, and remove the entry of its EMA from
+  the variables to restore. An example resulting dictionary would look like:
   {
       conv/batchnorm/gamma: conv/batchnorm/gamma,
       conv_4/conv2d_params: conv_4/conv2d_params,
@@ -1059,14 +1074,15 @@ def remove_unecessary_ema(variables_to_restore, no_ema_collection=None):
   if no_ema_collection is None:
     return variables_to_restore
 
+  restore_map = {}
   for key in variables_to_restore:
-    if "ExponentialMovingAverage" in key:
-      for name in no_ema_collection:
-        if name in key:
-          variables_to_restore[key.replace("/ExponentialMovingAverage",
-                                           "")] = variables_to_restore[key]
-          del variables_to_restore[key]
-  return variables_to_restore
+    if ("ExponentialMovingAverage" in key
+        and any([name in key for name in no_ema_collection])):
+      new_key = key.replace("/ExponentialMovingAverage", "")
+    else:
+      new_key = key
+    restore_map[new_key] = variables_to_restore[key]
+  return restore_map
 
 
 def _update_num_classes(model_config, num_classes):
@@ -1089,3 +1105,112 @@ def _update_sample_from_datasets_weights(input_reader_config, weights):
 
   del input_reader_config.sample_from_datasets_weights[:]
   input_reader_config.sample_from_datasets_weights.extend(weights)
+
+
+def _update_peak_max_pool_kernel_size(model_config, kernel_size):
+  """Updates the max pool kernel size (NMS) for keypoints in CenterNet."""
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.peak_max_pool_kernel_size = kernel_size
+    else:
+      tf.logging.warning("Ignoring config override key for "
+                         "peak_max_pool_kernel_size since there are multiple "
+                         "keypoint estimation tasks")
+
+
+def _update_candidate_search_scale(model_config, search_scale):
+  """Updates the keypoint candidate search scale in CenterNet."""
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.candidate_search_scale = search_scale
+    else:
+      tf.logging.warning("Ignoring config override key for "
+                         "candidate_search_scale since there are multiple "
+                         "keypoint estimation tasks")
+
+
+def _update_candidate_ranking_mode(model_config, mode):
+  """Updates how keypoints are snapped to candidates in CenterNet."""
+  if mode not in ("min_distance", "score_distance_ratio"):
+    raise ValueError("Attempting to set the keypoint candidate ranking mode "
+                     "to {}, but the only options are 'min_distance' and "
+                     "'score_distance_ratio'.".format(mode))
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.candidate_ranking_mode = mode
+    else:
+      tf.logging.warning("Ignoring config override key for "
+                         "candidate_ranking_mode since there are multiple "
+                         "keypoint estimation tasks")
+
+
+def _update_score_distance_offset(model_config, offset):
+  """Updates the keypoint candidate selection metric. See CenterNet proto."""
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.score_distance_offset = offset
+    else:
+      tf.logging.warning("Ignoring config override key for "
+                         "score_distance_offset since there are multiple "
+                         "keypoint estimation tasks")
+
+
+def _update_box_scale(model_config, box_scale):
+  """Updates the keypoint candidate search region. See CenterNet proto."""
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.box_scale = box_scale
+    else:
+      tf.logging.warning("Ignoring config override key for box_scale since "
+                         "there are multiple keypoint estimation tasks")
+
+
+def _update_keypoint_candidate_score_threshold(model_config, threshold):
+  """Updates the keypoint candidate score threshold. See CenterNet proto."""
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.keypoint_candidate_score_threshold = threshold
+    else:
+      tf.logging.warning("Ignoring config override key for "
+                         "keypoint_candidate_score_threshold since there are "
+                         "multiple keypoint estimation tasks")
+
+
+def _update_rescore_instances(model_config, should_rescore):
+  """Updates whether boxes should be rescored based on keypoint confidences."""
+  if isinstance(should_rescore, str):
+    should_rescore = True if should_rescore == "True" else False
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.rescore_instances = should_rescore
+    else:
+      tf.logging.warning("Ignoring config override key for "
+                         "rescore_instances since there are multiple keypoint "
+                         "estimation tasks")
+
+
+def _update_unmatched_keypoint_score(model_config, score):
+  meta_architecture = model_config.WhichOneof("model")
+  if meta_architecture == "center_net":
+    if len(model_config.center_net.keypoint_estimation_task) == 1:
+      kpt_estimation_task = model_config.center_net.keypoint_estimation_task[0]
+      kpt_estimation_task.unmatched_keypoint_score = score
+    else:
+      tf.logging.warning("Ignoring config override key for "
+                         "unmatched_keypoint_score since there are multiple "
+                         "keypoint estimation tasks")
+

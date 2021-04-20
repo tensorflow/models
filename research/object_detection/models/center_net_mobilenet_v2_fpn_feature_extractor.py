@@ -39,7 +39,7 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
                channel_means=(0., 0., 0.),
                channel_stds=(1., 1., 1.),
                bgr_ordering=False,
-               fpn_separable_conv=False):
+               use_separable_conv=False):
     """Intializes the feature extractor.
 
     Args:
@@ -50,7 +50,7 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
         channel. Each channel will be divided by its standard deviation value.
       bgr_ordering: bool, if set will change the channel ordering to be in the
         [blue, red, green] order.
-      fpn_separable_conv: If set to True, all convolutional layers in the FPN
+      use_separable_conv: If set to True, all convolutional layers in the FPN
         network will be replaced by separable convolutions.
     """
 
@@ -96,7 +96,7 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
       # Merge.
       top_down = top_down + residual
       next_num_filters = num_filters_list[i + 1] if i + 1 <= 2 else 24
-      if fpn_separable_conv:
+      if use_separable_conv:
         conv = tf.keras.layers.SeparableConv2D(
             filters=next_num_filters, kernel_size=3, strides=1, padding='same')
       else:
@@ -143,30 +143,20 @@ class CenterNetMobileNetV2FPNFeatureExtractor(
     return 1
 
 
-def mobilenet_v2_fpn(channel_means, channel_stds, bgr_ordering):
+def mobilenet_v2_fpn(channel_means, channel_stds, bgr_ordering,
+                     use_separable_conv=False, depth_multiplier=1.0, **kwargs):
   """The MobileNetV2+FPN backbone for CenterNet."""
+  del kwargs
 
   # Set to batchnorm_training to True for now.
-  network = mobilenetv2.mobilenet_v2(batchnorm_training=True, include_top=False)
+  network = mobilenetv2.mobilenet_v2(
+      batchnorm_training=True,
+      alpha=depth_multiplier,
+      include_top=False,
+      weights='imagenet' if depth_multiplier == 1.0 else None)
   return CenterNetMobileNetV2FPNFeatureExtractor(
       network,
       channel_means=channel_means,
       channel_stds=channel_stds,
       bgr_ordering=bgr_ordering,
-      fpn_separable_conv=False)
-
-
-def mobilenet_v2_fpn_sep_conv(channel_means, channel_stds, bgr_ordering):
-  """Same as mobilenet_v2_fpn except with separable convolution in FPN."""
-
-  # Setting batchnorm_training to True, which will use the correct
-  # BatchNormalization layer strategy based on the current Keras learning phase.
-  # TODO(yuhuic): expriment with True vs. False to understand it's effect in
-  # practice.
-  network = mobilenetv2.mobilenet_v2(batchnorm_training=True, include_top=False)
-  return CenterNetMobileNetV2FPNFeatureExtractor(
-      network,
-      channel_means=channel_means,
-      channel_stds=channel_stds,
-      bgr_ordering=bgr_ordering,
-      fpn_separable_conv=True)
+      use_separable_conv=use_separable_conv)

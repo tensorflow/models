@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """TFM continuous finetuning+eval training driver."""
 from absl import app
 from absl import flags
@@ -39,8 +38,8 @@ def main(_):
   params = train_utils.parse_configuration(FLAGS)
   model_dir = FLAGS.model_dir
   train_utils.serialize_config(params, model_dir)
-  continuous_finetune_lib.run_continuous_finetune(FLAGS.mode, params, model_dir,
-                                                  FLAGS.pretrain_steps)
+  continuous_finetune_lib.run_continuous_finetune(
+      FLAGS.mode, params, model_dir, pretrain_steps=FLAGS.pretrain_steps)
   train_utils.save_gin_config(FLAGS.mode, model_dir)
 
 

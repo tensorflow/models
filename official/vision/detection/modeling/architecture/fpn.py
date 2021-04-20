@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Feature Pyramid Networks.
 
 Feature Pyramid Networks were proposed in:
@@ -28,7 +28,6 @@ import functools
 
 import tensorflow as tf
 
-from official.vision.detection.modeling.architecture import keras_utils
 from official.vision.detection.modeling.architecture import nn_ops
 from official.vision.detection.ops import spatial_transform_ops
 
@@ -120,7 +119,7 @@ class Fpn(object):
           'The minimum backbone level %d should be '%(min(input_levels)) +
           'less or equal to FPN minimum level %d.:'%(self._min_level))
     backbone_max_level = min(max(input_levels), self._max_level)
-    with keras_utils.maybe_enter_backend_graph(), tf.name_scope('fpn'):
+    with tf.name_scope('fpn'):
       # Adds lateral connections.
       feats_lateral = {}
       for level in range(self._min_level, backbone_max_level + 1):

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for transformer-based bert encoder network."""
 
 # Import libraries
@@ -30,7 +30,7 @@ class BertEncoderTest(keras_parameterized.TestCase):
 
   def tearDown(self):
     super(BertEncoderTest, self).tearDown()
-    tf.keras.mixed_precision.experimental.set_policy("float32")
+    tf.keras.mixed_precision.set_global_policy("float32")
 
   def test_network_creation(self):
     hidden_size = 32
@@ -119,7 +119,7 @@ class BertEncoderTest(keras_parameterized.TestCase):
   def test_network_creation_with_float16_dtype(self):
     hidden_size = 32
     sequence_length = 21
-    tf.keras.mixed_precision.experimental.set_policy("mixed_float16")
+    tf.keras.mixed_precision.set_global_policy("mixed_float16")
     # Create a small BertEncoder for testing.
     test_network = bert_encoder.BertEncoder(
         vocab_size=100,

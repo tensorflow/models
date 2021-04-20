@@ -34,6 +34,8 @@ mv paris6k_images_tmp/paris/*/*.jpg paris6k_images/
 # Revisited annotations.
 wget http://cmp.felk.cvut.cz/revisitop/data/datasets/roxford5k/gnd_roxford5k.mat
 wget http://cmp.felk.cvut.cz/revisitop/data/datasets/rparis6k/gnd_rparis6k.mat
+wget http://cmp.felk.cvut.cz/cnnimageretrieval/data/test/roxford5k/gnd_roxford5k.pkl
+wget http://cmp.felk.cvut.cz/cnnimageretrieval/data/test/rparis6k/gnd_rparis6k.pkl
 ```
 
 ### Download model

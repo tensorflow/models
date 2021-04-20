@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Multi-channel Attention."""
 # pylint: disable=g-classes-have-attributes
 
@@ -27,8 +26,8 @@ class VotingAttention(tf.keras.layers.Layer):
   """Voting Attention layer.
 
   Args:
-    num_heads: the number of attention heads.
-    head_size: per-head hidden size.
+    num_heads: The number of attention heads.
+    head_size: Per-head hidden size.
     kernel_initializer: Initializer for dense layer kernels.
     bias_initializer: Initializer for dense layer biases.
     kernel_regularizer: Regularizer for dense layer kernels.
@@ -116,7 +115,7 @@ class MultiChannelAttention(tf.keras.layers.MultiHeadAttention):
       context tensors according to the distribution among channels.
     key: Optional key `Tensor` of shape `[B, A, S, dim]`. If not given, will use
       `value` for both `key` and `value`, which is the most common case.
-    attention_mask: a boolean mask of shape `[B, T, S]`, that prevents attention
+    attention_mask: A boolean mask of shape `[B, T, S]`, that prevents attention
       to certain positions.
   """
 

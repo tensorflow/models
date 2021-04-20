@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for ExpandCondense tensor network layer."""
 
 import os
@@ -45,6 +45,10 @@ class TNLayerTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters((768, 6), (1024, 2))
   def test_keras_layer(self, input_dim, proj_multiple):
+    self.skipTest('Disable the test for now since it imports '
+                  'keras.testing_utils, will reenable this test after we '
+                  'fix the b/184578869')
+    # TODO(scottzhu): Reenable after fix b/184578869
     data = np.random.normal(size=(100, input_dim))
     data = data.astype(np.float32)
     layer_test(

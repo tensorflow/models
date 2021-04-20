@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,9 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Tests for maskrcnn_model.py."""
 
+import os
 # Import libraries
 from absl.testing import parameterized
 import numpy as np
@@ -273,6 +274,60 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
 
     # If the serialization was successful, the new config should match the old.
     self.assertAllEqual(model.get_config(), new_model.get_config())
+
+  @parameterized.parameters(
+      (False,),
+      (True,),
+  )
+  def test_checkpoint(self, include_mask):
+    input_specs = tf.keras.layers.InputSpec(shape=[None, None, None, 3])
+    backbone = resnet.ResNet(model_id=50, input_specs=input_specs)
+    decoder = fpn.FPN(
+        min_level=3, max_level=7, input_specs=backbone.output_specs)
+    rpn_head = dense_prediction_heads.RPNHead(
+        min_level=3, max_level=7, num_anchors_per_location=3)
+    detection_head = instance_heads.DetectionHead(num_classes=2)
+    roi_generator_obj = roi_generator.MultilevelROIGenerator()
+    roi_sampler_obj = roi_sampler.ROISampler()
+    roi_aligner_obj = roi_aligner.MultilevelROIAligner()
+    detection_generator_obj = detection_generator.DetectionGenerator()
+    if include_mask:
+      mask_head = instance_heads.MaskHead(num_classes=2, upsample_factor=2)
+      mask_sampler_obj = mask_sampler.MaskSampler(
+          mask_target_size=28, num_sampled_masks=1)
+      mask_roi_aligner_obj = roi_aligner.MultilevelROIAligner(crop_size=14)
+    else:
+      mask_head = None
+      mask_sampler_obj = None
+      mask_roi_aligner_obj = None
+    model = maskrcnn_model.MaskRCNNModel(backbone, decoder, rpn_head,
+                                         detection_head, roi_generator_obj,
+                                         roi_sampler_obj, roi_aligner_obj,
+                                         detection_generator_obj, mask_head,
+                                         mask_sampler_obj, mask_roi_aligner_obj)
+    expect_checkpoint_items = dict(
+        backbone=backbone,
+        decoder=decoder,
+        rpn_head=rpn_head,
+        detection_head=detection_head)
+    if include_mask:
+      expect_checkpoint_items['mask_head'] = mask_head
+    self.assertAllEqual(expect_checkpoint_items, model.checkpoint_items)
+
+    # Test save and load checkpoints.
+    ckpt = tf.train.Checkpoint(model=model, **model.checkpoint_items)
+    save_dir = self.create_tempdir().full_path
+    ckpt.save(os.path.join(save_dir, 'ckpt'))
+
+    partial_ckpt = tf.train.Checkpoint(backbone=backbone)
+    partial_ckpt.restore(tf.train.latest_checkpoint(
+        save_dir)).expect_partial().assert_existing_objects_matched()
+
+    if include_mask:
+      partial_ckpt_mask = tf.train.Checkpoint(
+          backbone=backbone, mask_head=mask_head)
+      partial_ckpt_mask.restore(tf.train.latest_checkpoint(
+          save_dir)).expect_partial().assert_existing_objects_matched()
 
 
 if __name__ == '__main__':

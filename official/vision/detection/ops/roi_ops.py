@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """ROI-related ops."""
 
 from __future__ import absolute_import
@@ -170,7 +170,7 @@ def multilevel_propose_rois(rpn_boxes,
     return selected_rois, selected_roi_scores
 
 
-class ROIGenerator(object):
+class ROIGenerator(tf.keras.layers.Layer):
   """Proposes RoIs for the second stage processing."""
 
   def __init__(self, params):
@@ -185,8 +185,9 @@ class ROIGenerator(object):
     self._test_rpn_score_threshold = params.test_rpn_score_threshold
     self._test_rpn_min_size_threshold = params.test_rpn_min_size_threshold
     self._use_batched_nms = params.use_batched_nms
+    super(ROIGenerator, self).__init__(autocast=False)
 
-  def __call__(self, boxes, scores, anchor_boxes, image_shape, is_training):
+  def call(self, boxes, scores, anchor_boxes, image_shape, is_training):
     """Generates RoI proposals.
 
     Args:

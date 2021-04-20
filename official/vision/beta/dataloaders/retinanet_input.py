@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Data parser and processing for RetinaNet.
 
 Parse image and ground truths in a dataset to training targets and package them
@@ -112,8 +112,8 @@ class Parser(parser.Parser):
     self._use_autoaugment = use_autoaugment
     self._autoaugment_policy_name = autoaugment_policy_name
 
-    # Device.
-    self._use_bfloat16 = True if dtype == 'bfloat16' else False
+    # Data type.
+    self._dtype = dtype
 
   def _parse_train_data(self, data):
     """Parses data for training and evaluation."""
@@ -180,9 +180,8 @@ class Parser(parser.Parser):
      box_weights) = anchor_labeler.label_anchors(
          anchor_boxes, boxes, tf.expand_dims(classes, axis=1))
 
-    # If bfloat16 is used, casts input image to tf.bfloat16.
-    if self._use_bfloat16:
-      image = tf.cast(image, dtype=tf.bfloat16)
+    # Casts input image to desired data type.
+    image = tf.cast(image, dtype=self._dtype)
 
     # Packs labels for model_fn outputs.
     labels = {
@@ -245,9 +244,8 @@ class Parser(parser.Parser):
      box_weights) = anchor_labeler.label_anchors(
          anchor_boxes, boxes, tf.expand_dims(classes, axis=1))
 
-    # If bfloat16 is used, casts input image to tf.bfloat16.
-    if self._use_bfloat16:
-      image = tf.cast(image, dtype=tf.bfloat16)
+    # Casts input image to desired data type.
+    image = tf.cast(image, dtype=self._dtype)
 
     # Sets up groundtruth data for evaluation.
     groundtruths = {

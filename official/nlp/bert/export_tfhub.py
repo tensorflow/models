@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,15 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""A script to export the BERT core model as a TF-Hub SavedModel."""
+
+"""A script to export BERT as a TF-Hub SavedModel.
+
+This script is **DEPRECATED** for exporting BERT encoder models;
+see the error message in by main() for details.
+"""
+
+from typing import Text
 
 # Import libraries
 from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-from typing import Text
 from official.nlp.bert import bert_models
 from official.nlp.bert import configs
 
@@ -112,6 +117,14 @@ def export_bert_squad_tfhub(bert_config: configs.BertConfig,
 def main(_):
   bert_config = configs.BertConfig.from_json_file(FLAGS.bert_config_file)
   if FLAGS.model_type == "encoder":
+    deprecation_note = (
+        "nlp/bert/export_tfhub is **DEPRECATED** for exporting BERT encoder "
+        "models. Please switch to nlp/tools/export_tfhub for exporting BERT "
+        "(and other) encoders with dict inputs/outputs conforming to "
+        "https://www.tensorflow.org/hub/common_saved_model_apis/text#transformer-encoders"
+    )
+    logging.error(deprecation_note)
+    print("\n\nNOTICE:", deprecation_note, "\n")
     export_bert_tfhub(bert_config, FLAGS.model_checkpoint_path,
                       FLAGS.export_path, FLAGS.vocab_file, FLAGS.do_lower_case)
   elif FLAGS.model_type == "squad":

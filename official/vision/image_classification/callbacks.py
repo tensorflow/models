@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Common modules for callbacks."""
 from __future__ import absolute_import
 from __future__ import division
@@ -59,7 +59,8 @@ def get_callbacks(
             log_dir=model_dir,
             track_lr=track_lr,
             initial_step=initial_step,
-            write_images=write_model_weights))
+            write_images=write_model_weights,
+            profile_batch=0))
   if time_history:
     callbacks.append(
         keras_utils.TimeHistory(

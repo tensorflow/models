@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """A script to export the image classification as a TF-Hub SavedModel."""
 
 # Import libraries
@@ -24,7 +24,7 @@ import tensorflow as tf
 from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.vision.beta.serving import image_classification
+from official.vision.beta.modeling import factory
 
 
 FLAGS = flags.FLAGS
@@ -68,10 +68,14 @@ def export_model_to_tfhub(params,
                           checkpoint_path,
                           export_path):
   """Export an image classification model to TF-Hub."""
-  export_module = image_classification.ClassificationModule(
-      params=params, batch_size=batch_size, input_image_size=input_image_size)
+  input_specs = tf.keras.layers.InputSpec(shape=[batch_size] +
+                                          input_image_size + [3])
 
-  model = export_module.build_model(skip_logits_layer=skip_logits_layer)
+  model = factory.build_classification_model(
+      input_specs=input_specs,
+      model_config=params.task.model,
+      l2_regularizer=None,
+      skip_logits_layer=skip_logits_layer)
   checkpoint = tf.train.Checkpoint(model=model)
   checkpoint.restore(checkpoint_path).assert_existing_objects_matched()
   model.save(export_path, include_optimizer=False, save_format='tf')

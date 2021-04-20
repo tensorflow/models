@@ -73,6 +73,30 @@ documentation of the Object Detection API:
 
 ## Whats New
 
+### DeepMAC architecture
+
+We have released our new architecture, **DeepMAC**, desgined for partially
+supervised instance segmentation. DeepMAC stands for Deep Mask-heads
+Above CenterNet, and is based on our CenterNet implementation. In our
+[paper](https://arxiv.org/abs/2104.00613) we show that DeepMAC achieves
+state-of-the-art results for the partially supervised instance segmentation
+task without using any specialty modules or losses; just better mask-head
+architectures. The findings from our paper are not specific to CenterNet and
+can also be applied to Mask R-CNN or without any detector at all.
+Please see links below for more details
+
+*   [DeepMAC documentation](g3doc/deepmac.md).
+*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/deepmac_maskrcnn)
+    in TF Model garden code base.
+*   [DeepMAC Colab](./colab_tutorials/deepmac_colab.ipynb) that lets you run a
+    pre-trained DeepMAC model on user-specified boxes. Note that you are not
+    restricted to COCO classes!
+*   Project website - [git.io/deepmac](https://git.io/deepmac)
+
+<b>Thanks to contributors</b>: Vighnesh Birodkar, Zhichao Lu, Siyang Li,
+ Vivek Rathod, Jonathan Huang
+
+
 ### Mobile Inference for TF2 models
 
 TF2 OD API models can now be converted to TensorFlow Lite! Only SSD models

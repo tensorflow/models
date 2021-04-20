@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """A converter from a tf1 ALBERT encoder checkpoint to a tf2 encoder checkpoint.
 
 The conversion will yield an object-oriented checkpoint that can be used
@@ -65,6 +65,7 @@ ALBERT_NAME_REPLACEMENTS = (
     ("ffn_1/intermediate/output/dense", "output"),
     ("transformer/LayerNorm_1/", "transformer/output_layer_norm/"),
     ("pooler/dense", "pooler_transform"),
+    ("cls/predictions", "bert/cls/predictions"),
     ("cls/predictions/output_bias", "cls/predictions/output_bias/bias"),
     ("cls/seq_relationship/output_bias", "predictions/transform/logits/bias"),
     ("cls/seq_relationship/output_weights",
@@ -113,6 +114,8 @@ def _create_pretrainer_model(cfg):
       mlm_activation=tf_utils.get_activation(cfg.hidden_act),
       mlm_initializer=tf.keras.initializers.TruncatedNormal(
           stddev=cfg.initializer_range))
+  # Makes sure masked_lm layer's variables in pretrainer are created.
+  _ = pretrainer(pretrainer.inputs)
   return pretrainer
 
 

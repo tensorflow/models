@@ -15,7 +15,7 @@
 """TFM common training driver library."""
 # pytype: disable=attribute-error
 import os
-from typing import Any, Mapping, Tuple
+from typing import Any, Mapping, Tuple, Optional
 
 # Import libraries
 from absl import logging
@@ -23,21 +23,23 @@ import orbit
 import tensorflow as tf
 
 from official.core import base_task
+from official.core import base_trainer
 from official.core import config_definitions
 from official.core import train_utils
 
-BestCheckpointExporter = train_utils.BestCheckpointExporter
 maybe_create_best_ckpt_exporter = train_utils.maybe_create_best_ckpt_exporter
 
 
-def run_experiment(distribution_strategy: tf.distribute.Strategy,
-                   task: base_task.Task,
-                   mode: str,
-                   params: config_definitions.ExperimentConfig,
-                   model_dir: str,
-                   run_post_eval: bool = False,
-                   save_summary: bool = True) \
--> Tuple[tf.keras.Model, Mapping[str, Any]]:
+def run_experiment(
+    distribution_strategy: tf.distribute.Strategy,
+    task: base_task.Task,
+    mode: str,
+    params: config_definitions.ExperimentConfig,
+    model_dir: str,
+    run_post_eval: bool = False,
+    save_summary: bool = True,
+    trainer: Optional[base_trainer.Trainer] = None
+) -> Tuple[tf.keras.Model, Mapping[str, Any]]:
   """Runs train/eval configured by the experiment params.
 
   Args:
@@ -50,6 +52,8 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
     run_post_eval: Whether to run post eval once after training, metrics logs
       are returned.
     save_summary: Whether to save train and validation summary.
+    trainer: the base_trainer.Trainer instance. It should be created within the
+      strategy.scope().
 
   Returns:
     A 2-tuple of (model, eval_logs).
@@ -59,13 +63,14 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
   """
 
   with distribution_strategy.scope():
-    trainer = train_utils.create_trainer(
-        params,
-        task,
-        train='train' in mode,
-        evaluate=('eval' in mode) or run_post_eval,
-        checkpoint_exporter=maybe_create_best_ckpt_exporter(
-            params, model_dir))
+    if not trainer:
+      trainer = train_utils.create_trainer(
+          params,
+          task,
+          train='train' in mode,
+          evaluate=('eval' in mode) or run_post_eval,
+          checkpoint_exporter=maybe_create_best_ckpt_exporter(
+              params, model_dir))
 
   if trainer.checkpoint:
     checkpoint_manager = tf.train.CheckpointManager(
@@ -88,7 +93,8 @@ def run_experiment(distribution_strategy: tf.distribute.Strategy,
       steps_per_loop=params.trainer.steps_per_loop,
       checkpoint_manager=checkpoint_manager,
       summary_dir=os.path.join(model_dir, 'train') if (save_summary) else None,
-      eval_summary_dir=os.path.join(model_dir, 'validation') if
+      eval_summary_dir=os.path.join(model_dir,
+                                    params.trainer.validation_summary_subdir) if
       (save_summary) else None,
       summary_interval=params.trainer.summary_interval if
       (save_summary) else None)

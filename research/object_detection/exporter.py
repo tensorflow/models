@@ -170,7 +170,7 @@ def replace_variable_values_with_moving_averages(graph,
   with graph.as_default():
     variable_averages = tf.train.ExponentialMovingAverage(0.0)
     ema_variables_to_restore = variable_averages.variables_to_restore()
-    ema_variables_to_restore = config_util.remove_unecessary_ema(
+    ema_variables_to_restore = config_util.remove_unnecessary_ema(
         ema_variables_to_restore, no_ema_collection)
     with tf.Session() as sess:
       read_saver = tf.train.Saver(ema_variables_to_restore)

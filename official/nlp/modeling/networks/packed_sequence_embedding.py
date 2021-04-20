@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """An embedding network supporting packed sequences and position ids."""
 # pylint: disable=g-classes-have-attributes
 import collections
@@ -41,14 +40,14 @@ class PackedSequenceEmbedding(tf.keras.Model):
     max_seq_length: The maximum sequence length for this encoder.
     initializer: The initializer for the embedding portion of this encoder.
     dropout_rate: The dropout rate to apply before the encoding layers.
-    pack_multiple_sequences: If True, we can feed multiple sequences into one
+    pack_multiple_sequences: If `True`, we can feed multiple sequences into one
       sequence for training and inference (they don't impact each other).
     use_position_id: Whether to expect `position_ids` as an input to the
       network. If False, the `position_ids` will be inferred: (1) when
-        pack_multiple_sequences is False, we assume the position ids are 0, 1,
-        2, ..., seq_length - 1; (2) when pack_multiple_sequences is True, there
-        may be multiple sub sequences, and for each sub sequence, its position
-        ids start from 0, 1, 2, ...
+        pack_multiple_sequences is False, we assume the position ids are `0, 1,
+        2, ..., seq_length - 1`; (2) when `pack_multiple_sequences` is `True`,
+        there may be multiple sub sequences, and for each sub sequence, its
+        position ids start from 0, 1, 2, ...
   """
 
   def __init__(self,

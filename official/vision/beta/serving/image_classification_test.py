@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Test for image classification export lib."""
 
 import io
@@ -38,30 +38,8 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
     return classification_module
 
   def _export_from_module(self, module, input_type, save_directory):
-    if input_type == 'image_tensor':
-      input_signature = tf.TensorSpec(shape=[None, 224, 224, 3], dtype=tf.uint8)
-      signatures = {
-          'serving_default':
-              module.inference_from_image_tensors.get_concrete_function(
-                  input_signature)
-      }
-    elif input_type == 'image_bytes':
-      input_signature = tf.TensorSpec(shape=[None], dtype=tf.string)
-      signatures = {
-          'serving_default':
-              module.inference_from_image_bytes.get_concrete_function(
-                  input_signature)
-      }
-    elif input_type == 'tf_example':
-      input_signature = tf.TensorSpec(shape=[None], dtype=tf.string)
-      signatures = {
-          'serving_default':
-              module.inference_from_tf_example.get_concrete_function(
-                  input_signature)
-      }
-    else:
-      raise ValueError('Unrecognized `input_type`')
-
+    signatures = module.get_inference_signatures(
+        {input_type: 'serving_default'})
     tf.saved_model.save(module,
                         save_directory,
                         signatures=signatures)
@@ -95,9 +73,10 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_export(self, input_type='image_tensor'):
     tmp_dir = self.get_temp_dir()
-
     module = self._get_classification_module()
-    model = module.build_model()
+    # Test that the model restores any attrs that are trackable objects
+    # (eg: tables, resource variables, keras models/layers, tf.hub modules).
+    module.model.test_trackable = tf.keras.layers.InputLayer(input_shape=(4,))
 
     self._export_from_module(module, input_type, tmp_dir)
 
@@ -118,9 +97,16 @@ class ImageClassificationExportTest(tf.test.TestCase, parameterized.TestCase):
             elems=tf.zeros((1, 224, 224, 3), dtype=tf.uint8),
             fn_output_signature=tf.TensorSpec(
                 shape=[224, 224, 3], dtype=tf.float32)))
-    expected_output = model(processed_images, training=False)
+    expected_logits = module.model(processed_images, training=False)
+    expected_prob = tf.nn.softmax(expected_logits)
     out = classification_fn(tf.constant(images))
-    self.assertAllClose(out['outputs'].numpy(), expected_output.numpy())
+
+    # The imported model should contain any trackable attrs that the original
+    # model had.
+    self.assertTrue(hasattr(imported.model, 'test_trackable'))
+    self.assertAllClose(out['logits'].numpy(), expected_logits.numpy())
+    self.assertAllClose(out['probs'].numpy(), expected_prob.numpy())
+
 
 if __name__ == '__main__':
   tf.test.main()

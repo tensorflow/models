@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based gated feedforward layer."""
 # pylint: disable=g-classes-have-attributes
 
@@ -108,7 +108,7 @@ class GatedFeedforward(tf.keras.layers.Layer):
     self._output_dense = []
     self._output_dropout = []
     self._output_layer_norm = []
-    activation_policy = tf.keras.mixed_precision.experimental.global_policy()
+    activation_policy = tf.keras.mixed_precision.global_policy()
     if activation_policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.

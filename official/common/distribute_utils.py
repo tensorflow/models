@@ -127,6 +127,15 @@ def get_distribution_strategy(distribution_strategy="mirrored",
   if num_gpus < 0:
     raise ValueError("`num_gpus` can not be negative.")
 
+  if not isinstance(distribution_strategy, str):
+    msg = ("distribution_strategy must be a string but got: %s." %
+           (distribution_strategy,))
+    if distribution_strategy == False:  # pylint: disable=singleton-comparison,g-explicit-bool-comparison
+      msg += (" If you meant to pass the string 'off', make sure you add "
+              "quotes around 'off' so that yaml interprets it as a string "
+              "instead of a bool.")
+    raise ValueError(msg)
+
   distribution_strategy = distribution_strategy.lower()
   if distribution_strategy == "off":
     if num_gpus > 1:
@@ -161,7 +170,8 @@ def get_distribution_strategy(distribution_strategy="mirrored",
         cross_device_ops=_mirrored_cross_device_ops(all_reduce_alg, num_packs))
 
   if distribution_strategy == "parameter_server":
-    return tf.compat.v1.distribute.experimental.ParameterServerStrategy()
+    cluster_resolver = tf.distribute.cluster_resolver.TFConfigClusterResolver()
+    return tf.distribute.experimental.ParameterServerStrategy(cluster_resolver)
 
   raise ValueError("Unrecognized Distribution Strategy: %r" %
                    distribution_strategy)
@@ -172,6 +182,7 @@ def configure_cluster(worker_hosts=None, task_index=-1):
 
   Args:
     worker_hosts: comma-separated list of worker ip:port pairs.
+    task_index: index of the worker.
 
   Returns:
     Number of workers in the cluster.
