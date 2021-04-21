@@ -32,6 +32,7 @@ from delf.python.datasets import tuples_dataset
 from delf.python.datasets.revisited_op import dataset as testdataset
 from delf.python.training.losses import ranking_losses
 from delf.python.training import global_features_utils
+from delf.python.training import tensorboard_utils
 from delf.python.training.model import global_model
 from delf.python.datasets.sfm120k import sfm120k
 from delf.python import whiten
@@ -257,7 +258,7 @@ def main(argv):
   if FLAGS.launch_tensorboard:
     tensorboard = tf.keras.callbacks.TensorBoard(model_directory)
     tensorboard.set_model(model=model)
-    global_features_utils.launch_tensorboard(log_dir=model_directory)
+    tensorboard_utils.launch_tensorboard(log_dir=model_directory)
 
   # Log flags used.
   global_features_utils.debug_and_log('>> Running training script with:')
