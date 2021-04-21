@@ -30,11 +30,15 @@ from official.modeling.hyperparams import params_dict
 class Config(params_dict.ParamsDict):
   """The base configuration class that supports YAML/JSON based overrides.
 
+  Because of YAML/JSON serialization limitations, some semantics of dataclass
+  are not supported:
   * It recursively enforces a allowlist of basic types and container types, so
     it avoids surprises with copy and reuse caused by unanticipated types.
-  * It converts dict to Config even within sequences,
+  * Warning: it converts Dict to `Config` even within sequences,
     e.g. for config = Config({'key': [([{'a': 42}],)]),
          type(config.key[0][0][0]) is Config rather than dict.
+    If you define/annotate some field as Dict, the field will convert to a
+    `Config` instance and lose the dictionary type.
   """
 
   # It's safe to add bytes and other immutable types here.
