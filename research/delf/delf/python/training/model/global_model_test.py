@@ -33,8 +33,10 @@ FLAGS = flags.FLAGS
 
 
 class GlobalFeatureNetTest(tf.test.TestCase):
+  """Tests for the GlobalFeatureNet backbone."""
 
   def testInitModel(self):
+    """Testing GlobalFeatureNet initialization."""
     # Testing GlobalFeatureNet initialization.
     model_params = {'architecture': 'ResNet101', 'pooling': 'gem',
                     'whitening': False, 'pretrained': True}
@@ -44,6 +46,7 @@ class GlobalFeatureNetTest(tf.test.TestCase):
     self.assertEqual(expected_meta, model.meta)
 
   def testExtractVectors(self):
+    """Tests extraction of global descriptors from list."""
     # Initializing network for testing.
     model_params = {'architecture': 'ResNet101', 'pooling': 'gem',
                     'whitening': False, 'pretrained': True}
@@ -67,6 +70,7 @@ class GlobalFeatureNetTest(tf.test.TestCase):
     self.assertAllEqual([2048, 2], tf.shape(descriptors))
 
   def testExtractMS(self):
+    """Tests multi-scale global descriptor extraction."""
     # Initializing network for testing.
     model_params = {'architecture': 'ResNet101', 'pooling': 'gem',
                     'whitening': False, 'pretrained': True}
