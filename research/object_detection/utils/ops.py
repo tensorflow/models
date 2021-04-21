@@ -822,7 +822,7 @@ def reframe_box_masks_to_image_masks(box_masks, boxes, image_height,
     A tensor of size [num_masks, image_height, image_width] with the same dtype
     as `box_masks`.
   """
-  resize_method = 'nearest' if tf.uint8 == box_masks.dtype else resize_method
+  resize_method = 'nearest' if box_masks.dtype == tf.uint8 else resize_method
   # TODO(rathodv): Make this a public function.
   def reframe_box_masks_to_image_masks_default():
     """The default function when there are more than 0 box masks."""
