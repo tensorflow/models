@@ -75,21 +75,36 @@ class MaskRCNNBuilderTest(parameterized.TestCase, tf.test.TestCase):
 class RetinaNetBuilderTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
-      ('resnet', (640, 640)),
-      ('resnet', (None, None)),
+      ('resnet', (640, 640), False),
+      ('resnet', (None, None), True),
   )
-  def test_builder(self, backbone_type, input_size):
+  def test_builder(self, backbone_type, input_size, has_att_heads):
     num_classes = 2
     input_specs = tf.keras.layers.InputSpec(
         shape=[None, input_size[0], input_size[1], 3])
+    if has_att_heads:
+      attribute_heads_config = [
+          retinanet_cfg.AttributeHead(name='att1'),
+          retinanet_cfg.AttributeHead(
+              name='att2', type='classification', size=2),
+      ]
+    else:
+      attribute_heads_config = None
     model_config = retinanet_cfg.RetinaNet(
         num_classes=num_classes,
-        backbone=backbones.Backbone(type=backbone_type))
+        backbone=backbones.Backbone(type=backbone_type),
+        head=retinanet_cfg.RetinaNetHead(
+            attribute_heads=attribute_heads_config))
     l2_regularizer = tf.keras.regularizers.l2(5e-5)
     _ = factory.build_retinanet(
         input_specs=input_specs,
         model_config=model_config,
         l2_regularizer=l2_regularizer)
+    if has_att_heads:
+      self.assertEqual(model_config.head.attribute_heads[0].as_dict(),
+                       dict(name='att1', type='regression', size=1))
+      self.assertEqual(model_config.head.attribute_heads[1].as_dict(),
+                       dict(name='att2', type='classification', size=2))
 
 
 class VideoClassificationModelBuilderTest(parameterized.TestCase,
