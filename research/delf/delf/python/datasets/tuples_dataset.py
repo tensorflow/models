@@ -38,7 +38,7 @@ class TuplesDataset():
   """Data loader that loads training and validation tuples.
 
   Tuples are based on Radenovic et al. ECCV16 work: CNN image retrieval
-  learns from BoW. For more information refer to 
+  learns from BoW. For more information refer to
   https://arxiv.org/abs/1604.02426.
   """
 
@@ -46,7 +46,7 @@ class TuplesDataset():
                poolsize=20000, loader=image_loading_utils.default_loader,
                ims_root=None):
     """TuplesDataset object initialization.
-    
+
     Args:
       name: String, dataset name. I.e. 'retrieval-sfm-120k'.
       mode: 'train' or 'val' for training and validation parts of dataset.
@@ -65,8 +65,8 @@ class TuplesDataset():
 
     if mode not in ['train', 'val']:
       raise ValueError(
-        "`mode` argument should be either 'train' or 'val', passed as a "
-        "String.")
+              "`mode` argument should be either 'train' or 'val', passed as a "
+              "String.")
 
     # Loading db.
     db_fn = os.path.join(data_root, '{}.pkl'.format(name))
@@ -74,7 +74,7 @@ class TuplesDataset():
       db = pickle.load(f)[mode]
 
     # Initializing tuples dataset.
-    self._ims_root = db_root if not ims_root else ims_root
+    self._ims_root = data_root if not ims_root else ims_root
     self._name = name
     self._mode = mode
     self._imsize = imsize
@@ -138,10 +138,10 @@ class TuplesDataset():
       index: Integer, index.
 
     Returns:
-      output: Tuple [q,p,n1,...,nN, target], loaded 'train'/'val' tuple at 
-        index of qidxs. `q` is the query image tensor, `p` is the 
-        corresponding positive image tensor, `n1`,...,`nN` are the negatives 
-        associated with the query. `target` is the tensor of labels 
+      output: Tuple [q,p,n1,...,nN, target], loaded 'train'/'val' tuple at
+        index of qidxs. `q` is the query image tensor, `p` is the
+        corresponding positive image tensor, `n1`,...,`nN` are the negatives
+        associated with the query. `target` is the tensor of labels
         corresponding to the tuple list: query (-1), positive (1), negative (0).
 
     Raises:
@@ -149,23 +149,23 @@ class TuplesDataset():
     """
     if self.__len__() == 0:
       raise ValueError(
-        "List `qidxs` is empty. Run `dataset.create_epoch_tuples(net)` "
-        "method to create subset for `train`/`val`.")
+              "List `qidxs` is empty. Run `dataset.create_epoch_tuples(net)` "
+              "method to create subset for `train`/`val`.")
 
     output = []
     # Query images.
     output.append(self._loader(
-      self._img_names_to_full_path(self.images[self._qidxs[index]]),
-      self._imsize))
+            self._img_names_to_full_path(self.images[self._qidxs[index]]),
+            self._imsize))
     # Positive images.
     output.append(self._loader(
-      self._img_names_to_full_path(self.images[self._pidxs[index]]),
-      self._imsize))
+            self._img_names_to_full_path(self.images[self._pidxs[index]]),
+            self._imsize))
     # Negative images.
     for nidx in self._nidxs[index]:
       output.append(self._loader(
-        self._img_names_to_full_path(self.images[nidx]),
-        self._imsize))
+              self._img_names_to_full_path(self.images[nidx]),
+              self._imsize))
     # Labels for the query (-1), positive (1), negative (0) images in the tuple.
     target = tf.convert_to_tensor([-1, 1] + [0] * self._nnum)
     output.append(target)
@@ -194,18 +194,18 @@ class TuplesDataset():
     fmt_str += '\tNumber of training tuples: {}\n'.format(len(self._qpool))
     fmt_str += '\tNumber of negatives per tuple: {}\n'.format(self._nnum)
     fmt_str += '\tNumber of tuples processed in an epoch: {}\n'.format(
-      self._qsize)
+            self._qsize)
     fmt_str += '\tPool size for negative remining: {}\n'.format(self._poolsize)
     return fmt_str
 
   def create_epoch_tuples(self, net):
     """Creates epoch tuples with the hard-negative re-mining.
-    
-    Negative examples are selected from clusters different than the cluster 
-    of the query image, as the clusters are ideally non-overlaping. For 
-    every query image we choose  hard-negatives, that is, non-matching images 
-    with the most similar descriptor. Hard-negatives depend on the current 
-    CNN parameters. K-nearest neighbors from all non-matching images are 
+
+    Negative examples are selected from clusters different than the cluster
+    of the query image, as the clusters are ideally non-overlaping. For
+    every query image we choose  hard-negatives, that is, non-matching images
+    with the most similar descriptor. Hard-negatives depend on the current
+    CNN parameters. K-nearest neighbors from all non-matching images are
     selected. Query images are selected randomly. Positives examples are
     fixed for the related query image during the whole training process.
 
@@ -217,8 +217,9 @@ class TuplesDataset():
     """
     self._n = 0
     global_features_utils.debug_and_log(
-      '>> Creating tuples for an epoch of {}-{}...'.format(self._name,
-                                                           self._mode), True)
+            '>> Creating tuples for an epoch of {}-{}...'.format(self._name,
+                                                                 self._mode),
+            True)
     global_features_utils.debug_and_log(">> Used network: ", True)
     global_features_utils.debug_and_log(net.meta_repr(), True)
 
@@ -247,25 +248,25 @@ class TuplesDataset():
     idxs2images = idx_list[:self._poolsize]
 
     global_features_utils.debug_and_log(
-      '>> Extracting descriptors for query images...', debug=True)
+            '>> Extracting descriptors for query images...', debug=True)
 
     img_list = self._img_names_to_full_path([self.images[i] for i in
                                              self._qidxs])
     qvecs = extract_descriptors_from_image_paths(
-      net,
-      image_paths=img_list,
-      imsize=self._imsize,
-      print_freq=self._print_freq)
+            net,
+            image_paths=img_list,
+            imsize=self._imsize,
+            print_freq=self._print_freq)
 
     global_features_utils.debug_and_log(
-      '>> Extracting descriptors for negative pool...', debug=True)
+            '>> Extracting descriptors for negative pool...', debug=True)
 
     poolvecs = extract_descriptors_from_image_paths(
-      net,
-      image_paths=self._img_names_to_full_path([self.images[i] for i in
-                                                idxs2images]),
-      imsize=self._imsize,
-      print_freq=self._print_freq)
+            net,
+            image_paths=self._img_names_to_full_path([self.images[i] for i in
+                                                      idxs2images]),
+            imsize=self._imsize,
+            print_freq=self._print_freq)
 
     global_features_utils.debug_and_log('>> Searching for hard negatives...',
                                         debug=True)
@@ -296,7 +297,7 @@ class TuplesDataset():
           nidxs.append(potential)
           clusters.append(self._clusters[potential])
           dist = tf.norm(qvecs[:, q] - poolvecs[:, ranks[r, q]] + eps,
-                      axis=0).numpy()
+                         axis=0).numpy()
           avg_ndist += dist
           n_ndist += 1
         r += 1
@@ -304,7 +305,8 @@ class TuplesDataset():
       self._nidxs.append(nidxs)
 
     global_features_utils.debug_and_log(
-      '>> Average negative l2-distance: {:.2f}'.format(avg_ndist / n_ndist))
+            '>> Average negative l2-distance: {:.2f}'.format(
+                    avg_ndist / n_ndist))
 
     # Save the obtained descriptors to a file.
     filename_dataset_descriptors = os.path.join(FLAGS.directory,
@@ -313,7 +315,7 @@ class TuplesDataset():
       pickle.dump({"qvecs": qvecs, "poolvecs": poolvecs}, desc_file)
 
     # Return average negative L2-distance.
-    return (avg_ndist / n_ndist)
+    return avg_ndist / n_ndist
 
 
 def extract_descriptors_from_image_paths(net, image_paths, imsize, print_freq):
@@ -328,9 +330,9 @@ def extract_descriptors_from_image_paths(net, image_paths, imsize, print_freq):
   """
   # Prepare the loader.
   data = generic_dataset.ImagesFromList(
-    root='',
-    image_paths=image_paths,
-    imsize=imsize)
+          root='',
+          image_paths=image_paths,
+          imsize=imsize)
 
   def images_gen():
     return (inst for inst in data)
@@ -348,7 +350,7 @@ def extract_descriptors_from_image_paths(net, image_paths, imsize, print_freq):
     vecs = tf.concat([vecs, o], 1)
     if (i + 1) % print_freq == 0 or (i + 1) == len(image_paths):
       global_features_utils.debug_and_log('\r>>>> {}/{} done...'.format(
-        i + 1, len(image_paths)), debug_on_the_same_line=True)
+              i + 1, len(image_paths)), debug_on_the_same_line=True)
 
   global_features_utils.debug_and_log("", debug_on_the_same_line=True)
   return vecs

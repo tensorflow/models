@@ -34,8 +34,10 @@ FLAGS = flags.FLAGS
 
 
 class TuplesDatasetTest(tf.test.TestCase):
+  """Tests for tuples dataset module."""
 
   def testCreateEpochTuples(self):
+    """Tests epoch tuple creation."""
     # Create a tuples dataset instance.
     name = 'test_dataset'
     qsize = 1
@@ -84,6 +86,7 @@ class TuplesDatasetTest(tf.test.TestCase):
 
 
   def testExtractDescriptorsFromImagePaths(self):
+    """Tests descriptor extraction from image paths."""
     # Initialize a network.
     model_params = {'architecture': 'ResNet101', 'pooling': 'gem',
                     'whitening': False, 'pretrained': True}
@@ -94,7 +97,7 @@ class TuplesDatasetTest(tf.test.TestCase):
     image_paths = []
     for i in range(n):
       dummy_image = np.random.rand(1024, 750, 3) * 255
-      img_out = Image.fromainitray(dummy_image.astype('uint8')).convert('RGB')
+      img_out = Image.fromarray(dummy_image.astype('uint8')).convert('RGB')
       filename = os.path.join(FLAGS.test_tmpdir, '{}.png'.format(i))
       img_out.save(filename)
       image_paths.append(filename)

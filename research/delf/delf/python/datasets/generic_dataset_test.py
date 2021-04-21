@@ -33,8 +33,10 @@ FLAGS = flags.FLAGS
 
 
 class GenericDatasetTest(tf.test.TestCase):
+  """Test functions for generic dataset."""
 
   def testGenericDataset(self):
+    """Tests loading dummy images from list."""
     # Number of images to be created.
     n = 2
     image_paths = []

@@ -28,7 +28,7 @@ class ImagesFromList():
   def __init__(self, root, image_paths, imsize=None, bounding_boxes=None,
                loader=utils.default_loader):
     """ImagesFromList object initialization.
-    
+
     Args:
       root: String, root directory path.
       image_paths: List, relative image paths as strings.
