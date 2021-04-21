@@ -19,14 +19,14 @@ import math
 import os
 import time
 
+import numpy as np
+import pickle
+import tensorflow as tf
+import tensorflow_addons as tfa
+
 from absl import flags
 from absl import app
 from absl import logging
-
-import numpy as np
-import tensorflow as tf
-import tensorflow_addons as tfa
-import pickle
 
 from delf.python.datasets import tuples_dataset
 from delf.python.datasets.revisited_op import dataset as testdataset
@@ -152,23 +152,26 @@ def main(argv):
   for dataset in FLAGS.test_datasets.split(','):
     if dataset not in _TEST_DATASET_NAMES:
       raise ValueError('Unsupported or unknown test dataset: {}.'.format(
-        dataset))
+              dataset))
 
     data_dir = os.path.join(FLAGS.data_root, 'gnd_{}.pkl'.format(dataset))
     if not os.path.isfile(data_dir):
       raise ValueError(
-        '{} ground truth file at {} not found. Please download it according to '
-        'the DELG instructions.'.format(dataset, FLAGS.data_root))
+              '{} ground truth file at {} not found. Please download it '
+              'according to '
+              'the DELG instructions.'.format(dataset, FLAGS.data_root))
 
   # Check if train dataset is downloaded and dowload it if not found.
   sfm120k.download_train(FLAGS.data_root)
 
   # Creating model export directory if it does not exist.
   model_directory = global_features_utils.create_model_directory(
-    FLAGS.training_dataset, FLAGS.arch, FLAGS.pool, FLAGS.whitening,
-    FLAGS.pretrained, FLAGS.loss, FLAGS.loss_margin, FLAGS.optimizer, FLAGS.lr,
-    FLAGS.weight_decay, FLAGS.neg_num, FLAGS.query_size, FLAGS.pool_size,
-    FLAGS.batch_size, FLAGS.update_every, FLAGS.image_size, FLAGS.directory)
+          FLAGS.training_dataset, FLAGS.arch, FLAGS.pool, FLAGS.whitening,
+          FLAGS.pretrained, FLAGS.loss, FLAGS.loss_margin, FLAGS.optimizer,
+          FLAGS.lr,
+          FLAGS.weight_decay, FLAGS.neg_num, FLAGS.query_size, FLAGS.pool_size,
+          FLAGS.batch_size, FLAGS.update_every, FLAGS.image_size,
+          FLAGS.directory)
 
   # Setting up logging directory, same as where the model is stored.
   logging.get_absl_handler().use_absl_log_file('absl_logging', model_directory)
@@ -176,7 +179,8 @@ def main(argv):
   # Set cuda visible device.
   os.environ['CUDA_VISIBLE_DEVICES'] = FLAGS.gpu_ids
   global_features_utils.debug_and_log('>> Num GPUs Available: {}'.format(
-    len(tf.config.experimental.list_physical_devices('GPU'))), FLAGS.debug)
+          len(tf.config.experimental.list_physical_devices('GPU'))),
+          FLAGS.debug)
 
   # Allow memory growth.
   gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -194,11 +198,11 @@ def main(argv):
   # Initialize the model.
   if FLAGS.pretrained:
     global_features_utils.debug_and_log(
-      '>> Using pre-trained model \'{}\''.format(FLAGS.arch))
+            '>> Using pre-trained model \'{}\''.format(FLAGS.arch))
   else:
     global_features_utils.debug_and_log(
-      '>> Using model from scratch (random weights) \'{}\'.'.format(
-        FLAGS.arch))
+            '>> Using model from scratch (random weights) \'{}\'.'.format(
+                    FLAGS.arch))
 
   model_params = {'architecture': FLAGS.arch, 'pooling': FLAGS.pool,
                   'whitening': FLAGS.whitening, 'pretrained': FLAGS.pretrained,
@@ -213,7 +217,7 @@ def main(argv):
   elif FLAGS.loss == 'triplet':
     criterion = ranking_losses.TripletLoss(margin=FLAGS.loss_margin)
   else:
-    raise (RuntimeError('Loss {} not available!'.format(FLAGS.loss)))
+    raise RuntimeError('Loss {} not available!'.format(FLAGS.loss))
 
   # Defining parameters for the training.
   start_epoch = 1
@@ -222,19 +226,19 @@ def main(argv):
 
   # Define learning rate decay schedule.
   lr_scheduler = tf.keras.optimizers.schedules.ExponentialDecay(
-    initial_learning_rate=FLAGS.lr,
-    decay_steps=decay_steps,
-    decay_rate=exp_decay)
+          initial_learning_rate=FLAGS.lr,
+          decay_steps=decay_steps,
+          decay_rate=exp_decay)
 
   # Define the optimizer.
   if FLAGS.optimizer == 'sgd':
     opt = tfa.optimizers.extend_with_decoupled_weight_decay(
-      tf.keras.optimizers.SGD)
+            tf.keras.optimizers.SGD)
     optimizer = opt(weight_decay=FLAGS.weight_decay,
                     learning_rate=lr_scheduler, momentum=FLAGS.momentum)
   elif FLAGS.optimizer == 'adam':
     opt = tfa.optimizers.extend_with_decoupled_weight_decay(
-      tf.keras.optimizers.Adam)
+            tf.keras.optimizers.Adam)
     optimizer = opt(weight_decay=FLAGS.weight_decay,
                     learning_rate=lr_scheduler)
 
@@ -245,10 +249,10 @@ def main(argv):
   # Setting up the checkpoint manager.
   checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
   manager = tf.train.CheckpointManager(
-    checkpoint,
-    model_directory,
-    max_to_keep=10,
-    keep_checkpoint_every_n_hours=3)
+          checkpoint,
+          model_directory,
+          max_to_keep=10,
+          keep_checkpoint_every_n_hours=3)
   if FLAGS.resume:
     # Restores the checkpoint, if existing.
     global_features_utils.debug_and_log('>> Continuing from a checkpoint.')
@@ -266,49 +270,49 @@ def main(argv):
 
   if FLAGS.training_dataset.startswith('retrieval-SfM-120k'):
     train_dataset = sfm120k.CreateDataset(
-      data_root=FLAGS.data_root,
-      mode='train',
-      imsize=FLAGS.image_size,
-      nnum=FLAGS.neg_num,
-      qsize=FLAGS.query_size,
-      poolsize=FLAGS.pool_size
+            data_root=FLAGS.data_root,
+            mode='train',
+            imsize=FLAGS.image_size,
+            nnum=FLAGS.neg_num,
+            qsize=FLAGS.query_size,
+            poolsize=FLAGS.pool_size
     )
     if FLAGS.val:
       val_dataset = sfm120k.CreateDataset(
-        data_root=FLAGS.data_root,
-        mode='val',
-        imsize=FLAGS.image_size,
-        nnum=FLAGS.neg_num,
-        qsize=float('Inf'),
-        poolsize=float('Inf'),
-        eccv2020=FLAGS.val_eccv2020
+              data_root=FLAGS.data_root,
+              mode='val',
+              imsize=FLAGS.image_size,
+              nnum=FLAGS.neg_num,
+              qsize=float('Inf'),
+              poolsize=float('Inf'),
+              eccv2020=FLAGS.val_eccv2020
       )
   else:
     train_dataset = tuples_dataset.TuplesDataset(
-      name=FLAGS.training_dataset,
-      data_root=FLAGS.data_root,
-      mode='train',
-      imsize=FLAGS.image_size,
-      nnum=FLAGS.neg_num,
-      qsize=FLAGS.query_size,
-      poolsize=FLAGS.pool_size
+            name=FLAGS.training_dataset,
+            data_root=FLAGS.data_root,
+            mode='train',
+            imsize=FLAGS.image_size,
+            nnum=FLAGS.neg_num,
+            qsize=FLAGS.query_size,
+            poolsize=FLAGS.pool_size
     )
     if FLAGS.val:
       val_dataset = tuples_dataset.TuplesDataset(
-        name=FLAGS.training_dataset,
-        data_root=FLAGS.data_root,
-        mode='val',
-        imsize=FLAGS.image_size,
-        nnum=FLAGS.neg_num,
-        qsize=float('Inf'),
-        poolsize=float('Inf')
+              name=FLAGS.training_dataset,
+              data_root=FLAGS.data_root,
+              mode='val',
+              imsize=FLAGS.image_size,
+              nnum=FLAGS.neg_num,
+              qsize=float('Inf'),
+              poolsize=float('Inf')
       )
 
   output_types = [tf.float32 for i in range(2 + FLAGS.neg_num)]
   output_types.append(tf.int32)
 
   global_features_utils.debug_and_log(
-    '>> Training the {} network'.format(model_directory))
+          '>> Training the {} network'.format(model_directory))
   global_features_utils.debug_and_log('>> GPU ids: {}'.format(FLAGS.gpu_ids))
 
   with writer.as_default():
@@ -336,7 +340,7 @@ def main(argv):
 
       train_loader = tf.data.Dataset.from_generator(train_gen,
                                                     output_types=tuple(
-                                                      output_types))
+                                                            output_types))
 
       loss = train_val(loader=iter(train_loader), model=model,
                        criterion=criterion, optimizer=optimizer,
@@ -357,7 +361,7 @@ def main(argv):
 
         val_loader = tf.data.Dataset.from_generator(val_gen,
                                                     output_types=tuple(
-                                                      output_types))
+                                                            output_types))
 
         loss = train_val(loader=iter(val_loader), model=model,
                          criterion=criterion, optimizer=None,
@@ -374,17 +378,16 @@ def main(argv):
       try:
         save_path = manager.save(checkpoint_number=epoch)
         global_features_utils.debug_and_log(
-          'Saved ({}) at {}'.format(epoch, save_path))
+                'Saved ({}) at {}'.format(epoch, save_path))
 
         filename = os.path.join(model_directory,
-                                'checkpoint_epoch_{}.h5'.format(
-                                  epoch))
+                                'checkpoint_epoch_{}.h5'.format(epoch))
         model.save_weights(filename, save_format='h5')
         global_features_utils.debug_and_log(
-          'Saved weights ({}) at {}'.format(epoch, filename))
+                'Saved weights ({}) at {}'.format(epoch, filename))
       except Exception as ex:
         global_features_utils.debug_and_log(
-          'Could not save checkpoint: {}'.format(ex))
+                'Could not save checkpoint: {}'.format(ex))
 
 
 def grad(criterion, model, input, target):
@@ -403,7 +406,7 @@ def grad(criterion, model, input, target):
   # Record gradients and loss through the network.
   with tf.GradientTape() as tape:
     output = tf.Variable(
-      tf.zeros(shape=(0, model.meta['outputdim']), dtype=tf.float32))
+            tf.zeros(shape=(0, model.meta['outputdim']), dtype=tf.float32))
     for img in input:
       # Compute descriptor vector for each image.
       o = model(tf.expand_dims(img, axis=0), training=True)
@@ -479,7 +482,7 @@ def train_val(loader, model, criterion, optimizer, epoch, train=True):
           # Do one step for multiple batches. Accumulated gradients are
           # used.
           optimizer.apply_gradients(
-            zip(accum_grads, model.trainable_variables))
+                  zip(accum_grads, model.trainable_variables))
           accum_grads = [
             tf.Variable(tf.zeros_like(tv.read_value()), trainable=False)
             for tv in tvs]
@@ -531,12 +534,16 @@ def train_val(loader, model, criterion, optimizer, epoch, train=True):
     if FLAGS.debug and ((batch_num + 1) % FLAGS.print_freq == 0 or
                         batch_num == 0 or (batch_num + 1) == all_batch_num):
       global_features_utils.debug_and_log(
-        '>> {0}: [{1} epoch][{2}/{3} batch]\t Time val: {batch_time.val:.3f} '
-        '(Batch Time avg: {batch_time.avg:.3f})\t Data {data_time.val:.3f} ('
-        'Time avg: {data_time.avg:.3f})\t Immediate loss value: {loss.val:.4f} '
-        '(Loss avg: {loss.avg:.4f})'.format(
-          state, epoch, batch_num + 1, all_batch_num, batch_time=batch_time,
-          data_time=data_time, loss=losses), debug=True, log=False)
+              '>> {0}: [{1} epoch][{2}/{3} batch]\t Time val: {'
+              'batch_time.val:.3f} '
+              '(Batch Time avg: {batch_time.avg:.3f})\t Data {'
+              'data_time.val:.3f} ('
+              'Time avg: {data_time.avg:.3f})\t Immediate loss value: {'
+              'loss.val:.4f} '
+              '(Loss avg: {loss.avg:.4f})'.format(
+                      state, epoch, batch_num + 1, all_batch_num,
+                      batch_time=batch_time,
+                      data_time=data_time, loss=losses), debug=True, log=False)
     batch_num += 1
 
   return losses.avg
@@ -559,7 +566,7 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
   """
   global_features_utils.debug_and_log(">> Testing step:")
   global_features_utils.debug_and_log(
-    '>> Evaluating network on test datasets...')
+          '>> Evaluating network on test datasets...')
 
   # For testing we use image size of max 1024.
   image_size = 1024
@@ -569,22 +576,23 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
 
     # If whitening already precomputed, load it and skip the computations.
     filename = os.path.join(
-      model_directory, 'learned_whitening_mP_{}_epoch.pkl'.format(epoch))
+            model_directory, 'learned_whitening_mP_{}_epoch.pkl'.format(epoch))
     filename_layer = os.path.join(
-      model_directory, 'learned_whitening_layer_config_{}_epoch.pkl'.format(
-        epoch))
+            model_directory,
+            'learned_whitening_layer_config_{}_epoch.pkl'.format(
+                    epoch))
 
     if os.path.isfile(filename):
       global_features_utils.debug_and_log(
-        '>> {}: Whitening for this epoch is already precomputed. '
-        'Loading...'.format(FLAGS.precompute_whitening))
+              '>> {}: Whitening for this epoch is already precomputed. '
+              'Loading...'.format(FLAGS.precompute_whitening))
       with tf.io.gfile.GFile(filename, 'rb') as learned_whitening_file:
         learned_whitening = pickle.load(learned_whitening_file)
 
     else:
       start = time.time()
       global_features_utils.debug_and_log(
-        '>> {}: Learning whitening...'.format(FLAGS.precompute_whitening))
+              '>> {}: Learning whitening...'.format(FLAGS.precompute_whitening))
 
       # Loading db.
       db_root = os.path.join(FLAGS.data_root, 'train',
@@ -599,33 +607,35 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
 
       # Extract whitening vectors.
       global_features_utils.debug_and_log(
-        '>> {}: Extracting...'.format(FLAGS.precompute_whitening))
+              '>> {}: Extracting...'.format(FLAGS.precompute_whitening))
       wvecs = global_model.extract_global_descriptors_from_list(net, images,
                                                                 image_size)
 
       # Learning whitening.
       global_features_utils.debug_and_log(
-        '>> {}: Learning...'.format(FLAGS.precompute_whitening))
+              '>> {}: Learning...'.format(FLAGS.precompute_whitening))
       wvecs = wvecs.numpy()
-      m, P = whiten.whitenlearn(wvecs, db['qidxs'], db['pidxs'])
-      learned_whitening = {'m': m, 'P': P}
+      mean_vector, projection_matrix = whiten.whitenlearn(wvecs, db['qidxs'],
+                                                 db['pidxs'])
+      learned_whitening = {'m': mean_vector, 'P': projection_matrix}
 
       global_features_utils.debug_and_log(
-        '>> {}: Elapsed time: {}'.format(FLAGS.precompute_whitening,
-                                         global_features_utils.htime(
-                                           time.time() - start)))
+              '>> {}: Elapsed time: {}'.format(FLAGS.precompute_whitening,
+                                               global_features_utils.htime(
+                                                       time.time() - start)))
       # Save learned_whitening parameters for a later use.
       with tf.io.gfile.GFile(filename, 'wb') as learned_whitening_file:
         pickle.dump(learned_whitening, learned_whitening_file)
 
       # Saving whitening as a layer.
-      bias = -np.dot(m.T, P.T)
+      bias = -np.dot(mean_vector.T, projection_matrix.T)
       whitening_layer = tf.keras.layers.Dense(
-        net.meta['outputdim'],
-        activation=None,
-        use_bias=True,
-        kernel_initializer=tf.keras.initializers.Constant(P.T),
-        bias_initializer=tf.keras.initializers.Constant(bias)
+              net.meta['outputdim'],
+              activation=None,
+              use_bias=True,
+              kernel_initializer=tf.keras.initializers.Constant(
+                      projection_matrix.T),
+              bias_initializer=tf.keras.initializers.Constant(bias)
       )
       with tf.io.gfile.GFile(filename_layer, 'wb') as learned_whitening_file:
         pickle.dump(whitening_layer.get_config(), learned_whitening_file)
@@ -639,20 +649,21 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
 
     # Prepare config structure for the test dataset.
     cfg = testdataset.create_config_for_test_dataset(dataset, os.path.join(
-      FLAGS.data_root))
+            FLAGS.data_root))
     images = [cfg['im_fname'](cfg, i) for i in range(cfg['n'])]
     qimages = [cfg['qim_fname'](cfg, i) for i in range(cfg['nq'])]
     bounding_boxes = [tuple(cfg['gnd'][i]['bbx']) for i in range(cfg['nq'])]
 
     # Extract database and query vectors.
     global_features_utils.debug_and_log(
-      '>> {}: Extracting database images...'.format(dataset))
+            '>> {}: Extracting database images...'.format(dataset))
     vecs = global_model.extract_global_descriptors_from_list(
-      net, images, image_size, ms=list(eval(FLAGS.multiscale)))
+            net, images, image_size, ms=list(eval(FLAGS.multiscale)))
     global_features_utils.debug_and_log(
-      '>> {}: Extracting query images...'.format(dataset))
+            '>> {}: Extracting query images...'.format(dataset))
     qvecs = global_model.extract_global_descriptors_from_list(
-      net, qimages, image_size, bounding_boxes, ms=list(eval(FLAGS.multiscale)))
+            net, qimages, image_size, bounding_boxes,
+            ms=list(eval(FLAGS.multiscale)))
 
     global_features_utils.debug_and_log('>> {}: Evaluating...'.format(dataset))
 
@@ -678,16 +689,16 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
     if learned_whitening is not None:
 
       # Whiten the vectors.
-      m = learned_whitening['m']
-      P = learned_whitening['P']
-      vecs_lw = whiten.whitenapply(vecs, m, P)
-      qvecs_lw = whiten.whitenapply(qvecs, m, P)
+      mean_vector = learned_whitening['m']
+      projection_matrix = learned_whitening['P']
+      vecs_lw = whiten.whitenapply(vecs, mean_vector, projection_matrix)
+      qvecs_lw = whiten.whitenapply(qvecs, mean_vector, projection_matrix)
 
       # Search, rank, and print.
       scores = np.dot(vecs_lw.T, qvecs_lw)
       ranks = np.transpose(np.argsort(-scores, axis=0))
       metrics = global_features_utils.compute_metrics_and_print(
-        dataset + ' + whiten', ranks, cfg['gnd'])
+              dataset + ' + whiten', ranks, cfg['gnd'])
 
       if writer:
         tf.summary.scalar('test_accuracy_whiten_{}_E'.format(dataset),
@@ -699,8 +710,9 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
         writer.flush()
 
     global_features_utils.debug_and_log(
-      '>> {}: Elapsed time: {}'.format(dataset, global_features_utils.htime(
-        time.time() - start)))
+            '>> {}: Elapsed time: {}'.format(dataset,
+                                             global_features_utils.htime(
+                                                     time.time() - start)))
 
 
 if __name__ == '__main__':
