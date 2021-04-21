@@ -41,14 +41,16 @@ class YoloHead(tf.keras.layers.Layer):
       max_level: `int`, the maximum backbone output level
       classes: `int`, number of classes per category
       boxes_per_level: `int`, number of boxes to predict per level
-      use_sync_bn: if True, use synchronized batch normalization.
+      output_extras: `int`, number of additional output channels that the head
+        should predict for non-object detection and non-image classification
+        tasks
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
-      activation: `str`, the activation function to use typically leaky or mish
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      activation: `str`, the activation function to use typically leaky or mish
       **kwargs: keyword arguments to be passed.
     """
 

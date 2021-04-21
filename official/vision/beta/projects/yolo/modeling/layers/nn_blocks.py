@@ -27,8 +27,8 @@ class Identity(tf.keras.layers.Layer):
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
 
-  def call(self, input):
-    return input
+  def call(self, inputs):
+    return inputs
 
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
@@ -218,8 +218,8 @@ class DarkResidual(tf.keras.layers.Layer):
         weights
       bias_initializer: string to indicate which function to use to initialize
         bias
-      kernel_regularizer: string to indicate which function to use to regularizer
-        weights
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights
       bias_regularizer: string to indicate which function to use to regularizer
         bias
       use_bn: boolean for whether to use batch normalization
@@ -264,7 +264,7 @@ class DarkResidual(tf.keras.layers.Layer):
     super().__init__(**kwargs)
 
   def build(self, input_shape):
-    _dark_conv_args = {
+    dark_conv_args = {
         'kernel_initializer': self._kernel_initializer,
         'bias_initializer': self._bias_initializer,
         'bias_regularizer': self._bias_regularizer,
@@ -292,14 +292,14 @@ class DarkResidual(tf.keras.layers.Layer):
           strides=down_stride,
           dilation_rate=dilation_rate,
           padding='same',
-          **_dark_conv_args)
+          **dark_conv_args)
 
     self._conv1 = ConvBN(
         filters=self._filters // self._filter_scale,
         kernel_size=(1, 1),
         strides=(1, 1),
         padding='same',
-        **_dark_conv_args)
+        **dark_conv_args)
 
     self._conv2 = ConvBN(
         filters=self._filters,
@@ -307,7 +307,7 @@ class DarkResidual(tf.keras.layers.Layer):
         strides=(1, 1),
         dilation_rate=self._dilation_rate,
         padding='same',
-        **_dark_conv_args)
+        **dark_conv_args)
 
     self._shortcut = tf.keras.layers.Add()
     if self._sc_activation == 'leaky':
@@ -388,8 +388,8 @@ class CSPTiny(tf.keras.layers.Layer):
       bias_initializer: string to indicate which function to use to initialize
         bias
       use_bn: boolean for whether to use batch normalization
-      kernel_regularizer: string to indicate which function to use to regularizer
-        weights
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights
       bias_regularizer: string to indicate which function to use to regularizer
         bias
       use_sync_bn: boolean for whether sync batch normalization statistics
@@ -434,7 +434,7 @@ class CSPTiny(tf.keras.layers.Layer):
     super().__init__(**kwargs)
 
   def build(self, input_shape):
-    _dark_conv_args = {
+    dark_conv_args = {
         'kernel_initializer': self._kernel_initializer,
         'bias_initializer': self._bias_initializer,
         'bias_regularizer': self._bias_regularizer,
@@ -451,7 +451,7 @@ class CSPTiny(tf.keras.layers.Layer):
         kernel_size=(3, 3),
         strides=(1, 1),
         padding='same',
-        **_dark_conv_args)
+        **dark_conv_args)
 
     self._convlayer2 = ConvBN(
         filters=self._filters // 2,
@@ -474,14 +474,14 @@ class CSPTiny(tf.keras.layers.Layer):
         kernel_size=(3, 3),
         strides=(1, 1),
         padding='same',
-        **_dark_conv_args)
+        **dark_conv_args)
 
     self._convlayer4 = ConvBN(
         filters=self._filters,
         kernel_size=(1, 1),
         strides=(1, 1),
         padding='same',
-        **_dark_conv_args)
+        **dark_conv_args)
 
     if self._downsample:
       self._maxpool = tf.keras.layers.MaxPool2D(
@@ -544,16 +544,16 @@ class CSPRoute(tf.keras.layers.Layer):
     """
     Args:
       filters: integer for output depth, or the number of features to learn
-      filter_scale: integer dicating (filters//2) or the number of filters in the
-        partial feature stack
+      filter_scale: integer dicating (filters//2) or the number of filters in
+        the partial feature stack
       downsample: down_sample the input
       activation: string for activation function to use in layer
       kernel_initializer: string to indicate which function to use to
         initialize weights
       bias_initializer: string to indicate which function to use to initialize
         bias
-      kernel_regularizer: string to indicate which function to use to regularizer
-        weights
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights
       bias_regularizer: string to indicate which function to use to regularizer
         bias
       use_bn: boolean for whether to use batch normalization
@@ -585,7 +585,7 @@ class CSPRoute(tf.keras.layers.Layer):
     self._leaky_alpha = leaky_alpha
 
   def build(self, input_shape):
-    _dark_conv_args = {
+    dark_conv_args = {
         'kernel_initializer': self._kernel_initializer,
         'bias_initializer': self._bias_initializer,
         'bias_regularizer': self._bias_regularizer,
@@ -612,19 +612,19 @@ class CSPRoute(tf.keras.layers.Layer):
           kernel_size=(3, 3),
           strides=down_stride,
           dilation_rate=dilation_rate,
-          **_dark_conv_args)
+          **dark_conv_args)
 
     self._conv2 = ConvBN(
         filters=self._filters // self._filter_scale,
         kernel_size=(1, 1),
         strides=(1, 1),
-        **_dark_conv_args)
+        **dark_conv_args)
 
     self._conv3 = ConvBN(
         filters=self._filters // self._filter_scale,
         kernel_size=(1, 1),
         strides=(1, 1),
-        **_dark_conv_args)
+        **dark_conv_args)
 
   def call(self, inputs, training=None):
     if self._downsample:
@@ -668,15 +668,15 @@ class CSPConnect(tf.keras.layers.Layer):
     """
     Args:
       filters: integer for output depth, or the number of features to learn
-      filter_scale: integer dicating (filters//2) or the number of filters in the
-        partial feature stack
+      filter_scale: integer dicating (filters//2) or the number of filters in
+        the partial feature stack
       activation: string for activation function to use in layer
       kernel_initializer: string to indicate which function to use to initialize
         weights
       bias_initializer: string to indicate which function to use to initialize
         bias
-      kernel_regularizer: string to indicate which function to use to regularizer
-        weights
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights
       bias_regularizer: string to indicate which function to use to regularizer
         bias
       use_bn: boolean for whether to use batch normalization
@@ -709,7 +709,7 @@ class CSPConnect(tf.keras.layers.Layer):
     self._leaky_alpha = leaky_alpha
 
   def build(self, input_shape):
-    _dark_conv_args = {
+    dark_conv_args = {
         'kernel_initializer': self._kernel_initializer,
         'bias_initializer': self._bias_initializer,
         'bias_regularizer': self._bias_regularizer,
@@ -726,7 +726,7 @@ class CSPConnect(tf.keras.layers.Layer):
           filters=self._filters // self._filter_scale,
           kernel_size=self._kernel_size,
           strides=(1, 1),
-          **_dark_conv_args)
+          **dark_conv_args)
     self._concat = tf.keras.layers.Concatenate(axis=-1)
 
     if not self._drop_final:
@@ -734,7 +734,7 @@ class CSPConnect(tf.keras.layers.Layer):
           filters=self._filters,
           kernel_size=(1, 1),
           strides=(1, 1),
-          **_dark_conv_args)
+          **dark_conv_args)
     return
 
   def call(self, inputs, training=None):
@@ -787,15 +787,15 @@ class CSPStack(tf.keras.layers.Layer):
         list will be called sequentially.
       downsample: down_sample the input
       filters: integer for output depth, or the number of features to learn
-      filter_scale: integer dicating (filters//2) or the number of filters in the
-        partial feature stack
+      filter_scale: integer dicating (filters//2) or the number of filters in
+        the partial feature stack
       activation: string for activation function to use in layer
       kernel_initializer: string to indicate which function to use to initialize
         weights
       bias_initializer: string to indicate which function to use to initialize
         bias
-      kernel_regularizer: string to indicate which function to use to regularizer
-        weights
+      kernel_regularizer: string to indicate which function to use to
+        regularizer weights
       bias_regularizer: string to indicate which function to use to regularizer
         bias
       use_bn: boolean for whether to use batch normalization
@@ -837,7 +837,7 @@ class CSPStack(tf.keras.layers.Layer):
       self._model_to_wrap = []
 
   def build(self, input_shape):
-    _dark_conv_args = {
+    dark_conv_args = {
         'filters': self._filters,
         'filter_scale': self._filter_scale,
         'activation': self._activation,
@@ -850,8 +850,8 @@ class CSPStack(tf.keras.layers.Layer):
         'norm_epsilon': self._norm_epsilon,
         'kernel_regularizer': self._kernel_regularizer,
     }
-    self._route = CSPRoute(downsample=self._downsample, **_dark_conv_args)
-    self._connect = CSPConnect(**_dark_conv_args)
+    self._route = CSPRoute(downsample=self._downsample, **dark_conv_args)
+    self._connect = CSPConnect(**dark_conv_args)
 
   def call(self, inputs, training=None):
     x, x_route = self._route(inputs)
@@ -992,7 +992,7 @@ class PathAggregationBlock(tf.keras.layers.Layer):
     return
 
   def build(self, input_shape):
-    _dark_conv_args = {
+    dark_conv_args = {
         'kernel_initializer': self._kernel_initializer,
         'bias_initializer': self._bias_initializer,
         'bias_regularizer': self._bias_regularizer,
@@ -1006,20 +1006,20 @@ class PathAggregationBlock(tf.keras.layers.Layer):
     }
 
     if self._inverted:
-      self._build_reversed(input_shape, _dark_conv_args)
+      self._build_reversed(input_shape, dark_conv_args)
     else:
-      self._build_regular(input_shape, _dark_conv_args)
+      self._build_regular(input_shape, dark_conv_args)
 
     self._concat = tf.keras.layers.Concatenate()
     super().build(input_shape)
 
   def _call_regular(self, inputs, training=None):
-    inputToConvolve, inputToConcat = inputs
-    x_prev = self._conv(inputToConvolve)
+    input_to_convolve, input_to_concat = inputs
+    x_prev = self._conv(input_to_convolve)
     if self._upsample:
       x_prev = spatial_transform_ops.nearest_upsampling(x_prev,
                                                         self._upsample_size)
-    x = self._concat([x_prev, inputToConcat])
+    x = self._concat([x_prev, input_to_concat])
 
     # used in csp conversion
     if not self._drop_final:
@@ -1119,7 +1119,7 @@ class SAM(tf.keras.layers.Layer):
     self._output_activation = output_activation
     self._leaky_alpha = leaky_alpha
 
-    self._dark_conv_args = {
+    self.dark_conv_args = {
         'kernel_size': kernel_size,
         'strides': strides,
         'padding': padding,
@@ -1141,7 +1141,7 @@ class SAM(tf.keras.layers.Layer):
   def build(self, input_shape):
     if self._filters == -1:
       self._filters = input_shape[-1]
-    self._conv = ConvBN(filters=self._filters, **self._dark_conv_args)
+    self._conv = ConvBN(filters=self._filters, **self.dark_conv_args)
     if self._output_activation == 'leaky':
       self._activation_fn = tf.keras.layers.LeakyReLU(alpha=self._leaky_alpha)
     elif self._output_activation == 'mish':
@@ -1441,7 +1441,7 @@ class DarkRouteProcess(tf.keras.layers.Layer):
     layer_list = []
     outputs = []
     for i in range(self._repetitions):
-      layers = ["conv1"] * ((i + 1) % 2) + ["conv2"] * (i % 2)
+      layers = ['conv1'] * ((i + 1) % 2) + ['conv2'] * (i % 2)
       layer_list.extend(layers)
       outputs = [False] + outputs
     return layer_list, outputs
@@ -1519,11 +1519,8 @@ class DarkRouteProcess(tf.keras.layers.Layer):
     return x1
 
   def build(self, input_shape):
-    _dark_conv_args = {
+    dark_conv_args = {
         'activation': self._activation,
-    }
-
-    _args = {
         'kernel_initializer': self._kernel_initializer,
         'bias_initializer': self._bias_initializer,
         'bias_regularizer': self._bias_regularizer,
@@ -1534,22 +1531,21 @@ class DarkRouteProcess(tf.keras.layers.Layer):
         'leaky_alpha': self._leaky_alpha,
     }
 
-    _dark_conv_args.update(_args)
     csp = False
     self.layers = []
     for layer in self.layer_list:
       if layer == 'csp_route':
-        self.layers.append(self._csp_route(self._filters, _dark_conv_args))
+        self.layers.append(self._csp_route(self._filters, dark_conv_args))
         csp = True
       elif layer == 'csp_connect':
-        self.layers.append(self._csp_connect(self._filters, _dark_conv_args))
+        self.layers.append(self._csp_connect(self._filters, dark_conv_args))
         csp = False
       elif layer == 'conv1':
-        self.layers.append(self._conv1(self._filters, _dark_conv_args, csp=csp))
+        self.layers.append(self._conv1(self._filters, dark_conv_args, csp=csp))
       elif layer == 'conv2':
-        self.layers.append(self._conv2(self._filters, _dark_conv_args, csp=csp))
+        self.layers.append(self._conv2(self._filters, dark_conv_args, csp=csp))
       elif layer == 'spp':
-        self.layers.append(self._spp(self._filters, _dark_conv_args))
+        self.layers.append(self._spp(self._filters, dark_conv_args))
       elif layer == 'sam':
         self.layers.append(self._sam(-1, _args))
 

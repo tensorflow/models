@@ -20,13 +20,13 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
-class Identity_dup(tf.keras.layers.Layer):
+class IdentityRoute(tf.keras.layers.Layer):
 
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
 
-  def call(self, input):
-    return None, input
+  def call(self, inputs): # pylint: disable=arguments-differ
+    return None, inputs
 
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
@@ -51,11 +51,14 @@ class YoloFPN(tf.keras.layers.Layer):
     Args:
       fpn_path_len: `int`, number of layers ot use in each FPN path
         if you choose to use an FPN.
+      embed_sam: `bool`, use the spatial attention module
+      csp_stack: `bool`, CSPize the FPN
+      activation: `str`, the activation function to use typically leaky or mish.
+      fpn_filter_scale: `int`, scaling factor for the FPN filters
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
-      activation: `str`, the activation function to use typically leaky or mish.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
@@ -133,7 +136,7 @@ class YoloFPN(tf.keras.layers.Layer):
             drop_final=self._csp_stack == 0,
             upsample_size=2,
             **self._base_config)
-        self.preprocessors[str(level)] = Identity_dup()
+        self.preprocessors[str(level)] = IdentityRoute()
       elif level != self._max_level:
         self.resamples[str(level)] = nn_blocks.PathAggregationBlock(
             filters=depth // 2,
@@ -197,17 +200,19 @@ class YoloPAN(tf.keras.layers.Layer):
       max_level_process_len: `int`, number of layers ot use in the largest
         processing path, or the backbones largest output if it is different
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
+      embed_sam: `bool`, use the spatial attention module
+      csp_stack: `bool`, CSPize the FPN
+      activation: `str`, the activation function to use typically leaky or mish.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing
         by zero.
-      activation: `str`, the activation function to use typically leaky
-        or mish
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
       fpn_input: `bool`, for whether the input into this fucntion is an FPN or
         a backbone.
+      fpn_filter_scale: `int`, scaling factor for the FPN filters
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -338,8 +343,7 @@ class YoloPAN(tf.keras.layers.Layer):
         minimum_depth *= 2
     if self._fpn_input:
       return depths
-    else:
-      return list(reversed(depths))
+    return list(reversed(depths))
 
   def call(self, inputs):
     outputs = dict()
@@ -385,17 +389,20 @@ class YoloDecoder(tf.keras.Model):
       input_specs: `dict[str, tf.InputSpec]`: input specs of each of the inputs
         to the heads
       embed_fpn: `bool`, use the FPN found in the YoloV4 model
+      embed_sam: `bool`, use the spatial attention module
+      csp_stack: `bool`, CSPize the FPN
       fpn_path_len: `int`, number of layers ot use in each FPN path
         if you choose to use an FPN
+      fpn_filter_scale: `int`, scaling factor for the FPN filters
       path_process_len: `int`, number of layers ot use in each Decoder path
       max_level_process_len: `int`, number of layers ot use in the largest
         processing path, or the backbones largest output if it is different
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
+      activation: `str`, the activation function to use typically leaky or mish
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
-      activation: `str`, the activation function to use typically leaky or mish
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
