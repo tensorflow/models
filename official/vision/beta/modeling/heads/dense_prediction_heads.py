@@ -14,7 +14,7 @@
 
 """Contains definitions of dense prediction heads."""
 
-from typing import List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 # Import libraries
 
@@ -36,7 +36,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
       num_anchors_per_location: int,
       num_convs: int = 4,
       num_filters: int = 256,
-      attribute_heads: Mapping[str, Tuple[str, int]] = None,
+      attribute_heads: List[Dict[str, Any]] = None,
       use_separable_conv: bool = False,
       activation: str = 'relu',
       use_sync_bn: bool = False,
@@ -57,9 +57,10 @@ class RetinaNetHead(tf.keras.layers.Layer):
         conv layers before the prediction.
       num_filters: An `int` number that represents the number of filters of the
         intermediate conv layers.
-      attribute_heads: If not None, a dict that contains
-        (attribute_name, attribute_config) for additional attribute heads.
-        `attribute_config` is a tuple of (attribute_type, attribute_size).
+      attribute_heads: If not None, a list that contains a dict for each
+        additional attribute head. Each dict consists of 3 key-value pairs:
+        `name`, `type` ('regression' or 'classification'), and `size` (number
+        of predicted values for each instance).
       use_separable_conv: A `bool` that indicates whether the separable
         convolution layers is used.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
@@ -189,11 +190,12 @@ class RetinaNetHead(tf.keras.layers.Layer):
       self._att_convs = {}
       self._att_norms = {}
 
-      for att_name, att_head in self._config_dict['attribute_heads'].items():
+      for att_config in self._config_dict['attribute_heads']:
+        att_name = att_config['name']
+        att_type = att_config['type']
+        att_size = att_config['size']
         att_convs_i = []
         att_norms_i = []
-        att_type = att_head[0]
-        att_size = att_head[1]
 
         # Build conv and norm layers.
         for level in range(self._config_dict['min_level'],
@@ -277,8 +279,8 @@ class RetinaNetHead(tf.keras.layers.Layer):
     boxes = {}
     if self._config_dict['attribute_heads']:
       attributes = {
-          att_name: {}
-          for att_name in self._config_dict['attribute_heads'].keys()
+          att_config['name']: {}
+          for att_config in self._config_dict['attribute_heads']
       }
     else:
       attributes = {}
@@ -306,7 +308,8 @@ class RetinaNetHead(tf.keras.layers.Layer):
 
       # attribute nets.
       if self._config_dict['attribute_heads']:
-        for att_name in self._config_dict['attribute_heads'].keys():
+        for att_config in self._config_dict['attribute_heads']:
+          att_name = att_config['name']
           x = this_level_features
           for conv, norm in zip(self._att_convs[att_name],
                                 self._att_norms[att_name][i]):
