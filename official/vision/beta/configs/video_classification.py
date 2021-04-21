@@ -33,6 +33,7 @@ class DataConfig(cfg.DataConfig):
   split: str = 'train'
   feature_shape: Tuple[int, ...] = (64, 224, 224, 3)
   temporal_stride: int = 1
+  random_stride_range: int = 0
   num_test_clips: int = 1
   num_test_crops: int = 1
   num_classes: int = -1

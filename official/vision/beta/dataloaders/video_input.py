@@ -33,6 +33,7 @@ def process_image(image: tf.Tensor,
                   is_training: bool = True,
                   num_frames: int = 32,
                   stride: int = 1,
+                  random_stride_range: int = 0,
                   num_test_clips: int = 1,
                   min_resize: int = 256,
                   crop_size: int = 224,
@@ -52,6 +53,11 @@ def process_image(image: tf.Tensor,
       and left right flip is used.
     num_frames: Number of frames per subclip.
     stride: Temporal stride to sample frames.
+    random_stride_range: An int indicating the min and max bounds to uniformly
+      sample different strides from the video. E.g., a value of 1 with stride=2
+      will uniformly sample a stride in {1, 2, 3} for each video in a batch.
+      Only used enabled training for the purposes of frame-rate augmentation.
+      Defaults to 0, which disables random sampling.
     num_test_clips: Number of test clips (1 by default). If more than 1, this
       will sample multiple linearly spaced clips within each video at test time.
       If 1, then a single clip in the middle of the video is sampled. The clips
@@ -78,8 +84,20 @@ def process_image(image: tf.Tensor,
         '`num_test_clips` %d is ignored since `is_training` is `True`.',
         num_test_clips)
 
+  if random_stride_range < 0:
+    raise ValueError('Random stride range should be >= 0, got {}'.format(
+        random_stride_range))
+
   # Temporal sampler.
   if is_training:
+    if random_stride_range > 0:
+      # Uniformly sample different frame-rates
+      stride = tf.random.uniform(
+          [],
+          tf.maximum(stride - random_stride_range, 1),
+          stride + random_stride_range,
+          dtype=tf.int32)
+
     # Sample random clip.
     image = preprocess_ops_3d.sample_sequence(image, num_frames, True, stride,
                                               seed)
@@ -219,6 +237,7 @@ class Parser(parser.Parser):
                label_key: str = LABEL_KEY):
     self._num_frames = input_params.feature_shape[0]
     self._stride = input_params.temporal_stride
+    self._random_stride_range = input_params.random_stride_range
     self._num_test_clips = input_params.num_test_clips
     self._min_resize = input_params.min_image_size
     self._crop_size = input_params.feature_shape[1]
@@ -248,6 +267,7 @@ class Parser(parser.Parser):
         is_training=True,
         num_frames=self._num_frames,
         stride=self._stride,
+        random_stride_range=self._random_stride_range,
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
         crop_size=self._crop_size,
