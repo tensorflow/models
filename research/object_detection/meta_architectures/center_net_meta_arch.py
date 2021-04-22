@@ -2430,7 +2430,8 @@ class CenterNetMetaArch(model.DetectionModel):
                 keypoint_std_dev=kp_params.keypoint_std_dev,
                 peak_radius=kp_params.offset_peak_radius,
                 per_keypoint_offset=kp_params.per_keypoint_offset,
-                compute_heatmap_sparse=self._compute_heatmap_sparse))
+                compute_heatmap_sparse=self._compute_heatmap_sparse,
+                per_keypoint_depth=kp_params.per_keypoint_depth))
     if self._mask_params is not None:
       target_assigners[SEGMENTATION_TASK] = (
           cn_assigner.CenterNetMaskTargetAssigner(stride))
@@ -2853,17 +2854,13 @@ class CenterNetMetaArch(model.DetectionModel):
          gt_keypoint_depths_list=gt_keypoint_depths_list,
          gt_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
 
-    if kp_params.per_keypoint_offset and not kp_params.per_keypoint_depth:
-      batch_indices = batch_indices[:, 0:3]
-
     # Keypoint offset loss.
     loss = 0.0
     for prediction in depth_predictions:
-      # TODO(yuhuic): Update this function to use
-      # cn_assigner.get_batch_predictions_from_indices().
-      selected_depths = tf.gather_nd(prediction, batch_indices)
-      if kp_params.per_keypoint_offset and kp_params.per_keypoint_depth:
-        selected_depths = tf.expand_dims(selected_depths, axis=-1)
+      if kp_params.per_keypoint_depth:
+        prediction = tf.expand_dims(prediction, axis=-1)
+      selected_depths = cn_assigner.get_batch_predictions_from_indices(
+          prediction, batch_indices)
       # The dimensions passed are not as per the doc string but the loss
       # still computes the correct value.
       unweighted_loss = localization_loss_fn(

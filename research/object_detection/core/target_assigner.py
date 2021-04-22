@@ -1318,7 +1318,8 @@ class CenterNetKeypointTargetAssigner(object):
                keypoint_std_dev=None,
                per_keypoint_offset=False,
                peak_radius=0,
-               compute_heatmap_sparse=False):
+               compute_heatmap_sparse=False,
+               per_keypoint_depth=False):
     """Initializes a CenterNet keypoints target assigner.
 
     Args:
@@ -1349,12 +1350,16 @@ class CenterNetKeypointTargetAssigner(object):
         version of the Op that computes the heatmap. The sparse version scales
         better with number of keypoint types, but in some cases is known to
         cause an OOM error. See (b/170989061).
+      per_keypoint_depth: A bool indicates whether the model predicts the depth
+        of each keypoints in independent channels. Similar to
+        per_keypoint_offset but for the keypoint depth.
     """
 
     self._stride = stride
     self._class_id = class_id
     self._keypoint_indices = keypoint_indices
     self._per_keypoint_offset = per_keypoint_offset
+    self._per_keypoint_depth = per_keypoint_depth
     self._peak_radius = peak_radius
     self._compute_heatmap_sparse = compute_heatmap_sparse
     if keypoint_std_dev is None:
@@ -1686,14 +1691,15 @@ class CenterNetKeypointTargetAssigner(object):
 
     Returns:
       batch_indices: an integer tensor of shape [num_total_instances, 3] (or
-        [num_total_instances, 4] if 'per_keypoint_offset' is set True) holding
+        [num_total_instances, 4] if 'per_keypoint_depth' is set True) holding
         the indices inside the predicted tensor which should be penalized. The
         first column indicates the index along the batch dimension and the
         second and third columns indicate the index along the y and x
         dimensions respectively. The fourth column corresponds to the channel
         dimension (if 'per_keypoint_offset' is set True).
-      batch_depths: a float tensor of shape [num_total_instances, 1] indicating
-        the target depth of each keypoint.
+      batch_depths: a float tensor of shape [num_total_instances, 1] (or
+        [num_total_instances, num_keypoints] if per_keypoint_depth is set True)
+        indicating the target depth of each keypoint.
       batch_weights: a float tensor of shape [num_total_instances] indicating
         the weight of each prediction.
       Note that num_total_instances = batch_size * num_instances *
@@ -1800,7 +1806,7 @@ class CenterNetKeypointTargetAssigner(object):
       # Prepare the batch indices to be prepended.
       batch_index = tf.fill(
           [num_instances * num_keypoints * num_neighbors, 1], i)
-      if self._per_keypoint_offset:
+      if self._per_keypoint_depth:
         tiled_keypoint_types = self._get_keypoint_types(
             num_instances, num_keypoints, num_neighbors)
         batch_indices.append(
