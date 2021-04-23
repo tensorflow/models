@@ -18,15 +18,14 @@
 import numpy as np
 import tensorflow as tf
 
-from delf.python import whiten
+from delf import whiten
 
 
 class WhitenTest(tf.test.TestCase):
 
   def testApplyWhitening(self):
     # Testing the application of the learned whitening.
-    vectors = np.array([[0.14022471, 0.96360618],
-                        [0.37601032, 0.25528411]])
+    vectors = np.array([[0.14022471, 0.96360618], [0.37601032, 0.25528411]])
     # Learn whitening for the `vectors`. First element in the `vectors` is
     # viewed is the example query and the second element is the corresponding
     # positive.
@@ -40,12 +39,10 @@ class WhitenTest(tf.test.TestCase):
 
   def testLearnWhitening(self):
     # Testing whitening learning function.
-    input = np.array([[0.14022471, 0.96360618],
-                      [0.37601032, 0.25528411]])
+    descriptors = np.array([[0.14022471, 0.96360618], [0.37601032, 0.25528411]])
     # Obtain the mean descriptor vector and the projection matrix.
-    mean_vector, projection = whiten.learn_whitening(input, [0], [1])
-    expected_mean_vector = np.array([[0.14022471],
-                                     [0.37601032]])
+    mean_vector, projection = whiten.learn_whitening(descriptors, [0], [1])
+    expected_mean_vector = np.array([[0.14022471], [0.37601032]])
     expected_projection = np.array([[1.18894378e+00, -1.74326044e-01],
                                     [1.45071361e+04, 9.89421193e+04]])
     # Check that the both calculated values are close to the expected values.
@@ -54,13 +51,13 @@ class WhitenTest(tf.test.TestCase):
 
   def testCholeskyPositiveDefinite(self):
     # Testing the Cholesky decomposition for the positive definite matrix.
-    input = np.array([[1, -2j], [2j, 5]])
-    output = whiten.cholesky(input)
+    descriptors = np.array([[1, -2j], [2j, 5]])
+    output = whiten.cholesky(descriptors)
     expected_output = np.array([[1. + 0.j, 0. + 0.j], [0. + 2.j, 1. + 0.j]])
     # Check that the expected output is obtained.
     self.assertAllClose(output, expected_output)
     # Check that the properties of the Cholesky decomposition are satisfied.
-    self.assertAllClose(np.matmul(output, output.T.conj()), input)
+    self.assertAllClose(np.matmul(output, output.T.conj()), descriptors)
 
   def testCholeskyNonPositiveDefinite(self):
     # Testing the Cholesky decomposition for a non-positive definite matrix.
@@ -68,8 +65,8 @@ class WhitenTest(tf.test.TestCase):
     decomposition = whiten.cholesky(input_matrix)
     expected_output = np.array([[2., -2.], [-2., 2.]])
     # Check that the properties of the Cholesky decomposition are satisfied.
-    self.assertAllClose(np.matmul(decomposition, decomposition.T),
-                        expected_output)
+    self.assertAllClose(
+        np.matmul(decomposition, decomposition.T), expected_output)
 
 
 if __name__ == '__main__':

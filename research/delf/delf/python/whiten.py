@@ -19,7 +19,9 @@ import os
 import numpy as np
 
 
-def apply_whitening(descriptors, mean_descriptor_vector, projection,
+def apply_whitening(descriptors,
+                    mean_descriptor_vector,
+                    projection,
                     output_dim=None):
   """Applies the whitening to the descriptors as a post-processing step.
 
@@ -42,7 +44,7 @@ def apply_whitening(descriptors, mean_descriptor_vector, projection,
   descriptors = np.dot(projection[:output_dim, :],
                        descriptors - mean_descriptor_vector)
   descriptors_whitened = descriptors / (
-            np.linalg.norm(descriptors, ord=2, axis=0, keepdims=True) + eps)
+      np.linalg.norm(descriptors, ord=2, axis=0, keepdims=True) + eps)
   return descriptors_whitened
 
 
@@ -72,14 +74,17 @@ def learn_whitening(descriptors, qidxs, pidxs):
   mean_descriptor_vector = descriptors[:, qidxs].mean(axis=1, keepdims=True)
   # Interclass (matching pairs) difference.
   interclass_difference = descriptors[:, qidxs] - descriptors[:, pidxs]
-  covariance_matrix = (np.dot(interclass_difference, interclass_difference.T) /
-                      interclass_difference.shape[1])
+  covariance_matrix = (
+      np.dot(interclass_difference, interclass_difference.T) /
+      interclass_difference.shape[1])
 
   # Whitening part.
   projection = np.linalg.inv(cholesky(covariance_matrix))
 
-  projected_X = np.dot(projection, descriptors - mean_descriptor_vector)
-  non_matching_covariance_matrix = np.dot(projected_X, projected_X.T)
+  projected_descriptors = np.dot(projection,
+                                 descriptors - mean_descriptor_vector)
+  non_matching_covariance_matrix = np.dot(projected_descriptors,
+                                          projected_descriptors.T)
   eigval, eigvec = np.linalg.eig(non_matching_covariance_matrix)
   order = eigval.argsort()[::-1]
   eigvec = eigvec[:, order]
@@ -116,6 +121,5 @@ def cholesky(matrix):
         alpha = 1e-10
       else:
         alpha *= 10
-      print(
-        ">>>> {}::cholesky: Matrix is not positive definite, adding {:.0e} "
-        "on the diagonal".format(os.path.basename(__file__), alpha))
+      print(">>>> {}::cholesky: Matrix is not positive definite, adding {:.0e} "
+            "on the diagonal".format(os.path.basename(__file__), alpha))

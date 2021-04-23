@@ -19,7 +19,6 @@ import os
 from absl import logging
 
 import numpy as np
-from tensorboard import program
 import tensorflow as tf
 
 from delf.python.datasets.revisited_op import dataset
@@ -52,8 +51,11 @@ class AverageMeter():
     self.avg = self.sum / self.count
 
 
-def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
-                              desired_pr_ranks=None, log=True):
+def compute_metrics_and_print(dataset_name,
+                              sorted_index_ids,
+                              ground_truth,
+                              desired_pr_ranks=None,
+                              log=True):
   """Computes and logs ground-truth metrics for Revisited datasets.
 
   Args:
@@ -68,6 +70,7 @@ def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
       ranks to be reported. E.g., if precision@1/recall@1 and
       precision@10/recall@10 are desired, this should be set to [1, 10]. The
       largest item should be <= #sorted_index_ids. Default: [1, 5, 10].
+    log: Whether to log results using logging.info().
 
   Returns:
     mAP: (metricsE, metricsM, metricsH) Tuple of the metrics for different
@@ -82,8 +85,7 @@ def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
   Raises:
     ValueError: If an unknown dataset name is provided as an argument.
   """
-  _DATASETS = ['roxford5k', 'rparis6k']
-  if dataset not in _DATASETS:
+  if dataset not in dataset.DATASET_NAMES:
     raise ValueError('Unknown dataset: {}!'.format(dataset))
 
   if desired_pr_ranks is None:
@@ -94,24 +96,25 @@ def compute_metrics_and_print(dataset_name, sorted_index_ids, ground_truth,
 
   metrics_easy = dataset.ComputeMetrics(sorted_index_ids, easy_ground_truth,
                                         desired_pr_ranks)
-  metrics_medium = dataset.ComputeMetrics(sorted_index_ids,
-                                          medium_ground_truth,
+  metrics_medium = dataset.ComputeMetrics(sorted_index_ids, medium_ground_truth,
                                           desired_pr_ranks)
   metrics_hard = dataset.ComputeMetrics(sorted_index_ids, hard_ground_truth,
                                         desired_pr_ranks)
 
   debug_and_log(
-    '>> {}: mAP E: {}, M: {}, H: {}'.format(
-      dataset_name, np.around(metrics_easy[0] * 100, decimals=2),
-      np.around(metrics_medium[0] * 100, decimals=2),
-      np.around(metrics_hard[0] * 100, decimals=2)), log=log)
+      '>> {}: mAP E: {}, M: {}, H: {}'.format(
+          dataset_name, np.around(metrics_easy[0] * 100, decimals=2),
+          np.around(metrics_medium[0] * 100, decimals=2),
+          np.around(metrics_hard[0] * 100, decimals=2)),
+      log=log)
 
   debug_and_log(
-    '>> {}: mP@k{} E: {}, M: {}, H: {}'.format(
-      dataset_name, desired_pr_ranks,
-      np.around(metrics_easy[1] * 100, decimals=2),
-      np.around(metrics_medium[1] * 100, decimals=2),
-      np.around(metrics_hard[1] * 100, decimals=2)), log=log)
+      '>> {}: mP@k{} E: {}, M: {}, H: {}'.format(
+          dataset_name, desired_pr_ranks,
+          np.around(metrics_easy[1] * 100, decimals=2),
+          np.around(metrics_medium[1] * 100, decimals=2),
+          np.around(metrics_hard[1] * 100, decimals=2)),
+      log=log)
 
   return metrics_easy, metrics_medium, metrics_hard
 
@@ -151,8 +154,8 @@ def debug_and_log(msg, debug=True, log=True, debug_on_the_same_line=False):
     msg: String, message to be logged.
     debug: Bool, if True, will print `msg` to stdout.
     log: Bool, if True, will redirect `msg` to the logfile.
-    debug_on_the_same_line: Bool, if True, will print `msg` to stdout without
-      a new line. When using this mode, logging to a logfile is disabled.
+    debug_on_the_same_line: Bool, if True, will print `msg` to stdout without a
+      new line. When using this mode, logging to a logfile is disabled.
   """
   if debug_on_the_same_line:
     print(msg, end='')
@@ -163,34 +166,23 @@ def debug_and_log(msg, debug=True, log=True, debug_on_the_same_line=False):
     logging.info(msg)
 
 
-def launch_tensorboard(log_dir):
-  """Runs tensorboard with the given `log_dir`.
-  
-  Args:
-    log_dir: String, directory to start tensorboard in.
-  """
-  tb = program.TensorBoard()
-  tb.configure(argv=[None, '--logdir', log_dir])
-  url = tb.launch()
-  debug_and_log("Launching Tensorboard: {}".format(url))
-
-
 def get_standard_keras_models():
   """Gets the standard keras model names.
 
   Returns:
     model_names: List, names of the standard keras models.
   """
-  model_names = sorted(name for name in tf.keras.applications.__dict__
-                       if not name.startswith("__")
-                       and callable(tf.keras.applications.__dict__[name]))
+  model_names = sorted(
+      name for name in tf.keras.applications.__dict__
+      if not name.startswith('__') and
+      callable(tf.keras.applications.__dict__[name]))
   return model_names
 
 
-def create_model_directory(training_dataset, arch, pool, whitening,
-                           pretrained, loss, loss_margin, optimizer, lr,
-                           weight_decay, neg_num, query_size, pool_size,
-                           batch_size, update_every, image_size, directory):
+def create_model_directory(training_dataset, arch, pool, whitening, pretrained,
+                           loss, loss_margin, optimizer, lr, weight_decay,
+                           neg_num, query_size, pool_size, batch_size,
+                           update_every, image_size, directory):
   """Based on the model parameters, creates the model directory.
 
   If the model directory does not exist, the directory is created.
@@ -224,13 +216,14 @@ def create_model_directory(training_dataset, arch, pool, whitening,
   if not pretrained:
     folder += '_notpretrained'
   folder += ('_{}_m{:.2f}_{}_lr{:.1e}_wd{:.1e}_nnum{}_qsize{}_psize{}_bsize{}'
-             '_uevery{}_imsize{}').format(
-            loss, loss_margin, optimizer, lr, weight_decay, neg_num,
-            query_size, pool_size, batch_size, update_every, image_size)
+             '_uevery{}_imsize{}').format(loss, loss_margin, optimizer, lr,
+                                          weight_decay, neg_num, query_size,
+                                          pool_size, batch_size, update_every,
+                                          image_size)
 
   folder = os.path.join(directory, folder)
   debug_and_log(
-    '>> Creating directory if does not exist:\n>> \'{}\''.format(folder))
+      '>> Creating directory if does not exist:\n>> \'{}\''.format(folder))
   if not os.path.exists(folder):
     os.makedirs(folder)
   return folder
