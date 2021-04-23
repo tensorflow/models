@@ -31,9 +31,10 @@ from official.nlp.modeling.networks import encoder_scaffold
 @tf.keras.utils.register_keras_serializable(package="TestOnly")
 class ValidatedTransformerLayer(layers.Transformer):
 
-  def __init__(self, call_list, **kwargs):
+  def __init__(self, call_list, call_class=None, **kwargs):
     super(ValidatedTransformerLayer, self).__init__(**kwargs)
     self.list = call_list
+    self.call_class = call_class
 
   def call(self, inputs):
     self.list.append(True)
@@ -41,8 +42,14 @@ class ValidatedTransformerLayer(layers.Transformer):
 
   def get_config(self):
     config = super(ValidatedTransformerLayer, self).get_config()
-    config["call_list"] = []
+    config["call_list"] = self.list
+    config["call_class"] = tf.keras.utils.get_registered_name(self.call_class)
     return config
+
+
+@tf.keras.utils.register_keras_serializable(package="TestLayerOnly")
+class TestLayer(tf.keras.layers.Layer):
+  pass
 
 
 # This decorator runs the test in V1, V2-Eager, and V2-Functional mode. It
@@ -560,7 +567,8 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
     self.assertNotEmpty(call_list)
     self.assertTrue(call_list[0], "The passed layer class wasn't instantiated.")
 
-  def test_serialize_deserialize(self):
+  @parameterized.parameters(True, False)
+  def test_serialize_deserialize(self, use_hidden_cls_instance):
     hidden_size = 32
     sequence_length = 21
     vocab_size = 57
@@ -591,20 +599,26 @@ class EncoderScaffoldHiddenInstanceTest(keras_parameterized.TestCase):
         "kernel_initializer":
             tf.keras.initializers.TruncatedNormal(stddev=0.02),
         "call_list":
-            call_list
+            call_list,
+        "call_class":
+            TestLayer
     }
     # Create a small EncoderScaffold for testing. This time, we pass an already-
     # instantiated layer object.
-
-    xformer = ValidatedTransformerLayer(**hidden_cfg)
-
-    test_network = encoder_scaffold.EncoderScaffold(
+    kwargs = dict(
         num_hidden_instances=3,
         pooled_output_dim=hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=0.02),
-        hidden_cls=xformer,
         embedding_cfg=embedding_cfg)
+
+    if use_hidden_cls_instance:
+      xformer = ValidatedTransformerLayer(**hidden_cfg)
+      test_network = encoder_scaffold.EncoderScaffold(
+          hidden_cls=xformer, **kwargs)
+    else:
+      test_network = encoder_scaffold.EncoderScaffold(
+          hidden_cls=ValidatedTransformerLayer, hidden_cfg=hidden_cfg, **kwargs)
 
     # Create another network object from the first object's config.
     new_network = encoder_scaffold.EncoderScaffold.from_config(
