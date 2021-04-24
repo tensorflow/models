@@ -20,13 +20,13 @@ import tensorflow as tf
 from official.vision.beta.ops import spatial_transform_ops
 
 
-def _sample_and_crop_foreground_masks(candidate_rois,
-                                      candidate_gt_boxes,
-                                      candidate_gt_classes,
-                                      candidate_gt_indices,
-                                      gt_masks,
-                                      num_sampled_masks=128,
-                                      mask_target_size=28):
+def _sample_and_crop_foreground_masks(candidate_rois: tf.Tensor,
+                                      candidate_gt_boxes: tf.Tensor,
+                                      candidate_gt_classes: tf.Tensor,
+                                      candidate_gt_indices: tf.Tensor,
+                                      gt_masks: tf.Tensor,
+                                      num_sampled_masks: int = 128,
+                                      mask_target_size: int = 28):
   """Samples and creates cropped foreground masks for training.
 
   Args:
@@ -104,22 +104,16 @@ def _sample_and_crop_foreground_masks(candidate_rois,
 class MaskSampler(tf.keras.layers.Layer):
   """Samples and creates mask training targets."""
 
-  def __init__(self,
-               mask_target_size,
-               num_sampled_masks,
-               **kwargs):
+  def __init__(self, mask_target_size: int, num_sampled_masks: int, **kwargs):
     self._config_dict = {
         'mask_target_size': mask_target_size,
         'num_sampled_masks': num_sampled_masks,
     }
     super(MaskSampler, self).__init__(**kwargs)
 
-  def call(self,
-           candidate_rois,
-           candidate_gt_boxes,
-           candidate_gt_classes,
-           candidate_gt_indices,
-           gt_masks):
+  def call(self, candidate_rois: tf.Tensor, candidate_gt_boxes: tf.Tensor,
+           candidate_gt_classes: tf.Tensor, candidate_gt_indices: tf.Tensor,
+           gt_masks: tf.Tensor):
     """Samples and creates mask targets for training.
 
     Args:

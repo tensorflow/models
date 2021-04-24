@@ -14,7 +14,10 @@
 
 """Contains definitions of dense prediction heads."""
 
+from typing import Any, Dict, List, Mapping, Optional, Union
+
 # Import libraries
+
 import numpy as np
 import tensorflow as tf
 
@@ -25,22 +28,23 @@ from official.modeling import tf_utils
 class RetinaNetHead(tf.keras.layers.Layer):
   """Creates a RetinaNet head."""
 
-  def __init__(self,
-               min_level,
-               max_level,
-               num_classes,
-               num_anchors_per_location,
-               num_convs=4,
-               num_filters=256,
-               attribute_heads=None,
-               use_separable_conv=False,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      min_level: int,
+      max_level: int,
+      num_classes: int,
+      num_anchors_per_location: int,
+      num_convs: int = 4,
+      num_filters: int = 256,
+      attribute_heads: List[Dict[str, Any]] = None,
+      use_separable_conv: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a RetinaNet head.
 
     Args:
@@ -53,9 +57,10 @@ class RetinaNetHead(tf.keras.layers.Layer):
         conv layers before the prediction.
       num_filters: An `int` number that represents the number of filters of the
         intermediate conv layers.
-      attribute_heads: If not None, a dict that contains
-        (attribute_name, attribute_config) for additional attribute heads.
-        `attribute_config` is a tuple of (attribute_type, attribute_size).
+      attribute_heads: If not None, a list that contains a dict for each
+        additional attribute head. Each dict consists of 3 key-value pairs:
+        `name`, `type` ('regression' or 'classification'), and `size` (number
+        of predicted values for each instance).
       use_separable_conv: A `bool` that indicates whether the separable
         convolution layers is used.
       activation: A `str` that indicates which activation is used, e.g. 'relu',
@@ -93,7 +98,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape):
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
     conv_op = (tf.keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
@@ -185,11 +190,12 @@ class RetinaNetHead(tf.keras.layers.Layer):
       self._att_convs = {}
       self._att_norms = {}
 
-      for att_name, att_head in self._config_dict['attribute_heads'].items():
+      for att_config in self._config_dict['attribute_heads']:
+        att_name = att_config['name']
+        att_type = att_config['type']
+        att_size = att_config['size']
         att_convs_i = []
         att_norms_i = []
-        att_type = att_head[0]
-        att_size = att_head[1]
 
         # Build conv and norm layers.
         for level in range(self._config_dict['min_level'],
@@ -239,7 +245,7 @@ class RetinaNetHead(tf.keras.layers.Layer):
 
     super(RetinaNetHead, self).build(input_shape)
 
-  def call(self, features):
+  def call(self, features: Mapping[str, tf.Tensor]):
     """Forward pass of the RetinaNet head.
 
     Args:
@@ -273,8 +279,8 @@ class RetinaNetHead(tf.keras.layers.Layer):
     boxes = {}
     if self._config_dict['attribute_heads']:
       attributes = {
-          att_name: {}
-          for att_name in self._config_dict['attribute_heads'].keys()
+          att_config['name']: {}
+          for att_config in self._config_dict['attribute_heads']
       }
     else:
       attributes = {}
@@ -302,7 +308,8 @@ class RetinaNetHead(tf.keras.layers.Layer):
 
       # attribute nets.
       if self._config_dict['attribute_heads']:
-        for att_name in self._config_dict['attribute_heads'].keys():
+        for att_config in self._config_dict['attribute_heads']:
+          att_name = att_config['name']
           x = this_level_features
           for conv, norm in zip(self._att_convs[att_name],
                                 self._att_norms[att_name][i]):
@@ -325,20 +332,21 @@ class RetinaNetHead(tf.keras.layers.Layer):
 class RPNHead(tf.keras.layers.Layer):
   """Creates a Region Proposal Network (RPN) head."""
 
-  def __init__(self,
-               min_level,
-               max_level,
-               num_anchors_per_location,
-               num_convs=1,
-               num_filters=256,
-               use_separable_conv=False,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      min_level: int,
+      max_level: int,
+      num_anchors_per_location: int,
+      num_convs: int = 1,
+      num_filters: int = 256,
+      use_separable_conv: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a Region Proposal Network head.
 
     Args:
@@ -457,7 +465,7 @@ class RPNHead(tf.keras.layers.Layer):
 
     super(RPNHead, self).build(input_shape)
 
-  def call(self, features):
+  def call(self, features: Mapping[str, tf.Tensor]):
     """Forward pass of the RPN head.
 
     Args:

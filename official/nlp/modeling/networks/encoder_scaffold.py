@@ -257,11 +257,20 @@ class EncoderScaffold(tf.keras.Model):
         'pooler_layer_initializer': self._pooler_layer_initializer,
         'embedding_cls': self._embedding_network,
         'embedding_cfg': self._embedding_cfg,
-        'hidden_cfg': self._hidden_cfg,
         'layer_norm_before_pooling': self._layer_norm_before_pooling,
         'return_all_layer_outputs': self._return_all_layer_outputs,
         'dict_outputs': self._dict_outputs,
     }
+    if self._hidden_cfg:
+      config_dict['hidden_cfg'] = {}
+      for k, v in self._hidden_cfg.items():
+        # `self._hidden_cfg` may contain `class`, e.g., when `hidden_cfg` is
+        # `TransformerScaffold`, its `attention_cls` argument can be a `class`.
+        if inspect.isclass(v):
+          config_dict['hidden_cfg'][k] = tf.keras.utils.get_registered_name(v)
+        else:
+          config_dict['hidden_cfg'][k] = v
+
     if inspect.isclass(self._hidden_cls):
       config_dict['hidden_cls_string'] = tf.keras.utils.get_registered_name(
           self._hidden_cls)

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of segmentation heads."""
-
+from typing import List, Union, Optional, Mapping
 import tensorflow as tf
 
 from official.modeling import tf_utils
@@ -25,23 +25,24 @@ from official.vision.beta.ops import spatial_transform_ops
 class SegmentationHead(tf.keras.layers.Layer):
   """Creates a segmentation head."""
 
-  def __init__(self,
-               num_classes,
-               level,
-               num_convs=2,
-               num_filters=256,
-               prediction_kernel_size=1,
-               upsample_factor=1,
-               feature_fusion=None,
-               low_level=2,
-               low_level_num_filters=48,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      num_classes: int,
+      level: Union[int, str],
+      num_convs: int = 2,
+      num_filters: int = 256,
+      prediction_kernel_size: int = 1,
+      upsample_factor: int = 1,
+      feature_fusion: Optional[str] = None,
+      low_level: int = 2,
+      low_level_num_filters: int = 48,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a segmentation head.
 
     Args:
@@ -101,7 +102,7 @@ class SegmentationHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape):
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the segmentation head."""
     conv_op = tf.keras.layers.Conv2D
     conv_kwargs = {
@@ -159,7 +160,8 @@ class SegmentationHead(tf.keras.layers.Layer):
 
     super(SegmentationHead, self).build(input_shape)
 
-  def call(self, backbone_output, decoder_output):
+  def call(self, backbone_output: Mapping[str, tf.Tensor],
+           decoder_output: Mapping[str, tf.Tensor]):
     """Forward pass of the segmentation head.
 
     Args:

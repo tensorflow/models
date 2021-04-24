@@ -27,6 +27,8 @@ import tensorflow as tf
 
 _GROUND_TRUTH_KEYS = ['easy', 'hard', 'junk']
 
+DATASET_NAMES = ['roxford5k', 'rparis6k']
+
 
 def ReadDatasetFile(dataset_file_path):
   """Reads dataset file in Revisited Oxford/Paris ".mat" format.
@@ -105,14 +107,14 @@ def ParseEasyMediumHardGroundTruth(ground_truth):
   hard_ground_truth = []
   for i in range(num_queries):
     easy_ground_truth.append(
-      _ParseGroundTruth([ground_truth[i]['easy']],
-                        [ground_truth[i]['junk'], ground_truth[i]['hard']]))
+        _ParseGroundTruth([ground_truth[i]['easy']],
+                          [ground_truth[i]['junk'], ground_truth[i]['hard']]))
     medium_ground_truth.append(
-      _ParseGroundTruth([ground_truth[i]['easy'], ground_truth[i]['hard']],
-                        [ground_truth[i]['junk']]))
+        _ParseGroundTruth([ground_truth[i]['easy'], ground_truth[i]['hard']],
+                          [ground_truth[i]['junk']]))
     hard_ground_truth.append(
-      _ParseGroundTruth([ground_truth[i]['hard']],
-                        [ground_truth[i]['junk'], ground_truth[i]['easy']]))
+        _ParseGroundTruth([ground_truth[i]['hard']],
+                          [ground_truth[i]['junk'], ground_truth[i]['easy']]))
 
   return easy_ground_truth, medium_ground_truth, hard_ground_truth
 
@@ -216,13 +218,13 @@ def ComputePRAtRanks(positive_ranks, desired_pr_ranks):
   positive_ranks_one_indexed = positive_ranks + 1
   for i, desired_pr_rank in enumerate(desired_pr_ranks):
     recalls[i] = np.sum(
-      positive_ranks_one_indexed <= desired_pr_rank) / num_expected_positives
+        positive_ranks_one_indexed <= desired_pr_rank) / num_expected_positives
 
     # If `desired_pr_rank` is larger than last positive's rank, only compute
     # precision with respect to last positive's position.
     precision_rank = min(max(positive_ranks_one_indexed), desired_pr_rank)
     precisions[i] = np.sum(
-      positive_ranks_one_indexed <= precision_rank) / precision_rank
+        positive_ranks_one_indexed <= precision_rank) / precision_rank
 
   return precisions, recalls
 
@@ -272,8 +274,8 @@ def ComputeMetrics(sorted_index_ids, ground_truth, desired_pr_ranks):
 
   if sorted_desired_pr_ranks[-1] > num_index_images:
     raise ValueError(
-      'Requested PR ranks up to %d, however there are only %d images' %
-      (sorted_desired_pr_ranks[-1], num_index_images))
+        'Requested PR ranks up to %d, however there are only %d images' %
+        (sorted_desired_pr_ranks[-1], num_index_images))
 
   # Instantiate all outputs, then loop over each query and gather metrics.
   mean_average_precision = 0.0
@@ -295,7 +297,7 @@ def ComputeMetrics(sorted_index_ids, ground_truth, desired_pr_ranks):
       continue
 
     positive_ranks = np.arange(num_index_images)[np.in1d(
-      sorted_index_ids[i], ok_index_images)]
+        sorted_index_ids[i], ok_index_images)]
     junk_ranks = np.arange(num_index_images)[np.in1d(sorted_index_ids[i],
                                                      junk_index_images)]
 
@@ -335,9 +337,9 @@ def SaveMetricsFile(mean_average_precision, mean_precisions, mean_recalls,
   with tf.io.gfile.GFile(output_path, 'w') as f:
     for k in sorted(mean_average_precision.keys()):
       f.write('{}\n  mAP={}\n  mP@k{} {}\n  mR@k{} {}\n'.format(
-        k, np.around(mean_average_precision[k] * 100, decimals=2),
-        np.array(pr_ranks), np.around(mean_precisions[k] * 100, decimals=2),
-        np.array(pr_ranks), np.around(mean_recalls[k] * 100, decimals=2)))
+          k, np.around(mean_average_precision[k] * 100, decimals=2),
+          np.array(pr_ranks), np.around(mean_precisions[k] * 100, decimals=2),
+          np.array(pr_ranks), np.around(mean_recalls[k] * 100, decimals=2)))
 
 
 def _ParseSpaceSeparatedStringsInBrackets(line, prefixes, ind):
@@ -378,8 +380,8 @@ def _ParsePrRanks(line):
     ValueError: If input line is malformed.
   """
   return [
-    int(pr_rank) for pr_rank in _ParseSpaceSeparatedStringsInBrackets(
-      line, ['  mP@k['], 0) if pr_rank
+      int(pr_rank) for pr_rank in _ParseSpaceSeparatedStringsInBrackets(
+          line, ['  mP@k['], 0) if pr_rank
   ]
 
 
@@ -397,8 +399,8 @@ def _ParsePrScores(line, num_pr_ranks):
     ValueError: If input line is malformed.
   """
   pr_scores = [
-    float(pr_score) for pr_score in _ParseSpaceSeparatedStringsInBrackets(
-      line, ('  mP@k[', '  mR@k['), 1) if pr_score
+      float(pr_score) for pr_score in _ParseSpaceSeparatedStringsInBrackets(
+          line, ('  mP@k[', '  mR@k['), 1) if pr_score
   ]
 
   if len(pr_scores) != num_pr_ranks:
@@ -430,8 +432,8 @@ def ReadMetricsFile(metrics_path):
 
   if len(file_contents_stripped) % 4:
     raise ValueError(
-      'Malformed input %s: number of lines must be a multiple of 4, '
-      'but it is %d' % (metrics_path, len(file_contents_stripped)))
+        'Malformed input %s: number of lines must be a multiple of 4, '
+        'but it is %d' % (metrics_path, len(file_contents_stripped)))
 
   mean_average_precision = {}
   pr_ranks = []
@@ -442,13 +444,13 @@ def ReadMetricsFile(metrics_path):
     protocol = file_contents_stripped[i]
     if protocol in protocols:
       raise ValueError(
-        'Malformed input %s: protocol %s is found a second time' %
-        (metrics_path, protocol))
+          'Malformed input %s: protocol %s is found a second time' %
+          (metrics_path, protocol))
     protocols.add(protocol)
 
     # Parse mAP.
     mean_average_precision[protocol] = float(
-      file_contents_stripped[i + 1].split('=')[1]) / 100.0
+        file_contents_stripped[i + 1].split('=')[1]) / 100.0
 
     # Parse (or check consistency of) pr_ranks.
     parsed_pr_ranks = _ParsePrRanks(file_contents_stripped[i + 2])
@@ -461,18 +463,18 @@ def ReadMetricsFile(metrics_path):
 
     # Parse mean precisions.
     mean_precisions[protocol] = np.array(
-      _ParsePrScores(file_contents_stripped[i + 2], len(pr_ranks)),
-      dtype=float) / 100.0
+        _ParsePrScores(file_contents_stripped[i + 2], len(pr_ranks)),
+        dtype=float) / 100.0
 
     # Parse mean recalls.
     mean_recalls[protocol] = np.array(
-      _ParsePrScores(file_contents_stripped[i + 3], len(pr_ranks)),
-      dtype=float) / 100.0
+        _ParsePrScores(file_contents_stripped[i + 3], len(pr_ranks)),
+        dtype=float) / 100.0
 
   return mean_average_precision, pr_ranks, mean_precisions, mean_recalls
 
 
-def create_config_for_test_dataset(dataset, dir_main):
+def CreateConfigForTestDataset(dataset, dir_main):
   """Creates the configuration dictionary for the test dataset.
 
   Args:
@@ -482,8 +484,8 @@ def create_config_for_test_dataset(dataset, dir_main):
   Returns:
     cfg: Dataset configuration in a form of dictionary. The configuration
       includes:
-      `gnd_fname` - path to the ground truth file for teh dataset,
-      `ext` and `qext` - image extentions for the images in the test dataset
+      `gnd_fname` - path to the ground truth file for the dataset,
+      `ext` and `qext` - image extensions for the images in the test dataset
       and the query images,
       `dir_data` - path to the folder containing ground truth files,
       `dir_images` - path to the folder containing images,
@@ -496,16 +498,15 @@ def create_config_for_test_dataset(dataset, dir_main):
   Raises:
     ValueError: If an unknown dataset name is provided as an argument.
   """
-  DATASETS = ['roxford5k', 'rparis6k']
   dataset = dataset.lower()
 
-  def _config_imname(cfg, i):
+  def _ConfigImname(cfg, i):
     return os.path.join(cfg['dir_images'], cfg['imlist'][i] + cfg['ext'])
 
-  def _config_qimname(cfg, i):
+  def _ConfigQimname(cfg, i):
     return os.path.join(cfg['dir_images'], cfg['qimlist'][i] + cfg['qext'])
 
-  if dataset not in DATASETS:
+  if dataset not in DATASET_NAMES:
     raise ValueError('Unknown dataset: {}!'.format(dataset))
 
   # Loading imlist, qimlist, and gnd in configuration as a dictionary.
@@ -526,8 +527,8 @@ def create_config_for_test_dataset(dataset, dir_main):
   cfg['n'] = len(cfg['imlist'])
   cfg['nq'] = len(cfg['qimlist'])
 
-  cfg['im_fname'] = _config_imname
-  cfg['qim_fname'] = _config_qimname
+  cfg['im_fname'] = _ConfigImname
+  cfg['qim_fname'] = _ConfigQimname
 
   cfg['dataset'] = dataset
 

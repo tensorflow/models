@@ -33,7 +33,7 @@ class RetinaNetHeadTest(parameterized.TestCase, tf.test.TestCase):
   )
   def test_forward(self, use_separable_conv, use_sync_bn, has_att_heads):
     if has_att_heads:
-      attribute_heads = {'depth': ('regression', 1)}
+      attribute_heads = [dict(name='depth', type='regression', size=1)]
     else:
       attribute_heads = None
 
