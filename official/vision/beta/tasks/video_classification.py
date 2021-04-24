@@ -62,7 +62,8 @@ class VideoClassificationTask(base_task.Task):
       raise ValueError('Unknown input file type {!r}'.format(params.file_type))
 
   def _get_decoder_fn(self, params):
-    decoder = video_input.Decoder()
+    decoder = video_input.Decoder(
+        image_key=params.image_field_key, label_key=params.label_field_key)
     if self.task_config.train_data.output_audio:
       assert self.task_config.train_data.audio_feature, 'audio feature is empty'
       decoder.add_feature(self.task_config.train_data.audio_feature,
@@ -74,7 +75,10 @@ class VideoClassificationTask(base_task.Task):
                    input_context: Optional[tf.distribute.InputContext] = None):
     """Builds classification input."""
 
-    parser = video_input.Parser(input_params=params)
+    parser = video_input.Parser(
+        input_params=params,
+        image_key=params.image_field_key,
+        label_key=params.label_field_key)
     postprocess_fn = video_input.PostBatchProcessor(params)
 
     reader = input_reader_factory.input_reader_generator(
