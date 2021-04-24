@@ -648,7 +648,7 @@ def test(datasets, net, epoch, writer=None, model_directory=None):
     start = time.time()
 
     # Prepare config structure for the test dataset.
-    cfg = testdataset.create_config_for_test_dataset(dataset, os.path.join(
+    cfg = testdataset.CreateConfigForTestDataset(dataset, os.path.join(
             FLAGS.data_root))
     images = [cfg['im_fname'](cfg, i) for i in range(cfg['n'])]
     qimages = [cfg['qim_fname'](cfg, i) for i in range(cfg['nq'])]
