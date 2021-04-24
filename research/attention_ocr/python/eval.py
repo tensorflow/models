@@ -21,7 +21,7 @@ python eval.py
 import tensorflow as tf
 from tensorflow.contrib import slim
 from tensorflow import app
-from tensorflow.python.platform import flags
+from tensorflow.compat.v1 import flags
 
 import data_provider
 import common_flags

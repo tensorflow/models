@@ -27,12 +27,12 @@ import os
 import sys
 import time
 
+from absl import app
 import numpy as np
 from six.moves import range
 import tensorflow as tf
 
 from google.protobuf import text_format
-from tensorflow.python.platform import app
 from delf import delf_config_pb2
 from delf import feature_io
 from delf import utils
@@ -87,10 +87,8 @@ def main(unused_argv):
       print('Starting to extract DELF features from images...')
     elif i % _STATUS_CHECK_ITERATIONS == 0:
       elapsed = (time.time() - start)
-      print(
-          f'Processing image {i} out of {num_images}, last '
-          f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds'
-      )
+      print(f'Processing image {i} out of {num_images}, last '
+            f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds')
       start = time.time()
 
     # If descriptor already exists, skip its computation.

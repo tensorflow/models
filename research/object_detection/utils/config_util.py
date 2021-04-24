@@ -1042,7 +1042,7 @@ def _update_retain_original_image_additional_channels(
       retain_original_image_additional_channels)
 
 
-def remove_unecessary_ema(variables_to_restore, no_ema_collection=None):
+def remove_unnecessary_ema(variables_to_restore, no_ema_collection=None):
   """Remap and Remove EMA variable that are not created during training.
 
   ExponentialMovingAverage.variables_to_restore() returns a map of EMA names
@@ -1054,9 +1054,8 @@ def remove_unecessary_ema(variables_to_restore, no_ema_collection=None):
   }
   This function takes care of the extra ExponentialMovingAverage variables
   that get created during eval but aren't available in the checkpoint, by
-  remapping the key to the shallow copy of the variable itself, and remove
-  the entry of its EMA from the variables to restore. An example resulting
-  dictionary would look like:
+  remapping the key to the variable itself, and remove the entry of its EMA from
+  the variables to restore. An example resulting dictionary would look like:
   {
       conv/batchnorm/gamma: conv/batchnorm/gamma,
       conv_4/conv2d_params: conv_4/conv2d_params,
@@ -1075,14 +1074,15 @@ def remove_unecessary_ema(variables_to_restore, no_ema_collection=None):
   if no_ema_collection is None:
     return variables_to_restore
 
+  restore_map = {}
   for key in variables_to_restore:
-    if "ExponentialMovingAverage" in key:
-      for name in no_ema_collection:
-        if name in key:
-          variables_to_restore[key.replace("/ExponentialMovingAverage",
-                                           "")] = variables_to_restore[key]
-          del variables_to_restore[key]
-  return variables_to_restore
+    if ("ExponentialMovingAverage" in key
+        and any([name in key for name in no_ema_collection])):
+      new_key = key.replace("/ExponentialMovingAverage", "")
+    else:
+      new_key = key
+    restore_map[new_key] = variables_to_restore[key]
+  return restore_map
 
 
 def _update_num_classes(model_config, num_classes):

@@ -14,6 +14,7 @@
 
 """Contains definitions of instance prediction heads."""
 
+from typing import List, Union, Optional
 # Import libraries
 import tensorflow as tf
 
@@ -24,20 +25,21 @@ from official.modeling import tf_utils
 class DetectionHead(tf.keras.layers.Layer):
   """Creates a detection head."""
 
-  def __init__(self,
-               num_classes,
-               num_convs=0,
-               num_filters=256,
-               use_separable_conv=False,
-               num_fcs=2,
-               fc_dims=1024,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               **kwargs):
+  def __init__(
+      self,
+      num_classes: int,
+      num_convs: int = 0,
+      num_filters: int = 256,
+      use_separable_conv: bool = False,
+      num_fcs: int = 2,
+      fc_dims: int = 1024,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      **kwargs):
     """Initializes a detection head.
 
     Args:
@@ -85,7 +87,7 @@ class DetectionHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape):
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
     conv_op = (tf.keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
@@ -163,7 +165,7 @@ class DetectionHead(tf.keras.layers.Layer):
 
     super(DetectionHead, self).build(input_shape)
 
-  def call(self, inputs, training=None):
+  def call(self, inputs: tf.Tensor, training: bool = None):
     """Forward pass of box and class branches for the Mask-RCNN model.
 
     Args:
@@ -211,20 +213,21 @@ class DetectionHead(tf.keras.layers.Layer):
 class MaskHead(tf.keras.layers.Layer):
   """Creates a mask head."""
 
-  def __init__(self,
-               num_classes,
-               upsample_factor=2,
-               num_convs=4,
-               num_filters=256,
-               use_separable_conv=False,
-               activation='relu',
-               use_sync_bn=False,
-               norm_momentum=0.99,
-               norm_epsilon=0.001,
-               kernel_regularizer=None,
-               bias_regularizer=None,
-               class_agnostic=False,
-               **kwargs):
+  def __init__(
+      self,
+      num_classes: int,
+      upsample_factor: int = 2,
+      num_convs: int = 4,
+      num_filters: int = 256,
+      use_separable_conv: bool = False,
+      activation: str = 'relu',
+      use_sync_bn: bool = False,
+      norm_momentum: float = 0.99,
+      norm_epsilon: float = 0.001,
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      class_agnostic: bool = False,
+      **kwargs):
     """Initializes a mask head.
 
     Args:
@@ -272,7 +275,7 @@ class MaskHead(tf.keras.layers.Layer):
       self._bn_axis = 1
     self._activation = tf_utils.get_activation(activation)
 
-  def build(self, input_shape):
+  def build(self, input_shape: Union[tf.TensorShape, List[tf.TensorShape]]):
     """Creates the variables of the head."""
     conv_op = (tf.keras.layers.SeparableConv2D
                if self._config_dict['use_separable_conv']
@@ -364,7 +367,7 @@ class MaskHead(tf.keras.layers.Layer):
 
     super(MaskHead, self).build(input_shape)
 
-  def call(self, inputs, training=None):
+  def call(self, inputs: List[tf.Tensor], training: bool = None):
     """Forward pass of mask branch for the Mask-RCNN model.
 
     Args:

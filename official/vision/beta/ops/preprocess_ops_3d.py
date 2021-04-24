@@ -106,9 +106,10 @@ def sample_sequence(sequence: tf.Tensor,
 
   if random:
     sequence_length = tf.cast(sequence_length, tf.float32)
+    frame_stride = tf.cast(stride, tf.float32)
     max_offset = tf.cond(
-        sequence_length > (num_steps - 1) * stride,
-        lambda: sequence_length - (num_steps - 1) * stride,
+        sequence_length > (num_steps - 1) * frame_stride,
+        lambda: sequence_length - (num_steps - 1) * frame_stride,
         lambda: sequence_length)
     offset = tf.random.uniform(
         (),

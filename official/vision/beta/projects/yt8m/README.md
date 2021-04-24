@@ -1,7 +1,7 @@
 # YouTube-8M Tensorflow Starter Code
 
-**WARNING**: The project is under construction. You can use it, but you do so
-at your own risk.
+DISCLAIMER: This project is still under development.
+No support will be provided during the development phase.
 
 This repo contains starter code (written in TensorFlow 2.x) for training and
 evaluating machine learning models over the [YouTube-8M][1] dataset.

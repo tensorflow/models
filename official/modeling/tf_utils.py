@@ -82,20 +82,36 @@ def is_special_none_tensor(tensor):
   return tensor.shape.ndims == 0 and tensor.dtype == tf.int32
 
 
-def get_activation(identifier):
+def get_activation(identifier, use_keras_layer=False):
   """Maps a identifier to a Python function, e.g., "relu" => `tf.nn.relu`.
 
   It checks string first and if it is one of customized activation not in TF,
   the corresponding activation will be returned. For non-customized activation
   names and callable identifiers, always fallback to tf.keras.activations.get.
 
+  Prefers using keras layers when use_keras_layer=True. Now it only supports
+  'relu', 'linear', 'identity', 'swish'.
+
   Args:
     identifier: String name of the activation function or callable.
+    use_keras_layer: If True, use keras layer if identifier is allow-listed.
 
   Returns:
-    A Python function corresponding to the activation function.
+    A Python function corresponding to the activation function or a keras
+    activation layer when use_keras_layer=True.
   """
   if isinstance(identifier, six.string_types):
+    identifier = str(identifier).lower()
+    if use_keras_layer:
+      keras_layer_allowlist = {
+          "relu": "relu",
+          "linear": "linear",
+          "identity": "linear",
+          "swish": "swish",
+          "relu6": tf.nn.relu6,
+      }
+      if identifier in keras_layer_allowlist:
+        return tf.keras.layers.Activation(keras_layer_allowlist[identifier])
     name_to_fn = {
         "gelu": activations.gelu,
         "simple_swish": activations.simple_swish,
@@ -104,7 +120,6 @@ def get_activation(identifier):
         "hard_sigmoid": activations.hard_sigmoid,
         "identity": activations.identity,
     }
-    identifier = str(identifier).lower()
     if identifier in name_to_fn:
       return tf.keras.activations.get(name_to_fn[identifier])
   return tf.keras.activations.get(identifier)

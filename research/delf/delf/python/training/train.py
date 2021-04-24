@@ -41,12 +41,10 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_boolean('debug', False, 'Debug mode.')
 flags.DEFINE_string('logdir', '/tmp/delf', 'WithTensorBoard logdir.')
-flags.DEFINE_string(
-    'train_file_pattern', '/tmp/data/train*',
-    'File pattern of training dataset files.')
-flags.DEFINE_string(
-    'validation_file_pattern', '/tmp/data/validation*',
-    'File pattern of validation dataset files.')
+flags.DEFINE_string('train_file_pattern', '/tmp/data/train*',
+                    'File pattern of training dataset files.')
+flags.DEFINE_string('validation_file_pattern', '/tmp/data/validation*',
+                    'File pattern of validation dataset files.')
 flags.DEFINE_enum(
     'dataset_version', 'gld_v1', ['gld_v1', 'gld_v2', 'gld_v2_clean'],
     'Google Landmarks dataset version, used to determine the number of '
@@ -56,8 +54,8 @@ flags.DEFINE_float('initial_lr', 0.01, 'Initial learning rate.')
 flags.DEFINE_integer('batch_size', 32, 'Global batch size.')
 flags.DEFINE_integer('max_iters', 500000, 'Maximum iterations.')
 flags.DEFINE_boolean('block3_strides', True, 'Whether to use block3_strides.')
-flags.DEFINE_boolean(
-    'use_augmentation', True, 'Whether to use ImageNet style augmentation.')
+flags.DEFINE_boolean('use_augmentation', True,
+                     'Whether to use ImageNet style augmentation.')
 flags.DEFINE_string(
     'imagenet_checkpoint', None,
     'ImageNet checkpoint for ResNet backbone. If None, no checkpoint is used.')
@@ -65,11 +63,10 @@ flags.DEFINE_float(
     'attention_loss_weight', 1.0,
     'Weight to apply to the attention loss when calculating the '
     'total loss of the model.')
-flags.DEFINE_boolean(
-    'delg_global_features', False, 'Whether to train a DELG model.')
+flags.DEFINE_boolean('delg_global_features', False,
+                     'Whether to train a DELG model.')
 flags.DEFINE_float(
-    'delg_gem_power', 3.0,
-    'Power for Generalized Mean pooling. Used only if '
+    'delg_gem_power', 3.0, 'Power for Generalized Mean pooling. Used only if '
     'delg_global_features=True.')
 flags.DEFINE_integer(
     'delg_embedding_layer_dim', 2048,
@@ -79,12 +76,11 @@ flags.DEFINE_float(
     'delg_scale_factor_init', 45.25,
     'Initial value of the scaling factor of the cosine logits. The default '
     'value is sqrt(2048). Used only if delg_global_features=True.')
-flags.DEFINE_float(
-    'delg_arcface_margin', 0.1,
-    'ArcFace margin. Used only if delg_global_features=True.')
+flags.DEFINE_float('delg_arcface_margin', 0.1,
+                   'ArcFace margin. Used only if delg_global_features=True.')
 flags.DEFINE_integer('image_size', 321, 'Size of each image side to use.')
-flags.DEFINE_boolean(
-    'use_autoencoder', True, 'Whether to train an autoencoder.')
+flags.DEFINE_boolean('use_autoencoder', True,
+                     'Whether to train an autoencoder.')
 flags.DEFINE_float(
     'reconstruction_loss_weight', 10.0,
     'Weight to apply to the reconstruction loss from the autoencoder when'
@@ -329,9 +325,9 @@ def main(argv):
           reconstruction_loss = 0
 
         # Cumulate global loss, attention loss and reconstruction loss.
-        total_loss = (desc_loss
-                      + FLAGS.attention_loss_weight * attn_loss
-                      + FLAGS.reconstruction_loss_weight * reconstruction_loss)
+        total_loss = (
+            desc_loss + FLAGS.attention_loss_weight * attn_loss +
+            FLAGS.reconstruction_loss_weight * reconstruction_loss)
 
       # Perform backpropagation through the descriptor and attention layers
       # together. Note that this will increment the number of iterations of
@@ -537,8 +533,8 @@ def main(argv):
           # TODO(andrearaujo): save only in one of the two ways. They are
           # identical, the only difference is that the manager adds some extra
           # prefixes and variables (eg, optimizer variables).
-          if (global_step_value %
-              save_interval == 0) or (global_step_value >= max_iters):
+          if (global_step_value % save_interval
+              == 0) or (global_step_value >= max_iters):
             save_path = manager.save(checkpoint_number=global_step_value)
             logging.info('Saved (%d) at %s', global_step_value, save_path)
 

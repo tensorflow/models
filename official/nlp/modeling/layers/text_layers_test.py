@@ -26,15 +26,15 @@ from official.nlp.modeling.layers import text_layers
 
 class RoundRobinTruncatorTest(tf.test.TestCase):
 
-  def test_correct_outputs(self):
+  def _test_input(self, start, lengths):
+    return tf.ragged.constant([[start + 10 * j + i
+                                for i in range(length)]
+                               for j, length in enumerate(lengths)],
+                              dtype=tf.int32)
 
-    def test_input(start, lengths):
-      return tf.ragged.constant([[start + 10*j + i for i in range(length)]
-                                 for j, length in enumerate(lengths)],
-                                dtype=tf.int32)
-
+  def test_single_segment(self):
     # Single segment.
-    single_input = test_input(11, [4, 5, 6])
+    single_input = self._test_input(11, [4, 5, 6])
     expected_single_output = tf.ragged.constant(
         [[11, 12, 13, 14],
          [21, 22, 23, 24, 25],
@@ -50,9 +50,9 @@ class RoundRobinTruncatorTest(tf.test.TestCase):
     self.assertIsInstance(actual_single_list_output, list)
     self.assertAllEqual(expected_single_output, actual_single_list_output[0])
 
-    # Two segments.
-    input_a = test_input(111, [1, 2, 2, 3, 4, 5])
-    input_b = test_input(211, [1, 3, 4, 2, 2, 5])
+  def test_two_segments(self):
+    input_a = self._test_input(111, [1, 2, 2, 3, 4, 5])
+    input_b = self._test_input(211, [1, 3, 4, 2, 2, 5])
     expected_a = tf.ragged.constant(
         [[111],
          [121, 122],
@@ -73,6 +73,51 @@ class RoundRobinTruncatorTest(tf.test.TestCase):
         [input_a, input_b], limit=5)
     self.assertAllEqual(expected_a, actual_a)
     self.assertAllEqual(expected_b, actual_b)
+
+  def test_three_segments(self):
+    input_a = self._test_input(111, [1, 2, 2, 3, 4, 5, 1])
+    input_b = self._test_input(211, [1, 3, 4, 2, 2, 5, 8])
+    input_c = self._test_input(311, [1, 3, 4, 2, 2, 5, 10])
+    seg_limit = 8
+    expected_a = tf.ragged.constant([
+        [111],
+        [121, 122],
+        [131, 132],
+        [141, 142, 143],
+        [151, 152, 153, 154],
+        [161, 162, 163],  # Truncated
+        [171]
+    ])
+    expected_b = tf.ragged.constant([
+        [211],
+        [221, 222, 223],
+        [231, 232, 233],  # Truncated
+        [241, 242],
+        [251, 252],
+        [261, 262, 263],  # Truncated
+        [271, 272, 273, 274]  # Truncated
+    ])
+    expected_c = tf.ragged.constant([
+        [311],
+        [321, 322, 323],
+        [331, 332, 333],  # Truncated
+        [341, 342],
+        [351, 352],
+        [361, 362],  # Truncated
+        [371, 372, 373]  # Truncated
+    ])
+    actual_a, actual_b, actual_c = text_layers.round_robin_truncate_inputs(
+        [input_a, input_b, input_c], limit=seg_limit)
+    self.assertAllEqual(expected_a, actual_a)
+    self.assertAllEqual(expected_b, actual_b)
+    self.assertAllEqual(expected_c, actual_c)
+    input_cap = tf.math.reduce_sum(
+        tf.stack([rt.row_lengths() for rt in [input_a, input_b, input_c]]),
+        axis=0)
+    per_example_usage = tf.math.reduce_sum(
+        tf.stack([rt.row_lengths() for rt in [actual_a, actual_b, actual_c]]),
+        axis=0)
+    self.assertTrue(all(per_example_usage <= tf.minimum(seg_limit, input_cap)))
 
 
 # This test covers the in-process behavior of a BertTokenizer layer.
@@ -397,16 +442,19 @@ class BertPackInputsTest(tf.test.TestCase):
         tf.constant([[0, 0, 0, 0, 0, 1, 1, 1, 1, 0],
                      [0, 0, 0, 0, 0, 0, 1, 1, 1, 1]]))
 
-    # Three inputs has not been supported for round_robin so far.
-    with self.assertRaisesRegex(ValueError, "Must pass 1 or 2 inputs"):
-      bert_inputs = bpi([
-          tf.ragged.constant([[[111], [112, 113]],
-                              [[121, 122, 123], [124, 125, 126], [127, 128]]]),
-          tf.ragged.constant([[[211, 212], [213]],
-                              [[221, 222], [223, 224, 225], [226, 227, 228]]]),
-          tf.ragged.constant([[[311, 312], [313]],
-                              [[321, 322], [323, 324, 325], [326, 327, 328]]])
-      ])
+    # Three inputs. rank 3.
+    bert_inputs = bpi([
+        tf.ragged.constant([[[111], [112, 113]],
+                            [[121, 122, 123], [124, 125, 126], [127, 128]]]),
+        tf.ragged.constant([[[211, 212], [213]],
+                            [[221, 222], [223, 224, 225], [226, 227, 228]]]),
+        tf.ragged.constant([[[311, 312], [313]],
+                            [[321, 322], [323, 324, 325], [326, 327, 328]]])
+    ])
+    self.assertAllEqual(
+        bert_inputs["input_word_ids"],
+        tf.constant([[1001, 111, 112, 1002, 211, 212, 1002, 311, 312, 1002],
+                     [1001, 121, 122, 1002, 221, 222, 1002, 321, 322, 1002]]))
 
   def test_waterfall_correct_outputs(self):
     bpi = text_layers.BertPackInputs(

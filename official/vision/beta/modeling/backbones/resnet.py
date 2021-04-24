@@ -191,7 +191,7 @@ class ResNet(tf.keras.Model):
       x = self._norm(
           axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
               x)
-      x = tf_utils.get_activation(activation)(x)
+      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
     elif stem_type == 'v1':
       x = layers.Conv2D(
           filters=int(32 * self._depth_multiplier),
@@ -206,7 +206,7 @@ class ResNet(tf.keras.Model):
       x = self._norm(
           axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
               x)
-      x = tf_utils.get_activation(activation)(x)
+      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
       x = layers.Conv2D(
           filters=int(32 * self._depth_multiplier),
           kernel_size=3,
@@ -220,7 +220,7 @@ class ResNet(tf.keras.Model):
       x = self._norm(
           axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
               x)
-      x = tf_utils.get_activation(activation)(x)
+      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
       x = layers.Conv2D(
           filters=int(64 * self._depth_multiplier),
           kernel_size=3,
@@ -234,7 +234,7 @@ class ResNet(tf.keras.Model):
       x = self._norm(
           axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
               x)
-      x = tf_utils.get_activation(activation)(x)
+      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
     else:
       raise ValueError('Stem type {} not supported.'.format(stem_type))
 
@@ -252,7 +252,7 @@ class ResNet(tf.keras.Model):
       x = self._norm(
           axis=bn_axis, momentum=norm_momentum, epsilon=norm_epsilon)(
               x)
-      x = tf_utils.get_activation(activation)(x)
+      x = tf_utils.get_activation(activation, use_keras_layer=True)(x)
     else:
       x = layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
 
@@ -338,7 +338,7 @@ class ResNet(tf.keras.Model):
           norm_epsilon=self._norm_epsilon)(
               x)
 
-    return tf.identity(x, name=name)
+    return tf.keras.layers.Activation('linear', name=name)(x)
 
   def get_config(self):
     config_dict = {
