@@ -29,7 +29,7 @@ class BaseOptimizerConfig(base_config.Config):
     clipvalue: float >= 0 or None. If not None, Gradients will be clipped when
       their absolute value exceeds this value.
     global_clipnorm: float >= 0 or None. If not None, gradient of all weights is
-        clipped so that their global norm is no higher than this value
+      clipped so that their global norm is no higher than this value
   """
   clipnorm: Optional[float] = None
   clipvalue: Optional[float] = None
@@ -73,6 +73,24 @@ class RMSPropConfig(BaseOptimizerConfig):
   momentum: float = 0.0
   epsilon: float = 1e-7
   centered: bool = False
+
+
+@dataclasses.dataclass
+class AdagradConfig(BaseOptimizerConfig):
+  """Configuration for Adagrad optimizer.
+
+  The attributes of this class match the arguments of
+  tf.keras.optimizer.Adagrad.
+
+  Attributes:
+    name: name of the optimizer.
+    initial_accumulator_value: A floating point value. Starting value for the
+      accumulators, must be non-negative.
+    epsilon: A small floating point value to avoid zero denominator.
+  """
+  name: str = "Adagrad"
+  initial_accumulator_value: float = 0.1
+  epsilon: float = 1e-07
 
 
 @dataclasses.dataclass
@@ -178,24 +196,23 @@ class LARSConfig(BaseOptimizerConfig):
 
   Attributes:
     name: 'str', name of the optimizer.
-    momentum: `float` hyperparameter >= 0 that accelerates gradient descent
-        in the relevant direction and dampens oscillations. Defaults to 0.9.
+    momentum: `float` hyperparameter >= 0 that accelerates gradient descent in
+      the relevant direction and dampens oscillations. Defaults to 0.9.
     eeta: `float` LARS coefficient as used in the paper. Default set to LARS
-        coefficient from the paper. (eeta / weight_decay) determines the
-        highest scaling factor in LARS..
+      coefficient from the paper. (eeta / weight_decay) determines the highest
+      scaling factor in LARS..
     weight_decay_rate: `float` for weight decay.
     nesterov: 'boolean' for whether to use nesterov momentum.
     classic_momentum: `boolean` for whether to use classic (or popular)
-        momentum. The learning rate is applied during momentum update in
-        classic momentum, but after momentum for popular momentum.
-    exclude_from_weight_decay: A list of `string` for variable screening, if
-        any of the string appears in a variable's name, the variable will be
-        excluded for computing weight decay. For example, one could specify
-        the list like ['batch_normalization', 'bias'] to exclude BN and bias
-        from weight decay.
-    exclude_from_layer_adaptation: Similar to exclude_from_weight_decay, but
-        for layer adaptation. If it is None, it will be defaulted the same as
-        exclude_from_weight_decay.
+      momentum. The learning rate is applied during momentum update in classic
+      momentum, but after momentum for popular momentum.
+    exclude_from_weight_decay: A list of `string` for variable screening, if any
+      of the string appears in a variable's name, the variable will be excluded
+      for computing weight decay. For example, one could specify the list like
+      ['batch_normalization', 'bias'] to exclude BN and bias from weight decay.
+    exclude_from_layer_adaptation: Similar to exclude_from_weight_decay, but for
+      layer adaptation. If it is None, it will be defaulted the same as
+      exclude_from_weight_decay.
   """
   name: str = "LARS"
   momentum: float = 0.9
