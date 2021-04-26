@@ -40,6 +40,7 @@ class OptimizerConfig(oneof.OneOfConfig):
     lamb: lamb optimizer.
     rmsprop: rmsprop optimizer.
     lars: lars optimizer.
+    adagrad: adagrad optimizer.
   """
   type: Optional[str] = None
   sgd: opt_cfg.SGDConfig = opt_cfg.SGDConfig()
@@ -48,6 +49,7 @@ class OptimizerConfig(oneof.OneOfConfig):
   lamb: opt_cfg.LAMBConfig = opt_cfg.LAMBConfig()
   rmsprop: opt_cfg.RMSPropConfig = opt_cfg.RMSPropConfig()
   lars: opt_cfg.LARSConfig = opt_cfg.LARSConfig()
+  adagrad: opt_cfg.AdagradConfig = opt_cfg.AdagradConfig()
 
 
 @dataclasses.dataclass
@@ -99,8 +101,8 @@ class OptimizationConfig(base_config.Config):
 
   Attributes:
     optimizer: optimizer oneof config.
-    ema: optional exponential moving average optimizer config, if specified,
-      ema optimizer will be used.
+    ema: optional exponential moving average optimizer config, if specified, ema
+      optimizer will be used.
     learning_rate: learning rate oneof config.
     warmup: warmup oneof config.
   """
