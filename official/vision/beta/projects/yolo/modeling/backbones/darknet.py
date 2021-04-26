@@ -56,20 +56,22 @@ class BlockConfig:
                output_name, is_output):
     """
     Args:
-      layer (str): layer name
-      stack (str): the type of layer ordering to use for this specific level
-      reps (int): integer for the number of times to repeat block
-      bottleneck (bool): does this stack have a bottle neck layer
-      filters (int): the output depth of the level
-      pool_size (int): the pool_size of max pool layers
-      kernel_size (int): convolution kernel size
-      strides (Union[int, tuple]): indicate convolution strides
-      padding (int): the padding to apply to layers in this stack
-      activation (str): the activation to use for this stack
-      route (int): level to route from to get the next input
-      dilation_rate (int): scale used in dialated DarkNet
-      output_name (str): the name to use for this output
-      is_output (bool): is this layer an output in the default model
+      layer: A `str` for layer name
+      stack: A `str` for the type of layer ordering to use for this specific
+        level
+      reps: An `int` for the number of times to repeat block
+      bottleneck: A `bool` for whether this stack has a bottle neck layer
+      filters: An `int` for the output depth of the level
+      pool_size: An `int` for the pool_size of max pool layers
+      kernel_size: An `int` for convolution kernel size
+      strides: A `Union[int, tuple]` that indicates convolution strides
+      padding: An `int` for the padding to apply to layers in this stack
+      activation: A `str` for the activation to use for this stack
+      route: An `int` for the level to route from to get the next input
+      dilation_rate: An `int` for the scale used in dialated DarkNet
+      output_name: A `str` for the name to use for this output
+      is_output: A `bool` for whether this layer is an output in the default
+        model
     """
     self.layer = layer
     self.stack = stack

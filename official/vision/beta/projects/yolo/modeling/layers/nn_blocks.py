@@ -735,7 +735,6 @@ class CSPConnect(tf.keras.layers.Layer):
           kernel_size=(1, 1),
           strides=(1, 1),
           **dark_conv_args)
-    return
 
   def call(self, inputs, training=None):
     x_prev, x_csp = inputs
@@ -805,6 +804,9 @@ class CSPStack(tf.keras.layers.Layer):
       norm_momentum: float for moment to use for batch normalization
       norm_epsilon: float for batch normalization epsilon
       **kwargs: Keyword Arguments
+
+    Raises:
+      TypeError: model_to_wrap is not a layer or a list of layers
     """
 
     super().__init__(**kwargs)
@@ -824,17 +826,16 @@ class CSPStack(tf.keras.layers.Layer):
     self._norm_momentum = norm_momentum
     self._norm_epsilon = norm_epsilon
 
-    if model_to_wrap is not None:
-      if isinstance(model_to_wrap, Callable):
-        self._model_to_wrap = [model_to_wrap]
-      elif isinstance(model_to_wrap, List):
-        self._model_to_wrap = model_to_wrap
-      else:
-        raise Exception(
-            'the input to the CSPStack must be a list of layers that we can' +
-            'iterate through, or \n a callable')
-    else:
+    if model_to_wrap is None:
       self._model_to_wrap = []
+    elif isinstance(model_to_wrap, Callable):
+      self._model_to_wrap = [model_to_wrap]
+    elif isinstance(model_to_wrap, List):
+      self._model_to_wrap = model_to_wrap
+    else:
+      raise TypeError(
+          'the input to the CSPStack must be a list of layers that we can' +
+          'iterate through, or \n a callable')
 
   def build(self, input_shape):
     dark_conv_args = {
@@ -885,6 +886,7 @@ class PathAggregationBlock(tf.keras.layers.Layer):
     """
     Args:
       filters: integer for output depth, or the number of features to learn
+      drop_final: do not create the last convolution block
       kernel_initializer: string to indicate which function to use to initialize
         weights
       bias_initializer: string to indicate which function to use to initialize
@@ -897,6 +899,7 @@ class PathAggregationBlock(tf.keras.layers.Layer):
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
         (across all input batches)
+      inverted: boolean for inverting the order of the convolutions
       norm_momentum: float for moment to use for batch normalization
       norm_epsilon: float for batch normalization epsilon
       activation: string or None for activation function to use in layer,
@@ -957,7 +960,6 @@ class PathAggregationBlock(tf.keras.layers.Layer):
           strides=(1, 1),
           padding='same',
           **kwargs)
-    return
 
   def _build_reversed(self, input_shape, kwargs):
     if self._downsample:
@@ -989,7 +991,6 @@ class PathAggregationBlock(tf.keras.layers.Layer):
           strides=(1, 1),
           padding='same',
           **kwargs)
-    return
 
   def build(self, input_shape):
     dark_conv_args = {
@@ -1236,8 +1237,6 @@ class CAM(tf.keras.layers.Layer):
     else:
       self._activation_fn = tf_utils.get_activation(self._activation)
 
-    return
-
   def call(self, inputs, training=None):
     depth_max = self._mlp(tf.reduce_max(inputs, axis=(1, 2)))
     depth_avg = self._mlp(tf.reduce_mean(inputs, axis=(1, 2)))
@@ -1314,7 +1313,6 @@ class CBAM(tf.keras.layers.Layer):
   def build(self, input_shape):
     self._cam = CAM(**self._cam_args)
     self._sam = SAM(**self._sam_args)
-    return
 
   def call(self, inputs, training=None):
     return self._sam(self._cam(inputs))
