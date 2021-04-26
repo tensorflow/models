@@ -21,7 +21,6 @@
 import abc
 import collections
 import functools
-import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow.compat.v2 as tf2
 
@@ -945,12 +944,6 @@ def refine_keypoints(regressed_keypoints,
   num_candidates_tiled = tf.tile(tf.expand_dims(num_keypoint_candidates, 1),
                                  [1, max_candidates, 1])
   invalid_candidates = range_tiled >= num_candidates_tiled
-  nan_mask = tf.where(
-      invalid_candidates,
-      np.nan * tf.ones_like(invalid_candidates, dtype=tf.float32),
-      tf.ones_like(invalid_candidates, dtype=tf.float32))
-  keypoint_candidates_with_nans = tf.math.multiply(
-      keypoint_candidates, tf.expand_dims(nan_mask, -1))
 
   # Pairwise squared distances between regressed keypoints and candidate
   # keypoints (for a single keypoint type).
@@ -959,7 +952,7 @@ def refine_keypoints(regressed_keypoints,
                                                axis=2)
   # Shape [batch_size, 1, max_candidates, num_keypoints, 2].
   keypoint_candidates_expanded = tf.expand_dims(
-      keypoint_candidates_with_nans, axis=1)
+      keypoint_candidates, axis=1)
   # Use explicit tensor shape broadcasting (since the tensor dimensions are
   # expanded to 5D) to make it tf.lite compatible.
   regressed_keypoint_expanded = tf.tile(
@@ -973,10 +966,16 @@ def refine_keypoints(regressed_keypoints,
   sqrd_distances = tf.math.reduce_sum(tf.multiply(diff, diff), axis=-1)
   distances = tf.math.sqrt(sqrd_distances)
 
-  # Replace the NaNs with Infs to make sure the following reduce_min/argmin
-  # behaves properly.
+  # Replace the invalid candidated with large constant (10^5) to make sure the
+  # following reduce_min/argmin behaves properly.
+  max_dist = 1e5
   distances = tf.where(
-      tf.math.is_nan(distances), np.inf * tf.ones_like(distances), distances)
+      tf.tile(
+          tf.expand_dims(invalid_candidates, axis=1),
+          multiples=[1, num_instances, 1, 1]),
+      tf.ones_like(distances) * max_dist,
+      distances
+  )
 
   # Determine the candidates that have the minimum distance to the regressed
   # keypoints. Shape [batch_size, num_instances, num_keypoints].
