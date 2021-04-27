@@ -34,6 +34,7 @@ class DataConfig(cfg.DataConfig):
   dtype: str = 'float32'
   shuffle_buffer_size: int = 10000
   cycle_length: int = 10
+  is_multilabel: bool = False
   aug_rand_hflip: bool = True
   aug_type: Optional[
       common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
