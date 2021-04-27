@@ -55,7 +55,7 @@ class CenterNetMetaArchPredictionHeadTest(
 class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
   """Test for CenterNet meta architecture related functions."""
 
-  def test_row_col_indices_from_flattened_indices(self):
+  def test_row_col_channel_indices_from_flattened_indices(self):
     """Tests that the computation of row, col, channel indices is correct."""
 
     r_grid, c_grid, ch_grid = (np.zeros((5, 4, 3), dtype=np.int),
@@ -88,6 +88,21 @@ class CenterNetMetaArchHelpersTest(test_case.TestCase, parameterized.TestCase):
     np.testing.assert_array_equal(ri, r_grid.flatten())
     np.testing.assert_array_equal(ci, c_grid.flatten())
     np.testing.assert_array_equal(chi, ch_grid.flatten())
+
+  def test_row_col_indices_from_flattened_indices(self):
+    """Tests that the computation of row, col indices is correct."""
+
+    r_grid = np.array([[0, 0, 0, 0], [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3],
+                       [4, 4, 4, 4]])
+
+    c_grid = np.array([[0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3],
+                       [0, 1, 2, 3]])
+
+    indices = np.arange(20)
+    ri, ci, = cnma.row_col_indices_from_flattened_indices(indices, 4)
+
+    np.testing.assert_array_equal(ri, r_grid.flatten())
+    np.testing.assert_array_equal(ci, c_grid.flatten())
 
   def test_flattened_indices_from_row_col_indices(self):
 

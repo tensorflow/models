@@ -571,15 +571,11 @@ def argmax_feature_map_locations(feature_map):
       feature_map, [batch_size, -1, num_channels])
   peak_flat_indices = tf.math.argmax(
       feature_map_flattened, axis=1, output_type=tf.dtypes.int32)
-  # Convert the indices such that they represent the location in the full
-  # (flattened) feature map of size [batch, height * width * channels].
-  channel_idx = tf.range(num_channels)[tf.newaxis, :]
-  peak_flat_indices = num_channels * peak_flat_indices + channel_idx
-  # Get x, y and channel indices corresponding to the top indices in the flat
-  # array.
-  y_indices, x_indices, channel_indices = (
-      row_col_channel_indices_from_flattened_indices(
-          peak_flat_indices, width, num_channels))
+  # Get x and y indices corresponding to the top indices in the flat array.
+  y_indices, x_indices = (
+      row_col_indices_from_flattened_indices(peak_flat_indices, width))
+  channel_indices = tf.tile(
+      tf.range(num_channels)[tf.newaxis, :], [batch_size, 1])
   return y_indices, x_indices, channel_indices
 
 
@@ -1247,6 +1243,12 @@ def row_col_channel_indices_from_flattened_indices(indices, num_cols,
       indices.
 
   """
+  # Be careful with this function when running a model in float16 precision
+  # (e.g. TF.js with WebGL) because the array indices may not be represented
+  # accurately if they are too large, resulting in incorrect channel indices.
+  # See:
+  # https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Precision_limitations_on_integer_values
+  #
   # Avoid using mod operator to make the ops more easy to be compatible with
   # different environments, e.g. WASM.
   row_indices = (indices // num_channels) // num_cols
@@ -1255,6 +1257,29 @@ def row_col_channel_indices_from_flattened_indices(indices, num_cols,
   channel_indices = indices - channel_indices_temp * num_channels
 
   return row_indices, col_indices, channel_indices
+
+
+def row_col_indices_from_flattened_indices(indices, num_cols):
+  """Computes row and column indices from flattened indices.
+
+  Args:
+    indices: An integer tensor of any shape holding the indices in the flattened
+      space.
+    num_cols: Number of columns in the image (width).
+
+  Returns:
+    row_indices: The row indices corresponding to each of the input indices.
+      Same shape as indices.
+    col_indices: The column indices corresponding to each of the input indices.
+      Same shape as indices.
+
+  """
+  # Avoid using mod operator to make the ops more easy to be compatible with
+  # different environments, e.g. WASM.
+  row_indices = indices // num_cols
+  col_indices = indices - row_indices * num_cols
+
+  return row_indices, col_indices
 
 
 def get_valid_anchor_weights_in_flattened_image(true_image_shapes, height,
