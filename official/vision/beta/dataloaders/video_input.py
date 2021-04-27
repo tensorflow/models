@@ -23,6 +23,7 @@ import tensorflow as tf
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
+from official.vision.beta.ops import augment
 from official.vision.beta.ops import preprocess_ops_3d
 
 IMAGE_KEY = 'image/encoded'
@@ -43,6 +44,7 @@ def process_image(image: tf.Tensor,
                   max_aspect_ratio: float = 2,
                   min_area_ratio: float = 0.49,
                   max_area_ratio: float = 1.0,
+                  augmenter: Optional[augment.ImageAugment] = None,
                   seed: Optional[int] = None) -> tf.Tensor:
   """Processes a serialized image tensor.
 
@@ -72,6 +74,7 @@ def process_image(image: tf.Tensor,
     max_aspect_ratio: The maximum aspect range for cropping.
     min_area_ratio: The minimum area range for cropping.
     max_area_ratio: The maximum area range for cropping.
+    augmenter: Image augmenter to distort each image.
     seed: A deterministic seed to use when sampling.
 
   Returns:
@@ -119,6 +122,9 @@ def process_image(image: tf.Tensor,
         (min_aspect_ratio, max_aspect_ratio),
         (min_area_ratio, max_area_ratio))
     image = preprocess_ops_3d.random_flip_left_right(image, seed)
+
+    if augmenter is not None:
+      image = augmenter.distort(image)
   else:
     # Resize images (resize happens only if necessary to save compute).
     image = preprocess_ops_3d.resize_smallest(image, min_resize)
@@ -256,6 +262,19 @@ class Parser(parser.Parser):
       self._audio_feature = input_params.audio_feature
       self._audio_shape = input_params.audio_feature_shape
 
+    self._augmenter = None
+    if input_params.aug_type is not None:
+      aug_type = input_params.aug_type
+      if aug_type == 'autoaug':
+        logging.info('Using AutoAugment.')
+        self._augmenter = augment.AutoAugment()
+      elif aug_type == 'randaug':
+        logging.info('Using RandAugment.')
+        self._augmenter = augment.RandAugment()
+      else:
+        raise ValueError('Augmentation policy {} is not supported.'.format(
+            aug_type))
+
   def _parse_train_data(
       self, decoded_tensors: Dict[str, tf.Tensor]
   ) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
@@ -274,8 +293,10 @@ class Parser(parser.Parser):
         min_aspect_ratio=self._min_aspect_ratio,
         max_aspect_ratio=self._max_aspect_ratio,
         min_area_ratio=self._min_area_ratio,
-        max_area_ratio=self._max_area_ratio)
+        max_area_ratio=self._max_area_ratio,
+        augmenter=self._augmenter)
     image = tf.cast(image, dtype=self._dtype)
+
     features = {'image': image}
 
     label = decoded_tensors[self._label_key]
