@@ -39,6 +39,7 @@ from object_detection.utils import visualization_utils as vutils
 
 
 MODEL_BUILD_UTIL_MAP = model_lib.MODEL_BUILD_UTIL_MAP
+NUM_STEPS_PER_ITERATION = 100
 
 
 RESTORE_MAP_ERROR_TEMPLATE = (
@@ -442,6 +443,7 @@ def train_loop(
     checkpoint_max_to_keep=7,
     record_summaries=True,
     performance_summary_exporter=None,
+    num_steps_per_iteration=NUM_STEPS_PER_ITERATION,
     **kwargs):
   """Trains a model using eager + functions.
 
@@ -473,6 +475,8 @@ def train_loop(
       int, the number of most recent checkpoints to keep in the model directory.
     record_summaries: Boolean, whether or not to record summaries.
     performance_summary_exporter: function for exporting performance metrics.
+    num_steps_per_iteration: int, The number of training steps to perform
+      in each iteration.
     **kwargs: Additional keyword arguments for configuration override.
   """
   ## Parse the configs
@@ -576,13 +580,6 @@ def train_loop(
         summary_writer_filepath)
   else:
     summary_writer = tf2.summary.create_noop_writer()
-
-  if use_tpu:
-    num_steps_per_iteration = 100
-  else:
-    # TODO(b/135933080) Explore setting to 100 when GPU performance issues
-    # are fixed.
-    num_steps_per_iteration = 1
 
   with summary_writer.as_default():
     with strategy.scope():
