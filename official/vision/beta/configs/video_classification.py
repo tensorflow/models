@@ -31,6 +31,7 @@ class DataConfig(cfg.DataConfig):
   file_type: Optional[str] = 'tfrecord'
   compressed_input: bool = False
   split: str = 'train'
+  variant_name: Optional[str] = None
   feature_shape: Tuple[int, ...] = (64, 224, 224, 3)
   temporal_stride: int = 1
   random_stride_range: int = 0
