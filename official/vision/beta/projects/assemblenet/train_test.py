@@ -49,6 +49,7 @@ class TrainTest(tf.test.TestCase):
     tfexample_utils.dump_to_tfrecord(self._data_path, tf_examples=examples)
 
   def test_run(self):
+    """Test if the main function is runnable."""
     saved_flag_values = flagsaver.save_flag_values()
     train_lib.tfm_flags.define_flags()
     FLAGS.mode = 'train'
