@@ -125,17 +125,30 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(expected_num_params, model.count_params())
 
   @parameterized.parameters(
-      (False, False,),
-      (False, True,),
-      (True, False,),
-      (True, True,),
+      (False, False, False),
+      (False, True, False),
+      (False, False, True),
+      (False, True, True),
+      (True, False, False),
+      (True, True, False),
+      (True, False, True),
+      (True, True, True),
   )
-  def test_forward(self, include_mask, training):
+  def test_forward(self, include_mask, training, use_cascade_heads):
     num_classes = 3
     min_level = 3
     max_level = 4
     num_scales = 3
     aspect_ratios = [1.0]
+    if use_cascade_heads:
+      cascade_iou_thresholds = [0.6]
+      class_agnostic_bbox_pred = True
+      cascade_class_ensemble = True
+    else:
+      cascade_iou_thresholds = None
+      class_agnostic_bbox_pred = False
+      cascade_class_ensemble = False
+
     image_size = (256, 256)
     images = np.random.rand(2, image_size[0], image_size[1], 3)
     image_shape = np.array([[224, 100], [100, 224]])
@@ -159,9 +172,23 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         max_level=max_level,
         num_anchors_per_location=num_anchors_per_location)
     detection_head = instance_heads.DetectionHead(
-        num_classes=num_classes)
+        num_classes=num_classes,
+        class_agnostic_bbox_pred=class_agnostic_bbox_pred)
     roi_generator_obj = roi_generator.MultilevelROIGenerator()
+
+    roi_sampler_cascade = []
     roi_sampler_obj = roi_sampler.ROISampler()
+    roi_sampler_cascade.append(roi_sampler_obj)
+    if cascade_iou_thresholds:
+      for iou in cascade_iou_thresholds:
+        roi_sampler_obj = roi_sampler.ROISampler(
+            mix_gt_boxes=False,
+            foreground_iou_threshold=iou,
+            background_iou_high_threshold=iou,
+            background_iou_low_threshold=0.0,
+            skip_subsampling=True)
+        roi_sampler_cascade.append(roi_sampler_obj)
+
     roi_aligner_obj = roi_aligner.MultilevelROIAligner()
     detection_generator_obj = detection_generator.DetectionGenerator()
     if include_mask:
@@ -180,12 +207,14 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         rpn_head,
         detection_head,
         roi_generator_obj,
-        roi_sampler_obj,
+        roi_sampler_cascade,
         roi_aligner_obj,
         detection_generator_obj,
         mask_head,
         mask_sampler_obj,
-        mask_roi_aligner_obj)
+        mask_roi_aligner_obj,
+        class_agnostic_bbox_pred=class_agnostic_bbox_pred,
+        cascade_class_ensemble=cascade_class_ensemble)
 
     gt_boxes = np.array(
         [[[10, 10, 15, 15], [2.5, 2.5, 7.5, 7.5], [-1, -1, -1, -1]],
