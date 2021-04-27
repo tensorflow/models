@@ -109,6 +109,7 @@ def build_maskrcnn(
       use_separable_conv=detection_head_config.use_separable_conv,
       num_fcs=detection_head_config.num_fcs,
       fc_dims=detection_head_config.fc_dims,
+      class_agnostic_bbox_pred=detection_head_config.class_agnostic_bbox_pred,
       activation=norm_activation_config.activation,
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
@@ -131,6 +132,7 @@ def build_maskrcnn(
       test_num_proposals=roi_generator_config.test_num_proposals,
       use_batched_nms=roi_generator_config.use_batched_nms)
 
+  roi_sampler_cascade = []
   roi_sampler_obj = roi_sampler.ROISampler(
       mix_gt_boxes=roi_sampler_config.mix_gt_boxes,
       num_sampled_rois=roi_sampler_config.num_sampled_rois,
@@ -140,6 +142,18 @@ def build_maskrcnn(
           roi_sampler_config.background_iou_high_threshold),
       background_iou_low_threshold=(
           roi_sampler_config.background_iou_low_threshold))
+  roi_sampler_cascade.append(roi_sampler_obj)
+  # Initialize addtional roi simplers for cascade heads.
+  if roi_sampler_config.cascade_iou_thresholds:
+    for iou in roi_sampler_config.cascade_iou_thresholds:
+      roi_sampler_obj = roi_sampler.ROISampler(
+          mix_gt_boxes=False,
+          num_sampled_rois=roi_sampler_config.num_sampled_rois,
+          foreground_iou_threshold=iou,
+          background_iou_high_threshold=iou,
+          background_iou_low_threshold=0.0,
+          skip_subsampling=True)
+      roi_sampler_cascade.append(roi_sampler_obj)
 
   roi_aligner_obj = roi_aligner.MultilevelROIAligner(
       crop_size=roi_aligner_config.crop_size,
@@ -186,12 +200,14 @@ def build_maskrcnn(
       rpn_head=rpn_head,
       detection_head=detection_head,
       roi_generator=roi_generator_obj,
-      roi_sampler=roi_sampler_obj,
+      roi_sampler=roi_sampler_cascade,
       roi_aligner=roi_aligner_obj,
       detection_generator=detection_generator_obj,
       mask_head=mask_head,
       mask_sampler=mask_sampler_obj,
-      mask_roi_aligner=mask_roi_aligner_obj)
+      mask_roi_aligner=mask_roi_aligner_obj,
+      class_agnostic_bbox_pred=detection_head_config.class_agnostic_bbox_pred,
+      cascade_class_ensemble=detection_head_config.cascade_class_ensemble)
   return model
 
 
