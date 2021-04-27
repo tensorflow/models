@@ -207,7 +207,12 @@ def build_maskrcnn(
       mask_sampler=mask_sampler_obj,
       mask_roi_aligner=mask_roi_aligner_obj,
       class_agnostic_bbox_pred=detection_head_config.class_agnostic_bbox_pred,
-      cascade_class_ensemble=detection_head_config.cascade_class_ensemble)
+      cascade_class_ensemble=detection_head_config.cascade_class_ensemble,
+      min_level=model_config.min_level,
+      max_level=model_config.max_level,
+      num_scales=model_config.anchor.num_scales,
+      aspect_ratios=model_config.anchor.aspect_ratios,
+      anchor_size=model_config.anchor.anchor_size)
   return model
 
 

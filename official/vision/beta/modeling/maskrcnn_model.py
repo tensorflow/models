@@ -19,6 +19,7 @@ from typing import Any, List, Mapping, Optional, Union
 # Import libraries
 import tensorflow as tf
 
+from official.vision.beta.ops import anchor
 from official.vision.beta.ops import box_ops
 
 
@@ -41,6 +42,11 @@ class MaskRCNNModel(tf.keras.Model):
                mask_roi_aligner: Optional[tf.keras.layers.Layer] = None,
                class_agnostic_bbox_pred: bool = False,
                cascade_class_ensemble: bool = False,
+               min_level: Optional[int] = None,
+               max_level: Optional[int] = None,
+               num_scales: Optional[int] = None,
+               aspect_ratios: Optional[List[float]] = None,
+               anchor_size: Optional[float] = None,
                **kwargs):
     """Initializes the Mask R-CNN model.
 
@@ -61,6 +67,17 @@ class MaskRCNNModel(tf.keras.Model):
         prediction. Needs to be `True` for Cascade RCNN models.
       cascade_class_ensemble: if True, ensemble classification scores over
         all detection heads.
+      min_level: Minimum level in output feature maps.
+      max_level: Maximum level in output feature maps.
+      num_scales: A number representing intermediate scales added
+        on each level. For instances, num_scales=2 adds one additional
+        intermediate anchor scales [2^0, 2^0.5] on each level.
+      aspect_ratios: A list representing the aspect raito
+        anchors added on each level. The number indicates the ratio of width to
+        height. For instances, aspect_ratios=[1.0, 2.0, 0.5] adds three anchors
+        on each scale level.
+      anchor_size: A number representing the scale of size of the base
+        anchor to the feature stride 2^level.
       **kwargs: keyword arguments to be passed.
     """
     super(MaskRCNNModel, self).__init__(**kwargs)
@@ -78,6 +95,11 @@ class MaskRCNNModel(tf.keras.Model):
         'mask_roi_aligner': mask_roi_aligner,
         'class_agnostic_bbox_pred': class_agnostic_bbox_pred,
         'cascade_class_ensemble': cascade_class_ensemble,
+        'min_level': min_level,
+        'max_level': max_level,
+        'num_scales': num_scales,
+        'aspect_ratios': aspect_ratios,
+        'anchor_size': anchor_size,
     }
     self.backbone = backbone
     self.decoder = decoder
@@ -132,6 +154,21 @@ class MaskRCNNModel(tf.keras.Model):
         'rpn_boxes': rpn_boxes,
         'rpn_scores': rpn_scores
     })
+
+    # Generate anchor boxes for this batch if not provided.
+    if anchor_boxes is None:
+      _, image_height, image_width, _ = images.get_shape().as_list()
+      anchor_boxes = anchor.Anchor(
+          min_level=self._config_dict['min_level'],
+          max_level=self._config_dict['max_level'],
+          num_scales=self._config_dict['num_scales'],
+          aspect_ratios=self._config_dict['aspect_ratios'],
+          anchor_size=self._config_dict['anchor_size'],
+          image_size=(image_height, image_width)).multilevel_boxes
+      for l in anchor_boxes:
+        anchor_boxes[l] = tf.tile(
+            tf.expand_dims(anchor_boxes[l], axis=0),
+            [tf.shape(images)[0], 1, 1, 1])
 
     # Generate RoIs.
     current_rois, _ = self.roi_generator(rpn_boxes, rpn_scores, anchor_boxes,
@@ -255,7 +292,7 @@ class MaskRCNNModel(tf.keras.Model):
     # Only used during training.
     matched_gt_boxes, matched_gt_classes, matched_gt_indices = (None, None,
                                                                 None)
-    if training:
+    if training and gt_boxes is not None:
       rois = tf.stop_gradient(rois)
 
       current_roi_sampler = self.roi_sampler[layer_num]
