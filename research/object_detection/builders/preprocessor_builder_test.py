@@ -216,13 +216,14 @@ class PreprocessorBuilderTest(tf.test.TestCase):
     preprocessor_text_proto = """
     random_jitter_boxes {
       ratio: 0.1
+      jitter_mode: SHRINK
     }
     """
     preprocessor_proto = preprocessor_pb2.PreprocessingStep()
     text_format.Merge(preprocessor_text_proto, preprocessor_proto)
     function, args = preprocessor_builder.build(preprocessor_proto)
     self.assertEqual(function, preprocessor.random_jitter_boxes)
-    self.assert_dictionary_close(args, {'ratio': 0.1})
+    self.assert_dictionary_close(args, {'ratio': 0.1, 'jitter_mode': 'shrink'})
 
   def test_build_random_crop_image(self):
     preprocessor_text_proto = """

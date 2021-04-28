@@ -1306,7 +1306,7 @@ def random_distort_color(image, color_ordering=0, preprocess_vars_cache=None):
     return image
 
 
-def random_jitter_boxes(boxes, ratio=0.05, seed=None):
+def random_jitter_boxes(boxes, ratio=0.05, jitter_mode='random', seed=None):
   """Randomly jitter boxes in image.
 
   Args:
@@ -1317,45 +1317,46 @@ def random_jitter_boxes(boxes, ratio=0.05, seed=None):
     ratio: The ratio of the box width and height that the corners can jitter.
            For example if the width is 100 pixels and ratio is 0.05,
            the corners can jitter up to 5 pixels in the x direction.
+    jitter_mode: One of
+      shrink - Only shrinks boxes.
+      expand - Only expands boxes.
+      default - Randomly and independently perturbs each box boundary.
     seed: random seed.
 
   Returns:
     boxes: boxes which is the same shape as input boxes.
   """
-  def random_jitter_box(box, ratio, seed):
-    """Randomly jitter box.
-
-    Args:
-      box: bounding box [1, 1, 4].
-      ratio: max ratio between jittered box and original box,
-      a number between [0, 0.5].
-      seed: random seed.
-
-    Returns:
-      jittered_box: jittered box.
-    """
-    rand_numbers = tf.random_uniform(
-        [1, 1, 4], minval=-ratio, maxval=ratio, dtype=tf.float32, seed=seed)
-    box_width = tf.subtract(box[0, 0, 3], box[0, 0, 1])
-    box_height = tf.subtract(box[0, 0, 2], box[0, 0, 0])
-    hw_coefs = tf.stack([box_height, box_width, box_height, box_width])
-    hw_rand_coefs = tf.multiply(hw_coefs, rand_numbers)
-    jittered_box = tf.add(box, hw_rand_coefs)
-    jittered_box = tf.clip_by_value(jittered_box, 0.0, 1.0)
-    return jittered_box
-
   with tf.name_scope('RandomJitterBoxes', values=[boxes]):
-    # boxes are [N, 4]. Lets first make them [N, 1, 1, 4]
-    boxes_shape = tf.shape(boxes)
-    boxes = tf.expand_dims(boxes, 1)
-    boxes = tf.expand_dims(boxes, 2)
+    ymin, xmin, ymax, xmax = (boxes[:, i] for i in range(4))
 
-    distorted_boxes = tf.map_fn(
-        lambda x: random_jitter_box(x, ratio, seed), boxes, dtype=tf.float32)
+    height, width = ymax - ymin, xmax - xmin
+    ycenter, xcenter = (ymin + ymax) / 2.0, (xmin + xmax) / 2.0
 
-    distorted_boxes = tf.reshape(distorted_boxes, boxes_shape)
+    height = tf.abs(height)
+    width = tf.abs(width)
 
-    return distorted_boxes
+    if jitter_mode == 'shrink':
+      min_ratio, max_ratio = -ratio, 0
+    elif jitter_mode == 'expand':
+      min_ratio, max_ratio = 0, ratio
+    else:
+      min_ratio, max_ratio = -ratio, ratio
+
+    num_boxes = tf.shape(boxes)[0]
+    distortion = 1.0 + tf.random_uniform(
+        [num_boxes, 4], minval=min_ratio, maxval=max_ratio, dtype=tf.float32,
+        seed=seed)
+
+    ymin_jitter = height * distortion[:, 0]
+    xmin_jitter = width * distortion[:, 1]
+    ymax_jitter = height * distortion[:, 2]
+    xmax_jitter = width * distortion[:, 3]
+
+    ymin, ymax = ycenter - (ymin_jitter / 2.0), ycenter + (ymax_jitter / 2.0)
+    xmin, xmax = xcenter - (xmin_jitter / 2.0), xcenter + (xmax_jitter / 2.0)
+
+    boxes = tf.stack([ymin, xmin, ymax, xmax], axis=1)
+    return tf.clip_by_value(boxes, 0.0, 1.0)
 
 
 def _strict_random_crop_image(image,

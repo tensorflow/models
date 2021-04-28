@@ -5,6 +5,7 @@ package object_detection.protos;
 import "object_detection/protos/image_resizer.proto";
 import "object_detection/protos/losses.proto";
 import "object_detection/protos/post_processing.proto";
+import "object_detection/protos/preprocessor.proto";
 
 // Configuration for the CenterNet meta architecture from the "Objects as
 // Points" paper [1]
@@ -396,6 +397,15 @@ message CenterNet {
     // of the API, masks are always cropped and resized according to detected
     // boxes in postprocess.
     optional int32 postprocess_crop_size = 13 [default=256];
+
+    // The maximum relative amount by which boxes will be jittered before
+    // RoI crop happens. The x and y coordinates of the box are jittered
+    // relative to width and height respectively.
+    optional float max_roi_jitter_ratio = 14 [default=0.0];
+
+    // The mode for jitterting box ROIs. See RandomJitterBoxes in
+    // preprocessor.proto for more details
+    optional RandomJitterBoxes.JitterMode jitter_mode = 15 [default=DEFAULT];
   }
 
   optional DeepMACMaskEstimation deepmac_mask_estimation = 14;

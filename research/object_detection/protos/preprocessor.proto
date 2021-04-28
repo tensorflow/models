@@ -165,6 +165,18 @@ message RandomDistortColor {
 // ie. If a box is [100, 200] and ratio is 0.02, the corners can move by [1, 4].
 message RandomJitterBoxes {
   optional float ratio = 1 [default=0.05];
+
+  enum JitterMode {
+    DEFAULT = 0;
+    EXPAND = 1;
+    SHRINK = 2;
+  }
+  // The mode of jittering
+  // EXPAND - Only expands boxes
+  // SHRINK - Only shrinks boxes
+  // DEFAULT - Jitters each box boundary independently
+  optional JitterMode jitter_mode = 2 [default=DEFAULT];
+
 }
 
 // Randomly crops the image and bounding boxes.
