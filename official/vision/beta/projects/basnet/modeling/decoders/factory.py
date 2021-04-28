@@ -43,7 +43,7 @@ def build_decoder(input_specs,
   if decoder_type == 'identity':
     decoder = None
   elif decoder_type == 'basnet_de':
-    decoder = decoders.BASNet_De(
+    decoder = decoders.basnet_de.BASNet_De(
         input_specs=input_specs,
         use_sync_bn=norm_activation_config.use_sync_bn,
         norm_momentum=norm_activation_config.norm_momentum,

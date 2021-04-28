@@ -20,7 +20,7 @@ import tensorflow as tf
 
 
 from official.vision.beta.projects.basnet.configs import basnet as basnet_cfg
-from official.vision.beta.projects.basnet.modeling import backbones
+from official.vision.beta.modeling import backbones
 from official.vision.beta.projects.basnet.modeling import basnet_model
 from official.vision.beta.projects.basnet.modeling.decoders import factory as decoder_factory
 from official.vision.beta.projects.basnet.modeling.modules import refunet
