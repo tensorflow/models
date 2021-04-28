@@ -14,7 +14,7 @@
 
 # Lint as: python3
 import tensorflow as tf
-from yolo.modeling.layers import nn_blocks
+from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
 class YoloHead(tf.keras.layers.Layer):

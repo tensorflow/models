@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from official.projects.beta.yolo.modeling.heads import yolo_head as heads
+from official.vision.beta.projects.yolo.modeling.heads import yolo_head as heads
 
 
 class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
