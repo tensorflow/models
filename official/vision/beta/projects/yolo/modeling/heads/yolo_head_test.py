@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Tests for yolo."""
 
 # Import libraries
@@ -22,7 +22,6 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-# from yolo.modeling.backbones import darknet
 from yolo.modeling.heads import yolo_head as heads
 
 
@@ -48,9 +47,9 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     # print(endpoints)
 
     for key in endpoints.keys():
-      ishape = input_shape[key]
-      ishape[-1] = (classes + 5) * bps
-      self.assertAllEqual(endpoints[key].shape.as_list(), ishape)
+      expected_input_shape = input_shape[key]
+      expected_input_shape[-1] = (classes + 5) * bps
+      self.assertAllEqual(endpoints[key].shape.as_list(), expected_input_shape)
 
   def test_serialize_deserialize(self):
     # Create a network object that sets all of its config options.

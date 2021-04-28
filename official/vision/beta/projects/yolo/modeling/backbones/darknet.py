@@ -29,7 +29,7 @@ Cross Stage Partial networks (CSPNets) were proposed in:
     arXiv:1911.11929
 
 
-DarkNets Are used mainly for Object detection in:
+Darknets are used mainly for object detection in:
 [1] Joseph Redmon, Ali Farhadi
     YOLOv3: An Incremental Improvement. arXiv:1804.02767
 
@@ -56,22 +56,22 @@ class BlockConfig:
                output_name, is_output):
     """
     Args:
-      layer: A `str` for layer name
+      layer: A `str` for layer name.
       stack: A `str` for the type of layer ordering to use for this specific
-        level
-      reps: An `int` for the number of times to repeat block
-      bottleneck: A `bool` for whether this stack has a bottle neck layer
-      filters: An `int` for the output depth of the level
-      pool_size: An `int` for the pool_size of max pool layers
-      kernel_size: An `int` for convolution kernel size
-      strides: A `Union[int, tuple]` that indicates convolution strides
-      padding: An `int` for the padding to apply to layers in this stack
-      activation: A `str` for the activation to use for this stack
-      route: An `int` for the level to route from to get the next input
-      dilation_rate: An `int` for the scale used in dialated DarkNet
-      output_name: A `str` for the name to use for this output
+        level.
+      reps: An `int` for the number of times to repeat block.
+      bottleneck: A `bool` for whether this stack has a bottle neck layer.
+      filters: An `int` for the output depth of the level.
+      pool_size: An `int` for the pool_size of max pool layers.
+      kernel_size: An `int` for convolution kernel size.
+      strides: A `Union[int, tuple]` that indicates convolution strides.
+      padding: An `int` for the padding to apply to layers in this stack.
+      activation: A `str` for the activation to use for this stack.
+      route: An `int` for the level to route from to get the next input.
+      dilation_rate: An `int` for the scale used in dialated Darknet.
+      output_name: A `str` for the name to use for this output.
       is_output: A `bool` for whether this layer is an output in the default
-        model
+        model.
     """
     self.layer = layer
     self.stack = stack
@@ -96,7 +96,7 @@ def build_block_specs(config):
   return specs
 
 
-class LayerFactory:
+class LayerBuilder:
   """
   class for quick look up of default layers used by darknet to
   connect, introduce or exit a level. Used in place of an if condition
@@ -142,7 +142,7 @@ class LayerFactory:
 LISTNAMES = [
     'default_layer_name', 'level_type', 'number_of_layers_in_level',
     'bottleneck', 'filters', 'kernal_size', 'pool_size', 'strides', 'padding',
-    'default_activation', 'route', 'dialation', 'level/name', 'is_output'
+    'default_activation', 'route', 'dilation', 'level/name', 'is_output'
 ]
 
 CSPDARKNET53 = {
@@ -376,7 +376,7 @@ BACKBONES = {
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class Darknet(tf.keras.Model):
-  """ The DarkNet backbone architecture """
+  """ The Darknet backbone architecture """
 
   def __init__(
       self,
@@ -402,7 +402,7 @@ class Darknet(tf.keras.Model):
     self._model_name = model_id
     self._splits = splits
     self._input_shape = input_specs
-    self._registry = LayerFactory()
+    self._registry = LayerBuilder()
 
     # default layer look up
     self._min_size = min_level
@@ -512,7 +512,7 @@ class Darknet(tf.keras.Model):
     else:
       self._default_dict['dilation_rate'] = 1
 
-    # swap/add dialation
+    # swap/add dilation
     x, x_route = nn_blocks.CSPRoute(
         filters=config.filters,
         filter_scale=csp_filter_scale,
@@ -533,7 +533,7 @@ class Darknet(tf.keras.Model):
       self._default_dict[
           'dilation_rate'] = self._default_dict['dilation_rate'] // 2
       self._default_dict[
-          'name'] = f"{name}_{i}_degrided_{self._default_dict['dilation_rate']}"
+          'name'] = f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
       x = nn_blocks.DarkResidual(
           filters=config.filters // scale_filters,
           filter_scale=residual_filter_scale,
@@ -594,8 +594,8 @@ class Darknet(tf.keras.Model):
         filters=config.filters, downsample=True, **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions - self._default_dict[
-        'dilation_rate'] // 2 - 1
+    dilated_reps = config.repetitions -
+        (self._default_dict['dilation_rate'] // 2) - 1
     for i in range(dilated_reps):
       self._default_dict['name'] = f'{name}_{i}'
       x = nn_blocks.DarkResidual(
@@ -606,7 +606,7 @@ class Darknet(tf.keras.Model):
       self._default_dict[
           'dilation_rate'] = self._default_dict['dilation_rate'] // 2
       self._default_dict[
-          'name'] = f"{name}_{i}_degrided_{self._default_dict['dilation_rate']}"
+          'name'] = f"{name}_{i}_degridded_{self._default_dict['dilation_rate']}"
       x = nn_blocks.DarkResidual(
           filters=config.filters, **self._default_dict)(
               x)

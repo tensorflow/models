@@ -34,7 +34,7 @@ class Identity(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class ConvBN(tf.keras.layers.Layer):
   """
-  Modified Convolution layer to match that of the DarkNet Library.
+  Modified Convolution layer to match that of the Darknet Library.
   The Layer is a standards combination of Conv BatchNorm Activation,
   however, the use of bias in the conv is determined by the use of batch
   normalization.
@@ -64,33 +64,33 @@ class ConvBN(tf.keras.layers.Layer):
                **kwargs):
     """
     Args:
-      filters: integer for output depth, or the number of features to learn
+      filters: integer for output depth, or the number of features to learn.
       kernel_size: integer or tuple for the shape of the weight matrix or kernel
-        to learn
+        to learn.
       strides: integer of tuple how much to move the kernel after each kernel
-        use
+        use.
       padding: string 'valid' or 'same', if same, then pad the image, else do
-        not
+        not.
       dialtion_rate: tuple to indicate how much to modulate kernel weights and
-        how many pixels in a feature map to skip
+        how many pixels in a feature map to skip.
       kernel_initializer: string to indicate which function to use to initialize
-        weights
+        weights.
       bias_initializer: string to indicate which function to use to initialize
-        bias
+        bias.
       kernel_regularizer: string to indicate which function to use to
-        regularizer weights
+        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
-        bias
-      use_bn: boolean for whether to use batch normalization
+        bias.
+      use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
-        (across all input batches)
-      norm_momentum: float for moment to use for batch normalization
-      norm_epsilon: float for batch normalization epsilon
+        (across all input batches).
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
       activation: string or None for activation function to use in layer,
-        if None activation is replaced by linear
-      leaky_alpha: float to use as alpha if activation function is leaky
-      **kwargs: Keyword Arguments
+        if None activation is replaced by linear.
+      leaky_alpha: float to use as alpha if activation function is leaky.
+      **kwargs: Keyword Arguments.
     """
 
     # convolution params
@@ -191,7 +191,7 @@ class ConvBN(tf.keras.layers.Layer):
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class DarkResidual(tf.keras.layers.Layer):
   """
-  DarkNet block with Residual connection for Yolo v3 Backbone
+  Darknet block with Residual connection for Yolo v3 Backbone
   """
 
   def __init__(self,
@@ -213,28 +213,28 @@ class DarkResidual(tf.keras.layers.Layer):
                **kwargs):
     """
     Args:
-      filters: integer for output depth, or the number of features to learn
+      filters: integer for output depth, or the number of features to learn.
       kernel_initializer: string to indicate which function to use to initialize
-        weights
+        weights.
       bias_initializer: string to indicate which function to use to initialize
-        bias
+        bias.
       kernel_regularizer: string to indicate which function to use to
-        regularizer weights
+        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
-        bias
-      use_bn: boolean for whether to use batch normalization
-      use_sync_bn: boolean for whether sync batch normalization statistics
+        bias.
+      use_bn: boolean for whether to use batch normalization.
+      use_sync_bn: boolean for whether sync batch normalization statistics.
         of all batch norm layers to the models global statistics
-        (across all input batches)
-      norm_momentum: float for moment to use for batch normalization
-      norm_epsilon: float for batch normalization epsilon
+        (across all input batches).
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
       conv_activation: string or None for activation function to use in layer,
-        if None activation is replaced by linear
-      leaky_alpha: float to use as alpha if activation function is leaky
-      sc_activation: string for activation function to use in layer
+        if None activation is replaced by linear.
+      leaky_alpha: float to use as alpha if activation function is leaky.
+      sc_activation: string for activation function to use in layer.
       downsample: boolean for if image input is larger than layer output, set
-        downsample to True so the dimensions are forced to match
-      **kwargs: Keyword Arguments
+        downsample to True so the dimensions are forced to match.
+      **kwargs: Keyword Arguments.
     """
 
     # downsample
@@ -382,32 +382,32 @@ class CSPTiny(tf.keras.layers.Layer):
                **kwargs):
     """
     Args:
-      filters: integer for output depth, or the number of features to learn
+      filters: integer for output depth, or the number of features to learn.
       kernel_initializer: string to indicate which function to use to initialize
-        weights
+        weights.
       bias_initializer: string to indicate which function to use to initialize
-        bias
-      use_bn: boolean for whether to use batch normalization
+        bias.
+      use_bn: boolean for whether to use batch normalization.
       kernel_regularizer: string to indicate which function to use to
-        regularizer weights
+        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
-        bias
+        bias.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
-        (across all input batches)
+        (across all input batches).
       group_id: integer for which group of features to pass through the csp
         tiny stack.
       groups: integer for how many splits there should be in the convolution
-        feature stack output
-      norm_momentum: float for moment to use for batch normalization
-      norm_epsilon: float for batch normalization epsilon
+        feature stack output.
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
       conv_activation: string or None for activation function to use in layer,
-        if None activation is replaced by linear
-      leaky_alpha: float to use as alpha if activation function is leaky
-      sc_activation: string for activation function to use in layer
+        if None activation is replaced by linear.
+      leaky_alpha: float to use as alpha if activation function is leaky.
+      sc_activation: string for activation function to use in layer.
       downsample: boolean for if image input is larger than layer output, set
-        downsample to True so the dimensions are forced to match
-      **kwargs: Keyword Arguments
+        downsample to True so the dimensions are forced to match.
+      **kwargs: Keyword Arguments.
     """
 
     # ConvBN params
@@ -545,24 +545,24 @@ class CSPRoute(tf.keras.layers.Layer):
     Args:
       filters: integer for output depth, or the number of features to learn
       filter_scale: integer dicating (filters//2) or the number of filters in
-        the partial feature stack
-      downsample: down_sample the input
-      activation: string for activation function to use in layer
+        the partial feature stack.
+      downsample: down_sample the input.
+      activation: string for activation function to use in layer.
       kernel_initializer: string to indicate which function to use to
-        initialize weights
+        initialize weights.
       bias_initializer: string to indicate which function to use to initialize
-        bias
+        bias.
       kernel_regularizer: string to indicate which function to use to
-        regularizer weights
+        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
-        bias
-      use_bn: boolean for whether to use batch normalization
+        bias.
+      use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
-        (across all input batches)
-      norm_momentum: float for moment to use for batch normalization
-      norm_epsilon: float for batch normalization epsilon
-      **kwargs: Keyword Arguments
+        (across all input batches).
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
+      **kwargs: Keyword Arguments.
     """
 
     super().__init__(**kwargs)
@@ -669,23 +669,23 @@ class CSPConnect(tf.keras.layers.Layer):
     Args:
       filters: integer for output depth, or the number of features to learn
       filter_scale: integer dicating (filters//2) or the number of filters in
-        the partial feature stack
-      activation: string for activation function to use in layer
+        the partial feature stack.
+      activation: string for activation function to use in layer.
       kernel_initializer: string to indicate which function to use to initialize
-        weights
+        weights.
       bias_initializer: string to indicate which function to use to initialize
-        bias
+        bias.
       kernel_regularizer: string to indicate which function to use to
-        regularizer weights
+        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
-        bias
-      use_bn: boolean for whether to use batch normalization
+        bias.
+      use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global
-        statistics (across all input batches)
-      norm_momentum: float for moment to use for batch normalization
-      norm_epsilon: float for batch normalization epsilon
-      **kwargs: Keyword Arguments
+        statistics (across all input batches).
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
+      **kwargs: Keyword Arguments.
     """
 
     super().__init__(**kwargs)
@@ -784,26 +784,26 @@ class CSPStack(tf.keras.layers.Layer):
       model_to_wrap: callable Model or a list of callable objects that will
         process the output of CSPRoute, and be input into CSPConnect.
         list will be called sequentially.
-      downsample: down_sample the input
-      filters: integer for output depth, or the number of features to learn
+      downsample: down_sample the input.
+      filters: integer for output depth, or the number of features to learn.
       filter_scale: integer dicating (filters//2) or the number of filters in
-        the partial feature stack
-      activation: string for activation function to use in layer
+        the partial feature stack.
+      activation: string for activation function to use in layer.
       kernel_initializer: string to indicate which function to use to initialize
-        weights
+        weights.
       bias_initializer: string to indicate which function to use to initialize
-        bias
+        bias.
       kernel_regularizer: string to indicate which function to use to
-        regularizer weights
+        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
-        bias
-      use_bn: boolean for whether to use batch normalization
+        bias.
+      use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
-        (across all input batches)
-      norm_momentum: float for moment to use for batch normalization
-      norm_epsilon: float for batch normalization epsilon
-      **kwargs: Keyword Arguments
+        (across all input batches).
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
+      **kwargs: Keyword Arguments.
 
     Raises:
       TypeError: model_to_wrap is not a layer or a list of layers
@@ -885,30 +885,30 @@ class PathAggregationBlock(tf.keras.layers.Layer):
                **kwargs):
     """
     Args:
-      filters: integer for output depth, or the number of features to learn
-      drop_final: do not create the last convolution block
+      filters: integer for output depth, or the number of features to learn.
+      drop_final: do not create the last convolution block.
       kernel_initializer: string to indicate which function to use to initialize
-        weights
+        weights.
       bias_initializer: string to indicate which function to use to initialize
-        bias
+        bias.
       kernel_regularizer: string to indicate which function to use to
-        regularizer weights
+        regularizer weights.
       bias_regularizer: string to indicate which function to use to regularizer
-        bias
-      use_bn: boolean for whether to use batch normalization
+        bias.
+      use_bn: boolean for whether to use batch normalization.
       use_sync_bn: boolean for whether sync batch normalization statistics
         of all batch norm layers to the models global statistics
-        (across all input batches)
-      inverted: boolean for inverting the order of the convolutions
-      norm_momentum: float for moment to use for batch normalization
-      norm_epsilon: float for batch normalization epsilon
+        (across all input batches).
+      inverted: boolean for inverting the order of the convolutions.
+      norm_momentum: float for moment to use for batch normalization.
+      norm_epsilon: float for batch normalization epsilon.
       activation: string or None for activation function to use in layer,
-        if None activation is replaced by linear
-      leaky_alpha: float to use as alpha if activation function is leaky
-      downsample: `bool` for whehter to downwample and merge
-      upsample: `bool` for whehter to upsample and merge
-      upsample_size: `int` how much to upsample in order to match shapes
-      **kwargs: Keyword Arguments
+        if None activation is replaced by linear.
+      leaky_alpha: float to use as alpha if activation function is leaky.
+      downsample: `bool` for whehter to downwample and merge.
+      upsample: `bool` for whehter to upsample and merge.
+      upsample_size: `int` how much to upsample in order to match shapes.
+      **kwargs: Keyword Arguments.
     """
 
     # darkconv params
@@ -1356,20 +1356,20 @@ class DarkRouteProcess(tf.keras.layers.Layer):
     Args:
       filters: the number of filters to be used in all subsequent layers
         filters should be the depth of the tensor input into this layer,
-        as no downsampling can be done within this layer object
+        as no downsampling can be done within this layer object.
       repetitions: number of times to repeat the processign nodes
         for tiny: 1 repition, no spp allowed
         for spp: insert_spp = True, and allow for 3+ repetitions
-        for regular: insert_spp = False, and allow for 3+ repetitions
-      insert_spp: bool if true add the spatial pyramid pooling layer
-      kernel_initializer: method to use to initializa kernel weights
+        for regular: insert_spp = False, and allow for 3+ repetitions.
+      insert_spp: bool if true add the spatial pyramid pooling layer.
+      kernel_initializer: method to use to initializa kernel weights.
       bias_initializer: method to use to initialize the bias of the conv
-        layers
-      norm_momentum: batch norm parameter see Tensorflow documentation
-      norm_epsilon: batch norm parameter see Tensorflow documentation
-      activation: activation function to use in processing
+        layers.
+      norm_momentum: batch norm parameter see TensorFlow documentation.
+      norm_epsilon: batch norm parameter see TensorFlow documentation.
+      activation: activation function to use in processing.
       leaky_alpha: if leaky acitivation function, the alpha to use in
-        processing the relu input
+        processing the relu input.
 
     Returns:
       callable tensorflow layer

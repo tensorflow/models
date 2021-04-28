@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Tests for YOLO."""
 
 # Import libraries
@@ -107,13 +107,9 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     _ = decoder(inputs)
-
-    a = decoder.get_config()
-
-    b = decoders.YoloDecoder.from_config(a)
-
-    print(a)
-    self.assertAllEqual(decoder.get_config(), b.get_config())
+    config = decoder.get_config()
+    decoder_from_config = decoders.YoloDecoder.from_config(config)
+    self.assertAllEqual(decoder.get_config(), decoder_from_config.get_config())
 
 
 def build_yolo_decoder(input_specs, type):

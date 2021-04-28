@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
+"""Tests for yolo."""
 
 from absl.testing import parameterized
 import numpy as np
@@ -23,7 +24,7 @@ from tensorflow.python.distribute import strategy_combinations
 from official.vision.beta.projects.yolo.modeling.backbones import darknet
 
 
-class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
+class DarknetTest(parameterized.TestCase, tf.test.TestCase):
 
   @parameterized.parameters(
       (224, 'darknet53', 2, 1, True),
@@ -43,18 +44,7 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
     inputs = tf.keras.Input(shape=(input_size, input_size, 3), batch_size=1)
     endpoints = network(inputs)
 
-    if not dilate:
-      self.assertAllEqual([
-          1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale
-      ], endpoints['3'].shape.as_list())
-      self.assertAllEqual([
-          1, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale
-      ], endpoints['4'].shape.as_list())
-      self.assertAllEqual([
-          1, input_size / 2**5, input_size / 2**5,
-          512 * endpoint_filter_scale * scale_final
-      ], endpoints['5'].shape.as_list())
-    else:
+    if dilate:
       self.assertAllEqual([
           1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale
       ], endpoints['3'].shape.as_list())
@@ -63,6 +53,17 @@ class DarkNetTest(parameterized.TestCase, tf.test.TestCase):
       ], endpoints['4'].shape.as_list())
       self.assertAllEqual([
           1, input_size / 2**3, input_size / 2**3,
+          512 * endpoint_filter_scale * scale_final
+      ], endpoints['5'].shape.as_list())
+    else:
+      self.assertAllEqual([
+          1, input_size / 2**3, input_size / 2**3, 128 * endpoint_filter_scale
+      ], endpoints['3'].shape.as_list())
+      self.assertAllEqual([
+          1, input_size / 2**4, input_size / 2**4, 256 * endpoint_filter_scale
+      ], endpoints['4'].shape.as_list())
+      self.assertAllEqual([
+          1, input_size / 2**5, input_size / 2**5,
           512 * endpoint_filter_scale * scale_final
       ], endpoints['5'].shape.as_list())
 

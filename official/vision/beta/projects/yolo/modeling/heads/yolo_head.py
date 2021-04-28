@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 import tensorflow as tf
 from yolo.modeling.layers import nn_blocks
 
@@ -28,29 +28,29 @@ class YoloHead(tf.keras.layers.Layer):
                output_extras=0,
                norm_momentum=0.99,
                norm_epsilon=0.001,
-               kernel_initializer="glorot_uniform",
+               kernel_initializer='glorot_uniform',
                kernel_regularizer=None,
                bias_regularizer=None,
                activation=None,
                **kwargs):
     """
-    Yolo Prediciton Head initialization function.
+    Yolo Prediction Head initialization function.
 
     Args:
-      min_level: `int`, the minimum backbone output level
-      max_level: `int`, the maximum backbone output level
-      classes: `int`, number of classes per category
-      boxes_per_level: `int`, number of boxes to predict per level
-      output_extras: `int`, number of additional output channels that the head
+      min_level: `int`, the minimum backbone output level.
+      max_level: `int`, the maximum backbone output level.
+      classes: `int`, number of classes per category.
+      boxes_per_level: `int`, number of boxes to predict per level.
+      output_extras: `int`, number of additional output channels that the head.
         should predict for non-object detection and non-image classification
-        tasks
-      norm_momentum: `float`, normalization omentum for the moving average.
+        tasks.
+      norm_momentum: `float`, normalization momentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
-      activation: `str`, the activation function to use typically leaky or mish
+      activation: `str`, the activation function to use typically leaky or mish.
       **kwargs: keyword arguments to be passed.
     """
 
@@ -80,7 +80,7 @@ class YoloHead(tf.keras.layers.Layer):
         filters=self._output_conv,
         kernel_size=(1, 1),
         strides=(1, 1),
-        padding="same",
+        padding='same',
         use_bn=False,
         **self._base_config)
 
@@ -103,7 +103,7 @@ class YoloHead(tf.keras.layers.Layer):
   def num_boxes(self):
     if self._min_level is None or self._max_level is None:
       raise Exception(
-          "model has to be built before number of boxes can be determined")
+          'model has to be built before number of boxes can be determined')
     return (self._max_level - self._min_level + 1) * self._boxes_per_level
 
   def get_config(self):

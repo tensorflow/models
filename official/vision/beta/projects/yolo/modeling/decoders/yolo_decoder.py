@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
+# Lint as: python3
 """Feature Pyramid Network and Path Aggregation variants used in YOLO"""
 
 import tensorflow as tf
@@ -51,17 +51,17 @@ class YoloFPN(tf.keras.layers.Layer):
     Args:
       fpn_depth: `int`, number of layers to use in each FPN path
         if you choose to use an FPN.
-      embed_sam: `bool`, use the spatial attention module
-      csp_stack: `bool`, CSPize the FPN
+      embed_sam: `bool`, use the spatial attention module.
+      csp_stack: `bool`, CSPize the FPN.
       activation: `str`, the activation function to use typically leaky or mish.
-      fpn_filter_scale: `int`, scaling factor for the FPN filters
+      fpn_filter_scale: `int`, scaling factor for the FPN filters.
       use_sync_bn: if True, use synchronized batch normalization.
-      norm_momentum: `float`, normalization omentum for the moving average.
+      norm_momentum: `float`, normalization momentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -196,12 +196,12 @@ class YoloPAN(tf.keras.layers.Layer):
     """
     Yolo Path Aggregation Network initialization function. Yolo V3 and V4
     Args:
-      path_process_len: `int`, number of layers ot use in each Decoder path
+      path_process_len: `int`, number of layers ot use in each Decoder path.
       max_level_process_len: `int`, number of layers ot use in the largest
-        processing path, or the backbones largest output if it is different
-      embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
-      embed_sam: `bool`, use the spatial attention module
-      csp_stack: `bool`, CSPize the FPN
+        processing path, or the backbones largest output if it is different.
+      embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model.
+      embed_sam: `bool`, use the spatial attention module.
+      csp_stack: `bool`, CSPize the FPN.
       activation: `str`, the activation function to use typically leaky or mish.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float`, normalization omentum for the moving average.
@@ -212,7 +212,7 @@ class YoloPAN(tf.keras.layers.Layer):
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
       fpn_input: `bool`, for whether the input into this fucntion is an FPN or
         a backbone.
-      fpn_filter_scale: `int`, scaling factor for the FPN filters
+      fpn_filter_scale: `int`, scaling factor for the FPN filters.
       **kwargs: keyword arguments to be passed.
     """
     super().__init__(**kwargs)
@@ -387,18 +387,18 @@ class YoloDecoder(tf.keras.Model):
 
     Args:
       input_specs: `dict[str, tf.InputSpec]`: input specs of each of the inputs
-        to the heads
-      embed_fpn: `bool`, use the FPN found in the YoloV4 model
-      embed_sam: `bool`, use the spatial attention module
-      csp_stack: `bool`, CSPize the FPN
+        to the heads.
+      embed_fpn: `bool`, use the FPN found in the YoloV4 model.
+      embed_sam: `bool`, use the spatial attention module.
+      csp_stack: `bool`, CSPize the FPN.
       fpn_depth: `int`, number of layers ot use in each FPN path
-        if you choose to use an FPN
-      fpn_filter_scale: `int`, scaling factor for the FPN filters
-      path_process_len: `int`, number of layers ot use in each Decoder path
+        if you choose to use an FPN.
+      fpn_filter_scale: `int`, scaling factor for the FPN filters.
+      path_process_len: `int`, number of layers ot use in each Decoder path.
       max_level_process_len: `int`, number of layers ot use in the largest
-        processing path, or the backbones largest output if it is different
-      embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model
-      activation: `str`, the activation function to use typically leaky or mish
+        processing path, or the backbones largest output if it is different.
+      embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model.
+      activation: `str`, the activation function to use typically leaky or mish.
       use_sync_bn: if True, use synchronized batch normalization.
       norm_momentum: `float`, normalization omentum for the moving average.
       norm_epsilon: `float`, small float added to variance to avoid dividing by
