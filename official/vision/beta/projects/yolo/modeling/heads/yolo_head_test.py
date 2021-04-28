@@ -22,7 +22,7 @@ import tensorflow as tf
 
 from tensorflow.python.distribute import combinations
 from tensorflow.python.distribute import strategy_combinations
-from yolo.modeling.heads import yolo_head as heads
+from official.projects.beta.yolo.modeling.heads import yolo_head as heads
 
 
 class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
@@ -68,16 +68,10 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
       inputs[key] = tf.ones(input_shape[key], dtype=tf.float32)
 
     _ = head(inputs)
-
-    a = head.get_config()
-
-    b = heads.YoloHead.from_config(a)
-
-    print(a)
-    self.assertAllEqual(head.get_config(), b.get_config())
+    configs = head.get_config()
+    head_from_config = heads.YoloHead.from_config(configs)
+    self.assertAllEqual(head.get_config(), head_from_config.get_config())
 
 
 if __name__ == '__main__':
-  from yolo.utils.run_utils import prep_gpu
-  prep_gpu()
   tf.test.main()

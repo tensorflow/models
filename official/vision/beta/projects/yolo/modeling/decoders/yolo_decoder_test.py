@@ -66,7 +66,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
           '4': [1, 26, 26, 512],
           '5': [1, 13, 13, 1024]
       }
-      decoder = build_yolo_decoder(input_shape, 'c')
+      decoder = build_yolo_decoder(input_shape, '6')
 
       inputs = {}
       for key in input_shape.keys():
@@ -84,7 +84,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         '4': [1, 26, 26, 512],
         '5': [1, 13, 13, 1024]
     }
-    decoder = build_yolo_decoder(input_shape, 'c')
+    decoder = build_yolo_decoder(input_shape, '6')
 
     inputs = {}
     for key in input_shape.keys():
@@ -100,7 +100,7 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
         '4': [1, 26, 26, 512],
         '5': [1, 13, 13, 1024]
     }
-    decoder = build_yolo_decoder(input_shape, 'c')
+    decoder = build_yolo_decoder(input_shape, '6')
 
     inputs = {}
     for key in input_shape.keys():

@@ -594,7 +594,7 @@ class Darknet(tf.keras.Model):
         filters=config.filters, downsample=True, **self._default_dict)(
             inputs)
 
-    dilated_reps = config.repetitions -
+    dilated_reps = config.repetitions - \
         (self._default_dict['dilation_rate'] // 2) - 1
     for i in range(dilated_reps):
       self._default_dict['name'] = f'{name}_{i}'
