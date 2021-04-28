@@ -16,13 +16,15 @@
 """Image classification configuration definition."""
 import os
 from typing import List, Optional
+
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
+from official.vision.beta.configs import backbones
 
 
 @dataclasses.dataclass
