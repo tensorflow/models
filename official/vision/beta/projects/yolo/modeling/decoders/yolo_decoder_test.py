@@ -27,7 +27,7 @@ from official.vision.beta.projects.yolo.modeling.decoders import yolo_decoder as
 
 class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
 
-  @parameterized.parameters('a', 'b', 'c')
+  @parameterized.parameters('1', '6spp', '6sppfpn', '6')
   def test_network_creation(self, version):
     """Test creation of ResNet family models."""
     tf.keras.backend.set_image_data_format('channels_last')
@@ -112,8 +112,8 @@ class YoloDecoderTest(parameterized.TestCase, tf.test.TestCase):
     self.assertAllEqual(decoder.get_config(), decoder_from_config.get_config())
 
 
-def build_yolo_decoder(input_specs, type):
-  if type == 'a':
+def build_yolo_decoder(input_specs, type='1'):
+  if type == '1':
     model = decoders.YoloDecoder(
         input_specs=input_specs,
         embed_spp=False,
@@ -121,7 +121,7 @@ def build_yolo_decoder(input_specs, type):
         max_level_process_len=2,
         path_process_len=1,
         activation='mish')
-  elif type == 'b':
+  elif type == '6spp':
     model = decoders.YoloDecoder(
         input_specs=input_specs,
         embed_spp=True,
@@ -129,7 +129,15 @@ def build_yolo_decoder(input_specs, type):
         max_level_process_len=None,
         path_process_len=6,
         activation='mish')
-  else:
+  elif type == '6sppfpn':
+    model = decoders.YoloDecoder(
+        input_specs=input_specs,
+        embed_spp=True,
+        embed_fpn=True,
+        max_level_process_len=None,
+        path_process_len=6,
+        activation='mish')
+  elif type == '6':
     model = decoders.YoloDecoder(
         input_specs=input_specs,
         embed_spp=False,
@@ -137,6 +145,8 @@ def build_yolo_decoder(input_specs, type):
         max_level_process_len=None,
         path_process_len=6,
         activation='mish')
+  else:
+    raise NotImplementedError(f"YOLO decoder test {type} not implemented.")
   return model
 
 
