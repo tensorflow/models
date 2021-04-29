@@ -2995,6 +2995,162 @@ class CenterNetFeatureExtractorTest(test_case.TestCase):
     self.assertAllClose(output[..., 2], 3 * np.ones((2, 32, 32)))
 
 
+class Dummy1dFeatureExtractor(cnma.CenterNetFeatureExtractor):
+  """Returns a static tensor."""
+
+  def __init__(self, tensor, out_stride=1, channel_means=(0., 0., 0.),
+               channel_stds=(1., 1., 1.), bgr_ordering=False):
+    """Intializes the feature extractor.
+
+    Args:
+      tensor: The tensor to return as the processed feature.
+      out_stride: The out_stride to return if asked.
+      channel_means: Ignored, but provided for API compatability.
+      channel_stds: Ignored, but provided for API compatability.
+      bgr_ordering: Ignored, but provided for API compatability.
+    """
+
+    super().__init__(
+        channel_means=channel_means, channel_stds=channel_stds,
+        bgr_ordering=bgr_ordering)
+    self._tensor = tensor
+    self._out_stride = out_stride
+
+  def call(self, inputs):
+    return [self._tensor]
+
+  @property
+  def out_stride(self):
+    """The stride in the output image of the network."""
+    return self._out_stride
+
+  @property
+  def num_feature_outputs(self):
+    """Ther number of feature outputs returned by the feature extractor."""
+    return 1
+
+  @property
+  def supported_sub_model_types(self):
+    return ['detection']
+
+  def get_sub_model(self, sub_model_type):
+    if sub_model_type == 'detection':
+      return self._network
+    else:
+      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
+
+
+@unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
+class CenterNetMetaArch1dTest(test_case.TestCase, parameterized.TestCase):
+
+  @parameterized.parameters([1, 2])
+  def test_outputs_with_correct_shape(self, stride):
+    # The 1D case reuses code from the 2D cases. These tests only check that
+    # the output shapes are correct, and relies on other tests for correctness.
+    batch_size = 2
+    height = 1
+    width = 32
+    channels = 16
+    unstrided_inputs = np.random.randn(
+        batch_size, height, width, channels)
+    fixed_output_features = np.random.randn(
+        batch_size, height, width // stride, channels)
+    max_boxes = 10
+    num_classes = 3
+    feature_extractor = Dummy1dFeatureExtractor(fixed_output_features, stride)
+    arch = cnma.CenterNetMetaArch(
+        is_training=True,
+        add_summaries=True,
+        num_classes=num_classes,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=None,
+        object_center_params=cnma.ObjectCenterParams(
+            classification_loss=losses.PenaltyReducedLogisticFocalLoss(),
+            object_center_loss_weight=1.0,
+            max_box_predictions=max_boxes,
+        ),
+        object_detection_params=cnma.ObjectDetectionParams(
+            localization_loss=losses.L1LocalizationLoss(),
+            scale_loss_weight=1.0,
+            offset_loss_weight=1.0,
+        ),
+        keypoint_params_dict=None,
+        mask_params=None,
+        densepose_params=None,
+        track_params=None,
+        temporal_offset_params=None,
+        use_depthwise=False,
+        compute_heatmap_sparse=False,
+        non_max_suppression_fn=None,
+        unit_height_conv=True)
+    arch.provide_groundtruth(
+        groundtruth_boxes_list=[
+            tf.constant([[0, 0.5, 1.0, 0.75],
+                         [0, 0.1, 1.0, 0.25]], tf.float32),
+            tf.constant([[0, 0, 1.0, 1.0],
+                         [0, 0, 0.0, 0.0]], tf.float32)
+            ],
+        groundtruth_classes_list=[
+            tf.constant([[0, 0, 1],
+                         [0, 1, 0]], tf.float32),
+            tf.constant([[1, 0, 0],
+                         [0, 0, 0]], tf.float32)
+            ],
+        groundtruth_weights_list=[
+            tf.constant([1.0, 1.0]),
+            tf.constant([1.0, 0.0])]
+        )
+
+    predictions = arch.predict(None, None)  # input is hardcoded above.
+    predictions['preprocessed_inputs'] = tf.constant(unstrided_inputs)
+    true_shapes = tf.constant([[1, 32, 16], [1, 24, 16]], tf.int32)
+    postprocess_output = arch.postprocess(predictions, true_shapes)
+    losses_output = arch.loss(predictions, true_shapes)
+
+    self.assertIn('%s/%s' % (cnma.LOSS_KEY_PREFIX, cnma.OBJECT_CENTER),
+                  losses_output)
+    self.assertEqual((), losses_output['%s/%s' % (
+        cnma.LOSS_KEY_PREFIX, cnma.OBJECT_CENTER)].shape)
+    self.assertIn('%s/%s' % (cnma.LOSS_KEY_PREFIX, cnma.BOX_SCALE),
+                  losses_output)
+    self.assertEqual((), losses_output['%s/%s' % (
+        cnma.LOSS_KEY_PREFIX, cnma.BOX_SCALE)].shape)
+    self.assertIn('%s/%s' % (cnma.LOSS_KEY_PREFIX, cnma.BOX_OFFSET),
+                  losses_output)
+    self.assertEqual((), losses_output['%s/%s' % (
+        cnma.LOSS_KEY_PREFIX, cnma.BOX_OFFSET)].shape)
+
+    self.assertIn('detection_scores', postprocess_output)
+    self.assertEqual(postprocess_output['detection_scores'].shape,
+                     (batch_size, max_boxes))
+    self.assertIn('detection_multiclass_scores', postprocess_output)
+    self.assertEqual(postprocess_output['detection_multiclass_scores'].shape,
+                     (batch_size, max_boxes, num_classes))
+    self.assertIn('detection_classes', postprocess_output)
+    self.assertEqual(postprocess_output['detection_classes'].shape,
+                     (batch_size, max_boxes))
+    self.assertIn('num_detections', postprocess_output)
+    self.assertEqual(postprocess_output['num_detections'].shape,
+                     (batch_size,))
+    self.assertIn('detection_boxes', postprocess_output)
+    self.assertEqual(postprocess_output['detection_boxes'].shape,
+                     (batch_size, max_boxes, 4))
+    self.assertIn('detection_boxes_strided', postprocess_output)
+    self.assertEqual(postprocess_output['detection_boxes_strided'].shape,
+                     (batch_size, max_boxes, 4))
+
+    self.assertIn(cnma.OBJECT_CENTER, predictions)
+    self.assertEqual(predictions[cnma.OBJECT_CENTER][0].shape,
+                     (batch_size, height, width // stride, num_classes))
+    self.assertIn(cnma.BOX_SCALE, predictions)
+    self.assertEqual(predictions[cnma.BOX_SCALE][0].shape,
+                     (batch_size, height, width // stride, 2))
+    self.assertIn(cnma.BOX_OFFSET, predictions)
+    self.assertEqual(predictions[cnma.BOX_OFFSET][0].shape,
+                     (batch_size, height, width // stride, 2))
+    self.assertIn('preprocessed_inputs', predictions)
+
+
 if __name__ == '__main__':
   tf.enable_v2_behavior()
   tf.test.main()

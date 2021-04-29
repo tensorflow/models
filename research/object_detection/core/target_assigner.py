@@ -985,8 +985,8 @@ class CenterNetCenterHeatmapTargetAssigner(object):
         the stride specified during initialization.
     """
 
-    out_height = tf.cast(height // self._stride, tf.float32)
-    out_width = tf.cast(width // self._stride, tf.float32)
+    out_height = tf.cast(tf.maximum(height // self._stride, 1), tf.float32)
+    out_width = tf.cast(tf.maximum(width // self._stride, 1), tf.float32)
     # Compute the yx-grid to be used to generate the heatmap. Each returned
     # tensor has shape of [out_height, out_width]
     (y_grid, x_grid) = ta_utils.image_shape_to_grids(out_height, out_width)
@@ -999,9 +999,10 @@ class CenterNetCenterHeatmapTargetAssigner(object):
                                              gt_weights_list):
       boxes = box_list.BoxList(boxes)
       # Convert the box coordinates to absolute output image dimension space.
-      boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                   height // self._stride,
-                                                   width // self._stride)
+      boxes = box_list_ops.to_absolute_coordinates(
+          boxes,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
       # Get the box center coordinates. Each returned tensors have the shape of
       # [num_instances]
       (y_center, x_center, boxes_height,
@@ -1062,8 +1063,8 @@ class CenterNetCenterHeatmapTargetAssigner(object):
     assert (self._keypoint_weights_for_center is not None and
             self._keypoint_class_id is not None and
             self._keypoint_indices is not None)
-    out_height = tf.cast(height // self._stride, tf.float32)
-    out_width = tf.cast(width // self._stride, tf.float32)
+    out_height = tf.cast(tf.maximum(height // self._stride, 1), tf.float32)
+    out_width = tf.cast(tf.maximum(width // self._stride, 1), tf.float32)
     # Compute the yx-grid to be used to generate the heatmap. Each returned
     # tensor has shape of [out_height, out_width]
     (y_grid, x_grid) = ta_utils.image_shape_to_grids(out_height, out_width)
@@ -1230,9 +1231,10 @@ class CenterNetBoxTargetAssigner(object):
 
     for i, (boxes, weights) in enumerate(zip(gt_boxes_list, gt_weights_list)):
       boxes = box_list.BoxList(boxes)
-      boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                   height // self._stride,
-                                                   width // self._stride)
+      boxes = box_list_ops.to_absolute_coordinates(
+          boxes,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
       # Get the box center coordinates. Each returned tensors have the shape of
       # [num_boxes]
       (y_center, x_center, boxes_height,
@@ -1410,8 +1412,8 @@ class CenterNetKeypointTargetAssigner(object):
         output_width] where all values within the regions of the blackout boxes
         are 0.0 and 1.0 else where.
     """
-    out_width = tf.cast(width // self._stride, tf.float32)
-    out_height = tf.cast(height // self._stride, tf.float32)
+    out_width = tf.cast(tf.maximum(width // self._stride, 1), tf.float32)
+    out_height = tf.cast(tf.maximum(height // self._stride, 1), tf.float32)
     # Compute the yx-grid to be used to generate the heatmap. Each returned
     # tensor has shape of [out_height, out_width]
     y_grid, x_grid = ta_utils.image_shape_to_grids(out_height, out_width)
@@ -1464,9 +1466,10 @@ class CenterNetKeypointTargetAssigner(object):
       if boxes is not None:
         boxes = box_list.BoxList(boxes)
         # Convert the box coordinates to absolute output image dimension space.
-        boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                     height // self._stride,
-                                                     width // self._stride)
+        boxes = box_list_ops.to_absolute_coordinates(
+            boxes,
+            tf.maximum(height // self._stride, 1),
+            tf.maximum(width // self._stride, 1))
         # Get the box height and width. Each returned tensors have the shape
         # of [num_instances]
         (_, _, boxes_height,
@@ -1586,8 +1589,8 @@ class CenterNetKeypointTargetAssigner(object):
         zip(gt_keypoints_list, gt_classes_list, gt_keypoints_weights_list,
             gt_weights_list)):
       keypoints_absolute, kp_weights = _preprocess_keypoints_and_weights(
-          out_height=height // self._stride,
-          out_width=width // self._stride,
+          out_height=tf.maximum(height // self._stride, 1),
+          out_width=tf.maximum(width // self._stride, 1),
           keypoints=keypoints,
           class_onehot=classes,
           class_weights=weights,
@@ -1604,10 +1607,11 @@ class CenterNetKeypointTargetAssigner(object):
       # All keypoint coordinates and their neighbors:
       # [num_instance * num_keypoints, num_neighbors]
       (y_source_neighbors, x_source_neighbors,
-       valid_sources) = ta_utils.get_surrounding_grids(height // self._stride,
-                                                       width // self._stride,
-                                                       y_source, x_source,
-                                                       self._peak_radius)
+       valid_sources) = ta_utils.get_surrounding_grids(
+           tf.cast(tf.maximum(height // self._stride, 1), tf.float32),
+           tf.cast(tf.maximum(width // self._stride, 1), tf.float32),
+           y_source, x_source,
+           self._peak_radius)
       _, num_neighbors = shape_utils.combined_static_and_dynamic_shape(
           y_source_neighbors)
 
@@ -1722,8 +1726,8 @@ class CenterNetKeypointTargetAssigner(object):
                     gt_keypoints_weights_list, gt_weights_list,
                     gt_keypoint_depths_list, gt_keypoint_depth_weights_list)):
       keypoints_absolute, kp_weights = _preprocess_keypoints_and_weights(
-          out_height=height // self._stride,
-          out_width=width // self._stride,
+          out_height=tf.maximum(height // self._stride, 1),
+          out_width=tf.maximum(width // self._stride, 1),
           keypoints=keypoints,
           class_onehot=classes,
           class_weights=weights,
@@ -1740,10 +1744,11 @@ class CenterNetKeypointTargetAssigner(object):
       # All keypoint coordinates and their neighbors:
       # [num_instance * num_keypoints, num_neighbors]
       (y_source_neighbors, x_source_neighbors,
-       valid_sources) = ta_utils.get_surrounding_grids(height // self._stride,
-                                                       width // self._stride,
-                                                       y_source, x_source,
-                                                       self._peak_radius)
+       valid_sources) = ta_utils.get_surrounding_grids(
+           tf.cast(tf.maximum(height // self._stride, 1), tf.float32),
+           tf.cast(tf.maximum(width // self._stride, 1), tf.float32),
+           y_source, x_source,
+           self._peak_radius)
       _, num_neighbors = shape_utils.combined_static_and_dynamic_shape(
           y_source_neighbors)
 
@@ -1894,8 +1899,8 @@ class CenterNetKeypointTargetAssigner(object):
         zip(gt_keypoints_list, gt_classes_list,
             gt_boxes_list, gt_keypoints_weights_list, gt_weights_list)):
       keypoints_absolute, kp_weights = _preprocess_keypoints_and_weights(
-          out_height=height // self._stride,
-          out_width=width // self._stride,
+          out_height=tf.maximum(height // self._stride, 1),
+          out_width=tf.maximum(width // self._stride, 1),
           keypoints=keypoints,
           class_onehot=classes,
           class_weights=weights,
@@ -1909,9 +1914,10 @@ class CenterNetKeypointTargetAssigner(object):
       if boxes is not None:
         # Compute joint center from boxes.
         boxes = box_list.BoxList(boxes)
-        boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                     height // self._stride,
-                                                     width // self._stride)
+        boxes = box_list_ops.to_absolute_coordinates(
+            boxes,
+            tf.maximum(height // self._stride, 1),
+            tf.maximum(width // self._stride, 1))
         y_center, x_center, _, _ = boxes.get_center_coordinates_and_sizes()
       else:
         # TODO(yuhuic): Add the logic to generate object centers from keypoints.
@@ -1930,7 +1936,8 @@ class CenterNetKeypointTargetAssigner(object):
       # [num_instance * num_keypoints, num_neighbors]
       (y_source_neighbors, x_source_neighbors,
        valid_sources) = ta_utils.get_surrounding_grids(
-           height // self._stride, width // self._stride,
+           tf.cast(tf.maximum(height // self._stride, 1), tf.float32),
+           tf.cast(tf.maximum(width // self._stride, 1), tf.float32),
            tf.keras.backend.flatten(y_center_tiled),
            tf.keras.backend.flatten(x_center_tiled), self._peak_radius)
 
@@ -2023,8 +2030,8 @@ class CenterNetMaskTargetAssigner(object):
 
     _, input_height, input_width = (
         shape_utils.combined_static_and_dynamic_shape(gt_masks_list[0]))
-    output_height = input_height // self._stride
-    output_width = input_width // self._stride
+    output_height = tf.maximum(input_height // self._stride, 1)
+    output_width = tf.maximum(input_width // self._stride, 1)
 
     segmentation_targets_list = []
     for gt_masks, gt_classes in zip(gt_masks_list, gt_classes_list):
@@ -2114,7 +2121,9 @@ class CenterNetDensePoseTargetAssigner(object):
       part_ids_one_hot = tf.one_hot(part_ids_flattened, depth=self._num_parts)
       # Get DensePose coordinates in the output space.
       surface_coords_abs = densepose_ops.to_absolute_coordinates(
-          surface_coords, height // self._stride, width // self._stride)
+          surface_coords,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
       surface_coords_abs = tf.reshape(surface_coords_abs, [-1, 4])
       # Each tensor has shape [num_boxes * max_sampled_points].
       yabs, xabs, v, u = tf.unstack(surface_coords_abs, axis=-1)
@@ -2213,9 +2222,10 @@ class CenterNetTrackTargetAssigner(object):
 
     for i, (boxes, weights) in enumerate(zip(gt_boxes_list, gt_weights_list)):
       boxes = box_list.BoxList(boxes)
-      boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                   height // self._stride,
-                                                   width // self._stride)
+      boxes = box_list_ops.to_absolute_coordinates(
+          boxes,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
       # Get the box center coordinates. Each returned tensors have the shape of
       # [num_boxes]
       (y_center, x_center, _, _) = boxes.get_center_coordinates_and_sizes()
@@ -2318,8 +2328,8 @@ class CenterNetCornerOffsetTargetAssigner(object):
     """
     _, input_height, input_width = (
         shape_utils.combined_static_and_dynamic_shape(gt_masks_list[0]))
-    output_height = input_height // self._stride
-    output_width = input_width // self._stride
+    output_height = tf.maximum(input_height // self._stride, 1)
+    output_width = tf.maximum(input_width // self._stride, 1)
     y_grid, x_grid = tf.meshgrid(
         tf.range(output_height), tf.range(output_width),
         indexing='ij')
@@ -2332,6 +2342,8 @@ class CenterNetCornerOffsetTargetAssigner(object):
                                method=ResizeMethod.NEAREST_NEIGHBOR)
       gt_masks = filter_mask_overlap(gt_masks, self._overlap_resolution)
 
+      output_height = tf.cast(output_height, tf.float32)
+      output_width = tf.cast(output_width, tf.float32)
       ymin, xmin, ymax, xmax = tf.unstack(gt_boxes, axis=1)
       ymin, ymax = ymin * output_height, ymax * output_height
       xmin, xmax = xmin * output_width, xmax * output_width
@@ -2427,9 +2439,10 @@ class CenterNetTemporalOffsetTargetAssigner(object):
     for i, (boxes, offsets, match_flags, weights) in enumerate(zip(
         gt_boxes_list, gt_offsets_list, gt_match_list, gt_weights_list)):
       boxes = box_list.BoxList(boxes)
-      boxes = box_list_ops.to_absolute_coordinates(boxes,
-                                                   height // self._stride,
-                                                   width // self._stride)
+      boxes = box_list_ops.to_absolute_coordinates(
+          boxes,
+          tf.maximum(height // self._stride, 1),
+          tf.maximum(width // self._stride, 1))
       # Get the box center coordinates. Each returned tensors have the shape of
       # [num_boxes]
       (y_center, x_center, _, _) = boxes.get_center_coordinates_and_sizes()
