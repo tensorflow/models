@@ -48,7 +48,7 @@ class TrainTest(tf.test.TestCase):
     # pylint: enable=g-complex-comprehension
     tfexample_utils.dump_to_tfrecord(self._data_path, tf_examples=examples)
 
-  def disable_test_run(self):
+  def test_run(self):
     saved_flag_values = flagsaver.save_flag_values()
     train_lib.tfm_flags.define_flags()
     FLAGS.mode = 'train'
@@ -58,6 +58,9 @@ class TrainTest(tf.test.TestCase):
     num_frames = 4
 
     params_override = json.dumps({
+        'runtime': {
+            'mixed_precision_dtype': 'float32',
+        },
         'trainer': {
             'train_steps': 1,
             'validation_steps': 1,
