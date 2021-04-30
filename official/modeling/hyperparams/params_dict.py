@@ -458,7 +458,7 @@ def override_params_dict(params, dict_or_string_or_yaml_file, is_strict):
       params.override(params_dict, is_strict)
     else:
       with tf.io.gfile.GFile(dict_or_string_or_yaml_file) as f:
-        params.override(yaml.load(f, Loader=LOADER), is_strict)
+        params.override(yaml.load(f, Loader=yaml.FullLoader), is_strict)
   else:
     raise ValueError('Unknown input type to parse.')
   return params
