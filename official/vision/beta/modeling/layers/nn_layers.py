@@ -22,7 +22,6 @@ import tensorflow_addons as tfa
 from official.modeling import tf_utils
 from official.vision.beta.ops import spatial_transform_ops
 
-
 # Type annotations.
 States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
@@ -286,8 +285,8 @@ def pyramid_feature_fusion(inputs, target_level):
     else:
       feat = pyramid_feats[l]
       target_size = list(feat.shape[1:3])
-      target_size[0] *= 2**(l - target_level)
-      target_size[1] *= 2**(l - target_level)
+      target_size[0] *= 2 ** (l - target_level)
+      target_size[1] *= 2 ** (l - target_level)
       # Casts feat to float32 so the resize op can be run on TPU.
       feat = tf.cast(feat, tf.float32)
       feat = tf.image.resize(
