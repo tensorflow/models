@@ -575,6 +575,7 @@ class InvertedBottleneckBlock(tf.keras.layers.Layer):
     self._activation = activation
     self._se_inner_activation = se_inner_activation
     self._se_gating_activation = se_gating_activation
+    self._se_round_down_protect = se_round_down_protect
     self._depthwise_activation = depthwise_activation
     self._se_round_down_protect = se_round_down_protect
     self._kernel_initializer = kernel_initializer
