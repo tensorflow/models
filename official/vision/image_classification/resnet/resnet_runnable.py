@@ -167,7 +167,8 @@ class ResnetRunnable(orbit.StandardTrainer, orbit.StandardEvaluator):
           tape, self.optimizer, loss, self.model.trainable_variables)
       self.train_loss.update_state(loss)
       self.train_accuracy.update_state(labels, logits)
-
+    if self.flags_obj.enable_xla:
+      step_fn = tf.function(step_fn, jit_compile=True)
     self.strategy.run(step_fn, args=(next(iterator),))
 
   def train_loop_end(self):
