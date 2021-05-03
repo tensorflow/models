@@ -126,14 +126,23 @@ class DetectionModule(export_base.ExportModule):
         anchor_boxes=anchor_boxes,
         training=False)
 
-    final_outputs = {
-        'detection_boxes': detections['detection_boxes'],
-        'detection_scores': detections['detection_scores'],
-        'detection_classes': detections['detection_classes'],
-        'num_detections': detections['num_detections'],
-        'image_info': image_info
-    }
+    if self.params.task.model.detection_generator.apply_nms:
+      final_outputs = {
+          'detection_boxes': detections['detection_boxes'],
+          'detection_scores': detections['detection_scores'],
+          'detection_classes': detections['detection_classes'],
+          'num_detections': detections['num_detections']
+      }
+    else:
+      final_outputs = {
+          'decoded_boxes': detections['decoded_boxes'],
+          'decoded_box_scores': detections['decoded_box_scores'],
+          'cls_outputs': detections['cls_outputs'],
+          'box_outputs': detections['box_outputs']
+      }
+
     if 'detection_masks' in detections.keys():
       final_outputs['detection_masks'] = detections['detection_masks']
 
+    final_outputs.update({'image_info': image_info})
     return final_outputs
