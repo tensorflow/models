@@ -946,7 +946,7 @@ def object_center_proto_to_params(oc_config):
   if oc_config.keypoint_weights_for_center:
     keypoint_weights_for_center = list(oc_config.keypoint_weights_for_center)
 
-  if oc_config.center_head_params:
+  if oc_config.HasField('center_head_params'):
     center_head_num_filters = list(oc_config.center_head_params.num_filters)
     center_head_kernel_sizes = list(oc_config.center_head_params.kernel_sizes)
   else:

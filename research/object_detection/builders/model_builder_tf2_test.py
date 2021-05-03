@@ -18,6 +18,7 @@
 import os
 import unittest
 
+from absl.testing import parameterized
 import tensorflow.compat.v1 as tf
 
 from google.protobuf import text_format
@@ -32,7 +33,8 @@ from object_detection.utils import tf_version
 
 
 @unittest.skipIf(tf_version.is_tf1(), 'Skipping TF2.X only test.')
-class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
+class ModelBuilderTF2Test(
+    model_builder_test.ModelBuilderTest, parameterized.TestCase):
 
   def default_ssd_feature_extractor(self):
     return 'ssd_resnet50_v1_fpn_keras'
@@ -79,7 +81,7 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
       f.write(keypoint_spec_text)
     return keypoint_label_map_path
 
-  def get_fake_keypoint_proto(self):
+  def get_fake_keypoint_proto(self, customize_head_params=False):
     task_proto_txt = """
       task_name: "human_pose"
       task_loss_weight: 0.9
@@ -120,18 +122,27 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
       predict_depth: true
       per_keypoint_depth: true
       keypoint_depth_loss_weight: 0.3
+    """
+    if customize_head_params:
+      task_proto_txt += """
       heatmap_head_params {
         num_filters: 64
         num_filters: 32
         kernel_sizes: 5
         kernel_sizes: 3
       }
-    """
+      offset_head_params {
+        num_filters: 128
+        num_filters: 64
+        kernel_sizes: 5
+        kernel_sizes: 3
+      }
+      """
     config = text_format.Merge(task_proto_txt,
                                center_net_pb2.CenterNet.KeypointEstimation())
     return config
 
-  def get_fake_object_center_proto(self):
+  def get_fake_object_center_proto(self, customize_head_params=False):
     proto_txt = """
       object_center_loss_weight: 0.5
       heatmap_bias_init: 3.14
@@ -143,13 +154,16 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
           beta: 4.0
         }
       }
+    """
+    if customize_head_params:
+      proto_txt += """
       center_head_params {
         num_filters: 64
         num_filters: 32
         kernel_sizes: 5
         kernel_sizes: 3
       }
-    """
+      """
     return text_format.Merge(proto_txt,
                              center_net_pb2.CenterNet.ObjectCenterParams())
 
@@ -222,7 +236,11 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     return text_format.Merge(proto_txt,
                              center_net_pb2.CenterNet.DensePoseEstimation())
 
-  def test_create_center_net_model(self):
+  @parameterized.parameters(
+      {'customize_head_params': True},
+      {'customize_head_params': False}
+  )
+  def test_create_center_net_model(self, customize_head_params):
     """Test building a CenterNet model from proto txt."""
     proto_txt = """
       center_net {
@@ -244,11 +262,13 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     # Set up the configuration proto.
     config = text_format.Merge(proto_txt, model_pb2.DetectionModel())
     config.center_net.object_center_params.CopyFrom(
-        self.get_fake_object_center_proto())
+        self.get_fake_object_center_proto(
+            customize_head_params=customize_head_params))
     config.center_net.object_detection_task.CopyFrom(
         self.get_fake_object_detection_proto())
     config.center_net.keypoint_estimation_task.append(
-        self.get_fake_keypoint_proto())
+        self.get_fake_keypoint_proto(
+            customize_head_params=customize_head_params))
     config.center_net.keypoint_label_map_path = (
         self.get_fake_label_map_file_path())
     config.center_net.mask_estimation_task.CopyFrom(
@@ -269,8 +289,12 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     self.assertAlmostEqual(
         model._center_params.heatmap_bias_init, 3.14, places=4)
     self.assertEqual(model._center_params.max_box_predictions, 15)
-    self.assertEqual(model._center_params.center_head_num_filters, [64, 32])
-    self.assertEqual(model._center_params.center_head_kernel_sizes, [5, 3])
+    if customize_head_params:
+      self.assertEqual(model._center_params.center_head_num_filters, [64, 32])
+      self.assertEqual(model._center_params.center_head_kernel_sizes, [5, 3])
+    else:
+      self.assertEqual(model._center_params.center_head_num_filters, [256])
+      self.assertEqual(model._center_params.center_head_kernel_sizes, [3])
 
     # Check object detection related parameters.
     self.assertAlmostEqual(model._od_params.offset_loss_weight, 0.1)
@@ -305,12 +329,18 @@ class ModelBuilderTF2Test(model_builder_test.ModelBuilderTest):
     self.assertEqual(kp_params.predict_depth, True)
     self.assertEqual(kp_params.per_keypoint_depth, True)
     self.assertAlmostEqual(kp_params.keypoint_depth_loss_weight, 0.3)
-    # Set by the config.
-    self.assertEqual(kp_params.heatmap_head_num_filters, [64, 32])
-    self.assertEqual(kp_params.heatmap_head_kernel_sizes, [5, 3])
-    # Default values:
-    self.assertEqual(kp_params.offset_head_num_filters, [256])
-    self.assertEqual(kp_params.offset_head_kernel_sizes, [3])
+    if customize_head_params:
+      # Set by the config.
+      self.assertEqual(kp_params.heatmap_head_num_filters, [64, 32])
+      self.assertEqual(kp_params.heatmap_head_kernel_sizes, [5, 3])
+      self.assertEqual(kp_params.offset_head_num_filters, [128, 64])
+      self.assertEqual(kp_params.offset_head_kernel_sizes, [5, 3])
+    else:
+      # Default values:
+      self.assertEqual(kp_params.heatmap_head_num_filters, [256])
+      self.assertEqual(kp_params.heatmap_head_kernel_sizes, [3])
+      self.assertEqual(kp_params.offset_head_num_filters, [256])
+      self.assertEqual(kp_params.offset_head_kernel_sizes, [3])
 
     # Check mask related parameters.
     self.assertAlmostEqual(model._mask_params.task_loss_weight, 0.7)
