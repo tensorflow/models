@@ -160,7 +160,7 @@ def build_maskrcnn(
       sample_offset=roi_aligner_config.sample_offset)
 
   detection_generator_obj = detection_generator.DetectionGenerator(
-      apply_nms=True,
+      apply_nms=generator_config.apply_nms,
       pre_nms_top_k=generator_config.pre_nms_top_k,
       pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
       nms_iou_threshold=generator_config.nms_iou_threshold,
@@ -255,7 +255,7 @@ def build_retinanet(
       kernel_regularizer=l2_regularizer)
 
   detection_generator_obj = detection_generator.MultilevelDetectionGenerator(
-      apply_nms=True,
+      apply_nms=generator_config.apply_nms,
       pre_nms_top_k=generator_config.pre_nms_top_k,
       pre_nms_score_threshold=generator_config.pre_nms_score_threshold,
       nms_iou_threshold=generator_config.nms_iou_threshold,

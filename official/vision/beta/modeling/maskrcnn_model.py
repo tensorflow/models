@@ -216,11 +216,21 @@ class MaskRCNNModel(tf.keras.Model):
           regression_weights,
           bbox_per_class=(not self._config_dict['class_agnostic_bbox_pred']))
       model_outputs.update({
-          'detection_boxes': detections['detection_boxes'],
-          'detection_scores': detections['detection_scores'],
-          'detection_classes': detections['detection_classes'],
-          'num_detections': detections['num_detections'],
+          'cls_outputs': class_outputs,
+          'box_outputs': box_outputs,
       })
+      if self.detection_generator.get_config()['apply_nms']:
+        model_outputs.update({
+            'detection_boxes': detections['detection_boxes'],
+            'detection_scores': detections['detection_scores'],
+            'detection_classes': detections['detection_classes'],
+            'num_detections': detections['num_detections']
+        })
+      else:
+        model_outputs.update({
+            'decoded_boxes': detections['decoded_boxes'],
+            'decoded_box_scores': detections['decoded_box_scores']
+        })
 
     if not self._include_mask:
       return model_outputs
