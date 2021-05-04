@@ -373,7 +373,7 @@ class MaskRCNNModelTest(parameterized.TestCase, tf.test.TestCase):
         backbone=backbone,
         decoder=decoder,
         rpn_head=rpn_head,
-        detection_head=detection_head)
+        detection_head=[detection_head])
     if include_mask:
       expect_checkpoint_items['mask_head'] = mask_head
     self.assertAllEqual(expect_checkpoint_items, model.checkpoint_items)
