@@ -21,7 +21,6 @@ from official.vision.beta.projects.deepmac_maskrcnn import configs
 from official.vision.beta.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
 from official.vision.beta.ops import anchor
 from official.vision.beta.ops import preprocess_ops
-from official.vision.beta.projects.deepmac_maskrcnn.serving import export_base
 from official.vision.beta.serving import detection
 
 class DetectionModule(detection.DetectionModule):
