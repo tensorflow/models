@@ -114,7 +114,28 @@ def build_maskrcnn(
       use_sync_bn=norm_activation_config.use_sync_bn,
       norm_momentum=norm_activation_config.norm_momentum,
       norm_epsilon=norm_activation_config.norm_epsilon,
-      kernel_regularizer=l2_regularizer)
+      kernel_regularizer=l2_regularizer,
+      name='detection_head')
+  if roi_sampler_config.cascade_iou_thresholds:
+    detection_head_cascade = [detection_head]
+    for cascade_num in range(len(roi_sampler_config.cascade_iou_thresholds)):
+      detection_head = instance_heads.DetectionHead(
+          num_classes=model_config.num_classes,
+          num_convs=detection_head_config.num_convs,
+          num_filters=detection_head_config.num_filters,
+          use_separable_conv=detection_head_config.use_separable_conv,
+          num_fcs=detection_head_config.num_fcs,
+          fc_dims=detection_head_config.fc_dims,
+          class_agnostic_bbox_pred=detection_head_config
+          .class_agnostic_bbox_pred,
+          activation=norm_activation_config.activation,
+          use_sync_bn=norm_activation_config.use_sync_bn,
+          norm_momentum=norm_activation_config.norm_momentum,
+          norm_epsilon=norm_activation_config.norm_epsilon,
+          kernel_regularizer=l2_regularizer,
+          name='detection_head_{}'.format(cascade_num + 1))
+      detection_head_cascade.append(detection_head)
+    detection_head = detection_head_cascade
 
   roi_generator_obj = roi_generator.MultilevelROIGenerator(
       pre_nms_top_k=roi_generator_config.pre_nms_top_k,
