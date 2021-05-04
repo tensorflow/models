@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Helper functions for the Keras implementations of models."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Helper functions for the Keras implementations of models."""
 
 import multiprocessing
 import os
@@ -24,6 +20,19 @@ import time
 
 from absl import logging
 import tensorflow as tf
+
+from tensorflow.python.eager import monitoring
+
+global_batch_size_gauge = monitoring.IntGauge(
+    '/tensorflow/training/global_batch_size', 'TF training global batch size')
+
+first_batch_time_gauge = monitoring.IntGauge(
+    '/tensorflow/training/first_batch',
+    'TF training start/end time for first batch (unix epoch time in us.',
+    'type')
+
+first_batch_start_time = first_batch_time_gauge.get_cell('start')
+first_batch_end_time = first_batch_time_gauge.get_cell('end')
 
 
 class BatchTimestamp(object):
@@ -59,6 +68,8 @@ class TimeHistory(tf.keras.callbacks.Callback):
     self.steps_before_epoch = initial_step
     self.steps_in_epoch = 0
     self.start_time = None
+
+    global_batch_size_gauge.get_cell().set(batch_size)
 
     if logdir:
       self.summary_writer = tf.summary.create_file_writer(logdir)
@@ -110,14 +121,18 @@ class TimeHistory(tf.keras.callbacks.Callback):
   def on_batch_begin(self, batch, logs=None):
     if not self.start_time:
       self.start_time = time.time()
+      if not first_batch_start_time.value():
+        first_batch_start_time.set(int(self.start_time * 1000000))
 
     # Record the timestamp of the first global step
     if not self.timestamp_log:
-      self.timestamp_log.append(BatchTimestamp(self.global_steps,
-                                               self.start_time))
+      self.timestamp_log.append(
+          BatchTimestamp(self.global_steps, self.start_time))
 
   def on_batch_end(self, batch, logs=None):
     """Records elapse time of the batch and calculates examples per second."""
+    if not first_batch_end_time.value():
+      first_batch_end_time.set(int(time.time() * 1000000))
     self.steps_in_epoch = batch + 1
     steps_since_last_log = self.global_steps - self.last_log_step
     if steps_since_last_log >= self.log_steps:
@@ -167,12 +182,12 @@ def set_session_config(enable_xla=False):
   if enable_xla:
     tf.config.optimizer.set_jit(True)
 
+
 # TODO(hongkuny): remove set_config_v2 globally.
 set_config_v2 = set_session_config
 
 
-def set_gpu_thread_mode_and_count(gpu_thread_mode,
-                                  datasets_num_private_threads,
+def set_gpu_thread_mode_and_count(gpu_thread_mode, datasets_num_private_threads,
                                   num_gpus, per_gpu_thread_count):
   """Set GPU thread mode and count, and adjust dataset threads count."""
   cpu_count = multiprocessing.cpu_count()
@@ -182,10 +197,8 @@ def set_gpu_thread_mode_and_count(gpu_thread_mode,
   per_gpu_thread_count = per_gpu_thread_count or 2
   os.environ['TF_GPU_THREAD_MODE'] = gpu_thread_mode
   os.environ['TF_GPU_THREAD_COUNT'] = str(per_gpu_thread_count)
-  logging.info('TF_GPU_THREAD_COUNT: %s',
-               os.environ['TF_GPU_THREAD_COUNT'])
-  logging.info('TF_GPU_THREAD_MODE: %s',
-               os.environ['TF_GPU_THREAD_MODE'])
+  logging.info('TF_GPU_THREAD_COUNT: %s', os.environ['TF_GPU_THREAD_COUNT'])
+  logging.info('TF_GPU_THREAD_MODE: %s', os.environ['TF_GPU_THREAD_MODE'])
 
   # Limit data preprocessing threadpool to CPU cores minus number of total GPU
   # private threads and memory copy threads.
@@ -193,7 +206,6 @@ def set_gpu_thread_mode_and_count(gpu_thread_mode,
   num_runtime_threads = num_gpus
   if not datasets_num_private_threads:
     datasets_num_private_threads = min(
-        cpu_count - total_gpu_thread_count - num_runtime_threads,
-        num_gpus * 8)
+        cpu_count - total_gpu_thread_count - num_runtime_threads, num_gpus * 8)
     logging.info('Set datasets_num_private_threads to %s',
                  datasets_num_private_threads)

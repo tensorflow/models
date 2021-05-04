@@ -32,6 +32,7 @@ import pandas
 from six.moves import urllib
 from sox import Transformer
 import tensorflow as tf
+from absl import logging
 
 LIBRI_SPEECH_URLS = {
     "train-clean-100":
@@ -59,13 +60,13 @@ def download_and_extract(directory, url):
     url: the url to download the data file.
   """
 
-  if not tf.gfile.Exists(directory):
-    tf.gfile.MakeDirs(directory)
+  if not tf.io.gfile.exists(directory):
+    tf.io.gfile.makedirs(directory)
 
   _, tar_filepath = tempfile.mkstemp(suffix=".tar.gz")
 
   try:
-    tf.logging.info("Downloading %s to %s" % (url, tar_filepath))
+    logging.info("Downloading %s to %s" % (url, tar_filepath))
 
     def _progress(count, block_size, total_size):
       sys.stdout.write("\r>> Downloading {} {:.1f}%".format(
@@ -75,12 +76,12 @@ def download_and_extract(directory, url):
     urllib.request.urlretrieve(url, tar_filepath, _progress)
     print()
     statinfo = os.stat(tar_filepath)
-    tf.logging.info(
+    logging.info(
         "Successfully downloaded %s, size(bytes): %d" % (url, statinfo.st_size))
     with tarfile.open(tar_filepath, "r") as tar:
       tar.extractall(directory)
   finally:
-    tf.gfile.Remove(tar_filepath)
+    tf.io.gfile.remove(tar_filepath)
 
 
 def convert_audio_and_split_transcript(input_dir, source_name, target_name,
@@ -112,18 +113,18 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
     output_file: the name of the newly generated csv file. e.g. test-clean.csv
   """
 
-  tf.logging.info("Preprocessing audio and transcript for %s" % source_name)
+  logging.info("Preprocessing audio and transcript for %s" % source_name)
   source_dir = os.path.join(input_dir, source_name)
   target_dir = os.path.join(input_dir, target_name)
 
-  if not tf.gfile.Exists(target_dir):
-    tf.gfile.MakeDirs(target_dir)
+  if not tf.io.gfile.exists(target_dir):
+    tf.io.gfile.makedirs(target_dir)
 
   files = []
   tfm = Transformer()
   # Convert all FLAC file into WAV format. At the same time, generate the csv
   # file.
-  for root, _, filenames in tf.gfile.Walk(source_dir):
+  for root, _, filenames in tf.io.gfile.walk(source_dir):
     for filename in fnmatch.filter(filenames, "*.trans.txt"):
       trans_file = os.path.join(root, filename)
       with codecs.open(trans_file, "r", "utf-8") as fin:
@@ -137,7 +138,7 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
           # Convert FLAC to WAV.
           flac_file = os.path.join(root, seqid + ".flac")
           wav_file = os.path.join(target_dir, seqid + ".wav")
-          if not tf.gfile.Exists(wav_file):
+          if not tf.io.gfile.exists(wav_file):
             tfm.build(flac_file, wav_file)
           wav_filesize = os.path.getsize(wav_file)
 
@@ -149,7 +150,7 @@ def convert_audio_and_split_transcript(input_dir, source_name, target_name,
   df = pandas.DataFrame(
       data=files, columns=["wav_filename", "wav_filesize", "transcript"])
   df.to_csv(csv_file_path, index=False, sep="\t")
-  tf.logging.info("Successfully generated csv file {}".format(csv_file_path))
+  logging.info("Successfully generated csv file {}".format(csv_file_path))
 
 
 def download_and_process_datasets(directory, datasets):
@@ -160,10 +161,10 @@ def download_and_process_datasets(directory, datasets):
     datasets: list of dataset names that will be downloaded and processed.
   """
 
-  tf.logging.info("Preparing LibriSpeech dataset: {}".format(
+  logging.info("Preparing LibriSpeech dataset: {}".format(
       ",".join(datasets)))
   for dataset in datasets:
-    tf.logging.info("Preparing dataset %s", dataset)
+    logging.info("Preparing dataset %s", dataset)
     dataset_dir = os.path.join(directory, dataset)
     download_and_extract(dataset_dir, LIBRI_SPEECH_URLS[dataset])
     convert_audio_and_split_transcript(
@@ -185,8 +186,8 @@ def define_data_download_flags():
 
 
 def main(_):
-  if not tf.gfile.Exists(FLAGS.data_dir):
-    tf.gfile.MakeDirs(FLAGS.data_dir)
+  if not tf.io.gfile.exists(FLAGS.data_dir):
+    tf.io.gfile.makedirs(FLAGS.data_dir)
 
   if FLAGS.train_only:
     download_and_process_datasets(
@@ -202,7 +203,7 @@ def main(_):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   define_data_download_flags()
   FLAGS = absl_flags.FLAGS
   absl_app.run(main)

@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Helper code to run complete models from within python.
-"""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Helper code to run complete models from within python."""
 
 import os
 import shutil
@@ -31,7 +26,11 @@ from official.utils.flags import core as flags_core
 
 
 @flagsaver.flagsaver
-def run_synthetic(main, tmp_root, extra_flags=None, synth=True, train_epochs=1,
+def run_synthetic(main,
+                  tmp_root,
+                  extra_flags=None,
+                  synth=True,
+                  train_epochs=1,
                   epochs_between_evals=1):
   """Performs a minimal run of a model.
 

@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 """A module for helper tensorflow ops.
 
@@ -37,7 +36,7 @@ def indices_to_dense_vector(indices,
 
   Args:
     indices: 1d Tensor with integer indices which are to be set to
-        indices_values.
+      indices_values.
     size: scalar with size (integer) of output Tensor.
     indices_value: values of elements specified by indices in the output vector
     default_value: values of other elements in the output vector.
@@ -61,10 +60,10 @@ def matmul_gather_on_zeroth_axis(params, indices, scope=None):
   TODO(rathodv, jonathanhuang): enable sparse matmul option.
 
   Args:
-    params: A float32 Tensor. The tensor from which to gather values.
-      Must be at least rank 1.
-    indices: A Tensor. Must be one of the following types: int32, int64.
-      Must be in range [0, params.shape[0])
+    params: A float32 Tensor. The tensor from which to gather values. Must be at
+      least rank 1.
+    indices: A Tensor. Must be one of the following types: int32, int64. Must be
+      in range [0, params.shape[0])
     scope: A name for the operation (optional).
 
   Returns:

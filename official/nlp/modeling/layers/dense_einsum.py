@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based einsum layer."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import tensorflow as tf
 
@@ -28,11 +24,11 @@ _CHR_IDX = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m"]
 
 @tf.keras.utils.register_keras_serializable(package="Text")
 class DenseEinsum(tf.keras.layers.Layer):
-  """A densely connected layer that uses tf.einsum as the backing computation.
+  """A densely connected layer that uses `tf.einsum` as the backing computation.
 
   This layer can perform einsum calculations of arbitrary dimensionality.
 
-  Arguments:
+  Args:
     output_shape: Positive integer or tuple, dimensionality of the output space.
     num_summed_dimensions: The number of dimensions to sum over. Standard 2D
       matmul should use 1, 3D matmul should use 2, and so forth.
@@ -59,9 +55,8 @@ class DenseEinsum(tf.keras.layers.Layer):
       `(batch_size, units)`.
   """
 
-  @deprecation.deprecated(
-      None, "DenseEinsum is deprecated. Please use "
-      "tf.keras.experimental.EinsumDense layer instead.")
+  @deprecation.deprecated(None, "DenseEinsum is deprecated. Please use "
+                          "tf.keras.experimental.EinsumDense layer instead.")
   def __init__(self,
                output_shape,
                num_summed_dimensions=1,

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""BERT models that are compatible with TF 2.0."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""BERT models that are compatible with TF 2.0."""
 
 import gin
 import tensorflow as tf
@@ -104,29 +100,29 @@ class BertPretrainLossAndMetricLayer(tf.keras.layers.Layer):
 
 @gin.configurable
 def get_transformer_encoder(bert_config,
-                            sequence_length,
+                            sequence_length=None,
                             transformer_encoder_cls=None,
                             output_range=None):
   """Gets a 'TransformerEncoder' object.
 
   Args:
     bert_config: A 'modeling.BertConfig' or 'modeling.AlbertConfig' object.
-    sequence_length: Maximum sequence length of the training data.
+    sequence_length: [Deprecated].
     transformer_encoder_cls: A EncoderScaffold class. If it is None, uses the
       default BERT encoder implementation.
     output_range: the sequence output range, [0, output_range). Default setting
       is to return the entire sequence output.
 
   Returns:
-    A networks.TransformerEncoder object.
+    A encoder object.
   """
+  del sequence_length
   if transformer_encoder_cls is not None:
     # TODO(hongkuny): evaluate if it is better to put cfg definition in gin.
     embedding_cfg = dict(
         vocab_size=bert_config.vocab_size,
         type_vocab_size=bert_config.type_vocab_size,
         hidden_size=bert_config.hidden_size,
-        seq_length=sequence_length,
         max_seq_length=bert_config.max_position_embeddings,
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=bert_config.initializer_range),
@@ -161,18 +157,17 @@ def get_transformer_encoder(bert_config,
       activation=tf_utils.get_activation(bert_config.hidden_act),
       dropout_rate=bert_config.hidden_dropout_prob,
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-      sequence_length=sequence_length,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       embedding_width=bert_config.embedding_size,
       initializer=tf.keras.initializers.TruncatedNormal(
           stddev=bert_config.initializer_range))
   if isinstance(bert_config, albert_configs.AlbertConfig):
-    return networks.AlbertTransformerEncoder(**kwargs)
+    return networks.AlbertEncoder(**kwargs)
   else:
     assert isinstance(bert_config, configs.BertConfig)
     kwargs['output_range'] = output_range
-    return networks.TransformerEncoder(**kwargs)
+    return networks.BertEncoder(**kwargs)
 
 
 def pretrain_model(bert_config,

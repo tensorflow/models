@@ -29,6 +29,7 @@ from absl import logging
 import h5py
 import tensorflow as tf
 
+from delf.python.pooling_layers import pooling as pooling_layers
 
 layers = tf.keras.layers
 
@@ -183,13 +184,16 @@ class ResNet50(tf.keras.Model):
       output of the last convolutional layer. 'avg' means that global average
       pooling will be applied to the output of the last convolutional layer, and
       thus the output of the model will be a 2D tensor. 'max' means that global
-      max pooling will be applied.
+      max pooling will be applied. 'gem' means GeM pooling will be applied.
     block3_strides: whether to add a stride of 2 to block3 to make it compatible
       with tf.slim ResNet implementation.
     average_pooling: whether to do average pooling of block4 features before
       global pooling.
     classes: optional number of classes to classify images into, only to be
       specified if `include_top` is True.
+    gem_power: GeM power for GeM pooling. Only used if pooling == 'gem'.
+    embedding_layer: whether to create an embedding layer (FC whitening layer).
+    embedding_layer_dim: size of the embedding layer.
 
   Raises:
       ValueError: in case of invalid argument for data_format.
@@ -202,7 +206,10 @@ class ResNet50(tf.keras.Model):
                pooling=None,
                block3_strides=False,
                average_pooling=True,
-               classes=1000):
+               classes=1000,
+               gem_power=3.0,
+               embedding_layer=False,
+               embedding_layer_dim=2048):
     super(ResNet50, self).__init__(name=name)
 
     valid_channel_values = ('channels_first', 'channels_last')
@@ -286,8 +293,19 @@ class ResNet50(tf.keras.Model):
       elif pooling == 'max':
         self.global_pooling = functools.partial(
             tf.reduce_max, axis=reduction_indices, keepdims=False)
+      elif pooling == 'gem':
+        logging.info('Adding GeMPooling layer with power %f', gem_power)
+        self.global_pooling = functools.partial(
+            pooling_layers.gem, axis=reduction_indices, power=gem_power)
       else:
         self.global_pooling = None
+      if embedding_layer:
+        logging.info('Adding embedding layer with dimension %d',
+                     embedding_layer_dim)
+        self.embedding_layer = layers.Dense(
+            embedding_layer_dim, name='embedding_layer')
+      else:
+        self.embedding_layer = None
 
   def build_call(self, inputs, training=True, intermediates_dict=None):
     """Building the ResNet50 model.
@@ -358,7 +376,10 @@ class ResNet50(tf.keras.Model):
     if self.include_top:
       return self.fc1000(self.flatten(x))
     elif self.global_pooling:
-      return self.global_pooling(x)
+      x = self.global_pooling(x)
+      if self.embedding_layer:
+        x = self.embedding_layer(x)
+      return x
     else:
       return x
 
@@ -384,6 +405,7 @@ class ResNet50(tf.keras.Model):
 
     Args:
       filepath: String, path to the .h5 file
+
     Raises:
       ValueError: if the file referenced by `filepath` does not exist.
     """
@@ -417,7 +439,7 @@ class ResNet50(tf.keras.Model):
             g = f[inlayer.name]
             weight_names = [n.decode('utf8') for n in g.attrs['weight_names']]
             weight_values = [g[weight_name] for weight_name in weight_names]
-            print('Setting the weights for layer %s' % (inlayer.name))
+            logging.info('Setting the weights for layer %s', inlayer.name)
             inlayer.set_weights(weight_values)
     finally:
       # Clean up the temporary file.
@@ -435,5 +457,4 @@ class ResNet50(tf.keras.Model):
           weights = inlayer.get_weights()
           logging.info(weights)
       else:
-        logging.info('Layer %s does not have inner layers.',
-                     layer.name)
+        logging.info('Layer %s does not have inner layers.', layer.name)

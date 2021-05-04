@@ -3,9 +3,9 @@ import os
 from setuptools import find_packages
 from setuptools import setup
 
-REQUIRED_PACKAGES = ['apache-beam', 'pillow', 'lxml', 'matplotlib', 'Cython',
-                     'contextlib2', 'tf-slim', 'six', 'pycocotools', 'scipy',
-                     'pandas']
+REQUIRED_PACKAGES = ['pillow', 'lxml', 'matplotlib', 'Cython',
+                     'contextlib2', 'tf-slim', 'six', 'pycocotools', 'lvis',
+                     'scipy', 'pandas']
 
 setup(
     name='object_detection',

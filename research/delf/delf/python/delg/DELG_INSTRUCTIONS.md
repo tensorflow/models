@@ -34,26 +34,42 @@ mv paris6k_images_tmp/paris/*/*.jpg paris6k_images/
 # Revisited annotations.
 wget http://cmp.felk.cvut.cz/revisitop/data/datasets/roxford5k/gnd_roxford5k.mat
 wget http://cmp.felk.cvut.cz/revisitop/data/datasets/rparis6k/gnd_rparis6k.mat
+wget http://cmp.felk.cvut.cz/cnnimageretrieval/data/test/roxford5k/gnd_roxford5k.pkl
+wget http://cmp.felk.cvut.cz/cnnimageretrieval/data/test/rparis6k/gnd_rparis6k.pkl
 ```
 
 ### Download model
 
-This is necessary to reproduce the main paper results:
+This is necessary to reproduce the main paper results. This example shows the
+R50-DELG model, pretrained on GLD; see the available pre-trained models
+[here](../../../README.md#pre-trained-models), for other variants (eg, R101,
+trained on GLDv2-clean).
 
 ```bash
 # From models/research/delf/delf/python/delg
 mkdir parameters && cd parameters
 
-# DELG-GLD model.
-wget http://storage.googleapis.com/delf/delg_gld_20200520.tar.gz
-tar -xvzf delg_gld_20200520.tar.gz
+# R50-DELG-GLD model.
+wget http://storage.googleapis.com/delf/r50delg_gld_20200814.tar.gz
+tar -xvzf r50delg_gld_20200814.tar.gz
 ```
 
 ### Feature extraction
 
-We present here commands for extraction on `roxford5k`. To extract on `rparis6k`
-instead, please edit the arguments accordingly (especially the
-`dataset_file_path` argument).
+We present here commands for R50-DELG (pretrained on GLD) extraction on
+`roxford5k`.
+
+-   To use the R101-DELG model pretrained on GLD, first download it as mentioned
+    above; then, replace the below argument `delf_config_path` by
+    `r101delg_gld_config.pbtxt`
+-   To use the R50-DELG model pretrained on GLDv2-clean, first download it as
+    mentioned above; then, replace the below argument `delf_config_path` by
+    `r50delg_gldv2clean_config.pbtxt`
+-   To use the R101-DELG model pretrained on GLDv2-clean, first download it as
+    mentioned above; then, replace the below argument `delf_config_path` by
+    `r101delg_gldv2clean_config.pbtxt`
+-   To extract on `rparis6k` instead, please edit the arguments accordingly
+    (especially the `dataset_file_path` argument).
 
 #### Query feature extraction
 
@@ -67,7 +83,7 @@ Query feature extraction can be run as follows:
 ```bash
 # From models/research/delf/delf/python/delg
 python3 extract_features.py \
-  --delf_config_path delg_gld_config.pbtxt \
+  --delf_config_path r50delg_gld_config.pbtxt \
   --dataset_file_path ~/delg/data/gnd_roxford5k.mat \
   --images_dir ~/delg/data/oxford5k_images \
   --image_set query \
@@ -81,7 +97,7 @@ Run index feature extraction as follows:
 ```bash
 # From models/research/delf/delf/python/delg
 python3 extract_features.py \
-  --delf_config_path delg_gld_config.pbtxt \
+  --delf_config_path r50delg_gld_config.pbtxt \
   --dataset_file_path ~/delg/data/gnd_roxford5k.mat \
   --images_dir ~/delg/data/oxford5k_images \
   --image_set index \

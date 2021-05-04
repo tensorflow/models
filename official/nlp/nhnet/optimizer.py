@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,13 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Optimizer and learning rate scheduler."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+"""Optimizer and learning rate scheduler."""
 
 import tensorflow as tf
 
@@ -71,10 +66,8 @@ class LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSchedule):
 
 def create_optimizer(params: params_dict.ParamsDict):
   """Creates optimizer."""
-  lr_schedule = LearningRateSchedule(
-      params.learning_rate,
-      params.hidden_size,
-      params.learning_rate_warmup_steps)
+  lr_schedule = LearningRateSchedule(params.learning_rate, params.hidden_size,
+                                     params.learning_rate_warmup_steps)
   return tf.keras.optimizers.Adam(
       learning_rate=lr_schedule,
       beta_1=params.adam_beta1,

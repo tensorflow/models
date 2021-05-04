@@ -1,18 +1,21 @@
 # NLP Modeling Library
 
-This library provides a set of Keras primitives (Layers, Networks, and Models)
-that can be assembled into transformer-based models. They are
-flexible, validated, interoperable, and both TF1 and TF2 compatible.
+This library provides a set of Keras primitives (`tf.keras.Layer` and
+`tf.keras.Model`) that can be assembled into transformer-based models.
+They are flexible, validated, interoperable, and both TF1 and TF2 compatible.
 
 * [`layers`](layers) are the fundamental building blocks for NLP models.
-They can be used to assemble new layers, networks, or models.
+They can be used to assemble new `tf.keras` layers or models.
 
-* [`networks`](networks) are combinations of layers (and possibly other networks). They are sub-units of models that would not be trained alone. They
-encapsulate common network structures like a classification head
-or a transformer encoder into an easily handled object with a
-standardized configuration.
+* [`networks`](networks) are combinations of `tf.keras` layers (and possibly
+other networks). They are `tf.keras` models that would not be trained alone.
+It encapsulates common network structures like a transformer encoder into an
+easily handled object with a standardized configuration.
 
-* [`models`](models) are combinations of layers and networks that would be trained. Pre-built canned models are provided as both convenience functions and canonical examples.
+* [`models`](models) are combinations of `tf.keras` layers and models that can
+be trained. Several pre-built canned models are provided to train encoder
+networks. These models are intended as both convenience functions and canonical
+examples.
 
 * [`losses`](losses) contains common loss computation used in NLP tasks.
 
@@ -22,7 +25,9 @@ Please see the colab
 for how to build transformer-based NLP models using above primitives.
 
 Besides the pre-defined primitives, it also provides scaffold classes to allow
-easy experimentation with noval achitectures, e.g., you don’t need to fork a whole Transformer object to try a different kind of attention primitive, for instance.
+easy experimentation with noval achitectures, e.g., you don’t need to fork a
+whole Transformer object to try a different kind of attention primitive,
+for instance.
 
 * [`TransformerScaffold`](layers/transformer_scaffold.py) implements the
 Transformer from ["Attention Is All You Need"]
@@ -43,4 +48,5 @@ Please see the colab
 (https://colab.sandbox.google.com/github/tensorflow/models/blob/master/official/colab/nlp/customize_encoder.ipynb)
 for how to use scaffold classes to build noval achitectures.
 
-BERT and ALBERT models in this repo are implemented using this library. Code examples can be found in the corresponding model folder.
+BERT and ALBERT models in this repo are implemented using this library.
+Code examples can be found in the corresponding model folder.

@@ -36,6 +36,7 @@ import tensorflow.compat.v1 as tf
 from object_detection.core import box_list
 from object_detection.core import box_list_ops
 from object_detection.utils import ops
+from object_detection.utils import shape_utils
 
 
 class Loss(six.with_metaclass(abc.ABCMeta, object)):
@@ -210,6 +211,38 @@ class WeightedIOULocalizationLoss(Loss):
     return tf.reshape(weights, [-1]) * per_anchor_iou_loss
 
 
+class WeightedGIOULocalizationLoss(Loss):
+  """GIOU localization loss function.
+
+  Sums the GIOU loss for corresponding pairs of predicted/groundtruth boxes
+  and for each pair assign a loss of 1 - GIOU.  We then compute a weighted
+  sum over all pairs which is returned as the total loss.
+  """
+
+  def _compute_loss(self, prediction_tensor, target_tensor, weights):
+    """Compute loss function.
+
+    Args:
+      prediction_tensor: A float tensor of shape [batch_size, num_anchors, 4]
+        representing the decoded predicted boxes
+      target_tensor: A float tensor of shape [batch_size, num_anchors, 4]
+        representing the decoded target boxes
+      weights: a float tensor of shape [batch_size, num_anchors]
+
+    Returns:
+      loss: a float tensor of shape [batch_size, num_anchors] tensor
+        representing the value of the loss function.
+    """
+    batch_size, num_anchors, _ = shape_utils.combined_static_and_dynamic_shape(
+        prediction_tensor)
+    predicted_boxes = tf.reshape(prediction_tensor, [-1, 4])
+    target_boxes = tf.reshape(target_tensor, [-1, 4])
+
+    per_anchor_iou_loss = 1 - ops.giou(predicted_boxes, target_boxes)
+    return tf.reshape(tf.reshape(weights, [-1]) * per_anchor_iou_loss,
+                      [batch_size, num_anchors])
+
+
 class WeightedSigmoidClassificationLoss(Loss):
   """Sigmoid cross entropy classification loss function."""
 
@@ -243,6 +276,79 @@ class WeightedSigmoidClassificationLoss(Loss):
     per_entry_cross_ent = (tf.nn.sigmoid_cross_entropy_with_logits(
         labels=target_tensor, logits=prediction_tensor))
     return per_entry_cross_ent * weights
+
+
+class WeightedDiceClassificationLoss(Loss):
+  """Dice loss for classification [1][2].
+
+  [1]: https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient
+  [2]: https://arxiv.org/abs/1606.04797
+
+  """
+
+  def __init__(self, squared_normalization):
+    """Initializes the loss object.
+
+    Args:
+      squared_normalization: boolean, if set, we square the probabilities in the
+        denominator term used for normalization.
+    """
+
+    self._squared_normalization = squared_normalization
+    super(WeightedDiceClassificationLoss, self).__init__()
+
+  def _compute_loss(self,
+                    prediction_tensor,
+                    target_tensor,
+                    weights,
+                    class_indices=None):
+    """Computes the loss value.
+
+    Dice loss uses the area of the ground truth and prediction tensors for
+    normalization. We compute area by summing along the anchors (2nd) dimension.
+
+    Args:
+      prediction_tensor: A float tensor of shape [batch_size, num_pixels,
+        num_classes] representing the predicted logits for each class.
+        num_pixels denotes the total number of pixels in the spatial dimensions
+        of the mask after flattening.
+      target_tensor: A float tensor of shape [batch_size, num_pixels,
+        num_classes] representing one-hot encoded classification targets.
+        num_pixels denotes the total number of pixels in the spatial dimensions
+        of the mask after flattening.
+      weights: a float tensor of shape, either [batch_size, num_anchors,
+        num_classes] or [batch_size, num_anchors, 1]. If the shape is
+        [batch_size, num_anchors, 1], all the classses are equally weighted.
+      class_indices: (Optional) A 1-D integer tensor of class indices.
+        If provided, computes loss only for the specified class indices.
+
+    Returns:
+      loss: a float tensor of shape [batch_size, num_classes]
+        representing the value of the loss function.
+    """
+    if class_indices is not None:
+      weights *= tf.reshape(
+          ops.indices_to_dense_vector(class_indices,
+                                      tf.shape(prediction_tensor)[2]),
+          [1, 1, -1])
+
+    prob_tensor = tf.nn.sigmoid(prediction_tensor)
+
+    if self._squared_normalization:
+      prob_tensor = tf.pow(prob_tensor, 2)
+      target_tensor = tf.pow(target_tensor, 2)
+
+    prob_tensor *= weights
+    target_tensor *= weights
+
+    prediction_area = tf.reduce_sum(prob_tensor, axis=1)
+    gt_area = tf.reduce_sum(target_tensor, axis=1)
+
+    intersection = tf.reduce_sum(prob_tensor * target_tensor, axis=1)
+    dice_coeff = 2 * intersection / tf.maximum(gt_area + prediction_area, 1.0)
+    dice_loss = 1 - dice_coeff
+
+    return dice_loss
 
 
 class SigmoidFocalClassificationLoss(Loss):

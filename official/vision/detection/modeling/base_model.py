@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Base Model definition."""
 
 from __future__ import absolute_import
@@ -21,6 +21,7 @@ from __future__ import print_function
 import abc
 import functools
 import re
+
 import tensorflow as tf
 from official.vision.detection.modeling import checkpoint_utils
 from official.vision.detection.modeling import learning_rates
@@ -42,8 +43,7 @@ def _make_filter_trainable_variables_fn(frozen_variable_prefix):
     # frozen_variable_prefix: a regex string specifing the prefix pattern of
     # the frozen variables' names.
     filtered_variables = [
-        v for v in variables
-        if not frozen_variable_prefix or
+        v for v in variables if not frozen_variable_prefix or
         not re.match(frozen_variable_prefix, v.name)
     ]
     return filtered_variables
@@ -60,9 +60,7 @@ class Model(object):
     self._use_bfloat16 = params.architecture.use_bfloat16
 
     if params.architecture.use_bfloat16:
-      policy = tf.compat.v2.keras.mixed_precision.experimental.Policy(
-          'mixed_bfloat16')
-      tf.compat.v2.keras.mixed_precision.experimental.set_policy(policy)
+      tf.compat.v2.keras.mixed_precision.set_global_policy('mixed_bfloat16')
 
     # Optimization.
     self._optimizer_fn = optimizers.OptimizerFactory(params.train.optimizer)
@@ -115,8 +113,8 @@ class Model(object):
   def weight_decay_loss(self, trainable_variables):
     reg_variables = [
         v for v in trainable_variables
-        if self._regularization_var_regex is None
-        or re.match(self._regularization_var_regex, v.name)
+        if self._regularization_var_regex is None or
+        re.match(self._regularization_var_regex, v.name)
     ]
 
     return self._l2_weight_decay * tf.add_n(

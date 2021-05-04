@@ -148,7 +148,7 @@ python ../data/create_finetuning_data.py \
  --meta_data_file_path=${OUTPUT_DIR}/${TASK_NAME}_meta_data \
  --fine_tuning_task_type=classification --max_seq_length=128 \
  --classification_task_name=${TASK_NAME} \
- --tokenizer_impl=sentence_piece
+ --tokenization=SentencePiece
 ```
 
 * SQUAD
@@ -177,7 +177,7 @@ python ../data/create_finetuning_data.py \
  --train_data_output_path=${OUTPUT_DIR}/squad_${SQUAD_VERSION}_train.tf_record \
  --meta_data_file_path=${OUTPUT_DIR}/squad_${SQUAD_VERSION}_meta_data \
  --fine_tuning_task_type=squad --max_seq_length=384 \
- --tokenizer_impl=sentence_piece
+ --tokenization=SentencePiece
 ```
 
 ## Fine-tuning with ALBERT

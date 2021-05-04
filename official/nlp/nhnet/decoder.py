@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,18 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Transformer decoder that mimics a BERT encoder, to load BERT checkpoints."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+"""Transformer decoder that mimics a BERT encoder, to load BERT checkpoints."""
 
 import tensorflow as tf
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
-from official.nlp.modeling.layers import transformer
 from official.nlp.transformer import model_utils as transformer_utils
 
 
@@ -59,7 +53,7 @@ class TransformerDecoder(tf.keras.layers.Layer):
     self.layers = []
     for i in range(self.num_hidden_layers):
       self.layers.append(
-          transformer.TransformerDecoderLayer(
+          layers.TransformerDecoderBlock(
               num_attention_heads=self.num_attention_heads,
               intermediate_size=self.intermediate_size,
               intermediate_activation=self.intermediate_activation,

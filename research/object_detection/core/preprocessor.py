@@ -571,6 +571,8 @@ def random_horizontal_flip(image,
                            keypoint_visibilities=None,
                            densepose_part_ids=None,
                            densepose_surface_coords=None,
+                           keypoint_depths=None,
+                           keypoint_depth_weights=None,
                            keypoint_flip_permutation=None,
                            probability=0.5,
                            seed=None,
@@ -602,6 +604,12 @@ def random_horizontal_flip(image,
                               (y, x) are the normalized image coordinates for a
                               sampled point, and (v, u) is the surface
                               coordinate for the part.
+    keypoint_depths: (optional) rank 2 float32 tensor with shape [num_instances,
+                     num_keypoints] representing the relative depth of the
+                     keypoints.
+    keypoint_depth_weights: (optional) rank 2 float32 tensor with shape
+                            [num_instances, num_keypoints] representing the
+                            weights of the relative depth of the keypoints.
     keypoint_flip_permutation: rank 1 int32 tensor containing the keypoint flip
                                permutation.
     probability: the probability of performing this augmentation.
@@ -631,6 +639,10 @@ def random_horizontal_flip(image,
                         [num_instances, num_points].
     densepose_surface_coords: rank 3 float32 tensor with shape
                               [num_instances, num_points, 4].
+    keypoint_depths: rank 2 float32 tensor with shape [num_instances,
+                     num_keypoints]
+    keypoint_depth_weights: rank 2 float32 tensor with shape [num_instances,
+                            num_keypoints].
 
   Raises:
     ValueError: if keypoints are provided but keypoint_flip_permutation is not.
@@ -707,6 +719,21 @@ def random_horizontal_flip(image,
           flip_densepose_fn,
           lambda: (densepose_part_ids, densepose_surface_coords))
       result.extend(densepose_tensors)
+
+    # flip keypoint depths and weights.
+    if (keypoint_depths is not None and
+        keypoint_flip_permutation is not None):
+      kpt_flip_perm = keypoint_flip_permutation
+      keypoint_depths = tf.cond(
+          do_a_flip_random,
+          lambda: tf.gather(keypoint_depths, kpt_flip_perm, axis=1),
+          lambda: keypoint_depths)
+      keypoint_depth_weights = tf.cond(
+          do_a_flip_random,
+          lambda: tf.gather(keypoint_depth_weights, kpt_flip_perm, axis=1),
+          lambda: keypoint_depth_weights)
+      result.append(keypoint_depths)
+      result.append(keypoint_depth_weights)
 
     return tuple(result)
 
@@ -1049,6 +1076,28 @@ def random_rgb_to_gray(image,
   return image
 
 
+def adjust_gamma(image, gamma=1.0, gain=1.0):
+  """Adjusts the gamma.
+
+  Args:
+    image: rank 3 float32 tensor contains 1 image -> [height, width, channels]
+           with pixel values varying between [0, 255].
+    gamma: the gamma value. Must be a non-negative real number.
+    gain: a constant multiplier.
+
+  Returns:
+    image: image which is the same shape as input image.
+  """
+  with tf.name_scope('AdjustGamma', values=[image]):
+    def _adjust_gamma(image):
+      image = tf.image.adjust_gamma(image / 255, gamma, gain) * 255
+      image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
+      return image
+
+    image = _augment_only_rgb_channels(image, _adjust_gamma)
+    return image
+
+
 def random_adjust_brightness(image,
                              max_delta=0.2,
                              seed=None,
@@ -1069,7 +1118,6 @@ def random_adjust_brightness(image,
 
   Returns:
     image: image which is the same shape as input image.
-    boxes: boxes which is the same shape as input boxes.
   """
   with tf.name_scope('RandomAdjustBrightness', values=[image]):
     generator_func = functools.partial(tf.random_uniform, [],
@@ -1258,7 +1306,7 @@ def random_distort_color(image, color_ordering=0, preprocess_vars_cache=None):
     return image
 
 
-def random_jitter_boxes(boxes, ratio=0.05, seed=None):
+def random_jitter_boxes(boxes, ratio=0.05, jitter_mode='random', seed=None):
   """Randomly jitter boxes in image.
 
   Args:
@@ -1269,45 +1317,46 @@ def random_jitter_boxes(boxes, ratio=0.05, seed=None):
     ratio: The ratio of the box width and height that the corners can jitter.
            For example if the width is 100 pixels and ratio is 0.05,
            the corners can jitter up to 5 pixels in the x direction.
+    jitter_mode: One of
+      shrink - Only shrinks boxes.
+      expand - Only expands boxes.
+      default - Randomly and independently perturbs each box boundary.
     seed: random seed.
 
   Returns:
     boxes: boxes which is the same shape as input boxes.
   """
-  def random_jitter_box(box, ratio, seed):
-    """Randomly jitter box.
-
-    Args:
-      box: bounding box [1, 1, 4].
-      ratio: max ratio between jittered box and original box,
-      a number between [0, 0.5].
-      seed: random seed.
-
-    Returns:
-      jittered_box: jittered box.
-    """
-    rand_numbers = tf.random_uniform(
-        [1, 1, 4], minval=-ratio, maxval=ratio, dtype=tf.float32, seed=seed)
-    box_width = tf.subtract(box[0, 0, 3], box[0, 0, 1])
-    box_height = tf.subtract(box[0, 0, 2], box[0, 0, 0])
-    hw_coefs = tf.stack([box_height, box_width, box_height, box_width])
-    hw_rand_coefs = tf.multiply(hw_coefs, rand_numbers)
-    jittered_box = tf.add(box, hw_rand_coefs)
-    jittered_box = tf.clip_by_value(jittered_box, 0.0, 1.0)
-    return jittered_box
-
   with tf.name_scope('RandomJitterBoxes', values=[boxes]):
-    # boxes are [N, 4]. Lets first make them [N, 1, 1, 4]
-    boxes_shape = tf.shape(boxes)
-    boxes = tf.expand_dims(boxes, 1)
-    boxes = tf.expand_dims(boxes, 2)
+    ymin, xmin, ymax, xmax = (boxes[:, i] for i in range(4))
 
-    distorted_boxes = tf.map_fn(
-        lambda x: random_jitter_box(x, ratio, seed), boxes, dtype=tf.float32)
+    height, width = ymax - ymin, xmax - xmin
+    ycenter, xcenter = (ymin + ymax) / 2.0, (xmin + xmax) / 2.0
 
-    distorted_boxes = tf.reshape(distorted_boxes, boxes_shape)
+    height = tf.abs(height)
+    width = tf.abs(width)
 
-    return distorted_boxes
+    if jitter_mode == 'shrink':
+      min_ratio, max_ratio = -ratio, 0
+    elif jitter_mode == 'expand':
+      min_ratio, max_ratio = 0, ratio
+    else:
+      min_ratio, max_ratio = -ratio, ratio
+
+    num_boxes = tf.shape(boxes)[0]
+    distortion = 1.0 + tf.random_uniform(
+        [num_boxes, 4], minval=min_ratio, maxval=max_ratio, dtype=tf.float32,
+        seed=seed)
+
+    ymin_jitter = height * distortion[:, 0]
+    xmin_jitter = width * distortion[:, 1]
+    ymax_jitter = height * distortion[:, 2]
+    xmax_jitter = width * distortion[:, 3]
+
+    ymin, ymax = ycenter - (ymin_jitter / 2.0), ycenter + (ymax_jitter / 2.0)
+    xmin, xmax = xcenter - (xmin_jitter / 2.0), xcenter + (xmax_jitter / 2.0)
+
+    boxes = tf.stack([ymin, xmin, ymax, xmax], axis=1)
+    return tf.clip_by_value(boxes, 0.0, 1.0)
 
 
 def _strict_random_crop_image(image,
@@ -2937,7 +2986,7 @@ def resize_to_range(image,
               for i in range(len(channels))
           ],
           axis=2)
-      new_image.set_shape([max_dimension, max_dimension, 3])
+      new_image.set_shape([max_dimension, max_dimension, len(channels)])
 
     result = [new_image]
     if masks is not None:
@@ -3111,6 +3160,7 @@ def resize_pad_to_multiple(image, masks=None, multiple=1):
     image_height, image_width, num_channels = _get_image_info(image)
     image = image[tf.newaxis, :, :, :]
     image = ops.pad_to_multiple(image, multiple)[0, :, :, :]
+    result = [image]
 
     if masks is not None:
       masks = tf.transpose(masks, (1, 2, 0))
@@ -3118,11 +3168,10 @@ def resize_pad_to_multiple(image, masks=None, multiple=1):
 
       masks = ops.pad_to_multiple(masks, multiple)[0, :, :, :]
       masks = tf.transpose(masks, (2, 0, 1))
+      result.append(masks)
 
-  if masks is None:
-    return image, tf.stack([image_height, image_width, num_channels])
-  else:
-    return image, masks, tf.stack([image_height, image_width, num_channels])
+    result.append(tf.stack([image_height, image_width, num_channels]))
+    return result
 
 
 def scale_boxes_to_pixel_coordinates(image, boxes, keypoints=None):
@@ -3971,9 +4020,10 @@ def _get_crop_border(border, size):
 
 
 def random_square_crop_by_scale(image, boxes, labels, label_weights,
-                                masks=None, keypoints=None, max_border=128,
-                                scale_min=0.6, scale_max=1.3, num_scales=8,
-                                seed=None, preprocess_vars_cache=None):
+                                label_confidences=None, masks=None,
+                                keypoints=None, max_border=128, scale_min=0.6,
+                                scale_max=1.3, num_scales=8, seed=None,
+                                preprocess_vars_cache=None):
   """Randomly crop a square in proportion to scale and image size.
 
    Extract a square sized crop from an image whose side length is sampled by
@@ -3993,6 +4043,8 @@ def random_square_crop_by_scale(image, boxes, labels, label_weights,
     labels: rank 1 int32 tensor containing the object classes.
     label_weights: float32 tensor of shape [num_instances] representing the
       weight for each box.
+    label_confidences: (optional) float32 tensor of shape [num_instances]
+      representing the confidence for each box.
     masks: (optional) rank 3 float32 tensor with shape
            [num_instances, height, width] containing instance masks. The masks
            are of the same height, width as the input `image`.
@@ -4021,6 +4073,8 @@ def random_square_crop_by_scale(image, boxes, labels, label_weights,
            Boxes are in normalized form.
     labels: new labels.
     label_weights: rank 1 float32 tensor with shape [num_instances].
+    label_confidences: (optional) float32 tensor of shape [num_instances]
+      representing the confidence for each box.
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
 
@@ -4110,6 +4164,9 @@ def random_square_crop_by_scale(image, boxes, labels, label_weights,
                    tf.gather(labels, indices),
                    tf.gather(label_weights, indices)]
 
+  if label_confidences is not None:
+    return_values.append(tf.gather(label_confidences, indices))
+
   if masks is not None:
     new_masks = tf.expand_dims(masks, -1)
     new_masks = new_masks[:, ymin:ymax, xmin:xmax]
@@ -4135,6 +4192,7 @@ def random_scale_crop_and_pad_to_square(
     label_weights,
     masks=None,
     keypoints=None,
+    label_confidences=None,
     scale_min=0.1,
     scale_max=2.0,
     output_size=512,
@@ -4168,6 +4226,8 @@ def random_scale_crop_and_pad_to_square(
       as the input `image`.
     keypoints: (optional) rank 3 float32 tensor with shape [num_instances,
       num_keypoints, 2]. The keypoints are in y-x normalized coordinates.
+    label_confidences: (optional) float32 tensor of shape [num_instance]
+      representing the confidence for each box.
     scale_min: float, the minimum value for the random scale factor.
     scale_max: float, the maximum value for the random scale factor.
     output_size: int, the desired (square) output image size.
@@ -4183,9 +4243,8 @@ def random_scale_crop_and_pad_to_square(
     label_weights: rank 1 float32 tensor with shape [num_instances].
     masks: rank 3 float32 tensor with shape [num_instances, height, width]
            containing instance masks.
-
+    label_confidences: confidences for retained boxes.
   """
-
   img_shape = tf.shape(image)
   input_height, input_width = img_shape[0], img_shape[1]
   random_scale = tf.random_uniform([], scale_min, scale_max, seed=seed)
@@ -4250,6 +4309,9 @@ def random_scale_crop_and_pad_to_square(
         keypoints, [0.0, 0.0, 1.0, 1.0])
     return_values.append(keypoints)
 
+  if label_confidences is not None:
+    return_values.append(tf.gather(label_confidences, indices))
+
   return return_values
 
 
@@ -4259,7 +4321,8 @@ def get_default_func_arg_map(include_label_weights=True,
                              include_instance_masks=False,
                              include_keypoints=False,
                              include_keypoint_visibilities=False,
-                             include_dense_pose=False):
+                             include_dense_pose=False,
+                             include_keypoint_depths=False):
   """Returns the default mapping from a preprocessor function to its args.
 
   Args:
@@ -4277,6 +4340,8 @@ def get_default_func_arg_map(include_label_weights=True,
       the keypoint visibilities, too.
     include_dense_pose: If True, preprocessing functions will modify the
       DensePose labels, too.
+    include_keypoint_depths: If True, preprocessing functions will modify the
+      keypoint depth labels, too.
 
   Returns:
     A map from preprocessing functions to the arguments they receive.
@@ -4319,6 +4384,13 @@ def get_default_func_arg_map(include_label_weights=True,
         fields.InputDataFields.groundtruth_dp_part_ids)
     groundtruth_dp_surface_coords = (
         fields.InputDataFields.groundtruth_dp_surface_coords)
+  groundtruth_keypoint_depths = None
+  groundtruth_keypoint_depth_weights = None
+  if include_keypoint_depths:
+    groundtruth_keypoint_depths = (
+        fields.InputDataFields.groundtruth_keypoint_depths)
+    groundtruth_keypoint_depth_weights = (
+        fields.InputDataFields.groundtruth_keypoint_depth_weights)
 
   prep_func_arg_map = {
       normalize_image: (fields.InputDataFields.image,),
@@ -4330,6 +4402,8 @@ def get_default_func_arg_map(include_label_weights=True,
           groundtruth_keypoint_visibilities,
           groundtruth_dp_part_ids,
           groundtruth_dp_surface_coords,
+          groundtruth_keypoint_depths,
+          groundtruth_keypoint_depth_weights,
       ),
       random_vertical_flip: (
           fields.InputDataFields.image,
@@ -4483,14 +4557,15 @@ def get_default_func_arg_map(include_label_weights=True,
           (fields.InputDataFields.image,
            fields.InputDataFields.groundtruth_boxes,
            fields.InputDataFields.groundtruth_classes,
-           groundtruth_label_weights, groundtruth_instance_masks,
-           groundtruth_keypoints),
+           groundtruth_label_weights, groundtruth_label_confidences,
+           groundtruth_instance_masks, groundtruth_keypoints),
       random_scale_crop_and_pad_to_square:
           (fields.InputDataFields.image,
            fields.InputDataFields.groundtruth_boxes,
            fields.InputDataFields.groundtruth_classes,
            groundtruth_label_weights, groundtruth_instance_masks,
-           groundtruth_keypoints),
+           groundtruth_keypoints, groundtruth_label_confidences),
+      adjust_gamma: (fields.InputDataFields.image,),
   }
 
   return prep_func_arg_map
@@ -4541,7 +4616,6 @@ def preprocess(tensor_dict,
   """
   if func_arg_map is None:
     func_arg_map = get_default_func_arg_map()
-
   # changes the images to image (rank 4 to rank 3) since the functions
   # receive rank 3 tensor for image
   if fields.InputDataFields.image in tensor_dict:

@@ -1,5 +1,12 @@
 # Release Notes
 
+### September 3rd, 2020
+
+TF2 OD API models can now be converted to TensorFlow Lite! Only SSD models
+currently supported. See <a href='running_on_mobile_tf2.md'>documentation</a>.
+
+**Thanks to contributors**: Sachin Joglekar
+
 ### July 10th, 2020
 
 We are happy to announce that the TF OD API officially supports TF2! Our release
@@ -39,6 +46,18 @@ Kaushik Shivakumar, Lu He, Mingxing Tan, Pengchong Jin, Ronny Votel, Sara Beery,
 Sergi Caelles Prat, Shan Yang, Sudheendra Vijayanarasimhan, Tina Tian, Tomer
 Kaftan, Vighnesh Birodkar, Vishnu Banna, Vivek Rathod, Yanhui Liang, Yiming Shi,
 Yixin Shi, Yu-hui Chen, Zhichao Lu.
+
+### June 26th, 2020
+
+We have released SSDLite with MobileDet GPU backbone, which achieves 17% mAP
+higher than the MobileNetV2 SSDLite (27.5 mAP vs 23.5 mAP) on a NVIDIA Jetson
+Xavier at comparable latency (3.2ms vs 3.3ms).
+
+Along with the model definition, we are also releasing model checkpoints trained
+on the COCO dataset.
+
+<b>Thanks to contributors</b>: Yongzhe Wang, Bo Chen, Hanxiao Liu, Le An
+(NVIDIA), Yu-Te Cheng (NVIDIA), Oliver Knieps (NVIDIA), and Josh Park (NVIDIA).
 
 ### June 17th, 2020
 

@@ -36,7 +36,7 @@ def normalize_image(image, original_minval, original_maxval, target_minval,
   Returns:
     image: image which is the same shape as input image.
   """
-  with tf.name_scope('NormalizeImage', values=[image]):
+  with tf.compat.v1.name_scope('NormalizeImage', values=[image]):
     original_minval = float(original_minval)
     original_maxval = float(original_maxval)
     target_minval = float(target_minval)
@@ -68,16 +68,17 @@ def generate_tfexample_image(input_example_strings,
     A tensor with shape [batch_size, height, width, channels] of type float32
     with values in the range [0..1]
   """
-  batch_size = tf.shape(input_example_strings)[0]
+  batch_size = tf.shape(input=input_example_strings)[0]
   images_shape = tf.stack(
       [batch_size, image_height, image_width, image_channels])
   tf_example_image_key = 'image/encoded'
   feature_configs = {
       tf_example_image_key:
-          tf.FixedLenFeature(
+          tf.io.FixedLenFeature(
               image_height * image_width * image_channels, dtype=tf.float32)
   }
-  feature_tensors = tf.parse_example(input_example_strings, feature_configs)
+  feature_tensors = tf.io.parse_example(
+      serialized=input_example_strings, features=feature_configs)
   float_images = tf.reshape(
       normalize_image(
           feature_tensors[tf_example_image_key],
@@ -97,11 +98,11 @@ def attention_ocr_attention_masks(num_characters):
   names = ['%s/Softmax:0' % (prefix)]
   for i in range(1, num_characters):
     names += ['%s_%d/Softmax:0' % (prefix, i)]
-  return [tf.get_default_graph().get_tensor_by_name(n) for n in names]
+  return [tf.compat.v1.get_default_graph().get_tensor_by_name(n) for n in names]
 
 
 def build_tensor_info(tensor_dict):
   return {
-      k: tf.saved_model.utils.build_tensor_info(t)
+      k: tf.compat.v1.saved_model.utils.build_tensor_info(t)
       for k, t in tensor_dict.items()
   }

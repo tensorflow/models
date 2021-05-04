@@ -105,6 +105,17 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
         ])
     return keypoints, keypoint_visibilities
 
+  def createTestKeypointDepths(self):
+    keypoint_depths = tf.constant([
+        [1.0, 0.9, 0.8],
+        [0.7, 0.6, 0.5]
+    ], dtype=tf.float32)
+    keypoint_depth_weights = tf.constant([
+        [0.5, 0.6, 0.7],
+        [0.8, 0.9, 1.0]
+    ], dtype=tf.float32)
+    return keypoint_depths, keypoint_depth_weights
+
   def createTestKeypointsInsideCrop(self):
     keypoints = np.array([
         [[0.4, 0.4], [0.5, 0.5], [0.6, 0.6]],
@@ -713,6 +724,59 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
                                 test_keypoints=True)
 
 
+  def testRunRandomHorizontalFlipWithKeypointDepth(self):
+
+    def graph_fn():
+      preprocess_options = [(preprocessor.random_horizontal_flip, {})]
+      image_height = 3
+      image_width = 3
+      images = tf.random_uniform([1, image_height, image_width, 3])
+      boxes = self.createTestBoxes()
+      masks = self.createTestMasks()
+      keypoints, keypoint_visibilities = self.createTestKeypoints()
+      keypoint_depths, keypoint_depth_weights = self.createTestKeypointDepths()
+      keypoint_flip_permutation = self.createKeypointFlipPermutation()
+      tensor_dict = {
+          fields.InputDataFields.image:
+              images,
+          fields.InputDataFields.groundtruth_boxes:
+              boxes,
+          fields.InputDataFields.groundtruth_instance_masks:
+              masks,
+          fields.InputDataFields.groundtruth_keypoints:
+              keypoints,
+          fields.InputDataFields.groundtruth_keypoint_visibilities:
+              keypoint_visibilities,
+          fields.InputDataFields.groundtruth_keypoint_depths:
+              keypoint_depths,
+          fields.InputDataFields.groundtruth_keypoint_depth_weights:
+              keypoint_depth_weights,
+      }
+      preprocess_options = [(preprocessor.random_horizontal_flip, {
+          'keypoint_flip_permutation': keypoint_flip_permutation,
+          'probability': 1.0
+      })]
+      preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+          include_instance_masks=True,
+          include_keypoints=True,
+          include_keypoint_visibilities=True,
+          include_dense_pose=False,
+          include_keypoint_depths=True)
+      tensor_dict = preprocessor.preprocess(
+          tensor_dict, preprocess_options, func_arg_map=preprocessor_arg_map)
+      keypoint_depths = tensor_dict[
+          fields.InputDataFields.groundtruth_keypoint_depths]
+      keypoint_depth_weights = tensor_dict[
+          fields.InputDataFields.groundtruth_keypoint_depth_weights]
+      output_tensors = [keypoint_depths, keypoint_depth_weights]
+      return output_tensors
+
+    output_tensors = self.execute_cpu(graph_fn, [])
+    expected_keypoint_depths = [[1.0, 0.8, 0.9], [0.7, 0.5, 0.6]]
+    expected_keypoint_depth_weights = [[0.5, 0.7, 0.6], [0.8, 1.0, 0.9]]
+    self.assertAllClose(expected_keypoint_depths, output_tensors[0])
+    self.assertAllClose(expected_keypoint_depth_weights, output_tensors[1])
+
   def testRandomVerticalFlip(self):
 
     def graph_fn():
@@ -1198,6 +1262,67 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
 
     (boxes_shape_, distorted_boxes_shape_) = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(boxes_shape_, distorted_boxes_shape_)
+
+  def testRandomJitterBoxesZeroRatio(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'ratio': 0.0}))
+      boxes = self.createTestBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    (boxes, distorted_boxes) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(boxes, distorted_boxes)
+
+  def testRandomJitterBoxesExpand(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'jitter_mode': 'expand'}))
+      boxes = self.createTestBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
+    ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[0, 2],
+        distorted_boxes[:, 3])
+
+    self.assertTrue(np.all(distorted_ymin <= ymin))
+    self.assertTrue(np.all(distorted_xmin <= xmin))
+    self.assertTrue(np.all(distorted_ymax >= ymax))
+    self.assertTrue(np.all(distorted_xmax >= xmax))
+
+  def testRandomJitterBoxesShrink(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'jitter_mode': 'shrink'}))
+      boxes = self.createTestBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
+    ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[0, 2],
+        distorted_boxes[:, 3])
+
+    self.assertTrue(np.all(distorted_ymin >= ymin))
+    self.assertTrue(np.all(distorted_xmin >= xmin))
+    self.assertTrue(np.all(distorted_ymax <= ymax))
+    self.assertTrue(np.all(distorted_xmax <= xmax))
 
   def testRandomCropImage(self):
 
@@ -3814,21 +3939,23 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
 
       boxes = tf.constant([[0.25, .25, .75, .75]])
       labels = tf.constant([[1]])
+      label_confidences = tf.constant([0.75])
       label_weights = tf.constant([[1.]])
 
-      (new_image, new_boxes, _, _, new_masks,
+      (new_image, new_boxes, _, _, new_confidences, new_masks,
        new_keypoints) = preprocessor.random_square_crop_by_scale(
            image,
            boxes,
            labels,
            label_weights,
+           label_confidences,
            masks=masks,
            keypoints=keypoints,
            max_border=256,
            scale_min=scale,
            scale_max=scale)
-      return new_image, new_boxes, new_masks, new_keypoints
-    image, boxes, masks, keypoints = self.execute_cpu(graph_fn, [])
+      return new_image, new_boxes, new_confidences, new_masks, new_keypoints
+    image, boxes, confidences, masks, keypoints = self.execute_cpu(graph_fn, [])
     ymin, xmin, ymax, xmax = boxes[0]
     self.assertAlmostEqual(ymax - ymin, 0.5 / scale)
     self.assertAlmostEqual(xmax - xmin, 0.5 / scale)
@@ -3842,6 +3969,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(scale * 256.0, size)
 
     self.assertAllClose(image[:, :, 0], masks[0, :, :])
+    self.assertAllClose(confidences, [0.75])
 
   @parameterized.named_parameters(('scale_0_1', 0.1), ('scale_1_0', 1.0),
                                   ('scale_2_0', 2.0))
@@ -3927,6 +4055,54 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
 
     self.assertAllClose(image[:, :, 0],
                         masks[0, :, :])
+
+  def test_random_scale_crop_and_pad_to_square_handles_confidences(self):
+
+    def graph_fn():
+      image = tf.zeros([10, 10, 1])
+      boxes = tf.constant([[0, 0, 0.5, 0.5], [0.5, 0.5, 0.75, 0.75]])
+      label_weights = tf.constant([1.0, 1.0])
+      box_labels = tf.constant([0, 1])
+      box_confidences = tf.constant([-1.0, 1.0])
+
+      (_, new_boxes, _, _,
+       new_confidences) = preprocessor.random_scale_crop_and_pad_to_square(
+           image,
+           boxes,
+           box_labels,
+           label_weights,
+           label_confidences=box_confidences,
+           scale_min=0.8,
+           scale_max=0.9,
+           output_size=10)
+      return new_boxes, new_confidences
+
+    boxes, confidences = self.execute_cpu(graph_fn, [])
+
+    self.assertLen(boxes, 2)
+    self.assertAllEqual(confidences, [-1.0, 1.0])
+
+  def testAdjustGamma(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.normalize_image, {
+          'original_minval': 0,
+          'original_maxval': 255,
+          'target_minval': 0,
+          'target_maxval': 1
+      }))
+      preprocessing_options.append((preprocessor.adjust_gamma, {}))
+      images_original = self.createTestImages()
+      tensor_dict = {fields.InputDataFields.image: images_original}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      images_gamma = tensor_dict[fields.InputDataFields.image]
+      image_original_shape = tf.shape(images_original)
+      image_gamma_shape = tf.shape(images_gamma)
+      return [image_original_shape, image_gamma_shape]
+
+    (image_original_shape_, image_gamma_shape_) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(image_original_shape_, image_gamma_shape_)
 
 
 if __name__ == '__main__':

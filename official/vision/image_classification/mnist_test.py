@@ -1,4 +1,4 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Test the Keras MNIST model on GPU."""
 
 from __future__ import absolute_import
@@ -29,15 +29,16 @@ from official.utils.testing import integration
 from official.vision.image_classification import mnist_main
 
 
+mnist_main.define_mnist_flags()
+
+
 def eager_strategy_combinations():
   return combinations.combine(
       distribution=[
           strategy_combinations.default_strategy,
-          strategy_combinations.tpu_strategy,
+          strategy_combinations.cloud_tpu_strategy,
           strategy_combinations.one_device_strategy_gpu,
-      ],
-      mode="eager",
-  )
+      ],)
 
 
 class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
@@ -47,7 +48,6 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
   @classmethod
   def setUpClass(cls):  # pylint: disable=invalid-name
     super(KerasMnistTest, cls).setUpClass()
-    mnist_main.define_mnist_flags()
 
   def tearDown(self):
     super(KerasMnistTest, self).tearDown()
@@ -58,7 +58,8 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
     """Test Keras MNIST model with `strategy`."""
 
     extra_flags = [
-        "-train_epochs", "1",
+        "-train_epochs",
+        "1",
         # Let TFDS find the metadata folder automatically
         "--data_dir="
     ]
@@ -72,14 +73,15 @@ class KerasMnistTest(tf.test.TestCase, parameterized.TestCase):
         tf.data.Dataset.from_tensor_slices(dummy_data),
     )
 
-    run = functools.partial(mnist_main.run,
-                            datasets_override=datasets,
-                            strategy_override=distribution)
+    run = functools.partial(
+        mnist_main.run,
+        datasets_override=datasets,
+        strategy_override=distribution)
 
     integration.run_synthetic(
         main=run,
         synth=False,
-        tmp_root=self.get_temp_dir(),
+        tmp_root=self.create_tempdir().full_path,
         extra_flags=extra_flags)
 
 

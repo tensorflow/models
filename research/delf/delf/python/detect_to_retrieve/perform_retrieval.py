@@ -1,3 +1,4 @@
+# Lint as: python3
 # Copyright 2019 The TensorFlow Authors All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +24,15 @@ import os
 import sys
 import time
 
+from absl import app
 import numpy as np
 import tensorflow as tf
 
 from google.protobuf import text_format
-from tensorflow.python.platform import app
 from delf import aggregation_config_pb2
 from delf import datum_io
 from delf import feature_aggregation_similarity
-from delf.python.detect_to_retrieve import dataset
+from delf.python.datasets.revisited_op import dataset
 from delf.python.detect_to_retrieve import image_reranking
 
 cmd_args = None

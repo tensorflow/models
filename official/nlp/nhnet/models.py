@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,27 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""tf.keras Models for NHNet."""
 
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+"""tf.keras Models for NHNet."""
+from typing import Optional, Text
 
 from absl import logging
 import gin
 import tensorflow as tf
-from typing import Optional, Text
 
 from official.modeling import tf_utils
 from official.modeling.hyperparams import params_dict
 from official.nlp.modeling import networks
 from official.nlp.modeling.layers import multi_channel_attention
+from official.nlp.modeling.ops import beam_search
 from official.nlp.nhnet import configs
 from official.nlp.nhnet import decoder
 from official.nlp.nhnet import utils
-from official.nlp.transformer import beam_search
 
 
 def embedding_linear(embedding_matrix, x):
@@ -404,7 +399,7 @@ def get_bert2bert_layers(params: configs.BERT2BERTConfig):
   target_ids = tf.keras.layers.Input(
       shape=(None,), name="target_ids", dtype=tf.int32)
   bert_config = utils.get_bert_config_from_params(params)
-  bert_model_layer = networks.TransformerEncoder(
+  bert_model_layer = networks.BertEncoder(
       vocab_size=bert_config.vocab_size,
       hidden_size=bert_config.hidden_size,
       num_layers=bert_config.num_hidden_layers,
@@ -413,7 +408,6 @@ def get_bert2bert_layers(params: configs.BERT2BERTConfig):
       activation=tf_utils.get_activation(bert_config.hidden_act),
       dropout_rate=bert_config.hidden_dropout_prob,
       attention_dropout_rate=bert_config.attention_probs_dropout_prob,
-      sequence_length=None,
       max_sequence_length=bert_config.max_position_embeddings,
       type_vocab_size=bert_config.type_vocab_size,
       initializer=tf.keras.initializers.TruncatedNormal(
@@ -455,7 +449,7 @@ def get_nhnet_layers(params: configs.NHNetConfig):
   segment_ids = tf.keras.layers.Input(
       shape=(None,), name="segment_ids", dtype=tf.int32)
   bert_config = utils.get_bert_config_from_params(params)
-  bert_model_layer = networks.TransformerEncoder(
+  bert_model_layer = networks.BertEncoder(
       vocab_size=bert_config.vocab_size,
       hidden_size=bert_config.hidden_size,
       num_layers=bert_config.num_hidden_layers,
@@ -584,7 +578,6 @@ def create_model(model_type: Text,
   elif model_type == "nhnet":
     return create_nhnet_model(params, init_checkpoint=init_checkpoint)
   elif "transformer" in model_type:
-    return create_transformer_model(
-        params, init_checkpoint=init_checkpoint)
+    return create_transformer_model(params, init_checkpoint=init_checkpoint)
   else:
     raise KeyError("The model type is not defined: %s" % model_type)

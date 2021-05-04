@@ -17,6 +17,9 @@
 
 import functools
 import sys
+
+from absl import logging
+
 from object_detection.builders import anchor_generator_builder
 from object_detection.builders import box_coder_builder
 from object_detection.builders import box_predictor_builder
@@ -39,6 +42,7 @@ from object_detection.protos import losses_pb2
 from object_detection.protos import model_pb2
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
+from object_detection.utils import spatial_transform_ops as spatial_ops
 from object_detection.utils import tf_version
 
 ## Feature Extractors for TF
@@ -48,6 +52,8 @@ from object_detection.utils import tf_version
 # pylint: disable=g-import-not-at-top
 if tf_version.is_tf2():
   from object_detection.models import center_net_hourglass_feature_extractor
+  from object_detection.models import center_net_mobilenet_v2_feature_extractor
+  from object_detection.models import center_net_mobilenet_v2_fpn_feature_extractor
   from object_detection.models import center_net_resnet_feature_extractor
   from object_detection.models import center_net_resnet_v1_fpn_feature_extractor
   from object_detection.models import faster_rcnn_inception_resnet_v2_keras_feature_extractor as frcnn_inc_res_keras
@@ -138,13 +144,34 @@ if tf_version.is_tf2():
   }
 
   CENTER_NET_EXTRACTOR_FUNCTION_MAP = {
-      'resnet_v2_50': center_net_resnet_feature_extractor.resnet_v2_50,
-      'resnet_v2_101': center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v2_50':
+          center_net_resnet_feature_extractor.resnet_v2_50,
+      'resnet_v2_101':
+          center_net_resnet_feature_extractor.resnet_v2_101,
+      'resnet_v1_18_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_18_fpn,
+      'resnet_v1_34_fpn':
+          center_net_resnet_v1_fpn_feature_extractor.resnet_v1_34_fpn,
       'resnet_v1_50_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_50_fpn,
       'resnet_v1_101_fpn':
           center_net_resnet_v1_fpn_feature_extractor.resnet_v1_101_fpn,
-      'hourglass_104': center_net_hourglass_feature_extractor.hourglass_104,
+      'hourglass_10':
+          center_net_hourglass_feature_extractor.hourglass_10,
+      'hourglass_20':
+          center_net_hourglass_feature_extractor.hourglass_20,
+      'hourglass_32':
+          center_net_hourglass_feature_extractor.hourglass_32,
+      'hourglass_52':
+          center_net_hourglass_feature_extractor.hourglass_52,
+      'hourglass_104':
+          center_net_hourglass_feature_extractor.hourglass_104,
+      'mobilenet_v2':
+          center_net_mobilenet_v2_feature_extractor.mobilenet_v2,
+      'mobilenet_v2_fpn':
+          center_net_mobilenet_v2_fpn_feature_extractor.mobilenet_v2_fpn,
+      'mobilenet_v2_fpn_sep_conv':
+          center_net_mobilenet_v2_fpn_feature_extractor.mobilenet_v2_fpn,
   }
 
   FEATURE_EXTRACTOR_MAPS = [
@@ -220,9 +247,12 @@ if tf_version.is_tf1():
       frcnn_resnet_v1.FasterRCNNResnet152FeatureExtractor,
   }
 
+  CENTER_NET_EXTRACTOR_FUNCTION_MAP = {}
+
   FEATURE_EXTRACTOR_MAPS = [
       SSD_FEATURE_EXTRACTOR_CLASS_MAP,
-      FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP
+      FASTER_RCNN_FEATURE_EXTRACTOR_CLASS_MAP,
+      CENTER_NET_EXTRACTOR_FUNCTION_MAP
   ]
 
 
@@ -515,9 +545,31 @@ def _build_faster_rcnn_keras_feature_extractor(
         feature_type))
   feature_extractor_class = FASTER_RCNN_KERAS_FEATURE_EXTRACTOR_CLASS_MAP[
       feature_type]
+
+  kwargs = {}
+
+  if feature_extractor_config.HasField('conv_hyperparams'):
+    kwargs.update({
+        'conv_hyperparams':
+            hyperparams_builder.KerasLayerHyperparams(
+                feature_extractor_config.conv_hyperparams),
+        'override_base_feature_extractor_hyperparams':
+            feature_extractor_config.override_base_feature_extractor_hyperparams
+    })
+
+  if feature_extractor_config.HasField('fpn'):
+    kwargs.update({
+        'fpn_min_level':
+            feature_extractor_config.fpn.min_level,
+        'fpn_max_level':
+            feature_extractor_config.fpn.max_level,
+        'additional_layer_depth':
+            feature_extractor_config.fpn.additional_layer_depth,
+    })
+
   return feature_extractor_class(
       is_training, first_stage_features_stride,
-      batch_norm_trainable)
+      batch_norm_trainable, **kwargs)
 
 
 def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
@@ -648,8 +700,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         second_stage_localization_loss_weight)
 
   crop_and_resize_fn = (
-      ops.matmul_crop_and_resize if frcnn_config.use_matmul_crop_and_resize
-      else ops.native_crop_and_resize)
+      spatial_ops.multilevel_matmul_crop_and_resize
+      if frcnn_config.use_matmul_crop_and_resize
+      else spatial_ops.multilevel_native_crop_and_resize)
   clip_anchors_to_image = (
       frcnn_config.clip_anchors_to_image)
 
@@ -719,7 +772,9 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
       'return_raw_detections_during_predict':
           frcnn_config.return_raw_detections_during_predict,
       'output_final_box_features':
-          frcnn_config.output_final_box_features
+          frcnn_config.output_final_box_features,
+      'output_final_box_rpn_features':
+          frcnn_config.output_final_box_rpn_features,
   }
 
   if ((not is_keras and isinstance(second_stage_box_predictor,
@@ -736,7 +791,19 @@ def _build_faster_rcnn_model(frcnn_config, is_training, add_summaries):
         'attention_bottleneck_dimension':
             context_config.attention_bottleneck_dimension,
         'attention_temperature':
-            context_config.attention_temperature
+            context_config.attention_temperature,
+        'use_self_attention':
+            context_config.use_self_attention,
+        'use_long_term_attention':
+            context_config.use_long_term_attention,
+        'self_attention_in_sequence':
+            context_config.self_attention_in_sequence,
+        'num_attention_heads':
+            context_config.num_attention_heads,
+        'num_attention_layers':
+            context_config.num_attention_layers,
+        'attention_position':
+            context_config.attention_position
     })
     return context_rcnn_meta_arch.ContextRCNNMetaArch(
         initial_crop_size=initial_crop_size,
@@ -792,6 +859,25 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
     for label, value in kp_config.keypoint_label_to_std.items():
       keypoint_std_dev_dict[label] = value
   keypoint_std_dev = [keypoint_std_dev_dict[label] for label in keypoint_labels]
+  if kp_config.HasField('heatmap_head_params'):
+    heatmap_head_num_filters = list(kp_config.heatmap_head_params.num_filters)
+    heatmap_head_kernel_sizes = list(kp_config.heatmap_head_params.kernel_sizes)
+  else:
+    heatmap_head_num_filters = [256]
+    heatmap_head_kernel_sizes = [3]
+  if kp_config.HasField('offset_head_params'):
+    offset_head_num_filters = list(kp_config.offset_head_params.num_filters)
+    offset_head_kernel_sizes = list(kp_config.offset_head_params.kernel_sizes)
+  else:
+    offset_head_num_filters = [256]
+    offset_head_kernel_sizes = [3]
+  if kp_config.HasField('regress_head_params'):
+    regress_head_num_filters = list(kp_config.regress_head_params.num_filters)
+    regress_head_kernel_sizes = list(
+        kp_config.regress_head_params.kernel_sizes)
+  else:
+    regress_head_num_filters = [256]
+    regress_head_kernel_sizes = [3]
   return center_net_meta_arch.KeypointEstimationParams(
       task_name=kp_config.task_name,
       class_id=label_map_item.id - CLASS_ID_OFFSET,
@@ -814,7 +900,19 @@ def keypoint_proto_to_params(kp_config, keypoint_map_dict):
       candidate_search_scale=kp_config.candidate_search_scale,
       candidate_ranking_mode=kp_config.candidate_ranking_mode,
       offset_peak_radius=kp_config.offset_peak_radius,
-      per_keypoint_offset=kp_config.per_keypoint_offset)
+      per_keypoint_offset=kp_config.per_keypoint_offset,
+      predict_depth=kp_config.predict_depth,
+      per_keypoint_depth=kp_config.per_keypoint_depth,
+      keypoint_depth_loss_weight=kp_config.keypoint_depth_loss_weight,
+      score_distance_offset=kp_config.score_distance_offset,
+      clip_out_of_frame_keypoints=kp_config.clip_out_of_frame_keypoints,
+      rescore_instances=kp_config.rescore_instances,
+      heatmap_head_num_filters=heatmap_head_num_filters,
+      heatmap_head_kernel_sizes=heatmap_head_kernel_sizes,
+      offset_head_num_filters=offset_head_num_filters,
+      offset_head_kernel_sizes=offset_head_kernel_sizes,
+      regress_head_num_filters=regress_head_num_filters,
+      regress_head_kernel_sizes=regress_head_kernel_sizes)
 
 
 def object_detection_proto_to_params(od_config):
@@ -844,13 +942,26 @@ def object_center_proto_to_params(oc_config):
       losses_pb2.WeightedL2LocalizationLoss())
   loss.classification_loss.CopyFrom(oc_config.classification_loss)
   classification_loss, _, _, _, _, _, _ = (losses_builder.build(loss))
+  keypoint_weights_for_center = []
+  if oc_config.keypoint_weights_for_center:
+    keypoint_weights_for_center = list(oc_config.keypoint_weights_for_center)
+
+  if oc_config.HasField('center_head_params'):
+    center_head_num_filters = list(oc_config.center_head_params.num_filters)
+    center_head_kernel_sizes = list(oc_config.center_head_params.kernel_sizes)
+  else:
+    center_head_num_filters = [256]
+    center_head_kernel_sizes = [3]
   return center_net_meta_arch.ObjectCenterParams(
       classification_loss=classification_loss,
       object_center_loss_weight=oc_config.object_center_loss_weight,
       heatmap_bias_init=oc_config.heatmap_bias_init,
       min_box_overlap_iou=oc_config.min_box_overlap_iou,
       max_box_predictions=oc_config.max_box_predictions,
-      use_labeled_classes=oc_config.use_labeled_classes)
+      use_labeled_classes=oc_config.use_labeled_classes,
+      keypoint_weights_for_center=keypoint_weights_for_center,
+      center_head_num_filters=center_head_num_filters,
+      center_head_kernel_sizes=center_head_kernel_sizes)
 
 
 def mask_proto_to_params(mask_config):
@@ -886,6 +997,39 @@ def densepose_proto_to_params(densepose_config):
       heatmap_bias_init=densepose_config.heatmap_bias_init)
 
 
+def tracking_proto_to_params(tracking_config):
+  """Converts CenterNet.TrackEstimation proto to parameter namedtuple."""
+  loss = losses_pb2.Loss()
+  # Add dummy localization loss to avoid the loss_builder throwing error.
+  # TODO(yuhuic): update the loss builder to take the localization loss
+  # directly.
+  loss.localization_loss.weighted_l2.CopyFrom(
+      losses_pb2.WeightedL2LocalizationLoss())
+  loss.classification_loss.CopyFrom(tracking_config.classification_loss)
+  classification_loss, _, _, _, _, _, _ = losses_builder.build(loss)
+  return center_net_meta_arch.TrackParams(
+      num_track_ids=tracking_config.num_track_ids,
+      reid_embed_size=tracking_config.reid_embed_size,
+      classification_loss=classification_loss,
+      num_fc_layers=tracking_config.num_fc_layers,
+      task_loss_weight=tracking_config.task_loss_weight)
+
+
+def temporal_offset_proto_to_params(temporal_offset_config):
+  """Converts CenterNet.TemporalOffsetEstimation proto to param-tuple."""
+  loss = losses_pb2.Loss()
+  # Add dummy classification loss to avoid the loss_builder throwing error.
+  # TODO(yuhuic): update the loss builder to take the classification loss
+  # directly.
+  loss.classification_loss.weighted_sigmoid.CopyFrom(
+      losses_pb2.WeightedSigmoidClassificationLoss())
+  loss.localization_loss.CopyFrom(temporal_offset_config.localization_loss)
+  _, localization_loss, _, _, _, _, _ = losses_builder.build(loss)
+  return center_net_meta_arch.TemporalOffsetParams(
+      localization_loss=localization_loss,
+      task_loss_weight=temporal_offset_config.task_loss_weight)
+
+
 def _build_center_net_model(center_net_config, is_training, add_summaries):
   """Build a CenterNet detection model.
 
@@ -903,7 +1047,7 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       center_net_config.image_resizer)
   _check_feature_extractor_exists(center_net_config.feature_extractor.type)
   feature_extractor = _build_center_net_feature_extractor(
-      center_net_config.feature_extractor)
+      center_net_config.feature_extractor, is_training)
   object_center_params = object_center_proto_to_params(
       center_net_config.object_center_params)
 
@@ -943,6 +1087,20 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
     densepose_params = densepose_proto_to_params(
         center_net_config.densepose_estimation_task)
 
+  track_params = None
+  if center_net_config.HasField('track_estimation_task'):
+    track_params = tracking_proto_to_params(
+        center_net_config.track_estimation_task)
+
+  temporal_offset_params = None
+  if center_net_config.HasField('temporal_offset_task'):
+    temporal_offset_params = temporal_offset_proto_to_params(
+        center_net_config.temporal_offset_task)
+  non_max_suppression_fn = None
+  if center_net_config.HasField('post_processing'):
+    non_max_suppression_fn, _ = post_processing_builder.build(
+        center_net_config.post_processing)
+
   return center_net_meta_arch.CenterNetMetaArch(
       is_training=is_training,
       add_summaries=add_summaries,
@@ -953,22 +1111,35 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
       object_detection_params=object_detection_params,
       keypoint_params_dict=keypoint_params_dict,
       mask_params=mask_params,
-      densepose_params=densepose_params)
+      densepose_params=densepose_params,
+      track_params=track_params,
+      temporal_offset_params=temporal_offset_params,
+      use_depthwise=center_net_config.use_depthwise,
+      compute_heatmap_sparse=center_net_config.compute_heatmap_sparse,
+      non_max_suppression_fn=non_max_suppression_fn)
 
 
-def _build_center_net_feature_extractor(
-    feature_extractor_config):
+def _build_center_net_feature_extractor(feature_extractor_config, is_training):
   """Build a CenterNet feature extractor from the given config."""
 
   if feature_extractor_config.type not in CENTER_NET_EXTRACTOR_FUNCTION_MAP:
     raise ValueError('\'{}\' is not a known CenterNet feature extractor type'
                      .format(feature_extractor_config.type))
+  # For backwards compatibility:
+  use_separable_conv = (
+      feature_extractor_config.use_separable_conv or
+      feature_extractor_config.type == 'mobilenet_v2_fpn_sep_conv')
+  kwargs = {
+      'channel_means': list(feature_extractor_config.channel_means),
+      'channel_stds': list(feature_extractor_config.channel_stds),
+      'bgr_ordering': feature_extractor_config.bgr_ordering,
+      'depth_multiplier': feature_extractor_config.depth_multiplier,
+      'use_separable_conv': use_separable_conv,
+  }
+
 
   return CENTER_NET_EXTRACTOR_FUNCTION_MAP[feature_extractor_config.type](
-      channel_means=list(feature_extractor_config.channel_means),
-      channel_stds=list(feature_extractor_config.channel_stds),
-      bgr_ordering=feature_extractor_config.bgr_ordering
-  )
+      **kwargs)
 
 
 META_ARCH_BUILDER_MAP = {

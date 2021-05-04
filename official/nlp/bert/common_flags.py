@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Defining common flags used across all BERT models/applications."""
 
 from absl import flags
@@ -73,9 +73,22 @@ def define_common_bert_flags():
       'If specified, init_checkpoint flag should not be used.')
   flags.DEFINE_bool('hub_module_trainable', True,
                     'True to make keras layers in the hub module trainable.')
-  flags.DEFINE_string('sub_model_export_name', None,
-                      'If set, `sub_model` checkpoints are exported into '
-                      'FLAGS.model_dir/FLAGS.sub_model_export_name.')
+  flags.DEFINE_string(
+      'sub_model_export_name', None,
+      'If set, `sub_model` checkpoints are exported into '
+      'FLAGS.model_dir/FLAGS.sub_model_export_name.')
+  flags.DEFINE_bool('explicit_allreduce', False,
+                    'True to use explicit allreduce instead of the implicit '
+                    'allreduce in optimizer.apply_gradients(). If fp16 mixed '
+                    'precision training is used, this also enables allreduce '
+                    'gradients in fp16.')
+  flags.DEFINE_integer('allreduce_bytes_per_pack', 0,
+                       'Number of bytes of a gradient pack for allreduce. '
+                       'Should be positive integer, if set to 0, all '
+                       'gradients are in one pack. Breaking gradient into '
+                       'packs could enable overlap between allreduce and '
+                       'backprop computation. This flag only takes effect '
+                       'when explicit_allreduce is set to True.')
 
   flags_core.define_log_steps()
 
@@ -87,7 +100,6 @@ def define_common_bert_flags():
       synthetic_data=False,
       max_train_steps=False,
       dtype=True,
-      dynamic_loss_scale=True,
       loss_scale=True,
       all_reduce_alg=True,
       num_packs=False,

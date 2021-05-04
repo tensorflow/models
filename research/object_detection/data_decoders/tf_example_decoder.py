@@ -124,40 +124,6 @@ class _ClassTensorHandler(slim_example_decoder.Tensor):
                       self._display_name_to_id_table.lookup(unmapped_tensor))
 
 
-class _BackupHandler(slim_example_decoder.ItemHandler):
-  """An ItemHandler that tries two ItemHandlers in order."""
-
-  def __init__(self, handler, backup):
-    """Initializes the BackupHandler handler.
-
-    If the first Handler's tensors_to_item returns a Tensor with no elements,
-    the second Handler is used.
-
-    Args:
-      handler: The primary ItemHandler.
-      backup: The backup ItemHandler.
-
-    Raises:
-      ValueError: if either is not an ItemHandler.
-    """
-    if not isinstance(handler, slim_example_decoder.ItemHandler):
-      raise ValueError('Primary handler is of type %s instead of ItemHandler' %
-                       type(handler))
-    if not isinstance(backup, slim_example_decoder.ItemHandler):
-      raise ValueError(
-          'Backup handler is of type %s instead of ItemHandler' % type(backup))
-    self._handler = handler
-    self._backup = backup
-    super(_BackupHandler, self).__init__(handler.keys + backup.keys)
-
-  def tensors_to_item(self, keys_to_tensors):
-    item = self._handler.tensors_to_item(keys_to_tensors)
-    return tf.cond(
-        pred=tf.equal(tf.reduce_prod(tf.shape(item)), 0),
-        true_fn=lambda: self._backup.tensors_to_item(keys_to_tensors),
-        false_fn=lambda: item)
-
-
 class TfExampleDecoder(data_decoder.DataDecoder):
   """Tensorflow Example proto decoder."""
 
@@ -172,7 +138,9 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                load_multiclass_scores=False,
                load_context_features=False,
                expand_hierarchy_labels=False,
-               load_dense_pose=False):
+               load_dense_pose=False,
+               load_track_id=False,
+               load_keypoint_depth_features=False):
     """Constructor sets keys_to_features and items_to_handlers.
 
     Args:
@@ -204,6 +172,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         classes, the labels are extended to ancestor. For negative classes,
         the labels are expanded to descendants.
       load_dense_pose: Whether to load DensePose annotations.
+      load_track_id: Whether to load tracking annotations.
+      load_keypoint_depth_features: Whether to load the keypoint depth features
+        including keypoint relative depths and weights. If this field is set to
+        True but no keypoint depth features are in the input tf.Example, then
+        default values will be populated.
 
     Raises:
       ValueError: If `instance_mask_type` option is not one of
@@ -212,6 +185,7 @@ class TfExampleDecoder(data_decoder.DataDecoder):
       ValueError: If `expand_labels_hierarchy` is True, but the
         `label_map_proto_file` is not provided.
     """
+
     # TODO(rathodv): delete unused `use_display_name` argument once we change
     # other decoders to handle label maps similarly.
     del use_display_name
@@ -234,6 +208,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         'image/class/text':
             tf.VarLenFeature(tf.string),
         'image/class/label':
+            tf.VarLenFeature(tf.int64),
+        'image/neg_category_ids':
+            tf.VarLenFeature(tf.int64),
+        'image/not_exhaustive_category_ids':
             tf.VarLenFeature(tf.int64),
         'image/class/confidence':
             tf.VarLenFeature(tf.float32),
@@ -296,6 +274,10 @@ class TfExampleDecoder(data_decoder.DataDecoder):
         # Image-level labels.
         fields.InputDataFields.groundtruth_image_confidences: (
             slim_example_decoder.Tensor('image/class/confidence')),
+        fields.InputDataFields.groundtruth_verified_neg_classes: (
+            slim_example_decoder.Tensor('image/neg_category_ids')),
+        fields.InputDataFields.groundtruth_not_exhaustive_classes: (
+            slim_example_decoder.Tensor('image/not_exhaustive_category_ids')),
         # Object boxes and classes.
         fields.InputDataFields.groundtruth_boxes: (
             slim_example_decoder.BoundingBox(['ymin', 'xmin', 'ymax', 'xmax'],
@@ -355,6 +337,23 @@ class TfExampleDecoder(data_decoder.DataDecoder):
           slim_example_decoder.ItemHandlerCallback(
               ['image/object/keypoint/x', 'image/object/keypoint/visibility'],
               self._reshape_keypoint_visibilities))
+      if load_keypoint_depth_features:
+        self.keys_to_features['image/object/keypoint/z'] = (
+            tf.VarLenFeature(tf.float32))
+        self.keys_to_features['image/object/keypoint/z/weights'] = (
+            tf.VarLenFeature(tf.float32))
+        self.items_to_handlers[
+            fields.InputDataFields.groundtruth_keypoint_depths] = (
+                slim_example_decoder.ItemHandlerCallback(
+                    ['image/object/keypoint/x', 'image/object/keypoint/z'],
+                    self._reshape_keypoint_depths))
+        self.items_to_handlers[
+            fields.InputDataFields.groundtruth_keypoint_depth_weights] = (
+                slim_example_decoder.ItemHandlerCallback(
+                    ['image/object/keypoint/x',
+                     'image/object/keypoint/z/weights'],
+                    self._reshape_keypoint_depth_weights))
+
     if load_instance_masks:
       if instance_mask_type in (input_reader_pb2.DEFAULT,
                                 input_reader_pb2.NUMERICAL_MASKS):
@@ -401,16 +400,22 @@ class TfExampleDecoder(data_decoder.DataDecoder):
                    'image/object/densepose/u', 'image/object/densepose/v',
                    'image/object/densepose/num'],
                   self._dense_pose_surface_coordinates))
+    if load_track_id:
+      self.keys_to_features['image/object/track/label'] = (
+          tf.VarLenFeature(tf.int64))
+      self.items_to_handlers[
+          fields.InputDataFields.groundtruth_track_ids] = (
+              slim_example_decoder.Tensor('image/object/track/label'))
 
     if label_map_proto_file:
       # If the label_map_proto is provided, try to use it in conjunction with
       # the class text, and fall back to a materialized ID.
-      label_handler = _BackupHandler(
+      label_handler = slim_example_decoder.BackupHandler(
           _ClassTensorHandler(
               'image/object/class/text', label_map_proto_file,
               default_value=''),
           slim_example_decoder.Tensor('image/object/class/label'))
-      image_label_handler = _BackupHandler(
+      image_label_handler = slim_example_decoder.BackupHandler(
           _ClassTensorHandler(
               fields.TfExampleFields.image_class_text,
               label_map_proto_file,
@@ -586,6 +591,11 @@ class TfExampleDecoder(data_decoder.DataDecoder):
           tensor_dict[fields.InputDataFields.groundtruth_dp_part_ids],
           dtype=tf.int32)
 
+    if fields.InputDataFields.groundtruth_track_ids in tensor_dict:
+      tensor_dict[fields.InputDataFields.groundtruth_track_ids] = tf.cast(
+          tensor_dict[fields.InputDataFields.groundtruth_track_ids],
+          dtype=tf.int32)
+
     return tensor_dict
 
   def _reshape_keypoints(self, keys_to_tensors):
@@ -613,6 +623,73 @@ class TfExampleDecoder(data_decoder.DataDecoder):
     keypoints = tf.concat([y, x], 1)
     keypoints = tf.reshape(keypoints, [-1, self._num_keypoints, 2])
     return keypoints
+
+  def _reshape_keypoint_depths(self, keys_to_tensors):
+    """Reshape keypoint depths.
+
+    The keypoint depths are reshaped to [num_instances, num_keypoints]. The
+    keypoint depth tensor is expected to have the same shape as the keypoint x
+    (or y) tensors. If not (usually because the example does not have the depth
+    groundtruth), then default depth values (zero) are provided.
+
+    Args:
+      keys_to_tensors: a dictionary from keys to tensors. Expected keys are:
+        'image/object/keypoint/x'
+        'image/object/keypoint/z'
+
+    Returns:
+      A 2-D float tensor of shape [num_instances, num_keypoints] with values
+        representing the keypoint depths.
+    """
+    x = keys_to_tensors['image/object/keypoint/x']
+    z = keys_to_tensors['image/object/keypoint/z']
+    if isinstance(z, tf.SparseTensor):
+      z = tf.sparse_tensor_to_dense(z)
+    if isinstance(x, tf.SparseTensor):
+      x = tf.sparse_tensor_to_dense(x)
+
+    default_z = tf.zeros_like(x)
+    # Use keypoint depth groundtruth if provided, otherwise use the default
+    # depth value.
+    z = tf.cond(tf.equal(tf.size(x), tf.size(z)),
+                true_fn=lambda: z,
+                false_fn=lambda: default_z)
+    z = tf.reshape(z, [-1, self._num_keypoints])
+    return z
+
+  def _reshape_keypoint_depth_weights(self, keys_to_tensors):
+    """Reshape keypoint depth weights.
+
+    The keypoint depth weights are reshaped to [num_instances, num_keypoints].
+    The keypoint depth weights tensor is expected to have the same shape as the
+    keypoint x (or y) tensors. If not (usually because the example does not have
+    the depth weights groundtruth), then default weight values (zero) are
+    provided.
+
+    Args:
+      keys_to_tensors: a dictionary from keys to tensors. Expected keys are:
+        'image/object/keypoint/x'
+        'image/object/keypoint/z/weights'
+
+    Returns:
+      A 2-D float tensor of shape [num_instances, num_keypoints] with values
+        representing the keypoint depth weights.
+    """
+    x = keys_to_tensors['image/object/keypoint/x']
+    z = keys_to_tensors['image/object/keypoint/z/weights']
+    if isinstance(z, tf.SparseTensor):
+      z = tf.sparse_tensor_to_dense(z)
+    if isinstance(x, tf.SparseTensor):
+      x = tf.sparse_tensor_to_dense(x)
+
+    default_z = tf.zeros_like(x)
+    # Use keypoint depth weights if provided, otherwise use the default
+    # values.
+    z = tf.cond(tf.equal(tf.size(x), tf.size(z)),
+                true_fn=lambda: z,
+                false_fn=lambda: default_z)
+    z = tf.reshape(z, [-1, self._num_keypoints])
+    return z
 
   def _reshape_keypoint_visibilities(self, keys_to_tensors):
     """Reshape keypoint visibilities.

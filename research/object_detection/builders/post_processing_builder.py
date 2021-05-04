@@ -103,7 +103,8 @@ def _build_non_max_suppressor(nms_config):
       use_partitioned_nms=nms_config.use_partitioned_nms,
       use_combined_nms=nms_config.use_combined_nms,
       change_coordinate_frame=nms_config.change_coordinate_frame,
-      use_hard_nms=nms_config.use_hard_nms)
+      use_hard_nms=nms_config.use_hard_nms,
+      use_cpu_nms=nms_config.use_cpu_nms)
 
   return non_max_suppressor_fn
 

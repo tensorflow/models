@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Tests for classification network."""
 
 from __future__ import absolute_import
@@ -92,8 +92,8 @@ class ClassificationTest(keras_parameterized.TestCase):
     self.assertAllClose(outputs, calculated_softmax)
 
   @parameterized.parameters(1, 10)
-  def test_network_invocation_with_internal_and_external_logits(self,
-                                                                num_classes):
+  def test_network_invocation_with_internal_and_external_logits(
+      self, num_classes):
     """Validate that the logit outputs are correct."""
     input_width = 512
     test_object = classification.Classification(

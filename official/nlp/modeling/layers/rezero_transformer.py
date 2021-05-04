@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,18 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Keras-based rezero-transformer block layer (Transformer with ReZero)."""
 # pylint: disable=g-classes-have-attributes
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
 
 import gin
 import tensorflow as tf
-
-from official.nlp.modeling.layers import attention
 
 
 @tf.keras.utils.register_keras_serializable(package="Text")
@@ -35,7 +29,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
   The residual connection implements the ReZero method.
   (https://arxiv.org/abs/2003.04887)
 
-  Arguments:
+  Args:
     num_attention_heads: Number of attention heads.
     intermediate_size: Size of the intermediate layer.
     intermediate_activation: Activation for the intermediate layer.
@@ -88,7 +82,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
   def build(self, input_shape):
     input_tensor = input_shape[0] if len(input_shape) == 2 else input_shape
     input_tensor_shape = tf.TensorShape(input_tensor)
-    if len(input_tensor_shape) != 3:
+    if len(input_tensor_shape.as_list()) != 3:
       raise ValueError("TransformerLayer expects a three-dimensional input of "
                        "shape [batch, sequence, width].")
     batch_size, sequence_length, hidden_size = input_tensor_shape
@@ -116,9 +110,9 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         activity_regularizer=self._activity_regularizer,
         kernel_constraint=self._kernel_constraint,
         bias_constraint=self._bias_constraint)
-    self._attention_layer = attention.MultiHeadAttention(
+    self._attention_layer = tf.keras.layers.MultiHeadAttention(
         num_heads=self._num_heads,
-        key_size=self._attention_head_size,
+        key_dim=self._attention_head_size,
         dropout=self._attention_dropout_rate,
         name="self_attention",
         **common_kwargs)
@@ -138,7 +132,7 @@ class ReZeroTransformer(tf.keras.layers.Layer):
         bias_axes="d",
         name="intermediate",
         **common_kwargs)
-    policy = tf.keras.mixed_precision.experimental.global_policy()
+    policy = tf.keras.mixed_precision.global_policy()
     if policy.name == "mixed_bfloat16":
       # bfloat16 causes BERT with the LAMB optimizer to not converge
       # as well, so we use float32.
@@ -161,7 +155,8 @@ class ReZeroTransformer(tf.keras.layers.Layer):
     self._rezero_a = self.add_weight(
         name="rezero_alpha",
         initializer=tf.keras.initializers.Zeros(),
-        trainable=True, dtype=tf.float32)
+        trainable=True,
+        dtype=tf.float32)
 
     super(ReZeroTransformer, self).build(input_shape)
 
@@ -213,9 +208,9 @@ class ReZeroTransformer(tf.keras.layers.Layer):
       attention_mask = attention_mask[:, 0:self._output_range, :]
     else:
       target_tensor = input_tensor
-    attention_inputs = [target_tensor, input_tensor]
 
-    attention_output = self._attention_layer(attention_inputs, attention_mask)
+    attention_output = self._attention_layer(
+        query=target_tensor, value=input_tensor, attention_mask=attention_mask)
     attention_output = self._attention_dropout(attention_output)
     attention_output = target_tensor + self._rezero_a * attention_output
     if self._use_layer_norm:

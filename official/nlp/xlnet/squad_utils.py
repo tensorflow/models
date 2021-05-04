@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 # coding=utf-8
 """Utilities used in SQUAD task."""
 from __future__ import absolute_import
@@ -656,7 +656,7 @@ def convert_examples_to_features(examples, sp_model, max_seq_length, doc_stride,
       assert tok_start_position <= tok_end_position
 
     def _piece_to_id(x):
-      if six.PY2 and isinstance(x, unicode):
+      if six.PY2 and isinstance(x, unicode):  # pylint: disable=undefined-variable
         x = x.encode("utf-8")
       return sp_model.PieceToId(x)
 

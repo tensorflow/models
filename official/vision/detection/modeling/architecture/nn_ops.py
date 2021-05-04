@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Neural network operations commonly shared by the architectures."""
 
 from __future__ import absolute_import
@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+
 import tensorflow as tf
 
 
@@ -43,7 +44,7 @@ class NormActivation(tf.keras.layers.Layer):
         GraphKeys.TRAINABLE_VARIABLES. If False, freeze batch normalization
         layer.
       init_zero: `bool` if True, initializes scale parameter of batch
-          normalization with 0. If False, initialize it with 1.
+        normalization with 0. If False, initialize it with 1.
       fused: `bool` fused option in batch normalziation.
       use_actiation: `bool`, whether to add the optional activation layer after
         the batch normalization layer.

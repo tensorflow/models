@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """BERT library to process data for cross lingual sentence retrieval task."""
 
 import os
@@ -25,8 +25,7 @@ class BuccProcessor(classifier_data_lib.DataProcessor):
   """Procssor for Xtreme BUCC data set."""
   supported_languages = ["de", "fr", "ru", "zh"]
 
-  def __init__(self,
-               process_text_fn=tokenization.convert_to_unicode):
+  def __init__(self, process_text_fn=tokenization.convert_to_unicode):
     super(BuccProcessor, self).__init__(process_text_fn)
     self.languages = BuccProcessor.supported_languages
 
@@ -50,11 +49,11 @@ class BuccProcessor(classifier_data_lib.DataProcessor):
     examples = []
     for (i, line) in enumerate(lines):
       guid = "%s-%s" % (set_type, i)
-      int_iden = int(line[0].split("-")[1])
+      example_id = int(line[0].split("-")[1])
       text_a = self.process_text_fn(line[1])
       examples.append(
           classifier_data_lib.InputExample(
-              guid=guid, text_a=text_a, int_iden=int_iden))
+              guid=guid, text_a=text_a, example_id=example_id))
     return examples
 
 
@@ -66,8 +65,7 @@ class TatoebaProcessor(classifier_data_lib.DataProcessor):
       "nl", "pt", "ru", "sw", "ta", "te", "th", "tl", "tr", "ur", "vi", "zh"
   ]
 
-  def __init__(self,
-               process_text_fn=tokenization.convert_to_unicode):
+  def __init__(self, process_text_fn=tokenization.convert_to_unicode):
     super(TatoebaProcessor, self).__init__(process_text_fn)
     self.languages = TatoebaProcessor.supported_languages
 
@@ -88,7 +86,7 @@ class TatoebaProcessor(classifier_data_lib.DataProcessor):
       text_a = self.process_text_fn(line[0])
       examples.append(
           classifier_data_lib.InputExample(
-              guid=guid, text_a=text_a, int_iden=i))
+              guid=guid, text_a=text_a, example_id=i))
     return examples
 
 

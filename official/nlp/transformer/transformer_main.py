@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,24 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Train and evaluate the Transformer model.
 
 See README for description of setting the training schedule and evaluating the
 BLEU score.
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import tempfile
 
+# Import libraries
 from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
-
+from official.common import distribute_utils
 from official.modeling import performance
 from official.nlp.transformer import compute_bleu
 from official.nlp.transformer import data_pipeline
@@ -39,8 +37,8 @@ from official.nlp.transformer import transformer
 from official.nlp.transformer import translate
 from official.nlp.transformer.utils import tokenizer
 from official.utils.flags import core as flags_core
-from official.utils.misc import distribution_utils
 from official.utils.misc import keras_utils
+# pylint:disable=logging-format-interpolation
 
 INF = int(1e9)
 BLEU_DIR = "bleu"
@@ -159,8 +157,9 @@ class TransformerTask(object):
     params["enable_metrics_in_training"] = flags_obj.enable_metrics_in_training
     params["steps_between_evals"] = flags_obj.steps_between_evals
     params["enable_checkpointing"] = flags_obj.enable_checkpointing
+    params["save_weights_only"] = flags_obj.save_weights_only
 
-    self.distribution_strategy = distribution_utils.get_distribution_strategy(
+    self.distribution_strategy = distribute_utils.get_distribution_strategy(
         distribution_strategy=flags_obj.distribution_strategy,
         num_gpus=num_gpus,
         all_reduce_alg=flags_obj.all_reduce_alg,
@@ -177,15 +176,12 @@ class TransformerTask(object):
     else:
       logging.info("Not using any distribution strategy.")
 
-    performance.set_mixed_precision_policy(
-        params["dtype"],
-        flags_core.get_loss_scale(flags_obj, default_for_fp16="dynamic"))
+    performance.set_mixed_precision_policy(params["dtype"])
 
   @property
   def use_tpu(self):
     if self.distribution_strategy:
-      return isinstance(self.distribution_strategy,
-                        tf.distribute.experimental.TPUStrategy)
+      return isinstance(self.distribution_strategy, tf.distribute.TPUStrategy)
     return False
 
   def train(self):
@@ -196,7 +192,7 @@ class TransformerTask(object):
     keras_utils.set_session_config(enable_xla=flags_obj.enable_xla)
 
     _ensure_dir(flags_obj.model_dir)
-    with distribution_utils.get_strategy_scope(self.distribution_strategy):
+    with distribute_utils.get_strategy_scope(self.distribution_strategy):
       model = transformer.create_model(params, is_train=True)
       opt = self._create_optimizer()
 
@@ -212,10 +208,10 @@ class TransformerTask(object):
         train_loss_metric = tf.keras.metrics.Mean(
             "training_loss", dtype=tf.float32)
         if params["enable_tensorboard"]:
-          summary_writer = tf.compat.v2.summary.create_file_writer(
-              flags_obj.model_dir)
+          summary_writer = tf.summary.create_file_writer(
+              os.path.join(flags_obj.model_dir, "summary"))
         else:
-          summary_writer = tf.compat.v2.summary.create_noop_writer()
+          summary_writer = tf.summary.create_noop_writer()
         train_metrics = [train_loss_metric]
         if params["enable_metrics_in_training"]:
           train_metrics = train_metrics + model.metrics
@@ -226,12 +222,11 @@ class TransformerTask(object):
 
     if self.use_tpu:
       # Different from experimental_distribute_dataset,
-      # experimental_distribute_datasets_from_function requires
+      # distribute_datasets_from_function requires
       # per-replica/local batch size.
       params["batch_size"] /= self.distribution_strategy.num_replicas_in_sync
       train_ds = (
-          self.distribution_strategy
-          .experimental_distribute_datasets_from_function(
+          self.distribution_strategy.distribute_datasets_from_function(
               lambda ctx: data_pipeline.train_input_fn(params, ctx)))
     else:
       train_ds = data_pipeline.train_input_fn(params)
@@ -321,8 +316,8 @@ class TransformerTask(object):
 
           if params["enable_tensorboard"]:
             for metric_obj in train_metrics:
-              tf.compat.v2.summary.scalar(metric_obj.name, metric_obj.result(),
-                                          current_step)
+              tf.summary.scalar(metric_obj.name, metric_obj.result(),
+                                current_step)
               summary_writer.flush()
 
         for cb in callbacks:
@@ -375,7 +370,7 @@ class TransformerTask(object):
     # We only want to create the model under DS scope for TPU case.
     # When 'distribution_strategy' is None, a no-op DummyContextManager will
     # be used.
-    with distribution_utils.get_strategy_scope(distribution_strategy):
+    with distribute_utils.get_strategy_scope(distribution_strategy):
       if not self.predict_model:
         self.predict_model = transformer.create_model(self.params, False)
       self._load_weights_if_possible(
@@ -414,7 +409,7 @@ class TransformerTask(object):
       ckpt_full_path = os.path.join(cur_log_dir, "cp-{epoch:04d}.ckpt")
       callbacks.append(
           tf.keras.callbacks.ModelCheckpoint(
-              ckpt_full_path, save_weights_only=True))
+              ckpt_full_path, save_weights_only=params["save_weights_only"]))
     return callbacks
 
   def _load_weights_if_possible(self, model, init_weight_path=None):

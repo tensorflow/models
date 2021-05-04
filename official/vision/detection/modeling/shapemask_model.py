@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Model definition for the ShapeMask Model."""
 
 from __future__ import absolute_import
@@ -20,7 +20,6 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow.python.keras import backend
 from official.vision.detection.dataloader import anchor
 from official.vision.detection.dataloader import mode_keys
 from official.vision.detection.evaluation import factory as eval_factory
@@ -61,13 +60,11 @@ class ShapeMaskModel(base_model.Model):
         params.shapemask_loss.shape_prior_loss_weight)
     self._coarse_mask_loss_weight = (
         params.shapemask_loss.coarse_mask_loss_weight)
-    self._fine_mask_loss_weight = (
-        params.shapemask_loss.fine_mask_loss_weight)
+    self._fine_mask_loss_weight = (params.shapemask_loss.fine_mask_loss_weight)
 
     # Predict function.
     self._generate_detections_fn = postprocess_ops.MultilevelDetectionGenerator(
-        params.architecture.min_level,
-        params.architecture.max_level,
+        params.architecture.min_level, params.architecture.max_level,
         params.postprocess)
 
   def build_outputs(self, inputs, mode):
@@ -79,10 +76,8 @@ class ShapeMaskModel(base_model.Model):
     else:
       anchor_boxes = anchor.Anchor(
           self._params.architecture.min_level,
-          self._params.architecture.max_level,
-          self._params.anchor.num_scales,
-          self._params.anchor.aspect_ratios,
-          self._params.anchor.anchor_size,
+          self._params.architecture.max_level, self._params.anchor.num_scales,
+          self._params.anchor.aspect_ratios, self._params.anchor.anchor_size,
           images.get_shape().as_list()[1:3]).multilevel_boxes
 
       batch_size = tf.shape(images)[0]
@@ -96,8 +91,7 @@ class ShapeMaskModel(base_model.Model):
         fpn_features, is_training=is_training)
 
     valid_boxes, valid_scores, valid_classes, valid_detections = (
-        self._generate_detections_fn(box_outputs, cls_outputs,
-                                     anchor_boxes,
+        self._generate_detections_fn(box_outputs, cls_outputs, anchor_boxes,
                                      inputs['image_info'][:, 1:2, :]))
 
     image_size = images.get_shape().as_list()[1:3]
@@ -124,22 +118,18 @@ class ShapeMaskModel(base_model.Model):
         return boxes, classes, outer_boxes
 
     boxes, classes, outer_boxes = SampledBoxesLayer()(
-        inputs, valid_boxes, valid_classes,
-        valid_outer_boxes, training=is_training)
+        inputs,
+        valid_boxes,
+        valid_classes,
+        valid_outer_boxes,
+        training=is_training)
 
-    instance_features, prior_masks = self._shape_prior_head_fn(fpn_features,
-                                                               boxes,
-                                                               outer_boxes,
-                                                               classes,
-                                                               is_training)
-    coarse_mask_logits = self._coarse_mask_fn(instance_features,
-                                              prior_masks,
-                                              classes,
-                                              is_training)
-    fine_mask_logits = self._fine_mask_fn(instance_features,
-                                          coarse_mask_logits,
-                                          classes,
-                                          is_training)
+    instance_features, prior_masks = self._shape_prior_head_fn(
+        fpn_features, boxes, outer_boxes, classes, is_training)
+    coarse_mask_logits = self._coarse_mask_fn(instance_features, prior_masks,
+                                              classes, is_training)
+    fine_mask_logits = self._fine_mask_fn(instance_features, coarse_mask_logits,
+                                          classes, is_training)
 
     model_outputs = {
         'cls_outputs': cls_outputs,
@@ -177,18 +167,15 @@ class ShapeMaskModel(base_model.Model):
                                    labels['num_positives'])
 
       # Adds Shapemask model losses.
-      shape_prior_loss = self._shapemask_prior_loss_fn(
-          outputs['prior_masks'],
-          labels['mask_targets'],
-          labels['mask_is_valid'])
-      coarse_mask_loss = self._shapemask_loss_fn(
-          outputs['coarse_mask_logits'],
-          labels['mask_targets'],
-          labels['mask_is_valid'])
-      fine_mask_loss = self._shapemask_loss_fn(
-          outputs['fine_mask_logits'],
-          labels['fine_mask_targets'],
-          labels['mask_is_valid'])
+      shape_prior_loss = self._shapemask_prior_loss_fn(outputs['prior_masks'],
+                                                       labels['mask_targets'],
+                                                       labels['mask_is_valid'])
+      coarse_mask_loss = self._shapemask_loss_fn(outputs['coarse_mask_logits'],
+                                                 labels['mask_targets'],
+                                                 labels['mask_is_valid'])
+      fine_mask_loss = self._shapemask_loss_fn(outputs['fine_mask_logits'],
+                                               labels['fine_mask_targets'],
+                                               labels['mask_is_valid'])
 
       model_loss = (
           cls_loss + self._box_loss_weight * box_loss +
@@ -222,64 +209,67 @@ class ShapeMaskModel(base_model.Model):
     if is_training:
       batch_size = params.train.batch_size
       input_layer = {
-          'image': tf.keras.layers.Input(
-              shape=input_shape,
-              batch_size=batch_size,
-              name='image',
-              dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32),
-          'image_info': tf.keras.layers.Input(
-              shape=[4, 2],
-              batch_size=batch_size,
-              name='image_info'),
-          'mask_classes': tf.keras.layers.Input(
-              shape=[params.shapemask_parser.num_sampled_masks],
-              batch_size=batch_size,
-              name='mask_classes',
-              dtype=tf.int64),
-          'mask_outer_boxes': tf.keras.layers.Input(
-              shape=[params.shapemask_parser.num_sampled_masks, 4],
-              batch_size=batch_size,
-              name='mask_outer_boxes',
-              dtype=tf.float32),
-          'mask_boxes': tf.keras.layers.Input(
-              shape=[params.shapemask_parser.num_sampled_masks, 4],
-              batch_size=batch_size,
-              name='mask_boxes',
-              dtype=tf.float32),
+          'image':
+              tf.keras.layers.Input(
+                  shape=input_shape,
+                  batch_size=batch_size,
+                  name='image',
+                  dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32),
+          'image_info':
+              tf.keras.layers.Input(
+                  shape=[4, 2], batch_size=batch_size, name='image_info'),
+          'mask_classes':
+              tf.keras.layers.Input(
+                  shape=[params.shapemask_parser.num_sampled_masks],
+                  batch_size=batch_size,
+                  name='mask_classes',
+                  dtype=tf.int64),
+          'mask_outer_boxes':
+              tf.keras.layers.Input(
+                  shape=[params.shapemask_parser.num_sampled_masks, 4],
+                  batch_size=batch_size,
+                  name='mask_outer_boxes',
+                  dtype=tf.float32),
+          'mask_boxes':
+              tf.keras.layers.Input(
+                  shape=[params.shapemask_parser.num_sampled_masks, 4],
+                  batch_size=batch_size,
+                  name='mask_boxes',
+                  dtype=tf.float32),
       }
     else:
       batch_size = params.eval.batch_size
       input_layer = {
-          'image': tf.keras.layers.Input(
-              shape=input_shape,
-              batch_size=batch_size,
-              name='image',
-              dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32),
-          'image_info': tf.keras.layers.Input(
-              shape=[4, 2],
-              batch_size=batch_size,
-              name='image_info'),
+          'image':
+              tf.keras.layers.Input(
+                  shape=input_shape,
+                  batch_size=batch_size,
+                  name='image',
+                  dtype=tf.bfloat16 if self._use_bfloat16 else tf.float32),
+          'image_info':
+              tf.keras.layers.Input(
+                  shape=[4, 2], batch_size=batch_size, name='image_info'),
       }
     return input_layer
 
   def build_model(self, params, mode):
     if self._keras_model is None:
       input_layers = self.build_input_layers(self._params, mode)
-      with backend.get_graph().as_default():
-        outputs = self.model_outputs(input_layers, mode)
+      outputs = self.model_outputs(input_layers, mode)
 
-        model = tf.keras.models.Model(
-            inputs=input_layers, outputs=outputs, name='shapemask')
-        assert model is not None, 'Fail to build tf.keras.Model.'
-        model.optimizer = self.build_optimizer()
-        self._keras_model = model
+      model = tf.keras.models.Model(
+          inputs=input_layers, outputs=outputs, name='shapemask')
+      assert model is not None, 'Fail to build tf.keras.Model.'
+      model.optimizer = self.build_optimizer()
+      self._keras_model = model
 
     return self._keras_model
 
   def post_processing(self, labels, outputs):
-    required_output_fields = ['num_detections', 'detection_boxes',
-                              'detection_classes', 'detection_masks',
-                              'detection_scores']
+    required_output_fields = [
+        'num_detections', 'detection_boxes', 'detection_classes',
+        'detection_masks', 'detection_scores'
+    ]
 
     for field in required_output_fields:
       if field not in outputs:

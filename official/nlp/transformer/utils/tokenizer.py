@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Defines Subtokenizer class to encode and decode strings."""
 
 from __future__ import absolute_import
@@ -22,13 +22,13 @@ import collections
 import re
 import sys
 import unicodedata
+
 from absl import logging
 
 import numpy as np
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-
 
 # pylint: disable=g-complex-comprehension
 PAD = "<pad>"

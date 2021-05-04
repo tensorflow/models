@@ -1,0 +1,82 @@
+# gRPC using libcares in opensource has some issues.
+build --define=grpc_no_ares=true
+
+# Suppress all warning messages.
+build:short_logs --output_filter=DONT_MATCH_ANYTHING
+
+# Force python3
+build --action_env=PYTHON_BIN_PATH=/usr/bin/python3
+build --repo_env=PYTHON_BIN_PATH=/usr/bin/python3
+build --python_path=/usr/bin/python3
+
+# Enable using platform specific build settings
+build --enable_platform_specific_config
+
+# Flag to enable remote config. Required starting from TF 2.2.
+common --experimental_repo_remote_exec
+
+build:manylinux2010 --crosstool_top=//third_party/toolchains/preconfig/ubuntu16.04/gcc7_manylinux2010:toolchain
+
+build -c opt
+build --cxxopt="-std=c++14"
+build --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=0"
+build --auto_output_filter=subpackages
+build --copt="-Wall" --copt="-Wno-sign-compare"
+build --linkopt="-lrt -lm"
+
+# TF isn't built in dbg mode, so our dbg builds will segfault due to inconsistency
+# of defines when using tf's headers.  In particular in refcount.h.
+build --cxxopt="-DNDEBUG"
+
+
+build --define=use_fast_cpp_protos=true
+build --define=allow_oversize_protos=true
+
+build --spawn_strategy=standalone
+build -c opt
+
+# Adding "--cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0" creates parity with TF
+# compilation options. It also addresses memory use due to
+# copy-on-write semantics of std::strings of the older ABI.
+build --cxxopt=-D_GLIBCXX_USE_CXX11_ABI=0
+
+# Make Bazel print out all options from rc files.
+build --announce_rc
+
+# Other build flags.
+build --define=grpc_no_ares=true
+
+# See https://github.com/bazelbuild/bazel/issues/7362 for information on what
+# --incompatible_remove_legacy_whole_archive flag does.
+# This flag is set to true in Bazel 1.0 and newer versions. We tried to migrate
+# Tensorflow to the default, however test coverage wasn't enough to catch the
+# errors.
+# There is ongoing work on Bazel team's side to provide support for transitive
+# shared libraries. As part of migrating to transitive shared libraries, we
+# hope to provide a better mechanism for control over symbol exporting, and
+# then tackle this issue again.
+#
+# TODO: Remove this line once TF doesn't depend on Bazel wrapping all library
+# archives in -whole_archive -no_whole_archive.
+build --noincompatible_remove_legacy_whole_archive
+
+# These are bazel 2.0's incompatible flags. Tensorflow needs to use bazel 2.0.0
+# to use cc_shared_library, as part of the Tensorflow Build Improvements RFC:
+# https://github.com/tensorflow/community/pull/179
+build --noincompatible_prohibit_aapt1
+
+# Build TF with C++ 17 features.
+build:c++17 --cxxopt=-std=c++1z
+build:c++17 --cxxopt=-stdlib=libc++
+build:c++1z --config=c++17
+
+# Enable using platform specific build settings, except when cross-compiling for
+# mobile platforms.
+build --enable_platform_specific_config
+
+
+# Options from ./configure
+try-import %workspace%/.tf_configure.bazelrc
+
+# Put user-specific options in .bazelrc.user
+try-import %workspace%/.bazelrc.user

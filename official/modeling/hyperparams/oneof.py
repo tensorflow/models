@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Config class that supports oneof functionality."""
 
 from typing import Optional
@@ -38,15 +37,12 @@ class OneOfConfig(base_config.Config):
     if self.type is None:
       return {'type': None}
     elif self.__dict__['type'] not in self.__dict__:
-      raise ValueError(
-          'type: {!r} is not a valid key!'.format(self.__dict__['type']))
+      raise ValueError('type: {!r} is not a valid key!'.format(
+          self.__dict__['type']))
     else:
       chosen_type = self.type
       chosen_value = self.__dict__[chosen_type]
-      return {
-          'type': self.type,
-          chosen_type: self._export_config(chosen_value)
-      }
+      return {'type': self.type, chosen_type: self._export_config(chosen_value)}
 
   def get(self):
     """Returns selected config based on the value of type.
@@ -57,6 +53,5 @@ class OneOfConfig(base_config.Config):
     if chosen_type is None:
       return None
     if chosen_type not in self.__dict__:
-      raise ValueError(
-          'type: {!r} is not a valid key!'.format(self.type))
+      raise ValueError('type: {!r} is not a valid key!'.format(self.type))
     return self.__dict__[chosen_type]

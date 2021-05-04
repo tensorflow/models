@@ -1,0 +1,63 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    num_classes: 1001
+    input_size: [320, 320, 3]
+    backbone:
+      type: 'resnet'
+      resnet:
+        model_id: 420
+        replace_stem_max_pool: true
+        resnetd_shortcut: true
+        se_ratio: 0.25
+        stem_type: 'v1'
+        stochastic_depth_drop_rate: 0.1
+    norm_activation:
+      activation: 'swish'
+      norm_momentum: 0.0
+      use_sync_bn: false
+    dropout_rate: 0.4
+  losses:
+    l2_weight_decay: 0.00004
+    one_hot: true
+    label_smoothing: 0.1
+  train_data:
+    input_path: 'imagenet-2012-tfrecord/train*'
+    is_training: true
+    global_batch_size: 4096
+    dtype: 'bfloat16'
+    aug_type:
+      type: 'randaug'
+      randaug:
+        magnitude: 15
+  validation_data:
+    input_path: 'imagenet-2012-tfrecord/valid*'
+    is_training: false
+    global_batch_size: 4096
+    dtype: 'bfloat16'
+    drop_remainder: false
+trainer:
+  train_steps: 109200
+  validation_steps: 13
+  validation_interval: 312
+  steps_per_loop: 312
+  summary_interval: 312
+  checkpoint_interval: 312
+  optimizer_config:
+    ema:
+      average_decay: 0.9999
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'cosine'
+      cosine:
+        initial_learning_rate: 1.6
+        decay_steps: 109200
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 1560

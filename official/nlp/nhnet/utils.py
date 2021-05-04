@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,16 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Utility helpers for Bert2Bert."""
-from __future__ import absolute_import
-from __future__ import division
-# from __future__ import google_type_annotations
-from __future__ import print_function
+from typing import Optional, Text
 
 from absl import logging
 import tensorflow as tf
-from typing import Optional, Text
+
 from official.modeling.hyperparams import params_dict
 from official.nlp.bert import configs
 from official.nlp.nhnet import configs as nhnet_configs
@@ -44,6 +41,8 @@ def encoder_common_layers(transformer_block):
       transformer_block._intermediate_dense, transformer_block._output_dense,
       transformer_block._output_layer_norm
   ]
+
+
 # pylint: enable=protected-access
 
 

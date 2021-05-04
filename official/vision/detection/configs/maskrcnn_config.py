@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Config template to train Mask R-CNN."""
 
 from official.modeling.hyperparams import params_dict
@@ -52,7 +52,6 @@ MASKRCNN_CFG.override({
         'anchor_size': 8,
     },
     'rpn_head': {
-        'anchors_per_location': 3,
         'num_convs': 2,
         'num_filters': 256,
         'use_separable_conv': False,

@@ -1,5 +1,4 @@
-# Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
 
 import pprint
 from typing import List, Tuple
@@ -43,6 +41,17 @@ class DumpConfig3(DumpConfig2):
   h: List[DumpConfig1] = dataclasses.field(
       default_factory=lambda: [DumpConfig1(), DumpConfig1()])
   g: Tuple[DumpConfig1, ...] = (DumpConfig1(),)
+
+
+@dataclasses.dataclass
+class DumpConfig4(DumpConfig2):
+  x: int = 3
+
+
+@dataclasses.dataclass
+class DummyConfig5(base_config.Config):
+  y: Tuple[DumpConfig2, ...] = (DumpConfig2(), DumpConfig4())
+  z: Tuple[str] = ('a',)
 
 
 class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
@@ -106,6 +115,22 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
     self.assertEqual(config.g[0].a, 4)
     self.assertEqual(config.g[0].b, 'new text 3')
 
+  def test_replace(self):
+    config = DumpConfig2()
+    new_config = config.replace(e={'a': 2})
+    self.assertEqual(new_config.e.a, 2)
+    self.assertIsInstance(new_config.e, DumpConfig1)
+
+    config = DumpConfig2(e=DumpConfig2())
+    new_config = config.replace(e={'c': 4})
+    self.assertEqual(new_config.e.c, 4)
+    self.assertIsInstance(new_config.e, DumpConfig2)
+
+    config = DumpConfig3()
+    new_config = config.replace(g=[{'a': 4, 'b': 'new text 3'}])
+    self.assertIsInstance(new_config.g[0], DumpConfig1)
+    self.assertEqual(new_config.g[0].a, 4)
+
   @parameterized.parameters(
       ('_locked', "The key '_locked' is internally reserved."),
       ('_restrictions', "The key '_restrictions' is internally reserved."),
@@ -147,10 +172,8 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
       params.override({'c': {'c3': 30}}, is_strict=True)
 
     config = base_config.Config({'key': [{'a': 42}]})
-    config.override({'key': [{'b': 43}]})
-    self.assertEqual(config.key[0].b, 43)
-    with self.assertRaisesRegex(AttributeError, 'The key `a` does not exist'):
-      _ = config.key[0].a
+    with self.assertRaisesRegex(KeyError, "The key 'b' does not exist"):
+      config.override({'key': [{'b': 43}]})
 
   @parameterized.parameters(
       (lambda x: x, 'Unknown type'),
@@ -293,6 +316,44 @@ class BaseConfigTest(parameterized.TestCase, tf.test.TestCase):
             }
         ]),
         "['s', 1, 1.0, True, None, {}, [], (), {8: 9, (2,): (3, [4], {6: 7})}]")
+
+  def test_with_restrictions(self):
+    restrictions = ['e.a<c']
+    config = DumpConfig2(restrictions=restrictions)
+    config.validate()
+
+  def test_nested_tuple(self):
+    config = DummyConfig5()
+    config.override({
+        'y': [{
+            'c': 4,
+            'd': 'new text 3',
+            'e': {
+                'a': 2
+            }
+        }, {
+            'c': 0,
+            'd': 'new text 3',
+            'e': {
+                'a': 2
+            }
+        }],
+        'z': ['a', 'b', 'c'],
+    })
+    self.assertEqual(config.y[0].c, 4)
+    self.assertEqual(config.y[1].c, 0)
+    self.assertIsInstance(config.y[0], DumpConfig2)
+    self.assertIsInstance(config.y[1], DumpConfig4)
+    self.assertSameElements(config.z, ['a', 'b', 'c'])
+
+  def test_override_by_empty_sequence(self):
+    config = DummyConfig5()
+    config.override({
+        'y': [],
+        'z': (),
+    }, is_strict=True)
+    self.assertEmpty(config.y)
+    self.assertEmpty(config.z)
 
 
 if __name__ == '__main__':

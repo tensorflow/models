@@ -54,19 +54,55 @@ Note: The models we provide in [TF2 Zoo](g3doc/tf2_detection_zoo.md) and
 [TF1 Zoo](g3doc/tf1_detection_zoo.md) are specific to the TensorFlow major
 version and are not interoperable.
 
-Please select one of the two links below for TensorFlow version specific
+Please select one of the links below for TensorFlow version-specific
 documentation of the Object Detection API:
 
 <!-- mdlint off(WHITESPACE_LINE_LENGTH) -->
+### Tensorflow 2.x
+  *   <a href='g3doc/tf2.md'>
+        Object Detection API TensorFlow 2</a><br>
+  *   <a href='g3doc/tf2_detection_zoo.md'>
+        TensorFlow 2 Model Zoo</a><br>
 
-
-| [![Object Detection API TensorFlow 2](https://img.shields.io/badge/Object%20Detection%20API-TensorFlow%202-orange)](g3doc/tf2.md) | [![TensorFlow 2 Model Zoo](https://img.shields.io/badge/Model%20Zoo-TensorFlow%202-Orange)](g3doc/tf2_detection_zoo.md) |
-|---|---|
-| [![Object Detection API TensorFlow 1](https://img.shields.io/badge/Object%20Detection%20API-TensorFlow%201-orange)](g3doc/tf1.md) | [![TensorFlow 1 Model Zoo](https://img.shields.io/badge/Model%20Zoo-TensorFlow%201-Orange)](g3doc/tf1_detection_zoo.md) |
-
+### Tensorflow 1.x
+  *   <a href='g3doc/tf1.md'>
+        Object Detection API TensorFlow 1</a><br>
+  *   <a href='g3doc/tf1_detection_zoo.md'>
+        TensorFlow 1 Model Zoo</a><br>
 <!-- mdlint on -->
 
 ## Whats New
+
+### DeepMAC architecture
+
+We have released our new architecture, **DeepMAC**, desgined for partially
+supervised instance segmentation. DeepMAC stands for Deep Mask-heads
+Above CenterNet, and is based on our CenterNet implementation. In our
+[paper](https://arxiv.org/abs/2104.00613) we show that DeepMAC achieves
+state-of-the-art results for the partially supervised instance segmentation
+task without using any specialty modules or losses; just better mask-head
+architectures. The findings from our paper are not specific to CenterNet and
+can also be applied to Mask R-CNN or without any detector at all.
+Please see links below for more details
+
+*   [DeepMAC documentation](g3doc/deepmac.md).
+*   [Mask RCNN code](https://github.com/tensorflow/models/tree/master/official/vision/beta/projects/deepmac_maskrcnn)
+    in TF Model garden code base.
+*   [DeepMAC Colab](./colab_tutorials/deepmac_colab.ipynb) that lets you run a
+    pre-trained DeepMAC model on user-specified boxes. Note that you are not
+    restricted to COCO classes!
+*   Project website - [git.io/deepmac](https://git.io/deepmac)
+
+<b>Thanks to contributors</b>: Vighnesh Birodkar, Zhichao Lu, Siyang Li,
+ Vivek Rathod, Jonathan Huang
+
+
+### Mobile Inference for TF2 models
+
+TF2 OD API models can now be converted to TensorFlow Lite! Only SSD models
+currently supported. See <a href='g3doc/running_on_mobile_tf2.md'>documentation</a>.
+
+**Thanks to contributors**: Sachin Joglekar
 
 ### TensorFlow 2 Support
 
@@ -103,6 +139,18 @@ Kaushik Shivakumar, Lu He, Mingxing Tan, Pengchong Jin, Ronny Votel, Sara Beery,
 Sergi Caelles Prat, Shan Yang, Sudheendra Vijayanarasimhan, Tina Tian, Tomer
 Kaftan, Vighnesh Birodkar, Vishnu Banna, Vivek Rathod, Yanhui Liang, Yiming Shi,
 Yixin Shi, Yu-hui Chen, Zhichao Lu.
+
+### MobileDet GPU
+
+We have released SSDLite with MobileDet GPU backbone, which achieves 17% mAP
+higher than the MobileNetV2 SSDLite (27.5 mAP vs 23.5 mAP) on a NVIDIA Jetson
+Xavier at comparable latency (3.2ms vs 3.3ms).
+
+Along with the model definition, we are also releasing model checkpoints trained
+on the COCO dataset.
+
+<b>Thanks to contributors</b>: Yongzhe Wang, Bo Chen, Hanxiao Liu, Le An
+(NVIDIA), Yu-Te Cheng (NVIDIA), Oliver Knieps (NVIDIA), and Josh Park (NVIDIA).
 
 ### Context R-CNN
 

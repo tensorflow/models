@@ -35,7 +35,7 @@ cd models/research
 protoc object_detection/protos/*.proto --python_out=.
 # Install TensorFlow Object Detection API.
 cp object_detection/packages/tf1/setup.py .
-python -m pip install .
+python -m pip install --use-feature=2020-resolver .
 ```
 
 ```bash
@@ -73,6 +73,8 @@ the [Model Zoo](tf1_detection_zoo.md).
       Supported object detection evaluation protocols</a><br>
 *   <a href='tpu_compatibility.md'>
       TPU compatible detection pipelines</a><br>
+*   <a href='tf1_training_and_evaluation.md'>
+      Training and evaluation guide (CPU, GPU, or TPU)</a><br>
 
 ## Extras:
 

@@ -31,6 +31,8 @@ class CenterNetResnetV1FpnFeatureExtractorTest(test_case.TestCase,
   @parameterized.parameters(
       {'resnet_type': 'resnet_v1_50'},
       {'resnet_type': 'resnet_v1_101'},
+      {'resnet_type': 'resnet_v1_18'},
+      {'resnet_type': 'resnet_v1_34'},
   )
   def test_correct_output_size(self, resnet_type):
     """Verify that shape of features returned by the backbone is correct."""
@@ -38,11 +40,11 @@ class CenterNetResnetV1FpnFeatureExtractorTest(test_case.TestCase,
     model = center_net_resnet_v1_fpn_feature_extractor.\
                 CenterNetResnetV1FpnFeatureExtractor(resnet_type)
     def graph_fn():
-      img = np.zeros((8, 224, 224, 3), dtype=np.float32)
+      img = np.zeros((8, 512, 512, 3), dtype=np.float32)
       processed_img = model.preprocess(img)
       return model(processed_img)
 
-    self.assertEqual(self.execute(graph_fn, []).shape, (8, 56, 56, 64))
+    self.assertEqual(self.execute(graph_fn, []).shape, (8, 128, 128, 64))
 
 
 if __name__ == '__main__':

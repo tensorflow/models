@@ -19,79 +19,16 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-from PIL import Image
 import tensorflow as tf
 
 from delf import datum_io
 from delf import feature_extractor
+from delf import utils
 
-# Minimum dimensions below which DELF features are not extracted (empty
+# Minimum dimensions below which features are not extracted (empty
 # features are returned). This applies after any resizing is performed.
 _MIN_HEIGHT = 10
 _MIN_WIDTH = 10
-
-
-def ResizeImage(image, config, resize_factor=1.0):
-  """Resizes image according to config.
-
-  Args:
-    image: Uint8 array with shape (height, width, 3).
-    config: DelfConfig proto containing the model configuration.
-    resize_factor: Optional float resize factor for the input image. If given,
-      the maximum and minimum allowed image sizes in `config` are scaled by this
-      factor. Must be non-negative.
-
-  Returns:
-    resized_image: Uint8 array with resized image.
-    scale_factors: 2D float array, with factors used for resizing along height
-      and width (If upscaling, larger than 1; if downscaling, smaller than 1).
-
-  Raises:
-    ValueError: If `image` has incorrect number of dimensions/channels.
-  """
-  if resize_factor < 0.0:
-    raise ValueError('negative resize_factor is not allowed: %f' %
-                     resize_factor)
-  if image.ndim != 3:
-    raise ValueError('image has incorrect number of dimensions: %d' %
-                     image.ndims)
-  height, width, channels = image.shape
-
-  # Take into account resize factor.
-  max_image_size = resize_factor * config.max_image_size
-  min_image_size = resize_factor * config.min_image_size
-
-  if channels != 3:
-    raise ValueError('image has incorrect number of channels: %d' % channels)
-
-  largest_side = max(width, height)
-
-  if max_image_size >= 0 and largest_side > max_image_size:
-    scale_factor = max_image_size / largest_side
-  elif min_image_size >= 0 and largest_side < min_image_size:
-    scale_factor = min_image_size / largest_side
-  elif config.use_square_images and (height != width):
-    scale_factor = 1.0
-  else:
-    # No resizing needed, early return.
-    return image, np.ones(2, dtype=float)
-
-  # Note that new_shape is in (width, height) format (PIL convention), while
-  # scale_factors are in (height, width) convention (NumPy convention).
-  if config.use_square_images:
-    new_shape = (int(round(largest_side * scale_factor)),
-                 int(round(largest_side * scale_factor)))
-  else:
-    new_shape = (int(round(width * scale_factor)),
-                 int(round(height * scale_factor)))
-
-  scale_factors = np.array([new_shape[1] / height, new_shape[0] / width],
-                           dtype=float)
-
-  pil_image = Image.fromarray(image)
-  resized_image = np.array(pil_image.resize(new_shape, resample=Image.BILINEAR))
-
-  return resized_image, scale_factors
 
 
 def MakeExtractor(config):
@@ -106,18 +43,21 @@ def MakeExtractor(config):
   Raises:
     ValueError: if config is invalid.
   """
-  # Assert the configuration
-  if config.use_global_features and hasattr(
-      config, 'is_tf2_exported') and config.is_tf2_exported:
-    raise ValueError('use_global_features is incompatible with is_tf2_exported')
+  # Assert the configuration.
+  if not config.use_local_features and not config.use_global_features:
+    raise ValueError('Invalid config: at least one of '
+                     '{use_local_features, use_global_features} must be True')
 
   # Load model.
   model = tf.saved_model.load(config.model_path)
 
-  # Input/output end-points/tensors.
+  # Input image scales to use for extraction.
+  image_scales_tensor = tf.convert_to_tensor(list(config.image_scales))
+
+  # Input (feeds) and output (fetches) end-points. These are only needed when
+  # using a model that was exported using TF1.
   feeds = ['input_image:0', 'input_scales:0']
   fetches = []
-  image_scales_tensor = tf.convert_to_tensor(list(config.image_scales))
 
   # Custom configuration needed when local features are used.
   if config.use_local_features:
@@ -159,8 +99,14 @@ def MakeExtractor(config):
 
   # Custom configuration needed when global features are used.
   if config.use_global_features:
-    # Extra output end-point.
+    # Extra input/output end-points/tensors.
+    feeds.append('input_global_scales_ind:0')
     fetches.append('global_descriptors:0')
+    if config.delf_global_config.image_scales_ind:
+      global_scales_ind_tensor = tf.constant(
+          list(config.delf_global_config.image_scales_ind))
+    else:
+      global_scales_ind_tensor = tf.range(len(config.image_scales))
 
     # If using PCA, pre-load required parameters.
     global_pca_parameters = {}
@@ -206,7 +152,7 @@ def MakeExtractor(config):
         features (key 'local_features' mapping to a dict with keys 'locations',
         'descriptors', 'scales', 'attention').
     """
-    resized_image, scale_factors = ResizeImage(
+    resized_image, scale_factors = utils.ResizeImage(
         image, config, resize_factor=resize_factor)
 
     # If the image is too small, returns empty features.
@@ -231,9 +177,21 @@ def MakeExtractor(config):
     extracted_features = {}
     output = None
 
-    if config.use_local_features:
-      if hasattr(config, 'is_tf2_exported') and config.is_tf2_exported:
-        predict = model.signatures['serving_default']
+    if hasattr(config, 'is_tf2_exported') and config.is_tf2_exported:
+      predict = model.signatures['serving_default']
+      if config.use_local_features and config.use_global_features:
+        output_dict = predict(
+            input_image=image_tensor,
+            input_scales=image_scales_tensor,
+            input_max_feature_num=max_feature_num_tensor,
+            input_abs_thres=score_threshold_tensor,
+            input_global_scales_ind=global_scales_ind_tensor)
+        output = [
+            output_dict['boxes'], output_dict['features'],
+            output_dict['scales'], output_dict['scores'],
+            output_dict['global_descriptors']
+        ]
+      elif config.use_local_features:
         output_dict = predict(
             input_image=image_tensor,
             input_scales=image_scales_tensor,
@@ -244,23 +202,29 @@ def MakeExtractor(config):
             output_dict['scales'], output_dict['scores']
         ]
       else:
+        output_dict = predict(
+            input_image=image_tensor,
+            input_scales=image_scales_tensor,
+            input_global_scales_ind=global_scales_ind_tensor)
+        output = [output_dict['global_descriptors']]
+    else:
+      if config.use_local_features and config.use_global_features:
+        output = model(image_tensor, image_scales_tensor,
+                       score_threshold_tensor, max_feature_num_tensor,
+                       global_scales_ind_tensor)
+      elif config.use_local_features:
         output = model(image_tensor, image_scales_tensor,
                        score_threshold_tensor, max_feature_num_tensor)
-    else:
-      output = model(image_tensor, image_scales_tensor)
+      else:
+        output = model(image_tensor, image_scales_tensor,
+                       global_scales_ind_tensor)
 
     # Post-process extracted features: normalize, PCA (optional), pooling.
     if config.use_global_features:
       raw_global_descriptors = output[-1]
-      if config.delf_global_config.image_scales_ind:
-        raw_global_descriptors_selected_scales = tf.gather(
-            raw_global_descriptors,
-            list(config.delf_global_config.image_scales_ind))
-      else:
-        raw_global_descriptors_selected_scales = raw_global_descriptors
       global_descriptors_per_scale = feature_extractor.PostProcessDescriptors(
-          raw_global_descriptors_selected_scales,
-          config.delf_global_config.use_pca, global_pca_parameters)
+          raw_global_descriptors, config.delf_global_config.use_pca,
+          global_pca_parameters)
       unnormalized_global_descriptor = tf.reduce_sum(
           global_descriptors_per_scale, axis=0, name='sum_pooling')
       global_descriptor = tf.nn.l2_normalize(
@@ -281,7 +245,8 @@ def MakeExtractor(config):
           feature_extractor.DelfFeaturePostProcessing(
               boxes, raw_local_descriptors, config.delf_local_config.use_pca,
               local_pca_parameters))
-      locations /= scale_factors
+      if not config.delf_local_config.use_resized_coordinates:
+        locations /= scale_factors
 
       extracted_features.update({
           'local_features': {

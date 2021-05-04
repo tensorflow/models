@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,15 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Library for running BERT family models on SQuAD 1.1/2.0 in TF 2.x."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import collections
 import json
 import os
+
 from absl import flags
 from absl import logging
 import tensorflow as tf
@@ -39,10 +37,10 @@ from official.utils.misc import keras_utils
 def define_common_squad_flags():
   """Defines common flags used by SQuAD tasks."""
   flags.DEFINE_enum(
-      'mode', 'train_and_eval',
-      ['train_and_eval', 'train_and_predict',
-       'train', 'eval', 'predict', 'export_only'],
-      'One of {"train_and_eval", "train_and_predict", '
+      'mode', 'train_and_eval', [
+          'train_and_eval', 'train_and_predict', 'train', 'eval', 'predict',
+          'export_only'
+      ], 'One of {"train_and_eval", "train_and_predict", '
       '"train", "eval", "predict", "export_only"}. '
       '`train_and_eval`: train & predict to json files & compute eval metrics. '
       '`train_and_predict`: train & predict to json files. '
@@ -60,12 +58,12 @@ def define_common_squad_flags():
   # Model training specific flags.
   flags.DEFINE_integer('train_batch_size', 32, 'Total batch size for training.')
   # Predict processing related.
-  flags.DEFINE_string('predict_file', None,
-                      'SQuAD prediction json file path. '
-                      '`predict` mode supports multiple files: one can use '
-                      'wildcard to specify multiple files and it can also be '
-                      'multiple file patterns separated by comma. Note that '
-                      '`eval` mode only supports a single predict file.')
+  flags.DEFINE_string(
+      'predict_file', None, 'SQuAD prediction json file path. '
+      '`predict` mode supports multiple files: one can use '
+      'wildcard to specify multiple files and it can also be '
+      'multiple file patterns separated by comma. Note that '
+      '`eval` mode only supports a single predict file.')
   flags.DEFINE_bool(
       'do_lower_case', True,
       'Whether to lower case the input text. Should be True for uncased '
@@ -97,10 +95,7 @@ def define_common_squad_flags():
 FLAGS = flags.FLAGS
 
 
-def squad_loss_fn(start_positions,
-                  end_positions,
-                  start_logits,
-                  end_logits):
+def squad_loss_fn(start_positions, end_positions, start_logits, end_logits):
   """Returns sparse categorical crossentropy for start/end logits."""
   start_loss = tf.keras.losses.sparse_categorical_crossentropy(
       start_positions, start_logits, from_logits=True)
@@ -118,11 +113,8 @@ def get_loss_fn():
     start_positions = labels['start_positions']
     end_positions = labels['end_positions']
     start_logits, end_logits = model_outputs
-    return squad_loss_fn(
-        start_positions,
-        end_positions,
-        start_logits,
-        end_logits)
+    return squad_loss_fn(start_positions, end_positions, start_logits,
+                         end_logits)
 
   return _loss_fn
 
@@ -168,7 +160,7 @@ def get_squad_model_to_predict(strategy, bert_config, checkpoint_path,
   """Gets a squad model to make predictions."""
   with strategy.scope():
     # Prediction always uses float32, even if training uses mixed precision.
-    tf.keras.mixed_precision.experimental.set_policy('float32')
+    tf.keras.mixed_precision.set_global_policy('float32')
     squad_model, _ = bert_models.squad_model(
         bert_config,
         input_meta_data['max_seq_length'],
@@ -182,11 +174,8 @@ def get_squad_model_to_predict(strategy, bert_config, checkpoint_path,
   return squad_model
 
 
-def predict_squad_customized(strategy,
-                             input_meta_data,
-                             predict_tfrecord_path,
-                             num_steps,
-                             squad_model):
+def predict_squad_customized(strategy, input_meta_data, predict_tfrecord_path,
+                             num_steps, squad_model):
   """Make predictions using a Bert-based squad model."""
   predict_dataset_fn = get_dataset_fn(
       predict_tfrecord_path,
@@ -194,8 +183,7 @@ def predict_squad_customized(strategy,
       FLAGS.predict_batch_size,
       is_training=False)
   predict_iterator = iter(
-      strategy.experimental_distribute_datasets_from_function(
-          predict_dataset_fn))
+      strategy.distribute_datasets_from_function(predict_dataset_fn))
 
   @tf.function
   def predict_step(iterator):
@@ -259,8 +247,7 @@ def train_squad(strategy,
         hub_module_trainable=FLAGS.hub_module_trainable)
     optimizer = optimization.create_optimizer(FLAGS.learning_rate,
                                               steps_per_epoch * epochs,
-                                              warmup_steps,
-                                              FLAGS.end_lr,
+                                              warmup_steps, FLAGS.end_lr,
                                               FLAGS.optimizer_type)
 
     squad_model.optimizer = performance.configure_optimizer(
@@ -269,15 +256,12 @@ def train_squad(strategy,
         use_graph_rewrite=common_flags.use_graph_rewrite())
     return squad_model, core_model
 
-  # If explicit_allreduce = True, apply_gradients() no longer implicitly
-  # allreduce gradients, users manually allreduce gradient and pass the
-  # allreduced grads_and_vars to apply_gradients(). clip_by_global_norm will be
-  # applied to allreduced gradients.
-  def clip_by_global_norm_callback(grads_and_vars):
-    grads, variables = zip(*grads_and_vars)
-    (clipped_grads, _) = tf.clip_by_global_norm(grads, clip_norm=1.0)
-    return zip(clipped_grads, variables)
-
+  # Only when explicit_allreduce = True, post_allreduce_callbacks and
+  # allreduce_bytes_per_pack will take effect. optimizer.apply_gradients() no
+  # longer implicitly allreduce gradients, users manually allreduce gradient and
+  # pass the allreduced grads_and_vars to apply_gradients().
+  # With explicit_allreduce = True, clip_by_global_norm is moved to after
+  # allreduce.
   model_training_utils.run_customized_training_loop(
       strategy=strategy,
       model_fn=_get_squad_model,
@@ -291,8 +275,11 @@ def train_squad(strategy,
       sub_model_export_name=sub_model_export_name,
       run_eagerly=run_eagerly,
       custom_callbacks=custom_callbacks,
-      explicit_allreduce=False,
-      post_allreduce_callbacks=[clip_by_global_norm_callback])
+      explicit_allreduce=FLAGS.explicit_allreduce,
+      pre_allreduce_callbacks=[
+          model_training_utils.clip_by_global_norm_callback
+      ],
+      allreduce_bytes_per_pack=FLAGS.allreduce_bytes_per_pack)
 
 
 def prediction_output_squad(strategy, input_meta_data, tokenizer, squad_lib,
@@ -344,8 +331,9 @@ def prediction_output_squad(strategy, input_meta_data, tokenizer, squad_lib,
   logging.info('  Batch size = %d', FLAGS.predict_batch_size)
 
   num_steps = int(dataset_size / FLAGS.predict_batch_size)
-  all_results = predict_squad_customized(
-      strategy, input_meta_data, eval_writer.filename, num_steps, squad_model)
+  all_results = predict_squad_customized(strategy, input_meta_data,
+                                         eval_writer.filename, num_steps,
+                                         squad_model)
 
   all_predictions, all_nbest_json, scores_diff_json = (
       squad_lib.postprocess_output(
@@ -362,8 +350,12 @@ def prediction_output_squad(strategy, input_meta_data, tokenizer, squad_lib,
   return all_predictions, all_nbest_json, scores_diff_json
 
 
-def dump_to_files(all_predictions, all_nbest_json, scores_diff_json,
-                  squad_lib, version_2_with_negative, file_prefix=''):
+def dump_to_files(all_predictions,
+                  all_nbest_json,
+                  scores_diff_json,
+                  squad_lib,
+                  version_2_with_negative,
+                  file_prefix=''):
   """Save output to json files."""
   output_prediction_file = os.path.join(FLAGS.model_dir,
                                         '%spredictions.json' % file_prefix)
@@ -452,8 +444,7 @@ def eval_squad(strategy,
     dataset_json = json.load(reader)
     pred_dataset = dataset_json['data']
   if input_meta_data.get('version_2_with_negative', False):
-    eval_metrics = squad_evaluate_v2_0.evaluate(pred_dataset,
-                                                all_predictions,
+    eval_metrics = squad_evaluate_v2_0.evaluate(pred_dataset, all_predictions,
                                                 scores_diff_json)
   else:
     eval_metrics = squad_evaluate_v1_1.evaluate(pred_dataset, all_predictions)
@@ -474,7 +465,7 @@ def export_squad(model_export_path, input_meta_data, bert_config):
   if not model_export_path:
     raise ValueError('Export path is not specified: %s' % model_export_path)
   # Export uses float32 for now, even if training uses mixed precision.
-  tf.keras.mixed_precision.experimental.set_policy('float32')
+  tf.keras.mixed_precision.set_global_policy('float32')
   squad_model, _ = bert_models.squad_model(bert_config,
                                            input_meta_data['max_seq_length'])
   model_saving_utils.export_bert_model(

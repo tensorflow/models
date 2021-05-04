@@ -46,10 +46,12 @@ class CenterNetResnetFeatureExtractor(CenterNetFeatureExtractor):
         channel_means=channel_means, channel_stds=channel_stds,
         bgr_ordering=bgr_ordering)
     if resnet_type == 'resnet_v2_101':
-      self._base_model = tf.keras.applications.ResNet101V2(weights=None)
+      self._base_model = tf.keras.applications.ResNet101V2(weights=None,
+                                                           include_top=False)
       output_layer = 'conv5_block3_out'
     elif resnet_type == 'resnet_v2_50':
-      self._base_model = tf.keras.applications.ResNet50V2(weights=None)
+      self._base_model = tf.keras.applications.ResNet50V2(weights=None,
+                                                          include_top=False)
       output_layer = 'conv5_block3_out'
     else:
       raise ValueError('Unknown Resnet Model {}'.format(resnet_type))
@@ -101,10 +103,6 @@ class CenterNetResnetFeatureExtractor(CenterNetFeatureExtractor):
   def load_feature_extractor_weights(self, path):
     self._base_model.load_weights(path)
 
-  def get_base_model(self):
-    """Get base resnet model for inspection and testing."""
-    return self._base_model
-
   def call(self, inputs):
     """Returns image features extracted by the backbone.
 
@@ -127,9 +125,20 @@ class CenterNetResnetFeatureExtractor(CenterNetFeatureExtractor):
   def out_stride(self):
     return 4
 
+  @property
+  def supported_sub_model_types(self):
+    return ['classification']
 
-def resnet_v2_101(channel_means, channel_stds, bgr_ordering):
+  def get_sub_model(self, sub_model_type):
+    if sub_model_type == 'classification':
+      return self._base_model
+    else:
+      ValueError('Sub model type "{}" not supported.'.format(sub_model_type))
+
+
+def resnet_v2_101(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The ResNet v2 101 feature extractor."""
+  del kwargs
 
   return CenterNetResnetFeatureExtractor(
       resnet_type='resnet_v2_101',
@@ -139,8 +148,9 @@ def resnet_v2_101(channel_means, channel_stds, bgr_ordering):
   )
 
 
-def resnet_v2_50(channel_means, channel_stds, bgr_ordering):
+def resnet_v2_50(channel_means, channel_stds, bgr_ordering, **kwargs):
   """The ResNet v2 50 feature extractor."""
+  del kwargs
 
   return CenterNetResnetFeatureExtractor(
       resnet_type='resnet_v2_50',

@@ -1,4 +1,4 @@
-# Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,16 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""BERT library to process data for classification task."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""BERT library to process data for classification task."""
 
 import collections
 import csv
 import importlib
+import json
 import os
 
 from absl import logging
@@ -39,7 +36,7 @@ class InputExample(object):
                text_b=None,
                label=None,
                weight=None,
-               int_iden=None):
+               example_id=None):
     """Constructs a InputExample.
 
     Args:
@@ -53,15 +50,15 @@ class InputExample(object):
         examples, but not for test examples.
       weight: (Optional) float. The weight of the example to be used during
         training.
-      int_iden: (Optional) int. The int identification number of example in the
-        corpus.
+      example_id: (Optional) int. The int identification number of example in
+        the corpus.
     """
     self.guid = guid
     self.text_a = text_a
     self.text_b = text_b
     self.label = label
     self.weight = weight
-    self.int_iden = int_iden
+    self.example_id = example_id
 
 
 class InputFeatures(object):
@@ -74,14 +71,14 @@ class InputFeatures(object):
                label_id,
                is_real_example=True,
                weight=None,
-               int_iden=None):
+               example_id=None):
     self.input_ids = input_ids
     self.input_mask = input_mask
     self.segment_ids = segment_ids
     self.label_id = label_id
     self.is_real_example = is_real_example
     self.weight = weight
-    self.int_iden = int_iden
+    self.example_id = example_id
 
 
 class DataProcessor(object):
@@ -123,6 +120,63 @@ class DataProcessor(object):
         lines.append(line)
       return lines
 
+  @classmethod
+  def _read_jsonl(cls, input_file):
+    """Reads a json line file."""
+    with tf.io.gfile.GFile(input_file, "r") as f:
+      lines = []
+      for json_str in f:
+        lines.append(json.loads(json_str))
+    return lines
+
+
+class AxProcessor(DataProcessor):
+  """Processor for the AX dataset (GLUE diagnostics dataset)."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "train.tsv")), "train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "dev.tsv")), "dev")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_tsv(os.path.join(data_dir, "test.tsv")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    return ["contradiction", "entailment", "neutral"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "AX"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    text_a_index = 1 if set_type == "test" else 8
+    text_b_index = 2 if set_type == "test" else 9
+    examples = []
+    for i, line in enumerate(lines):
+      # Skip header.
+      if i == 0:
+        continue
+      guid = "%s-%s" % (set_type, self.process_text_fn(line[0]))
+      text_a = self.process_text_fn(line[text_a_index])
+      text_b = self.process_text_fn(line[text_b_index])
+      if set_type == "test":
+        label = "contradiction"
+      else:
+        label = self.process_text_fn(line[-1])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
 
 class ColaProcessor(DataProcessor):
   """Processor for the CoLA data set (GLUE version)."""
@@ -152,10 +206,10 @@ class ColaProcessor(DataProcessor):
     return "COLA"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
-    for (i, line) in enumerate(lines):
-      # Only the test set has a header
+    for i, line in enumerate(lines):
+      # Only the test set has a header.
       if set_type == "test" and i == 0:
         continue
       guid = "%s-%s" % (set_type, i)
@@ -170,8 +224,54 @@ class ColaProcessor(DataProcessor):
     return examples
 
 
+class ImdbProcessor(DataProcessor):
+  """Processor for the IMDb dataset."""
+
+  def get_labels(self):
+    return ["neg", "pos"]
+
+  def get_train_examples(self, data_dir):
+    return self._create_examples(os.path.join(data_dir, "train"))
+
+  def get_dev_examples(self, data_dir):
+    return self._create_examples(os.path.join(data_dir, "test"))
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "IMDB"
+
+  def _create_examples(self, data_dir):
+    """Creates examples."""
+    examples = []
+    for label in ["neg", "pos"]:
+      cur_dir = os.path.join(data_dir, label)
+      for filename in tf.io.gfile.listdir(cur_dir):
+        if not filename.endswith("txt"):
+          continue
+
+        if len(examples) % 1000 == 0:
+          logging.info("Loading dev example %d", len(examples))
+
+        path = os.path.join(cur_dir, filename)
+        with tf.io.gfile.GFile(path, "r") as f:
+          text = f.read().strip().replace("<br />", " ")
+        examples.append(
+            InputExample(
+                guid="unused_id", text_a=text, text_b=None, label=label))
+    return examples
+
+
 class MnliProcessor(DataProcessor):
   """Processor for the MultiNLI data set (GLUE version)."""
+
+  def __init__(self,
+               mnli_type="matched",
+               process_text_fn=tokenization.convert_to_unicode):
+    super(MnliProcessor, self).__init__(process_text_fn)
+    if mnli_type not in ("matched", "mismatched"):
+      raise ValueError("Invalid `mnli_type`: %s" % mnli_type)
+    self.mnli_type = mnli_type
 
   def get_train_examples(self, data_dir):
     """See base class."""
@@ -180,14 +280,23 @@ class MnliProcessor(DataProcessor):
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "dev_matched.tsv")),
-        "dev_matched")
+    if self.mnli_type == "matched":
+      return self._create_examples(
+          self._read_tsv(os.path.join(data_dir, "dev_matched.tsv")),
+          "dev_matched")
+    else:
+      return self._create_examples(
+          self._read_tsv(os.path.join(data_dir, "dev_mismatched.tsv")),
+          "dev_mismatched")
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    return self._create_examples(
-        self._read_tsv(os.path.join(data_dir, "test_matched.tsv")), "test")
+    if self.mnli_type == "matched":
+      return self._create_examples(
+          self._read_tsv(os.path.join(data_dir, "test_matched.tsv")), "test")
+    else:
+      return self._create_examples(
+          self._read_tsv(os.path.join(data_dir, "test_mismatched.tsv")), "test")
 
   def get_labels(self):
     """See base class."""
@@ -199,9 +308,9 @@ class MnliProcessor(DataProcessor):
     return "MNLI"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       if i == 0:
         continue
       guid = "%s-%s" % (set_type, self.process_text_fn(line[0]))
@@ -244,9 +353,9 @@ class MrpcProcessor(DataProcessor):
     return "MRPC"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       if i == 0:
         continue
       guid = "%s-%s" % (set_type, i)
@@ -290,7 +399,7 @@ class PawsxProcessor(DataProcessor):
           self._read_tsv(os.path.join(data_dir, language, train_tsv))[1:])
 
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       guid = "train-%d" % i
       text_a = self.process_text_fn(line[1])
       text_b = self.process_text_fn(line[2])
@@ -307,7 +416,7 @@ class PawsxProcessor(DataProcessor):
           self._read_tsv(os.path.join(data_dir, lang, "dev_2k.tsv"))[1:])
 
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       guid = "dev-%d" % i
       text_a = self.process_text_fn(line[1])
       text_b = self.process_text_fn(line[2])
@@ -321,7 +430,7 @@ class PawsxProcessor(DataProcessor):
     examples_by_lang = {k: [] for k in self.supported_languages}
     for lang in self.supported_languages:
       lines = self._read_tsv(os.path.join(data_dir, lang, "test_2k.tsv"))[1:]
-      for (i, line) in enumerate(lines):
+      for i, line in enumerate(lines):
         guid = "test-%d" % i
         text_a = self.process_text_fn(line[1])
         text_b = self.process_text_fn(line[2])
@@ -368,9 +477,9 @@ class QnliProcessor(DataProcessor):
     return "QNLI"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       if i == 0:
         continue
       guid = "%s-%s" % (set_type, 1)
@@ -415,18 +524,24 @@ class QqpProcessor(DataProcessor):
     return "QQP"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       if i == 0:
         continue
       guid = "%s-%s" % (set_type, line[0])
-      try:
-        text_a = line[3]
-        text_b = line[4]
-        label = line[5]
-      except IndexError:
-        continue
+      if set_type == "test":
+        text_a = line[1]
+        text_b = line[2]
+        label = "0"
+      else:
+        # There appear to be some garbage lines in the train dataset.
+        try:
+          text_a = line[3]
+          text_b = line[4]
+          label = line[5]
+        except IndexError:
+          continue
       examples.append(
           InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
@@ -462,7 +577,7 @@ class RteProcessor(DataProcessor):
     return "RTE"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
     for i, line in enumerate(lines):
       if i == 0:
@@ -507,9 +622,9 @@ class SstProcessor(DataProcessor):
     return "SST-2"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       if i == 0:
         continue
       guid = "%s-%s" % (set_type, i)
@@ -558,7 +673,7 @@ class StsBProcessor(DataProcessor):
     return "STS-B"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
     for i, line in enumerate(lines):
       if i == 0:
@@ -671,7 +786,7 @@ class TfdsProcessor(DataProcessor):
     return "TFDS_" + self.dataset_name
 
   def _create_examples(self, split_name, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     if split_name not in self.dataset:
       raise ValueError("Split {} not available.".format(split_name))
     dataset = self.dataset[split_name].as_numpy_iterator()
@@ -731,7 +846,7 @@ class WnliProcessor(DataProcessor):
     return "WNLI"
 
   def _create_examples(self, lines, set_type):
-    """Creates examples for the training and dev sets."""
+    """Creates examples for the training/dev/test sets."""
     examples = []
     for i, line in enumerate(lines):
       if i == 0:
@@ -777,7 +892,7 @@ class XnliProcessor(DataProcessor):
                            "multinli.train.%s.tsv" % language))[1:])
 
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       guid = "train-%d" % i
       text_a = self.process_text_fn(line[0])
       text_b = self.process_text_fn(line[1])
@@ -792,7 +907,7 @@ class XnliProcessor(DataProcessor):
     """See base class."""
     lines = self._read_tsv(os.path.join(data_dir, "xnli.dev.tsv"))
     examples = []
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       if i == 0:
         continue
       guid = "dev-%d" % i
@@ -807,7 +922,7 @@ class XnliProcessor(DataProcessor):
     """See base class."""
     lines = self._read_tsv(os.path.join(data_dir, "xnli.test.tsv"))
     examples_by_lang = {k: [] for k in XnliProcessor.supported_languages}
-    for (i, line) in enumerate(lines):
+    for i, line in enumerate(lines):
       if i == 0:
         continue
       guid = "test-%d" % i
@@ -833,45 +948,104 @@ class XtremePawsxProcessor(DataProcessor):
   """Processor for the XTREME PAWS-X data set."""
   supported_languages = ["de", "en", "es", "fr", "ja", "ko", "zh"]
 
+  def __init__(self,
+               process_text_fn=tokenization.convert_to_unicode,
+               translated_data_dir=None,
+               only_use_en_dev=True):
+    """See base class.
+
+    Args:
+      process_text_fn: See base class.
+      translated_data_dir: If specified, will also include translated data in
+        the training and testing data.
+      only_use_en_dev: If True, only use english dev data. Otherwise, use dev
+        data from all languages.
+    """
+    super(XtremePawsxProcessor, self).__init__(process_text_fn)
+    self.translated_data_dir = translated_data_dir
+    self.only_use_en_dev = only_use_en_dev
+
   def get_train_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
     examples = []
-    for (i, line) in enumerate(lines):
-      guid = "train-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.translated_data_dir is None:
+      lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
+      for i, line in enumerate(lines):
+        guid = "train-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = self.process_text_fn(line[2])
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    else:
+      for lang in self.supported_languages:
+        lines = self._read_tsv(
+            os.path.join(self.translated_data_dir, "translate-train",
+                         f"en-{lang}-translated.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"train-{lang}-{i}"
+          text_a = self.process_text_fn(line[2])
+          text_b = self.process_text_fn(line[3])
+          label = self.process_text_fn(line[4])
+          examples.append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
-
     examples = []
-    for (i, line) in enumerate(lines):
-      guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.only_use_en_dev:
+      lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
+      for i, line in enumerate(lines):
+        guid = "dev-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = self.process_text_fn(line[2])
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    else:
+      for lang in self.supported_languages:
+        lines = self._read_tsv(os.path.join(data_dir, f"dev-{lang}.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"dev-{lang}-{i}"
+          text_a = self.process_text_fn(line[0])
+          text_b = self.process_text_fn(line[1])
+          label = self.process_text_fn(line[2])
+          examples.append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    examples_by_lang = {k: [] for k in self.supported_languages}
+    examples_by_lang = {}
     for lang in self.supported_languages:
+      examples_by_lang[lang] = []
       lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
-      for (i, line) in enumerate(lines):
-        guid = "test-%d" % i
+      for i, line in enumerate(lines):
+        guid = f"test-{lang}-{i}"
         text_a = self.process_text_fn(line[0])
         text_b = self.process_text_fn(line[1])
         label = "0"
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.translated_data_dir is not None:
+      for lang in self.supported_languages:
+        if lang == "en":
+          continue
+        examples_by_lang[f"{lang}-en"] = []
+        lines = self._read_tsv(
+            os.path.join(self.translated_data_dir, "translate-test",
+                         f"test-{lang}-en-translated.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"test-{lang}-en-{i}"
+          text_a = self.process_text_fn(line[2])
+          text_b = self.process_text_fn(line[3])
+          label = "0"
+          examples_by_lang[f"{lang}-en"].append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
 
   def get_labels(self):
@@ -891,45 +1065,111 @@ class XtremeXnliProcessor(DataProcessor):
       "ur", "vi", "zh"
   ]
 
+  def __init__(self,
+               process_text_fn=tokenization.convert_to_unicode,
+               translated_data_dir=None,
+               only_use_en_dev=True):
+    """See base class.
+
+    Args:
+      process_text_fn: See base class.
+      translated_data_dir: If specified, will also include translated data in
+        the training data.
+      only_use_en_dev: If True, only use english dev data. Otherwise, use dev
+        data from all languages.
+    """
+    super(XtremeXnliProcessor, self).__init__(process_text_fn)
+    self.translated_data_dir = translated_data_dir
+    self.only_use_en_dev = only_use_en_dev
+
   def get_train_examples(self, data_dir):
     """See base class."""
     lines = self._read_tsv(os.path.join(data_dir, "train-en.tsv"))
 
     examples = []
-    for (i, line) in enumerate(lines):
-      guid = "train-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.translated_data_dir is None:
+      for i, line in enumerate(lines):
+        guid = "train-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = self.process_text_fn(line[2])
+        if label == self.process_text_fn("contradictory"):
+          label = self.process_text_fn("contradiction")
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    else:
+      for lang in self.supported_languages:
+        lines = self._read_tsv(
+            os.path.join(self.translated_data_dir, "translate-train",
+                         f"en-{lang}-translated.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"train-{lang}-{i}"
+          text_a = self.process_text_fn(line[2])
+          text_b = self.process_text_fn(line[3])
+          label = self.process_text_fn(line[4])
+          if label == self.process_text_fn("contradictory"):
+            label = self.process_text_fn("contradiction")
+          examples.append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
   def get_dev_examples(self, data_dir):
     """See base class."""
-    lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
     examples = []
-    for (i, line) in enumerate(lines):
-      guid = "dev-%d" % i
-      text_a = self.process_text_fn(line[0])
-      text_b = self.process_text_fn(line[1])
-      label = self.process_text_fn(line[2])
-      examples.append(
-          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.only_use_en_dev:
+      lines = self._read_tsv(os.path.join(data_dir, "dev-en.tsv"))
+      for i, line in enumerate(lines):
+        guid = "dev-%d" % i
+        text_a = self.process_text_fn(line[0])
+        text_b = self.process_text_fn(line[1])
+        label = self.process_text_fn(line[2])
+        examples.append(
+            InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    else:
+      for lang in self.supported_languages:
+        lines = self._read_tsv(os.path.join(data_dir, f"dev-{lang}.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"dev-{lang}-{i}"
+          text_a = self.process_text_fn(line[0])
+          text_b = self.process_text_fn(line[1])
+          label = self.process_text_fn(line[2])
+          if label == self.process_text_fn("contradictory"):
+            label = self.process_text_fn("contradiction")
+          examples.append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples
 
   def get_test_examples(self, data_dir):
     """See base class."""
-    examples_by_lang = {k: [] for k in self.supported_languages}
+    examples_by_lang = {}
     for lang in self.supported_languages:
+      examples_by_lang[lang] = []
       lines = self._read_tsv(os.path.join(data_dir, f"test-{lang}.tsv"))
-      for (i, line) in enumerate(lines):
-        guid = f"test-{i}"
+      for i, line in enumerate(lines):
+        guid = f"test-{lang}-{i}"
         text_a = self.process_text_fn(line[0])
         text_b = self.process_text_fn(line[1])
         label = "contradiction"
         examples_by_lang[lang].append(
             InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    if self.translated_data_dir is not None:
+      for lang in self.supported_languages:
+        if lang == "en":
+          continue
+        examples_by_lang[f"{lang}-en"] = []
+        lines = self._read_tsv(
+            os.path.join(self.translated_data_dir, "translate-test",
+                         f"test-{lang}-en-translated.tsv"))
+        for i, line in enumerate(lines):
+          guid = f"test-{lang}-en-{i}"
+          text_a = self.process_text_fn(line[2])
+          text_b = self.process_text_fn(line[3])
+          label = "contradiction"
+          examples_by_lang[f"{lang}-en"].append(
+              InputExample(
+                  guid=guid, text_a=text_a, text_b=text_b, label=label))
     return examples_by_lang
 
   def get_labels(self):
@@ -965,6 +1205,11 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     if len(tokens_a) > max_seq_length - 2:
       tokens_a = tokens_a[0:(max_seq_length - 2)]
 
+  seg_id_a = 0
+  seg_id_b = 1
+  seg_id_cls = 0
+  seg_id_pad = 0
+
   # The convention in BERT is:
   # (a) For sequence pairs:
   #  tokens:   [CLS] is this jack ##son ##ville ? [SEP] no it is not . [SEP]
@@ -986,19 +1231,19 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   tokens = []
   segment_ids = []
   tokens.append("[CLS]")
-  segment_ids.append(0)
+  segment_ids.append(seg_id_cls)
   for token in tokens_a:
     tokens.append(token)
-    segment_ids.append(0)
+    segment_ids.append(seg_id_a)
   tokens.append("[SEP]")
-  segment_ids.append(0)
+  segment_ids.append(seg_id_a)
 
   if tokens_b:
     for token in tokens_b:
       tokens.append(token)
-      segment_ids.append(1)
+      segment_ids.append(seg_id_b)
     tokens.append("[SEP]")
-    segment_ids.append(1)
+    segment_ids.append(seg_id_b)
 
   input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
@@ -1010,7 +1255,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
   while len(input_ids) < max_seq_length:
     input_ids.append(0)
     input_mask.append(0)
-    segment_ids.append(0)
+    segment_ids.append(seg_id_pad)
 
   assert len(input_ids) == max_seq_length
   assert len(input_mask) == max_seq_length
@@ -1027,7 +1272,7 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
     logging.info("segment_ids: %s", " ".join([str(x) for x in segment_ids]))
     logging.info("label: %s (id = %s)", example.label, str(label_id))
     logging.info("weight: %s", example.weight)
-    logging.info("int_iden: %s", str(example.int_iden))
+    logging.info("example_id: %s", example.example_id)
 
   feature = InputFeatures(
       input_ids=input_ids,
@@ -1036,9 +1281,84 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
       label_id=label_id,
       is_real_example=True,
       weight=example.weight,
-      int_iden=example.int_iden)
+      example_id=example.example_id)
 
   return feature
+
+
+class AXgProcessor(DataProcessor):
+  """Processor for the AXg dataset (SuperGLUE diagnostics dataset)."""
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_jsonl(os.path.join(data_dir, "AX-g.jsonl")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    return ["entailment", "not_entailment"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "AXg"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    examples = []
+    for line in lines:
+      guid = "%s-%s" % (set_type, self.process_text_fn(str(line["idx"])))
+      text_a = self.process_text_fn(line["premise"])
+      text_b = self.process_text_fn(line["hypothesis"])
+      label = self.process_text_fn(line["label"])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
+
+
+class SuperGLUERTEProcessor(DataProcessor):
+  """Processor for the RTE dataset (SuperGLUE version)."""
+
+  def get_train_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_jsonl(os.path.join(data_dir, "train.jsonl")), "train")
+
+  def get_dev_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_jsonl(os.path.join(data_dir, "val.jsonl")), "dev")
+
+  def get_test_examples(self, data_dir):
+    """See base class."""
+    return self._create_examples(
+        self._read_jsonl(os.path.join(data_dir, "test.jsonl")), "test")
+
+  def get_labels(self):
+    """See base class."""
+    # All datasets are converted to 2-class split, where for 3-class datasets we
+    # collapse neutral and contradiction into not_entailment.
+    return ["entailment", "not_entailment"]
+
+  @staticmethod
+  def get_processor_name():
+    """See base class."""
+    return "RTESuperGLUE"
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    examples = []
+    for i, line in enumerate(lines):
+      guid = "%s-%s" % (set_type, i)
+      text_a = self.process_text_fn(line["premise"])
+      text_b = self.process_text_fn(line["hypothesis"])
+      if set_type == "test":
+        label = "entailment"
+      else:
+        label = self.process_text_fn(line["label"])
+      examples.append(
+          InputExample(guid=guid, text_a=text_a, text_b=text_b, label=label))
+    return examples
 
 
 def file_based_convert_examples_to_features(examples,
@@ -1052,7 +1372,7 @@ def file_based_convert_examples_to_features(examples,
   tf.io.gfile.makedirs(os.path.dirname(output_file))
   writer = tf.io.TFRecordWriter(output_file)
 
-  for (ex_index, example) in enumerate(examples):
+  for ex_index, example in enumerate(examples):
     if ex_index % 10000 == 0:
       logging.info("Writing example %d of %d", ex_index, len(examples))
 
@@ -1079,8 +1399,10 @@ def file_based_convert_examples_to_features(examples,
         [int(feature.is_real_example)])
     if feature.weight is not None:
       features["weight"] = create_float_feature([feature.weight])
-    if feature.int_iden is not None:
-      features["int_iden"] = create_int_feature([feature.int_iden])
+    if feature.example_id is not None:
+      features["example_id"] = create_int_feature([feature.example_id])
+    else:
+      features["example_id"] = create_int_feature([ex_index])
 
     tf_example = tf.train.Example(features=tf.train.Features(feature=features))
     writer.write(tf_example.SerializeToString())
@@ -1113,7 +1435,7 @@ def generate_tf_record_from_data_file(processor,
                                       max_seq_length=128):
   """Generates and saves training data into a tf record file.
 
-  Arguments:
+  Args:
       processor: Input processor object to be used for generating data. Subclass
         of `DataProcessor`.
       data_dir: Directory that contains train/eval/test data to process.
@@ -1137,13 +1459,15 @@ def generate_tf_record_from_data_file(processor,
   label_type = getattr(processor, "label_type", None)
   is_regression = getattr(processor, "is_regression", False)
   has_sample_weights = getattr(processor, "weight_key", False)
-  assert train_data_output_path
 
-  train_input_data_examples = processor.get_train_examples(data_dir)
-  file_based_convert_examples_to_features(train_input_data_examples, label_list,
-                                          max_seq_length, tokenizer,
-                                          train_data_output_path, label_type)
-  num_training_data = len(train_input_data_examples)
+  num_training_data = 0
+  if train_data_output_path:
+    train_input_data_examples = processor.get_train_examples(data_dir)
+    file_based_convert_examples_to_features(train_input_data_examples,
+                                            label_list, max_seq_length,
+                                            tokenizer, train_data_output_path,
+                                            label_type)
+    num_training_data = len(train_input_data_examples)
 
   if eval_data_output_path:
     eval_input_data_examples = processor.get_dev_examples(data_dir)

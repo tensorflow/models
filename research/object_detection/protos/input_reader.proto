@@ -2,7 +2,6 @@ syntax = "proto2";
 
 package object_detection.protos;
 
-import "object_detection/protos/image_resizer.proto";
 
 // Configuration proto for defining input readers that generate Object Detection
 // Examples from input sources. Input readers are expected to generate a
@@ -26,12 +25,12 @@ enum InstanceMaskType {
 
 // Input type format: whether inputs are TfExamples or TfSequenceExamples.
 enum InputType {
-  INPUT_DEFAULT = 0;          // Default implementation, currently TF_EXAMPLE
-  TF_EXAMPLE = 1;  // TfExample input
-  TF_SEQUENCE_EXAMPLE = 2;        // TfSequenceExample Input
+  INPUT_DEFAULT = 0;        // Default implementation, currently TF_EXAMPLE
+  TF_EXAMPLE = 1;           // TfExample input
+  TF_SEQUENCE_EXAMPLE = 2;  // TfSequenceExample Input
 }
 
-// Next id: 32
+// Next id: 38
 message InputReader {
   // Name of input reader. Typically used to describe the dataset that is read
   // by this input reader.
@@ -62,6 +61,9 @@ message InputReader {
   optional uint32 sample_1_of_n_examples = 22 [default = 1];
 
   // Number of file shards to read in parallel.
+  //
+  // When sample_from_datasets_weights are configured, num_readers is applied
+  // for each dataset.
   optional uint32 num_readers = 6 [default = 64];
 
   // Number of batches to produce in parallel. If this is run on a 2x2 TPU set
@@ -91,6 +93,9 @@ message InputReader {
   // Number of parallel decode ops to apply.
   optional uint32 num_parallel_map_calls = 14 [default = 64, deprecated = true];
 
+  // Drop remainder when batch size does not divide dataset size.
+  optional bool drop_remainder = 35 [default = true];
+
   // If positive, TfExampleDecoder will try to decode rasters of additional
   // channels from tf.Examples.
   optional int32 num_additional_channels = 18 [default = 0];
@@ -113,6 +118,9 @@ message InputReader {
   // Whether to load context features from the dataset.
   optional bool load_context_features = 25 [default = false];
 
+  // Whether to load context image ids from the dataset.
+  optional bool load_context_image_ids = 36 [default = false];
+
   // Whether to load groundtruth instance masks.
   optional bool load_instance_masks = 7 [default = false];
 
@@ -122,6 +130,12 @@ message InputReader {
   // Whether to load DensePose data. If set, must also set load_instance_masks
   // to true.
   optional bool load_dense_pose = 31 [default = false];
+
+  // Whether to load track information.
+  optional bool load_track_id = 33 [default = false];
+
+  // Whether to load keypoint depth features.
+  optional bool load_keypoint_depth_features = 37 [default = false];
 
   // Whether to use the display name when decoding examples. This is only used
   // when mapping class text strings to integers.
@@ -133,10 +147,46 @@ message InputReader {
   // Whether input data type is tf.Examples or tf.SequenceExamples
   optional InputType input_type = 30 [default = TF_EXAMPLE];
 
+  // Which frame to choose from the input if Sequence Example. -1 indicates
+  // random choice.
+  optional int32 frame_index = 32 [default = -1];
+
   oneof input_reader {
     TFRecordInputReader tf_record_input_reader = 8;
     ExternalInputReader external_input_reader = 9;
   }
+
+  // When multiple input files are configured, we can sample across them based
+  // on weights.
+  //
+  // The number of weights must match the number of input files configured.
+  //
+  // The number of input readers per dataset is num_readers, scaled relative to
+  // the dataset weight.
+  //
+  // When set, shuffling and shuffle buffer size, settings are
+  // applied individually to each dataset.
+  //
+  // Implementation follows tf.data.experimental.sample_from_datasets sampling
+  // strategy. Weights may take any value - only relative weights matter.
+  //
+  // Zero weights will result in a dataset not being sampled and no input
+  // readers spawned.
+  //
+  // Examples, assuming two input files configured:
+  //
+  // Equal weighting:
+  // sample_from_datasets_weights: 0.5
+  // sample_from_datasets_weights: 0.5
+  //
+  // 2:1 weighting:
+  // sample_from_datasets_weights: 2
+  // sample_from_datasets_weights: 1
+  //
+  // Exclude the second dataset:
+  // sample_from_datasets_weights: 1
+  // sample_from_datasets_weights: 0
+  repeated float sample_from_datasets_weights = 34;
 
 
   // Expand labels to ancestors or descendants in the hierarchy for

@@ -4,11 +4,14 @@ package object_detection.protos;
 
 import "object_detection/protos/image_resizer.proto";
 import "object_detection/protos/losses.proto";
+import "object_detection/protos/post_processing.proto";
+import "object_detection/protos/preprocessor.proto";
 
 // Configuration for the CenterNet meta architecture from the "Objects as
 // Points" paper [1]
 // [1]: https://arxiv.org/abs/1904.07850
 
+// Next Id = 16
 message CenterNet {
   // Number of classes to predict.
   optional int32 num_classes = 1;
@@ -18,6 +21,32 @@ message CenterNet {
 
   // Image resizer for preprocessing the input image.
   optional ImageResizer image_resizer = 3;
+
+  // If set, all task heads will be constructed with separable convolutions.
+  optional bool use_depthwise = 13 [default = false];
+
+  // Indicates whether or not to use the sparse version of the Op that computes
+  // the center heatmaps. The sparse version scales better with number of
+  // channels in the heatmap, but in some cases is known to cause an OOM error.
+  // TODO(b/170989061) When bug is fixed, make this the default behavior.
+  optional bool compute_heatmap_sparse = 15 [default = false];
+
+  // Parameters to determine the model architecture/layers of the prediction
+  // heads.
+  message PredictionHeadParams {
+    // The two fields: num_filters, kernel_sizes correspond to the parameters of
+    // the convolutional layers used by the prediction head. If provided, the
+    // length of the two repeated fields need to be the same and represents the
+    // number of convolutional layers.
+
+    // Corresponds to the "filters" argument in tf.keras.layers.Conv2D. If not
+    // provided, the default value [256] will be used.
+    repeated int32 num_filters = 1;
+
+    // Corresponds to the "kernel_size" argument in tf.keras.layers.Conv2D. If
+    // not provided, the default value [3] will be used.
+    repeated int32 kernel_sizes = 2;
+  }
 
   // Parameters which are related to object detection task.
   message ObjectDetection {
@@ -62,6 +91,18 @@ message CenterNet {
 
     // If set, loss is only computed for the labeled classes.
     optional bool use_labeled_classes = 6 [default = false];
+
+    // The keypoint weights used for calculating the location of object center.
+    // When the field is provided, the number of weights need to be the same as
+    // the number of keypoints. The object center is calculated by the weighted
+    // mean of the keypoint locations. When the field is not provided, the
+    // object center is determined by the bounding box groundtruth annotations
+    // (default behavior).
+    repeated float keypoint_weights_for_center = 7;
+
+    // Parameters to determine the architecture of the object center prediction
+    // head.
+    optional PredictionHeadParams center_head_params = 8;
   }
   optional ObjectCenterParams object_center_params = 5;
 
@@ -142,6 +183,12 @@ message CenterNet {
     // the keypoint candidate.
     optional string candidate_ranking_mode = 16 [default = "min_distance"];
 
+    // The score distance ratio offset, only used if candidate_ranking_mode is
+    // 'score_distance_ratio'. The offset is used in the maximization of score
+    // distance ratio, defined as:
+    // keypoint_score / (distance + score_distance_offset)
+    optional float score_distance_offset = 22 [default = 1.0];
+
     // The radius (in the unit of output pixel) around heatmap peak to assign
     // the offset targets. If set 0, then the offset target will only be
     // assigned to the heatmap peak (same behavior as the original paper).
@@ -154,6 +201,46 @@ message CenterNet {
     // out_height, out_width, 2 * num_keypoints] (recommended when the
     // offset_peak_radius is not zero).
     optional bool per_keypoint_offset = 18 [default = false];
+
+    // Indicates whether to predict the depth of each keypoints. Note that this
+    // is only supported in the single class keypoint task.
+    optional bool predict_depth = 19 [default = false];
+
+    // Indicates whether to predict depths for each keypoint channel
+    // separately. If set False, the output depth target has the shape
+    // [batch_size, out_height, out_width, 1]. If set True, the output depth
+    // target has the shape [batch_size, out_height, out_width,
+    // num_keypoints]. Recommend to set this value and "per_keypoint_offset" to
+    // both be True at the same time.
+    optional bool per_keypoint_depth = 20 [default = false];
+
+    // The weight of the keypoint depth loss.
+    optional float keypoint_depth_loss_weight = 21 [default = 1.0];
+
+    // Whether keypoints outside the image frame should be clipped back to the
+    // image boundary. If true, the keypoints that are clipped have scores set
+    // to 0.0.
+    optional bool clip_out_of_frame_keypoints = 23 [default = false];
+
+    // Whether instances should be rescored based on keypoint confidences. If
+    // False, will use the detection score (from the object center heatmap). If
+    // True, will compute new scores with:
+    // new_score = o * (1/k) sum {s_i}
+    // where o is the object score, s_i is the score for keypoint i, and k is
+    // the number of keypoints for that class.
+    optional bool rescore_instances = 24 [default = false];
+
+    // Parameters to determine the architecture of the keypoint heatmap
+    // prediction head.
+    optional PredictionHeadParams heatmap_head_params = 25;
+
+    // Parameters to determine the architecture of the keypoint offset
+    // prediction head.
+    optional PredictionHeadParams offset_head_params = 26;
+
+    // Parameters to determine the architecture of the keypoint regression
+    // prediction head.
+    optional PredictionHeadParams regress_head_params = 27;
   }
   repeated KeypointEstimation keypoint_estimation_task = 7;
 
@@ -218,6 +305,117 @@ message CenterNet {
     optional float heatmap_bias_init = 8 [default = -2.19];
   }
   optional DensePoseEstimation densepose_estimation_task = 9;
+
+  // Parameters which are related to tracking embedding estimation task.
+  // A Simple Baseline for Multi-Object Tracking [2]
+  // [2]: https://arxiv.org/abs/2004.01888
+  message TrackEstimation {
+    // Weight of the task loss. The total loss of the model will be the
+    // summation of task losses weighted by the weights.
+    optional float task_loss_weight = 1 [default = 1.0];
+
+    // The maximun track ID of the datset.
+    optional int32 num_track_ids = 2;
+
+    // The embedding size for re-identification (ReID) task in tracking.
+    optional int32 reid_embed_size = 3 [default = 128];
+
+    // The number of (fully-connected, batch-norm, relu) layers for track ID
+    // classification head. The output dimension of each intermediate FC layer
+    // will all be 'reid_embed_size'. The last FC layer will directly project to
+    // the track ID classification space of size 'num_track_ids' without
+    // batch-norm and relu layers.
+    optional int32 num_fc_layers = 4 [default = 1];
+
+    // Classification loss configuration for ReID loss.
+    optional ClassificationLoss classification_loss = 5;
+  }
+  optional TrackEstimation track_estimation_task = 10;
+
+  // Temporal offset prediction head similar to CenterTrack.
+  // Currently our implementation adopts LSTM, different from original paper.
+  // See go/lstd-centernet for more details.
+  // Tracking Objects as Points [3]
+  // [3]: https://arxiv.org/abs/2004.01177
+  message TemporalOffsetEstimation {
+    // Weight of the task loss. The total loss of the model will be the
+    // summation of task losses weighted by the weights.
+    optional float task_loss_weight = 1 [default = 1.0];
+
+    // Localization loss configuration for offset loss.
+    optional LocalizationLoss localization_loss = 2;
+  }
+  optional TemporalOffsetEstimation temporal_offset_task = 12;
+
+
+  // Mask prediction support using DeepMAC. See https://arxiv.org/abs/2104.00613
+  message DeepMACMaskEstimation {
+    // The loss used for penalizing mask predictions.
+    optional ClassificationLoss classification_loss = 1;
+
+    // Weight of mask prediction loss
+    optional float task_loss_weight = 2 [default = 1.0];
+
+    // The dimension of the per-instance embedding.
+    optional int32 dim = 3 [default = 256];
+
+    // The dimension of the per-pixel embedding
+    optional int32 pixel_embedding_dim = 4 [default=16];
+
+    // If set, masks are only kept for classes listed here. Masks are deleted
+    // for all other classes. Note that this is only done at training time, eval
+    // behavior is unchanged.
+    repeated int32 allowed_masked_classes_ids = 5;
+
+    // The size of cropped pixel embedding that goes into the 2D mask prediction
+    // network (RoI align).
+    optional int32 mask_size = 6 [default=32];
+
+    // If set to a positive value, we subsample instances by this amount to
+    // save memory during training.
+    optional int32 mask_num_subsamples = 67[default=-1];
+
+    // Whether or not to use (x, y) coordinates as input to mask net.
+    optional bool use_xy = 8 [default=true];
+
+    // Defines the kind of architecture we want to use for mask network.
+    optional string network_type = 9 [default="hourglass52"];
+
+    // Whether or not we want to use instance embedding in mask network.
+    optional bool use_instance_embedding = 10 [default=true];
+
+    // Number of channels in the inital block of the mask prediction network.
+    optional int32 num_init_channels = 11 [default=64];
+
+    // Whether or not to predict masks at full resolution. If true, we predict
+    // masks at the resolution of the output stride. Otherwise, masks are
+    // predicted at resolution defined by mask_size
+    optional bool predict_full_resolution_masks = 12 [default=false];
+
+    // If predict_full_resolution_masks is set, this parameter controls the size
+    // of cropped masks returned by post-process. To be compatible with the rest
+    // of the API, masks are always cropped and resized according to detected
+    // boxes in postprocess.
+    optional int32 postprocess_crop_size = 13 [default=256];
+
+    // The maximum relative amount by which boxes will be jittered before
+    // RoI crop happens. The x and y coordinates of the box are jittered
+    // relative to width and height respectively.
+    optional float max_roi_jitter_ratio = 14 [default=0.0];
+
+    // The mode for jitterting box ROIs. See RandomJitterBoxes in
+    // preprocessor.proto for more details
+    optional RandomJitterBoxes.JitterMode jitter_mode = 15 [default=DEFAULT];
+  }
+
+  optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
+
+  // CenterNet does not apply conventional post processing operations such as
+  // non max suppression as it applies a max-pool operator on box centers.
+  // However, in some cases we observe the need to remove duplicate predictions
+  // from CenterNet. Use this optional parameter to apply traditional non max
+  // suppression and score thresholding.
+  optional PostProcessing post_processing = 24;
 }
 
 message CenterNetFeatureExtractor {
@@ -235,4 +433,18 @@ message CenterNetFeatureExtractor {
   // If set, will change channel order to be [blue, green, red]. This can be
   // useful to be compatible with some pre-trained feature extractors.
   optional bool bgr_ordering = 4 [default = false];
+
+  // If set, the feature upsampling layers will be constructed with
+  // separable convolutions. This is typically applied to feature pyramid
+  // network if any.
+  optional bool use_depthwise = 5 [default = false];
+
+
+  // Depth multiplier. Only valid for specific models (e.g. MobileNet). See subclasses of `CenterNetFeatureExtractor`.
+  optional float depth_multiplier = 9 [default = 1.0];
+
+  // Whether to use separable convolutions. Only valid for specific
+  // models. See subclasses of `CenterNetFeatureExtractor`.
+  optional bool use_separable_conv = 10 [default = false];
 }
+

@@ -40,8 +40,6 @@ model:
     momentum: 0.9
     decay: 0.9
     epsilon: 0.001
-  learning_rate:
-    name: 'piecewise_constant_with_warmup'
   loss:
     label_smoothing: 0.1
 train:

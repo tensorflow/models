@@ -275,6 +275,124 @@ class TfExampleDecoderTest(test_case.TestCase):
     self.assertAllEqual(expected_boxes,
                         tensor_dict[fields.InputDataFields.groundtruth_boxes])
 
+  def testDecodeKeypointDepth(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    bbox_ymins = [0.0, 4.0]
+    bbox_xmins = [1.0, 5.0]
+    bbox_ymaxs = [2.0, 6.0]
+    bbox_xmaxs = [3.0, 7.0]
+    keypoint_ys = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    keypoint_xs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    keypoint_visibility = [1, 2, 0, 1, 0, 2]
+    keypoint_depths = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+    keypoint_depth_weights = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5]
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/object/bbox/ymin':
+                      dataset_util.float_list_feature(bbox_ymins),
+                  'image/object/bbox/xmin':
+                      dataset_util.float_list_feature(bbox_xmins),
+                  'image/object/bbox/ymax':
+                      dataset_util.float_list_feature(bbox_ymaxs),
+                  'image/object/bbox/xmax':
+                      dataset_util.float_list_feature(bbox_xmaxs),
+                  'image/object/keypoint/y':
+                      dataset_util.float_list_feature(keypoint_ys),
+                  'image/object/keypoint/x':
+                      dataset_util.float_list_feature(keypoint_xs),
+                  'image/object/keypoint/z':
+                      dataset_util.float_list_feature(keypoint_depths),
+                  'image/object/keypoint/z/weights':
+                      dataset_util.float_list_feature(keypoint_depth_weights),
+                  'image/object/keypoint/visibility':
+                      dataset_util.int64_list_feature(keypoint_visibility),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder(
+          num_keypoints=3, load_keypoint_depth_features=True)
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+
+      self.assertAllEqual(
+          (output[fields.InputDataFields.groundtruth_keypoint_depths].get_shape(
+          ).as_list()), [2, 3])
+      self.assertAllEqual(
+          (output[fields.InputDataFields.groundtruth_keypoint_depth_weights]
+           .get_shape().as_list()), [2, 3])
+      return output
+
+    tensor_dict = self.execute_cpu(graph_fn, [])
+
+    expected_keypoint_depths = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
+    self.assertAllClose(
+        expected_keypoint_depths,
+        tensor_dict[fields.InputDataFields.groundtruth_keypoint_depths])
+
+    expected_keypoint_depth_weights = [[1.0, 0.9, 0.8], [0.7, 0.6, 0.5]]
+    self.assertAllClose(
+        expected_keypoint_depth_weights,
+        tensor_dict[fields.InputDataFields.groundtruth_keypoint_depth_weights])
+
+  def testDecodeKeypointDepthNoDepth(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    bbox_ymins = [0.0, 4.0]
+    bbox_xmins = [1.0, 5.0]
+    bbox_ymaxs = [2.0, 6.0]
+    bbox_xmaxs = [3.0, 7.0]
+    keypoint_ys = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+    keypoint_xs = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+    keypoint_visibility = [1, 2, 0, 1, 0, 2]
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/object/bbox/ymin':
+                      dataset_util.float_list_feature(bbox_ymins),
+                  'image/object/bbox/xmin':
+                      dataset_util.float_list_feature(bbox_xmins),
+                  'image/object/bbox/ymax':
+                      dataset_util.float_list_feature(bbox_ymaxs),
+                  'image/object/bbox/xmax':
+                      dataset_util.float_list_feature(bbox_xmaxs),
+                  'image/object/keypoint/y':
+                      dataset_util.float_list_feature(keypoint_ys),
+                  'image/object/keypoint/x':
+                      dataset_util.float_list_feature(keypoint_xs),
+                  'image/object/keypoint/visibility':
+                      dataset_util.int64_list_feature(keypoint_visibility),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder(
+          num_keypoints=3, load_keypoint_depth_features=True)
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+
+      return output
+
+    tensor_dict = self.execute_cpu(graph_fn, [])
+
+    expected_keypoints_depth_default = [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+    self.assertAllClose(
+        expected_keypoints_depth_default,
+        tensor_dict[fields.InputDataFields.groundtruth_keypoint_depths])
+    self.assertAllClose(
+        expected_keypoints_depth_default,
+        tensor_dict[fields.InputDataFields.groundtruth_keypoint_depth_weights])
+
   def testDecodeKeypoint(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
     encoded_jpeg, _ = self._create_encoded_and_decoded_data(
@@ -840,6 +958,61 @@ class TfExampleDecoderTest(test_case.TestCase):
 
     self.assertAllEqual(object_area,
                         tensor_dict[fields.InputDataFields.groundtruth_area])
+
+  def testDecodeVerifiedNegClasses(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    neg_category_ids = [0, 5, 8]
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/neg_category_ids':
+                      dataset_util.int64_list_feature(neg_category_ids),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder()
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+      return output
+
+    tensor_dict = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(
+        neg_category_ids,
+        tensor_dict[fields.InputDataFields.groundtruth_verified_neg_classes])
+
+  def testDecodeNotExhaustiveClasses(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    not_exhaustive_category_ids = [0, 5, 8]
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/not_exhaustive_category_ids':
+                      dataset_util.int64_list_feature(
+                          not_exhaustive_category_ids),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder()
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+      return output
+
+    tensor_dict = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(
+        not_exhaustive_category_ids,
+        tensor_dict[fields.InputDataFields.groundtruth_not_exhaustive_classes])
 
   def testDecodeObjectIsCrowd(self):
     image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
@@ -1429,6 +1602,48 @@ class TfExampleDecoderTest(test_case.TestCase):
     self.assertAllEqual(dp_num_points, expected_dp_num_points)
     self.assertAllEqual(dp_part_ids, expected_dp_part_ids)
     self.assertAllClose(dp_surface_coords, expected_dp_surface_coords)
+
+  def testDecodeTrack(self):
+    image_tensor = np.random.randint(256, size=(4, 5, 3)).astype(np.uint8)
+    encoded_jpeg, _ = self._create_encoded_and_decoded_data(
+        image_tensor, 'jpeg')
+    bbox_ymins = [0.0, 4.0, 2.0]
+    bbox_xmins = [1.0, 5.0, 8.0]
+    bbox_ymaxs = [2.0, 6.0, 1.0]
+    bbox_xmaxs = [3.0, 7.0, 3.3]
+    track_labels = [0, 1, 2]
+
+    def graph_fn():
+      example = tf.train.Example(
+          features=tf.train.Features(
+              feature={
+                  'image/encoded':
+                      dataset_util.bytes_feature(encoded_jpeg),
+                  'image/format':
+                      dataset_util.bytes_feature(six.b('jpeg')),
+                  'image/object/bbox/ymin':
+                      dataset_util.float_list_feature(bbox_ymins),
+                  'image/object/bbox/xmin':
+                      dataset_util.float_list_feature(bbox_xmins),
+                  'image/object/bbox/ymax':
+                      dataset_util.float_list_feature(bbox_ymaxs),
+                  'image/object/bbox/xmax':
+                      dataset_util.float_list_feature(bbox_xmaxs),
+                  'image/object/track/label':
+                      dataset_util.int64_list_feature(track_labels),
+              })).SerializeToString()
+
+      example_decoder = tf_example_decoder.TfExampleDecoder(
+          load_track_id=True)
+      output = example_decoder.decode(tf.convert_to_tensor(example))
+      track_ids = output[fields.InputDataFields.groundtruth_track_ids]
+      return track_ids
+
+    track_ids = self.execute_cpu(graph_fn, [])
+
+    expected_track_labels = [0, 1, 2]
+
+    self.assertAllEqual(track_ids, expected_track_labels)
 
 
 if __name__ == '__main__':

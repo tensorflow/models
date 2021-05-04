@@ -229,6 +229,31 @@ class BoxListOpsTest(test_case.TestCase):
     iou_output = self.execute(graph_fn, [])
     self.assertAllClose(iou_output, exp_output)
 
+  def test_l1(self):
+    def graph_fn():
+      corners1 = tf.constant([[4.0, 3.0, 7.0, 5.0], [5.0, 6.0, 10.0, 7.0]])
+      corners2 = tf.constant([[3.0, 4.0, 6.0, 8.0], [14.0, 14.0, 15.0, 15.0],
+                              [0.0, 0.0, 20.0, 20.0]])
+      boxes1 = box_list.BoxList(corners1)
+      boxes2 = box_list.BoxList(corners2)
+      l1 = box_list_ops.l1(boxes1, boxes2)
+      return l1
+    exp_output = [[5.0, 22.5, 45.5], [8.5, 19.0, 40.0]]
+    l1_output = self.execute(graph_fn, [])
+    self.assertAllClose(l1_output, exp_output)
+
+  def test_giou(self):
+    def graph_fn():
+      corners1 = tf.constant([[5.0, 7.0, 7.0, 9.0]])
+      corners2 = tf.constant([[5.0, 7.0, 7.0, 9.0], [5.0, 11.0, 7.0, 13.0]])
+      boxes1 = box_list.BoxList(corners1)
+      boxes2 = box_list.BoxList(corners2)
+      giou = box_list_ops.giou(boxes1, boxes2)
+      return giou
+    exp_output = [[1.0, -1.0 / 3.0]]
+    giou_output = self.execute(graph_fn, [])
+    self.assertAllClose(giou_output, exp_output)
+
   def test_matched_iou(self):
     def graph_fn():
       corners1 = tf.constant([[4.0, 3.0, 7.0, 5.0], [5.0, 6.0, 10.0, 7.0]])

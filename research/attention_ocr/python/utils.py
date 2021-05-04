@@ -37,16 +37,16 @@ def logits_to_log_prob(logits):
     probabilities.
   """
 
-  with tf.variable_scope('log_probabilities'):
+  with tf.compat.v1.variable_scope('log_probabilities'):
     reduction_indices = len(logits.shape.as_list()) - 1
     max_logits = tf.reduce_max(
-        logits, reduction_indices=reduction_indices, keep_dims=True)
+        input_tensor=logits, axis=reduction_indices, keepdims=True)
     safe_logits = tf.subtract(logits, max_logits)
     sum_exp = tf.reduce_sum(
-        tf.exp(safe_logits),
-        reduction_indices=reduction_indices,
-        keep_dims=True)
-    log_probs = tf.subtract(safe_logits, tf.log(sum_exp))
+        input_tensor=tf.exp(safe_logits),
+        axis=reduction_indices,
+        keepdims=True)
+    log_probs = tf.subtract(safe_logits, tf.math.log(sum_exp))
   return log_probs
 
 
@@ -91,7 +91,7 @@ def ConvertAllInputsToTensors(func):
   """
 
   def FuncWrapper(*args):
-    tensors = [tf.convert_to_tensor(a) for a in args]
+    tensors = [tf.convert_to_tensor(value=a) for a in args]
     return func(*tensors)
 
   return FuncWrapper

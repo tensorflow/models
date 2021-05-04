@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,12 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
-"""Implementation of embedding layer with shared weights."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+"""Implementation of embedding layer with shared weights."""
 
 import tensorflow as tf
 
@@ -43,6 +39,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
       self.shared_weights = self.add_weight(
           "weights",
           shape=[self.vocab_size, self.hidden_size],
+          dtype=tf.float32,
           initializer=tf.random_normal_initializer(
               mean=0., stddev=self.hidden_size**-0.5))
     super(EmbeddingSharedWeights, self).build(input_shape)
@@ -59,6 +56,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
     Args:
       inputs: An int64 tensor with shape [batch_size, length]
       mode: string, a valid value is one of "embedding" and "linear".
+
     Returns:
       outputs: (1) If mode == "embedding", output embedding tensor, float32 with
         shape [batch_size, length, embedding_size]; (2) mode == "linear", output
@@ -81,7 +79,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
       mask = tf.cast(tf.not_equal(inputs, 0), embeddings.dtype)
       embeddings *= tf.expand_dims(mask, -1)
       # Scale embedding by the sqrt of the hidden size
-      embeddings *= self.hidden_size ** 0.5
+      embeddings *= self.hidden_size**0.5
 
       return embeddings
 
@@ -90,6 +88,7 @@ class EmbeddingSharedWeights(tf.keras.layers.Layer):
 
     Args:
       inputs: A float32 tensor with shape [batch_size, length, hidden_size]
+
     Returns:
       float32 tensor with shape [batch_size, length, vocab_size].
     """

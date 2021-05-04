@@ -70,6 +70,7 @@ message LocalizationLoss {
     WeightedSmoothL1LocalizationLoss weighted_smooth_l1 = 2;
     WeightedIOULocalizationLoss weighted_iou = 3;
     L1LocalizationLoss l1_localization_loss = 4;
+    WeightedGIOULocalizationLoss weighted_giou = 5;
   }
 }
 
@@ -101,6 +102,10 @@ message WeightedIOULocalizationLoss {
 message L1LocalizationLoss {
 }
 
+// Generalized intersection over union location loss: 1 - GIOU
+message WeightedGIOULocalizationLoss {
+}
+
 // Configuration for class prediction loss function.
 message ClassificationLoss {
   oneof classification_loss {
@@ -110,6 +115,7 @@ message ClassificationLoss {
     BootstrappedSigmoidClassificationLoss bootstrapped_sigmoid = 3;
     SigmoidFocalClassificationLoss weighted_sigmoid_focal = 4;
     PenaltyReducedLogisticFocalLoss penalty_reduced_logistic_focal_loss = 6;
+    WeightedDiceClassificationLoss weighted_dice_classification_loss = 7;
   }
 }
 
@@ -217,3 +223,14 @@ message RandomExampleSampler {
   // example sampling.
   optional float positive_sample_fraction = 1 [default = 0.01];
 }
+
+// Dice loss for training instance masks[1][2].
+// [1]: https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient
+// [2]: https://arxiv.org/abs/1606.04797
+message WeightedDiceClassificationLoss {
+  // If set, we square the probabilities in the denominator term used for
+  // normalization.
+  optional bool squared_normalization = 1 [default=false];
+}
+
+
