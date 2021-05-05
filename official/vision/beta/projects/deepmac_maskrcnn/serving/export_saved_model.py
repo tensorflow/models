@@ -39,7 +39,8 @@ from absl import flags
 from official.vision.beta.projects.deepmac_maskrcnn.tasks import deep_mask_head_rcnn
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.vision.beta.projects.deepmac_maskrcnn.serving import export_saved_model_lib
+from official.vision.beta.serving import export_saved_model_lib
+from official.vision.beta.projects.deepmac_maskrcnn.serving import detection
 
 FLAGS = flags.FLAGS
 
@@ -84,6 +85,12 @@ def main(_):
 
   params.validate()
   params.lock()
+  
+  export_module = detection.DetectionModule(
+          params=params,
+          batch_size=FLAGS.batch_size,
+          input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')],
+          num_channels=3)
 
   export_saved_model_lib.export_inference_graph(
       input_type=FLAGS.input_type,
@@ -92,6 +99,7 @@ def main(_):
       params=params,
       checkpoint_path=FLAGS.checkpoint_path,
       export_dir=FLAGS.export_dir,
+      export_module=export_module,
       export_checkpoint_subdir='checkpoint',
       export_saved_model_subdir='saved_model')
 
