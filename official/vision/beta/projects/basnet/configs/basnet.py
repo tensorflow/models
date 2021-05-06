@@ -84,7 +84,8 @@ def basnet() -> cfg.ExperimentConfig:
       ])
 
 # DUTS Dataset
-DUTS_TRAIN_EXAMPLES = 21106
+#DUTS_TRAIN_EXAMPLES = 21106
+DUTS_TRAIN_EXAMPLES = 10553
 DUTS_VAL_EXAMPLES = 5019
 DUTS_INPUT_PATH_BASE_TR = '/home/datasets/DUTS/DUTS_TR_hflip_TFRecords/'
 DUTS_INPUT_PATH_BASE_VAL = '/home/datasets/DUTS/DUTS_TE_TFRecords/'
@@ -94,7 +95,7 @@ DUTS_INPUT_PATH_BASE_VAL = '/home/datasets/DUTS/DUTS_TE_TFRecords/'
 @exp_factory.register_config_factory('basnet_duts')
 def basnet_duts() -> cfg.ExperimentConfig:
   """Image segmentation on duts with basnet."""
-  train_batch_size = 16
+  train_batch_size = 8
   eval_batch_size = 16
   steps_per_epoch = DUTS_TRAIN_EXAMPLES // train_batch_size
   config = cfg.ExperimentConfig(
@@ -143,9 +144,8 @@ def basnet_duts() -> cfg.ExperimentConfig:
                   }
               },
               'learning_rate': {
-                  'type': 'stepwise',
-                  'stepwise': {'boundaries': [200*steps_per_epoch],
-                               'values': [0.001, 0.001]}
+                  'type': 'constant',
+                  'constant': {'learning_rate': 0.001}
               }
           })),
       restrictions=[

@@ -89,7 +89,7 @@ class BASNetTask(base_task.Task):
     decoder = basnet_input.Decoder()
     parser = basnet_input.Parser(
         output_size=input_size[:2],
-        aug_rand_hflip=False,
+        aug_rand_hflip=True,
         )
 
     reader = input_reader.InputReader(
