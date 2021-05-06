@@ -15,7 +15,8 @@
 """All necessary imports for registration."""
 
 # pylint: disable=unused-import
-from official.common import registry_imports
+#from official.common import registry_imports
+from official.vision import beta
 from official.vision.beta.projects.basnet.configs import basnet
 from official.vision.beta.projects.basnet.modeling.backbones import basnet_en
 from official.vision.beta.projects.basnet.modeling.decoders import basnet_de

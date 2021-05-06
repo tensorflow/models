@@ -20,7 +20,8 @@ import tensorflow as tf
 
 
 from official.vision.beta.projects.basnet.configs import basnet as basnet_cfg
-from official.vision.beta.modeling import backbones
+#from official.vision.beta.projects.basnet.modeling import backbones
+from official.vision.beta.projects.basnet.modeling.backbones import basnet_en
 from official.vision.beta.projects.basnet.modeling import basnet_model
 from official.vision.beta.projects.basnet.modeling.decoders import factory as decoder_factory
 from official.vision.beta.projects.basnet.modeling.modules import refunet
@@ -30,10 +31,8 @@ def build_basnet_model(
     model_config: basnet_cfg.BASNetModel,
     l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds BASNet model."""
-  backbone = backbones.factory.build_backbone(
-      input_specs=input_specs,
-      model_config=model_config,
-      l2_regularizer=l2_regularizer)
+  backbone = basnet_en.BASNet_En(
+      input_specs=input_specs)
 
   decoder = decoder_factory.build_decoder(
       input_specs=backbone.output_specs,

@@ -18,7 +18,8 @@
 # Import libraries
 import tensorflow as tf
 
-from official.vision.beta.projects.basnet.modeling import decoders
+#from official.vision.beta.projects.basnet.modeling import decoders
+from official.vision.beta.projects.basnet.modeling.decoders.basnet_de import BASNet_De
 
 
 def build_decoder(input_specs,
@@ -43,7 +44,7 @@ def build_decoder(input_specs,
   if decoder_type == 'identity':
     decoder = None
   elif decoder_type == 'basnet_de':
-    decoder = decoders.basnet_de.BASNet_De(
+    decoder = BASNet_De(
         input_specs=input_specs,
         use_sync_bn=norm_activation_config.use_sync_bn,
         norm_momentum=norm_activation_config.norm_momentum,

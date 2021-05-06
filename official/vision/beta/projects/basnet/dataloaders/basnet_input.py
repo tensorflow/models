@@ -84,7 +84,7 @@ class Parser(parser.Parser):
 
     # Flips image randomly during training.
     if self._aug_rand_hflip:
-      image, label = preprocess_ops.random_horizontal_flip(image, masks=label)
+      image, _, label = preprocess_ops.random_horizontal_flip(image, masks=label)
 
 
 
