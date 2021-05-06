@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-r"""Vision models export binary for serving/inference.
+r"""Deepmac model export binary for serving/inference.
 To export a trained checkpoint in saved_model format (shell script):
 
 CHECKPOINT_PATH = XX
