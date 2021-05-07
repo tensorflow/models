@@ -334,6 +334,18 @@ class Resnet50CtlBenchmarkBase(CtlBenchmark):
     FLAGS.dtype = 'fp16'
     self._run_and_report_benchmark()
 
+  def benchmark_xla_8_gpu_fp16(self):
+    """Test Keras model with 8 GPUs with tf.keras mixed precision."""
+    self._setup()
+
+    FLAGS.num_gpus = 8
+    FLAGS.distribution_strategy = 'mirrored'
+    FLAGS.model_dir = self._get_model_dir('benchmark_xla_8_gpu_fp16')
+    FLAGS.batch_size = 256 * 8  # 8 GPUs
+    FLAGS.dtype = 'fp16'
+    FLAGS.enable_xla = True
+    self._run_and_report_benchmark()
+
   def benchmark_8_gpu_eager(self):
     """Test Keras model with 8 GPUs, eager, fp32."""
     self._setup()
