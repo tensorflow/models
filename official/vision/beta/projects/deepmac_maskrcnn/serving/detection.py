@@ -43,3 +43,4 @@ class DetectionModule(detection.DetectionModule):
           type(self.params.task.model)))
 
     return model
+
