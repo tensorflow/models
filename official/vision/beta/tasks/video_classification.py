@@ -55,6 +55,31 @@ class VideoClassificationTask(base_task.Task):
         l2_regularizer=l2_regularizer)
     return model
 
+  def initialize(self, model: tf.keras.Model):
+    """Loads pretrained checkpoint."""
+    if not self.task_config.init_checkpoint:
+      return
+
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+
+    # Restoring checkpoint.
+    if self.task_config.init_checkpoint_modules == 'all':
+      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.assert_consumed()
+    elif self.task_config.init_checkpoint_modules == 'backbone':
+      ckpt = tf.train.Checkpoint(backbone=model.backbone)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
+    else:
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
+
+    logging.info('Finished loading pretrained checkpoint from %s',
+                 ckpt_dir_or_file)
+
   def _get_dataset_fn(self, params):
     if params.file_type == 'tfrecord':
       return tf.data.TFRecordDataset
@@ -62,8 +87,12 @@ class VideoClassificationTask(base_task.Task):
       raise ValueError('Unknown input file type {!r}'.format(params.file_type))
 
   def _get_decoder_fn(self, params):
-    decoder = video_input.Decoder(
-        image_key=params.image_field_key, label_key=params.label_field_key)
+    if params.tfds_name:
+      decoder = video_input.VideoTfdsDecoder(
+          image_key=params.image_field_key, label_key=params.label_field_key)
+    else:
+      decoder = video_input.Decoder(
+          image_key=params.image_field_key, label_key=params.label_field_key)
     if self.task_config.train_data.output_audio:
       assert self.task_config.train_data.audio_feature, 'audio feature is empty'
       decoder.add_feature(self.task_config.train_data.audio_feature,
