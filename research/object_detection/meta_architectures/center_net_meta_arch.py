@@ -117,23 +117,9 @@ class CenterNetFeatureExtractor(tf.keras.Model):
     pass
 
   @property
-  @abc.abstractmethod
-  def supported_sub_model_types(self):
-    """Valid sub model types supported by the get_sub_model function."""
-    pass
-
-  @abc.abstractmethod
-  def get_sub_model(self, sub_model_type):
-    """Returns the underlying keras model for the given sub_model_type.
-
-    This function is useful when we only want to get a subset of weights to
-    be restored from a checkpoint.
-
-    Args:
-      sub_model_type: string, the type of sub model. Currently, CenterNet
-        feature extractors support 'detection' and 'classification'.
-    """
-    pass
+  def classification_backbone(self):
+    raise NotImplementedError(
+        'Classification backbone not supported for {}'.format(type(self)))
 
 
 def make_prediction_net(num_out_channels, kernel_sizes=(3), num_filters=(256),
@@ -4200,25 +4186,28 @@ class CenterNetMetaArch(model.DetectionModel):
       A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
     """
 
-    supported_types = self._feature_extractor.supported_sub_model_types
-    supported_types += ['fine_tune']
-
-    if fine_tune_checkpoint_type not in supported_types:
-      message = ('Checkpoint type "{}" not supported for {}. '
-                 'Supported types are {}')
-      raise ValueError(
-          message.format(fine_tune_checkpoint_type,
-                         self._feature_extractor.__class__.__name__,
-                         supported_types))
-
-    elif fine_tune_checkpoint_type == 'fine_tune':
+    if fine_tune_checkpoint_type == 'detection':
       feature_extractor_model = tf.train.Checkpoint(
           _feature_extractor=self._feature_extractor)
       return {'model': feature_extractor_model}
 
+    elif fine_tune_checkpoint_type == 'classification':
+      return {
+          'feature_extractor':
+              self._feature_extractor.classification_backbone
+      }
+    elif fine_tune_checkpoint_type == 'full':
+      return {'model': self}
+    elif fine_tune_checkpoint_type == 'fine_tune':
+      raise ValueError(('"fine_tune" is no longer supported for CenterNet. '
+                        'Please set fine_tune_checkpoint_type to "detection"'
+                        ' which has the same functionality. If you are using'
+                        ' the ExtremeNet checkpoint, download the new version'
+                        ' from the model zoo.'))
+
     else:
-      return {'feature_extractor': self._feature_extractor.get_sub_model(
-          fine_tune_checkpoint_type)}
+      raise ValueError('Unknown fine tune checkpoint type {}'.format(
+          fine_tune_checkpoint_type))
 
   def updates(self):
     if tf_version.is_tf2():

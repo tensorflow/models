@@ -1,3 +1,0 @@
-# Keypoint Detection Models.
-
-TBD

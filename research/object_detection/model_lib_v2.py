@@ -35,6 +35,7 @@ from object_detection.protos import train_pb2
 from object_detection.utils import config_util
 from object_detection.utils import label_map_util
 from object_detection.utils import ops
+from object_detection.utils import variables_helper
 from object_detection.utils import visualization_utils as vutils
 
 
@@ -587,6 +588,9 @@ def train_loop(
           lambda: global_step % num_steps_per_iteration == 0):
         # Load a fine-tuning checkpoint.
         if train_config.fine_tune_checkpoint:
+          variables_helper.ensure_checkpoint_supported(
+              train_config.fine_tune_checkpoint, fine_tune_checkpoint_type,
+              model_dir)
           load_fine_tune_checkpoint(
               detection_model, train_config.fine_tune_checkpoint,
               fine_tune_checkpoint_type, fine_tune_checkpoint_version,

@@ -440,11 +440,17 @@ message CenterNetFeatureExtractor {
   optional bool use_depthwise = 5 [default = false];
 
 
-  // Depth multiplier. Only valid for specific models (e.g. MobileNet). See subclasses of `CenterNetFeatureExtractor`.
+  // Depth multiplier. Only valid for specific models (e.g. MobileNet). See
+  // subclasses of `CenterNetFeatureExtractor`.
   optional float depth_multiplier = 9 [default = 1.0];
 
   // Whether to use separable convolutions. Only valid for specific
   // models. See subclasses of `CenterNetFeatureExtractor`.
   optional bool use_separable_conv = 10 [default = false];
+
+  // Which interpolation method to use for the upsampling ops in the FPN.
+  // Currently only valid for CenterNetMobileNetV2FPNFeatureExtractor. The value
+  // can be on of 'nearest' or 'bilinear'.
+  optional string upsampling_interpolation = 11 [default = 'nearest'];
 }
 

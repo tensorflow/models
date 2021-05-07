@@ -1130,11 +1130,18 @@ def _build_center_net_feature_extractor(feature_extractor_config, is_training):
       feature_extractor_config.use_separable_conv or
       feature_extractor_config.type == 'mobilenet_v2_fpn_sep_conv')
   kwargs = {
-      'channel_means': list(feature_extractor_config.channel_means),
-      'channel_stds': list(feature_extractor_config.channel_stds),
-      'bgr_ordering': feature_extractor_config.bgr_ordering,
-      'depth_multiplier': feature_extractor_config.depth_multiplier,
-      'use_separable_conv': use_separable_conv,
+      'channel_means':
+          list(feature_extractor_config.channel_means),
+      'channel_stds':
+          list(feature_extractor_config.channel_stds),
+      'bgr_ordering':
+          feature_extractor_config.bgr_ordering,
+      'depth_multiplier':
+          feature_extractor_config.depth_multiplier,
+      'use_separable_conv':
+          use_separable_conv,
+      'upsampling_interpolation':
+          feature_extractor_config.upsampling_interpolation,
   }
 
 

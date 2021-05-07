@@ -320,6 +320,9 @@ class SpineNetMobile(tf.keras.Model):
 
     endpoints = {}
     for i, block_spec in enumerate(self._block_specs):
+      # Update block level if it is larger than max_level to avoid building
+      # blocks smaller than requested.
+      block_spec.level = min(block_spec.level, self._max_level)
       # Find out specs for the target block.
       target_width = int(math.ceil(input_width / 2**block_spec.level))
       target_num_filters = int(FILTER_SIZE_MAP[block_spec.level] *
@@ -392,8 +395,9 @@ class SpineNetMobile(tf.keras.Model):
               block_spec.level))
         if (block_spec.level < self._min_level or
             block_spec.level > self._max_level):
-          raise ValueError('Output level is out of range [{}, {}]'.format(
-              self._min_level, self._max_level))
+          logging.warning(
+              'SpineNet output level out of range [min_level, max_levle] = [%s, %s] will not be used for further processing.',
+              self._min_level, self._max_level)
         endpoints[str(block_spec.level)] = x
 
     return endpoints

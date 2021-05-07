@@ -398,7 +398,7 @@ class ModelBuilderTF2Test(
       }
     """
     # Set up the configuration proto.
-    config = text_format.Merge(proto_txt, model_pb2.DetectionModel())
+    config = text_format.Parse(proto_txt, model_pb2.DetectionModel())
     # Only add object center and keypoint estimation configs here.
     config.center_net.object_center_params.CopyFrom(
         self.get_fake_object_center_from_keypoints_proto())
@@ -421,6 +421,50 @@ class ModelBuilderTF2Test(
     self.assertEqual(kp_params.keypoint_indices, [0, 1, 2, 3])
     self.assertEqual(kp_params.keypoint_labels,
                      ['nose', 'left_shoulder', 'right_shoulder', 'hip'])
+
+  def test_create_center_net_model_mobilenet(self):
+    """Test building a CenterNet model using bilinear interpolation."""
+    proto_txt = """
+      center_net {
+        num_classes: 10
+        feature_extractor {
+          type: "mobilenet_v2_fpn"
+          depth_multiplier: 1.0
+          use_separable_conv: true
+          upsampling_interpolation: "bilinear"
+        }
+        image_resizer {
+          keep_aspect_ratio_resizer {
+            min_dimension: 512
+            max_dimension: 512
+            pad_to_max_dimension: true
+          }
+        }
+      }
+    """
+    # Set up the configuration proto.
+    config = text_format.Parse(proto_txt, model_pb2.DetectionModel())
+    # Only add object center and keypoint estimation configs here.
+    config.center_net.object_center_params.CopyFrom(
+        self.get_fake_object_center_from_keypoints_proto())
+    config.center_net.keypoint_estimation_task.append(
+        self.get_fake_keypoint_proto())
+    config.center_net.keypoint_label_map_path = (
+        self.get_fake_label_map_file_path())
+
+    # Build the model from the configuration.
+    model = model_builder.build(config, is_training=True)
+
+    feature_extractor = model._feature_extractor
+    # Verify the upsampling layers in the FPN use 'bilinear' interpolation.
+    fpn = feature_extractor.get_layer('model_1')
+    num_up_sampling2d_layers = 0
+    for layer in fpn.layers:
+      if 'up_sampling2d' in layer.name:
+        num_up_sampling2d_layers += 1
+        self.assertEqual('bilinear', layer.interpolation)
+    # Verify that there are up_sampling2d layers.
+    self.assertGreater(num_up_sampling2d_layers, 0)
 
 
 if __name__ == '__main__':
