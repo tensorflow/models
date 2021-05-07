@@ -113,7 +113,8 @@ def process_image(image: tf.Tensor,
     image = preprocess_ops_3d.sample_sequence(image, num_frames, False, stride)
 
   # Decode JPEG string to tf.uint8.
-  image = preprocess_ops_3d.decode_jpeg(image, 3)
+  if image.dtype == tf.string:
+    image = preprocess_ops_3d.decode_jpeg(image, 3)
 
   if is_training:
     # Standard image data augmentation: random resized crop and random flip.
@@ -232,6 +233,29 @@ class Decoder(decoder.Decoder):
       if isinstance(value, tf.SparseTensor):
         result[key] = tf.sparse.to_dense(value)
     return result
+
+
+class VideoTfdsDecoder(decoder.Decoder):
+  """A tf.SequenceExample decoder for tfds video classification datasets."""
+
+  def __init__(self, image_key: str = IMAGE_KEY, label_key: str = LABEL_KEY):
+    self._image_key = image_key
+    self._label_key = label_key
+
+  def decode(self, features):
+    """Decode the TFDS FeatureDict.
+
+    Args:
+      features: features from TFDS video dataset.
+        See https://www.tensorflow.org/datasets/catalog/ucf101 for example.
+    Returns:
+      Dict of tensors.
+    """
+    sample_dict = {
+        self._image_key: features['video'],
+        self._label_key: features['label'],
+    }
+    return sample_dict
 
 
 class Parser(parser.Parser):

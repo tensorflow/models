@@ -20,6 +20,7 @@ import io
 import numpy as np
 from PIL import Image
 import tensorflow as tf
+import tensorflow_datasets as tfds
 
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import video_input
@@ -86,6 +87,16 @@ class DecoderTest(tf.test.TestCase):
         results.keys())
     self.assertEqual(label, results[video_input.LABEL_KEY])
     self.assertEqual(results[AUDIO_KEY].shape, (10, 256))
+
+  def test_tfds_decode(self):
+    with tfds.testing.mock_data(num_examples=1):
+      dataset = tfds.load('ucf101', split='train').take(1)
+      data = next(iter(dataset))
+
+    decoder = video_input.VideoTfdsDecoder()
+    decoded_tensors = decoder.decode(data)
+    self.assertContainsSubset([video_input.LABEL_KEY, video_input.IMAGE_KEY],
+                              decoded_tensors.keys())
 
 
 class VideoAndLabelParserTest(tf.test.TestCase):
