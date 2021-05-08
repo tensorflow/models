@@ -29,6 +29,10 @@ from official.vision.beta.projects.basnet.configs import decoders
 @dataclasses.dataclass
 class DataConfig(cfg.DataConfig):
   """Input config for training."""
+  output_size: List[int] = dataclasses.field(default_factory=list)
+  # If crop_size is specified, image will be resized first to
+  # output_size, then crop of size crop_size will be cropped.
+  crop_size: List[int] = dataclasses.field(default_factory=list)
   input_path: str = ''
   global_batch_size: int = 0
   is_training: bool = True
@@ -37,6 +41,7 @@ class DataConfig(cfg.DataConfig):
   cycle_length: int = 10
   resize_eval_groundtruth: bool = True
   groundtruth_padded_size: List[int] = dataclasses.field(default_factory=list)
+  aug_rand_hflip: bool = True
 
 
 @dataclasses.dataclass
@@ -53,7 +58,7 @@ class BASNetModel(hyperparams.Config):
 @dataclasses.dataclass
 class Losses(hyperparams.Config):
   label_smoothing: float = 0.1
-  ignore_label: int = 0
+  ignore_label: int = 111 # arbitrary number except 0, 255
   class_weights: List[float] = dataclasses.field(default_factory=list)
   l2_weight_decay: float = 0.0
   use_groundtruth_dimension: bool = True
@@ -87,7 +92,7 @@ def basnet() -> cfg.ExperimentConfig:
 #DUTS_TRAIN_EXAMPLES = 21106
 DUTS_TRAIN_EXAMPLES = 10553
 DUTS_VAL_EXAMPLES = 5019
-DUTS_INPUT_PATH_BASE_TR = '/home/datasets/DUTS/DUTS_TR_hflip_TFRecords/'
+DUTS_INPUT_PATH_BASE_TR = '/home/datasets/DUTS/DUTS_TR_TFRecords/'
 DUTS_INPUT_PATH_BASE_VAL = '/home/datasets/DUTS/DUTS_TE_TFRecords/'
 
 
@@ -95,13 +100,13 @@ DUTS_INPUT_PATH_BASE_VAL = '/home/datasets/DUTS/DUTS_TE_TFRecords/'
 @exp_factory.register_config_factory('basnet_duts')
 def basnet_duts() -> cfg.ExperimentConfig:
   """Image segmentation on duts with basnet."""
-  train_batch_size = 8
+  train_batch_size = 16
   eval_batch_size = 16
   steps_per_epoch = DUTS_TRAIN_EXAMPLES // train_batch_size
   config = cfg.ExperimentConfig(
       task=BASNetTask(
           model=BASNetModel(
-              input_size=[224, 224, 3],   # Resize to 256, 256
+              input_size=[None, None, 3],   # Resize to 256, 256
               backbone=backbones.Backbone(
                   type='basnet_en', basnet_en=backbones.BASNet_En(
                       )),
@@ -116,11 +121,14 @@ def basnet_duts() -> cfg.ExperimentConfig:
           losses=Losses(l2_weight_decay=0),
           train_data=DataConfig(
               input_path=os.path.join(DUTS_INPUT_PATH_BASE_TR, 'DUTS-TR-*'),
+              crop_size=[224,224],
+              output_size=[256,256],
               is_training=True,
               global_batch_size=train_batch_size,
           ),
           validation_data=DataConfig(
               input_path=os.path.join(DUTS_INPUT_PATH_BASE_VAL, 'DUTS-TE-*'),
+              output_size=[256,256],
               is_training=False,
               global_batch_size=eval_batch_size,
           ),

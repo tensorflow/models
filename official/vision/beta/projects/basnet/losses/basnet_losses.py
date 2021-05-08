@@ -30,10 +30,9 @@ class BASNetLoss:
   def __call__(self, sigmoids, labels):
     levels = sorted(sigmoids.keys())
     
+    labels_bce = tf.squeeze(labels, axis=-1)
     labels = tf.cast(labels, tf.float32)
-    labels_bce = labels
-    labels = tf.expand_dims(labels, axis=-1)
-
+    
     bce_losses = []
     ssim_losses = []
     iou_losses = []
@@ -51,6 +50,7 @@ class BASNetLoss:
     total_iou_loss = tf.math.add_n(iou_losses)
     
     total_loss = total_bce_loss + total_ssim_loss + total_iou_loss
+    #total_loss = total_bce_loss
 
     return total_loss
     

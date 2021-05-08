@@ -19,14 +19,14 @@ import tensorflow as tf
 
 from official.vision.beta.projects.basnet.modeling import factory
 from official.vision.beta.ops import preprocess_ops
-from official.vision.beta.serving import export_base
+from official.vision.beta.serving import semantic_segmentation
 
 
 MEAN_RGB = (0.485 * 255, 0.456 * 255, 0.406 * 255)
 STDDEV_RGB = (0.229 * 255, 0.224 * 255, 0.225 * 255)
 
 
-class BASNetModule(export_base.ExportModule):
+class BASNetModule(semantic_segmentation.SegmentationModule):
   """BASNet Module."""
 
   def _build_model(self):
@@ -37,23 +37,6 @@ class BASNetModule(export_base.ExportModule):
         input_specs=input_specs,
         model_config=self.params.task.model,
         l2_regularizer=None)
-
-
-  def _build_inputs(self, image):
-    """Builds classification model inputs for serving."""
-
-    # Normalizes image with mean and std pixel values.
-    image = preprocess_ops.normalize_image(image,
-                                           offset=MEAN_RGB,
-                                           scale=STDDEV_RGB)
-
-    image, _ = preprocess_ops.resize_and_crop_image(
-        image,
-        self._input_image_size,
-        padded_size=self._input_image_size,
-        aug_scale_min=1.0,
-        aug_scale_max=1.0)
-    return image
 
   def serve(self, images):
     """Cast image to float and run inference.

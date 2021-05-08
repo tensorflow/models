@@ -107,11 +107,6 @@ class Parser(parser.Parser):
   def _parse_eval_data(self, data):
     """Parses data for training and evaluation."""
     image, label = self._prepare_image_and_label(data)
-    # Flips image randomly during training.
-    if self._aug_rand_hflip:
-      image, label = preprocess_ops.random_horizontal_flip(image, masks=label)
-
-
 
     image = tf.image.resize(image, tf.cast([256, 256], tf.int32))
     label = tf.image.resize(label, tf.cast([256, 256], tf.int32))

@@ -42,7 +42,9 @@ from absl import flags
 from official.vision import beta
 from official.core import exp_factory
 from official.modeling import hyperparams
-from official.vision.beta.projects.basnet.serving import export_saved_model_lib
+#from official.vision.beta.projects.basnet.serving import export_saved_model_lib
+from official.vision.beta.serving import export_saved_model_lib
+from official.vision.beta.projects.basnet.serving import basnet
 
 FLAGS = flags.FLAGS
 
@@ -95,6 +97,10 @@ def main(_):
       params=params,
       checkpoint_path=FLAGS.checkpoint_path,
       export_dir=FLAGS.export_dir,
+      export_module=basnet.BASNetModule(
+          params=params,
+          batch_size=FLAGS.batch_size,
+          input_image_size=[int(x) for x in FLAGS.input_image_size.split(',')]),
       export_checkpoint_subdir='checkpoint',
       export_saved_model_subdir='saved_model')
 

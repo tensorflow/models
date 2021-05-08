@@ -14,6 +14,8 @@
 # limitations under the License.
 # ==============================================================================
 """BASNet task definition."""
+from typing import Optional
+
 
 from absl import logging
 import tensorflow as tf
@@ -22,13 +24,42 @@ from official.core import base_task
 from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.projects.basnet.configs import basnet as exp_cfg
+from official.vision.beta.dataloaders import segmentation_input
 from official.vision.beta.projects.basnet.dataloaders import basnet_input
 from official.vision.beta.projects.basnet.evaluation import max_f
 from official.vision.beta.projects.basnet.evaluation import relax_f
 from official.vision.beta.projects.basnet.evaluation import mae
 from official.vision.beta.projects.basnet.losses import basnet_losses
-from official.vision.beta.projects.basnet.modeling import factory
 
+from official.vision.beta.projects.basnet.modeling import basnet_en
+from official.vision.beta.projects.basnet.modeling import basnet_model
+from official.vision.beta.projects.basnet.modeling import basnet_de
+from official.vision.beta.projects.basnet.modeling import refunet
+
+def build_basnet_model(
+    input_specs: tf.keras.layers.InputSpec,
+    model_config: exp_cfg.BASNetModel,
+    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+  """Builds BASNet model."""
+  backbone = basnet_en.BASNet_En(
+      input_specs=input_specs)
+
+  norm_activation_config = model_config.norm_activation
+
+  decoder = basnet_de.BASNet_De(
+        input_specs=backbone.output_specs,
+        use_sync_bn=norm_activation_config.use_sync_bn,
+        norm_momentum=norm_activation_config.norm_momentum,
+        norm_epsilon=norm_activation_config.norm_epsilon,
+        activation=norm_activation_config.activation,
+        kernel_regularizer=l2_regularizer)
+
+  refinement = refunet.RefUnet()
+
+  norm_activation_config = model_config.norm_activation
+  
+  model = basnet_model.BASNetModel(backbone, decoder, refinement)
+  return model
 
 @task_factory.register_task_cls(exp_cfg.BASNetTask)
 class BASNetTask(base_task.Task):
@@ -46,7 +77,7 @@ class BASNetTask(base_task.Task):
     l2_regularizer = (tf.keras.regularizers.l2(
         l2_weight_decay / 2.0) if l2_weight_decay else None)
 
-    model = factory.build_basnet_model(
+    model = build_basnet_model(
         input_specs=input_specs,
         model_config=self.task_config.model,
         l2_regularizer=l2_regularizer)
@@ -80,17 +111,20 @@ class BASNetTask(base_task.Task):
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
-  def build_inputs(self, params, input_context=None):
+  def build_inputs(self,
+                   params: exp_cfg.DataConfig,
+                   input_context: Optional[tf.distribute.InputContext] = None):
     """Builds BASNet input."""
 
-    input_size = self.task_config.model.input_size
     ignore_label = self.task_config.losses.ignore_label
 
-    decoder = basnet_input.Decoder()
-    parser = basnet_input.Parser(
-        output_size=input_size[:2],
-        aug_rand_hflip=True,
-        )
+    decoder = segmentation_input.Decoder()
+    parser = segmentation_input.Parser(
+        output_size=params.output_size,
+        crop_size=params.crop_size,
+        ignore_label=ignore_label,
+        aug_rand_hflip=params.aug_rand_hflip,
+        dtype=params.dtype)
 
     reader = input_reader.InputReader(
         params,
@@ -116,7 +150,7 @@ class BASNetTask(base_task.Task):
     loss_params = self._task_config.losses
     basnet_loss_fn = basnet_losses.BASNetLoss()
 
-    total_loss = basnet_loss_fn(model_outputs, label)
+    total_loss = basnet_loss_fn(model_outputs, label['valid_masks'])
 
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
