@@ -57,7 +57,7 @@ class LrConfig(oneof.OneOfConfig):
   """Configuration for lr schedule.
 
   Attributes:
-    type: 'str', type of lr schedule to be used, on the of fields below.
+    type: 'str', type of lr schedule to be used, one of the fields below.
     constant: constant learning rate config.
     stepwise: stepwise learning rate config.
     exponential: exponential learning rate config.
@@ -86,7 +86,7 @@ class WarmupConfig(oneof.OneOfConfig):
   """Configuration for lr schedule.
 
   Attributes:
-    type: 'str', type of warmup schedule to be used, on the of fields below.
+    type: 'str', type of warmup schedule to be used, one of the fields below.
     linear: linear warmup config.
     polynomial: polynomial warmup config.
   """
