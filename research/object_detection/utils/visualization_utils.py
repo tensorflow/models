@@ -684,8 +684,10 @@ def draw_side_by_side_evaluation_image(eval_dict,
         keypoint_scores = tf.expand_dims(
             eval_dict[detection_fields.detection_keypoint_scores][indx], axis=0)
       else:
-        keypoint_scores = tf.cast(keypoint_ops.set_keypoint_visibilities(
-            keypoints), dtype=tf.float32)
+        keypoint_scores = tf.expand_dims(tf.cast(
+            keypoint_ops.set_keypoint_visibilities(
+                eval_dict[detection_fields.detection_keypoints][indx]),
+            dtype=tf.float32), axis=0)
 
     groundtruth_instance_masks = None
     if input_data_fields.groundtruth_instance_masks in eval_dict:
@@ -703,9 +705,10 @@ def draw_side_by_side_evaluation_image(eval_dict,
         groundtruth_keypoint_scores = tf.expand_dims(
             tf.cast(eval_dict[gt_kpt_vis_fld][indx], dtype=tf.float32), axis=0)
       else:
-        groundtruth_keypoint_scores = tf.cast(
+        groundtruth_keypoint_scores = tf.expand_dims(tf.cast(
             keypoint_ops.set_keypoint_visibilities(
-                groundtruth_keypoints), dtype=tf.float32)
+                eval_dict[input_data_fields.groundtruth_keypoints][indx]),
+            dtype=tf.float32), axis=0)
     images_with_detections = draw_bounding_boxes_on_image_tensors(
         tf.expand_dims(
             eval_dict[input_data_fields.original_image][indx], axis=0),

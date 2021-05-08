@@ -30,6 +30,7 @@ from delf.python import feature_aggregation_similarity
 from delf.python import feature_extractor
 from delf.python import feature_io
 from delf.python import utils
+from delf.python import whiten
 from delf.python.examples import detector
 from delf.python.examples import extractor
 from delf.python import detect_to_retrieve

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of ROI generator."""
-
+from typing import Optional, Mapping
 # Import libraries
 import tensorflow as tf
 
@@ -21,19 +21,19 @@ from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import nms
 
 
-def _multilevel_propose_rois(raw_boxes,
-                             raw_scores,
-                             anchor_boxes,
-                             image_shape,
-                             pre_nms_top_k=2000,
-                             pre_nms_score_threshold=0.0,
-                             pre_nms_min_size_threshold=0.0,
-                             nms_iou_threshold=0.7,
-                             num_proposals=1000,
-                             use_batched_nms=False,
-                             decode_boxes=True,
-                             clip_boxes=True,
-                             apply_sigmoid_to_score=True):
+def _multilevel_propose_rois(raw_boxes: Mapping[str, tf.Tensor],
+                             raw_scores: Mapping[str, tf.Tensor],
+                             anchor_boxes: Mapping[str, tf.Tensor],
+                             image_shape: tf.Tensor,
+                             pre_nms_top_k: int = 2000,
+                             pre_nms_score_threshold: float = 0.0,
+                             pre_nms_min_size_threshold: float = 0.0,
+                             nms_iou_threshold: float = 0.7,
+                             num_proposals: int = 1000,
+                             use_batched_nms: bool = False,
+                             decode_boxes: bool = True,
+                             clip_boxes: bool = True,
+                             apply_sigmoid_to_score: bool = True):
   """Proposes RoIs given a group of candidates from different FPN levels.
 
   The following describes the steps:
@@ -181,17 +181,17 @@ class MultilevelROIGenerator(tf.keras.layers.Layer):
   """Proposes RoIs for the second stage processing."""
 
   def __init__(self,
-               pre_nms_top_k=2000,
-               pre_nms_score_threshold=0.0,
-               pre_nms_min_size_threshold=0.0,
-               nms_iou_threshold=0.7,
-               num_proposals=1000,
-               test_pre_nms_top_k=1000,
-               test_pre_nms_score_threshold=0.0,
-               test_pre_nms_min_size_threshold=0.0,
-               test_nms_iou_threshold=0.7,
-               test_num_proposals=1000,
-               use_batched_nms=False,
+               pre_nms_top_k: int = 2000,
+               pre_nms_score_threshold: float = 0.0,
+               pre_nms_min_size_threshold: float = 0.0,
+               nms_iou_threshold: float = 0.7,
+               num_proposals: int = 1000,
+               test_pre_nms_top_k: int = 1000,
+               test_pre_nms_score_threshold: float = 0.0,
+               test_pre_nms_min_size_threshold: float = 0.0,
+               test_nms_iou_threshold: float = 0.7,
+               test_num_proposals: int = 1000,
+               use_batched_nms: bool = False,
                **kwargs):
     """Initializes a ROI generator.
 
@@ -240,11 +240,11 @@ class MultilevelROIGenerator(tf.keras.layers.Layer):
     super(MultilevelROIGenerator, self).__init__(**kwargs)
 
   def call(self,
-           raw_boxes,
-           raw_scores,
-           anchor_boxes,
-           image_shape,
-           training=None):
+           raw_boxes: Mapping[str, tf.Tensor],
+           raw_scores: Mapping[str, tf.Tensor],
+           anchor_boxes: Mapping[str, tf.Tensor],
+           image_shape: tf.Tensor,
+           training: Optional[bool] = None):
     """Proposes RoIs given a group of candidates from different FPN levels.
 
     The following describes the steps:

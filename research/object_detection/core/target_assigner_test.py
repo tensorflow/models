@@ -1863,7 +1863,7 @@ class CenterNetKeypointTargetAssignerTest(test_case.TestCase):
           class_id=1,
           keypoint_indices=[0, 2],
           peak_radius=1,
-          per_keypoint_offset=True)
+          per_keypoint_depth=True)
       (indices, depths, weights) = cn_assigner.assign_keypoints_depth_targets(
           height=120,
           width=80,

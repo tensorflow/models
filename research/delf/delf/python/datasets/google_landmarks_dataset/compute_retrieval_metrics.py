@@ -24,7 +24,7 @@ from __future__ import print_function
 import argparse
 import sys
 
-from tensorflow.python.platform import app
+from absl import app
 from delf.python.datasets.google_landmarks_dataset import dataset_file_io
 from delf.python.datasets.google_landmarks_dataset import metrics
 

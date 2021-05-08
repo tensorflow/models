@@ -19,7 +19,7 @@ import numpy as np
 from PIL import Image
 
 import tensorflow as tf
-from delf.python import utils as image_loading_utils
+from delf import utils as image_loading_utils
 
 
 def pil_imagenet_loader(path, imsize, bounding_box=None, preprocess=True):
@@ -32,7 +32,7 @@ def pil_imagenet_loader(path, imsize, bounding_box=None, preprocess=True):
     preprocess: Bool, whether to preprocess the images in respect to the
       ImageNet dataset.
 
-  Returns: 
+  Returns:
     image: `Tensor`, image in ImageNet suitable format.
   """
   img = image_loading_utils.RgbLoader(path)

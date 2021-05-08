@@ -321,6 +321,14 @@ class ParamsDictIOTest(tf.test.TestCase):
     self.assertEqual([3, 4], params.b.b2)
     self.assertEqual('hi, world', params.d.d1.d2)
     self.assertEqual('gs://test', params.e)
+    # Test different float formats
+    override_csv_string = 'b.b2=-1.e-3, d.d1.d2=+0.001, e=1e+3, a=-1.5E-3'
+    params = params_dict.override_params_dict(
+        params, override_csv_string, is_strict=True)
+    self.assertEqual(-1e-3, params.b.b2)
+    self.assertEqual(0.001, params.d.d1.d2)
+    self.assertEqual(1e3, params.e)
+    self.assertEqual(-1.5e-3, params.a)
 
   def test_override_params_dict_using_yaml_file(self):
     params = params_dict.ParamsDict({

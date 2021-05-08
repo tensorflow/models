@@ -62,7 +62,7 @@ class MockTask(base_task.Task):
 
   def validation_step(self, inputs, model: tf.keras.Model, metrics=None):
     logs = super().validation_step(inputs, model, metrics)
-    logs["counter"] = tf.ones((1,), dtype=tf.float32)
+    logs["counter"] = tf.constant(1, dtype=tf.float32)
     return logs
 
   def build_inputs(self, params):

@@ -28,8 +28,10 @@ task:
     is_training: true
     global_batch_size: 4096
     dtype: 'bfloat16'
-    aug_policy: 'randaug'
-    randaug_magnitude: 15
+    aug_type:
+      type: 'randaug'
+      randaug:
+        magnitude: 15
   validation_data:
     input_path: 'imagenet-2012-tfrecord/valid*'
     is_training: false

@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """RetinaNet task definition."""
+from typing import Any, Optional, List, Tuple, Mapping
 
 from absl import logging
 import tensorflow as tf
@@ -84,7 +84,9 @@ class RetinaNetTask(base_task.Task):
     logging.info('Finished loading pretrained checkpoint from %s',
                  ckpt_dir_or_file)
 
-  def build_inputs(self, params, input_context=None):
+  def build_inputs(self,
+                   params: exp_cfg.DataConfig,
+                   input_context: Optional[tf.distribute.InputContext] = None):
     """Build input dataset."""
 
     if params.tfds_name:
@@ -131,7 +133,10 @@ class RetinaNetTask(base_task.Task):
 
     return dataset
 
-  def build_losses(self, outputs, labels, aux_losses=None):
+  def build_losses(self,
+                   outputs: Mapping[str, Any],
+                   labels: Mapping[str, Any],
+                   aux_losses: Optional[Any] = None):
     """Build RetinaNet losses."""
     params = self.task_config
     cls_loss_fn = keras_cv.losses.FocalLoss(
@@ -172,7 +177,7 @@ class RetinaNetTask(base_task.Task):
 
     return total_loss, cls_loss, box_loss, model_loss
 
-  def build_metrics(self, training=True):
+  def build_metrics(self, training: bool = True):
     """Build detection metrics."""
     metrics = []
     metric_names = ['total_loss', 'cls_loss', 'box_loss', 'model_loss']
@@ -190,7 +195,11 @@ class RetinaNetTask(base_task.Task):
 
     return metrics
 
-  def train_step(self, inputs, model, optimizer, metrics=None):
+  def train_step(self,
+                 inputs: Tuple[Any, Any],
+                 model: tf.keras.Model,
+                 optimizer: tf.keras.optimizers.Optimizer,
+                 metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
     Args:
@@ -241,7 +250,10 @@ class RetinaNetTask(base_task.Task):
 
     return logs
 
-  def validation_step(self, inputs, model, metrics=None):
+  def validation_step(self,
+                      inputs: Tuple[Any, Any],
+                      model: tf.keras.Model,
+                      metrics: Optional[List[Any]] = None):
     """Validatation step.
 
     Args:

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Contains definitions of generators to generate the final detections."""
-
+from typing import List, Optional, Mapping
 # Import libraries
 import tensorflow as tf
 
@@ -21,13 +21,14 @@ from official.vision.beta.ops import box_ops
 from official.vision.beta.ops import nms
 
 
-def _generate_detections_v1(boxes,
-                            scores,
-                            attributes=None,
-                            pre_nms_top_k=5000,
-                            pre_nms_score_threshold=0.05,
-                            nms_iou_threshold=0.5,
-                            max_num_detections=100):
+def _generate_detections_v1(boxes: tf.Tensor,
+                            scores: tf.Tensor,
+                            attributes: Optional[Mapping[str,
+                                                         tf.Tensor]] = None,
+                            pre_nms_top_k: int = 5000,
+                            pre_nms_score_threshold: float = 0.05,
+                            nms_iou_threshold: float = 0.5,
+                            max_num_detections: int = 100):
   """Generates the final detections given the model outputs.
 
   The implementation unrolls the batch dimension and process images one by one.
@@ -117,13 +118,14 @@ def _generate_detections_v1(boxes,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections, nmsed_attributes
 
 
-def _generate_detections_per_image(boxes,
-                                   scores,
-                                   attributes=None,
-                                   pre_nms_top_k=5000,
-                                   pre_nms_score_threshold=0.05,
-                                   nms_iou_threshold=0.5,
-                                   max_num_detections=100):
+def _generate_detections_per_image(
+    boxes: tf.Tensor,
+    scores: tf.Tensor,
+    attributes: Optional[Mapping[str, tf.Tensor]] = None,
+    pre_nms_top_k: int = 5000,
+    pre_nms_score_threshold: float = 0.05,
+    nms_iou_threshold: float = 0.5,
+    max_num_detections: int = 100):
   """Generates the final detections per image given the model outputs.
 
   Args:
@@ -225,7 +227,7 @@ def _generate_detections_per_image(boxes,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections, nmsed_attributes
 
 
-def _select_top_k_scores(scores_in, pre_nms_num_detections):
+def _select_top_k_scores(scores_in: tf.Tensor, pre_nms_num_detections: int):
   """Selects top_k scores and indices for each class.
 
   Args:
@@ -240,6 +242,8 @@ def _select_top_k_scores(scores_in, pre_nms_num_detections):
       `[batch_size, pre_nms_num_detections, num_classes]`.
   """
   batch_size, num_anchors, num_class = scores_in.get_shape().as_list()
+  if batch_size is None:
+    batch_size = tf.shape(scores_in)[0]
   scores_trans = tf.transpose(scores_in, perm=[0, 2, 1])
   scores_trans = tf.reshape(scores_trans, [-1, num_anchors])
 
@@ -255,12 +259,12 @@ def _select_top_k_scores(scores_in, pre_nms_num_detections):
                       [0, 2, 1]), tf.transpose(top_k_indices, [0, 2, 1])
 
 
-def _generate_detections_v2(boxes,
-                            scores,
-                            pre_nms_top_k=5000,
-                            pre_nms_score_threshold=0.05,
-                            nms_iou_threshold=0.5,
-                            max_num_detections=100):
+def _generate_detections_v2(boxes: tf.Tensor,
+                            scores: tf.Tensor,
+                            pre_nms_top_k: int = 5000,
+                            pre_nms_score_threshold: float = 0.05,
+                            nms_iou_threshold: float = 0.5,
+                            max_num_detections: int = 100):
   """Generates the final detections given the model outputs.
 
   This implementation unrolls classes dimension while using the tf.while_loop
@@ -302,6 +306,8 @@ def _generate_detections_v2(boxes,
     nmsed_scores = []
     valid_detections = []
     batch_size, _, num_classes_for_box, _ = boxes.get_shape().as_list()
+    if batch_size is None:
+      batch_size = tf.shape(boxes)[0]
     _, total_anchors, num_classes = scores.get_shape().as_list()
     # Selects top pre_nms_num scores and indices before NMS.
     scores, indices = _select_top_k_scores(
@@ -337,11 +343,10 @@ def _generate_detections_v2(boxes,
   return nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections
 
 
-def _generate_detections_batched(boxes,
-                                 scores,
-                                 pre_nms_score_threshold,
-                                 nms_iou_threshold,
-                                 max_num_detections):
+def _generate_detections_batched(boxes: tf.Tensor, scores: tf.Tensor,
+                                 pre_nms_score_threshold: float,
+                                 nms_iou_threshold: float,
+                                 max_num_detections: int):
   """Generates detected boxes with scores and classes for one-stage detector.
 
   The function takes output of multi-level ConvNets and anchor boxes and
@@ -393,12 +398,12 @@ class DetectionGenerator(tf.keras.layers.Layer):
   """Generates the final detected boxes with scores and classes."""
 
   def __init__(self,
-               apply_nms=True,
-               pre_nms_top_k=5000,
-               pre_nms_score_threshold=0.05,
-               nms_iou_threshold=0.5,
-               max_num_detections=100,
-               use_batched_nms=False,
+               apply_nms: bool = True,
+               pre_nms_top_k: int = 5000,
+               pre_nms_score_threshold: float = 0.05,
+               nms_iou_threshold: float = 0.5,
+               max_num_detections: int = 100,
+               use_batched_nms: bool = False,
                **kwargs):
     """Initializes a detection generator.
 
@@ -428,10 +433,12 @@ class DetectionGenerator(tf.keras.layers.Layer):
     super(DetectionGenerator, self).__init__(**kwargs)
 
   def __call__(self,
-               raw_boxes,
-               raw_scores,
-               anchor_boxes,
-               image_shape):
+               raw_boxes: tf.Tensor,
+               raw_scores: tf.Tensor,
+               anchor_boxes: tf.Tensor,
+               image_shape: tf.Tensor,
+               regression_weights: Optional[List[float]] = None,
+               bbox_per_class: bool = True):
     """Generates final detections.
 
     Args:
@@ -444,6 +451,8 @@ class DetectionGenerator(tf.keras.layers.Layer):
       image_shape: A `tf.Tensor` of shape of `[batch_size, 2]` storing the image
         height and width w.r.t. the scaled image, i.e. the same image space as
         `box_outputs` and `anchor_boxes`.
+      regression_weights: A list of four float numbers to scale coordinates.
+      bbox_per_class: A `bool`. If True, perform per-class box regression.
 
     Returns:
       If `apply_nms` = True, the return is a dictionary with keys:
@@ -467,37 +476,36 @@ class DetectionGenerator(tf.keras.layers.Layer):
 
     # Removes the background class.
     box_scores_shape = tf.shape(box_scores)
+    box_scores_shape_list = box_scores.get_shape().as_list()
     batch_size = box_scores_shape[0]
-    num_locations = box_scores_shape[1]
-    num_classes = box_scores_shape[-1]
-    num_detections = num_locations * (num_classes - 1)
+    num_locations = box_scores_shape_list[1]
+    num_classes = box_scores_shape_list[-1]
 
     box_scores = tf.slice(box_scores, [0, 0, 1], [-1, -1, -1])
-    raw_boxes = tf.reshape(
-        raw_boxes,
-        tf.stack([batch_size, num_locations, num_classes, 4], axis=-1))
-    raw_boxes = tf.slice(
-        raw_boxes, [0, 0, 1, 0], [-1, -1, -1, -1])
-    anchor_boxes = tf.tile(
-        tf.expand_dims(anchor_boxes, axis=2), [1, 1, num_classes - 1, 1])
-    raw_boxes = tf.reshape(
-        raw_boxes,
-        tf.stack([batch_size, num_detections, 4], axis=-1))
-    anchor_boxes = tf.reshape(
-        anchor_boxes,
-        tf.stack([batch_size, num_detections, 4], axis=-1))
+
+    if bbox_per_class:
+      num_detections = num_locations * (num_classes - 1)
+      raw_boxes = tf.reshape(raw_boxes,
+                             [batch_size, num_locations, num_classes, 4])
+      raw_boxes = tf.slice(raw_boxes, [0, 0, 1, 0], [-1, -1, -1, -1])
+      anchor_boxes = tf.tile(
+          tf.expand_dims(anchor_boxes, axis=2), [1, 1, num_classes - 1, 1])
+      raw_boxes = tf.reshape(raw_boxes, [batch_size, num_detections, 4])
+      anchor_boxes = tf.reshape(anchor_boxes, [batch_size, num_detections, 4])
 
     # Box decoding.
     decoded_boxes = box_ops.decode_boxes(
-        raw_boxes, anchor_boxes, weights=[10.0, 10.0, 5.0, 5.0])
+        raw_boxes, anchor_boxes, weights=regression_weights)
 
     # Box clipping
     decoded_boxes = box_ops.clip_boxes(
         decoded_boxes, tf.expand_dims(image_shape, axis=1))
 
-    decoded_boxes = tf.reshape(
-        decoded_boxes,
-        tf.stack([batch_size, num_locations, num_classes - 1, 4], axis=-1))
+    if bbox_per_class:
+      decoded_boxes = tf.reshape(
+          decoded_boxes, [batch_size, num_locations, num_classes - 1, 4])
+    else:
+      decoded_boxes = tf.expand_dims(decoded_boxes, axis=2)
 
     if not self._config_dict['apply_nms']:
       return {
@@ -546,12 +554,12 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
   """Generates detected boxes with scores and classes for one-stage detector."""
 
   def __init__(self,
-               apply_nms=True,
-               pre_nms_top_k=5000,
-               pre_nms_score_threshold=0.05,
-               nms_iou_threshold=0.5,
-               max_num_detections=100,
-               use_batched_nms=False,
+               apply_nms: bool = True,
+               pre_nms_top_k: int = 5000,
+               pre_nms_score_threshold: float = 0.05,
+               nms_iou_threshold: float = 0.5,
+               max_num_detections: int = 100,
+               use_batched_nms: bool = False,
                **kwargs):
     """Initializes a multi-level detection generator.
 
@@ -581,11 +589,11 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     super(MultilevelDetectionGenerator, self).__init__(**kwargs)
 
   def __call__(self,
-               raw_boxes,
-               raw_scores,
-               anchor_boxes,
-               image_shape,
-               raw_attributes=None):
+               raw_boxes: Mapping[str, tf.Tensor],
+               raw_scores: Mapping[str, tf.Tensor],
+               anchor_boxes: tf.Tensor,
+               image_shape: tf.Tensor,
+               raw_attributes: Mapping[str, tf.Tensor] = None):
     """Generates final detections.
 
     Args:
@@ -600,11 +608,10 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
       image_shape: A `tf.Tensor` of shape of [batch_size, 2] storing the image
         height and width w.r.t. the scaled image, i.e. the same image space as
         `box_outputs` and `anchor_boxes`.
-      raw_attributes: If not None, a `dict` of
-        (attribute_name, attribute_prediction) pairs. `attribute_prediction`
-        is a dict that contains keys representing FPN levels and values
-        representing tenors of shape `[batch, feature_h, feature_w,
-        num_anchors * attribute_size]`.
+      raw_attributes: If not None, a `dict` of (attribute_name,
+        attribute_prediction) pairs. `attribute_prediction` is a dict that
+        contains keys representing FPN levels and values representing tenors of
+        shape `[batch, feature_h, feature_w, num_anchors * attribute_size]`.
 
     Returns:
       If `apply_nms` = True, the return is a dictionary with keys:
@@ -642,22 +649,32 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
     min_level = int(min(levels))
     max_level = int(max(levels))
     for i in range(min_level, max_level + 1):
-      raw_boxes_i_shape = tf.shape(raw_boxes[str(i)])
-      batch_size = raw_boxes_i_shape[0]
-      num_anchors_per_locations = raw_boxes_i_shape[-1] // 4
-      num_classes = tf.shape(
-          raw_scores[str(i)])[-1] // num_anchors_per_locations
+      raw_boxes_i = raw_boxes[str(i)]
+      raw_scores_i = raw_scores[str(i)]
+      batch_size = tf.shape(raw_boxes_i)[0]
+      (_, feature_h_i, feature_w_i,
+       num_anchors_per_locations_times_4) = raw_boxes_i.get_shape().as_list()
+      num_locations = feature_h_i * feature_w_i
+      num_anchors_per_locations = num_anchors_per_locations_times_4 // 4
+      num_classes = raw_scores_i.get_shape().as_list(
+      )[-1] // num_anchors_per_locations
 
       # Applies score transformation and remove the implicit background class.
       scores_i = tf.sigmoid(
-          tf.reshape(raw_scores[str(i)], [batch_size, -1, num_classes]))
+          tf.reshape(raw_scores_i, [
+              batch_size, num_locations * num_anchors_per_locations, num_classes
+          ]))
       scores_i = tf.slice(scores_i, [0, 0, 1], [-1, -1, -1])
 
       # Box decoding.
       # The anchor boxes are shared for all data in a batch.
       # One stage detector only supports class agnostic box regression.
-      anchor_boxes_i = tf.reshape(anchor_boxes[str(i)], [batch_size, -1, 4])
-      raw_boxes_i = tf.reshape(raw_boxes[str(i)], [batch_size, -1, 4])
+      anchor_boxes_i = tf.reshape(
+          anchor_boxes[str(i)],
+          [batch_size, num_locations * num_anchors_per_locations, 4])
+      raw_boxes_i = tf.reshape(
+          raw_boxes_i,
+          [batch_size, num_locations * num_anchors_per_locations, 4])
       boxes_i = box_ops.decode_boxes(raw_boxes_i, anchor_boxes_i)
 
       # Box clipping.
@@ -669,9 +686,12 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
 
       if raw_attributes:
         for att_name, raw_att in raw_attributes.items():
-          attribute_size = tf.shape(
-              raw_att[str(i)])[-1] // num_anchors_per_locations
-          att_i = tf.reshape(raw_att[str(i)], [batch_size, -1, attribute_size])
+          attribute_size = raw_att[str(
+              i)].get_shape().as_list()[-1] // num_anchors_per_locations
+          att_i = tf.reshape(raw_att[str(i)], [
+              batch_size, num_locations * num_anchors_per_locations,
+              attribute_size
+          ])
           attributes[att_name].append(att_i)
 
     boxes = tf.concat(boxes, axis=1)

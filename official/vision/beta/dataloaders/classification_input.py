@@ -17,6 +17,7 @@ from typing import Dict, List, Optional
 # Import libraries
 import tensorflow as tf
 
+from official.vision.beta.configs import common
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
 from official.vision.beta.ops import augment
@@ -31,11 +32,18 @@ class Decoder(decoder.Decoder):
 
   def __init__(self,
                image_field_key: str = 'image/encoded',
-               label_field_key: str = 'image/class/label'):
+               label_field_key: str = 'image/class/label',
+               is_multilabel: bool = False):
     self._keys_to_features = {
         image_field_key: tf.io.FixedLenFeature((), tf.string, default_value=''),
-        label_field_key: (tf.io.FixedLenFeature((), tf.int64, default_value=-1))
     }
+    if is_multilabel:
+      self._keys_to_features.update(
+          {label_field_key: tf.io.VarLenFeature(dtype=tf.int64)})
+    else:
+      self._keys_to_features.update({
+          label_field_key: tf.io.FixedLenFeature((), tf.int64, default_value=-1)
+      })
 
   def decode(self,
              serialized_example: tf.train.Example) -> Dict[str, tf.Tensor]:
@@ -52,8 +60,8 @@ class Parser(parser.Parser):
                image_field_key: str = 'image/encoded',
                label_field_key: str = 'image/class/label',
                aug_rand_hflip: bool = True,
-               aug_policy: Optional[str] = None,
-               randaug_magnitude: Optional[int] = 10,
+               aug_type: Optional[common.Augmentation] = None,
+               is_multilabel: bool = False,
                dtype: str = 'float32'):
     """Initializes parameters for parsing annotations in the dataset.
 
@@ -65,8 +73,9 @@ class Parser(parser.Parser):
       label_field_key: A `str` of the key name to label in TFExample.
       aug_rand_hflip: `bool`, if True, augment training with random
         horizontal flip.
-      aug_policy: `str`, augmentation policies. None, 'autoaug', or 'randaug'.
-      randaug_magnitude: `int`, magnitude of the randaugment policy.
+      aug_type: An optional Augmentation object to choose from AutoAugment and
+        RandAugment.
+      is_multilabel: A `bool`, whether or not each example has multiple labels.
       dtype: `str`, cast output image in dtype. It can be 'float32', 'float16',
         or 'bfloat16'.
     """
@@ -75,6 +84,7 @@ class Parser(parser.Parser):
     self._num_classes = num_classes
     self._image_field_key = image_field_key
     self._label_field_key = label_field_key
+    self._is_multilabel = is_multilabel
 
     if dtype == 'float32':
       self._dtype = tf.float32
@@ -84,15 +94,21 @@ class Parser(parser.Parser):
       self._dtype = tf.bfloat16
     else:
       raise ValueError('dtype {!r} is not supported!'.format(dtype))
-    if aug_policy:
-      if aug_policy == 'autoaug':
-        self._augmenter = augment.AutoAugment()
-      elif aug_policy == 'randaug':
+    if aug_type:
+      if aug_type.type == 'autoaug':
+        self._augmenter = augment.AutoAugment(
+            augmentation_name=aug_type.autoaug.augmentation_name,
+            cutout_const=aug_type.autoaug.cutout_const,
+            translate_const=aug_type.autoaug.translate_const)
+      elif aug_type.type == 'randaug':
         self._augmenter = augment.RandAugment(
-            num_layers=2, magnitude=randaug_magnitude)
+            num_layers=aug_type.randaug.num_layers,
+            magnitude=aug_type.randaug.magnitude,
+            cutout_const=aug_type.randaug.cutout_const,
+            translate_const=aug_type.randaug.translate_const)
       else:
-        raise ValueError(
-            'Augmentation policy {} not supported.'.format(aug_policy))
+        raise ValueError('Augmentation policy {} not supported.'.format(
+            aug_type.type))
     else:
       self._augmenter = None
 
@@ -130,6 +146,11 @@ class Parser(parser.Parser):
     # Convert image to self._dtype.
     image = tf.image.convert_image_dtype(image, self._dtype)
 
+    if self._is_multilabel:
+      if isinstance(label, tf.sparse.SparseTensor):
+        label = tf.sparse.to_dense(label)
+      label = tf.reduce_sum(tf.one_hot(label, self._num_classes), axis=0)
+
     return image, label
 
   def _parse_eval_data(self, decoded_tensors):
@@ -153,5 +174,10 @@ class Parser(parser.Parser):
 
     # Convert image to self._dtype.
     image = tf.image.convert_image_dtype(image, self._dtype)
+
+    if self._is_multilabel:
+      if isinstance(label, tf.sparse.SparseTensor):
+        label = tf.sparse.to_dense(label)
+      label = tf.reduce_sum(tf.one_hot(label, self._num_classes), axis=0)
 
     return image, label

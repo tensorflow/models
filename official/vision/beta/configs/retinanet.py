@@ -16,15 +16,16 @@
 """RetinaNet configuration definition."""
 
 import os
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
 from official.vision.beta.configs import decoders
+from official.vision.beta.configs import backbones
 
 
 # pylint: disable=missing-class-docstring
@@ -89,15 +90,23 @@ class Losses(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class AttributeHead(hyperparams.Config):
+  name: str = ''
+  type: str = 'regression'
+  size: int = 1
+
+
+@dataclasses.dataclass
 class RetinaNetHead(hyperparams.Config):
   num_convs: int = 4
   num_filters: int = 256
   use_separable_conv: bool = False
-  attribute_heads: Optional[Dict[str, Tuple[str, int]]] = None
+  attribute_heads: Optional[List[AttributeHead]] = None
 
 
 @dataclasses.dataclass
 class DetectionGenerator(hyperparams.Config):
+  apply_nms: bool = True
   pre_nms_top_k: int = 5000
   pre_nms_score_threshold: float = 0.05
   nms_iou_threshold: float = 0.5

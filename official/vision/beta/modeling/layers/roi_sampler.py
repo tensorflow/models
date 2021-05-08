@@ -13,7 +13,6 @@
 # limitations under the License.
 
 """Contains definitions of ROI sampler."""
-
 # Import libraries
 import tensorflow as tf
 
@@ -26,12 +25,13 @@ class ROISampler(tf.keras.layers.Layer):
   """Samples ROIs and assigns targets to the sampled ROIs."""
 
   def __init__(self,
-               mix_gt_boxes=True,
-               num_sampled_rois=512,
-               foreground_fraction=0.25,
-               foreground_iou_threshold=0.5,
-               background_iou_high_threshold=0.5,
-               background_iou_low_threshold=0,
+               mix_gt_boxes: bool = True,
+               num_sampled_rois: int = 512,
+               foreground_fraction: float = 0.25,
+               foreground_iou_threshold: float = 0.5,
+               background_iou_high_threshold: float = 0.5,
+               background_iou_low_threshold: float = 0,
+               skip_subsampling: bool = False,
                **kwargs):
     """Initializes a ROI sampler.
 
@@ -49,6 +49,9 @@ class ROISampler(tf.keras.layers.Layer):
       background_iou_low_threshold: A `float` that represents the IoU threshold
         for a box to be considered as negative (if overlap in
         [`background_iou_low_threshold`, `background_iou_high_threshold`])
+      skip_subsampling: a bool that determines if we want to skip the sampling
+        procedure than balances the fg/bg classes. Used for upper frcnn layers
+        in cascade RCNN.
       **kwargs: Additional keyword arguments passed to Layer.
     """
     self._config_dict = {
@@ -58,6 +61,7 @@ class ROISampler(tf.keras.layers.Layer):
         'foreground_iou_threshold': foreground_iou_threshold,
         'background_iou_high_threshold': background_iou_high_threshold,
         'background_iou_low_threshold': background_iou_low_threshold,
+        'skip_subsampling': skip_subsampling,
     }
 
     self._sim_calc = keras_cv.ops.IouSimilarity()
@@ -73,7 +77,7 @@ class ROISampler(tf.keras.layers.Layer):
         num_sampled_rois, foreground_fraction)
     super(ROISampler, self).__init__(**kwargs)
 
-  def call(self, boxes, gt_boxes, gt_classes):
+  def call(self, boxes: tf.Tensor, gt_boxes: tf.Tensor, gt_classes: tf.Tensor):
     """Assigns the proposals with groundtruth classes and performs subsmpling.
 
     Given `proposed_boxes`, `gt_boxes`, and `gt_classes`, the function uses the
@@ -111,8 +115,8 @@ class ROISampler(tf.keras.layers.Layer):
         tensor, i.e.,
         gt_boxes[sampled_gt_indices[:, i]] = sampled_gt_boxes[:, i].
     """
+    gt_boxes = tf.cast(gt_boxes, dtype=boxes.dtype)
     if self._config_dict['mix_gt_boxes']:
-      gt_boxes = tf.cast(gt_boxes, dtype=boxes.dtype)
       boxes = tf.concat([boxes, gt_boxes], axis=1)
 
     boxes_invalid_mask = tf.less(
@@ -143,6 +147,10 @@ class ROISampler(tf.keras.layers.Layer):
     matched_gt_indices = tf.where(
         tf.squeeze(background_mask, -1), -tf.ones_like(matched_gt_indices),
         matched_gt_indices)
+
+    if self._config_dict['skip_subsampling']:
+      return (boxes, matched_gt_boxes, tf.squeeze(matched_gt_classes,
+                                                  axis=-1), matched_gt_indices)
 
     sampled_indices = self._sampler(
         positive_matches, negative_matches, ignored_matches)

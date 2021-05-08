@@ -51,22 +51,23 @@ will output the frozen graph that we can input to TensorFlow Lite directly and
 is the one we’ll be using.
 
 Next we’ll use TensorFlow Lite to get the optimized model by using
-[TOCO](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/toco),
+[TfLite Converter](https://www.tensorflow.org/lite/convert),
 the TensorFlow Lite Optimizing Converter. This will convert the resulting frozen
 graph (tflite_graph.pb) to the TensorFlow Lite flatbuffer format (detect.tflite)
 via the following command. For a quantized model, run this from the tensorflow/
 directory:
 
 ```shell
-bazel run -c opt tensorflow/lite/toco:toco -- \
---input_file=$OUTPUT_DIR/tflite_graph.pb \
+bazel run -c opt tensorflow/lite/python:tflite_convert -- \
+--enable_v1_converter \
+--graph_def_file=$OUTPUT_DIR/tflite_graph.pb \
 --output_file=$OUTPUT_DIR/detect.tflite \
 --input_shapes=1,300,300,3 \
 --input_arrays=normalized_input_image_tensor \
 --output_arrays='TFLite_Detection_PostProcess','TFLite_Detection_PostProcess:1','TFLite_Detection_PostProcess:2','TFLite_Detection_PostProcess:3' \
 --inference_type=QUANTIZED_UINT8 \
 --mean_values=128 \
---std_values=128 \
+--std_dev_values=128 \
 --change_concat_input_ranges=false \
 --allow_custom_ops
 ```
@@ -84,8 +85,9 @@ parameters and can be run via the TensorFlow Lite interpreter on the Android
 device. For a floating point model, run this from the tensorflow/ directory:
 
 ```shell
-bazel run -c opt tensorflow/lite/toco:toco -- \
---input_file=$OUTPUT_DIR/tflite_graph.pb \
+bazel run -c opt tensorflow/lite/python:tflite_convert -- \
+--enable_v1_converter \
+--graph_def_file=$OUTPUT_DIR/tflite_graph.pb \
 --output_file=$OUTPUT_DIR/detect.tflite \
 --input_shapes=1,300,300,3 \
 --input_arrays=normalized_input_image_tensor \

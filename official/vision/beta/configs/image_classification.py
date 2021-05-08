@@ -16,13 +16,15 @@
 """Image classification configuration definition."""
 import os
 from typing import List, Optional
+
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
+from official.vision.beta.configs import backbones
 
 
 @dataclasses.dataclass
@@ -34,11 +36,17 @@ class DataConfig(cfg.DataConfig):
   dtype: str = 'float32'
   shuffle_buffer_size: int = 10000
   cycle_length: int = 10
-  aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'
-  randaug_magnitude: Optional[int] = 10
+  is_multilabel: bool = False
+  aug_rand_hflip: bool = True
+  aug_type: Optional[
+      common.Augmentation] = None  # Choose from AutoAugment and RandAugment.
   file_type: str = 'tfrecord'
   image_field_key: str = 'image/encoded'
   label_field_key: str = 'image/class/label'
+
+  # Keep for backward compatibility.
+  aug_policy: Optional[str] = None  # None, 'autoaug', or 'randaug'.
+  randaug_magnitude: Optional[int] = 10
 
 
 @dataclasses.dataclass
@@ -198,8 +206,8 @@ def image_classification_imagenet_resnetrs() -> cfg.ExperimentConfig:
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'train*'),
               is_training=True,
               global_batch_size=train_batch_size,
-              aug_policy='randaug',
-              randaug_magnitude=10),
+              aug_type=common.Augmentation(
+                  type='randaug', randaug=common.RandAugment(magnitude=10))),
           validation_data=DataConfig(
               input_path=os.path.join(IMAGENET_INPUT_PATH_BASE, 'valid*'),
               is_training=False,

@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
 """Video classification task definition."""
+from typing import Any, Optional, List, Tuple
+
 from absl import logging
 import tensorflow as tf
 from official.core import base_task
@@ -54,6 +55,31 @@ class VideoClassificationTask(base_task.Task):
         l2_regularizer=l2_regularizer)
     return model
 
+  def initialize(self, model: tf.keras.Model):
+    """Loads pretrained checkpoint."""
+    if not self.task_config.init_checkpoint:
+      return
+
+    ckpt_dir_or_file = self.task_config.init_checkpoint
+    if tf.io.gfile.isdir(ckpt_dir_or_file):
+      ckpt_dir_or_file = tf.train.latest_checkpoint(ckpt_dir_or_file)
+
+    # Restoring checkpoint.
+    if self.task_config.init_checkpoint_modules == 'all':
+      ckpt = tf.train.Checkpoint(**model.checkpoint_items)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.assert_consumed()
+    elif self.task_config.init_checkpoint_modules == 'backbone':
+      ckpt = tf.train.Checkpoint(backbone=model.backbone)
+      status = ckpt.restore(ckpt_dir_or_file)
+      status.expect_partial().assert_existing_objects_matched()
+    else:
+      raise ValueError(
+          "Only 'all' or 'backbone' can be used to initialize the model.")
+
+    logging.info('Finished loading pretrained checkpoint from %s',
+                 ckpt_dir_or_file)
+
   def _get_dataset_fn(self, params):
     if params.file_type == 'tfrecord':
       return tf.data.TFRecordDataset
@@ -61,17 +87,27 @@ class VideoClassificationTask(base_task.Task):
       raise ValueError('Unknown input file type {!r}'.format(params.file_type))
 
   def _get_decoder_fn(self, params):
-    decoder = video_input.Decoder()
+    if params.tfds_name:
+      decoder = video_input.VideoTfdsDecoder(
+          image_key=params.image_field_key, label_key=params.label_field_key)
+    else:
+      decoder = video_input.Decoder(
+          image_key=params.image_field_key, label_key=params.label_field_key)
     if self.task_config.train_data.output_audio:
       assert self.task_config.train_data.audio_feature, 'audio feature is empty'
       decoder.add_feature(self.task_config.train_data.audio_feature,
                           tf.io.VarLenFeature(dtype=tf.float32))
     return decoder.decode
 
-  def build_inputs(self, params: exp_cfg.DataConfig, input_context=None):
+  def build_inputs(self,
+                   params: exp_cfg.DataConfig,
+                   input_context: Optional[tf.distribute.InputContext] = None):
     """Builds classification input."""
 
-    parser = video_input.Parser(input_params=params)
+    parser = video_input.Parser(
+        input_params=params,
+        image_key=params.image_field_key,
+        label_key=params.label_field_key)
     postprocess_fn = video_input.PostBatchProcessor(params)
 
     reader = input_reader_factory.input_reader_generator(
@@ -85,7 +121,10 @@ class VideoClassificationTask(base_task.Task):
 
     return dataset
 
-  def build_losses(self, labels, model_outputs, aux_losses=None):
+  def build_losses(self,
+                   labels: Any,
+                   model_outputs: Any,
+                   aux_losses: Optional[Any] = None):
     """Sparse categorical cross entropy loss.
 
     Args:
@@ -132,7 +171,7 @@ class VideoClassificationTask(base_task.Task):
 
     return all_losses
 
-  def build_metrics(self, training=True):
+  def build_metrics(self, training: bool = True):
     """Gets streaming metrics for training/validation."""
     if self.task_config.losses.one_hot:
       metrics = [
@@ -168,7 +207,8 @@ class VideoClassificationTask(base_task.Task):
       ]
     return metrics
 
-  def process_metrics(self, metrics, labels, model_outputs):
+  def process_metrics(self, metrics: List[Any], labels: Any,
+                      model_outputs: Any):
     """Process and update metrics.
 
     Called when using custom training loop API.
@@ -183,7 +223,11 @@ class VideoClassificationTask(base_task.Task):
     for metric in metrics:
       metric.update_state(labels, model_outputs)
 
-  def train_step(self, inputs, model, optimizer, metrics=None):
+  def train_step(self,
+                 inputs: Tuple[Any, Any],
+                 model: tf.keras.Model,
+                 optimizer: tf.keras.optimizers.Optimizer,
+                 metrics: Optional[List[Any]] = None):
     """Does forward and backward.
 
     Args:
@@ -240,7 +284,10 @@ class VideoClassificationTask(base_task.Task):
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
-  def validation_step(self, inputs, model, metrics=None):
+  def validation_step(self,
+                      inputs: Tuple[Any, Any],
+                      model: tf.keras.Model,
+                      metrics: Optional[List[Any]] = None):
     """Validatation step.
 
     Args:
@@ -266,7 +313,7 @@ class VideoClassificationTask(base_task.Task):
       logs.update({m.name: m.result() for m in model.metrics})
     return logs
 
-  def inference_step(self, features, model):
+  def inference_step(self, features: tf.Tensor, model: tf.keras.Model):
     """Performs the forward step."""
     outputs = model(features, training=False)
     if self.task_config.train_data.is_multilabel:

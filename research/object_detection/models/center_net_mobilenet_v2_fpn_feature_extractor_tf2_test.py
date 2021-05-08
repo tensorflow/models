@@ -103,6 +103,30 @@ class CenterNetMobileNetV2FPNFeatureExtractorTest(test_case.TestCase):
     # a depth multiplier of 2.
     self.assertEqual(64, first_conv.filters)
 
+  def test_center_net_mobilenet_v2_fpn_feature_extractor_interpolation(self):
+
+    channel_means = (0., 0., 0.)
+    channel_stds = (1., 1., 1.)
+    bgr_ordering = False
+    model = (
+        center_net_mobilenet_v2_fpn_feature_extractor.mobilenet_v2_fpn(
+            channel_means, channel_stds, bgr_ordering, use_separable_conv=True,
+            upsampling_interpolation='bilinear'))
+
+    def graph_fn():
+      img = np.zeros((8, 224, 224, 3), dtype=np.float32)
+      processed_img = model.preprocess(img)
+      return model(processed_img)
+
+    outputs = self.execute(graph_fn, [])
+    self.assertEqual(outputs.shape, (8, 56, 56, 24))
+
+    # Verify the upsampling layers in the FPN use 'bilinear' interpolation.
+    fpn = model.get_layer('model_1')
+    for layer in fpn.layers:
+      if 'up_sampling2d' in layer.name:
+        self.assertEqual('bilinear', layer.interpolation)
+
 
 if __name__ == '__main__':
   tf.test.main()

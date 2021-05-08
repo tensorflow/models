@@ -946,7 +946,7 @@ def object_center_proto_to_params(oc_config):
   if oc_config.keypoint_weights_for_center:
     keypoint_weights_for_center = list(oc_config.keypoint_weights_for_center)
 
-  if oc_config.center_head_params:
+  if oc_config.HasField('center_head_params'):
     center_head_num_filters = list(oc_config.center_head_params.num_filters)
     center_head_kernel_sizes = list(oc_config.center_head_params.kernel_sizes)
   else:
@@ -1130,11 +1130,18 @@ def _build_center_net_feature_extractor(feature_extractor_config, is_training):
       feature_extractor_config.use_separable_conv or
       feature_extractor_config.type == 'mobilenet_v2_fpn_sep_conv')
   kwargs = {
-      'channel_means': list(feature_extractor_config.channel_means),
-      'channel_stds': list(feature_extractor_config.channel_stds),
-      'bgr_ordering': feature_extractor_config.bgr_ordering,
-      'depth_multiplier': feature_extractor_config.depth_multiplier,
-      'use_separable_conv': use_separable_conv,
+      'channel_means':
+          list(feature_extractor_config.channel_means),
+      'channel_stds':
+          list(feature_extractor_config.channel_stds),
+      'bgr_ordering':
+          feature_extractor_config.bgr_ordering,
+      'depth_multiplier':
+          feature_extractor_config.depth_multiplier,
+      'use_separable_conv':
+          use_separable_conv,
+      'upsampling_interpolation':
+          feature_extractor_config.upsampling_interpolation,
   }
 
 

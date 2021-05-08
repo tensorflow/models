@@ -5,6 +5,7 @@ package object_detection.protos;
 import "object_detection/protos/image_resizer.proto";
 import "object_detection/protos/losses.proto";
 import "object_detection/protos/post_processing.proto";
+import "object_detection/protos/preprocessor.proto";
 
 // Configuration for the CenterNet meta architecture from the "Objects as
 // Points" paper [1]
@@ -347,6 +348,68 @@ message CenterNet {
   optional TemporalOffsetEstimation temporal_offset_task = 12;
 
 
+  // Mask prediction support using DeepMAC. See https://arxiv.org/abs/2104.00613
+  message DeepMACMaskEstimation {
+    // The loss used for penalizing mask predictions.
+    optional ClassificationLoss classification_loss = 1;
+
+    // Weight of mask prediction loss
+    optional float task_loss_weight = 2 [default = 1.0];
+
+    // The dimension of the per-instance embedding.
+    optional int32 dim = 3 [default = 256];
+
+    // The dimension of the per-pixel embedding
+    optional int32 pixel_embedding_dim = 4 [default=16];
+
+    // If set, masks are only kept for classes listed here. Masks are deleted
+    // for all other classes. Note that this is only done at training time, eval
+    // behavior is unchanged.
+    repeated int32 allowed_masked_classes_ids = 5;
+
+    // The size of cropped pixel embedding that goes into the 2D mask prediction
+    // network (RoI align).
+    optional int32 mask_size = 6 [default=32];
+
+    // If set to a positive value, we subsample instances by this amount to
+    // save memory during training.
+    optional int32 mask_num_subsamples = 67[default=-1];
+
+    // Whether or not to use (x, y) coordinates as input to mask net.
+    optional bool use_xy = 8 [default=true];
+
+    // Defines the kind of architecture we want to use for mask network.
+    optional string network_type = 9 [default="hourglass52"];
+
+    // Whether or not we want to use instance embedding in mask network.
+    optional bool use_instance_embedding = 10 [default=true];
+
+    // Number of channels in the inital block of the mask prediction network.
+    optional int32 num_init_channels = 11 [default=64];
+
+    // Whether or not to predict masks at full resolution. If true, we predict
+    // masks at the resolution of the output stride. Otherwise, masks are
+    // predicted at resolution defined by mask_size
+    optional bool predict_full_resolution_masks = 12 [default=false];
+
+    // If predict_full_resolution_masks is set, this parameter controls the size
+    // of cropped masks returned by post-process. To be compatible with the rest
+    // of the API, masks are always cropped and resized according to detected
+    // boxes in postprocess.
+    optional int32 postprocess_crop_size = 13 [default=256];
+
+    // The maximum relative amount by which boxes will be jittered before
+    // RoI crop happens. The x and y coordinates of the box are jittered
+    // relative to width and height respectively.
+    optional float max_roi_jitter_ratio = 14 [default=0.0];
+
+    // The mode for jitterting box ROIs. See RandomJitterBoxes in
+    // preprocessor.proto for more details
+    optional RandomJitterBoxes.JitterMode jitter_mode = 15 [default=DEFAULT];
+  }
+
+  optional DeepMACMaskEstimation deepmac_mask_estimation = 14;
+
   // CenterNet does not apply conventional post processing operations such as
   // non max suppression as it applies a max-pool operator on box centers.
   // However, in some cases we observe the need to remove duplicate predictions
@@ -377,11 +440,17 @@ message CenterNetFeatureExtractor {
   optional bool use_depthwise = 5 [default = false];
 
 
-  // Depth multiplier. Only valid for specific models (e.g. MobileNet). See subclasses of `CenterNetFeatureExtractor`.
+  // Depth multiplier. Only valid for specific models (e.g. MobileNet). See
+  // subclasses of `CenterNetFeatureExtractor`.
   optional float depth_multiplier = 9 [default = 1.0];
 
   // Whether to use separable convolutions. Only valid for specific
   // models. See subclasses of `CenterNetFeatureExtractor`.
   optional bool use_separable_conv = 10 [default = false];
+
+  // Which interpolation method to use for the upsampling ops in the FPN.
+  // Currently only valid for CenterNetMobileNetV2FPNFeatureExtractor. The value
+  // can be on of 'nearest' or 'bilinear'.
+  optional string upsampling_interpolation = 11 [default = 'nearest'];
 }
 

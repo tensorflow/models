@@ -23,9 +23,8 @@ from official.modeling.optimization.configs import optimization_config
 
 class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
-  @parameterized.parameters(('sgd'), ('rmsprop'),
-                            ('adam'), ('adamw'),
-                            ('lamb'), ('lars'))
+  @parameterized.parameters(('sgd'), ('rmsprop'), ('adam'), ('adamw'), ('lamb'),
+                            ('lars'), ('adagrad'))
   def test_optimizers(self, optimizer_type):
     params = {
         'optimizer': {
@@ -50,10 +49,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(optimizer, optimizer_cls)
     self.assertEqual(expected_optimizer_config, optimizer.get_config())
 
-  @parameterized.parameters(
-      (None, None),
-      (1.0, None),
-      (None, 1.0))
+  @parameterized.parameters((None, None), (1.0, None), (None, 1.0))
   def test_gradient_clipping(self, clipnorm, clipvalue):
     params = {
         'optimizer': {
@@ -359,8 +355,8 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
             }
         }
     }
-    expected_lr_step_values = [
-        [0, 1.0], [1, 1.0], [40, 1. / 40.], [60, 1. / 60. * 0.8]]
+    expected_lr_step_values = [[0, 1.0], [1, 1.0], [40, 1. / 40.],
+                               [60, 1. / 60. * 0.8]]
     opt_config = optimization_config.OptimizationConfig(params)
     opt_factory = optimizer_factory.OptimizerFactory(opt_config)
     lr = opt_factory.build_learning_rate()

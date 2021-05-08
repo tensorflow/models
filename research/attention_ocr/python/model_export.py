@@ -25,7 +25,7 @@ import os
 import tensorflow as tf
 from tensorflow import app
 from tensorflow.contrib import slim
-from tensorflow.python.platform import flags
+from tensorflow.compat.v1 import flags
 
 import common_flags
 import model_export_lib
