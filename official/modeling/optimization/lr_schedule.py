@@ -205,11 +205,11 @@ class PowerAndLinearDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
   1) offset_step < 0, the actual learning rate equals initial_learning_rate.
   2) offset_step <= total_decay_steps * (1 - linear_decay_fraction), the
   actual learning rate equals lr * offset_step^power.
-  3) total_decay_steps * (1 - linear_decay_fraction) < offset_step <
+  3) total_decay_steps * (1 - linear_decay_fraction) <= offset_step <
   total_decay_steps, the actual learning rate equals lr * offset_step^power *
   (total_decay_steps - offset_step) / (total_decay_steps *
   linear_decay_fraction).
-  4) offset_step > total_decay_steps, the actual learning rate equals zero.
+  4) offset_step >= total_decay_steps, the actual learning rate equals zero.
   """
 
   def __init__(self,
