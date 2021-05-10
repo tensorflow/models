@@ -23,6 +23,7 @@ from official.modeling import tf_utils
 from official.vision.beta.ops import spatial_transform_ops
 
 # Type annotations.
+
 States = Dict[str, tf.Tensor]
 Activation = Union[str, Callable]
 
