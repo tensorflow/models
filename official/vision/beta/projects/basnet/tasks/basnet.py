@@ -25,7 +25,6 @@ from official.core import input_reader
 from official.core import task_factory
 from official.vision.beta.projects.basnet.configs import basnet as exp_cfg
 from official.vision.beta.dataloaders import segmentation_input
-from official.vision.beta.projects.basnet.dataloaders import basnet_input
 from official.vision.beta.projects.basnet.evaluation import max_f
 from official.vision.beta.projects.basnet.evaluation import relax_f
 from official.vision.beta.projects.basnet.evaluation import mae
@@ -239,9 +238,9 @@ class BASNetTask(base_task.Task):
     loss = 0
     logs = {self.loss: loss}
 
-    logs.update({self.mae_metric.name: (labels, outputs['ref'])})
-    logs.update({self.maxf_metric.name: (labels, outputs['ref'])})
-    logs.update({self.relaxf_metric.name: (labels, outputs['ref'])})
+    logs.update({self.mae_metric.name: (labels['valid_masks'], outputs['ref'])})
+    logs.update({self.maxf_metric.name: (labels['valid_masks'], outputs['ref'])})
+    logs.update({self.relaxf_metric.name: (labels['valid_masks'], outputs['ref'])})
     return logs    
 
   def inference_step(self, inputs, model):

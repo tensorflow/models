@@ -17,7 +17,7 @@
 
 import tensorflow as tf
 
-from official.vision.beta.projects.basnet.modeling import factory
+from official.vision.beta.projects.basnet.tasks import basnet
 from official.vision.beta.ops import preprocess_ops
 from official.vision.beta.serving import semantic_segmentation
 
@@ -33,7 +33,7 @@ class BASNetModule(semantic_segmentation.SegmentationModule):
     input_specs = tf.keras.layers.InputSpec(
         shape=[self._batch_size] + self._input_image_size + [3])
 
-    return factory.build_basnet_model(
+    return basnet.build_basnet_model(
         input_specs=input_specs,
         model_config=self.params.task.model,
         l2_regularizer=None)
