@@ -34,6 +34,7 @@ from object_detection.core import post_processing
 from object_detection.core import target_assigner
 from object_detection.meta_architectures import center_net_meta_arch
 from object_detection.meta_architectures import context_rcnn_meta_arch
+from object_detection.meta_architectures import deepmac_meta_arch
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
