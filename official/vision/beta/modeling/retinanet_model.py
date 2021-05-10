@@ -126,7 +126,7 @@ class RetinaNetModel(tf.keras.Model):
           'box_outputs': raw_boxes,
       }
       if raw_attributes:
-        outputs.update({'att_outputs': raw_attributes})
+        outputs.update({'attribute_outputs': raw_attributes})
       return outputs
     else:
       # Generate anchor boxes for this batch if not provided.
@@ -166,7 +166,7 @@ class RetinaNetModel(tf.keras.Model):
 
       if raw_attributes:
         outputs.update({
-            'att_outputs': raw_attributes,
+            'attribute_outputs': raw_attributes,
             'detection_attributes': final_results['detection_attributes'],
         })
       return outputs
