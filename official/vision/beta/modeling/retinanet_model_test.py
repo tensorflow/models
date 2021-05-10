@@ -223,7 +223,7 @@ class RetinaNetTest(parameterized.TestCase, tf.test.TestCase):
             4 * num_anchors_per_location
         ], box_outputs[str(level)].numpy().shape)
         if has_att_heads:
-          att_outputs = model_outputs['att_outputs']
+          att_outputs = model_outputs['attribute_outputs']
           for att in att_outputs.values():
             self.assertAllEqual([
                 2, image_size[0] // 2**level, image_size[1] // 2**level,

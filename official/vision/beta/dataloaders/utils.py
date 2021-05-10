@@ -62,4 +62,8 @@ def pad_groundtruths_to_fixed_size(groundtruths: Dict[str, tf.Tensor],
       groundtruths['areas'], size, -1)
   groundtruths['classes'] = preprocess_ops.clip_or_pad_to_fixed_size(
       groundtruths['classes'], size, -1)
+  if 'attributes' in groundtruths:
+    for k, v in groundtruths['attributes'].items():
+      groundtruths['attributes'][k] = preprocess_ops.clip_or_pad_to_fixed_size(
+          v, size, -1)
   return groundtruths
