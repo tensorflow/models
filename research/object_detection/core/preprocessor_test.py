@@ -170,6 +170,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
   def createTestMultiClassScores(self):
     return tf.constant([[1.0, 0.0], [0.5, 0.5]], dtype=tf.float32)
 
+
   def expectedImagesAfterNormalization(self):
     images_r = tf.constant([[[0, 0, 0, 0], [-1, -1, 0, 0],
                              [-1, 0, 0, 0], [0.5, 0.5, 0, 0]]],
@@ -4196,6 +4197,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
 
     (image_original_shape_, image_gamma_shape_) = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(image_original_shape_, image_gamma_shape_)
+
 
 
 if __name__ == '__main__':
