@@ -149,7 +149,7 @@ class BASNetTask(base_task.Task):
     loss_params = self._task_config.losses
     basnet_loss_fn = basnet_losses.BASNetLoss()
 
-    total_loss = basnet_loss_fn(model_outputs, label['valid_masks'])
+    total_loss = basnet_loss_fn(model_outputs, label['masks'])
 
     if aux_losses:
       total_loss += tf.add_n(aux_losses)
@@ -238,9 +238,11 @@ class BASNetTask(base_task.Task):
     loss = 0
     logs = {self.loss: loss}
 
-    logs.update({self.mae_metric.name: (labels['valid_masks'], outputs['ref'])})
-    logs.update({self.maxf_metric.name: (labels['valid_masks'], outputs['ref'])})
-    logs.update({self.relaxf_metric.name: (labels['valid_masks'], outputs['ref'])})
+    temp = labels['masks']
+ 
+    logs.update({self.mae_metric.name: (labels['masks'], outputs['ref'])})
+    logs.update({self.maxf_metric.name: (labels['masks'], outputs['ref'])})
+    logs.update({self.relaxf_metric.name: (labels['masks'], outputs['ref'])})
     return logs    
 
   def inference_step(self, inputs, model):

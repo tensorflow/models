@@ -3,6 +3,8 @@ runtime:
   mixed_precision_dtype: 'float32'
   num_gpus: 8
 task:
+  losses:
+    ignore_label: 0
   model:
     backbone:
       type: 'basnet_en'
@@ -12,3 +14,8 @@ task:
       activation: 'relu'
   init_checkpoint: ''
   init_checkpoint_modules: 'backbone'
+  train_data:
+    dtype: 'float32'
+  validation_data:
+    resize_eval_groundtruth : True
+    dtype: 'float32'

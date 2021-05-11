@@ -167,6 +167,8 @@ class RefUnet(tf.keras.Model):
             interpolation='bilinear'
             )(x)
 
+    residual = tf.cast(residual, dtype=x.dtype)
+
     output = x + residual
 
     output = layers.Activation(
