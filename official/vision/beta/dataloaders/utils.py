@@ -66,4 +66,7 @@ def pad_groundtruths_to_fixed_size(groundtruths: Dict[str, tf.Tensor],
     for k, v in groundtruths['attributes'].items():
       groundtruths['attributes'][k] = preprocess_ops.clip_or_pad_to_fixed_size(
           v, size, -1)
+  if 'masks' in groundtruths:
+    groundtruths['masks'] = preprocess_ops.clip_or_pad_to_fixed_size(
+      groundtruths['masks'], size, -1)
   return groundtruths

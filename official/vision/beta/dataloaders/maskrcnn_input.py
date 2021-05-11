@@ -337,6 +337,8 @@ class Parser(parser.Parser):
         'areas': data['groundtruth_area'],
         'is_crowds': tf.cast(data['groundtruth_is_crowd'], tf.int32),
     }
+    if self._include_mask:
+      groundtruths['masks'] = data['groundtruth_instance_masks']
     groundtruths['source_id'] = utils.process_source_id(
         groundtruths['source_id'])
     groundtruths = utils.pad_groundtruths_to_fixed_size(
