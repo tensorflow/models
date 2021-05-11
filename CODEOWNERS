@@ -9,11 +9,11 @@
 /research/adversarial_text/ @rsepassi @a-dai
 /research/attention_ocr/ @xavigibert
 /research/audioset/ @plakal @dpwe
-/research/autoaugment/* @barretzoph
+/research/autoaugment/ @barretzoph
 /research/cognitive_planning/ @s-gupta
 /research/cvt_text/ @clarkkev @lmthang
 /research/deep_speech/ @yhliang2018
-/research/deeplab/ @aquariusjay @yknzhu @gpapan
+/research/deeplab/ @aquariusjay @yknzhu
 /research/delf/ @andrefaraujo
 /research/efficient-hrl/ @ofirnachum
 /research/lfads/ @jazcollins @sussillo
