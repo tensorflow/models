@@ -12,7 +12,7 @@ $ python3 train.py \
   --experiment=basnet_duts \
   --mode=train \
   --model_dir=$MODEL_DIR \
-  --config_file=./configs/experiments/basnet/basnet_dut_gpu.yaml
+  --config_file=./configs/experiments/basnet_dut_gpu.yaml
 ```
 
 ## Test
@@ -21,7 +21,7 @@ $ python3 train.py \
   --experiment=basnet_duts \
   --mode=eval \
   --model_dir=$MODEL_DIR \
-  --config_file=./configs/experiments/basnet/basnet_dut_gpu.yaml
+  --config_file=./configs/experiments/basnet_dut_gpu.yaml
   --params_override='runtime.num_gpus=1, runtime.distribution_strategy=one_device, task.model.input_size=[256, 256, 3]'
 ```
 
