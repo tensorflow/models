@@ -378,11 +378,11 @@ class ResNet3D(tf.keras.Model):
 @factory.register_backbone_builder('resnet_3d')
 def build_resnet3d(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds ResNet 3d backbone from a config."""
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_cfg = backbone_config.get()
 
   # Flatten configs before passing to the backbone.
   temporal_strides = []
@@ -416,11 +416,11 @@ def build_resnet3d(
 @factory.register_backbone_builder('resnet_3d_rs')
 def build_resnet3d_rs(
     input_specs: tf.keras.layers.InputSpec,
-    model_config: hyperparams.Config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds ResNet-3D-RS backbone from a config."""
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_cfg = backbone_config.get()
 
   # Flatten configs before passing to the backbone.
   temporal_strides = []

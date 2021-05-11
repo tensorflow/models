@@ -437,7 +437,12 @@ def maskrcnn_spinenet_coco() -> cfg.ExperimentConfig:
                                        'instances_val2017.json'),
           model=MaskRCNN(
               backbone=backbones.Backbone(
-                  type='spinenet', spinenet=backbones.SpineNet(model_id='49')),
+                  type='spinenet',
+                  spinenet=backbones.SpineNet(
+                      model_id='49',
+                      min_level=3,
+                      max_level=7,
+                  )),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               anchor=Anchor(anchor_size=3),
@@ -491,6 +496,8 @@ def maskrcnn_spinenet_coco() -> cfg.ExperimentConfig:
           })),
       restrictions=[
           'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
+          'task.validation_data.is_training != None',
+          'task.model.min_level == task,model.backbone.spinenet.min_level',
+          'task.model.max_level == task,model.backbone.spinenet.max_level',
       ])
   return config

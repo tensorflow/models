@@ -42,6 +42,8 @@ in place that uses it.
 
 
 """
+from typing import Sequence, Union
+
 # Import libraries
 
 import tensorflow as tf
@@ -81,22 +83,31 @@ def register_backbone_builder(key: str):
   return registry.register(_REGISTERED_BACKBONE_CLS, key)
 
 
-def build_backbone(
-    input_specs: tf.keras.layers.InputSpec,
-    model_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+def build_backbone(input_specs: Union[tf.keras.layers.InputSpec,
+                                      Sequence[tf.keras.layers.InputSpec]],
+                   backbone_config: hyperparams.Config,
+                   norm_activation_config: hyperparams.Config,
+                   l2_regularizer: tf.keras.regularizers.Regularizer = None,
+                   **kwargs) -> tf.keras.Model:
   """Builds backbone from a config.
 
   Args:
-    input_specs: A `tf.keras.layers.InputSpec` of input.
-    model_config: A `OneOfConfig` of model config.
+    input_specs: A (sequence of) `tf.keras.layers.InputSpec` of input.
+    backbone_config: A `OneOfConfig` of backbone config.
+    norm_activation_config: A config for normalization/activation layer.
     l2_regularizer: A `tf.keras.regularizers.Regularizer` object. Default to
       None.
+    **kwargs: Additional keyword args to be passed to backbone builder.
 
   Returns:
     A `tf.keras.Model` instance of the backbone.
   """
   backbone_builder = registry.lookup(_REGISTERED_BACKBONE_CLS,
-                                     model_config.backbone.type)
+                                     backbone_config.type)
 
-  return backbone_builder(input_specs, model_config, l2_regularizer)
+  return backbone_builder(
+      input_specs=input_specs,
+      backbone_config=backbone_config,
+      norm_activation_config=norm_activation_config,
+      l2_regularizer=l2_regularizer,
+      **kwargs)

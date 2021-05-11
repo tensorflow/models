@@ -85,9 +85,11 @@ def build_video_classification_model(
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds the video classification model."""
   input_specs_dict = {'image': input_specs}
+  norm_activation_config = model_config.norm_activation
   backbone = backbones.factory.build_backbone(
       input_specs=input_specs,
-      model_config=model_config,
+      backbone_config=model_config.backbone,
+      norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
 
   model = video_classification_model.VideoClassificationModel(

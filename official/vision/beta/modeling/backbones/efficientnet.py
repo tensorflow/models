@@ -297,12 +297,12 @@ class EfficientNet(tf.keras.Model):
 @factory.register_backbone_builder('efficientnet')
 def build_efficientnet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config: hyperparams.Config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds EfficientNet backbone from a config."""
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_type = backbone_config.type
+  backbone_cfg = backbone_config.get()
   assert backbone_type == 'efficientnet', (f'Inconsistent backbone type '
                                            f'{backbone_type}')
 
