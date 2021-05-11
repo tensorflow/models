@@ -33,8 +33,7 @@ class YoloHead(tf.keras.layers.Layer):
                bias_regularizer=None,
                activation=None,
                **kwargs):
-    """
-    Yolo Prediction Head initialization function.
+    """Yolo Prediction Head initialization function.
 
     Args:
       min_level: `int`, the minimum backbone output level.

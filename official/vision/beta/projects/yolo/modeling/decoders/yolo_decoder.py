@@ -20,9 +20,12 @@ from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
-class IdentityRoute(tf.keras.layers.Layer):
+class _IdentityRoute(tf.keras.layers.Layer):
 
   def __init__(self, **kwargs):
+    """Private class to mirror the outputs of blocks in nn_blocks for an easier
+    programatic generation of the feature pyramid network"""
+
     super().__init__(**kwargs)
 
   def call(self, inputs): # pylint: disable=arguments-differ
@@ -35,7 +38,7 @@ class YoloFPN(tf.keras.layers.Layer):
 
   def __init__(self,
                fpn_depth=4,
-               embed_sam=False,
+               use_spatial_attention=False,
                csp_stack=False,
                activation='leaky',
                fpn_filter_scale=1,
@@ -46,12 +49,12 @@ class YoloFPN(tf.keras.layers.Layer):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """
-    Yolo FPN initialization function. Yolo V4
+    """Yolo FPN initialization function (Yolo V4).
+
     Args:
       fpn_depth: `int`, number of layers to use in each FPN path
         if you choose to use an FPN.
-      embed_sam: `bool`, use the spatial attention module.
+      use_spatial_attention: `bool`, use the spatial attention module.
       csp_stack: `bool`, CSPize the FPN.
       activation: `str`, the activation function to use typically leaky or mish.
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
@@ -64,6 +67,7 @@ class YoloFPN(tf.keras.layers.Layer):
       bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       **kwargs: keyword arguments to be passed.
     """
+
     super().__init__(**kwargs)
     self._fpn_depth = fpn_depth
 
@@ -74,7 +78,7 @@ class YoloFPN(tf.keras.layers.Layer):
     self._kernel_initializer = kernel_initializer
     self._kernel_regularizer = kernel_regularizer
     self._bias_regularizer = bias_regularizer
-    self._embed_sam = embed_sam
+    self._use_spatial_attention = use_spatial_attention
     self._filter_scale = fpn_filter_scale
     self._csp_stack = csp_stack
 
@@ -88,30 +92,30 @@ class YoloFPN(tf.keras.layers.Layer):
         norm_momentum=self._norm_momentum)
 
   def get_raw_depths(self, minimum_depth, inputs):
-    """
-    Calculates the unscaled depths of the FPN branches
+    """Calculates the unscaled depths of the FPN branches.
 
     Args:
-      minimum_depth (int): depth of the smallest branch of the FPN
+      minimum_depth (int): depth of the smallest branch of the FPN.
       inputs (dict): dictionary of the shape of input args as a dictionary of
-        lists
+        lists.
 
     Returns:
-      the unscaled depths of the FPN branches
+      The unscaled depths of the FPN branches.
     """
+
     depths = []
     for i in range(self._min_level, self._max_level + 1):
       depths.append(inputs[str(i)][-1] / self._filter_scale)
     return list(reversed(depths))
 
   def build(self, inputs):
-    """
-    use config dictionary to generate all important attributes for head
-    construction
+    """Use config dictionary to generate all important attributes for head
+    construction.
 
     Args:
-       inputs: dictionary of the shape of input args as a dictionary of lists
+       inputs: dictionary of the shape of input args as a dictionary of lists.
     """
+
     keys = [int(key) for key in inputs.keys()]
     self._min_level = min(keys)
     self._max_level = max(keys)
@@ -136,7 +140,7 @@ class YoloFPN(tf.keras.layers.Layer):
             drop_final=self._csp_stack == 0,
             upsample_size=2,
             **self._base_config)
-        self.preprocessors[str(level)] = IdentityRoute()
+        self.preprocessors[str(level)] = _IdentityRoute()
       elif level != self._max_level:
         self.resamples[str(level)] = nn_blocks.PathAggregationBlock(
             filters=depth // 2,
@@ -181,7 +185,7 @@ class YoloPAN(tf.keras.layers.Layer):
                path_process_len=6,
                max_level_process_len=None,
                embed_spp=False,
-               embed_sam=False,
+               use_spatial_attention=False,
                csp_stack=False,
                activation='leaky',
                use_sync_bn=False,
@@ -193,14 +197,14 @@ class YoloPAN(tf.keras.layers.Layer):
                fpn_input=True,
                fpn_filter_scale=1.0,
                **kwargs):
-    """
-    Yolo Path Aggregation Network initialization function. Yolo V3 and V4
+    """Yolo Path Aggregation Network initialization function (Yolo V3 and V4).
+
     Args:
       path_process_len: `int`, number of layers ot use in each Decoder path.
       max_level_process_len: `int`, number of layers ot use in the largest
         processing path, or the backbones largest output if it is different.
       embed_spp: `bool`, use the SPP found in the YoloV3 and V4 model.
-      embed_sam: `bool`, use the spatial attention module.
+      use_spatial_attention: `bool`, use the spatial attention module.
       csp_stack: `bool`, CSPize the FPN.
       activation: `str`, the activation function to use typically leaky or mish.
       use_sync_bn: if True, use synchronized batch normalization.
@@ -215,11 +219,12 @@ class YoloPAN(tf.keras.layers.Layer):
       fpn_filter_scale: `int`, scaling factor for the FPN filters.
       **kwargs: keyword arguments to be passed.
     """
+
     super().__init__(**kwargs)
 
     self._path_process_len = path_process_len
     self._embed_spp = embed_spp
-    self._embed_sam = embed_sam
+    self._use_spatial_attention = use_spatial_attention
 
     self._activation = activation
     self._use_sync_bn = use_sync_bn
@@ -246,13 +251,13 @@ class YoloPAN(tf.keras.layers.Layer):
         norm_momentum=self._norm_momentum)
 
   def build(self, inputs):
-    """
-    use config dictionary to generate all important attributes for head
-    construction
+    """Use config dictionary to generate all important attributes for head
+    construction.
 
     Args:
-      inputs: dictionary of the shape of input args as a dictionary of lists
+      inputs: dictionary of the shape of input args as a dictionary of lists.
     """
+
     # define the key order
     keys = [int(key) for key in inputs.keys()]
     self._min_level = min(keys)
@@ -302,7 +307,7 @@ class YoloPAN(tf.keras.layers.Layer):
             repetitions=self._max_level_process_len,
             insert_spp=self._embed_spp,
             block_invert=False,
-            insert_sam=self._embed_sam,
+            insert_sam=self._use_spatial_attention,
             csp_stack=self._csp_stack,
             **self._base_config)
       else:
@@ -317,22 +322,22 @@ class YoloPAN(tf.keras.layers.Layer):
             filters=proc_filters(depth),
             repetitions=self._path_process_len,
             insert_spp=False,
-            insert_sam=self._embed_sam,
+            insert_sam=self._use_spatial_attention,
             csp_stack=self._csp_stack,
             **self._base_config)
 
   def get_raw_depths(self, minimum_depth, inputs):
-    """
-    Calculates the unscaled depths of the FPN branches
+    """Calculates the unscaled depths of the FPN branches.
 
     Args:
-      minimum_depth (int): depth of the smallest branch of the FPN
-      inputs (dict): dictionary of the shape of input args as a dictionary of
-        lists
+      minimum_depth: `int` depth of the smallest branch of the FPN.
+      inputs: `dict[str, tf.InputSpec]` of the shape of input args as a dictionary of
+        lists.
 
     Returns:
-      the unscaled depths of the FPN branches
+      The unscaled depths of the FPN branches.
     """
+    
     depths = []
     if len(inputs.keys()) > 3 or self._fpn_filter_scale > 1:
       for i in range(self._min_level, self._max_level + 1):
@@ -365,8 +370,8 @@ class YoloDecoder(tf.keras.Model):
 
   def __init__(self,
                input_specs,
-               embed_fpn=False,
-               embed_sam=False,
+               use_fpn=False,
+               use_spatial_attention=False,
                csp_stack=False,
                fpn_depth=4,
                fpn_filter_scale=1,
@@ -381,15 +386,14 @@ class YoloDecoder(tf.keras.Model):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """
-    Yolo Decoder initialization function. A unified model that ties all decoder
+    """Yolo Decoder initialization function. A unified model that ties all decoder
     components into a conditionally build YOLO decder.
 
     Args:
       input_specs: `dict[str, tf.InputSpec]`: input specs of each of the inputs
         to the heads.
-      embed_fpn: `bool`, use the FPN found in the YoloV4 model.
-      embed_sam: `bool`, use the spatial attention module.
+      use_fpn: `bool`, use the FPN found in the YoloV4 model.
+      use_spatial_attention: `bool`, use the spatial attention module.
       csp_stack: `bool`, CSPize the FPN.
       fpn_depth: `int`, number of layers ot use in each FPN path
         if you choose to use an FPN.
@@ -410,7 +414,7 @@ class YoloDecoder(tf.keras.Model):
     """
 
     self._input_specs = input_specs
-    self._embed_fpn = embed_fpn
+    self._use_fpn = use_fpn
     self._fpn_depth = fpn_depth
     self._path_process_len = path_process_len
     self._max_level_process_len = max_level_process_len
@@ -425,7 +429,7 @@ class YoloDecoder(tf.keras.Model):
     self._bias_regularizer = bias_regularizer
 
     self._base_config = dict(
-        embed_sam=embed_sam,
+        use_spatial_attention=use_spatial_attention,
         csp_stack=csp_stack,
         activation=self._activation,
         use_sync_bn=self._use_sync_bn,
@@ -440,14 +444,14 @@ class YoloDecoder(tf.keras.Model):
         path_process_len=self._path_process_len,
         max_level_process_len=self._max_level_process_len,
         embed_spp=self._embed_spp,
-        fpn_input=self._embed_fpn,
+        fpn_input=self._use_fpn,
         **self._base_config)
 
     inputs = {
         key: tf.keras.layers.Input(shape=value[1:])
         for key, value in input_specs.items()
     }
-    if self._embed_fpn:
+    if self._use_fpn:
       inter_outs = YoloFPN(
           fpn_depth=self._fpn_depth, **self._base_config)(
               inputs)
@@ -460,8 +464,8 @@ class YoloDecoder(tf.keras.Model):
     super().__init__(inputs=inputs, outputs=outputs, name='YoloDecoder')
 
   @property
-  def embed_fpn(self):
-    return self._embed_fpn
+  def use_fpn(self):
+    return self._use_fpn
 
   @property
   def output_specs(self):
@@ -470,7 +474,7 @@ class YoloDecoder(tf.keras.Model):
   def get_config(self):
     config = dict(
         input_specs=self._input_specs,
-        embed_fpn=self._embed_fpn,
+        use_fpn=self._use_fpn,
         fpn_depth=self._fpn_depth,
         **self._decoder_config)
     return config
