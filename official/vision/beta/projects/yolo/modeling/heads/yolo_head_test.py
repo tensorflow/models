@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for yolo."""
+"""Tests for yolo heads."""
 
 # Import libraries
 from absl.testing import parameterized
