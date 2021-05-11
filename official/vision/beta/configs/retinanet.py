@@ -248,7 +248,10 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='spinenet',
                   spinenet=backbones.SpineNet(
-                      model_id='49', stochastic_depth_drop_rate=0.2)),
+                      model_id='49',
+                      stochastic_depth_drop_rate=0.2,
+                      min_level=3,
+                      max_level=7)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               anchor=Anchor(anchor_size=3),
@@ -306,7 +309,9 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
           })),
       restrictions=[
           'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
+          'task.validation_data.is_training != None',
+          'task.model.min_level == task,model.backbone.spinenet.min_level',
+          'task.model.max_level == task,model.backbone.spinenet.max_level',
       ])
 
   return config
@@ -329,7 +334,10 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
               backbone=backbones.Backbone(
                   type='spinenet_mobile',
                   spinenet_mobile=backbones.SpineNetMobile(
-                      model_id='49', stochastic_depth_drop_rate=0.2)),
+                      model_id='49',
+                      stochastic_depth_drop_rate=0.2,
+                      min_level=3,
+                      max_level=7)),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               head=RetinaNetHead(num_filters=48, use_separable_conv=True),
@@ -388,7 +396,9 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
           })),
       restrictions=[
           'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
+          'task.validation_data.is_training != None',
+          'task.model.min_level == task,model.backbone.spinenet_mobile.min_level',
+          'task.model.max_level == task,model.backbone.spinenet_mobile.max_level',
       ])
 
   return config

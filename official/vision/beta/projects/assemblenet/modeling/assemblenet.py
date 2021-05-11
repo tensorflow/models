@@ -54,6 +54,7 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 
+from official.modeling import hyperparams
 from official.vision.beta.modeling import factory_3d as model_factory
 from official.vision.beta.modeling.backbones import factory as backbone_factory
 from official.vision.beta.projects.assemblenet.configs import assemblenet as cfg
@@ -1015,14 +1016,14 @@ def assemblenet_v1(assemblenet_depth: int,
 @backbone_factory.register_backbone_builder('assemblenet')
 def build_assemblenet_v1(
     input_specs: tf.keras.layers.InputSpec,
-    model_config: cfg.Backbone3D,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds assemblenet backbone."""
   del l2_regularizer
 
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_type = backbone_config.type
+  backbone_cfg = backbone_config.get()
   assert backbone_type == 'assemblenet'
 
   assemblenet_depth = int(backbone_cfg.model_id)
@@ -1060,7 +1061,8 @@ def build_assemblenet_model(
     l2_regularizer: tf.keras.regularizers.Regularizer = None):
   """Builds assemblenet model."""
   input_specs_dict = {'image': input_specs}
-  backbone = build_assemblenet_v1(input_specs, model_config, l2_regularizer)
+  backbone = build_assemblenet_v1(input_specs, model_config.backbone,
+                                  model_config.norm_activation, l2_regularizer)
   backbone_cfg = model_config.backbone.get()
   model_structure, _ = cfg.blocks_to_flat_lists(backbone_cfg.blocks)
   model = AssembleNetModel(
