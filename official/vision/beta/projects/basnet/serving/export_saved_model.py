@@ -42,7 +42,6 @@ from absl import flags
 from official.vision import beta
 from official.core import exp_factory
 from official.modeling import hyperparams
-#from official.vision.beta.projects.basnet.serving import export_saved_model_lib
 from official.vision.beta.serving import export_saved_model_lib
 from official.vision.beta.projects.basnet.serving import basnet
 
