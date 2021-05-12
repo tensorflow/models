@@ -40,23 +40,31 @@ class UtilsTest(tf.test.TestCase, parameterized.TestCase):
                                    utils.process_source_id(source_id=source_id))
 
   @parameterized.parameters(
-      ([[10, 20, 30, 40]], [[100]], [[0]], 10),
-      ([[0.1, 0.2, 0.5, 0.6]], [[0.5]], [[1]], 2),
+      ([[10, 20, 30, 40]], [[100]], [[0]], 10, None),
+      ([[0.1, 0.2, 0.5, 0.6]], [[0.5]], [[1]], 2, [[1.0, 2.0]]),
   )
-  def test_pad_groundtruths_to_fixed_size(self, boxes, area, classes, size):
+  def test_pad_groundtruths_to_fixed_size(self, boxes, area, classes, size,
+                                          attributes):
     groundtruths = {}
     groundtruths['boxes'] = tf.constant(boxes)
     groundtruths['is_crowds'] = tf.constant([[0]])
     groundtruths['areas'] = tf.constant(area)
     groundtruths['classes'] = tf.constant(classes)
+    if attributes:
+      groundtruths['attributes'] = {'depth': tf.constant(attributes)}
 
     actual_result = utils.pad_groundtruths_to_fixed_size(
         groundtruths=groundtruths, size=size)
 
     # Check that the first dimension is padded to the expected size.
     for key in actual_result:
-      pad_shape = actual_result[key].shape[0]
-      self.assertEqual(size, pad_shape)
+      if key == 'attributes':
+        for _, v in actual_result[key].items():
+          pad_shape = v.shape[0]
+          self.assertEqual(size, pad_shape)
+      else:
+        pad_shape = actual_result[key].shape[0]
+        self.assertEqual(size, pad_shape)
 
 
 if __name__ == '__main__':

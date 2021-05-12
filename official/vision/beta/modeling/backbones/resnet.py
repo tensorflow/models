@@ -372,12 +372,12 @@ class ResNet(tf.keras.Model):
 @factory.register_backbone_builder('resnet')
 def build_resnet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config: hyperparams.Config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds ResNet backbone from a config."""
-  backbone_type = model_config.backbone.type
-  backbone_cfg = model_config.backbone.get()
-  norm_activation_config = model_config.norm_activation
+  backbone_type = backbone_config.type
+  backbone_cfg = backbone_config.get()
   assert backbone_type == 'resnet', (f'Inconsistent backbone type '
                                      f'{backbone_type}')
 

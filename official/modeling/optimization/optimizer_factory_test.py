@@ -107,6 +107,9 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
       optimizer_factory.OptimizerFactory(
           optimization_config.OptimizationConfig(params))
 
+
+# TODO(b/187559334) refactor lr_schedule tests into `lr_schedule_test.py`.
+
   def test_stepwise_lr_schedule(self):
     params = {
         'optimizer': {
@@ -352,6 +355,7 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
                 'power': -1.0,
                 'linear_decay_fraction': 0.5,
                 'total_decay_steps': 100,
+                'offset': 0,
             }
         }
     }
@@ -389,7 +393,6 @@ class OptimizerFactoryTest(tf.test.TestCase, parameterized.TestCase):
 
     for step, value in expected_lr_step_values:
       self.assertAlmostEqual(lr(step).numpy(), value)
-
 
 if __name__ == '__main__':
   tf.test.main()

@@ -34,6 +34,7 @@ from object_detection.core import post_processing
 from object_detection.core import target_assigner
 from object_detection.meta_architectures import center_net_meta_arch
 from object_detection.meta_architectures import context_rcnn_meta_arch
+from object_detection.meta_architectures import deepmac_meta_arch
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
@@ -1055,6 +1056,21 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
   if center_net_config.HasField('object_detection_task'):
     object_detection_params = object_detection_proto_to_params(
         center_net_config.object_detection_task)
+
+  if center_net_config.HasField('deepmac_mask_estimation'):
+    logging.warn(('Building experimental DeepMAC meta-arch.'
+                  ' Some features may be omitted.'))
+    deepmac_params = deepmac_meta_arch.deepmac_proto_to_params(
+        center_net_config.deepmac_mask_estimation)
+    return deepmac_meta_arch.DeepMACMetaArch(
+        is_training=is_training,
+        add_summaries=add_summaries,
+        num_classes=center_net_config.num_classes,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=image_resizer_fn,
+        object_center_params=object_center_params,
+        object_detection_params=object_detection_params,
+        deepmac_params=deepmac_params)
 
   keypoint_params_dict = None
   if center_net_config.keypoint_estimation_task:

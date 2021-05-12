@@ -67,6 +67,8 @@ class SpineNet(hyperparams.Config):
   """SpineNet config."""
   model_id: str = '49'
   stochastic_depth_drop_rate: float = 0.0
+  min_level: int = 3
+  max_level: int = 7
 
 
 @dataclasses.dataclass
@@ -76,6 +78,8 @@ class SpineNetMobile(hyperparams.Config):
   stochastic_depth_drop_rate: float = 0.0
   se_ratio: float = 0.2
   expand_ratio: int = 6
+  min_level: int = 3
+  max_level: int = 7
 
 
 @dataclasses.dataclass

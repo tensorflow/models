@@ -69,6 +69,7 @@ from __future__ import print_function
 
 import functools
 import inspect
+import math
 import sys
 
 import six
@@ -4330,6 +4331,8 @@ def random_scale_crop_and_pad_to_square(
     return_values.append(tf.gather(label_confidences, indices))
 
   return return_values
+
+
 
 
 def get_default_func_arg_map(include_label_weights=True,
