@@ -23,19 +23,20 @@ from official.vision import beta
 from official.vision.beta.configs import retinanet as exp_cfg
 
 
-class MaskRCNNConfigTest(tf.test.TestCase, parameterized.TestCase):
+class RetinaNetConfigTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.parameters(
       ('retinanet_resnetfpn_coco',),
       ('retinanet_spinenet_coco',),
       ('retinanet_spinenet_mobile_coco',),
   )
-  def test_maskrcnn_configs(self, config_name):
+  def test_retinanet_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
     self.assertIsInstance(config, cfg.ExperimentConfig)
     self.assertIsInstance(config.task, exp_cfg.RetinaNetTask)
     self.assertIsInstance(config.task.model, exp_cfg.RetinaNet)
     self.assertIsInstance(config.task.train_data, exp_cfg.DataConfig)
+    config.validate()
     config.task.train_data.is_training = None
     with self.assertRaisesRegex(KeyError, 'Found inconsistncy between key'):
       config.validate()
