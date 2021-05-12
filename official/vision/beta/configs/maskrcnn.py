@@ -497,7 +497,7 @@ def maskrcnn_spinenet_coco() -> cfg.ExperimentConfig:
       restrictions=[
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None',
-          'task.model.min_level == task,model.backbone.spinenet.min_level',
-          'task.model.max_level == task,model.backbone.spinenet.max_level',
+          'task.model.min_level == task.model.backbone.spinenet.min_level',
+          'task.model.max_level == task.model.backbone.spinenet.max_level',
       ])
   return config
