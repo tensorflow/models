@@ -2,8 +2,15 @@
 
 # Welcome to the Model Garden for TensorFlow
 
-The TensorFlow Model Garden is a repository with a number of different implementations of state-of-the-art (SOTA) models and modeling solutions for TensorFlow users. We aim to demonstrate the best practices for modeling so that TensorFlow users
-can take full advantage of TensorFlow for their research and product development.
+The TensorFlow Model Garden is a repository with a number of different
+implementations of state-of-the-art (SOTA) models and modeling solutions for
+TensorFlow users. We aim to demonstrate the best practices for modeling so that
+TensorFlow users can take full advantage of TensorFlow for their research and
+product development.
+
+To the extent possible, models are paired with training logs on
+[TensorBoard.dev](https://tensorboard.dev) to improve transparency and
+reproducibility.
 
 | Directory | Description |
 |-----------|-------------|
