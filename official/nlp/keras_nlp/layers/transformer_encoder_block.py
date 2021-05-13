@@ -91,7 +91,9 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
     self._inner_dim = inner_dim
     self._inner_activation = inner_activation
     self._attention_dropout = attention_dropout
+    self._attention_dropout_rate = attention_dropout
     self._output_dropout = output_dropout
+    self._output_dropout_rate = output_dropout
     self._output_range = output_range
     self._kernel_initializer = tf.keras.initializers.get(kernel_initializer)
     self._bias_initializer = tf.keras.initializers.get(bias_initializer)
@@ -195,9 +197,9 @@ class TransformerEncoderBlock(tf.keras.layers.Layer):
         "inner_activation":
             self._inner_activation,
         "output_dropout":
-            self._output_dropout,
+            self._output_dropout_rate,
         "attention_dropout":
-            self._attention_dropout,
+            self._attention_dropout_rate,
         "output_range":
             self._output_range,
         "kernel_initializer":
