@@ -107,7 +107,7 @@ class Transformer(keras_nlp.layers.TransformerEncoderBlock):
         "intermediate_activation":
             self._inner_activation,
         "dropout_rate":
-            self._attention_dropout_rate,
+            self._output_dropout_rate,
         "attention_dropout_rate":
             self._attention_dropout_rate,
         "output_range":
