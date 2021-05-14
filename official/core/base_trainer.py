@@ -210,7 +210,8 @@ class Trainer(_AsyncTrainer):
     self._runtime_options = get_runtime_options(config)
 
     # Creates a shadow copy of the weights to store weights moving average.
-    if isinstance(self._optimizer, optimization.ExponentialMovingAverage):
+    if isinstance(self._optimizer, optimization.ExponentialMovingAverage
+                 ) and not self._optimizer.has_shadow_copy:
       self._optimizer.shadow_copy(self._model)
 
     # global_step increases by 1 after each training iteration.
