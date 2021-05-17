@@ -1,6 +1,6 @@
 # Video classification on Kinetics-600 using MoViNet-A1 backbone.
 # --experiment_type=movinet_kinetics600
-# Achieves 76.63% Top-1 accuracy.
+# Achieves 76.69% Top-1 accuracy.
 # http://mldash/experiments/6004897086445740406
 
 runtime:
