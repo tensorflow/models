@@ -1,7 +1,7 @@
 # Video classification on Kinetics-600 using MoViNet-A0 backbone.
 # --experiment_type=movinet_kinetics600
-# Achieves 71.65% Top-1 accuracy.
-# http://mldash/experiments/4591693621833944103
+# Achieves 72.28% Top-1 accuracy.
+# http://mldash/experiments/2112621422911359474
 
 runtime:
   distribution_strategy: 'tpu'
@@ -17,7 +17,7 @@ task:
         stochastic_depth_drop_rate: 0.2
     norm_activation:
       use_sync_bn: true
-    dropout_rate: 0.5
+    dropout_rate: 0.2
   train_data:
     name: kinetics600
     variant_name: rgb

@@ -15,7 +15,6 @@
 # Lint as: python3
 """Tests for movinet.py."""
 
-# Import libraries
 from absl.testing import parameterized
 import tensorflow as tf
 

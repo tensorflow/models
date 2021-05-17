@@ -1,7 +1,7 @@
-# Video classification on Kinetics-600 using MoViNet-A2-Stream backbone.
+# Video classification on Kinetics-600 using MoViNet-A4 backbone.
 # --experiment_type=movinet_kinetics600
-# Achieves 78.40% Top-1 accuracy.
-# http://mldash/experiments/3089118812758230318
+# Achieves 81.33% Top-1 accuracy.
+# http://mldash/experiments/3621454183108305685
 
 runtime:
   distribution_strategy: 'tpu'
@@ -13,42 +13,44 @@ task:
   model:
     backbone:
       movinet:
-        model_id: 'a2'
+        model_id: 'a4'
         causal: true
+        use_positional_encoding: true
         stochastic_depth_drop_rate: 0.2
     norm_activation:
       use_sync_bn: true
-    dropout_rate: 0.2
+    dropout_rate: 0.5
   train_data:
     name: kinetics600
     variant_name: rgb
     feature_shape: !!python/tuple
-    - 50
-    - 224
-    - 224
+    - 32
+    - 290
+    - 290
     - 3
-    temporal_stride: 5
-    random_stride_range: 0
+    temporal_stride: 3
+    random_stride_range: 1
     global_batch_size: 1024
     dtype: 'bfloat16'
     shuffle_buffer_size: 1024
-    min_image_size: 256
+    min_image_size: 320
     aug_max_area_ratio: 1.0
     aug_max_aspect_ratio: 2.0
     aug_min_area_ratio: 0.08
     aug_min_aspect_ratio: 0.5
+    aug_type: 'autoaug'
   validation_data:
     name: kinetics600
     feature_shape: !!python/tuple
-    - 50
-    - 224
-    - 224
+    - 80
+    - 290
+    - 290
     - 3
-    temporal_stride: 5
+    temporal_stride: 3
     num_test_clips: 1
     num_test_crops: 1
     global_batch_size: 64
-    min_image_size: 256
+    min_image_size: 320
     dtype: 'bfloat16'
     drop_remainder: false
 trainer:

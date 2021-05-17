@@ -17,7 +17,7 @@ task:
         stochastic_depth_drop_rate: 0.2
     norm_activation:
       use_sync_bn: true
-    dropout_rate: 0.5
+    dropout_rate: 0.2
   train_data:
     name: kinetics600
     variant_name: rgb
