@@ -18,15 +18,15 @@ Includes configurations and factory methods.
 """
 from typing import Optional
 
-from absl import logging
 import dataclasses
 import gin
 import tensorflow as tf
 
 from official.modeling import hyperparams
 from official.modeling import tf_utils
+from official.nlp.modeling import layers
 from official.nlp.modeling import networks
-from official.nlp.projects.bigbird import encoder as bigbird_encoder
+from official.nlp.projects.bigbird import attention as bigbird_attention
 
 
 @dataclasses.dataclass
@@ -177,15 +177,6 @@ class EncoderConfig(hyperparams.OneOfConfig):
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
 
 
-ENCODER_CLS = {
-    "bert": networks.BertEncoder,
-    "mobilebert": networks.MobileBERTEncoder,
-    "albert": networks.AlbertEncoder,
-    "bigbird": bigbird_encoder.BigBirdEncoder,
-    "xlnet": networks.XLNetBase,
-}
-
-
 @gin.configurable
 def build_encoder(config: EncoderConfig,
                   embedding_layer: Optional[tf.keras.layers.Layer] = None,
@@ -205,13 +196,11 @@ def build_encoder(config: EncoderConfig,
   Returns:
     An encoder instance.
   """
-  encoder_type = config.type
-  encoder_cfg = config.get()
-  encoder_cls = encoder_cls or ENCODER_CLS[encoder_type]
-  logging.info("Encoder class: %s to build...", encoder_cls.__name__)
   if bypass_config:
     return encoder_cls()
-  if encoder_cls.__name__ == "EncoderScaffold":
+  encoder_type = config.type
+  encoder_cfg = config.get()
+  if encoder_cls and encoder_cls.__name__ == "EncoderScaffold":
     embedding_cfg = dict(
         vocab_size=encoder_cfg.vocab_size,
         type_vocab_size=encoder_cfg.type_vocab_size,
@@ -243,7 +232,7 @@ def build_encoder(config: EncoderConfig,
     return encoder_cls(**kwargs)
 
   if encoder_type == "mobilebert":
-    return encoder_cls(
+    return networks.MobileBERTEncoder(
         word_vocab_size=encoder_cfg.word_vocab_size,
         word_embed_size=encoder_cfg.word_embed_size,
         type_vocab_size=encoder_cfg.type_vocab_size,
@@ -265,7 +254,7 @@ def build_encoder(config: EncoderConfig,
         input_mask_dtype=encoder_cfg.input_mask_dtype)
 
   if encoder_type == "albert":
-    return encoder_cls(
+    return networks.AlbertEncoder(
         vocab_size=encoder_cfg.vocab_size,
         embedding_width=encoder_cfg.embedding_width,
         hidden_size=encoder_cfg.hidden_size,
@@ -282,26 +271,55 @@ def build_encoder(config: EncoderConfig,
         dict_outputs=True)
 
   if encoder_type == "bigbird":
-    return encoder_cls(
+    # TODO(frederickliu): Support use_gradient_checkpointing.
+    if encoder_cfg.use_gradient_checkpointing:
+      raise ValueError("Gradient checkpointing unsupported at the moment.")
+    embedding_cfg = dict(
         vocab_size=encoder_cfg.vocab_size,
-        hidden_size=encoder_cfg.hidden_size,
-        num_layers=encoder_cfg.num_layers,
-        num_attention_heads=encoder_cfg.num_attention_heads,
-        intermediate_size=encoder_cfg.intermediate_size,
-        activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
-        dropout_rate=encoder_cfg.dropout_rate,
-        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
-        num_rand_blocks=encoder_cfg.num_rand_blocks,
-        block_size=encoder_cfg.block_size,
-        max_position_embeddings=encoder_cfg.max_position_embeddings,
         type_vocab_size=encoder_cfg.type_vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        max_seq_length=encoder_cfg.max_position_embeddings,
         initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
-        embedding_width=encoder_cfg.embedding_width,
-        use_gradient_checkpointing=encoder_cfg.use_gradient_checkpointing)
+        dropout_rate=encoder_cfg.dropout_rate)
+    attention_cfg = dict(
+        num_heads=encoder_cfg.num_attention_heads,
+        key_dim=int(encoder_cfg.hidden_size // encoder_cfg.num_attention_heads),
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        max_rand_mask_length=encoder_cfg.max_position_embeddings,
+        num_rand_blocks=encoder_cfg.num_rand_blocks,
+        from_block_size=encoder_cfg.block_size,
+        to_block_size=encoder_cfg.block_size,
+        )
+    hidden_cfg = dict(
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        intermediate_size=encoder_cfg.intermediate_size,
+        intermediate_activation=tf_utils.get_activation(
+            encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        attention_cls=bigbird_attention.BigBirdAttention,
+        attention_cfg=attention_cfg)
+    kwargs = dict(
+        embedding_cfg=embedding_cfg,
+        hidden_cls=layers.TransformerScaffold,
+        hidden_cfg=hidden_cfg,
+        num_hidden_instances=encoder_cfg.num_layers,
+        mask_cls=bigbird_attention.BigBirdMasks,
+        mask_cfg=dict(block_size=encoder_cfg.block_size),
+        pooled_output_dim=encoder_cfg.hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        return_all_layer_outputs=False,
+        dict_outputs=True,
+        layer_idx_as_attention_seed=True)
+    return networks.EncoderScaffold(**kwargs)
 
   if encoder_type == "xlnet":
-    return encoder_cls(
+    return networks.XLNetBase(
         vocab_size=encoder_cfg.vocab_size,
         num_layers=encoder_cfg.num_layers,
         hidden_size=encoder_cfg.hidden_size,
@@ -325,7 +343,7 @@ def build_encoder(config: EncoderConfig,
 
   # Uses the default BERTEncoder configuration schema to create the encoder.
   # If it does not match, please add a switch branch by the encoder type.
-  return encoder_cls(
+  return networks.BertEncoder(
       vocab_size=encoder_cfg.vocab_size,
       hidden_size=encoder_cfg.hidden_size,
       num_layers=encoder_cfg.num_layers,
