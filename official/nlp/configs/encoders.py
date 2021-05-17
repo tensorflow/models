@@ -26,7 +26,6 @@ from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
-from official.nlp.projects.bigbird import attention as bigbird_attention
 
 
 @dataclasses.dataclass
@@ -301,14 +300,14 @@ def build_encoder(config: EncoderConfig,
         attention_dropout_rate=encoder_cfg.attention_dropout_rate,
         kernel_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
-        attention_cls=bigbird_attention.BigBirdAttention,
+        attention_cls=layers.BigBirdAttention,
         attention_cfg=attention_cfg)
     kwargs = dict(
         embedding_cfg=embedding_cfg,
         hidden_cls=layers.TransformerScaffold,
         hidden_cfg=hidden_cfg,
         num_hidden_instances=encoder_cfg.num_layers,
-        mask_cls=bigbird_attention.BigBirdMasks,
+        mask_cls=layers.BigBirdMasks,
         mask_cfg=dict(block_size=encoder_cfg.block_size),
         pooled_output_dim=encoder_cfg.hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(

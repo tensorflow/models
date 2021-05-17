@@ -16,7 +16,7 @@
 
 import tensorflow as tf
 
-from official.nlp.projects.bigbird import attention
+from official.nlp.modeling.layers import bigbird_attention as attention
 
 
 class BigbirdAttentionTest(tf.test.TestCase):
