@@ -79,8 +79,23 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
         [[0.0, 0.25, 0.75, 1.0], [0.25, 0.5, 0.75, 1.0]], dtype=tf.float32)
     return boxes
 
+  def createRandomTextBoxes(self):
+    random_boxes = tf.concat([tf.random.uniform([100, 2], 0.0, 0.5, seed=1),
+                              tf.random.uniform([100, 2], 0.5, 1.0, seed=2)],
+                             axis=1)
+    fixed_boxes = tf.constant(
+        [[0.0, 0.25, 0.75, 1.0],
+         [0.25, 0.5, 0.75, 1.0],
+         [0.0, 0.0, 1.0, 1.0],
+         [0.1, 0.2, 0.3, 0.4]], dtype=tf.float32)
+    zero_boxes = tf.zeros((50, 4))
+    return tf.concat([random_boxes, fixed_boxes, zero_boxes], axis=0)
+
   def createTestGroundtruthWeights(self):
     return tf.constant([1.0, 0.5], dtype=tf.float32)
+
+  def createZeroBoxes(self):
+    return tf.zeros((100, 4))
 
   def createTestMasks(self):
     mask = np.array([
@@ -1253,7 +1268,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     def graph_fn():
       preprocessing_options = []
       preprocessing_options.append((preprocessor.random_jitter_boxes, {}))
-      boxes = self.createTestBoxes()
+      boxes = self.createRandomTextBoxes()
       boxes_shape = tf.shape(boxes)
       tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
       tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
@@ -1264,20 +1279,24 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     (boxes_shape_, distorted_boxes_shape_) = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(boxes_shape_, distorted_boxes_shape_)
 
-  def testRandomJitterBoxesZeroRatio(self):
+  @parameterized.parameters(
+      ['expand', 'shrink', 'expand_symmetric', 'shrink_symmetric',
+       'expand_symmetric_xy', 'shrink_symmetric_xy']
+  )
+  def testRandomJitterBoxesZeroRatio(self, jitter_mode):
 
     def graph_fn():
       preprocessing_options = []
       preprocessing_options.append((preprocessor.random_jitter_boxes,
-                                    {'ratio': 0.0}))
-      boxes = self.createTestBoxes()
+                                    {'ratio': .0, 'jitter_mode': jitter_mode}))
+      boxes = self.createRandomTextBoxes()
       tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
       tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
       distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
       return [boxes, distorted_boxes]
 
     (boxes, distorted_boxes) = self.execute_cpu(graph_fn, [])
-    self.assertAllEqual(boxes, distorted_boxes)
+    self.assertAllClose(boxes, distorted_boxes)
 
   def testRandomJitterBoxesExpand(self):
 
@@ -1285,7 +1304,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
       preprocessing_options = []
       preprocessing_options.append((preprocessor.random_jitter_boxes,
                                     {'jitter_mode': 'expand'}))
-      boxes = self.createTestBoxes()
+      boxes = self.createRandomTextBoxes()
       tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
       tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
       distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
@@ -1294,13 +1313,72 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
     ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
     distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
-        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[0, 2],
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[:, 2],
         distorted_boxes[:, 3])
 
     self.assertTrue(np.all(distorted_ymin <= ymin))
     self.assertTrue(np.all(distorted_xmin <= xmin))
     self.assertTrue(np.all(distorted_ymax >= ymax))
     self.assertTrue(np.all(distorted_xmax >= xmax))
+
+  def testRandomJitterBoxesExpandSymmetric(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'jitter_mode': 'expand_symmetric'}))
+      boxes = self.createRandomTextBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
+    ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[:, 2],
+        distorted_boxes[:, 3])
+
+    self.assertTrue(np.all(distorted_ymin <= ymin))
+    self.assertTrue(np.all(distorted_xmin <= xmin))
+    self.assertTrue(np.all(distorted_ymax >= ymax))
+    self.assertTrue(np.all(distorted_xmax >= xmax))
+
+    self.assertAllClose(ymin - distorted_ymin, distorted_ymax - ymax, rtol=1e-5)
+    self.assertAllClose(xmin - distorted_xmin, distorted_xmax - xmax, rtol=1e-5)
+
+  def testRandomJitterBoxesExpandSymmetricXY(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'jitter_mode': 'expand_symmetric_xy'}))
+      boxes = self.createRandomTextBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
+    ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[:, 2],
+        distorted_boxes[:, 3])
+
+    self.assertTrue(np.all(distorted_ymin <= ymin))
+    self.assertTrue(np.all(distorted_xmin <= xmin))
+    self.assertTrue(np.all(distorted_ymax >= ymax))
+    self.assertTrue(np.all(distorted_xmax >= xmax))
+
+    self.assertAllClose(ymin - distorted_ymin, distorted_ymax - ymax, rtol=1e-5)
+    self.assertAllClose(xmin - distorted_xmin, distorted_xmax - xmax, rtol=1e-5)
+
+    height, width = tf.maximum(1e-6, ymax - ymin), tf.maximum(1e-6, xmax - xmin)
+
+    self.assertAllClose((distorted_ymax - ymax) / height,
+                        (distorted_xmax - xmax) / width, rtol=1e-5)
+    self.assertAllLessEqual((distorted_ymax - ymax) / height, 0.05)
+    self.assertAllGreaterEqual((distorted_ymax - ymax) / width, 0.00)
 
   def testRandomJitterBoxesShrink(self):
 
@@ -1317,13 +1395,71 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
     ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
     distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
-        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[0, 2],
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[:, 2],
         distorted_boxes[:, 3])
 
     self.assertTrue(np.all(distorted_ymin >= ymin))
     self.assertTrue(np.all(distorted_xmin >= xmin))
     self.assertTrue(np.all(distorted_ymax <= ymax))
     self.assertTrue(np.all(distorted_xmax <= xmax))
+
+  def testRandomJitterBoxesShrinkSymmetric(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'jitter_mode': 'shrink_symmetric'}))
+      boxes = self.createTestBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
+    ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[:, 2],
+        distorted_boxes[:, 3])
+
+    self.assertTrue(np.all(distorted_ymin >= ymin))
+    self.assertTrue(np.all(distorted_xmin >= xmin))
+    self.assertTrue(np.all(distorted_ymax <= ymax))
+    self.assertTrue(np.all(distorted_xmax <= xmax))
+
+    self.assertAllClose(ymin - distorted_ymin, distorted_ymax - ymax, rtol=1e-5)
+    self.assertAllClose(xmin - distorted_xmin, distorted_xmax - xmax, rtol=1e-5)
+
+  def testRandomJitterBoxesShrinkSymmetricXY(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'jitter_mode': 'shrink_symmetric_xy'}))
+      boxes = self.createTestBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
+    ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[:, 2],
+        distorted_boxes[:, 3])
+
+    self.assertTrue(np.all(distorted_ymin >= ymin))
+    self.assertTrue(np.all(distorted_xmin >= xmin))
+    self.assertTrue(np.all(distorted_ymax <= ymax))
+    self.assertTrue(np.all(distorted_xmax <= xmax))
+
+    self.assertAllClose(ymin - distorted_ymin, distorted_ymax - ymax, rtol=1e-5)
+    self.assertAllClose(xmin - distorted_xmin, distorted_xmax - xmax, rtol=1e-5)
+
+    height, width = tf.maximum(1e-6, ymax - ymin), tf.maximum(1e-6, xmax - xmin)
+    self.assertAllClose((ymax - distorted_ymax) / height,
+                        (xmax - distorted_xmax) / width, rtol=1e-5)
+    self.assertAllLessEqual((ymax - distorted_ymax) / height, 0.05)
+    self.assertAllGreaterEqual((ymax - distorted_ymax)/ width, 0.00)
 
   def testRandomCropImage(self):
 

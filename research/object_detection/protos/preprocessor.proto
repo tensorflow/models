@@ -171,11 +171,25 @@ message RandomJitterBoxes {
     DEFAULT = 0;
     EXPAND = 1;
     SHRINK = 2;
+    EXPAND_SYMMETRIC = 4;
+    SHRINK_SYMMETRIC = 5;
+    EXPAND_SYMMETRIC_XY = 6;
+    SHRINK_SYMMETRIC_XY = 7;
   }
   // The mode of jittering
   // EXPAND - Only expands boxes
   // SHRINK - Only shrinks boxes
-  // DEFAULT - Jitters each box boundary independently
+  // EXPAND_SYMMETRIC - Expands the boxes symmetrically along height and width
+  //   dimensions without changing the box center. The ratios of expansion along
+  //   X, Y dimensions are independent.
+  // SHRINK_SYMMETRIC - Shrinks the boxes symmetrically along height and width
+  //   dimensions without changing the box center. The ratios of shrinking along
+  //   X, Y dimensions are independent.
+  // EXPAND_SYMMETRIC_XY - Expands the boxes symetrically along height and
+  //   width dimensions and the ratio of expansion is same for both.
+  // SHRINK_SYMMETRIC_XY - Shrinks the boxes symetrically along height and
+  //   width dimensions and the ratio of shrinking is same for both.
+  // DEFAULT - Jitters each box boundary independently.
   optional JitterMode jitter_mode = 2 [default = DEFAULT];
 }
 
