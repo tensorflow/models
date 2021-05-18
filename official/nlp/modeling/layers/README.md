@@ -15,6 +15,15 @@ assemble new `tf.keras` layers or models.
 *   [CachedAttention](attention.py) implements an attention layer with cache
     used for auto-agressive decoding.
 
+*   [KernelAttention](kernel_attention.py) implements a group of attention
+    mechansim that express the self-attention as a linear dot-product of
+    kernel feature maps and make use of the associativity property of
+    matrix products to reduce the complexity from quadratic to linear. The
+    implementation includes methods described in ["Transformers are RNNs:
+    Fast Autoregressive Transformers with Linear Attention"](https://arxiv.org/abs/2006.16236),
+    ["Rethinking Attention with Performers"](https://arxiv.org/abs/2009.14794),
+    ["Random Feature Attention"](https://openreview.net/pdf?id=QtTKTdVrFBB).
+
 *   [MatMulWithMargin](mat_mul_with_margin.py) implements a matrix
     multiplication with margin layer used for training retrieval / ranking
     tasks, as described in ["Improving Multilingual Sentence Embedding using
