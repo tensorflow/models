@@ -29,7 +29,7 @@ class MaskRCNNConfigTest(tf.test.TestCase, parameterized.TestCase):
       ('fasterrcnn_resnetfpn_coco',),
       ('maskrcnn_resnetfpn_coco',),
       ('maskrcnn_spinenet_coco',),
-      ('cascadercnn_resnetfpn_coco',),
+      ('cascadercnn_spinenet_coco',),
   )
   def test_maskrcnn_configs(self, config_name):
     config = exp_factory.get_exp_config(config_name)
