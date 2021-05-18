@@ -1,0 +1,61 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    num_classes: 18291
+    input_size: [224, 224, 3]
+    backbone:
+      type: 'dilated_resnet'
+      dilated_resnet:
+        model_id: 101
+        output_stride: 16
+        stem_type: 'v1'
+        multigrid: [1, 2, 4]
+    norm_activation:
+      activation: 'swish'
+  losses:
+    l2_weight_decay: 0.0
+  train_data:
+    input_path: ''
+    tfds_name: 'jft/entity'
+    tfds_split: 'train'
+    is_training: true
+    global_batch_size: 3840
+    is_multilabel: true
+    shuffle_buffer_size: 500000
+    dtype: 'bfloat16'
+  validation_data:
+    input_path: ''
+    tfds_name: 'jft/entity'
+    tfds_split: 'validation'
+    is_training: false
+    global_batch_size: 3840
+    is_multilabel: true
+    dtype: 'bfloat16'
+    drop_remainder: false
+trainer:
+  train_steps: 2220000  # 30 epochs
+  validation_steps: 156
+  validation_interval: 2000
+  steps_per_loop: 100
+  summary_interval: 2000
+  checkpoint_interval: 2000
+  best_checkpoint_eval_metric: 'globalPR-AUC'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'
+  optimizer_config:
+    ema: null
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        values: [0.48, 0.048, 0.0048, 0.00048]
+        boundaries: [730000, 1460000, 1850000]
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 5000
