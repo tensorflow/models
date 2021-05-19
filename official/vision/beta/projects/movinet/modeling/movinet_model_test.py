@@ -162,14 +162,14 @@ class MovinetModelTest(parameterized.TestCase, tf.test.TestCase):
         weights.append(weight)
     model_2plus1d.set_weights(weights)
 
-    inputs = np.random.rand(2, 8, 172, 172, 3)
+    inputs = tf.ones([2, 8, 172, 172, 3], dtype=tf.float32)
 
     logits_2plus1d = model_2plus1d(inputs)
     logits_3d_2plus1d = model_3d_2plus1d(inputs)
 
     # Ensure both models have the same output, since the weights are the same
     self.assertAllEqual(logits_2plus1d.shape, logits_3d_2plus1d.shape)
-    self.assertAllClose(logits_2plus1d, logits_3d_2plus1d)
+    self.assertAllClose(logits_2plus1d, logits_3d_2plus1d, 1e-5, 1e-5)
 
 
 if __name__ == '__main__':
