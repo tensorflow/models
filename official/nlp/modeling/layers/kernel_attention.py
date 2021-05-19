@@ -21,6 +21,24 @@ import tensorflow as tf
 _NUMERIC_STABLER = 1e-6
 
 
+class KernelMask(tf.keras.layers.Layer):
+  """Creates kernel attention mask.
+
+    inputs: from_tensor: 2D or 3D Tensor of shape
+      [batch_size, from_seq_length, ...].
+    mask: a Tensor of shape [batch_size, from_seq_length] which indicates
+      which part of the inputs we should not attend.
+
+    Returns:
+      float Tensor of shape [batch_size, from_seq_length] that KernelAttention
+      takes as mask.
+  """
+
+  def call(self, inputs, mask):
+    mask = tf.cast(mask, inputs.dtype)
+    return mask
+
+
 def create_projection_matrix(m, d, seed=None):
   r"""Constructs the matrix of random projections.
 
@@ -248,7 +266,7 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
         short or long sequences; usually short sequence is defined as having
         length L <= 1024.
       attention_mask: a boolean mask of shape `[B, S]`, that prevents
-        attention to certain positions. Note that the mask is only appied to
+        attenting to masked positions. Note that the mask is only appied to
         the keys. User may want to mask the output if query contains pads.
       training: Python boolean indicating whether the layer should behave in
         training mode (adding dropout) or in inference mode (doing nothing).
@@ -305,8 +323,23 @@ class KernelAttention(tf.keras.layers.MultiHeadAttention):
            value,
            key=None,
            attention_mask=None,
-           training=False,
-           **kwargs):
+           training=False):
+    """Compute attention with kernel mechanism.
+
+    Args:
+      query: Query `Tensor` of shape `[B, T, dim]`.
+      value: Value `Tensor` of shape `[B, S, dim]`.
+      key: Optional key `Tensor` of shape `[B, S, dim]`. If not given, will use
+        `value` for both `key` and `value`, which is the most common case.
+      attention_mask: a boolean mask of shape `[B, S]`, that prevents
+        attenting to masked positions. Note that the mask is only appied to
+        the keys. User may want to mask the output if query contains pads.
+      training: Python boolean indicating whether the layer should behave in
+        training mode (adding dropout) or in inference mode (doing nothing).
+
+    Returns:
+      Multi-headed outputs of attention computation.
+    """
     if not self._built_from_signature:
       self._build_from_signature(query=query, value=value, key=key)
     if key is None:

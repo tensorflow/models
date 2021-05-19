@@ -141,6 +141,28 @@ class BigBirdEncoderConfig(hyperparams.Config):
 
 
 @dataclasses.dataclass
+class KernelEncoderConfig(hyperparams.Config):
+  """Linear encoder configuration."""
+  vocab_size: int = 30522
+  hidden_size: int = 768
+  num_layers: int = 12
+  num_attention_heads: int = 12
+  hidden_activation: str = "gelu"
+  intermediate_size: int = 3072
+  dropout_rate: float = 0.1
+  attention_dropout_rate: float = 0.1
+  max_position_embeddings: int = 512
+  type_vocab_size: int = 2
+  initializer_range: float = 0.02
+  embedding_size: Optional[int] = None
+  feature_transform: str = "exp"
+  num_random_features: int = 256
+  redraw: bool = False
+  is_short_seq: bool = False
+  begin_kernel: int = 0
+
+
+@dataclasses.dataclass
 class XLNetEncoderConfig(hyperparams.Config):
   """XLNet encoder configuration."""
   vocab_size: int = 32000
@@ -172,6 +194,7 @@ class EncoderConfig(hyperparams.OneOfConfig):
   albert: AlbertEncoderConfig = AlbertEncoderConfig()
   bert: BertEncoderConfig = BertEncoderConfig()
   bigbird: BigBirdEncoderConfig = BigBirdEncoderConfig()
+  kernel: KernelEncoderConfig = KernelEncoderConfig()
   mobilebert: MobileBertEncoderConfig = MobileBertEncoderConfig()
   xlnet: XLNetEncoderConfig = XLNetEncoderConfig()
 
@@ -309,6 +332,51 @@ def build_encoder(config: EncoderConfig,
         num_hidden_instances=encoder_cfg.num_layers,
         mask_cls=layers.BigBirdMasks,
         mask_cfg=dict(block_size=encoder_cfg.block_size),
+        pooled_output_dim=encoder_cfg.hidden_size,
+        pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        return_all_layer_outputs=False,
+        dict_outputs=True,
+        layer_idx_as_attention_seed=True)
+    return networks.EncoderScaffold(**kwargs)
+
+  if encoder_type == "kernel":
+    embedding_cfg = dict(
+        vocab_size=encoder_cfg.vocab_size,
+        type_vocab_size=encoder_cfg.type_vocab_size,
+        hidden_size=encoder_cfg.hidden_size,
+        max_seq_length=encoder_cfg.max_position_embeddings,
+        initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        dropout_rate=encoder_cfg.dropout_rate)
+    attention_cfg = dict(
+        num_heads=encoder_cfg.num_attention_heads,
+        key_dim=int(encoder_cfg.hidden_size // encoder_cfg.num_attention_heads),
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        feature_transform=encoder_cfg.feature_transform,
+        num_random_features=encoder_cfg.num_random_features,
+        redraw=encoder_cfg.redraw,
+        is_short_seq=encoder_cfg.is_short_seq,
+        begin_kernel=encoder_cfg.begin_kernel,
+        )
+    hidden_cfg = dict(
+        num_attention_heads=encoder_cfg.num_attention_heads,
+        intermediate_size=encoder_cfg.intermediate_size,
+        intermediate_activation=tf_utils.get_activation(
+            encoder_cfg.hidden_activation),
+        dropout_rate=encoder_cfg.dropout_rate,
+        attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+        kernel_initializer=tf.keras.initializers.TruncatedNormal(
+            stddev=encoder_cfg.initializer_range),
+        attention_cls=layers.KernelAttention,
+        attention_cfg=attention_cfg)
+    kwargs = dict(
+        embedding_cfg=embedding_cfg,
+        hidden_cls=layers.TransformerScaffold,
+        hidden_cfg=hidden_cfg,
+        num_hidden_instances=encoder_cfg.num_layers,
+        mask_cls=layers.KernelMask,
         pooled_output_dim=encoder_cfg.hidden_size,
         pooler_layer_initializer=tf.keras.initializers.TruncatedNormal(
             stddev=encoder_cfg.initializer_range),
