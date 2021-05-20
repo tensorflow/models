@@ -296,6 +296,29 @@ class TransformerArgumentTest(keras_parameterized.TestCase):
         encoder_block_config)
     self.assertEqual(encoder_block_config, new_encoder_block.get_config())
 
+  @parameterized.parameters({'attention_axes': None}, {'attention_axes': [1]},
+                            {'attention_axes': [2]}, {'attention_axes': [1, 2]})
+  def test_several_attention_axes(self, attention_axes):
+    test_layer = TransformerEncoderBlock(
+        inner_dim=32,
+        inner_activation='relu',
+        output_dropout=0.1,
+        attention_dropout=0.1,
+        use_bias=False,
+        norm_first=True,
+        norm_epsilon=1e-6,
+        inner_dropout=0.1,
+        num_attention_heads=10,
+        attention_axes=attention_axes)
+    num_rows = 21
+    num_cols = 13
+    width = 80
+    # Create a 3-dimensional input (the first dimension is implicit).
+    data_tensor = tf.keras.Input(shape=(num_rows, num_cols, width))
+    output_tensor = test_layer(data_tensor)
+    # The default output of a transformer layer should be the same as the input.
+    self.assertEqual(data_tensor.shape.as_list(), output_tensor.shape.as_list())
+
 
 if __name__ == '__main__':
   tf.test.main()
