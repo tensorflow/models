@@ -68,8 +68,8 @@ _EVAL_DATA_SOURCES = [{
 }]
 
 _TEST_DATA_SOURCES = [{
-    "url": ("https://storage.googleapis.com/tf-perf-public/"
-            "official_transformer/test_data/newstest2014.tgz"),
+    "url": ("https://storage.googleapis.com/cloud-tpu-test-datasets/"
+            "transformer_data/newstest2014.tgz"),
     "input": "newstest2014.en",
     "target": "newstest2014.de",
 }]
