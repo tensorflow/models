@@ -2888,9 +2888,11 @@ def random_patch_gaussian(image,
   return image
 
 
-# TODO(barretzoph): Put in AutoAugment Paper link when paper is live.
 def autoaugment_image(image, boxes, policy_name='v0'):
   """Apply an autoaugment policy to the image and boxes.
+
+  See "AutoAugment: Learning Augmentation Policies from Data" by Cubuk et al.,
+  2018, for further details. https://arxiv.org/abs/1805.09501
 
 
   Args:
