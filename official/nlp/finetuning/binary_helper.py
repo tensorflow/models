@@ -309,16 +309,16 @@ def write_glue_classification(task,
         # Classification.
         writer.write('%d\t%s\n' % (index, class_names[prediction]))
 def write_superglue_classification(task,
-                              model,
-                              input_file,
-                              output_file,
-                              predict_batch_size,
-                              seq_length,
-                              class_names,
-                              label_type='int',
-                              min_float_value=None,
-                              max_float_value=None):
-  """Makes classification predictions for glue and writes to output file.
+                                   model,
+                                   input_file,
+                                   output_file,
+                                   predict_batch_size,
+                                   seq_length,
+                                   class_names,
+                                   label_type='int',
+                                   min_float_value=None,
+                                   max_float_value=None):
+  """Makes classification predictions for superglue and writes to output file.
 
   Args:
     task: `Task` instance.
@@ -349,7 +349,6 @@ def write_superglue_classification(task,
       drop_remainder=False,
       include_example_id=True)
   predictions = sentence_prediction.predict(task, data_config, model)
-
 
   with tf.io.gfile.GFile(output_file, 'w') as writer:
     for index, prediction in enumerate(predictions):

@@ -36,8 +36,8 @@ def define_flags():
       'run prediction using the model in `model_dir`.')
 
   flags.DEFINE_enum('task_name', None, [
-    'AX-b', 'CB', 'COPA', 'MULTIRC', 'RTE', 'WiC', 'WSC',
-    'BoolQ', 'ReCoRD', 'AX-g',
+      'AX-b', 'CB', 'COPA', 'MULTIRC', 'RTE', 'WiC', 'WSC',
+      'BoolQ', 'ReCoRD', 'AX-g',
   ], 'The type of GLUE task.')
 
   flags.DEFINE_string('train_input_path', None,
