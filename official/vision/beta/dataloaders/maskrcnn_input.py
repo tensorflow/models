@@ -307,6 +307,18 @@ class Parser(parser.Parser):
         aug_scale_max=1.0)
     image_height, image_width, _ = image.get_shape().as_list()
 
+    if self._include_mask:
+      masks = data['groundtruth_instance_masks']
+      masks, _ = preprocess_ops.resize_and_crop_image(
+        tf.expand_dims(masks, axis=-1),
+        self._output_size,
+        padded_size=preprocess_ops.compute_padded_size(
+            self._output_size, 2 ** self._max_level),
+        aug_scale_min=1.0,
+        aug_scale_max=1.0)
+      masks = tf.squeeze(masks, axis=-1)
+
+
     # Casts input image to self._dtype
     image = tf.cast(image, dtype=self._dtype)
 
@@ -338,7 +350,7 @@ class Parser(parser.Parser):
         'is_crowds': tf.cast(data['groundtruth_is_crowd'], tf.int32),
     }
     if self._include_mask:
-      groundtruths['masks'] = data['groundtruth_instance_masks']
+      groundtruths['masks'] = masks
     groundtruths['source_id'] = utils.process_source_id(
         groundtruths['source_id'])
     groundtruths = utils.pad_groundtruths_to_fixed_size(
