@@ -35,6 +35,7 @@ class VideoClassificationConfigTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(config.task, exp_cfg.VideoClassificationTask)
     self.assertIsInstance(config.task.model, exp_cfg.VideoClassificationModel)
     self.assertIsInstance(config.task.train_data, exp_cfg.DataConfig)
+    config.validate()
     config.task.train_data.is_training = None
     with self.assertRaises(KeyError):
       config.validate()

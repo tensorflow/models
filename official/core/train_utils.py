@@ -367,3 +367,24 @@ def remove_ckpts(model_dir):
   file_to_remove = os.path.join(model_dir, 'checkpoint')
   if tf.io.gfile.exists(file_to_remove):
     tf.io.gfile.remove(file_to_remove)
+
+
+def try_count_params(model: tf.keras.Model):
+  """Count the number of parameters if model is possible.
+
+  Args:
+    model: Try to count the number of params in this model.
+
+  Returns:
+    The number of parameters or None.
+  """
+  if hasattr(model, 'count_params'):
+    try:
+      return model.count_params()
+    except ValueError:
+      logging.info('Number of trainable params unknown, because the build() '
+                   'methods in keras layers were not called. This is probably '
+                   'because the model was not feed any input, e.g., the max '
+                   'train step already reached before this run.')
+      return None
+  return None

@@ -1,0 +1,66 @@
+runtime:
+  distribution_strategy: 'tpu'
+  mixed_precision_dtype: 'bfloat16'
+task:
+  model:
+    num_classes: 18291
+    input_size: [160, 160, 3]
+    backbone:
+      type: 'resnet'
+      resnet:
+        model_id: 50
+        replace_stem_max_pool: true
+        resnetd_shortcut: true
+        se_ratio: 0.25
+        stem_type: 'v1'
+        stochastic_depth_drop_rate: 0.0
+    norm_activation:
+      activation: 'swish'
+      norm_momentum: 0.0
+      use_sync_bn: false
+    dropout_rate: 0.25
+  losses:
+    l2_weight_decay: 0.00004
+  train_data:
+    input_path: ''
+    tfds_name: 'jft/entity'
+    tfds_split: 'train'
+    is_training: true
+    global_batch_size: 4096
+    is_multilabel: true
+    shuffle_buffer_size: 500000
+    dtype: 'bfloat16'
+    aug_type: null
+  validation_data:
+    input_path: ''
+    tfds_name: 'jft/entity'
+    tfds_split: 'validation'
+    is_training: false
+    global_batch_size: 4096
+    is_multilabel: true
+    dtype: 'bfloat16'
+    drop_remainder: false
+trainer:
+  train_steps: 2220000  # 30 epochs
+  validation_steps: 156
+  validation_interval: 2000
+  steps_per_loop: 100
+  summary_interval: 2000
+  checkpoint_interval: 2000
+  best_checkpoint_eval_metric: 'globalPR-AUC'
+  best_checkpoint_export_subdir: 'best_ckpt'
+  best_checkpoint_metric_comp: 'higher'
+  optimizer_config:
+    optimizer:
+      type: 'sgd'
+      sgd:
+        momentum: 0.9
+    learning_rate:
+      type: 'stepwise'
+      stepwise:
+        values: [0.48, 0.048, 0.0048, 0.00048]
+        boundaries: [730000, 1460000, 1850000]
+    warmup:
+      type: 'linear'
+      linear:
+        warmup_steps: 5000

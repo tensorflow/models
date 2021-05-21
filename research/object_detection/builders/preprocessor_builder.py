@@ -101,8 +101,8 @@ PREPROCESSING_FUNCTION_MAP = {
         preprocessor.random_patch_gaussian,
     'rgb_to_gray':
         preprocessor.rgb_to_gray,
-    'scale_boxes_to_pixel_coordinates': (
-        preprocessor.scale_boxes_to_pixel_coordinates),
+    'scale_boxes_to_pixel_coordinates':
+        (preprocessor.scale_boxes_to_pixel_coordinates),
     'subtract_channel_mean':
         preprocessor.subtract_channel_mean,
     'convert_class_logits_to_softmax':
@@ -434,6 +434,7 @@ def build(preprocessor_step_config):
         'scale_max': config.scale_max,
         'output_size': config.output_size,
     }
+
 
   if step_type == 'random_jitter_boxes':
     config = preprocessor_step_config.random_jitter_boxes

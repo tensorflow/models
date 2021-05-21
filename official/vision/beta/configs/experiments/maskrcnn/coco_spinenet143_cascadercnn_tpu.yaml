@@ -1,3 +1,5 @@
+# --experiment_type=cascadercnn_spinenet_coco
+# Expect to reach: box mAP: 51.9%, mask mAP: 45.0% on COCO
 runtime:
   distribution_strategy: 'tpu'
   mixed_precision_dtype: 'bfloat16'
@@ -8,20 +10,20 @@ task:
     parser:
       aug_rand_hflip: true
       aug_scale_min: 0.1
-      aug_scale_max: 2.0
+      aug_scale_max: 2.5
   losses:
     l2_weight_decay: 0.00004
   model:
     anchor:
-      anchor_size: 3.0
+      anchor_size: 4.0
       num_scales: 3
     min_level: 3
     max_level: 7
-    input_size: [640, 640, 3]
+    input_size: [1280, 1280, 3]
     backbone:
       spinenet:
         stochastic_depth_drop_rate: 0.2
-        model_id: '49'
+        model_id: '143'
       type: 'spinenet'
     decoder:
       type: 'identity'
@@ -48,7 +50,7 @@ trainer:
       type: 'stepwise'
       stepwise:
         boundaries: [219450, 226380]
-        values: [0.28, 0.028, 0.0028]
+        values: [0.32, 0.032, 0.0032]
     warmup:
       type: 'linear'
       linear:

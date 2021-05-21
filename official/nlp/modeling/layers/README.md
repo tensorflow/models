@@ -8,8 +8,21 @@ assemble new `tf.keras` layers or models.
     ["Attention Is All You Need"](https://arxiv.org/abs/1706.03762). If
     `from_tensor` and `to_tensor` are the same, then this is self-attention.
 
+*   [BigBirdAttention](bigbird_attention.py) implements a sparse attention
+    mechanism that reduces this quadratic dependency to linear described in
+    ["Big Bird: Transformers for Longer Sequences"](https://arxiv.org/abs/2007.14062).
+
 *   [CachedAttention](attention.py) implements an attention layer with cache
     used for auto-agressive decoding.
+
+*   [KernelAttention](kernel_attention.py) implements a group of attention
+    mechansim that express the self-attention as a linear dot-product of
+    kernel feature maps and make use of the associativity property of
+    matrix products to reduce the complexity from quadratic to linear. The
+    implementation includes methods described in ["Transformers are RNNs:
+    Fast Autoregressive Transformers with Linear Attention"](https://arxiv.org/abs/2006.16236),
+    ["Rethinking Attention with Performers"](https://arxiv.org/abs/2009.14794),
+    ["Random Feature Attention"](https://openreview.net/pdf?id=QtTKTdVrFBB).
 
 *   [MatMulWithMargin](mat_mul_with_margin.py) implements a matrix
     multiplication with margin layer used for training retrieval / ranking
@@ -80,20 +93,20 @@ assemble new `tf.keras` layers or models.
 
 *   [MultiHeadRelativeAttention](relative_attention.py) implements a variant
     of multi-head attention with support for relative position encodings as
-    described in "Transformer-XL: Attentive Language Models Beyond a
-    Fixed-Length Context"(https://arxiv.org/abs/1901.02860). This also has
+    described in ["Transformer-XL: Attentive Language Models Beyond a
+    Fixed-Length Context"](https://arxiv.org/abs/1901.02860). This also has
     extended support for segment-based attention, a re-parameterization
-    introduced in "XLNet: Generalized Autoregressive Pretraining for Language
-    Understanding" (https://arxiv.org/abs/1906.08237).
+    introduced in ["XLNet: Generalized Autoregressive Pretraining for Language
+    Understanding"](https://arxiv.org/abs/1906.08237).
 
 *   [TwoStreamRelativeAttention](relative_attention.py) implements a variant
-    of multi-head relative attention as described in "XLNet: Generalized
-    Autoregressive Pretraining for Language Understanding"
+    of multi-head relative attention as described in ["XLNet: Generalized
+    Autoregressive Pretraining for Language Understanding"]
     (https://arxiv.org/abs/1906.08237). This takes in a query and content
     stream and applies self attention.
 
 *   [TransformerXL](transformer_xl.py) implements Transformer XL introduced in
-    "Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context"
+    ["Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context"]
     (https://arxiv.org/abs/1901.02860). This contains `TransformerXLBlock`, a
     block containing either one or two stream relative self-attention as well as
     subsequent feedforward networks. It also contains `TransformerXL`, which

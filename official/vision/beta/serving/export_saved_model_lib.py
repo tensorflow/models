@@ -39,7 +39,8 @@ def export_inference_graph(
     num_channels: Optional[int] = 3,
     export_module: Optional[export_base.ExportModule] = None,
     export_checkpoint_subdir: Optional[str] = None,
-    export_saved_model_subdir: Optional[str] = None):
+    export_saved_model_subdir: Optional[str] = None,
+    save_options: Optional[tf.saved_model.SaveOptions] = None):
   """Exports inference graph for the model specified in the exp config.
 
   Saved model is stored at export_dir/saved_model, checkpoint is saved
@@ -60,6 +61,7 @@ def export_inference_graph(
       to store checkpoint.
     export_saved_model_subdir: Optional subdirectory under export_dir
       to store saved model.
+    save_options: `SaveOptions` for `tf.saved_model.save`.
   """
 
   if export_checkpoint_subdir:
@@ -106,7 +108,8 @@ def export_inference_graph(
       function_keys=[input_type],
       export_savedmodel_dir=output_saved_model_directory,
       checkpoint_path=checkpoint_path,
-      timestamped=False)
+      timestamped=False,
+      save_options=save_options)
 
   ckpt = tf.train.Checkpoint(model=export_module.model)
   ckpt.save(os.path.join(output_checkpoint_directory, 'ckpt'))

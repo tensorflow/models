@@ -175,6 +175,7 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
           model=RetinaNet(
               num_classes=91,
               input_size=[640, 640, 3],
+              norm_activation=common.NormActivation(use_sync_bn=False),
               min_level=3,
               max_level=7),
           losses=Losses(l2_weight_decay=1e-4),
@@ -183,7 +184,7 @@ def retinanet_resnetfpn_coco() -> cfg.ExperimentConfig:
               is_training=True,
               global_batch_size=train_batch_size,
               parser=Parser(
-                  aug_rand_hflip=True, aug_scale_min=0.5, aug_scale_max=2.0)),
+                  aug_rand_hflip=True, aug_scale_min=0.8, aug_scale_max=1.2)),
           validation_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
               is_training=False,
@@ -310,8 +311,8 @@ def retinanet_spinenet_coco() -> cfg.ExperimentConfig:
       restrictions=[
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None',
-          'task.model.min_level == task,model.backbone.spinenet.min_level',
-          'task.model.max_level == task,model.backbone.spinenet.max_level',
+          'task.model.min_level == task.model.backbone.spinenet.min_level',
+          'task.model.max_level == task.model.backbone.spinenet.max_level',
       ])
 
   return config
@@ -397,8 +398,8 @@ def retinanet_spinenet_mobile_coco() -> cfg.ExperimentConfig:
       restrictions=[
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None',
-          'task.model.min_level == task,model.backbone.spinenet_mobile.min_level',
-          'task.model.max_level == task,model.backbone.spinenet_mobile.max_level',
+          'task.model.min_level == task.model.backbone.spinenet_mobile.min_level',
+          'task.model.max_level == task.model.backbone.spinenet_mobile.max_level',
       ])
 
   return config
