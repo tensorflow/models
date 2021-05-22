@@ -315,9 +315,7 @@ def write_superglue_classification(task,
                                    predict_batch_size,
                                    seq_length,
                                    class_names,
-                                   label_type='int',
-                                   min_float_value=None,
-                                   max_float_value=None):
+                                   label_type='int'):
   """Makes classification predictions for superglue and writes to output file.
 
   Args:
@@ -329,12 +327,7 @@ def write_superglue_classification(task,
     seq_length: Input sequence length.
     class_names: List of string class names.
     label_type: String denoting label type ('int', 'float'), defaults to 'int'.
-    min_float_value: If set, predictions will be min-clipped to this value (only
-      for regression when `label_type` is set to 'float'). Defaults to `None`
-      (no clipping).
-    max_float_value: If set, predictions will be max-clipped to this value (only
-      for regression when `label_type` is set to 'float'). Defaults to `None`
-      (no clipping).
+
   """
   if label_type not in ('int'):
     raise ValueError('Unsupported `label_type`. Given: %s, expected `int` or '

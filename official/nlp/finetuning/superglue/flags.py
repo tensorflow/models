@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Common flags for GLUE finetuning binary."""
+"""Common flags for SuperGLUE finetuning binary."""
 from typing import Callable
 
 from absl import flags
@@ -23,7 +23,7 @@ def define_flags():
   """Defines flags."""
 
   # ===========================================================================
-  # Glue binary flags.
+  # SuperGlue binary flags.
   # ===========================================================================
   flags.DEFINE_enum(
       'mode', 'train_eval_and_predict',
@@ -38,7 +38,7 @@ def define_flags():
   flags.DEFINE_enum('task_name', None, [
       'AX-b', 'CB', 'COPA', 'MULTIRC', 'RTE', 'WiC', 'WSC',
       'BoolQ', 'ReCoRD', 'AX-g',
-  ], 'The type of GLUE task.')
+  ], 'The type of SuperGLUE task.')
 
   flags.DEFINE_string('train_input_path', None,
                       'The file path to the training data.')
