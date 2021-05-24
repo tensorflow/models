@@ -26,6 +26,7 @@ from official.modeling import hyperparams
 from official.modeling import tf_utils
 from official.nlp.modeling import layers
 from official.nlp.modeling import networks
+from official.nlp.projects.bigbird import encoder as bigbird_encoder
 
 
 @dataclasses.dataclass
@@ -293,9 +294,26 @@ def build_encoder(config: EncoderConfig,
         dict_outputs=True)
 
   if encoder_type == "bigbird":
-    # TODO(frederickliu): Support use_gradient_checkpointing.
+    # TODO(frederickliu): Support use_gradient_checkpointing and update
+    # experiments to use the EncoderScaffold only.
     if encoder_cfg.use_gradient_checkpointing:
-      raise ValueError("Gradient checkpointing unsupported at the moment.")
+      return bigbird_encoder.BigBirdEncoder(
+          vocab_size=encoder_cfg.vocab_size,
+          hidden_size=encoder_cfg.hidden_size,
+          num_layers=encoder_cfg.num_layers,
+          num_attention_heads=encoder_cfg.num_attention_heads,
+          intermediate_size=encoder_cfg.intermediate_size,
+          activation=tf_utils.get_activation(encoder_cfg.hidden_activation),
+          dropout_rate=encoder_cfg.dropout_rate,
+          attention_dropout_rate=encoder_cfg.attention_dropout_rate,
+          num_rand_blocks=encoder_cfg.num_rand_blocks,
+          block_size=encoder_cfg.block_size,
+          max_position_embeddings=encoder_cfg.max_position_embeddings,
+          type_vocab_size=encoder_cfg.type_vocab_size,
+          initializer=tf.keras.initializers.TruncatedNormal(
+              stddev=encoder_cfg.initializer_range),
+          embedding_width=encoder_cfg.embedding_width,
+          use_gradient_checkpointing=encoder_cfg.use_gradient_checkpointing)
     embedding_cfg = dict(
         vocab_size=encoder_cfg.vocab_size,
         type_vocab_size=encoder_cfg.type_vocab_size,
