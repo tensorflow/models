@@ -17,14 +17,16 @@
 
 import os
 from typing import List, Optional
+
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
 from official.vision.beta.configs import decoders
+from official.vision.beta.configs import backbones
 
 
 # pylint: disable=missing-class-docstring
@@ -100,6 +102,10 @@ class DetectionHead(hyperparams.Config):
   use_separable_conv: bool = False
   num_fcs: int = 1
   fc_dims: int = 1024
+  class_agnostic_bbox_pred: bool = False  # Has to be True for Cascade RCNN.
+  # If additional IoUs are passed in 'cascade_iou_thresholds'
+  # then ensemble the class probabilities from all heads.
+  cascade_class_ensemble: bool = False
 
 
 @dataclasses.dataclass
@@ -125,6 +131,9 @@ class ROISampler(hyperparams.Config):
   foreground_iou_threshold: float = 0.5
   background_iou_high_threshold: float = 0.5
   background_iou_low_threshold: float = 0.0
+  # IoU thresholds for additional FRCNN heads in Cascade mode.
+  # `foreground_iou_threshold` is the first threshold.
+  cascade_iou_thresholds: Optional[List[float]] = None
 
 
 @dataclasses.dataclass
@@ -135,6 +144,7 @@ class ROIAligner(hyperparams.Config):
 
 @dataclasses.dataclass
 class DetectionGenerator(hyperparams.Config):
+  apply_nms: bool = True
   pre_nms_top_k: int = 5000
   pre_nms_score_threshold: float = 0.05
   nms_iou_threshold: float = 0.5
@@ -282,7 +292,6 @@ def fasterrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None'
       ])
-
   return config
 
 
@@ -300,9 +309,7 @@ def maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
           annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
                                        'instances_val2017.json'),
           model=MaskRCNN(
-              num_classes=91,
-              input_size=[1024, 1024, 3],
-              include_mask=True),
+              num_classes=91, input_size=[1024, 1024, 3], include_mask=True),
           losses=Losses(l2_weight_decay=0.00004),
           train_data=DataConfig(
               input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
@@ -347,7 +354,73 @@ def maskrcnn_resnetfpn_coco() -> cfg.ExperimentConfig:
           'task.train_data.is_training != None',
           'task.validation_data.is_training != None'
       ])
+  return config
 
+
+@exp_factory.register_config_factory('cascadercnn_resnetfpn_coco')
+def cascadercnn_resnetfpn_coco() -> cfg.ExperimentConfig:
+  """COCO object detection with Cascade R-CNN."""
+  steps_per_epoch = 500
+  coco_val_samples = 5000
+
+  config = cfg.ExperimentConfig(
+      runtime=cfg.RuntimeConfig(mixed_precision_dtype='bfloat16'),
+      task=MaskRCNNTask(
+          init_checkpoint='gs://cloud-tpu-checkpoints/vision-2.0/resnet50_imagenet/ckpt-28080',
+          init_checkpoint_modules='backbone',
+          annotation_file=os.path.join(COCO_INPUT_PATH_BASE,
+                                       'instances_val2017.json'),
+          model=MaskRCNN(
+              num_classes=91,
+              input_size=[1024, 1024, 3],
+              include_mask=True,
+              roi_sampler=ROISampler(cascade_iou_thresholds=[0.6, 0.7]),
+              detection_head=DetectionHead(
+                  class_agnostic_bbox_pred=True, cascade_class_ensemble=True)),
+          losses=Losses(l2_weight_decay=0.00004),
+          train_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'train*'),
+              is_training=True,
+              global_batch_size=64,
+              parser=Parser(
+                  aug_rand_hflip=True, aug_scale_min=0.8, aug_scale_max=1.25)),
+          validation_data=DataConfig(
+              input_path=os.path.join(COCO_INPUT_PATH_BASE, 'val*'),
+              is_training=False,
+              global_batch_size=8)),
+      trainer=cfg.TrainerConfig(
+          train_steps=22500,
+          validation_steps=coco_val_samples // 8,
+          validation_interval=steps_per_epoch,
+          steps_per_loop=steps_per_epoch,
+          summary_interval=steps_per_epoch,
+          checkpoint_interval=steps_per_epoch,
+          optimizer_config=optimization.OptimizationConfig({
+              'optimizer': {
+                  'type': 'sgd',
+                  'sgd': {
+                      'momentum': 0.9
+                  }
+              },
+              'learning_rate': {
+                  'type': 'stepwise',
+                  'stepwise': {
+                      'boundaries': [15000, 20000],
+                      'values': [0.12, 0.012, 0.0012],
+                  }
+              },
+              'warmup': {
+                  'type': 'linear',
+                  'linear': {
+                      'warmup_steps': 500,
+                      'warmup_learning_rate': 0.0067
+                  }
+              }
+          })),
+      restrictions=[
+          'task.train_data.is_training != None',
+          'task.validation_data.is_training != None'
+      ])
   return config
 
 
@@ -364,7 +437,12 @@ def maskrcnn_spinenet_coco() -> cfg.ExperimentConfig:
                                        'instances_val2017.json'),
           model=MaskRCNN(
               backbone=backbones.Backbone(
-                  type='spinenet', spinenet=backbones.SpineNet(model_id='49')),
+                  type='spinenet',
+                  spinenet=backbones.SpineNet(
+                      model_id='49',
+                      min_level=3,
+                      max_level=7,
+                  )),
               decoder=decoders.Decoder(
                   type='identity', identity=decoders.Identity()),
               anchor=Anchor(anchor_size=3),
@@ -418,6 +496,8 @@ def maskrcnn_spinenet_coco() -> cfg.ExperimentConfig:
           })),
       restrictions=[
           'task.train_data.is_training != None',
-          'task.validation_data.is_training != None'
+          'task.validation_data.is_training != None',
+          'task.model.min_level == task.model.backbone.spinenet.min_level',
+          'task.model.max_level == task.model.backbone.spinenet.max_level',
       ])
   return config

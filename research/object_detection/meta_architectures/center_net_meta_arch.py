@@ -21,7 +21,6 @@
 import abc
 import collections
 import functools
-import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow.compat.v2 as tf2
 
@@ -118,27 +117,14 @@ class CenterNetFeatureExtractor(tf.keras.Model):
     pass
 
   @property
-  @abc.abstractmethod
-  def supported_sub_model_types(self):
-    """Valid sub model types supported by the get_sub_model function."""
-    pass
-
-  @abc.abstractmethod
-  def get_sub_model(self, sub_model_type):
-    """Returns the underlying keras model for the given sub_model_type.
-
-    This function is useful when we only want to get a subset of weights to
-    be restored from a checkpoint.
-
-    Args:
-      sub_model_type: string, the type of sub model. Currently, CenterNet
-        feature extractors support 'detection' and 'classification'.
-    """
-    pass
+  def classification_backbone(self):
+    raise NotImplementedError(
+        'Classification backbone not supported for {}'.format(type(self)))
 
 
 def make_prediction_net(num_out_channels, kernel_sizes=(3), num_filters=(256),
-                        bias_fill=None, use_depthwise=False, name=None):
+                        bias_fill=None, use_depthwise=False, name=None,
+                        unit_height_conv=True):
   """Creates a network to predict the given number of output channels.
 
   This function is intended to make the prediction heads for the CenterNet
@@ -158,6 +144,7 @@ def make_prediction_net(num_out_channels, kernel_sizes=(3), num_filters=(256),
     use_depthwise: If true, use SeparableConv2D to construct the Sequential
       layers instead of Conv2D.
     name: Optional name for the prediction net.
+    unit_height_conv: If True, Conv2Ds have asymmetric kernels with height=1.
 
   Returns:
     net: A keras module which when called on an input tensor of size
@@ -190,7 +177,7 @@ def make_prediction_net(num_out_channels, kernel_sizes=(3), num_filters=(256),
     layers.append(
         conv_fn(
             num_filter,
-            kernel_size=kernel_size,
+            kernel_size=[1, kernel_size] if unit_height_conv else kernel_size,
             padding='same',
             name='conv2_%d' % idx if tf_version.is_tf1() else None))
     layers.append(tf.keras.layers.ReLU())
@@ -572,15 +559,11 @@ def argmax_feature_map_locations(feature_map):
       feature_map, [batch_size, -1, num_channels])
   peak_flat_indices = tf.math.argmax(
       feature_map_flattened, axis=1, output_type=tf.dtypes.int32)
-  # Convert the indices such that they represent the location in the full
-  # (flattened) feature map of size [batch, height * width * channels].
-  channel_idx = tf.range(num_channels)[tf.newaxis, :]
-  peak_flat_indices = num_channels * peak_flat_indices + channel_idx
-  # Get x, y and channel indices corresponding to the top indices in the flat
-  # array.
-  y_indices, x_indices, channel_indices = (
-      row_col_channel_indices_from_flattened_indices(
-          peak_flat_indices, width, num_channels))
+  # Get x and y indices corresponding to the top indices in the flat array.
+  y_indices, x_indices = (
+      row_col_indices_from_flattened_indices(peak_flat_indices, width))
+  channel_indices = tf.tile(
+      tf.range(num_channels)[tf.newaxis, :], [batch_size, 1])
   return y_indices, x_indices, channel_indices
 
 
@@ -945,12 +928,6 @@ def refine_keypoints(regressed_keypoints,
   num_candidates_tiled = tf.tile(tf.expand_dims(num_keypoint_candidates, 1),
                                  [1, max_candidates, 1])
   invalid_candidates = range_tiled >= num_candidates_tiled
-  nan_mask = tf.where(
-      invalid_candidates,
-      np.nan * tf.ones_like(invalid_candidates, dtype=tf.float32),
-      tf.ones_like(invalid_candidates, dtype=tf.float32))
-  keypoint_candidates_with_nans = tf.math.multiply(
-      keypoint_candidates, tf.expand_dims(nan_mask, -1))
 
   # Pairwise squared distances between regressed keypoints and candidate
   # keypoints (for a single keypoint type).
@@ -959,7 +936,7 @@ def refine_keypoints(regressed_keypoints,
                                                axis=2)
   # Shape [batch_size, 1, max_candidates, num_keypoints, 2].
   keypoint_candidates_expanded = tf.expand_dims(
-      keypoint_candidates_with_nans, axis=1)
+      keypoint_candidates, axis=1)
   # Use explicit tensor shape broadcasting (since the tensor dimensions are
   # expanded to 5D) to make it tf.lite compatible.
   regressed_keypoint_expanded = tf.tile(
@@ -973,10 +950,16 @@ def refine_keypoints(regressed_keypoints,
   sqrd_distances = tf.math.reduce_sum(tf.multiply(diff, diff), axis=-1)
   distances = tf.math.sqrt(sqrd_distances)
 
-  # Replace the NaNs with Infs to make sure the following reduce_min/argmin
-  # behaves properly.
+  # Replace the invalid candidated with large constant (10^5) to make sure the
+  # following reduce_min/argmin behaves properly.
+  max_dist = 1e5
   distances = tf.where(
-      tf.math.is_nan(distances), np.inf * tf.ones_like(distances), distances)
+      tf.tile(
+          tf.expand_dims(invalid_candidates, axis=1),
+          multiples=[1, num_instances, 1, 1]),
+      tf.ones_like(distances) * max_dist,
+      distances
+  )
 
   # Determine the candidates that have the minimum distance to the regressed
   # keypoints. Shape [batch_size, num_instances, num_keypoints].
@@ -1248,6 +1231,12 @@ def row_col_channel_indices_from_flattened_indices(indices, num_cols,
       indices.
 
   """
+  # Be careful with this function when running a model in float16 precision
+  # (e.g. TF.js with WebGL) because the array indices may not be represented
+  # accurately if they are too large, resulting in incorrect channel indices.
+  # See:
+  # https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Precision_limitations_on_integer_values
+  #
   # Avoid using mod operator to make the ops more easy to be compatible with
   # different environments, e.g. WASM.
   row_indices = (indices // num_channels) // num_cols
@@ -1256,6 +1245,29 @@ def row_col_channel_indices_from_flattened_indices(indices, num_cols,
   channel_indices = indices - channel_indices_temp * num_channels
 
   return row_indices, col_indices, channel_indices
+
+
+def row_col_indices_from_flattened_indices(indices, num_cols):
+  """Computes row and column indices from flattened indices.
+
+  Args:
+    indices: An integer tensor of any shape holding the indices in the flattened
+      space.
+    num_cols: Number of columns in the image (width).
+
+  Returns:
+    row_indices: The row indices corresponding to each of the input indices.
+      Same shape as indices.
+    col_indices: The column indices corresponding to each of the input indices.
+      Same shape as indices.
+
+  """
+  # Avoid using mod operator to make the ops more easy to be compatible with
+  # different environments, e.g. WASM.
+  row_indices = indices // num_cols
+  col_indices = indices - row_indices * num_cols
+
+  return row_indices, col_indices
 
 
 def get_valid_anchor_weights_in_flattened_image(true_image_shapes, height,
@@ -2150,7 +2162,8 @@ class CenterNetMetaArch(model.DetectionModel):
                temporal_offset_params=None,
                use_depthwise=False,
                compute_heatmap_sparse=False,
-               non_max_suppression_fn=None):
+               non_max_suppression_fn=None,
+               unit_height_conv=False):
     """Initializes a CenterNet model.
 
     Args:
@@ -2194,6 +2207,8 @@ class CenterNetMetaArch(model.DetectionModel):
         better with number of channels in the heatmap, but in some cases is
         known to cause an OOM error. See b/170989061.
       non_max_suppression_fn: Optional Non Max Suppression function to apply.
+      unit_height_conv: If True, Conv2Ds in prediction heads have asymmetric
+        kernels with height=1.
     """
     assert object_detection_params or keypoint_params_dict
     # Shorten the name for convenience and better formatting.
@@ -2220,11 +2235,15 @@ class CenterNetMetaArch(model.DetectionModel):
     self._use_depthwise = use_depthwise
     self._compute_heatmap_sparse = compute_heatmap_sparse
 
+    # subclasses may not implement the unit_height_conv arg, so only provide it
+    # as a kwarg if it is True.
+    kwargs = {'unit_height_conv': unit_height_conv} if unit_height_conv else {}
     # Construct the prediction head nets.
     self._prediction_head_dict = self._construct_prediction_heads(
         num_classes,
         self._num_feature_outputs,
-        class_prediction_bias_init=self._center_params.heatmap_bias_init)
+        class_prediction_bias_init=self._center_params.heatmap_bias_init,
+        **kwargs)
     # Initialize the target assigners.
     self._target_assigner_dict = self._initialize_target_assigners(
         stride=self._stride,
@@ -2245,7 +2264,8 @@ class CenterNetMetaArch(model.DetectionModel):
 
   def _make_prediction_net_list(self, num_feature_outputs, num_out_channels,
                                 kernel_sizes=(3), num_filters=(256),
-                                bias_fill=None, name=None):
+                                bias_fill=None, name=None,
+                                unit_height_conv=False):
     prediction_net_list = []
     for i in range(num_feature_outputs):
       prediction_net_list.append(
@@ -2255,11 +2275,13 @@ class CenterNetMetaArch(model.DetectionModel):
               num_filters=num_filters,
               bias_fill=bias_fill,
               use_depthwise=self._use_depthwise,
-              name='{}_{}'.format(name, i) if name else name))
+              name='{}_{}'.format(name, i) if name else name,
+              unit_height_conv=unit_height_conv))
     return prediction_net_list
 
   def _construct_prediction_heads(self, num_classes, num_feature_outputs,
-                                  class_prediction_bias_init):
+                                  class_prediction_bias_init,
+                                  unit_height_conv=False):
     """Constructs the prediction heads based on the specific parameters.
 
     Args:
@@ -2271,6 +2293,7 @@ class CenterNetMetaArch(model.DetectionModel):
       class_prediction_bias_init: float, the initial value of bias in the
         convolutional kernel of the class prediction head. If set to None, the
         bias is initialized with zeros.
+      unit_height_conv: If True, Conv2Ds have asymmetric kernels with height=1.
 
     Returns:
       A dictionary of keras modules generated by calling make_prediction_net
@@ -2284,13 +2307,16 @@ class CenterNetMetaArch(model.DetectionModel):
         kernel_sizes=self._center_params.center_head_kernel_sizes,
         num_filters=self._center_params.center_head_num_filters,
         bias_fill=class_prediction_bias_init,
-        name='center')
+        name='center',
+        unit_height_conv=unit_height_conv)
 
     if self._od_params is not None:
       prediction_heads[BOX_SCALE] = self._make_prediction_net_list(
-          num_feature_outputs, NUM_SIZE_CHANNELS, name='box_scale')
+          num_feature_outputs, NUM_SIZE_CHANNELS, name='box_scale',
+          unit_height_conv=unit_height_conv)
       prediction_heads[BOX_OFFSET] = self._make_prediction_net_list(
-          num_feature_outputs, NUM_OFFSET_CHANNELS, name='box_offset')
+          num_feature_outputs, NUM_OFFSET_CHANNELS, name='box_offset',
+          unit_height_conv=unit_height_conv)
 
     if self._kp_params_dict is not None:
       for task_name, kp_params in self._kp_params_dict.items():
@@ -2302,14 +2328,16 @@ class CenterNetMetaArch(model.DetectionModel):
                 kernel_sizes=kp_params.heatmap_head_kernel_sizes,
                 num_filters=kp_params.heatmap_head_num_filters,
                 bias_fill=kp_params.heatmap_bias_init,
-                name='kpt_heatmap')
+                name='kpt_heatmap',
+                unit_height_conv=unit_height_conv)
         prediction_heads[get_keypoint_name(
             task_name, KEYPOINT_REGRESSION)] = self._make_prediction_net_list(
                 num_feature_outputs,
                 NUM_OFFSET_CHANNELS * num_keypoints,
                 kernel_sizes=kp_params.regress_head_kernel_sizes,
                 num_filters=kp_params.regress_head_num_filters,
-                name='kpt_regress')
+                name='kpt_regress',
+                unit_height_conv=unit_height_conv)
 
         if kp_params.per_keypoint_offset:
           prediction_heads[get_keypoint_name(
@@ -2318,7 +2346,8 @@ class CenterNetMetaArch(model.DetectionModel):
                   NUM_OFFSET_CHANNELS * num_keypoints,
                   kernel_sizes=kp_params.offset_head_kernel_sizes,
                   num_filters=kp_params.offset_head_num_filters,
-                  name='kpt_offset')
+                  name='kpt_offset',
+                  unit_height_conv=unit_height_conv)
         else:
           prediction_heads[get_keypoint_name(
               task_name, KEYPOINT_OFFSET)] = self._make_prediction_net_list(
@@ -2326,38 +2355,44 @@ class CenterNetMetaArch(model.DetectionModel):
                   NUM_OFFSET_CHANNELS,
                   kernel_sizes=kp_params.offset_head_kernel_sizes,
                   num_filters=kp_params.offset_head_num_filters,
-                  name='kpt_offset')
+                  name='kpt_offset',
+                  unit_height_conv=unit_height_conv)
 
         if kp_params.predict_depth:
           num_depth_channel = (
               num_keypoints if kp_params.per_keypoint_depth else 1)
           prediction_heads[get_keypoint_name(
               task_name, KEYPOINT_DEPTH)] = self._make_prediction_net_list(
-                  num_feature_outputs, num_depth_channel, name='kpt_depth')
+                  num_feature_outputs, num_depth_channel, name='kpt_depth',
+                  unit_height_conv=unit_height_conv)
 
     if self._mask_params is not None:
       prediction_heads[SEGMENTATION_HEATMAP] = self._make_prediction_net_list(
           num_feature_outputs,
           num_classes,
           bias_fill=self._mask_params.heatmap_bias_init,
-          name='seg_heatmap')
+          name='seg_heatmap',
+          unit_height_conv=unit_height_conv)
 
     if self._densepose_params is not None:
       prediction_heads[DENSEPOSE_HEATMAP] = self._make_prediction_net_list(
           num_feature_outputs,
           self._densepose_params.num_parts,
           bias_fill=self._densepose_params.heatmap_bias_init,
-          name='dense_pose_heatmap')
+          name='dense_pose_heatmap',
+          unit_height_conv=unit_height_conv)
       prediction_heads[DENSEPOSE_REGRESSION] = self._make_prediction_net_list(
           num_feature_outputs,
           2 * self._densepose_params.num_parts,
-          name='dense_pose_regress')
+          name='dense_pose_regress',
+          unit_height_conv=unit_height_conv)
 
     if self._track_params is not None:
       prediction_heads[TRACK_REID] = self._make_prediction_net_list(
           num_feature_outputs,
           self._track_params.reid_embed_size,
-          name='track_reid')
+          name='track_reid',
+          unit_height_conv=unit_height_conv)
 
       # Creates a classification network to train object embeddings by learning
       # a projection from embedding space to object track ID space.
@@ -2376,7 +2411,8 @@ class CenterNetMetaArch(model.DetectionModel):
                                     self._track_params.reid_embed_size,)))
     if self._temporal_offset_params is not None:
       prediction_heads[TEMPORAL_OFFSET] = self._make_prediction_net_list(
-          num_feature_outputs, NUM_OFFSET_CHANNELS, name='temporal_offset')
+          num_feature_outputs, NUM_OFFSET_CHANNELS, name='temporal_offset',
+          unit_height_conv=unit_height_conv)
     return prediction_heads
 
   def _initialize_target_assigners(self, stride, min_box_overlap_iou):
@@ -2430,7 +2466,8 @@ class CenterNetMetaArch(model.DetectionModel):
                 keypoint_std_dev=kp_params.keypoint_std_dev,
                 peak_radius=kp_params.offset_peak_radius,
                 per_keypoint_offset=kp_params.per_keypoint_offset,
-                compute_heatmap_sparse=self._compute_heatmap_sparse))
+                compute_heatmap_sparse=self._compute_heatmap_sparse,
+                per_keypoint_depth=kp_params.per_keypoint_depth))
     if self._mask_params is not None:
       target_assigners[SEGMENTATION_TASK] = (
           cn_assigner.CenterNetMaskTargetAssigner(stride))
@@ -2853,17 +2890,13 @@ class CenterNetMetaArch(model.DetectionModel):
          gt_keypoint_depths_list=gt_keypoint_depths_list,
          gt_keypoint_depth_weights_list=gt_keypoint_depth_weights_list)
 
-    if kp_params.per_keypoint_offset and not kp_params.per_keypoint_depth:
-      batch_indices = batch_indices[:, 0:3]
-
     # Keypoint offset loss.
     loss = 0.0
     for prediction in depth_predictions:
-      # TODO(yuhuic): Update this function to use
-      # cn_assigner.get_batch_predictions_from_indices().
-      selected_depths = tf.gather_nd(prediction, batch_indices)
-      if kp_params.per_keypoint_offset and kp_params.per_keypoint_depth:
-        selected_depths = tf.expand_dims(selected_depths, axis=-1)
+      if kp_params.per_keypoint_depth:
+        prediction = tf.expand_dims(prediction, axis=-1)
+      selected_depths = cn_assigner.get_batch_predictions_from_indices(
+          prediction, batch_indices)
       # The dimensions passed are not as per the doc string but the loss
       # still computes the correct value.
       unweighted_loss = localization_loss_fn(
@@ -3336,8 +3369,8 @@ class CenterNetMetaArch(model.DetectionModel):
     _, input_height, input_width, _ = _get_shape(
         prediction_dict['preprocessed_inputs'], 4)
 
-    output_height, output_width = (input_height // self._stride,
-                                   input_width // self._stride)
+    output_height, output_width = (tf.maximum(input_height // self._stride, 1),
+                                   tf.maximum(input_width // self._stride, 1))
 
     # TODO(vighneshb) Explore whether using floor here is safe.
     output_true_image_shapes = tf.ceil(
@@ -3484,6 +3517,7 @@ class CenterNetMetaArch(model.DetectionModel):
         fields.DetectionResultFields.num_detections: num_detections,
     }
 
+    boxes_strided = None
     if self._od_params:
       boxes_strided = (
           prediction_tensors_to_boxes(y_indices, x_indices,
@@ -3506,8 +3540,8 @@ class CenterNetMetaArch(model.DetectionModel):
       if len(self._kp_params_dict) == 1 and self._num_classes == 1:
         (keypoints, keypoint_scores,
          keypoint_depths) = self._postprocess_keypoints_single_class(
-             prediction_dict, channel_indices, y_indices, x_indices, None,
-             num_detections)
+             prediction_dict, channel_indices, y_indices, x_indices,
+             boxes_strided, num_detections)
         keypoints, keypoint_scores = (
             convert_strided_predictions_to_normalized_keypoints(
                 keypoints, keypoint_scores, self._stride, true_image_shapes,
@@ -4152,25 +4186,28 @@ class CenterNetMetaArch(model.DetectionModel):
       A dict mapping keys to Trackable objects (tf.Module or Checkpoint).
     """
 
-    supported_types = self._feature_extractor.supported_sub_model_types
-    supported_types += ['fine_tune']
-
-    if fine_tune_checkpoint_type not in supported_types:
-      message = ('Checkpoint type "{}" not supported for {}. '
-                 'Supported types are {}')
-      raise ValueError(
-          message.format(fine_tune_checkpoint_type,
-                         self._feature_extractor.__class__.__name__,
-                         supported_types))
-
-    elif fine_tune_checkpoint_type == 'fine_tune':
+    if fine_tune_checkpoint_type == 'detection':
       feature_extractor_model = tf.train.Checkpoint(
           _feature_extractor=self._feature_extractor)
       return {'model': feature_extractor_model}
 
+    elif fine_tune_checkpoint_type == 'classification':
+      return {
+          'feature_extractor':
+              self._feature_extractor.classification_backbone
+      }
+    elif fine_tune_checkpoint_type == 'full':
+      return {'model': self}
+    elif fine_tune_checkpoint_type == 'fine_tune':
+      raise ValueError(('"fine_tune" is no longer supported for CenterNet. '
+                        'Please set fine_tune_checkpoint_type to "detection"'
+                        ' which has the same functionality. If you are using'
+                        ' the ExtremeNet checkpoint, download the new version'
+                        ' from the model zoo.'))
+
     else:
-      return {'feature_extractor': self._feature_extractor.get_sub_model(
-          fine_tune_checkpoint_type)}
+      raise ValueError('Unknown fine tune checkpoint type {}'.format(
+          fine_tune_checkpoint_type))
 
   def updates(self):
     if tf_version.is_tf2():

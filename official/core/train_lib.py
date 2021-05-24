@@ -124,9 +124,11 @@ def run_experiment(
     else:
       raise NotImplementedError('The mode is not implemented: %s' % mode)
 
-  if hasattr(trainer.model, 'count_params'):
+  num_params = train_utils.try_count_params(trainer.model)
+  if num_params is not None:
     logging.info('Number of trainable params in model: %f Millions.',
-                 trainer.model.count_params() / 10.**6)
+                 num_params / 10.**6)
+
   if run_post_eval:
     with distribution_strategy.scope():
       return trainer.model, trainer.evaluate(

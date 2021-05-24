@@ -27,12 +27,12 @@ import os
 import sys
 import time
 
+from absl import app
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from tensorflow.python.platform import app
 from delf import box_io
 from delf import utils
 from delf import detector
@@ -153,17 +153,14 @@ def main(argv):
       print('Starting to detect objects in images...')
     elif i % _STATUS_CHECK_ITERATIONS == 0:
       elapsed = (time.time() - start)
-      print(
-          f'Processing image {i} out of {num_images}, last '
-          f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds'
-          )
+      print(f'Processing image {i} out of {num_images}, last '
+            f'{_STATUS_CHECK_ITERATIONS} images took {elapsed} seconds')
       start = time.time()
 
     # If descriptor already exists, skip its computation.
     base_boxes_filename, _ = os.path.splitext(os.path.basename(image_path))
     out_boxes_filename = base_boxes_filename + _BOX_EXT
-    out_boxes_fullpath = os.path.join(cmd_args.output_dir,
-                                      out_boxes_filename)
+    out_boxes_fullpath = os.path.join(cmd_args.output_dir, out_boxes_filename)
     if tf.io.gfile.exists(out_boxes_fullpath):
       print(f'Skipping {image_path}')
       continue
@@ -173,8 +170,7 @@ def main(argv):
     # Extract and save boxes.
     (boxes_out, scores_out, class_indices_out) = detector_fn(im)
     (selected_boxes, selected_scores,
-     selected_class_indices) = _FilterBoxesByScore(boxes_out[0],
-                                                   scores_out[0],
+     selected_class_indices) = _FilterBoxesByScore(boxes_out[0], scores_out[0],
                                                    class_indices_out[0],
                                                    cmd_args.detector_thresh)
 
@@ -182,8 +178,7 @@ def main(argv):
                        selected_class_indices)
     if cmd_args.output_viz_dir:
       out_viz_filename = base_boxes_filename + _VIZ_SUFFIX
-      out_viz_fullpath = os.path.join(cmd_args.output_viz_dir,
-                                      out_viz_filename)
+      out_viz_fullpath = os.path.join(cmd_args.output_viz_dir, out_viz_filename)
       _PlotBoxesAndSaveImage(im[0], selected_boxes, out_viz_fullpath)
 
 

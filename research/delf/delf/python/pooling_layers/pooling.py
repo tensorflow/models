@@ -31,6 +31,7 @@ class MAC(tf.keras.layers.Layer):
     Args:
       x: [B, H, W, D] A float32 Tensor.
       axis: Dimensions to reduce. By default, dimensions [1, 2] are reduced.
+
     Returns:
       output: [B, D] A float32 Tensor.
     """
@@ -99,26 +100,30 @@ class GeM(tf.keras.layers.Layer):
 
 
 class GeMPooling2D(tf.keras.layers.Layer):
+  """Generalized mean pooling (GeM) pooling operation for spatial data."""
 
-  def __init__(self, power=20., pool_size=(2, 2), strides=None,
-               padding='valid', data_format='channels_last'):
-    """Generalized mean pooling (GeM) pooling operation for spatial data.
+  def __init__(self,
+               power=20.,
+               pool_size=(2, 2),
+               strides=None,
+               padding='valid',
+               data_format='channels_last'):
+    """Initialization of GeMPooling2D.
 
     Args:
       power: Float, power > 0. is an inverse exponent parameter (GeM power).
-      pool_size: Integer or tuple of 2 integers, factors by which to
-        downscale (vertical, horizontal)
-      strides: Integer, tuple of 2 integers, or None. Strides values.
-        If None, it will default to `pool_size`.
-      padding: One of `valid` or `same`. `valid` means no padding.
-        `same` results in padding evenly to the left/right or up/down of
-        the input such that output has the same height/width dimension as the
-        input.
+      pool_size: Integer or tuple of 2 integers, factors by which to downscale
+        (vertical, horizontal)
+      strides: Integer, tuple of 2 integers, or None. Strides values. If None,
+        it will default to `pool_size`.
+      padding: One of `valid` or `same`. `valid` means no padding. `same`
+        results in padding evenly to the left/right or up/down of the input such
+        that output has the same height/width dimension as the input.
       data_format: A string, one of `channels_last` (default) or
         `channels_first`. The ordering of the dimensions in the inputs.
-        `channels_last` corresponds to inputs with shape `(batch, height,
-        width, channels)` while `channels_first` corresponds to inputs with
-        shape `(batch, channels, height, width)`.
+        `channels_last` corresponds to inputs with shape `(batch, height, width,
+        channels)` while `channels_first` corresponds to inputs with shape
+        `(batch, channels, height, width)`.
     """
     super(GeMPooling2D, self).__init__()
     self.power = power
@@ -126,15 +131,16 @@ class GeMPooling2D(tf.keras.layers.Layer):
     self.pool_size = pool_size
     self.strides = strides
     self.padding = padding.upper()
-    data_format_conv = {'channels_last': 'NHWC',
-                        'channels_first': 'NCHW',
-                        }
+    data_format_conv = {
+        'channels_last': 'NHWC',
+        'channels_first': 'NCHW',
+    }
     self.data_format = data_format_conv[data_format]
 
   def call(self, x):
     tmp = tf.pow(x, self.power)
-    tmp = tf.nn.avg_pool(tmp, self.pool_size, self.strides,
-                         self.padding, self.data_format)
+    tmp = tf.nn.avg_pool(tmp, self.pool_size, self.strides, self.padding,
+                         self.data_format)
     out = tf.pow(tmp, 1. / self.power)
     return out
 

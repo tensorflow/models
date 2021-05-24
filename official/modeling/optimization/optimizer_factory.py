@@ -15,7 +15,6 @@
 """Optimizer factory class."""
 from typing import Callable, Union
 
-
 import gin
 import tensorflow as tf
 import tensorflow_addons.optimizers as tfa_optimizers
@@ -33,6 +32,7 @@ OPTIMIZERS_CLS = {
     'lamb': tfa_optimizers.LAMB,
     'rmsprop': tf.keras.optimizers.RMSprop,
     'lars': lars_optimizer.LARS,
+    'adagrad': tf.keras.optimizers.Adagrad,
 }
 
 LR_CLS = {

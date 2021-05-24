@@ -69,6 +69,7 @@ from __future__ import print_function
 
 import functools
 import inspect
+import math
 import sys
 
 import six
@@ -1306,7 +1307,7 @@ def random_distort_color(image, color_ordering=0, preprocess_vars_cache=None):
     return image
 
 
-def random_jitter_boxes(boxes, ratio=0.05, seed=None):
+def random_jitter_boxes(boxes, ratio=0.05, jitter_mode='random', seed=None):
   """Randomly jitter boxes in image.
 
   Args:
@@ -1317,45 +1318,46 @@ def random_jitter_boxes(boxes, ratio=0.05, seed=None):
     ratio: The ratio of the box width and height that the corners can jitter.
            For example if the width is 100 pixels and ratio is 0.05,
            the corners can jitter up to 5 pixels in the x direction.
+    jitter_mode: One of
+      shrink - Only shrinks boxes.
+      expand - Only expands boxes.
+      default - Randomly and independently perturbs each box boundary.
     seed: random seed.
 
   Returns:
     boxes: boxes which is the same shape as input boxes.
   """
-  def random_jitter_box(box, ratio, seed):
-    """Randomly jitter box.
-
-    Args:
-      box: bounding box [1, 1, 4].
-      ratio: max ratio between jittered box and original box,
-      a number between [0, 0.5].
-      seed: random seed.
-
-    Returns:
-      jittered_box: jittered box.
-    """
-    rand_numbers = tf.random_uniform(
-        [1, 1, 4], minval=-ratio, maxval=ratio, dtype=tf.float32, seed=seed)
-    box_width = tf.subtract(box[0, 0, 3], box[0, 0, 1])
-    box_height = tf.subtract(box[0, 0, 2], box[0, 0, 0])
-    hw_coefs = tf.stack([box_height, box_width, box_height, box_width])
-    hw_rand_coefs = tf.multiply(hw_coefs, rand_numbers)
-    jittered_box = tf.add(box, hw_rand_coefs)
-    jittered_box = tf.clip_by_value(jittered_box, 0.0, 1.0)
-    return jittered_box
-
   with tf.name_scope('RandomJitterBoxes', values=[boxes]):
-    # boxes are [N, 4]. Lets first make them [N, 1, 1, 4]
-    boxes_shape = tf.shape(boxes)
-    boxes = tf.expand_dims(boxes, 1)
-    boxes = tf.expand_dims(boxes, 2)
+    ymin, xmin, ymax, xmax = (boxes[:, i] for i in range(4))
 
-    distorted_boxes = tf.map_fn(
-        lambda x: random_jitter_box(x, ratio, seed), boxes, dtype=tf.float32)
+    height, width = ymax - ymin, xmax - xmin
+    ycenter, xcenter = (ymin + ymax) / 2.0, (xmin + xmax) / 2.0
 
-    distorted_boxes = tf.reshape(distorted_boxes, boxes_shape)
+    height = tf.abs(height)
+    width = tf.abs(width)
 
-    return distorted_boxes
+    if jitter_mode == 'shrink':
+      min_ratio, max_ratio = -ratio, 0
+    elif jitter_mode == 'expand':
+      min_ratio, max_ratio = 0, ratio
+    else:
+      min_ratio, max_ratio = -ratio, ratio
+
+    num_boxes = tf.shape(boxes)[0]
+    distortion = 1.0 + tf.random_uniform(
+        [num_boxes, 4], minval=min_ratio, maxval=max_ratio, dtype=tf.float32,
+        seed=seed)
+
+    ymin_jitter = height * distortion[:, 0]
+    xmin_jitter = width * distortion[:, 1]
+    ymax_jitter = height * distortion[:, 2]
+    xmax_jitter = width * distortion[:, 3]
+
+    ymin, ymax = ycenter - (ymin_jitter / 2.0), ycenter + (ymax_jitter / 2.0)
+    xmin, xmax = xcenter - (xmin_jitter / 2.0), xcenter + (xmax_jitter / 2.0)
+
+    boxes = tf.stack([ymin, xmin, ymax, xmax], axis=1)
+    return tf.clip_by_value(boxes, 0.0, 1.0)
 
 
 def _strict_random_crop_image(image,
@@ -1775,6 +1777,7 @@ def random_pad_image(image,
                      min_image_size=None,
                      max_image_size=None,
                      pad_color=None,
+                     center_pad=False,
                      seed=None,
                      preprocess_vars_cache=None):
   """Randomly pads the image.
@@ -1813,6 +1816,8 @@ def random_pad_image(image,
     pad_color: padding color. A rank 1 tensor of [channels] with dtype=
                tf.float32. if set as None, it will be set to average color of
                the input image.
+    center_pad: whether the original image will be padded to the center, or
+                randomly padded (which is default).
     seed: random seed.
     preprocess_vars_cache: PreprocessorCache object that records previously
                            performed augmentations. Updated in-place. If this
@@ -1868,6 +1873,12 @@ def random_pad_image(image,
       target_width > image_width,
       lambda: _random_integer(0, target_width - image_width, seed),
       lambda: tf.constant(0, dtype=tf.int32))
+
+  if center_pad:
+    offset_height = tf.cast(tf.floor((target_height - image_height) / 2),
+                            tf.int32)
+    offset_width = tf.cast(tf.floor((target_width - image_width) / 2),
+                           tf.int32)
 
   gen_func = lambda: (target_height, target_width, offset_height, offset_width)
   params = _get_or_create_preprocess_rand_vars(
@@ -2112,7 +2123,7 @@ def random_crop_pad_image(image,
       max_padded_size_ratio,
       dtype=tf.int32)
 
-  padded_image, padded_boxes = random_pad_image(
+  padded_image, padded_boxes = random_pad_image(  # pylint: disable=unbalanced-tuple-unpacking
       cropped_image,
       cropped_boxes,
       min_image_size=min_image_size,
@@ -2152,6 +2163,7 @@ def random_crop_to_aspect_ratio(image,
                                 aspect_ratio=1.0,
                                 overlap_thresh=0.3,
                                 clip_boxes=True,
+                                center_crop=False,
                                 seed=None,
                                 preprocess_vars_cache=None):
   """Randomly crops an image to the specified aspect ratio.
@@ -2190,6 +2202,7 @@ def random_crop_to_aspect_ratio(image,
     overlap_thresh: minimum overlap thresh with new cropped
                     image to keep the box.
     clip_boxes: whether to clip the boxes to the cropped image.
+    center_crop: whether to take the center crop or a random crop.
     seed: random seed.
     preprocess_vars_cache: PreprocessorCache object that records previously
                            performed augmentations. Updated in-place. If this
@@ -2246,8 +2259,14 @@ def random_crop_to_aspect_ratio(image,
     # either offset_height = 0 and offset_width is randomly chosen from
     # [0, offset_width - target_width), or else offset_width = 0 and
     # offset_height is randomly chosen from [0, offset_height - target_height)
-    offset_height = _random_integer(0, orig_height - target_height + 1, seed)
-    offset_width = _random_integer(0, orig_width - target_width + 1, seed)
+    if center_crop:
+      offset_height = tf.cast(tf.math.floor((orig_height - target_height) / 2),
+                              tf.int32)
+      offset_width = tf.cast(tf.math.floor((orig_width - target_width) / 2),
+                             tf.int32)
+    else:
+      offset_height = _random_integer(0, orig_height - target_height + 1, seed)
+      offset_width = _random_integer(0, orig_width - target_width + 1, seed)
 
     generator_func = lambda: (offset_height, offset_width)
     offset_height, offset_width = _get_or_create_preprocess_rand_vars(
@@ -2978,7 +2997,7 @@ def resize_to_range(image,
                          'per-channel pad value.')
       new_image = tf.stack(
           [
-              tf.pad(
+              tf.pad(  # pylint: disable=g-complex-comprehension
                   channels[i], [[0, max_dimension - new_size[0]],
                                 [0, max_dimension - new_size[1]]],
                   constant_values=per_channel_pad_value[i])
@@ -4312,6 +4331,8 @@ def random_scale_crop_and_pad_to_square(
     return_values.append(tf.gather(label_confidences, indices))
 
   return return_values
+
+
 
 
 def get_default_func_arg_map(include_label_weights=True,

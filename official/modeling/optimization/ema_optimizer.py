@@ -76,6 +76,8 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
     self._dynamic_decay = dynamic_decay
     self._optimizer = optimizer
     self._track_trackable(self._optimizer, 'base_optimizer')
+    self._average_weights = None
+    self._model_weights = None
 
   def shadow_copy(self, model: tf.keras.Model):
     """Creates shadow variables for the given model weights."""
@@ -89,7 +91,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
   @property
   def has_shadow_copy(self):
     """Whether this optimizer has created shadow variables."""
-    return self._model_weights is not None
+    return self._model_weights is not None and self._average_weights is not None
 
   def _create_slots(self, var_list):
     self._optimizer._create_slots(var_list=var_list)  # pylint: disable=protected-access

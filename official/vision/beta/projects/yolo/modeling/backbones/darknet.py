@@ -40,6 +40,7 @@ Darknets are used mainly for object detection in:
 import collections
 import tensorflow as tf
 
+from official.modeling import hyperparams
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
@@ -663,7 +664,8 @@ class Darknet(tf.keras.Model):
 @factory.register_backbone_builder('darknet')
 def build_darknet(
     input_specs: tf.keras.layers.InputSpec,
-    model_config,
+    backbone_config: hyperparams.Config,
+    norm_activation_config: hyperparams.Config,
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
 
   backbone_cfg = model_config.backbone.get()

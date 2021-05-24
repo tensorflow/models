@@ -300,6 +300,7 @@ class KeypointOpsTest(test_case.TestCase):
     output, expected_keypoints = self.execute(graph_fn, [])
     self.assertAllClose(output, expected_keypoints)
 
+
   def test_keypoint_weights_from_visibilities(self):
     def graph_fn():
       keypoint_visibilities = tf.constant([

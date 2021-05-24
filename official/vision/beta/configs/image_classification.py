@@ -16,13 +16,15 @@
 """Image classification configuration definition."""
 import os
 from typing import List, Optional
+
 import dataclasses
+
 from official.core import config_definitions as cfg
 from official.core import exp_factory
 from official.modeling import hyperparams
 from official.modeling import optimization
-from official.vision.beta.configs import backbones
 from official.vision.beta.configs import common
+from official.vision.beta.configs import backbones
 
 
 @dataclasses.dataclass
@@ -34,6 +36,7 @@ class DataConfig(cfg.DataConfig):
   dtype: str = 'float32'
   shuffle_buffer_size: int = 10000
   cycle_length: int = 10
+  is_multilabel: bool = False
   aug_rand_hflip: bool = True
   aug_type: Optional[
       common.Augmentation] = None  # Choose from AutoAugment and RandAugment.

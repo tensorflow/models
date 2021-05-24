@@ -170,6 +170,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
   def createTestMultiClassScores(self):
     return tf.constant([[1.0, 0.0], [0.5, 0.5]], dtype=tf.float32)
 
+
   def expectedImagesAfterNormalization(self):
     images_r = tf.constant([[[0, 0, 0, 0], [-1, -1, 0, 0],
                              [-1, 0, 0, 0], [0.5, 0.5, 0, 0]]],
@@ -1263,6 +1264,67 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
     (boxes_shape_, distorted_boxes_shape_) = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(boxes_shape_, distorted_boxes_shape_)
 
+  def testRandomJitterBoxesZeroRatio(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'ratio': 0.0}))
+      boxes = self.createTestBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    (boxes, distorted_boxes) = self.execute_cpu(graph_fn, [])
+    self.assertAllEqual(boxes, distorted_boxes)
+
+  def testRandomJitterBoxesExpand(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'jitter_mode': 'expand'}))
+      boxes = self.createTestBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
+    ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[0, 2],
+        distorted_boxes[:, 3])
+
+    self.assertTrue(np.all(distorted_ymin <= ymin))
+    self.assertTrue(np.all(distorted_xmin <= xmin))
+    self.assertTrue(np.all(distorted_ymax >= ymax))
+    self.assertTrue(np.all(distorted_xmax >= xmax))
+
+  def testRandomJitterBoxesShrink(self):
+
+    def graph_fn():
+      preprocessing_options = []
+      preprocessing_options.append((preprocessor.random_jitter_boxes,
+                                    {'jitter_mode': 'shrink'}))
+      boxes = self.createTestBoxes()
+      tensor_dict = {fields.InputDataFields.groundtruth_boxes: boxes}
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      distorted_boxes = tensor_dict[fields.InputDataFields.groundtruth_boxes]
+      return [boxes, distorted_boxes]
+
+    boxes, distorted_boxes = self.execute_cpu(graph_fn, [])
+    ymin, xmin, ymax, xmax = boxes[:, 0], boxes[:, 1], boxes[:, 2], boxes[:, 3]
+    distorted_ymin, distorted_xmin, distorted_ymax, distorted_xmax = (
+        distorted_boxes[:, 0], distorted_boxes[:, 1], distorted_boxes[0, 2],
+        distorted_boxes[:, 3])
+
+    self.assertTrue(np.all(distorted_ymin >= ymin))
+    self.assertTrue(np.all(distorted_xmin >= xmin))
+    self.assertTrue(np.all(distorted_ymax <= ymax))
+    self.assertTrue(np.all(distorted_xmax <= xmax))
+
   def testRandomCropImage(self):
 
     def graph_fn():
@@ -2133,6 +2195,54 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
                         expected_boxes.flatten())
     self.assertAllEqual(distorted_masks_.shape, [1, 200, 200])
 
+  def testRunRandomCropToAspectRatioCenterCrop(self):
+    def graph_fn():
+      image = self.createColorfulTestImage()
+      boxes = self.createTestBoxes()
+      labels = self.createTestLabels()
+      weights = self.createTestGroundtruthWeights()
+      masks = tf.random_uniform([2, 200, 400], dtype=tf.float32)
+
+      tensor_dict = {
+          fields.InputDataFields.image: image,
+          fields.InputDataFields.groundtruth_boxes: boxes,
+          fields.InputDataFields.groundtruth_classes: labels,
+          fields.InputDataFields.groundtruth_weights: weights,
+          fields.InputDataFields.groundtruth_instance_masks: masks
+      }
+
+      preprocessor_arg_map = preprocessor.get_default_func_arg_map(
+          include_instance_masks=True)
+
+      preprocessing_options = [(preprocessor.random_crop_to_aspect_ratio, {
+          'center_crop': True
+      })]
+
+      with mock.patch.object(preprocessor,
+                             '_random_integer') as mock_random_integer:
+        mock_random_integer.return_value = tf.constant(0, dtype=tf.int32)
+        distorted_tensor_dict = preprocessor.preprocess(
+            tensor_dict,
+            preprocessing_options,
+            func_arg_map=preprocessor_arg_map)
+        distorted_image = distorted_tensor_dict[fields.InputDataFields.image]
+        distorted_boxes = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_boxes]
+        distorted_labels = distorted_tensor_dict[
+            fields.InputDataFields.groundtruth_classes]
+        return [
+            distorted_image, distorted_boxes, distorted_labels
+        ]
+
+    (distorted_image_, distorted_boxes_, distorted_labels_) = self.execute_cpu(
+        graph_fn, [])
+    expected_boxes = np.array([[0.0, 0.0, 0.75, 1.0],
+                               [0.25, 0.5, 0.75, 1.0]], dtype=np.float32)
+    self.assertAllEqual(distorted_image_.shape, [1, 200, 200, 3])
+    self.assertAllEqual(distorted_labels_, [1, 2])
+    self.assertAllClose(distorted_boxes_.flatten(),
+                        expected_boxes.flatten())
+
   def testRunRandomCropToAspectRatioWithKeypoints(self):
     def graph_fn():
       image = self.createColorfulTestImage()
@@ -2371,6 +2481,51 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
         padded_boxes_[:, 2] - padded_boxes_[:, 0])))
     self.assertTrue(np.all((boxes_[:, 3] - boxes_[:, 1]) >= (
         padded_boxes_[:, 3] - padded_boxes_[:, 1])))
+
+  def testRandomPadImageCenterPad(self):
+    def graph_fn():
+      preprocessing_options = [(preprocessor.normalize_image, {
+          'original_minval': 0,
+          'original_maxval': 255,
+          'target_minval': 0,
+          'target_maxval': 1
+      })]
+
+      images = self.createColorfulTestImage()
+      boxes = self.createTestBoxes()
+      labels = self.createTestLabels()
+      tensor_dict = {
+          fields.InputDataFields.image: images,
+          fields.InputDataFields.groundtruth_boxes: boxes,
+          fields.InputDataFields.groundtruth_classes: labels,
+      }
+      tensor_dict = preprocessor.preprocess(tensor_dict, preprocessing_options)
+      images = tensor_dict[fields.InputDataFields.image]
+
+      preprocessing_options = [(preprocessor.random_pad_image, {
+          'center_pad': True,
+          'min_image_size': [400, 400],
+          'max_image_size': [400, 400],
+      })]
+      padded_tensor_dict = preprocessor.preprocess(tensor_dict,
+                                                   preprocessing_options)
+
+      padded_images = padded_tensor_dict[fields.InputDataFields.image]
+      padded_boxes = padded_tensor_dict[
+          fields.InputDataFields.groundtruth_boxes]
+      padded_labels = padded_tensor_dict[
+          fields.InputDataFields.groundtruth_classes]
+      return [padded_images, padded_boxes, padded_labels]
+    (padded_images_, padded_boxes_, padded_labels_) = self.execute_cpu(
+        graph_fn, [])
+
+    expected_boxes = np.array([[0.25, 0.25, 0.625, 1.0],
+                               [0.375, 0.5, .625, 1.0]], dtype=np.float32)
+
+    self.assertAllEqual(padded_images_.shape, [1, 400, 400, 3])
+    self.assertAllEqual(padded_labels_, [1, 2])
+    self.assertAllClose(padded_boxes_.flatten(),
+                        expected_boxes.flatten())
 
   @parameterized.parameters(
       {'include_dense_pose': False},
@@ -4042,6 +4197,7 @@ class PreprocessorTest(test_case.TestCase, parameterized.TestCase):
 
     (image_original_shape_, image_gamma_shape_) = self.execute_cpu(graph_fn, [])
     self.assertAllEqual(image_original_shape_, image_gamma_shape_)
+
 
 
 if __name__ == '__main__':

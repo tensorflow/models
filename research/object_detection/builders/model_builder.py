@@ -34,6 +34,7 @@ from object_detection.core import post_processing
 from object_detection.core import target_assigner
 from object_detection.meta_architectures import center_net_meta_arch
 from object_detection.meta_architectures import context_rcnn_meta_arch
+from object_detection.meta_architectures import deepmac_meta_arch
 from object_detection.meta_architectures import faster_rcnn_meta_arch
 from object_detection.meta_architectures import rfcn_meta_arch
 from object_detection.meta_architectures import ssd_meta_arch
@@ -946,7 +947,7 @@ def object_center_proto_to_params(oc_config):
   if oc_config.keypoint_weights_for_center:
     keypoint_weights_for_center = list(oc_config.keypoint_weights_for_center)
 
-  if oc_config.center_head_params:
+  if oc_config.HasField('center_head_params'):
     center_head_num_filters = list(oc_config.center_head_params.num_filters)
     center_head_kernel_sizes = list(oc_config.center_head_params.kernel_sizes)
   else:
@@ -1056,6 +1057,21 @@ def _build_center_net_model(center_net_config, is_training, add_summaries):
     object_detection_params = object_detection_proto_to_params(
         center_net_config.object_detection_task)
 
+  if center_net_config.HasField('deepmac_mask_estimation'):
+    logging.warn(('Building experimental DeepMAC meta-arch.'
+                  ' Some features may be omitted.'))
+    deepmac_params = deepmac_meta_arch.deepmac_proto_to_params(
+        center_net_config.deepmac_mask_estimation)
+    return deepmac_meta_arch.DeepMACMetaArch(
+        is_training=is_training,
+        add_summaries=add_summaries,
+        num_classes=center_net_config.num_classes,
+        feature_extractor=feature_extractor,
+        image_resizer_fn=image_resizer_fn,
+        object_center_params=object_center_params,
+        object_detection_params=object_detection_params,
+        deepmac_params=deepmac_params)
+
   keypoint_params_dict = None
   if center_net_config.keypoint_estimation_task:
     label_map_proto = label_map_util.load_labelmap(
@@ -1130,11 +1146,18 @@ def _build_center_net_feature_extractor(feature_extractor_config, is_training):
       feature_extractor_config.use_separable_conv or
       feature_extractor_config.type == 'mobilenet_v2_fpn_sep_conv')
   kwargs = {
-      'channel_means': list(feature_extractor_config.channel_means),
-      'channel_stds': list(feature_extractor_config.channel_stds),
-      'bgr_ordering': feature_extractor_config.bgr_ordering,
-      'depth_multiplier': feature_extractor_config.depth_multiplier,
-      'use_separable_conv': use_separable_conv,
+      'channel_means':
+          list(feature_extractor_config.channel_means),
+      'channel_stds':
+          list(feature_extractor_config.channel_stds),
+      'bgr_ordering':
+          feature_extractor_config.bgr_ordering,
+      'depth_multiplier':
+          feature_extractor_config.depth_multiplier,
+      'use_separable_conv':
+          use_separable_conv,
+      'upsampling_interpolation':
+          feature_extractor_config.upsampling_interpolation,
   }
 
 

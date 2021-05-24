@@ -23,6 +23,7 @@ import tensorflow as tf
 from official.vision.beta.configs import video_classification as exp_cfg
 from official.vision.beta.dataloaders import decoder
 from official.vision.beta.dataloaders import parser
+from official.vision.beta.ops import augment
 from official.vision.beta.ops import preprocess_ops_3d
 
 IMAGE_KEY = 'image/encoded'
@@ -33,6 +34,7 @@ def process_image(image: tf.Tensor,
                   is_training: bool = True,
                   num_frames: int = 32,
                   stride: int = 1,
+                  random_stride_range: int = 0,
                   num_test_clips: int = 1,
                   min_resize: int = 256,
                   crop_size: int = 224,
@@ -42,6 +44,7 @@ def process_image(image: tf.Tensor,
                   max_aspect_ratio: float = 2,
                   min_area_ratio: float = 0.49,
                   max_area_ratio: float = 1.0,
+                  augmenter: Optional[augment.ImageAugment] = None,
                   seed: Optional[int] = None) -> tf.Tensor:
   """Processes a serialized image tensor.
 
@@ -52,6 +55,11 @@ def process_image(image: tf.Tensor,
       and left right flip is used.
     num_frames: Number of frames per subclip.
     stride: Temporal stride to sample frames.
+    random_stride_range: An int indicating the min and max bounds to uniformly
+      sample different strides from the video. E.g., a value of 1 with stride=2
+      will uniformly sample a stride in {1, 2, 3} for each video in a batch.
+      Only used enabled training for the purposes of frame-rate augmentation.
+      Defaults to 0, which disables random sampling.
     num_test_clips: Number of test clips (1 by default). If more than 1, this
       will sample multiple linearly spaced clips within each video at test time.
       If 1, then a single clip in the middle of the video is sampled. The clips
@@ -66,6 +74,7 @@ def process_image(image: tf.Tensor,
     max_aspect_ratio: The maximum aspect range for cropping.
     min_area_ratio: The minimum area range for cropping.
     max_area_ratio: The maximum area range for cropping.
+    augmenter: Image augmenter to distort each image.
     seed: A deterministic seed to use when sampling.
 
   Returns:
@@ -78,8 +87,20 @@ def process_image(image: tf.Tensor,
         '`num_test_clips` %d is ignored since `is_training` is `True`.',
         num_test_clips)
 
+  if random_stride_range < 0:
+    raise ValueError('Random stride range should be >= 0, got {}'.format(
+        random_stride_range))
+
   # Temporal sampler.
   if is_training:
+    if random_stride_range > 0:
+      # Uniformly sample different frame-rates
+      stride = tf.random.uniform(
+          [],
+          tf.maximum(stride - random_stride_range, 1),
+          stride + random_stride_range,
+          dtype=tf.int32)
+
     # Sample random clip.
     image = preprocess_ops_3d.sample_sequence(image, num_frames, True, stride,
                                               seed)
@@ -92,7 +113,8 @@ def process_image(image: tf.Tensor,
     image = preprocess_ops_3d.sample_sequence(image, num_frames, False, stride)
 
   # Decode JPEG string to tf.uint8.
-  image = preprocess_ops_3d.decode_jpeg(image, 3)
+  if image.dtype == tf.string:
+    image = preprocess_ops_3d.decode_jpeg(image, 3)
 
   if is_training:
     # Standard image data augmentation: random resized crop and random flip.
@@ -101,6 +123,9 @@ def process_image(image: tf.Tensor,
         (min_aspect_ratio, max_aspect_ratio),
         (min_area_ratio, max_area_ratio))
     image = preprocess_ops_3d.random_flip_left_right(image, seed)
+
+    if augmenter is not None:
+      image = augmenter.distort(image)
   else:
     # Resize images (resize happens only if necessary to save compute).
     image = preprocess_ops_3d.resize_smallest(image, min_resize)
@@ -210,6 +235,29 @@ class Decoder(decoder.Decoder):
     return result
 
 
+class VideoTfdsDecoder(decoder.Decoder):
+  """A tf.SequenceExample decoder for tfds video classification datasets."""
+
+  def __init__(self, image_key: str = IMAGE_KEY, label_key: str = LABEL_KEY):
+    self._image_key = image_key
+    self._label_key = label_key
+
+  def decode(self, features):
+    """Decode the TFDS FeatureDict.
+
+    Args:
+      features: features from TFDS video dataset.
+        See https://www.tensorflow.org/datasets/catalog/ucf101 for example.
+    Returns:
+      Dict of tensors.
+    """
+    sample_dict = {
+        self._image_key: features['video'],
+        self._label_key: features['label'],
+    }
+    return sample_dict
+
+
 class Parser(parser.Parser):
   """Parses a video and label dataset."""
 
@@ -219,6 +267,7 @@ class Parser(parser.Parser):
                label_key: str = LABEL_KEY):
     self._num_frames = input_params.feature_shape[0]
     self._stride = input_params.temporal_stride
+    self._random_stride_range = input_params.random_stride_range
     self._num_test_clips = input_params.num_test_clips
     self._min_resize = input_params.min_image_size
     self._crop_size = input_params.feature_shape[1]
@@ -237,6 +286,19 @@ class Parser(parser.Parser):
       self._audio_feature = input_params.audio_feature
       self._audio_shape = input_params.audio_feature_shape
 
+    self._augmenter = None
+    if input_params.aug_type is not None:
+      aug_type = input_params.aug_type
+      if aug_type == 'autoaug':
+        logging.info('Using AutoAugment.')
+        self._augmenter = augment.AutoAugment()
+      elif aug_type == 'randaug':
+        logging.info('Using RandAugment.')
+        self._augmenter = augment.RandAugment()
+      else:
+        raise ValueError('Augmentation policy {} is not supported.'.format(
+            aug_type))
+
   def _parse_train_data(
       self, decoded_tensors: Dict[str, tf.Tensor]
   ) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
@@ -248,14 +310,17 @@ class Parser(parser.Parser):
         is_training=True,
         num_frames=self._num_frames,
         stride=self._stride,
+        random_stride_range=self._random_stride_range,
         num_test_clips=self._num_test_clips,
         min_resize=self._min_resize,
         crop_size=self._crop_size,
         min_aspect_ratio=self._min_aspect_ratio,
         max_aspect_ratio=self._max_aspect_ratio,
         min_area_ratio=self._min_area_ratio,
-        max_area_ratio=self._max_area_ratio)
+        max_area_ratio=self._max_area_ratio,
+        augmenter=self._augmenter)
     image = tf.cast(image, dtype=self._dtype)
+
     features = {'image': image}
 
     label = decoded_tensors[self._label_key]

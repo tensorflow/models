@@ -16,7 +16,9 @@
 import os
 
 from absl import logging
+from absl.testing import parameterized
 import tensorflow as tf
+
 from official.core import config_definitions as cfg
 from official.modeling import optimization
 from official.modeling import tf_utils
@@ -29,18 +31,17 @@ from official.nlp.modeling import models
 from official.nlp.projects.mobilebert import distillation
 
 
-class DistillationTest(tf.test.TestCase):
+class DistillationTest(tf.test.TestCase, parameterized.TestCase):
 
-  def setUp(self):
-    super(DistillationTest, self).setUp()
+  def prepare_config(self, teacher_block_num, student_block_num,
+                     transfer_teacher_layers):
     # using small model for testing
-    self.model_block_num = 2
-    self.task_config = distillation.BertDistillationTaskConfig(
+    task_config = distillation.BertDistillationTaskConfig(
         teacher_model=bert.PretrainerConfig(
             encoder=encoders.EncoderConfig(
                 type='mobilebert',
                 mobilebert=encoders.MobileBertEncoderConfig(
-                    num_blocks=self.model_block_num)),
+                    num_blocks=teacher_block_num)),
             cls_heads=[
                 bert.ClsHeadConfig(
                     inner_dim=256,
@@ -53,7 +54,7 @@ class DistillationTest(tf.test.TestCase):
             encoder=encoders.EncoderConfig(
                 type='mobilebert',
                 mobilebert=encoders.MobileBertEncoderConfig(
-                    num_blocks=self.model_block_num)),
+                    num_blocks=student_block_num)),
             cls_heads=[
                 bert.ClsHeadConfig(
                     inner_dim=256,
@@ -75,6 +76,8 @@ class DistillationTest(tf.test.TestCase):
 
     # set only 1 step for each stage
     progressive_config = distillation.BertDistillationProgressiveConfig()
+    progressive_config.layer_wise_distill_config.transfer_teacher_layers = (
+        transfer_teacher_layers)
     progressive_config.layer_wise_distill_config.num_steps = 1
     progressive_config.pretrain_distill_config.num_steps = 1
 
@@ -96,16 +99,15 @@ class DistillationTest(tf.test.TestCase):
             type='linear',
             linear=optimization.LinearWarmupConfig(warmup_learning_rate=0)))
 
-    self.exp_config = cfg.ExperimentConfig(
-        task=self.task_config,
+    exp_config = cfg.ExperimentConfig(
+        task=task_config,
         trainer=prog_trainer_lib.ProgressiveTrainerConfig(
             progressive=progressive_config,
             optimizer_config=optimization_config))
 
     # Create a teacher model checkpoint.
-    teacher_encoder = encoders.build_encoder(
-        self.task_config.teacher_model.encoder)
-    pretrainer_config = self.task_config.teacher_model
+    teacher_encoder = encoders.build_encoder(task_config.teacher_model.encoder)
+    pretrainer_config = task_config.teacher_model
     if pretrainer_config.cls_heads:
       teacher_cls_heads = [
           layers.ClassificationHead(**cfg.as_dict())
@@ -131,14 +133,20 @@ class DistillationTest(tf.test.TestCase):
         **teacher_pretrainer.checkpoint_items)
     teacher_ckpt_path = os.path.join(self.get_temp_dir(), 'teacher_model.ckpt')
     teacher_pretrainer_ckpt.save(teacher_ckpt_path)
-    self.task_config.teacher_model_init_checkpoint = self.get_temp_dir()
+    exp_config.task.teacher_model_init_checkpoint = self.get_temp_dir()
 
-  def test_task(self):
+    return exp_config
+
+  @parameterized.parameters((2, 2, None), (4, 2, [1, 3]))
+  def test_task(self, teacher_block_num, student_block_num,
+                transfer_teacher_layers):
+    exp_config = self.prepare_config(teacher_block_num, student_block_num,
+                                     transfer_teacher_layers)
     bert_distillation_task = distillation.BertDistillationTask(
         strategy=tf.distribute.get_strategy(),
-        progressive=self.exp_config.trainer.progressive,
-        optimizer_config=self.exp_config.trainer.optimizer_config,
-        task_config=self.task_config)
+        progressive=exp_config.trainer.progressive,
+        optimizer_config=exp_config.trainer.optimizer_config,
+        task_config=exp_config.task)
     metrics = bert_distillation_task.build_metrics()
     train_dataset = bert_distillation_task.get_train_dataset(stage_id=0)
     train_iterator = iter(train_dataset)
@@ -148,7 +156,7 @@ class DistillationTest(tf.test.TestCase):
     optimizer = tf.keras.optimizers.SGD(lr=0.1)
 
     # test train/val step for all stages, including the last pretraining stage
-    for stage in range(self.model_block_num + 1):
+    for stage in range(student_block_num + 1):
       step = stage
       bert_distillation_task.update_pt_stage(step)
       model = bert_distillation_task.get_model(stage, None)

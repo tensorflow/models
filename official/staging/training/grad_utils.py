@@ -65,10 +65,10 @@ def _filter_and_allreduce_gradients(grads_and_vars,
   (grads, variables) = zip(*filtered_grads_and_vars)
   if allreduce_precision == "float16":
     grads = [tf.cast(grad, "float16") for grad in grads]
-  hints = tf.distribute.experimental.CollectiveHints(
+  hints = tf.distribute.experimental.CommunicationOptions(
       bytes_per_pack=bytes_per_pack)
-  allreduced_grads = tf.distribute.get_replica_context().all_reduce(
-      tf.distribute.ReduceOp.SUM, grads, hints)
+  allreduced_grads = tf.distribute.get_strategy(  # pylint: disable=protected-access
+  ).extended._replica_ctx_all_reduce(tf.distribute.ReduceOp.SUM, grads, hints)
   if allreduce_precision == "float16":
     allreduced_grads = [tf.cast(grad, "float32") for grad in allreduced_grads]
   return allreduced_grads, variables
