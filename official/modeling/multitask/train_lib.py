@@ -72,7 +72,9 @@ def run_experiment(*, distribution_strategy: tf.distribute.Strategy,
       evaluator = evaluator_lib.MultiTaskEvaluator(
           task=task,
           model=model,
-          global_step=trainer.global_step if is_training else None)
+          global_step=trainer.global_step if is_training else None,
+          checkpoint_exporter=train_utils.maybe_create_best_ckpt_exporter(
+              params, model_dir))
     else:
       evaluator = None
 
