@@ -1,5 +1,5 @@
 # Lint as: python3
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,29 +38,30 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
     batch_size = 2
     input_shape = (batch_size, image_size, image_size, 3)
     local_feature_dim = 64
-    feature_map_size = floor(image_size/16) # reduction factor for resnet50
+    feature_map_size = image_size // 16 # reduction factor for resnet50.
     if block3_strides:
         feature_map_size //= 2
 
     model = delg_model.Delg(block3_strides=block3_strides,
-                            name='DELG',
                             use_dim_reduction=True,
                             reduced_dimension=local_feature_dim
                             )
     model.init_classifiers(num_classes)
 
     images = tf.random.uniform(input_shape, minval=-1.0, maxval=1.0, seed=0)
-    labels = tf.random.uniform((batch_size,),
-                               minval=0,
-                               maxval=model.num_classes - 1,
-                               dtype=tf.int64)
 
-    # Run a complete forward pass of the model
+    # Run a complete forward pass of the model.
     global_feature, attn_scores, local_features = model.build_call(images)
 
     self.assertAllEqual(global_feature.shape, (batch_size, 2048))
-    self.assertAllEqual(attn_scores.shape, (batch_size, feature_map_size, feature_map_size, 1))
-    self.assertAllEqual(local_features.shape, (batch_size, feature_map_size, feature_map_size, local_feature_dim))
+    self.assertAllEqual(
+        attn_scores.shape,
+        (batch_size, feature_map_size, feature_map_size, 1)
+    )
+    self.assertAllEqual(
+        local_features.shape,
+        (batch_size, feature_map_size, feature_map_size, local_feature_dim)
+    )
 
   @parameterized.named_parameters(
       ('block3_stridesTrue', True),
@@ -72,7 +73,10 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
     batch_size = 2
     input_shape = (batch_size, image_size, image_size, 3)
 
-    model = delg_model.Delg(block3_strides=block3_strides, name='DELG', use_dim_reduction=True)
+    model = delg_model.Delg(
+        block3_strides=block3_strides,
+        use_dim_reduction=True
+    )
     model.init_classifiers(num_classes)
 
     images = tf.random.uniform(input_shape, minval=-1.0, maxval=1.0, seed=0)
@@ -107,7 +111,10 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
     clip_val = 10.0
     input_shape = (batch_size, image_size, image_size, 3)
 
-    model = delg_model.Delg(block3_strides=block3_strides, name='DELG', use_dim_reduction=True)
+    model = delg_model.Delg(
+        block3_strides=block3_strides,
+        use_dim_reduction=True
+    )
     model.init_classifiers(num_classes)
 
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.001, momentum=0.9)
@@ -126,10 +133,9 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
       return tf.nn.compute_average_loss(
           per_example_loss, global_batch_size=batch_size)
 
-    #TODO: use all 3 DELG losses here
     with tf.GradientTape() as gradient_tape:
-      (desc_prelogits, attn_prelogits, _, backbone_blocks, dim_expanded_features,
-       _) = model.global_and_local_forward_pass(images)
+      (desc_prelogits, attn_prelogits, _, backbone_blocks,
+       dim_expanded_features, _) = model.global_and_local_forward_pass(images)
       # Calculate global loss by applying the descriptor classifier.
       desc_logits = model.desc_classification(desc_prelogits, labels)
       desc_loss = compute_loss(labels, desc_logits)

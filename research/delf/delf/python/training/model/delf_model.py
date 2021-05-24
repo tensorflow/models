@@ -35,7 +35,8 @@ class AttentionModel(tf.keras.Model):
   Uses two [kernel_size x kernel_size] convolutions and softplus as activation
   to compute an attention map with the same resolution as the featuremap.
   Features l2-normalized and aggregated using attention probabilites as weights.
-  Can optionally perform self-attention or cross-attention.
+  The features (targets) to be aggregated can be the input featuremap, or a
+  different one with the same resolution.
   """
 
   def __init__(self, kernel_size=1, decay=_DECAY, name='attention'):
@@ -74,9 +75,9 @@ class AttentionModel(tf.keras.Model):
     score = self.conv2(x)
     prob = self.activation_layer(score)
 
-    # Use self-attention if targets is None
+    # Aggregate inputs if targets is None.
     if targets is None:
-        targets = inputs
+      targets = inputs
 
     # L2-normalize the featuremap before pooling.
     targets = tf.nn.l2_normalize(targets, axis=-1)
@@ -213,8 +214,8 @@ class Delf(tf.keras.Model):
     block3 = tf.stop_gradient(block3)
     if self._use_dim_reduction:
       (dim_expanded_features, dim_reduced_features) = self.autoencoder(block3)
-      attn_prelogits, attn_scores, _ = self.attention(dim_expanded_features,
-                                                      targets=block3,
+      attn_prelogits, attn_scores, _ = self.attention(block3,
+                                                      targets=dim_expanded_features,
                                                       training=training)
     else:
       attn_prelogits, attn_scores, _ = self.attention(block3, training=training)
