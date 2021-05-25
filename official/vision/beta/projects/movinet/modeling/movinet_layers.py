@@ -294,8 +294,8 @@ class ConvBlock(tf.keras.layers.Layer):
           own batch norm and activation. '3d_2plus1d' is like '2plus1d', but
           uses two sequential 3D ops instead.
       use_positional_encoding: add a positional encoding before the temporal
-          convolution. Assumes `use_2plus1d=True` and `kernel_size[0] > 1`.
-          Otherwise, this argument is ignored.
+          convolution. Assumes `kernel_size[0] > 1`. Otherwise, this argument
+          is ignored.
       use_buffered_input: if True, the input is expected to be padded
           beforehand. In effect, calling this layer will use 'valid' padding on
           the temporal dimension to simulate 'causal' padding.
@@ -426,7 +426,7 @@ class ConvBlock(tf.keras.layers.Layer):
           use_buffered_input=self._use_buffered_input,
           name='conv3d')
 
-    if self._use_positional_encoding and self._conv_temporal is not None:
+    if self._use_positional_encoding and self._kernel_size[0] > 1:
       self._pos_encoding = nn_layers.PositionalEncoding()
     else:
       self._pos_encoding = None
@@ -451,7 +451,7 @@ class ConvBlock(tf.keras.layers.Layer):
     """Calls the layer with the given inputs."""
     x = inputs
 
-    if self._pos_encoding is not None:
+    if self._pos_encoding is not None and self._conv_temporal is None:
       x = self._pos_encoding(x)
 
     x = self._conv(x)

@@ -61,6 +61,10 @@ class TrainTest(tf.test.TestCase):
 
     # Test model training pipeline runs.
     params_override = json.dumps({
+        'runtime': {
+            'distribution_strategy': 'mirrored',
+            'mixed_precision_dtype': 'float32',
+        },
         'trainer': {
             'train_steps': 2,
             'validation_steps': 2,

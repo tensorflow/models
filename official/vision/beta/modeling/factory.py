@@ -76,6 +76,7 @@ def build_maskrcnn(
       backbone_config=model_config.backbone,
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
+  backbone(tf.keras.Input(input_specs.shape[1:]))
 
   decoder = decoder_factory.build_decoder(
       input_specs=backbone.output_specs,
@@ -250,6 +251,7 @@ def build_retinanet(
       backbone_config=model_config.backbone,
       norm_activation_config=norm_activation_config,
       l2_regularizer=l2_regularizer)
+  backbone(tf.keras.Input(input_specs.shape[1:]))
 
   decoder = decoder_factory.build_decoder(
       input_specs=backbone.output_specs,

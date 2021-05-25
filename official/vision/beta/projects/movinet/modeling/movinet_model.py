@@ -162,5 +162,7 @@ def build_movinet_model(
       num_classes=num_classes,
       kernel_regularizer=l2_regularizer,
       input_specs=input_specs_dict,
-      dropout_rate=model_config.dropout_rate)
+      dropout_rate=model_config.dropout_rate,
+      output_states=model_config.output_states)
+
   return model
