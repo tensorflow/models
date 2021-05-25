@@ -14,7 +14,6 @@
 
 # Lint as: python3
 """Contains common building blocks for yolo neural networks."""
-
 from typing import Callable, List
 import tensorflow as tf
 from official.modeling import tf_utils
@@ -23,6 +22,9 @@ from official.vision.beta.ops import spatial_transform_ops
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class Identity(tf.keras.layers.Layer):
+
+  def __init__(self, **kwargs):
+    super().__init__(**kwargs)
 
   def call(self, inputs):
     return inputs
@@ -640,6 +642,11 @@ class CSPRoute(tf.keras.layers.Layer):
     x = self._conv3(inputs)
     return (x, y)
 
+    self._conv2 = ConvBN(
+        filters=self._filters // self._filter_scale,
+        kernel_size=(1, 1),
+        strides=(1, 1),
+        **dark_conv_args)
 
 @tf.keras.utils.register_keras_serializable(package='yolo')
 class CSPConnect(tf.keras.layers.Layer):
@@ -797,7 +804,6 @@ class CSPStack(tf.keras.layers.Layer):
     """CSPStack layer initializer.
 
     Args:
-      filters: integer for output depth, or the number of features to learn.
       model_to_wrap: callable Model or a list of callable objects that will
         process the output of CSPRoute, and be input into CSPConnect.
         list will be called sequentially.
