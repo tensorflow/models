@@ -16,8 +16,8 @@ When training on TPUs we use
 [TPUEmbedding layer](https://github.com/tensorflow/recommenders/blob/main/tensorflow_recommenders/layers/embedding/tpu_embedding_layer.py)
 for categorical features. TPU embedding supports large embedding tables with
 fast lookup, the size of embedding tables scales linearly with the size of TPU
-pod. We can have up to 96 GB embedding tables for TPU v3-8 and 6.14 TB for
-v3-512 and 24.6 TB for TPU Pod v3-2048.
+pod. We can have up to 90 GB embedding tables for TPU v3-8 and 5.6 TB for
+v3-512 and 22,4 TB for TPU Pod v3-2048.
 
 The Model code is in
 [TensorFlow Recommenders](https://github.com/tensorflow/recommenders/tree/main/tensorflow_recommenders/experimental/models)
@@ -30,7 +30,7 @@ Recommenders](https://www.tensorflow.org/recommenders) library.
 
 ```bash
 git clone https://github.com/tensorflow/models.git
-pip install -r models/official/requirements.txt
+pip install tensorflow-recommenders
 export PYTHONPATH=$PYTHONPATH:$(pwd)/models
 ```
 
@@ -98,10 +98,10 @@ export EXPERIMENT_NAME=my_experiment_name
 export BUCKET_NAME="gs://my_dlrm_bucket"
 export DATA_DIR="${BUCKET_NAME}/data"
 
-python3 official/recommendation/ranking/main.py --mode=train_and_eval \
+python3 models/official/recommendation/ranking/train.py --mode=train_and_eval \
 --model_dir=${BUCKET_NAME}/model_dirs/${EXPERIMENT_NAME} --params_override="
 runtime:
-    distribution_strategy='tpu'
+    distribution_strategy: 'tpu'
 task:
     use_synthetic_data: false
     train_data:
@@ -125,7 +125,7 @@ trainer:
     checkpoint_interval: 100000
     validation_steps: 5440
     train_steps: 256054
-    steps_per_execution: 1000
+    steps_per_loop: 1000
 "
 ```
 
