@@ -27,6 +27,7 @@ import tensorflow as tf
 
 from official.common import distribute_utils
 # Imports registered experiment configs.
+from official.common import registry_imports  # pylint: disable=unused-import
 from official.core import exp_factory
 from official.core import task_factory
 from official.core import train_lib
