@@ -24,11 +24,11 @@ from official.vision.beta.configs import backbones
 
 
 @dataclasses.dataclass
-class DarkNet(hyperparams.Config):
-  """DarkNet config."""
+class Darknet(hyperparams.Config):
+  """Darknet config."""
   model_id: str = "darknet53"
 
 
 @dataclasses.dataclass
 class Backbone(backbones.Backbone):
-  darknet: DarkNet = DarkNet()
+  darknet: Darknet = Darknet()
