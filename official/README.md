@@ -66,9 +66,11 @@ In the near future, we will add:
 
 ### Recommendation
 
-| Model | Reference (Paper) |
-|-------|-------------------|
-| [NCF](recommendation) | [Neural Collaborative Filtering](https://arxiv.org/abs/1708.05031) |
+Model                            | Reference (Paper)
+-------------------------------- | -----------------
+[DLRM](recommendation/ranking)   | [Deep Learning Recommendation Model for Personalization and Recommendation Systems](https://arxiv.org/abs/1906.00091)
+[DCN v2](recommendation/ranking) | [Improved Deep & Cross Network and Practical Lessons for Web-scale Learning to Rank Systems](https://arxiv.org/abs/2008.13535)
+[NCF](recommendation)            | [Neural Collaborative Filtering](https://arxiv.org/abs/1708.05031)
 
 ## How to get started with the official models
 
