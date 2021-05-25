@@ -43,6 +43,7 @@ from official.modeling import hyperparams
 from official.vision.beta.modeling.backbones import factory
 from official.vision.beta.projects.yolo.modeling.layers import nn_blocks
 
+# builder required classes
 
 class BlockConfig:
   """Class to store layer config to make code more readable."""
@@ -666,7 +667,9 @@ def build_darknet(
     l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
   """Builds darknet."""
 
-  backbone_cfg = backbone_config.get()
+  backbone_cfg = model_config.backbone.get()
+  norm_activation_config = model_config.norm_activation
+
   model = Darknet(
       model_id=backbone_cfg.model_id,
       min_level=backbone_cfg.min_level,
