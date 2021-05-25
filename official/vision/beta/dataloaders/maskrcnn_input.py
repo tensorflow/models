@@ -309,15 +309,14 @@ class Parser(parser.Parser):
 
     if self._include_mask:
       masks = data['groundtruth_instance_masks']
-      masks, _ = preprocess_ops.resize_and_crop_image(
-        tf.expand_dims(masks, axis=-1),
-        self._output_size,
-        padded_size=preprocess_ops.compute_padded_size(
-            self._output_size, 2 ** self._max_level),
-        aug_scale_min=1.0,
-        aug_scale_max=1.0)
+      masks = tf.expand_dims(masks, axis=-1)
+      masks = tf.image.resize(
+        masks, tf.cast(self._output_size, tf.int32), method=tf.image.ResizeMethod.BILINEAR)
+      padded_size = preprocess_ops.compute_padded_size(
+            self._output_size, 2 ** self._max_level)
+      masks = tf.image.pad_to_bounding_box(
+        masks, 0, 0, padded_size[0], padded_size[1])
       masks = tf.squeeze(masks, axis=-1)
-
 
     # Casts input image to self._dtype
     image = tf.cast(image, dtype=self._dtype)

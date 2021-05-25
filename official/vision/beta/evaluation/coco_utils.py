@@ -246,7 +246,12 @@ def convert_groundtruths_to_coco_dataset(groundtruths, label_map=None):
             np_mask = (
                 np.array(mask.getdata()).reshape(height, width).astype(np.uint8))
           else:
-            np_mask = groundtruths['masks'][i][j, k].astype(np.uint8)
+            mask = Image.fromarray(groundtruths['masks'][i][j, k])
+            height = heights[i*batch_size + j]
+            width = widths[i*batch_size + j]
+            mask = mask.resize((width, height))
+            np_mask = np.array(mask.getdata()).reshape(height, width).astype(np.uint8)
+
           np_mask = (np_mask > 0).astype(np.uint8)
           encoded_mask = mask_api.encode(np.asfortranarray(np_mask))
           ann['segmentation'] = encoded_mask
