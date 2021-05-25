@@ -254,7 +254,12 @@ def video_classification_ucf101() -> cfg.ExperimentConfig:
           'task.validation_data.is_training != None',
           'task.train_data.num_classes == task.validation_data.num_classes',
       ])
-  add_trainer(config, train_batch_size=64, eval_batch_size=16, train_epochs=100)
+  add_trainer(
+      config,
+      train_batch_size=64,
+      eval_batch_size=16,
+      learning_rate=0.8,
+      train_epochs=100)
   return config
 
 
