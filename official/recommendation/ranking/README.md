@@ -25,16 +25,30 @@ library, while input pipeline, configuration and training loop is here.
 
 ## Prerequisites
 To get started, download the code from TensorFlow models GitHub repository or
-use the pre-installed Google Cloud VM. We also need to install [TensorFlow
-Recommenders](https://www.tensorflow.org/recommenders) library.
+use the pre-installed Google Cloud VM.
 
 ```bash
 git clone https://github.com/tensorflow/models.git
-pip install tensorflow-recommenders
 export PYTHONPATH=$PYTHONPATH:$(pwd)/models
 ```
 
-Make sure to use TensorFlow 2.4+.
+We also need to install
+[TensorFlow Recommenders](https://www.tensorflow.org/recommenders) library.
+If you are using [tf-nightly](https://pypi.org/project/tf-nightly/) make
+sure to install
+[tensorflow-recommenders](https://pypi.org/project/tensorflow-recommenders/)
+without its dependancies by passing `--no-deps` argument.
+
+For tf-nightly:
+```bash
+pip install tensorflow-recommenders --no-deps
+```
+
+For stable TensorFlow 2.4+ [releases](https://pypi.org/project/tensorflow/):
+```bash
+pip install tensorflow-recommenders
+```
+
 
 ## Dataset
 
