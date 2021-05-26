@@ -180,11 +180,15 @@ class EMAConfig(BaseOptimizerConfig):
 
   Attributes:
     name: 'str', name of the optimizer.
+    trainable_weights_only: 'bool', if True, only model trainable weights will
+      be updated. Otherwise, all model weights will be updated. This mainly
+      affects batch normalization parameters.
     average_decay: 'float', average decay value.
     start_step: 'int', start step to apply moving average.
     dynamic_decay: 'bool', whether to apply dynamic decay or not.
   """
   name: str = "ExponentialMovingAverage"
+  trainable_weights_only: bool = True
   average_decay: float = 0.99
   start_step: int = 0
   dynamic_decay: bool = True
