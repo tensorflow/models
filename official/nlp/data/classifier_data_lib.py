@@ -1316,8 +1316,8 @@ class AXgProcessor(DataProcessor):
     return examples
 
 
-class BoolQProcessor(DataProcessor):
-  """Processor for the BoolQ dataset (SuperGLUE diagnostics dataset)."""
+class SuperGLUEDataProcessor(DataProcessor):
+  """Processor for the SuperGLUE dataset."""
 
   def get_train_examples(self, data_dir):
     """See base class."""
@@ -1333,6 +1333,14 @@ class BoolQProcessor(DataProcessor):
     """See base class."""
     return self._create_examples(
         self._read_jsonl(os.path.join(data_dir, "test.jsonl")), "test")
+
+  def _create_examples(self, lines, set_type):
+    """Creates examples for the training/dev/test sets."""
+    raise NotImplementedError()
+
+
+class BoolQProcessor(SuperGLUEDataProcessor):
+  """Processor for the BoolQ dataset (SuperGLUE diagnostics dataset)."""
 
   def get_labels(self):
     """See base class."""
@@ -1359,23 +1367,8 @@ class BoolQProcessor(DataProcessor):
     return examples
 
 
-class CBProcessor(DataProcessor):
+class CBProcessor(SuperGLUEDataProcessor):
   """Processor for the CB dataset (SuperGLUE diagnostics dataset)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "train.jsonl")), "train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "val.jsonl")), "dev")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "test.jsonl")), "test")
 
   def get_labels(self):
     """See base class."""
@@ -1402,23 +1395,8 @@ class CBProcessor(DataProcessor):
     return examples
 
 
-class SuperGLUERTEProcessor(DataProcessor):
+class SuperGLUERTEProcessor(SuperGLUEDataProcessor):
   """Processor for the RTE dataset (SuperGLUE version)."""
-
-  def get_train_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "train.jsonl")), "train")
-
-  def get_dev_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "val.jsonl")), "dev")
-
-  def get_test_examples(self, data_dir):
-    """See base class."""
-    return self._create_examples(
-        self._read_jsonl(os.path.join(data_dir, "test.jsonl")), "test")
 
   def get_labels(self):
     """See base class."""
