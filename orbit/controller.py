@@ -338,7 +338,7 @@ class Controller:
       self.restore_checkpoint(checkpoint_path)
       self.evaluate(steps)
 
-  def restore_checkpoint(self, checkpoint_path: str = None):
+  def restore_checkpoint(self, checkpoint_path: Optional[str] = None):
     """Restores the model from a checkpoint.
 
     Args:
