@@ -22,7 +22,7 @@ modeling library:
   * [mobile_bert_encoder.py](https://github.com/tensorflow/models/blob/master/official/nlp/modeling/networks/mobile_bert_encoder.py)
   contains `MobileBERTEncoder` implementation.
   * [mobile_bert_layers.py](https://github.com/tensorflow/models/blob/master/official/nlp/modeling/layers/mobile_bert_layers.py)
-  contains `MobileBertEmbedding`, `MobileBertMaskedLM` and `MobileBertMaskedLM`
+  contains `MobileBertEmbedding`, `MobileBertTransformer` and `MobileBertMaskedLM`
   implementation.
 
 ## Pre-trained Models
