@@ -18,7 +18,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from math import floor
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -40,12 +39,11 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
     local_feature_dim = 64
     feature_map_size = image_size // 16 # reduction factor for resnet50.
     if block3_strides:
-        feature_map_size //= 2
+      feature_map_size //= 2
 
     model = delg_model.Delg(block3_strides=block3_strides,
                             use_dim_reduction=True,
-                            reduced_dimension=local_feature_dim
-                            )
+                            reduced_dimension=local_feature_dim)
     model.init_classifiers(num_classes)
 
     images = tf.random.uniform(input_shape, minval=-1.0, maxval=1.0, seed=0)
@@ -56,12 +54,10 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(global_feature.shape, (batch_size, 2048))
     self.assertAllEqual(
         attn_scores.shape,
-        (batch_size, feature_map_size, feature_map_size, 1)
-    )
+        (batch_size, feature_map_size, feature_map_size, 1))
     self.assertAllEqual(
         local_features.shape,
-        (batch_size, feature_map_size, feature_map_size, local_feature_dim)
-    )
+        (batch_size, feature_map_size, feature_map_size, local_feature_dim))
 
   @parameterized.named_parameters(
       ('block3_stridesTrue', True),
@@ -86,7 +82,6 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
                                dtype=tf.int64)
     blocks = {}
 
-    # Get global feature by pooling block4 features.
     desc_prelogits = model.backbone(
         images, intermediates_dict=blocks, training=False)
     desc_logits = model.desc_classification(desc_prelogits, labels)
@@ -113,8 +108,7 @@ class DelgTest(tf.test.TestCase, parameterized.TestCase):
 
     model = delg_model.Delg(
         block3_strides=block3_strides,
-        use_dim_reduction=True
-    )
+        use_dim_reduction=True)
     model.init_classifiers(num_classes)
 
     optimizer = tf.keras.optimizers.SGD(learning_rate=0.001, momentum=0.9)
