@@ -593,7 +593,7 @@ class MultilevelDetectionGenerator(tf.keras.layers.Layer):
                raw_scores: Mapping[str, tf.Tensor],
                anchor_boxes: tf.Tensor,
                image_shape: tf.Tensor,
-               raw_attributes: Mapping[str, tf.Tensor] = None):
+               raw_attributes: Optional[Mapping[str, tf.Tensor]] = None):
     """Generates final detections.
 
     Args:

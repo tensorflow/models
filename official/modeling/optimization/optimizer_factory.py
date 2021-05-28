@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """Optimizer factory class."""
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import gin
 import tensorflow as tf
@@ -134,8 +134,8 @@ class OptimizerFactory:
   def build_optimizer(
       self,
       lr: Union[tf.keras.optimizers.schedules.LearningRateSchedule, float],
-      postprocessor: Callable[[tf.keras.optimizers.Optimizer],
-                              tf.keras.optimizers.Optimizer] = None):
+      postprocessor: Optional[Callable[[tf.keras.optimizers.Optimizer],
+                                       tf.keras.optimizers.Optimizer]] = None):
     """Build optimizer.
 
     Builds optimizer from config. It takes learning rate as input, and builds

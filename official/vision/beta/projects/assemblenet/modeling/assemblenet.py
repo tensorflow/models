@@ -411,7 +411,7 @@ class _ApplyEdgeWeight(layers.Layer):
 
   def __init__(self,
                weights_shape,
-               index: int = None,
+               index: Optional[int] = None,
                use_5d_mode: bool = False,
                model_edge_weights: Optional[List[Any]] = None,
                **kwargs):
@@ -471,7 +471,7 @@ class _ApplyEdgeWeight(layers.Layer):
 
   def call(self,
            inputs: List[tf.Tensor],
-           training: bool = None) -> Mapping[Any, List[tf.Tensor]]:
+           training: Optional[bool] = None) -> Mapping[Any, List[tf.Tensor]]:
     use_5d_mode = self._use_5d_mode
     dtype = inputs[0].dtype
     assert len(inputs) > 1
@@ -517,7 +517,7 @@ class _ApplyEdgeWeight(layers.Layer):
 
 
 def multi_connection_fusion(inputs: List[tf.Tensor],
-                            index: int = None,
+                            index: Optional[int] = None,
                             use_5d_mode: bool = False,
                             model_edge_weights: Optional[List[Any]] = None):
   """Do weighted summation of multiple different sized tensors.
@@ -893,7 +893,8 @@ class AssembleNetModel(tf.keras.Model):
                num_classes,
                num_frames: int,
                model_structure: List[Any],
-               input_specs: Mapping[str, tf.keras.layers.InputSpec] = None,
+               input_specs: Optional[Mapping[str,
+                                             tf.keras.layers.InputSpec]] = None,
                max_pool_preditions: bool = False,
                **kwargs):
     if not input_specs:
@@ -1018,7 +1019,8 @@ def build_assemblenet_v1(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+) -> tf.keras.Model:
   """Builds assemblenet backbone."""
   del l2_regularizer
 
@@ -1058,7 +1060,7 @@ def build_assemblenet_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: cfg.AssembleNetModel,
     num_classes: int,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
   """Builds assemblenet model."""
   input_specs_dict = {'image': input_specs}
   backbone = build_assemblenet_v1(input_specs, model_config.backbone,

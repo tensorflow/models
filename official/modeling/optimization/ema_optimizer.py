@@ -14,7 +14,7 @@
 
 """Exponential moving average optimizer."""
 
-from typing import Text, List
+from typing import List, Optional, Text
 
 import tensorflow as tf
 
@@ -106,7 +106,7 @@ class ExponentialMovingAverage(tf.keras.optimizers.Optimizer):
   def _create_slots(self, var_list):
     self._optimizer._create_slots(var_list=var_list)  # pylint: disable=protected-access
 
-  def apply_gradients(self, grads_and_vars, name: Text = None):
+  def apply_gradients(self, grads_and_vars, name: Optional[Text] = None):
     result = self._optimizer.apply_gradients(grads_and_vars, name)
     self.update_average(self.iterations)
     return result
