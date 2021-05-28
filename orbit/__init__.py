@@ -14,8 +14,10 @@
 
 """Defines exported symbols for the `orbit` package."""
 
+from orbit import actions
 from orbit import utils
 
+from orbit.controller import Action
 from orbit.controller import Controller
 
 from orbit.runner import AbstractEvaluator
