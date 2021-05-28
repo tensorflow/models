@@ -38,7 +38,10 @@ class Task(tf.Module, metaclass=abc.ABCMeta):
   # Special keys in train/validate step returned logs.
   loss = "loss"
 
-  def __init__(self, params, logging_dir: str = None, name: str = None):
+  def __init__(self,
+               params,
+               logging_dir: Optional[str] = None,
+               name: Optional[str] = None):
     """Task initialization.
 
     Args:

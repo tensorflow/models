@@ -16,7 +16,7 @@
 
 Reference: https://arxiv.org/pdf/2103.11511.pdf
 """
-from typing import Mapping
+from typing import Mapping, Optional
 
 from absl import logging
 import tensorflow as tf
@@ -31,16 +31,17 @@ from official.vision.beta.projects.movinet.modeling import movinet_layers
 class MovinetClassifier(tf.keras.Model):
   """A video classification class builder."""
 
-  def __init__(self,
-               backbone: tf.keras.Model,
-               num_classes: int,
-               input_specs: Mapping[str, tf.keras.layers.InputSpec] = None,
-               dropout_rate: float = 0.0,
-               kernel_initializer: str = 'HeNormal',
-               kernel_regularizer: tf.keras.regularizers.Regularizer = None,
-               bias_regularizer: tf.keras.regularizers.Regularizer = None,
-               output_states: bool = False,
-               **kwargs):
+  def __init__(
+      self,
+      backbone: tf.keras.Model,
+      num_classes: int,
+      input_specs: Optional[Mapping[str, tf.keras.layers.InputSpec]] = None,
+      dropout_rate: float = 0.0,
+      kernel_initializer: str = 'HeNormal',
+      kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
+      output_states: bool = False,
+      **kwargs):
     """Movinet initialization function.
 
     Args:
@@ -144,7 +145,7 @@ def build_movinet_model(
     input_specs: tf.keras.layers.InputSpec,
     model_config: cfg.MovinetModel,
     num_classes: int,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None):
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None):
   """Builds movinet model."""
   logging.info('Building movinet model with num classes: %s', num_classes)
   if l2_regularizer is not None:
