@@ -81,7 +81,7 @@ class ResNet3D(tf.keras.Model):
       model_id: int,
       temporal_strides: List[int],
       temporal_kernel_sizes: List[Tuple[int]],
-      use_self_gating: List[int] = None,
+      use_self_gating: Optional[List[int]] = None,
       input_specs: tf.keras.layers.InputSpec = layers.InputSpec(
           shape=[None, None, None, None, 3]),
       stem_type: str = 'v0',
@@ -380,7 +380,8 @@ def build_resnet3d(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+) -> tf.keras.Model:
   """Builds ResNet 3d backbone from a config."""
   backbone_cfg = backbone_config.get()
 
@@ -418,7 +419,8 @@ def build_resnet3d_rs(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+) -> tf.keras.Model:
   """Builds ResNet-3D-RS backbone from a config."""
   backbone_cfg = backbone_config.get()
 
