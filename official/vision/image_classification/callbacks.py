@@ -20,7 +20,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from typing import Any, List, MutableMapping, Text
+from typing import Any, List, MutableMapping, Optional, Text
 
 from absl import logging
 import tensorflow as tf
@@ -39,7 +39,7 @@ def get_callbacks(
     initial_step: int = 0,
     batch_size: int = 0,
     log_steps: int = 0,
-    model_dir: str = None,
+    model_dir: Optional[str] = None,
     backup_and_restore: bool = False) -> List[tf.keras.callbacks.Callback]:
   """Get all callbacks."""
   model_dir = model_dir or ''
@@ -120,7 +120,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
 
   def on_batch_begin(self,
                      epoch: int,
-                     logs: MutableMapping[str, Any] = None) -> None:
+                     logs: Optional[MutableMapping[str, Any]] = None) -> None:
     self.step += 1
     if logs is None:
       logs = {}
@@ -129,7 +129,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
 
   def on_epoch_begin(self,
                      epoch: int,
-                     logs: MutableMapping[str, Any] = None) -> None:
+                     logs: Optional[MutableMapping[str, Any]] = None) -> None:
     if logs is None:
       logs = {}
     metrics = self._calculate_metrics()
@@ -140,7 +140,7 @@ class CustomTensorBoard(tf.keras.callbacks.TensorBoard):
 
   def on_epoch_end(self,
                    epoch: int,
-                   logs: MutableMapping[str, Any] = None) -> None:
+                   logs: Optional[MutableMapping[str, Any]] = None) -> None:
     if logs is None:
       logs = {}
     metrics = self._calculate_metrics()
@@ -195,13 +195,13 @@ class MovingAverageCallback(tf.keras.callbacks.Callback):
                       optimization.ExponentialMovingAverage)
     self.model.optimizer.shadow_copy(self.model)
 
-  def on_test_begin(self, logs: MutableMapping[Text, Any] = None):
+  def on_test_begin(self, logs: Optional[MutableMapping[Text, Any]] = None):
     self.model.optimizer.swap_weights()
 
-  def on_test_end(self, logs: MutableMapping[Text, Any] = None):
+  def on_test_end(self, logs: Optional[MutableMapping[Text, Any]] = None):
     self.model.optimizer.swap_weights()
 
-  def on_train_end(self, logs: MutableMapping[Text, Any] = None):
+  def on_train_end(self, logs: Optional[MutableMapping[Text, Any]] = None):
     if self.overwrite_weights_on_train_end:
       self.model.optimizer.assign_average_vars(self.model.variables)
 

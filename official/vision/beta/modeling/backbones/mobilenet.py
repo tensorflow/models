@@ -502,7 +502,7 @@ class MobileNet(tf.keras.Model):
       kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       bias_regularizer: Optional[tf.keras.regularizers.Regularizer] = None,
       # The followings should be kept the same most of the times.
-      output_stride: int = None,
+      output_stride: Optional[int] = None,
       min_depth: int = 8,
       # divisible is not used in MobileNetV1.
       divisible_by: int = 8,
@@ -768,7 +768,8 @@ def build_mobilenet(
     input_specs: tf.keras.layers.InputSpec,
     backbone_config: hyperparams.Config,
     norm_activation_config: hyperparams.Config,
-    l2_regularizer: tf.keras.regularizers.Regularizer = None) -> tf.keras.Model:
+    l2_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
+) -> tf.keras.Model:
   """Builds MobileNet backbone from a config."""
   backbone_type = backbone_config.type
   backbone_cfg = backbone_config.get()
