@@ -1152,8 +1152,8 @@ class SAM(tf.keras.layers.Layer):
 
   def call(self, inputs, training=None):
     if self._use_pooling:
-      depth_max = tf.reduce_max(inputs, axis=-1, keep_dims=True)
-      depth_avg = tf.reduce_mean(inputs, axis=-1, keep_dims=True)
+      depth_max = tf.reduce_max(inputs, axis=-1, keepdims=True)
+      depth_avg = tf.reduce_mean(inputs, axis=-1, keepdims=True)
       input_maps = tf.concat([depth_avg, depth_max], axis=-1)
     else:
       input_maps = inputs
@@ -1545,7 +1545,7 @@ class DarkRouteProcess(tf.keras.layers.Layer):
       elif layer == 'spp':
         self.layers.append(self._spp(self._filters, dark_conv_args))
       elif layer == 'sam':
-        self.layers.append(self._sam(-1, _args))
+        self.layers.append(self._sam(-1, dark_conv_args))
 
     self._lim = len(self.layers)
     super().build(input_shape)
