@@ -331,13 +331,13 @@ class YoloPAN(tf.keras.layers.Layer):
 
     Args:
       minimum_depth: `int` depth of the smallest branch of the FPN.
-      inputs: `dict[str, tf.InputSpec]` of the shape of input args as a dictionary of
-        lists.
+      inputs: `dict[str, tf.InputSpec]` of the shape of input args as a
+        dictionary of lists.
 
     Returns:
       The unscaled depths of the FPN branches.
     """
-    
+
     depths = []
     if len(inputs.keys()) > 3 or self._fpn_filter_scale > 1:
       for i in range(self._min_level, self._max_level + 1):
@@ -386,8 +386,8 @@ class YoloDecoder(tf.keras.Model):
                kernel_regularizer=None,
                bias_regularizer=None,
                **kwargs):
-    """Yolo Decoder initialization function. A unified model that ties all decoder
-    components into a conditionally build YOLO decder.
+    """Yolo Decoder initialization function. A unified model that ties all
+    decoder components into a conditionally build YOLO decoder.
 
     Args:
       input_specs: `dict[str, tf.InputSpec]`: input specs of each of the inputs
@@ -409,7 +409,7 @@ class YoloDecoder(tf.keras.Model):
         zero.
       kernel_initializer: kernel_initializer for convolutional layers.
       kernel_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
-      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2d.
+      bias_regularizer: tf.keras.regularizers.Regularizer object for Conv2D.
       **kwargs: keyword arguments to be passed.
     """
 
